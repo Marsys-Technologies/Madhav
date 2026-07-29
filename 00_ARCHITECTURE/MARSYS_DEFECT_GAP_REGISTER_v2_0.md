@@ -1,6 +1,6 @@
 ---
 canonical_id: MARSYS_DEFECT_GAP_REGISTER
-version: 3.16
+version: 3.17
 status: LIVING — the authoritative, exhaustive register of every known defect + coverage gap in the
   MARSYS-JIS instrument as of 2026-07-10, resynced 2026-07-16 (D-1.6 Lane S-8, Section 13). Add
   rows, never silently drop them. Each row closes only with a fix PR + [verify-against] evidence
@@ -418,12 +418,13 @@ Recompute control: **all 9 graha positions + lagna + panchanga anchors match liv
 | SC-14 | **bo_pratijna (Promise Register), ka_avadhi, ka_taranga: built-but-unservable** — zero TS readers; even pact_query recomputes the promise chain live instead of reading bodha_pratijna. These are the Beyond-Acharya PROMISE→ACTIVATION spine | HIGH | Law-5 | OPEN |
 | SC-15 | `kala_timeline` served but owned by NO registered asset (inverse conservation failure — untracked by any count_sql) | MED | Law-5 | OPEN |
 | SC-16 | 20+ per-chart ka_*/ph_* assets carry target_floor NULL with no documented reason (floor-hygiene drift) | LOW | Law-5 | OPEN |
-| SC-17 | `bodha_bundle_get` recover-pointer targets a tool that was never registered (rename never shipped; live tool = holistic_bundle_chart_facts) | MED | holistic_bundle.ts:73 | OPEN |
-| SC-18 | **Budget-trim recover pointers name INTERNAL capability names, not MCP tools** (get_dignity/get_avasthas/get_divisionals/query_signals…) — the recovery path fires exactly when data was withheld and points at tool-not-found | HIGH | registry_bridge.ts:2098-2493 | OPEN |
-| SC-19 | `instrument:'bo_upaya'` puts an asset id in a tool-pointer field | LOW | query_remedies.ts:272 | OPEN |
+| SC-17 | `bodha_bundle_get` recover-pointer targets a tool that was never registered (rename never shipped; live tool = holistic_bundle_chart_facts) | MED | holistic_bundle.ts:73 | FIXED [verify-against: static, SAMĀPTI A2 2026-07-30] — the rename SHIPPED: `bodha_bundle_get` is a live `server.tool()` registration at `platform-mcp/src/tools/retrieval/holistic_bundle.ts:135`, so the recover pointer at :78 now resolves. `sc_pointer_validation.ts` no longer reports it. |
+| SC-18 | **Budget-trim recover pointers name INTERNAL capability names, not MCP tools** (get_dignity/get_avasthas/get_divisionals/query_signals…) — the recovery path fires exactly when data was withheld and points at tool-not-found | HIGH | registry_bridge.ts:2098-2493 | FIXED [verify-against: static, SAMĀPTI A2 2026-07-30] — all five internal names remapped to live tools, each fix site carrying an inline `(SC-18: was "…")` note: `get_dignity`→`ganita_condition_get` (registry_bridge.ts:3846/3861/3880/4057/4319), `get_avasthas`→`ganita_condition_get` (:3914), `get_divisionals`→`ganita_chart_facts_get` (:3269, register_d9_judgment.ts:1138, register_d10_pact.ts:300), `query_signals`→`get_signals` (:3209, register_d9_judgment.ts:1143), and `get_strength`→`ganita_strength_get` (:3898). **`get_strength` is the harness's never-filed "NEW-P1"** — it is the same class and the same fix, so it closes here rather than as its own row. |
+| SC-19 | `instrument:'bo_upaya'` puts an asset id in a tool-pointer field | LOW | query_remedies.ts:272 | FIXED [verify-against: static, SAMĀPTI A2 2026-07-30] — `query_remedies.ts:562-568` moved the asset id out of the `instrument` field into a dedicated `asset_id` field, with an inline "SC-19 fix" note explaining that the entry documents a build-state fact and is not a callable pointer. `sc_pointer_validation.ts` reports 0 asset-id-in-tool-field. |
 | SC-20 | `ganita_positions_get` ≠ `get_positions` — alias returns flat EAV incl. aprakasha-first, no planet param; primitive returns pivoted rows; primitive's planet filter ineffective (67KB) | HIGH | Law-7 live diff | OPEN |
 | SC-21 | `bodha_graph_subgraph_get` is a capability-degraded alias of get_cgm_subgraph (no mode/seed/about/min_strength; "same as" claim false; limit ignored) | MED-HIGH | Law-7 | OPEN |
 | SC-22 | Mimamsa calibration outputs unreadable: score_manifestation/score_falsifier, hit_rate_by_tier, negative-control scores, phala rectification_confidence — the calibration loop's own outputs have no serving path (compounds C-5) | HIGH | Law-4 | OPEN |
+| SC-23 | **`query_classical_texts` used as a drill-pointer instrument** — it is the INTERNAL registry capability name (`marsys://tool/L0/query_classical_texts`), not a live MCP tool name, so the "go read the verses" pointer in the judgment verdict dead-ended in tool-not-found. Same class as SC-18. **Filed 2026-07-30 (SAMĀPTI lane A2); discovered by `sc_pointer_validation.ts` itself on 2026-07-10 and carried in `sc_pointer_baseline.json` as "NEW-P2 — verify intended target before filing" for 20 days without ever being filed** — this row is that filing. | MED | register_d9_judgment.ts:1146; `sc_pointer_baseline.json` NEW-P2 entry | FIXED [verify-against: static, SAMĀPTI A2 2026-07-30] — **intended target verified before filing, as the NEW-P2 note demanded**: the pointer's purpose is "verse citations for `<bhava>` judgment (BPHS/Phaladeepika bhava-adhyaya)", and the disambiguation between the three live candidates is decided by WHICH PRIMITIVE each fronts, not by name similarity: `ref_rules_search` is the MCP alias of the **same** capability the dead pointer named — `register_p1_reference.ts:8` maps `ref_rules_search → marsys://tool/L0/query_classical_texts` — whereas the two names the 2026-07-10 baseline note suggested as "closest live tool" front *different* primitives (`read_classical_text.ts:69` calls the `read_classical_text` primitive; :183 calls the `search_classical_texts` primitive). All three are registered (statically confirmed against `collectRegisteredTools()`), so the choice had to be made on capability identity — hence "verify intended target," and hence the correct target is `ref_rules_search`. `register_d9_judgment.ts:1146` emits exactly that, shipped under RC-04 with an inline note recording the same reasoning. |
 
 ### §11.4 — INSTRUMENT/LATERAL DEFECTS (TAP-8 + TAP-4 battery)
 
@@ -1373,7 +1374,29 @@ renumbered during integration, no content change.)
 
 ---
 
-*End of MARSYS_DEFECT_GAP_REGISTER. Changelog: v3.16 (2026-07-23, post-D-4b-close cleanup,
+*End of MARSYS_DEFECT_GAP_REGISTER. Changelog: v3.17 (2026-07-30, SAMĀPTI lane A2-CI-POINTERS,
+branch `samapti/ci-pointer-validation`) — the §11.3 pointer-parity family reconciled against the
+live tree, all four rows dispositioned with static evidence. **SC-17 / SC-18 / SC-19 → FIXED**:
+each was already repaired in production (the `bodha_bundle_get` registration shipped; all five
+SC-18 internal capability names remapped with inline `(SC-18: was "…")` notes; the `bo_upaya`
+asset id moved to its own `asset_id` field) but all three still read `OPEN` here, and their
+`sc_pointer_baseline.json` quarantine entries were still being carried — so the harness could not
+answer "which of these is genuinely still open?". **SC-23 added and FIXED in the same pass** — the
+`query_classical_texts` pointer that `sc_pointer_validation.ts` discovered on 2026-07-10, tagged
+"NEW-P2 — verify intended target before filing," and that was then never filed for 20 days. Target
+verified on capability identity rather than name similarity (`ref_rules_search` fronts the same
+`marsys://tool/L0/query_classical_texts` primitive; the two similarly-named live tools front
+different primitives). The harness itself was repaired in the same lane: it no longer flags
+`instrument:` literals that sit inside comments (it previously punished in-code documentation of
+the very defect class it polices — the source of the unregistered `SC-pointer:x` FAIL, which was a
+placeholder in a `response_budget` unit test); it now classifies each finding by surface
+(production vs test_fixture); and two new ratchet-tightening checks —
+`SC-pointer:baseline-freshness` and `SC-pointer:occurrence-freshness` — FAIL when a quarantine
+entry stops reproducing, so a baselined entry can no longer outlive its defect (a structural
+replacement for the "quarantine with an expiry date" ask). `tap5_seam_conservation.ts`'s Law-7 row,
+until now a hardcoded `QUARANTINED` string that never invoked the check it cited (a §N.8
+earned-signal violation inside the audit harness), now imports and runs the real battery.
+Prior: v3.16 (2026-07-23, post-D-4b-close cleanup,
 branch `wave/postclose/cr128-record-outcome-retire`) — CR-128 RESOLVED: post-close investigation
 found the calibration write-surface already exists, live (mi_pramana -> mimamsa_calibration ->
 mi_gunanaka -> mimamsa_multipliers), and already ran honestly to zero for chart 482012f1 (no

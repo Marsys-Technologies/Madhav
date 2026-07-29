@@ -153,7 +153,11 @@ describe('pact_query — MCP tool registration + seam reachability', () => {
         ],
         fact_id_refs: ['f-1', 'f-2'],
         drill_pointers: [
-          { instrument: 'get_divisionals', hint: 'full D9 placements.', pointer_type: 'confirm_in_varga', pact_stage: 'confirmation' },
+          // SAMĀPTI A2: 'ganita_chart_facts_get' is the live MCP tool; production
+          // (register_d10_pact.ts:300) emits it in place of the internal capability
+          // name 'get_divisionals', which sc_pointer_validation.ts flags as an
+          // unresolvable pointer (SC-18 class).
+          { instrument: 'ganita_chart_facts_get', hint: 'full D9 placements.', pointer_type: 'confirm_in_varga', pact_stage: 'confirmation' },
         ],
         judgment_flags: ['PACT chain halted at CONFIRMATION'],
       },

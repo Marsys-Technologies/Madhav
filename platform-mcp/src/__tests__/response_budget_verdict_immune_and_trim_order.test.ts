@@ -24,6 +24,18 @@
 import { describe, it, expect } from 'vitest'
 import { applyResponseBudget, estimateBytes, type TrimmableSection } from '../lib/response_budget.js'
 
+// NOTE (SAMĀPTI A2, 2026-07-30): the `recover.instrument` values in this file's
+// fixtures are irrelevant to what it asserts (trim order and verdict immunity — no
+// assertion reads `recover`), but they are NOT free-form. The CI boot-time pointer
+// validator (platform/scripts/audit/tap/sc_pointer_validation.ts, SC-17/18/19)
+// statically scans every `instrument: '<name>'` literal in the repo — test fixtures
+// included — against the currently-registered MCP tool set, so a placeholder name
+// reads as a real serving-surface regression to that gate. This file's original
+// `instrument: 'x'` placeholder was exactly that: the `SC-pointer:x` FAIL the harness
+// reported on unmodified `main`. Fixtures therefore name an ALREADY-REGISTERED live
+// tool, per the same convention documented in `src/lib/kala_envelope.test.ts` and
+// `src/tools/kala_views/ritual.test.ts`. `hint` is not scanned and stays a placeholder.
+
 describe('MC-005/MC-023 — verdict immunity', () => {
   it('a verdict clause\'s long prose sentence is never truncated, even under an aggressively tight budget', () => {
     const longSentence = 'Wealth assessment draws on 10 composite-ranked signal(s) for this ' +
@@ -88,7 +100,7 @@ describe('MC-005 — trim-order inversion fix (disposable sections absorb cuts b
         getArray: (c) => c.hardFloorSection,
         setArray: (c, kept) => { c.hardFloorSection = kept as Content['hardFloorSection'] },
         minKeep: 3,
-        recover: { instrument: 'x', hint: 'x' },
+        recover: { instrument: 'get_signals', hint: 'x' },
         label: 'hardFloorSection',
         hardFloor: true,
       },
@@ -97,7 +109,7 @@ describe('MC-005 — trim-order inversion fix (disposable sections absorb cuts b
         getArray: (c) => c.factIdRefs,
         setArray: (c, kept) => { c.factIdRefs = kept as string[] },
         minKeep: 2,
-        recover: { instrument: 'x', hint: 'x' },
+        recover: { instrument: 'get_signals', hint: 'x' },
         label: 'factIdRefs',
         // no hardFloor — disposable
       },

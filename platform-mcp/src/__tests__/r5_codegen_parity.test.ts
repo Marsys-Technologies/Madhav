@@ -90,7 +90,12 @@ describe('R5 W0b-codegen parity gate — envelope (generated vs canonical)', () 
         verdict: { yogas_fired: 3 },
         ranking_basis: { mode: 'catalog_order' },
         grounding: { fact_ids: ['f-1'], citations: ['c-1'], grounding_score: 1 },
-        drill_pointers: [{ instrument: 'query_signals', hint: 'x' }],
+        // SAMĀPTI A2: 'get_signals' is the live MCP tool name; the internal registry
+        // capability name 'query_signals' that used to sit here is not a registered
+        // tool and tripped sc_pointer_validation.ts (SC-18 class, quarantined since
+        // 2026-07-10). Production emits 'get_signals' (register_d9_judgment.ts:1143,
+        // registry_bridge.ts:3209); the fixture now matches production.
+        drill_pointers: [{ instrument: 'get_signals', hint: 'x' }],
         judgment_flags: ['zero_rows_returned'],
       },
       format: 'v3',

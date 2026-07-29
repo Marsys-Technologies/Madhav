@@ -19,9 +19,12 @@
  *        the ["career","character"] hard default (SC-10, KP-4).
  * Law-7  alias/pointer parity: every tool-pointer field must name a tool that
  *        is actually registered on the live MCP server (SC-17, SC-18, SC-19,
- *        SC-20, SC-21, V-12). Delegated to sc_pointer_validation.ts; folded
- *        in here as a single summary row so `npm run tap:5` reports all 7
- *        laws in one place.
+ *        SC-20, SC-21, SC-23, V-12). Delegated to sc_pointer_validation.ts by
+ *        IMPORTING AND RUNNING its battery (`runPointerValidation()`) and
+ *        folding the real verdict in as one summary row, so `npm run tap:5`
+ *        reports all 7 laws in one place with all 7 statuses measured. Until
+ *        2026-07-30 this row was a hardcoded QUARANTINED string that never
+ *        invoked the check it cited — see the Law-7 block below.
  *
  * DB-backed laws (1,2,3,5,6) require DATABASE_URL — see lib/tap_db.ts.
  * Static laws (4 partially, 7) run via grep over the TS source tree and do
@@ -33,6 +36,7 @@
 import path from 'node:path'
 import { execSync } from 'node:child_process'
 import { connectTapDb, printReport, NATIVE_CHART_ID, type LawResult } from './lib/tap_db'
+import { runPointerValidation } from './sc_pointer_validation'
 
 const REPO_ROOT = path.join(__dirname, '../../../..')
 
@@ -261,14 +265,31 @@ async function main() {
     results.push({ id: 'Law-6', title: '_DOMAIN_MAP conservation', status: 'SKIPPED', detail: db.reason! })
   }
 
-  // ---- Law-7: pointer/alias parity — delegated summary (full detail in
-  // sc_pointer_validation.ts, which this same CI job also runs) ----
+  // ---- Law-7: pointer/alias parity — REAL delegation ----
+  // Before SAMĀPTI lane A2 this row was a hardcoded `status: 'QUARANTINED'`
+  // string with NO detector behind it: it named sc_pointer_validation.ts but
+  // never ran it, so `npm run tap:5` reported a Law-7 status it had not
+  // measured — a CLAUDE.md §N.8 earned-signal violation sitting inside the
+  // audit harness itself. It now imports and executes the real battery and
+  // folds in its actual verdict (worst-status-wins), so Law-7's status is
+  // earned on every run.
+  const pointerResults = runPointerValidation()
+  const pointerFails = pointerResults.filter((r) => r.status === 'FAIL')
+  const pointerQuarantined = pointerResults.filter((r) => r.status === 'QUARANTINED')
   results.push({
     id: 'Law-7',
     title: 'Every tool-pointer field names a live registered MCP tool',
-    status: 'QUARANTINED',
-    detail: 'Full check + violation list in sc_pointer_validation.ts (SC-17, SC-18, SC-19, SC-20, SC-21).',
-    register_rows: ['SC-17', 'SC-18', 'SC-19', 'SC-20', 'SC-21', 'V-12'],
+    status: pointerFails.length > 0 ? 'FAIL' : pointerQuarantined.length > 0 ? 'QUARANTINED' : 'PASS',
+    detail:
+      `sc_pointer_validation.ts executed in-process: ${pointerResults.length} checks, ` +
+      `${pointerFails.length} FAIL, ${pointerQuarantined.length} QUARANTINED. ` +
+      (pointerFails.length > 0
+        ? `Failing: ${pointerFails.map((r) => r.id).join(', ')}. `
+        : pointerQuarantined.length > 0
+          ? `Quarantined: ${pointerQuarantined.map((r) => r.id).join(', ')}. `
+          : 'Zero unresolved pointers and zero stale baseline entries — the SC-17/18/19/23 ratchet is at zero. ') +
+      'Run `npm run tap:pointer-validation` for the per-instrument detail.',
+    register_rows: ['SC-17', 'SC-18', 'SC-19', 'SC-20', 'SC-21', 'SC-23', 'V-12'],
   })
 
   process.exit(printReport('TAP-5 Seam Conservation (7 laws)', results))

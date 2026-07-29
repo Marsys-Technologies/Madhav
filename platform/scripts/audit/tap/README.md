@@ -88,6 +88,65 @@ than just "which file has this problem":
   already-baselined file — it correctly flipped to FAIL; reverting restored
   a clean exit 0.
 
+## Pointer baseline: RATCHET AT ZERO + structural expiry (SAMĀPTI A2, 2026-07-30)
+
+`sc_pointer_baseline.json` and `sc_pointer_occurrences.json` are now **empty**.
+Every instrument they carried (SC-17 `bodha_bundle_get`; SC-18 `get_dignity` /
+`get_avasthas` / `get_divisionals` / `query_signals`; the never-filed NEW-P1
+`get_strength`; the never-filed NEW-P2 `query_classical_texts`, now register row
+SC-23) is fixed in production, and the four remaining occurrences — all test
+fixtures modelling the old non-existent names — were repointed at the live tools
+production emits. Consequence: **any** unresolved pointer anywhere under
+`platform-mcp/src` or `platform/src/lib/retrieval` now fails CI. Do not re-add a
+baseline entry to turn a red build green.
+
+Two checks keep the ratchet from loosening again:
+
+- `SC-pointer:baseline-freshness` FAILs when a `sc_pointer_baseline.json` entry
+  no longer reproduces against the live tree.
+- `SC-pointer:occurrence-freshness` FAILs when a `sc_pointer_occurrences.json`
+  entry no longer matches a live hit.
+
+This is the structural answer to "document the quarantine with an expiry":
+rather than a date nobody re-reads, **an entry expires the moment the defect it
+describes stops reproducing.** It exists because four instruments sat
+QUARANTINED for 20 days after their production pointers were fixed, and the
+occurrence ledger still listed production sites in `registry_bridge.ts`,
+`register_d9_judgment.ts`, `register_p1_ganita.ts` and `register_d10_pact.ts`
+weeks after those lines were repaired — so the report could not answer which SC
+rows were genuinely open. Verified by re-adding a stale `get_dignity` entry: the
+check flipped to FAIL naming the exact entry to delete; removing it restored
+exit 0.
+
+**Declared bounds** (see the file's own docstring — a detector that overclaims
+its coverage is itself a §N.8 violation): line-level regex, so pointers built
+from a variable are invisible; matches inside comments are skipped (prose
+documenting a dead pointer is not a dead pointer — before this exclusion the
+check flagged its own documentation, which is how the placeholder
+`instrument: 'x'` in a `response_budget` unit test became an unregistered
+`SC-pointer:x` FAIL on `main`); test fixtures ARE scanned, by the convention
+documented at `platform-mcp/src/lib/kala_envelope.test.ts`, but are classified
+`test_fixture` vs `production` in the report so a FAIL can be triaged without
+opening every file; and a resolving name proves nothing about the tool working
+(that is `mcp_tool_smoke.ts`'s job).
+
+Verified can-fail: injecting `instrument: 'totally_fake_tool_xyz'` at
+`registry_bridge.ts:573` flipped the check to FAIL (and `tap:5`'s Law-7 with
+it, exit 0 → 1); reverting restored exit 0. A companion probe confirmed the
+comment exclusion is not a bypass — a bogus pointer in real code with a
+trailing comment was caught, while the same name inside a `//` line was not.
+
+## Law-7 is a real detector now (SAMĀPTI A2, 2026-07-30)
+
+`tap5_seam_conservation.ts`'s Law-7 row used to be a hardcoded
+`status: 'QUARANTINED'` string that named `sc_pointer_validation.ts` but never
+ran it — TAP-5 reported a Law-7 status it had not measured, an earned-signal
+(§N.8) violation inside the audit harness itself. It now imports
+`runPointerValidation()` and folds in the real verdict (worst-status-wins), so
+`npm run tap:5-seam-conservation` earns Law-7's status on every run.
+`sc_pointer_validation.ts` only self-executes under `require.main === module`,
+so importing it does not trigger its `process.exit`.
+
 ## Tool enumeration correctness (Ring-2 fix, post-`bacade1c`)
 
 `lib/mcp_registered_tools.ts` is the single source of truth for "is `name`
