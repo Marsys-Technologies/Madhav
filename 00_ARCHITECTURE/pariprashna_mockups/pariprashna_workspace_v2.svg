@@ -1,0 +1,176 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1680" height="1150" viewBox="0 0 1680 1150" font-family="Inter">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&amp;family=Inter:wght@300;400;500&amp;family=JetBrains+Mono:wght@400&amp;display=swap');
+text{fill:#EBE3D2}
+.serif{font-family:'Cormorant Garamond',Georgia,serif}
+.sans{font-family:'Inter',sans-serif}
+.mono{font-family:'JetBrains Mono',monospace}
+.gold{fill:#C9A24C}.dim{fill:#A37F37}.mute{fill:#7A5A1F}.ink{fill:#EBE3D2}.inkdim{fill:#B8AE97}
+.eye{font-family:'Inter';font-size:9px;letter-spacing:2.6px;fill:#C9A24C}
+.ann{font-family:'JetBrains Mono';font-size:10px;fill:#5c5648}
+</style>
+
+<rect width="1680" height="1150" fill="#050505"/>
+
+<!-- annotations -->
+<text class="ann" x="36" y="30">① PAST READINGS — collapsible</text>
+<text class="ann" x="330" y="30">② HOW THINKING PRESENTS — the phase ledger, expanded mid-run</text>
+<text class="ann" x="1160" y="30">③ WINDOWS + GROUNDING — collapsible dock</text>
+<text class="ann" x="330" y="1138">④ Model → Depth → Length · three-line field</text>
+
+<!-- ═══ LEFT SIDEBAR — history ═══ -->
+<rect x="28" y="44" width="252" height="1060" rx="14" fill="#0a0a0a" stroke="rgba(201,162,76,0.25)"/>
+<text class="eye" x="52" y="86">PAST READINGS</text>
+<text class="mono mute" x="248" y="86" font-size="12" text-anchor="end">«</text>
+
+<!-- active item -->
+<rect x="40" y="106" width="228" height="62" rx="8" fill="rgba(201,162,76,0.06)"/>
+<rect x="40" y="112" width="2" height="50" fill="#C9A24C"/>
+<text class="serif ink" x="56" y="134" font-size="14.5">Career over the next two years</text>
+<text class="sans mute" x="56" y="152" font-size="9" letter-spacing="1">TODAY · OPEN WINDOW ●</text>
+
+<g class="sans">
+<text class="serif inkdim" x="56" y="200" font-size="14">Marriage window — review</text>
+<text class="mute" x="56" y="217" font-size="9" letter-spacing="1">24 JUL</text>
+<text class="serif inkdim" x="56" y="258" font-size="14">Health · Sāḍe Sātī check</text>
+<text class="mute" x="56" y="275" font-size="9" letter-spacing="1">21 JUL</text>
+<text class="serif inkdim" x="56" y="316" font-size="14">Property purchase timing</text>
+<text class="mute" x="56" y="333" font-size="9" letter-spacing="1">19 JUL</text>
+<text class="serif inkdim" x="56" y="374" font-size="14">Daughter's education</text>
+<text class="mute" x="56" y="391" font-size="9" letter-spacing="1">15 JUL</text>
+</g>
+<line x1="52" y1="420" x2="256" y2="420" stroke="rgba(201,162,76,0.15)"/>
+<rect x="52" y="1042" width="204" height="36" rx="18" fill="none" stroke="rgba(201,162,76,0.25)"/>
+<text class="sans dim" x="154" y="1064" font-size="12" text-anchor="middle">+  New reading</text>
+
+<!-- ═══ MAIN FRAME ═══ -->
+<rect x="304" y="44" width="828" height="1060" rx="14" fill="#000000" stroke="rgba(201,162,76,0.25)"/>
+
+<!-- header: Pariprashna · gap · name ······ MARSYS JIS -->
+<text class="serif ink" x="336" y="92" font-size="23" font-weight="500">Paripraśna</text>
+<circle cx="486" cy="85" r="2" fill="#7A5A1F"/>
+<text class="sans inkdim" x="508" y="88" font-size="13">Abhisek Mohanty</text>
+<text class="sans mute" x="508" y="103" font-size="8.5" letter-spacing="1.6">05 FEB 1984 · 10:43 · BHUBANESWAR</text>
+<text class="serif" x="1100" y="90" font-size="12" text-anchor="end" letter-spacing="3" font-weight="500"><tspan class="ink">MARSYS</tspan><tspan class="gold" dx="8">JIS</tspan></text>
+<line x1="336" y1="120" x2="1100" y2="120" stroke="rgba(201,162,76,0.25)"/>
+
+<!-- arrival line -->
+<text class="sans mute" x="336" y="145" font-size="10" letter-spacing="1.2">ŚANI DAŚĀ, FOURTH YEAR · ONE PREDICTION WINDOW OPEN — MID-2027</text>
+
+<!-- user question -->
+<text class="serif inkdim" x="1100" y="190" font-size="17" font-style="italic" text-anchor="end">“Is a career change on the cards over the next two years?”</text>
+
+<!-- ══ WORKING BAND — expanded, mid-run: THE PHASE LEDGER ══ -->
+<rect x="336" y="216" width="764" height="330" rx="10" fill="#0a0a0a" stroke="rgba(201,162,76,0.25)"/>
+<!-- band header -->
+<path d="M 360 240 a 8 8 0 1 1 7 8" fill="none" stroke="#C9A24C" stroke-width="1.6" stroke-linecap="round"/>
+<text class="sans ink" x="382" y="245" font-size="13">Consulting the chart <tspan class="dim">— daśā structure…</tspan></text>
+<text class="mono mute" x="1046" y="245" font-size="11" text-anchor="end">0:07</text>
+<text class="mono mute" x="1078" y="245" font-size="11" text-anchor="end">▴</text>
+<line x1="352" y1="262" x2="1084" y2="262" stroke="rgba(201,162,76,0.18)"/>
+
+<!-- phase rows -->
+<g font-size="12.5" class="sans">
+<text class="mono gold" x="360" y="290">✓</text><text class="inkdim" x="384" y="290">Reading the question <tspan class="mute" font-style="italic">— career · timing · 24 months</tspan></text><text class="mono mute" x="1078" y="290" font-size="10" text-anchor="end">0.4s</text>
+<text class="mono gold" x="360" y="318">✓</text><text class="inkdim" x="384" y="318">Recalling past readings <tspan class="mute" font-style="italic">— one open window · mid-2027</tspan></text><text class="mono mute" x="1078" y="318" font-size="10" text-anchor="end">0.3s</text>
+<text class="mono gold" x="360" y="346">✓</text><text class="inkdim" x="384" y="346">Composing the approach <tspan class="mute" font-style="italic">— 9 steps · full coverage</tspan></text><text class="mono mute" x="1078" y="346" font-size="10" text-anchor="end">0.8s</text>
+<text class="mono gold" x="360" y="374">✓</text><text class="inkdim" x="384" y="374">Reading the whole chart <tspan class="mute" font-style="italic">— six domains, cross-linked</tspan></text><text class="mono mute" x="1078" y="374" font-size="10" text-anchor="end">2.1s</text>
+<text class="mono gold" x="360" y="402" opacity="0.9">◐</text><text class="ink" x="384" y="402">Consulting the chart — daśā structure</text><text class="mono mute" x="1078" y="402" font-size="10" text-anchor="end">…</text>
+<text class="mono mute" x="360" y="430">○</text><text class="mute" x="384" y="430">Consulting the chart — transit windows</text>
+<text class="mono mute" x="360" y="458">○</text><text class="mute" x="384" y="458">Consulting the classics</text>
+<text class="mono mute" x="360" y="486">○</text><text class="mute" x="384" y="486">Composing the reading</text>
+<text class="mono mute" x="360" y="514">○</text><text class="mute" x="384" y="514">Verifying every claim</text>
+</g>
+<!-- progress hairline: the same stroke as the kāla-rekhā -->
+<line x1="352" y1="532" x2="1084" y2="532" stroke="rgba(201,162,76,0.15)"/>
+<line x1="352" y1="532" x2="700" y2="532" stroke="#C9A24C" stroke-width="1"/>
+<circle cx="700" cy="532" r="2.5" fill="#C9A24C"/>
+
+<!-- streamed opening — volatile tail with caret -->
+<g class="serif ink" font-size="19.5">
+<text x="336" y="590">Yes — the two years ahead carry a genuine occupational shift, and it</text>
+<text x="336" y="622">is <tspan font-style="italic" class="gold">initiated by you</tspan> rather than forced from outside <tspan class="mono gold" font-size="10">⟦1⟧</tspan>. Saturn's period —</text>
+<text x="336" y="654"><tspan font-style="italic" class="gold">Śani daśā</tspan> <tspan class="inkdim" font-size="16">(the disciplinarian's cycle)</tspan> — has run since late 2022, and</text>
+<text x="336" y="686">it has been the engine behind the pressure you have felt <tspan class="mono gold" font-size="10">⟦2⟧</tspan>▊</text>
+</g>
+
+<!-- ══ COMPOSER — controls above, 3-line field ══ -->
+<line x1="336" y1="906" x2="1100" y2="906" stroke="rgba(201,162,76,0.25)"/>
+<!-- controls: Model → Depth → Length -->
+<g font-size="11.5" class="sans">
+<rect x="336" y="922" width="168" height="30" rx="15" fill="none" stroke="rgba(201,162,76,0.25)"/>
+<circle cx="354" cy="937" r="3" fill="#C9A24C"/>
+<text class="ink" x="366" y="941">Claude Opus</text><text class="mono mute" x="446" y="941" font-size="8.5">A</text><text class="mute" x="488" y="941" font-size="9">▾</text>
+<rect x="516" y="922" width="118" height="30" rx="15" fill="none" stroke="rgba(201,162,76,0.25)"/>
+<text class="mute" x="532" y="941" font-size="8.5" letter-spacing="1.8">DEPTH</text><text class="ink" x="578" y="941">Auto</text><text class="mute" x="618" y="941" font-size="9">▾</text>
+<rect x="646" y="922" width="124" height="30" rx="15" fill="none" stroke="rgba(201,162,76,0.25)"/>
+<text class="mute" x="662" y="941" font-size="8.5" letter-spacing="1.8">LENGTH</text><text class="ink" x="714" y="941">Auto</text><text class="mute" x="752" y="941" font-size="9">▾</text>
+<text class="mono mute" x="1100" y="941" font-size="9.5" text-anchor="end" letter-spacing="0.5">acharya-grade · one register</text>
+</g>
+<!-- three-line field -->
+<rect x="336" y="964" width="764" height="112" rx="12" fill="#0a0a0a" stroke="rgba(201,162,76,0.35)"/>
+<text class="serif mute" x="356" y="996" font-size="17" font-style="italic">Ask the chart…</text>
+<rect x="1046" y="1026" width="38" height="38" rx="10" fill="rgba(201,162,76,0.08)" stroke="rgba(201,162,76,0.35)"/>
+<text class="gold" x="1065" y="1050" font-size="15" text-anchor="middle">↑</text>
+
+<!-- ═══ RIGHT DOCK — windows + grounding ═══ -->
+<rect x="1148" y="44" width="504" height="1060" rx="14" fill="#0a0a0a" stroke="rgba(201,162,76,0.25)"/>
+<text class="mono mute" x="1172" y="86" font-size="12">»</text>
+<text class="eye" x="1196" y="86">WINDOWS · KĀLA-REKHĀ</text>
+
+<!-- prediction card -->
+<rect x="1172" y="104" width="456" height="188" rx="10" fill="#000" stroke="rgba(201,162,76,0.25)"/>
+<text class="eye" x="1192" y="134">PREDICTION · OPEN</text>
+<text class="serif ink" x="1192" y="164" font-size="16">An occupational shift, self-initiated,</text>
+<text class="serif ink" x="1192" y="186" font-size="16">most likely around <tspan class="gold" font-style="italic">mid-2027</tspan>.</text>
+<!-- kāla-rekhā -->
+<line x1="1192" y1="218" x2="1608" y2="218" stroke="rgba(201,162,76,0.20)"/>
+<line x1="1400" y1="218" x2="1490" y2="218" stroke="#C9A24C" stroke-width="2"/>
+<circle cx="1298" cy="218" r="3.5" fill="#C9A24C"/>
+<text class="mono mute" x="1192" y="236" font-size="8.5">2026</text>
+<text class="mono mute" x="1298" y="236" font-size="8.5" text-anchor="middle">today</text>
+<text class="mono dim" x="1445" y="236" font-size="8.5" text-anchor="middle">APR–AUG 2027</text>
+<text class="mono mute" x="1608" y="236" font-size="8.5" text-anchor="end">2028</text>
+<text class="sans inkdim" x="1192" y="262" font-size="10.5">more likely than not · logged to Samīkṣā</text>
+<rect x="1500" y="248" width="108" height="26" rx="13" fill="rgba(201,162,76,0.06)" stroke="rgba(201,162,76,0.25)"/>
+<text class="sans gold" x="1554" y="265" font-size="10.5" text-anchor="middle">Log outcome</text>
+
+<line x1="1172" y1="316" x2="1628" y2="316" stroke="rgba(201,162,76,0.18)"/>
+<text class="eye" x="1196" y="348">GROUNDING · 14 FACTORS · 3 CLASSICS</text>
+
+<!-- ledger rows -->
+<g>
+<text class="mono gold" x="1192" y="386" font-size="10.5">1</text>
+<text class="serif ink" x="1216" y="386" font-size="14.5">Saturn–Moon angle in the tenth</text>
+<text class="sans mute" x="1216" y="402" font-size="9.5">whole-chart synthesis · verified against your chart</text>
+<text class="sans gold" x="1628" y="386" font-size="9" text-anchor="end" letter-spacing="1">● VERIFIED</text>
+
+<text class="mono gold" x="1192" y="436" font-size="10.5">2</text>
+<text class="serif ink" x="1216" y="436" font-size="14.5">Śani daśā running since Nov 2022</text>
+<text class="sans mute" x="1216" y="452" font-size="9.5">Vimśottarī cycle</text>
+<text class="sans gold" x="1628" y="436" font-size="9" text-anchor="end" letter-spacing="1">● VERIFIED</text>
+
+<text class="mono gold" x="1192" y="486" font-size="10.5">3</text>
+<text class="serif ink" x="1216" y="486" font-size="14.5">Tenth-lord sub-period opens mid-2027</text>
+<text class="sans mute" x="1216" y="502" font-size="9.5">daśā timing</text>
+<text class="sans gold" x="1628" y="486" font-size="9" text-anchor="end" letter-spacing="1">● VERIFIED</text>
+
+<text class="mono gold" x="1192" y="536" font-size="10.5">4</text>
+<text class="serif ink" x="1216" y="536" font-size="14.5">Jupiter transits the career house · 2027</text>
+<text class="sans mute" x="1216" y="552" font-size="9.5">transit anchor</text>
+<text class="sans gold" x="1628" y="536" font-size="9" text-anchor="end" letter-spacing="1">● VERIFIED</text>
+
+<text class="mono mute" x="1192" y="586" font-size="10.5">5</text>
+<text class="serif inkdim" x="1216" y="586" font-size="14.5">Rāja-yoga activation in the window</text>
+<text class="sans mute" x="1216" y="602" font-size="9.5">awaiting cross-verification</text>
+<text class="sans mute" x="1628" y="586" font-size="9" text-anchor="end" letter-spacing="1">○ CATALOG-ONLY</text>
+</g>
+
+<line x1="1172" y1="636" x2="1628" y2="636" stroke="rgba(201,162,76,0.12)"/>
+<text class="serif mute" x="1196" y="666" font-size="12.5" font-style="italic">Fills as the reading verifies. Cited in prose as ⟦n⟧ —</text>
+<text class="serif mute" x="1196" y="686" font-size="12.5" font-style="italic">a chip click opens its row here.</text>
+
+<!-- dock footer: provenance lives HERE now, not the header -->
+<line x1="1172" y1="1042" x2="1628" y2="1042" stroke="rgba(201,162,76,0.12)"/>
+<text class="mono" x="1196" y="1070" font-size="8.5" fill="#4a4438">PROVENANCE · build 482012f1 · priors v4 · as of 2026-07-27</text>
+</svg>
