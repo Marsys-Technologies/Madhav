@@ -39,7 +39,6 @@ on:
       - 'platform/python-sidecar/tests/l3/test_ka_jivana_parva_circularity_guard.py'
 
 env:
-  GCP_REGION: asia-south1
   WIF_PROVIDER: projects/938361928218/locations/global/workloadIdentityPools/github/providers/github-actions
   WIF_SERVICE_ACCOUNT: github-actions@madhav-astrology.iam.gserviceaccount.com
 
