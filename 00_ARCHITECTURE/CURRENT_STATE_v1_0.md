@@ -5566,6 +5566,28 @@ block (post-rebuild era), and proceeds.
 
 ## §2 — Canonical state block
 
+> 🟠 **SHIP-DEGRADED (2026-07-29, PARIPRAŚNA BUILD campaign, PB-3 SAMĪKṢĀ wave close, session
+> PB-3-GATE-CLOSE-2026-07-29) — a separate, fully-autonomous campaign (`CAMPAIGN_PB_MASTER_BRIEF_v1_0.md`)
+> operating in its own territory (`platform/src/app/api/pariprashna/**`,
+> `platform/src/lib/pariprashna/**`); this banner does not supersede or interact with the
+> ŚUDDHA-VĀCA/PARKED-FINDINGS banners below, which track the separate primary layer-build arc.**
+> PB-3 built and merged a complete, individually-tested prediction-lifecycle loop (ledger schema,
+> capture/confirm, kāla-rekhā timeline, review tab, daily-window closer, outcome resolution, Brier
+> calibration, no-leakage guard — PRs #868, #871–#876) and migrated + deployed to production
+> automatically on merge. **The real §G acceptance gate, run against the live deployed system by
+> five independent gate-runner agents (never a fixture, never a hand-inserted row), found the loop
+> inert in production: no live entry** (the confirm affordance that would write a detection into
+> `brahma_mimamsa_prediction_ledger` is unmounted on every route — the ledger holds 0 rows despite
+> 6 real detections existing in production) **and no live exit** (the daily-window-closer cron
+> silently no-ops on a secret-name mismatch and reports green forever; the live resolve action
+> bypasses the wave's own Brier recorder). One result held up as a genuine template: the
+> can't-tell→`unverifiable`→NULL chain was proven with a real rolled-back DB-transaction probe
+> against a live CHECK constraint. Closed **SHIP-DEGRADED**, not PASS — full disposition table and
+> evidence in `00_ARCHITECTURE/briefs/pariprashna_build/REPORT_PB-3.md`. The parked fix for every
+> gap the gate found is `00_ARCHITECTURE/briefs/pariprashna_build/BRIEF_PB-3.1_MAKE_THE_LOOP_LIVE.md`
+> (status READY-FOR-EXECUTION, not executed — awaiting native go-ahead, sequenced to run after
+> SATYA-DĪPA's PR #870 merges under the same merge lock PB-3 held, now released).
+
 > 🟡 **PARTIAL (2026-07-28, PARKED-FINDINGS-3ITEM close, session
 > PARKED-FINDINGS-3ITEM-2026-07-28) — a 3-item native authorization that followed the ✅ ARC CLOSED
 > ŚUDDHA-VĀCA banner immediately below; that banner's own close stands, untouched by this note.**
