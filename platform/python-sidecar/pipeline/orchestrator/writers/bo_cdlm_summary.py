@@ -37,6 +37,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from . import WriterBase, ContextSpec, WriterResult, register
+from ga_writers.verification_vocab import UNVERIFIED_DEFAULT
 
 logger = logging.getLogger(__name__)
 
@@ -241,7 +242,11 @@ def _write_aya(conn: Any, chart_id: str, aya: str, build_id: str, now: str) -> i
         "weakest_3_domains_array": weakest_3,
         "bridge_link_count": asymmetric_count,
         "asymmetric_link_count": asymmetric_count,
-        "verification_pass_status": "pass",
+        # SAMĀPTI B-VERIFSTATUS-VOCAB (DVA Ruling 13 step 2): this was the literal
+        # "pass" — an unconditional stamp with no verification logic behind it, and a
+        # live false-green the serve layer counted as verified. Audited: nothing here
+        # re-derives or cross-checks the row, so per §N.8 it is unverified, not green.
+        "verification_pass_status": UNVERIFIED_DEFAULT,
         "citation_ref": "bo_cdlm_summary:aggregation_v1:bodha_cdlm_cells",
         "citation_human": "CDLM chart summary aggregated from bodha_cdlm_cells by bo_sangati",
         "computed_at": now,
@@ -313,7 +318,11 @@ def _build_rollups(chart_id: str, aya: str, build_id: str,
                 [{"domain": d, "strength": round(s, 6)} for d, s in top3]),
             "contradiction_density": round(agg["contradiction_cells"] / n_cells, 6),
             "pattern_markers_for_domain_array": sorted(agg["markers"]) or None,
-            "verification_pass_status": "pass",
+            # SAMĀPTI B-VERIFSTATUS-VOCAB (DVA Ruling 13 step 2): this was the literal
+            # "pass" — an unconditional stamp with no verification logic behind it, and a
+            # live false-green the serve layer counted as verified. Audited: nothing here
+            # re-derives or cross-checks the row, so per §N.8 it is unverified, not green.
+            "verification_pass_status": UNVERIFIED_DEFAULT,
             "citation_ref": f"bo_cdlm_summary:domain_rollup_v1:bodha_cdlm_cells:{domain}",
             "citation_human": f"CDLM domain rollup for {domain} aggregated from bodha_cdlm_cells",
             "computed_at": now,
@@ -362,7 +371,11 @@ def _build_clusters(chart_id: str, aya: str, build_id: str,
             "involved_cells_array": agg["cells"],
             "involved_signals_array": sorted(agg["signals"]),
             "predicted_outcome_class": outcome,
-            "verification_pass_status": "pass",
+            # SAMĀPTI B-VERIFSTATUS-VOCAB (DVA Ruling 13 step 2): this was the literal
+            # "pass" — an unconditional stamp with no verification logic behind it, and a
+            # live false-green the serve layer counted as verified. Audited: nothing here
+            # re-derives or cross-checks the row, so per §N.8 it is unverified, not green.
+            "verification_pass_status": UNVERIFIED_DEFAULT,
             "citation_ref": f"bo_cdlm_summary:pattern_cluster_v1:bodha_cdlm_cells:{marker}",
             "citation_human": f"CDLM pattern cluster '{marker}' over {len(agg['cells'])} cells",
             "computed_at": now,

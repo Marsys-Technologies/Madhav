@@ -30,6 +30,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from . import WriterBase, ContextSpec, WriterResult, register
+from ga_writers.verification_vocab import UNVERIFIED_DEFAULT
 
 logger = logging.getLogger(__name__)
 
@@ -333,7 +334,11 @@ def _write_aya(conn: Any, chart_id: str, aya: str, build_id: str, now: str) -> i
                 "convergence_count": 1,
                 "centrality_formula_version": ENGINE_VERSION,
                 "path_label_human": chain["label"],
-                "verification_pass_status": "pass",
+                # SAMĀPTI B-VERIFSTATUS-VOCAB (DVA Ruling 13 step 2): this was the literal
+                # "pass" — an unconditional stamp with no verification logic behind it, and a
+                # live false-green the serve layer counted as verified. Audited: nothing here
+                # re-derives or cross-checks the row, so per §N.8 it is unverified, not green.
+                "verification_pass_status": UNVERIFIED_DEFAULT,
                 "citation_ref": "bo_cgm_paths:dispositor_chain_algorithm:v1",
                 "citation_human": "CGM dispositor chain: graha → sign-lord traversal until self-ruling or max depth",
                 "computed_at": now,

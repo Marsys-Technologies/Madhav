@@ -59,6 +59,7 @@ from typing import Any
 
 from brahmagyan import valence_doctrine as _vd
 from . import WriterBase, ContextSpec, WriterResult, register
+from ga_writers.verification_vocab import UNVERIFIED_DEFAULT
 
 logger = logging.getLogger(__name__)
 
@@ -185,7 +186,11 @@ def _make_mechanism(
         "centrality_summary_jsonb": json.dumps(_centrality_summary(member_nodes)),
         "source_motif_id": source_motif_id,
         "fingerprint_hash": _fingerprint(member_node_ids, mechanism_class),
-        "verification_pass_status": "pass",
+        # SAMĀPTI B-VERIFSTATUS-VOCAB (DVA Ruling 13 step 2): this was the literal
+        # "pass" — an unconditional stamp with no verification logic behind it, and a
+        # live false-green the serve layer counted as verified. Audited: nothing here
+        # re-derives or cross-checks the row, so per §N.8 it is unverified, not green.
+        "verification_pass_status": UNVERIFIED_DEFAULT,
         "citation_ref": citation_ref,
         "citation_human": citation_human,
         "computed_at": now,

@@ -33,6 +33,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from . import WriterBase, ContextSpec, WriterResult, register
+from ga_writers.verification_vocab import UNVERIFIED_DEFAULT
 
 logger = logging.getLogger(__name__)
 
@@ -1442,7 +1443,11 @@ def _build_rm_summary(chart_id: str, aya: str, build_id: str,
         "acharya_review_required_count": acharya_ct,
         "feasibility_assessment_jsonb": json.dumps(
             {"mean_feasibility": mean_feas, "prescription_count": len(prescriptions)}),
-        "verification_pass_status": "pass",
+        # SAMĀPTI B-VERIFSTATUS-VOCAB (DVA Ruling 13 step 2): this was the literal
+        # "pass" — an unconditional stamp with no verification logic behind it, and a
+        # live false-green the serve layer counted as verified. Audited: nothing here
+        # re-derives or cross-checks the row, so per §N.8 it is unverified, not green.
+        "verification_pass_status": UNVERIFIED_DEFAULT,
         "citation_ref": "bo_upaya:rm_chart_summary_v1:bodha_rm_resonances+prescriptions",
         "citation_human": f"RM chart summary — {len(resonances)} resonances, {len(prescriptions)} prescriptions",
         "computed_at": now,
@@ -1479,7 +1484,11 @@ def _build_dosha_bundles(chart_id: str, aya: str, build_id: str,
             "bundle_summary_jsonb": json.dumps(
                 {"prescription_count": len(presc), "target_grahas": grahas}),
             "classical_sources_jsonb": json.dumps({"source_ids": sources}),
-            "verification_pass_status": "pass",
+            # SAMĀPTI B-VERIFSTATUS-VOCAB (DVA Ruling 13 step 2): this was the literal
+            # "pass" — an unconditional stamp with no verification logic behind it, and a
+            # live false-green the serve layer counted as verified. Audited: nothing here
+            # re-derives or cross-checks the row, so per §N.8 it is unverified, not green.
+            "verification_pass_status": UNVERIFIED_DEFAULT,
             "citation_ref": f"bo_upaya:dosha_bundle_v1:{dosha_class}",
             "citation_human": f"Dosha remedy bundle for {dosha_class} — {len(presc)} prescriptions",
             "computed_at": now,
@@ -1516,7 +1525,11 @@ def _build_pattern_remedies(chart_id: str, aya: str, build_id: str,
             "theme_strength": round(float(res.get("resonance_score") or 0.0), 6),
             "cross_tradition_unanimity_score": round(
                 len({str(p.get("tradition")) for p in presc}) / 4.0, 4),
-            "verification_pass_status": "pass",
+            # SAMĀPTI B-VERIFSTATUS-VOCAB (DVA Ruling 13 step 2): this was the literal
+            # "pass" — an unconditional stamp with no verification logic behind it, and a
+            # live false-green the serve layer counted as verified. Audited: nothing here
+            # re-derives or cross-checks the row, so per §N.8 it is unverified, not green.
+            "verification_pass_status": UNVERIFIED_DEFAULT,
             "citation_ref": f"bo_upaya:pattern_remedy_v1:resonance/{rid}",
             "citation_human": f"Pattern remedy theme strengthen_{res['graha']} — {len(presc)} prescriptions",
             "computed_at": now,
