@@ -672,6 +672,32 @@ export const ASSETS: AssetDef[] = [
     depends_on: [],
     scope: 'global', is_active: true, estimated_seconds: null,
   },
+  {
+    // ṢAḌ-DARŚANA campaign item 3 (SHAD_DARSHANA_BRIEF_v2_0.md §2 + §1). Mirrors
+    // migration 473's asset_registry INSERT exactly — a clean reseed must not
+    // silently drop this asset. Global L0, super-admin-triggered only (never
+    // auto-pulled into a per-chart build — brief §2.5.2). target_floor is the
+    // REAL row count from a live verification run against a real (throwaway)
+    // Postgres, 2026-07-29 — see migration 473's comment for the exact
+    // per-event-family breakdown.
+    asset_id: 'bg_sky_calendar',
+    layer: 'brahmagyan', sort_order: 69,
+    catalog_status: 'CURRENT',
+    sanskrit_name: 'Ākāśa Pañjikā',
+    english_name: 'Sky-Event Calendar',
+    english_description: "Chart-independent global sky-event diary: sign ingresses (9 grahas), planetary stations (5 classical planets), solar/lunar eclipse timing, and Jupiter-Saturn double-transit conjunction geometry, over a rolling 1900 -> today+10y horizon. Returns and per-chart/natal joins are out of scope — ka_kshetra's job. ṢAḌ-DARŚANA campaign item 3.",
+    storage_type: 'postgres_table',
+    target_table: 'bg_sky_events',
+    count_sql: 'SELECT COUNT(*) FROM bg_sky_events',
+    size_sql: "SELECT pg_total_relation_size('bg_sky_events')",
+    target_floor: 31064,
+    expected_volume_formula: null,
+    expected_volume_inputs: null,
+    volume_explanation: 'Live-verified 2026-07-29 against a real throwaway Postgres: 28,760 ingress + 1,674 station + 308 eclipse_solar + 312 eclipse_lunar + 10 double_transit = 31,064, over horizon 1900-01-01 -> 2036-07-29 (today+10y at verification time). A later build reads >= this count as the forward edge rolls forward (never less).',
+    depends_on: [],
+    scope: 'global', is_active: true, estimated_seconds: null,
+    asset_kind: 'data',
+  },
 
   // ── GANITA (8) ────────────────────────────────────────────────────────────
   {
