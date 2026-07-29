@@ -1750,7 +1750,11 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
 
   server.tool(
     'kala_muhurta_get',
-    '[Phase-1 alias] Muhurta (auspicious timing) finder (same as muhurta_finder).',
+    '[Phase-1 alias] [DEPRECATED — superseded by kala_elect_get, ṢAḌ-DARŚANA v2 W0.4: the ' +
+    'elevated ELECT view over this same muhurta_finder substrate, with argument-shaped ' +
+    'reading, tāra-bala/target-graha dissent, tri-plane pointers, and honest coverage. ' +
+    'This alias remains live — not retired — per the campaign\'s strangler-fig discipline.] ' +
+    'Muhurta (auspicious timing) finder (same as muhurta_finder).',
     {
       chart_id:      z.string().uuid().describe('Chart UUID'),
       start_date:    z.string().optional().describe('Search window start (YYYY-MM-DD). Default: today.'),

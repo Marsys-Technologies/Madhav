@@ -79,9 +79,16 @@ import { runDossier, type DossierPage } from './dossier.js'
 // now-ahead lane:
 import { registerKalaNowGetTool } from './kala_views/now.js'
 import { registerKalaAheadGetTool } from './kala_views/ahead.js'
+// upaya-ritual-stub lane:
+import { registerKalaUpayaGet } from './kala_views/upaya.js'
+import { registerKalaRitualGet } from './kala_views/ritual.js'
 // priority-explain lane:
 import { registerKalaPriorityTool } from './kala_views/priority.js'
 import { registerKalaExplainTool } from './kala_views/explain.js'
+// elect-story lane (ELECT — Mode-3 sole server, KALA_SUPREME_ELEVATION_v1_0.md §8 — and
+// STORY — parva-dedup fix, §0.5):
+import { registerKalaElectTool } from './kala_views/elect.js'
+import { registerKalaStoryTool } from './kala_views/story.js'
 
 // ── Platform URL (for proxy calls to the platform API) ───────────────────────
 
@@ -4429,6 +4436,16 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
   registerKalaNowGetTool(server, principal)
   registerKalaAheadGetTool(server, principal)
 
+  // ── ṢAḌ-DARŚANA W0.4 — kala_upaya_get / kala_ritual_get (brief §0.4 · §2) ──────────
+  // Both are W0 facade shells over the shared kala envelope (lib/kala_envelope.ts +
+  // lib/argument_composer.ts) — see kala_views/upaya.ts and kala_views/ritual.ts for the full
+  // implementation. kala_ritual_get additionally implements the Mode-3 routing rule
+  // (KALA_SUPREME_ELEVATION_v1_0.md §8): a Mode-3-shaped call (a non-blank `undertaking`
+  // field) never reaches any Mode-1/2 logic here — it returns an honest `wrong_view` naming
+  // `kala_elect_get`, with no passthrough/proxy/delegation to the muhūrta substrate.
+  registerKalaUpayaGet(server, principal)
+  registerKalaRitualGet(server, principal)
+
   // ── ṢAḌ-DARŚANA W0.4 — kala_priority_get / kala_explain_get ──────────────────
   // Two of the eight kala_* views (brief §2 file map: "tools/kala_views/ — now.ts, ahead.ts,
   // elect.ts, story.ts, priority.ts, explain.ts, upaya.ts, ritual.ts + one registration block
@@ -4442,4 +4459,17 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
   // — aliases live, nothing retired (brief §3 W0.4).
   registerKalaPriorityTool(server, principal)
   registerKalaExplainTool(server, principal)
+
+  // ── ṢAḌ-DARŚANA W0.4 — kala_elect_get / kala_story_get ───────────────────────
+  // The remaining two of the eight kala_* views. kala_elect_get (VIEW 3, ELECT) wraps the
+  // existing muhurta_finder substrate and is THE SOLE SERVER OF MODE 3 (KALA_SUPREME_
+  // ELEVATION_v1_0.md §8 binding routing rule) — kala_ritual_get (above) redirects a
+  // Mode-3-shaped call here with `wrong_view`, never a passthrough; this is that redirect's
+  // valid landing target. kala_story_get (VIEW 4, STORY) wraps the existing
+  // kala_jivana_parva life-arc substrate and fixes its known parva-duplication defect at
+  // serving (dedup by exact span + daśā level, §0.5) — the source table is unchanged. Both
+  // register on the elevated kala_envelope.ts shape; full implementation in
+  // kala_views/{elect,story}.ts.
+  registerKalaElectTool(server, principal)
+  registerKalaStoryTool(server, principal)
 }
