@@ -13,18 +13,67 @@ governing: SHAD_DARSHANA_NIGHT_RUN_v1_0.md (orchestration) + SHAD_DARSHANA_BRIEF
 
 ## NEXT-ACTION
 
-**Night 1 CLOSED at the ~7.5h+ cap (see MORNING REPORT at the end of this file for the full
-close-out).** Single next action for Night 2: **the native must apply the `mcp-canary-key`
-Secret Manager IAM binding for the GitHub Actions service account** (Gate W0's sole remaining
-blocker — everything else is done); once applied, re-run `gh workflow run deploy.yml --ref
-main`, confirm the smoke script's Bearer/URL-token probes pass, confirm traffic promotes, run
-Verifier live acceptance on both charts, and Gate W0 formally closes. In parallel, Night 2
-resumes Phase 2 fan-out: 3 remaining W1 serving-join lanes (mudda+sandhi-lite ·
-24-lite-intervals+grading-facade+frontier-v0+tri-plane-wiring · none else), the citation-heavy
-`bg_muhurta_lattice`+`bg_parihara_rules` lane (deliberately held back all of Night 1), then W2
-build-out per the now-merged `KALA_W2_FIELD_DESIGN_v1_0.md`.
+**GATE W0 FORMALLY CLOSED (2026-07-29, between Night 1 and Night 2 — see the GATE W0 CLOSURE
+RECORD below for full evidence).** The native applied the `mcp-canary-key` Secret Manager IAM
+binding; `deploy.yml` re-ran clean (run `30484976742`), all three auth probes passed for real,
+traffic promoted 100% to `amjis-mcp-00517-b5q`; live production verification (direct
+authenticated JSON-RPC calls, bypassing any client-side tool-cache ambiguity) confirmed all 8
+tools registered and functionally correct on BOTH canonical charts, including a live Mode-3
+routing test. Single next action for Night 2: **resume Phase 2 fan-out** — 3 remaining W1
+serving-join lanes (mudda+sandhi-lite · 24-lite-intervals+grading-facade+frontier-v0+
+tri-plane-wiring), the citation-heavy `bg_muhurta_lattice`+`bg_parihara_rules` lane
+(deliberately held back all of Night 1), then W2 build-out per the now-merged
+`KALA_W2_FIELD_DESIGN_v1_0.md`. No blockers outstanding.
 
 ---
+
+## GATE W0 CLOSURE RECORD (between Night 1 and Night 2, 2026-07-29 → 2026-07-30)
+
+**Blocker resolved:** the native confirmed the exact grant scope (additive, read-only
+`secretAccessor`, no rotation, trivially reversible) and authorized it. Applied:
+`gcloud secrets add-iam-policy-binding mcp-canary-key --member="serviceAccount:github-actions@
+madhav-astrology.iam.gserviceaccount.com" --role="roles/secretmanager.secretAccessor"
+--project=madhav-astrology`. Verified before AND after via `get-iam-policy`: before = only
+`amjis-web-runtime` bound; after = both `amjis-web-runtime` and `github-actions` bound,
+nothing else touched.
+
+**Deploy re-run, real evidence (not trusted from a report — logs read directly):**
+`gh workflow run deploy.yml --ref main` → run `30484976742`, all 5 jobs green (Web, Pipeline
+Job, MCP, Sidecar, path-detection). MCP job's `Post-deploy smoke` step log confirmed line by
+line: `[health] OK (HTTP 200)` · `[probe: no-auth] 401 (expect 401) — PASS` ·
+`[probe: bearer-auth] 200 (expect 200) — PASS` · `[probe: url-token-fallback] 200 (expect 200)
+— PASS` · `=== Smoke PASS ===`. `Promote traffic to latest revision` log confirmed:
+`100% LATEST (currently amjis-mcp-00517-b5q)`. This is the genuine authenticated pass the
+pipeline was designed to require — the prior night's two dark deploys never reached this point.
+
+**Live-production verification (Verifier-style acceptance, both canonical charts) — done
+directly, real calls, not delegated:**
+1. Registration check bypassed the session's own (stale, pre-deploy-snapshot) client-side tool
+   cache entirely: a direct authenticated `tools/list` JSON-RPC call against
+   `https://amjis-mcp-qm256lasva-el.a.run.app/mcp` confirmed all 8 new tools present
+   (`kala_now_get`, `kala_ahead_get`, `kala_elect_get`, `kala_story_get`, `kala_priority_get`,
+   `kala_explain_get`, `kala_upaya_get`, `kala_ritual_get`) alongside the still-live legacy
+   aliases (correct — nothing retired yet, per strangler discipline). 152 tools total.
+2. Functional calls, both charts (`482012f1` Abhisek, `1c826d5a` Abhinandan):
+   `kala_now_get` → HTTP 200 on both, envelope-conformant (`reading` with
+   thesis/evidence/dissent/verdict/falsifier keys — E3's argument schema live; `coverage` as a
+   3-state list; `field_snapshot_id` present as the documented pre-W2 stub form;
+   `calibration_maturity` present with honest all-zero values — correct pre-Living-LEL state,
+   not fabricated; `tri_plane` + `drill_pointers` present).
+3. `kala_ritual_get` and `kala_upaya_get` stubs confirmed honestly reporting `not_in_corpus` /
+   W4-not-yet-landed coverage states rather than fabricating data.
+4. **The hard-gated Mode-3 routing rule tested live** (undertaking-shaped payload to
+   `kala_ritual_get`): `wrong_view: true`, `correct_surface: "kala_elect_get"`, honest
+   `no_lever` on the interpretation/prediction tri-plane slots, a live `intervention_ref`
+   pointer to ELECT — matches Elevation §8 exactly, verified against real production.
+5. One transient HTTP 401 observed on a first call attempt, immediately resolved on identical
+   retry (200) — consistent with the same infrastructure-instability pattern the Night 1
+   morning report already flagged (background-agent stalls/connection drops), not a real auth
+   regression; not chased further as it self-resolved and matches a known noise class.
+
+**Disposition:** Gate W0 → **VERIFIED-CLOSED.** All 8 tools live on production, both charts,
+envelope-conformant, Mode-3 routing verified. `main` == production for the MCP surface as of
+this record (Web/Sidecar/Pipeline-Job were already clean from Night 1's manual dispatches).
 
 ## Night 1 history (superseded detail below; see MORNING REPORT for the authoritative close-out)
 
@@ -354,7 +403,7 @@ collision pattern is better understood from the first lane.
 
 | Wave | Status | Evidence | Notes |
 |---|---|---|---|
-| W0 | **CODE-COMPLETE, PARKED-HONEST on production-live** | PRs #877/#880/#882/#883/#884/#881, all merged main@`42151b24`+ | All 8 tools registered, CI green, sealed-harness/tool_search not yet re-verified live. Blocked solely on native's `mcp-canary-key` IAM grant — see MORNING REPORT. |
+| W0 | **VERIFIED-CLOSED** | PRs #877/#880/#882/#883/#884/#881 (merged main@`42151b24`+); deploy run `30484976742`; direct production `tools/list` + functional calls on both charts; see GATE W0 CLOSURE RECORD above | All 8 tools live on production, both charts, envelope-conformant, Mode-3 routing live-verified. |
 | W1 | **IN-PROGRESS (5 of 8 items landed)** | PRs #889 (item 10), #891 (items 8,28), #892 (items 29,32) | Items 8,10,28,29,32 done. Items 2,1-lite,30,24-lite,38-lite,E6-lite not yet started. |
 | W2 | **DESIGN-COMPLETE, build not started** | PR #886, `KALA_W2_FIELD_DESIGN_v1_0.md` merged | Hazard formula, skill-score/GOF, DAG acyclicity all specified precisely; 5 build lanes not yet dispatched. |
 | W2G | NOT-STARTED | — | GOCHARA-2.0 sub-day. **BLOCKED on N1–N5 ratification (W2G.0) — see below.** |
@@ -499,7 +548,9 @@ go stale if another campaign lands migrations first; 472 is a reservation, not a
 
 ## Deployed revisions
 
-None yet this campaign.
+`amjis-mcp-00517-b5q` — 100% traffic, deploy run `30484976742`, 2026-07-29T19:35 UTC. First
+campaign revision serving all 8 kala_* tools live. Web/Sidecar/Pipeline-Job also current from
+this same run (all 5 jobs green).
 
 ## Open PRs
 
