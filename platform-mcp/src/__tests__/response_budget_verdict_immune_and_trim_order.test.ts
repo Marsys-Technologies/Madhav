@@ -100,7 +100,7 @@ describe('MC-005 — trim-order inversion fix (disposable sections absorb cuts b
         getArray: (c) => c.hardFloorSection,
         setArray: (c, kept) => { c.hardFloorSection = kept as Content['hardFloorSection'] },
         minKeep: 3,
-        recover: { instrument: 'get_signals', hint: 'x' },
+        recover: { instrument: 'bodha_signals_get', hint: 'x' },
         label: 'hardFloorSection',
         hardFloor: true,
       },
@@ -109,7 +109,7 @@ describe('MC-005 — trim-order inversion fix (disposable sections absorb cuts b
         getArray: (c) => c.factIdRefs,
         setArray: (c, kept) => { c.factIdRefs = kept as string[] },
         minKeep: 2,
-        recover: { instrument: 'get_signals', hint: 'x' },
+        recover: { instrument: 'bodha_signals_get', hint: 'x' },
         label: 'factIdRefs',
         // no hardFloor — disposable
       },

@@ -147,6 +147,47 @@ ran it — TAP-5 reported a Law-7 status it had not measured, an earned-signal
 `sc_pointer_validation.ts` only self-executes under `require.main === module`,
 so importing it does not trigger its `process.exit`.
 
+## The RC-14 gate: "registered" != "served" (SAMĀPTI A2 reopen-1, 2026-07-30)
+
+`lib/mcp_registered_tools.ts` claimed to enumerate "every MCP tool name actually
+registered on the live server." That claim was **false by 43 names** from
+2026-07-23 onward. The RC-14 breaking flip retired 43 legacy tool names via a
+central RUNTIME gate (`platform-mcp/src/lib/deprecated_tool_gate.ts`) and
+deliberately LEFT their `server.tool('legacy', …)` call sites in source. A
+source scan therefore saw them; the deployed server did not serve them.
+
+Cost: `sc_pointer_validation.ts` **PASSED 32 production drill-pointer/recover
+sites that dead-ended live** with `MCP error -32602: Tool <name> not found` —
+the exact SC-18 harm, reintroduced wholesale and invisible for a week to the
+check built to catch it. It was found by an independent live probe, not by CI.
+
+Two fixes:
+
+1. `collectRegisteredTools()` subtracts the gate. Verified exact against the
+   live catalog on 2026-07-30: **167 call sites − 43 gated = 124 = live
+   `tools/list`, set-for-set identical** (zero either way). CI stays offline and
+   is now live-accurate. `collectRegistrationCallSites()` exposes the raw
+   pre-gate set for diagnostics. The gate parser THROWS rather than degrading —
+   a silent fallback would restore the over-approximation invisibly.
+2. `runLiveCatalogParity()` (opt-in) measures the model against a real
+   `tools/list`, so model drift from some *future* gate is detectable instead of
+   assumed away. Enable with `MCP_SERVER_URL` + `MCP_SMOKE_BEARER_TOKEN` (same
+   vars as `mcp_tool_smoke.ts`). It returns SKIPPED-WITH-REASON — never PASS —
+   when unset. **Use a first-party Bearer key:** that resolves to the `full`
+   profile, where `applyProfileGate()` is a no-op; an OAuth token returns a
+   profile-narrowed catalog and makes the comparison meaningless.
+
+Verified can-fail: adding a `server.tool('phantom_tool_zzz')` call site flipped
+the parity check to FAIL ("125 modelled vs 124 live … phantom_tool_zzz");
+re-introducing a single RC-14 legacy pointer flipped the static battery to FAIL.
+Both reverted to exit 0.
+
+**Generalize this:** a static check whose title names "the live server" must
+model every runtime gate between registration and serving, or say plainly that
+it does not. See `00_ARCHITECTURE/briefs/samapti/SAMAPTI_MCP_TOOL_GAP_CHARACTERIZATION_v1_0.md`
+for the full reconciliation, including why `mcp_server_info`'s `tool_count: 152`
+is a third, non-comparable number.
+
 ## Tool enumeration correctness (Ring-2 fix, post-`bacade1c`)
 
 `lib/mcp_registered_tools.ts` is the single source of truth for "is `name`

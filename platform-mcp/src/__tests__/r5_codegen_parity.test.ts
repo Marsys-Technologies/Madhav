@@ -95,7 +95,7 @@ describe('R5 W0b-codegen parity gate — envelope (generated vs canonical)', () 
         // tool and tripped sc_pointer_validation.ts (SC-18 class, quarantined since
         // 2026-07-10). Production emits 'get_signals' (register_d9_judgment.ts:1143,
         // registry_bridge.ts:3209); the fixture now matches production.
-        drill_pointers: [{ instrument: 'get_signals', hint: 'x' }],
+        drill_pointers: [{ instrument: 'bodha_signals_get', hint: 'x' }],
         judgment_flags: ['zero_rows_returned'],
       },
       format: 'v3',

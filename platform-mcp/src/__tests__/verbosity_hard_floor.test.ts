@@ -68,7 +68,7 @@ function judgmentLikeSections(): TrimmableSection<Content>[] {
       getArray: (c) => c.checklist.bearing_yogas,
       setArray: (c, kept) => { c.checklist.bearing_yogas = kept as Content['checklist']['bearing_yogas'] },
       minKeep: 3,
-      recover: { instrument: 'get_signals', hint: 'full yoga+dosha set' },
+      recover: { instrument: 'bodha_signals_get', hint: 'full yoga+dosha set' },
       label: 'checklist.bearing_yogas',
       hardFloor: true, // register_d9_judgment.ts's real declaration
     },
@@ -77,7 +77,7 @@ function judgmentLikeSections(): TrimmableSection<Content>[] {
       getArray: (c) => c.checklist.bearing_afflictions,
       setArray: (c, kept) => { c.checklist.bearing_afflictions = kept as Content['checklist']['bearing_afflictions'] },
       minKeep: 3,
-      recover: { instrument: 'get_signals', hint: 'full adverse-valence set' },
+      recover: { instrument: 'bodha_signals_get', hint: 'full adverse-valence set' },
       label: 'checklist.bearing_afflictions',
       hardFloor: true, // register_d9_judgment.ts's real declaration
     },

@@ -23,9 +23,32 @@
  * lane A2), so this check now runs as a RATCHET AT ZERO: the baseline and
  * occurrence ledgers are empty, and any unresolved pointer at all is a FAIL.
  *
- * This is a pure static check: it (1) enumerates every tool actually
- * registered — via `server.tool('name', ...)` OR the `regAlias`/`globalAlias`
- * helper indirection used by register_p1_aliases.ts (see
+ * ── THE RC-14 REGRESSION THIS CHECK FAILED TO CATCH (A2 reopen cycle 1) ──────
+ * On 2026-07-30 an independent verifier called `get_signals` — a name this
+ * check PASSED — on the deployed server and got `MCP error -32602: Tool
+ * get_signals not found`. Root cause: the RC-14 breaking flip (2026-07-23)
+ * removed 43 legacy tool names from the served surface via a central RUNTIME
+ * gate (`platform-mcp/src/lib/deprecated_tool_gate.ts`) while deliberately
+ * LEAVING their `server.tool('legacy', …)` call sites in source. This file's
+ * resolver read those call sites and called the names live. It was wrong about
+ * 43 names, and consequently PASSED 32 production pointer sites that
+ * dead-ended on the real server — the precise SC-18 harm, reintroduced
+ * wholesale and invisible to the check built to detect it.
+ *
+ * Two fixes, both here: (1) `collectRegisteredTools()` now models the gate
+ * (verified set-identical to the live catalog: 167 − 43 = 124 = live), so the
+ * offline check is live-accurate with no network dependency; (2) an OPTIONAL
+ * `runLiveCatalogParity()` measures the model against a real `tools/list` when
+ * an endpoint is configured, so model drift is itself detectable rather than
+ * assumed away. The general lesson, worth keeping: a static check that names
+ * "the live server" in its own title must model every runtime gate between
+ * registration and serving, or say plainly that it does not.
+ *
+ * This is a STATIC check by default (a live cross-check is opt-in, see
+ * `runLiveCatalogParity`): it (1) enumerates every tool actually
+ * SERVED — via `server.tool('name', ...)` OR the `regAlias`/`globalAlias`
+ * helper indirection used by register_p1_aliases.ts, MINUS the RC-14
+ * deprecated-tool gate (see
  * lib/mcp_registered_tools.ts for why both shapes must be handled — a
  * literal-only regex here produced two Ring-2-caught false positives in the
  * first cut of this file), then (2) enumerates every `instrument: '<name>'`
@@ -55,8 +78,15 @@
  *     very different blast radius and the absence of that distinction is what
  *     let a unit-test placeholder (`instrument: 'x'`) read as a serving-surface
  *     regression for three weeks.
- *  d) It proves nothing about whether a REGISTERED tool works — only that the
- *     name resolves. Live behaviour is mcp_tool_smoke.ts's job.
+ *  d) It proves nothing about whether a SERVED tool works — only that the name
+ *     is in the served catalog. Live behaviour is mcp_tool_smoke.ts's job.
+ *  e) By default it compares against a MODEL of the served surface
+ *     (registration call sites minus the RC-14 gate), not against the deployed
+ *     server. The model was verified set-identical to live on 2026-07-30, but
+ *     a NEW runtime gate added later would not be modelled and this check
+ *     would over-report availability again. `runLiveCatalogParity()` is the
+ *     guard against exactly that, and it reports SKIPPED — never PASS — when
+ *     no endpoint is configured.
  *
  * No DB required — runs anywhere, always.
  * Run: npx tsx platform/scripts/audit/tap/sc_pointer_validation.ts
@@ -284,8 +314,94 @@ export function runPointerValidation(): LawResult[] {
   return results
 }
 
-function main() {
-  process.exit(printReport('Boot-time pointer validation (SC-17/18/19)', runPointerValidation()))
+/**
+ * OPTIONAL live cross-check: does the statically-MODELLED served surface actually
+ * equal the deployed server's `tools/list`?
+ *
+ * Why this exists (SAMĀPTI lane A2, reopen cycle 1). `collectRegisteredTools()` is
+ * now gate-aware and was verified set-identical to the live catalog on 2026-07-30
+ * — but that is a MODEL of the runtime, and a model can drift the moment a new
+ * gating mechanism lands (RC-14's gate is precisely such a mechanism, and it went
+ * unmodelled for a week while 32 production pointers silently dead-ended). The
+ * static battery therefore states what it checks; THIS check is what upgrades
+ * "modelled" to "measured."
+ *
+ * TAP-9 discipline: with no endpoint configured this returns SKIPPED-WITH-REASON,
+ * never a silent PASS — an absent oracle is declared, not assumed green.
+ *
+ * Enable with the same two vars mcp_tool_smoke.ts uses:
+ *   MCP_SERVER_URL=https://<host>/mcp MCP_SMOKE_BEARER_TOKEN=<bearer key>
+ */
+export async function runLiveCatalogParity(): Promise<LawResult> {
+  const url = process.env.MCP_SERVER_URL
+  const bearer = process.env.MCP_SMOKE_BEARER_TOKEN
+  const id = 'SC-pointer:live-catalog-parity'
+  const title = 'Statically-modelled served surface == the deployed server tools/list'
+  if (!url || !bearer) {
+    return {
+      id,
+      title,
+      status: 'SKIPPED',
+      detail:
+        'MCP_SERVER_URL / MCP_SMOKE_BEARER_TOKEN not set — the served-surface model was NOT measured ' +
+        'against a live catalog this run. The static battery above still holds, but it verifies ' +
+        'names against a MODEL of the served surface (registration call sites minus the RC-14 ' +
+        'deprecated-tool gate), not against the deployed server. Export both vars to upgrade this ' +
+        'to a measured claim. NOTE: a first-party Bearer key resolves to the `full` profile, which ' +
+        'applies no profile filtering — an OAuth token would return a narrower, profile-gated ' +
+        'catalog and would make this comparison meaningless.',
+    }
+  }
+  let liveNames: Set<string>
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${bearer}`,
+        'Content-Type': 'application/json',
+        Accept: 'application/json, text/event-stream',
+      },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list', params: {} }),
+      signal: AbortSignal.timeout(30_000),
+    })
+    const text = await res.text()
+    // The endpoint answers as SSE (`event: message\ndata: {...}`) or plain JSON.
+    const dataLine = text.split('\n').find((l) => l.startsWith('data: '))
+    const parsed = JSON.parse(dataLine ? dataLine.slice('data: '.length) : text)
+    const tools = parsed?.result?.tools
+    if (!Array.isArray(tools)) throw new Error(`no result.tools array in response (${text.slice(0, 200)})`)
+    liveNames = new Set<string>(tools.map((t: { name: string }) => t.name))
+  } catch (err) {
+    return {
+      id,
+      title,
+      status: 'SKIPPED',
+      detail: `Live catalog unreachable — model NOT measured: ${err instanceof Error ? err.message : String(err)}`,
+    }
+  }
+  const modelled = collectRegisteredTools()
+  const modelledNotLive = [...modelled].filter((n) => !liveNames.has(n)).sort()
+  const liveNotModelled = [...liveNames].filter((n) => !modelled.has(n)).sort()
+  const ok = modelledNotLive.length === 0 && liveNotModelled.length === 0
+  return {
+    id,
+    title,
+    status: ok ? 'PASS' : 'FAIL',
+    detail: ok
+      ? `Model matches the deployed catalog exactly: ${liveNames.size} tools, set-for-set identical.`
+      : `Model DRIFTED from the deployed catalog (${modelled.size} modelled vs ${liveNames.size} live). ` +
+        `Modelled-but-not-served (${modelledNotLive.length}) — pointers at these will dead-end live: ` +
+        `${modelledNotLive.join(', ') || '(none)'}. Served-but-not-modelled (${liveNotModelled.length}) — ` +
+        `the resolver cannot see these, so valid pointers at them will be false-flagged: ` +
+        `${liveNotModelled.join(', ') || '(none)'}. Re-check lib/mcp_registered_tools.ts against any ` +
+        `newly-added runtime gating in platform-mcp/src/server.ts.`,
+  }
+}
+
+async function main() {
+  const results = runPointerValidation()
+  results.push(await runLiveCatalogParity())
+  process.exit(printReport('Boot-time pointer validation (SC-17/18/19)', results))
 }
 
 type OccurrenceEntry = { instrument: string; file: string; line_hash: string }
@@ -297,4 +413,4 @@ function loadOccurrences(): Set<string> {
 
 // Only self-execute when invoked directly, so tap5_seam_conservation.ts can
 // import runPointerValidation() without this module calling process.exit().
-if (require.main === module) main()
+if (require.main === module) void main()

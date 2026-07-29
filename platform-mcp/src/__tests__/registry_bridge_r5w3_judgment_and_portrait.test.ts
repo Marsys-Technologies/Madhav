@@ -173,9 +173,9 @@ describe('judgment_query — MCP tool registration + seam reachability', () => {
           // 'query_signals', 'query_classical_texts'), none of which is a registered
           // tool — the SC-18 dead-pointer class this fixture was silently modelling.
           { instrument: 'ganita_chart_facts_get', hint: 'full D10 placements.', pointer_type: 'confirm_in_varga' },
-          { instrument: 'get_signals', hint: 'domain=career signal set.', pointer_type: 'opposing_yoga' },
-          { instrument: 'get_dashas', hint: 'full dasha timeline.', pointer_type: 'dasha_of_promise' },
-          { instrument: 'traverse_graph', hint: 'dispositor context.', pointer_type: 'dispositor_chain' },
+          { instrument: 'bodha_signals_get', hint: 'domain=career signal set.', pointer_type: 'opposing_yoga' },
+          { instrument: 'ganita_dashas_get', hint: 'full dasha timeline.', pointer_type: 'dasha_of_promise' },
+          { instrument: 'bodha_graph_traverse_get', hint: 'dispositor context.', pointer_type: 'dispositor_chain' },
           { instrument: 'ref_rules_search', hint: 'verse citations.', pointer_type: 'other' },
           { instrument: 'synth_tail_divergence_get', hint: 'tail-check.', pointer_type: 'tail_dissent' },
         ],

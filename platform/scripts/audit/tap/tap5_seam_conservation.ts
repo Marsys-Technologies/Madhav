@@ -18,13 +18,25 @@
  * Law-6  every emitted signal category → explicit _DOMAIN_MAP entry, never
  *        the ["career","character"] hard default (SC-10, KP-4).
  * Law-7  alias/pointer parity: every tool-pointer field must name a tool that
- *        is actually registered on the live MCP server (SC-17, SC-18, SC-19,
- *        SC-20, SC-21, SC-23, V-12). Delegated to sc_pointer_validation.ts by
- *        IMPORTING AND RUNNING its battery (`runPointerValidation()`) and
- *        folding the real verdict in as one summary row, so `npm run tap:5`
- *        reports all 7 laws in one place with all 7 statuses measured. Until
- *        2026-07-30 this row was a hardcoded QUARANTINED string that never
- *        invoked the check it cited — see the Law-7 block below.
+ *        is actually SERVED by the MCP server (SC-17, SC-18, SC-19, SC-20,
+ *        SC-21, SC-23, V-12). Delegated to sc_pointer_validation.ts by
+ *        IMPORTING AND RUNNING its battery (`runPointerValidation()` plus the
+ *        opt-in `runLiveCatalogParity()`) and folding the real verdict in as
+ *        one summary row, so `npm run tap:5` reports all 7 laws in one place
+ *        with all 7 statuses measured.
+ *
+ *        TWO CORRECTIONS LANDED HERE 2026-07-30 (SAMĀPTI A2), both of the same
+ *        shape — a claim wider than its evidence:
+ *          (i)  until then this row was a hardcoded `QUARANTINED` string that
+ *               NAMED sc_pointer_validation.ts but never invoked it;
+ *          (ii) its title claimed verification against "the live MCP server"
+ *               while the underlying check scanned source only — and that gap
+ *               was not cosmetic: it over-reported the served surface by the
+ *               43 RC-14-gated legacy names, passing 32 production pointers
+ *               that returned "Tool <name> not found" on the deployed server.
+ *        The title is now conditional on what was actually established: it says
+ *        "live-measured" only when the live catalog was really fetched this
+ *        run, and "modelled … live catalog NOT measured" otherwise.
  *
  * DB-backed laws (1,2,3,5,6) require DATABASE_URL — see lib/tap_db.ts.
  * Static laws (4 partially, 7) run via grep over the TS source tree and do
@@ -36,7 +48,7 @@
 import path from 'node:path'
 import { execSync } from 'node:child_process'
 import { connectTapDb, printReport, NATIVE_CHART_ID, type LawResult } from './lib/tap_db'
-import { runPointerValidation } from './sc_pointer_validation'
+import { runPointerValidation, runLiveCatalogParity } from './sc_pointer_validation'
 
 const REPO_ROOT = path.join(__dirname, '../../../..')
 
@@ -274,11 +286,21 @@ async function main() {
   // folds in its actual verdict (worst-status-wins), so Law-7's status is
   // earned on every run.
   const pointerResults = runPointerValidation()
+  pointerResults.push(await runLiveCatalogParity())
   const pointerFails = pointerResults.filter((r) => r.status === 'FAIL')
   const pointerQuarantined = pointerResults.filter((r) => r.status === 'QUARANTINED')
+  const liveParity = pointerResults.find((r) => r.id === 'SC-pointer:live-catalog-parity')
+  const liveMeasured = liveParity?.status === 'PASS'
   results.push({
     id: 'Law-7',
-    title: 'Every tool-pointer field names a live registered MCP tool',
+    // TITLE HONESTY (A2 reopen cycle 1): this row used to read "…names a tool that
+    // is actually registered on the LIVE MCP SERVER" while doing a source-only scan
+    // that over-reported the served surface by 43 names. The title now states which
+    // of the two claims was actually established this run — the same distinction the
+    // check itself draws — because a title is an assertion like any other.
+    title: liveMeasured
+      ? 'Every tool-pointer field names a tool in the deployed MCP catalog (live-measured)'
+      : 'Every tool-pointer field names a tool in the modelled served surface (static; live catalog NOT measured this run)',
     status: pointerFails.length > 0 ? 'FAIL' : pointerQuarantined.length > 0 ? 'QUARANTINED' : 'PASS',
     detail:
       `sc_pointer_validation.ts executed in-process: ${pointerResults.length} checks, ` +
@@ -288,6 +310,9 @@ async function main() {
         : pointerQuarantined.length > 0
           ? `Quarantined: ${pointerQuarantined.map((r) => r.id).join(', ')}. `
           : 'Zero unresolved pointers and zero stale baseline entries — the SC-17/18/19/23 ratchet is at zero. ') +
+      (liveMeasured
+        ? 'Live catalog parity MEASURED against the deployed server this run. '
+        : `Live catalog NOT measured this run (${liveParity?.status ?? 'absent'}) — set MCP_SERVER_URL + MCP_SMOKE_BEARER_TOKEN to upgrade this from modelled to measured. `) +
       'Run `npm run tap:pointer-validation` for the per-instrument detail.',
     register_rows: ['SC-17', 'SC-18', 'SC-19', 'SC-20', 'SC-21', 'SC-23', 'V-12'],
   })
