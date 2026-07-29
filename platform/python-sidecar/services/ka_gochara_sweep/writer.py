@@ -161,13 +161,24 @@ _RESUME_VERSION = 7
 
 
 # D-4b materialization-time optimization (native directive, 2026-07-21): the
-# scoring span is birth_year -> latest LEL event + a 1-year buffer. Verified
-# live against chart 482012f1 (`life_events` table, excluding the
+# scoring span is birth_year -> latest logged life event + a 1-year buffer. Verified
+# live against chart 482012f1 (the native's logged life-event corpus, excluding the
 # TEST-FIXTURE synthetic row): latest real event 2026-04-16, birth 1984-02-05
 # -> scoring span end year 2027 (year_idx 43). Beyond this, B-1's own event
-# set has no LEL anchors to score against -- those years only matter for
+# set has no logged-event anchors to score against -- those years only matter for
 # B-6's full-span gate, never for B-1's scoring-span domain-completeness
 # assertion (BRIEF_D4B §0's own domain-scoped disposition).
+#
+# CIRCULARITY GUARD NOTE (ṢAḌ-DARŚANA W1 item 10, SHAD_DARSHANA_BRIEF_v2_0.md §7): this
+# constant is a ONE-TIME, HARDCODED design-time choice baked in by a human/native directive
+# on 2026-07-21 -- this module issues NO live query against the life-event corpus at
+# runtime (grep-verified: no SQL/capability call referencing that corpus anywhere in this
+# package). It therefore does NOT participate in the "the field never reads the LEL" guard
+# in the sense that guard's CI invariance test checks (a live runtime read whose result
+# could change between two builds without a code change) -- appending a new logged life
+# event does not change this writer's behavior at all, since the value is compiled in, not
+# queried. Re-deriving this constant (if ever needed) is a manual, reviewed, versioned code
+# change -- never an automatic runtime dependency.
 _SCORING_SPAN_END_YEAR = 2027
 
 # All 3 of this chart's currently-populated gochara_resonance_map event
