@@ -51,10 +51,33 @@ const PROJECTION_FAMILY = {
   source_citation: 'x',
 }
 
+// item 28 forward-half fixtures — currently-running MD=Jupiter, AD=Venus.
+const ACTIVE_CHAIN = [
+  { level_n: 1, level_name: 'Mahadasha', lord_graha: 'Jupiter', lord_sign: 'Cancer', start_date: '2020-01-01', end_date: '2036-01-01' },
+  { level_n: 2, level_name: 'Antardasha', lord_graha: 'Venus', lord_sign: 'Libra', start_date: '2026-01-01', end_date: '2028-01-01' },
+]
+
+const TRANSIT_BY_PLANET: Record<string, Record<string, unknown>> = {
+  Jupiter: { date: '2031-07-29', sign_number: 4, degree_in_sign: 12.5, nakshatra_number: 9, is_retrograde: false }, // Cancer -> exalted
+  Venus: { date: '2031-07-29', sign_number: 6, degree_in_sign: 3.1, nakshatra_number: 14, is_retrograde: false }, // Virgo -> debilitated
+}
+
+const DIGNITY_BY_GRAHA: Record<string, Record<string, unknown>> = {
+  Jupiter: { graha: 'Jupiter', exaltation_sign: 'Cancer', debilitation_sign: 'Capricorn', own_signs: ['Sagittarius', 'Pisces'] },
+  Venus: { graha: 'Venus', exaltation_sign: 'Pisces', debilitation_sign: 'Virgo', own_signs: ['Taurus', 'Libra'] },
+}
+
 function mockRegistryFetch(opts: { reachable: boolean; emptyWindows?: boolean }) {
-  return vi.fn(async (_url: string, init?: RequestInit) => {
+  return vi.fn(async (url: string, init?: RequestInit) => {
     if (!opts.reachable) throw new Error('registry unreachable in test')
-    const body = JSON.parse(String(init?.body ?? '{}')) as { uri: string }
+    const body = JSON.parse(String(init?.body ?? '{}')) as { uri?: string; args?: Record<string, unknown>; sql?: string; params?: unknown[] }
+
+    if (String(url).includes('/api/mcp/db/query')) {
+      const graha = String(body.params?.[0] ?? '')
+      const row = Object.values(DIGNITY_BY_GRAHA).find((r) => String(r['graha']).toLowerCase() === graha.toLowerCase())
+      return { ok: true, json: async () => ({ rows: row ? [row] : [] }), text: async () => '' } as Response
+    }
+
     let inner: Record<string, unknown> = {}
     if (body.uri === 'marsys://tool/L3/query_temporal_activation') {
       inner = opts.emptyWindows
@@ -62,6 +85,14 @@ function mockRegistryFetch(opts: { reachable: boolean; emptyWindows?: boolean })
         : { window_families: [WINDOW_FAMILY], forward_windows: [] }
     } else if (body.uri === 'marsys://tool/L3/query_projections') {
       inner = { projections: [], projection_families: [PROJECTION_FAMILY] }
+    } else if (body.uri === 'marsys://tool/L1/get_dignity') {
+      inner = { rows: [{ fact_subject: 'LAGNA', fact_key: 'sign_num', fact_value_num: 1, fact_id: 'fact-lagna' }] }
+    } else if (body.uri === 'marsys://tool/L3/query_active_dashas') {
+      inner = { systems: [{ system_id: 'vimshottari', active_chain: ACTIVE_CHAIN }] }
+    } else if (body.uri === 'marsys://tool/L0/query_planet_transit') {
+      const planet = String(body.args?.['planet'] ?? '')
+      const row = TRANSIT_BY_PLANET[planet]
+      inner = { rows: row ? [row] : [] }
     }
     return {
       ok: true,
@@ -120,6 +151,15 @@ describe('kala_ahead_get — honest-empty on unreachable registry', () => {
     expect(byConcept['probabilistic_projections']?.state).toBe('honest_empty')
   })
 
+  it('item 28: dasha_lord_transit_condition_forward is empty and coverage marks honest_empty', async () => {
+    vi.stubGlobal('fetch', mockRegistryFetch({ reachable: false }))
+    const result = await computeKalaAhead(TEST_CHART_ID, {}, TEST_PRINCIPAL)
+    expect(result.dasha_lord_transit_condition_forward).toEqual([])
+    const byConcept = Object.fromEntries(result.coverage.map((c) => [c.concept, c]))
+    expect(byConcept['dasha_lord_forward_transit_condition']?.state).toBe('honest_empty')
+    expect(byConcept['dasha_lord_forward_transit_condition']?.reason?.length).toBeGreaterThan(0)
+  })
+
   it('falsifier is null when no leading projection exists — never fabricated', async () => {
     vi.stubGlobal('fetch', mockRegistryFetch({ reachable: false }))
     const result = await computeKalaAhead(TEST_CHART_ID, {}, TEST_PRINCIPAL)
@@ -136,18 +176,48 @@ describe('kala_ahead_get — falsifier (derived from existing window bounds, nev
 })
 
 describe('kala_ahead_get — coverage honesty (not-yet-built concepts disclosed, never dropped)', () => {
-  it('discloses promise_gated_forecasting / dasha_lord_forward_transit_condition / sky_event_calendar / tithi_pravesa as not_in_corpus', async () => {
+  it('discloses promise_gated_forecasting / sky_event_calendar / tithi_pravesa as not_in_corpus', async () => {
     vi.stubGlobal('fetch', mockRegistryFetch({ reachable: true }))
     const result = await computeKalaAhead(TEST_CHART_ID, {}, TEST_PRINCIPAL)
     const byConcept = Object.fromEntries(result.coverage.map((c) => [c.concept, c]))
-    for (const key of [
-      'promise_gated_forecasting',
-      'dasha_lord_forward_transit_condition',
-      'sky_event_calendar',
-      'tithi_pravesa',
-    ]) {
+    for (const key of ['promise_gated_forecasting', 'sky_event_calendar', 'tithi_pravesa']) {
       expect(byConcept[key]?.state).toBe('not_in_corpus')
       expect(byConcept[key]?.reason?.length).toBeGreaterThan(0)
+    }
+  })
+})
+
+describe('kala_ahead_get — item 28 (daśā-lord forward transit condition, wave W1)', () => {
+  it('reports both MD and AD lords with their forward transit sign/house/dignity', async () => {
+    vi.stubGlobal('fetch', mockRegistryFetch({ reachable: true }))
+    const result = await computeKalaAhead(TEST_CHART_ID, {}, TEST_PRINCIPAL)
+    const rows = result.dasha_lord_transit_condition_forward
+    expect(rows).toHaveLength(2)
+    const md = rows.find((r) => r.level_name === 'Mahadasha')
+    const ad = rows.find((r) => r.level_name === 'Antardasha')
+    expect(md?.lord_graha).toBe('Jupiter')
+    expect(md?.transit_sign_name).toBe('Cancer')
+    expect(md?.dignity).toBe('exalted') // Cancer is Jupiter's exaltation_sign per fixture
+    expect(md?.house_from_lagna).toBe(4) // sign 4 from lagna sign 1
+    expect(ad?.lord_graha).toBe('Venus')
+    expect(ad?.transit_sign_name).toBe('Virgo')
+    expect(ad?.dignity).toBe('debilitated') // Virgo is Venus's debilitation_sign per fixture
+  })
+
+  it('coverage marks dasha_lord_forward_transit_condition computed when the join resolves', async () => {
+    vi.stubGlobal('fetch', mockRegistryFetch({ reachable: true }))
+    const result = await computeKalaAhead(TEST_CHART_ID, {}, TEST_PRINCIPAL)
+    const byConcept = Object.fromEntries(result.coverage.map((c) => [c.concept, c]))
+    expect(byConcept['dasha_lord_forward_transit_condition']?.state).toBe('computed')
+  })
+
+  it('forward_as_of_date is the horizon boundary (date_to), not today', async () => {
+    vi.stubGlobal('fetch', mockRegistryFetch({ reachable: true }))
+    const result = await computeKalaAhead(TEST_CHART_ID, { horizon_years: 5 }, TEST_PRINCIPAL)
+    const today = new Date().toISOString().slice(0, 10)
+    for (const row of result.dasha_lord_transit_condition_forward) {
+      expect(row.forward_as_of_date).not.toBe(today)
+      expect(row.identified_as_of_date).toBe(today)
     }
   })
 })

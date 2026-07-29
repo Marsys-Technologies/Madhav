@@ -46,15 +46,62 @@ const DARSHANA_ROW = {
   narrative: { text: 'ok' },
 }
 
+// item 8 (dual-reference gochara) + item 28 (daśā-lord transit condition) fixtures.
+// Natal: Lagna=Aries(1), Moon=Aquarius(11). Currently-running: MD=Jupiter, AD=Venus.
+const LAGNA_SIGN = 1
+const MOON_SIGN = 11
+
+const ACTIVE_CHAIN = [
+  { level_n: 1, level_name: 'Mahadasha', lord_graha: 'Jupiter', lord_sign: 'Cancer', start_date: '2020-01-01', end_date: '2036-01-01' },
+  { level_n: 2, level_name: 'Antardasha', lord_graha: 'Venus', lord_sign: 'Libra', start_date: '2026-01-01', end_date: '2028-01-01' },
+]
+
+const TRANSIT_BY_PLANET: Record<string, Record<string, unknown>> = {
+  Sun: { date: AS_OF, sign_number: 5, degree_in_sign: 8.0, nakshatra_number: 11, is_retrograde: false },
+  Moon: { date: AS_OF, sign_number: 11, degree_in_sign: 20.2, nakshatra_number: 25, is_retrograde: false },
+  Mars: { date: AS_OF, sign_number: 3, degree_in_sign: 1.4, nakshatra_number: 6, is_retrograde: false },
+  Mercury: { date: AS_OF, sign_number: 5, degree_in_sign: 15.0, nakshatra_number: 12, is_retrograde: true },
+  Jupiter: { date: AS_OF, sign_number: 4, degree_in_sign: 12.5, nakshatra_number: 9, is_retrograde: false }, // Cancer -> exalted
+  Venus: { date: AS_OF, sign_number: 6, degree_in_sign: 3.1, nakshatra_number: 14, is_retrograde: false }, // Virgo -> debilitated
+  Saturn: { date: AS_OF, sign_number: 10, degree_in_sign: 5.0, nakshatra_number: 21, is_retrograde: false }, // Capricorn -> own sign
+  Rahu: { date: AS_OF, sign_number: 12, degree_in_sign: 9.9, nakshatra_number: 27, is_retrograde: true },
+  Ketu: { date: AS_OF, sign_number: 6, degree_in_sign: 9.9, nakshatra_number: 13, is_retrograde: true },
+}
+
+const DIGNITY_BY_GRAHA: Record<string, Record<string, unknown>> = {
+  Jupiter: { graha: 'Jupiter', exaltation_sign: 'Cancer', debilitation_sign: 'Capricorn', own_signs: ['Sagittarius', 'Pisces'] },
+  Venus: { graha: 'Venus', exaltation_sign: 'Pisces', debilitation_sign: 'Virgo', own_signs: ['Taurus', 'Libra'] },
+}
+
 function mockRegistryFetch(opts: { reachable: boolean }) {
-  return vi.fn(async (_url: string, init?: RequestInit) => {
+  return vi.fn(async (url: string, init?: RequestInit) => {
     if (!opts.reachable) throw new Error('registry unreachable in test')
-    const body = JSON.parse(String(init?.body ?? '{}')) as { uri: string }
+    const body = JSON.parse(String(init?.body ?? '{}')) as { uri?: string; args?: Record<string, unknown>; sql?: string; params?: unknown[] }
+
+    if (String(url).includes('/api/mcp/db/query')) {
+      const graha = String(body.params?.[0] ?? '')
+      const row = Object.values(DIGNITY_BY_GRAHA).find((r) => String(r['graha']).toLowerCase() === graha.toLowerCase())
+      return { ok: true, json: async () => ({ rows: row ? [row] : [] }), text: async () => '' } as Response
+    }
+
     let inner: Record<string, unknown> = {}
     if (body.uri === 'marsys://tool/L3/query_temporal_activation') {
       inner = { window_families: [WINDOW_FAMILY], forward_windows: [] }
     } else if (body.uri === 'marsys://tool/L3/query_temporal_view') {
       inner = { rows: [DARSHANA_ROW] }
+    } else if (body.uri === 'marsys://tool/L1/get_dignity') {
+      inner = {
+        rows: [
+          { fact_subject: 'LAGNA', fact_key: 'sign_num', fact_value_num: LAGNA_SIGN, fact_id: 'fact-lagna' },
+          { fact_subject: 'MOON', fact_key: 'sign_num', fact_value_num: MOON_SIGN, fact_id: 'fact-moon' },
+        ],
+      }
+    } else if (body.uri === 'marsys://tool/L3/query_active_dashas') {
+      inner = { systems: [{ system_id: 'vimshottari', active_chain: ACTIVE_CHAIN }] }
+    } else if (body.uri === 'marsys://tool/L0/query_planet_transit') {
+      const planet = String(body.args?.['planet'] ?? '')
+      const row = TRANSIT_BY_PLANET[planet]
+      inner = { rows: row ? [row] : [] }
     }
     return {
       ok: true,
@@ -99,6 +146,21 @@ describe('kala_now_get — honest-empty on unreachable registry', () => {
     expect(byConcept['kala_darshana_confluence']?.state).toBe('honest_empty')
   })
 
+  it('item 8/28: gochara_dual_reference rows are all-null (honest, one row per known graha) and dasha_lord_transit_condition is empty; coverage marks both honest_empty', async () => {
+    vi.stubGlobal('fetch', mockRegistryFetch({ reachable: false }))
+    const result = await computeKalaNow(TEST_CHART_ID, { as_of: AS_OF }, TEST_PRINCIPAL)
+    expect(result.gochara_dual_reference).toHaveLength(9)
+    for (const row of result.gochara_dual_reference) {
+      expect(row.transit_sign_number).toBeNull()
+      expect(row.house_from_moon).toBeNull()
+      expect(row.house_from_lagna).toBeNull()
+    }
+    expect(result.dasha_lord_transit_condition).toEqual([])
+    const byConcept = Object.fromEntries(result.coverage.map((c) => [c.concept, c]))
+    expect(byConcept['dual_reference_gochara']?.state).toBe('honest_empty')
+    expect(byConcept['dasha_lord_current_transit_condition']?.state).toBe('honest_empty')
+  })
+
   it('never fabricates a verdict when unreachable — verdict states honest absence', async () => {
     vi.stubGlobal('fetch', mockRegistryFetch({ reachable: false }))
     const result = await computeKalaNow(TEST_CHART_ID, { as_of: AS_OF }, TEST_PRINCIPAL)
@@ -108,16 +170,74 @@ describe('kala_now_get — honest-empty on unreachable registry', () => {
 })
 
 describe('kala_now_get — coverage honesty (not-yet-built concepts disclosed, never dropped)', () => {
-  it('discloses dasha_sandhi_bands / transit_moorti / dual_reference_gochara as not_in_corpus', async () => {
+  it('discloses dasha_sandhi_bands / transit_moorti as not_in_corpus', async () => {
     vi.stubGlobal('fetch', mockRegistryFetch({ reachable: true }))
     const result = await computeKalaNow(TEST_CHART_ID, { as_of: AS_OF }, TEST_PRINCIPAL)
     const byConcept = Object.fromEntries(result.coverage.map((c) => [c.concept, c]))
     expect(byConcept['dasha_sandhi_bands']?.state).toBe('not_in_corpus')
     expect(byConcept['transit_moorti']?.state).toBe('not_in_corpus')
-    expect(byConcept['dual_reference_gochara']?.state).toBe('not_in_corpus')
-    for (const key of ['dasha_sandhi_bands', 'transit_moorti', 'dual_reference_gochara']) {
+    for (const key of ['dasha_sandhi_bands', 'transit_moorti']) {
       expect(byConcept[key]?.reason?.length).toBeGreaterThan(0)
     }
+  })
+})
+
+describe('kala_now_get — item 8 (dual-reference gochara, wave W1)', () => {
+  it('reports all 9 grahas with house-from-moon AND house-from-lagna computed independently', async () => {
+    vi.stubGlobal('fetch', mockRegistryFetch({ reachable: true }))
+    const result = await computeKalaNow(TEST_CHART_ID, { as_of: AS_OF }, TEST_PRINCIPAL)
+    const rows = result.gochara_dual_reference
+    expect(rows).toHaveLength(9)
+    const jupiter = rows.find((r) => r.planet === 'Jupiter')
+    // Jupiter transiting sign 4 (Cancer); lagna sign 1 -> house 4; moon sign 11 -> house 6.
+    expect(jupiter?.transit_sign_number).toBe(4)
+    expect(jupiter?.transit_sign_name).toBe('Cancer')
+    expect(jupiter?.house_from_lagna).toBe(4)
+    expect(jupiter?.house_from_moon).toBe(6)
+    // The two references must be able to disagree — proves this is not a single silent default.
+    expect(jupiter?.house_from_lagna).not.toBe(jupiter?.house_from_moon)
+  })
+
+  it('coverage marks dual_reference_gochara computed when both natal refs and transit are reachable', async () => {
+    vi.stubGlobal('fetch', mockRegistryFetch({ reachable: true }))
+    const result = await computeKalaNow(TEST_CHART_ID, { as_of: AS_OF }, TEST_PRINCIPAL)
+    const byConcept = Object.fromEntries(result.coverage.map((c) => [c.concept, c]))
+    expect(byConcept['dual_reference_gochara']?.state).toBe('computed')
+  })
+
+  it('never grades favorable/unfavorable — objective house counts only (Gate W1: no judgment call)', async () => {
+    vi.stubGlobal('fetch', mockRegistryFetch({ reachable: true }))
+    const result = await computeKalaNow(TEST_CHART_ID, { as_of: AS_OF }, TEST_PRINCIPAL)
+    for (const row of result.gochara_dual_reference) {
+      expect(Object.keys(row)).not.toContain('favorable')
+      expect(Object.keys(row)).not.toContain('classification')
+    }
+  })
+})
+
+describe('kala_now_get — item 28 (daśā-lord current transit condition, wave W1)', () => {
+  it('reports both MD and AD lords with their current transit sign/house/dignity', async () => {
+    vi.stubGlobal('fetch', mockRegistryFetch({ reachable: true }))
+    const result = await computeKalaNow(TEST_CHART_ID, { as_of: AS_OF }, TEST_PRINCIPAL)
+    const rows = result.dasha_lord_transit_condition
+    expect(rows).toHaveLength(2)
+    const md = rows.find((r) => r.level_name === 'Mahadasha')
+    const ad = rows.find((r) => r.level_name === 'Antardasha')
+    expect(md?.lord_graha).toBe('Jupiter')
+    expect(md?.lord_natal_sign).toBe('Cancer')
+    expect(md?.transit_sign_name).toBe('Cancer')
+    expect(md?.dignity).toBe('exalted')
+    expect(md?.as_of_date).toBe(AS_OF)
+    expect(ad?.lord_graha).toBe('Venus')
+    expect(ad?.transit_sign_name).toBe('Virgo')
+    expect(ad?.dignity).toBe('debilitated')
+  })
+
+  it('coverage marks dasha_lord_current_transit_condition computed when the join resolves', async () => {
+    vi.stubGlobal('fetch', mockRegistryFetch({ reachable: true }))
+    const result = await computeKalaNow(TEST_CHART_ID, { as_of: AS_OF }, TEST_PRINCIPAL)
+    const byConcept = Object.fromEntries(result.coverage.map((c) => [c.concept, c]))
+    expect(byConcept['dasha_lord_current_transit_condition']?.state).toBe('computed')
   })
 })
 
