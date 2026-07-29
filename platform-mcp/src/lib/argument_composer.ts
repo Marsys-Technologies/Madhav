@@ -121,9 +121,19 @@ export function composeCoverageSentence(entry: KalaCoverageEntry): string {
 
 /** Renders a freshness attestation as a sentence; staleness is always stated, never
  *  silently dropped from the composed text (kills the LC-5 class at the prose layer too,
- *  not just in the raw envelope field). */
+ *  not just in the raw envelope field).
+ *
+ *  SAMĀPTI A7-N8-AUDIT F-20: three-state, matching `KalaFreshness.stale`. The former
+ *  `if (!freshness.stale)` collapsed `null` (staleness NOT DETERMINABLE) into the same
+ *  branch as `false` (checked, and current) and asserted the literal prose
+ *  "Freshness: current." — an affirmative freshness claim with no horizon behind it.
+ *  `null` now renders as an honest UNKNOWN carrying its reason, exactly as
+ *  `composeCoverageSentence` above renders `honest_empty` / `not_in_corpus`. */
 export function composeFreshnessSentence(freshness: KalaFreshness): string {
-  if (!freshness.stale) return 'Freshness: current.'
+  if (freshness.stale === null || freshness.stale === undefined) {
+    return `Freshness: UNKNOWN — ${freshness.stale_reason ?? '(no reason recorded — composer defect)'}.`
+  }
+  if (freshness.stale === false) return 'Freshness: current.'
   return `Freshness: STALE — ${freshness.stale_reason ?? '(no reason recorded — composer defect)'}.`
 }
 

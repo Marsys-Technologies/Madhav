@@ -663,6 +663,12 @@ export async function callPipelinePlanner(
   // return a TYPED `fault` — never a throw — so route.ts renders a clean,
   // honest error instead of a raw 422 leaking the internal parse error.
   const primaryAttempt = tryBuildPlan(rawText)
+  // SAMĀPTI A7-N8-AUDIT F-23: capture whether the FIRST attempt actually parsed, and the
+  // reason if it did not. Previously this was known only inside this function and lost at
+  // the return, so the consult route wrote the constant `parsing_success: true` / a null
+  // parse_error for every request — a value that could never go red.
+  const parsedOnFirstAttempt = primaryAttempt.ok
+  const firstParseError = primaryAttempt.ok ? null : primaryAttempt.reason
   let okData: PipelinePlan
   let rawPlannerArgs: unknown
   if (primaryAttempt.ok) {
@@ -902,7 +908,20 @@ export async function callPipelinePlanner(
   // Attach the deterministic scope tuple (W4 core step 1) and return the
   // successful 'plan' variant of the PlannerOutcome union.
   parsed.data.scope_tuple = scopeTuple
-  return { outcome: 'plan', plan: parsed.data }
+  // SAMĀPTI A7-N8-AUDIT F-23: carry the planner's REAL observability values across the
+  // boundary. Each is already computed above; none is new work, none is estimated. The
+  // consult route consumes these instead of the constants it used to write.
+  return {
+    outcome: 'plan',
+    plan: parsed.data,
+    metrics: {
+      planning_confidence: classification.confidence,
+      fallback_used: fallbackWasUsed,
+      active_model_id: activeModelId,
+      parsed_on_first_attempt: parsedOnFirstAttempt,
+      first_parse_error: firstParseError,
+    },
+  }
 }
 
 // Exported for tests only.

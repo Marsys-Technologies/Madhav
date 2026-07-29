@@ -57,11 +57,13 @@ describe('writeConversationMessages', () => {
   })
 
   it('inserts each message and returns their IDs', async () => {
-    // msg-1 insert, msg-2 insert, then COUNT query (returns 2).
+    // msg-1 insert, msg-2 insert, then the ID-SCOPED read-back (F-24): the read-back is
+    // no longer an unfiltered `COUNT(*)` returning `{ n }` — it selects the written ids
+    // back and returns `{ id }` rows. See conversation_writer.ts's F-24 note.
     setupQuerySequence(
       { rows: [{ id: 'msg-1' }] },
       { rows: [{ id: 'msg-2' }] },
-      { rows: [{ n: '2' }] },
+      { rows: [{ id: 'msg-1' }, { id: 'msg-2' }] },
     )
 
     const msgs = [
@@ -77,10 +79,10 @@ describe('writeConversationMessages', () => {
     expect(result.verified).toBe(true)
   })
 
-  it('marks verified=false when db count < written', async () => {
+  it('marks verified=false, naming the id, when a written row does not read back (F-24)', async () => {
     setupQuerySequence(
       { rows: [{ id: 'msg-a' }] },
-      { rows: [{ n: '0' }] }, // COUNT returns 0
+      { rows: [] }, // id-scoped read-back finds nothing
     )
     const msgs = [makeMsg({ id: 'msg-a', role: 'user' })]
     const result = await writeConversationMessages({
@@ -89,10 +91,11 @@ describe('writeConversationMessages', () => {
     })
     expect(result.messageIds).toEqual(['msg-a'])
     expect(result.verified).toBe(false)
+    expect(result.missingMessageIds).toEqual(['msg-a'])
   })
 
   it('stores parts_json correctly', async () => {
-    setupQuerySequence({ rows: [{ id: 'msg-p' }] }, { rows: [{ n: '1' }] })
+    setupQuerySequence({ rows: [{ id: 'msg-p' }] }, { rows: [{ id: 'msg-p' }] })
 
     const parts = [{ type: 'text' as const, text: 'test content' }]
     const msg = makeMsg({ id: 'msg-p', role: 'user', parts })
@@ -114,7 +117,7 @@ describe('writeConversationMessages', () => {
     setupQuerySequence(
       { rows: [{ id: 'msg-u' }] },
       { rows: [{ id: 'msg-a' }] },
-      { rows: [{ n: '2' }] },
+      { rows: [{ id: 'msg-u' }, { id: 'msg-a' }] },
     )
 
     const msgs = [
@@ -139,7 +142,7 @@ describe('writeConversationMessages', () => {
   })
 
   it('uses ON CONFLICT clause for idempotency', async () => {
-    setupQuerySequence({ rows: [{ id: 'msg-x' }] }, { rows: [{ n: '1' }] })
+    setupQuerySequence({ rows: [{ id: 'msg-x' }] }, { rows: [{ id: 'msg-x' }] })
 
     const msg = makeMsg({ id: 'msg-x' })
     await writeConversationMessages({ conversationId: 'conv-idem', messages: [msg] })

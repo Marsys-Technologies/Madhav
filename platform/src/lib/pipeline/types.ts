@@ -489,9 +489,48 @@ export class PipelinePlannerError extends Error {
  * dispatch shim — unchanged; route.ts unwraps `.plan` and proceeds exactly as
  * it did before.
  */
+/**
+ * SAMĀPTI A7-N8-AUDIT F-23 — the planner's real, computed observability metrics,
+ * carried across the planner→route boundary instead of being discarded there.
+ *
+ * `callPipelinePlanner` already computes every one of these. Before this block existed
+ * they died at the return statement, and `/api/chat/consult`'s `query_plan_log` write +
+ * `classify` trace step substituted the CONSTANTS `planning_confidence: 1.0`,
+ * `fallback_used: false`, `parsing_success: true`. Consequence, by construction: no
+ * consult-route request could ever be recorded as low-confidence or as having used the
+ * planner's fallback model, so `AnalyticsTab`'s fallback metric
+ * (`rows.filter(r => r.planning_confidence === 0)`) was structurally pinned at zero for
+ * that entire traffic class.
+ *
+ * Every field here is REQUIRED — deliberately. An optional metrics block would let a
+ * future call site omit it and reintroduce a defaulted-looking value; a required one
+ * makes the compiler demand a real answer.
+ */
+export interface PlannerMetrics {
+  /** The DETERMINISTIC scope classifier's own confidence for this query, in [0, 1]
+   *  (`classifyScope(query).confidence`) — never a stamped 1.0. */
+  planning_confidence: number
+  /** True iff the plan was produced by the FALLBACK planner model rather than the
+   *  primary (set when a 429/5xx on the primary triggered the fallback retry). */
+  fallback_used: boolean
+  /** The model id that actually produced the plan — the fallback id when
+   *  `fallback_used` is true, otherwise the primary. */
+  active_model_id: string
+  /** True iff the planner's FIRST output parsed and schema-validated with no
+   *  repair-retry. False means the plan exists only because the one structured
+   *  repair-retry succeeded — a real, falsifiable signal about planner-output quality
+   *  that was previously invisible. */
+  parsed_on_first_attempt: boolean
+  /** The first attempt's parse/validation failure reason when
+   *  `parsed_on_first_attempt` is false; `null` otherwise. Never a silent drop. */
+  first_parse_error: string | null
+}
+
 export interface PlanReceipt {
   outcome: 'plan'
   plan: PipelinePlan
+  /** F-23: real planner observability values. Required — see `PlannerMetrics`. */
+  metrics: PlannerMetrics
 }
 
 /**

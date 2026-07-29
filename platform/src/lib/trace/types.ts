@@ -106,6 +106,17 @@ export interface TraceDataSummary {
   query_class?: string
   /** plan: planner confidence (0.0 = fallback). */
   planning_confidence?: number
+  // ── SAMĀPTI A7-N8-AUDIT F-23 additive (all optional) ───────────────────────
+  /** classify/plan: true iff the plan came from the FALLBACK planner model
+   *  (a 429/5xx on the primary triggered the fallback retry). Real value from
+   *  `PlannerMetrics.fallback_used` — the consult route used to hardcode `false`. */
+  fallback_used?: boolean
+  /** classify/plan: the model id that actually produced the plan (fallback id when
+   *  `fallback_used`, otherwise the primary). */
+  planner_model_id?: string
+  /** classify/plan: true iff the planner's FIRST output parsed and schema-validated
+   *  with no repair-retry. The consult route used to hardcode the equivalent `true`. */
+  parsed_on_first_attempt?: boolean
   /** Provider family of the model used for this LLM step. */
   provider?: string
   /** Whether this step's LLM call produced a reasoning trace (DeepSeek R1 only). */
