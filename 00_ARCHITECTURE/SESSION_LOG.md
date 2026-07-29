@@ -34503,3 +34503,212 @@ no-op-completion rescue gap, `ka_bhavishya_lekha.py`'s stale domain vocabulary, 
 CLI-only sentinel — join the parked-findings backlog for a future wave.
 
 *End of PARKED-FINDINGS-3ITEM-2026-07-28 entry.*
+
+## SATYA-DIPA-CLOSE-2026-07-29 — SATYA-DĪPA: "Make `lit` Mean Lit" — orchestrator no-op-completion promotion predicate fixed, falsely-lit population confirmed empty
+
+```yaml
+session_open:
+  session_id: SATYA-DIPA-CLOSE-2026-07-29
+  campaign: SATYA_DIPA
+  mode: "Fully autonomous, no human gates. Conductor + Dvārapāla (documented conservative
+    rulings for concurrency + branch hygiene) + adversarial self-check in lieu of a
+    separate Opus Verifier process. Test-first, fix-at-origin, PARKED-HONEST, snapshot-
+    first-tested-rollback discipline carried from ŚUDDHA-VĀCA."
+  may_touch: "platform/python-sidecar/pipeline/orchestrator/asset_runner.py (the ONE
+    authorized freeze exception, the promotion predicate only — SATYA_DIPA_BRIEF_v1_0.md
+    §9.1); platform/python-sidecar/tests/test_d16_state_write_defect.py;
+    platform/migrations/467_asset_throughput_incomplete_state.sql (new);
+    00_ARCHITECTURE/ORCHESTRATOR_CONVERGENCE_CLOSE_v1_0.md (§7 new); CLAUDE.md (§N.8 new);
+    00_ARCHITECTURE/llm_consumption_audit/briefs/satya_dipa/SATYA_DIPA_REPORT_v1_0.md (new);
+    CURRENT_STATE_v1_0.md; SESSION_LOG.md (this entry)."
+  must_not_touch: "Nothing else in the orchestrator (WriterBase contract, plan_substeps/
+    run_substep signatures, _drive_substeps beyond reading its existing return value,
+    runner.py, staleness.py — both confirmed allowlist-based, needed no change);
+    build_substep_progress (READ-ONLY EVIDENCE, never written by this campaign); the
+    sealed L0-L5 evaluator harness; any chart's chart_facts/chart_dashas/chart_divisionals
+    rows (no rebuild was needed — falsely-lit population came back empirically empty)."
+  red_team_due: false
+  rebuild_exclusivity: "Confirmed no concurrent build_runs (state IN running/planned) at
+    Phase 0 and throughout; only unrelated PR #446 (docs) open besides this campaign's own.
+    Dvārapāla ruling: PROCEED-CLEAR."
+```
+
+**Forensic-lead correction (load-bearing).** The brief's instruction to query the
+`asset.noop_completion` event history first assumed a durable, queryable register. It does
+not exist: `emit_event()` only prints to stdout (Cloud-Logging-captured only on Cloud Run,
+within ~30-day default retention) or fire-and-forget publishes to Pub/Sub (the only
+consumer, the cockpit SSE route, opens ephemeral 600-second-retention subscriptions per
+connection). A Cloud Logging query across the full retention window returned zero hits.
+Phase A pivoted to the brief's own fallback instruction — direct reconciliation against
+`build_substep_progress` — which is what every finding below rests on.
+
+**The defect and the fix.** The D-1.6 no-op-completion rescue in `_run_data_writer`
+promoted `dormant`→`lit` whenever a data asset's target table had any rows present,
+without checking whether the writer's substep plan had actually finished — the same
+"unearned success signal" class as D-1.6 itself, one layer deeper (a genuinely-partial
+resumable build with some committed data could satisfy the rows-present proxy). Fix,
+entirely within the one authorized freeze exception: for `has_substeps=true` writers,
+before promoting, re-invoke the writer's own `plan_substeps(ctx)` (SAVEPOINT-isolated) and
+require zero remaining substeps; `has_substeps=false/NULL` writers are unaffected (old
+behavior exactly preserved). A genuinely-incomplete plan is marked the new `incomplete`
+state (migration 467) — never `lit`, never `dormant`.
+
+**Regression proof, fail-then-pass, the brief's own blocking acceptance criterion.**
+`tests/test_d16_state_write_defect.py` gained 3 tests. The D-1.6 case, run THROUGH the new
+completeness check (not merely bypassing it, `has_substeps=true` set explicitly), still
+promotes to `lit` — preserved. The new partial-plan case was proven to FAIL against the
+pre-fix code (`git stash` the fix, run the test, confirm `AssertionError: ... got 'lit'`)
+and PASS against the fixed code (`incomplete`, correct event emitted). The unaffected-light-
+writer case passes unchanged. All 15 tests in the file pass; full python-sidecar suite:
+4070 passed, 23 failed — every failure isolated to `tests/test_l0_remedy_corpus.py` (a
+pre-existing planet-name case-convention mismatch, `'sun'` vs `{'Sun',...}`), unrelated to
+the orchestrator and out of this campaign's scope, confirmed by running that one file in
+isolation.
+
+**Falsely-lit population: empirically zero.** Reconciliation found only two writers in the
+entire fleet ever populate `build_substep_progress` at all — `ka_sangam` and
+`ka_gochara_sweep` — every other `has_substeps=true` writer (ga_dashas, ga_vargas, ga_yoga,
+etc.) has zero rows in that ledger despite real data, meaning they don't use cross-attempt
+resumption and were never at risk from this specific code path. Of the two that do:
+`ka_sangam` is 61/61 substeps on all three charts that have it (1c826d5a, 482012f1,
+cb73cd3d), correctly `lit`. `ka_gochara_sweep` is 303/303 (3 event_classes × 101 years,
+independently verified by direct count against `gochara_resonance_map`) on the canonical
+chart, correctly `lit`; on the operator chart (1c826d5a, 78/303) and a third chart
+(cb73cd3d, 70/303) it is correctly `error` already — the operator-chart correction was made
+manually in this same conversation's immediately-prior session, independent of this
+campaign's code fix, and stands unchanged. **No downstream contamination remediation was
+needed** — this is a clean empirical result, not a skipped step.
+
+**Governance corrections made along the way.** CLAUDE.md's footer (carried into the
+SATYA-DĪPA brief) claimed ŚUDDHA-VĀCA "remains PARTIAL" pending PARISHODHANA PRs #827/#828.
+Both merged 2026-07-28 — the same day as, but before, the SUDDHA-VACA-PHASE-C2DEF-CLOSE
+entry above, which already correctly recorded the 7/7 close. The brief's authoring session
+simply had stale context; corrected at the source in CLAUDE.md §N.8's footer this session.
+Separately, a **branch-hygiene finding**: this campaign's early investigation happened on
+`parishodhana/dark-corpus-remeasure`, a feature branch 39 commits behind `origin/main` (and
+carrying an unrelated migration-number collision, `466_omega8_floor_wiring.sql`, with this
+campaign's first-chosen migration number). The fix was ported via patch to a fresh worktree/
+branch cut directly from `origin/main` and the migration renumbered 466→467 before opening
+the PR — the diverged branch's own unrelated work was left untouched.
+
+```yaml
+session_close:
+  session_id: SATYA-DIPA-CLOSE-2026-07-29
+  close_criteria_met: "Yes for the campaign's core mandate (predicate fixed, D-1.6 preserved
+    and proven fail-then-pass, falsely-lit population enumerated and found empty, freeze
+    exception documented, Earned-Signal Principle codified). Several §7 items PARKED-HONEST
+    (fleet-wide detector sweep scoped not exhaustive; cockpit UI incomplete-state display;
+    durable event register) — none block this close, all explicitly logged, not silently
+    dropped."
+  verification: "No separate Opus Verifier agent was spawned this session; verification was
+    adversarial self-check applied at each claim: the fail-then-pass proof was run live
+    (git stash / restore, not asserted), the full test suite was run to completion (not
+    sampled), drift_detector/schema_validator were run from the correct cwd and their
+    findings individually inspected for attribution to this campaign's own files (none
+    found beyond one now-resolved dangling-pointer HIGH, self-cleared once the report file
+    was written), and the falsely-lit-population claim rests on a direct DB query against
+    build_substep_progress + a cross-check of ka_gochara_sweep's expected total (3 event
+    classes x 101 years) against gochara_resonance_map, not on the writer's own claims."
+  deploy: "Migration 467 applied directly to production DB (asset_throughput_state_check
+    now includes 'incomplete'). PR #870 (satyadipa/noop-completion-fix -> main) opened with
+    auto-merge enabled; required checks (TypeScript, Unit Tests, Secret Scan, Governance
+    Gates) pending/passing at session-close time, monitored to completion. No chart rebuild
+    was performed or needed."
+  product_code_writes_made: "Yes — platform/python-sidecar/pipeline/orchestrator/
+    asset_runner.py (promotion predicate, ~70 lines within the authorized freeze exception);
+    platform/python-sidecar/tests/test_d16_state_write_defect.py (+3 tests, FakeCursor
+    extended); platform/migrations/467_asset_throughput_incomplete_state.sql (new, applied
+    to prod). Docs: ORCHESTRATOR_CONVERGENCE_CLOSE_v1_0.md §7 (new, v1.0->v1.1), CLAUDE.md
+    §N.8 (new, v6.5->v6.6, also corrects the stale SUDDHA-VACA-PARTIAL footer claim),
+    SATYA_DIPA_REPORT_v1_0.md (new)."
+  native_chart_touched: false
+  current_state_updated: true
+  register_dispositions_flipped: "None new — the falsely-lit population came back empty, so
+    there was nothing to reclassify in asset_throughput beyond what this session's own code
+    fix now prevents going forward."
+  followups: "(1) Persist asset.noop_completion / asset.noop_completion_rejected to a
+    durable, queryable register (new table or a Cloud Logging export sink) — the forensic
+    gap this session had to work around. (2) §4.4 secondary P1 lanes carried unchanged from
+    PARKED_FINDINGS_CLOSE_v1_0.md: ka_bhavishya_lekha.py stale domain vocabulary,
+    chart_dashas CLI-only scope-cap sentinel. (3) Cockpit UI display of the new 'incomplete'
+    state (5 TS files with AssetState-style unions not yet including it) — cosmetic,
+    functionally harmless, non-blocking. (4) A full fleet-wide sweep of runner.py/
+    staleness.py/dag_edge_guard.py/kala_derivation_completeness_guard.py/service_probes.py
+    for the same detector-less-PASS defect class was scoped but not completed — natural next
+    SATYA-class wave."
+  next_session_objective: "No committed next session. The four followups above are each
+    independently sizeable candidates for a future authorized wave, prioritized at the
+    native's discretion. drift_detector's ~215 MEDIUM findings (unregistered pre-existing
+    docs in CLAUDE.md/FILE_REGISTRY, none attributable to this session) remain a known,
+    tolerated residual per the project's established quarterly-pass pattern — not this
+    campaign's to clear."
+```
+
+### Next session objective
+
+No committed next session. `lit` can now be trusted for the defect class this campaign targeted;
+the falsely-lit population was found empty, not remediated-because-large. Four follow-ups are
+parked honestly above, none urgent enough to force a same-session continuation.
+
+*End of SATYA-DIPA-CLOSE-2026-07-29 entry.*
+
+---
+
+## SATYA-DIPA-PREMERGE-REBASE-2026-07-29 — PR #870 rebase + migration renumber (mechanical, no scope change)
+
+```yaml
+session_open:
+  session_id: SATYA-DIPA-PREMERGE-REBASE-2026-07-29
+  campaign: "SATYA_DIPA (pre-merge rebase of PR #870, executed under PB's
+    PB-3-GATE-CLOSE-2026-07-29 merge-lock release, per native go-ahead)"
+  may_touch: "satyadipa/noop-completion-fix branch/worktree only: the migration file being
+    renumbered, and the in-repo prose references to its old filename/number"
+  must_not_touch: "asset_runner.py fix logic, WriterBase contract, any other campaign's
+    branch/worktree/PR"
+```
+
+Between this campaign's close above and PR #870 actually merging, an unrelated concurrent campaign
+(PARIPRAŚNA BUILD, PB-3) landed its own `467_pariprashna_canonical_message_parts.sql` on `main`,
+reclaiming migration number 467 a second time (the first reclaim, 466→467, is documented in the
+SATYA-DIPA-CLOSE-2026-07-29 entry above). Pre-merge safety pass for #870 (as part of PB's own
+`PB-3-GATE-CLOSE-2026-07-29` close, merge lock now released): confirmed no other campaign mid-merge,
+rebased `satyadipa/noop-completion-fix` onto `origin/main` @ `139c89c6` (clean, no conflicts),
+renumbered the migration 467→474 (`main`'s actual highest at rebase time was 473), updated the two
+living-doc parenthetical references (`ORCHESTRATOR_CONVERGENCE_CLOSE_v1_0.md`,
+`CURRENT_STATE_v1_0.md`) and added a correction note + updated file-path citations in
+`SATYA_DIPA_REPORT_v1_0.md` (its own §2/§3 narrative of the first renumbering event is retained
+untouched, as history). No logic change to `asset_runner.py` or the fix itself. D-1.6 regression
+re-run on the rebased state: all 15 tests in `test_d16_state_write_defect.py` pass, including the
+two SATYA-DĪPA-specific regression tests.
+
+```yaml
+session_close:
+  session_id: SATYA-DIPA-PREMERGE-REBASE-2026-07-29
+  campaign: SATYA_DIPA
+  close_criteria_met: "Mechanical pre-merge maintenance only — rebase clean, migration renumbered,
+    D-1.6 regression re-verified green (15/15). No scope change to the authorized fix."
+  verification: "D-1.6 regression suite (tests/test_d16_state_write_defect.py) run directly:
+    15 passed. Migration-number collision independently re-checked against origin/main's actual
+    migration directories (platform/migrations/ + platform/supabase/migrations/) before and after
+    renumbering."
+  deploy: "Not yet — this entry documents the pre-merge rebase; the merge itself (and its resulting
+    auto-deploy) is a separate act, reported in the PR #870 merge commit."
+  product_code_writes_made: "No product logic changed — a file rename (467→474) and prose-reference
+    updates only. asset_runner.py and test_d16_state_write_defect.py are unchanged from the
+    already-authorized fix commit (728cd3fc)."
+  native_chart_touched: false
+  current_state_updated: true
+  register_dispositions_flipped: "None."
+  followups: "None new — the four followups already parked in the SATYA-DIPA-CLOSE-2026-07-29
+    entry above stand unchanged."
+  next_session_objective: "None committed. This was a mechanical rebase step within a larger
+    in-progress session (PB-3-GATE-CLOSE-2026-07-29), not a standalone session with its own
+    next-session commitment."
+```
+
+### Next session objective
+
+None committed by this entry — see the standing followups in the SATYA-DIPA-CLOSE-2026-07-29 entry
+above, unchanged.
+
+*End of SATYA-DIPA-PREMERGE-REBASE-2026-07-29 entry.*

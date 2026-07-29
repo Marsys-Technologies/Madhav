@@ -607,21 +607,75 @@ def _run_data_writer(conn, cur, run_id: str, chart_id: str, asset_id: str) -> bo
     if final_state == 'dormant':
         present = _data_rows_present(conn, cur, asset_id, chart_id)
         if present is not None and present > 0:
-            logger.warning(
-                "[orchestrator] NO-OP COMPLETION: asset %s (chart %s, run %s) reported "
-                "0 rows this run but %d data rows are present (resumable-writer skip or "
-                "equivalent). Marking 'lit', not 'dormant' — downstream deps stay unblocked.",
-                asset_id, chart_id, run_id, present,
+            # SATYA-DIPA (asset_runner.py:596-630, authorized freeze exception —
+            # see ORCHESTRATOR_CONVERGENCE_CLOSE_v1_0.md): rows being present is
+            # necessary but not sufficient. A genuinely partial substep plan can
+            # also leave rows present (from whatever substeps DID commit) while
+            # substeps remain — the same "unearned lit" shape as D-1.6 itself.
+            # For writers with a real substep plan (has_substeps=true), require
+            # the writer's OWN plan_substeps(ctx) to confirm nothing remains
+            # before promoting. has_substeps=false/NULL (light writers, no real
+            # plan) skip this check entirely — behaves exactly as before.
+            cur.execute(
+                "SELECT has_substeps FROM asset_registry WHERE asset_id = %s",
+                (asset_id,),
             )
-            emit_event({
-                "type": "asset.noop_completion",
-                "chart_id": chart_id,
-                "asset_id": asset_id,
-                "run_id": run_id,
-                "rows_present": present,
-            })
-            final_state = 'lit'
-            rows_written = present
+            hs_row = cur.fetchone()
+            has_substeps = bool((hs_row or {}).get("has_substeps")) if isinstance(hs_row, dict) else False
+
+            plan_complete = True
+            remaining_count = 0
+            if has_substeps:
+                cur.execute("SAVEPOINT noop_completeness_probe")
+                try:
+                    remaining = writer.plan_substeps(ctx)
+                    remaining_count = len(remaining)
+                    plan_complete = remaining_count == 0
+                    cur.execute("RELEASE SAVEPOINT noop_completeness_probe")
+                except Exception as exc:
+                    cur.execute("ROLLBACK TO SAVEPOINT noop_completeness_probe")
+                    logger.warning(
+                        "[orchestrator] substep-completeness re-probe failed for %s "
+                        "(chart %s): %s — conservatively treating plan as incomplete",
+                        asset_id, chart_id, exc,
+                    )
+                    plan_complete = False
+
+            if plan_complete:
+                logger.warning(
+                    "[orchestrator] NO-OP COMPLETION: asset %s (chart %s, run %s) reported "
+                    "0 rows this run but %d data rows are present (resumable-writer skip or "
+                    "equivalent), and its substep plan confirms nothing remains. Marking "
+                    "'lit', not 'dormant' — downstream deps stay unblocked.",
+                    asset_id, chart_id, run_id, present,
+                )
+                emit_event({
+                    "type": "asset.noop_completion",
+                    "chart_id": chart_id,
+                    "asset_id": asset_id,
+                    "run_id": run_id,
+                    "rows_present": present,
+                })
+                final_state = 'lit'
+                rows_written = present
+            else:
+                logger.warning(
+                    "[orchestrator] NO-OP COMPLETION REJECTED: asset %s (chart %s, run %s) "
+                    "reported 0 rows this run; %d data rows are present but the writer's own "
+                    "substep plan reports %d substep(s) still remaining. Marking 'incomplete', "
+                    "NOT 'lit' — downstream deps stay blocked until the plan actually finishes.",
+                    asset_id, chart_id, run_id, present, remaining_count,
+                )
+                emit_event({
+                    "type": "asset.noop_completion_rejected",
+                    "chart_id": chart_id,
+                    "asset_id": asset_id,
+                    "run_id": run_id,
+                    "rows_present": present,
+                    "substeps_remaining": remaining_count,
+                })
+                final_state = 'incomplete'
+                rows_written = present
 
     if target_floor and rows_written < target_floor:
         logger.warning(

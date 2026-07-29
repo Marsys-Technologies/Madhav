@@ -1,7 +1,7 @@
 ---
 artifact: ORCHESTRATOR_CONVERGENCE_CLOSE_v1_0.md
 canonical_id: ORCHESTRATOR_CONVERGENCE_CLOSE
-version: 1.0
+version: 1.1
 status: CURRENT
 authored_by: Claude Code (Antigravity IDE) 2026-06-12
 seals: CLAUDECODE_BRIEF_ORCHESTRATOR_CONVERGENCE_v1_0.md
@@ -11,6 +11,12 @@ goal: >
   drives L1 Gaṇita assets end-to-end via a FROZEN, metadata-driven, sub-step-capable writer
   contract. Records the frozen contract, the per-phase deliverables, and the L2-readiness
   conformance checklist every future-layer writer brief embeds.
+changelog: >
+  v1.1 (2026-07-29, SATYA-DĪPA): added §7, the freeze's first authorized, dated exception —
+  the no-op-completion promotion predicate in asset_runner.py (`_run_data_writer`) now verifies
+  substep-plan completeness (has_substeps=true writers only) before reclassifying a 0-rows
+  'dormant' result to 'lit'. See SATYA_DIPA_REPORT_v1_0.md for full detail. The freeze itself
+  (§2) is otherwise untouched — no writer contract, WriterBase signature, or control-flow change.
 ---
 
 # Orchestrator Convergence — Close v1.0
@@ -128,3 +134,46 @@ A writer is orchestrator-native iff **all** hold:
   close — both at the project's established exit-3 known-residual baseline, no NEW arc-induced
   hard failure. This booking matches the drift-detector's existing "registration/fingerprint
   pending → quarterly pass" pattern.
+
+## §7 — Authorized freeze exceptions (dated log)
+
+The freeze (§2) is absolute except where explicitly, narrowly authorized and logged here. Any
+orchestrator change NOT logged in this section is a freeze violation, full stop.
+
+### 7.1 — SATYA-DĪPA no-op-completion completeness check (2026-07-29)
+
+**Authorization:** `SATYA_DIPA_BRIEF_v1_0.md` §9.1, one narrow freeze exception: "the promotion
+predicate in `asset_runner.py:596–630` and nothing else in the orchestrator."
+
+**Defect:** the D-1.6 no-op-completion rescue (`_run_data_writer`, added to fix run 71b260c7 —
+see §6 residual history and `tests/test_d16_state_write_defect.py`) reclassified a 0-rows-this-run
+'dormant' result to 'lit' whenever the asset's target table had ANY rows present, without checking
+whether the writer's substep plan had actually finished. A resumable writer legitimately reporting
+0 rows because everything was already committed (the true D-1.6 shape) and a resumable writer
+genuinely mid-build with substeps still remaining were indistinguishable to the rescue — both have
+"rows present, 0 rows this run." The latter is the same "unearned lit" defect class as D-1.6 itself,
+capable of silently unblocking downstream dependents on an incomplete build.
+
+**Fix (asset_runner.py:596–630 only):** for `asset_registry.has_substeps = true` writers, before
+promoting, the rescue now re-invokes the writer's own `plan_substeps(ctx)` (SAVEPOINT-isolated,
+same pattern as `_data_rows_present`) and requires it to report zero remaining substeps. Writers
+with `has_substeps` false/NULL (light writers, no real substep plan) are unaffected — the check is
+skipped entirely, preserving prior behavior exactly (`SATYA_DIPA_BRIEF_v1_0.md` §4.1: "An asset
+with no substep plan defined behaves as before"). When the plan is genuinely incomplete, the asset
+is marked **`incomplete`** (migration 474: new value in `asset_throughput_state_check`) — not
+`lit` (would falsely satisfy `runner.py`'s and `staleness.py`'s `state IN ('lit','service_ok')`
+dependency-satisfied allowlists) and not `dormant` (data is not absent). A distinct event,
+`asset.noop_completion_rejected`, is emitted alongside the existing `asset.noop_completion`.
+
+**Contract impact:** none. `WriterBase`, `plan_substeps`/`run_substep`, `ctx`, `WriterResult`, and
+`_drive_substeps`'s signature are all unchanged. `plan_substeps(ctx)` is a read-only planning call
+by contract; re-invoking it once, immediately after the same round's `_drive_substeps` call
+completed (same fingerprint, no intervening state change), is safe and does not double-execute any
+`run_substep`.
+
+**Regression proof:** `tests/test_d16_state_write_defect.py` — `test_satyadipa_d16_preserved_through_completeness_check`
+(D-1.6's exact shape, run THROUGH the new check, still promotes to 'lit') and
+`test_satyadipa_partial_substep_plan_with_rows_present_not_lit` (new: genuinely-incomplete plan
+with data present → 'incomplete', not 'lit'; proven to fail against pre-fix code, pass against
+fixed code) and `test_satyadipa_light_writer_no_substep_plan_behaves_as_before` (has_substeps=false
+→ unchanged). Full detail: `SATYA_DIPA_REPORT_v1_0.md`.

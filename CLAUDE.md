@@ -1,6 +1,6 @@
 ---
 artifact: CLAUDE.md
-version: "6.5"
+version: "6.6"
 status: CURRENT
 role: >
   Root governance surface. Master orientation document for every Claude session on the MARSYS-JIS
@@ -287,14 +287,52 @@ report (agreement vs. matching_class); a fallback value chosen for how it *reads
 being the codebase's own established neutral convention; a model-policy allowlist that contradicts
 its own docstring.
 
+### §N.8 — Earned-Signal Principle ([[the SATYA-DIPA no-op-completion defect]] · SATYA-DĪPA campaign, 2026-07-29)
+
+Every status, grade, or PASS must be computed by a detector that measures the specific claim it
+asserts; a signal without such a detector is null, not green. §N.7 item 4 said this for narration
+verification flags specifically; SATYA-DĪPA found the same defect class one layer down, in the
+build system's own success signal, and generalizes it here across all three campaigns it has now
+been confirmed in.
+
+**Confirmed instances:**
+
+1. **Ṣaḍbala selector regression (ŚUDDHA-VĀCA)** — a serving-layer selector picked the wrong
+   strength column; nothing detected the mismatch because no test compared the served value against
+   the source-of-truth computation.
+2. **Two `bo_pramana_mapa` flags (ŚUDDHA-VĀCA)** — verification flags that could be set true without
+   the check they claimed to represent ever running (the direct precedent for §N.7 item 4).
+3. **The PB-2 byte-equality gate** — a "byte-identical" claim with no byte comparison behind it.
+4. **The orchestrator no-op-completion promotion predicate (SATYA-DĪPA)** — `asset_throughput.state
+   = 'lit'` asserted "this asset's build is complete," but the detector behind it only checked "rows
+   present," never "the substep plan finished." A genuinely partial build with some earlier-committed
+   data present could satisfy the proxy without satisfying the claim — the same defect class as
+   D-1.6 itself, one layer deeper (D-1.6 was "the rescue doesn't exist"; this was "the rescue exists
+   but doesn't check the right thing"). Fixed 2026-07-29: the predicate now asks the substep-plan-
+   completeness question directly, for writers that have a real plan to be complete or incomplete
+   about (`00_ARCHITECTURE/ORCHESTRATOR_CONVERGENCE_CLOSE_v1_0.md` §7.1; `SATYA_DIPA_REPORT_v1_0.md`).
+
+**What to do when auditing a status/grade/PASS surface:** ask "what specifically does this signal
+claim, and what code path would have to run — and fail — for the signal to correctly read false?"
+If no such code path exists, or it checks a proxy rather than the claim, the signal is null. "It's
+usually true" or "nothing has broken yet" is not a substitute for a real detector.
+
 ---
 
-*End of CLAUDE.md v6.5 (2026-07-28, ŚUDDHA-VĀCA Phase C/D/E/F session) — new §N.7 Narration Fidelity
-Principle, codifying the discipline enforced by the fact-category-pin-lint CI guard and five
-independently-verified writer fixes (bo_laksana, sudarshana_emitter, l3_convergence, mi_darshana,
-ph_nimitta/engine.py) merged this wave. Two of the seven original P0 lanes (lane:serve-shadbala,
-lane:ga-tajaka) remain PARKED on PARISHODHANA PRs #827/#828 — see `SUDDHA_VACA_REPORT_v1_0.md` for
-the full disposition table. Prior: v6.4 (2026-07-19, Cowork retrieval-strategy session) — §I B.11
+*End of CLAUDE.md v6.6 (2026-07-29, SATYA-DĪPA campaign) — new §N.8 Earned-Signal Principle,
+generalizing §N.7 item 4's "a flag needs a real detector or it's null" doctrine to the build layer:
+the orchestrator's no-op-completion promotion predicate asserted substep-plan completeness while
+only ever checking row presence, the same defect class as D-1.6 one layer deeper. Fixed via the one
+authorized freeze exception in `asset_runner.py` (see `ORCHESTRATOR_CONVERGENCE_CLOSE_v1_0.md` §7.1
+and `SATYA_DIPA_REPORT_v1_0.md`). Also corrects a stale carry-forward: §N.7's own footer (v6.5) said
+"two P0 lanes remain PARKED on PARISHODHANA PRs #827/#828" — both merged 2026-07-28 and their lanes
+(lane:serve-shadbala, lane:ga-tajaka) released the same day, making ŚUDDHA-VĀCA fully CLOSED (7/7),
+not PARTIAL; this was independently re-verified live during SATYA-DIPA Phase 0 (serve-shadbala fix
+confirmed still correct in production on the canonical chart). Prior: v6.5 (2026-07-28, ŚUDDHA-VĀCA
+Phase C/D/E/F session) — new §N.7 Narration Fidelity Principle, codifying the discipline enforced by
+the fact-category-pin-lint CI guard and five independently-verified writer fixes (bo_laksana,
+sudarshana_emitter, l3_convergence, mi_darshana, ph_nimitta/engine.py) merged this wave. Prior: v6.4
+(2026-07-19, Cowork retrieval-strategy session) — §I B.11
 amended with the RS-4 proportionality carve-out (native-authorized): B.11 scoped to interpretive
 queries; factual lookups satisfy it via frame check + escalation valve. Mirrors the in-place
 amendments to `PROJECT_ARCHITECTURE_v2_2.md` §B.11/§H.4; doctrine source `RETRIEVAL_STRATEGY_v1_0.md`
