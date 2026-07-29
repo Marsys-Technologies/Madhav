@@ -36,7 +36,9 @@ export const queryLifeEventsCapability: CapabilityDescriptor = {
     'Query the native\'s user-authored Life Event Log (LEL) for a chart — the observed',
     'life events used by the L5 Mīmāṃsā calibration loop. Reads the chart-scoped',
     'life_events table (NOT MSR signals). Returns event_id, event_date, description,',
-    'domain, category, significance, event_type, source, and outcome_observed.',
+    'domain, category, significance, event_type, source, outcome_observed, shape',
+    '(point|interval|chain), and interval_start/interval_end (LEL schema v2, populated only',
+    'for shape=interval rows).',
     'Filters: category, domain, significance, start_date, end_date, query (case-insensitive',
     'substring text search over description/domain/category/event_type/source_citation —',
     'multi-word queries require every word to match, AND semantics). Paginate with',
@@ -173,10 +175,18 @@ export const queryLifeEventsCapability: CapabilityDescriptor = {
     // node-postgres IST-midnight → UTC off-by-one, e.g. a 1990-05-14 event → "1990-05-13...Z").
     // WP-B1 F-LEL-NOOP: OFFSET now wired to `offset` — previously accepted+forwarded but
     // never applied, so every page (regardless of offset) returned the same first rows.
+    // ṢAḌ-DARŚANA W1 item 10: additive SELECT of the LEL schema v2 (migration 457) shape
+    // columns — shape/interval_start/interval_end — so a downstream per-chapter pinning join
+    // (kala_views/story.ts) can do date-RANGE overlap instead of point-only event_date
+    // matching. Pure passthrough of already-stored L1 Facts Layer content — no new
+    // computation, no interpretation. NOT previously selected here; this was the gap
+    // story.ts's own header comment documented honestly before this fix.
     const eventsSql = `
       SELECT event_id, to_char(event_date, 'YYYY-MM-DD') AS event_date,
              category, domain, description, significance,
-             event_type, source_citation, source_section, outcome_observed
+             event_type, source_citation, source_section, outcome_observed,
+             shape, to_char(interval_start, 'YYYY-MM-DD') AS interval_start,
+             to_char(interval_end, 'YYYY-MM-DD') AS interval_end
       FROM life_events
       WHERE ${where}
       ORDER BY event_date ASC, event_id ASC

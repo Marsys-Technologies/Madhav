@@ -51,10 +51,43 @@
  * WHAT THIS FILE IS NOT (W0 scope discipline):
  *   - It does NOT implement Chara-daśā second-voice narration (v1 §4.2) — W3.
  *   - It does NOT implement punctuation-mark overlay (returns, eclipses-on-natal) — W3.
- *   - It does NOT implement per-chapter LEL pinning + retrodiction fit (item 10) — W1; and
- *     `query_life_arc.ts`'s `include_lel_events` param is currently a no-op (verified: the
- *     capability's SQL never joins an LEL table despite the param name) — reported honestly
- *     via `honest_empty` coverage below, not silently assumed working.
+ *
+ * ══════════════════════════════════════════════════════════════════════════════════════
+ * §W1 item 10 — PER-CHAPTER LEL PINNING + RETRODICTION FIT (SHAD_DARSHANA_BRIEF_v2_0.md
+ * §3 W1, v1 §7.10) — implemented in THIS facade, not upstream.
+ *
+ * `query_life_arc.ts`'s `include_lel_events` param remains a documented no-op (verified: its
+ * SQL never joins an LEL table despite the param name) — this facade does NOT route through
+ * it. Instead `fetchAllChartLelEvents` below calls the L5 `marsys://tool/L5/lel_query`
+ * registry capability DIRECTLY (the same capability `lel_query`/`mimamsa_lel_query` serve),
+ * paginated to exhaustion, and `pinLelEventsToChapter` JOINS the results onto each STORY
+ * chapter by date-range overlap — a JOIN over EXISTING LEL data, computing NOTHING new about
+ * the events themselves. The retrodiction fit is a deliberately modest, defensible signal
+ * (lexical theme-keyword overlap, §N.7 "an honest 'insufficient data' beats an invented
+ * confidence score") — NOT the calibrated, weighted, cohort-normalized fit W2's `mi_bhara`
+ * will eventually own (stage 9, brief §3 W2).
+ *
+ * ── THE CIRCULARITY GUARD (brief §7 rail; HARD, non-negotiable campaign gate) ───────────
+ * "The field never reads the LEL." This facade is the ONLY consumer of LEL data added in
+ * this lane, and its LEL read serves ONE purpose: an honest per-chapter DISPLAY join on this
+ * response. The pinned events / retrodiction fit computed here:
+ *   - are NOT written to any table;
+ *   - are NOT read by any other writer or capability (nothing downstream of THIS response
+ *     consumes them — they terminate at this HTTP response);
+ *   - never flow into `dedupParvas`, `_assign_quality` (upstream `ka_jivana_parva`'s own
+ *     quality/theme computation, already complete before this file ever sees a parva row),
+ *     `buildArgumentReading`'s thesis/verdict, or any prediction/score/hazard value served
+ *     anywhere else in the estate.
+ * The temporal-field-adjacent computations that exist TODAY (`ka_jivana_parva`'s
+ * quality/theme assignment, `ka_gochara_sweep`'s windows) have zero code path to `life_events`
+ * — see `CIRCULARITY_GUARD_lel_invariance` in `platform/python-sidecar/tests/l3/
+ * test_ka_jivana_parva_circularity_guard.py`, the CI invariance test this item ships with
+ * (brief §3 Gate W1: "the Circularity-Guard LEL-invariance test ships with item 10 and is
+ * green"). That test names its proxy honestly (`ka_jivana_parva` — the closest currently-
+ * computed "temporal field" output, since the real `ka_kshetra` hazard pipeline doesn't
+ * exist until W2) and documents that it must be re-pointed at `ka_kshetra`/`mi_bhara` once
+ * W2 lands.
+ * ══════════════════════════════════════════════════════════════════════════════════════
  */
 
 import { z } from 'zod'
@@ -83,7 +116,7 @@ import { finalizeMcpBudget, type TrimmableSection } from '../../lib/response_bud
 // Reuses the SAME registry-capability caller the priority/explain lane already factored
 // out (kala_views/shared.ts) rather than adding a fourth local copy — see that file's
 // header for why this is the deliberately-kept-local pattern for this directory.
-import { callKalaRegistryCap, unwrapKalaPayload } from './shared.js'
+import { callKalaRegistryCap, unwrapKalaPayload, round3 } from './shared.js'
 
 // ── Input schema ─────────────────────────────────────────────────────────────────────
 
@@ -141,6 +174,198 @@ export interface StoryChapter {
   temporal_position: 'past' | 'current' | 'future'
   collapsed_duplicate_count: number
   tri_plane: TriPlanePointers
+  // §W1 item 10 — per-chapter LEL pinning + retrodiction fit (see file header's
+  // CIRCULARITY GUARD note: this data terminates at this response, never flows onward).
+  lel_events_pinned: PinnedLelEvent[]
+  lel_pinned_count: number
+  retrodiction_fit: ChapterRetrodictionFit
+}
+
+// ── §W1 item 10 — LEL pinning + retrodiction fit ────────────────────────────────────────
+
+/** Raw shape served by the `marsys://tool/L5/lel_query` registry capability
+ *  (query_life_events.ts). `shape`/`interval_start`/`interval_end` are LEL schema v2
+ *  (migration 457) columns this lane additively wired into that capability's SELECT (were
+ *  previously stored but never served) — populated only for shape='interval' rows. */
+interface RawLelEvent {
+  event_id: string
+  event_date: string
+  category: string
+  domain: string
+  description: string
+  significance: string | null
+  event_type: string
+  source_citation: string
+  source_section: string | null
+  outcome_observed: boolean | null
+  shape?: 'point' | 'interval' | 'chain'
+  interval_start?: string | null
+  interval_end?: string | null
+}
+
+interface LelQueryPayload {
+  events?: RawLelEvent[]
+  has_more?: boolean
+  total_matching?: number
+}
+
+export interface PinnedLelEvent {
+  event_id: string
+  event_date: string
+  category: string
+  domain: string
+  event_type: string
+  description: string
+  outcome_observed: boolean | null
+  source_citation: string
+  /** Whether this event's category/domain/event_type/description shares a literal word
+   *  with the chapter's theme_keywords — the retrodiction fit's per-event unit. */
+  theme_aligned: boolean
+}
+
+export interface ChapterRetrodictionFit {
+  pinned_event_count: number
+  aligned_event_count: number
+  aligned_ratio: number | null
+  method: 'lexical_theme_keyword_match'
+  note: string
+}
+
+const LEL_PAGE_LIMIT = 50
+// Safety cap on pagination — the native's corpus is ~63 rows (well under one page-and-a-
+// half); 10 pages (≤500 rows) is generous headroom against a misbehaving `has_more` flag
+// ever causing an unbounded loop, never a claim about expected corpus size.
+const LEL_MAX_PAGES = 10
+
+/** Fetches the WHOLE LEL corpus for a chart via the L5 `lel_query` registry capability,
+ *  paginated to exhaustion via limit+offset (this facade calls the capability directly, so
+ *  — unlike the MCP-level `lel_query` tool's date-cursor-only pagination documented in
+ *  `scripts/audit/t0_retrodiction/lib/lel.ts` — server-side `offset` is honored). Never
+ *  throws: LEL pinning is additive to STORY, not load-bearing — an LEL outage must not take
+ *  the whole tool down. A fetch failure is reported honestly via the returned `fetchError`,
+ *  surfaced per-chapter in `retrodiction_fit.note` and in this response's coverage block —
+ *  never silently swallowed (B.10). */
+async function fetchAllChartLelEvents(
+  chartId: string,
+  principal: Principal,
+): Promise<{ events: RawLelEvent[]; fetchError: string | null }> {
+  const events: RawLelEvent[] = []
+  let offset = 0
+  try {
+    for (let page = 0; page < LEL_MAX_PAGES; page++) {
+      const content = await callKalaRegistryCap(
+        'marsys://tool/L5/lel_query',
+        { chart_id: chartId, limit: LEL_PAGE_LIMIT, offset },
+        principal,
+      )
+      const inner = unwrapKalaPayload(content) as LelQueryPayload
+      const pageEvents = Array.isArray(inner.events) ? inner.events : []
+      events.push(...pageEvents)
+      if (pageEvents.length === 0 || !inner.has_more) break
+      offset += pageEvents.length
+    }
+    return { events, fetchError: null }
+  } catch (err) {
+    return { events, fetchError: String(err) }
+  }
+}
+
+/** An LEL event's effective date span. Interval-shaped events (LEL schema v2) use their
+ *  real [interval_start, interval_end]; every other shape (point/chain, or an interval row
+ *  with a null bound) collapses to a single-day span at event_date — never fabricated wider
+ *  bounds for a point event. */
+function lelEventSpan(event: RawLelEvent): { start: string; end: string } {
+  if (event.shape === 'interval' && event.interval_start && event.interval_end) {
+    return { start: event.interval_start, end: event.interval_end }
+  }
+  return { start: event.event_date, end: event.event_date }
+}
+
+/** A chapter's date span as ISO 'YYYY-MM-DD' boundary strings (which compare correctly
+ *  lexically). `end_year === null` is an ongoing/open-ended chapter — bounded at a sentinel
+ *  far-future date for the overlap comparison, never a fabricated real close date. */
+function chapterDateSpan(startYear: number, endYear: number | null): { start: string; end: string } {
+  return { start: `${startYear}-01-01`, end: endYear !== null ? `${endYear}-12-31` : '9999-12-31' }
+}
+
+/** Per-chapter LEL pinning (date-range JOIN — no new computation about the events
+ *  themselves) + the modest lexical retrodiction-fit signal (§N.7: an honest
+ *  "insufficient_data" beats an invented confidence score). CIRCULARITY GUARD: this
+ *  function's output is consumed ONLY by this response's `chapters[].lel_events_pinned` /
+ *  `retrodiction_fit` fields — see file header. */
+export function pinLelEventsToChapter(
+  startYear: number,
+  endYear: number | null,
+  themeKeywords: string[],
+  events: RawLelEvent[],
+  lelFetchError: string | null,
+): { pinned: PinnedLelEvent[]; fit: ChapterRetrodictionFit } {
+  const span = chapterDateSpan(startYear, endYear)
+  const themeLower = themeKeywords.map((k) => k.toLowerCase()).filter((k) => k.length > 0)
+
+  const pinned: PinnedLelEvent[] = []
+  for (const ev of events) {
+    const evSpan = lelEventSpan(ev)
+    const overlaps = evSpan.start <= span.end && evSpan.end >= span.start
+    if (!overlaps) continue
+    const searchable = `${ev.category} ${ev.domain} ${ev.event_type} ${ev.description}`.toLowerCase()
+    const aligned = themeLower.some((kw) => searchable.includes(kw))
+    pinned.push({
+      event_id: ev.event_id,
+      event_date: ev.event_date,
+      category: ev.category,
+      domain: ev.domain,
+      event_type: ev.event_type,
+      description: ev.description.length > 220 ? `${ev.description.slice(0, 217)}...` : ev.description,
+      outcome_observed: ev.outcome_observed ?? null,
+      source_citation: ev.source_citation,
+      theme_aligned: aligned,
+    })
+  }
+
+  const pinnedCount = pinned.length
+  const alignedCount = pinned.filter((p) => p.theme_aligned).length
+
+  if (lelFetchError) {
+    return {
+      pinned,
+      fit: {
+        pinned_event_count: pinnedCount,
+        aligned_event_count: alignedCount,
+        aligned_ratio: null,
+        method: 'lexical_theme_keyword_match',
+        note: `lel_fetch_failed — could not retrieve (or only partially retrieved) LEL events for this chart: ${lelFetchError}. Retrodiction fit not reliably computed; treat as honest-unavailable, not zero.`,
+      },
+    }
+  }
+
+  if (pinnedCount === 0) {
+    return {
+      pinned,
+      fit: {
+        pinned_event_count: 0,
+        aligned_event_count: 0,
+        aligned_ratio: null,
+        method: 'lexical_theme_keyword_match',
+        note: 'insufficient_data — no native-logged LEL events fall within this chapter\'s date span (an honest empty, not a claim of a quiet period).',
+      },
+    }
+  }
+
+  return {
+    pinned,
+    fit: {
+      pinned_event_count: pinnedCount,
+      aligned_event_count: alignedCount,
+      aligned_ratio: round3(alignedCount / pinnedCount),
+      method: 'lexical_theme_keyword_match',
+      note: `${alignedCount} of ${pinnedCount} pinned LEL event(s) share a literal word with this chapter's ` +
+        `theme_keywords (${themeKeywords.join(', ') || 'none recorded'}) in their category/domain/event_type/` +
+        `description text. A simple lexical corroboration signal, NOT a calibrated probability or model score — ` +
+        `the weighted, cohort-normalized retrodiction fit is W2's mi_bhara job (brief §3 W2 stage 9).` +
+        `${pinnedCount < 3 ? ' Sample is small (<3 events) — read this ratio as indicative only.' : ''}`,
+    },
+  }
 }
 
 export interface DedupCollapse {
@@ -163,7 +388,9 @@ export interface DedupReport {
  *  surviving row's chapter_level from the span-nesting rule (the sibling with the LARGEST
  *  span for a shared start_year is the mahādaśā; any other sibling sharing that start_year
  *  is the antardaśā self-period). Deterministic, no fabrication — every collapse recorded. */
-export function dedupParvas(rows: RawParva[]): { chapters: Omit<StoryChapter, 'tri_plane' | 'temporal_position'>[]; report: DedupReport } {
+type DedupedChapter = Omit<StoryChapter, 'tri_plane' | 'temporal_position' | 'lel_events_pinned' | 'lel_pinned_count' | 'retrodiction_fit'>
+
+export function dedupParvas(rows: RawParva[]): { chapters: DedupedChapter[]; report: DedupReport } {
   const exactGroups = new Map<string, RawParva[]>()
   for (const row of rows) {
     const key = `${row.dasha_planet}|${row.start_year}|${row.end_year ?? 'null'}`
@@ -298,14 +525,20 @@ function buildArgumentReading(chapters: StoryChapter[], nowYear: number): Argume
     ? { statement: `The ${current.dasha_planet} chapter is ${current.parva_quality}${future[0] ? `; the next chapter (${future[0].dasha_planet}, from ${future[0].start_year}) follows` : ''}.`, tier: 'structural_prior' as const }
     : { statement: 'No current chapter resolvable from the served life-arc.', tier: 'unresolved' as const }
 
-  // No natural resolution horizon is computed at this facade depth (per-chapter LEL
-  // retrodiction fit, item 10, is W1) — an honestly absent falsifier, never invented.
+  // No natural resolution horizon is computed at this facade's argument-reading depth —
+  // the per-chapter retrodiction_fit (item 10, wired below) is a per-chapter lexical
+  // corroboration signal, not a whole-story falsifier condition — an honestly absent
+  // falsifier here, never invented.
   const falsifier = null
 
   return { thesis, evidence, dissent: [], verdict, falsifier }
 }
 
-function buildCoverage(dedupReport: DedupReport): KalaCoverageEntry[] {
+function buildCoverage(
+  dedupReport: DedupReport,
+  lelEventTotal: number,
+  lelFetchError: string | null,
+): KalaCoverageEntry[] {
   const coverage: KalaCoverageEntry[] = [
     computedCoverage('dasha_chapter_hierarchy'),
     computedCoverage('parva_dedup_by_span_and_level'),
@@ -316,12 +549,22 @@ function buildCoverage(dedupReport: DedupReport): KalaCoverageEntry[] {
       `${dedupReport.collapses.length} exact-duplicate span group(s) collapsed at serving — see dedup_report; kala_jivana_parva itself still carries the duplicate rows (writer-level root cause out of this facade's scope).`,
     ))
   }
-  coverage.push(honestEmptyCoverage(
-    'lel_pinning_per_chapter',
-    'query_life_arc\'s include_lel_events param does not currently join LEL rows into the ' +
-    'response (verified against live data 2026-07-29) — per-chapter LEL evidence + ' +
-    'retrodiction fit (item 10, W1) is not available to this facade yet.',
-  ))
+  // §W1 item 10: per-chapter LEL pinning + retrodiction fit — now wired (see file header).
+  if (lelFetchError) {
+    coverage.push(honestEmptyCoverage(
+      'lel_pinning_per_chapter',
+      `LEL fetch failed against marsys://tool/L5/lel_query: ${lelFetchError}. Every chapter's ` +
+      'retrodiction_fit.note reports this same failure honestly rather than a silent zero.',
+    ))
+  } else if (lelEventTotal === 0) {
+    coverage.push(honestEmptyCoverage(
+      'lel_pinning_per_chapter',
+      'The LEL fetch succeeded but returned zero events for this chart — no life events are ' +
+      'logged for this native/chart, so every chapter honestly pins zero events.',
+    ))
+  } else {
+    coverage.push(computedCoverage('lel_pinning_per_chapter'))
+  }
   coverage.push(notInCorpusCoverage(
     'chara_dasha_second_voice',
     'Chara-daśā narrative overlay (v1 §4.2, item 31-adjacent) not yet joined; STORY currently serves the Vimśottarī spine only.',
@@ -363,14 +606,27 @@ export async function handleKalaStoryGet(
 
   const { chapters: dedupedRaw, report: dedupReport } = dedupParvas(rawParvas)
 
+  // §W1 item 10 — fetch the WHOLE LEL corpus once (not per-chapter — one bounded fetch,
+  // bucketed client-side), then pin per chapter by date-range overlap. See file header's
+  // CIRCULARITY GUARD note.
+  const { events: lelEvents, fetchError: lelFetchError } = await fetchAllChartLelEvents(input.chart_id, principal)
+
   const nowYear = new Date().getUTCFullYear()
   const chapters: StoryChapter[] = dedupedRaw.map((c) => {
     const position = temporalPosition(c.start_year, c.end_year, nowYear)
-    return { ...c, temporal_position: position, tri_plane: chapterTriPlane(position, c.dasha_planet) }
+    const { pinned, fit } = pinLelEventsToChapter(c.start_year, c.end_year, c.theme_keywords, lelEvents, lelFetchError)
+    return {
+      ...c,
+      temporal_position: position,
+      tri_plane: chapterTriPlane(position, c.dasha_planet),
+      lel_events_pinned: pinned,
+      lel_pinned_count: pinned.length,
+      retrodiction_fit: fit,
+    }
   })
 
   const reading = buildArgumentReading(chapters, nowYear)
-  const coverage = buildCoverage(dedupReport)
+  const coverage = buildCoverage(dedupReport, lelEvents.length, lelFetchError)
   const composed = composeArgument(reading)
   const questionFrame: QuestionFrame | null = input.question_frame ?? null
 
@@ -453,9 +709,14 @@ export function registerKalaStoryTool(server: McpServer, principal: Principal): 
     'interpretation, prediction, and intervention (kala_elect_get) planes wired on real ' +
     'data, not stubs (item 43). Fixes the source table\'s known parva-duplication defect ' +
     'at serving (dedup by exact span + daśā level; see this response\'s dedup_report) — ' +
-    'the source kala_jivana_parva table itself is unchanged. W0 depth: Chara-daśā second-' +
-    'voice narration, punctuation-mark overlay, and per-chapter LEL pinning are not yet ' +
-    'wired — reported honestly via this response\'s coverage block.',
+    'the source kala_jivana_parva table itself is unchanged. Each chapter also carries ' +
+    'per-chapter LEL pinning + a modest lexical retrodiction_fit (item 10): native-logged ' +
+    'life events that fall within the chapter\'s date span, plus how many of them share a ' +
+    'literal theme_keyword — an honest corroboration signal, not a calibrated score (that\'s ' +
+    'W2\'s mi_bhara job). CIRCULARITY GUARD: this LEL read terminates at this response — it ' +
+    'never feeds any prediction, score, or hazard value served elsewhere. W0 depth: Chara-' +
+    'daśā second-voice narration and punctuation-mark overlay are not yet wired — reported ' +
+    'honestly via this response\'s coverage block.',
     KalaStoryInputShape,
     async (args) => {
       const parsed = args as KalaStoryInput
