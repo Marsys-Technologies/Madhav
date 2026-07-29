@@ -14,7 +14,7 @@ DIRTY=$(git status --porcelain | wc -l | tr -d ' ')
 # 2. DB proxy
 if ps aux | grep -q "[c]loud-sql-proxy"; then
   echo "OK: cloud-sql-proxy running"
-  PGPASSWORD="aYtv6SN5TwRBShzHfxN4Qz_ccW3a49qnCAA2L-VF" psql -h 127.0.0.1 -p 5433 -U amjis_app -d amjis -c "SELECT 1;" >/dev/null 2>&1 && echo "OK: DB reachable" || echo "WARN: DB not reachable"
+  PGPASSWORD="${PGPASSWORD:?}" psql -h 127.0.0.1 -p 5433 -U amjis_app -d amjis -c "SELECT 1;" >/dev/null 2>&1 && echo "OK: DB reachable" || echo "WARN: DB not reachable"
 else
   echo "WARN: cloud-sql-proxy not running — start with: bash platform/scripts/start_db_proxy.sh &"
 fi
