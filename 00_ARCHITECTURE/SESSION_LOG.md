@@ -34656,6 +34656,17 @@ parked honestly above, none urgent enough to force a same-session continuation.
 
 ## SATYA-DIPA-PREMERGE-REBASE-2026-07-29 — PR #870 rebase + migration renumber (mechanical, no scope change)
 
+```yaml
+session_open:
+  session_id: SATYA-DIPA-PREMERGE-REBASE-2026-07-29
+  campaign: "SATYA_DIPA (pre-merge rebase of PR #870, executed under PB's
+    PB-3-GATE-CLOSE-2026-07-29 merge-lock release, per native go-ahead)"
+  may_touch: "satyadipa/noop-completion-fix branch/worktree only: the migration file being
+    renumbered, and the in-repo prose references to its old filename/number"
+  must_not_touch: "asset_runner.py fix logic, WriterBase contract, any other campaign's
+    branch/worktree/PR"
+```
+
 Between this campaign's close above and PR #870 actually merging, an unrelated concurrent campaign
 (PARIPRAŚNA BUILD, PB-3) landed its own `467_pariprashna_canonical_message_parts.sql` on `main`,
 reclaiming migration number 467 a second time (the first reclaim, 466→467, is documented in the
@@ -34667,6 +34678,37 @@ living-doc parenthetical references (`ORCHESTRATOR_CONVERGENCE_CLOSE_v1_0.md`,
 `CURRENT_STATE_v1_0.md`) and added a correction note + updated file-path citations in
 `SATYA_DIPA_REPORT_v1_0.md` (its own §2/§3 narrative of the first renumbering event is retained
 untouched, as history). No logic change to `asset_runner.py` or the fix itself. D-1.6 regression
-re-run on the rebased state before merge — see the merge commit for the result.
+re-run on the rebased state: all 15 tests in `test_d16_state_write_defect.py` pass, including the
+two SATYA-DĪPA-specific regression tests.
+
+```yaml
+session_close:
+  session_id: SATYA-DIPA-PREMERGE-REBASE-2026-07-29
+  campaign: SATYA_DIPA
+  close_criteria_met: "Mechanical pre-merge maintenance only — rebase clean, migration renumbered,
+    D-1.6 regression re-verified green (15/15). No scope change to the authorized fix."
+  verification: "D-1.6 regression suite (tests/test_d16_state_write_defect.py) run directly:
+    15 passed. Migration-number collision independently re-checked against origin/main's actual
+    migration directories (platform/migrations/ + platform/supabase/migrations/) before and after
+    renumbering."
+  deploy: "Not yet — this entry documents the pre-merge rebase; the merge itself (and its resulting
+    auto-deploy) is a separate act, reported in the PR #870 merge commit."
+  product_code_writes_made: "No product logic changed — a file rename (467→474) and prose-reference
+    updates only. asset_runner.py and test_d16_state_write_defect.py are unchanged from the
+    already-authorized fix commit (728cd3fc)."
+  native_chart_touched: false
+  current_state_updated: true
+  register_dispositions_flipped: "None."
+  followups: "None new — the four followups already parked in the SATYA-DIPA-CLOSE-2026-07-29
+    entry above stand unchanged."
+  next_session_objective: "None committed. This was a mechanical rebase step within a larger
+    in-progress session (PB-3-GATE-CLOSE-2026-07-29), not a standalone session with its own
+    next-session commitment."
+```
+
+### Next session objective
+
+None committed by this entry — see the standing followups in the SATYA-DIPA-CLOSE-2026-07-29 entry
+above, unchanged.
 
 *End of SATYA-DIPA-PREMERGE-REBASE-2026-07-29 entry.*
