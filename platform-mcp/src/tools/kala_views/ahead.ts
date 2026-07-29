@@ -18,11 +18,16 @@
  * Design authority: KALA_SIX_VIEWS_DESIGN_v1_0.md §2 (AHEAD content + clarity contract),
  * KALA_SUPREME_ELEVATION_v1_0.md (v1.2) §5 (envelope E3/E4/E5), §11 (item 43 tri-plane).
  *
+ * W1 (SHAD_DARSHANA_BRIEF_v2_0.md §3 W1) ADDS `dasha_lord_transit_condition_forward` —
+ * item 28's forward half: the currently-running Vimśottarī MD/AD lord's transit condition
+ * projected to this call's horizon boundary (`date_to`). See the "W1 item 28 (forward
+ * half)" doc-comment above `dualOutput` below for the exact provenance chain; see now.ts
+ * for item 28's current half and item 8 (dual-reference gochara, NOW-only).
+ *
  * What is genuinely NOT computed here yet (honestly disclosed via `coverage`, never
  * silently dropped): Law-3 promise-gating (PACT chain — "pressure without delivery" is not
- * yet applied to these raw windows), forward daśā-lord transit condition, the sky-event
- * calendar (ingresses/stations/eclipses/returns), Tithi-Praveśa — all named W1/W2/W3 build
- * items in the brief, not this facade's job.
+ * yet applied to these raw windows), the sky-event calendar (ingresses/stations/eclipses/
+ * returns), Tithi-Praveśa — all named W2/W3 build items in the brief, not this facade's job.
  */
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
@@ -98,6 +103,239 @@ async function callRegistryCapability(
   } catch {
     return { content: null, ok: false }
   }
+}
+
+// ── W1 item 28 (daśā-lord transit condition, FORWARD half) — SHAD_DARSHANA_BRIEF_v2_0.md
+// §3 W1. [J]-kind JOIN over EXISTING substrate (no new migration, no new astrological
+// computation): identifies the currently-running Vimśottarī MD/AD lord chain TODAY (the
+// SAME identification query now.ts's item 28 uses — a lord's identity does not re-derive
+// per horizon date; only its transit snapshot moves), then snapshots that SAME lord's
+// transit position at the AHEAD horizon boundary (`date_to`) instead of today — see
+// now.ts's "W1 item 8 + item 28" doc-comment for the full provenance chain (this is a
+// self-contained duplicate of that file's item-28 half, per this lane's established
+// anti-coupling convention: platform-mcp facades do not share module-local helpers across
+// files owned/edited by sibling lanes in the same campaign).
+
+/** Mirrors get_av_transit_gating.ts's SIGN_NAMES (Aries..Pisces, sidereal, 1-indexed). */
+const SIGN_NAMES = [
+  'Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo',
+  'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces',
+]
+
+/** Mirrors get_av_transit_gating.ts's `houseFromSign` EXACTLY (same formula/semantics). */
+function houseFromSign(signNumber: number, refSignNumber: number): number {
+  return ((signNumber - refSignNumber + 12) % 12) + 1
+}
+
+/** LAGNA-only natal reference (item 8's dual-Moon-reference lives in now.ts; AHEAD's
+ *  forward daśā-lord condition only needs the single Lagna house reference). Reads the
+ *  SAME chart_facts category (graha_sign_attributes) get_dignity.ts already serves. */
+async function fetchNatalLagnaSign(
+  chartId: string,
+  ayanamshaId: string,
+  principal: Principal,
+): Promise<{ lagna_sign_number: number | null; ok: boolean }> {
+  const resp = await callRegistryCapability(
+    'marsys://tool/L1/get_dignity',
+    { chart_id: chartId, ayanamsha_id: ayanamshaId, categories: ['graha_sign_attributes'] },
+    principal,
+  )
+  if (!resp.ok || !resp.content) return { lagna_sign_number: null, ok: false }
+  const rows = (resp.content['rows'] as Array<Record<string, unknown>> | undefined) ?? []
+  const lagna = rows.find((r) => r['fact_subject'] === 'LAGNA' && r['fact_key'] === 'sign_num')
+  return {
+    lagna_sign_number: typeof lagna?.['fact_value_num'] === 'number' ? (lagna['fact_value_num'] as number) : null,
+    ok: true,
+  }
+}
+
+interface PlanetTransitSnapshot {
+  planet: string
+  sign_number: number | null
+  degree_in_sign: number | null
+  nakshatra_number: number | null
+  is_retrograde: boolean | null
+  ok: boolean
+}
+
+/** Single-day snapshot via the EXISTING L0 ephemeris capability
+ *  (marsys://tool/L0/query_planet_transit) — same substrate ref_planet_transit_get already
+ *  serves; sidereal-first, default ayanamsha lahiri_chitrapaksha. */
+async function fetchPlanetTransitSnapshot(
+  planet: string,
+  dateISO: string,
+  principal: Principal,
+): Promise<PlanetTransitSnapshot> {
+  const resp = await callRegistryCapability(
+    'marsys://tool/L0/query_planet_transit',
+    { planet, start_date: dateISO, end_date: dateISO },
+    principal,
+  )
+  const row = resp.ok ? (resp.content?.['rows'] as Array<Record<string, unknown>> | undefined)?.[0] : undefined
+  if (!row) return { planet, sign_number: null, degree_in_sign: null, nakshatra_number: null, is_retrograde: null, ok: resp.ok }
+  return {
+    planet,
+    sign_number: typeof row['sign_number'] === 'number' ? (row['sign_number'] as number) : null,
+    degree_in_sign: typeof row['degree_in_sign'] === 'number' ? (row['degree_in_sign'] as number) : null,
+    nakshatra_number: typeof row['nakshatra_number'] === 'number' ? (row['nakshatra_number'] as number) : null,
+    is_retrograde: typeof row['is_retrograde'] === 'boolean' ? (row['is_retrograde'] as boolean) : null,
+    ok: true,
+  }
+}
+
+interface DignityReferenceRow {
+  graha: string
+  exaltation_sign: string | null
+  debilitation_sign: string | null
+  own_signs: string[] | null
+}
+
+/** Reads the SAME structured global reference table (bg_dignity_reference, 9 rows) that
+ *  `ref_dignity_reference_get` (register_p1_reference.ts) already serves by planet, via the
+ *  same direct-SQL platform route (`/api/mcp/db/query`). Read-only, global, no chart_id. */
+async function fetchDignityReference(graha: string, principal: Principal): Promise<DignityReferenceRow | null> {
+  try {
+    const res = await fetch(`${PLATFORM_URL}/api/mcp/db/query`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-mcp-internal-token': MCP_INTERNAL_TOKEN,
+        'x-mcp-user': principal.user_uid,
+        'x-mcp-key-id': principal.key_id,
+      },
+      body: JSON.stringify({
+        sql: `SELECT graha, exaltation_sign, debilitation_sign, own_signs FROM bg_dignity_reference WHERE LOWER(graha) = LOWER($1)`,
+        params: [graha],
+      }),
+      signal: AbortSignal.timeout(10_000),
+    })
+    if (!res.ok) return null
+    const data = (await res.json()) as { rows?: Array<Record<string, unknown>> }
+    const row = data.rows?.[0]
+    if (!row) return null
+    return {
+      graha: String(row['graha'] ?? graha),
+      exaltation_sign: typeof row['exaltation_sign'] === 'string' ? (row['exaltation_sign'] as string) : null,
+      debilitation_sign: typeof row['debilitation_sign'] === 'string' ? (row['debilitation_sign'] as string) : null,
+      own_signs: Array.isArray(row['own_signs']) ? (row['own_signs'] as string[]) : null,
+    }
+  } catch {
+    return null
+  }
+}
+
+type DashaLordDignityState = 'exalted' | 'debilitated' | 'own_sign' | 'neutral' | null
+
+function classifyDashaLordDignity(signName: string | null, dignity: DignityReferenceRow | null): DashaLordDignityState {
+  if (!signName || !dignity) return null
+  if (dignity.exaltation_sign === signName) return 'exalted'
+  if (dignity.debilitation_sign === signName) return 'debilitated'
+  if (dignity.own_signs?.includes(signName)) return 'own_sign'
+  return 'neutral'
+}
+
+export interface DashaLordForwardTransitCondition {
+  level_name: string
+  lord_graha: string
+  lord_natal_sign: string | null
+  identified_as_of_date: string
+  forward_as_of_date: string
+  transit_sign_number: number | null
+  transit_sign_name: string | null
+  degree_in_sign: number | null
+  nakshatra_number: number | null
+  is_retrograde: boolean | null
+  house_from_lagna: number | null
+  dignity: DashaLordDignityState
+  dignity_basis: { exaltation_sign: string | null; debilitation_sign: string | null; own_signs: string[] | null } | null
+}
+
+interface ActiveDashaChainEntry {
+  level_n: number
+  level_name: string
+  lord_graha: string
+  lord_sign: string | null
+}
+
+/** "Which daśā am I running TODAY?" via the EXISTING L3 convenience face
+ *  (marsys://tool/L3/query_active_dashas, EL-33/DR-14), filtered to Vimśottarī level ≤2. The
+ *  identification date is ALWAYS today (not the forward horizon boundary) — a lord's
+ *  identity is a today-fact; only its transit condition is projected forward. */
+async function fetchActiveVimshottariChain(
+  chartId: string,
+  ayanamshaId: string,
+  identifyAsOfDate: string,
+  principal: Principal,
+): Promise<{ entries: ActiveDashaChainEntry[]; ok: boolean }> {
+  const resp = await callRegistryCapability(
+    'marsys://tool/L3/query_active_dashas',
+    { chart_id: chartId, date: identifyAsOfDate, ayanamsha_id: ayanamshaId, systems: 'vimshottari', max_level: 2 },
+    principal,
+  )
+  if (!resp.ok || !resp.content) return { entries: [], ok: false }
+  const systems = (resp.content['systems'] as Array<Record<string, unknown>> | undefined) ?? []
+  const vimshottari = systems.find((s) => s['system_id'] === 'vimshottari')
+  const chain = (vimshottari?.['active_chain'] as Array<Record<string, unknown>> | undefined) ?? []
+  return {
+    ok: true,
+    entries: chain.map((c) => ({
+      level_n: typeof c['level_n'] === 'number' ? (c['level_n'] as number) : 0,
+      level_name: typeof c['level_name'] === 'string' ? (c['level_name'] as string) : `L${c['level_n']}`,
+      lord_graha: String(c['lord_graha'] ?? ''),
+      lord_sign: typeof c['lord_sign'] === 'string' ? (c['lord_sign'] as string) : null,
+    })),
+  }
+}
+
+/** Item 28 forward half (SHAD_DARSHANA_BRIEF_v2_0.md item 28, wave W1): the currently-
+ *  running MD/AD lord's OWN transit condition projected to the AHEAD horizon boundary
+ *  (`forwardAsOfDate`) — sign/house-from-lagna/dignity vs. classical exaltation-
+ *  debilitation-own-sign. Dedupes when MD and AD share the same graha. */
+async function computeDashaLordForwardTransitCondition(
+  chartId: string,
+  ayanamshaId: string,
+  identifyAsOfDate: string,
+  forwardAsOfDate: string,
+  lagnaSignNumber: number | null,
+  principal: Principal,
+): Promise<{ rows: DashaLordForwardTransitCondition[]; chainReachable: boolean; transitReachable: boolean }> {
+  const chain = await fetchActiveVimshottariChain(chartId, ayanamshaId, identifyAsOfDate, principal)
+  if (!chain.ok || chain.entries.length === 0) {
+    return { rows: [], chainReachable: chain.ok, transitReachable: true }
+  }
+  const uniqueGrahas = Array.from(new Set(chain.entries.map((e) => e.lord_graha).filter(Boolean)))
+  const [snapshots, dignities] = await Promise.all([
+    Promise.all(uniqueGrahas.map((g) => fetchPlanetTransitSnapshot(g, forwardAsOfDate, principal))),
+    Promise.all(uniqueGrahas.map((g) => fetchDignityReference(g, principal))),
+  ])
+  const snapshotByGraha = new Map(snapshots.map((s) => [s.planet, s]))
+  const dignityByGraha = new Map(uniqueGrahas.map((g, i) => [g, dignities[i] ?? null]))
+  const transitReachable = snapshots.some((s) => s.ok)
+
+  const rows: DashaLordForwardTransitCondition[] = chain.entries.map((entry) => {
+    const snap = snapshotByGraha.get(entry.lord_graha)
+    const signName = snap?.sign_number ? (SIGN_NAMES[snap.sign_number - 1] ?? null) : null
+    const dignityRow = dignityByGraha.get(entry.lord_graha) ?? null
+    return {
+      level_name: entry.level_name,
+      lord_graha: entry.lord_graha,
+      lord_natal_sign: entry.lord_sign,
+      identified_as_of_date: identifyAsOfDate,
+      forward_as_of_date: forwardAsOfDate,
+      transit_sign_number: snap?.sign_number ?? null,
+      transit_sign_name: signName,
+      degree_in_sign: snap?.degree_in_sign ?? null,
+      nakshatra_number: snap?.nakshatra_number ?? null,
+      is_retrograde: snap?.is_retrograde ?? null,
+      house_from_lagna:
+        snap?.sign_number != null && lagnaSignNumber != null ? houseFromSign(snap.sign_number, lagnaSignNumber) : null,
+      dignity: classifyDashaLordDignity(signName, dignityRow),
+      dignity_basis: dignityRow
+        ? { exaltation_sign: dignityRow.exaltation_sign, debilitation_sign: dignityRow.debilitation_sign, own_signs: dignityRow.own_signs }
+        : null,
+    }
+  })
+  return { rows, chainReachable: chain.ok, transitReachable }
 }
 
 function dualOutput(data: unknown, toolName = 'kala_ahead_get') {
@@ -248,6 +486,10 @@ export interface KalaAheadResult {
   calibration_maturity: ReturnType<typeof noLelCalibrationMaturity>
   windows: WindowFamily[]
   projections: ProjectionFamily[]
+  // Item 28 (wave W1): currently-running Vimśottarī MD/AD lord's transit condition
+  // projected to this call's horizon boundary (date_to) — the forward half of now.ts's
+  // dasha_lord_transit_condition (same lord identity, later snapshot date).
+  dasha_lord_transit_condition_forward: DashaLordForwardTransitCondition[]
   drill_pointers: DrillPointerLike[]
   provenance_envelope: {
     source: string
@@ -259,6 +501,7 @@ export interface KalaAheadResult {
     source_citation: string
     windows_reachable: boolean
     projections_reachable: boolean
+    dasha_lord_transit_condition_forward_reachable: boolean
   }
 }
 
@@ -286,7 +529,7 @@ export async function computeKalaAhead(
   const dateTo = new Date(today.getTime() + horizonYears * 365 * 86400000).toISOString().slice(0, 10)
   const horizonLabel = `${horizonYears} year(s)`
 
-  const [windowsResp, projectionsResp] = await Promise.all([
+  const [windowsResp, projectionsResp, natalLagna] = await Promise.all([
     callRegistryCapability(
       'marsys://tool/L3/query_temporal_activation',
       {
@@ -309,6 +552,7 @@ export async function computeKalaAhead(
       },
       principal,
     ),
+    fetchNatalLagnaSign(chartId, ayanamshaId, principal),
   ])
 
   const windowsOk = windowsResp.ok
@@ -319,6 +563,11 @@ export async function computeKalaAhead(
   const projectionsOk = projectionsResp.ok
   const projectionFamilies =
     (projectionsResp.content?.['projection_families'] as ProjectionFamily[] | undefined) ?? []
+
+  // Item 28 forward half — identifies today's active MD/AD lord, snapshots it at dateTo.
+  const dashaLordForward = await computeDashaLordForwardTransitCondition(
+    chartId, ayanamshaId, dateFrom, dateTo, natalLagna.lagna_sign_number, principal,
+  )
 
   const reading = buildAheadReading({ horizonLabel, windowFamilies, projectionFamilies, windowsOk, projectionsOk })
   const composed = composeArgument(reading)
@@ -344,10 +593,16 @@ export async function computeKalaAhead(
       'promise_gated_forecasting',
       'Law-3 PACT gating ("pressure without delivery") is not yet applied to these raw windows — SHAD_DARSHANA_BRIEF_v2_0.md §2.2 (wave W2/W3).',
     ),
-    notInCorpusCoverage(
-      'dasha_lord_forward_transit_condition',
-      'Forward transit-condition of upcoming daśā-lords not yet joined — SHAD_DARSHANA_BRIEF_v2_0.md item 28 (wave W1).',
-    ),
+    natalLagna.ok && dashaLordForward.chainReachable && dashaLordForward.transitReachable && dashaLordForward.rows.length > 0
+      ? computedCoverage('dasha_lord_forward_transit_condition')
+      : honestEmptyCoverage(
+          'dasha_lord_forward_transit_condition',
+          !dashaLordForward.chainReachable
+            ? 'L3 active-dasha registry (query_active_dashas) unreachable this call.'
+            : dashaLordForward.rows.length === 0
+              ? 'No active Vimśottarī MD/AD chain resolved for this chart as of today — honest empty, not fabricated.'
+              : 'L0 ephemeris or L1 natal-reference registry unreachable this call for the active lord(s).',
+        ),
     notInCorpusCoverage(
       'sky_event_calendar',
       'Ingress/station/eclipse-to-natal/return event calendar not yet computed — SHAD_DARSHANA_BRIEF_v2_0.md item 3 (wave W3).',
@@ -385,10 +640,15 @@ export async function computeKalaAhead(
     reading_prose: composed.full_text,
     windows: windowFamilies,
     projections: projectionFamilies,
+    dasha_lord_transit_condition_forward: dashaLordForward.rows,
     drill_pointers: drillPointers,
     provenance_envelope: {
       source: 'kala_ahead_get',
-      assets: ['kala_activation (ka_kalasutra, forward-dated)', 'kala_bhavishya (ka_bhavishya_lekha)'],
+      assets: [
+        'kala_activation (ka_kalasutra, forward-dated)', 'kala_bhavishya (ka_bhavishya_lekha)',
+        'get_dignity (graha_sign_attributes)', 'query_planet_transit (L0 ephemeris)',
+        'query_active_dashas (L3, EL-33)', 'bg_dignity_reference (L0)',
+      ],
       chart_id: chartId,
       horizon_years: horizonYears,
       domain: args.domain ?? null,
@@ -396,6 +656,8 @@ export async function computeKalaAhead(
       source_citation: SOURCE_CITATION,
       windows_reachable: windowsOk,
       projections_reachable: projectionsOk,
+      dasha_lord_transit_condition_forward_reachable:
+        natalLagna.ok && dashaLordForward.chainReachable && dashaLordForward.transitReachable,
     },
   }
 }
@@ -448,13 +710,15 @@ attestation, calibration_maturity).
 
 THIN FACADE (W0): re-presents the SAME substrate kala_windows_get (forward-dated) and \
 kala_projections_get already serve — no new computation; probability_tier is read \
-verbatim from kala_bhavishya, never re-graded. Honestly discloses (via \`coverage\`) which \
-richer AHEAD concepts (Law-3 promise-gated forecasting, forward daśā-lord transit \
-condition, the sky-event calendar, Tithi-Praveṣa) are not yet joined into this view.
+verbatim from kala_bhavishya, never re-graded. W1 adds dasha_lord_transit_condition_forward \
+(item 28 — the currently-running Vimśottarī MD/AD lord's own transit sign/house/dignity \
+projected to this call's horizon boundary; see kala_now_get for the current-date half). \
+Honestly discloses (via \`coverage\`) which richer AHEAD concepts (Law-3 promise-gated \
+forecasting, the sky-event calendar, Tithi-Praveṣa) are not yet joined into this view.
 
 Output includes: reading (structured argument) + reading_prose (composed text) + windows + \
-projections + tri_plane (→ kala_explain_get for why, → kala_elect_get for when to act) + \
-coverage + drill_pointers.
+projections + dasha_lord_transit_condition_forward + tri_plane (→ kala_explain_get for why, \
+→ kala_elect_get for when to act) + coverage + drill_pointers.
 
 Requires: chart_id (UUID). Successor to kala_projections_get for "what is coming" queries \
 per SHAD_DARSHANA_BRIEF_v2_0.md §7 rail ("AHEAD supersedes ka_bhavishya... by REPLACEMENT") \
