@@ -34712,3 +34712,117 @@ None committed by this entry — see the standing followups in the SATYA-DIPA-CL
 above, unchanged.
 
 *End of SATYA-DIPA-PREMERGE-REBASE-2026-07-29 entry.*
+
+---
+
+## PB-3-GATE-CLOSE-2026-07-29 — PARIPRAŚNA BUILD, PB-3 SAMĪKṢĀ wave close (SHIP-DEGRADED)
+
+```yaml
+session_open:
+  session_id: PB-3-GATE-CLOSE-2026-07-29
+  campaign: PARIPRASHNA_BUILD (PB) — CAMPAIGN_PB_MASTER_BRIEF_v1_0.md §2, standing autonomy
+    authorization for waves PB-3/PB-4 (no human confirmation gate for steps the brief already
+    covers)
+  may_touch: "00_ARCHITECTURE/briefs/pariprashna_build/** (report + parked-brief authorship
+    only); 00_ARCHITECTURE/SESSION_LOG.md, CURRENT_STATE_v1_0.md (this entry)"
+  must_not_touch: "platform/src/**, platform/python-sidecar/**, platform-mcp/src/tools/
+    registry_bridge.ts (PB's own scope boundary, unchanged from PB-1/PB-2/PB-3); the
+    satyadipa/orchestrator-lit-predicate branch/worktree (parked PR #870, another campaign's
+    in-flight work); any PARISHODHANA branch/worktree/PR"
+```
+
+PB-3's six lanes (L-1 ledger schema/DAL, L-2 capture/confirm, L-3 review tab, L-4 daily job,
+L-5 outcome/Brier, L-6 no-leakage guard) all merged to `main` (PRs #868, #871–#876), migrated to
+production automatically on merge, and deployed automatically on merge — all independently
+re-verified this session, not assumed from the merge event. Five independent fresh-context
+gate-runner agents then executed the real BRIEF_PB-3.md §G acceptance gate (12 named
+assertions + Final Proof + anti-gaming self-check) against the deployed production system and
+the live database — never against a fixture, and never by hand-inserting a ledger row to
+manufacture a pass, per the anti-gaming charge the brief itself specifies.
+
+The gate's finding: every one of the six lanes' own tests passed, and in production the loop
+does nothing. The confirm affordance that would carry a real detection into
+`brahma_mimamsa_prediction_ledger` (`LogToSamiksha.tsx`) is unmounted on every live route — the
+ledger holds zero rows on every chart despite six real detections existing as message_parts in
+production. Downstream, the daily-window-closer cron silently no-ops on a secret-name mismatch
+(`DATABASE_URL` vs. the repo convention `PROD_DATABASE_URL`) and reports green every day having
+touched nothing, and the live resolve action bypasses the wave's own Brier recorder entirely.
+One genuinely strong result survived scrutiny and is named as the house template going forward:
+the can't-tell → `unverifiable` → `outcome_value = NULL` chain was proven with a real
+rolled-back-transaction probe against the live DB CHECK constraint, not asserted from a comment.
+Full disposition table, evidence, and corrections to `LEDGER_MAP_PB-3.md`/PF-1 supersession
+notes: `00_ARCHITECTURE/briefs/pariprashna_build/REPORT_PB-3.md`.
+
+One uncommitted mutation-test edit (`daily_job.ts`, left by an interrupted gate-runner agent
+after an API connection failure mid-run) was found in a worktree during this close and reverted;
+`origin/main`'s tracked content was independently confirmed clean of stray disabled-test markers.
+
+The parked fix for all five gaps the gate surfaced — mount the confirm affordance (P0), correct
+the cron secret and un-skip its CI tests (P1×2), reconcile the outcome-map bypass and complete
+the leak guard's wiring (P2×2) — is written as `BRIEF_PB-3.1_MAKE_THE_LOOP_LIVE.md`, status
+READY-FOR-EXECUTION, not executed this session. Its acceptance criteria are written as live
+proofs against the real deployed route on a real chart, explicitly forbidding a fixture standing
+in for any of them, per the same doctrine this close applied to PB-3's own gate.
+
+The PB-3 merge lock is released: SATYA-DĪPA's PR #870 is clear to rebase, re-run its own
+regression, and merge on its own go-ahead. One correction recorded in REPORT_PB-3.md: migration
+number 467 was never PB-3's to free (it is a pre-existing migration predating PB-3 entirely);
+the numbering sequence has moved since PB-3 merged (other campaigns' work has landed migrations
+through 473), so PR #870's own migration, whatever number it currently carries, will need
+renumbering to 474+ after rebase regardless — a normal consequence of concurrent campaigns, not
+something this close needed to resolve.
+
+```yaml
+session_close:
+  session_id: PB-3-GATE-CLOSE-2026-07-29
+  campaign: PARIPRASHNA_BUILD (PB)
+  close_criteria_met: "SHIP-DEGRADED — PB-3 CLOSED, not PASS. Merged and deployed to production
+    with a known, honestly-disclosed defect class (the prediction loop has no live entry and no
+    live exit) carried forward as a fully-specified PARKED follow-up (BRIEF_PB-3.1), the same
+    disposition class PB-2 closed under. Four-disposition §G table in REPORT_PB-3.md: 5 items
+    VERIFIED-FIXED, 3 PARTIAL, 4 FAIL (items 3/4/5/7) + Final Proof FAIL, anti-gaming
+    self-check VERIFIED-FIXED. No item flipped to a clean PASS to round a gap up."
+  verification: "Five independent fresh-context gate-runner agents (opus), each covering a
+    disjoint subset of the §G gate, executed against the real deployed Cloud Run route
+    (amjis-web, revision amjis-web-01271-6kt) and real production Postgres, read-only SELECT
+    throughout. Two local mutation tests were performed for real (daily-job idempotency/date
+    math; the no-leakage canary) — each confirmed to turn red on the targeted break, then
+    reverted via git checkout -- with a clean git status confirmed after. No ledger row was
+    hand-inserted at any point to manufacture a passing result."
+  deploy: "No new deploy or migration performed by this close — it is governance/spec-only.
+    PB-3's own deploy (revision amjis-web-01271-6kt, matching PR #876's merge SHA) and
+    migrations 470/471 were independently re-confirmed already-applied from a prior session's
+    close, not re-triggered."
+  product_code_writes_made: "No — this close touches only
+    00_ARCHITECTURE/briefs/pariprashna_build/REPORT_PB-3.md (new),
+    00_ARCHITECTURE/briefs/pariprashna_build/BRIEF_PB-3.1_MAKE_THE_LOOP_LIVE.md (new, parked
+    spec only), and this SESSION_LOG/CURRENT_STATE entry. One incidental fix: reverted a stray
+    uncommitted mutation-test edit in daily_job.ts left by an interrupted agent run in a
+    worktree — a revert to the pre-existing committed state, not a new product change."
+  native_chart_touched: false
+  current_state_updated: true
+  register_dispositions_flipped: "None — PB is out-of-scope for CR/DR registers per its own
+    campaign brief (doctrine-waves territory, must_not_touch). This close's findings are
+    recorded in REPORT_PB-3.md and BRIEF_PB-3.1_MAKE_THE_LOOP_LIVE.md, not in the CR/DR
+    registers."
+  followups: "BRIEF_PB-3.1_MAKE_THE_LOOP_LIVE.md (READY-FOR-EXECUTION, parked): P0 mount
+    LogToSamiksha on the live reading route; P1 fix the daily-job cron secret name and un-skip
+    its CI DB-integration tests; P2 reconcile the resolve route's outcome map against the
+    uncalled L-5 Brier recorder; P2 complete and wire the calibration leak guard. Sequenced to
+    run after SATYA-DĪPA PR #870 merges, under the same merge lock. Lower-priority, not carried
+    into PB-3.1: the dock card's hardcoded-fixture today-marker (item 5), and committing
+    BRIEF_PB-3.md + PB-3 state shards to git (currently untracked)."
+  next_session_objective: "Native/Pratinidhi decides when BRIEF_PB-3.1 executes — not committed
+    to a next session by this close. PB-4 (PŪRṆATĀ — completion & cutover: history sidebar,
+    empty state, the Seal, mobile/a11y hardening, default flip, consult/consume retirement,
+    dead code deletion) remains the next wave in the PB campaign's own sequence, independent of
+    whether PB-3.1 runs first."
+```
+
+### Next session objective
+
+PB-3 is CLOSED SHIP-DEGRADED. `BRIEF_PB-3.1_MAKE_THE_LOOP_LIVE.md` is written and parked,
+READY-FOR-EXECUTION, awaiting native go-ahead and sequenced after SATYA-DĪPA's PR #870. The PB
+merge lock PB-3 held is released.
+
+*End of PB-3-GATE-CLOSE-2026-07-29 entry.*
