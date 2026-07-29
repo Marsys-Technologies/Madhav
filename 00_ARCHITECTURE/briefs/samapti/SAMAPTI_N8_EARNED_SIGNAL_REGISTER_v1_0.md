@@ -55,10 +55,18 @@ the lane if any finding survives only by assertion."* Accordingly:
 
 1. Every candidate was traced to its computation — including helpers, SQL, and consumers. No finding
    rests on a field name.
-2. Every candidate was attacked. Sub-auditors argued against their own findings inline (`(e)` blocks
-   in their reports); the five-named-file findings — the ones the lane owner authored — were attacked
-   by a **separate, independent refuter sub-agent** given the finding, the evidence, and an explicit
-   instruction to destroy it.
+2. Every candidate was attacked. Sub-auditors argued against their own findings inline (the `(e)`
+   blocks in their reports, reproduced or summarised here).
+
+   **Disclosure about the §1 refutation, because this register is about unearned claims and must not
+   make one.** A **separate, independent refuter sub-agent** was dispatched against F-01…F-06 with the
+   evidence and an explicit instruction to destroy each finding. **It never returned its verdicts.**
+   The refutation attempts recorded in each §1 entry's `(d)` block are therefore the **lane owner's
+   own adversarial passes**, not an independent agent's. They are genuine — each names a specific
+   counter-argument and answers it on code evidence, and two of them (F-03, F-06) *succeeded* in
+   narrowing the finding — but they are **self-refutation, not independent refutation.**
+   **A Verifier should treat §1 as the least independently-attacked section of this register and
+   weight its spot-refutation there.**
 3. Findings that the refutation killed, or that could not be demonstrated, are in **§4 — Dropped**,
    with the reason. That section is deliberately non-empty. A register of only survivors is a
    register that did not test itself.
@@ -87,10 +95,12 @@ the lane if any finding survives only by assertion."* Accordingly:
 - **§4 / §5** — dropped candidates and residuals: named surfaces this audit did **not** reach, and
   the one class of evidence it could not obtain.
 
-**Two methodology caveats that a Verifier should hold against the whole document:** (i) live DB
+**Three methodology caveats a Verifier should hold against the whole document:** (i) live DB
 corroboration in Part B is the sub-auditors', not mine — my own production query failed
 (`ECONNREFUSED 127.0.0.1:5433`); (ii) F-33 (PB-2) is **static-only** — `vitest` was absent from that
-sub-auditor's worktree, so its mutation-sensitivity claim is code-read, not executed.
+sub-auditor's worktree, so its mutation-sensitivity claim is code-read, not executed; (iii) the
+independent refuter dispatched against §1 never reported, so §1's refutations are self-authored —
+see §0.2 item 2.
 
 ---
 
