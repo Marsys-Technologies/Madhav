@@ -91,8 +91,27 @@ def _fetch_native_context(chart_id: str) -> NativeContext:
 
     # Compute panchang at birth moment using IST (+330 min) by default.
     # (Charts may carry a different TZ in future; for this release, IST is canonical.)
+    #
+    # ṢAḌ-DARŚANA W1 verify-reopen fix (items 29 + 32), 2026-07-30 — ROOT CAUSE, keyword-name
+    # mismatch: this call passed `tz_offset_minutes=330`, but `panchang_engine.compute_panchang`
+    # declares its fourth parameter `tz_offset` (see panchang_engine/__init__.py). Python
+    # raised `TypeError: compute_panchang() got an unexpected keyword argument
+    # 'tz_offset_minutes'`, which the `except (ValidationError, OutOfRangeError,
+    # PanchangEngineError)` clause below does NOT catch — so it propagated out of the endpoint
+    # as an unhandled HTTP 500.
+    #
+    # `_fetch_native_context` is reached ONLY from the single-date POST /api/compute/panchanga
+    # path AND only when `chart_id` is supplied. That is exactly the call `kala_now_get` makes
+    # (mode=single + chart_id) and exactly the call `kala_ahead_get` does NOT make (mode=range,
+    # no chart_id) — which is why the range path served real data while every single-date call
+    # returned 500 and `kala_now_get` reported "L0 panchāṅga service unreachable this call" for
+    # disha_shula / gulika_kalam_now / chandrashtama / hora_now / janma_resonance on every
+    # chart, on every date, deterministically. Not an outage: a persistent code defect.
+    #
+    # The two OTHER call sites in this module (the endpoints at the bottom of this file) pass
+    # all four arguments positionally, which is why they were never affected.
     try:
-        birth_panchang = compute_panchang(birth_date, lat, lon, tz_offset_minutes=330)
+        birth_panchang = compute_panchang(birth_date, lat, lon, 330)
     except (ValidationError, OutOfRangeError, PanchangEngineError) as exc:
         raise HTTPException(status_code=422, detail=f"Birth chart compute error: {exc}")
 
@@ -182,15 +201,39 @@ async def compute_panchanga_endpoint(req: PanchangaRequest):
     if req.fields:
         payload = {k: v for k, v in payload.items() if k in req.fields}
 
-    # Native context — hydrated when chart_id is present
+    # Native context — hydrated when chart_id is present.
+    #
+    # ṢAḌ-DARŚANA W1 verify-reopen hardening, 2026-07-30. `native_context` is by this
+    # capability's own contract an OPTIONAL enrichment overlay (call_panchanga_service.ts:
+    # "chart_id is optional and, when provided, hydrates a native_context overlay"). Before
+    # this change, ANY failure inside `_fetch_native_context` — the tz_offset kwarg TypeError
+    # fixed above, a 503 on a missing DATABASE_URL, a 404 on an unbuilt chart — propagated out
+    # of this endpoint and destroyed the ENTIRE already-successfully-computed panchāṅga
+    # payload. That is how one keyword-name typo in an optional overlay blanked five unrelated
+    # `kala_now_get` fields (disha_shula / gulika_kalam_now / chandrashtama / hora_now /
+    # janma_resonance) on every chart and every date.
+    #
+    # Now: the overlay fails soft and DISCLOSES why (`native_context_error`, never a silent
+    # null — CLAUDE.md §N.8: an honest, attributable gap beats both a fabricated value and an
+    # undifferentiated failure). The five aṅgas, timings and horā ladder — which never needed
+    # the chart at all — are served regardless. A caller that genuinely requires the overlay
+    # reads `native_context_error` and reports THAT specific reason rather than mislabelling a
+    # deterministic defect as service unreachability.
     native_context: Optional[NativeContext] = None
+    native_context_error: Optional[str] = None
     if req.chart_id:
-        native_context = _fetch_native_context(req.chart_id)
+        try:
+            native_context = _fetch_native_context(req.chart_id)
+        except HTTPException as exc:
+            native_context_error = f"HTTP {exc.status_code}: {exc.detail}"
+        except Exception as exc:  # noqa: BLE001 — disclosed, never swallowed silently
+            native_context_error = f"{type(exc).__name__}: {exc}"
 
     return {
         "ok": True,
         "panchang": payload,
         "native_context": native_context.model_dump() if native_context else None,
+        "native_context_error": native_context_error,
         "cache_hit": False,
     }
 

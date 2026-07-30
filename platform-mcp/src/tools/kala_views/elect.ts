@@ -309,8 +309,18 @@ export async function handleKalaElectGet(
       // it is not the interpretation plane, so it points there.
       interpretation_ref: pointerTo('get_domain_reading', 'the domain reading behind why this undertaking\'s window scores as it does for this chart'),
       prediction_ref: pointerTo('kala_bundle_get', 'the forward temporal field this election sits inside'),
-      // ELECT's own candidates ARE the intervention lever — no further pointer needed.
-      intervention_ref: null,
+      // ND-1 (ṢAḌ-DARŚANA W1 verify-reopen, 2026-07-30): was a bare `null`. See ahead.ts's
+      // prediction_ref for the full rationale — the campaign's own tri_plane_no_dead_end_gate.ts
+      // already grades a bare null `WARN` ("not independently verifiable at v0"); an honest,
+      // self-describing `no_lever` states the same fact in the shape the contract provides.
+      intervention_ref: noLeverPointer(
+        'kala_elect_get IS the intervention plane — the election candidates in this response '
+          + 'ARE the intervention lever, so there is no further intervention surface to '
+          + 'traverse to. Not a missing pointer: a terminal by construction. (The '
+          + 'UPĀYA/YAJÑA-tier levers, kala_upaya_get / kala_ritual_get, are W0 stubs whose '
+          + 'real engines land at wave W4 — pointing at them today would be a live pointer '
+          + 'to content that does not exist yet.)',
+      ),
     },
     coverage,
     freshness: buildKalaFreshness({

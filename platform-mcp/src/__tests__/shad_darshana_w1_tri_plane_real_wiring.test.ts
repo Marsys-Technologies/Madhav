@@ -219,22 +219,34 @@ describe('item 43 — NOW/AHEAD tri_plane pointers to sibling views are real eve
     return vi.fn(async () => ({ ok: false, status: 500, text: async () => 'down' })) as unknown as typeof fetch
   }
 
-  it('kala_now_get: interpretation_ref honestly null (NOW IS the interpretation plane); prediction_ref/intervention_ref remain real pointers to kala_ahead_get/kala_elect_get', async () => {
+  // ND-1 (ṢAḌ-DARŚANA W1 verify-reopen, 2026-07-30): this assertion previously required
+  // `interpretation_ref` to be a bare `null`, encoding the claim "NOW IS the interpretation
+  // plane". That claim was wrong on the facts — NOW reports a temporal STATE, and its
+  // interpretive ground is served by the live, registered `kala_explain_get` (already
+  // AHEAD's interpretation_ref target). The Verifier named this the ND-1 worst case: a bare
+  // null on a plane that genuinely HAS a lever. Updated to require the real pointer.
+  it('kala_now_get: interpretation_ref is a REAL pointer to kala_explain_get; prediction_ref/intervention_ref remain real pointers to kala_ahead_get/kala_elect_get', async () => {
     global.fetch = unreachableFetch()
     const { computeKalaNow } = await import('../tools/kala_views/now.js')
     const result = await computeKalaNow(CHART_ID, {}, PRINCIPAL)
-    expect(result.tri_plane.interpretation_ref).toBeNull()
+    assertRealPointer(result.tri_plane.interpretation_ref, 'NOW interpretation_ref (unreachable substrate)')
+    expect((result.tri_plane.interpretation_ref as { instrument: string }).instrument).toBe('kala_explain_get')
     assertRealPointer(result.tri_plane.prediction_ref, 'NOW prediction_ref (unreachable substrate)')
     assertRealPointer(result.tri_plane.intervention_ref, 'NOW intervention_ref (unreachable substrate)')
     expect((result.tri_plane.prediction_ref as { instrument: string }).instrument).toBe('kala_ahead_get')
     expect((result.tri_plane.intervention_ref as { instrument: string }).instrument).toBe('kala_elect_get')
   })
 
-  it('kala_ahead_get: prediction_ref honestly null (AHEAD IS the prediction plane); interpretation_ref/intervention_ref remain real pointers to kala_explain_get/kala_elect_get', async () => {
+  // ND-1: was `toBeNull()`. AHEAD genuinely IS the prediction plane, but "this object is that
+  // plane" and "no pointer was wired" are indistinguishable in a bare null — and the campaign's
+  // own tri_plane_no_dead_end_gate.ts already grades a null slot WARN. An honest, self-describing
+  // no_lever states the same fact in the shape the contract provides for it.
+  it('kala_ahead_get: prediction_ref is an honest self-describing no_lever (AHEAD IS the prediction plane); interpretation_ref/intervention_ref remain real pointers to kala_explain_get/kala_elect_get', async () => {
     global.fetch = unreachableFetch()
     const { computeKalaAhead } = await import('../tools/kala_views/ahead.js')
     const result = await computeKalaAhead(CHART_ID, {}, PRINCIPAL)
-    expect(result.tri_plane.prediction_ref).toBeNull()
+    assertHonestNoLever(result.tri_plane.prediction_ref, 'AHEAD prediction_ref')
+    expect((result.tri_plane.prediction_ref as { reason: string }).reason).toContain('IS the prediction plane')
     assertRealPointer(result.tri_plane.interpretation_ref, 'AHEAD interpretation_ref (unreachable substrate)')
     assertRealPointer(result.tri_plane.intervention_ref, 'AHEAD intervention_ref (unreachable substrate)')
     expect((result.tri_plane.interpretation_ref as { instrument: string }).instrument).toBe('kala_explain_get')

@@ -244,7 +244,11 @@ describe('kala_explain_get — EXPLAIN facade over marsys://tool/L-PACT/pact_que
 
     // interpretation_ref is honestly null — this reading IS the interpretive plane already.
     const triPlane = obj['tri_plane'] as { interpretation_ref: unknown; intervention_ref: { instrument: string } }
-    expect(triPlane.interpretation_ref).toBeNull()
+    // ND-1 (ṢAḌ-DARŚANA W1 verify-reopen, 2026-07-30): the bare-null contract this assertion
+    // encoded is retired — every tri_plane slot is now either a real pointer or an honest,
+    // self-describing `no_lever`. See tools/kala_views/ahead.ts's prediction_ref for the
+    // rationale (the campaign's own tri_plane_no_dead_end_gate.ts grades a bare null WARN).
+    expect((triPlane.interpretation_ref as { no_lever?: boolean } | null)?.no_lever).toBe(true)
     expect(triPlane.intervention_ref.instrument).toBe('kala_upaya_get')
 
     expect(obj['calibration_maturity']).toEqual({

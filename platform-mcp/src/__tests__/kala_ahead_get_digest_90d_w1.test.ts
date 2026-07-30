@@ -107,8 +107,19 @@ const VARSHA_ROW = {
   varsha_start_iso: iso(-100),
   varsha_end_iso: iso(265),
   year_lord: 'Saturn',
-  muntha_sign: 'Aquarius',
-  muntha_house: 11,
+  // ṢAḌ-DARŚANA W1 verify-reopen (item 30, Root Cause C): the Muntha is stored as the JSONB
+  // column `muntha_position_jsonb`, NOT as flat `muntha_sign` / `muntha_house` columns. This
+  // mock previously asserted the flat shape — a shape no writer has ever emitted — which is
+  // exactly why the all-null-muntha defect passed CI while failing on every real chart. Shape
+  // below copied verbatim from a live `ganita_tajaka_get` response
+  // (l1_tajik_varsha_year_lords.muntha_position_jsonb), not invented.
+  muntha_position_jsonb: {
+    lord: 'Jupiter',
+    sign: 'Aquarius',
+    degree: 12.4311,
+    house_from_natal_lagna: 11,
+    house_from_varsha_lagna: 3,
+  },
 }
 
 const MUDDA_CHAIN = [{ level_n: 1, level_name: 'Mahadasha', lord_graha: 'Saturn', lord_sign: 'Aquarius', start_date: iso(-10), end_date: iso(300) }]

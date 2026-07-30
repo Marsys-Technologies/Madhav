@@ -220,19 +220,53 @@ async function fetchNatalReferenceSigns(
   }
 }
 
+/**
+ * Why a transit lookup produced no row — the distinction whose ABSENCE caused the ṢAḌ-DARŚANA
+ * W1 items 8/28 false-positive coverage claim (Verifier live-acceptance rejection, 2026-07-30).
+ *
+ * `marsys://tool/L0/query_planet_transit` is a `ToolCapability` whose handler returns the
+ * sidecar payload verbatim on success and its OWN `{ ok: false, error, count: 0, rows: [] }`
+ * envelope on failure. Both arrive at this facade over HTTP 200 with `{ ok: true, content }`,
+ * so `rows: []` ALONE cannot distinguish "this graha genuinely has no ephemeris row for this
+ * date" from "the upstream call failed". The prior code read only `resp.ok` (the transport
+ * layer), so a 401'd sidecar call — every production call, see query_planet_transit.ts's
+ * header — was indistinguishable from a genuine empty and was reported as `reachable: true`
+ * / `state: "computed"` with all nine grahas' fields null.
+ *
+ * `persistent` is the ND-4 half: a deterministic upstream error must never be worded as
+ * transient "unreachable this call", because a caller who retries learns nothing.
+ */
+export interface TransitLookupFailure {
+  kind: 'dispatch_unreachable' | 'upstream_error'
+  detail: string
+  /** True when the failure is a deterministic upstream defect (retrying will not help). */
+  persistent: boolean
+}
+
 interface PlanetTransitSnapshot {
   planet: string
   sign_number: number | null
   degree_in_sign: number | null
   nakshatra_number: number | null
   is_retrograde: boolean | null
+  /** The call completed without error — a `true` here with all-null fields means a GENUINE
+   *  empty (no ephemeris row for this graha/date), not a masked failure. */
   ok: boolean
+  failure: TransitLookupFailure | null
 }
+
+const NULL_TRANSIT_FIELDS = {
+  sign_number: null,
+  degree_in_sign: null,
+  nakshatra_number: null,
+  is_retrograde: null,
+} as const
 
 /** Single-day snapshot (start_date=end_date=dateISO) via the EXISTING L0 ephemeris
  *  capability (marsys://tool/L0/query_planet_transit — the same substrate
  *  ref_planet_transit_get / query_planet_transit already serve; sidereal-first,
- *  default ayanamsha lahiri_chitrapaksha). */
+ *  default ayanamsha lahiri_chitrapaksha). Never throws; classifies its own failure mode
+ *  (see `TransitLookupFailure`) instead of collapsing every outcome to an empty row. */
 async function fetchPlanetTransitSnapshot(
   planet: string,
   dateISO: string,
@@ -243,8 +277,35 @@ async function fetchPlanetTransitSnapshot(
     { planet, start_date: dateISO, end_date: dateISO },
     principal,
   )
-  const row = resp.ok ? (resp.content?.['rows'] as Array<Record<string, unknown>> | undefined)?.[0] : undefined
-  if (!row) return { planet, sign_number: null, degree_in_sign: null, nakshatra_number: null, is_retrograde: null, ok: resp.ok }
+  if (!resp.ok || !resp.content) {
+    return {
+      planet, ...NULL_TRANSIT_FIELDS, ok: false,
+      failure: {
+        kind: 'dispatch_unreachable',
+        detail: `retrieval-capability dispatch for marsys://tool/L0/query_planet_transit failed (${planet} @ ${dateISO})`,
+        persistent: false,
+      },
+    }
+  }
+  // The capability's own failure envelope — NOT a genuine empty (see TransitLookupFailure).
+  const upstreamOk = resp.content['ok']
+  const upstreamError = resp.content['error']
+  if (upstreamOk === false || typeof upstreamError === 'string') {
+    return {
+      planet, ...NULL_TRANSIT_FIELDS, ok: false,
+      failure: {
+        kind: 'upstream_error',
+        detail:
+          typeof upstreamError === 'string'
+            ? upstreamError
+            : 'query_planet_transit reported ok:false without an error string',
+        persistent: true,
+      },
+    }
+  }
+  const row = (resp.content['rows'] as Array<Record<string, unknown>> | undefined)?.[0]
+  // Genuine empty: the call succeeded, the ephemeris simply has no row for this graha/date.
+  if (!row) return { planet, ...NULL_TRANSIT_FIELDS, ok: true, failure: null }
   return {
     planet,
     sign_number: typeof row['sign_number'] === 'number' ? (row['sign_number'] as number) : null,
@@ -252,7 +313,19 @@ async function fetchPlanetTransitSnapshot(
     nakshatra_number: typeof row['nakshatra_number'] === 'number' ? (row['nakshatra_number'] as number) : null,
     is_retrograde: typeof row['is_retrograde'] === 'boolean' ? (row['is_retrograde'] as boolean) : null,
     ok: true,
+    failure: null,
   }
+}
+
+/** The shared coverage-reason builder for both transit-backed joins (items 8 + 28), so the
+ *  persistent-vs-transient wording (ND-4) is stated in exactly ONE place. */
+function transitFailureReason(failure: TransitLookupFailure): string {
+  return failure.persistent
+    ? `L0 ephemeris capability (query_planet_transit) returned a PERSISTENT upstream error — ` +
+      `this is a deterministic upstream failure, not transient unreachability, and retrying ` +
+      `this call will reproduce it: ${failure.detail}`
+    : `L0 ephemeris capability (query_planet_transit) could not be dispatched this call ` +
+      `(transient): ${failure.detail}`
 }
 
 export interface GocharaDualReferenceRow {
@@ -276,9 +349,19 @@ async function computeGocharaDualReference(
   asOfDate: string,
   natal: NatalReferenceSigns,
   principal: Principal,
-): Promise<{ rows: GocharaDualReferenceRow[]; transitReachable: boolean }> {
+): Promise<{
+  rows: GocharaDualReferenceRow[]
+  transitReachable: boolean
+  transitFailure: TransitLookupFailure | null
+  /** THE earned-signal detector (CLAUDE.md §N.8) for item 8: how many of the nine served rows
+   *  actually carry a transit sign. `coverage`/`*_reachable` are derived from THIS, not from
+   *  "the HTTP call returned 200" — the substitution that produced the false-positive claim. */
+  rowsWithTransitData: number
+}> {
   const snapshots = await Promise.all(GOCHARA_PLANETS.map((p) => fetchPlanetTransitSnapshot(p, asOfDate, principal)))
   const transitReachable = snapshots.some((s) => s.ok)
+  const transitFailure = snapshots.find((s) => s.failure != null)?.failure ?? null
+  const rowsWithTransitData = snapshots.filter((s) => s.sign_number != null).length
   const rows: GocharaDualReferenceRow[] = snapshots.map((s) => ({
     planet: s.planet,
     transit_sign_number: s.sign_number,
@@ -290,7 +373,7 @@ async function computeGocharaDualReference(
     house_from_lagna:
       s.sign_number != null && natal.lagna_sign_number != null ? houseFromSign(s.sign_number, natal.lagna_sign_number) : null,
   }))
-  return { rows, transitReachable }
+  return { rows, transitReachable, transitFailure, rowsWithTransitData }
 }
 
 interface DignityReferenceRow {
@@ -410,10 +493,17 @@ async function computeDashaLordTransitCondition(
   snapshotDate: string,
   lagnaSignNumber: number | null,
   principal: Principal,
-): Promise<{ rows: DashaLordTransitCondition[]; chainReachable: boolean; transitReachable: boolean }> {
+): Promise<{
+  rows: DashaLordTransitCondition[]
+  chainReachable: boolean
+  transitReachable: boolean
+  transitFailure: TransitLookupFailure | null
+  /** Earned-signal detector (CLAUDE.md §N.8) for item 28 — see computeGocharaDualReference. */
+  rowsWithTransitData: number
+}> {
   const chain = await fetchActiveVimshottariChain(chartId, ayanamshaId, identifyAsOfDate, principal)
   if (!chain.ok || chain.entries.length === 0) {
-    return { rows: [], chainReachable: chain.ok, transitReachable: true }
+    return { rows: [], chainReachable: chain.ok, transitReachable: true, transitFailure: null, rowsWithTransitData: 0 }
   }
   const uniqueGrahas = Array.from(new Set(chain.entries.map((e) => e.lord_graha).filter(Boolean)))
   const [snapshots, dignities] = await Promise.all([
@@ -423,6 +513,7 @@ async function computeDashaLordTransitCondition(
   const snapshotByGraha = new Map(snapshots.map((s) => [s.planet, s]))
   const dignityByGraha = new Map(uniqueGrahas.map((g, i) => [g, dignities[i] ?? null]))
   const transitReachable = snapshots.some((s) => s.ok)
+  const transitFailure = snapshots.find((s) => s.failure != null)?.failure ?? null
 
   const rows: DashaLordTransitCondition[] = chain.entries.map((entry) => {
     const snap = snapshotByGraha.get(entry.lord_graha)
@@ -446,7 +537,8 @@ async function computeDashaLordTransitCondition(
         : null,
     }
   })
-  return { rows, chainReachable: chain.ok, transitReachable }
+  const rowsWithTransitData = rows.filter((r) => r.transit_sign_number != null).length
+  return { rows, chainReachable: chain.ok, transitReachable, transitFailure, rowsWithTransitData }
 }
 
 // ── Item 24-lite (SHAD_DARSHANA_BRIEF_v2_0.md §3 W1 "24-lite... Sūkṣma boundaries as
@@ -904,6 +996,30 @@ export interface ChandrashtamaResult {
   house_from_natal_moon: number
   natal_moon_sign_id: number
   transit_moon_sign_id: number
+  /**
+   * §N.5 authority disclosure (ṢAḌ-DARŚANA W1 verify-reopen, 2026-07-30). The natal Moon rāśi
+   * is now taken from the L1-authoritative `chart_facts` row this facade ALREADY fetches for
+   * item 8 (`get_dignity` / graha_sign_attributes MOON / fact_key='sign_num') — L1 is the
+   * authority over every L2+ derivation, and an L2+ surface must reference the L1 fact rather
+   * than a re-derivation of it.
+   *
+   * `panchanga_native_context` is the fallback, used only when the L1 fact is unavailable. It
+   * is a genuine RE-DERIVATION: `_fetch_native_context` recomputes the birth Moon from
+   * `charts.birth_date` via `compute_panchang(birth_date, …)` — passing the birth DATE with no
+   * birth TIME. The Moon moves ~13°/day, so for a native born near a rāśi cusp that
+   * re-derivation can land in the adjoining sign and disagree with L1. This native is exactly
+   * such a case: Moon in Pūrva Bhādrapada, whose span straddles the Aquarius/Pisces boundary
+   * (Aquarius 20°00' – Pisces 3°20'). Hence the L1-first ordering and the explicit source
+   * label — never a silent choice between two disagreeing authorities.
+   */
+  natal_moon_sign_source: 'l1_chart_facts' | 'panchanga_native_context'
+  /** The L1 fact_id backing `natal_moon_sign_id` when source is `l1_chart_facts` (§N.5 —
+   *  the claim references the fact, it does not restate it). */
+  natal_moon_sign_fact_id: string | null
+  /** Cross-check, never a substitute: does the panchāṅga service's re-derived birth Moon rāśi
+   *  agree with L1's? `null` when one of the two is unavailable to compare. A `false` here is
+   *  a real, disclosed divergence between two computations of the same quantity. */
+  native_context_agrees_with_l1: boolean | null
 }
 
 export interface JanmaResonanceFlag {
@@ -962,9 +1078,16 @@ export interface KalaNowResult {
     windows_reachable: boolean
     darshana_reachable: boolean
     panchanga_reachable: boolean
+    /** The specific, disclosed reason the OPTIONAL birth-chart overlay failed, if it did
+     *  (ND-4) — `null` when it hydrated fine or was not requested. */
+    panchanga_native_context_error: string | null
     natal_panchanga_reachable: boolean
     gochara_dual_reference_reachable: boolean
+    /** Earned-signal counterpart to the boolean above (§N.8): how many served rows actually
+     *  carry a transit sign. A `*_reachable: true` with 0 here would be a contradiction. */
+    gochara_dual_reference_rows_with_transit_data: number
     dasha_lord_transit_condition_reachable: boolean
+    dasha_lord_transit_condition_rows_with_transit_data: number
     sukshma_boundary_uncertainty_reachable: boolean
     dasha_sandhi_reachable: boolean
   }
@@ -1035,6 +1158,26 @@ export async function computeKalaNow(
   const panchang = panchangaResp.content?.['panchang'] as PanchangPayload | undefined
   const nativeContext = panchangaResp.content?.['native_context'] as NativeContext | null | undefined
   const panchangaReachable = panchangaOk && panchang != null
+  // ND-4 (ṢAḌ-DARŚANA W1 verify-reopen): the specific, disclosed reason the OPTIONAL birth-chart
+  // overlay failed, when it did — passed through verbatim from call_panchanga_service (which
+  // gets it from routers/panchang.py's now-fail-soft native_context hydration). Before this
+  // fix, an overlay failure 500'd the whole endpoint and every dependent field was reported as
+  // "L0 panchāṅga service unreachable this call" — wording that named a transient outage for
+  // what was in fact a deterministic upstream defect reproducible on every call.
+  const nativeContextError = panchangaResp.content?.['native_context_error']
+  const nativeContextErrorDetail = typeof nativeContextError === 'string' && nativeContextError.length > 0
+    ? nativeContextError
+    : null
+  /** The honest, non-misleading reason string for any panchāṅga-backed field that came up
+   *  empty. Distinguishes a genuine dispatch failure from a present-but-incomplete payload —
+   *  and never calls a persistent defect "unreachable this call". */
+  const panchangaReason = (missingWhat: string): string =>
+    panchangaOk
+      ? `${missingWhat} — the L0 panchāṅga service WAS reached and answered this call; this ` +
+        `specific field was absent from its response.`
+      : 'L0 panchāṅga service (call_panchanga_service, mode=single) dispatch failed this call. ' +
+        'If this reproduces on every call for every chart and date, it is a persistent defect, ' +
+        'not transient unreachability — check the capability handler and sidecar route, not retry.'
 
   let dishaShula: DishaShulaResult | null = null
   if (panchangaReachable && panchang?.vara) {
@@ -1084,15 +1227,29 @@ export async function computeKalaNow(
     }
   }
 
+  // §N.5: L1 `chart_facts` is the authority for the NATAL Moon rāśi — this facade already
+  // fetched it above (natalRefSigns, for item 8), so chandrāṣṭama references that fact instead
+  // of the panchāṅga service's own re-derivation. native_context is kept strictly as a
+  // disclosed cross-check + fallback. See ChandrashtamaResult's doc-comment for why this
+  // ordering matters concretely for THIS native (Pūrva Bhādrapada straddles a rāśi cusp).
   let chandrashtama: ChandrashtamaResult | null = null
   const transitMoon = panchang?.planets?.['moon']
-  if (panchangaReachable && nativeContext != null && transitMoon != null) {
-    const house = houseFromNatalMoon(nativeContext.moon_sign_id, transitMoon.sign_id)
+  const natalMoonFromL1 = natalRefSigns.ok ? natalRefSigns.moon_sign_number : null
+  const natalMoonFromNativeContext = nativeContext?.moon_sign_id ?? null
+  const natalMoonSignId = natalMoonFromL1 ?? natalMoonFromNativeContext
+  if (panchangaReachable && transitMoon != null && natalMoonSignId != null) {
+    const house = houseFromNatalMoon(natalMoonSignId, transitMoon.sign_id)
     chandrashtama = {
       is_chandrashtama: house === 8,
       house_from_natal_moon: house,
-      natal_moon_sign_id: nativeContext.moon_sign_id,
+      natal_moon_sign_id: natalMoonSignId,
       transit_moon_sign_id: transitMoon.sign_id,
+      natal_moon_sign_source: natalMoonFromL1 != null ? 'l1_chart_facts' : 'panchanga_native_context',
+      natal_moon_sign_fact_id: natalMoonFromL1 != null ? natalRefSigns.moon_fact_id : null,
+      native_context_agrees_with_l1:
+        natalMoonFromL1 != null && natalMoonFromNativeContext != null
+          ? natalMoonFromL1 === natalMoonFromNativeContext
+          : null,
     }
   }
 
@@ -1146,9 +1303,17 @@ export async function computeKalaNow(
   const composed = composeArgument(reading)
 
   const triPlane: TriPlanePointers = {
-    // NOW IS the interpretation plane — null is the contractually-legal value here
-    // (kala_envelope.ts: "null only legal when this object IS the interpretation plane").
-    interpretation_ref: null,
+    // ND-1 (ṢAḌ-DARŚANA W1 verify-reopen, 2026-07-30). This slot was a bare `null`, justified
+    // as "NOW IS the interpretation plane". That was wrong on the facts: NOW reports a
+    // temporal STATE, and the interpretive ground for that state — the drivers and classical
+    // reasons behind it — is served by `kala_explain_get`, which is registered, live, and
+    // already the interpretation_ref target of the sibling `kala_ahead_get`. A bare null here
+    // was a dead end on a plane that genuinely HAS a lever, which is precisely what item 43's
+    // no-dead-end contract exists to prevent (Elevation §11).
+    interpretation_ref: pointerTo(
+      'kala_explain_get',
+      'Why this NOW state reads as it does — the drivers and classical grounds behind the active windows and confluence',
+    ),
     prediction_ref: pointerTo(
       'kala_ahead_get',
       'Forward-dated windows and probabilistic projections building on this NOW state',
@@ -1180,48 +1345,64 @@ export async function computeKalaNow(
     ),
     dishaShula
       ? computedCoverage('disha_shula')
-      : honestEmptyCoverage('disha_shula', panchangaOk ? "Today's vara could not be resolved from the panchāṅga service response." : 'L0 panchāṅga service unreachable this call.'),
+      : honestEmptyCoverage('disha_shula', panchangaReason("Today's vara could not be resolved")),
     gulikaKalamNow
       ? computedCoverage('gulika_kalam_now')
-      : honestEmptyCoverage('gulika_kalam_now', panchangaOk ? 'gulika_kalam window absent from the panchāṅga service response.' : 'L0 panchāṅga service unreachable this call.'),
+      : honestEmptyCoverage('gulika_kalam_now', panchangaReason('gulika_kalam window absent')),
     chandrashtama
       ? computedCoverage('chandrashtama')
       : honestEmptyCoverage(
           'chandrashtama',
           panchangaOk
-            ? 'native_context (birth Moon rāśi) or transit Moon position unavailable from the panchāṅga service response.'
-            : 'L0 panchāṅga service unreachable this call.',
+            ? natalMoonSignId == null
+              ? 'Natal Moon rāśi unavailable from BOTH authorities: L1 chart_facts ' +
+                '(get_dignity/graha_sign_attributes MOON) did not resolve, and the panchāṅga ' +
+                'service\'s native_context overlay was absent' +
+                (nativeContextErrorDetail ? ` — overlay reported: ${nativeContextErrorDetail}.` : '.')
+              : panchangaReason('transit Moon position absent')
+            : panchangaReason('transit Moon position absent'),
         ),
     horaNow
       ? computedCoverage('hora_now')
-      : honestEmptyCoverage('hora_now', panchangaOk ? 'horā ladder absent from the panchāṅga service response.' : 'L0 panchāṅga service unreachable this call.'),
+      : honestEmptyCoverage('hora_now', panchangaReason('horā ladder absent')),
     janmaResonance
       ? computedCoverage('janma_resonance')
       : honestEmptyCoverage(
           'janma_resonance',
           !panchangaOk
-            ? 'L0 panchāṅga service unreachable this call.'
+            ? panchangaReason("today's tithi/vara/nakṣatra unavailable")
             : !natalPanchangaOk
-              ? 'L1 natal panchāṅga facts (get_panchanga) unreachable this call.'
+              ? 'L1 natal panchāṅga facts (get_panchanga) could not be dispatched this call.'
               : 'Natal tithi/vara/nakṣatra facts or today\'s panchāṅga anga ids unavailable.',
         ),
-    natalRefSigns.ok && gocharaDual.transitReachable
+    // Earned-signal detector (CLAUDE.md §N.8), items 8 + 28: `computed` now requires at least
+    // one served row to actually CARRY a transit sign. The prior predicate asked only "did the
+    // capability dispatch return 200" — which was true even while all nine grahas' fields were
+    // null, producing the false-positive `state: "computed"` the Verifier rejected. A
+    // `computed` claim must be falsifiable by the data it describes.
+    natalRefSigns.ok && gocharaDual.rowsWithTransitData > 0
       ? computedCoverage('dual_reference_gochara')
       : honestEmptyCoverage(
           'dual_reference_gochara',
           !natalRefSigns.ok
-            ? 'L1 natal reference-sign lookup (get_dignity/graha_sign_attributes) unreachable this call.'
-            : 'L0 ephemeris registry unreachable this call.',
+            ? 'L1 natal reference-sign lookup (get_dignity/graha_sign_attributes) could not be dispatched this call.'
+            : gocharaDual.transitFailure
+              ? transitFailureReason(gocharaDual.transitFailure)
+              : `L0 ephemeris answered but returned no transit row for any of the ${GOCHARA_PLANETS.length} ` +
+                `grahas on ${asOfDate} — genuine empty for this date, not a masked failure.`,
         ),
-    dashaLordCondition.chainReachable && dashaLordCondition.transitReachable && dashaLordCondition.rows.length > 0
+    dashaLordCondition.chainReachable && dashaLordCondition.rowsWithTransitData > 0
       ? computedCoverage('dasha_lord_current_transit_condition')
       : honestEmptyCoverage(
           'dasha_lord_current_transit_condition',
           !dashaLordCondition.chainReachable
-            ? 'L3 active-dasha registry (query_active_dashas) unreachable this call.'
+            ? 'L3 active-dasha registry (query_active_dashas) could not be dispatched this call.'
             : dashaLordCondition.rows.length === 0
               ? 'No active Vimśottarī MD/AD chain resolved for this chart/date — honest empty, not fabricated.'
-              : 'L0 ephemeris registry unreachable this call for the active lord(s).',
+              : dashaLordCondition.transitFailure
+                ? transitFailureReason(dashaLordCondition.transitFailure)
+                : `L0 ephemeris answered but returned no transit row for the active lord(s) on ${asOfDate} — ` +
+                  'genuine empty for this date, not a masked failure.',
         ),
     // Item 24-lite: Sūkṣma-level (level_n=4, "below PD") boundary intervals on the
     // currently-running period, per the documented lite-v0 convention (kala_uncertainty.ts).
@@ -1235,9 +1416,11 @@ export async function computeKalaNow(
         ),
   ]
 
-  const drillPointers: DrillPointerLike[] = [triPlane.prediction_ref, triPlane.intervention_ref].filter(
-    (p): p is DrillPointerLike => p != null && !isNoLever(p),
-  )
+  const drillPointers: DrillPointerLike[] = [
+    triPlane.interpretation_ref,
+    triPlane.prediction_ref,
+    triPlane.intervention_ref,
+  ].filter((p): p is DrillPointerLike => p != null && !isNoLever(p))
 
   const envelope = makeKalaEnvelope({
     reading,
@@ -1280,11 +1463,17 @@ export async function computeKalaNow(
       computed_at: new Date().toISOString(),
       source_citation: SOURCE_CITATION,
       panchanga_reachable: panchangaReachable,
+      panchanga_native_context_error: nativeContextErrorDetail,
       natal_panchanga_reachable: natalPanchangaOk,
       windows_reachable: windowsOk,
       darshana_reachable: darshanaOk,
-      gochara_dual_reference_reachable: natalRefSigns.ok && gocharaDual.transitReachable,
-      dasha_lord_transit_condition_reachable: dashaLordCondition.chainReachable && dashaLordCondition.transitReachable,
+      // §N.8: these two now assert what they NAME — that the join actually produced transit
+      // data — not merely that a dispatch returned 200 with an empty body.
+      gochara_dual_reference_reachable: natalRefSigns.ok && gocharaDual.rowsWithTransitData > 0,
+      gochara_dual_reference_rows_with_transit_data: gocharaDual.rowsWithTransitData,
+      dasha_lord_transit_condition_reachable:
+        dashaLordCondition.chainReachable && dashaLordCondition.rowsWithTransitData > 0,
+      dasha_lord_transit_condition_rows_with_transit_data: dashaLordCondition.rowsWithTransitData,
       sukshma_boundary_uncertainty_reachable: sukshmaBoundaryUncertainty.reachable,
       dasha_sandhi_reachable: dashaSandhi.chainReachable,
     },

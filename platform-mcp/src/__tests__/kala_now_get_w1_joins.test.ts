@@ -154,11 +154,20 @@ describe('kala_now_get W1 join — chandrashtama (item 29)', () => {
     // native Moon sign_id=1 (Aries), transit Moon sign_id=8 (Scorpio) → house 8
     vi.stubGlobal('fetch', mockRegistryFetch({ reachable: true, panchang: panchangPayload({ moonSignId: 8 }) }))
     const result = await computeKalaNow(TEST_CHART_ID, {}, TEST_PRINCIPAL)
+    // ṢAḌ-DARŚANA W1 verify-reopen (§N.5): chandrāṣṭama now takes the natal Moon rāśi from
+    // L1 `chart_facts` when available, and DISCLOSES which authority it used. This mock does
+    // not stub `get_dignity`, so the L1 fact is absent and the documented fallback to the
+    // panchāṅga service's own re-derivation applies — asserted explicitly here rather than
+    // left implicit, because "which authority produced this number" is exactly the question
+    // §N.5 exists to make answerable.
     expect(result.chandrashtama).toEqual({
       is_chandrashtama: true,
       house_from_natal_moon: 8,
       natal_moon_sign_id: 1,
       transit_moon_sign_id: 8,
+      natal_moon_sign_source: 'panchanga_native_context',
+      natal_moon_sign_fact_id: null,
+      native_context_agrees_with_l1: null,
     })
   })
 

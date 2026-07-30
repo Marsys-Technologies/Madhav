@@ -223,10 +223,15 @@ describe('kala_ahead_get — item 28 (daśā-lord forward transit condition, wav
 })
 
 describe('kala_ahead_get — envelope contract (E3/E4/E5, item 43, §7 Living-LEL)', () => {
-  it('tri_plane: prediction_ref is null (AHEAD IS the prediction plane)', async () => {
+  it('tri_plane: prediction_ref is an honest self-describing no_lever (AHEAD IS the prediction plane)', async () => {
     vi.stubGlobal('fetch', mockRegistryFetch({ reachable: true }))
     const result = await computeKalaAhead(TEST_CHART_ID, {}, TEST_PRINCIPAL)
-    expect(result.tri_plane.prediction_ref).toBeNull()
+    // ND-1 (ṢAḌ-DARŚANA W1 verify-reopen, 2026-07-30): the bare-null contract this assertion
+    // encoded is retired — every tri_plane slot is now either a real pointer or an honest,
+    // self-describing `no_lever`. See tools/kala_views/ahead.ts's prediction_ref for the
+    // rationale (the campaign's own tri_plane_no_dead_end_gate.ts grades a bare null WARN).
+    expect(isNoLever(result.tri_plane.prediction_ref!)).toBe(true)
+    expect((result.tri_plane.prediction_ref as { reason: string }).reason).toContain('IS the prediction plane')
   })
 
   it('tri_plane: interpretation_ref points at kala_explain_get, intervention_ref at kala_elect_get', async () => {
