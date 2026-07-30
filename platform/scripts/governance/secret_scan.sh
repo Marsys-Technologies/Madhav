@@ -268,6 +268,28 @@ is_tolerated() {
 # ─────────────────────────────────────────────────────────────────────────────
 # File enumeration
 # ─────────────────────────────────────────────────────────────────────────────
+# Provenance of the census: WHICH tree was measured.
+#
+# A census that cannot say what it measured is not a census (DVA RULING 30).
+# This lane's own CRED-B count was queried on the suspicion that it had been
+# taken against a stale tree; the register carried no SHA, so the only way to
+# settle it was to re-derive the whole thing. Emitting the SHA makes that a
+# one-line check next time.
+scanned_provenance() {
+  local sha state
+  if git -C "${REPO_ROOT}" rev-parse --git-dir >/dev/null 2>&1; then
+    sha="$(git -C "${REPO_ROOT}" rev-parse HEAD 2>/dev/null || echo 'unknown')"
+    if [[ -n "$(git -C "${REPO_ROOT}" status --porcelain 2>/dev/null)" ]]; then
+      state="DIRTY (working tree differs from the commit above)"
+    else
+      state="clean"
+    fi
+    printf 'commit %s · worktree %s' "${sha}" "${state}"
+  else
+    printf 'not a git checkout (find fallback) · commit unknown'
+  fi
+}
+
 enumerate_files() {
   if git -C "${REPO_ROOT}" rev-parse --git-dir >/dev/null 2>&1; then
     git -C "${REPO_ROOT}" ls-files --cached --others --exclude-standard
@@ -325,6 +347,7 @@ run_scan() {
 
   scan_file_list > "${tmp}/files"
   local nfiles; nfiles="$(wc -l < "${tmp}/files" | tr -d ' ')"
+  echo "secret_scan: scanned tree — $(scanned_provenance)"
   echo "secret_scan: scanning ${nfiles} files (repo-wide minus SUPPRESS_RE; see script header §SCOPE)"
 
   # A scanner that scans nothing exits 0 and reads as green. That is the exact
@@ -532,11 +555,11 @@ main() {
       local rc=0
       if run_scan; then
         echo ""
-        echo "secret_scan: PASS (no new literal credentials)"
+        echo "secret_scan: PASS (no new literal credentials) — $(scanned_provenance)"
       else
         rc=1
         echo "" >&2
-        echo "secret_scan: FAIL - see findings above" >&2
+        echo "secret_scan: FAIL - see findings above — $(scanned_provenance)" >&2
       fi
 
       # gitleaks runs IN ADDITION, never instead of, the bash set.

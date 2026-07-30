@@ -331,6 +331,27 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        # DVA RULING 30 — the gate must measure the tree that is actually being
+        # merged, never a stale or partial one.
+        #   · on pull_request, actions/checkout@v4 checks out refs/pull/N/merge
+        #     — the merge of the PR head into the base. That IS the tree that
+        #     lands, and is exactly what must be scanned. Do not override `ref:`
+        #     to github.event.pull_request.head.sha: that would scan the branch
+        #     in isolation and miss a credential arriving via the base.
+        #   · `git ls-files` (the scanner's file enumeration) needs the index,
+        #     which a depth-1 checkout provides. Do not switch to a sparse or
+        #     partial checkout — a smaller tree is a smaller census.
+        # The scanner prints the SHA it actually scanned in its own output, so
+        # every CI log states what was measured.
+
+      - name: Report the tree under scan
+        # Provenance, printed before any verdict: "a census that cannot say what
+        # it measured is not a census."
+        run: |
+          echo "event=${{ github.event_name }}"
+          echo "scanning commit: $(git rev-parse HEAD)"
+          echo "base ref:        ${{ github.base_ref || github.ref_name }}"
+          git status --porcelain | head -5
 
       - name: Self-test scanner against fixtures
         # Three assertions, all blocking:
