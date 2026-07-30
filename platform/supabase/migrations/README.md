@@ -20,6 +20,12 @@ It de-duplicates by **filename** (not by number), so each file is applied at mos
 - **New migrations belong here** — increment beyond the current highest number across both dirs.
 - `platform/migrations/` holds the legacy sequence and is kept for historical continuity only.
 
+> **This routing rule is not enforced and is being broken.** The single highest number on `main`,
+> `platform/migrations/474_asset_throughput_incomplete_state.sql` (2026-07-29), is in the directory
+> this README calls legacy. A costed consolidation spec is filed at
+> `00_ARCHITECTURE/briefs/samapti/SPEC_MIGRATION_DIRECTORY_CONSOLIDATION_v1_0.md` (PROPOSED — not
+> authorized for execution). Until it runs, the MIG-1 guard below is what makes the split safe.
+
 ## Number collisions — now a CI failure (MIG-1)
 
 Because de-duplication is filename-based, two files with the same leading number but
