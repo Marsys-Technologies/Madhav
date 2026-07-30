@@ -1,4 +1,4 @@
--- Migration 479: kala_field_provenance — the item-11 provenance edges
+-- migration 493: kala_field_provenance — the item-11 provenance edges
 -- =============================================================================
 -- ṢAḌ-DARŚANA campaign · Wave W2 · Lane C. Spec: KALA_W2_FIELD_DESIGN_v1_0.md
 -- §5.4 (schema + THE RECONCILIATION INVARIANT), §8.2 (item 44 authority basis),

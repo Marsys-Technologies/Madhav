@@ -175,7 +175,7 @@ def canonical_json(value: Any) -> str:
 
 @dataclass(frozen=True)
 class FieldPins:
-    """The PIN IDENTITY of one field build (see migration 478's header for why
+    """The PIN IDENTITY of one field build (see migration 492's header for why
     there are two snapshot identities and which one CG-1 is stated over).
 
     Every one of these is an input to `field_snapshot_id`, so a build under
@@ -667,7 +667,7 @@ def resolve_weights_pin(conn) -> tuple[str, dict[str, float]]:
         rows = _rows(cur)
     if not rows:
         raise RuntimeError(
-            'no active kala_field_weight_versions row. Migration 476 seeds '
+            'no active kala_field_weight_versions row. migration 491 seeds '
             "'v0_classical' and MUST land before ka_kshetra ever runs — it is the "
             'acyclicity keystone (§7.5). There is deliberately no unpinned code path.'
         )

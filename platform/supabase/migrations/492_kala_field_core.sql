@@ -1,4 +1,4 @@
--- Migration 478: kala_field + kala_field_windows + kala_field_snapshots
+-- migration 492: kala_field + kala_field_windows + kala_field_snapshots
 -- =============================================================================
 -- ṢAḌ-DARŚANA campaign · Wave W2 ("the field as science") · Lane C.
 -- Build spec: KALA_W2_FIELD_DESIGN_v1_0.md §5.2 (segment representation + exact

@@ -107,7 +107,7 @@ COVARIATE_WEIGHT_IDS: dict[str, str] = {
 
 #: §5.1 C-3, verbatim. Overridden per weights-version by `d:<level>` rows; this
 #: mapping is the fallback used only when a weights version omits them, and is
-#: identical to migration 476's seeded v0_classical values.
+#: identical to migration 491's seeded v0_classical values.
 DEFAULT_DEPTH_WEIGHTS: dict[str, float] = {
     'MD': 1.00, 'AD': 0.70, 'PD': 0.50, 'SD': 0.30, 'PrD': 0.15,
 }

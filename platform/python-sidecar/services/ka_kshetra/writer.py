@@ -521,7 +521,7 @@ class KaKshetraWriter(WriterBase):
         """Write the freshness row and the §7.4 CONTENT hash.
 
         The content hash is computed here, after every stage-4/5 row is committed,
-        because it is a digest OF those rows — see migration 478's header for why
+        because it is a digest OF those rows — see migration 492's header for why
         the pin identity and the content hash are two distinct values and why
         CG-1 is stated over this one.
         """

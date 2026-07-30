@@ -1,4 +1,4 @@
--- Migration 480: kala_field_null + the `ka_kshetra` asset_registry seed row
+-- migration 494: kala_field_null + the `ka_kshetra` asset_registry seed row
 -- =============================================================================
 -- ṢAḌ-DARŚANA campaign · Wave W2 · Lane C. Spec: KALA_W2_FIELD_DESIGN_v1_0.md
 -- §5.5 (the circular-shift null), §9.1 (DAG edges), §9.2 (seed row), §9.3 row 480.
@@ -55,7 +55,7 @@
 --     mi_bhara.depends_on = ['ka_kshetra'], that edge forms the cycle
 --     ka_kshetra → mi_bhara → ka_kshetra, which topoSort rejects — breaking
 --     EVERY chart build, not just this wave's. The calibration loop closes by
---     VERSION PIN across builds instead (§7.5 / migration 476), never by a DAG
+--     VERSION PIN across builds instead (§7.5 / migration 491), never by a DAG
 --     edge. A CI guard asserts both halves of this positively.
 --
 -- ── L0 GATING CONSEQUENCE (brief §2.5.2, correct behaviour not a defect) ────

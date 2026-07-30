@@ -14,7 +14,7 @@
  * subtlest part of the wave" for exactly that reason.
  *
  * The loop closes ACROSS builds by VERSION PIN instead of AROUND the DAG:
- *   1. migration 476 seeds `v0_classical` (a MIGRATION, not a writer), so every
+ *   1. migration 491 seeds `v0_classical` (a MIGRATION, not a writer), so every
  *      chart's first build finds an active weights version — there is no
  *      NULL-weights code path and no build order needing `mi_bhara` to have run;
  *   2. `ka_kshetra` READS the newest active version (a DATA dependency);
@@ -55,7 +55,7 @@ function repoRoot(): string {
 const REPO_ROOT = repoRoot()
 const MIGRATION = path.join(
   REPO_ROOT,
-  'platform/supabase/migrations/480_kala_field_null.sql',
+  'platform/supabase/migrations/494_kala_field_null.sql',
 )
 
 /** The eight edges §9.1 declares for `ka_kshetra`, and exactly those eight. */
@@ -172,9 +172,9 @@ describe('§7.5 sub-rule 6 (b) — a plan containing the calibration triangle so
   })
 })
 
-describe('§7.5 — migration 476 is the acyclicity keystone', () => {
+describe('§7.5 — migration 491 is the acyclicity keystone', () => {
   const seed = fs.readFileSync(
-    path.join(REPO_ROOT, 'platform/supabase/migrations/476_kala_field_weights_seed.sql'),
+    path.join(REPO_ROOT, 'platform/supabase/migrations/491_kala_field_weights_seed.sql'),
     'utf8',
   )
 
@@ -186,7 +186,7 @@ describe('§7.5 — migration 476 is the acyclicity keystone', () => {
   })
 
   it('numbers below the field-core migration so it lands first', () => {
-    expect(476).toBeLessThan(478)
+    expect(491).toBeLessThan(492)
   })
 
   it('uses ON CONFLICT DO NOTHING so a re-run cannot silently mutate a weight', () => {

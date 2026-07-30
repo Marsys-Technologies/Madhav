@@ -1,4 +1,4 @@
--- Migration 476: kala_field_weight_versions + kala_field_weights + the `v0_classical` seed
+-- migration 491: kala_field_weight_versions + kala_field_weights + the `v0_classical` seed
 -- =============================================================================
 -- ṢAḌ-DARŚANA campaign · Wave W2 ("the field as science") · Lane C.
 -- Build spec: 00_ARCHITECTURE/llm_consumption_audit/briefs/kala_elevation/
@@ -121,7 +121,7 @@ INSERT INTO kala_field_weight_versions (
   'v0_classical', 'active', NULL, 'global', 'x12_v0',
   0, 0, 20.0, FALSE,
   NULL, NULL,
-  'Structural classical priors θ⁰ seeded by migration 476 (KALA_W2_FIELD_DESIGN '
+  'Structural classical priors θ⁰ seeded by migration 491 (KALA_W2_FIELD_DESIGN '
   '§7.5 acyclicity keystone). NOT a fit: fit_loglik/holdout_loglik are honestly '
   'NULL because no fitting has occurred. n_events_used=0 ⇒ every parameter sits '
   'exactly at its prior under the §7.2 shrinkage estimator.'

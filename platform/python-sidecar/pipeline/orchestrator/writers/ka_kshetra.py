@@ -29,7 +29,7 @@ Contract compliance (FROZEN orchestrator contract, ORCHESTRATOR_CONVERGENCE_CLOS
     build_substep_progress (migration 436 — untouchable; used, not changed)
 
 Layer: L3 Kāla · Asset: ka_kshetra (per_chart data writer) · Registry seed row +
-depends_on: migration 480.
+depends_on: migration 494.
 
 Depends on (the EIGHT edges of §9.1, and exactly those eight): ka_dasha_kala,
 ka_gochara_sweep (read-only cross-check corpus), ka_gochara_resonance,
@@ -39,7 +39,7 @@ ga_panchanga, bo_pratijna, bo_sangati, bo_upaya, bg_cohort.
   · NOT mi_bhara — the acyclicity rule (§7.5); that edge would form the cycle
     ka_kshetra → mi_bhara → ka_kshetra and break EVERY chart build. The
     calibration loop closes across builds by weights-version pin instead
-    (migration 476 seeds v0_classical so the very first build finds an active
+    (migration 491 seeds v0_classical so the very first build finds an active
     version).
 
 CIRCULARITY GUARD (§8.3, a hard campaign gate): this writer and every module it
