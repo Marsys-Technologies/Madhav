@@ -1,4 +1,12 @@
--- Migration 487: kala_field_salience + kala_insights (ṢAḌ-DARŚANA W2 Lane D)
+-- migration 495: kala_field_salience + kala_insights (ṢAḌ-DARŚANA W2 Lane D)
+-- =============================================================================
+-- RENUMBER NOTE (2026-07-30, Conductor merge-train pass): originally landed as 487
+-- (see the re-verification note below for why). By the time all five W2 lanes were
+-- ready to merge together, 487 collided with a sibling lane's own independent
+-- re-verification — renumbered to 495, the next free slot above the full set of
+-- five lanes' claimed numbers (488-494), so all five can merge without re-colliding
+-- against each other. The re-verification narrative below is preserved as-is; only
+-- the final claimed number changed.
 -- =============================================================================
 -- Context: KALA_W2_FIELD_DESIGN_v1_0.md §6 (Lane D — Stage 6 salience +
 -- submodular selection + rarity axis (item 25/15); Stage 6.5 insight synthesis

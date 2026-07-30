@@ -384,7 +384,7 @@ def assemble_insight_row(
 ) -> dict:
     """
     Turn one detector's `InsightCandidate` into a full `kala_insights` row
-    (migration 487), ALWAYS with `lel_derived=False` (CIRCULARITY GUARD
+    (migration 495), ALWAYS with `lel_derived=False` (CIRCULARITY GUARD
     CARVE-OUT — this module never writes an lel_derived=TRUE row).
     """
     insight_score, surprise_basis = compute_insight_score(
