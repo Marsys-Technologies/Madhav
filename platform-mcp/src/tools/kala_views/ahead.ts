@@ -48,6 +48,46 @@
  * 'mudda' — the SAME capability the Vimśottarī joins elsewhere already call, one of the 9
  * systems `chart_dashas` already carries). See the "W1 item 30" doc-comment above
  * `computeMuddaDashaVarsha` below for the exact provenance chain.
+ *
+ * W1 JOIN ADDITION (SHAD_DARSHANA_BRIEF_v2_0.md §3 W1, item 2): `recurrence_ladder` — the
+ * recurrence-ladder serving item. KALA_SIX_VIEWS_DESIGN_v1_0.md §2.2 names this concept as
+ * "already in `activation_predicted_dates_jsonb` — Saturn-AD re-fires 2032–33, 2047–50…) —
+ * served as first-class future windows" and the item's own registry line names the column as
+ * living on `bodha_msr_signals` (L2 Bodha, an "L3-fill hook" reserved NULL at L2 build time
+ * per `platform/migrations/325_l2_bodha_enriched_schema.sql` / `bo_laksana.py`).
+ * **Production-state check performed before writing this join (never assumed)**: a direct
+ * query against `bodha_msr_signals.activation_predicted_dates_jsonb` on BOTH canonical charts
+ * confirms it is genuinely **100% NULL** (0 of 49,608 rows on 482012f1; 0 of 49,980 on
+ * 1c826d5a) — the L2 hook has never been populated by any writer, exactly as this item's
+ * brief anticipated as a live possibility. Per the brief's own instruction ("do NOT build a
+ * NEW computation to populate this column yourself... surface whatever recurrence-ladder
+ * structure already exists"), a further check of the L3 substrate this SAME facade already
+ * queries (`marsys://tool/L3/query_temporal_activation`, backed by `kala_activation`, the
+ * `ka_kalasutra` writer's own table) found that table carries its OWN
+ * `activation_predicted_dates_jsonb` column under the identical name — and THAT one is
+ * genuinely populated (323,571 of 332,723 rows non-empty on 482012f1) with exactly the
+ * recurrence-ladder shape the design doc describes (a dasha-timeline-derived sequence of
+ * {date, point_kind: period_start/peak/end, strength, trigger, graha} entries spanning
+ * decades). `ka_kalasutra.py`'s own docstring and its `_derive_activation_dates` /
+ * `services.ka_temporal` fallback logic are the writer that actually fills this ladder; so
+ * this join reads it from the RAW `activations` array already present in the SAME
+ * `query_temporal_activation` response `windowsResp` this file already fetches for
+ * `window_families`/`forward_windows` above — zero new registry calls, zero new migration,
+ * zero new astrological computation (§N.5/B.10). The genuinely-NULL L2 hook is reported
+ * honestly (not silently glossed over) in this join's inline commentary and in the PR/session
+ * report; it is not fabricated, and no new writer is built to populate it (that would be
+ * scope creep into a different asset's job, per the item's own instruction). See the
+ * `computeRecurrenceLadder` doc-comment below for the exact per-signal collapse logic.
+ *
+ * E6-lite ADDITION (SHAD_DARSHANA_BRIEF_v2_0.md §3 W1: "proactive 90-day digest preset on
+ * AHEAD (D4)"): `digest_90d` — a curated, bounded-horizon SELECTION over fields this facade
+ * already computes (window_families, projection_families, gulika_kalam_ahead,
+ * recurrence_ladder, mudda_dasha_varsha) for the fixed next-90-days window from today. No new
+ * computation, no new registry call — pure filter + template-composed summary (B.10). Per the
+ * campaign's own Night-1 ledger note (brief §3 W1 Gate): "ritual rows are NOT expected here —
+ * Mode 1 arrives at W4; a ritual-free W1 digest is the correct state" — this digest carries an
+ * explicit `ritual_opportunities_note` saying so rather than silently omitting the concept.
+ * See `buildAheadDigest90d` below.
  */
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
@@ -585,6 +625,267 @@ export interface GulikaKalamAheadWindow {
 
 const GULIKA_AHEAD_MAX_DAYS = 30 // call_panchanga_service mode=range hard-caps date_to-date_from at 30 days (31 inclusive)
 
+// ── W1 item 2 (recurrence-ladder serving) — SHAD_DARSHANA_BRIEF_v2_0.md §3 W1. [J]-kind
+// JOIN over the RAW `activations` array the SAME `query_temporal_activation` call above
+// already returns (see the file-header doc-comment for the full production-state
+// investigation: `bodha_msr_signals.activation_predicted_dates_jsonb` — the L2 hook the
+// item is literally named after — is genuinely 100% NULL on both canonical charts; the
+// populated substrate this join actually reads is `kala_activation.activation_predicted_
+// dates_jsonb`, the L3 `ka_kalasutra` table's own same-named column). No new registry call,
+// no new migration, no new astrological computation (§N.5/B.10). ────────────────────────
+
+/** Shape of one point inside a raw `activation_predicted_dates_jsonb` array element. The
+ *  dasha-timeline path (`services.ka_temporal`) emits the full shape below; the older
+ *  convergence-peak fallback (`_derive_activation_dates` in ka_kalasutra.py) emits only
+ *  {date, strength, trigger} — every other field is optional here for that reason. */
+interface RecurrenceLadderPointRaw {
+  date?: string
+  strength?: number | null
+  trigger?: string | null
+  graha?: string | null
+  point_kind?: string | null
+  [key: string]: unknown
+}
+
+/** Raw row shape from `query_temporal_activation`'s `activations` array (never re-derived —
+ *  read verbatim from the SAME SQL projection that already backs `window_families`). */
+interface RawActivationRow {
+  signal_id?: string
+  signature_class?: string | null
+  orb_strength?: number | null
+  source_citation?: string | null
+  activation_predicted_dates_jsonb?: RecurrenceLadderPointRaw[] | null
+  domains_affected_array?: string[] | null
+  [key: string]: unknown
+}
+
+export interface RecurrenceLadderPoint {
+  date: string
+  point_kind: string | null
+  strength: number | null
+  trigger: string | null
+  graha: string | null
+}
+
+export interface RecurrenceLadderEntry {
+  signal_id: string
+  signature_class: string | null
+  domains_affected: string[]
+  max_orb_strength: number | null
+  source_citation: string | null
+  /** Only points with `date >= today` — the forward half of the ladder (AHEAD is a
+   *  forward-looking view). Sorted ascending. */
+  future_points: RecurrenceLadderPoint[]
+  /** Total points in the ladder (past + future) — honest disclosure of how much of the
+   *  full recurrence history this signal's ladder carries, even though only the future
+   *  half is surfaced in `future_points`. */
+  total_points_in_ladder: number
+}
+
+/**
+ * Item 2: collapses the raw per-predicate `activations` rows into one recurrence-ladder
+ * entry per `signal_id` (several predicate rows can share byte-identical ladders for the
+ * same signal — a predicate-count artifact, not a real distinction — so this keeps only the
+ * highest-`orb_strength` row per signal, exactly the same "collapse duplicated rows into
+ * one family" pattern `query_temporal_activation.ts`'s own `window_families` already uses,
+ * applied here to a different grouping key). Drops signals whose ladder is entirely in the
+ * past relative to `todayISO` (nothing forward to serve) — never fabricates a future point.
+ */
+function computeRecurrenceLadder(
+  rawActivations: RawActivationRow[],
+  todayISO: string,
+  maxItems: number,
+): { entries: RecurrenceLadderEntry[]; anyLadderPresent: boolean } {
+  const bySignal = new Map<string, RecurrenceLadderEntry>()
+  let anyLadderPresent = false
+
+  for (const row of rawActivations) {
+    const signalId = typeof row['signal_id'] === 'string' ? (row['signal_id'] as string) : null
+    const rawDates = row['activation_predicted_dates_jsonb']
+    if (!signalId || !Array.isArray(rawDates) || rawDates.length === 0) continue
+    anyLadderPresent = true
+
+    const orb = typeof row['orb_strength'] === 'number' ? (row['orb_strength'] as number) : null
+    const existing = bySignal.get(signalId)
+    if (existing && (existing.max_orb_strength ?? -Infinity) >= (orb ?? -Infinity)) continue
+
+    const points: RecurrenceLadderPoint[] = (rawDates as RecurrenceLadderPointRaw[])
+      .filter((p): p is RecurrenceLadderPointRaw & { date: string } => typeof p?.date === 'string')
+      .map((p) => ({
+        date: p.date,
+        point_kind: typeof p.point_kind === 'string' ? p.point_kind : null,
+        strength: typeof p.strength === 'number' ? p.strength : null,
+        trigger: typeof p.trigger === 'string' ? p.trigger : null,
+        graha: typeof p.graha === 'string' ? p.graha : null,
+      }))
+      .sort((a, b) => a.date.localeCompare(b.date))
+    const futurePoints = points.filter((p) => p.date >= todayISO)
+
+    bySignal.set(signalId, {
+      signal_id: signalId,
+      signature_class: typeof row['signature_class'] === 'string' ? (row['signature_class'] as string) : null,
+      domains_affected: Array.isArray(row['domains_affected_array']) ? (row['domains_affected_array'] as string[]) : [],
+      max_orb_strength: orb,
+      source_citation: typeof row['source_citation'] === 'string' ? (row['source_citation'] as string) : null,
+      future_points: futurePoints,
+      total_points_in_ladder: points.length,
+    })
+  }
+
+  const entries = [...bySignal.values()]
+    .filter((e) => e.future_points.length > 0)
+    .sort((a, b) => {
+      const aNext = a.future_points[0]?.date ?? '9999-99-99'
+      const bNext = b.future_points[0]?.date ?? '9999-99-99'
+      return aNext.localeCompare(bNext) || (b.max_orb_strength ?? 0) - (a.max_orb_strength ?? 0)
+    })
+    .slice(0, maxItems)
+
+  return { entries, anyLadderPresent }
+}
+
+// ── E6-lite (90-day digest preset on AHEAD, D4) — SHAD_DARSHANA_BRIEF_v2_0.md §3 W1. Pure
+// SELECTION over fields this facade already computes above — no new registry call, no new
+// computation, template-composed prose only (B.10). ─────────────────────────────────────
+
+export interface AheadDigestItem {
+  kind: 'temporal_window' | 'probabilistic_projection' | 'gulika_kalam' | 'recurrence_ladder_point' | 'mudda_dasha_varsha'
+  label: string
+  window_or_date: string
+  detail: string
+  fact_ids: string[]
+}
+
+export interface AheadDigest90d {
+  as_of_date: string
+  digest_to_date: string
+  horizon_days: 90
+  items: AheadDigestItem[]
+  item_count: number
+  ritual_opportunities_note: string
+}
+
+/** True when a window/point `[start, end]` (either bound may stand in for the other when
+ *  only one is known) overlaps the fixed `[asOf, to]` digest horizon. */
+function overlapsDigestWindow(
+  windowStart: string | null | undefined,
+  windowEnd: string | null | undefined,
+  asOf: string,
+  to: string,
+): boolean {
+  if (!windowStart && !windowEnd) return false
+  const start = windowStart ?? (windowEnd as string)
+  const end = windowEnd ?? (windowStart as string)
+  return end >= asOf && start <= to
+}
+
+const RITUAL_OPPORTUNITIES_NOTE =
+  'Ritual-opportunity rows (kala_ritual_get Mode 1) are not included in this digest — that ' +
+  'computation lands at wave W4 (SHAD_DARSHANA_BRIEF_v2_0.md §3 W4); per the campaign\'s own ' +
+  'Gate W1 note, a ritual-free digest is the correct W1 state, not an omission.'
+
+/**
+ * E6-lite: builds the fixed 90-day-forward digest by SELECTING (never computing) from the
+ * already-assembled window/projection/gulika/recurrence-ladder/mudda-varsha fields above,
+ * bounded to `[asOfDate, digestToDate]`. Each surface contributes at most a small, curated
+ * number of items — the daily gulika-kālam windows collapse to ONE summary item (not 30
+ * daily rows) and each recurrence-ladder signal collapses to ONE item naming its nearest
+ * in-window occurrence, consistent with the design's "family-collapsed, never 25
+ * photocopies" horizon-preset discipline (KALA_SIX_VIEWS_DESIGN_v1_0.md §2.3).
+ */
+function buildAheadDigest90d(params: {
+  asOfDate: string
+  digestToDate: string
+  windowFamilies: WindowFamily[]
+  projectionFamilies: ProjectionFamily[]
+  gulikaKalamAhead: GulikaKalamAheadWindow[]
+  recurrenceLadder: RecurrenceLadderEntry[]
+  muddaDashaVarsha: MuddaDashaVarshaJoin | null
+}): AheadDigest90d {
+  const { asOfDate, digestToDate, windowFamilies, projectionFamilies, gulikaKalamAhead, recurrenceLadder, muddaDashaVarsha } = params
+  const items: AheadDigestItem[] = []
+
+  for (const w of windowFamilies) {
+    if (!overlapsDigestWindow(w.window_start, w.window_end, asOfDate, digestToDate)) continue
+    items.push({
+      kind: 'temporal_window',
+      label: `${w.domains && w.domains.length > 0 ? w.domains.join('/') : 'unlabeled domain'} temporal window`,
+      window_or_date: `${w.window_start ?? '?'}..${w.window_end ?? '?'}`,
+      detail:
+        `${w.member_count} corroborating signal(s)` +
+        (w.signature_classes && w.signature_classes.length > 0 ? `, classes: ${w.signature_classes.join(', ')}` : ''),
+      fact_ids: w.member_signal_ids ?? [],
+    })
+  }
+
+  for (const p of projectionFamilies) {
+    if (!overlapsDigestWindow(p.window_start, p.window_end, asOfDate, digestToDate)) continue
+    const tierLabel = p.probability_tier ? TIER_LABEL[p.probability_tier] : 'ungraded'
+    items.push({
+      kind: 'probabilistic_projection',
+      label: `${p.domain ?? 'unlabeled domain'} projection (${tierLabel})`,
+      window_or_date: `${p.window_start ?? '?'}..${p.window_end ?? '?'}`,
+      detail: `${p.member_count} member signal(s)`,
+      fact_ids: [...(p.member_signal_ids ?? []), ...(p.member_ids ?? [])],
+    })
+  }
+
+  if (gulikaKalamAhead.length > 0) {
+    const dates = [...gulikaKalamAhead.map((g) => g.date)].sort()
+    items.push({
+      kind: 'gulika_kalam',
+      label: 'Daily gulika-kālam avoidance windows',
+      window_or_date: `${dates[0]}..${dates[dates.length - 1]}`,
+      detail:
+        `${gulikaKalamAhead.length} daily window(s) available over this span — see ` +
+        `gulika_kalam_ahead for the per-day timing.`,
+      fact_ids: [],
+    })
+  }
+
+  for (const entry of recurrenceLadder) {
+    const within = entry.future_points.filter((pt) => pt.date <= digestToDate)
+    const next = within[0]
+    if (!next) continue
+    items.push({
+      kind: 'recurrence_ladder_point',
+      label:
+        `Recurrence ladder: ${entry.signature_class ?? 'unclassified'} signal` +
+        (entry.domains_affected.length > 0 ? ` (${entry.domains_affected.join('/')})` : ''),
+      window_or_date: next.date,
+      detail:
+        `${within.length} of ${entry.future_points.length} forward recurrence point(s) fall within this window` +
+        (next.point_kind ? `; next is a ${next.point_kind}` : '') +
+        (next.strength != null ? ` (strength ${next.strength})` : ''),
+      fact_ids: [entry.signal_id],
+    })
+  }
+
+  if (muddaDashaVarsha) {
+    const currentMudda = muddaDashaVarsha.mudda_chain[0]
+    items.push({
+      kind: 'mudda_dasha_varsha',
+      label: 'Current varsha (Tājika annual) + Mudda daśā',
+      window_or_date: `${muddaDashaVarsha.varsha_start_iso ?? '?'}..${muddaDashaVarsha.varsha_end_iso ?? '?'}`,
+      detail:
+        `Year-lord ${muddaDashaVarsha.year_lord ?? 'unknown'}, Muntha in ${muddaDashaVarsha.muntha_sign ?? 'unknown'}` +
+        (currentMudda ? `; active Mudda ${currentMudda.level_name} lord ${currentMudda.lord_graha}` : ''),
+      fact_ids: [],
+    })
+  }
+
+  items.sort((a, b) => a.window_or_date.localeCompare(b.window_or_date))
+
+  return {
+    as_of_date: asOfDate,
+    digest_to_date: digestToDate,
+    horizon_days: 90,
+    items,
+    item_count: items.length,
+    ritual_opportunities_note: RITUAL_OPPORTUNITIES_NOTE,
+  }
+}
+
 // ── The reading (template-over-computed-data — B.10; no generative call) ───────────
 
 function buildAheadReading(params: {
@@ -686,6 +987,14 @@ export interface KalaAheadResult {
   // Item 30 (wave W1): current varsha (Tājika annual) context joined with the active Mudda
   // daśā chain for the same date.
   mudda_dasha_varsha: MuddaDashaVarshaJoin | null
+  // Item 2 (wave W1): recurrence-ladder serving. Read verbatim from `kala_activation`'s own
+  // `activation_predicted_dates_jsonb` column (via the SAME query_temporal_activation call
+  // above's raw `activations` array) — NOT from the genuinely-NULL `bodha_msr_signals` L2
+  // hook of the same name (see the file-header doc-comment for the production-state check).
+  recurrence_ladder: RecurrenceLadderEntry[]
+  // E6-lite (wave W1): the 90-day forward digest preset — a curated selection over the
+  // fields above, bounded to today..+90d. Ritual-free by design (Mode 1 lands at W4).
+  digest_90d: AheadDigest90d
   drill_pointers: DrillPointerLike[]
   provenance_envelope: {
     source: string
@@ -700,6 +1009,7 @@ export interface KalaAheadResult {
     projections_reachable: boolean
     dasha_lord_transit_condition_forward_reachable: boolean
     mudda_dasha_varsha_reachable: boolean
+    recurrence_ladder_reachable: boolean
   }
 }
 
@@ -766,6 +1076,9 @@ export async function computeKalaAhead(
   const rawFamilies = (windowsResp.content?.['window_families'] as WindowFamily[] | undefined) ?? []
   const rawForward = (windowsResp.content?.['forward_windows'] as WindowFamily[] | undefined) ?? []
   const windowFamilies = rawFamilies.length > 0 ? rawFamilies : rawForward
+  // Item 2 (recurrence ladder): the SAME query_temporal_activation response's raw,
+  // per-predicate `activations` array — already fetched above, no new registry call.
+  const rawActivations = (windowsResp.content?.['activations'] as RawActivationRow[] | undefined) ?? []
 
   const projectionsOk = projectionsResp.ok
   const projectionFamilies =
@@ -790,6 +1103,21 @@ export async function computeKalaAhead(
   // Item 30 — joins the current varsha (Tājika annual) context with the active Mudda
   // daśā chain, both as of today (dateFrom) — the "current developing period" reading.
   const muddaDashaVarsha = await computeMuddaDashaVarsha(chartId, ayanamshaId, dateFrom, principal)
+
+  // Item 2 — recurrence-ladder serving, collapsed per signal, forward points only.
+  const { entries: recurrenceLadder, anyLadderPresent } = computeRecurrenceLadder(rawActivations, dateFrom, maxItems)
+
+  // E6-lite — the fixed 90-day forward digest, a pure selection over the fields above.
+  const digestToDate = new Date(today.getTime() + 90 * 86400000).toISOString().slice(0, 10)
+  const digest90d = buildAheadDigest90d({
+    asOfDate: dateFrom,
+    digestToDate,
+    windowFamilies,
+    projectionFamilies,
+    gulikaKalamAhead,
+    recurrenceLadder,
+    muddaDashaVarsha: muddaDashaVarsha.result,
+  })
 
   const reading = buildAheadReading({ horizonLabel, windowFamilies, projectionFamilies, windowsOk, projectionsOk })
   const composed = composeArgument(reading)
@@ -848,6 +1176,28 @@ export async function computeKalaAhead(
               ? 'L3 active-dasha registry (query_active_dashas, system=mudda) unreachable this call.'
               : 'No current varsha row or active Mudda daśā chain resolved for this chart/date — honest empty, not fabricated.',
         ),
+    windowsOk
+      ? recurrenceLadder.length > 0
+        ? computedCoverage('recurrence_ladder')
+        : honestEmptyCoverage(
+            'recurrence_ladder',
+            anyLadderPresent
+              ? 'This chart\'s activation rows carry a predicted-dates ladder (kala_activation.activation_predicted_dates_jsonb), ' +
+                'but every point in it already lies in the past relative to today — no forward recurrence to show. ' +
+                '(Note: the L2 bodha_msr_signals.activation_predicted_dates_jsonb hook of the same name remains genuinely ' +
+                'NULL in production and is never used as a source.)'
+              : 'No activation row for this chart/ayanamsha carries a populated activation_predicted_dates_jsonb ladder yet ' +
+                '(neither the L3 kala_activation column this join reads, nor the L2 bodha_msr_signals hook of the same name, ' +
+                'which is confirmed genuinely NULL in production).',
+          )
+      : honestEmptyCoverage('recurrence_ladder', 'L3 Kāla registry (query_temporal_activation) unreachable this call.'),
+    digest90d.item_count > 0
+      ? computedCoverage('ahead_digest_90d')
+      : honestEmptyCoverage(
+          'ahead_digest_90d',
+          'No item from any already-computed AHEAD surface (windows/projections/gulika-kālam/recurrence-ladder/mudda-varsha) ' +
+            'falls inside the next 90 days for this chart.',
+        ),
   ]
 
   const drillPointers: DrillPointerLike[] = [triPlane.interpretation_ref, triPlane.intervention_ref].filter(
@@ -881,11 +1231,14 @@ export async function computeKalaAhead(
     gulika_kalam_ahead_horizon_days: GULIKA_AHEAD_MAX_DAYS,
     dasha_lord_transit_condition_forward: dashaLordForward.rows,
     mudda_dasha_varsha: muddaDashaVarsha.result,
+    recurrence_ladder: recurrenceLadder,
+    digest_90d: digest90d,
     drill_pointers: drillPointers,
     provenance_envelope: {
       source: 'kala_ahead_get',
       assets: [
-        'kala_activation (ka_kalasutra, forward-dated)', 'kala_bhavishya (ka_bhavishya_lekha)',
+        'kala_activation (ka_kalasutra, forward-dated; also the source of activation_predicted_dates_jsonb — item 2 recurrence ladder)',
+        'kala_bhavishya (ka_bhavishya_lekha)',
         'call_panchanga_service (panchang.py, engine-direct, mode=range)',
         'get_dignity (graha_sign_attributes)', 'query_planet_transit (L0 ephemeris)',
         'query_active_dashas (L3, EL-33)', 'bg_dignity_reference (L0)',
@@ -902,6 +1255,7 @@ export async function computeKalaAhead(
       dasha_lord_transit_condition_forward_reachable:
         natalLagna.ok && dashaLordForward.chainReachable && dashaLordForward.transitReachable,
       mudda_dasha_varsha_reachable: muddaDashaVarsha.tajikReachable && muddaDashaVarsha.muddaReachable,
+      recurrence_ladder_reachable: windowsOk,
     },
   }
 }
@@ -967,10 +1321,21 @@ W1 joins (objective, raw data — no favorable/unfavorable grading): gulika_kala
 daily gulika-kālam window for each of the next ${GULIKA_AHEAD_MAX_DAYS} days (bounded by the \
 underlying panchāṅga range service's own 31-day cap, independent of horizon_years).
 
+recurrence_ladder (item 2): per-signal recurrence ladders — future {date, point_kind, \
+strength, trigger, graha} points read verbatim from kala_activation's own \
+activation_predicted_dates_jsonb column (the SAME already-fetched query_temporal_activation \
+response; never re-derived). NOTE: the differently-scoped bodha_msr_signals L2 hook of the \
+identical column name is confirmed genuinely NULL in production and is never the source here.
+
+digest_90d (E6-lite): a curated, fixed 90-day-forward digest — a selection over windows / \
+projections / gulika_kalam_ahead / recurrence_ladder / mudda_dasha_varsha bounded to \
+today..+90d, never new computation. Ritual-opportunity rows are intentionally absent \
+(kala_ritual_get Mode 1 lands at wave W4) — see the digest's own ritual_opportunities_note.
+
 Output includes: reading (structured argument) + reading_prose (composed text) + windows + \
 projections + gulika_kalam_ahead + dasha_lord_transit_condition_forward + mudda_dasha_varsha \
-+ tri_plane (→ kala_explain_get for why, → kala_elect_get for when to act) + coverage + \
-drill_pointers.
++ recurrence_ladder + digest_90d + tri_plane (→ kala_explain_get for why, → kala_elect_get \
+for when to act) + coverage + drill_pointers.
 
 Requires: chart_id (UUID). Successor to kala_projections_get for "what is coming" queries \
 per SHAD_DARSHANA_BRIEF_v2_0.md §7 rail ("AHEAD supersedes ka_bhavishya... by REPLACEMENT") \
