@@ -69,6 +69,26 @@ jobs:
           cache: 'npm'
           cache-dependency-path: platform/package-lock.json
       - run: npm ci
+
+      - name: MIG-1 — migration number guard (cross-directory duplicate)
+        # DURABLE GUARD. SAMĀPTI brief v2.0 §4.4 · protocol:
+        # 00_ARCHITECTURE/MIGRATION_AND_MERGE_PROTOCOL_v1_0.md
+        #
+        # The repo has TWO migration directories sharing ONE number sequence
+        # (platform/migrations/ + platform/supabase/migrations/), and migrate.ts keys
+        # _migrations_applied on the bare filename — so nothing ever enforced the number.
+        # 467 was consequently claimed by two branches at once (f7160b5c vs 455033ed) and
+        # only untangled by a manual renumber (75a5d9e6). This step fails the PR instead.
+        #
+        # Runs BEFORE `npm test` on purpose: a number collision is a merge-coordination
+        # fault, and the author should see it in the first seconds of CI, not after the
+        # full suite. Also covered by tests/unit/migrations/migration_number_guard.test.ts
+        # under `npm test`; this step exists so the failure is unmistakable in the log
+        # (same rationale as WP-1.7 / GT-36 below).
+        #
+        # Mutation-proven: adding a duplicate number in EITHER directory makes it exit 1.
+        run: npm run guard:migration-numbers
+
       - run: npm test -- --reporter=verbose
 
       - name: WP-1.7 — MCP surgical whitelist resolution invariant (LCA-1/LCA-13)
