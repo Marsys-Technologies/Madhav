@@ -10,8 +10,13 @@ import {
   collectMigrationFiles,
   runMigrations,
   MigrationHashMismatchError,
+  MigrationRenumberedError,
   loadHashDisclosures,
+  loadRenumberDisclosures,
+  normalizeSqlForIdentity,
+  sqlIdentityOf,
   type DisclosedHashMismatch,
+  type DisclosedRenumber,
 } from '../migrate'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -35,6 +40,8 @@ function sha256(sql: string): string {
 interface AppliedRow {
   filename: string
   sha256: string
+  /** Comment/whitespace-normalised identity, as the tracker's sql_identity column holds it. */
+  sql_identity?: string | null
 }
 
 /** Build a mock PoolClient that records all query calls */
@@ -46,14 +53,31 @@ function makeClient(applied: AppliedRow[] = [], failOn?: string) {
       const q = typeof text === 'string' ? text.trim() : text
       queries.push({ text: q, values })
 
-      // Simulate tracker creation
+      // Simulate tracker creation + the additive sql_identity column
       if (q.includes('CREATE TABLE IF NOT EXISTS _migrations_applied')) {
         return { rows: [] }
       }
+      if (q.includes('ADD COLUMN IF NOT EXISTS sql_identity')) {
+        return { rows: [] }
+      }
 
-      // Return applied list (filename + sha256, per the tracker schema)
-      if (q.includes('SELECT filename, sha256 FROM _migrations_applied')) {
-        return { rows: applied.map(({ filename, sha256 }) => ({ filename, sha256 })) }
+      // Simulate the sql_identity backfill writing through to the in-memory tracker
+      if (q.includes('UPDATE _migrations_applied SET sql_identity')) {
+        const [identity, filename] = (values ?? []) as [string, string]
+        const row = applied.find(r => r.filename === filename)
+        if (row && (row.sql_identity ?? null) === null) row.sql_identity = identity
+        return { rows: [] }
+      }
+
+      // Return applied list (filename + sha256 + sql_identity, per the tracker schema)
+      if (q.includes('SELECT filename, sha256, sql_identity FROM _migrations_applied')) {
+        return {
+          rows: applied.map(({ filename, sha256, sql_identity }) => ({
+            filename,
+            sha256,
+            sql_identity: sql_identity ?? null,
+          })),
+        }
       }
 
       // Simulate failure on a specific query
@@ -393,6 +417,331 @@ describe('runMigrations', () => {
     await expect(runMigrations(client, [dir], { disclosures })).rejects.toThrow(
       MigrationHashMismatchError
     )
+  })
+})
+
+// ─── RULING 58 "Hazard 2": the filename-keyed renumber hazard (467 -> 474 class) ────────────
+
+describe('normalizeSqlForIdentity', () => {
+  it('strips line comments, block comments and whitespace differences', () => {
+    const a = `-- Migration 467: do the thing\nUPDATE t SET x = 1\n  WHERE id = 2;\n`
+    const b = `-- Migration 474: do the thing (renumbered 467->474 after a rebase collision)\n` +
+      `/* extra note */\nUPDATE t   SET x = 1 WHERE id = 2;`
+    expect(sha256(a)).not.toBe(sha256(b)) // a raw-content guard would MISS this
+    expect(normalizeSqlForIdentity(a)).toBe('UPDATE t SET x = 1 WHERE id = 2;')
+    expect(sqlIdentityOf(a)).toBe(sqlIdentityOf(b))
+  })
+
+  it('never mistakes -- or /* INSIDE a string literal for a comment', () => {
+    const withLiteral = `INSERT INTO t (note) VALUES ('a -- not a comment /* nor this */');`
+    expect(normalizeSqlForIdentity(withLiteral)).toBe(withLiteral)
+    // ...and two files differing only INSIDE the literal must NOT share an identity
+    const other = `INSERT INTO t (note) VALUES ('b -- not a comment /* nor this */');`
+    expect(sqlIdentityOf(withLiteral)).not.toBe(sqlIdentityOf(other))
+  })
+
+  it('preserves dollar-quoted bodies verbatim (plpgsql functions)', () => {
+    const fn = `CREATE FUNCTION f() RETURNS int AS $$\n  -- kept: this is code, not a comment\n  SELECT 1;\n$$ LANGUAGE sql;`
+    expect(normalizeSqlForIdentity(fn)).toContain('-- kept: this is code, not a comment')
+  })
+
+  it('handles nested block comments the way Postgres does', () => {
+    expect(normalizeSqlForIdentity('SELECT /* outer /* inner */ still-comment */ 1;')).toBe('SELECT 1;')
+  })
+
+  it("distinguishes migrations that genuinely differ, so the guard cannot false-positive on 'looks similar'", () => {
+    expect(sqlIdentityOf('UPDATE t SET x = 1;')).not.toBe(sqlIdentityOf('UPDATE t SET x = 2;'))
+  })
+
+  it('collapses the REAL 456 -> 457 renumber from this repo (header rewritten, SQL unchanged)', () => {
+    // platform/migrations/457_lel_schema_v2_event_shapes.sql was applied as 456_..., then
+    // renumbered to 457_... in commit 54c809bc, which ALSO rewrote its header comment. Both
+    // filenames are in production's _migrations_applied with DIFFERENT sha256 values — the SQL
+    // genuinely executed twice, 1h49m apart, undetected. Replay the header edit against the real
+    // on-disk file: raw hash moves, sql_identity must not.
+    const real = path.resolve(__dirname, '../../migrations/457_lel_schema_v2_event_shapes.sql')
+    if (!fs.existsSync(real)) return // file retired later — the synthetic cases above still hold
+    const as457 = fs.readFileSync(real, 'utf8')
+    const as456 = as457
+      .replace('-- Migration 457:', '-- Migration 456:')
+      .replace(
+        /-- \(renumbered 456->457[\s\S]*?\)\n/,
+        ''
+      )
+    expect(as456).not.toBe(as457)
+    expect(sha256(as456)).not.toBe(sha256(as457)) // raw-hash guard: MISS
+    expect(sqlIdentityOf(as456)).toBe(sqlIdentityOf(as457)) // identity guard: CATCH
+  })
+})
+
+describe('runMigrations — renumbered-migration guard', () => {
+  let dir: string
+
+  beforeEach(() => {
+    dir = tmpDir()
+  })
+
+  afterEach(() => {
+    fs.rmSync(dir, { recursive: true, force: true })
+  })
+
+  function renumberDisclosure(
+    newFilename: string,
+    appliedFilename: string,
+    sqlIdentity: string,
+    overrides: Partial<DisclosedRenumber> = {}
+  ): Map<string, DisclosedRenumber> {
+    return new Map([
+      [
+        newFilename,
+        {
+          new_filename: newFilename,
+          applied_filename: appliedFilename,
+          sql_identity: sqlIdentity,
+          disposition: 'already-applied-under-old-name',
+          reason: 'test reason',
+          disclosed_via: 'test',
+          disclosed_on: '2026-07-30',
+          ...overrides,
+        } as DisclosedRenumber,
+      ],
+    ])
+  }
+
+  it('CAN-FAIL: renaming an already-applied migration to a new number is REFUSED, not re-applied', async () => {
+    // Reproduce the hazard exactly: 467_x.sql was applied; the file is now named 474_x.sql.
+    const migrationSql = 'INSERT INTO ledger (k, v) VALUES (1, 1);' // deliberately NOT idempotent
+    writeSql(dir, '474_x.sql', migrationSql)
+
+    const client = makeClient([{ filename: '467_x.sql', sha256: sha256(migrationSql) }])
+
+    await expect(runMigrations(client, [dir], { renumberDisclosures: new Map() })).rejects.toThrow(
+      MigrationRenumberedError
+    )
+
+    // The whole point: the SQL must NOT have run a second time.
+    const executed = (client as any).queries.filter((q: any) => q.text === migrationSql)
+    expect(executed).toHaveLength(0)
+    const inserts = (client as any).queries.filter((q: any) =>
+      q.text.includes('INSERT INTO _migrations_applied')
+    )
+    expect(inserts).toHaveLength(0)
+  })
+
+  it('names both filenames and the match kind in the refusal', async () => {
+    const migrationSql = 'UPDATE asset_registry SET target_floor = 40 WHERE asset_id = $$x$$;'
+    writeSql(dir, '474_x.sql', migrationSql)
+    const client = makeClient([{ filename: '467_x.sql', sha256: sha256(migrationSql) }])
+
+    try {
+      await runMigrations(client, [dir], { renumberDisclosures: new Map() })
+      expect.unreachable('expected runMigrations to throw')
+    } catch (err) {
+      expect(err).toBeInstanceOf(MigrationRenumberedError)
+      const e = err as MigrationRenumberedError
+      expect(e.newFilename).toBe('474_x.sql')
+      expect(e.appliedFilename).toBe('467_x.sql')
+      expect(e.matchKind).toBe('sha256')
+      expect(e.message).toContain('474_x.sql')
+      expect(e.message).toContain('467_x.sql')
+    }
+  })
+
+  it('catches a renumber that ALSO rewrote the header comment (raw sha256 differs) via sql_identity', async () => {
+    const appliedSql = '-- Migration 467: the thing\nUPDATE t SET x = 1;\n'
+    const renumberedSql = '-- Migration 474: the thing (renumbered after rebase)\nUPDATE t SET x = 1;\n'
+    writeSql(dir, '474_x.sql', renumberedSql)
+
+    // The applied row's stored sha256 is of the OLD text — a raw-hash comparison cannot match.
+    const client = makeClient([
+      { filename: '467_x.sql', sha256: sha256(appliedSql), sql_identity: sqlIdentityOf(appliedSql) },
+    ])
+    expect(sha256(appliedSql)).not.toBe(sha256(renumberedSql))
+
+    try {
+      await runMigrations(client, [dir], { renumberDisclosures: new Map() })
+      expect.unreachable('expected runMigrations to throw')
+    } catch (err) {
+      expect(err).toBeInstanceOf(MigrationRenumberedError)
+      expect((err as MigrationRenumberedError).matchKind).toBe('sql_identity')
+    }
+  })
+
+  it('backfills sql_identity for already-applied rows whose on-disk content still matches', async () => {
+    const appliedSql = '-- Migration 467: the thing\nUPDATE t SET x = 1;\n'
+    writeSql(dir, '467_x.sql', appliedSql)
+
+    const rows: AppliedRow[] = [{ filename: '467_x.sql', sha256: sha256(appliedSql) }]
+    const client = makeClient(rows)
+    await runMigrations(client, [dir], { renumberDisclosures: new Map() })
+
+    expect(rows[0].sql_identity).toBe(sqlIdentityOf(appliedSql))
+  })
+
+  it('does NOT backfill sql_identity for a row whose on-disk content has drifted (disclosed residual class)', async () => {
+    const storedSql = 'UPDATE t SET x = 1;'
+    const driftedSql = 'UPDATE t SET x = 2;'
+    writeSql(dir, '467_x.sql', driftedSql)
+
+    const rows: AppliedRow[] = [{ filename: '467_x.sql', sha256: sha256(storedSql) }]
+    const client = makeClient(rows)
+    const disclosures = new Map<string, DisclosedHashMismatch>([
+      [
+        '467_x.sql',
+        {
+          filename: '467_x.sql',
+          stored_sha256: sha256(storedSql),
+          current_sha256_at_disclosure: sha256(driftedSql),
+          cause: 'test',
+          disclosed_via: 'test',
+          fixed_by_samapti: false,
+        },
+      ],
+    ])
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    try {
+      await runMigrations(client, [dir], { disclosures, renumberDisclosures: new Map() })
+    } finally {
+      warnSpy.mockRestore()
+    }
+    // An honest NULL: we cannot prove which content actually ran, so we do not stamp one.
+    expect(rows[0].sql_identity ?? null).toBeNull()
+  })
+
+  it('a genuinely NEW migration is unaffected by the guard', async () => {
+    writeSql(dir, '467_x.sql', 'UPDATE t SET x = 1;')
+    writeSql(dir, '475_new.sql', 'UPDATE t SET y = 9;')
+    const client = makeClient([{ filename: '467_x.sql', sha256: sha256('UPDATE t SET x = 1;') }])
+
+    const ran = await runMigrations(client, [dir], { renumberDisclosures: new Map() })
+    expect(ran).toEqual(['475_new.sql'])
+  })
+
+  it('dry-run surfaces the renumber from a PREVIEW, not only from a real run', async () => {
+    const migrationSql = 'INSERT INTO ledger (k, v) VALUES (1, 1);'
+    writeSql(dir, '474_x.sql', migrationSql)
+    const client = makeClient([{ filename: '467_x.sql', sha256: sha256(migrationSql) }])
+
+    await expect(
+      runMigrations(client, [dir], { dryRun: true, renumberDisclosures: new Map() })
+    ).rejects.toThrow(MigrationRenumberedError)
+  })
+
+  it("disclosed 'already-applied-under-old-name' records the new filename WITHOUT executing the SQL", async () => {
+    const migrationSql = 'INSERT INTO ledger (k, v) VALUES (1, 1);'
+    writeSql(dir, '474_x.sql', migrationSql)
+    const client = makeClient([{ filename: '467_x.sql', sha256: sha256(migrationSql) }])
+    const renumbers = renumberDisclosure('474_x.sql', '467_x.sql', sqlIdentityOf(migrationSql))
+
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+    let ran: string[]
+    try {
+      ran = await runMigrations(client, [dir], { renumberDisclosures: renumbers })
+    } finally {
+      warnSpy.mockRestore()
+      logSpy.mockRestore()
+    }
+
+    expect(ran).toEqual([]) // reported as NOT applied — it did not run
+    const executed = (client as any).queries.filter((q: any) => q.text === migrationSql)
+    expect(executed).toHaveLength(0) // the SQL never ran a second time
+    const inserts = (client as any).queries.filter((q: any) =>
+      q.text.includes('INSERT INTO _migrations_applied')
+    )
+    expect(inserts).toHaveLength(1) // but the new filename IS now tracked
+    expect(inserts[0].values?.[0]).toBe('474_x.sql')
+  })
+
+  it("disclosed 'intentional-reapply' executes normally", async () => {
+    const migrationSql = 'UPDATE t SET x = 1;' // idempotent by construction
+    writeSql(dir, '474_x.sql', migrationSql)
+    const client = makeClient([{ filename: '467_x.sql', sha256: sha256(migrationSql) }])
+    const renumbers = renumberDisclosure('474_x.sql', '467_x.sql', sqlIdentityOf(migrationSql), {
+      disposition: 'intentional-reapply',
+    })
+
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    let ran: string[]
+    try {
+      ran = await runMigrations(client, [dir], { renumberDisclosures: renumbers })
+    } finally {
+      warnSpy.mockRestore()
+    }
+    expect(ran).toEqual(['474_x.sql'])
+    const executed = (client as any).queries.filter((q: any) => q.text === migrationSql)
+    expect(executed).toHaveLength(1)
+  })
+
+  it('a disclosure pinned to a DIFFERENT old filename does not cover this renumber', async () => {
+    const migrationSql = 'INSERT INTO ledger (k, v) VALUES (1, 1);'
+    writeSql(dir, '474_x.sql', migrationSql)
+    const client = makeClient([{ filename: '467_x.sql', sha256: sha256(migrationSql) }])
+    const renumbers = renumberDisclosure('474_x.sql', '999_other.sql', sqlIdentityOf(migrationSql))
+
+    await expect(runMigrations(client, [dir], { renumberDisclosures: renumbers })).rejects.toThrow(
+      MigrationRenumberedError
+    )
+  })
+
+  it('a disclosure whose pinned sql_identity no longer matches the file does not cover it', async () => {
+    const migrationSql = 'INSERT INTO ledger (k, v) VALUES (1, 1);'
+    writeSql(dir, '474_x.sql', migrationSql)
+    const client = makeClient([{ filename: '467_x.sql', sha256: sha256(migrationSql) }])
+    const renumbers = renumberDisclosure('474_x.sql', '467_x.sql', sqlIdentityOf('SOMETHING ELSE;'))
+
+    await expect(runMigrations(client, [dir], { renumberDisclosures: renumbers })).rejects.toThrow(
+      MigrationRenumberedError
+    )
+  })
+})
+
+describe('loadRenumberDisclosures', () => {
+  let dir: string
+
+  beforeEach(() => {
+    dir = tmpDir()
+  })
+
+  afterEach(() => {
+    fs.rmSync(dir, { recursive: true, force: true })
+  })
+
+  it('returns an empty map when the file does not exist', () => {
+    expect(loadRenumberDisclosures(path.join(dir, 'nope.json')).size).toBe(0)
+  })
+
+  it('drops an entry with an unrecognised disposition — not a partial pass', () => {
+    const file = path.join(dir, 'renumbers.json')
+    fs.writeFileSync(
+      file,
+      JSON.stringify({
+        entries: [
+          {
+            new_filename: 'a.sql',
+            applied_filename: 'b.sql',
+            sql_identity: 'abc',
+            disposition: 'just-let-it-through',
+            reason: 'r',
+            disclosed_via: 'v',
+            disclosed_on: '2026-07-30',
+          },
+        ],
+      })
+    )
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    try {
+      expect(loadRenumberDisclosures(file).has('a.sql')).toBe(false)
+      expect(warnSpy).toHaveBeenCalled()
+    } finally {
+      warnSpy.mockRestore()
+    }
+  })
+
+  it('the checked-in allowlist parses and is empty by design', () => {
+    const real = path.resolve(__dirname, '../ci/migration_renumber_disclosed.json')
+    expect(fs.existsSync(real)).toBe(true)
+    expect(loadRenumberDisclosures(real).size).toBe(0)
   })
 })
 

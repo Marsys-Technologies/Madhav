@@ -1,0 +1,29 @@
+{
+  "_README": [
+    "Renumber-reconciliation allowlist for platform/scripts/migrate.ts's MigrationRenumberedError.",
+    "",
+    "The tracker (_migrations_applied) is keyed by FILENAME. A migration that was applied and then",
+    "renumbered looks brand-new under its new name and would be RE-APPLIED. The runner refuses to",
+    "guess; an operator records the answer here.",
+    "",
+    "This file is EMPTY BY DESIGN. It is not a backlog — an entry is only ever added at the moment a",
+    "real renumber blocks a real deploy, and it pins ONE specific (new_filename, applied_filename,",
+    "sql_identity) triple. If any of the three changes, the guard fails loudly again. Every field is",
+    "required; a partial entry is dropped and treated as UNDISCLOSED, never as a partial pass (same",
+    "discipline as migration_hash_disclosed_residuals.json and migration_number_guard.ts's",
+    "disclosed_additions).",
+    "",
+    "disposition must be exactly one of:",
+    "  already-applied-under-old-name — the SQL genuinely ran under applied_filename. The runner",
+    "    records new_filename as applied WITHOUT executing it. This is the normal answer.",
+    "  intentional-reapply — the SQL is idempotent and re-running it under the new name is the",
+    "    deliberate intent. The runner executes it normally.",
+    "",
+    "Get sql_identity with:",
+    "  cd platform && npx tsx -e \"import {sqlIdentityOf} from './scripts/migrate.ts'; import fs from 'fs'; console.log(sqlIdentityOf(fs.readFileSync(process.argv[1],'utf8')))\" <path-to-sql>",
+    "",
+    "Two historical instances of this hazard are recorded (as history, not as entries) in",
+    "00_ARCHITECTURE/MIGRATION_AND_MERGE_PROTOCOL_v1_0.md: 467->474 and 456->457."
+  ],
+  "entries": []
+}
