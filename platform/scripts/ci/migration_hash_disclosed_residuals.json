@@ -1,0 +1,154 @@
+{
+  "_README": "DISCLOSED-RESIDUAL allowlist for migrate.ts's assertAppliedHashMatches() sha256 guard (Dvārapāla RULING 58/67's guard; the file-content-drift class, NOT the migration_number_guard.ts duplicate-number class — see migration_number_legacy_duplicates.json for that sibling mechanism, same discipline). RULING 73: on migrate.ts's first live deploy run, 16 already-applied migrations were found whose on-disk sha256 no longer matches the sha256 recorded in production's `_migrations_applied` at apply time — a real historical data-integrity gap the guard is CORRECTLY catching, not a guard bug. Reverting the guard was explicitly rejected (it would neuter a control that just proved its value); blind reconciliation of 16 undocumented historical edits under deploy-pipeline pressure was explicitly PARKED, not attempted (Ruling 73's 'Option 2', a genuine future lane). This file freezes the 16 known-mismatch (stored, current) hash PAIRS as of the disclosure date. Each entry pins the EXACT stored sha256 (from `_migrations_applied.sha256`) and the EXACT current on-disk sha256 as of RULING 73 — assertAppliedHashMatches() passes a disclosed file through with a visible non-fatal warning ONLY when BOTH pinned values match exactly what it observes live. The disclosure pins one specific historical mismatch; it is NOT a standing exemption — if the file is edited AGAIN after this disclosure (current on-disk hash no longer equals `current_sha256_at_disclosure`), the guard fails loudly exactly as it would for an undisclosed file. Same itemized/dated/attributed discipline as `migration_number_legacy_duplicates.json`'s `disclosed_additions` and `schema_validator.py`'s `known_residuals` whitelist: exit-clean iff ITEMIZED, never a blanket pass — an entry missing a required field is treated as UNDISCLOSED.",
+  "disclosed_at": "2026-07-30",
+  "disclosed_via": "DVA RULING 73 (00_ARCHITECTURE/briefs/samapti/SAMAPTI_DVARAPALA_LEDGER.md)",
+  "disclosed_at_commit": "81af26b743a5d00c659313eb18a9cf3c209e5fcf",
+  "investigation_note": "Ruling 73 asked whether commit 751ce3b8 ('fix(migrations): seed all 86 pre-tracking legacy migration files into _migrations_applied', 2026-06-22) explains some or all of the 16. Verified via `git log --follow` per file plus a full-history blob search (`git rev-list --all --objects`, all branches/tags) comparing each historical revision's sha256 against the stored production value. Finding: 751ce3b8 explains exactly ONE of the 16 — 0000_seed_legacy_applied.sql itself, which it directly edited 9 minutes after that file was applied to production. It does NOT explain any of the other 15; each of those traces to a DIFFERENT cause, itemized per-entry below. Four distinct causal classes found, none guessed: (1) a later, unrelated commit edited an already-applied file (0000_seed_legacy_applied.sql, 250, 358, 370 — each pinned to the exact prior commit whose content matches the stored hash and the exact later commit that changed it); (2) a single bulk pre-tracking seed action on 2026-06-05 stored 32-hex-character (MD5-length, not SHA-256) values for 4 files, an algorithm mismatch at seed time that can never match sha256Of() regardless of content (v13_pyramid_layers, 158_classical_texts_schema, ws2_l0_ontology, 002_ganita_divisionals); (3) four individually-dated manual/direct INSERTs via Cloud SQL Auth Proxy stored descriptive placeholder strings instead of hashes, bypassing sha256Of() entirely (215, 229, 231, 322); (4) four files (237, 294, 314, 377) have a well-formed 64-hex SHA-256 stored value but NO blob matching it exists anywhere in git history reachable from any branch or tag — the applied-time content was never committed under this filename. Marked UNDER-INVESTIGATION per Ruling 73's instruction not to fabricate a cause.",
+  "entries_count": 16,
+  "entries": [
+    {
+      "filename": "0000_seed_legacy_applied.sql",
+      "path": "platform/supabase/migrations/0000_seed_legacy_applied.sql",
+      "stored_sha256": "72e9b22a23a1fd660ffd37dd52cd2a5a142b82e0281963de8d3e19b4cebf78f3",
+      "current_sha256_at_disclosure": "4320a1cf2ca9cab2da645941b796ca903889e48040908de35e9874bf820c6eee",
+      "cause": "commit 751ce3b823e9e656d99d0a48a85b1142985ce295 ('fix(migrations): seed all 86 pre-tracking legacy migration files into _migrations_applied', 2026-06-22T20:02:58+05:30) edited this exact file ~9 minutes after it was applied to production (applied_at 2026-06-22T14:24:29.022Z / 19:54:29 IST). The stored hash matches commit 082c106fe3f1807ef7c5c8dd58aacb3446123954 ('fix(migrations): seed _migrations_applied for 0001_brahma_baseline', 2026-06-22T19:53:14+05:30) byte-for-byte; 751ce3b8 is the very next commit touching this file and grew it from a small seed list to the full 86-row seed. Confirmed via full commit-history hash walk.",
+      "disclosed_via": "DVA RULING 73",
+      "fixed_by_samapti": false
+    },
+    {
+      "filename": "002_ganita_divisionals.sql",
+      "path": "platform/migrations/002_ganita_divisionals.sql",
+      "stored_sha256": "e83068fb1a03dd33932d4384bc88d5f0",
+      "current_sha256_at_disclosure": "1f08990dec50c6ca9c09c4b7009bfa0428dcc9d208da5f36b263a30c67befb25",
+      "cause": "Bulk pre-tracking seed action, 2026-06-05 ~16:09-16:29 UTC — this file's applied_at (2026-06-05T16:28:49.938Z) falls in a 4-file, ~20-minute cluster with v13_pyramid_layers.sql, 158_classical_texts_schema.sql and ws2_l0_ontology.sql (this same disclosure list). The stored value is 32 hex characters — the length of MD5, not the 64-character length migrate.ts's sha256Of() (SHA-256) produces — so it is structurally incapable of ever matching regardless of on-disk content: an algorithm mismatch at seed time, not a later content edit. Not commit 751ce3b8 (different date, different file — that commit touches only 0000_seed_legacy_applied.sql). No specific seeding commit identified; this was a direct database action, not a code change.",
+      "disclosed_via": "DVA RULING 73",
+      "fixed_by_samapti": false
+    },
+    {
+      "filename": "158_classical_texts_schema.sql",
+      "path": "platform/supabase/migrations/158_classical_texts_schema.sql",
+      "stored_sha256": "0bc7fcff2604cfeb1356b160b073c618",
+      "current_sha256_at_disclosure": "06a74578a2b25fb3d29d0eac076ad17cc2eb79251be8ba07dfb4e972b1041456",
+      "cause": "Bulk pre-tracking seed action, 2026-06-05 ~16:09-16:29 UTC — same 4-file cluster as 002_ganita_divisionals.sql (applied_at 2026-06-05T16:12:01.062Z). Stored value is 32 hex characters (MD5-length, not SHA-256) — algorithm mismatch at seed time, structurally can never match sha256Of(). Not commit 751ce3b8. No specific seeding commit identified; a direct database action, not a code change.",
+      "disclosed_via": "DVA RULING 73",
+      "fixed_by_samapti": false
+    },
+    {
+      "filename": "215_chart_facts_formula_id.sql",
+      "path": "platform/supabase/migrations/215_chart_facts_formula_id.sql",
+      "stored_sha256": "applied-directly-via-proxy-2026-06-10",
+      "current_sha256_at_disclosure": "7fb4e13b95e207730273928b0ba14c655c358d883267a1c78bb1a8d114d76512",
+      "cause": "Manual/direct INSERT into _migrations_applied via Cloud SQL Auth Proxy access (applied_at 2026-06-10T16:31:46.731Z), bypassing migrate.ts's sha256Of() entirely — the stored value is the literal descriptive string 'applied-directly-via-proxy-2026-06-10' (37 characters, not a hash of any recognized length), self-documenting the out-of-band apply and matching the applied_at date exactly. Can never match on-disk content regardless of edits. Not commit 751ce3b8.",
+      "disclosed_via": "DVA RULING 73",
+      "fixed_by_samapti": false
+    },
+    {
+      "filename": "229_reap_orphaned_building_throughput.sql",
+      "path": "platform/supabase/migrations/229_reap_orphaned_building_throughput.sql",
+      "stored_sha256": "applied-2026-06-16-no-op-state-was-dormant",
+      "current_sha256_at_disclosure": "4d72c8f59aa47b83be832c090bc6504f6295a8d1887265f7c0d0950381f5044c",
+      "cause": "Manual/direct INSERT into _migrations_applied, bypassing sha256Of() — stored value is the literal descriptive string 'applied-2026-06-16-no-op-state-was-dormant' (42 characters, not a hash). Shares an identical applied_at timestamp to the millisecond (2026-06-16T11:04:18.143Z) with 231_bg_target_floor_fix.sql in this same list, indicating one bulk manual INSERT statement covering both files in a single operation. Can never match on-disk content regardless of edits. Not commit 751ce3b8.",
+      "disclosed_via": "DVA RULING 73",
+      "fixed_by_samapti": false
+    },
+    {
+      "filename": "231_bg_target_floor_fix.sql",
+      "path": "platform/supabase/migrations/231_bg_target_floor_fix.sql",
+      "stored_sha256": "applied-2026-06-16",
+      "current_sha256_at_disclosure": "66523f6181d7ea637b65f534be93512f18d00e7c3342ca0535201d62dfc6665e",
+      "cause": "Manual/direct INSERT into _migrations_applied, bypassing sha256Of() — stored value is the literal descriptive string 'applied-2026-06-16' (18 characters, not a hash). Shares an identical applied_at timestamp to the millisecond (2026-06-16T11:04:18.143Z) with 229_reap_orphaned_building_throughput.sql in this same list — same single bulk manual INSERT operation. Can never match on-disk content regardless of edits. Not commit 751ce3b8.",
+      "disclosed_via": "DVA RULING 73",
+      "fixed_by_samapti": false
+    },
+    {
+      "filename": "237_drop_signal_type_registry.sql",
+      "path": "platform/supabase/migrations/237_drop_signal_type_registry.sql",
+      "stored_sha256": "4bb0351db953ef90dbc8600b6b2c8ce5edea99c4578bb463913a05b475354b95",
+      "current_sha256_at_disclosure": "cf12df45c140ce6a040dda6e2c102de809e81d9185b8d178503cbd67b882a5af",
+      "cause": "UNDER-INVESTIGATION. Stored value is a well-formed 64-hex-character SHA-256 digest, but this file has exactly ONE commit in its entire git history (2c176bd26d43124c49618b6d0cbef5a6eb4d7a0e, 2026-06-17T01:07:23+05:30) and that commit's content does NOT hash to the stored value. A full-history blob search (`git rev-list --all --objects` across every branch and tag) found no blob anywhere matching the stored hash under this filename. The content that was hashed at apply time (applied_at 2026-06-16T19:26:51.552Z) was therefore never committed to git — genuinely indeterminate without further investigation. Not commit 751ce3b8.",
+      "disclosed_via": "DVA RULING 73",
+      "fixed_by_samapti": false
+    },
+    {
+      "filename": "250_bg_dignity_reference.sql",
+      "path": "platform/migrations/250_bg_dignity_reference.sql",
+      "stored_sha256": "076c25489bcc7ec59b71bb30aa97d7140189c3a6dc49da3ea4368d8e584a8f80",
+      "current_sha256_at_disclosure": "81299fb570bbcc92ee16074e173d222f258fbb412b59736c53fc2e4f5d91ec5b",
+      "cause": "commit d3e069d457b4c9b860ff7f36033740e5513b9c20 ('fix(l0): Rahu/Ketu exaltation Taurus/Scorpio; Mercury atichara threshold 2.0', 2026-06-24T05:49:31+05:30) edited this file 7 days after it was applied to production (applied_at 2026-06-17T07:04:43.031Z / 12:34:43 IST). The stored hash matches commit a67fc400235aa62e335f7f05602fd0463bb2c557 ('fix(ga_condition): resolve 6 spec-review gaps', 2026-06-17T02:55:24+05:30) byte-for-byte, the commit in place at apply time. Confirmed via full commit-history hash walk. Not commit 751ce3b8.",
+      "disclosed_via": "DVA RULING 73",
+      "fixed_by_samapti": false
+    },
+    {
+      "filename": "294_ga_vastu_target_floor.sql",
+      "path": "platform/migrations/294_ga_vastu_target_floor.sql",
+      "stored_sha256": "af80c1ad27c2f34b7783be087526d1f30db044011c98d0c87b1b750bea6aaf15",
+      "current_sha256_at_disclosure": "062067370766bf2b67be0501bef3e1d0c1c98fcfdabc3c566db3b63e301bc2e8",
+      "cause": "UNDER-INVESTIGATION. Stored value is a well-formed 64-hex-character SHA-256 digest, but this file has exactly ONE commit in its entire git history (b030d5983b9758277ea3eaef1c7f74692410eee0, 2026-06-17T13:37:00+05:30) and that commit's content does NOT hash to the stored value. A full-history blob search (all branches/tags) found no matching blob under this filename anywhere. The content hashed at apply time (applied_at 2026-06-17T07:59:17.801Z) was never committed to git — genuinely indeterminate without further investigation. Not commit 751ce3b8.",
+      "disclosed_via": "DVA RULING 73",
+      "fixed_by_samapti": false
+    },
+    {
+      "filename": "314_bo_samskara_count_sql_scope_fix.sql",
+      "path": "platform/migrations/314_bo_samskara_count_sql_scope_fix.sql",
+      "stored_sha256": "cf8a4ee81448f76c256d111d60e40619caecc3493e007cad68b56573f819918a",
+      "current_sha256_at_disclosure": "5cdb5e7af087344038453679a18de0b857fe1f7e4dacf2d915df217f61bfbfa8",
+      "cause": "UNDER-INVESTIGATION. Stored value is a well-formed 64-hex-character SHA-256 digest, but this file has exactly ONE commit in its entire git history (6f4a007e6ba13f06496f6f4049966f7aedbe37fd, 2026-06-18T17:47:07+05:30) and that commit's content does NOT hash to the stored value. A full-history blob search (all branches/tags) found no matching blob under this filename anywhere. The content hashed at apply time (applied_at 2026-06-18T09:19:34.624Z) was never committed to git — genuinely indeterminate without further investigation. Not commit 751ce3b8.",
+      "disclosed_via": "DVA RULING 73",
+      "fixed_by_samapti": false
+    },
+    {
+      "filename": "322_fix_asset_registry_names_and_status.sql",
+      "path": "platform/migrations/322_fix_asset_registry_names_and_status.sql",
+      "stored_sha256": "manual",
+      "current_sha256_at_disclosure": "5fbcd077d04efe0ab240b5fac636116f2eda5fe4118af77e7fa6b7913577f68f",
+      "cause": "Manual/direct INSERT into _migrations_applied, bypassing sha256Of() entirely — stored value is the literal string 'manual' (6 characters, not a hash). Applied_at 2026-06-18T22:40:08.198Z. Can never match on-disk content regardless of edits. Not commit 751ce3b8.",
+      "disclosed_via": "DVA RULING 73",
+      "fixed_by_samapti": false
+    },
+    {
+      "filename": "358_bodha_orphaned_writer_registry.sql",
+      "path": "platform/migrations/358_bodha_orphaned_writer_registry.sql",
+      "stored_sha256": "4a195440387559b10f4b936634ededebc6e2526298134fc624f62281fe7ada7d",
+      "current_sha256_at_disclosure": "b4216382bb279f5e97bc141904962f7c1583539d995b756950be119582634496",
+      "cause": "commit 7408163fd09b296b006e42791fb292d3b57ce877 ('docs(bodha-writers): document by-design row counts and late DAG positions for bo_samvada, bo_cdlm_summary, bo_sangati', 2026-06-29T21:27:18+05:30) edited this file the day after it was applied to production (applied_at 2026-06-28T08:01:04.886Z / 13:31:04 IST). The stored hash matches commit 6d494770e3f2ec16174ab2d32b305a4fd0091b3d ('fix(migration-358): add storage_type + scope NOT NULL columns to asset_registry inserts', 2026-06-28T02:26:00+05:30) byte-for-byte, the commit in place at apply time. Confirmed via full commit-history hash walk. Not commit 751ce3b8.",
+      "disclosed_via": "DVA RULING 73",
+      "fixed_by_samapti": false
+    },
+    {
+      "filename": "370_has_writer_completeness.sql",
+      "path": "platform/supabase/migrations/370_has_writer_completeness.sql",
+      "stored_sha256": "abc5c0e1a1a150f121ad66c64cf2efd35b9b2a3e83ed1445ec096e7c51e9336f",
+      "current_sha256_at_disclosure": "23581f6473d7da092d4735ea4059fc4f7c1605b85756177071ea5efcd079d96b",
+      "cause": "commit bc22936ab105dedd641c31621c5fe37e8cd9d42b ('enforce(orchestrator): DAG non-violability — writer-gap guard + completeness test', 2026-06-29T07:58:23+05:30) edited this file ~6 minutes after it was applied to production (applied_at 2026-06-29T02:25:31.102Z / 07:55:31 IST). The stored hash matches commit f678f0ff2f308e83e1ad0f87853c2c6022d20e81 ('fix(migrations): migration 370 — mark 16 missing has_writer=true', 2026-06-29T07:52:21+05:30) byte-for-byte, the commit in place at apply time. Confirmed via full commit-history hash walk. Not commit 751ce3b8.",
+      "disclosed_via": "DVA RULING 73",
+      "fixed_by_samapti": false
+    },
+    {
+      "filename": "377_ka_dasha_kala_target_floor.sql",
+      "path": "platform/supabase/migrations/377_ka_dasha_kala_target_floor.sql",
+      "stored_sha256": "a02b9a228470ea14f1c71ffe54de23fac66308e94bb1f53ee398da67f3dfce65",
+      "current_sha256_at_disclosure": "537d2ea1af963379a6b6f161973e3e54823119429bd4b5a018858d6a914b2d5e",
+      "cause": "UNDER-INVESTIGATION. Stored value is a well-formed 64-hex-character SHA-256 digest, but this file has exactly ONE commit in its entire git history (cecf574acd6f6ca85e88c26d52afe602743198a0, 2026-06-30T03:50:02+05:30 — only 11 seconds after applied_at 2026-06-29T22:19:51.047Z / 2026-06-30T03:49:51 IST) and that commit's content does NOT hash to the stored value. A full-history blob search (all branches/tags) found no matching blob under this filename anywhere. Genuinely indeterminate without further investigation despite the near-simultaneous timing. Not commit 751ce3b8.",
+      "disclosed_via": "DVA RULING 73",
+      "fixed_by_samapti": false
+    },
+    {
+      "filename": "v13_pyramid_layers.sql",
+      "path": "platform/migrations/v13_pyramid_layers.sql",
+      "stored_sha256": "b0fb3e56f358ad4cbfea89d211bcaa26",
+      "current_sha256_at_disclosure": "14d6ee1f68cba36eb64c2e418e5c0ececa5d30b5c68471a56e824c36b9cb592f",
+      "cause": "Bulk pre-tracking seed action, 2026-06-05 ~16:09-16:29 UTC — this file's applied_at (2026-06-05T16:09:07.407Z) is the earliest in the 4-file cluster with 158_classical_texts_schema.sql, ws2_l0_ontology.sql and 002_ganita_divisionals.sql (this same disclosure list). Stored value is 32 hex characters (MD5-length, not SHA-256) — algorithm mismatch at seed time, structurally can never match sha256Of(). Not commit 751ce3b8. No specific seeding commit identified; a direct database action, not a code change.",
+      "disclosed_via": "DVA RULING 73",
+      "fixed_by_samapti": false
+    },
+    {
+      "filename": "ws2_l0_ontology.sql",
+      "path": "platform/migrations/ws2_l0_ontology.sql",
+      "stored_sha256": "f00dbbddd5ffa66e65527936315697dc",
+      "current_sha256_at_disclosure": "94019aeefe5a98733af066a270ef8a41df0faa4fd2ba6f91a571a98b0266d4f0",
+      "cause": "Bulk pre-tracking seed action, 2026-06-05 ~16:09-16:29 UTC — same 4-file cluster (applied_at 2026-06-05T16:16:16.375Z). Stored value is 32 hex characters (MD5-length, not SHA-256) — algorithm mismatch at seed time, structurally can never match sha256Of(). Not commit 751ce3b8. No specific seeding commit identified; a direct database action, not a code change.",
+      "disclosed_via": "DVA RULING 73",
+      "fixed_by_samapti": false
+    }
+  ]
+}

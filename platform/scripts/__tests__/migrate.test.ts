@@ -10,6 +10,8 @@ import {
   collectMigrationFiles,
   runMigrations,
   MigrationHashMismatchError,
+  loadHashDisclosures,
+  type DisclosedHashMismatch,
 } from '../migrate'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -270,5 +272,192 @@ describe('runMigrations', () => {
     await expect(runMigrations(client, [dir], { dryRun: true })).rejects.toThrow(
       MigrationHashMismatchError
     )
+  })
+
+  // ─── RULING 73: disclosed-residual allowlist for known historical sha256 mismatches ──────
+
+  function disclosureFor(
+    filename: string,
+    storedSha256: string,
+    currentSha256: string,
+    overrides: Partial<DisclosedHashMismatch> = {}
+  ): Map<string, DisclosedHashMismatch> {
+    return new Map([
+      [
+        filename,
+        {
+          filename,
+          stored_sha256: storedSha256,
+          current_sha256_at_disclosure: currentSha256,
+          cause: 'test cause',
+          disclosed_via: 'DVA RULING 73',
+          fixed_by_samapti: false,
+          ...overrides,
+        },
+      ],
+    ])
+  }
+
+  it('(a) disclosed mismatch with the exact pinned pair warns and is treated as a skip, not fatal', async () => {
+    const storedSql = 'CREATE TABLE t1 (id INT)'
+    const currentSql = 'CREATE TABLE t1 (id INT, extra TEXT)' // edited after apply — the known drift
+    writeSql(dir, '001_first.sql', currentSql)
+
+    const storedHash = sha256(storedSql)
+    const currentHash = sha256(currentSql)
+    const client = makeClient([{ filename: '001_first.sql', sha256: storedHash }])
+    const disclosures = disclosureFor('001_first.sql', storedHash, currentHash)
+
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    try {
+      const ran = await runMigrations(client, [dir], { disclosures })
+      expect(ran).toEqual([]) // genuinely skipped, not (re-)applied
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('[migration-hash-disclosure]')
+      )
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('001_first.sql'))
+    } finally {
+      warnSpy.mockRestore()
+    }
+
+    // Never (re-)applied: no BEGIN/COMMIT/INSERT should have been issued for it
+    const writes = (client as any).queries.filter((q: any) =>
+      ['BEGIN', 'COMMIT'].includes(q.text) || q.text.includes('INSERT INTO _migrations_applied')
+    )
+    expect(writes).toHaveLength(0)
+  })
+
+  it('(b) an undisclosed mismatch still fails loudly even when a disclosures map is present for OTHER files', async () => {
+    const storedSql = 'CREATE TABLE t1 (id INT)'
+    const editedSql = 'CREATE TABLE t1 (id INT, extra TEXT)'
+    writeSql(dir, '001_undisclosed.sql', editedSql)
+
+    const client = makeClient([{ filename: '001_undisclosed.sql', sha256: sha256(storedSql) }])
+    // Disclosures map is non-empty but does NOT contain '001_undisclosed.sql' — same as a
+    // 17th, never-disclosed mismatch landing alongside 16 legitimately disclosed ones.
+    const disclosures = disclosureFor(
+      'some_other_disclosed_file.sql',
+      sha256('unrelated'),
+      sha256('unrelated-edited')
+    )
+
+    await expect(runMigrations(client, [dir], { disclosures })).rejects.toThrow(
+      MigrationHashMismatchError
+    )
+    await expect(runMigrations(client, [dir], { disclosures })).rejects.toThrow(
+      '001_undisclosed.sql'
+    )
+  })
+
+  it('(c) a disclosed file edited AGAIN past its pinned current hash still fails loudly — disclosure is not a standing exemption', async () => {
+    const storedSql = 'CREATE TABLE t1 (id INT)'
+    const disclosedCurrentSql = 'CREATE TABLE t1 (id INT, extra TEXT)' // the pinned "current" at disclosure time
+    const editedAgainSql = 'CREATE TABLE t1 (id INT, extra TEXT, yet_another TEXT)' // edited AFTER disclosure
+
+    writeSql(dir, '001_first.sql', editedAgainSql) // on-disk content has moved past the pin
+
+    const storedHash = sha256(storedSql)
+    const client = makeClient([{ filename: '001_first.sql', sha256: storedHash }])
+    // Disclosure pins (stored, disclosedCurrent) — NOT (stored, editedAgain)
+    const disclosures = disclosureFor(
+      '001_first.sql',
+      storedHash,
+      sha256(disclosedCurrentSql)
+    )
+
+    await expect(runMigrations(client, [dir], { disclosures })).rejects.toThrow(
+      MigrationHashMismatchError
+    )
+
+    // Confirm the thrown error carries the CURRENT (post-second-edit) hash, not the stale pin —
+    // i.e. the guard is comparing against live reality, not silently trusting the disclosure.
+    try {
+      await runMigrations(client, [dir], { disclosures })
+      expect.unreachable('expected runMigrations to throw')
+    } catch (err) {
+      const mismatch = err as MigrationHashMismatchError
+      expect(mismatch.currentSha256).toBe(sha256(editedAgainSql))
+      expect(mismatch.currentSha256).not.toBe(sha256(disclosedCurrentSql))
+    }
+  })
+
+  it('does not disclose a mismatch whose STORED hash does not match the pinned pair either (DB row changed since disclosure)', async () => {
+    const originalSql = 'SELECT 1'
+    const editedSql = 'SELECT 2'
+    writeSql(dir, '001_a.sql', editedSql)
+
+    // DB's stored hash is some THIRD value, not what the disclosure pinned as "stored"
+    const client = makeClient([{ filename: '001_a.sql', sha256: sha256('SELECT 999') }])
+    const disclosures = disclosureFor('001_a.sql', sha256(originalSql), sha256(editedSql))
+
+    await expect(runMigrations(client, [dir], { disclosures })).rejects.toThrow(
+      MigrationHashMismatchError
+    )
+  })
+})
+
+describe('loadHashDisclosures', () => {
+  let dir: string
+
+  beforeEach(() => {
+    dir = tmpDir()
+  })
+
+  afterEach(() => {
+    fs.rmSync(dir, { recursive: true, force: true })
+  })
+
+  it('returns an empty map when the file does not exist', () => {
+    const map = loadHashDisclosures(path.join(dir, 'nope.json'))
+    expect(map.size).toBe(0)
+  })
+
+  it('loads well-formed entries keyed by filename', () => {
+    const file = path.join(dir, 'disclosures.json')
+    fs.writeFileSync(
+      file,
+      JSON.stringify({
+        entries: [
+          {
+            filename: 'abc.sql',
+            stored_sha256: 'aaa',
+            current_sha256_at_disclosure: 'bbb',
+            cause: 'test',
+            disclosed_via: 'DVA RULING 73',
+            fixed_by_samapti: false,
+          },
+        ],
+      })
+    )
+    const map = loadHashDisclosures(file)
+    expect(map.size).toBe(1)
+    expect(map.get('abc.sql')?.stored_sha256).toBe('aaa')
+  })
+
+  it('drops an entry missing a required field and warns — treated as UNDISCLOSED, not a partial pass', () => {
+    const file = path.join(dir, 'disclosures.json')
+    fs.writeFileSync(
+      file,
+      JSON.stringify({
+        entries: [
+          {
+            filename: 'incomplete.sql',
+            stored_sha256: 'aaa',
+            // current_sha256_at_disclosure missing
+            cause: 'test',
+            disclosed_via: 'DVA RULING 73',
+            fixed_by_samapti: false,
+          },
+        ],
+      })
+    )
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    try {
+      const map = loadHashDisclosures(file)
+      expect(map.has('incomplete.sql')).toBe(false)
+      expect(warnSpy).toHaveBeenCalled()
+    } finally {
+      warnSpy.mockRestore()
+    }
   })
 })
