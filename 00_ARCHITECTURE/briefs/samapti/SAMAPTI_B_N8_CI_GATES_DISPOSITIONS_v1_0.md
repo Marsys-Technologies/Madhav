@@ -126,6 +126,19 @@ globs for `build_chart.py`, superseded by the orchestrator per `L1_GANITA_CLOSUR
 reported GREEN before. Repointing them is a build-layer judgment, logged as a residual rather
 than guessed at here.
 
+**DVA Ruling 59 — exit 2 on main is CLEARED TO SHIP.** `STALE` is the honest label per this
+lane's own disposition; no workflow invokes the script, so it is CI-invisible either way; and
+repointing the globs is a build-layer test-location judgment outside this lane's brief.
+
+> **RESIDUAL FOR THE CLOSE REPORT (Ruling 59, not a new lane).** Repoint the two STALE detectors,
+> routed to whoever next touches L1 test hygiene:
+> - **G3** → the current `chart_facts` TypeScript test location (coverage now lives in
+>   `platform/src/lib/retrieval/registry/layers/chart_facts_query_*.test.ts` and
+>   `platform-mcp/src/__tests__/chart_facts_ayanamsha.test.ts`), replacing the Python-era
+>   `test_chart_facts*.py` glob.
+> - **G12** → the orchestrator-native equivalent of `build_chart.py`, which no longer exists
+>   anywhere in the repo (superseded per `L1_GANITA_CLOSURE`).
+
 **CAN-FAIL:** planted `jh_oracle.json` → G2 RED, **exit 1**; removed → **exit 2**. Same mutation
 against `origin/main`'s copy → exit 0.
 
@@ -214,6 +227,15 @@ read has not passed.
 **CAN-FAIL (parse + ceiling logic, three ways, against real captured output):** ceiling 43 →
 PASS exit 0; ceiling 42 (simulating one new violation) → `::error::EXCEEDS` exit 1; unparseable
 output → `::error::unparseable — refusing to pass` exit 1.
+
+**DVA Ruling 59 — the feared cross-lane coupling does NOT materialise; no allowance granted.**
+This lane raised a concern that B-DOCS-GOVERNANCE's two `artifact:` additions would push the
+schema count to 45 and redden CI against the pinned 43. DVA checked out
+`origin/samapti/governance-docs @ b3e0d510` (post-Ruling-58 tip) in an isolated worktree and ran
+both tools live: **schema_validator 43, drift_detector 216** — both exactly at T0, unchanged.
+The 45-count coupling does not occur against the actual branch tip. The ceiling stands as the
+ratchet Ruling 4 / F-29 intend, with no temporary allowance and no expiry to track. This
+independently reproduces the same 216/43 measured in this lane.
 
 ---
 
