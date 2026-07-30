@@ -112,6 +112,70 @@ describe('handleKalaElectGet', () => {
     const conceptNames = response!.coverage.map((c) => c.concept)
     expect(conceptNames).toContain('contender_lattice_parihara_adjudication')
     expect(conceptNames).toContain('ritual_pairing')
+    // Item 38-lite grading + frontier v0 coverage present.
+    expect(conceptNames).toContain('candidate_grading_lite')
+    expect(conceptNames).toContain('elect_frontier_v0')
+  })
+
+  describe('item 38-lite grading + ELECT frontier v0', () => {
+    it('labels the live top candidate gold and the hard-vetoed candidate disqualified', async () => {
+      mockHandleMuhurtaFinder.mockResolvedValue({
+        structuredContent: { object: muhurtaResult() },
+        content: [{ type: 'text', text: '{}' }],
+      })
+
+      const { handleKalaElectGet } = await import('./elect.js')
+      const { response } = await handleKalaElectGet({ chart_id: CHART_ID, undertaking: 'business' }, PRINCIPAL)
+
+      expect(response!.candidates[0]!.grading_tier).toBe('gold') // score 0.82, not disqualified
+      expect(response!.candidates[1]!.grading_tier).toBe('disqualified') // hard-vetoed, regardless of its 0.55 score
+      expect(response!.candidates[1]!.grading_tier_label).toContain('Disqualified')
+    })
+
+    it('reports a frontier statement naming the best live candidate and gold-tier presence', async () => {
+      mockHandleMuhurtaFinder.mockResolvedValue({
+        structuredContent: { object: muhurtaResult() },
+        content: [{ type: 'text', text: '{}' }],
+      })
+
+      const { handleKalaElectGet } = await import('./elect.js')
+      const { response } = await handleKalaElectGet({ chart_id: CHART_ID, undertaking: 'business' }, PRINCIPAL)
+
+      expect(response!.frontier.candidate_count).toBe(1) // only the non-disqualified window counts as "live"
+      expect(response!.frontier.gold_tier_present).toBe(true)
+      expect(response!.frontier.best?.start).toBe('2026-08-05T00:00:00Z')
+      expect(response!.frontier.statement).toContain('2026-08-05')
+    })
+
+    it('reports an honest empty frontier (never a fabricated next-occurrence date) when no windows are computed', async () => {
+      mockHandleMuhurtaFinder.mockResolvedValue({
+        structuredContent: { object: muhurtaResult({ windows: [], window_count: 0, empty_reason: 'date_range outside populated panchanga horizon' }) },
+        content: [{ type: 'text', text: '{}' }],
+      })
+
+      const { handleKalaElectGet } = await import('./elect.js')
+      const { response } = await handleKalaElectGet({ chart_id: CHART_ID, undertaking: 'business' }, PRINCIPAL)
+
+      expect(response!.frontier.candidate_count).toBe(0)
+      expect(response!.frontier.best).toBeNull()
+      expect(response!.frontier.statement).toContain('date_range outside populated panchanga horizon')
+    })
+
+    it('reports an honest no-gold-tier frontier when every live candidate is below the gold threshold', async () => {
+      const noGold = muhurtaResult()
+      ;(noGold.windows as Record<string, unknown>[])[0]!['score'] = 0.6
+      mockHandleMuhurtaFinder.mockResolvedValue({
+        structuredContent: { object: noGold },
+        content: [{ type: 'text', text: '{}' }],
+      })
+
+      const { handleKalaElectGet } = await import('./elect.js')
+      const { response } = await handleKalaElectGet({ chart_id: CHART_ID, undertaking: 'business' }, PRINCIPAL)
+
+      expect(response!.frontier.gold_tier_present).toBe(false)
+      expect(response!.frontier.best_tier).toBe('silver')
+      expect(response!.frontier.statement).toContain('none reaching gold tier')
+    })
   })
 
   it('reports an honest gap when every candidate is disqualified', async () => {
