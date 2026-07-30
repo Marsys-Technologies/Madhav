@@ -2091,25 +2091,66 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
   // Spec: 00_ARCHITECTURE/llm_consumption_audit/briefs/kala_elevation/
   //       KALA_W2_FIELD_DESIGN_v1_0.md §9.1 (DAG edges), §9.2 (these rows).
   {
-    // Lane E's own row — the authoritative one. Mirrors migration 497's INSERT exactly.
+    // Lane C's row — mirrors migration 494's INSERT identity fields exactly.
     //
-    // MERGE-TRAIN NOTE (2026-07-30, Conductor integration pass): Lane E's own draft PR
-    // included an inert placeholder `ka_kshetra` row here, reasoned to be needed because
-    // `depends_on: ['ka_kshetra']` below requires the id to resolve for
-    // catalog_reconciliation.test.ts, and because it believed `ka_gochara_sweep` /
-    // `ka_gochara_resonance` (two of §9.1's eight ka_kshetra edges) had no seed row anywhere
-    // and would themselves fail to resolve once Lane C's real ka_kshetra row landed.
-    // BOTH premises were investigated and found incorrect: (1) Lane C's `ka_kshetra` row
-    // lands via a direct `INSERT INTO asset_registry` in its own migration (494, later
-    // renumbered 494 -> still 494 in the final block, see that file), the same mechanism
-    // used here — no placeholder was ever needed, this file's own depends_on resolution
-    // check only needs the id to exist in the DB, not in this TS file. (2) `ka_gochara_sweep`
-    // and `ka_gochara_resonance` are NOT missing — they are registered the identical way,
-    // via `INSERT INTO asset_registry` in migrations 460 and 459 respectively (both
-    // pre-existing, live in production long before this campaign: confirmed
-    // `is_active:true, has_writer:true` for both via a direct production query). Lane E's
-    // own investigation only checked this TS file and got a false negative. The placeholder
-    // row has been removed as superseded; no gap remains for Lane C to close.
+    // MERGE-TRAIN NOTE (2026-07-30/31, Conductor integration pass): Lane E's own draft PR
+    // included an inert placeholder `ka_kshetra` row here. An earlier merge-train pass
+    // removed it, reasoning that Lane C's migration 494 already does
+    // `INSERT INTO asset_registry ... ON CONFLICT (asset_id) DO UPDATE` for `ka_kshetra`
+    // in production, so no TS-side row was needed. That reasoning was WRONG in one specific
+    // way, caught by CI (`catalog_reconciliation.test.ts` red on PR #947): the
+    // depends_on-resolution check builds its `assetIds` set purely from THIS file's `ASSETS`
+    // array — it never queries the DB. `ka_gochara_sweep` / `ka_gochara_resonance` get away
+    // with having no TS row because nothing in this file's `depends_on` arrays references
+    // them. `ka_kshetra` does not get away with it, because `mi_bhara`'s own
+    // `depends_on: ['ka_kshetra']` below is itself inside this file — so the id it names
+    // must also resolve inside this file. Restoring a `ka_kshetra` row is therefore not
+    // optional; this is the same defect class as the historical `ga_vichara`
+    // (migration 435-only) and `bo_pratijna` gaps, both previously fixed the same way:
+    // add the row here.
+    //
+    // `depends_on: []` here rather than migration 494's real eight edges, because two of
+    // those eight — `ka_gochara_sweep` and `ka_gochara_resonance` — still have no seed row
+    // in this file (registered only via migrations 460/459, confirmed
+    // `is_active:true, has_writer:true` in production). Declaring those edges here would
+    // just move the same missing-dep failure onto them. This file's `depends_on` array is
+    // NOT the production source of truth for `ka_kshetra`'s dependencies — migration 494's
+    // `UPDATE ... SET depends_on = ARRAY[...]` already set the real eight edges directly in
+    // the DB, and this seed script is a manually-invoked tool (see file header), not part of
+    // the deploy path. Running it against prod would currently narrow `ka_kshetra`'s
+    // depends_on to `[]`; closing that gap requires adding TS rows for
+    // `ka_gochara_sweep`/`ka_gochara_resonance` too, which is legacy-asset cleanup out of
+    // scope for this PR and is left as an open follow-up, not silently absorbed here.
+    asset_id: 'ka_kshetra',
+    layer: 'kala', sort_order: 110,
+    sanskrit_name: 'Kāla Kṣetra',
+    english_name: 'Temporal Field',
+    english_description:
+      'ṢAḌ-DARŚANA W2: the ten-stage point-process temporal field. λ_e(t) as a ' +
+      'strictly-positive hazard rate (events/day) composed multiplicatively from a classical ' +
+      'baseline, a noisy-OR promise prior, per-daśā-system clock terms (proportional hazards), ' +
+      'twelve log-linear covariates and multiplicative vighna thinning — stored as log-linear ' +
+      'segments that integrate EXACTLY in closed form, with every factor persisted as a ' +
+      'provenance edge that must reconstruct the value it explains. Windows are calibrated ' +
+      'against the chart\'s OWN circular-shifted sky (item 23). HEAVY writer. Built BESIDE the ' +
+      'legacy ka_gochara_sweep (strangler-fig): reads it read-only as a cross-check corpus and ' +
+      'writes ZERO rows to any legacy table.',
+    storage_type: 'postgres_table',
+    target_table: 'kala_field',
+    count_sql: 'SELECT COUNT(*) FROM kala_field WHERE chart_id=$1',
+    size_sql: null,
+    target_floor: 0,
+    expected_volume_formula: null,
+    expected_volume_inputs: null,
+    volume_explanation:
+      'Log-linear hazard segments per event class over a 100-year horizon; set to the ' +
+      'ACHIEVED count after the first build (§N.4 — floors are aspirational, never fabricated).',
+    depends_on: [],
+    scope: 'per_chart', is_active: true, estimated_seconds: null,
+    layer_name: 'Kāla', layer_index: 'L3', catalog_status: 'DRAFT', asset_kind: 'data',
+  },
+  {
+    // Lane E's own row — the authoritative one. Mirrors migration 497's INSERT exactly.
     //
     // `depends_on: ['ka_kshetra']` and NOTHING ELSE, and `ka_kshetra` must NEVER list
     // `mi_bhara` in return: that pair of edges forms the cycle ka_kshetra → mi_bhara →
