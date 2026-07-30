@@ -5,7 +5,7 @@ Spec: KALA_W2_FIELD_DESIGN_v1_0.md §3.3. The promise graph: a directed
 weighted graph per chart, digested from L2 Bodha, plus alternate routings
 (Yen's K-shortest-loopless-paths) from significator seeds to each
 `event_class` sink, combined via noisy-OR into the promise prior `P_e`.
-Writes `kala_field_promise_nodes/edges/routes` (migration 475).
+Writes `kala_field_promise_nodes/edges/routes` (migration 489).
 
 Published function (Lane A -> Lanes C/D, §3.3, FROZEN by this design):
     promise_prior(chart_id: UUID, event_class: str, conn) -> PromisePrior

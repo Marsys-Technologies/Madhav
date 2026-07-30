@@ -4,7 +4,7 @@ services.ka_kshetra.stage1_symbolization — ṢAḌ-DARŚANA W2 Lane A, Stage 1
 Spec: KALA_W2_FIELD_DESIGN_v1_0.md §3.2. Turns stage-0 kinematics into
 classical primitives, each an interval `[t_start, t_end]` with a piecewise-
 LINEAR strength envelope (JSONB knot array), so stage 4 can consume every
-primitive uniformly. Writes `kala_field_primitives` (migration 474).
+primitive uniformly. Writes `kala_field_primitives` (migration 488).
 
 The envelope contract (§3.2, frozen — stage 4 depends on it): >=2 knots,
 strictly ascending `t`, `v` in [0,1], linear between knots, value is 0 outside

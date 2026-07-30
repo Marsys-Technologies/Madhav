@@ -5,7 +5,7 @@ Spec: KALA_W2_FIELD_DESIGN_v1_0.md §3.1. Builds the exact position model (cubic
 Hermite spline over `ephemeris_daily`'s daily knots), roots every "when exactly"
 event via Brent's method, and computes the dwell-time weight + trapezoidal
 within-episode kernel that replaces the "stations act with full force" special
-case. Writes `kala_field_kinematics` (migration 474).
+case. Writes `kala_field_kinematics` (migration 488).
 
 Design principles this module is built to (KALA_W2_FIELD_DESIGN_v1_0.md §1):
   - §N.5 / B.10: natal target longitudes are REFERENCED from `chart_facts`

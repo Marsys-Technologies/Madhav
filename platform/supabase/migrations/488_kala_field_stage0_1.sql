@@ -1,4 +1,4 @@
--- Migration 474: kala_field_kinematics + kala_field_primitives — ṢAḌ-DARŚANA
+-- Migration 488: kala_field_kinematics + kala_field_primitives — ṢAḌ-DARŚANA
 -- W2 Lane A, Stage 0 (kinematics) + Stage 1 (symbolization).
 -- =============================================================================
 -- Spec: KALA_W2_FIELD_DESIGN_v1_0.md §3.1 (kala_field_kinematics), §3.2

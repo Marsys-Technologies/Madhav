@@ -1,10 +1,10 @@
--- Migration 475: kala_field_promise_nodes/edges/routes — ṢAḌ-DARŚANA W2
+-- Migration 489: kala_field_promise_nodes/edges/routes — ṢAḌ-DARŚANA W2
 -- Lane A, Stage 2 (the promise graph + alternate routings).
 -- =============================================================================
 -- Spec: KALA_W2_FIELD_DESIGN_v1_0.md §3.3. Owned by Lane A per §0's
 -- anti-collision contract — Lane A owns these three tables exclusively.
 --
--- Migration-range note: see 474_kala_field_stage0_1.sql's header — same
+-- Migration-range note: see 488_kala_field_stage0_1.sql's header — same
 -- range (474-483), re-verified free immediately before writing this file.
 --
 -- Nirmāṇa contract (brief §2.5, CLAUDE.md §N.4): no asset_registry row lands
