@@ -21,13 +21,18 @@
  *     BOTH natal Moon and natal Lagna at once (no silent single-reference default).
  *   - item 28 `dasha_lord_transit_condition`: the currently-running Vimśottarī MD/AD lord's
  *     OWN current transit sign/house/dignity (see ahead.ts for the forward half).
+ *   - item 1-lite `dasha_sandhi`: a band around every currently-active MD/AD period's start
+ *     AND end boundary, computed purely from that period's own already-computed span (see the
+ *     "W1 item 1-lite" doc-comment above `computeDashaSandhi` below for the exact documented
+ *     band-width convention and its lite simplification). Full daśā-sandhi calendar (all
+ *     levels, both directions) is item 1-full (wave W3), not this facade's job.
  *
  * Design authority: KALA_SIX_VIEWS_DESIGN_v1_0.md §1 (NOW content + clarity contract),
  * KALA_SUPREME_ELEVATION_v1_0.md (v1.2) §5 (envelope E3/E4/E5), §11 (item 43 tri-plane).
  *
  * What is genuinely NOT computed here yet (honestly disclosed via `coverage`, never
- * silently dropped): daśā-sandhi bands, per-ingress transit moorti — named W3 build items
- * in the brief, not this facade's job.
+ * silently dropped): per-ingress transit moorti — a named W3 build item in the brief, not
+ * this facade's job.
  *
  * W1 JOIN ADDITIONS (SHAD_DARSHANA_BRIEF_v2_0.md §3 W1, items 32 + 29): diśā-śūla +
  * gulika-kālam window membership + chandrāṣṭama + horā lord + janma-tithi/vara/nakṣatra
@@ -443,6 +448,163 @@ async function computeDashaLordTransitCondition(
   return { rows, chainReachable: chain.ok, transitReachable }
 }
 
+// ── W1 item 1-lite (daśā-sandhi bands) — SHAD_DARSHANA_BRIEF_v2_0.md §3 W1: "sandhi bands
+// from existing period spans; full calendar W3". [J]-kind JOIN: pure interval arithmetic over
+// the SAME already-computed start_date/end_date bounds `query_active_dashas` already returns
+// for the active Vimśottarī Mahādaśā/Antardaśā chain (no new astrological computation, no new
+// migration — §N.5/B.10). Self-contained fetch (not reusing `fetchActiveVimshottariChain`
+// above, which discards start_date/end_date for item 28's purposes) per this file's own
+// established anti-coupling convention (see file header): a second, independent call to the
+// same capability rather than widening a shared helper's return shape underneath item 28.
+//
+// Band-width convention (documented, not fabricated — KALA_SIX_VIEWS_DESIGN_v1_0.md §1.2:
+// "sandhi flags with configurable orb (last/first ~3% of period span) at every level"): for
+// EACH period boundary (a period's start date and its end date), the band is ± round(3% ×
+// that period's OWN span in days) around the boundary. LITE SIMPLIFICATION, stated plainly on
+// the served `band_convention` field: the classical formulation straddles a boundary with the
+// LAST 3% of the outgoing period and the FIRST 3% of the incoming period (two different
+// spans); this lite pass uses the SAME period's own span on both sides of each of its two
+// boundaries (its own start and its own end) rather than fetching the adjacent period, since
+// only ONE query_active_dashas call (the currently active chain) is available at W1 without a
+// second query per boundary. The full two-period asymmetric daśā-sandhi calendar (all levels,
+// both directions) is item 1-full (wave W3) — SHAD_DARSHANA_BRIEF_v2_0.md item 1.
+
+const SANDHI_BAND_FRACTION = 0.03 // KALA_SIX_VIEWS_DESIGN_v1_0.md §1.2's documented "~3%"
+const SANDHI_BAND_CONVENTION =
+  'LITE convention (item 1-lite, wave W1): each daśā-period boundary (its own start date AND ' +
+  'its own end date) carries a band of ± round(3% × that period\'s own span in days), per ' +
+  'KALA_SIX_VIEWS_DESIGN_v1_0.md §1.2 ("configurable orb, last/first ~3% of period span"). ' +
+  'Simplification: uses the SAME period\'s span on both sides of each boundary rather than the ' +
+  'full classical asymmetric last-outgoing/first-incoming convention (which needs the adjacent ' +
+  'period too) — that full two-period, all-level, both-direction calendar is item 1-full (W3).'
+
+interface ActiveDashaBoundaryEntry {
+  level_n: number
+  level_name: string
+  lord_graha: string
+  start_date: string | null
+  end_date: string | null
+}
+
+/** Self-contained duplicate of `fetchActiveVimshottariChain`'s query, capturing start_date/
+ *  end_date (which that function discards) — the raw bounds `query_active_dashas` already
+ *  returns per active-chain entry, never re-derived. */
+async function fetchVimshottariMdAdBoundaries(
+  chartId: string,
+  ayanamshaId: string,
+  dateISO: string,
+  principal: Principal,
+): Promise<{ entries: ActiveDashaBoundaryEntry[]; ok: boolean }> {
+  const resp = await callRegistryCapability(
+    'marsys://tool/L3/query_active_dashas',
+    { chart_id: chartId, date: dateISO, ayanamsha_id: ayanamshaId, systems: 'vimshottari', max_level: 2 },
+    principal,
+  )
+  if (!resp.ok || !resp.content) return { entries: [], ok: false }
+  const systems = (resp.content['systems'] as Array<Record<string, unknown>> | undefined) ?? []
+  const vimshottari = systems.find((s) => s['system_id'] === 'vimshottari')
+  const chain = (vimshottari?.['active_chain'] as Array<Record<string, unknown>> | undefined) ?? []
+  return {
+    ok: true,
+    entries: chain.map((c) => ({
+      level_n: typeof c['level_n'] === 'number' ? (c['level_n'] as number) : 0,
+      level_name: typeof c['level_name'] === 'string' ? (c['level_name'] as string) : `L${c['level_n']}`,
+      lord_graha: String(c['lord_graha'] ?? ''),
+      start_date: typeof c['start_date'] === 'string' ? (c['start_date'] as string) : null,
+      end_date: typeof c['end_date'] === 'string' ? (c['end_date'] as string) : null,
+    })),
+  }
+}
+
+export interface DashaSandhiBand {
+  level_n: number
+  level_name: string
+  lord_graha: string
+  boundary_kind: 'period_start' | 'period_end'
+  boundary_date: string
+  band_start_date: string
+  band_end_date: string
+  band_width_days: number
+  is_now_within_band: boolean
+}
+
+export interface DashaSandhiResult {
+  as_of_date: string
+  band_convention: string
+  bands: DashaSandhiBand[]
+}
+
+const MS_PER_DAY = 86_400_000
+
+function daysBetween(fromISO: string, toISO: string): number {
+  return Math.round((Date.parse(toISO) - Date.parse(fromISO)) / MS_PER_DAY)
+}
+
+function addDays(dateISO: string, days: number): string {
+  const d = new Date(`${dateISO}T00:00:00Z`)
+  d.setUTCDate(d.getUTCDate() + days)
+  return d.toISOString().slice(0, 10)
+}
+
+function isDateWithinInclusive(dateISO: string, startISO: string, endISO: string): boolean {
+  const d = Date.parse(dateISO)
+  return d >= Date.parse(startISO) && d <= Date.parse(endISO)
+}
+
+function buildBoundaryBand(
+  entry: ActiveDashaBoundaryEntry,
+  boundaryKind: 'period_start' | 'period_end',
+  asOfDate: string,
+): DashaSandhiBand | null {
+  if (!entry.start_date || !entry.end_date) return null
+  const spanDays = daysBetween(entry.start_date, entry.end_date)
+  if (spanDays <= 0) return null
+  const bandWidthDays = Math.max(1, Math.round(spanDays * SANDHI_BAND_FRACTION))
+  const boundaryDate = boundaryKind === 'period_start' ? entry.start_date : entry.end_date
+  const bandStart = addDays(boundaryDate, -bandWidthDays)
+  const bandEnd = addDays(boundaryDate, bandWidthDays)
+  return {
+    level_n: entry.level_n,
+    level_name: entry.level_name,
+    lord_graha: entry.lord_graha,
+    boundary_kind: boundaryKind,
+    boundary_date: boundaryDate,
+    band_start_date: bandStart,
+    band_end_date: bandEnd,
+    band_width_days: bandWidthDays,
+    is_now_within_band: isDateWithinInclusive(asOfDate, bandStart, bandEnd),
+  }
+}
+
+/** Item 1-lite (SHAD_DARSHANA_BRIEF_v2_0.md item 1, wave W1): a band around every currently-
+ *  active Vimśottarī Mahādaśā/Antardaśā period's start AND end boundary, computed purely from
+ *  the period's own already-computed span — see the doc-comment above for the full band-width
+ *  convention and its documented lite simplification. */
+async function computeDashaSandhi(
+  chartId: string,
+  ayanamshaId: string,
+  asOfDate: string,
+  principal: Principal,
+): Promise<{ result: DashaSandhiResult | null; chainReachable: boolean }> {
+  const chain = await fetchVimshottariMdAdBoundaries(chartId, ayanamshaId, asOfDate, principal)
+  if (!chain.ok) return { result: null, chainReachable: false }
+  if (chain.entries.length === 0) return { result: null, chainReachable: true }
+
+  const bands: DashaSandhiBand[] = []
+  for (const entry of chain.entries) {
+    const startBand = buildBoundaryBand(entry, 'period_start', asOfDate)
+    const endBand = buildBoundaryBand(entry, 'period_end', asOfDate)
+    if (startBand) bands.push(startBand)
+    if (endBand) bands.push(endBand)
+  }
+  if (bands.length === 0) return { result: null, chainReachable: true }
+
+  return {
+    result: { as_of_date: asOfDate, band_convention: SANDHI_BAND_CONVENTION, bands },
+    chainReachable: true,
+  }
+}
+
 function dualOutput(data: unknown, toolName = 'kala_now_get') {
   let finalData: unknown = data
   if (data && typeof data === 'object' && !Array.isArray(data)) {
@@ -749,6 +911,8 @@ export interface KalaNowResult {
   gochara_dual_reference: GocharaDualReferenceRow[]
   // Item 28 (wave W1): currently-running Vimśottarī MD/AD lord's OWN current transit condition.
   dasha_lord_transit_condition: DashaLordTransitCondition[]
+  // Item 1-lite (wave W1): bands around the currently-active MD/AD period boundaries.
+  dasha_sandhi: DashaSandhiResult | null
   drill_pointers: DrillPointerLike[]
   provenance_envelope: {
     source: string
@@ -763,6 +927,7 @@ export interface KalaNowResult {
     natal_panchanga_reachable: boolean
     gochara_dual_reference_reachable: boolean
     dasha_lord_transit_condition_reachable: boolean
+    dasha_sandhi_reachable: boolean
   }
 }
 
@@ -928,9 +1093,12 @@ export async function computeKalaNow(
   }
 
   // Item 8 + item 28 — depend on natalRefSigns, so run after the Promise.all above.
-  const [gocharaDual, dashaLordCondition] = await Promise.all([
+  // Item 1-lite (sandhi) is independent of natalRefSigns but shares the batch for one fewer
+  // sequential round-trip.
+  const [gocharaDual, dashaLordCondition, dashaSandhi] = await Promise.all([
     computeGocharaDualReference(asOfDate, natalRefSigns, principal),
     computeDashaLordTransitCondition(chartId, ayanamshaId, asOfDate, asOfDate, natalRefSigns.lagna_sign_number, principal),
+    computeDashaSandhi(chartId, ayanamshaId, asOfDate, principal),
   ])
 
   const reading = buildNowReading({ asOfDate, windowFamilies, darshana, windowsOk, darshanaOk })
@@ -957,10 +1125,14 @@ export async function computeKalaNow(
     darshanaOk
       ? computedCoverage('kala_darshana_confluence')
       : honestEmptyCoverage('kala_darshana_confluence', 'L3 Kāla registry unreachable this call.'),
-    notInCorpusCoverage(
-      'dasha_sandhi_bands',
-      'Junction-turbulence flags not yet computed for any chart — SHAD_DARSHANA_BRIEF_v2_0.md item 1 (wave W3).',
-    ),
+    dashaSandhi.result
+      ? computedCoverage('dasha_sandhi')
+      : honestEmptyCoverage(
+          'dasha_sandhi',
+          !dashaSandhi.chainReachable
+            ? 'L3 active-dasha registry (query_active_dashas) unreachable this call.'
+            : 'No active Vimśottarī MD/AD chain resolved for this chart/date — honest empty, not fabricated. Full daśā-sandhi calendar (all levels, both directions) is item 1-full (wave W3).',
+        ),
     notInCorpusCoverage(
       'transit_moorti',
       'Per-ingress moorti-nirṇaya not yet computed — SHAD_DARSHANA_BRIEF_v2_0.md item 4 (wave W3).',
@@ -1041,6 +1213,7 @@ export async function computeKalaNow(
     janma_resonance: janmaResonance,
     gochara_dual_reference: gocharaDual.rows,
     dasha_lord_transit_condition: dashaLordCondition.rows,
+    dasha_sandhi: dashaSandhi.result,
     drill_pointers: drillPointers,
     provenance_envelope: {
       source: 'kala_now_get',
@@ -1060,6 +1233,7 @@ export async function computeKalaNow(
       darshana_reachable: darshanaOk,
       gochara_dual_reference_reachable: natalRefSigns.ok && gocharaDual.transitReachable,
       dasha_lord_transit_condition_reachable: dashaLordCondition.chainReachable && dashaLordCondition.transitReachable,
+      dasha_sandhi_reachable: dashaSandhi.chainReachable,
     },
   }
 }
@@ -1106,13 +1280,16 @@ envelope (question_frame, field_snapshot_id, tri_plane pointers, 3-state coverag
 freshness attestation, calibration_maturity).
 
 THIN FACADE (W0): re-presents the SAME substrate kala_windows_get and kala_bundle_get's \
-snapshot already serve — no new computation. W1 adds two JOINS over existing substrate: \
+snapshot already serve — no new computation. W1 adds three JOINS over existing substrate: \
 gochara_dual_reference (item 8 — every graha's current transit house counted from BOTH \
-natal Moon AND natal Lagna, side by side) and dasha_lord_transit_condition (item 28 — the \
+natal Moon AND natal Lagna, side by side), dasha_lord_transit_condition (item 28 — the \
 currently-running Vimśottarī MD/AD lord's own current transit sign/house/dignity; see \
-kala_ahead_get for the forward-horizon half). Honestly discloses (via \`coverage\`) which \
-richer NOW concepts (daśā-sandhi bands, per-ingress transit moorti) are not yet joined into \
-this view.
+kala_ahead_get for the forward-horizon half), and dasha_sandhi (item 1-lite — a band around \
+every currently-active MD/AD period's start AND end boundary, derived from that period's own \
+already-computed span; see \`band_convention\` on the field for the documented ~3% orb rule \
+and its lite simplification — the full two-period, all-level daśā-sandhi calendar is item \
+1-full, wave W3). Honestly discloses (via \`coverage\`) which richer NOW concepts \
+(per-ingress transit moorti) are not yet joined into this view.
 
 W1 joins (objective, raw flags — no favorable/unfavorable grading): disha_shula (today's \
 diśā-śūla travel-avoid direction), gulika_kalam_now (today's gulika-kālam window + whether \
@@ -1122,8 +1299,9 @@ whether it is house 8), hora_now (current planetary-hour lord + window), janma_r
 
 Output includes: reading (structured argument) + reading_prose (composed text) + windows + \
 darshana + disha_shula + gulika_kalam_now + chandrashtama + hora_now + janma_resonance + \
-gochara_dual_reference + dasha_lord_transit_condition + tri_plane (→ kala_ahead_get for \
-what's coming, → kala_elect_get for when to act) + coverage + drill_pointers.
+gochara_dual_reference + dasha_lord_transit_condition + dasha_sandhi + tri_plane (→ \
+kala_ahead_get for what's coming, → kala_elect_get for when to act) + coverage + \
+drill_pointers.
 
 Requires: chart_id (UUID). Successor to kala_windows_get for "what is my state now" queries \
 — kala_windows_get remains live (not retired).`

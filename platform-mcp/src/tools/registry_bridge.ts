@@ -570,7 +570,7 @@ function orientationEntityProfilesSection(): TrimmableSection<Record<string, unk
       if (found) found.holder['entity_profiles'] = kept
     },
     minKeep: 0,
-    recover: { instrument: 'get_chart_orientation', hint: 'full entity_profiles digest (this entity-scoped call dropped the generic orientation preamble to protect the entity-specific payload — recover the full holistic digest here).' },
+    recover: { instrument: 'bodha_chart_digest_get', hint: 'full entity_profiles digest (this entity-scoped call dropped the generic orientation preamble to protect the entity-specific payload — recover the full holistic digest here).' },
     label: 'orientation_context.entity_profiles (generic preamble — first-sacrificed)',
   }
 }
@@ -2018,8 +2018,8 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
         // move (this is the domain-agnostic orient surface, not a bhava-judgment recipe),
         // so both are honestly 'other' rather than force-fit into the classical vocabulary.
         const drill_pointers: { instrument: string; hint: string; pointer_type: DrillPointerType }[] = [
-          { instrument: 'get_signals', hint: 'atomic composite-ranked signal drill for any entity_profiles.top_signal_ids.', pointer_type: 'other' },
-          { instrument: 'get_domain_reading', hint: 'domain-conditioned reading for a specific life domain.', pointer_type: 'other' },
+          { instrument: 'bodha_signals_get', hint: 'atomic composite-ranked signal drill for any entity_profiles.top_signal_ids.', pointer_type: 'other' },
+          { instrument: 'bodha_domain_reading_get', hint: 'domain-conditioned reading for a specific life domain.', pointer_type: 'other' },
         ]
 
         const { chart_header, flags: chartHeaderFlags } = await resolveChartHeader(chart_id, resolvedAyanamsha, principal)
@@ -2257,8 +2257,8 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
         // sibling comment above for why the orient-view pointer is 'other'. The graph
         // traversal pointer genuinely IS a dispositor/causal-chain move.
         const drill_pointers: { instrument: string; hint: string; pointer_type: DrillPointerType }[] = [
-          { instrument: 'get_chart_orientation', hint: 'entity_profiles for the hierarchically-aggregated, same-pipeline orient view (design §E-6).', pointer_type: 'other' },
-          { instrument: 'get_cgm_subgraph', hint: 'traverse causal context from these signal_ids.', pointer_type: 'dispositor_chain' },
+          { instrument: 'bodha_chart_digest_get', hint: 'entity_profiles for the hierarchically-aggregated, same-pipeline orient view (design §E-6).', pointer_type: 'other' },
+          { instrument: 'bodha_graph_subgraph_get', hint: 'traverse causal context from these signal_ids.', pointer_type: 'dispositor_chain' },
         ]
 
         const { chart_header, flags: chartHeaderFlags } = await resolveChartHeader(chart_id, resolvedAyanamsha, principal)
@@ -3206,7 +3206,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
               if (checklist) checklist['bearing_yogas'] = kept
             },
             minKeep: 3,
-            recover: { instrument: 'get_signals', hint: 'full yoga+dosha+karaka_alignment signal set beyond the lean slice kept here — pass domain + a higher top_k. (SC-18: was "query_signals", a non-existent MCP tool name).' },
+            recover: { instrument: 'bodha_signals_get', hint: 'full yoga+dosha+karaka_alignment signal set beyond the lean slice kept here — pass domain + a higher top_k. (SC-18: was "query_signals", a non-existent MCP tool name).' },
             label: 'checklist.bearing_yogas',
             // D-1.5a wave gate finding: this is the firings-authoritative verdict-moving
             // signal (A3/R-3) — a fired Dhana/Raja/NBRY yoga must actually be visible in the
@@ -3232,7 +3232,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
               if (checklist) checklist['bearing_afflictions'] = kept
             },
             minKeep: 3,
-            recover: { instrument: 'get_signals', hint: 'full adverse-valence (malefic/mixed) signal set for this domain beyond the lean threat-layer slice kept here — pass domain + a higher top_k.' },
+            recover: { instrument: 'bodha_signals_get', hint: 'full adverse-valence (malefic/mixed) signal set for this domain beyond the lean threat-layer slice kept here — pass domain + a higher top_k.' },
             label: 'checklist.bearing_afflictions',
             hardFloor: true,
           },
@@ -3300,7 +3300,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
               if (timing) timing['current'] = kept
             },
             minKeep: 3,
-            recover: { instrument: 'get_dashas', hint: 'full current-period rows across all dasha levels (this call kept a lean slice).' },
+            recover: { instrument: 'ganita_dashas_get', hint: 'full current-period rows across all dasha levels (this call kept a lean slice).' },
             label: 'checklist.timing_hooks.current',
           },
           {
@@ -3330,7 +3330,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
               timing['mahadasha_windows_by_graha'] = regrouped
             },
             minKeep: 4,
-            recover: { instrument: 'get_dashas', hint: 'full multi-level dasha timeline for the bhāveśa/kāraka(s) (this call kept a lean slice of mahadasha windows only).' },
+            recover: { instrument: 'ganita_dashas_get', hint: 'full multi-level dasha timeline for the bhāveśa/kāraka(s) (this call kept a lean slice of mahadasha windows only).' },
             label: 'checklist.timing_hooks.mahadasha_windows_by_graha',
           },
         ]
@@ -3927,7 +3927,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
               if (yogas) yogas['catalog_yoga_matches'] = kept
             },
             minKeep: 3,
-            recover: { instrument: 'get_signals', hint: 'full signal_type_class=yoga MSR matches for this graha.' },
+            recover: { instrument: 'bodha_signals_get', hint: 'full signal_type_class=yoga MSR matches for this graha.' },
             label: 'yogas.catalog_yoga_matches',
           },
           {
@@ -3942,7 +3942,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
               if (yogas) yogas['catalog_dosha_matches'] = kept
             },
             minKeep: 3,
-            recover: { instrument: 'get_signals', hint: 'full signal_type_class=dosha MSR matches for this graha.' },
+            recover: { instrument: 'bodha_signals_get', hint: 'full signal_type_class=dosha MSR matches for this graha.' },
             label: 'yogas.catalog_dosha_matches',
           },
           {
@@ -3962,7 +3962,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
               if (yogas) yogas['parivartana_exchanges'] = kept
             },
             minKeep: 3,
-            recover: { instrument: 'get_signals', hint: 'full signal_type_class=parivartana MSR matches for this graha (structural exchange yogas).' },
+            recover: { instrument: 'bodha_signals_get', hint: 'full signal_type_class=parivartana MSR matches for this graha (structural exchange yogas).' },
             label: 'yogas.parivartana_exchanges',
             // EL-36 + §N.6: parivartana exchanges are served as REAL chart-specific data
             // (confirmed, not requires_pass catalog labels) — hardFloor. The catalog_yoga_/
@@ -3982,7 +3982,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
               if (cgm) cgm['edges'] = kept
             },
             minKeep: 3,
-            recover: { instrument: 'traverse_graph', hint: 'full CGM edge set (this response kept a lean slice of the depth-1 neighborhood).' },
+            recover: { instrument: 'bodha_graph_traverse_get', hint: 'full CGM edge set (this response kept a lean slice of the depth-1 neighborhood).' },
             label: 'cgm_neighborhood.edges',
             hardFloor: true, // EL-36: confirmed CGM structure — protected from PASS 2 zeroing.
           },
@@ -3998,7 +3998,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
               if (cgm) cgm['nodes'] = kept
             },
             minKeep: 3,
-            recover: { instrument: 'traverse_graph', hint: 'full CGM node set (this response kept a lean slice of the depth-1 neighborhood).' },
+            recover: { instrument: 'bodha_graph_traverse_get', hint: 'full CGM node set (this response kept a lean slice of the depth-1 neighborhood).' },
             label: 'cgm_neighborhood.nodes',
             hardFloor: true, // EL-36: confirmed CGM structure — protected from PASS 2 zeroing.
           },
@@ -4038,7 +4038,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
               if (position) position['rows'] = kept
             },
             minKeep: 1,
-            recover: { instrument: 'get_positions', hint: 'full position rows for this graha across every category.' },
+            recover: { instrument: 'ganita_positions_get', hint: 'full position rows for this graha across every category.' },
             label: 'position.rows',
             hardFloor: true, // EL-36: the graha's position is the irreducible core of the portrait.
           },
@@ -4070,7 +4070,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
               if (dashas) dashas['rows'] = kept
             },
             minKeep: 2,
-            recover: { instrument: 'get_dashas', hint: 'full Mahadasha-level dasha periods for this graha (1900-2100 window kept only a lean slice).' },
+            recover: { instrument: 'ganita_dashas_get', hint: 'full Mahadasha-level dasha periods for this graha (1900-2100 window kept only a lean slice).' },
             label: 'dashas.rows',
             hardFloor: true, // EL-36: confirmed Mahadasha windows — protected from PASS 2 zeroing.
           },
@@ -4155,9 +4155,9 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
         // Typed per design §28.4 (R5 W3 Phase B) — additive `pointer_type` alongside the
         // pre-existing {instrument, hint} shape.
         const drill_pointers: { instrument: string; hint: string; pointer_type: DrillPointerType }[] = [
-          { instrument: 'get_dashas', hint: 'Antardasha-level (level=2+) detail for this graha\'s Mahadasha periods, narrower window.', pointer_type: 'dasha_of_promise' },
-          { instrument: 'traverse_graph', hint: 'deeper CGM traversal (depth>1, paths mode) from this graha\'s neighborhood.', pointer_type: 'dispositor_chain' },
-          { instrument: 'get_signals', hint: 'raw MSR signal evidence for any yoga/dosha match surfaced here.', pointer_type: 'karaka_condition' },
+          { instrument: 'ganita_dashas_get', hint: 'Antardasha-level (level=2+) detail for this graha\'s Mahadasha periods, narrower window.', pointer_type: 'dasha_of_promise' },
+          { instrument: 'bodha_graph_traverse_get', hint: 'deeper CGM traversal (depth>1, paths mode) from this graha\'s neighborhood.', pointer_type: 'dispositor_chain' },
+          { instrument: 'bodha_signals_get', hint: 'raw MSR signal evidence for any yoga/dosha match surfaced here.', pointer_type: 'karaka_condition' },
           { instrument: 'judgment_query', hint: 'the complete bhava-level (7th-house marriage, 10th-house career, etc.) promise-register verdict — this entity-scoped call cannot fully adjudicate bhava claims on its own.', pointer_type: 'karaka_condition' },
         ]
 
@@ -4315,9 +4315,9 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           label: `stages[${stageName}].${field}`,
         })
         const pactSections: TrimmableSection<Record<string, unknown>>[] = [
-          findStageArraySection('TRIGGER', 'transiting_positions', 1, { instrument: 'query_planet_transit', hint: 'full transit series across the activation window (this call fetched only the single as_of_date snapshot).' }),
+          findStageArraySection('TRIGGER', 'transiting_positions', 1, { instrument: 'ref_planet_transit_get', hint: 'full transit series across the activation window (this call fetched only the single as_of_date snapshot).' }),
           findStageArraySection('CONFIRMATION', 'dignities', 2, { instrument: 'ganita_condition_get', hint: 'full dignity rows for the promise-carrying graha(s) in the operative varga. (SC-18: was "get_dignity", a non-existent MCP tool name; use facet="dignity").' }),
-          findStageArraySection('ACTIVATION', 'active_periods', 2, { instrument: 'get_dashas', hint: 'full dasha timeline for the promise-carrying graha(s).' }),
+          findStageArraySection('ACTIVATION', 'active_periods', 2, { instrument: 'ganita_dashas_get', hint: 'full dasha timeline for the promise-carrying graha(s).' }),
           {
             path: 'content.fact_id_refs',
             getArray: (root) => {

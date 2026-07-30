@@ -32,7 +32,7 @@ function bearingYogasSection(hardFloor: boolean): TrimmableSection<ReturnType<ty
     getArray: (c) => c.checklist.bearing_yogas,
     setArray: (c, kept) => { c.checklist.bearing_yogas = kept as typeof c.checklist.bearing_yogas },
     minKeep: 3,
-    recover: { instrument: 'get_signals', hint: 'full set' },
+    recover: { instrument: 'bodha_signals_get', hint: 'full set' },
     label: 'checklist.bearing_yogas',
     hardFloor,
   }

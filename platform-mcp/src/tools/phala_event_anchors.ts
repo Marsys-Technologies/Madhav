@@ -134,7 +134,7 @@ function anchorsSection(): TrimmableSection<Record<string, unknown>> {
     path: 'anchors', label: 'anchors', minKeep: 10,
     getArray: (c) => { const arr = c['anchors']; return Array.isArray(arr) ? arr : undefined },
     setArray: (c, kept) => { c['anchors'] = kept },
-    recover: { instrument: 'event_anchors', hint: 'call again with a narrower date_range, or paginate via offset/limit' },
+    recover: { instrument: 'phala_anchors_get', hint: 'call again with a narrower date_range, or paginate via offset/limit' },
   }
 }
 

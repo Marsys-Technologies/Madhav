@@ -349,7 +349,7 @@ export const pactQueryCapability: CapabilityDescriptor = {
 
       if (activationStatus === 'denied') {
         drill_pointers.push({
-          instrument: 'get_dashas', hint: 'Full multi-level, multi-system dasha timeline (this call only checked Vimshottari mahadasha windows for the promise-carrying graha(s)).',
+          instrument: 'ganita_dashas_get', hint: 'Full multi-level, multi-system dasha timeline (this call only checked Vimshottari mahadasha windows for the promise-carrying graha(s)).',
           pointer_type: 'dasha_of_promise', pact_stage: 'activation',
         })
         return {
@@ -416,7 +416,7 @@ export const pactQueryCapability: CapabilityDescriptor = {
       }
       stages.push({ stage: 'TRIGGER', status: triggerStatus, reason: triggerReason, transiting_positions: triggerRows })
       drill_pointers.push({
-        instrument: 'query_planet_transit', hint: 'Full transit series across the activation window (this call fetched only the single as_of_date snapshot).',
+        instrument: 'ref_planet_transit_get', hint: 'Full transit series across the activation window (this call fetched only the single as_of_date snapshot).',
         pointer_type: 'transit_gate', pact_stage: 'trigger',
       })
 
