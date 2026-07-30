@@ -1,10 +1,12 @@
 ---
 artifact: SAMAPTI_NARRATION_TRIAGE_AND_PARTITION
 canonical_id: SAMAPTI_NARRATION_TRIAGE_AND_PARTITION
-version: 1.0
+version: 1.1
 status: READY-FOR-VERIFICATION
 created: 2026-07-30
+updated: 2026-07-31
 lane: A8-NAR-TRIAGE
+reopen_cycle: 1 of 3 (DVA Ruling 74 — Claim 4 REFUTED; Claims 1/2/3 CONFIRMED and untouched)
 track: SAMAPTI_IMPLEMENTATION_BRIEF_v2_0.md §6 (T3)
 governs: >
   The six B-NAR-* narration fix lanes (B-NAR-BO / GA / MI / PH / KA / TS). §4 of this document
@@ -12,6 +14,28 @@ governs: >
   this partition does not assign to it. Where §4 and the queue's inline `scope:` list disagree,
   §4 governs and the disagreement is called out explicitly in §4.3.
 baseline: origin/main @ cdb6fc3b3d37e3b586f188649c59e57c251ed935
+reverify_baseline: origin/main @ 638e5499 (2026-07-31 — §4.3/§4.9 re-derived against this tip)
+changelog:
+  - version: 1.1
+    date: 2026-07-31
+    summary: >
+      Reopen cycle 1 (DVA Ruling 74/75). Claims 1/2/3 UNTOUCHED. Corrects the two REFUTED defects
+      in Claim 4: (a) §4.3 rewritten — ga_nakshatra.py:87 is no longer assigned to any lane (owned
+      by B-VERIFSTATUS-VOCAB / PR #910 per Rulings 13 + 13-CORRECTION; lowercasing it is PROHIBITED,
+      it is the accidental safety net excluding 3,955 unverified rows), and :289 restored to
+      B-NAR-GA. (b) §4.9 rewritten — the "only intersection was ga_nakshatra.py" claim was false;
+      re-derived 9 collision pairs over 8 distinct paths against 3 already-built lanes, with new
+      ordering decisions (§4.9.3) for the two same-function collisions (gates.py
+      run_g7_only_facts_gate_db, bo_cdlm_summary.py _build_clusters) that no prior ruling covered.
+      Path count 42 -> 45 (+2 MI test files, +ga_nakshatra.py); zero-duplicate property re-verified
+      mechanically, all 45 confirmed present on origin/main. F18 wording corrected per Ruling 75
+      Q(ii). Two severity escalations ratified per Ruling 75 Q(iii): mi_bhavisya.py:161 P2->P1,
+      bo_cdlm_summary.py:348 P2->P0. FLAGS TWO UPSTREAM ERRORS: #908/#909/#910 are all still OPEN
+      (Ruling 74 assumed #910 merged), and Ruling 75 mis-attributes the bo_cdlm_summary P0 to
+      B-NAR-MI when that file belongs to B-NAR-BO.
+  - version: 1.0
+    date: 2026-07-30
+    summary: Initial triage + 42-path partition (PR #903).
 chart_under_test: 482012f1-710e-4a25-994a-93821f5871aa
 sources:
   - 00_ARCHITECTURE/llm_consumption_audit/briefs/suddha_vaca/SUDDHA_VACA_FIX_LEDGER_v1_0.md (v1.2)
@@ -28,6 +52,38 @@ Three deliverables:
    fourth found).
 2. **§2/§3** — adversarial verdicts on the 7 PLAUSIBLE P2 items, and on seed F18.
 3. **§4** — the file-ownership partition. **One file → exactly one lane.**
+
+---
+
+## ⚠️ v1.1 — REOPEN CYCLE 1 (DVA Rulings 74 + 75). Read before acting on §4.
+
+VER's independent re-derivation **CONFIRMED Claims 1, 2 and 3** — the already-closed-items list
+(§1), the 7-item PLAUSIBLE re-examination (§2), and the F18 reversal (§3). **Those sections are
+unchanged and must not be re-litigated.**
+
+**Claim 4 (the partition) was REFUTED on two defects. Both are now fixed:**
+
+| Defect | Was | Now |
+|---|---|---|
+| **§4.3** `ga_nakshatra.py` ownership | Whole file → B-N8-FIX, `:289` riding along | `:87` **assigned to no lane** (B-VERIFSTATUS-VOCAB / #910 owns it per Rulings 13 + 13-CORRECTION); `:289` **stays with B-NAR-GA** |
+| **§4.9** cross-lane check | *"The only intersection anywhere was `ga_nakshatra.py`"* | **False.** 9 collision pairs / 8 distinct paths / 3 lanes, re-derived live. Two are **same-function** and previously unruled — ordering decided in §4.9.3 |
+
+**Also folded in:** F18 wording precision (§3, Ruling 75 Q(ii)); two ratified severity escalations —
+`mi_bhavisya.py:161` **P2 → P1** (§2.1) and `bo_cdlm_summary.py:348` **P2 → P0** (§2.2).
+**Path count 42 → 45** (§4.9.1), zero-duplicate property re-verified mechanically.
+
+**🚩 Two upstream errors this correction surfaced — flagged, not silently reconciled:**
+
+1. **#908, #909 and #910 are ALL still OPEN.** Ruling 74 and the re-dispatch brief both state #910
+   is "already merged / VER-CONFIRMED." It is not: `gh pr view 910` → `state: OPEN`,
+   `mergedAt: null`, and `origin/main` still carries the uppercase `"PASS"` literal at
+   `ga_nakshatra.py:87`. Every "rebase onto its already-landed content" instruction is therefore
+   **premature, not wrong** — and Rulings 13-CORRECTION and 74 currently prescribe **opposite**
+   merge orders. See §4.3 and §4.9.2. **Consequence:** the `registry_bridge.ts` citations VER
+   called "already stale" are in fact **correct as of now** (§4.9.4).
+2. **Ruling 75 Q(iii) mis-attributes the `bo_cdlm_summary.py` P0 to B-NAR-MI.** That file — and its
+   actual root cause `bo_sangati.py` — are **B-NAR-BO's**. B-NAR-MI owns neither. Correct for F25
+   (`mi_bhavisya.py` → B-NAR-MI). See §2.2.
 
 ---
 
