@@ -2,9 +2,9 @@ name: CI — Ganga Quality Gate
 
 on:
   push:
-    branches: [main, 'feature/**']
+    branches: [main, 'feature/**', 'shad-darshana/integration']
   pull_request:
-    branches: [main]
+    branches: [main, 'shad-darshana/integration']
   # D-2 Lane V-0 (BIND_D-2.md §F1.7 ledger row 2): the census-battery job below hits the LIVE
   # deployed connector with real credentials and takes several minutes (135-tool paced sweep) —
   # it must never run on every push/PR (cost, rate-limit risk, and it needs a secret that may not
