@@ -124,6 +124,7 @@ import {
   detectTurnProvenanceDrift,
   withProvenanceStamp,
 } from '@/lib/pariprashna/provenance/stamp'
+import { captureDetectedCandidates } from '@/lib/pariprashna/samiksha/capture'
 
 export const maxDuration = 120
 
@@ -1053,6 +1054,38 @@ export async function POST(request: Request): Promise<Response> {
                   } catch (err) {
                     console.error('[pariprashna] canonical writeTurn failed', err)
                     canonicalOk = false
+                  }
+
+                  // ── SAMĪKṢĀ capture (PB-3.1 G1) — the prediction loop's ENTRY
+                  // POINT. The parts above already carry the `message_parts.id`
+                  // the ledger FK needs; this writes the matching `detected`
+                  // ledger row per candidate so the review tab's Awaiting
+                  // section stops being structurally empty and a human can
+                  // confirm a real claim. `detected` is NOT auto-promotion
+                  // (W-1): it carries no D-16 stamp and no confidence band, and
+                  // only the human's explicit confirm advances it. See
+                  // lib/pariprashna/samiksha/capture.ts for the full rationale
+                  // and for why the in-stream mount needs a wire change first.
+                  //
+                  // Strictly non-fatal and strictly after the turn is committed:
+                  // a ledger fault must never cost the reader their reading.
+                  if (canonicalOk && predictionCandidatesFound.length > 0) {
+                    try {
+                      const capture = await captureDetectedCandidates({
+                        chartId,
+                        messageId: assistantMessageId,
+                        candidates: predictionCandidatesFound,
+                        citations: citationsFound.map((c) => ({ signal_id: c.signal_id, layer: c.layer })),
+                        nowDate: provenanceStamp.now_context_date,
+                      })
+                      console.info(
+                        `[pariprashna] samiksha capture: ${capture.created.length} detected, ` +
+                          `${capture.skippedExisting} already-ledgered, ${capture.unpaired} unpaired ` +
+                          `(message ${assistantMessageId})`,
+                      )
+                    } catch (err) {
+                      console.error('[pariprashna] samiksha detected-row capture failed', err)
+                    }
                   }
 
                   return {
