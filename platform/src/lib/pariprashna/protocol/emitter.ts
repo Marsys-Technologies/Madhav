@@ -34,6 +34,7 @@ import {
   type ErrorEvent,
   type SnapshotApplyEvent,
 } from './events'
+import { assertNoCalibrationLeak } from '../no_leakage/calibration_leak_guard'
 
 /**
  * Write an ALREADY-STAMPED event (i.e. one carrying its own `seq`/`t`, read
@@ -97,8 +98,28 @@ export class PariprashnaEmitter {
     return this.closed
   }
 
+  /**
+   * COLLECT-ONLY runtime guard (G5 — SAMĀPTI §8.1 / BRIEF_PB-3.1 G5; §14.6 C1 / W-3).
+   *
+   * Every Paripraśna event crosses this one method, so this single call site covers
+   * the entire served reading stream. It throws (rather than stripping or flagging)
+   * by design: W-3 says a served reading must be byte-identical whether or not
+   * calibration data exists, so a reading that has already been contaminated is not
+   * a reading worth finishing — failing loudly is the honest outcome, and it is what
+   * `assertNoCalibrationLeak`'s contract promises.
+   *
+   * `writeRawEvent` (the resume/replay path) deliberately does NOT re-run this: it
+   * replays events that already passed this guard when they were first emitted, and
+   * re-asserting on replay would turn a historical contamination into an unrecoverable
+   * resume rather than a diagnosable one.
+   */
+  private assertServable(event: PariprashnaEvent): void {
+    assertNoCalibrationLeak(event, `pariprashna:${event.type}`)
+  }
+
   private write(event: PariprashnaEvent): void {
     if (this.closed) return
+    this.assertServable(event)
     try {
       this.controller.enqueue(this.encoder.encode(serializeEvent(event)))
     } catch {

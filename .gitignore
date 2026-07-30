@@ -116,3 +116,4 @@ python-sidecar/venv/
 # Personal devotional documents (not MARSYS artifacts)
 /Yajna_*
 /Yajna_Vidhi_Design_Philosophy_*
+.lane-scratch/

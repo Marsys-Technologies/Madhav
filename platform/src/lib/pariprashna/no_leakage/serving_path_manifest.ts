@@ -52,6 +52,20 @@ export const SERVING_PATH_FILES: readonly string[] = [
   // reads priors_version; included precisely so the gate proves the read is not
   // a bump/write (false-positive trap 1 above).
   'src/lib/pariprashna/provenance/stamp.ts',
+  // ── G5 (SAMĀPTI §8.1 / BRIEF_PB-3.1 G5) — the spine-bundle chain ─────────────
+  // `query_spine_bundle` pre-joins signal → activation → anchors → CALIBRATION and
+  // serves the result as a first-class capability, so these four files assemble a
+  // served payload that carries a `calibration` section. The original manifest
+  // omitted them, which meant the single most calibration-adjacent serving chain in
+  // the estate was the one chain the gate did not scan. Adding them makes the
+  // coverage match the claim; all four are CLEAN under FORBIDDEN_PATTERNS today
+  // (they READ calibration tables via query_calibration's handler — no write, no
+  // priors bump, no envelope annotation), which is precisely what the gate now
+  // holds in place.
+  'src/lib/retrieval/spine/compute_spine_bundle.ts',
+  'src/lib/retrieval/spine/materialize.ts',
+  'src/lib/retrieval/registry/layers/register_spine_bundle.ts',
+  'src/lib/retrieval/registry/layers/L5_mimamsa/query_calibration.ts',
 ]
 
 /** A single forbidden construct: a calibration-write or priors-bump signature. */

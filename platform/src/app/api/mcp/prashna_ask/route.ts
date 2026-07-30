@@ -85,6 +85,7 @@ import {
   ensureDashaContextFloor,
 } from '@/lib/pipeline/compiled_floor_adapter'
 import { filterLeakedCapabilities } from '@/lib/pipeline/no_leakage_filter'
+import { assertNoCalibrationLeak } from '@/lib/pariprashna/no_leakage/calibration_leak_guard'
 import { CostCapTracker, resolveCostCapsForEntitlement } from '@/lib/pipeline/cost_caps'
 import { getToolByName } from '@/lib/retrieval/registry/tool_name_bridge'
 import { DEFAULT_STACK_ID } from '@/lib/models/registry'
@@ -506,7 +507,10 @@ export async function POST(request: Request) {
 
       const isPartial = costCapTripped !== null || unresolvedTools.length > 0
 
-      const finalBody = {
+      // The reading ENVELOPE — everything this route ASSEMBLES — kept structurally
+      // separate from `results`, the verbatim evidence rows, so the COLLECT-ONLY guard
+      // below has an exact, non-negotiable subject rather than an ad-hoc omission.
+      const readingEnvelope = {
         ok: true,
         trace_id: queryId,
         chart_id: chartId,
@@ -525,8 +529,21 @@ export async function POST(request: Request) {
           cap_tripped: costCapTripped?.reason ?? null,
         },
         judgment_flags: judgmentFlags,
-        results: toolResults,
       }
+
+      // ── COLLECT-ONLY runtime guard (G5 — SAMĀPTI §8.1 / BRIEF_PB-3.1 G5; §14.6 C1 / W-3) ──
+      // The reading envelope must be byte-identical whether or not calibration data
+      // exists. `results` is excluded by name and by design: it is the verbatim row
+      // payload of tools the planner explicitly selected, and two live tools return
+      // columns whose names legitimately match the guard's key set
+      // (`query_calibration`.brier_score — the declared, deliberately planner-selectable
+      // calibration surface; `query_projections`.outcome_recorded). Those rows are the
+      // job of NO-LEAKAGE arm 2 (`filterLeakedCapabilities`, applied above before any
+      // dispatch) and arm 1 (the static grep gate over SERVING_PATH_FILES), not of this
+      // envelope assertion. See calibration_leak_guard.ts's header for the full rationale.
+      assertNoCalibrationLeak(readingEnvelope, 'api/mcp/prashna_ask:final-envelope')
+
+      const finalBody = { ...readingEnvelope, results: toolResults }
 
       controller.enqueue(encoder.encode(JSON.stringify({ event: 'final', ...finalBody }) + '\n'))
   }
