@@ -16,10 +16,44 @@ the native's chart against. This writer only POPULATES that reference table —
 it computes and stores each synthetic chart's graha positions by sign/
 nakshatra (+ Lagna sign/nakshatra, since Elevation §12.3 names "same lagna" as
 one of the two matched-sub-cohort keys). It is explicitly NOT a full chart
-build (no divisional charts, no dashas, no houses-of-grahas, no MD-lord — the
-other §12.3 matching key — since that needs the dasha engine, out of scope
-here) and it does NOT compute rarity scores or the matched sub-cohort itself;
-those are later-wave consumers of this table, not this writer's job.
+build (no divisional charts, no houses-of-grahas) and it does NOT compute
+rarity scores or the matched sub-cohort itself; those are later-wave consumers
+of this table, not this writer's job.
+
+MD-LORD CHAIN (bg_synthetic_cohort_md) — second pass, same writer, same asset
+─────────────────────────────────────────────────────────────────────────────
+KALA_W2_FIELD_DESIGN_v1_0.md §6.3 (ANTARYĀMIN ADJUDICATION-1) authorizes a
+SECOND table, `bg_synthetic_cohort_md`, that this same writer also populates:
+an age-based Vimśottarī mahādaśā-lord CHAIN (10 rows per chart spanning ages
+[0, 120) years — 9 in the measure-zero case where the Moon sits exactly on a
+nakshatra boundary), derived PURELY from the Moon `sidereal_longitude` already
+computed and stored above in `positions` — no new ephemeris call, no
+swisseph, no PyJHora at build time. This is why it is a second pass of THIS
+writer (same `asset_id='bg_cohort'`) and not a new asset: no new
+`asset_registry` row, no new `depends_on` edge (§6.3).
+
+An age-interval CHAIN, not a scalar `md_lord` column, because the cohort
+spans births 1900-2099 (roughly half in the future relative to any fixed
+"today"), so "the current MD lord as of <date>" is undefined/goes-stale for
+half the cohort; age is birth-relative and comparable across the whole
+200-year sample (§6.3's own reasoning — recorded so this is never
+"simplified" back to a scalar).
+
+The Vimśottarī constants below (`VIMSHOTTARI_YEARS`, `NAK_LORD_CYCLE`) are
+verified byte-identical to the shipped dasha engine's own source of truth —
+`platform/python-sidecar/pyjhora_adapter/dashas.py::_VIMSHOTTARI_YEARS`
+(keyed there by PyJHora planet id, resolved through
+`pyjhora_adapter/_names.py::PLANET_NAMES`) and
+`pyjhora_adapter/_names.py::_NAK_LORD_CYCLE` — and are HARDCODED here rather
+than imported, for the same reason this module already hardcodes SIGN_NAMES/
+NAKSHATRA_NAMES instead of importing brahmagyan.ganita.l1_positions: importing
+`pyjhora_adapter.dashas` pulls in its `._jhora` (PyJHora/Qt-offscreen) import
+chain at module load, which would make this "pure arithmetic over an
+already-stored longitude" function only unit-testable with the full PyJHora
+stack installed. Hardcoding keeps `compute_md_lord_chain()` — no DB, no
+swisseph, no PyJHora — testable in total isolation, exactly like the rest of
+this writer's sampling math. Sum of `VIMSHOTTARI_YEARS.values()` = 120,
+asserted at import time.
 
 SAMPLING METHODOLOGY (a deterministic statistical/computational choice per
 CLAUDE.md §N.4 / B.10 — Claude never invents chart values; every position
@@ -130,6 +164,29 @@ NAKSHATRA_NAMES = [
     "Moola", "Purva Ashadha", "Uttara Ashadha", "Shravana", "Dhanishtha",
     "Shatabhisha", "Purva Bhadrapada", "Uttara Bhadrapada", "Revati",
 ]
+
+# ── MD-lord chain constants (KALA_W2_FIELD_DESIGN_v1_0.md §6.3) ──────────────
+# Verified byte-identical to pyjhora_adapter/dashas.py's `_VIMSHOTTARI_YEARS`
+# (there keyed by PyJHora planet id, resolved through
+# pyjhora_adapter/_names.py::PLANET_NAMES: 0=Sun 1=Moon 2=Mars 3=Mercury
+# 4=Jupiter 5=Venus 6=Saturn 7=Rahu 8=Ketu) and to that module's own
+# `_NAK_LORD_CYCLE`. Hardcoded here rather than imported — see module
+# docstring for why (keeps this file's dasha arithmetic PyJHora-import-free).
+VIMSHOTTARI_YEARS: dict[str, int] = {
+    "Sun": 6, "Moon": 10, "Mars": 7, "Mercury": 17, "Jupiter": 16,
+    "Venus": 20, "Saturn": 19, "Rahu": 18, "Ketu": 7,
+}
+assert sum(VIMSHOTTARI_YEARS.values()) == 120, "Vimshottari cycle must total 120 years"
+
+# Nakshatra-lord cycle, 0-based nakshatra index (nak0 = 0..26): the lord of
+# nakshatra `nak0` (0-based) is NAK_LORD_CYCLE[nak0 % 9]. Identical to
+# pyjhora_adapter/_names.py::_NAK_LORD_CYCLE (there indexed 1-based via
+# NAKSHATRA_LORDS[i] = _NAK_LORD_CYCLE[(i - 1) % 9]).
+NAK_LORD_CYCLE: list[str] = [
+    "Ketu", "Venus", "Sun", "Moon", "Mars", "Rahu", "Jupiter", "Saturn", "Mercury",
+]
+
+CHAIN_VERSION = "vim_md_age_v1"
 
 
 # ── Synthetic birth-parameter sampling (pure, no DB/swisseph — testable) ─────
@@ -247,15 +304,118 @@ def compute_synthetic_positions(
     return positions
 
 
+class MdChainAuthorityDivergence(ValueError):
+    """
+    Raised when the age-chain's derived birth nakshatra disagrees with the
+    nakshatra_id already stored in `positions['Moon']` (§N.5 halt-worthy —
+    "if a signal's derivation disagrees with the L1/L0 fact it cites, that is
+    a halt-worthy bug, not a stored divergence"). Both sides share the exact
+    same `int(sid_lon / (360/27))` formula (see `_parse_sidereal` above), so
+    this is structurally near-unreachable; it exists as a real detector, not
+    a decorative one (§N.8 — a guard needs a code path that could fail).
+    """
+
+
+def compute_md_lord_chain(positions: dict[str, Any] | None) -> list[dict[str, Any]]:
+    """
+    Pure age-interval Vimśottarī MD-lord chain for one synthetic chart, per
+    KALA_W2_FIELD_DESIGN_v1_0.md §6.3 — the exact algorithm cited there from
+    `pyjhora_adapter/dashas.py::compute_dashas()` / `jhora`'s own
+    `vimsottari_mahadasa()`, reproduced here in age-years so it needs no
+    ephemeris/PyJHora call: it reads only the already-stored Moon
+    `sidereal_longitude` (§N.5 — never recomputed).
+
+    No DB, no swisseph, no PyJHora — pure arithmetic, unit-testable in
+    isolation.
+
+    Returns a list of dicts (each a future `bg_synthetic_cohort_md` row minus
+    `synthetic_id`): `md_index` (1..10), `md_lord`, `start_age_years`,
+    `end_age_years`, `md_full_years`, `is_partial`. Exactly 10 rows in the
+    general case; exactly 9 in the measure-zero case where the Moon sits
+    precisely on a nakshatra boundary (`frac == 0.0`, i.e. `elapsed == 0.0`).
+
+    Honest-empty: returns `[]` if `positions` is falsy or has no `Moon` entry
+    (Moon is never expected to be null per this writer's own docstring — only
+    Lagna can fail — but a single missing/malformed row must never crash the
+    whole 10,000-row batch; see the writer's `run()` for how this is counted).
+
+    Raises `MdChainAuthorityDivergence` if the derived birth nakshatra
+    disagrees with the stored `positions['Moon']['nakshatra_id']` — a
+    halt-worthy bug per §N.5, never silently absorbed.
+    """
+    if not positions:
+        return []
+    moon = positions.get("Moon")
+    if not moon:
+        return []
+
+    moon_lon = float(moon["sidereal_longitude"])
+    stored_nak_id = int(moon["nakshatra_id"])
+
+    one_star = 360.0 / 27.0
+    nak0 = int(moon_lon / one_star)  # 0..26 — same floor _parse_sidereal takes
+    if (nak0 + 1) != stored_nak_id:
+        raise MdChainAuthorityDivergence(
+            f"l1_authority_divergence: derived birth nakshatra {nak0 + 1} != "
+            f"stored positions['Moon']['nakshatra_id']={stored_nak_id} "
+            f"(moon_lon={moon_lon})"
+        )
+
+    frac = (moon_lon - nak0 * one_star) / one_star  # portion of nakshatra traversed
+    lord = NAK_LORD_CYCLE[nak0 % 9]
+    full = VIMSHOTTARI_YEARS[lord]
+    elapsed = frac * full  # years of the birth MD consumed pre-birth
+
+    rows: list[dict[str, Any]] = [{
+        "md_index": 1,
+        "md_lord": lord,
+        "start_age_years": 0.0,
+        "end_age_years": full - elapsed,
+        "md_full_years": full,
+        "is_partial": frac > 0.0,
+    }]
+    age = full - elapsed
+    first_lord = lord
+    idx = nak0 % 9
+    for k in range(2, 10):  # the next eight lords
+        idx = (idx + 1) % 9
+        lord = NAK_LORD_CYCLE[idx]
+        y = VIMSHOTTARI_YEARS[lord]
+        rows.append({
+            "md_index": k,
+            "md_lord": lord,
+            "start_age_years": age,
+            "end_age_years": age + y,
+            "md_full_years": y,
+            "is_partial": False,
+        })
+        age += y
+    if elapsed > 0.0:  # the cycle repeats to close the cover at exactly age 120
+        rows.append({
+            "md_index": 10,
+            "md_lord": first_lord,
+            "start_age_years": age,
+            "end_age_years": 120.0,
+            "md_full_years": VIMSHOTTARI_YEARS[first_lord],
+            "is_partial": True,
+        })
+    return rows
+
+
 @register("bg_cohort")
 class BgCohortWriter(WriterBase):
     """
     Seeds bg_synthetic_cohort — a ~10,000-row synthetic reference population
     of graha/Lagna sidereal positions (Lahiri) used by later waves for rarity/
-    base-rate scoring. See module docstring for the full sampling methodology.
+    base-rate scoring — AND, second pass same writer/same asset_id,
+    bg_synthetic_cohort_md — the age-based Vimśottarī MD-lord chain derived
+    from each row's already-computed Moon longitude (KALA_W2_FIELD_DESIGN_v1_0
+    §6.3, ANTARYĀMIN ADJUDICATION-1). See module docstring for both.
 
     L0 writer — chart-agnostic, global scope. Idempotency: ON CONFLICT
-    (synthetic_id) DO NOTHING — see module docstring.
+    (synthetic_id) DO NOTHING for bg_synthetic_cohort, ON CONFLICT
+    (synthetic_id, md_index) DO NOTHING for bg_synthetic_cohort_md — see
+    module docstring.
     """
 
     asset_id = "bg_cohort"
@@ -298,9 +458,12 @@ class BgCohortWriter(WriterBase):
 
         conn = ctx.db_conn
         rows_written = 0
+        md_rows_written = 0
+        md_skipped_honest_null = 0
         try:
             with conn.cursor() as cur:
                 batch: list[dict[str, Any]] = []
+                md_batch: list[dict[str, Any]] = []
                 for sample in samples:
                     positions = compute_synthetic_positions(
                         sample["birth_datetime_utc"], sample["lat"], sample["lon"],
@@ -317,31 +480,70 @@ class BgCohortWriter(WriterBase):
                         "source_citation": SOURCE_CITATION,
                         "build_id": ctx.build_id,
                     })
+
+                    # ── MD-lord chain, second pass (§6.3) — from the SAME
+                    # already-computed `positions`, no extra ephemeris call. A
+                    # missing/null Moon (structurally near-unreachable — see
+                    # module docstring) is an honest-empty skip, never a crash.
+                    chain_rows = compute_md_lord_chain(positions)
+                    if not chain_rows:
+                        md_skipped_honest_null += 1
+                    for row in chain_rows:
+                        md_batch.append({
+                            "synthetic_id": sample["synthetic_id"],
+                            "md_index": row["md_index"],
+                            "md_lord": row["md_lord"],
+                            "start_age_years": round(row["start_age_years"], 6),
+                            "end_age_years": round(row["end_age_years"], 6),
+                            "md_full_years": row["md_full_years"],
+                            "is_partial": row["is_partial"],
+                            "chain_version": CHAIN_VERSION,
+                        })
+
+                    # IMPORTANT: bg_synthetic_cohort_md.synthetic_id FK-references
+                    # bg_synthetic_cohort.synthetic_id, so the cohort batch for a
+                    # given synthetic_id MUST be inserted (even if not yet
+                    # committed — same-transaction visibility is enough) before
+                    # its MD-chain rows are. Both flushes are therefore gated on
+                    # the SAME trigger (the cohort batch's own size), cohort
+                    # first, chain second — never chain-batch-size-triggered on
+                    # its own, which would flush chain rows for synthetic_ids
+                    # still sitting uninserted in the cohort batch.
                     if len(batch) >= self._BATCH_SIZE:
                         rows_written += self._flush_batch(cur, batch)
                         batch = []
                         if rows_written % (self._BATCH_SIZE * 4) == 0:
                             logger.info("[bg_cohort] %d/%d synthetic charts computed", rows_written, len(samples))
+                        if md_batch:
+                            md_rows_written += self._flush_md_batch(cur, md_batch)
+                            md_batch = []
                 if batch:
                     rows_written += self._flush_batch(cur, batch)
+                if md_batch:
+                    md_rows_written += self._flush_md_batch(cur, md_batch)
         except Exception as exc:
-            logger.error("[bg_cohort] computation failed after %d rows: %s", rows_written, exc)
+            logger.error("[bg_cohort] computation failed after %d rows (%d md rows): %s", rows_written, md_rows_written, exc)
             return WriterResult(
                 asset_id=self.asset_id,
                 rows_inserted=rows_written,
-                notes=f"partial: {exc}",
+                notes=f"partial: {exc} (md_rows_inserted={md_rows_written})",
                 duration_seconds=round(time.time() - t0, 2),
             )
 
         elapsed = round(time.time() - t0, 2)
-        logger.info("[bg_cohort] complete — %d rows in %.1fs", rows_written, elapsed)
+        logger.info(
+            "[bg_cohort] complete — %d rows in %.1fs; md-chain: %d rows (%d honest-null skipped)",
+            rows_written, elapsed, md_rows_written, md_skipped_honest_null,
+        )
         return WriterResult(
             asset_id=self.asset_id,
             rows_inserted=rows_written,
             duration_seconds=elapsed,
             notes=(
                 f"cohort_size={len(samples)}; ayanamsha={AYANAMSHA_KEY}; "
-                f"sampling={SAMPLING_METHOD_VERSION}; seed={COHORT_RNG_SEED}"
+                f"sampling={SAMPLING_METHOD_VERSION}; seed={COHORT_RNG_SEED}; "
+                f"md_chain_version={CHAIN_VERSION}; md_rows_inserted={md_rows_written}; "
+                f"md_skipped_honest_null={md_skipped_honest_null}"
             ),
         )
 
@@ -358,6 +560,29 @@ class BgCohortWriter(WriterBase):
                %(ayanamsha_key)s, %(positions)s::jsonb, %(sampling_method)s,
                %(source_citation)s, %(build_id)s, NOW())
             ON CONFLICT (synthetic_id) DO NOTHING
+            """,
+            batch,
+        )
+        return cur.rowcount
+
+    @staticmethod
+    def _flush_md_batch(cur: Any, batch: list[dict[str, Any]]) -> int:
+        """
+        Insert bg_synthetic_cohort_md rows. L0 idempotency (§N.3): ON CONFLICT
+        (synthetic_id, md_index) DO NOTHING — the chain is a pure function of
+        the already-stored Moon longitude, so a re-run recomputes
+        byte-identical rows (mirrors bg_synthetic_cohort's own convention).
+        """
+        cur.executemany(
+            """
+            INSERT INTO bg_synthetic_cohort_md
+              (synthetic_id, md_index, md_lord, start_age_years, end_age_years,
+               md_full_years, is_partial, chain_version, computed_at)
+            VALUES
+              (%(synthetic_id)s, %(md_index)s, %(md_lord)s, %(start_age_years)s,
+               %(end_age_years)s, %(md_full_years)s, %(is_partial)s,
+               %(chain_version)s, NOW())
+            ON CONFLICT (synthetic_id, md_index) DO NOTHING
             """,
             batch,
         )
