@@ -429,13 +429,20 @@ and six of them are byte-exactly reconstructable.** None is a mystery, and none 
 | 6 | `133_notification_views.sql` | Legacy Teardown |
 | 7 | `456_lel_schema_v2_event_shapes.sql` | **Renumber — see §9.2** |
 
-**Rows 1–6 — deliberate deletion by PR #187 "Legacy Teardown".** Deleted in commit `0b264942`
-("feat(legacy-teardown): AC.6 — fresh migration baseline"), merged as `30640c96`. This is the same
-teardown `CLAUDE.md §B` already records as having removed the FORENSIC v8.0 markdown. The tables
-they created were dropped by that teardown; the migrations are dead legacy.
+**Rows 1–6 — moved out of the scanned tree by PR #187 "Legacy Teardown", not deleted.** Commit
+`0b264942` ("feat(legacy-teardown): AC.6 — fresh migration baseline", merged as `30640c96`) renamed
+124 old migrations (`R100`, byte-identical) into `platform/migrations/_archive/` — verified directly
+(`git show -M --name-status 0b264942`). The tables they created were dropped by that same teardown;
+the migrations are dead legacy. They are invisible to the runner only because `migrate.ts` scans
+non-recursively (`readdirSync`, no `_archive/` traversal) — not because the files are gone. **All six
+are byte-present in the tree right now** at `platform/migrations/_archive/<name>.sql`; this is the
+correction (VER, round-3 continuation) to this section's earlier "deleted"/"deliberate deletion"
+wording, which was git-inaccurate — the disposition below is unaffected and, if anything, stronger:
+restoring them isn't even a git-history recovery, it's a one-line path addition the runner already
+declines to take.
 
-Their content is recoverable **byte-exactly** — each pre-deletion blob hashes to the sha256 the
-tracker recorded at apply time, verified 6/6:
+Their content is recoverable **byte-exactly** — both via the archived in-tree copy and via each
+pre-rename blob hashing to the sha256 the tracker recorded at apply time, verified 6/6:
 
 ```
 $ git show 0b264942^:platform/migrations/<name>.sql | shasum -a 256   # vs stored sha256
