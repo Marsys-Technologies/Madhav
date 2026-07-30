@@ -190,3 +190,13 @@ STATUS: done.
 Precision correction for the eventual reversal spec: query_spine_bundle is in the PROFILE MANIFEST (4 occurrences) but NOT in the live 124-tool served catalog, NOT registered via server.tool/regAlias/globalAlias, NOT in the RC-14 gate set -- the same manifest-vs-served gap B-MCP-CATALOG-GAP established. Spec should say "profile manifest" not "live profile."
 
 Flagged for E1-SAMGATI: the tool-count reconciliation now has THREE numbers in play -- 124 served / 152 committed manifest / 158 regenerated (no-source-change) -- E1 should not treat any single one as "the" tool count without specifying which population it means.
+
+## A8-NAR-TRIAGE — REFUTED (scoped to Claim 4 only; reopen cycle 1 of 3)
+
+VER independently re-derived all 5 claims. CONFIRMED: Claim 1 (4 already-closed items, all SHAs verified live on origin/main, content re-derived at each symbol, not read from commit messages); Claim 2 (7 PLAUSIBLE re-examinations -- 2 rejections sound on independent reproduction, 1 rejection over-claims its supporting argument but reaches the right empirical conclusion, both escalations independently reproduced live with quantified evidence); Claim 3 (F18 CANNOT-REPRODUCE reversal -- genuine, reproduced on both built charts, every refutation path closed; one wording correction required, see Ruling 75).
+
+REFUTED: Claim 4, the 42-path zero-overlap partition gating all 6 B-NAR-* lane dispatches. The intra-partition arithmetic is sound (42 distinct paths, zero internal duplicates, independently parsed) but two load-bearing statements are false: (a) §4.3 assigns ga_nakshatra.py:87 to B-N8-FIX, contradicting Rulings 13/13-CORRECTION (that site belongs exclusively to B-VERIFSTATUS-VOCAB, PR #910, already merged/CONFIRMED) and would orphan :289; (b) §4.9 claims zero cross-lane file intersection anywhere -- VER found 8 real collisions against 3 already-built lanes (#908/#909/#910), only 2 of which have any existing ordering ruling.
+
+Claim 5 (3 DVA questions routed): 1 of 3 was already answered (Rulings 13/13-CORR, just not connected by the builder); the other 2 were genuinely never ruled -- now decided at Ruling 75 (F18 wording accepted with correction; both escalations ratified, one to P1, one to P0).
+
+DISPOSITION: Ruling 74 -- reopen A8-NAR-TRIAGE with this refutation as first input, targeted correction (rewrite §4.3 + §4.9, re-derive registry_bridge.ts citations, add 2 omitted test files) not a full redo. Do NOT dispatch any B-NAR-* lane against the current §4 as written.
