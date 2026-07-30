@@ -2,13 +2,50 @@ import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 import path from 'path'
 
-export default defineConfig({
-  plugins: [react()],
-  test: {
-    environment: 'jsdom',
-    setupFiles: ['./src/test-setup.ts'],
-    globals: true,
-    exclude: [
+// ─────────────────────────────────────────────────────────────────────────────
+// CI efficiency audit (2026-07-31) — jsdom is no longer the global environment.
+//
+// Measured on the 2026-07-30 main run: 710 test files, `tests 61.10s` but
+// `environment 702.66s` — jsdom construction, not assertions, was the entire
+// cost of the 366s Unit Tests job. A/B on tests/planner:
+//     jsdom  Duration 496ms (environment 1.31s)
+//     node   Duration 137ms (environment 0ms)
+// Only ~140 of the 710 files touch a DOM API. So the suite is split into two
+// vitest projects: `node` (the default, fast) and `jsdom` (the UI files).
+//
+// HOW TO PLACE A NEW TEST: nothing to do for a normal server/logic test — the
+// `node` project picks it up. If your test renders a component or touches
+// document/window/localStorage, either name it `*.test.tsx` (auto-jsdom) or add
+// it to DOM_TEST_GLOBS below. Getting it wrong fails loudly ("document is not
+// defined"), never silently.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Files that need a real DOM. `.tsx` is assumed to render; the explicit `.ts`
+// entries were derived by grepping the suite for @testing-library / document. /
+// window. / localStorage / navigator. / HTMLElement / getComputedStyle usage.
+const DOM_TEST_GLOBS = [
+  '**/*.test.tsx',
+  '**/*.spec.tsx',
+  'src/app/api/retrieval/capability/__tests__/capability_cache_wiring.test.ts',
+  'src/components/chat/__tests__/useSidebarState.test.ts',
+  'src/lib/__tests__/lel/prospective_ledger.test.ts',
+  'src/lib/chat-v2/__tests__/useDataParts.test.ts',
+  'src/lib/observatory/analytics/__tests__/pricing_diff.test.ts',
+  'src/lib/retrieval/__tests__/envelope_timing_prediction_w3.test.ts',
+  'src/lib/retrieval/registry/layers/L1_ganita/__tests__/get_dashas.integration.test.ts',
+  'src/lib/retrieval/registry/layers/L1_ganita/get_sade_sati_mc014_defaults.test.ts',
+  'tests/pariprashna/recall/rank.test.ts',
+  'tests/planner/regression.test.ts',
+  'tests/unit/chat-v2/recall_last_prompt.test.ts',
+  'tests/unit/chat-v2/starred_citations.test.ts',
+  'tests/unit/chat-v2/stream_resume.test.ts',
+  'tests/unit/chat-v2/useProviderManifest.test.ts',
+  'tests/unit/streaming/streamdown_render.test.ts',
+  'tests/unit/useTokenCount.test.ts',
+]
+
+// Shared by BOTH projects — unchanged from the pre-split single-project config.
+const SHARED_EXCLUDE = [
       '**/node_modules/**',
       '**/dist/**',
       // Exclude .next build cache — contains copies of test files from retired worktrees
@@ -111,13 +148,44 @@ export default defineConfig({
       // Group Q — ICR detector module absent (re-enable: src/lib/icr/detector.ts implemented)
       // ICR-S3 committed detector.test.ts but never created detector.ts (IntraSignalDetector).
       'tests/icr/detector.test.ts',
-    ],
+]
+
+const SHARED_RESOLVE = {
+  alias: {
+    '@': path.resolve(__dirname, './src'),
+    // server-only throws under vitest; redirect to a no-op stub.
+    'server-only': path.resolve(__dirname, './src/__mocks__/server-only.ts'),
   },
-  resolve: {
-    alias: {
-      '@': path.resolve(__dirname, './src'),
-      // server-only throws in vitest (jsdom env); redirect to a no-op stub.
-      'server-only': path.resolve(__dirname, './src/__mocks__/server-only.ts'),
-    },
+}
+
+export default defineConfig({
+  test: {
+    projects: [
+      {
+        // The default. Everything that is not a DOM test — the ~570-file majority.
+        plugins: [react()],
+        resolve: SHARED_RESOLVE,
+        test: {
+          name: 'node',
+          environment: 'node',
+          setupFiles: ['./src/test-setup.shared.ts'],
+          globals: true,
+          exclude: [...SHARED_EXCLUDE, ...DOM_TEST_GLOBS],
+        },
+      },
+      {
+        // Component / hook / DOM-touching tests. Same jsdom behaviour as before.
+        plugins: [react()],
+        resolve: SHARED_RESOLVE,
+        test: {
+          name: 'jsdom',
+          environment: 'jsdom',
+          setupFiles: ['./src/test-setup.ts'],
+          globals: true,
+          include: DOM_TEST_GLOBS,
+          exclude: SHARED_EXCLUDE,
+        },
+      },
+    ],
   },
 })

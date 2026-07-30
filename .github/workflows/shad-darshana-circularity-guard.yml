@@ -43,6 +43,13 @@ on:
       # until the field runs in production, so neither gate is retired on a promise.
       - 'platform/python-sidecar/tests/l3/ka_kshetra/**'
 
+# CI efficiency audit (2026-07-31): no workflow in this repo had a concurrency
+# group, so every push to a PR branch stacked a full new set of runs while the
+# superseded ones kept burning runner minutes. Pure check workflow — safe to cancel.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   WIF_PROVIDER: projects/938361928218/locations/global/workloadIdentityPools/github/providers/github-actions
   WIF_SERVICE_ACCOUNT: github-actions@madhav-astrology.iam.gserviceaccount.com

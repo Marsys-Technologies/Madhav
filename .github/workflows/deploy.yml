@@ -42,6 +42,13 @@ on:
         required: false
         default: false
 
+# Serialise per ref but NEVER cancel: this workflow mutates real infrastructure
+# (deploy / terraform / commit-push), and killing it mid-flight can leave a
+# half-applied state. Queue instead.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 env:
   GCP_REGION: asia-south1
   WIF_PROVIDER: projects/938361928218/locations/global/workloadIdentityPools/github/providers/github-actions

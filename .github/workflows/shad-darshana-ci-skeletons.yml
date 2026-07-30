@@ -39,6 +39,13 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# CI efficiency audit (2026-07-31): no workflow in this repo had a concurrency
+# group, so every push to a PR branch stacked a full new set of runs while the
+# superseded ones kept burning runner minutes. Pure check workflow — safe to cancel.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   unit-batteries:
     name: W0.6 — unit-level batteries (prose-survival, tri-plane, mode3-routing)
