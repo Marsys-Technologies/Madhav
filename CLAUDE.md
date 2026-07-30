@@ -1,6 +1,6 @@
 ---
 artifact: CLAUDE.md
-version: "6.7"
+version: "6.8"
 status: CURRENT
 role: >
   Root governance surface. Master orientation document for every Claude session on the MARSYS-JIS
@@ -13,6 +13,26 @@ mirror_obligations_retired: "2026-05-27 — Gemini mirror discipline retired per
 supersedes:
   - "CLAUDE.md v5.1 (2026-06-09 — realigned to L1-done/L2-next reality at v6.0)"
 changelog:
+  - v6.8 (2026-07-30, SAMĀPTI/B-DOCS-GOVERNANCE, DVA Ruling 58 / B-MIGGUARD finding R3):
+      §N.4's "Surgical migrations only" line re-worded to its narrower, historically-accurate
+      original intent. The prior wording ("never deploy.yml-auto or bulk `migrate.ts`") was found
+      by B-MIGGUARD's R3 to be factually contradicted by the live pipeline: `deploy.yml` genuinely
+      runs a bulk `migrate.ts` on every deploy, and DVA traced it to be transactional, tracked, and
+      loud-failing — a well-built runner, not a hazard in itself. DVA traced the doctrine's own
+      `[[feedback-deploy-migrations-silent-noop]]` tag to its original incident and found the real
+      hazard was never "bulk migration is dangerous" — it was "migrations silently doing nothing
+      while the deploy reports success." New wording: never RELY on the deploy-time bulk runner to
+      apply a migration blindly; author it surgically, VERIFY it actually applied, and never edit a
+      migration file after it has been applied. This is a wording correction to match the
+      doctrine's own documented original intent, per Ruling 58's explicit boundary (same class as
+      Ruling 15: corrects a mis-stated instance/wording, does not alter the principle's actual
+      scope). **Checked and found NOT applicable:** `ONGOING_HYGIENE_POLICIES_v1_0.md` does not, in
+      fact, independently restate this line under its own "§N.4" — that file has no section by that
+      number (its own §N is "Appendix: fingerprint-rotation audit for Step 12 close"); its three
+      mentions of this doctrine (§R) are citations by reference to `CLAUDE.md §N.4`, not
+      restatements, and read correctly as-is once this file's line is corrected. Confirmed by direct
+      grep for the old wording and the feedback tag across that file — zero hits. Not edited; no
+      matching line exists there to fix. See `CLAUDE.md` §N.4 body for the corrected text.
   - v6.7 (2026-07-30, SAMĀPTI/B-DOCS-GOVERNANCE, DVA Ruling 16):
       §C item 14 re-pointed from the SUPERSEDED `L1_GANITA_CLOSURE_v1_0.md` to the CURRENT
       `L1_GANITA_CLOSURE_v2_0.md`; hardcoded row counts (chart_facts=27,554; chart_dashas=536,471;
@@ -136,7 +156,7 @@ Canonical artifact versions and paths are defined in `00_ARCHITECTURE/CANONICAL_
 | ORCHESTRATOR_CONVERGENCE_CLOSE | `00_ARCHITECTURE/ORCHESTRATOR_CONVERGENCE_CLOSE_v1_0.md` | 1.0 | CURRENT |
 | L1_GANITA_CLOSURE | `00_ARCHITECTURE/L1_GANITA_CLOSURE_v2_0.md` (v1.0 SUPERSEDED — premature seal, floors stale, enrichment not folded) | 2.1 | CURRENT |
 | L2_BODHA_CAMPAIGN_HANDOFF | `00_ARCHITECTURE/L2_BODHA_CAMPAIGN_HANDOFF_v1_0.md` | 1.0 | CURRENT |
-| CLAUDE | `CLAUDE.md` | 6.7 | CURRENT |
+| CLAUDE | `CLAUDE.md` | 6.8 | CURRENT |
 
 Any path in this snapshot that conflicts with `CANONICAL_ARTIFACTS_v1_0.md §1` is wrong here, not there. `drift_detector.py` enforces this via the canonical-path cross-check (protocol §H.3).
 
@@ -247,7 +267,7 @@ The orchestrator was built once and is FROZEN at `ORCHESTRATOR_CONVERGENCE_CLOSE
 - **Deterministic-first** ([[feedback-deterministic-first-for-data-build]]): Python over LLM for computation; embeddings are a deterministic transform and are fine; generative LLM for curation is NOT.
 - **No JH-parity oracle** ([[feedback-no-jh-parity-anywhere]]): verification is internal-consistency + classical-rule re-derivation + FORENSIC grounding.
 - **Cockpit truth:** each asset needs a correct chart-scoped `count_sql` on `asset_registry` (stats route reads `count_sql`, NOT `asset_throughput` — the L1 trap).
-- **Surgical migrations only:** never deploy.yml-auto or bulk `migrate.ts` ([[feedback-deploy-migrations-silent-noop]]).
+- **Surgical migrations, verified:** never RELY on the deploy-time bulk runner to apply your migration blindly — author it surgically, VERIFY it actually applied, and NEVER EDIT A MIGRATION FILE AFTER IT HAS BEEN APPLIED. The pipeline running `migrate.ts` on every deploy is fine and intended; blindly trusting it without verification is not ([[feedback-deploy-migrations-silent-noop]], re-scoped 2026-07-30 per DVA Ruling 58 — the original hazard was never "bulk migration is dangerous," it was "migrations silently doing nothing while the deploy reports success").
 
 ### §N.5 — L1 is the authority over L2+ derivations ([[the MSR drift handoff]])
 
@@ -334,16 +354,22 @@ usually true" or "nothing has broken yet" is not a substitute for a real detecto
 
 ---
 
-*End of CLAUDE.md v6.7 (2026-07-30, SAMĀPTI/B-DOCS-GOVERNANCE, DVA Ruling 16) — §C item 14 and the
+*End of CLAUDE.md v6.8 (2026-07-30, SAMĀPTI/B-DOCS-GOVERNANCE, DVA Ruling 58 / B-MIGGUARD R3) — §N.4's
+"Surgical migrations only" line re-worded to its narrower original intent: the deploy-time bulk
+`migrate.ts` runner is fine and intended (transactional, tracked, loud-failing); the doctrine's real
+hazard was always "migrations silently doing nothing while the deploy reports success," not "bulk
+migration is dangerous." `ONGOING_HYGIENE_POLICIES_v1_0.md` checked and found to have no matching
+"§N.4" line to correct — not edited. §D's own CLAUDE self-row version corrected 6.7 → 6.8. Prior:
+v6.7 (2026-07-30, SAMĀPTI/B-DOCS-GOVERNANCE, DVA Ruling 16) — §C item 14 and the
 §D snapshot table re-pointed from the SUPERSEDED `L1_GANITA_CLOSURE_v1_0.md` to the CURRENT
 `L1_GANITA_CLOSURE_v2_0.md`; the three hardcoded row counts removed in favor of a pointer to the
 closure artifact's own re-measurable §2.1 table (hardcoding here is the mechanism that let the
 number drift from both the artifact and live production — see the full account in the frontmatter
-changelog above). §D's own CLAUDE self-row version corrected 6.5 → 6.7. **HELD, not in this pass:**
+changelog above). §D's own CLAUDE self-row version corrected 6.5 → 6.7. **HELD, not in that pass:**
 DVA Ruling 15 also authorizes correcting §N.8 instance 3's wording (the PB-2 byte-equality gate
 description) and re-grading a PB-3 disposition, but gates the §N.8 edit specifically on independent
-VER confirmation of the underlying A7-N8-AUDIT finding (F-33) — as of this edit VER had not yet
-verified that lane, so §N.8 is UNCHANGED here per the ruling's own precondition; the PB-3 disposition
+VER confirmation of the underlying A7-N8-AUDIT finding (F-33) — as of that edit VER had not yet
+verified that lane, so §N.8 remains UNCHANGED per the ruling's own precondition; the PB-3 disposition
 re-grade (a separate document, not gated the same way) is recorded in `REPORT_PB-3.md` directly. Prior:
 v6.6 (2026-07-29, SATYA-DĪPA campaign) — new §N.8 Earned-Signal Principle,
 generalizing §N.7 item 4's "a flag needs a real detector or it's null" doctrine to the build layer:
