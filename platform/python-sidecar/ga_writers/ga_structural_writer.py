@@ -712,12 +712,22 @@ def _get_planet_concordance(p1: str, p2: str) -> str:
 # ── Halt log writer ───────────────────────────────────────────────────────────
 
 def _write_halt_log(reason: str, details: str) -> None:
-    """Write CONDUCTOR_HALT_LOG.md entry (no-op when conductor dir not reachable)."""
+    """Write CONDUCTOR_HALT_LOG.md entry (no-op when conductor dir not reachable).
+
+    Target directory is overridable via CONDUCTOR_HALT_LOG_DIR_OVERRIDE, which
+    the test suite sets to an isolated tmp dir (see tests/conftest.py) so unit
+    tests never append fixture noise to the real repo-tracked
+    l1-ganita-build/CONDUCTOR_HALT_LOG.md.
+    """
     logger.error("[ga_structural_writer] HALT: %s | %s", reason, details)
-    try:
-        halt_dir = pathlib.Path(__file__).parents[4] / "00_ARCHITECTURE" / "CONDUCTOR" / "l1-ganita-build"
-    except IndexError:
-        return  # container has shallow path — logged above, no file to write
+    override = os.environ.get("CONDUCTOR_HALT_LOG_DIR_OVERRIDE")
+    if override:
+        halt_dir = pathlib.Path(override) / "l1-ganita-build"
+    else:
+        try:
+            halt_dir = pathlib.Path(__file__).parents[4] / "00_ARCHITECTURE" / "CONDUCTOR" / "l1-ganita-build"
+        except IndexError:
+            return  # container has shallow path — logged above, no file to write
     halt_dir.mkdir(parents=True, exist_ok=True)
     halt_path = halt_dir / "CONDUCTOR_HALT_LOG.md"
     timestamp = datetime.now(timezone.utc).isoformat()
