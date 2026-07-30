@@ -1,18 +1,26 @@
 ---
 artifact: SHAD_DARSHANA_NIGHT_RUN (Autonomous Overnight Execution Protocol)
 canonical_id: SHAD_DARSHANA_NIGHT_RUN
-version: 1.0
+version: 1.1
 status: READY-FOR-EXECUTION — the orchestration layer over SHAD_DARSHANA_BRIEF_v2_0.
   The BRIEF owns WHAT/GATES/RAILS; THIS doc owns WHO/WHEN/HOW-PARALLEL. On any conflict about
   scope or acceptance, the brief wins; on any conflict about orchestration, this doc wins.
 created: 2026-07-29
+revised: 2026-07-31 — v1.1: adopted the shad-darshana/integration branch as the merge target
+  for all lane PRs (§B.1), replacing direct-to-main, to eliminate cross-campaign merge
+  contention observed across Night 1/Night 2 (this repo runs many concurrent autonomous
+  campaigns against main simultaneously); tightened the Phase 4/5 boundary so W4's design pass
+  (5a) starts on items 36+41 landing rather than waiting for the full W3/W2G/W3K gate close
+  (§C); no change to any wave's gates, rails, or acceptance criteria.
 author: Fable (elevation session with the native)
 mode: >
   FULLY AUTONOMOUS OVERNIGHT, MULTI-NIGHT. One re-pasteable kickoff prompt (§D below — it
   SUPERSEDES brief §D for autonomous night runs). Each night: the Conductor reads the ledger,
-  executes the §C sequence from wherever NEXT-ACTION points, lands-or-parks cleanly, deploys,
-  reconciles main == production, writes the morning report. The campaign is COMPLETE when
-  every brief §3 gate is VERIFIED-CLOSED — expect multiple nights; the ledger is the memory.
+  executes the §C sequence from wherever NEXT-ACTION points, lands-or-parks cleanly, deploys
+  at wave-gate closes only (via shad-darshana/integration → main, §B.1–B.2), reconciles main
+  == production at every gate close and at night end, writes the morning report. The campaign
+  is COMPLETE when every brief §3 gate is VERIFIED-CLOSED — expect multiple nights; the
+  ledger is the memory.
 base_model_policy: >
   SONNET is the base model for all builders. The Conductor holds STANDING AUTHORITY (native
   grant, 2026-07-29) to switch any agent to OPUS and/or raise its reasoning effort wherever
@@ -44,16 +52,42 @@ constants within LAW ZERO.
 
 ## §B — Standing mechanics (every lane, every night)
 
-**B.1 Isolation & merge:** every builder in `.worktrees/shad-darshana-<lane>` (Conductor
-creates; never spawned from inside another worktree). Small PRs, auto-merge on green (main is
-branch-protected, 4 checks). Conductor runs the merge train — rebase-conflict lanes are
-serialized by the Conductor, never resolved by force-push.
+**B.1 Isolation & merge — the integration branch (adopted 2026-07-31, post-Night-2).** This
+repo runs many concurrent autonomous campaigns against `main` simultaneously (SAMĀPTI,
+PARIŚODHANA, sarva-siddhi, satya-shesha, and others observed live) — every lane PR that
+targeted `main` directly collided not only with those campaigns' merges but with shad-darshana's
+OWN sibling lanes (three separate manual conflict resolutions in Night 1 alone, on
+`registry_bridge.ts` + `m8_e2e_proof.test.ts`; see `platform-mcp/src/tools/kala_views/
+register_all.ts` and the `m8_e2e_proof.test.ts` G12 rewrite for the structural fix to the
+*second* half of that problem). The first half is fixed by git topology:
 
-**B.2 Deploy cadence:** one deploy per wave-gate (not per PR): merged main → real
-authenticated call → canary (manual discipline if the IAM grant is still pending) → cutover →
-**confirm traffic tracks LATEST** → Verifier post-deploy acceptance → worktree cleanup →
-ledger. Main == production is asserted at every gate close AND at night end, whichever comes
-first.
+- **Every builder works in `.worktrees/shad-darshana-<lane>`, branched off
+  `origin/shad-darshana/integration` — never off `origin/main` directly** (Conductor creates
+  worktrees; never spawned from inside another worktree). Small PRs, auto-merge on green,
+  **base branch = `shad-darshana/integration`**, not `main`.
+- **`main` receives exactly one deliberate merge per wave-gate close** — a single
+  `shad-darshana/integration` → `main` PR, opened by the Conductor once a gate's acceptance
+  criteria are met, never opened mid-wave. This is the same strangler-fig principle
+  ("build beside, cut over deliberately") applied to git topology instead of runtime
+  architecture.
+- **Conductor standing duty: periodically rebase `shad-darshana/integration` onto the latest
+  `origin/main`** (at minimum once per night, before dispatching new lanes) so the branch never
+  drifts far enough to turn the eventual integration→main merge into one giant conflict. This
+  is a Conductor-only operation — lane builders never touch the integration branch directly
+  except via their own lane PR's merge.
+- Lane-to-lane conflicts (multiple shad-darshana lanes touching the same file) still happen and
+  are still the Conductor's to resolve via `git merge origin/<target>` (never force-push) — the
+  integration branch does not eliminate shad-darshana's own internal collision risk, it only
+  removes *every other campaign* from that equation.
+
+**B.2 Deploy cadence:** one deploy per wave-gate (not per PR, not per integration-branch merge):
+`shad-darshana/integration` → `main` merge (the gate-close PR above) → real authenticated call
+→ canary (manual discipline if the IAM grant is still pending) → cutover → **confirm traffic
+tracks LATEST** → Verifier post-deploy acceptance → worktree cleanup → ledger. `main ==
+production` is asserted at every gate close AND at night end, whichever comes first — but
+`shad-darshana/integration == production` is explicitly NOT an invariant the campaign holds
+between gates; it is normal and correct for the integration branch to run ahead of production
+for the entire span of a wave's build-out.
 
 **B.3 Model/effort escalation matrix (Conductor applies without asking):** Opus+high
 mandatory for: W2 field/science design · stage-4/hazard numerics + skill-score/GOF math ·
@@ -120,12 +154,14 @@ edges (acyclicity rule §2.5.4).
 **[GATE W2 · DEPLOY #3]** — legacy writers untouched and still serving (strangler proof).
 
 **PHASE 4 — The great fan-out (three tracks concurrent; ~8–10 lanes; the biggest night).**
-**Track D — W3 computations (6–8 Sonnet lanes over the field):** sandhi-full (1) + sky-
-calendar joins (3) ∥ moorti (4) + vedha/Sarvatobhadra (5, closes R-19) ∥ activity tables (6)
-+ muhūrta-lagna (7) + janma rules (14) ∥ health class (9, S4-05 re-test) + Kota (16) +
-Sudarśana (17, post-audit) ∥ Tithi-Praveśa (13) + period-echo (31) ∥ **lattice engine + Factor
-Census (36+41, Opus)** + ELECT depth (38-full) + paddhati schema (37-part) ∥ absence (33) +
-contrastive (34) ∥ E6-full view deepenings.
+**Track D — W3 computations (6–8 Sonnet lanes over the field):** **dispatch the lattice
+engine + Factor Census (36+41, Opus) FIRST or among the first lanes in this track — see the
+Phase 4/5 boundary note below, W4's design pass is gated on these two items specifically, not
+on the rest of Track D.** Then, in any order/parallel: sandhi-full (1) + sky-calendar joins
+(3) ∥ moorti (4) + vedha/Sarvatobhadra (5, closes R-19) ∥ activity tables (6) + muhūrta-lagna
+(7) + janma rules (14) ∥ health class (9, S4-05 re-test) + Kota (16) + Sudarśana (17,
+post-audit) ∥ Tithi-Praveśa (13) + period-echo (31) ∥ ELECT depth (38-full) + paddhati schema
+(37-part) ∥ absence (33) + contrastive (34) ∥ E6-full view deepenings.
 **Track E — W2G GOCHARA-2.0 (2 lanes, Opus numerics), starts when ANTARYĀMIN's N1–N5 ledger
 block is complete (N5 = conservative default):** V1–V6 validations → 2.0 writer beside v1 →
 equivalence corpus, every divergence classified. Parks honest if any N-ruling forces it;
@@ -135,7 +171,18 @@ existing-substrate inventory FIRST (`ganita_kp_cusps_get`) → sub-lord substrat
 significators/ruling planets → KP window stream as independent clock → school-tagged serving.
 **[GATES W3 · W3K · W2G — each deploys and verifies independently as it completes]**
 
-**PHASE 5 — W4, the intervention flagship (Opus design first, then 3 lanes).**
+**PHASE 4/5 BOUNDARY — item-triggered, not gate-triggered (tightened 2026-07-31, post-Night-2
+audit).** The dependency spine (brief §4) makes W4's true prerequisite narrower than "W3/W3K/
+W2G all closed": W4 needs only items 20 (W2, already done) and 36+41 (Track D specifically) —
+it needs NOTHING from W2G or W3K. Waiting for all three Phase-4 gates to close before starting
+W4 leaves real parallelism on the table. **Correct trigger: the moment items 36 and 41 land
+(merge to `shad-darshana/integration`) — regardless of whether Track D's other lanes, Track E,
+or Track F have finished — dispatch Phase 5a (the W4 Opus design pass) immediately, running
+concurrently INSIDE Phase 4's remaining fan-out, not after it.** Phase 5b's build lanes still
+wait on 5a's design output as before; nothing else about W4's sequencing changes.
+
+**PHASE 5 — W4, the intervention flagship (Opus design first, then 3 lanes; see the Phase 4/5
+boundary note above for its real start trigger).**
 5a: UPĀYA/YAJÑA design pass (Opus/high). 5b (parallel): UPĀYA-SETU full (26) ∥ ritual-
 resonance + paddhati live (37-full) + `kala_ritual_get` Modes 1–2 real (40) + Mode-3 pairing
 in ELECT + digest ritual rows ∥ Intervention Ledger `mi_sankalpa` (42).
@@ -185,14 +232,21 @@ knowledge, logging ADJUDICATION-<n> entries; it may NEVER alter a FROZEN contrac
 untouchable, or rail — where only that would unblock, it takes the no-contract-change
 conservative path or parks; N5 lock-granularity is ruled CONSERVATIVE-DEFAULT: chart-level
 lock stays, no orchestrator change, recorded reversible), and Sonnet builders — one lane
-each, each in its own .worktrees/shad-darshana-<lane>, never spawned from inside a worktree.
-You hold the model/effort dial: escalate per NIGHT_RUN §B.3 (Opus+high for W2/W4/W2G/W3K
-design, numerics, parihāra review, divergence classification, and any lane after 2 failed
-verify cycles) without asking.
+each, each in its own .worktrees/shad-darshana-<lane>, BRANCHED OFF
+origin/shad-darshana/integration (NOT origin/main -- NIGHT_RUN §B.1, adopted 2026-07-31: this
+repo runs many concurrent campaigns against main and lane PRs target the integration branch
+now, never main directly), never spawned from inside a worktree. Your own standing duty:
+rebase shad-darshana/integration onto the latest origin/main at least once per night, before
+dispatching new lanes. You hold the model/effort dial: escalate per NIGHT_RUN §B.3 (Opus+high
+for W2/W4/W2G/W3K design, numerics, parihāra review, divergence classification, and any lane
+after 2 failed verify cycles) without asking.
 Execute NIGHT_RUN §C maximally parallel: while W1 join lanes run, the L0 substrate lanes
 (bg_cohort, bg_sky_calendar, bg_muhurta_lattice, bg_parihara_rules) and the W2 Opus design
-lane run beside them; W2G and W3K run beside W3 once their preconditions exist; sequential
-only where §C marks it (envelope spine, W2 integration, W5 registry lockstep, all of W6).
+lane run beside them; W2G and W3K run beside W3 once their preconditions exist; W4's Opus
+design pass (5a) starts the MOMENT items 36+41 land, not when the W3/W2G/W3K gates close
+(NIGHT_RUN's Phase 4/5 boundary note, tightened 2026-07-31 -- W4 needs only items 20+36+41,
+nothing from W2G or W3K); sequential only where §C marks it (envelope spine, W2 integration,
+W5 registry lockstep, all of W6).
 Hard gates you may not soften: specificity gate HARD from W2; Circularity-Guard
 LEL-invariance from W1; skill score published both charts at W2 (first score = CI baseline);
 the canned W4 Mode-2 fixture discharged exactly; item-44 authority census 100%; W5 planner
@@ -203,15 +257,18 @@ explicit super-admin L0 trigger, built in production BEFORE the first per-chart 
 needs it; ka_kshetra never lists mi_bhara in depends_on (weights flow by version pin);
 LEL-triggered recalibration is a tracked scoped build run. Strangler discipline: build
 beside, cut over classified, retire one-at-a-time at zero consumers after duplicate-copy
-audit; legacy data never destroyed. PR + auto-merge only; one deploy per wave gate:
-merged-main -> real authenticated verify -> canary -> cutover -> confirm traffic tracks
-LATEST -> Verifier live acceptance -> worktree cleanup -> ledger. Untouchables:
-kala_gochara_windows data, build_substep_progress, the sealed evaluator harness, root
-CLAUDECODE_BRIEF.md. At ~7.5h: stop opening lanes, land-or-park everything cleanly, final
-deploy if a gate closed, update the ledger (statuses, evidence, skill scoreboard,
-ADJUDICATION log, NEXT-ACTION), remove worktrees, verify main == production, and append the
-MORNING REPORT (gates closed, items dispositioned, rulings made, parks + reasons, single
-next action). Truth over completion — PARKED-HONEST with evidence beats a false close.
-COMPLETE only when every brief §3 gate is VERIFIED-CLOSED and SHAD_DARSHANA_REPORT_v1_0.md
-is merged. Begin.
+audit; legacy data never destroyed. PR + auto-merge only, base branch = shad-darshana/
+integration for every lane PR; one deploy per wave gate: shad-darshana/integration -> main
+(one deliberate Conductor-opened PR at gate close) -> real authenticated verify -> canary ->
+cutover -> confirm traffic tracks LATEST -> Verifier live acceptance -> worktree cleanup ->
+ledger. shad-darshana/integration running ahead of production between gates is normal and
+expected, not a gap to close. Untouchables: kala_gochara_windows data,
+build_substep_progress, the sealed evaluator harness, root CLAUDECODE_BRIEF.md. At ~7.5h:
+stop opening lanes, land-or-park everything cleanly, final deploy if a gate closed, update
+the ledger (statuses, evidence, skill scoreboard, ADJUDICATION log, NEXT-ACTION), remove
+worktrees, verify main == production (or record the honest shad-darshana/integration-ahead-
+of-main state if no gate closed this session), and append the MORNING REPORT (gates closed,
+items dispositioned, rulings made, parks + reasons, single next action). Truth over
+completion — PARKED-HONEST with evidence beats a false close. COMPLETE only when every brief
+§3 gate is VERIFIED-CLOSED and SHAD_DARSHANA_REPORT_v1_0.md is merged. Begin.
 ```
