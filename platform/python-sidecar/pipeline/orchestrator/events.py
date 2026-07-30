@@ -13,7 +13,7 @@ history.
 
 Design contract (see the migration header for the full rationale):
 
-  * ALLOWLISTED, not universal. Only `DURABLE_EVENT_TYPES` is persisted. The orchestrator
+  * ALLOWLISTED, not universal. Only `DEFAULT_DURABLE_EVENT_TYPES` is persisted. The orchestrator
     emits ~12 event types, several per-substep; persisting all of them would make a
     firehose, not a register.
   * WRITTEN ON THE CALLER'S CURSOR, in the same transaction as the state write the event

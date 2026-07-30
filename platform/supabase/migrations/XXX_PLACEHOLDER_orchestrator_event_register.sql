@@ -90,7 +90,7 @@
 -- an audit filters and aggregates on. `payload` retains the complete verbatim event
 -- so nothing is lost to the projection.
 --
--- VOLUME. Persistence is allowlisted (events.DURABLE_EVENT_TYPES) to the two no-op
+-- VOLUME. Persistence is allowlisted (events.DEFAULT_DURABLE_EVENT_TYPES) to the two no-op
 -- classes only, not to the full ~12-type orchestrator event vocabulary. Those two fire
 -- only from writers with cross-attempt substep resumption — empirically ka_sangam and
 -- ka_gochara_sweep alone (SATYA_DIPA_REPORT §"Plain-language answer") — i.e. a handful
@@ -126,7 +126,8 @@ COMMENT ON TABLE orchestrator_event_register IS
 
 COMMENT ON COLUMN orchestrator_event_register.event_type IS
     'The emit_event() "type" field, e.g. asset.noop_completion / asset.noop_completion_rejected. '
-    'Which types reach this table is governed by events.DURABLE_EVENT_TYPES, not by the schema.';
+    'Which types reach this table is governed by events.DEFAULT_DURABLE_EVENT_TYPES (overridable '
+    'at runtime by the ORCHESTRATOR_DURABLE_EVENT_TYPES env var), not by the schema.';
 COMMENT ON COLUMN orchestrator_event_register.chart_id IS
     'TEXT, not UUID: audit sink must never drop an event to a type error. NULL for global/singleton assets.';
 COMMENT ON COLUMN orchestrator_event_register.rows_present IS
