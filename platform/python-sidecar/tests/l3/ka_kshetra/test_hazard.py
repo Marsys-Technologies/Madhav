@@ -135,10 +135,12 @@ class TestClockTerm:
 class TestRelevance:
     def _routes(self):
         return (
-            Route('career_change', 1, ('graha:Ju', 'bhava:10', 'event_class:career_change'),
-                  0.60, True, ()),
-            Route('career_change', 2, ('graha:Sa', 'bhava:10', 'event_class:career_change'),
-                  0.30, False, ('vedha:Sa->10',)),
+            Route(event_class='career_change', route_rank=1,
+                  path_node_ids=('graha:Ju', 'bhava:10', 'event_class:career_change'),
+                  path_edge_ids=(), route_gain=0.60, is_primary=True),
+            Route(event_class='career_change', route_rank=2,
+                  path_node_ids=('graha:Sa', 'bhava:10', 'event_class:career_change'),
+                  path_edge_ids=(), route_gain=0.30, is_primary=False, suppressed_by=('vedha:Sa->10',)),
         )
 
     def test_relevance_is_bounded_by_tanh(self):
@@ -247,7 +249,8 @@ def _std_inputs(**over):
     base = dict(
         lifetime_count=1.0,
         promise=PromisePrior(p=0.5, routes=(
-            Route('e', 1, ('graha:Ju', 'event_class:e'), 0.6, True, ()),
+            Route(event_class='e', route_rank=1, path_node_ids=('graha:Ju', 'event_class:e'),
+                  path_edge_ids=(), route_gain=0.6, is_primary=True),
         ), n_routes=1, fact_ids=('fact:promise:e',)),
         clocks=[_clock('vimshottari', 0.9)],
         lord_stacks={'vimshottari': [('MD', 'Ju')]},

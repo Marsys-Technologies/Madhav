@@ -20,6 +20,12 @@ MODULE MAP (lane ownership per KALA_W2_FIELD_DESIGN_v1_0.md §0):
     stage65_insights.py                                               Lane D
   stage8_spec.py                                                      Lane E
 
+This `__init__.py` is shared, additive territory: each lane exports its own
+published symbols here without importing (or depending on the presence of)
+another lane's module, so a lane landing before or after another never breaks
+import. A lane with nothing to pre-export (e.g. Lane C's modules are imported
+directly by the orchestration shim, not re-exported here) adds none.
+
 THE CIRCULARITY GUARD (section 8.3 - a HARD, unsoftenable campaign gate, peer of
 LAW ZERO): stages 0-8 NEVER read the life-event log. The field is a pure function
 of (chart, corpus_pin, config_pin, weights_version, cohort_version); only stage 9
@@ -27,4 +33,14 @@ of (chart, corpus_pin, config_pin, weights_version, cohort_version); only stage 
 field CONTENT hash and is enforced by two independent detectors - a static source
 census and a dynamic hash-invariance test under LEL mutation - in
 tests/l3/ka_kshetra/test_circularity_guard.py.
+
+The orchestration shim (`pipeline/orchestrator/writers/ka_kshetra.py`,
+`@register('ka_kshetra')`) is written ONCE by Lane C and is NOT part of this
+package — it imports from here, never the reverse.
 """
+from __future__ import annotations
+
+from . import stage3_clocks
+from . import uncertainty
+
+__all__ = ["stage3_clocks", "uncertainty"]

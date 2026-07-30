@@ -133,7 +133,8 @@ class TestEnvelopeIndex:
 
 def _evaluator(**over):
     clocks = [ClockApplicability('vimshottari', 'applicable', 'fruition', 1, True, 0.9)]
-    routes = (Route('e', 1, ('graha:Ju', 'bhava:10', 'event_class:e'), 0.6, True, ()),)
+    routes = (Route(event_class='e', route_rank=1, path_node_ids=('graha:Ju', 'bhava:10', 'event_class:e'),
+                     path_edge_ids=(), route_gain=0.6, is_primary=True),)
     kwargs = dict(
         event_class='e',
         lifetime_count=2.0,

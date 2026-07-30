@@ -39,6 +39,19 @@ def _small_build(monkeypatch):
     monkeypatch.setattr(W, 'HORIZON_DAYS', 400.0)
     monkeypatch.setattr(S5, 'DEFAULT_REPLICATES', 8)
     monkeypatch.setattr(S5, 'DEFAULT_BLOCK_SIZE', 4)
+
+    # MERGE-TRAIN NOTE (2026-07-30): `stage4_field.load_promise_prior` prefers Lane
+    # A's real `stage2_promise.promise_prior` when it's importable, falling back to
+    # a direct `kala_field_routes` read (§3.3) only when it isn't. This fixture's
+    # `FakeConn` was built against that FALLBACK shape (see fake_db.py's own
+    # `kala_field_routes` handler) — it does not simulate Lane A's real data model
+    # (`bodha_cgm_nodes`/`bodha_cgm_edges`/etc). Now that Lane A is merged and
+    # genuinely importable, the writer correctly prefers it in production, which
+    # would make these WRITER-orchestration tests silently become integration tests
+    # of Lane A's promise-graph implementation too. Force the fallback path here —
+    # deliberately, not by accident — so this suite keeps testing what it says it
+    # tests: the writer's own contract, against the simple fixture it was built for.
+    monkeypatch.setitem(sys.modules, 'services.ka_kshetra.stage2_promise', None)
     yield
 
 

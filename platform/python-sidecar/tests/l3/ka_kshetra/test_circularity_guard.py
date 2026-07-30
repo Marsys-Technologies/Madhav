@@ -190,6 +190,11 @@ class TestDynamicInvariance:
         monkeypatch.setattr(W, 'HORIZON_DAYS', 400.0)
         monkeypatch.setattr(S5, 'DEFAULT_REPLICATES', 8)
         monkeypatch.setattr(S5, 'DEFAULT_BLOCK_SIZE', 4)
+        # MERGE-TRAIN NOTE (2026-07-30): force the kala_field_routes fallback path —
+        # see test_writer.py's identical fixture note for the full reasoning. This
+        # guard is about the WRITER's own corpus-read discipline; it must not become
+        # an incidental integration test of Lane A's real promise-graph tables.
+        monkeypatch.setitem(sys.modules, 'services.ka_kshetra.stage2_promise', None)
         conn = FakeConn(F.build_tables(life_event_rows=life_event_rows))
         ctx = FakeCtx(conn, F.CHART_ID)
         writer = W.KaKshetraWriter()

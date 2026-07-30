@@ -149,7 +149,7 @@ def _evaluator(horizon=200.0, hump_at=100.0):
         event_class='e',
         lifetime_count=2.0,
         promise=PromisePrior(p=0.4, routes=(
-            Route('e', 1, ('graha:Ju', 'event_class:e'), 0.6, True, ()),), n_routes=1),
+            Route(event_class='e', route_rank=1, path_node_ids=('graha:Ju', 'event_class:e'), path_edge_ids=(), route_gain=0.6, is_primary=True),), n_routes=1),
         clocks=[ClockApplicability('vimshottari', 'applicable', 'fruition', 1, True, 0.9)],
         ladder={'vimshottari': [
             S4.LadderPeriod('vimshottari', 'MD', 'Ju', 0.0, horizon)]},
@@ -269,7 +269,7 @@ class TestRobustness:
         ev2 = S4.FieldEvaluator(
             event_class='e', lifetime_count=2.0,
             promise=PromisePrior(p=0.4, routes=(
-                Route('e', 1, ('graha:Ju', 'event_class:e'), 0.6, True, ()),)),
+                Route(event_class='e', route_rank=1, path_node_ids=('graha:Ju', 'event_class:e'), path_edge_ids=(), route_gain=0.6, is_primary=True),)),
             clocks=[ClockApplicability('vimshottari', 'applicable', 'fruition', 1, True, 0.9),
                     ClockApplicability('yogini', 'applicable', 'flavour', 2, True, 0.7)],
             ladder={'vimshottari': [S4.LadderPeriod('vimshottari', 'MD', 'Ju', 0.0, 200.0)],

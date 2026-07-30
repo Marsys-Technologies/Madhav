@@ -24,6 +24,20 @@ it with a default, so a producer written against the older shape still
 constructs. A lane that needs a field *removed or retyped* stops and raises
 (§0: "If a lane believes it needs a boundary changed, it stops and raises — it
 does not negotiate bilaterally").
+
+MERGE-TRAIN NOTE (2026-07-30, Conductor integration pass): Lane C's own draft of
+this file (written before Lane A/B's real code existed) independently defined
+`Route`/`PromisePrior` (matching Lane A's live shapes closely — every consumer
+across all five lanes constructs these via keyword arguments only, so the exact
+field order/defaults never mattered operationally) and its OWN copy of
+`ClockApplicability`, duplicating the class Lane B actually defined inside its
+own `stage3_clocks.py`. Two classes with the same name and near-identical shape
+but different identity is exactly the kind of silent divergence this file exists
+to prevent. Consolidated here as the single source of truth; `stage3_clocks.py`
+now imports it from here instead of defining its own copy (see that module's own
+note). `Route`/`PromisePrior` keep Lane A's original field order/defaults — the
+already-live, already-tested shape every lane's keyword-only construction sites
+were written against.
 """
 from __future__ import annotations
 
@@ -47,10 +61,10 @@ class Route:
     event_class: str
     route_rank: int
     path_node_ids: tuple[str, ...]
+    path_edge_ids: tuple[int, ...]
     route_gain: float
     is_primary: bool
     suppressed_by: tuple[str, ...] = ()
-    path_edge_ids: tuple[int, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -87,6 +101,9 @@ class ClockApplicability:
     Lane C's §5.1 rule C-4 gives that class w_s ≡ 0 BY CONSTRUCTION, not by
     fitting: it is a context band, never a predictor, and the stage-9 fitter is
     never given the parameter at all.
+
+    The SINGLE definition of this shape (see the module-level merge-train note):
+    Lane B's `stage3_clocks.py` imports this class rather than defining its own.
     """
     system_id: str
     applicability_state: str          # 'applicable' | 'excluded_by_condition' | 'not_computed'
