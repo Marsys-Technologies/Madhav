@@ -68,7 +68,11 @@ import re
 import sys
 from pathlib import Path
 
-from .db import connect
+# NOTE: `.db` (and its psycopg dependency) is imported lazily inside analyze() —
+# NOT at module level. The `--self-test` path is a DB-free CI hard gate whose job
+# (`governance-gates` in .github/workflows/ci.yml) installs only pyyaml + pytest;
+# a module-level DB import would make that step die with ModuleNotFoundError at
+# import time, before running a single check. Keep this import deferred.
 
 # Writer source roots scanned for reads (relative to python-sidecar/).
 _SIDECAR = Path(__file__).resolve().parents[2]
@@ -222,6 +226,8 @@ def evaluate(reg: dict, real_tables: set[str], writer_items: list[tuple[str, str
 
 def analyze() -> dict:
     """Return {hard, soft, checked_assets} against the live registry + writer files."""
+    from .db import connect  # deferred: keeps --self-test free of the psycopg dependency
+
     with connect() as conn:
         reg = _load_registry(conn)
         real_tables = _load_real_tables(conn)

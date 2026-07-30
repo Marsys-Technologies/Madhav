@@ -53,7 +53,11 @@ from __future__ import annotations
 import argparse
 import sys
 
-from .db import connect
+# NOTE: `.db` (and its psycopg dependency) is imported lazily inside analyze() —
+# NOT at module level. The `--self-test` path is a DB-free CI hard gate whose job
+# (`governance-gates` in .github/workflows/ci.yml) installs only pyyaml + pytest;
+# a module-level DB import would make that step die with ModuleNotFoundError at
+# import time, before running a single check. Keep this import deferred.
 
 # (upstream_table, derived_table, asset_id) — ka_kala_darshana and
 # ka_bhavishya_lekha are chained (bhavishya_lekha depends on kala_darshana,
@@ -108,6 +112,8 @@ def _charts_with_rows(conn, table: str) -> set[str]:
 
 def analyze() -> dict:
     """I/O shell: pull live data, delegate to the pure evaluate()/evaluate_throughput_drift()."""
+    from .db import connect  # deferred: keeps --self-test free of the psycopg dependency
+
     with connect() as conn:
         tables = sorted({t for u, d, _a in DERIVATION_CHECKS for t in (u, d)})
         charts_by_table = {t: _charts_with_rows(conn, t) for t in tables}
