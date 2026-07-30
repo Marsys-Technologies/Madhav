@@ -81,6 +81,7 @@ import {
 } from '../../lib/kala_envelope.js'
 import { composeArgument } from '../../lib/argument_composer.js'
 import { autoDetectTrimmableSections, finalizeMcpBudget } from '../../lib/response_budget.js'
+import { buildSukshmaBoundaryIntervals, type SukshmaBoundaryInterval } from '../../lib/kala_uncertainty.js'
 
 // ── Infrastructure (self-contained proxy helper — mirrors the established per-file
 // pattern in register_p1_aliases.ts / tools/retrieval/kala_temporal.ts / registry_bridge.ts;
@@ -443,6 +444,40 @@ async function computeDashaLordTransitCondition(
   return { rows, chainReachable: chain.ok, transitReachable }
 }
 
+// ── Item 24-lite (SHAD_DARSHANA_BRIEF_v2_0.md §3 W1 "24-lite... Sūkṣma boundaries as
+// intervals"; design authority KALA_SIX_VIEWS_DESIGN_v2_0.md §A.1 "below PD"): the
+// CURRENTLY-RUNNING Sūkṣma-level (level_n=4) Vimśottarī period's own start/end boundary
+// timestamps, already computed and stored in `chart_dashas` (marsys://tool/L1/get_dashas,
+// `fields=all` for `start_iso`/`end_iso`/`duration_days`) — re-presented with the
+// documented lite-v0 interval convention from `lib/kala_uncertainty.ts`. NO new
+// computation: this reads the exact row `get_dashas` already serves and bounds it.
+async function fetchSukshmaBoundaryUncertainty(
+  chartId: string,
+  ayanamshaId: string,
+  asOfDate: string,
+  principal: Principal,
+): Promise<{ intervals: SukshmaBoundaryInterval[]; reachable: boolean }> {
+  const resp = await callRegistryCapability(
+    'marsys://tool/L1/get_dashas',
+    { chart_id: chartId, ayanamsha_id: ayanamshaId, system: 'vimshottari', level: 4, as_of_date: asOfDate, fields: 'all' },
+    principal,
+  )
+  if (!resp.ok) return { intervals: [], reachable: false }
+  const rows = (resp.content?.['rows'] as Array<Record<string, unknown>> | undefined) ?? []
+  const row = rows[0]
+  if (!row) return { intervals: [], reachable: true }
+  return {
+    intervals: buildSukshmaBoundaryIntervals({
+      system_id: String(row['system_id'] ?? 'vimshottari'),
+      lord_graha: String(row['lord_graha'] ?? ''),
+      start_iso: typeof row['start_iso'] === 'string' ? (row['start_iso'] as string) : null,
+      end_iso: typeof row['end_iso'] === 'string' ? (row['end_iso'] as string) : null,
+      duration_days: (row['duration_days'] as number | string | null | undefined) ?? null,
+    }),
+    reachable: true,
+  }
+}
+
 function dualOutput(data: unknown, toolName = 'kala_now_get') {
   let finalData: unknown = data
   if (data && typeof data === 'object' && !Array.isArray(data)) {
@@ -749,6 +784,9 @@ export interface KalaNowResult {
   gochara_dual_reference: GocharaDualReferenceRow[]
   // Item 28 (wave W1): currently-running Vimśottarī MD/AD lord's OWN current transit condition.
   dasha_lord_transit_condition: DashaLordTransitCondition[]
+  // Item 24-lite (wave W1): Sūkṣma-level ("below PD") boundary intervals on the currently-
+  // running Sūkṣma period, per the documented lite-v0 convention (kala_uncertainty.ts).
+  sukshma_boundary_uncertainty: SukshmaBoundaryInterval[]
   drill_pointers: DrillPointerLike[]
   provenance_envelope: {
     source: string
@@ -763,6 +801,7 @@ export interface KalaNowResult {
     natal_panchanga_reachable: boolean
     gochara_dual_reference_reachable: boolean
     dasha_lord_transit_condition_reachable: boolean
+    sukshma_boundary_uncertainty_reachable: boolean
   }
 }
 
@@ -928,9 +967,13 @@ export async function computeKalaNow(
   }
 
   // Item 8 + item 28 — depend on natalRefSigns, so run after the Promise.all above.
-  const [gocharaDual, dashaLordCondition] = await Promise.all([
+  // Item 24-lite is independent of natalRefSigns but is batched alongside them (same
+  // await point) rather than the earlier Promise.all, purely to keep this lane's diff
+  // additive and low-conflict against sibling W1 lanes editing the same file.
+  const [gocharaDual, dashaLordCondition, sukshmaBoundaryUncertainty] = await Promise.all([
     computeGocharaDualReference(asOfDate, natalRefSigns, principal),
     computeDashaLordTransitCondition(chartId, ayanamshaId, asOfDate, asOfDate, natalRefSigns.lagna_sign_number, principal),
+    fetchSukshmaBoundaryUncertainty(chartId, ayanamshaId, asOfDate, principal),
   ])
 
   const reading = buildNowReading({ asOfDate, windowFamilies, darshana, windowsOk, darshanaOk })
@@ -1010,6 +1053,16 @@ export async function computeKalaNow(
               ? 'No active Vimśottarī MD/AD chain resolved for this chart/date — honest empty, not fabricated.'
               : 'L0 ephemeris registry unreachable this call for the active lord(s).',
         ),
+    // Item 24-lite: Sūkṣma-level (level_n=4, "below PD") boundary intervals on the
+    // currently-running period, per the documented lite-v0 convention (kala_uncertainty.ts).
+    sukshmaBoundaryUncertainty.reachable && sukshmaBoundaryUncertainty.intervals.length > 0
+      ? computedCoverage('sukshma_boundary_uncertainty')
+      : honestEmptyCoverage(
+          'sukshma_boundary_uncertainty',
+          !sukshmaBoundaryUncertainty.reachable
+            ? 'L1 dasha registry (get_dashas) unreachable this call.'
+            : 'No Sūkṣma-level (level_n=4) daśā row resolved for this chart/date — this chart may not be built to Sūkṣma depth, or as_of_date falls outside the built range.',
+        ),
   ]
 
   const drillPointers: DrillPointerLike[] = [triPlane.prediction_ref, triPlane.intervention_ref].filter(
@@ -1041,6 +1094,7 @@ export async function computeKalaNow(
     janma_resonance: janmaResonance,
     gochara_dual_reference: gocharaDual.rows,
     dasha_lord_transit_condition: dashaLordCondition.rows,
+    sukshma_boundary_uncertainty: sukshmaBoundaryUncertainty.intervals,
     drill_pointers: drillPointers,
     provenance_envelope: {
       source: 'kala_now_get',
@@ -1048,7 +1102,7 @@ export async function computeKalaNow(
         'kala_activation (ka_kalasutra)', 'kala_bhavishya (forward-window fallback)', 'kala_darshana',
         'call_panchanga_service (panchang.py, engine-direct)', 'get_panchanga (L1 chart_facts, natal panchāṅga)',
         'get_dignity (graha_sign_attributes)', 'query_planet_transit (L0 ephemeris)',
-        'query_active_dashas (L3, EL-33)', 'bg_dignity_reference (L0)',
+        'query_active_dashas (L3, EL-33)', 'bg_dignity_reference (L0)', 'get_dashas (chart_dashas, level_n=4)',
       ],
       chart_id: chartId,
       as_of_date: asOfDate,
@@ -1060,6 +1114,7 @@ export async function computeKalaNow(
       darshana_reachable: darshanaOk,
       gochara_dual_reference_reachable: natalRefSigns.ok && gocharaDual.transitReachable,
       dasha_lord_transit_condition_reachable: dashaLordCondition.chainReachable && dashaLordCondition.transitReachable,
+      sukshma_boundary_uncertainty_reachable: sukshmaBoundaryUncertainty.reachable,
     },
   }
 }
@@ -1118,12 +1173,17 @@ W1 joins (objective, raw flags — no favorable/unfavorable grading): disha_shul
 diśā-śūla travel-avoid direction), gulika_kalam_now (today's gulika-kālam window + whether \
 the current moment is inside it), chandrashtama (transit Moon's house from natal Moon + \
 whether it is house 8), hora_now (current planetary-hour lord + window), janma_resonance \
-(whether today's vara/nakṣatra/tithi match the native's own birth vara/nakṣatra/tithi).
+(whether today's vara/nakṣatra/tithi match the native's own birth vara/nakṣatra/tithi), \
+sukshma_boundary_uncertainty (item 24-lite — the currently-running Sūkṣma-level daśā \
+period's own start/end boundary instants, each served with an honest ± interval per a \
+documented lite-v0 convention, NOT the full birth-time/ayanāṁśa error-propagation model — \
+see kala_uncertainty.ts).
 
 Output includes: reading (structured argument) + reading_prose (composed text) + windows + \
 darshana + disha_shula + gulika_kalam_now + chandrashtama + hora_now + janma_resonance + \
-gochara_dual_reference + dasha_lord_transit_condition + tri_plane (→ kala_ahead_get for \
-what's coming, → kala_elect_get for when to act) + coverage + drill_pointers.
+gochara_dual_reference + dasha_lord_transit_condition + sukshma_boundary_uncertainty + \
+tri_plane (→ kala_ahead_get for what's coming, → kala_elect_get for when to act) + \
+coverage + drill_pointers.
 
 Requires: chart_id (UUID). Successor to kala_windows_get for "what is my state now" queries \
 — kala_windows_get remains live (not retired).`

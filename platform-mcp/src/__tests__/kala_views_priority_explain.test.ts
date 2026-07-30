@@ -168,6 +168,14 @@ describe('kala_priority_get — PRIORITIZE facade over marsys://tool/L3/call_pri
 
     const coverage = obj['coverage'] as Array<{ concept: string; state: string }>
     expect(coverage.some(c => c.concept === 'priority_ranking_legacy_scalar' && c.state === 'honest_empty')).toBe(true)
+
+    // Item 43 (tri-plane wiring): even with zero ranked_signals, PRIORITIZE's tri_plane
+    // pointers to EXPLAIN/AHEAD/ELECT are view-level facts and remain REAL — never collapse
+    // to no_lever just because this call's own data happened to be empty.
+    const triPlane = obj['tri_plane'] as { interpretation_ref: { instrument: string }; prediction_ref: { instrument: string }; intervention_ref: { instrument: string } }
+    expect(triPlane.interpretation_ref.instrument).toBe('kala_explain_get')
+    expect(triPlane.prediction_ref.instrument).toBe('kala_ahead_get')
+    expect(triPlane.intervention_ref.instrument).toBe('kala_elect_get')
   })
 })
 
