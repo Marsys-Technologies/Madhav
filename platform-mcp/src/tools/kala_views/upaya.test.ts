@@ -57,8 +57,13 @@ describe('buildKalaUpayaResponse', () => {
     })
   })
 
-  it('intervention_ref is null (this object IS the intervention plane already)', () => {
-    expect(response.tri_plane.intervention_ref).toBeNull()
+  it('intervention_ref is an honest no_lever (this object IS the intervention plane already)', () => {
+    // ND-1 (ṢAḌ-DARŚANA W1 verify-reopen, 2026-07-30): the bare-null contract this assertion
+    // encoded is retired — every tri_plane slot is now either a real pointer or an honest,
+    // self-describing `no_lever`. See tools/kala_views/ahead.ts's prediction_ref for the
+    // rationale (the campaign's own tri_plane_no_dead_end_gate.ts grades a bare null WARN).
+    expect(isNoLever(response.tri_plane.intervention_ref!)).toBe(true)
+    expect((response.tri_plane.intervention_ref as { reason: string }).reason).toContain('IS the intervention plane')
   })
 
   it('interpretation_ref/prediction_ref are honest no_lever placeholders, not dangling pointers', () => {

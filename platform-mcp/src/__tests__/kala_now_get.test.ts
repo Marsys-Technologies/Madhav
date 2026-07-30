@@ -249,10 +249,15 @@ describe('kala_now_get — item 28 (daśā-lord current transit condition, wave 
 })
 
 describe('kala_now_get — envelope contract (E3/E4/E5, item 43, §7 Living-LEL)', () => {
-  it('tri_plane: interpretation_ref is null (NOW IS the interpretation plane)', async () => {
+  it('tri_plane: interpretation_ref points at kala_explain_get (ND-1 — NOW is a state view, not the interpretive ground)', async () => {
     vi.stubGlobal('fetch', mockRegistryFetch({ reachable: true }))
     const result = await computeKalaNow(TEST_CHART_ID, { as_of: AS_OF }, TEST_PRINCIPAL)
-    expect(result.tri_plane.interpretation_ref).toBeNull()
+    // ND-1 (ṢAḌ-DARŚANA W1 verify-reopen, 2026-07-30): the bare-null contract this assertion
+    // encoded is retired — every tri_plane slot is now either a real pointer or an honest,
+    // self-describing `no_lever`. See tools/kala_views/ahead.ts's prediction_ref for the
+    // rationale (the campaign's own tri_plane_no_dead_end_gate.ts grades a bare null WARN).
+    const interp = result.tri_plane.interpretation_ref
+    expect(interp && !isNoLever(interp) ? interp.instrument : null).toBe('kala_explain_get')
   })
 
   it('tri_plane: prediction_ref points at kala_ahead_get, intervention_ref at kala_elect_get', async () => {
@@ -267,7 +272,10 @@ describe('kala_now_get — envelope contract (E3/E4/E5, item 43, §7 Living-LEL)
   it('drill_pointers is derived from tri_plane and excludes no_lever entries', async () => {
     vi.stubGlobal('fetch', mockRegistryFetch({ reachable: true }))
     const result = await computeKalaNow(TEST_CHART_ID, { as_of: AS_OF }, TEST_PRINCIPAL)
-    expect(result.drill_pointers.map((p) => p.instrument).sort()).toEqual(['kala_ahead_get', 'kala_elect_get'])
+    // ND-1: interpretation_ref became a real pointer, so it now correctly appears here too —
+    // a tri_plane pointer that is not traversable from drill_pointers is a half-wired lever.
+    expect(result.drill_pointers.map((p) => p.instrument).sort())
+      .toEqual(['kala_ahead_get', 'kala_elect_get', 'kala_explain_get'])
   })
 
   it('question_frame is echoed verbatim when supplied (E4 W0: accepted, not yet conditioning)', async () => {

@@ -116,10 +116,15 @@ export function buildKalaUpayaResponse(params: KalaUpayaParams): KalaUpayaRespon
       prediction_ref: noLeverPointer(
         'kala_ahead_get (prediction plane) is not yet wired to this facade — planner wiring lands at W5 (SHAD_DARSHANA_BRIEF_v2_0.md §3 W5).',
       ),
-      // null, not no_lever: this object IS the intervention plane already (UPĀYA-SETU) —
-      // mirrors kala_envelope.ts's documented null-legality rule for interpretation_ref/
-      // prediction_ref ("null only legal when this object IS that plane already").
-      intervention_ref: null,
+      // ND-1 (ṢAḌ-DARŚANA W1 verify-reopen, 2026-07-30): was a bare `null`. See ahead.ts's
+      // prediction_ref for the full rationale — the campaign's own tri_plane_no_dead_end_gate.ts
+      // already grades a bare null `WARN` ("not independently verifiable at v0"); an honest,
+      // self-describing `no_lever` states the same fact in the shape the contract provides.
+      intervention_ref: noLeverPointer(
+        'kala_upaya_get IS the intervention plane (UPĀYA-SETU) — this response is itself the '
+          + 'intervention surface, so there is no further lever to traverse to. Not a missing '
+          + 'pointer: a terminal by construction.',
+      ),
     },
     coverage: [
       notInCorpusCoverage(

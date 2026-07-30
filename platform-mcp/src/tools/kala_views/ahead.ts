@@ -99,6 +99,7 @@ import {
   buildKalaFreshness,
   buildFieldSnapshotIdStub,
   pointerTo,
+  noLeverPointer,
   isNoLever,
   computedCoverage,
   honestEmptyCoverage,
@@ -209,18 +210,42 @@ async function fetchNatalLagnaSign(
   }
 }
 
+/**
+ * Why a transit lookup produced no row. Mirrors now.ts's `TransitLookupFailure` exactly (this
+ * file duplicates rather than imports, per the established anti-coupling convention in the
+ * header) — see now.ts for the full root-cause note on the ṢAḌ-DARŚANA W1 item 28
+ * false-positive coverage claim this type exists to make impossible.
+ */
+export interface TransitLookupFailure {
+  kind: 'dispatch_unreachable' | 'upstream_error'
+  detail: string
+  /** True when the failure is a deterministic upstream defect (retrying will not help) — the
+   *  ND-4 half: a persistent defect must never be worded as transient unreachability. */
+  persistent: boolean
+}
+
 interface PlanetTransitSnapshot {
   planet: string
   sign_number: number | null
   degree_in_sign: number | null
   nakshatra_number: number | null
   is_retrograde: boolean | null
+  /** The call completed without error — `true` with all-null fields means a GENUINE empty. */
   ok: boolean
+  failure: TransitLookupFailure | null
 }
+
+const NULL_TRANSIT_FIELDS = {
+  sign_number: null,
+  degree_in_sign: null,
+  nakshatra_number: null,
+  is_retrograde: null,
+} as const
 
 /** Single-day snapshot via the EXISTING L0 ephemeris capability
  *  (marsys://tool/L0/query_planet_transit) — same substrate ref_planet_transit_get already
- *  serves; sidereal-first, default ayanamsha lahiri_chitrapaksha. */
+ *  serves; sidereal-first, default ayanamsha lahiri_chitrapaksha. Never throws; classifies its
+ *  own failure mode instead of collapsing every outcome to an indistinguishable empty row. */
 async function fetchPlanetTransitSnapshot(
   planet: string,
   dateISO: string,
@@ -231,8 +256,36 @@ async function fetchPlanetTransitSnapshot(
     { planet, start_date: dateISO, end_date: dateISO },
     principal,
   )
-  const row = resp.ok ? (resp.content?.['rows'] as Array<Record<string, unknown>> | undefined)?.[0] : undefined
-  if (!row) return { planet, sign_number: null, degree_in_sign: null, nakshatra_number: null, is_retrograde: null, ok: resp.ok }
+  if (!resp.ok || !resp.content) {
+    return {
+      planet, ...NULL_TRANSIT_FIELDS, ok: false,
+      failure: {
+        kind: 'dispatch_unreachable',
+        detail: `retrieval-capability dispatch for marsys://tool/L0/query_planet_transit failed (${planet} @ ${dateISO})`,
+        persistent: false,
+      },
+    }
+  }
+  // The capability's OWN failure envelope (`{ ok: false, error, rows: [] }`) arrives over the
+  // same HTTP 200 as a success — reading only the transport layer is what made a 401'd sidecar
+  // call indistinguishable from a genuine empty.
+  const upstreamOk = resp.content['ok']
+  const upstreamError = resp.content['error']
+  if (upstreamOk === false || typeof upstreamError === 'string') {
+    return {
+      planet, ...NULL_TRANSIT_FIELDS, ok: false,
+      failure: {
+        kind: 'upstream_error',
+        detail:
+          typeof upstreamError === 'string'
+            ? upstreamError
+            : 'query_planet_transit reported ok:false without an error string',
+        persistent: true,
+      },
+    }
+  }
+  const row = (resp.content['rows'] as Array<Record<string, unknown>> | undefined)?.[0]
+  if (!row) return { planet, ...NULL_TRANSIT_FIELDS, ok: true, failure: null }
   return {
     planet,
     sign_number: typeof row['sign_number'] === 'number' ? (row['sign_number'] as number) : null,
@@ -240,7 +293,18 @@ async function fetchPlanetTransitSnapshot(
     nakshatra_number: typeof row['nakshatra_number'] === 'number' ? (row['nakshatra_number'] as number) : null,
     is_retrograde: typeof row['is_retrograde'] === 'boolean' ? (row['is_retrograde'] as boolean) : null,
     ok: true,
+    failure: null,
   }
+}
+
+/** Persistent-vs-transient coverage wording (ND-4), stated in exactly one place. */
+function transitFailureReason(failure: TransitLookupFailure): string {
+  return failure.persistent
+    ? `L0 ephemeris capability (query_planet_transit) returned a PERSISTENT upstream error — ` +
+      `this is a deterministic upstream failure, not transient unreachability, and retrying ` +
+      `this call will reproduce it: ${failure.detail}`
+    : `L0 ephemeris capability (query_planet_transit) could not be dispatched this call ` +
+      `(transient): ${failure.detail}`
 }
 
 interface DignityReferenceRow {
@@ -358,10 +422,18 @@ async function computeDashaLordForwardTransitCondition(
   forwardAsOfDate: string,
   lagnaSignNumber: number | null,
   principal: Principal,
-): Promise<{ rows: DashaLordForwardTransitCondition[]; chainReachable: boolean; transitReachable: boolean }> {
+): Promise<{
+  rows: DashaLordForwardTransitCondition[]
+  chainReachable: boolean
+  transitReachable: boolean
+  transitFailure: TransitLookupFailure | null
+  /** Earned-signal detector (CLAUDE.md §N.8): how many served rows actually carry a transit
+   *  sign. `coverage`/`*_reachable` derive from THIS, not from "the dispatch returned 200". */
+  rowsWithTransitData: number
+}> {
   const chain = await fetchActiveVimshottariChain(chartId, ayanamshaId, identifyAsOfDate, principal)
   if (!chain.ok || chain.entries.length === 0) {
-    return { rows: [], chainReachable: chain.ok, transitReachable: true }
+    return { rows: [], chainReachable: chain.ok, transitReachable: true, transitFailure: null, rowsWithTransitData: 0 }
   }
   const uniqueGrahas = Array.from(new Set(chain.entries.map((e) => e.lord_graha).filter(Boolean)))
   const [snapshots, dignities] = await Promise.all([
@@ -371,6 +443,7 @@ async function computeDashaLordForwardTransitCondition(
   const snapshotByGraha = new Map(snapshots.map((s) => [s.planet, s]))
   const dignityByGraha = new Map(uniqueGrahas.map((g, i) => [g, dignities[i] ?? null]))
   const transitReachable = snapshots.some((s) => s.ok)
+  const transitFailure = snapshots.find((s) => s.failure != null)?.failure ?? null
 
   const rows: DashaLordForwardTransitCondition[] = chain.entries.map((entry) => {
     const snap = snapshotByGraha.get(entry.lord_graha)
@@ -395,7 +468,8 @@ async function computeDashaLordForwardTransitCondition(
         : null,
     }
   })
-  return { rows, chainReachable: chain.ok, transitReachable }
+  const rowsWithTransitData = rows.filter((r) => r.transit_sign_number != null).length
+  return { rows, chainReachable: chain.ok, transitReachable, transitFailure, rowsWithTransitData }
 }
 
 // ── W1 item 30 (Mudda daśā joined to the varsha plane) — SHAD_DARSHANA_BRIEF_v2_0.md §3 W1.
@@ -414,6 +488,38 @@ async function computeDashaLordForwardTransitCondition(
 //     Mahādaśā/Antardaśā chain for the SAME date.
 // Every field traces verbatim to one of these two existing capabilities' own output.
 
+/**
+ * ṢAḌ-DARŚANA W1 verify-reopen fix (item 30, Root Cause C), 2026-07-30.
+ *
+ * The Muntha fields were read as FLAT columns `muntha_sign` / `muntha_house` on the
+ * `l1_tajik_varsha_year_lords` row. Those columns DO NOT EXIST — verified against the live
+ * schema (`information_schema.columns`) and against a live `ganita_tajaka_get` response. The
+ * Muntha is stored as a single JSONB column, `muntha_position_jsonb`, shaped:
+ *
+ *   { lord, sign, degree, house_from_natal_lagna, house_from_varsha_lagna }
+ *
+ * e.g. for the canonical chart's varsha 43 (2026-02-05 → 2027-02-05):
+ *   { lord: "Venus", sign: "Libra", degree: 12.4311,
+ *     house_from_natal_lagna: 7, house_from_varsha_lagna: 10 }
+ *
+ * So the data was real, two-pass-verified and sitting right there — the reader simply asked
+ * for key names the writer never emits, and `typeof row['muntha_sign'] === 'string'` quietly
+ * produced `null` on every chart. The null then leaked into served prose as "Muntha in
+ * unknown" in the 90-day digest, with NO coverage entry disclosing the gap.
+ *
+ * Both house counts are now carried (they are genuinely different classical quantities: from
+ * the NATAL lagna and from the VARSHA/annual lagna). `muntha_house` is retained as the
+ * house-from-natal-lagna value — the reading a bare "Muntha house" means in Tājika, and the
+ * one `citation_human` itself reports ("Muntha Libra (7H from Lagna, lord Venus)").
+ */
+interface MunthaPosition {
+  sign: string | null
+  degree: number | null
+  lord: string | null
+  house_from_natal_lagna: number | null
+  house_from_varsha_lagna: number | null
+}
+
 interface TajikVarshaRow {
   varsha_year: number | null
   varsha_start_iso: string | null
@@ -421,6 +527,29 @@ interface TajikVarshaRow {
   year_lord: string | null
   muntha_sign: string | null
   muntha_house: number | null
+  muntha_degree: number | null
+  muntha_lord: string | null
+  muntha_house_from_varsha_lagna: number | null
+}
+
+/** Reads `muntha_position_jsonb` verbatim — never re-derived (§N.5). Returns all-null when the
+ *  column is absent/malformed rather than inventing a shape (B.10). */
+function parseMunthaPosition(raw: unknown): MunthaPosition {
+  const empty: MunthaPosition = {
+    sign: null, degree: null, lord: null,
+    house_from_natal_lagna: null, house_from_varsha_lagna: null,
+  }
+  if (raw == null || typeof raw !== 'object' || Array.isArray(raw)) return empty
+  const m = raw as Record<string, unknown>
+  return {
+    sign: typeof m['sign'] === 'string' ? (m['sign'] as string) : null,
+    degree: typeof m['degree'] === 'number' ? (m['degree'] as number) : null,
+    lord: typeof m['lord'] === 'string' ? (m['lord'] as string) : null,
+    house_from_natal_lagna:
+      typeof m['house_from_natal_lagna'] === 'number' ? (m['house_from_natal_lagna'] as number) : null,
+    house_from_varsha_lagna:
+      typeof m['house_from_varsha_lagna'] === 'number' ? (m['house_from_varsha_lagna'] as number) : null,
+  }
 }
 
 /** Reads the current (or `dateISO`-containing) varsha row from l1_tajik_varsha_year_lords via
@@ -441,6 +570,11 @@ async function fetchTajikVarshaForDate(
   const rows = (resp.content['varsha_year_lords'] as { rows?: Array<Record<string, unknown>> } | undefined)?.rows ?? []
   const row = rows[0]
   if (!row) return { row: null, ok: true }
+  // Root Cause C: read the Muntha out of `muntha_position_jsonb` (the real, live column) —
+  // NOT the flat `muntha_sign`/`muntha_house` keys, which no writer has ever emitted. A
+  // flat-column fallback is deliberately NOT added: inventing a second accepted shape would
+  // mask the next occurrence of exactly this defect.
+  const muntha = parseMunthaPosition(row['muntha_position_jsonb'])
   return {
     ok: true,
     row: {
@@ -448,8 +582,11 @@ async function fetchTajikVarshaForDate(
       varsha_start_iso: typeof row['varsha_start_iso'] === 'string' ? (row['varsha_start_iso'] as string) : null,
       varsha_end_iso: typeof row['varsha_end_iso'] === 'string' ? (row['varsha_end_iso'] as string) : null,
       year_lord: typeof row['year_lord'] === 'string' ? (row['year_lord'] as string) : null,
-      muntha_sign: typeof row['muntha_sign'] === 'string' ? (row['muntha_sign'] as string) : null,
-      muntha_house: typeof row['muntha_house'] === 'number' ? (row['muntha_house'] as number) : null,
+      muntha_sign: muntha.sign,
+      muntha_house: muntha.house_from_natal_lagna,
+      muntha_degree: muntha.degree,
+      muntha_lord: muntha.lord,
+      muntha_house_from_varsha_lagna: muntha.house_from_varsha_lagna,
     },
   }
 }
@@ -499,8 +636,19 @@ export interface MuddaDashaVarshaJoin {
   varsha_start_iso: string | null
   varsha_end_iso: string | null
   year_lord: string | null
+  /** Muntha rāśi, read verbatim from `muntha_position_jsonb.sign` (§N.5). */
   muntha_sign: string | null
+  /** Muntha house counted from the NATAL lagna (`muntha_position_jsonb.house_from_natal_lagna`)
+   *  — the reading a bare "Muntha house" denotes in Tājika. */
   muntha_house: number | null
+  /** Muntha degree within its rāśi (`muntha_position_jsonb.degree`). */
+  muntha_degree: number | null
+  /** Muntha dispositor (`muntha_position_jsonb.lord`) — the Munthesa, one of the five Vārṣeśa
+   *  candidate offices this same row's `candidate_lord_jsonb` scores. */
+  muntha_lord: string | null
+  /** Muntha house counted from the VARSHA (annual) lagna — a genuinely different classical
+   *  quantity from `muntha_house`, served side by side rather than silently collapsed. */
+  muntha_house_from_varsha_lagna: number | null
   as_of_date: string
   mudda_chain: Array<{ level_n: number; level_name: string; lord_graha: string; lord_sign: string | null; start_date: string | null; end_date: string | null }>
 }
@@ -530,6 +678,9 @@ async function computeMuddaDashaVarsha(
       year_lord: varsha.row.year_lord,
       muntha_sign: varsha.row.muntha_sign,
       muntha_house: varsha.row.muntha_house,
+      muntha_degree: varsha.row.muntha_degree,
+      muntha_lord: varsha.row.muntha_lord,
+      muntha_house_from_varsha_lagna: varsha.row.muntha_house_from_varsha_lagna,
       as_of_date: asOfDate,
       mudda_chain: mudda.entries.map((e) => ({
         level_n: e.level_n,
@@ -863,13 +1014,32 @@ function buildAheadDigest90d(params: {
 
   if (muddaDashaVarsha) {
     const currentMudda = muddaDashaVarsha.mudda_chain[0]
+    // Root Cause C, prose half (ṢAḌ-DARŚANA W1 verify-reopen): this line used to emit
+    // "Muntha in unknown" / "Year-lord unknown" whenever the underlying value was null —
+    // a bare "unknown" reads to a caller as an astrological finding ("the Muntha's placement
+    // is unknown") rather than as a serving gap, which is the prose-leak class B.10/§N.8
+    // forbid. Absent clauses are now OMITTED entirely (the `coverage` entry is where a gap is
+    // disclosed, in machine-readable form — never smuggled into narration), and when nothing
+    // at all resolved the item says so in those words.
+    const clauses: string[] = []
+    if (muddaDashaVarsha.year_lord) clauses.push(`Year-lord ${muddaDashaVarsha.year_lord}`)
+    if (muddaDashaVarsha.muntha_sign) {
+      clauses.push(
+        `Muntha in ${muddaDashaVarsha.muntha_sign}` +
+          (muddaDashaVarsha.muntha_house != null ? ` (${muddaDashaVarsha.muntha_house}H from natal lagna)` : '') +
+          (muddaDashaVarsha.muntha_lord ? `, lord ${muddaDashaVarsha.muntha_lord}` : ''),
+      )
+    }
+    if (currentMudda) clauses.push(`active Mudda ${currentMudda.level_name} lord ${currentMudda.lord_graha}`)
     items.push({
       kind: 'mudda_dasha_varsha',
       label: 'Current varsha (Tājika annual) + Mudda daśā',
       window_or_date: `${muddaDashaVarsha.varsha_start_iso ?? '?'}..${muddaDashaVarsha.varsha_end_iso ?? '?'}`,
       detail:
-        `Year-lord ${muddaDashaVarsha.year_lord ?? 'unknown'}, Muntha in ${muddaDashaVarsha.muntha_sign ?? 'unknown'}` +
-        (currentMudda ? `; active Mudda ${currentMudda.level_name} lord ${currentMudda.lord_graha}` : ''),
+        clauses.length > 0
+          ? clauses.join('; ')
+          : 'Varsha window resolved, but neither year-lord nor Muntha nor an active Mudda ' +
+            'period was available this call — see coverage for which specific field is missing.',
       fact_ids: [],
     })
   }
@@ -1008,7 +1178,14 @@ export interface KalaAheadResult {
     windows_reachable: boolean
     projections_reachable: boolean
     dasha_lord_transit_condition_forward_reachable: boolean
+    /** Earned-signal counterpart to the boolean above (CLAUDE.md §N.8): how many served rows
+     *  actually carry a transit sign. `*_reachable: true` with 0 here would be a contradiction. */
+    dasha_lord_transit_condition_forward_rows_with_transit_data: number
     mudda_dasha_varsha_reachable: boolean
+    /** Item 30, Root Cause C: whether the Muntha sub-fields inside the mudda/varsha join
+     *  actually resolved. Reported separately from `mudda_dasha_varsha_reachable` because the
+     *  mudda chain and the Muntha genuinely failed independently of each other. */
+    muntha_varsha_position_reachable: boolean
     recurrence_ladder_reachable: boolean
   }
 }
@@ -1127,8 +1304,20 @@ export async function computeKalaAhead(
       'kala_explain_get',
       'Why these forward windows fire — drivers and classical grounds behind each projection',
     ),
-    // AHEAD IS the prediction plane — null is the contractually-legal value here.
-    prediction_ref: null,
+    // ND-1 (ṢAḌ-DARŚANA W1 verify-reopen, 2026-07-30): was a bare `null`. AHEAD genuinely IS
+    // the prediction plane, so there is no sibling surface to point at — but "this object is
+    // itself that plane" and "no pointer was wired here" are indistinguishable to a caller
+    // reading a bare null, and the campaign's OWN CI gate
+    // (platform/scripts/census/shad_darshana_gates/tri_plane_no_dead_end_gate.ts) already grades
+    // a null slot `WARN — "only legal when this object IS that plane already; not
+    // independently verifiable at v0"`. An honest, self-describing `no_lever` states the same
+    // fact in the machine-readable shape the contract provides for it (kala_envelope.ts's
+    // `KalaNoLever`, as kala_ritual_get already uses), turning that WARN into a PASS.
+    prediction_ref: noLeverPointer(
+      'kala_ahead_get IS the prediction plane — this response is itself the predictive ' +
+        'continuation, so there is no further forward surface to traverse to. Not a missing ' +
+        'pointer: a terminal by construction.',
+    ),
     intervention_ref: pointerTo('kala_elect_get', 'When exactly to act inside these forward windows'),
   }
 
@@ -1143,15 +1332,24 @@ export async function computeKalaAhead(
       'promise_gated_forecasting',
       'Law-3 PACT gating ("pressure without delivery") is not yet applied to these raw windows — SHAD_DARSHANA_BRIEF_v2_0.md §2.2 (wave W2/W3).',
     ),
-    natalLagna.ok && dashaLordForward.chainReachable && dashaLordForward.transitReachable && dashaLordForward.rows.length > 0
+    // Earned-signal detector (CLAUDE.md §N.8), item 28 forward half: `computed` requires at
+    // least one served row to actually CARRY a transit sign — not merely that the capability
+    // dispatch returned HTTP 200 with an empty body. See now.ts for the full root-cause note.
+    natalLagna.ok && dashaLordForward.chainReachable && dashaLordForward.rowsWithTransitData > 0
       ? computedCoverage('dasha_lord_forward_transit_condition')
       : honestEmptyCoverage(
           'dasha_lord_forward_transit_condition',
-          !dashaLordForward.chainReachable
-            ? 'L3 active-dasha registry (query_active_dashas) unreachable this call.'
-            : dashaLordForward.rows.length === 0
+          !natalLagna.ok
+            ? 'L1 natal reference-sign lookup (get_dignity/graha_sign_attributes LAGNA) could not ' +
+              'be dispatched this call, so house_from_lagna is not derivable for the active lord(s).'
+            : !dashaLordForward.chainReachable
+              ? 'L3 active-dasha registry (query_active_dashas) could not be dispatched this call.'
+              : dashaLordForward.rows.length === 0
               ? 'No active Vimśottarī MD/AD chain resolved for this chart as of today — honest empty, not fabricated.'
-              : 'L0 ephemeris or L1 natal-reference registry unreachable this call for the active lord(s).',
+              : dashaLordForward.transitFailure
+                ? transitFailureReason(dashaLordForward.transitFailure)
+                : `L0 ephemeris answered but returned no transit row for the active lord(s) on ${dateTo} — ` +
+                  'genuine empty for that horizon date, not a masked failure.',
         ),
     notInCorpusCoverage(
       'sky_event_calendar',
@@ -1175,6 +1373,25 @@ export async function computeKalaAhead(
             : !muddaDashaVarsha.muddaReachable
               ? 'L3 active-dasha registry (query_active_dashas, system=mudda) unreachable this call.'
               : 'No current varsha row or active Mudda daśā chain resolved for this chart/date — honest empty, not fabricated.',
+        ),
+    // Root Cause C, disclosure half (ṢAḌ-DARŚANA W1 verify-reopen): the Muntha now gets its OWN
+    // coverage entry, SEPARATE from `mudda_dasha_varsha`. That separation is the actual fix for
+    // the reported gap: the mudda-chain deliverable was genuinely `computed` while the Muntha
+    // sub-fields inside it were silently null, so one shared entry could not tell the truth
+    // about both — a caller reading `mudda_dasha_varsha: computed` had no way to learn the
+    // Muntha was missing (CLAUDE.md §N.6: never flatten differing-density layers into one
+    // undifferentiated claim).
+    muddaDashaVarsha.result?.muntha_sign
+      ? computedCoverage('muntha_varsha_position')
+      : honestEmptyCoverage(
+          'muntha_varsha_position',
+          !muddaDashaVarsha.result
+            ? 'No varsha row resolved for this chart/date, so the Muntha has no row to be read from.'
+            : 'The varsha row resolved but carried no readable `muntha_position_jsonb.sign` — ' +
+              'the Muntha is stored as a JSONB position object on l1_tajik_varsha_year_lords ' +
+              '(sign / degree / lord / house_from_natal_lagna / house_from_varsha_lagna), not as ' +
+              'flat columns; an empty or malformed object is reported here rather than served as ' +
+              'a null inside a "computed" claim.',
         ),
     windowsOk
       ? recurrenceLadder.length > 0
@@ -1252,9 +1469,13 @@ export async function computeKalaAhead(
       gulika_kalam_reachable: gulikaOk,
       windows_reachable: windowsOk,
       projections_reachable: projectionsOk,
+      // §N.8: asserts what it NAMES — that the join produced transit data — not merely that a
+      // dispatch returned 200 with an empty body.
       dasha_lord_transit_condition_forward_reachable:
-        natalLagna.ok && dashaLordForward.chainReachable && dashaLordForward.transitReachable,
+        natalLagna.ok && dashaLordForward.chainReachable && dashaLordForward.rowsWithTransitData > 0,
+      dasha_lord_transit_condition_forward_rows_with_transit_data: dashaLordForward.rowsWithTransitData,
       mudda_dasha_varsha_reachable: muddaDashaVarsha.tajikReachable && muddaDashaVarsha.muddaReachable,
+      muntha_varsha_position_reachable: muddaDashaVarsha.result?.muntha_sign != null,
       recurrence_ladder_reachable: windowsOk,
     },
   }

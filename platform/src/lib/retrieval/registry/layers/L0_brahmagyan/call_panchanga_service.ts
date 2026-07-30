@@ -118,12 +118,21 @@ export const callPanchangaServiceCapability: CapabilityDescriptor = {
           const err = await resp.json().catch(() => ({}))
           return { content: { error: `Sidecar ${resp.status}`, detail: err }, is_error: true }
         }
-        const data = await resp.json() as { ok: boolean; panchang: unknown; native_context: unknown; cache_hit: boolean }
+        const data = await resp.json() as {
+          ok: boolean; panchang: unknown; native_context: unknown
+          native_context_error?: string | null; cache_hit: boolean
+        }
         return {
           content: {
             mode, date, lat, lon, tz_offset_minutes,
             panchang: data.panchang,
             native_context: data.native_context,
+            // ṢAḌ-DARŚANA W1 verify-reopen: the sidecar now fails the OPTIONAL native_context
+            // overlay soft and names the reason instead of 500-ing the whole panchāṅga payload
+            // (routers/panchang.py compute_panchanga_endpoint). Passed through verbatim so a
+            // consumer can disclose the SPECIFIC gap ("birth-chart overlay unavailable: …")
+            // rather than mislabelling it as service unreachability (CLAUDE.md §N.8).
+            native_context_error: data.native_context_error ?? null,
             provenance: { source: 'panchang.py /api/compute/panchanga (Swiss-Ephemeris, engine-direct)' },
           },
           is_error: false,

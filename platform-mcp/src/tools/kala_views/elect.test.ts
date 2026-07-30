@@ -6,6 +6,7 @@
  * lane's `kala_ritual_get`, not tested here).
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { isNoLever } from '../../lib/kala_envelope.js'
 
 const mockHandleMuhurtaFinder = vi.fn()
 
@@ -107,7 +108,11 @@ describe('handleKalaElectGet', () => {
     expect(response!.reading.verdict.tier).toBe('structural_prior')
     expect(response!.reading.falsifier?.resolves_by).toBe('2026-08-07')
     // ELECT is itself the intervention plane — self-pointer is null, not omitted.
-    expect(response!.tri_plane.intervention_ref).toBeNull()
+    // ND-1 (ṢAḌ-DARŚANA W1 verify-reopen, 2026-07-30): the bare-null contract this assertion
+    // encoded is retired — every tri_plane slot is now either a real pointer or an honest,
+    // self-describing `no_lever`. See tools/kala_views/ahead.ts's prediction_ref for the
+    // rationale (the campaign's own tri_plane_no_dead_end_gate.ts grades a bare null WARN).
+    expect(isNoLever(response!.tri_plane.intervention_ref!)).toBe(true)
     // Honest W0 gap coverage present.
     const conceptNames = response!.coverage.map((c) => c.concept)
     expect(conceptNames).toContain('contender_lattice_parihara_adjudication')

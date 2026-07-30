@@ -234,16 +234,49 @@ export interface KalaFreshness {
   ephemeris_version: string | null
   sweep_build_date: string | null
   field_hash: string | null
-  stale: boolean
+  /**
+   * `true` / `false` only when a real detector ran; `null` when staleness is genuinely
+   * NOT EVALUABLE this call (CLAUDE.md §N.8 Earned-Signal Principle: "a signal without a
+   * real detector is null, not green").
+   *
+   * ṢAḌ-DARŚANA W1 verify-reopen fix (ND-2), 2026-07-30: this field was previously typed
+   * `boolean` and every W0/W1 facade served a confident `stale: false` while
+   * `ephemeris_version`, `sweep_build_date` AND `field_hash` were all `null` — i.e. an
+   * unfalsifiable freshness claim, asserted with literally zero attestation evidence behind
+   * it and no code path that could ever have produced `true`. `false` there did not mean
+   * "verified fresh", it meant "no horizon was supplied", which is the §N.8 defect exactly.
+   */
+  stale: boolean | null
   stale_reason: string | null
 }
 
+/** The honest `stale_reason` when no attestation evidence exists to evaluate staleness
+ *  against. Exported so the tri-plane/coverage CI batteries can assert on the exact string
+ *  rather than re-spelling it (and so a future W2 wiring pass can grep every consumer). */
+export const KALA_FRESHNESS_NOT_EVALUABLE_REASON =
+  'Staleness not evaluable this call: no attestation evidence available (ephemeris_version, ' +
+  'sweep_build_date and field_hash are all null, and the substrate declared no horizon). ' +
+  'A confident `stale: false` here would be an unfalsifiable claim — reported as null per ' +
+  'CLAUDE.md §N.8 (Earned-Signal Principle). Real ephemeris/sweep/field attestation lands ' +
+  'with ka_kshetra at wave W2 (SHAD_DARSHANA_BRIEF_v2_0.md §3 W2, E5/E7.2).'
+
 /**
- * Builds a freshness attestation. If `staleAfter` (an ISO date naming the substrate's own
- * declared horizon — e.g. `bg_muhurta_lattice`/`bg_sky_calendar`'s ~5y rolling horizon per
- * brief §2.5.6) is supplied and `now` is past it, `stale:true` is set with an honest
- * reason — never silently served as fresh. A caller with no horizon concept (most W0/W1
- * facades) simply omits `staleAfter` and gets `stale:false`.
+ * Builds a freshness attestation.
+ *
+ * Three honest outcomes, in order:
+ *   1. `staleAfter` supplied and `now` is past it        → `stale: true`  + reason.
+ *   2. `staleAfter` supplied and `now` is within it      → `stale: false` (a real detector
+ *      ran against a real declared horizon, so `false` is EARNED).
+ *   3. no `staleAfter` AND no attestation field at all   → `stale: null` + the
+ *      not-evaluable reason. There is nothing to evaluate; saying `false` would assert
+ *      freshness on no evidence (ND-2).
+ *
+ * Case 3 is the current state of every W0/W1 facade — deliberately surfaced rather than
+ * papered over, because `ka_kshetra` (which produces the real field hash and sweep build
+ * date) does not exist until W2.
+ *
+ * If ANY attestation field is populated but no horizon is declared, `stale` is `false`:
+ * there is evidence of provenance and no horizon to have expired.
  */
 export function buildKalaFreshness(params: {
   ephemerisVersion: string | null
@@ -253,15 +286,28 @@ export function buildKalaFreshness(params: {
   now?: Date
 }): KalaFreshness {
   const now = params.now ?? new Date()
-  let stale = false
+  const hasAttestation =
+    (params.ephemerisVersion != null && params.ephemerisVersion !== '') ||
+    (params.sweepBuildDate != null && params.sweepBuildDate !== '') ||
+    (params.fieldHash != null && params.fieldHash !== '')
+
+  let stale: boolean | null
   let staleReason: string | null = null
   if (params.staleAfter) {
     const threshold = new Date(params.staleAfter)
     if (!Number.isNaN(threshold.getTime()) && now.getTime() > threshold.getTime()) {
       stale = true
       staleReason = `substrate horizon expired at ${params.staleAfter}`
+    } else {
+      stale = false
     }
+  } else if (hasAttestation) {
+    stale = false
+  } else {
+    stale = null
+    staleReason = KALA_FRESHNESS_NOT_EVALUABLE_REASON
   }
+
   return {
     ephemeris_version: params.ephemerisVersion,
     sweep_build_date: params.sweepBuildDate,

@@ -226,8 +226,17 @@ export function buildKalaRitualStubResponse(params: KalaRitualParams, mode: Kala
       prediction_ref: noLeverPointer(
         'kala_ahead_get (prediction plane) is not yet wired to this facade — planner wiring lands at W5; Mode-1 rows join the AHEAD digest starting W4 per Elevation §6 D4.',
       ),
-      // null: this object IS the intervention plane already (YAJÑA-SETU) — see upaya.ts.
-      intervention_ref: null,
+      // ND-1 (ṢAḌ-DARŚANA W1 verify-reopen, 2026-07-30): was a bare `null` — worth naming
+      // explicitly, because the ND-1 report cited kala_ritual_get as the facade that
+      // "already correctly uses" the no_lever contract. That was only half true: this file
+      // used noLeverPointer for the two planes it cannot serve, but still emitted a bare
+      // null for its OWN plane, exactly like now/ahead/elect. Now consistent — see
+      // ahead.ts's prediction_ref for the full rationale.
+      intervention_ref: noLeverPointer(
+        'kala_ritual_get IS the intervention plane (YAJÑA-SETU) — this response is itself the '
+          + 'intervention surface, so there is no further lever to traverse to. Not a missing '
+          + 'pointer: a terminal by construction.',
+      ),
     },
     coverage: [notInCorpusCoverage(coverageConcept, coverageReason)],
     freshness: buildKalaFreshness({ ephemerisVersion: null, sweepBuildDate: null, fieldHash: null }),

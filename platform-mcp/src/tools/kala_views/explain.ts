@@ -29,6 +29,7 @@ import {
   makeKalaEnvelope,
   buildFieldSnapshotIdStub,
   pointerTo,
+  noLeverPointer,
   computedCoverage,
   honestEmptyCoverage,
   notInCorpusCoverage,
@@ -222,10 +223,17 @@ export function registerKalaExplainTool(server: McpServer, principal: Principal)
         // live/complete chain routes to ELECT (timing the act inside an already-open window).
         const chainIsLive = pactStatus === 'chain_complete' || pactStatus === 'chain_pending_activation'
         const triPlane: TriPlanePointers = {
-          // This reading already IS the interpretive/causal-chain ground for the claim it
-          // explains — null is the honestly-legal value here (kala_envelope.ts docstring:
-          // "null only legal when this object IS the interpretation plane already").
-          interpretation_ref: null,
+          // ND-1 (ṢAḌ-DARŚANA W1 verify-reopen, 2026-07-30): was a bare `null`. This reading
+          // genuinely IS the interpretive/causal-chain ground for the claim it explains, but
+          // see ahead.ts's prediction_ref for why a bare null is still the wrong SHAPE for
+          // saying so — tri_plane_no_dead_end_gate.ts grades it `WARN`, an honest no_lever
+          // `PASS`.
+          interpretation_ref: noLeverPointer(
+            'kala_explain_get IS the interpretation plane — this response is itself the '
+              + 'interpretive/causal-chain ground for the claim it explains, so there is no '
+              + 'further interpretive surface to traverse to. Not a missing pointer: a '
+              + 'terminal by construction.',
+          ),
           prediction_ref: pointerTo(
             'kala_ahead_get',
             'see the forward-looking windows for this domain/bhava once/while the chain is live.',
