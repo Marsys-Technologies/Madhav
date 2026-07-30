@@ -52,15 +52,62 @@ interface/return/coverage/provenance surface, doc-string prose combined; re-veri
 `tsc --noEmit` clean + 107/111 tests green (4 intentional skips) across all 8 touched/related
 suites including `m8_e2e_proof.test.ts` (no tool-count change needed — neither lane registers
 a new tool) — pushed as commit `035a0c52` · `shad-darshana/bg-muhurta-parihara`
-(`bg_muhurta_lattice.py` + `bg_parihara_rules.py`, migrations 484/485) — **PR #930 OPEN, Opus
-citation-review IN PROGRESS** (mandatory per brief §5 before this citation-sensitive lane may
-merge; no auto-merge set) · `shad-darshana/w2-lane-d-design-fix` (docs-only, corrects
+(`bg_muhurta_lattice.py` + `bg_parihara_rules.py`, migrations 484/485) — **PR #930 OPEN,
+Opus citation-review VERDICT: REJECT (round 1), fixes dispatched.** The review confirmed the
+core honesty machinery is genuine (placeholder-doṣa exclusion verified live in SQL, 26
+real-cited/53 placeholder rows in `brahma_dosha_catalog` flattening to exactly the claimed 60;
+all 9 yoga citations trace to real inline `Source:` comments; `computed_uncited_convention`
+counts verified exactly 25/5/7=37; EVENT_TABLES reuse legitimately cited, not laundered;
+`WriterBase`/idempotency/migration-collision all clean) but found **5 real defects the builder
+must fix**: (1) `bg_muhurta_lattice.py:351` — `compute_extended_auspicious` ignores `vara_id`
+and serves `abhijit` present on Wednesdays despite its own citation saying "excluded on
+Wednesday" (~261 affected rows over the horizon); (2) the parihāra factor-census claimed
+"221 of 266 real-cited" — actual live count is 164/266 (102 placeholder), the claim itself was
+wrong; (3) claimed `content_en` NULL on all 274 corpus chunks — false, `content_en` is
+non-NULL but byte-identical to `content_sa` (untranslated Devanagari sitting in the English
+column) — only `cleaned_translation_text` is actually 0/274; (4) jvalamukhi-yoga marked
+`not_in_corpus` when 1 real (untranslated) corpus chunk actually matches — needs its own
+honest "present-but-untranslated" disposition, not a flat not-found; (5) several factors
+(yamakantaka, krakaca, sashtighati, ghati_muhurta, varjyam, panchaka, 6 sandhyā/vijaya/
+godhūli/niśīta keys) point to `bg_muhurta_factor_census` rows that don't exist — dangling
+disclosure pointers. Fix list relayed to the original builder agent verbatim with file/line
+citations and re-verification requirements; this is verify-cycle 1 of the campaign's own "2
+failed verify cycles → Opus escalation" rule (brief §5) — if round 2 also fails, the rebuild
+escalates to Opus per that rule. · `shad-darshana/w2-lane-d-design-fix` (docs-only, corrects
 `KALA_W2_FIELD_DESIGN_v1_0.md` §6.3 against the real `bg_synthetic_cohort` schema per
-ADJUDICATION-1) — **PR #918 verified sound (1 file, exactly §6.3, all 4 actually-required
-branch-protection checks green — the one failing check, `Boot-time pointer validation`, is
-confirmed NOT in `required_status_checks.contexts` and matches the same pre-existing
-non-required failure seen at PRs #877/#886), branch updated, auto-merge armed, awaiting final
-CI pass.** Plus one operational
+ADJUDICATION-1) — **PR #918 MERGED.** All 4 Phase-2/Night-2 lanes now closed: **#924
+(w1-mudda-sandhi) MERGED · #926 (w1-intervals-grading) MERGED** (after Conductor-resolved
+`now.ts` conflict above) **· #930 (bg-muhurta-parihara) MERGED** (round-1 Opus review REJECT →
+5 fixes applied with live re-verification → round-2 independent Opus review APPROVE, every
+number re-derived, not trusted) **· #918 MERGED.**
+
+**bg_cohort MD-lord chain table (unblocks W2 Lane D, ADJUDICATION-1's actual deliverable) —
+PR #932, auto-merge armed post-APPROVE-WITH-NOTES.** `bg_cohort.py` extended (same asset, no
+new `asset_registry` row per design) with `bg_synthetic_cohort_md` (migration 484, ~100,000
+rows, age-interval Vimśottarī chain per synthetic chart). Builder found and fixed a real
+JD-convention bug during its own worked-example check (PyJHora's dasha stack wants local
+wall-clock JD, not UTC-converted — an initial wrong-convention attempt was off by ~3.3 years).
+**Independent Opus review verified the arithmetic against the actual upstream source
+(`jhora/const.py`/`vimsottari.py`, not the adapter's restatement) AND against the native's own
+live `chart_dashas` row** (Jupiter mahādaśā end age 7.5316 vs. the PR function's 7.5337 on the
+same Moon longitude — 0.8-day agreement, L1's day-snapping accounts for the rest) — verdict
+APPROVE-WITH-NOTES. **Two notes recorded honestly, not swept under the rug:** (1) a code
+comment overstates how "unreachable" a longitude-rounding divergence check is (P≈1e-5 per
+10k-row build — rare, not zero, the reviewer made it fire); (2) **real, tracked residual** —
+when that rare divergence does fire, the writer's broad `except Exception` in `run()`
+swallows it into a success-shaped `WriterResult(notes="partial: ...")` rather than a hard
+failure, which per CLAUDE.md §N.8 (Earned-Signal Principle) is exactly "a flag without a real
+detector distinguishing it" — filed as a low-priority follow-up work item (fewer than 1-in-100k
+build probability, degrades to a disclosed partial-note rather than a fabricated clean success,
+Conductor judgment: not worth blocking Lane D's unblock over, tracked not hidden). Chain years
+use sidereal-year length (365.256364) vs. the design's Gregorian-year consumer convention
+(365.2425) — ≤1.7 days drift at age 120, acknowledged in the design as harmless.
+
+**W2 Lane D is now fully unblocked**: ADJUDICATION-1's schema-reconciliation (design doc) and
+its data deliverable (MD-lord chain table) are both merged/merging. W2 Lanes A/B/C/D/E may all
+be dispatched together next, per the design doc's own "five parallel lanes" contract.
+
+Plus one operational
 (non-lane) action: **`1c826d5a` gochara-sweep horizon rebuild, dispatch 1 of ~3, IN PROGRESS —
 will NOT complete tonight, honest park.** Root cause (found via a pre-existing, not-yet-merged
 diagnosis on `samapti/gochara-parity` @ `d5907e64`, `GOCHARA_PARITY_DIAGNOSIS_v1_0.md` —
@@ -562,8 +609,8 @@ collision pattern is better understood from the first lane.
 | Wave | Status | Evidence | Notes |
 |---|---|---|---|
 | W0 | **VERIFIED-CLOSED** | PRs #877/#880/#882/#883/#884/#881 (merged main@`42151b24`+); deploy run `30484976742`; direct production `tools/list` + functional calls on both charts; see GATE W0 CLOSURE RECORD above | All 8 tools live on production, both charts, envelope-conformant, Mode-3 routing live-verified. |
-| W1 | **IN-PROGRESS (5 of 8 items landed)** | PRs #889 (item 10), #891 (items 8,28), #892 (items 29,32) | Items 8,10,28,29,32 done. Items 2,1-lite,30,24-lite,38-lite,E6-lite not yet started. |
-| W2 | **DESIGN-COMPLETE, build not started** | PR #886, `KALA_W2_FIELD_DESIGN_v1_0.md` merged | Hazard formula, skill-score/GOF, DAG acyclicity all specified precisely; 5 build lanes not yet dispatched. |
+| W1 | **CODE-COMPLETE pending final lane** (all items landed except one PR still in flight) | PRs #889 (item 10), #891 (items 8,28), #892 (items 29,32), #924 (items 30,1-lite), #926 (items 24-lite,38-lite,frontier-v0,43) — all MERGED; `shad-darshana/w1-recurrence-digest` (items 2, E6-lite) dispatched, IN PROGRESS | Every W1 item now has a lane either merged or in flight. Gate W1's "both charts" live-verification + the `1c826d5a` gochara-horizon caveat still need doing once the last lane lands — see NEXT-ACTION. |
+| W2 | **DESIGN-COMPLETE + Lane D unblocked, build lanes not yet dispatched** | PR #886 (`KALA_W2_FIELD_DESIGN_v1_0.md`), PR #918 (Lane D §6.3 reconciliation, ADJUDICATION-1), PR #932 (bg_cohort MD-lord chain table, APPROVE-WITH-NOTES) all merged | Hazard formula, skill-score/GOF, DAG acyclicity, AND Lane D's cohort contract all specified precisely against reality; 5 build lanes (A/B/C/D/E) ready to dispatch together. |
 | W2G | NOT-STARTED | — | GOCHARA-2.0 sub-day. **BLOCKED on N1–N5 ratification (W2G.0) — see below.** |
 | W3 | NOT-STARTED | — | New computations over the field. |
 | W3K | NOT-STARTED | — | KP sub-lord engine (item 18, built from zero). |
@@ -589,8 +636,8 @@ illegal.
 
 | # | Item | Wave | Status | Both-charts | Evidence |
 |---|---|---|---|---|---|
-| 1 | Daśā-sandhi calendar | W3 (lite@W1) | NOT-STARTED | — | — |
-| 2 | Recurrence-ladder serving | W1 | NOT-STARTED | — | — |
+| 1 | Daśā-sandhi calendar | W3 (lite@W1) | **W1-lite VERIFIED-FIXED** (band convention documented, not fabricated); full two-period calendar is W3 | Y (code-level) | PR #924, `dasha_sandhi` on `kala_now_get` |
+| 2 | Recurrence-ladder serving | W1 | IN-PROGRESS | — | `shad-darshana/w1-recurrence-digest` dispatched Night 2 |
 | 3 | Sky-event calendar | W3 | **VERIFIED-FIXED (bg_sky_calendar built; per-chart contact joins deferred to ka_kshetra per spec)** | Y (global asset) | PR #888, live-verified against throwaway Postgres |
 | 4 | Moorti-nirṇaya | W3 | NOT-STARTED | — | — |
 | 5 | Vedha + Sarvatobhadra grid | W3 | NOT-STARTED | — | — |
@@ -610,28 +657,28 @@ illegal.
 | 19 | GOCHARA-2.0 sub-day | W2G | NOT-STARTED | — | — (blocked on N1–N5) |
 | 20 | Auto-filed prospective ledger entries | W2 | NOT-STARTED | — | — |
 | 21 | Per-tradition calibration weights | W2 (ongoing) | NOT-STARTED | — | — |
-| 22 | Synthetic reference cohort + matched sub-cohort | W2 | **VERIFIED-FIXED (cohort only; matched sub-cohort not built — that's W2's job)** | Y (global asset) | PR #887, `bg_cohort`, live-verified 10k rows against throwaway Postgres |
+| 22 | Synthetic reference cohort + matched sub-cohort | W2 | **VERIFIED-FIXED (cohort + MD-lord chain built; matched-sub-cohort JOIN logic itself is W2 Lane D's job)** | Y (global asset) | PR #887 (`bg_cohort`, 10k rows), PR #932 (`bg_synthetic_cohort_md` MD-lord chain, ADJUDICATION-1, ~100k rows, Vimśottarī arithmetic independently verified against native's own `chart_dashas`) |
 | 23 | Circular-shift null calibration | W2 | NOT-STARTED | — | — |
-| 24 | Uncertainty-budget propagation | W1-lite/W2-full | NOT-STARTED | — | — |
+| 24 | Uncertainty-budget propagation | W1-lite/W2-full | **W1-lite VERIFIED-FIXED**; full budget propagation is W2's job | Y (code-level) | PR #926, `sukshma_boundary_uncertainty` on `kala_now_get`, documented lite-v0 interval convention |
 | 25 | Salience vector + submodular selection | W2 | NOT-STARTED | — | — |
 | 26 | UPĀYA-SETU | W4 | NOT-STARTED | — | — |
 | 27 | kala_timeline_spec v1 | W2 | NOT-STARTED | — | — |
 | 28 | Daśā-lord transit-condition | W1 | **VERIFIED-FIXED** | Y (code-level) | PR #891, current+forward both implemented, forward correctly pins lord identity as-of-today |
 | 29 | Chandrāṣṭama/horā/janma-resonance flags | W1 | **VERIFIED-FIXED** | Y (code-level) | PR #892; janma-resonance definition found in corpus, not fabricated |
-| 30 | Mudda daśā join | W1 | NOT-STARTED | — | — |
+| 30 | Mudda daśā join | W1 | **VERIFIED-FIXED** | Y (code-level) | PR #924, `mudda_dasha_varsha` on `kala_ahead_get`, joins existing tajaka/varsha substrate |
 | 31 | Period-echo mining | W3 | NOT-STARTED | — | — |
 | 32 | Diśā-śūla + gulika-kālam joins | W1 | **VERIFIED-FIXED** | Y (code-level) | PR #892; gulika-kālam-ahead horizon honestly disclosed (31d cap) |
 | 33 | Absence-of-expected detector | W3 | NOT-STARTED | — | — |
 | 34 | Contrastive EXPLAIN | W3 | NOT-STARTED | — | — |
 | 35 | Planner wiring verified LIVE (hard gate) | W5 | NOT-STARTED | — | — |
-| 36 | Contender lattice + adjudication engine | W3 | NOT-STARTED | — | — |
+| 36 | Contender lattice + adjudication engine | W3 | **SUBSTRATE VERIFIED-FIXED** (`bg_muhurta_lattice` global tables built: Agnivāsa, combination-yogas, kālam periods, ghaṭī-muhūrtas, ~91,477 rows); the query-time lattice-annotation/adjudication ENGINE itself (`lib/kala_lattice_query.ts`) is still W3's job | Y (global asset) | PR #930, Opus citation-review round-2 APPROVE (every citation independently re-derived against live corpus + `panchang_engine` source, not trusted from self-report) |
 | 37 | Ritual-resonance + paddhati profile | W3/W4 | NOT-STARTED | — | — |
-| 38 | ELECT ritual-pairing + grading unification | W1 facade/W3/W4 | NOT-STARTED | — | — |
+| 38 | ELECT ritual-pairing + grading unification | W1 facade/W3/W4 | **W1-facade VERIFIED-FIXED** (grading-engine facade + frontier v0 on `kala_elect_get`); ritual-pairing half is W4's job | Y (code-level) | PR #926, documented placeholder tier thresholds not corpus-calibrated |
 | 39 | Living-LEL incremental calibration plane | W2 | NOT-STARTED | — | — |
 | 40 | kala_ritual_get registration + planner wiring | W0 stub/W4/W5 | **W0-stub VERIFIED-FIXED** (Modes 1-2 honest not_in_corpus; Mode-3 wrong_view redirect real & tested) | Y | PR #882 |
-| 41 | Muhūrta Factor Census + corpus extraction | W3 | NOT-STARTED | — | — |
+| 41 | Muhūrta Factor Census + corpus extraction | W3 | **VERIFIED-FIXED** (50-row census, 38 computed / 5 not_computed / 7 not_in_corpus, every row cross-checked with a real detector — `test_census_has_no_dangling_lattice_pointers` — not just claimed) | Y (global asset) | PR #930, round-1 Opus REJECT (5 real defects: a citation-contradicting Wednesday/abhijit bug, two wrong evidence numbers, one false "not found" corpus claim, dangling census pointers) → builder fixed all 5 with live re-verification → round-2 independent Opus APPROVE, every number re-derived |
 | 42 | Unified Intervention Ledger | W4 | NOT-STARTED | — | — |
-| 43 | Tri-plane traversability contract | W0–W1 | **W0-facade-level VERIFIED-FIXED**; full W1 wiring in-progress | Y | PRs #877/#880-884, `no_lever`-honest pointers on every merged facade |
+| 43 | Tri-plane traversability contract | W0–W1 | **VERIFIED-FIXED** (real-data wiring confirmed on all six view facades — items 8/10/28/29/30/32 now genuinely reflected, not just honest `no_lever` placeholders where a real signal exists) | Y | PRs #877/#880-884/#926, `no_lever`-honest pointers on every merged facade, new cross-facade real-wiring test |
 | 44 | Single-temporal-authority (`authority_basis`) | W0 seed/W2/W6 gate | **W0 seed VERIFIED-FIXED**; population is W2's job | — | CI skeleton census seed, PR #881 |
 | E1 | Point-process formalization + skill score | W2 | **DESIGN-COMPLETE, build not started** | — | PR #886: closed-form hazard, skill-score/GOF formulas specified precisely |
 | E2 | Insight synthesis stage | W2 | **DESIGN-COMPLETE, build not started** | — | PR #886: all 8 insight types + trigger predicates specified |
@@ -639,7 +686,7 @@ illegal.
 | E4 | question_frame compiler | W0 | **VERIFIED-FIXED** | Y | PR #877, `kala_envelope.ts` |
 | E5 | field_snapshot_id | W0/W2 | **W0-stub VERIFIED-FIXED**; real hash is W2's job | Y | PR #877, marked with explicit TODO(W2) upgrade point |
 | E6 | Per-view elevations | W1–W3 | NOT-STARTED | — | — |
-| E7 | Substrate (census CI, freshness, cohort, composer lib, skill-score CI) | W0/W2 | **PARTIAL**: composer lib + census CI seeded (W0), cohort built (W2-prep, PR #887); skill-score CI not yet | Y (cohort, global) | PRs #877, #881, #887 |
+| E7 | Substrate (census CI, freshness, cohort, composer lib, skill-score CI) | W0/W2 | **PARTIAL**: composer lib + census CI seeded (W0), cohort + matched-sub-cohort MD-lord chain built (W2-prep, PRs #887/#932); skill-score CI not yet | Y (cohort, global) | PRs #877, #881, #887, #932 |
 | E8 | Non-elevations register | standing | NOT-STARTED | — | — |
 
 ## Preflight (Phase 0)
