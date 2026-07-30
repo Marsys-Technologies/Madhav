@@ -8,14 +8,19 @@ import type { ActiveRun } from '@/hooks/useActiveRun'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
-type AssetState = 'lit' | 'building' | 'stale' | 'dormant' | 'error' | 'partial' | 'not_migrated' | 'service_ok'
+// Mirrors AssetState in src/app/api/cockpit/stats/deriveState.ts (this file owns the
+// AssetWithState type the whole v2 cockpit renders from, so the two must stay in step).
+// 'incomplete' added by SAMĀPTI B-COCKPIT-INCOMPLETE (DVA Ruling 24) — the widened stats
+// contract does not type-check into this surface without it.
+type AssetState = 'lit' | 'building' | 'stale' | 'dormant' | 'error' | 'partial' | 'incomplete' | 'not_migrated' | 'service_ok'
 
 interface AssetWithState extends AssetRow {
   state: AssetState
   last_built_at: string | null
   actual_rows: number | null
   build_state_stale?: boolean
-  // Badge-honesty (pre-D-4b readiness pass): populated only when state === 'partial'.
+  // Badge-honesty (pre-D-4b readiness pass): populated when state === 'partial' or
+  // state === 'incomplete'.
   substep_progress?: { committed: number; total: number | null }
 }
 
@@ -123,7 +128,9 @@ function strokeFor(state: AssetState): string {
   // 'partial': a resumable, in-progress materialization (real committed substeps exist),
   // distinct from a genuinely broken 'error' — visually grouped with 'stale', never with
   // 'lit'/'building' (badge-honesty, pre-D-4b readiness pass).
-  if (state === 'stale' || state === 'partial') return 'rgba(140,104,36,0.55)'
+  // 'incomplete' (migration 474) joins them for the same reason: unfinished, resumable,
+  // and never to be stroked with the 'lit' colour.
+  if (state === 'stale' || state === 'partial' || state === 'incomplete') return 'rgba(140,104,36,0.55)'
   if (state === 'building') return GOLD_NODE_MID
   if (state === 'lit')      return GOLD_ROOT_MID
   return GOLD_NODE_LIGHT
@@ -132,7 +139,8 @@ function strokeFor(state: AssetState): string {
 function edgeOpacityMultiplier(fromState: AssetState, toState: AssetState): number {
   if (fromState === 'dormant' || toState === 'dormant' || fromState === 'not_migrated' || toState === 'not_migrated') return 0
   if (fromState === 'building' || toState === 'building') return 0.45
-  if (fromState === 'stale' || toState === 'stale' || fromState === 'partial' || toState === 'partial') return 0.32
+  if (fromState === 'stale' || toState === 'stale' || fromState === 'partial' || toState === 'partial'
+      || fromState === 'incomplete' || toState === 'incomplete') return 0.32
   return 1.0
 }
 
