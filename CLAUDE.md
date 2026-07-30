@@ -26,13 +26,18 @@ changelog:
       migration file after it has been applied. This is a wording correction to match the
       doctrine's own documented original intent, per Ruling 58's explicit boundary (same class as
       Ruling 15: corrects a mis-stated instance/wording, does not alter the principle's actual
-      scope). **Checked and found NOT applicable:** `ONGOING_HYGIENE_POLICIES_v1_0.md` does not, in
-      fact, independently restate this line under its own "§N.4" — that file has no section by that
-      number (its own §N is "Appendix: fingerprint-rotation audit for Step 12 close"); its three
-      mentions of this doctrine (§R) are citations by reference to `CLAUDE.md §N.4`, not
-      restatements, and read correctly as-is once this file's line is corrected. Confirmed by direct
-      grep for the old wording and the feedback tag across that file — zero hits. Not edited; no
-      matching line exists there to fix. See `CLAUDE.md` §N.4 body for the corrected text.
+      scope). **On `ONGOING_HYGIENE_POLICIES_v1_0.md`:** that file does not independently restate
+      this line under its own "§N.4" — it has no section by that number (its own §N is "Appendix:
+      fingerprint-rotation audit for Step 12 close"). It carries exactly **two** mentions of this
+      doctrine, both in §R (Migration-directory ruling) and both citations by reference to
+      `CLAUDE.md §N.4` rather than restatements: one glossing §N.4 as "surgical migrations only",
+      the other as "never fabricate" (the §N.4 floors bullet, unaffected by Ruling 58). *Corrected
+      2026-07-31 (reopen cycle, DVA Ruling 81): this entry originally said "three mentions" — the
+      real count is two (`grep -c '§N.4'` = 2) — and originally concluded "Not edited; no matching
+      line exists there to fix." The second half was wrong: the "surgical migrations only" gloss
+      quotes the now-retired §N.4 heading verbatim and has been updated in place to the corrected
+      heading, "Surgical migrations, verified:". No doctrine text in that file changed; only the
+      quoted heading.* See `CLAUDE.md` §N.4 body for the corrected text.
   - v6.7 (2026-07-30, SAMĀPTI/B-DOCS-GOVERNANCE, DVA Ruling 16):
       §C item 14 re-pointed from the SUPERSEDED `L1_GANITA_CLOSURE_v1_0.md` to the CURRENT
       `L1_GANITA_CLOSURE_v2_0.md`; hardcoded row counts (chart_facts=27,554; chart_dashas=536,471;
@@ -358,8 +363,11 @@ usually true" or "nothing has broken yet" is not a substitute for a real detecto
 "Surgical migrations only" line re-worded to its narrower original intent: the deploy-time bulk
 `migrate.ts` runner is fine and intended (transactional, tracked, loud-failing); the doctrine's real
 hazard was always "migrations silently doing nothing while the deploy reports success," not "bulk
-migration is dangerous." `ONGOING_HYGIENE_POLICIES_v1_0.md` checked and found to have no matching
-"§N.4" line to correct — not edited. §D's own CLAUDE self-row version corrected 6.7 → 6.8. Prior:
+migration is dangerous." `ONGOING_HYGIENE_POLICIES_v1_0.md` carries two §N.4 citations-by-reference
+(both in its §R); the one glossing §N.4 as "surgical migrations only" was updated in the 2026-07-31
+reopen cycle (DVA Ruling 81) to quote the corrected heading, "Surgical migrations, verified:" —
+superseding this footer's original claim that no matching line existed there. §D's own CLAUDE
+self-row version corrected 6.7 → 6.8. Prior:
 v6.7 (2026-07-30, SAMĀPTI/B-DOCS-GOVERNANCE, DVA Ruling 16) — §C item 14 and the
 §D snapshot table re-pointed from the SUPERSEDED `L1_GANITA_CLOSURE_v1_0.md` to the CURRENT
 `L1_GANITA_CLOSURE_v2_0.md`; the three hardcoded row counts removed in favor of a pointer to the
