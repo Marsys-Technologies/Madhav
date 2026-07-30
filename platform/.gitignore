@@ -59,3 +59,4 @@ storageState.json
 scripts/eval/sla_probe_planner_blind_tools_*Z.json
 scripts/eval/planner_blind_fix_smoke_*Z.json
 venv/
+/.repro-scratch/

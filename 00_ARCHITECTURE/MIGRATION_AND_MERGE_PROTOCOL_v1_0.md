@@ -1,7 +1,7 @@
 ---
 artifact: MIGRATION_AND_MERGE_PROTOCOL_v1_0.md
 canonical_id: MIGRATION_AND_MERGE_PROTOCOL
-version: 1.0
+version: 1.1
 status: CURRENT
 authored_by: SAMĀPTI lane B-MIGGUARD (Claude Code, Opus) 2026-07-30
 implements: >
@@ -197,6 +197,69 @@ whole block was renumbered once and the headers were not carried along.
   declaration. A looser grep scores it as an 18th row; it is a false positive. The guard matches
   only the declaration form anchored at the start of a comment line.
 
+**2026-07-30 re-verification (independent):** re-ran `npm run guard:migration-numbers` against
+this branch's tip — reports exactly **17**, identical set. Confirms the register above is still
+accurate and the whole-file scan (not the original 5-line-window advisory) is what's live.
+
+### §3.2 — The tracker's own sha256 was recorded but never checked · Dvārapāla RULING 58
+
+**The defect (now fixed):** `migrate.ts`'s `_migrations_applied` table has always recorded a
+`sha256` of each migration's SQL at apply time, but until this fix nothing ever read it back.
+`getApplied()` returned filenames only; `runMigrations` decided "already applied, skip" on
+**filename alone**. Two hazards followed from this, both empirically confirmed on `main`
+(migrations 461–466 recorded as applied *twice* under different filenames; 474 avoided a triple
+apply only by luck of renumbering order):
+
+1. **Editing an already-applied migration's SQL was silently skipped forever.** The filename was
+   already in the tracker, so the edited content never ran again — deploy reports success, the
+   new SQL never executes, and the stored `sha256` now disagrees with the file on disk with
+   nothing checking. This is the literal mechanism the `[[feedback-deploy-migrations-silent-noop]]`
+   doctrine tag names.
+2. **Renumbering (this project's own standing practice) can re-apply a migration under its new
+   name.** The tracker sees an unfamiliar filename and treats it as new, even when the content is
+   byte-identical to something already applied.
+
+**The fix, narrowly scoped to comparison-and-fail-loud (`platform/scripts/migrate.ts`):**
+`getApplied()` now returns `filename -> sha256`. Before skipping an already-recorded filename,
+`runMigrations` (and the `--dry-run` path) recomputes the on-disk file's sha256 and compares it
+to the stored value:
+
+- **Identical → genuinely skip** (the same behaviour as before, now verified rather than assumed).
+- **Different → throw `MigrationHashMismatchError`** naming the filename and both hashes, *before*
+  any `BEGIN`/write against the file. `main()`'s existing `catch` turns this into a non-zero exit
+  with the message on stderr — no new CLI plumbing was needed. The runner never auto-re-applies
+  and never silently continues; an already-applied migration's drift is reported as an operator
+  decision (revert the file, or ship the change as a NEW migration), not resolved by the runner.
+
+**What this closes and what it does NOT close (be honest about the boundary):**
+
+- **CLOSES hazard 1** (edited-after-applied) completely — proven on a real throwaway Postgres,
+  see below.
+- **Does NOT close hazard 2** (renumbering / filename-keyed re-apply). The comparison only fires
+  when the CANDIDATE FILENAME is already a key in `_migrations_applied`. A renamed file with
+  identical content is, from the tracker's point of view, an unseen filename — there is nothing
+  in the map to compare its hash against, so it is treated as new and re-applied. This is a
+  **separate, still-open concern**, deliberately out of this fix's scope (Ruling 58 asked for the
+  comparison-and-fail-loud behavior only, not a tracker redesign). Closing it would require keying
+  the tracker on content hash (or a stable migration ID independent of filename) rather than
+  filename — a structural change, not a comparison fix, and out of this lane's authorization.
+  Filed as **R5** below.
+
+**Can-fail reproduction (both hazards, on a real throwaway local Postgres — never production):**
+
+- *Hazard 1, before the fix:* apply a migration, edit its SQL, re-run → returns an empty "applied"
+  list, throws nothing, table schema unchanged from the edit — the silent skip, reproduced.
+- *Hazard 1, after the fix:* same steps → `runMigrations` throws `MigrationHashMismatchError`
+  before any `BEGIN`, naming the file and both the stored and current sha256; table left exactly
+  as the original (unedited) migration left it.
+- *Hazard 2, after the fix (unchanged by it):* apply a migration as `001_x.sql`, rename the
+  identical file to `002_x_renamed.sql`, re-run → applies again under the new name with **no**
+  error; two `_migrations_applied` rows share the same sha256; the migration's `INSERT` ran
+  twice. Confirms the fix's own docstring: this hazard remains open by design.
+
+Full driver scripts and console transcripts for all three runs are recorded in this lane's close
+report; not reproduced verbatim here to keep this protocol document stable across future edits.
+
 ---
 
 ## §4 — The merge lock
@@ -335,6 +398,8 @@ The CI guard makes the split *safe to live with* in the meantime; it does not ma
 | R2 | No check enforces that new migrations land in `platform/supabase/migrations/`. `474_*` violated it. | consolidation spec |
 | R3 | `CLAUDE.md`/`ONGOING_HYGIENE_POLICIES` §N.4 "never deploy.yml-auto" contradicts the live `deploy.yml` behaviour (§5). One of the two must move. | governance |
 | R4 | The two directories are not consolidated. | consolidation spec |
+| R5 | The renumbering/filename-keyed re-apply hazard (§3.2, hazard 2) is NOT closed by the RULING 58 sha256 fix — closing it needs a content-keyed (not filename-keyed) tracker, a structural change out of B-MIGGUARD's authorization. | unassigned |
+| R6 | **NEW, discovered 2026-07-30 rebasing this lane onto `origin/main` (`d5c4b359`):** `platform/supabase/migrations/484_bg_muhurta_lattice.sql` and `484_bg_synthetic_cohort_md.sql` (SHAD-DARSHANA, `#930`/`#932`) both claim migration number 484 — a genuine E2 duplicate-number collision, NOT in the frozen legacy baseline (`migration_number_guard.ts`'s baseline is 35; this makes 36 groups present). `npm run guard:migration-numbers` confirmed **exit 1** on this collision alone. This guard is not yet on `main` (it ships with this PR), so nothing currently catches it — but the moment this PR merges, its own CI step (wired in `.github/workflows/ci.yml`, runs BEFORE `npm test`) will fail on this pre-existing, cross-campaign collision at the first PR that rebases onto it, reading exactly like a regression the merging PR introduced (the same shape Ruling 44 named for header mismatches, but this class is BLOCKING not advisory). Not fixed here: renumbering `484_bg_synthetic_cohort_md.sql` to `486` is a SHAD-DARSHANA-owned file, cross-campaign, out of this lane's authorization to touch unilaterally (same principle as Ruling 60/61's cross-campaign caution). **Flagged for DVA**, not silently widening the frozen baseline (the guard's own docstring forbids that as "a governance violation, not a fix") and not resolved by this lane. | DVA / SHAD-DARSHANA |
 
 ---
 
@@ -352,4 +417,9 @@ The CI guard makes the split *safe to live with* in the meantime; it does not ma
 
 ---
 
-*End of MIGRATION_AND_MERGE_PROTOCOL v1.0 (2026-07-30, SAMĀPTI lane B-MIGGUARD).*
+*End of MIGRATION_AND_MERGE_PROTOCOL v1.1 (2026-07-30, SAMĀPTI lane B-MIGGUARD — Dvārapāla RULING 58:
+§3.2 added, the tracker's sha256 is now compared and fails loudly on drift for an already-applied
+migration whose filename is unchanged; R5 records the renumbering hazard this does NOT close; R6
+records a newly-discovered, currently-undetected E2 duplicate-number collision at migration 484
+introduced by a concurrent campaign, flagged for DVA rather than fixed out-of-lane). Prior: v1.0
+(2026-07-30, SAMĀPTI lane B-MIGGUARD, first issue).*
