@@ -20,6 +20,14 @@ MODULE MAP (lane ownership per KALA_W2_FIELD_DESIGN_v1_0.md §0):
     stage65_insights.py                                               Lane D
   stage8_spec.py                                                      Lane E
 
+Lane D owns Stage 6 (salience vector + submodular selection + rarity axis,
+registry items 25/15) and Stage 6.5 (insight synthesis, E2):
+
+    from services.ka_kshetra.cohort_client import cohort_base_rate, CohortRate
+    from services.ka_kshetra.stage6_salience import compute_salience_vector
+    from services.ka_kshetra.submodular import select_submodular
+    from services.ka_kshetra.stage65_insights import synthesize_insights
+
 This `__init__.py` is shared, additive territory: each lane exports its own
 published symbols here without importing (or depending on the presence of)
 another lane's module, so a lane landing before or after another never breaks
