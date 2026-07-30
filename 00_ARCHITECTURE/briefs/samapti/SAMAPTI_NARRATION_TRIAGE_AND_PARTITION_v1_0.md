@@ -566,8 +566,15 @@ survives into a phaladesa record because `_ALL_DOMAINS` alone drives emission an
 > lane discovers it needs a file owned by another lane, it **stops and reports a residual** — it does
 > not reach across. This is the whole reason the six lanes can run concurrently.
 
-Test files follow the same rule (§4.4). Neither the source nor the test partition contains any file
-twice — verified mechanically in §4.5.
+Test files follow the same rule (**§4.8**). Neither the source nor the test partition contains any
+file twice — verified mechanically in **§4.9** (45 paths, 45 distinct, zero duplicates; every path
+confirmed to exist on `origin/main`).
+
+> **Scope of this rule.** §4.0 governs collisions *between the six B-NAR lanes*. It says nothing
+> about collisions with lanes **outside** this partition — and that gap is exactly what the original
+> §4.9 missed. **8 of the 45 paths collide with already-built SAMĀPTI PRs (#908/#909/#910)**; those
+> are resolved by **merge ordering**, documented per-file in **§4.9.2–§4.9.3**. Read §4.9 before
+> starting any lane.
 
 ### §4.1 — B-NAR-BO · Bodha writers
 
@@ -777,23 +784,166 @@ is the never-firing gate flagged in §6.4, and belongs to the §N.8 track.
 **Migrations:** no B-NAR lane is expected to need one. If one does, the number is allocated by the
 **Conductor at merge time** per Conductor manual §5 — never at authoring time.
 
-### §4.9 — Mechanical conflict check
+### §4.9 — Mechanical conflict check — CORRECTED (REFUTED claim 4b)
 
-Every file above, sorted, with its owning lane. **42 entries, 42 distinct paths, no path appears
-twice.** Per-lane counts: BO 8 · GA 3 · KA 7 · MI 7 · PH 7 · TS 10.
+> **This section's original conclusion — *"The only intersection anywhere was `ga_nakshatra.py`"* —
+> was FALSE and has been replaced.** The intra-partition arithmetic (no path claimed by two B-NAR
+> lanes) was and remains sound; the defect was that the check was run **only against the B-NAR lanes
+> and a handful of declared scopes**, never against what the other SAMĀPTI lanes had **actually
+> built**. Re-derived from scratch below against live PR file lists and current `origin/main`.
+
+#### §4.9.1 — Intra-partition check (unchanged conclusion, corrected count)
+
+Every file in §4.1–§4.8, sorted, with its owning lane. **45 entries, 45 distinct paths, no path
+appears twice.** Per-lane counts: **BO 8 · GA 4 · KA 7 · MI 9 · PH 7 · TS 10**.
+
+**Count reconciliation — 42 → 45, and why it is not Ruling 74's stated 44:**
+
+| Δ | Path | Lane | Why |
+|---|---|---|---|
+| +1 | `platform/python-sidecar/tests/test_mi_darshana.py` | B-NAR-MI | Listed in §4.8 but omitted from the original enumeration |
+| +1 | `platform/python-sidecar/tests/test_mi_bhavisya_irreplaceable_outcome_guard.py` | B-NAR-MI | Same omission |
+| +1 | `platform/python-sidecar/pipeline/orchestrator/writers/ga_nakshatra.py` | B-NAR-GA | **Required by Ruling 74's own clause (1)** — restoring `:289` to B-NAR-GA necessarily puts the file in the partition |
+
+Ruling 74 clause (4) says "42 → 44," counting only the two MI test files. That arithmetic **omits
+the path its own clause (1) creates**: clause (1) directs that `:289` "stays with B-NAR-GA," which
+cannot be true unless `ga_nakshatra.py` appears in B-NAR-GA's editable set. Recording **45** rather
+than silently publishing a 45-row table under a "44" headline. The zero-duplicate property is
+**preserved** — all three additions are paths no other lane claims.
+
+#### §4.9.2 — Cross-lane collision set (the corrected finding)
+
+Checked against the **actual file lists** of every already-built SAMĀPTI PR (`gh pr view <n> --json
+files`), not against declared scopes. **9 collision pairs across 8 distinct partition paths and 3
+lanes.** None is fatal; all require ordering discipline.
+
+| # | Partition path | Owner | Collides with | Kind |
+|---|---|---|---|---|
+| 1 | `platform/python-sidecar/ga_writers/gates.py` | B-NAR-GA | **#910** | ⚠️ **SAME FUNCTION** — `run_g7_only_facts_gate_db` |
+| 2 | `.../writers/bo_cdlm_summary.py` | B-NAR-BO | **#910** | ⚠️ **SAME FUNCTION** — `_build_clusters` |
+| 3 | `.../writers/bo_upaya.py` | B-NAR-BO | **#910** | file-level |
+| 4 | `.../writers/ga_nakshatra.py` | B-NAR-GA (`:289`) | **#910** (`:87`) | file-level — governed by §4.3 |
+| 5 | `platform/src/lib/retrieval/envelope.ts` | B-NAR-TS | **#910** | file-level (Ruling 13 clause 5 / Ruling 45) |
+| 6 | `platform-mcp/src/generated/envelope.ts` | B-NAR-TS | **#910** | file-level — **generated**, resolve by re-running codegen, never by merging |
+| 7 | `platform-mcp/src/tools/register_p1_ganita.ts` | B-NAR-TS | **#910** | file-level (Ruling 45) — note §2.4 REJECTED this finding, so B-NAR-TS makes **zero edits** here; collision is nominal |
+| 8 | `platform-mcp/src/tools/registry_bridge.ts` | B-NAR-TS | **#908** | file-level — line-shifting |
+| 9 | `platform-mcp/src/tools/registry_bridge.ts` | B-NAR-TS | **#909** | file-level — line-shifting |
+
+Only **#4** and **#5/#7** are covered by an existing DVA ordering ruling (13-CORRECTION, and
+13 clause 5 as extended by Ruling 45). **The remaining six were previously unrecorded.**
+
+**‼️ STATUS CORRECTION — #908, #909 AND #910 ARE ALL STILL OPEN.** Ruling 74 and the re-dispatch
+brief both describe #910 as "already merged / VER-CONFIRMED" and #908/#909 as having already
+shifted `registry_bridge.ts`. **Verified false, this session:**
+
+```
+gh pr view 908 → "state": "OPEN",  "mergedAt": null
+gh pr view 909 → "state": "OPEN",  "mergedAt": null
+gh pr view 910 → "state": "OPEN",  "mergedAt": null
+git show origin/main:.../ga_nakshatra.py | sed -n 87p
+  → "verification_pass_status":  "PASS",     # the literal #910 exists to remove, still on main
+```
+
+Every "rebase onto its already-landed content" instruction in Ruling 74 is therefore **premature,
+not wrong** — it becomes correct the moment those PRs merge. Until then a B-NAR lane must treat
+#908/#909/#910 as **still-pending**, and re-check status at dispatch time rather than trusting
+either this document or Ruling 74. **Escalated to DVA** rather than reconciled silently.
+
+#### §4.9.3 — Ordering decision for the two SAME-FUNCTION collisions
+
+Collisions #1 and #2 are the only ones where two lanes edit **the same function body**. Neither is
+covered by any existing ordering table. Both are inside code #910 already modifies.
+
+**#1 — `ga_writers/gates.py` · `run_g7_only_facts_gate_db`.** B-NAR-GA's **P1-f** finding is the
+stale allowlist at `:144`, verified verbatim on current `origin/main`:
+
+```python
+valid_statuses = {"single", "two_pass_verified", "classical_match", "divergent_flagged"}
+```
+
+On #910's branch that exact statement is **already replaced** — the function now reads
+`valid_statuses = sorted(ALL_STATUSES)` (branch line `:156`, function start moved `:105` → `:107`),
+sourced from the new `brahmagyan/verification_vocab.py` single source of truth.
+
+> **Decision: #910 owns this function. B-NAR-GA's P1-f is LIKELY MOOT-ON-ARRIVAL.** When #910
+> merges, B-NAR-GA **must rebase onto it and re-verify whether P1-f still exists at all** before
+> writing any fix. If the settled vocabulary already covers the stale-allowlist defect — which the
+> branch diff indicates it does — B-NAR-GA dispositions P1-f as **VERIFIED-FIXED-BY-#910** with the
+> rebase as evidence, and makes **no edit**. It must **not** re-introduce a hand-maintained literal
+> set alongside #910's `ALL_STATUSES`, which would recreate the exact two-definitions-of-verified
+> problem Ruling 13 clause (3) exists to end.
+
+**#2 — `bo_cdlm_summary.py` · `_build_clusters`.** B-NAR-BO's finding (now **P0**, §2.2) is that
+`domain_relationship_class` is computed and then dropped from the INSERT (slot 48 literal `NULL`).
+#910 edits the *same function* but a **different concern** — it replaces the unconditional
+`"verification_pass_status": "pass"` stamp with `UNVERIFIED_DEFAULT` in the same row dict
+(three sites: `_write_aya`, `_build_rollups`, `_build_clusters`).
+
+> **Decision: the two changes are semantically orthogonal but textually adjacent — same row dict,
+> a few lines apart. #910 merges first (it is the earlier-dispatched, rebuild-gating lane);
+> B-NAR-BO rebases onto it** and re-derives `:348` post-rebase before touching anything. The P0 fix
+> is **additive** (make slot 48 carry its computed value) and does not touch
+> `verification_pass_status`, so post-rebase the two coexist cleanly. **B-NAR-BO must not revert or
+> "restore" #910's `UNVERIFIED_DEFAULT` stamps** while fixing slot 48 — they are a deliberate
+> false-green removal, not noise. Note the actual root-cause edit lands in `bo_sangati.py`'s
+> `_CELL_INSERT` (also B-NAR-BO, **not** touched by #910 — no collision there).
+
+**Standing rule for both** (Ruling 25, Ruling 45): the rebase is required **for the correctness of
+each lane's own evidence**, not merely to avoid conflict markers — line citations authored against
+pre-#910 `main` go stale on merge. Re-confirm citations post-rebase; never carry pre-rebase numbers
+into the ledger.
+
+#### §4.9.4 — `registry_bridge.ts` F11 citations — re-derived against current `origin/main`
+
+Re-derived this session. **The §4.7 citations are CORRECT AS OF NOW** — precisely *because*
+#908/#909 have not merged. File is **4,475 lines** on `origin/main`:
+
+| Citation | Status on current `origin/main` | Verified content |
+|---|---|---|
+| `:3471` `dignityTier` | ✅ **exact** | `const dignityTier = (state: string \| null): 'strong' \| 'weak' \| 'mid' \| 'unknown' => {` |
+| `:3549` | ✅ **exact** | `const t1 = dignityTier(state)` |
+| `:3557` | ✅ **exact** | `? (t1 === 'strong' ? 'natal strength undercut by navamsha stress' : 'natal weakness tempered by navamsha support')` |
+
+VER's report called these "already stale." **They are not stale today** — that assessment assumed
+#908/#909 had merged. The drift is real but **pending**, not applied. Measured on the unmerged
+branches, to show the magnitude B-NAR-TS should expect:
+
+| Basis | `dignityTier` | mislabelling clause |
+|---|---|---|
+| `origin/main` (now) | `:3471` | `:3557` |
+| `origin/samapti/n8-f19-coverage` (#908) | `:3591` | `:3677` |
+| `origin/samapti/n8-ts-serve` (#909) | `:3574` | `:3660` |
+
+> **STANDING CAVEAT — do not treat these numbers as settled.** They are current as of this
+> document's commit and **will need re-confirming whenever #908 and/or #909 actually merge**
+> (roughly +120 and +103 lines respectively, and **not** simply additive if both land). B-NAR-TS
+> **re-derives by symbol, not by line number** — `grep -n 'dignityTier = (state'` and
+> `grep -n 'natal weakness tempered'` — at the moment it starts work. This is a standing re-check,
+> not a defect to solve today.
+
+#### §4.9.5 — Lanes checked and found CLEAN
+
+No intersection with the partition: `B-N8-FIX` (`bo_pramana_mapa.py`, `bo_chart_gestalt.py`, and
+`ga_nakshatra.py` — the last **removed from its scope** by Ruling 13-CORRECTION), `B-N8-SWEEPFIX`
+(`pipeline/orchestrator/{runner,staleness,dag_edge_guard,kala_derivation_completeness_guard,service_probes}.py`),
+`B-COCKPIT-INCOMPLETE` (`src/lib/build/plan.ts`, `src/app/api/cockpit/**`, `src/components/**`),
+`B-MIGGUARD`, `B-MIG474-COMMENT`.
+
+#### §4.9.6 — The enumeration
 
 ```
 B-NAR-BO  platform/python-sidecar/pipeline/orchestrator/writers/bo_bimba.py
-B-NAR-BO  platform/python-sidecar/pipeline/orchestrator/writers/bo_cdlm_summary.py
+B-NAR-BO  platform/python-sidecar/pipeline/orchestrator/writers/bo_cdlm_summary.py         # ⚠ #910 same-function; P0
 B-NAR-BO  platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py
 B-NAR-BO  platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py
 B-NAR-BO  platform/python-sidecar/pipeline/orchestrator/writers/bo_pratijna.py
 B-NAR-BO  platform/python-sidecar/pipeline/orchestrator/writers/bo_sangati.py
-B-NAR-BO  platform/python-sidecar/pipeline/orchestrator/writers/bo_upaya.py
+B-NAR-BO  platform/python-sidecar/pipeline/orchestrator/writers/bo_upaya.py                # ⚠ #910 file-level
 B-NAR-BO  platform/python-sidecar/tests/l2/test_bo_wp22_empty_shells.py
 B-NAR-GA  platform/python-sidecar/ga_writers/ga_sade_sati_writer.py
 B-NAR-GA  platform/python-sidecar/ga_writers/ga_sensitive_writer.py
-B-NAR-GA  platform/python-sidecar/ga_writers/gates.py
+B-NAR-GA  platform/python-sidecar/ga_writers/gates.py                                    # ⚠ #910 same-function
+B-NAR-GA  platform/python-sidecar/pipeline/orchestrator/writers/ga_nakshatra.py          # :289 ONLY — :87 is #910's, see §4.3
 B-NAR-KA  platform/python-sidecar/brahmagyan/kala/l3_snapshot.py
 B-NAR-KA  platform/python-sidecar/brahmagyan/kala/l3_timeline.py
 B-NAR-KA  platform/python-sidecar/brahmagyan/phala/muhurta.py
@@ -807,6 +957,8 @@ B-NAR-MI  platform/python-sidecar/pipeline/orchestrator/writers/mi_gunanaka.py
 B-NAR-MI  platform/python-sidecar/pipeline/orchestrator/writers/mi_pariksha.py
 B-NAR-MI  platform/python-sidecar/pipeline/orchestrator/writers/mi_pramana.py
 B-NAR-MI  platform/python-sidecar/pipeline/orchestrator/writers/mi_sambandha.py
+B-NAR-MI  platform/python-sidecar/tests/test_mi_bhavisya_irreplaceable_outcome_guard.py
+B-NAR-MI  platform/python-sidecar/tests/test_mi_darshana.py
 B-NAR-MI  platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_predictions.ts
 B-NAR-PH  platform/python-sidecar/brahmagyan/mimamsa/answer_quality.py
 B-NAR-PH  platform/python-sidecar/brahmagyan/phala/l4_anchors.py
@@ -815,24 +967,22 @@ B-NAR-PH  platform/python-sidecar/pipeline/orchestrator/writers/ph_phaladesa.py
 B-NAR-PH  platform/python-sidecar/services/ph_nimitta/engine.py
 B-NAR-PH  platform/python-sidecar/services/ph_rectification/engine.py
 B-NAR-PH  platform/python-sidecar/services/ph_sodhana/engine.py
-B-NAR-TS  platform-mcp/src/generated/envelope.ts
+B-NAR-TS  platform-mcp/src/generated/envelope.ts                                          # ⚠ #910 — GENERATED, re-run codegen
 B-NAR-TS  platform-mcp/src/resources/capabilities.ts
 B-NAR-TS  platform-mcp/src/resources/chart_snapshot.ts
 B-NAR-TS  platform-mcp/src/resources/vidhi_registry_resource.ts
 B-NAR-TS  platform-mcp/src/server.ts
-B-NAR-TS  platform-mcp/src/tools/register_p1_ganita.ts
+B-NAR-TS  platform-mcp/src/tools/register_p1_ganita.ts                                     # ⚠ #910 — zero edits (§2.4 REJECTED)
 B-NAR-TS  platform-mcp/src/tools/register_p1_synthesis.ts
-B-NAR-TS  platform-mcp/src/tools/registry_bridge.ts
+B-NAR-TS  platform-mcp/src/tools/registry_bridge.ts                                       # ⚠ #908 AND #909 — line-shifting
 B-NAR-TS  platform-mcp/src/tools/retrieval/kala_temporal.ts
-B-NAR-TS  platform/src/lib/retrieval/envelope.ts
+B-NAR-TS  platform/src/lib/retrieval/envelope.ts                                          # ⚠ #910 file-level
 ```
 
-Also checked against the **other** SAMĀPTI lanes' declared scopes: `B-N8-FIX`
-(`bo_pramana_mapa.py`, `ga_nakshatra.py`, `bo_chart_gestalt.py`), `B-N8-SWEEPFIX`
-(`pipeline/orchestrator/{runner,staleness,dag_edge_guard,kala_derivation_completeness_guard,service_probes}.py`),
-`B-COCKPIT-INCOMPLETE` (`src/lib/build/plan.ts`, `src/app/api/cockpit/**`, `src/components/**`),
-`B-MIGGUARD`, `B-MIG474-COMMENT`. **The only intersection anywhere was `ga_nakshatra.py`, resolved in
-§4.3.**
+**45 paths · 45 distinct · zero duplicates.** BO 8 · GA 4 · KA 7 · MI 9 · PH 7 · TS 10.
+**8 of the 45 carry a cross-lane collision** (§4.9.2); the intra-partition one-file-one-lane
+guarantee of §4.0 is **unaffected** — every collision is with an *already-built* lane outside this
+partition, resolved by merge ordering, never by two B-NAR lanes sharing a file.
 
 ---
 
