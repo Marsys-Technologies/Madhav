@@ -24,13 +24,22 @@
  * answering landing target, which it is.
  * ══════════════════════════════════════════════════════════════════════════════════════
  *
- * WHAT THIS FILE IS NOT (W0 scope discipline):
+ * WHAT THIS FILE IS NOT (W0/W1 scope discipline):
  *   - It does NOT implement the contender lattice / parihāra adjudication engine (item 36,
  *     W3) — that full election-doctrine engine (`lib/kala_lattice_query.ts`) is a later
  *     wave, built by a different session. This facade reports that gap honestly via
  *     `not_in_corpus` coverage, never by fabricating a judgment ledger.
  *   - It does NOT compute muhūrta-lagna, Sarvatobhadra vedha, or Kota-Chakra — all W3 items.
  *   - It does NOT pair the elected act-time with a preparatory ritual (item 38's W4 half).
+ *
+ * W1 ADDITIONS (item 38-lite + ELECT frontier v0, SHAD_DARSHANA_BRIEF_v2_0.md §3 W1):
+ * every candidate now also carries `grading_tier`/`grading_tier_label` — a thin, SERVING-
+ * LAYER normalization of the already-computed score/veto into the gold/silver/bronze
+ * vocabulary the design doc's own gap-report example uses (see `lib/kala_grading.ts` for
+ * the documented lite-v0 threshold convention) — and the response carries a top-level
+ * `frontier` statement (best candidate + whether a gold-tier exists in this horizon). Both
+ * are thin re-labelings of data this facade already had; neither invents new astrological
+ * judgment or evaluates doṣas/parihāras (that is still item 36, W3).
  */
 
 import { z } from 'zod'
@@ -57,6 +66,7 @@ import {
 } from '../../lib/kala_envelope.js'
 import { composeArgument } from '../../lib/argument_composer.js'
 import { finalizeMcpBudget, type TrimmableSection } from '../../lib/response_budget.js'
+import { gradeCandidate, buildFrontierStatement, type CandidateGradingTier, type FrontierStatement } from '../../lib/kala_grading.js'
 
 // ── Input schema ─────────────────────────────────────────────────────────────────────
 
@@ -108,6 +118,13 @@ export interface KalaElectCandidate {
   rank_penalty_reason: string[]
   drivers: string[]
   source_citation: string
+  // Item 38-lite (SHAD_DARSHANA_BRIEF_v2_0.md §3 W1) — a thin serving-layer normalization
+  // of the ALREADY-COMPUTED score/veto into the gold/silver/bronze vocabulary
+  // KALA_SUPREME_ELEVATION_v1_0.md §9's own gap-report example uses. See lib/kala_grading.ts
+  // for the documented lite-v0 threshold convention; W3 item 36 supersedes this with the
+  // full doṣa/parihāra-aware contender-lattice grade.
+  grading_tier: CandidateGradingTier
+  grading_tier_label: string
 }
 
 export interface KalaElectResponse extends KalaEnvelope<ArgumentReading> {
@@ -118,6 +135,11 @@ export interface KalaElectResponse extends KalaEnvelope<ArgumentReading> {
   candidates: KalaElectCandidate[]
   candidate_count: number
   gap_report: string | null
+  // ELECT frontier statement v0 (KALA_SUPREME_ELEVATION_v1_0.md §6 "ELECT → the frontier,
+  // not just the slate"; SHAD_DARSHANA_BRIEF_v2_0.md §3 W1 "ELECT frontier statement v0").
+  // A modest first version — the full W3 gap-report engine (next-occurrence search beyond
+  // the horizon, Pareto near-frontier band) is a later wave; see lib/kala_grading.ts.
+  frontier: FrontierStatement
   composed_text: string
   empty_reason?: string
 }
@@ -206,12 +228,18 @@ function buildCoverage(result: MuhurtaFinderResult): KalaCoverageEntry[] {
     coverage.push(computedCoverage('hora_ladder'))
   }
 
-  // Honest W0 gaps — the full election-doctrine engine (item 36/41, W3) does not exist yet.
+  // Item 38-lite + ELECT frontier v0 (wave W1) — thin serving-layer normalization over the
+  // already-computed score/veto stack; see lib/kala_grading.ts for the documented convention.
+  coverage.push(computedCoverage('candidate_grading_lite'))
+  coverage.push(computedCoverage('elect_frontier_v0'))
+
+  // Honest W0/W1 gaps — the full election-doctrine engine (item 36/41, W3) does not exist yet.
   coverage.push(notInCorpusCoverage(
     'contender_lattice_parihara_adjudication',
     'the full contender lattice + parihāra graph + Pareto survival engine (item 36, ' +
     'KALA_SUPREME_ELEVATION_v1_0.md §9) lands at W3; this facade serves the existing ' +
-    'muhurta_finder score/veto stack only — no doṣa→parihāra judgment ledger yet.',
+    'muhurta_finder score/veto stack only — no doṣa→parihāra judgment ledger yet. ' +
+    'candidate_grading_lite (above) is a thin single-scalar tier label, not this engine.',
   ))
   coverage.push(notInCorpusCoverage(
     'muhurta_lagna_strength',
@@ -293,22 +321,36 @@ export async function handleKalaElectGet(
     calibrationMaturity: noLelCalibrationMaturity(),
   })
 
-  const candidates: KalaElectCandidate[] = (result.windows ?? []).map((w) => ({
-    start: w.start,
-    end: w.end,
-    score: w.score,
-    hard_flag: w.hard_flag ?? false,
-    disqualified: w.disqualified ?? false,
-    rank_penalty_reason: w.rank_penalty_reason ?? [],
-    drivers: windowDrivers(w),
-    source_citation: w.source_citation,
-  }))
+  const candidates: KalaElectCandidate[] = (result.windows ?? []).map((w) => {
+    const grade = gradeCandidate({ score: w.score, disqualified: w.disqualified ?? false })
+    return {
+      start: w.start,
+      end: w.end,
+      score: w.score,
+      hard_flag: w.hard_flag ?? false,
+      disqualified: w.disqualified ?? false,
+      rank_penalty_reason: w.rank_penalty_reason ?? [],
+      drivers: windowDrivers(w),
+      source_citation: w.source_citation,
+      grading_tier: grade.tier,
+      grading_tier_label: grade.tier_label,
+    }
+  })
 
   const gapReport = candidates.length === 0
     ? (result.empty_reason ?? `no candidate windows computed for ${input.undertaking} in ${dateRange.start}..${dateRange.end}`)
     : (candidates.every((c) => c.disqualified)
       ? 'every candidate in this horizon carries a hard veto — widen the date range or supply native_janma_nakshatra/target_graha context to re-check'
       : null)
+
+  // ELECT frontier statement v0 (item 38-lite's sibling deliverable, E6) — built from the
+  // SAME already-graded candidates, never a second scoring pass.
+  const frontier = buildFrontierStatement(
+    candidates.map((c) => ({ start: c.start, end: c.end, score: c.score, disqualified: c.disqualified })),
+    input.undertaking,
+    dateRange,
+    result.empty_reason ?? null,
+  )
 
   const response: KalaElectResponse = {
     ...envelope,
@@ -319,6 +361,7 @@ export async function handleKalaElectGet(
     candidates,
     candidate_count: candidates.length,
     gap_report: gapReport,
+    frontier,
     composed_text: composed.full_text,
     ...(result.empty_reason ? { empty_reason: result.empty_reason } : {}),
   }
@@ -364,11 +407,14 @@ export function registerKalaElectTool(server: McpServer, principal: Principal): 
     'KALA_SUPREME_ELEVATION_v1_0.md §8): given an undertaking (marriage, travel, business, ' +
     'medical, education, property, spiritual_initiation, remedial_ritual, japa_start, or ' +
     'general) and a date range, returns a ranked slate of candidate act-time windows with ' +
-    'per-candidate scoring (panchāṅga × daśā × transit × signal-activation), personal-star ' +
-    '(tāra-bala) and target-graha vetoes, and an honest gap report when no clean election ' +
+    'per-candidate scoring (panchāṅga × daśā × transit × signal-activation), a gold/silver/' +
+    'bronze/marginal grading_tier per candidate (item 38-lite — thin serving-layer ' +
+    'normalization, see coverage.candidate_grading_lite), personal-star (tāra-bala) and ' +
+    'target-graha vetoes, a top-level frontier statement (best candidate + whether a ' +
+    'gold-tier exists in this horizon), and an honest gap report when no clean election ' +
     'exists in the searched horizon. A ritual/yajña question with no named undertaking ' +
     'routes to kala_ritual_get instead (Modes 1-2) — this tool never accepts a bare sky-' +
-    'pattern or opportunity-scan query. W0 depth: the full contender-lattice + parihāra ' +
+    'pattern or opportunity-scan query. W1 depth: the full contender-lattice + parihāra ' +
     'adjudication engine (item 36) and ritual pairing (item 38\'s W4 half) are not yet wired ' +
     '— reported honestly via this response\'s coverage block, never silently omitted.',
     KalaElectInputShape,
