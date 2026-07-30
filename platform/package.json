@@ -30,6 +30,8 @@
     "tap:5-seam-conservation": "tsx --conditions=react-server scripts/audit/tap/tap5_seam_conservation.ts",
     "tap:7-distribution-gates": "tsx --conditions=react-server scripts/audit/tap/tap7_distribution_gates.ts",
     "tap:static-all": "npm run tap:6-method-grep && npm run tap:pointer-validation",
+    "guard:migration-numbers": "tsx scripts/ci/migration_number_guard.ts",
+    "migration:next": "tsx scripts/ci/migration_number_guard.ts --next",
     "checkpoint:eval": "tsx src/scripts/checkpoints/eval.ts",
     "eval:planner": "tsx --env-file-if-exists=.env.local --conditions=react-server tests/eval/planner_smoke_runner.ts",
     "eval:planner-regression": "vitest run tests/eval/planner_regression_gate.test.ts",

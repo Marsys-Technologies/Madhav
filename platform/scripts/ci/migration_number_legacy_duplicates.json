@@ -1,0 +1,150 @@
+{
+  "_README": "FROZEN BASELINE — do not add entries by hand to silence a new collision. This file records the duplicate migration numbers that ALREADY existed on origin/main when platform/scripts/ci/migration_number_guard.ts was introduced. The guard fails on any duplicate number NOT listed here, and on any NEW file added to a group listed here. Governing protocol: 00_ARCHITECTURE/MIGRATION_AND_MERGE_PROTOCOL_v1_0.md.",
+  "frozen_at": "2026-07-30",
+  "frozen_at_commit": "5f5033a55def0b9006aec29a66946b7a57f25121",
+  "frozen_by": "SAMAPTI lane B-MIGGUARD (brief v2.0 §4.4 / MIG-1)",
+  "group_count": 35,
+  "legacy_duplicate_groups": {
+    "0": [
+      "platform/supabase/migrations/0000_seed_legacy_applied.sql",
+      "platform/supabase/migrations/0000b_seed_legacy_v2.sql"
+    ],
+    "1": [
+      "platform/migrations/001_baseline.sql",
+      "platform/supabase/migrations/0001_brahma_baseline.sql"
+    ],
+    "174": [
+      "platform/migrations/174_ganita_graha_sthana.sql",
+      "platform/supabase/migrations/174_brahmagyan_naming_reconciliation.sql"
+    ],
+    "195": [
+      "platform/supabase/migrations/195_bg_texts_nadi_expansion_floor.sql",
+      "platform/supabase/migrations/195_ganita_naming_reconciliation.sql"
+    ],
+    "206": [
+      "platform/supabase/migrations/206_ga3_supporting_tables.sql",
+      "platform/supabase/migrations/206_service_asset_name_iast.sql"
+    ],
+    "223": [
+      "platform/migrations/223_retire_signal_type_registry.sql",
+      "platform/supabase/migrations/223_orchestrator_rebuild_probe_dag.sql"
+    ],
+    "239": [
+      "platform/migrations/239_yoga_system.sql",
+      "platform/supabase/migrations/239_bg_nakshatra_registry.sql"
+    ],
+    "240": [
+      "platform/migrations/240_ga_yoga.sql",
+      "platform/supabase/migrations/240_bg_nakshatra_target_floor.sql"
+    ],
+    "250": [
+      "platform/migrations/250_bg_dignity_reference.sql",
+      "platform/supabase/migrations/250_l3_count_sql_param_fix.sql"
+    ],
+    "294": [
+      "platform/migrations/294_catalog_status_current.sql",
+      "platform/migrations/294_ga_vastu_target_floor.sql"
+    ],
+    "330": [
+      "platform/migrations/330_bg_dignity_variant_traditions.sql",
+      "platform/supabase/migrations/330_phala_anchors_and_drop_kala_timeline.sql"
+    ],
+    "331": [
+      "platform/migrations/331_guard_no_chart_scoped_global_asset_throughput.sql",
+      "platform/supabase/migrations/331_phala_muhurta.sql"
+    ],
+    "332": [
+      "platform/migrations/332_profiles_updated_at.sql",
+      "platform/supabase/migrations/332_phala_mitigation.sql"
+    ],
+    "333": [
+      "platform/migrations/333_admin_audit_log.sql",
+      "platform/supabase/migrations/333_phala_sodhana.sql"
+    ],
+    "342": [
+      "platform/migrations/342_retire_ga_pyjhora_engine.sql",
+      "platform/supabase/migrations/342_asset_registry_writer_flags.sql"
+    ],
+    "343": [
+      "platform/migrations/343_retire_build_dependencies_ts_routes.sql",
+      "platform/supabase/migrations/343_ka_tulana_has_writer.sql"
+    ],
+    "345": [
+      "platform/migrations/345_mimamsa_jivanaghatana.sql",
+      "platform/supabase/migrations/345_register_ka_assets.sql"
+    ],
+    "346": [
+      "platform/migrations/346_mimamsa_kula.sql",
+      "platform/migrations/346a_drop_legacy_mimamsa.sql",
+      "platform/supabase/migrations/346_fix_kala_chart_fk.sql"
+    ],
+    "358": [
+      "platform/migrations/358_bodha_orphaned_writer_registry.sql",
+      "platform/supabase/migrations/358_fix_clear_count_reconciliation.sql"
+    ],
+    "359": [
+      "platform/migrations/359_fix_build_runs_active_index.sql",
+      "platform/supabase/migrations/359_fk_covering_indexes.sql"
+    ],
+    "360": [
+      "platform/migrations/360_bodha_sort_order_topo_fix.sql",
+      "platform/supabase/migrations/360_kala_convergence_mode_c.sql"
+    ],
+    "361": [
+      "platform/migrations/361_fix_cgm_asset_throughput_state.sql",
+      "platform/supabase/migrations/361_kala_convergence_domain.sql"
+    ],
+    "362": [
+      "platform/migrations/362_set_cgm_target_table.sql",
+      "platform/supabase/migrations/362_ph_rectification_count_sql.sql"
+    ],
+    "363": [
+      "platform/migrations/363_mi_jivanaghatana_target_floor_zero.sql",
+      "platform/supabase/migrations/363_phala_anchors_convergence_cascade.sql"
+    ],
+    "364": [
+      "platform/migrations/364_mi_all_target_floor_zero.sql",
+      "platform/supabase/migrations/364_fix_chart_facts_and_mimamsa_count_sql.sql"
+    ],
+    "365": [
+      "platform/migrations/365_w4_l4_schema_drift_fix.sql",
+      "platform/supabase/migrations/365_dag_edge_completeness.sql"
+    ],
+    "366": [
+      "platform/migrations/366_system_health_canary.sql",
+      "platform/supabase/migrations/366_ph_muhurta_kala_sangam_edge.sql"
+    ],
+    "367": [
+      "platform/migrations/367_bo_laksana_ratification_valence_source.sql",
+      "platform/supabase/migrations/367_phala_sankrama_natural_key_fix.sql"
+    ],
+    "370": [
+      "platform/supabase/migrations/370_count_sql_batch1.sql",
+      "platform/supabase/migrations/370_has_writer_completeness.sql"
+    ],
+    "461": [
+      "platform/migrations/461_kala_gochara_windows_continuity_state.sql",
+      "platform/supabase/migrations/461_concept_ledger.sql"
+    ],
+    "462": [
+      "platform/migrations/462_vidhi_purnata_seed.sql",
+      "platform/supabase/migrations/462_writer_timeout_ka_gochara_sweep.sql"
+    ],
+    "463": [
+      "platform/migrations/463_vidhi_purnata_gate_fix.sql",
+      "platform/supabase/migrations/463_bodha_spine_bundles.sql"
+    ],
+    "464": [
+      "platform/migrations/464_sarva_siddhi_cr_reconciliation.sql",
+      "platform/supabase/migrations/464_retire_dead_update_calibration.sql"
+    ],
+    "465": [
+      "platform/migrations/465_classical_text_chunks_ocr_cleanup.sql",
+      "platform/supabase/migrations/465_cr130_jaimini_karakamsha_yogas.sql"
+    ],
+    "466": [
+      "platform/migrations/466_omega8_floor_wiring.sql",
+      "platform/supabase/migrations/466_brahma_prospective_ledger_lapsed_unobserved.sql"
+    ]
+  }
+}
