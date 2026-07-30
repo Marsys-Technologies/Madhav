@@ -165,6 +165,19 @@ Real scan now: **569 blocks scanned, 0 violations, exit 0.**
 lack FORENSIC/LEL citation"*, **exit 1**. Restored → exit 0, MSR byte-clean per `git status`.
 Positive control: `--synthetic` → exit 1 as required.
 
+**REGRESSION TESTS ADDED ON CYCLE 1 (VER).** VER observed that reverting either half of the F-27
+fix left all 13 then-existing tests passing — the suite was blind to both defects, so a
+regression would have gone unnoticed until a weekly cron printed a vacuous PASS. A gate fixed
+without a test that locks the fix is one careless commit from reverting to a false green. Five
+tests added to `tests/icr/icr_pr_gate.test.ts`, all using the REAL corpus format. Fail-then-pass
+proven per SATYA-DĪPA's standard:
+
+| Revert applied | Result |
+|---|---|
+| restore `/\bFORENSIC\b/` | **1 test fails** (the `FORENSIC_v8.0` grounding test) |
+| disable the Format A parser | **2 tests fail** (blocks parsed; ungrounded flagged) |
+| both fixes restored | **18/18 pass** |
+
 ---
 
 ## F-28 · `secret_scan.sh` scope hole — NOT-APPLICABLE (handled elsewhere)
@@ -230,10 +243,28 @@ permanently red stage is how `ci-red-ignored-*` tags get minted (which is what G
 Stages 6 (a11y) and 7 (perf) keep `continue-on-error`: their headers already say SOFT, so they
 are honest and were left alone.
 
-**Verification limit, declared:** the ESLint ratchet and its 26-error baseline were measured by
-running ESLint locally. The Stage 5 Playwright change could **not** be executed here (needs
-browsers + a dev server), so it is a reasoned edit, **not** a runtime-proven one. Stated as
-unproven rather than counted as verified.
+**REFUTED BY VER ON CYCLE 1, AND WHY THAT MATTERS.** The first pass at the Stage 5 fix removed
+the swallow correctly but left the stage FAILING on live CI, which would have reddened
+`chat-v2-ci.yml` for every subsequent PR in the run — the exact masked-signal harm this lane
+exists to eliminate. Cause: Stage 5's `env` carried only `MARSYS_FIXTURE_MODE`, while sibling
+Stage 3 (same Playwright config, passing) also supplies six `NEXT_PUBLIC_FIREBASE_*` secrets.
+`playwright.config.ts`'s `webServer.env` forwards exactly those six from `process.env`, with the
+comment *"Forward Firebase vars from CI env so Next.js can start without auth/invalid-api-key"*.
+Without them `npm run dev` died with `FirebaseError: auth/invalid-api-key` and the webServer timed
+out after 120s. Fixed by mirroring Stage 3's env block exactly (verified equal key-for-key).
+
+**The deeper correction, which belongs in the record.** The removed swallow's message —
+*"no visual specs yet"* — was not merely false, it named the **wrong cause**. There is a `@visual`
+spec (`axe.spec.ts:79`); what was missing was the **environment**. That false explanation is worse
+than a silent failure: it sent every reader looking for absent tests instead of absent secrets,
+and this lane's own first fix inherited the same wrong assumption. A misleading label on a
+swallowed failure propagates the error into whoever eventually removes it.
+
+**Verification limit, previously declared and now discharged:** the Stage 5 change could not be
+executed locally (needs browsers + a dev server) and was published as *"reasoned edit, not
+runtime-proven."* That declaration is exactly what VER's live-CI check tested, and it did not
+hold. It is now verified against live CI rather than reasoning. The ESLint ratchet and its
+26-error baseline were measured by running ESLint locally.
 
 ---
 
