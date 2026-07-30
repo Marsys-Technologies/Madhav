@@ -170,15 +170,22 @@ describe('kala_now_get — honest-empty on unreachable registry', () => {
 })
 
 describe('kala_now_get — coverage honesty (not-yet-built concepts disclosed, never dropped)', () => {
-  it('discloses dasha_sandhi_bands / transit_moorti as not_in_corpus', async () => {
+  it('discloses transit_moorti as not_in_corpus', async () => {
     vi.stubGlobal('fetch', mockRegistryFetch({ reachable: true }))
     const result = await computeKalaNow(TEST_CHART_ID, { as_of: AS_OF }, TEST_PRINCIPAL)
     const byConcept = Object.fromEntries(result.coverage.map((c) => [c.concept, c]))
-    expect(byConcept['dasha_sandhi_bands']?.state).toBe('not_in_corpus')
     expect(byConcept['transit_moorti']?.state).toBe('not_in_corpus')
-    for (const key of ['dasha_sandhi_bands', 'transit_moorti']) {
-      expect(byConcept[key]?.reason?.length).toBeGreaterThan(0)
-    }
+    expect(byConcept['transit_moorti']?.reason?.length).toBeGreaterThan(0)
+  })
+
+  // W1 item 1-lite: dasha_sandhi_bands graduated from not_in_corpus to a real [J] join
+  // (see kala_now_get_sandhi_w1_joins.test.ts for the full contract) — this suite's default
+  // mock ACTIVE_CHAIN resolves, so it is 'computed', not 'not_in_corpus', from here on.
+  it('discloses dasha_sandhi as computed once the active MD/AD chain resolves', async () => {
+    vi.stubGlobal('fetch', mockRegistryFetch({ reachable: true }))
+    const result = await computeKalaNow(TEST_CHART_ID, { as_of: AS_OF }, TEST_PRINCIPAL)
+    const byConcept = Object.fromEntries(result.coverage.map((c) => [c.concept, c]))
+    expect(byConcept['dasha_sandhi']?.state).toBe('computed')
   })
 })
 
