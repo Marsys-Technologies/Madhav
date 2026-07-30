@@ -25,6 +25,23 @@
  * fields but NEVER clobbers `recorded_at` — the first observation time is
  * sacrosanct (a re-submit is a correction, not a new observation).
  *
+ * ── ṢAḌ-DARŚANA W2 (Lane E): THIS IS THE LEL-APPEND HOOK ─────────────────────
+ * An append here is what triggers the Living-LEL recalibration plane (registry
+ * item 39). Per brief §2.5.5 — BINDING — that recalibration is dispatched as a
+ * **standard, tracked, scoped build run** through the orchestrator, NEVER as a
+ * side-channel recompute: the orchestrator stays the sole build-state writer and
+ * Nirmāṇa must see state/progress/throughput for a recalibration exactly as for
+ * any other build.
+ *
+ * The request body is built by `./lel_recalibration_dispatch.ts`
+ * (`buildRecalibrationDispatch(chartId, [eventId])` → POST it to
+ * `/api/cockpit/runs`). It is deliberately NOT called from inside this function:
+ * this module is a pure write path with no HTTP client and no auth context, and
+ * putting the dispatch here would give the write path the ability to drive a
+ * build, which is the shape §2.5.5 exists to prevent. The caller owns the
+ * hand-off. A 409 `RUN_ACTIVE` from that route is CORRECT behaviour — the append
+ * is picked up by the next run — and must not be routed around.
+ *
  * @module lel_event_writer
  */
 
