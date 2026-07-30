@@ -39,13 +39,61 @@ should either resolve it via ANTARYĀMIN or raise it if it touches a FROZEN-cont
 No other blockers outstanding.
 
 **NIGHT 2 IN PROGRESS (2026-07-30, live).** Four lanes dispatched this session, all in
-worktrees off `origin/main@5f5033a5`, all IN-PROGRESS as of this write (no PRs confirmed
-merged yet — verify independently before trusting any lane's self-report, per standing
-discipline): `shad-darshana/w1-mudda-sandhi` (items 30, 1-lite) · `shad-darshana/w1-intervals-grading`
-(items 24-lite, 38-lite, frontier v0, 43) · `shad-darshana/bg-muhurta-parihara` (bg_muhurta_lattice.py
-+ bg_parihara_rules.py, migrations 484/485, holds for Opus review before merge — no auto-merge) ·
-`shad-darshana/w2-lane-d-design-fix` (docs-only, corrects `KALA_W2_FIELD_DESIGN_v1_0.md` §6.3
-against the real `bg_synthetic_cohort` schema per ADJUDICATION-1). **ADJUDICATION-1 resolved**
+worktrees off `origin/main@5f5033a5`. **Status as of this write, each independently
+re-verified (diff scope + tsc + tests), not trusted from any lane's self-report:**
+`shad-darshana/w1-mudda-sandhi` (items 30, 1-lite) — **PR #924 MERGED** (5 files, scope-clean,
+115/119 tests green incl. 4 intentional skips, zero regressions vs. baseline) ·
+`shad-darshana/w1-intervals-grading` (items 24-lite, 38-lite, frontier v0, 43) — **PR #926 OPEN,
+mergeable, awaiting CI**; hit a REAL `now.ts` conflict against #924 once #924 merged first
+(both lanes added independent fields to the same facade) — **Conductor-resolved** via
+`git merge origin/main` (never force-push): both functions (`fetchSukshmaBoundaryUncertainty`
+item 24-lite, `computeDashaSandhi` item 1-lite) kept in full, both fields kept on every
+interface/return/coverage/provenance surface, doc-string prose combined; re-verified
+`tsc --noEmit` clean + 107/111 tests green (4 intentional skips) across all 8 touched/related
+suites including `m8_e2e_proof.test.ts` (no tool-count change needed — neither lane registers
+a new tool) — pushed as commit `035a0c52` · `shad-darshana/bg-muhurta-parihara`
+(`bg_muhurta_lattice.py` + `bg_parihara_rules.py`, migrations 484/485) — **PR #930 OPEN, Opus
+citation-review IN PROGRESS** (mandatory per brief §5 before this citation-sensitive lane may
+merge; no auto-merge set) · `shad-darshana/w2-lane-d-design-fix` (docs-only, corrects
+`KALA_W2_FIELD_DESIGN_v1_0.md` §6.3 against the real `bg_synthetic_cohort` schema per
+ADJUDICATION-1) — **PR #918 verified sound (1 file, exactly §6.3, all 4 actually-required
+branch-protection checks green — the one failing check, `Boot-time pointer validation`, is
+confirmed NOT in `required_status_checks.contexts` and matches the same pre-existing
+non-required failure seen at PRs #877/#886), branch updated, auto-merge armed, awaiting final
+CI pass.** Plus one operational
+(non-lane) action: **`1c826d5a` gochara-sweep horizon rebuild, dispatch 1 of ~3, IN PROGRESS —
+will NOT complete tonight, honest park.** Root cause (found via a pre-existing, not-yet-merged
+diagnosis on `samapti/gochara-parity` @ `d5907e64`, `GOCHARA_PARITY_DIAGNOSIS_v1_0.md` —
+**a SEPARATE concurrent autonomous campaign, SAMĀPTI, already investigated this exact gap;
+its diagnosis was reused here, not duplicated**): `ka_gochara_sweep`'s full plan is 303
+substeps (~22h wall-clock); one 6h dispatch buys ~27%; the canonical chart (`482012f1`) only
+reached 303/303 via six sequential resumed dispatches over 2026-07-19→25; `1c826d5a` got
+exactly one productive dispatch (78/303) before a real orchestrator-watchdog defect + DB
+instability parked it in `error` state on 2026-07-28 — a prior overlapping-dispatch attempt
+that same day caused an 11-run crash cascade (see `build_runs` history), which is why
+"one dispatch at a time, gated on ≥40-substeps-gained" is now the standing discipline.
+**Collision check performed before proceeding (chart-level `pg_try_advisory_lock` — the same
+lock behind the campaign's own N5 ruling — is the safety net if SAMĀPTI's session also
+dispatches against this chart tonight; a second concurrent attempt fails safely, `sys.exit(3)`,
+no corruption):** queried `build_runs`/`build_run_assets` directly, confirmed ZERO other
+`running`-state runs against `(1c826d5a, ka_gochara_sweep)` at dispatch time — all 2026-07-28
+attempts are dead/`failed`. Dispatched via the existing production path (no code/table
+changes; `platform/scripts/dispatch_shaddarshana_c2_gochara_resume_1c826d5a.py`, modeled on
+the canonical chart's own precedent script): `build_runs.id = 24073997-6fa7-4a1e-93fe-fc3eb369f192`,
+triggered via `gcloud run jobs execute brahma-build-pipeline-job`, confirmed `state='running'`
+as of this write. **~2 further dispatches still needed after this one (~18h more, sequential,
+never overlapping) for full 58yr-horizon parity — this spans multiple future sessions, not
+just Night 2.** Full parity is NOT a Gate W1 blocker per se: Gate W1's own criterion is honest
+3-state coverage over whatever horizon exists, not a specific horizon length — AHEAD-window
+items must report the current ~1yr `1c826d5a` horizon honestly (not fabricate a longer one),
+which is a coverage-discipline check on the SERVING code, verifiable independent of full
+sweep-parity completion. **Native-visible flag for morning review:** a second autonomous
+campaign (SAMĀPTI) is independently active on this same production database tonight — no
+direct coordination channel exists between the two sessions; the chart-level lock is the only
+safety mechanism preventing actual collision, and it worked as designed here, but this is
+worth the native's awareness for any future multi-campaign-concurrent night.
+
+**ADJUDICATION-1 resolved**
 (see ADJUDICATION log below): W2 Lane D's cohort-schema precondition ruled — precompute an
 age-based MD-lord chain table (`bg_synthetic_cohort_md`), not a scalar column, not a
 query-time derivation. **Operational note:** builder sandboxes reject git operations against
