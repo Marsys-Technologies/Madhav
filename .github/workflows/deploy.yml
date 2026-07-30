@@ -16,8 +16,31 @@ on:
       - 'platform/**'
       - 'platform-mcp/**'
       - '.github/workflows/deploy.yml'
-  # Keep workflow_dispatch for emergency manual deploys (bypasses CI gate).
+  # Manual deploys stay available — but they are held to the SAME CI gate as an automatic
+  # deploy unless an operator deliberately overrides it and says why. Until SAMĀPTI this
+  # trigger bypassed the CI gate outright (`event_name == 'workflow_dispatch' || ...` on every
+  # deploy job), observed 3x in one night — twice landing ~4 minutes AHEAD of CI completion.
+  # See Dvārapāla RULING 71 / RULING 73-CLOSE and platform/scripts/ci/dispatch_gate.ts.
   workflow_dispatch:
+    inputs:
+      ci_gate:
+        description: 'CI gate for this manual deploy'
+        type: choice
+        required: true
+        default: require-ci-green
+        options:
+          - require-ci-green
+          - EMERGENCY-OVERRIDE-CI-NOT-GREEN
+      emergency_reason:
+        description: 'Required when overriding: what is on fire (>= 20 chars, recorded in the run log)'
+        type: string
+        required: false
+        default: ''
+      force_all_services:
+        description: 'Also deploy sidecar / MCP / pipeline-job even if their paths did not change'
+        type: boolean
+        required: false
+        default: false
 
 env:
   GCP_REGION: asia-south1
@@ -100,26 +123,91 @@ jobs:
           docker run --rm --entrypoint python brahma-pipeline:pr-check \
             -c "import ga_writers; print('ga_writers OK:', ga_writers.__file__)"
 
-  # ── Path-change detection — sets sidecar/mcp/pipeline outputs ───────────────
+  # ── Deploy gate + path-change detection ─────────────────────────────────────
   # Runs only on workflow_run success or manual dispatch (same guard as deploy
   # jobs). pull_request events never reach this job. Fallback: if HEAD~1
   # doesn't exist (first commit / shallow root), all three outputs default to
   # 'true' so gated jobs deploy safely rather than silently skip.
+  #
+  # SAMĀPTI: this job is now also the CI gate for MANUAL dispatches. Every deploy
+  # job `needs: [changes]`, so failing here skips all of them — no `always()`
+  # gymnastics, no new job topology, and the fail-closed direction is the safe one.
   changes:
-    name: Detect changed paths
+    name: Gate & detect changed paths
     if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      actions: read # read the CI workflow's conclusion for this SHA
     outputs:
       sidecar: ${{ steps.diff.outputs.sidecar }}
       mcp: ${{ steps.diff.outputs.mcp }}
       pipeline: ${{ steps.diff.outputs.pipeline }}
+      force_all: ${{ steps.gate.outputs.force_all }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 2
+
+      # ── SAMĀPTI: close the workflow_dispatch CI-gate bypass ──────────────────
+      # A manual dispatch used to deploy regardless of CI. It now defaults to the
+      # same CI-green requirement as an automatic deploy; bypassing it takes two
+      # deliberate acts (select the EMERGENCY-OVERRIDE-CI-NOT-GREEN choice AND type
+      # a >= 20-char reason), both recorded here. Emergency capability preserved —
+      # that was RULING 73-CLOSE's stated objection to hardening this.
+      # Decision logic + unit tests: platform/scripts/ci/dispatch_gate.ts.
+      - name: Set up Node.js for the dispatch gate
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Resolve CI conclusion for this SHA
+        id: ci_status
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Newest-first; take the most recent COMPLETED run of the CI workflow for THIS sha.
+          RUNS=$(gh api \
+            "repos/${GITHUB_REPOSITORY}/actions/workflows/ci.yml/runs?head_sha=${GITHUB_SHA}&per_page=50" \
+            --jq '[.workflow_runs[] | select(.status=="completed")] | first' 2>/dev/null || echo '')
+          if [ -z "$RUNS" ] || [ "$RUNS" = "null" ]; then
+            CONCLUSION=none
+            URL=""
+          else
+            CONCLUSION=$(printf '%s' "$RUNS" | jq -r '.conclusion // "none"')
+            URL=$(printf '%s' "$RUNS" | jq -r '.html_url // ""')
+          fi
+          echo "conclusion=$CONCLUSION" >> "$GITHUB_OUTPUT"
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+          echo "CI conclusion for ${GITHUB_SHA}: $CONCLUSION ${URL}"
+
+      - name: Manual-dispatch CI gate
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GATE_EVENT_NAME: ${{ github.event_name }}
+          GATE_CI_GATE: ${{ inputs.ci_gate }}
+          GATE_EMERGENCY_REASON: ${{ inputs.emergency_reason }}
+          GATE_CI_CONCLUSION: ${{ steps.ci_status.outputs.conclusion }}
+          GATE_CI_RUN_URL: ${{ steps.ci_status.outputs.url }}
+          GATE_SHA: ${{ github.sha }}
+        run: |
+          cd platform && npx --yes tsx scripts/ci/dispatch_gate.ts
+      # ── /SAMĀPTI dispatch gate ───────────────────────────────────────────────
+
+      - name: Resolve force-all-services flag
+        id: gate
+        run: |
+          # 'true' ONLY when an operator explicitly asked for it on a manual dispatch.
+          # Previously every dispatch force-deployed all services implicitly, discarding
+          # the path outputs this job had just computed.
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.force_all_services }}" = "true" ]; then
+            echo "force_all=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "force_all=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Detect changed paths
         id: diff
@@ -160,6 +248,9 @@ jobs:
     name: Build & Deploy Web
     # Only deploy on workflow_run (CI passed on main) or manual dispatch.
     # pull_request events are handled by the build-check job above.
+    # `needs: [changes]` is load-bearing, not cosmetic: it is what binds the manual-dispatch
+    # CI gate to this job — the one that runs migrations and promotes production traffic.
+    needs: [changes]
     if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
 
@@ -336,7 +427,7 @@ jobs:
   deploy-sidecar:
     name: Build & Deploy Sidecar
     needs: [changes]
-    if: (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success') && (github.event_name == 'workflow_dispatch' || needs.changes.outputs.sidecar == 'true')
+    if: (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success') && (needs.changes.outputs.force_all == 'true' || needs.changes.outputs.sidecar == 'true')
     runs-on: ubuntu-latest
 
     permissions:
@@ -397,7 +488,7 @@ jobs:
   # (asia-south1-docker.pkg.dev/...), not legacy gcr.io.
   deploy-mcp:
     needs: [changes]
-    if: (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success') && (github.event_name == 'workflow_dispatch' || needs.changes.outputs.mcp == 'true')
+    if: (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success') && (needs.changes.outputs.force_all == 'true' || needs.changes.outputs.mcp == 'true')
     name: Build & Deploy MCP
     runs-on: ubuntu-latest
     permissions:
@@ -535,7 +626,7 @@ jobs:
   deploy-pipeline-job:
     name: Build & Deploy Pipeline Job Image
     needs: [changes]
-    if: (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success') && (github.event_name == 'workflow_dispatch' || needs.changes.outputs.pipeline == 'true')
+    if: (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success') && (needs.changes.outputs.force_all == 'true' || needs.changes.outputs.pipeline == 'true')
     runs-on: ubuntu-latest
     permissions:
       contents: read

@@ -1,7 +1,7 @@
 ---
 artifact: MIGRATION_AND_MERGE_PROTOCOL_v1_0.md
 canonical_id: MIGRATION_AND_MERGE_PROTOCOL
-version: 1.2
+version: 1.3
 status: CURRENT
 authored_by: SAMĀPTI lane B-MIGGUARD (Claude Code, Opus) 2026-07-30
 implements: >
@@ -398,8 +398,250 @@ The CI guard makes the split *safe to live with* in the meantime; it does not ma
 | R2 | No check enforces that new migrations land in `platform/supabase/migrations/`. `474_*` violated it. | consolidation spec |
 | R3 | `CLAUDE.md`/`ONGOING_HYGIENE_POLICIES` §N.4 "never deploy.yml-auto" contradicts the live `deploy.yml` behaviour (§5). One of the two must move. | governance |
 | R4 | The two directories are not consolidated. | consolidation spec |
-| R5 | The renumbering/filename-keyed re-apply hazard (§3.2, hazard 2) is NOT closed by the RULING 58 sha256 fix — closing it needs a content-keyed (not filename-keyed) tracker, a structural change out of B-MIGGUARD's authorization. | unassigned |
+| R5 | **CLOSED 2026-07-31 (SAMĀPTI integrity-residuals lane) — see §9.4.** `migrate.ts` now refuses to apply an ostensibly-new migration whose content is already recorded under a different filename, matching on exact sha256 AND on `sql_identity` (comment/whitespace-normalised content hash). The second arm is load-bearing: both real instances of this hazard rewrote their header comment during the rename, so a raw-hash-only guard would have missed them. A second, previously-undetected production instance was found while closing this — `456_lel_schema_v2_event_shapes.sql` re-applied as `457_…` 1h49m later (§9.2). | CLOSED |
 | R6 | **RESOLVED via Dvārapāla RULING 70** (was: discovered 2026-07-30 rebasing this lane onto `origin/main` `d5c4b359`; independently found twice — once by this lane's own rebase, once by VER via a different path). `platform/supabase/migrations/484_bg_muhurta_lattice.sql` and `484_bg_synthetic_cohort_md.sql` (ṢAḌ-DARŚANA, `#930`/`#932`) both claim migration number 484 — a genuine E2 duplicate-number collision, NOT in the frozen legacy baseline. Ruling 70 rejected both the "hard-fail B-MIGGUARD's own PR on someone else's bug" option and the "silently widen the frozen baseline" option, and directed the SAME itemized-disclosure mechanism this codebase already uses for `schema_validator.py`'s `known_residuals` whitelist: a new `disclosed_additions` block in `migration_number_legacy_duplicates.json`, separate from (never merged into) the immutable `legacy_duplicate_groups` baseline, carrying one itemized/dated/attributed entry — `484_bg_muhurta_lattice.sql` / `484_bg_synthetic_cohort_md.sql`, owner ṢAḌ-DARŚANA, landed 2026-07-30, disclosed via RULING 70, `fixed_by_samapti: false`. `migration_number_guard.ts` now validates this entry structurally (new **E4** class: a `disclosed_additions` entry missing any required field — `owner`/`landed_at`/`disclosed_via`/`fixed_by_samapti`/`files` — is treated as UNDISCLOSED, not a partial pass) and surfaces it as a non-fatal `[disclosed-residual]` warning even while passing — disclosed, not hidden. `npm run guard:migration-numbers` now exits **0**; all 4 previously-red tests in `migration_number_guard.test.ts` pass; 5 new tests added, including a synthetic-second-undisclosed-collision sanity check confirming the mechanism still discriminates (stays red) and does not act as a blanket amnesty. Still not fixed: renumbering the ṢAḌ-DARŚANA file itself remains out of this lane's authorization — this entry records the collision, it does not close it. | DVA (Ruling 70) — actual renumbering still owned by ṢAḌ-DARŚANA |
+
+---
+
+## §9 — The four integrity residuals of RULING 73-CLOSE (SAMĀPTI, 2026-07-30/31)
+
+RULING 73-CLOSE carried six surviving residuals out of the migration-hash incident. Four were
+dispatched as a dedicated lane. This section is their standing record. **Read §9.1 before ever
+concluding "the tracker's stored hash is the truth about what ran."**
+
+Production DB access for this section was **read-only**, via an already-configured connection in
+the environment (no new connection was opened, no mutation was issued). Every claim below is a
+query result or a command output, not an inference.
+
+### §9.1 — The 7 applied-but-missing-from-disk rows — **CLOSED, all 7 explained**
+
+Rows in `_migrations_applied` whose filename exists in neither migrations directory. Enumerated by
+diffing all 374 tracker filenames against the 367 on-disk `.sql` files. **All seven are explained,
+and six of them are byte-exactly reconstructable.** None is a mystery, and none should be restored.
+
+| # | Filename | Disposition |
+|---|---|---|
+| 1 | `118_build_events.sql` | Legacy Teardown |
+| 2 | `124_builds.sql` | Legacy Teardown |
+| 3 | `125_build_steps.sql` | Legacy Teardown |
+| 4 | `126_engine_versions.sql` | Legacy Teardown |
+| 5 | `127_build_notifications.sql` | Legacy Teardown |
+| 6 | `133_notification_views.sql` | Legacy Teardown |
+| 7 | `456_lel_schema_v2_event_shapes.sql` | **Renumber — see §9.2** |
+
+**Rows 1–6 — moved out of the scanned tree by PR #187 "Legacy Teardown", not deleted.** Commit
+`0b264942` ("feat(legacy-teardown): AC.6 — fresh migration baseline", merged as `30640c96`) renamed
+124 old migrations (`R100`, byte-identical) into `platform/migrations/_archive/` — verified directly
+(`git show -M --name-status 0b264942`). The tables they created were dropped by that same teardown;
+the migrations are dead legacy. They are invisible to the runner only because `migrate.ts` scans
+non-recursively (`readdirSync`, no `_archive/` traversal) — not because the files are gone. **All six
+are byte-present in the tree right now** at `platform/migrations/_archive/<name>.sql`; this is the
+correction (VER, round-3 continuation) to this section's earlier "deleted"/"deliberate deletion"
+wording, which was git-inaccurate — the disposition below is unaffected and, if anything, stronger:
+restoring them isn't even a git-history recovery, it's a one-line path addition the runner already
+declines to take.
+
+Their content is recoverable **byte-exactly** — both via the archived in-tree copy and via each
+pre-rename blob hashing to the sha256 the tracker recorded at apply time, verified 6/6:
+
+```
+$ git show 0b264942^:platform/migrations/<name>.sql | shasum -a 256   # vs stored sha256
+118_build_events.sql          stored=91db713557feeea3  blob=91db713557feeea3  MATCH
+124_builds.sql                stored=8a5d175718ded375  blob=8a5d175718ded375  MATCH
+125_build_steps.sql           stored=616e055d5bdf124a  blob=616e055d5bdf124a  MATCH
+126_engine_versions.sql       stored=fa65f67ad523b9c1  blob=fa65f67ad523b9c1  MATCH
+127_build_notifications.sql   stored=048d1a051be0f2ed  blob=048d1a051be0f2ed  MATCH
+133_notification_views.sql    stored=85b50984c1d1a5e4  blob=85b50984c1d1a5e4  MATCH
+```
+
+**Decision: DOCUMENT, do not restore.** The brief allowed reconstruct-and-restore, but restoring
+here would be motion without safety. Because their filenames are already in `_migrations_applied`
+and the recovered content hashes to the stored value, the runner would compare, match, and skip —
+restoring them changes runner behaviour by exactly nothing, while re-introducing SQL a sealed
+teardown PR deliberately removed. The absence of a file is not itself a hazard: if anyone later
+creates a *new* file under one of these six names, the existing hash guard fires loudly, which is
+the correct outcome. The recovery command above is the standing recipe should that judgement ever
+be revisited.
+
+**Row 7 is a different animal entirely** and is the subject of §9.2.
+
+### §9.2 — `456_lel_schema_v2_event_shapes.sql`: the renumber hazard, caught in production
+
+The 7th missing row is **not** a deletion. It is the R5 hazard (§7, hazard 2) having actually
+happened, undetected, in production:
+
+```
+456_lel_schema_v2_event_shapes.sql   sha a6d30ee4…   applied 2026-07-18T23:30:11Z
+457_lel_schema_v2_event_shapes.sql   sha fdc1edb0…   applied 2026-07-19T01:19:40Z
+```
+
+Commit `54c809bc` ("renumber 456->457 after rebase collision with A-2") renamed the file after it
+had already been applied. The tracker is keyed by **filename**, so 457 looked brand-new, and the
+same migration executed a second time 1h49m later. It caused no damage only because the SQL was
+additive/idempotent. Nothing detected it at the time; it surfaced only because this lane diffed
+the tracker against the disk.
+
+This is the second recorded instance of the class (the first: 474, which went 466→467→474 — see
+RULING 44). **R5 is now CLOSED** — see §9.4.
+
+Note for the record: the stored sha256 of the 456 row matches the pre-rename git blob exactly
+(`git show 15947002:platform/migrations/456_lel_schema_v2_event_shapes.sql | shasum -a 256` →
+`a6d30ee4…`), so this row is fully accounted for and needs no reconstruction — 457 carries the
+content forward.
+
+### §9.3 — The 4 `UNDER-INVESTIGATION` hash disclosures — **all 4 dispositioned**
+
+RULING 73-CLOSE left four disclosure entries reading *"well-formed sha256, no matching git blob
+anywhere in history."* Each now carries a real disposition in
+`platform/scripts/ci/migration_hash_disclosed_residuals.json`. **The hash pins themselves were not
+touched** — only the `cause` text — so the guard's behaviour is unchanged and each disclosure
+still pins exactly the same historical mismatch.
+
+**What was checked, for all four:**
+
+1. **Widened blob search.** RULING 73's search was scoped to blobs appearing *under the same
+   filename*. This swept **all 68,303 objects (22,112 blobs) in the object database**, including
+   unreachable/dangling ones — i.e. content committed on a deleted branch, amended away, or
+   stashed — under *any* filename, plus an LF-normalised comparison. **No match, for any of the
+   four.** DVA's finding is independently confirmed and strengthened.
+2. **Benign-mechanical drift replay.** Line endings (LF/CRLF/CR), BOM, trailing-newline count,
+   per-line trailing whitespace, tab↔space, latin-1 re-encode — **none** reproduces a stored hash.
+3. **Alternate digest algorithms** (md5, sha1, sha224, sha384, sha512, sha3-256, blake2s) over the
+   committed content — **none** matches. The recorded values really are sha256 of *different
+   content*.
+4. **Effect verification.** What the migration was *for* was checked directly against production.
+
+**The root-cause CLASS is now established, and it is shared by all four:** in every case
+`applied_at` **precedes** the file's only commit — by 11 seconds, 7m42s, 10m32s and 2h57m
+respectively. The content applied was *working-tree* content that was then edited before being
+committed. Migration 237's own commit message says so outright ("migration 237 applied to prod;
+to_regclass → NULL confirmed"), and 314's says "Migrations 311-317 applied to prod
+(ledger-reconciled)". This is apply-by-hand-then-write-up, not corruption. **What remains unknown
+is only the exact bytes; what each migration did is now verified.**
+
+| Entry | Disposition | Evidence |
+|---|---|---|
+| `237_drop_signal_type_registry.sql` | **RESOLVED-AS-IMMATERIAL** · replay-equivalent | Its whole executable content is one `DROP TABLE IF EXISTS signal_type_registry CASCADE;`. Live: `to_regclass('public.signal_type_registry')` → `NULL`. Any variant producing that state contained that statement; drift is confined to header commentary. |
+| `294_ga_vastu_target_floor.sql` | **RESOLVED-AS-REAL-AND-MATERIAL** · fixed forward | **Not benign.** See below. |
+| `314_bo_samskara_count_sql_scope_fix.sql` | **RESOLVED-AS-IMMATERIAL** · replay-equivalent | Deliberately superseded by `344_bo_samskara_scope_per_chart.sql` and `379_bodha_count_sql_chart_parameterize.sql`. Live values match 344/379, not 314 (`scope='per_chart'`, `count_sql='… WHERE chart_id = $1'`) — as intended. A replay runs 314→344→379 and lands identically whatever 314's bytes were. |
+| `377_ka_dasha_kala_target_floor.sql` | **RESOLVED-AS-IMMATERIAL** · drift positively characterised | Its commit message documents behaviour the committed SQL does not implement — "Also flips the two existing dormant throughput rows to lit directly" — but the file contains only the `asset_registry` update. The applied version almost certainly carried that second statement, stripped before commit (applied 11s before the commit). Both effects verified live: `target_floor = 0`, throughput rows all `lit`. Immaterial for replay: `asset_throughput` is per-chart build state, regenerated by every build, not schema. |
+
+**`294_ga_vastu_target_floor.sql` — a real defect, found by investigating the drift.**
+The committed file reads:
+
+```sql
+UPDATE asset_registry SET target_floor = 40 WHERE asset_id = 'ga_vastu_planet_direction_map';
+```
+
+`ga_vastu_planet_direction_map` is the **target table**; the `asset_id` is `ga_vastu` (migration
+287). **The on-disk file matches zero rows — it is a no-op.** Yet production correctly holds
+`target_floor = 40` for `ga_vastu`, which is precisely 294's stated intent (45→40, because Ketu has
+no classical Vastu direction so the writer emits 8 grahas × 5 ayanamshas = 40), and **no other
+migration in either directory sets that value** (287 inserts 45; 381's floor calibration does not
+touch `ga_vastu`).
+
+The applied version carried the correct predicate; the committed version does not. **Consequence:
+replaying every migration onto a fresh database would leave `ga_vastu` at 45 — `main` could not
+reproduce production.** That is a genuine replayability defect that no amount of hash-pinning would
+have surfaced; only asking "what was this migration *for*, and is it true?" did.
+
+**Fixed forward by `498_ga_vastu_target_floor_replay_fix.sql`.** 294 itself is untouched — it is
+already applied, editing it is forbidden, and it would break its own pin. 498 is a no-op against
+current production and a correction on any fresh replay, exactly as `MigrationHashMismatchError`'s
+own message prescribes ("create a NEW migration file to carry the intended change forward").
+
+### §9.4 — R5 CLOSED: the filename-keyed renumber hazard
+
+**`migrate.ts` now refuses to apply an ostensibly-new migration whose content is already recorded
+under a different filename.** Two filename-blind arms:
+
+1. **exact sha256** — catches a pure `git mv` with no content edit;
+2. **`sql_identity`** — sha256 of the content with SQL comments stripped and whitespace collapsed
+   (string literals, dollar-quoted bodies and nested block comments handled properly).
+
+**The second arm is load-bearing, not belt-and-braces.** Both real instances of this hazard
+rewrote the `-- Migration NNN:` header in the same commit as the rename, so the two files have
+**different** sha256 — a raw-hash-only guard would have missed the very defect it exists to catch
+(CLAUDE.md §N.8: a detector must measure the claim it asserts). Verified against the real pair:
+
+```
+raw sha256    456=a6d30ee464d7cac1  457=fdc1edb0789ac743  -> DIFFERENT (raw-hash guard MISSES)
+sql_identity  456=278470efc88d047d  457=278470efc88d047d  -> SAME      (identity guard CATCHES)
+```
+
+**False-positive sweep before implementing**, over all 367 on-disk migrations: 0 raw-sha256
+collisions, and exactly **1** `sql_identity` collision —
+`361_fix_cgm_asset_throughput_state.sql` / `374_cgm_throughput_state_correction.sql`. Those two are
+genuinely the *same* migration written twice and applied twice (identical SQL, different comments).
+**A true positive, not a false one** — precisely what the guard exists to flag. Net false positives
+across the whole corpus: **zero**. Both are already applied, so the guard is silent on today's
+tree.
+
+**Supporting mechanism.** A nullable `sql_identity` column on `_migrations_applied` (runner-owned
+DDL via `TRACKER_IDENTITY_DDL`, **not** a numbered migration — the tracker has always been the
+runner's own table), plus an opportunistic backfill that stamps an identity **only** for rows whose
+on-disk content still hashes to the sha256 recorded at apply time. Rows whose file is gone, or
+whose content has drifted (the 25 disclosed residuals), stay **NULL** rather than be stamped with
+an identity derived from content we cannot prove ran. An honest NULL, not a fabricated value.
+
+**Escape hatch** — `platform/scripts/ci/migration_renumber_disclosed.json`, mirroring the
+`disclosed_additions` / disclosed-hash-residual discipline exactly: empty by design, every field
+required (a partial entry is dropped as UNDISCLOSED, never a partial pass), pinning one exact
+`(new_filename, applied_filename, sql_identity)` triple. Two dispositions:
+
+- `already-applied-under-old-name` — the SQL genuinely ran under the old name; the runner records
+  the new filename as applied **without executing it**. *This is the normal answer for a renumber*,
+  and it is what keeps the guard from being deploy-blocking in practice.
+- `intentional-reapply` — the SQL is idempotent and re-running it is deliberate; execute normally.
+
+The guard also runs under `--dry-run`, so an operator finds out from a preview.
+
+### §9.5 — The `workflow_dispatch` deploy bypass — CLOSED
+
+RULING 73-CLOSE recorded this as observed **3×** in one night and held it *"unchanged, not
+hardened,"* on the stated ground that gating manual dispatch could block a legitimate emergency
+deploy. That objection is sound, and it is the design constraint here — not a reason to leave the
+hole open. **Confirmed from the YAML, the bypass had two halves, not one:**
+
+| | Old condition | What it bypassed |
+|---|---|---|
+| CI gate | `github.event_name == 'workflow_dispatch' \|\| github.event.workflow_run.conclusion == 'success'` on every deploy job | A manual dispatch deployed **whether or not CI passed, or ever ran**, on that SHA. |
+| Path gate | `github.event_name == 'workflow_dispatch' \|\| needs.changes.outputs.<x> == 'true'` on sidecar / MCP / pipeline-job | A dispatch **force-deployed every service**, discarding the path outputs the `changes` job had just computed. |
+
+**Both are closed; `workflow_dispatch` is retained.**
+
+- Manual dispatch now **defaults** to the same CI-green requirement as an automatic deploy.
+- Bypassing it takes **two deliberate acts**: select the `ci_gate` choice whose value literally
+  reads `EMERGENCY-OVERRIDE-CI-NOT-GREEN`, **and** type an `emergency_reason` of ≥20 characters.
+  Both are recorded in the run log, and the run is annotated with a `::warning::`. A reflex click
+  cannot produce either.
+- Path gates now honour an explicit `force_all_services` boolean input (default `false`) instead of
+  firing implicitly on every dispatch.
+- An unrecognised `ci_gate` value is treated as `require-ci-green` — **fail safe, not fail open**.
+
+**Why this mechanism over the alternatives.** A dry-run/plan-by-default mode was considered and
+rejected: it creates a second code path that drifts from the real one, and an operator who must
+re-dispatch with `force` in an actual emergency is worse off than one who must tick a box. This
+design adds **no new job topology, no new credentials, and no second code path**. The gate runs
+inside the existing `changes` job — which every deploy job (now including `deploy-web`, the job
+that runs migrations and promotes traffic) `needs` — so failing it skips them all. No `always()`
+gymnastics, and the failure direction is the safe one.
+
+**Verification.** The decision logic lives in `platform/scripts/ci/dispatch_gate.ts` as a pure
+function with unit tests, precisely so the gate is exercisable off GitHub Actions rather than being
+a YAML expression nobody can test. `platform/scripts/__tests__/dispatch_gate.test.ts` additionally
+parses the **real `deploy.yml`** and asserts the wiring — that `workflow_dispatch` still exists,
+that the gate step is present, that every deploy job needs `changes`, and that no job has
+re-introduced the `event_name == 'workflow_dispatch' || needs.changes.outputs…` short-circuit. A
+correct decision function that `deploy.yml` never consults would be a §N.8 signal with no detector
+behind it.
+
+**Not verified by this lane, and deliberately not claimed:** an end-to-end GitHub Actions run. That
+requires pushing and triggering a real production deploy, which is the Integrator's step under
+merge-lock, not a builder's. The recommended live proof at merge is the three-way check the design
+is built for: (a) dispatch mid-CI → blocked with the CI-not-green message; (b) dispatch with the
+override token + reason → proceeds, warning annotated; (c) a normal `workflow_run` deploy →
+unaffected.
 
 ---
 
@@ -417,7 +659,27 @@ The CI guard makes the split *safe to live with* in the meantime; it does not ma
 
 ---
 
-*End of MIGRATION_AND_MERGE_PROTOCOL v1.2 (2026-07-30, SAMĀPTI lane B-MIGGUARD — Dvārapāla RULING 70:
+*End of MIGRATION_AND_MERGE_PROTOCOL v1.3 (2026-07-31, SAMĀPTI integrity-residuals lane — the four
+RULING 73-CLOSE integrity residuals, new §9. §9.1: all 7 applied-but-missing-from-disk rows CLOSED —
+6 are PR #187 Legacy Teardown deletions, reconstructable byte-exactly (6/6 stored-sha256 match
+against the pre-deletion blob) and deliberately NOT restored; the 7th is a renumber. §9.2: that 7th,
+`456_lel_schema_v2_event_shapes.sql`, is a previously-undetected PRODUCTION instance of the R5
+hazard — the same SQL executed twice under two filenames 1h49m apart, harmless only because it was
+idempotent. §9.3: all 4 UNDER-INVESTIGATION disclosures dispositioned; the widened blob sweep
+(68,303 objects / 22,112 blobs, dangling included, any filename) confirms DVA's finding, and the
+shared root-cause class is established (applied_at precedes the only commit in all four —
+apply-by-hand-then-edit-before-commit). Three are replay-immaterial with live effect verified; the
+fourth, `294_ga_vastu_target_floor.sql`, is a REAL defect — the committed file filters on the table
+name instead of the asset_id and is a no-op, so a fresh replay could not reproduce production —
+fixed forward by migration 498, with 294 itself untouched. §9.4: **R5 CLOSED** — `migrate.ts` now
+refuses a renumbered re-apply, matching on exact sha256 AND on comment/whitespace-normalised
+`sql_identity` (load-bearing: both real instances rewrote their header during the rename, so a
+raw-hash guard would have missed them); 0 net false positives across all 367 on-disk migrations.
+§9.5: the `workflow_dispatch` bypass CLOSED — both halves of it (CI gate and path gate), with
+emergency capability preserved behind an explicit two-act override, which was RULING 73-CLOSE's
+stated objection to hardening it. Not claimed: an end-to-end Actions run, which belongs to the
+Integrator under merge-lock.)
+Prior: v1.2 (2026-07-30, SAMĀPTI lane B-MIGGUARD — Dvārapāla RULING 70:
 R6 resolved. The 484 duplicate (ṢAḌ-DARŚANA, not owned by SAMĀPTI) is now an itemized/dated/
 attributed `disclosed_additions` entry in `migration_number_legacy_duplicates.json`, kept separate
 from the immutable `legacy_duplicate_groups` freeze, validated structurally by a new E4 guard class
