@@ -68,10 +68,14 @@ const PRICING_V1 = [
   { provider: 'nim', model: 'nvidia/nemotron-3-super-120b-a12b',  token_class: 'output', price_per_million_usd: 3.00, source_url: 'https://build.nvidia.com' },
 ]
 
-const DATABASE_URL =
-  process.env.DATABASE_URL ??
-  process.env.NEXT_PUBLIC_DATABASE_URL ??
-  'postgresql://amjis_app:KO09dpIN3SvNZCij6t7YtHNji4uv10D@127.0.0.1:5433/amjis'
+const DATABASE_URL = process.env.DATABASE_URL ?? process.env.NEXT_PUBLIC_DATABASE_URL
+if (!DATABASE_URL) {
+  throw new Error(
+    'DATABASE_URL (or NEXT_PUBLIC_DATABASE_URL) env var required — see header comment for usage. ' +
+      'No hard-coded fallback: SAMAPTI security incident INC-3 found a live `postgres` ' +
+      'superuser credential hard-coded here, mislabelled as amjis_app.'
+  )
+}
 
 const EFFECTIVE_FROM = '2026-05-03T00:00:00Z'
 

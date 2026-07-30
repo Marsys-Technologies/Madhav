@@ -10,7 +10,7 @@ from pathlib import Path
 # TODO: repo-root-relative path (pre-L4 script)
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 
-PW  = os.environ.get("DB_PASSWORD", "50mii04kTKDUUu54CAKdS4Bv2gx1IoWy")
+PW  = os.environ.get("DB_PASSWORD", "")
 HOST = "127.0.0.1"
 PORT = "5433"
 USER = "amjis_app"

@@ -20,7 +20,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-DB_URL = "postgresql://amjis_app:50mii04kTKDUUu54CAKdS4Bv2gx1IoWy@127.0.0.1:5433/amjis"
+DB_URL = os.environ["DATABASE_URL"]
 VERTEX_LOCATION = "asia-south1"
 VERTEX_PROJECT = "madhav-astrology"
 EMBEDDING_MODEL = "text-multilingual-embedding-002"

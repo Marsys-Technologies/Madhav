@@ -51,6 +51,7 @@ SAFETY: the DB-backed test opens ONE transaction, sets `conn.autocommit = False`
 """
 from __future__ import annotations
 
+import os
 import sys
 import uuid
 from datetime import date
@@ -61,7 +62,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
-LIVE_DSN = "postgresql://amjis_app:50mii04kTKDUUu54CAKdS4Bv2gx1IoWy@127.0.0.1:5433/amjis"
+LIVE_DSN = os.environ.get("DATABASE_URL", "")
 BIRTH_PARAMS = {"datetime_iso": "1984-02-05T10:43:00+05:30"}
 
 _SIDECAR_ROOT = Path(__file__).parent.parent.parent

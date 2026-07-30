@@ -29,10 +29,7 @@ import sys
 
 import psycopg
 
-DB_URL = os.environ.get(
-    "DATABASE_URL",
-    "postgresql://amjis_app:50mii04kTKDUUu54CAKdS4Bv2gx1IoWy@127.0.0.1:5433/amjis",
-)
+DB_URL = os.environ["DATABASE_URL"]
 
 # ── helpers ──────────────────────────────────────────────────────────────────
 

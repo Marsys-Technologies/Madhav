@@ -25,6 +25,7 @@ episode length (unlike three earlier, rejected fix attempts — see
 """
 from __future__ import annotations
 
+import os
 from datetime import date, timedelta
 
 import swisseph as swe
@@ -812,7 +813,7 @@ def test_consolidation_three_year_span_converges_regardless_of_dispatch_order(mo
 
 # ── integration (live proxy, excluded by -m "not integration") ───────────
 
-LIVE_DSN = "postgresql://amjis_app:50mii04kTKDUUu54CAKdS4Bv2gx1IoWy@127.0.0.1:5433/amjis"
+LIVE_DSN = os.environ.get("DATABASE_URL", "")
 
 
 @pytest.mark.integration

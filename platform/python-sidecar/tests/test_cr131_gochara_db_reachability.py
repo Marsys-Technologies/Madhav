@@ -50,7 +50,7 @@ import psycopg
 import pytest
 
 CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
-LIVE_DSN = "postgresql://amjis_app:50mii04kTKDUUu54CAKdS4Bv2gx1IoWy@127.0.0.1:5433/amjis"
+LIVE_DSN = os.environ.get("DATABASE_URL", "")
 
 _ROUTE_TS_PATH = os.path.join(
     os.path.dirname(__file__), "..", "..", "src", "app", "api", "mcp", "db", "query", "route.ts"
