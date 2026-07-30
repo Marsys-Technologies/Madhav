@@ -23,9 +23,10 @@
 import { z } from 'zod'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import {
-  MCP_CATALOG_VERSION, MCP_CATALOG_TOOL_COUNT,
+  MCP_CATALOG_VERSION,
+  RETRIEVAL_REGISTRY_PROFILE_TOTAL, RETRIEVAL_REGISTRY_PROFILE_GENERATED_AT,
   MCP_CATALOG_TOOLS_CHANGED_AT, MCP_CATALOG_TOOLS_CHANGED_AT_NOTE,
-  notifyIfCatalogStale,
+  notifyIfCatalogStale, censusServedTools,
 } from '../resources/mcp_catalog_version.js'
 
 export const MCP_SERVER_NAME = 'marsys-jis'
@@ -39,7 +40,10 @@ export function registerServerInfoTool(server: McpServer): void {
       '`stale` and, when stale, emits a `tools/list_changed` notification so a compliant host ' +
       're-fetches the tool list. `catalog_version` is the field to CACHE and compare on your ' +
       'next session; `tools_changed_at` is a best-effort, non-authoritative timestamp (see ' +
-      '`tools_changed_at_note` for its caveats) — never treat it as precise.',
+      '`tools_changed_at_note` for its caveats) — never treat it as precise. `tool_count` is ' +
+      'measured live from this request\'s own tool registry and equals the length of your ' +
+      'tools/list response; `retrieval_registry_profile_total` is a dated build-time figure ' +
+      'over a different population and is NOT the served catalog size.',
     {
       client_catalog_version: z.string().optional().describe(
         'Your cached catalog_version from a prior call. If it no longer matches the live ' +
@@ -48,11 +52,26 @@ export function registerServerInfoTool(server: McpServer): void {
     async (args) => {
       const { client_catalog_version } = args as { client_catalog_version?: string }
       const staleness = notifyIfCatalogStale(client_catalog_version, server)
+      // DVA Ruling 25 — `tool_count` is LIVE-DERIVED from this request's own MCP server
+      // registry (the object tools/list enumerates), measured at call time so every gate
+      // in server.ts has already run. It is never back-filled from the generated manifest:
+      // that figure counts a different population and is reported separately below.
+      const served = censusServedTools(server)
       const payload = {
         name: MCP_SERVER_NAME,
         version: MCP_SERVER_VERSION,
         catalog_version: MCP_CATALOG_VERSION,
-        tool_count: MCP_CATALOG_TOOL_COUNT,
+        tool_count: served.count,
+        tool_count_note: served.note,
+        retrieval_registry_profile_total: RETRIEVAL_REGISTRY_PROFILE_TOTAL,
+        retrieval_registry_profile_generated_at: RETRIEVAL_REGISTRY_PROFILE_GENERATED_AT,
+        retrieval_registry_profile_note:
+          'Size of the retrieval registry\'s `full` MCP projection as recorded in the ' +
+          'generated manifest at `retrieval_registry_profile_generated_at` — a BUILD-TIME ' +
+          'figure over a DIFFERENT population from the served MCP catalog, not live ' +
+          'telemetry. Until 2026-07-30 this number was served as `tool_count`; it was ' +
+          'measured at 152 while tools/list returned 124, overlapping by 15 names. Use ' +
+          '`tool_count` for "how many tools can I call".',
         tools_changed_at: MCP_CATALOG_TOOLS_CHANGED_AT,
         tools_changed_at_note: MCP_CATALOG_TOOLS_CHANGED_AT_NOTE,
         stale: staleness.stale,

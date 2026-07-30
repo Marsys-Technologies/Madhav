@@ -36,6 +36,15 @@ export interface McpSurfaceProfileData {
   excluded_not_llm_facing: string[]
 }
 
+/**
+ * When this manifest was generated. Exported (not merely a banner comment) so a runtime
+ * consumer that SERVES this manifest's figures as telemetry can date-stamp them: a number
+ * generated on one date and reported forever after as though it were live is stale by
+ * construction. See `../resources/mcp_catalog_version.ts` (RETRIEVAL_REGISTRY_PROFILE_TOTAL)
+ * — SAMĀPTI B-MCP-CATALOG-GAP / DVA Ruling 25.
+ */
+export const MCP_SURFACE_PROFILES_GENERATED_AT = '2026-07-24T05:06:15.709Z' as const
+
 export const COMPACT_MAX_TOOLS = 20 as const
 
 export const MCP_SURFACE_PROFILES: {
