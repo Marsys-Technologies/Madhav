@@ -952,37 +952,285 @@ coverage_fraction = F(S) / F(V)
 
 ### 6.3 Rarity from `bg_cohort` (item 15) — the EXACT interface Lane D expects
 
-`bg_cohort` is a **sibling lane building concurrently**. Lane D codes against **this contract
-only** and must not read `bg_cohort`'s internals.
+> **CORRECTION (2026-07-30, ADJUDICATION-1 — the same post-Night-1 adversarial audit that
+> produced §9.3's correction note; adjudicated by ANTARYĀMIN).** This section originally
+> specified Lane D's contract against three **assumed** tables — `cohort_charts`,
+> `cohort_positions`, `cohort_feature_counts` — with `cohort_id` / `cohort_version` /
+> `lagna_sign` / `moon_nakshatra` / `md_lord` columns. **None of them exist.** What actually
+> shipped (PR #887, the same night this design was written) is a **single** table,
+> `bg_synthetic_cohort` — migration `platform/supabase/migrations/472_bg_synthetic_cohort.sql`,
+> writer `platform/python-sidecar/pipeline/orchestrator/writers/bg_cohort.py` — one row per
+> synthetic chart with a `positions` JSONB blob; **no** `cohort_id`/`cohort_version` (it is a
+> single global cohort), **no** aggregate counts table, and **no MD lord at all** — `bg_cohort.py`'s
+> own docstring says so in as many words ("no dashas … no MD-lord — the other §12.3 matching key
+> — since that needs the dasha engine, out of scope here"). Everything below is re-grounded on
+> the real schema plus the one new table ANTARYĀMIN's ruling authorizes
+> (`bg_synthetic_cohort_md`). **The five binding behaviour rules are unchanged in substance** —
+> only what they read moved.
 
-**Tables `bg_cohort` provides** (L0, `scope='global'`, built only by explicit super-admin L0
-trigger per brief §2.5.2):
+`bg_cohort` is **already built** (PR #887) — not, as this section originally assumed, a sibling
+lane building concurrently. Lane D codes against **the tables + the one function below only**,
+and must still not read `bg_cohort`'s writer internals.
+
+**Table `bg_cohort` actually provides** (L0, `asset_id='bg_cohort'`, `scope='global'`, built only
+by explicit super-admin L0 trigger per brief §2.5.2 — §9.1's DAG edge is unchanged):
 
 ```sql
-cohort_charts (
-  cohort_id TEXT NOT NULL, cohort_version TEXT NOT NULL,
-  chart_ref TEXT NOT NULL,                -- synthetic id; NOT a chart_id in `charts`
-  birth_jd DOUBLE PRECISION NOT NULL, lat NUMERIC(9,6), lon NUMERIC(9,6),
-  tz_offset_minutes INT,
-  lagna_sign SMALLINT NOT NULL, moon_nakshatra SMALLINT NOT NULL, md_lord TEXT NOT NULL,
-  PRIMARY KEY (cohort_id, cohort_version, chart_ref)
+-- EXISTS TODAY (migration 472). Lane D READS this. Do not re-declare it, do not alter it.
+bg_synthetic_cohort (
+  id                 BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  synthetic_id       INTEGER      NOT NULL,   -- 1..N, deterministic; UNIQUE (the natural key)
+  birth_datetime_utc TIMESTAMPTZ  NOT NULL,
+  birth_lat          NUMERIC(7,4) NOT NULL,
+  birth_lon          NUMERIC(7,4) NOT NULL,
+  ayanamsha_key      TEXT         NOT NULL DEFAULT 'lahiri',
+  positions          JSONB        NOT NULL,   -- 10-key graha/Lagna map, see below
+  sampling_method    TEXT         NOT NULL,   -- 'uniform_1900_2099_lat60_lon180_v1'
+  source_citation    TEXT         NOT NULL,
+  build_id           UUID,
+  computed_at        TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+  CONSTRAINT bg_synthetic_cohort_synthetic_id_key UNIQUE (synthetic_id)
 );
-cohort_positions (
-  cohort_id TEXT, cohort_version TEXT, chart_ref TEXT, body TEXT,
-  sidereal_longitude NUMERIC(9,6), sign_number SMALLINT, nakshatra_number SMALLINT,
-  pada SMALLINT, house_number SMALLINT, is_retrograde BOOLEAN, dignity TEXT,
-  PRIMARY KEY (cohort_id, cohort_version, chart_ref, body)
-);
-cohort_feature_counts (
-  cohort_id TEXT, cohort_version TEXT,
-  feature_key TEXT, feature_value TEXT,
-  n_charts BIGINT NOT NULL, n_total BIGINT NOT NULL,
-  PRIMARY KEY (cohort_id, cohort_version, feature_key, feature_value)
-);
+CREATE INDEX idx_bg_synthetic_cohort_positions_gin
+  ON bg_synthetic_cohort USING GIN (positions);
 ```
 
-**The ONE function Lane D calls** (`services/ka_kshetra/cohort_client.py`, written by Lane D
-against this signature; `bg_cohort`'s lane guarantees the tables):
+`positions` has exactly ten keys — `Sun, Moon, Mars, Mercury, Jupiter, Venus, Saturn, Rahu,
+Ketu, Lagna` (case-sensitive, as stored) — each mapping to:
+
+```json
+{"sidereal_longitude": 123.456789, "sign_id": 5, "sign": "Leo",
+ "nakshatra_id": 10, "nakshatra": "Magha", "nakshatra_pada": 2, "is_retrograde": false}
+```
+
+`sign_id` (1..12), `nakshatra_id` (1..27) and `nakshatra_pada` (1..4) are **JSON integers**;
+`is_retrograde` is a **JSON boolean**. Both facts matter for the containment predicate below.
+N = 10,000; birth window 1900-01-01…2099-12-31; Lahiri ayanamsha only; fixed RNG seed.
+
+**⚠ Three properties of the real table that the fictional schema hid — Lane D must handle each:**
+
+1. **`positions->'Lagna'` can be JSON `null`.** `bg_cohort.py` stores an honest `None` when
+   `swe.houses()` fails rather than fabricate an Ascendant (§N.7 item 6). The ±60° latitude
+   bound makes this empirically zero today, but the code path exists, so the query must too.
+2. **There is no `cohort_id` and no `cohort_version`.** One global cohort, versioned only by
+   content/rebuild — see "what identifies a cohort version" below, which is what rule 5 now pins.
+3. **There is no aggregate counts table.** Every rate is a scan. At 10,000 rows with a GIN index
+   this is single-digit milliseconds; correctness beats a materialized aggregate nobody asked for.
+
+**New table this design authorizes — `bg_synthetic_cohort_md`** (ANTARYĀMIN ruling,
+ADJUDICATION-1, on the missing MD-lord matching key):
+
+```sql
+-- NEW. Migration number: the NEXT FREE NUMBER AFTER 483 in platform/supabase/migrations/ —
+-- 474–483 are already reserved by §9.3 for the other W2 lanes' tables, so do NOT take one of
+-- those and do NOT hardcode a number read out of this document. Request the slot from the
+-- Conductor at build time and RE-VERIFY the live max in that directory immediately before
+-- writing the file, exactly as §9.3 requires of every migration in this design (that
+-- reservation went stale once already).
+bg_synthetic_cohort_md (
+  id               BIGINT   GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  synthetic_id     INTEGER  NOT NULL
+                     REFERENCES bg_synthetic_cohort (synthetic_id) ON DELETE CASCADE,
+  md_index         SMALLINT NOT NULL CHECK (md_index BETWEEN 1 AND 10),
+  md_lord          TEXT     NOT NULL CHECK (md_lord IN
+                     ('Sun','Moon','Mars','Mercury','Jupiter','Venus','Saturn','Rahu','Ketu')),
+  start_age_years  NUMERIC(9,6) NOT NULL CHECK (start_age_years >= 0),
+  end_age_years    NUMERIC(9,6) NOT NULL,
+  md_full_years    SMALLINT NOT NULL,      -- canonical Vimśottarī length of md_lord
+  is_partial       BOOLEAN  NOT NULL,      -- TRUE iff interval length < md_full_years
+  chain_version    TEXT     NOT NULL,      -- 'vim_md_age_v1'
+  computed_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT bg_synthetic_cohort_md_uk UNIQUE (synthetic_id, md_index),
+  CONSTRAINT bg_synthetic_cohort_md_interval_ck CHECK (end_age_years > start_age_years),
+  CONSTRAINT bg_synthetic_cohort_md_span_ck     CHECK (end_age_years <= 120.000001)
+);
+CREATE INDEX idx_bgsc_md_lord_age
+  ON bg_synthetic_cohort_md (md_lord, start_age_years, end_age_years);
+CREATE INDEX idx_bgsc_md_synthetic ON bg_synthetic_cohort_md (synthetic_id);
+```
+
+Volume: ~100,000 rows (10 per synthetic chart; 9 in the measure-zero case where the Moon sits
+exactly at a nakshatra boundary).
+
+**Why an age-interval CHAIN and not a scalar `md_lord` column** (the ruling's reasoning, recorded
+here because a future lane will be tempted to "simplify" it back): the cohort's births span
+1900–2099, so roughly half of them are in the future. "The current MD lord as of <some fixed
+date>" is **undefined** for a chart born in 2074 and goes **stale** for every chart the moment the
+fixed date passes. Age is birth-relative and therefore comparable across the entire 200-year
+sample — and it is what the matching question actually means: *how often does a chart with lagna
+X also sit in a Ketu mahādaśā at the same life-stage the native is in.*
+
+**Who writes it, and why no DAG change.** The chain derives **purely from the already-stored
+Moon `sidereal_longitude`** in `bg_synthetic_cohort.positions` — **no new ephemeris call, no
+swisseph, no PyJHora at build time**. It is therefore a second pass of the existing `bg_cohort`
+writer (same `asset_id='bg_cohort'`), not a new asset: **no new `asset_registry` row, no new
+`depends_on` edge, §9.1 unchanged, §9.2 unchanged, the L0 super-admin build gating unchanged.**
+Idempotency is L0 per §N.3: `ON CONFLICT (synthetic_id, md_index) DO NOTHING`. This is a
+**cross-lane prerequisite**, not Lane D work — the Conductor assigns it to an L0 lane, and it
+must be merged **and built in production** before Lane D's first `md_lord` read. Until then, any
+`matched_by` containing `md_lord` returns `p=None, fallback_reason='md_chain_not_built'`.
+
+**The Vimśottarī chain computation — the real function and the real constants.** Read from the
+codebase, not restated from memory:
+
+- `platform/python-sidecar/pyjhora_adapter/dashas.py` — `compute_dashas()` and
+  `_VIMSHOTTARI_YEARS = {0: 6, 1: 10, 2: 7, 3: 17, 4: 16, 5: 20, 6: 19, 7: 18, 8: 7}`, keyed by
+  PyJHora planet id, resolved through `pyjhora_adapter/_names.py::PLANET_NAMES`
+  `{0 Sun, 1 Moon, 2 Mars, 3 Mercury, 4 Jupiter, 5 Venus, 6 Saturn, 7 Rahu, 8 Ketu}`, i.e.
+  **Sun 6 · Moon 10 · Mars 7 · Mercury 17 · Jupiter 16 · Venus 20 · Saturn 19 · Rahu 18 ·
+  Ketu 7 — Σ = 120 years.**
+- Lord cycle order: `_names.py::_NAK_LORD_CYCLE = ['Ketu','Venus','Sun','Moon','Mars','Rahu',
+  'Jupiter','Saturn','Mercury']`, exposed as `NAKSHATRA_LORDS[i] = _NAK_LORD_CYCLE[(i - 1) % 9]`
+  for 1-based nakshatra index `i`.
+- Upstream engine agreement, **verified rather than assumed**: `jhora/const.py`
+  `vimsottari_adhipati_list = [8, 5, 0, 1, 2, 7, 4, 6, 3]` is exactly that cycle under
+  `PLANET_NAMES`; `vimsottari_dict = {8: 7, 5: 20, 0: 6, 1: 10, 2: 7, 7: 18, 4: 16, 6: 19, 3: 17}`
+  is exactly `_VIMSHOTTARI_YEARS`; `human_life_span_for_vimsottari_dhasa = 120`. In
+  `jhora/horoscope/dhasa/graha/vimsottari.py`: `one_star = 360 / 27.0`, and
+  `vimsottari_dasha_start_date()` computes `nak = int(lon / one_star)`,
+  `rem = lon − nak · one_star`, `period_elapsed = rem / one_star × period` (years, then × the
+  year length), start = birth − elapsed; `vimsottari_mahadasa()` then walks nine lords adding
+  `vimsottari_dict[lord]` each step. Our chain reproduces that arithmetic in **age-years**.
+
+```python
+# pure; no DB, no swisseph, no PyJHora — unit-testable in isolation
+moon_lon = positions["Moon"]["sidereal_longitude"]     # STORED value; never recomputed (§N.5)
+one_star = 360.0 / 27.0                                # 13°20′, as jhora's own `one_star`
+nak0     = int(moon_lon / one_star)                    # 0..26 — the same floor jhora takes
+frac     = (moon_lon - nak0 * one_star) / one_star     # portion of the nakshatra traversed
+lord     = NAK_LORD_CYCLE[nak0 % 9]                    # == NAKSHATRA_LORDS[nak0 + 1]
+elapsed  = frac * VIMSHOTTARI_YEARS[lord]              # years of the birth MD consumed pre-birth
+
+rows, age = [], 0.0
+full = VIMSHOTTARI_YEARS[lord]
+rows.append((1, lord, 0.0, full - elapsed, full, frac > 0.0))          # balance of birth MD
+age  = full - elapsed
+first_lord = lord
+for k in range(2, 10):                                                 # the next eight lords
+    lord = NAK_LORD_CYCLE[(NAK_LORD_CYCLE.index(lord) + 1) % 9]
+    y = VIMSHOTTARI_YEARS[lord]
+    rows.append((k, lord, age, age + y, y, False)); age += y
+if elapsed > 0.0:                                                      # the cycle repeats
+    rows.append((10, first_lord, age, 120.0, VIMSHOTTARI_YEARS[first_lord], True))
+```
+
+**Two non-obvious points in that loop.**
+(a) **Why row 10.** `vimsottari_mahadasa()` returns exactly nine mahādaśās spanning
+`[−elapsed, 120 − elapsed]` in age terms; clipped at birth that is `[0, 120 − elapsed]`, which for
+a Venus-birth-MD chart can end as early as age 100 — so an age lookup could fall off the end of
+the chain for an old reference age. Row 10 restarts the cycle (which is what actually happens in
+life) and closes the cover to exactly `[0, 120]`. Either way `max(end_age_years) = 120`.
+(b) **The chain never converts years to days, so it needs no year-length constant** — a second
+reason age-years is the right representation here: `dashas.py`'s own last-row fallback uses
+`365.2425` while `jhora/const.py` sets `year_duration = sidereal_year = 365.256364`. An age chain
+is immune to that divergence; a date chain would have to pick a side.
+**Guard (halt-worthy, §N.5):** the derived `nak0 + 1` MUST equal the stored
+`positions->'Moon'->>'nakshatra_id'`. The chain *references* L0's stored parse; it does not get to
+disagree with it. A mismatch is a bug to halt on, never a stored divergence.
+
+**Feature-key resolution — JSONB extraction against a CLOSED whitelist.** `feature_key` no longer
+names a column. `services/ka_kshetra/cohort_client.py` owns a closed map
+`feature_key → (graha_key, json_field, caster)`; anything absent from it returns
+`feature_not_in_cohort` (rule 3). It is *closed* precisely because the key arrives as a string —
+an open path builder would be a SQL-injection surface.
+
+| `feature_key` | equality predicate (GIN-indexable) | extraction (null/exclusion accounting) | value domain |
+|---|---|---|---|
+| `lagna_sign` | `positions @> '{"Lagna":{"sign_id":<v>}}'::jsonb` | `positions->'Lagna'->>'sign_id'` | 1..12 |
+| `lagna_nakshatra` | `positions @> '{"Lagna":{"nakshatra_id":<v>}}'::jsonb` | `positions->'Lagna'->>'nakshatra_id'` | 1..27 |
+| `moon_nakshatra` | `positions @> '{"Moon":{"nakshatra_id":<v>}}'::jsonb` | `positions->'Moon'->>'nakshatra_id'` | 1..27 |
+| `<graha>_sign` | `positions @> '{"<Graha>":{"sign_id":<v>}}'::jsonb` | `positions->'<Graha>'->>'sign_id'` | 1..12 |
+| `<graha>_nakshatra` | `positions @> '{"<Graha>":{"nakshatra_id":<v>}}'::jsonb` | `…->>'nakshatra_id'` | 1..27 |
+| `<graha>_pada` | `positions @> '{"<Graha>":{"nakshatra_pada":<v>}}'::jsonb` | `…->>'nakshatra_pada'` | 1..4 |
+| `<graha>_retrograde` | `positions @> '{"<Graha>":{"is_retrograde":<v>}}'::jsonb` | `…->>'is_retrograde'` | `true` / `false` |
+| anything else | — | — | ⇒ `feature_not_in_cohort` |
+
+`<graha>` ranges over the ten stored keys only, lower-case in the `feature_key` and mapped to the
+exact stored capitalization (`sun→Sun`, `lagna→Lagna`). **Typing trap, and it fails silently:**
+`->>` yields **text** while `@>` needs a **JSON-typed** literal, so `lagna_sign` `3` is
+`{"Lagna":{"sign_id":3}}` (JSON number) for containment and `'3'` (text) for extraction, and
+`is_retrograde` renders as `'true'/'false'` via `->>`. The caster produces both forms and an
+acceptance test asserts the two agree over the whole cohort for every whitelisted key.
+
+**Honest-null exclusion** (new, because the real writer really can store `positions['Lagna'] =
+None`): for any feature keyed on a graha, the denominator is restricted to rows where that
+graha's object exists —
+
+```sql
+WHERE jsonb_typeof(positions -> 'Lagna') = 'object'
+```
+
+— and the excluded rows are reported as `n_excluded_honest_null`, never counted as non-matches.
+A failed Ascendant is **unknown**, not **different** (§N.7 item 6).
+
+**The matched sub-cohort (E7.3) — the join, and what "reference age" means.** `matched_by` keys
+come from the same whitelist **plus** `md_lord`, whose value is one of the nine canonical English
+graha names from `PLANET_NAMES` — `'Ketu'`, **not** `'Ke'`; this section's original example used a
+fictional abbreviation against a fictional column.
+
+A synthetic chart has a birth instant but no "now", so an MD-lord match is meaningless without an
+age at which to evaluate it. **The caller passes it explicitly.**
+`native_age_at_reference_years: float` is *the native's age, in years, at the instant the rarity
+claim is about* — for Stage 6 that is the carrier window's `t_peak`, computed as
+`(t_peak_jd − birth_jd) / 365.2425` where `birth_jd` is **read from L1** (`chart_facts`;
+referenced, never recomputed — §N.5). Day-grade precision is ample (an MD boundary is years
+wide), so this stays inside `precision_regime='day_grade'` per §1.
+
+```sql
+SELECT count(*) AS n
+FROM   bg_synthetic_cohort c
+JOIN   bg_synthetic_cohort_md m ON m.synthetic_id = c.synthetic_id
+WHERE  m.md_lord = %(md_lord)s
+  AND  %(ref_age)s >= m.start_age_years
+  AND  %(ref_age)s <  m.end_age_years            -- HALF-OPEN ⇒ exactly one chain row per chart
+  AND  c.positions @> %(match_json)s::jsonb      -- the non-md matched_by keys, as ONE object
+  AND  c.positions @> %(feature_json)s::jsonb;   -- numerator only; omit for the denominator
+```
+
+The chain is contiguous and gapless over `[0, 120)` by construction, so the half-open predicate
+returns **≤ 1** row per `synthetic_id` — no double counting, and the denominator is the same query
+minus the `feature_json` term. If `matched_by` contains `md_lord` while
+`native_age_at_reference_years` is `None`, the client **logs an error and returns
+`p=None, fallback_reason='md_match_requires_reference_age'`** — it does not raise, because a lane
+bug must not 500 a chart build; a unit test asserts every Lane D call site supplies the age.
+
+**What identifies a "cohort version" now (rule 5's new grounding).** There is no
+`cohort_version` column — and there is a trap behind that: `bg_cohort.py`'s idempotency is
+`ON CONFLICT (synthetic_id) DO NOTHING`, so changing `COHORT_RNG_SEED` or `COHORT_SIZE` and
+rebuilding does **not** overwrite the rows already present. A timestamp-or-count-only version
+identity would therefore miss real content change and pin a stale hash (§N.8 — the detector must
+measure the claim). `cohort_version` is therefore a **content fingerprint**, computed once per
+`ka_kshetra` build and memoized for the process:
+
+```sql
+SELECT count(*)                        AS n_total,
+       count(DISTINCT sampling_method) AS n_sampling_methods,
+       min(sampling_method)            AS sampling_method,
+       min(ayanamsha_key)              AS ayanamsha_key,
+       md5(string_agg(synthetic_id::text || ':' || positions::text, ','
+                      ORDER BY synthetic_id)) AS positions_digest
+FROM   bg_synthetic_cohort;
+
+SELECT count(*) AS md_rows, min(chain_version) AS chain_version,
+       count(DISTINCT chain_version) AS n_chain_versions
+FROM   bg_synthetic_cohort_md;
+```
+
+```
+cohort_version = 'bgc_' + sha256(canonical_json({
+    n_total, sampling_method, ayanamsha_key, positions_digest, md_rows, chain_version
+}))[:16]
+```
+
+`jsonb::text` is canonical in Postgres (keys sorted, whitespace normalized), so `positions_digest`
+is stable across platforms and across dump/restore — the same property §7.4 needs of every hash
+input. Cost: one aggregate over 10,000 rows, once per build. If `n_sampling_methods > 1` or
+`n_chain_versions > 1`, every call returns `p=None, fallback_reason='cohort_heterogeneous'`: a
+cohort assembled from two samplers is not a base-rate population, and quoting a rate over it
+would be an unearned signal.
+
+**The ONE function Lane D calls** (`services/ka_kshetra/cohort_client.py`, owned and written by
+Lane D; the tables above are guaranteed by L0):
 
 ```python
 @dataclass(frozen=True)
@@ -990,31 +1238,76 @@ class CohortRate:
     p: float | None          # base rate in [0,1]; None ⇒ not computable, see fallback_reason
     n: int                   # matching charts
     n_total: int             # denominator actually used
-    cohort_version: str
+    cohort_version: str      # the CONTENT FINGERPRINT above — not a column; pinned into §7.4
     matched: bool            # True ⇒ the matched sub-cohort (E7.3) was used
     fallback_reason: str | None
+    n_excluded_honest_null: int = 0   # rows whose keyed graha object is JSON null
+    feature_expr: str | None = None   # the resolved JSONB path — auditability, served with the row
 
 def cohort_base_rate(
     feature_key: str,
-    feature_value: str,
-    matched_by: dict[str, str | int] | None = None,   # e.g. {'lagna_sign': 1, 'md_lord': 'Ke'}
+    feature_value: str | int | bool,
+    matched_by: dict[str, str | int] | None = None,   # e.g. {'lagna_sign': 3, 'md_lord': 'Ketu'}
+    native_age_at_reference_years: float | None = None,   # REQUIRED iff 'md_lord' in matched_by
     conn=...,
 ) -> CohortRate: ...
 ```
 
-**Binding behaviour rules:**
-1. `matched_by=None` ⇒ read `cohort_feature_counts` directly (`matched=False`,
-   `fallback_reason=None`).
-2. `matched_by` given ⇒ compute over `cohort_charts` filtered by those columns. **If the matched
-   denominator `n_total < 200`, fall back to the global rate**, return `matched=False` and
-   `fallback_reason='matched_subcohort_too_small (n=<n>)'`. Never silently.
-3. `feature_key` absent from `cohort_feature_counts` and not derivable from `cohort_positions`
-   ⇒ return `p=None`, `fallback_reason='feature_not_in_cohort'`. Lane D then emits
-   `notInCorpusCoverage('rarity:<feature_key>', reason)` and leaves informativeness **null**.
-4. **Minimum viable cohort: `n_total ≥ 10_000`.** Below it, `cohort_base_rate` returns
+**Binding behaviour rules** (identical in substance to the original five; only the grounding
+moved from the fictional tables to the real ones):
+
+1. `matched_by=None` ⇒ the **global** rate: one aggregate scan of `bg_synthetic_cohort` using the
+   whitelisted containment predicate (there is no `cohort_feature_counts` to read) —
+   `matched=False`, `fallback_reason=None`. The denominator excludes honest-null rows for the
+   keyed graha and reports them in `n_excluded_honest_null`.
+2. `matched_by` given ⇒ compute over `bg_synthetic_cohort` filtered by the containment predicate
+   for every non-`md_lord` key, **joined to `bg_synthetic_cohort_md` on `synthetic_id` with the
+   half-open age-interval predicate** for `md_lord` (there is no `cohort_charts.md_lord` column).
+   **If the matched denominator `n_total < 200`, fall back to the global rate**, return
+   `matched=False` and `fallback_reason='matched_subcohort_too_small (n=<n>)'`. Never silently.
+3. `feature_key` absent from the whitelist — i.e. not extractable from `positions`, and not
+   `md_lord` — ⇒ return `p=None`, `fallback_reason='feature_not_in_cohort'`. Lane D then emits
+   `notInCorpusCoverage('rarity:<feature_key>', reason)` and leaves informativeness **null**
+   (§6.1: `null`, never 0).
+4. **Minimum viable cohort: `n_total ≥ 10_000`** — the *global* `SELECT count(*) FROM
+   bg_synthetic_cohort`, not the matched denominator. Below it, `cohort_base_rate` returns
    `p=None, fallback_reason='cohort_below_minimum (n=<n>)'` for every call, and the W2 gate's
-   "cohort base rates served" criterion is **not met** — a park, not a soft pass.
-5. `cohort_version` is **pinned into the field hash** (§7.4). A cohort rebuild changes the hash.
+   "cohort base rates served" criterion is **not met** — a park, not a soft pass. (`COHORT_SIZE
+   = 10_000` and the seed row's `target_floor = 10000`, so a complete build sits exactly at the
+   floor and a single failed insert parks the gate. That is intended, not a tuning error.)
+5. `cohort_version` — the content fingerprint defined above — is **pinned into the field hash**
+   (§7.4). A rebuild that actually changes cohort content changes the fingerprint and therefore
+   the hash; a no-op rebuild changes neither. §7.4's `"cohort_version"` slot needs no edit; only
+   its provenance did.
+
+Three fallback reasons are **added** by the real schema (each an honest null, never a substituted
+default): `md_chain_not_built`, `md_match_requires_reference_age`, `cohort_heterogeneous`.
+
+**Acceptance tests Lane D owns for this interface.** §10's "cohort base rates served" criterion is
+not discharged by the function merely existing (§N.8 — a PASS needs a detector that measures the
+claim):
+
+1. **Chain parity against the shipped engine.** For ≥ 50 sampled synthetic charts, the nine
+   leading `bg_synthetic_cohort_md` rows reproduce
+   `pyjhora_adapter.dashas.compute_dashas()`'s `mahadasha_sequence` — same lord order, same
+   `years` per lord — and row 1's length matches its first interval. Tolerance ≤ 0.05 years on
+   that comparison: PyJHora does its arithmetic in JD with
+   `year_duration = sidereal_year = 365.256364` while `dashas.py`'s last-row fallback uses
+   `365.2425`, and that constant difference is the entire expected discrepancy. Σ of the nine
+   `md_full_years` must be exactly 120.
+2. **Stored-parse agreement.** Across all 10,000 rows, the chain's derived `nak0 + 1` equals
+   `positions->'Moon'->>'nakshatra_id'`. Any mismatch halts the build (§N.5).
+3. **Gapless half-open cover.** Per `synthetic_id`, ordered by `md_index`:
+   `start(1) = 0`, `start(k+1) = end(k)`, `max(end) = 120`; and for ~20 reference ages spread
+   over `[0, 120)` the age join returns exactly one row per chart
+   (`count(*) = count(DISTINCT synthetic_id)`).
+4. **Predicate-form equivalence.** `@>` and `->>` counts agree for every whitelisted
+   `feature_key` over the full cohort — the typing trap above, caught mechanically.
+5. **Honest-null accounting.** With a deliberately null-`Lagna` fixture row, the Lagna
+   denominator excludes it and `n_excluded_honest_null = 1` — the row is never scored as a
+   non-match.
+6. **Fingerprint sensitivity.** Mutating one `positions` value in a fixture changes
+   `cohort_version`; re-running the fingerprint on unchanged data reproduces it byte-identically.
 
 ### 6.4 Stage 6.5 — insight synthesis (E2): the 8-type catalog
 
