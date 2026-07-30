@@ -111,7 +111,7 @@ def _fetch_native_context(chart_id: str) -> NativeContext:
     # The two OTHER call sites in this module (the endpoints at the bottom of this file) pass
     # all four arguments positionally, which is why they were never affected.
     try:
-        birth_panchang = compute_panchang(birth_date, lat, lon, 330)
+        birth_panchang = compute_panchang(birth_date, lat, lon, tz_offset=330)
     except (ValidationError, OutOfRangeError, PanchangEngineError) as exc:
         raise HTTPException(status_code=422, detail=f"Birth chart compute error: {exc}")
 
