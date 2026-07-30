@@ -15,7 +15,7 @@ from typing import Any
 
 from pipeline.orchestrator.writers import WriterBase, WriterResult, SubStep, register, ContextSpec
 from ga_writers._idempotency import replace_prior_chart_facts
-from ga_writers.verification_vocab import UNVERIFIED_DEFAULT, assert_legal
+from brahmagyan.verification_vocab import UNVERIFIED_DEFAULT, assert_legal
 from ga_writers.ga_nakshatra_emitters import (
     emit_nakshatra_join, emit_kp_lords, emit_gandanta_flags,
     emit_dispositor_graph, emit_tara_bala, emit_statistics,

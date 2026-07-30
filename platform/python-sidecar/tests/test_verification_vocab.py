@@ -25,7 +25,7 @@ _SIDECAR = pathlib.Path(__file__).resolve().parent.parent
 _REPO = _SIDECAR.parent.parent
 sys.path.insert(0, str(_SIDECAR))
 
-from ga_writers.verification_vocab import (  # noqa: E402
+from brahmagyan.verification_vocab import (  # noqa: E402
     ALL_STATUSES,
     PROHIBITED_STATUSES,
     RESTRICTED_TABLE_VOCAB,
@@ -196,7 +196,7 @@ def _writer_sources() -> list[pathlib.Path]:
     out = []
     for p in sorted(_SIDECAR.rglob("*.py")):
         rel = p.relative_to(_SIDECAR).as_posix()
-        if rel.startswith("tests/") or "__tests__" in rel or rel.startswith("ga_writers/verification_vocab"):
+        if rel.startswith("tests/") or "__tests__" in rel or rel.startswith("brahmagyan/verification_vocab"):
             continue
         out.append(p)
     return out

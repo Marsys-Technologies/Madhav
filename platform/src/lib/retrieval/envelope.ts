@@ -40,7 +40,7 @@ export function resolveEnvelopeFormat(requested: unknown): EnvelopeFormat {
 // ── verification_pass_status — THE settled vocabulary ─────────────────────────
 //
 // SINGLE SOURCE OF TRUTH (serve side). The build side declares the identical table in
-// `platform/python-sidecar/ga_writers/verification_vocab.py`, and
+// `platform/python-sidecar/brahmagyan/verification_vocab.py`, and
 // `platform/python-sidecar/tests/test_verification_vocab.py` asserts the two agree
 // member-for-member and flag-for-flag. Change one, that test fails until you change
 // the other. This module must stay ZERO-IMPORT (see generate_envelope.ts), so the

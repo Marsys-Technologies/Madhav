@@ -16,7 +16,7 @@ import os
 import pathlib
 from typing import Any
 
-from ga_writers.verification_vocab import ALL_STATUSES
+from brahmagyan.verification_vocab import ALL_STATUSES
 
 logger = logging.getLogger(__name__)
 
@@ -168,7 +168,7 @@ def run_g7_only_facts_gate_db(
         findings.append(
             f"G7: invalid verification_pass_status='{row[1]}' at fact_id={row[0]} "
             f"(settled vocabulary: {valid_statuses}; see "
-            f"ga_writers/verification_vocab.py)"
+            f"brahmagyan/verification_vocab.py)"
         )
 
     return {

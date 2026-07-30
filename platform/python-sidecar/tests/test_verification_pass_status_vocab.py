@@ -42,7 +42,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).parent.parent))
 # here — one more independent copy of a vocabulary that existed in five disagreeing
 # places. It now comes from the single declaration, so a change to the constraint is
 # made in exactly one file. (Re-verified against live pg_constraint 2026-07-30.)
-from ga_writers.verification_vocab import RESTRICTED_TABLE_VOCAB  # noqa: E402
+from brahmagyan.verification_vocab import RESTRICTED_TABLE_VOCAB  # noqa: E402
 
 
 def test_verify_mudda_stays_within_chart_dashas_vocab():

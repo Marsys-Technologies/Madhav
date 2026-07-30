@@ -59,7 +59,7 @@ from typing import Any
 
 from brahmagyan import valence_doctrine as _vd
 from . import WriterBase, ContextSpec, WriterResult, register
-from ga_writers.verification_vocab import UNVERIFIED_DEFAULT
+from brahmagyan.verification_vocab import UNVERIFIED_DEFAULT
 
 logger = logging.getLogger(__name__)
 

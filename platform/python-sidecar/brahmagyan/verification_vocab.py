@@ -1,24 +1,41 @@
 """
-ga_writers.verification_vocab — THE settled `verification_pass_status` vocabulary.
+brahmagyan.verification_vocab — THE settled `verification_pass_status` vocabulary.
 
 SINGLE SOURCE OF TRUTH (build side). The serve side declares the identical table in
 `platform/src/lib/retrieval/envelope.ts` (which must stay zero-import — see
-`platform-mcp/scripts/generate_envelope.ts`), and
-`tests/test_verification_vocab_parity.py` asserts the two tables are byte-equivalent
-in content. Change one, the parity test fails until you change the other.
+`platform-mcp/scripts/generate_envelope.ts`), and `tests/test_verification_vocab.py`
+asserts the two agree member-for-member and verified-flag-for-verified-flag. Change
+one, that test fails until you change the other.
+
+WHY IT LIVES IN L0 (brahmagyan) rather than beside the writers that emit the field:
+this vocabulary is a cross-layer contract — `ga_*` (L1), `bo_*` (L2) and the build
+gate all speak it. Putting it under `ga_writers/` would have made every L2 writer
+import an L1 package. L0 Brahmagyan is the foundation layer every other layer may
+depend on (`bo_yantra_mechanism` / `bo_karanajala` already import
+`brahmagyan.valence_doctrine`), so the dependency runs the right way.
 
 WHY THIS FILE EXISTS (SAMĀPTI · B-VERIFSTATUS-VOCAB · DVA Ruling 13, findings F-11/F-25/F-38)
 --------------------------------------------------------------------------------------
-Before this module the field had FOUR disagreeing definitions in one instrument:
+Before this module the field had SIX disagreeing definitions in one instrument:
 
   1. Writers emitted 14 distinct literals across the sidecar, with no shared declaration.
   2. `chart_dashas` / `chart_divisionals` carry a CHECK constraint allowing exactly
      four of them; `chart_facts` and every `bodha_*` table carry NO constraint at all.
   3. `ga_writers/gates.py` G7 hardcoded its own four-value set (which 5,428 live
      `chart_facts` rows already violated — the gate was not being run on those builds).
-  4. The serve layer counted a row as "verified" if its status was
+  4. `platform/src/lib/ganita/types.ts` declared a hand-written four-value TS union —
+     a FALSE one: `chart_facts` legitimately stores ten distinct values, so the type
+     described a row shape the database has never had.
+  5. `tests/test_verification_pass_status_vocab.py` hardcoded its own copy of the
+     restricted-table set.
+  6. The serve layer counted a row as "verified" if its status was
      `two_pass_verified` OR `pass` (lowercase), while `register_p1_ganita.ts` told the
      caller, in the same response, that the number meant `two_pass_verified` only.
+
+A seventh copy — `platform/scripts/governance/drift_detector.py`'s `VALID_STATUS` —
+is deliberately NOT folded in here: it is CI-gate surface owned by another lane. It
+currently raises a HARD violation (exit 3) for 56,028 live rows, of which only the
+5,428 `PASS` rows are the real defect. Routed as a residual, not fixed in this lane.
 
 THE ONE RULE THIS TABLE ENCODES (CLAUDE.md §N.8, Earned-Signal Principle)
 -------------------------------------------------------------------------
@@ -202,7 +219,7 @@ def assert_legal(status: Any, *, table: str | None = None) -> str:
     if status not in ALL_STATUSES:
         raise ValueError(
             f"verification_pass_status={status!r} is not in the settled vocabulary "
-            f"{sorted(ALL_STATUSES)}. Add it to ga_writers/verification_vocab.py AND to "
+            f"{sorted(ALL_STATUSES)}. Add it to brahmagyan/verification_vocab.py AND to "
             "the mirrored table in platform/src/lib/retrieval/envelope.ts (the parity "
             "test enforces both) before emitting it."
         )
