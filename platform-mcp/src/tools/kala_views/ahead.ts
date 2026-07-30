@@ -38,6 +38,16 @@
  * facade's choice) — capped here at the next 30 days regardless of `horizon_years`, since
  * gulika-kālam is an intrinsically daily/short-horizon election concept; this cap is
  * disclosed on the served object, never silently truncated.
+ *
+ * W1 JOIN ADDITION (SHAD_DARSHANA_BRIEF_v2_0.md §3 W1, item 30): `mudda_dasha_varsha` —
+ * KALA_SIX_VIEWS_DESIGN_v2_0.md §E: "Mudda daśā inside each varsha (the Tājika micro-clock,
+ * already computed as one of the 8 systems, never joined)". A pure JOIN over TWO
+ * already-computed substrates — the current varsha (Tājika annual) context
+ * (`marsys://tool/L1/get_tajik`, the SAME table `ganita_tajaka_get` serves) and the active
+ * Mudda daśā chain for the same date (`marsys://tool/L3/query_active_dashas`, system_id=
+ * 'mudda' — the SAME capability the Vimśottarī joins elsewhere already call, one of the 9
+ * systems `chart_dashas` already carries). See the "W1 item 30" doc-comment above
+ * `computeMuddaDashaVarsha` below for the exact provenance chain.
  */
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
@@ -348,6 +358,153 @@ async function computeDashaLordForwardTransitCondition(
   return { rows, chainReachable: chain.ok, transitReachable }
 }
 
+// ── W1 item 30 (Mudda daśā joined to the varsha plane) — SHAD_DARSHANA_BRIEF_v2_0.md §3 W1.
+// [J]-kind JOIN over TWO already-computed substrates (no new astrological computation, no new
+// migration — §N.5/B.10): KALA_SIX_VIEWS_DESIGN_v2_0.md §E ("AHEAD — add: ... Mudda daśā
+// inside each varsha (the Tājika micro-clock, already computed as one of the 8 systems, never
+// joined)"):
+//   - marsys://tool/L1/get_tajik (l1_tajik_varsha_year_lords — the SAME table ganita_tajaka_get
+//     already serves): resolves the varsha (Tājika annual) context — varsha_year, year_lord,
+//     Muntha sign/house — for the date in question, via that capability's own `varsha_date`
+//     "current year" convenience.
+//   - marsys://tool/L3/query_active_dashas (system_id='mudda' — Mudda is one of the 9 daśā
+//     systems `chart_dashas` already carries per query_active_dashas.ts's EXPECTED_SYSTEMS;
+//     the SAME capability now.ts/ahead.ts already call for 'vimshottari' elsewhere in this
+//     campaign, parametrized to a different system_id): the currently-active Mudda
+//     Mahādaśā/Antardaśā chain for the SAME date.
+// Every field traces verbatim to one of these two existing capabilities' own output.
+
+interface TajikVarshaRow {
+  varsha_year: number | null
+  varsha_start_iso: string | null
+  varsha_end_iso: string | null
+  year_lord: string | null
+  muntha_sign: string | null
+  muntha_house: number | null
+}
+
+/** Reads the current (or `dateISO`-containing) varsha row from l1_tajik_varsha_year_lords via
+ *  the EXISTING marsys://tool/L1/get_tajik capability (register_p1_ganita.ts's
+ *  ganita_tajaka_get already serves this same table) — never re-derived. */
+async function fetchTajikVarshaForDate(
+  chartId: string,
+  ayanamshaId: string,
+  dateISO: string,
+  principal: Principal,
+): Promise<{ row: TajikVarshaRow | null; ok: boolean }> {
+  const resp = await callRegistryCapability(
+    'marsys://tool/L1/get_tajik',
+    { chart_id: chartId, ayanamsha_id: ayanamshaId, varsha_date: dateISO, include_varsha: true, include_hadda: false, limit: 1 },
+    principal,
+  )
+  if (!resp.ok || !resp.content) return { row: null, ok: false }
+  const rows = (resp.content['varsha_year_lords'] as { rows?: Array<Record<string, unknown>> } | undefined)?.rows ?? []
+  const row = rows[0]
+  if (!row) return { row: null, ok: true }
+  return {
+    ok: true,
+    row: {
+      varsha_year: typeof row['varsha_year'] === 'number' ? (row['varsha_year'] as number) : null,
+      varsha_start_iso: typeof row['varsha_start_iso'] === 'string' ? (row['varsha_start_iso'] as string) : null,
+      varsha_end_iso: typeof row['varsha_end_iso'] === 'string' ? (row['varsha_end_iso'] as string) : null,
+      year_lord: typeof row['year_lord'] === 'string' ? (row['year_lord'] as string) : null,
+      muntha_sign: typeof row['muntha_sign'] === 'string' ? (row['muntha_sign'] as string) : null,
+      muntha_house: typeof row['muntha_house'] === 'number' ? (row['muntha_house'] as number) : null,
+    },
+  }
+}
+
+export interface MuddaChainEntry {
+  level_n: number
+  level_name: string
+  lord_graha: string
+  lord_sign: string | null
+  start_date: string | null
+  end_date: string | null
+}
+
+/** Reads the active Mudda daśā chain (system_id='mudda') for `dateISO` via the SAME
+ *  marsys://tool/L3/query_active_dashas capability the Vimśottarī joins elsewhere in this
+ *  campaign already call, parametrized to `systems: 'mudda'` instead — never re-derived. */
+async function fetchActiveMuddaChain(
+  chartId: string,
+  ayanamshaId: string,
+  dateISO: string,
+  principal: Principal,
+): Promise<{ entries: MuddaChainEntry[]; ok: boolean }> {
+  const resp = await callRegistryCapability(
+    'marsys://tool/L3/query_active_dashas',
+    { chart_id: chartId, date: dateISO, ayanamsha_id: ayanamshaId, systems: 'mudda', max_level: 2 },
+    principal,
+  )
+  if (!resp.ok || !resp.content) return { entries: [], ok: false }
+  const systems = (resp.content['systems'] as Array<Record<string, unknown>> | undefined) ?? []
+  const mudda = systems.find((s) => s['system_id'] === 'mudda')
+  const chain = (mudda?.['active_chain'] as Array<Record<string, unknown>> | undefined) ?? []
+  return {
+    ok: true,
+    entries: chain.map((c) => ({
+      level_n: typeof c['level_n'] === 'number' ? (c['level_n'] as number) : 0,
+      level_name: typeof c['level_name'] === 'string' ? (c['level_name'] as string) : `L${c['level_n']}`,
+      lord_graha: String(c['lord_graha'] ?? ''),
+      lord_sign: typeof c['lord_sign'] === 'string' ? (c['lord_sign'] as string) : null,
+      start_date: typeof c['start_date'] === 'string' ? (c['start_date'] as string) : null,
+      end_date: typeof c['end_date'] === 'string' ? (c['end_date'] as string) : null,
+    })),
+  }
+}
+
+export interface MuddaDashaVarshaJoin {
+  varsha_year: number | null
+  varsha_start_iso: string | null
+  varsha_end_iso: string | null
+  year_lord: string | null
+  muntha_sign: string | null
+  muntha_house: number | null
+  as_of_date: string
+  mudda_chain: Array<{ level_n: number; level_name: string; lord_graha: string; lord_sign: string | null; start_date: string | null; end_date: string | null }>
+}
+
+/** Item 30 (SHAD_DARSHANA_BRIEF_v2_0.md item 30, wave W1): joins the current varsha (Tājika
+ *  annual) context with the active Mudda daśā chain for the SAME date — a pure [J] join over
+ *  two already-computed substrates, no new computation. Honest-empty when either source is
+ *  unreachable or resolves to nothing (never fabricated). */
+async function computeMuddaDashaVarsha(
+  chartId: string,
+  ayanamshaId: string,
+  asOfDate: string,
+  principal: Principal,
+): Promise<{ result: MuddaDashaVarshaJoin | null; tajikReachable: boolean; muddaReachable: boolean }> {
+  const [varsha, mudda] = await Promise.all([
+    fetchTajikVarshaForDate(chartId, ayanamshaId, asOfDate, principal),
+    fetchActiveMuddaChain(chartId, ayanamshaId, asOfDate, principal),
+  ])
+  if (!varsha.ok || !varsha.row || !mudda.ok || mudda.entries.length === 0) {
+    return { result: null, tajikReachable: varsha.ok, muddaReachable: mudda.ok }
+  }
+  return {
+    result: {
+      varsha_year: varsha.row.varsha_year,
+      varsha_start_iso: varsha.row.varsha_start_iso,
+      varsha_end_iso: varsha.row.varsha_end_iso,
+      year_lord: varsha.row.year_lord,
+      muntha_sign: varsha.row.muntha_sign,
+      muntha_house: varsha.row.muntha_house,
+      as_of_date: asOfDate,
+      mudda_chain: mudda.entries.map((e) => ({
+        level_n: e.level_n,
+        level_name: e.level_name,
+        lord_graha: e.lord_graha,
+        lord_sign: e.lord_sign,
+        start_date: e.start_date,
+        end_date: e.end_date,
+      })),
+    },
+    tajikReachable: true,
+    muddaReachable: true,
+  }
+}
+
 function dualOutput(data: unknown, toolName = 'kala_ahead_get') {
   let finalData: unknown = data
   if (data && typeof data === 'object' && !Array.isArray(data)) {
@@ -526,6 +683,9 @@ export interface KalaAheadResult {
   // projected to this call's horizon boundary (date_to) — the forward half of now.ts's
   // dasha_lord_transit_condition (same lord identity, later snapshot date).
   dasha_lord_transit_condition_forward: DashaLordForwardTransitCondition[]
+  // Item 30 (wave W1): current varsha (Tājika annual) context joined with the active Mudda
+  // daśā chain for the same date.
+  mudda_dasha_varsha: MuddaDashaVarshaJoin | null
   drill_pointers: DrillPointerLike[]
   provenance_envelope: {
     source: string
@@ -539,6 +699,7 @@ export interface KalaAheadResult {
     windows_reachable: boolean
     projections_reachable: boolean
     dasha_lord_transit_condition_forward_reachable: boolean
+    mudda_dasha_varsha_reachable: boolean
   }
 }
 
@@ -626,6 +787,10 @@ export async function computeKalaAhead(
     chartId, ayanamshaId, dateFrom, dateTo, natalLagna.lagna_sign_number, principal,
   )
 
+  // Item 30 — joins the current varsha (Tājika annual) context with the active Mudda
+  // daśā chain, both as of today (dateFrom) — the "current developing period" reading.
+  const muddaDashaVarsha = await computeMuddaDashaVarsha(chartId, ayanamshaId, dateFrom, principal)
+
   const reading = buildAheadReading({ horizonLabel, windowFamilies, projectionFamilies, windowsOk, projectionsOk })
   const composed = composeArgument(reading)
 
@@ -673,6 +838,16 @@ export async function computeKalaAhead(
       : gulikaOk
         ? honestEmptyCoverage('gulika_kalam_ahead', 'No gulika_kalam window resolved for any day in the forward horizon.')
         : honestEmptyCoverage('gulika_kalam_ahead', 'L0 panchāṅga range service unreachable this call.'),
+    muddaDashaVarsha.result
+      ? computedCoverage('mudda_dasha_varsha')
+      : honestEmptyCoverage(
+          'mudda_dasha_varsha',
+          !muddaDashaVarsha.tajikReachable
+            ? 'L1 Tajaka registry (get_tajik) unreachable this call.'
+            : !muddaDashaVarsha.muddaReachable
+              ? 'L3 active-dasha registry (query_active_dashas, system=mudda) unreachable this call.'
+              : 'No current varsha row or active Mudda daśā chain resolved for this chart/date — honest empty, not fabricated.',
+        ),
   ]
 
   const drillPointers: DrillPointerLike[] = [triPlane.interpretation_ref, triPlane.intervention_ref].filter(
@@ -705,6 +880,7 @@ export async function computeKalaAhead(
     gulika_kalam_ahead: gulikaKalamAhead,
     gulika_kalam_ahead_horizon_days: GULIKA_AHEAD_MAX_DAYS,
     dasha_lord_transit_condition_forward: dashaLordForward.rows,
+    mudda_dasha_varsha: muddaDashaVarsha.result,
     drill_pointers: drillPointers,
     provenance_envelope: {
       source: 'kala_ahead_get',
@@ -713,6 +889,7 @@ export async function computeKalaAhead(
         'call_panchanga_service (panchang.py, engine-direct, mode=range)',
         'get_dignity (graha_sign_attributes)', 'query_planet_transit (L0 ephemeris)',
         'query_active_dashas (L3, EL-33)', 'bg_dignity_reference (L0)',
+        'get_tajik (L1, l1_tajik_varsha_year_lords)',
       ],
       chart_id: chartId,
       horizon_years: horizonYears,
@@ -724,6 +901,7 @@ export async function computeKalaAhead(
       projections_reachable: projectionsOk,
       dasha_lord_transit_condition_forward_reachable:
         natalLagna.ok && dashaLordForward.chainReachable && dashaLordForward.transitReachable,
+      mudda_dasha_varsha_reachable: muddaDashaVarsha.tajikReachable && muddaDashaVarsha.muddaReachable,
     },
   }
 }
@@ -778,17 +956,21 @@ THIN FACADE (W0): re-presents the SAME substrate kala_windows_get (forward-dated
 kala_projections_get already serve — no new computation; probability_tier is read \
 verbatim from kala_bhavishya, never re-graded. W1 adds dasha_lord_transit_condition_forward \
 (item 28 — the currently-running Vimśottarī MD/AD lord's own transit sign/house/dignity \
-projected to this call's horizon boundary; see kala_now_get for the current-date half). \
-Honestly discloses (via \`coverage\`) which richer AHEAD concepts (Law-3 promise-gated \
-forecasting, the sky-event calendar, Tithi-Praveṣa) are not yet joined into this view.
+projected to this call's horizon boundary; see kala_now_get for the current-date half) and \
+mudda_dasha_varsha (item 30 — the current varsha/Tājika-annual context — varsha_year, \
+year_lord, Muntha — joined with the active Mudda daśā chain for the same date; both read \
+verbatim from already-computed substrate, never re-derived). Honestly discloses (via \
+\`coverage\`) which richer AHEAD concepts (Law-3 promise-gated forecasting, the sky-event \
+calendar, Tithi-Praveṣa) are not yet joined into this view.
 
-W1 join (objective, raw data — no favorable/unfavorable grading): gulika_kalam_ahead — the \
+W1 joins (objective, raw data — no favorable/unfavorable grading): gulika_kalam_ahead — the \
 daily gulika-kālam window for each of the next ${GULIKA_AHEAD_MAX_DAYS} days (bounded by the \
 underlying panchāṅga range service's own 31-day cap, independent of horizon_years).
 
 Output includes: reading (structured argument) + reading_prose (composed text) + windows + \
-projections + gulika_kalam_ahead + dasha_lord_transit_condition_forward + tri_plane \
-(→ kala_explain_get for why, → kala_elect_get for when to act) + coverage + drill_pointers.
+projections + gulika_kalam_ahead + dasha_lord_transit_condition_forward + mudda_dasha_varsha \
++ tri_plane (→ kala_explain_get for why, → kala_elect_get for when to act) + coverage + \
+drill_pointers.
 
 Requires: chart_id (UUID). Successor to kala_projections_get for "what is coming" queries \
 per SHAD_DARSHANA_BRIEF_v2_0.md §7 rail ("AHEAD supersedes ka_bhavishya... by REPLACEMENT") \
