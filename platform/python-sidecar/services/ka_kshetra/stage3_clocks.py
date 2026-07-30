@@ -109,6 +109,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from . import uncertainty as U
+from .contracts import ClockApplicability
 
 # ── Epoch conversion: t_days = days since J2000, matching stage 0's
 #    convention (KALA_W2_FIELD_DESIGN_v1_0.md §3.1). J2000 = 2000-01-01
@@ -336,17 +337,14 @@ def _chart_dashas_level1_rows(chart_id: str, system_id: str, conn: Any) -> list[
 
 
 # ── Law-1 applicability evaluation (§4.1) ───────────────────────────────────
-
-@dataclass(frozen=True)
-class ClockApplicability:
-    system_id: str
-    applicability_state: str  # 'applicable' | 'excluded_by_condition' | 'not_computed'
-    exclusion_reason: str | None
-    competence_class: str
-    seniority_rank: int
-    quality: float | None
-    quality_basis: str | None
-    is_predictive: bool
+#
+# ClockApplicability is defined in contracts.py (the shared cross-lane surface,
+# owned by nobody) and imported above — NOT redefined here. Merge-train note
+# (2026-07-30): this module originally carried its own copy of the same shape;
+# consolidated to one definition so `isinstance`/type-identity checks agree
+# regardless of which module a caller imports it from. Field usage below is
+# 100% keyword-argument construction, so the consolidation changes nothing at
+# any call site.
 
 
 def _evaluate_jurisdiction(system_id: str) -> tuple[bool, str | None]:
