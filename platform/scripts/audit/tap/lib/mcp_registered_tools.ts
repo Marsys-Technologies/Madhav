@@ -17,12 +17,39 @@
  * This module is the single source of truth for "is `name` a live tool" —
  * both sc_pointer_validation.ts and mcp_tool_smoke.ts import it so the fix
  * can't drift between the two call sites again.
+ *
+ * ── RC-14 GATE CORRECTION (SAMĀPTI lane A2, 2026-07-30) ──────────────────────
+ * The claim in this file's own first line — "every MCP tool name actually
+ * registered on the live server" — was FALSE BY 43 NAMES, and had been since
+ * the RC-14 breaking flip (2026-07-23). RC-14 removed the 43 legacy P1 short
+ * names from the served surface, but did so via a CENTRAL RUNTIME GATE
+ * (`platform-mcp/src/lib/deprecated_tool_gate.ts`) rather than by deleting the
+ * 43 `server.tool('legacy_name', ...)` call sites — deliberately, and for good
+ * reasons stated in that file. The consequence for THIS resolver is that all
+ * 43 gated names are still present as literal registration call sites in the
+ * source it scans, so it kept reporting them as live.
+ *
+ * That is not a cosmetic over-count. It is what let `sc_pointer_validation.ts`
+ * PASS 32 production drill-pointer/recover sites that dead-end on the live
+ * server with "Tool <name> not found" — the exact SC-18 harm ("the recovery
+ * path fires exactly when data was withheld and points at tool-not-found"),
+ * reintroduced wholesale by RC-14 and invisible to the check meant to catch it.
+ *
+ * The fix models the gate instead of ignoring it: subtract
+ * `DEPRECATED_MCP_TOOL_NAMES` from the statically-scanned set. This is exact,
+ * not approximate — verified 2026-07-30 against the live catalog
+ * (`tools/list` on the deployed amjis-mcp with a first-party Bearer key, which
+ * resolves to the `full` profile and therefore applies NO profile filtering):
+ *   167 scanned − 43 gated = 124 predicted, and the live catalog is 124 tools,
+ *   set-for-set identical (zero predicted-not-live, zero live-not-predicted).
+ * So the offline check is now live-accurate WITHOUT a network dependency in CI.
  */
 import path from 'node:path'
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 
 const REPO_ROOT = path.join(__dirname, '../../../../..')
 const MCP_TOOLS_ROOT = path.join(REPO_ROOT, 'platform-mcp/src/tools')
+const DEPRECATED_GATE_FILE = path.join(REPO_ROOT, 'platform-mcp/src/lib/deprecated_tool_gate.ts')
 
 function walkTs(dir: string, out: string[]): void {
   let entries: string[]
@@ -59,6 +86,18 @@ function walkTs(dir: string, out: string[]): void {
  *      adopts this pattern hitting the same silent gap.)
  */
 export function collectRegisteredTools(): Set<string> {
+  const names = collectRegistrationCallSites()
+  for (const gated of collectDeprecatedToolNames()) names.delete(gated)
+  return names
+}
+
+/**
+ * The raw pre-gate scan: every name that HAS a registration call site in
+ * source, including the RC-14-gated legacy names. Exported for diagnostics
+ * (the static-vs-served delta is itself a finding worth reporting) — callers
+ * asking "is this servable?" want `collectRegisteredTools()`, not this.
+ */
+export function collectRegistrationCallSites(): Set<string> {
   const files: string[] = []
   walkTs(MCP_TOOLS_ROOT, files)
   const names = new Set<string>()
@@ -70,6 +109,47 @@ export function collectRegisteredTools(): Set<string> {
       const m = src.match(/const TOOL_NAME\s*=\s*['"]([a-zA-Z0-9_]+)['"]/)
       if (m) names.add(m[1])
     }
+  }
+  return names
+}
+
+/**
+ * Parses `DEPRECATED_MCP_TOOL_NAMES` out of `deprecated_tool_gate.ts` — the
+ * RC-14 removal set, applied UNCONDITIONALLY at runtime for every profile
+ * including `full`.
+ *
+ * THROWS rather than degrading if the set cannot be parsed. A silent fallback
+ * to "assume nothing is gated" would restore precisely the over-approximation
+ * this function exists to remove, and would do it invisibly — a detector that
+ * quietly stops detecting is worse than one that is absent (CLAUDE.md §N.8).
+ * If the gate file's shape changes, this must fail loudly and be re-pointed.
+ */
+export function collectDeprecatedToolNames(): Set<string> {
+  const src = readFileSync(DEPRECATED_GATE_FILE, 'utf-8')
+  const declIdx = src.indexOf('DEPRECATED_MCP_TOOL_NAMES')
+  if (declIdx === -1) {
+    throw new Error(
+      `mcp_registered_tools: DEPRECATED_MCP_TOOL_NAMES not found in ${DEPRECATED_GATE_FILE}. ` +
+      `The RC-14 gate has moved or been renamed — re-point this parser. Refusing to fall back to ` +
+      `an ungated (43-name over-reporting) tool set.`
+    )
+  }
+  const openIdx = src.indexOf('new Set([', declIdx)
+  const closeIdx = src.indexOf('])', openIdx)
+  if (openIdx === -1 || closeIdx === -1) {
+    throw new Error(
+      `mcp_registered_tools: could not parse the DEPRECATED_MCP_TOOL_NAMES set literal in ` +
+      `${DEPRECATED_GATE_FILE}. Refusing to fall back to an ungated tool set.`
+    )
+  }
+  const names = new Set<string>(
+    [...src.slice(openIdx, closeIdx).matchAll(/['"]([a-zA-Z0-9_.]+)['"]/g)].map((m) => m[1])
+  )
+  if (names.size === 0) {
+    throw new Error(
+      `mcp_registered_tools: DEPRECATED_MCP_TOOL_NAMES parsed to ZERO names — the literal's shape ` +
+      `has drifted. Refusing to fall back to an ungated tool set.`
+    )
   }
   return names
 }
