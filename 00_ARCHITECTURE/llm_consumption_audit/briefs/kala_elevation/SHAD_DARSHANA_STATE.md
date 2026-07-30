@@ -13,6 +13,16 @@ governing: SHAD_DARSHANA_NIGHT_RUN_v1_0.md (orchestration) + SHAD_DARSHANA_BRIEF
 
 ## NEXT-ACTION
 
+**NIGHT 2 CLOSED (2026-07-31 — see MORNING REPORT at the end of this file for the full
+close-out).** Gate W1 VERIFIED-CLOSED. All 5 W2 build lanes merged to `main`; Gate W2 itself
+NOT closed (Lane C's disclosed N_e lifetime-count-priors gap must resolve first). `main` is
+one deploy ahead of production, by explicit native decision, not oversight. **Single next
+action for Night 3: deploy `main`, then resolve the N_e blocker before starting Gate W2's real
+integration work** — see the MORNING REPORT for full detail. The Night-2 narrative below is
+retained for evidence trail; the MORNING REPORT is now authoritative for "what to do next."
+
+---
+
 **GATE W1 FORMALLY VERIFIED-CLOSED (2026-07-30, Night 2 — see full PARĪKṢAKA round-1/round-2
 record above in the deploy-#2 section).** Round 1 rejected 5 of 12 items with concrete live
 evidence (items 8/28/29/32/30) — a real "coverage says computed while payload is 100% null"
@@ -1106,5 +1116,82 @@ the GitHub Actions service account, then Night 2 re-runs
 traffic promotes, runs Verifier live acceptance on both canonical charts, and formally closes
 Gate W0 — after which Phase 2 continues (3 remaining W1 lanes, the parihāra/lattice lane, W2
 build-out against the now-merged design doc).
+
+*Truth over completion. PARKED-HONEST with evidence, not a false close.*
+
+---
+
+## MORNING REPORT — Night 2 close (2026-07-30 → 2026-07-31)
+
+**Gate W1 → VERIFIED-CLOSED.** All 12 registry items confirmed VERIFIED-FIXED, live, on both
+canonical charts, across two independent PARĪKṢAKA rounds (round 1 caught 5 real defects,
+round 2 independently re-verified the fix from first principles, not from the fix PR's own
+report). Full record above.
+
+**Wave W2 build lanes → all 5 merged to `main`, Gate W2 itself NOT closed.** Lanes A–E
+(#945/#944/#949/#946/#947) all landed. The merge-train pass that combined them found and fixed
+9 real defects total that no single lane's isolated development or CI could have caught: a
+cross-directory migration-number collision (renumbered 474–483 → 488–497), a `ka_kshetra`
+seed-row saga (removed as an over-generalized cleanup, then correctly restored when
+`catalog_reconciliation.test.ts` caught that `mi_bhara`'s own `depends_on` entry needs it
+resolvable in the same file — see NEXT-ACTION item 2 for the full account), and 4 further
+integration bugs visible only once all five lanes were combined (a `conn=None` crash in
+sandhi-band symbolization, a duplicate `ClockApplicability` dataclass with two different field
+orders that cascaded into 5 stale positional test constructions, and a `FakeConn`/
+`promise_prior` fixture mismatch). This is exactly the value a dedicated integration/merge-train
+pass exists to catch, and it caught real bugs, not busywork. Full evidence trail in the
+NEXT-ACTION section above and the ledger commit history (PR #951).
+
+**Gate W2 itself is correctly NOT closed this session.** Lane C disclosed a real, honest
+blocker: the hazard formula's lifetime-count priors (N_e) do not exist anywhere in the corpus
+yet (`brahma_class_priors` only holds signal-salience priors; `brahma_event_ontology`'s
+`base_rate_by_age` is a different distribution shape entirely) — a real `ka_kshetra` build
+would currently write zero field rows rather than fabricate. The actual field-integration →
+hash-replay → weights-v0-seed → skill-score-publish sequence and Gate W2's acceptance criteria
+are real, substantial standalone work, correctly deferred to a session that starts by resolving
+the N_e blocker.
+
+**`main` ≠ production, by design, not by oversight.** Production (`amjis-mcp`, asia-south1) is
+still serving `amjis-mcp-00525-hrd` — the Gate-W1-fix revision, deployed before any W2 lane
+merged. `main` is now ahead by all 5 W2 lanes plus the ledger PR. **No deploy was triggered
+this session**, on the native's explicit instruction after being shown the tradeoff: the W2
+lanes are pure strangler-fig additions (new tables/migrations, nothing live-serving depends on
+them yet, and the orchestrator won't build `ka_kshetra` productively until the N_e blocker
+closes anyway), so a stale production revision costs nothing functionally — and a deploy right
+now would also ship several unrelated commits from OTHER concurrently-active campaigns sharing
+this repo tonight (SAMĀPTI's `n8-lint` gate; a migration-474-header-comment fix/revert pair
+between two other sessions), which is not this Conductor's call to make unilaterally. **The
+next session that wants to actually build a `ka_kshetra` field must deploy `main` first** —
+this is the one concrete precondition it inherits.
+
+**A genuine repo-concurrency observation, not a defect to fix, but worth the native's
+awareness:** this session ran in a repository with a very high concurrent-campaign load —
+dozens of other worktrees/branches active simultaneously (SAMĀPTI, sarva-siddhi, satya-shesha,
+elev, pb, wave, and others), `main` receiving pushes every 10–30 minutes for hours at a stretch
+from sessions this Conductor has no visibility into. This directly caused the ledger PR (#951)
+to lose a merge race repeatedly (branch fell `BEHIND` faster than its own CI could complete) —
+resolved once the native paused other sessions, not by any change on this campaign's side. Two
+of the passing-by commits observed on `main` directly contradicted each other in successive
+pushes (a migration-474 header-comment "fix" immediately followed by a "revert... Ruling 58
+supersedes Ruling 44" from what appears to be a different session) — flagged here as an
+observed fact, not investigated further, since it belongs to a different campaign's ledger.
+
+**Worktree/branch hygiene: all of this campaign's completed-and-merged worktrees and local
+branches removed** (9 worktrees, 18 local branch refs total across the session) — verified
+each via its GitHub PR's actual merge record (not local git ancestry, since this repo
+squash-merges, so a raw `--merged` check would have under-reported). The one pre-existing,
+locked `/tmp/prdocs` worktree (`docs/shad-darshana-v2-spec`) was left untouched — it predates
+this campaign and is not this Conductor's to remove unilaterally.
+
+**Skill scoreboard / specificity-gate / authority-basis-census / dark-corpus scoreboards:**
+unchanged from Night 1 seed state — all populate at W2-close/W6 per the brief's own schedule,
+and W2 hasn't closed.
+
+**Single next action for Night 3:** deploy `main` to apply the W2 migrations, then start Gate
+W2's real integration work by first resolving Lane C's disclosed N_e lifetime-count-priors gap
+(own small L0 corpus-seeding lane, or an ANTARYĀMIN-adjudicated design choice for where the
+priors come from — same shape of precondition as ADJUDICATION-1's `bg_synthetic_cohort_md`
+gap) — only after that can `ka_kshetra` produce a real, non-empty field for the actual
+hash-replay/weights-v0-seed/skill-score-publish/Gate-W2-acceptance sequence.
 
 *Truth over completion. PARKED-HONEST with evidence, not a false close.*
