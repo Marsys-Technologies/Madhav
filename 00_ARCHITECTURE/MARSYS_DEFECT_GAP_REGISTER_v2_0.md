@@ -1,6 +1,6 @@
 ---
 canonical_id: MARSYS_DEFECT_GAP_REGISTER
-version: 3.16
+version: 3.18
 status: LIVING — the authoritative, exhaustive register of every known defect + coverage gap in the
   MARSYS-JIS instrument as of 2026-07-10, resynced 2026-07-16 (D-1.6 Lane S-8, Section 13). Add
   rows, never silently drop them. Each row closes only with a fix PR + [verify-against] evidence
@@ -418,12 +418,15 @@ Recompute control: **all 9 graha positions + lagna + panchanga anchors match liv
 | SC-14 | **bo_pratijna (Promise Register), ka_avadhi, ka_taranga: built-but-unservable** — zero TS readers; even pact_query recomputes the promise chain live instead of reading bodha_pratijna. These are the Beyond-Acharya PROMISE→ACTIVATION spine | HIGH | Law-5 | OPEN |
 | SC-15 | `kala_timeline` served but owned by NO registered asset (inverse conservation failure — untracked by any count_sql) | MED | Law-5 | OPEN |
 | SC-16 | 20+ per-chart ka_*/ph_* assets carry target_floor NULL with no documented reason (floor-hygiene drift) | LOW | Law-5 | OPEN |
-| SC-17 | `bodha_bundle_get` recover-pointer targets a tool that was never registered (rename never shipped; live tool = holistic_bundle_chart_facts) | MED | holistic_bundle.ts:73 | OPEN |
-| SC-18 | **Budget-trim recover pointers name INTERNAL capability names, not MCP tools** (get_dignity/get_avasthas/get_divisionals/query_signals…) — the recovery path fires exactly when data was withheld and points at tool-not-found | HIGH | registry_bridge.ts:2098-2493 | OPEN |
-| SC-19 | `instrument:'bo_upaya'` puts an asset id in a tool-pointer field | LOW | query_remedies.ts:272 | OPEN |
+| SC-17 | `bodha_bundle_get` recover-pointer targets a tool that was never registered (rename never shipped; live tool = holistic_bundle_chart_facts) | MED | holistic_bundle.ts:73 | FIXED [verify-against: static, SAMĀPTI A2 2026-07-30] — the rename SHIPPED: `bodha_bundle_get` is a live `server.tool()` registration at `platform-mcp/src/tools/retrieval/holistic_bundle.ts:135`, so the recover pointer at :78 now resolves. `sc_pointer_validation.ts` no longer reports it. |
+| SC-18 | **Budget-trim recover pointers name INTERNAL capability names, not MCP tools** (get_dignity/get_avasthas/get_divisionals/query_signals…) — the recovery path fires exactly when data was withheld and points at tool-not-found | HIGH | registry_bridge.ts:2098-2493 | FIXED **[verify-against: LIVE prod, SAMĀPTI A2 reopen-1, 2026-07-30, revision `amjis-mcp-00517-b5q`]** — see the two-phase history below. |
+| SC-18a | **SC-18 phase 1 — the original five internal capability names.** `get_dignity`→`ganita_condition_get` (registry_bridge.ts:3846/3861/3880/4057/4319), `get_avasthas`→`ganita_condition_get` (:3914), `get_divisionals`→`ganita_chart_facts_get` (:3269, register_d9_judgment.ts:1138, register_d10_pact.ts:300), `query_signals`→`get_signals` (:3209, register_d9_judgment.ts:1143), `get_strength`→`ganita_strength_get` (:3898). Includes the harness's never-filed **NEW-P1** (`get_strength`), same class and same fix. | HIGH | as above | FIXED — but note phase 1 repointed `query_signals` at `get_signals`, which phase 2 then found was **itself unserved**. A fix verified only by source scan. |
+| SC-18b | **SC-18 phase 2 — RC-14 re-broke the same pointers, and the harness could not see it.** The RC-14 breaking flip (`96a4b637`, 2026-07-23, #726) removed 43 legacy tool names from the served MCP surface via a central RUNTIME gate (`platform-mcp/src/lib/deprecated_tool_gate.ts`) while deliberately leaving their `server.tool('legacy', …)` call sites in source. `sc_pointer_validation.ts` read those call sites and therefore believed all 43 were live — so **32 production drill-pointer/recover sites across 11 instrument names dead-ended on the deployed server with `MCP error -32602: Tool <name> not found`**, i.e. the verbatim SC-18 harm, reintroduced wholesale and invisible to the check built to detect it. Discovered by independent live verification of lane A2, not by the harness. | HIGH | live `tools/call` on `amjis-mcp-00517-b5q`; 11 names: get_signals, get_dashas, traverse_graph, get_chart_orientation, get_domain_reading, get_cgm_subgraph, get_positions, get_remedies, muhurta_finder, query_planet_transit, event_anchors | FIXED **[verify-against: LIVE prod 2026-07-30]** — all 43 occurrences (32 production + 11 test-fixture) repointed at the canonical faces given by `canonical_faces.json`'s `deprecated_aliases` (authoritative mapping, not inferred): e.g. `get_signals`→`bodha_signals_get`, `get_dashas`→`ganita_dashas_get`, `traverse_graph`→`bodha_graph_traverse_get`. **Live-verified by real `tools/call`, not source inspection:** control `get_signals` → `MCP error -32602: Tool get_signals not found`; all 11 replacement targets dispatch successfully; a full-tree sweep confirms **0 of 30 production and 0 of 11 test-fixture pointer instruments dead-end against the live catalog**. Harness repaired so the class cannot recur silently: `collectRegisteredTools()` now models the RC-14 gate (167 − 43 = 124 = live, set-for-set), and the new opt-in `runLiveCatalogParity()` measures that model against a real `tools/list`. Full analysis: `00_ARCHITECTURE/briefs/samapti/SAMAPTI_MCP_TOOL_GAP_CHARACTERIZATION_v1_0.md`. |
+| SC-19 | `instrument:'bo_upaya'` puts an asset id in a tool-pointer field | LOW | query_remedies.ts:272 | FIXED [verify-against: static, SAMĀPTI A2 2026-07-30] — `query_remedies.ts:562-568` moved the asset id out of the `instrument` field into a dedicated `asset_id` field, with an inline "SC-19 fix" note explaining that the entry documents a build-state fact and is not a callable pointer. `sc_pointer_validation.ts` reports 0 asset-id-in-tool-field. |
 | SC-20 | `ganita_positions_get` ≠ `get_positions` — alias returns flat EAV incl. aprakasha-first, no planet param; primitive returns pivoted rows; primitive's planet filter ineffective (67KB) | HIGH | Law-7 live diff | OPEN |
 | SC-21 | `bodha_graph_subgraph_get` is a capability-degraded alias of get_cgm_subgraph (no mode/seed/about/min_strength; "same as" claim false; limit ignored) | MED-HIGH | Law-7 | OPEN |
 | SC-22 | Mimamsa calibration outputs unreadable: score_manifestation/score_falsifier, hit_rate_by_tier, negative-control scores, phala rectification_confidence — the calibration loop's own outputs have no serving path (compounds C-5) | HIGH | Law-4 | OPEN |
+| SC-23 | **`query_classical_texts` used as a drill-pointer instrument** — it is the INTERNAL registry capability name (`marsys://tool/L0/query_classical_texts`), not a live MCP tool name, so the "go read the verses" pointer in the judgment verdict dead-ended in tool-not-found. Same class as SC-18. **Filed 2026-07-30 (SAMĀPTI lane A2); discovered by `sc_pointer_validation.ts` itself on 2026-07-10 and carried in `sc_pointer_baseline.json` as "NEW-P2 — verify intended target before filing" for 20 days without ever being filed** — this row is that filing. | MED | register_d9_judgment.ts:1146; `sc_pointer_baseline.json` NEW-P2 entry | FIXED [verify-against: static, SAMĀPTI A2 2026-07-30] — **intended target verified before filing, as the NEW-P2 note demanded**: the pointer's purpose is "verse citations for `<bhava>` judgment (BPHS/Phaladeepika bhava-adhyaya)", and the disambiguation between the three live candidates is decided by WHICH PRIMITIVE each fronts, not by name similarity: `ref_rules_search` is the MCP alias of the **same** capability the dead pointer named — `register_p1_reference.ts:8` maps `ref_rules_search → marsys://tool/L0/query_classical_texts` — whereas the two names the 2026-07-10 baseline note suggested as "closest live tool" front *different* primitives (`read_classical_text.ts:69` calls the `read_classical_text` primitive; :183 calls the `search_classical_texts` primitive). All three are registered (statically confirmed against `collectRegisteredTools()`), so the choice had to be made on capability identity — hence "verify intended target," and hence the correct target is `ref_rules_search`. `register_d9_judgment.ts:1146` emits exactly that, shipped under RC-04 with an inline note recording the same reasoning. |
 
 ### §11.4 — INSTRUMENT/LATERAL DEFECTS (TAP-8 + TAP-4 battery)
 
@@ -1373,7 +1376,47 @@ renumbered during integration, no content change.)
 
 ---
 
-*End of MARSYS_DEFECT_GAP_REGISTER. Changelog: v3.16 (2026-07-23, post-D-4b-close cleanup,
+*End of MARSYS_DEFECT_GAP_REGISTER. Changelog: v3.18 (2026-07-30, SAMĀPTI lane A2-CI-POINTERS
+reopen cycle 1, branch `samapti/ci-pointer-validation`) — **SC-18 split into SC-18a/SC-18b and
+re-dispositioned against the LIVE server after v3.17's static-only verification was refuted.**
+An independent verifier called `get_signals` — a name v3.17's harness PASSED — on the deployed
+MCP and got `MCP error -32602: Tool get_signals not found`. Root cause: the RC-14 breaking flip
+(2026-07-23) retired 43 legacy tool names via a RUNTIME gate while leaving their registration
+call sites in source, so the static resolver over-reported the served surface by 43 names and
+passed 32 production pointer sites that dead-end live. All 43 occurrences repointed at the
+canonical faces from `canonical_faces.json`; verified by real `tools/call` against revision
+`amjis-mcp-00517-b5q`. The resolver now models the gate (167 − 43 = 124 = live, set-for-set) and
+a new opt-in live-catalog parity check measures the model against a real `tools/list`. tap5's
+Law-7 title is now conditional on whether the live catalog was actually fetched. Also commissioned
+by DVA Ruling 17 and delivered:
+`00_ARCHITECTURE/briefs/samapti/SAMAPTI_MCP_TOOL_GAP_CHARACTERIZATION_v1_0.md` — which establishes
+that the circulating "152 tools" figure is `mcp_server_info`'s manifest-derived `tool_count`, NOT
+a `tools/list` count (the two sets overlap by only 15 of 124 names), that it still reads 152
+today, and that **no tool lost service**: every revision in the 2026-07-29 18:40-19:44Z window
+models to exactly 124. NO REGRESSION; no escalation warranted.
+Prior: v3.17 (2026-07-30, SAMĀPTI lane A2-CI-POINTERS,
+branch `samapti/ci-pointer-validation`) — the §11.3 pointer-parity family reconciled against the
+live tree, all four rows dispositioned with static evidence. **SC-17 / SC-18 / SC-19 → FIXED**:
+each was already repaired in production (the `bodha_bundle_get` registration shipped; all five
+SC-18 internal capability names remapped with inline `(SC-18: was "…")` notes; the `bo_upaya`
+asset id moved to its own `asset_id` field) but all three still read `OPEN` here, and their
+`sc_pointer_baseline.json` quarantine entries were still being carried — so the harness could not
+answer "which of these is genuinely still open?". **SC-23 added and FIXED in the same pass** — the
+`query_classical_texts` pointer that `sc_pointer_validation.ts` discovered on 2026-07-10, tagged
+"NEW-P2 — verify intended target before filing," and that was then never filed for 20 days. Target
+verified on capability identity rather than name similarity (`ref_rules_search` fronts the same
+`marsys://tool/L0/query_classical_texts` primitive; the two similarly-named live tools front
+different primitives). The harness itself was repaired in the same lane: it no longer flags
+`instrument:` literals that sit inside comments (it previously punished in-code documentation of
+the very defect class it polices — the source of the unregistered `SC-pointer:x` FAIL, which was a
+placeholder in a `response_budget` unit test); it now classifies each finding by surface
+(production vs test_fixture); and two new ratchet-tightening checks —
+`SC-pointer:baseline-freshness` and `SC-pointer:occurrence-freshness` — FAIL when a quarantine
+entry stops reproducing, so a baselined entry can no longer outlive its defect (a structural
+replacement for the "quarantine with an expiry date" ask). `tap5_seam_conservation.ts`'s Law-7 row,
+until now a hardcoded `QUARANTINED` string that never invoked the check it cited (a §N.8
+earned-signal violation inside the audit harness), now imports and runs the real battery.
+Prior: v3.16 (2026-07-23, post-D-4b-close cleanup,
 branch `wave/postclose/cr128-record-outcome-retire`) — CR-128 RESOLVED: post-close investigation
 found the calibration write-surface already exists, live (mi_pramana -> mimamsa_calibration ->
 mi_gunanaka -> mimamsa_multipliers), and already ran honestly to zero for chart 482012f1 (no

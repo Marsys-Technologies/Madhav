@@ -203,7 +203,7 @@ describe('still_over_budget resolution (GT-45/W-5) — deleted from BudgetResult
       getArray: (c) => c.rows,
       setArray: (c, kept) => { c.rows = kept as typeof c.rows },
       minKeep: 0,
-      recover: { instrument: 'get_signals', hint: 'full set' },
+      recover: { instrument: 'bodha_signals_get', hint: 'full set' },
       label: 'rows',
     }
     const budgeted = finalizeMcpBudget(content as unknown as Record<string, unknown>, {
@@ -228,7 +228,7 @@ describe('still_over_budget resolution (GT-45/W-5) — deleted from BudgetResult
       getArray: (c) => c.rows,
       setArray: (c, kept) => { c.rows = kept as typeof c.rows },
       minKeep: 1,
-      recover: { instrument: 'get_signals', hint: 'full set' },
+      recover: { instrument: 'bodha_signals_get', hint: 'full set' },
       label: 'rows',
     }
     const budgeted = finalizeMcpBudget(content as unknown as Record<string, unknown>, {

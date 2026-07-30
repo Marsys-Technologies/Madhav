@@ -96,7 +96,11 @@ describe('judgment_query — MCP tool registration + seam reachability', () => {
         chart_id: TEST_CHART_ID, ayanamsha_id: 'lahiri_chitrapaksha',
         about: { domain: 'marriage', bhava: 7, label: 'Marriage / Partnership', karakas: ['Venus'], operative_varga: 'D9' },
         receipt: { bhava: true, bhavesha: true, karaka: true, from_moon: true, varga_confirmed: 'D9✓', yogas_checked: 2, bhanga_checked: false, timing_anchored: true },
-        drill_pointers: [{ instrument: 'get_divisionals', hint: 'x', pointer_type: 'confirm_in_varga' }],
+        // SAMĀPTI A2: fixtures name the live MCP tools production actually emits
+        // ('ganita_chart_facts_get', not the internal capability name 'get_divisionals')
+        // — sc_pointer_validation.ts scans test fixtures too. See the file-level note
+        // in src/lib/kala_envelope.test.ts for the convention.
+        drill_pointers: [{ instrument: 'ganita_chart_facts_get', hint: 'x', pointer_type: 'confirm_in_varga' }],
         judgment_flags: [],
       },
     }, captured)
@@ -163,11 +167,16 @@ describe('judgment_query — MCP tool registration + seam reachability', () => {
         receipt: { bhava: true, bhavesha: true, karaka: true, from_moon: true, varga_confirmed: 'D10✓', yogas_checked: 3, bhanga_checked: false, timing_anchored: true },
         fact_id_refs: ['f-1', 'f-2'],
         drill_pointers: [
-          { instrument: 'get_divisionals', hint: 'full D10 placements.', pointer_type: 'confirm_in_varga' },
-          { instrument: 'query_signals', hint: 'domain=career signal set.', pointer_type: 'opposing_yoga' },
-          { instrument: 'get_dashas', hint: 'full dasha timeline.', pointer_type: 'dasha_of_promise' },
-          { instrument: 'traverse_graph', hint: 'dispositor context.', pointer_type: 'dispositor_chain' },
-          { instrument: 'query_classical_texts', hint: 'verse citations.', pointer_type: 'other' },
+          // SAMĀPTI A2: each instrument is a live registered MCP tool, matching what
+          // register_d9_judgment.ts:1138-1146 actually emits today. The pre-2026-07-30
+          // fixture used the INTERNAL registry capability names ('get_divisionals',
+          // 'query_signals', 'query_classical_texts'), none of which is a registered
+          // tool — the SC-18 dead-pointer class this fixture was silently modelling.
+          { instrument: 'ganita_chart_facts_get', hint: 'full D10 placements.', pointer_type: 'confirm_in_varga' },
+          { instrument: 'bodha_signals_get', hint: 'domain=career signal set.', pointer_type: 'opposing_yoga' },
+          { instrument: 'ganita_dashas_get', hint: 'full dasha timeline.', pointer_type: 'dasha_of_promise' },
+          { instrument: 'bodha_graph_traverse_get', hint: 'dispositor context.', pointer_type: 'dispositor_chain' },
+          { instrument: 'ref_rules_search', hint: 'verse citations.', pointer_type: 'other' },
           { instrument: 'synth_tail_divergence_get', hint: 'tail-check.', pointer_type: 'tail_dissent' },
         ],
         judgment_flags: [],
