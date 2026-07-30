@@ -1,6 +1,6 @@
 ---
 artifact: CLAUDE.md
-version: "6.6"
+version: "6.7"
 status: CURRENT
 role: >
   Root governance surface. Master orientation document for every Claude session on the MARSYS-JIS
@@ -13,6 +13,21 @@ mirror_obligations_retired: "2026-05-27 — Gemini mirror discipline retired per
 supersedes:
   - "CLAUDE.md v5.1 (2026-06-09 — realigned to L1-done/L2-next reality at v6.0)"
 changelog:
+  - v6.7 (2026-07-30, SAMĀPTI/B-DOCS-GOVERNANCE, DVA Ruling 16):
+      §C item 14 re-pointed from the SUPERSEDED `L1_GANITA_CLOSURE_v1_0.md` to the CURRENT
+      `L1_GANITA_CLOSURE_v2_0.md`; hardcoded row counts (chart_facts=27,554; chart_dashas=536,471;
+      chart_divisionals=21,635) removed and replaced with a POINTER to the closure artifact's own
+      §2.1 asset registry table — the artifact re-measures itself over time (it already documents
+      its own figures as post-enrichment estimates, not a final count) and a second hardcoded copy
+      here is exactly the mechanism that produced the drift being fixed (v1.0's numbers matched
+      neither the v2.0 artifact's own figures nor live production; per DVA Ruling 16's live
+      re-measurement, chart_facts=138,414 total across 5 ayanamshas, chart_divisionals=23,542 —
+      both consistent with post-enrichment growth — but chart_dashas=484,387, a 52,084-row
+      DECREASE against the "prod-confirmed" 536,471 figure that is NOT explained by enrichment and
+      is separately assigned as a named investigation item, attached to C3-BUILDSTATE-RECON, not
+      resolved by this edit). §D snapshot table's L1_GANITA_CLOSURE row corrected to match (path,
+      version 2.1, SUPERSEDED v1.0 noted). §D snapshot CLAUDE self-row corrected 6.5 → 6.7 (a third
+      location, beyond frontmatter/footer, where this file's own version had drifted).
   - v6.4 (2026-07-19, COWORK-RETRIEVAL-STRATEGY):
       §I B.11 amended with the RS-4 proportionality carve-out (native-authorized 2026-07-19):
       B.11 scoped to interpretive queries; pinpointed factual lookups (depth: retrieval) satisfy
@@ -85,7 +100,7 @@ Every Claude session, at open, reads the following in order before any substanti
 11. `00_ARCHITECTURE/ONGOING_HYGIENE_POLICIES_v1_0.md` — governance-layer hygiene rule set (CURRENT since Step 12 close, 2026-04-24). §A–§N: archival retain-in-place, predecessor cleanup, scope-boundary enforcement, SESSION_LOG completeness, staleness register, CI cadence + exit-code-3 known_residuals whitelist, red-team cadence + learning_layer_stub validator class, quarterly governance pass, Macro Plan review triggers, implementation-actions index, residual-disposition record, finding-coverage audit. Governs every session-close checklist from Step 12 forward.
 12. `00_ARCHITECTURE/PORTAL_REDESIGN_TRACKER_v1_0.md` (canonical_id `PORTAL_REDESIGN_TRACKER`) + `00_ARCHITECTURE/PORTAL_REDESIGN_VISION_v1_0.md` — **Portal Redesign workstream only (STATUS: COMPLETE).** Read if auditing the redesign history. Skip for all other sessions.
 13. `00_ARCHITECTURE/ORCHESTRATOR_CONVERGENCE_CLOSE_v1_0.md` (canonical_id `ORCHESTRATOR_CONVERGENCE_CLOSE`, CURRENT) — **Chart-build workflow sessions + every new-layer session (L2+).** The sealed record of the FROZEN orchestrator contract: `WriterBase` conformance (`@register`, `run(ctx)` / `plan_substeps + run_substep`, `ctx.db_conn` never committed by writer, no `_telemetry`, `WriterResult`); Phase 5 E2E runbook; L2-readiness conformance checklist (§5). Also read `00_ARCHITECTURE/BUILD_GUARANTOR_SWARM_CHARTER_v1_0.md` (canonical_id `BUILD_GUARANTOR_SWARM_CHARTER`) for the 12-role agentic swarm charter. Skip both if the session does not touch the chart-build workflow.
-14. `00_ARCHITECTURE/L1_GANITA_CLOSURE_v1_0.md` (canonical_id `L1_GANITA_CLOSURE`, CURRENT) — **L1 layer sessions and any L2 onboarding session.** The definitive L1 sealed record: 9 data assets + ga_chart_service, canonical row counts (chart_facts=27,554; chart_dashas=536,471; chart_divisionals=21,635; total Gaṇita header=585,710), DAG edges, Phase E status (operator E2E gated on Abhinandan Mohanty `1c826d5a`), the L2 onboarding contract. Read at L2 open; skip for unrelated sessions.
+14. `00_ARCHITECTURE/L1_GANITA_CLOSURE_v2_0.md` (canonical_id `L1_GANITA_CLOSURE`, CURRENT — supersedes the v1.0 seal, which is SUPERSEDED not CURRENT) — **L1 layer sessions and any L2 onboarding session.** The definitive L1 sealed record: 15-asset picture + ga_chart_service, DAG edges, Phase E status (operator E2E gated on Abhinandan Mohanty `1c826d5a`), the L2 onboarding contract. Canonical row counts: **read them from the artifact's own §2.1 asset registry table at the time of use — do not restate them here.** Row counts are a live, re-measured quantity (§2.1 already documents its own figures as post-enrichment estimates pending prod re-measurement, not a final total); the artifact is the pointer, this file is not a second copy of the number. (Historical note, DVA Ruling 16: v1.0's hardcoded figures — chart_facts=27,554, chart_dashas=536,471, chart_divisionals=21,635 — previously lived here and had drifted from both the v2.0 closure artifact's own numbers and live production; hardcoding a fresher number here would only reset the same clock, so this entry now points instead of restating.) Read at L2 open; skip for unrelated sessions.
 15. `00_ARCHITECTURE/L2_BODHA_CAMPAIGN_HANDOFF_v1_0.md` (canonical_id `L2_BODHA_CAMPAIGN_HANDOFF`, CURRENT) — same as item 5 above; listed here for cross-reference completeness.
 16. `00_ARCHITECTURE/MSR_COMPUTED_VALUE_DRIFT_HANDOFF_v1_0.md` + `00_ARCHITECTURE/MSR_UCN_CONTAMINATION_AUDIT_v1_0.md` — **L2 Bodha sessions only.** The two documented traps that Bodha must not repeat (computed-value authority inversion; interpretation contamination of the deterministic base). Read at L2 open.
 
@@ -119,9 +134,9 @@ Canonical artifact versions and paths are defined in `00_ARCHITECTURE/CANONICAL_
 | ONGOING_HYGIENE_POLICIES | `00_ARCHITECTURE/ONGOING_HYGIENE_POLICIES_v1_0.md` | 1.0 | CURRENT |
 | BUILD_GUARANTOR_SWARM_CHARTER | `00_ARCHITECTURE/BUILD_GUARANTOR_SWARM_CHARTER_v1_0.md` | 1.0 | CURRENT |
 | ORCHESTRATOR_CONVERGENCE_CLOSE | `00_ARCHITECTURE/ORCHESTRATOR_CONVERGENCE_CLOSE_v1_0.md` | 1.0 | CURRENT |
-| L1_GANITA_CLOSURE | `00_ARCHITECTURE/L1_GANITA_CLOSURE_v1_0.md` | 1.0 | CURRENT |
+| L1_GANITA_CLOSURE | `00_ARCHITECTURE/L1_GANITA_CLOSURE_v2_0.md` (v1.0 SUPERSEDED — premature seal, floors stale, enrichment not folded) | 2.1 | CURRENT |
 | L2_BODHA_CAMPAIGN_HANDOFF | `00_ARCHITECTURE/L2_BODHA_CAMPAIGN_HANDOFF_v1_0.md` | 1.0 | CURRENT |
-| CLAUDE | `CLAUDE.md` | 6.5 | CURRENT |
+| CLAUDE | `CLAUDE.md` | 6.7 | CURRENT |
 
 Any path in this snapshot that conflicts with `CANONICAL_ARTIFACTS_v1_0.md §1` is wrong here, not there. `drift_detector.py` enforces this via the canonical-path cross-check (protocol §H.3).
 
@@ -319,7 +334,18 @@ usually true" or "nothing has broken yet" is not a substitute for a real detecto
 
 ---
 
-*End of CLAUDE.md v6.6 (2026-07-29, SATYA-DĪPA campaign) — new §N.8 Earned-Signal Principle,
+*End of CLAUDE.md v6.7 (2026-07-30, SAMĀPTI/B-DOCS-GOVERNANCE, DVA Ruling 16) — §C item 14 and the
+§D snapshot table re-pointed from the SUPERSEDED `L1_GANITA_CLOSURE_v1_0.md` to the CURRENT
+`L1_GANITA_CLOSURE_v2_0.md`; the three hardcoded row counts removed in favor of a pointer to the
+closure artifact's own re-measurable §2.1 table (hardcoding here is the mechanism that let the
+number drift from both the artifact and live production — see the full account in the frontmatter
+changelog above). §D's own CLAUDE self-row version corrected 6.5 → 6.7. **HELD, not in this pass:**
+DVA Ruling 15 also authorizes correcting §N.8 instance 3's wording (the PB-2 byte-equality gate
+description) and re-grading a PB-3 disposition, but gates the §N.8 edit specifically on independent
+VER confirmation of the underlying A7-N8-AUDIT finding (F-33) — as of this edit VER had not yet
+verified that lane, so §N.8 is UNCHANGED here per the ruling's own precondition; the PB-3 disposition
+re-grade (a separate document, not gated the same way) is recorded in `REPORT_PB-3.md` directly. Prior:
+v6.6 (2026-07-29, SATYA-DĪPA campaign) — new §N.8 Earned-Signal Principle,
 generalizing §N.7 item 4's "a flag needs a real detector or it's null" doctrine to the build layer:
 the orchestrator's no-op-completion promotion predicate asserted substep-plan completeness while
 only ever checking row presence, the same defect class as D-1.6 one layer deeper. Fixed via the one
