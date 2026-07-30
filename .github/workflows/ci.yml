@@ -408,6 +408,37 @@ jobs:
         # G4_no_native_lit per PROJECT_ARCHITECTURE B.10.
         run: bash platform/scripts/governance/assert_no_native_literal.sh
 
+      - name: dag_edge_guard — self-test (§N.8 / SAMĀPTI F-02)
+        # Hard gate. Before this step existed, dag_edge_guard's docstring claimed it ran
+        # "as a CI gate" and caught undeclared-read drift "the moment" it appeared, while
+        # its ONLY automated caller was a test carrying @pytest.mark.skipif(not
+        # DATABASE_URL) — and CI has no DB, so it skipped on every run. No mutation to any
+        # writer could turn it red. Three real HARD violations were found by a human
+        # running it by hand, which is exactly what the claim said would not be necessary.
+        #
+        # SCOPE OF THIS GATE, stated so it is not itself an overclaim: --self-test is
+        # DB-free and proves the DETECTOR by mutation (a seeded undeclared cross-asset
+        # read must be flagged; the same read with the edge declared must come back
+        # clean). It proves NOTHING about the live registry. The live scan needs
+        # DATABASE_URL and runs in fresh_chart_smoke.yml — see that workflow and the
+        # module docstring.
+        run: |
+          cd platform/python-sidecar
+          python -m pipeline.orchestrator.dag_edge_guard --self-test
+
+      - name: kala_derivation_completeness_guard — self-test (§N.8 / SAMĀPTI F-02)
+        # Hard gate. Same class as above and worse: this guard had ZERO automated
+        # invocation anywhere in the repo — its own test file exercises only the pure
+        # evaluate() and never calls analyze()/main(). Nothing ran it.
+        #
+        # SCOPE: DB-free detector mutation proof only (clean fixture must stay clean; a
+        # fixture with one seeded derivation gap must be caught). The live scan needs
+        # DATABASE_URL *and* per-chart kala_* rows, so it runs in fresh_chart_smoke.yml
+        # after the fixture-chart build — the only automated context with both.
+        run: |
+          cd platform/python-sidecar
+          python -m pipeline.orchestrator.kala_derivation_completeness_guard --self-test
+
       - name: edge_security_smoke — sanity
         # Lightweight smoke: shell + yaml + JSON shape check on infra/edge
         # without an actual edge-stack endpoint. Full edge smoke depends on the
