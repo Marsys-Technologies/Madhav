@@ -494,7 +494,10 @@ Emission is unconditional (`engine.py:254-256`,
 `return [derive_phaladesa_record(domain, ctx) for domain in _ALL_DOMAINS]`); the lookup at
 `ph_phaladesa.py:79` uses a bare-slug default.
 
-**Live proof the raw slug is already served** — `phala_phaladesa`, canonical chart, 7 rows (= exactly
+**Live proof the raw slug is already shipping in production data, not yet selected by any serve
+surface** (DVA Ruling 75 Q(ii) precision fix — the earlier wording "already served" overstated it:
+`query_domain_result.ts` was checked directly and no serve surface currently selects
+`narration_jsonb`) — `phala_phaladesa`, canonical chart, 7 rows (= exactly
 `_ALL_DOMAINS`, no `general` row), all `narration_status = 'ready'`:
 - `transition` → `"The transition domain rests on 50 predictive anchor(s)…"` ← **raw slug**
 - every other row → a proper label, e.g. `wealth` → `"…for the wealth and finances domain…"`
@@ -510,6 +513,14 @@ citations (`:69-74`, `:79`) are exact. A line-number mismatch was read as an unc
 **Disposition: F18 → CONFIRMED, assigned to B-NAR-PH.** Cosmetic severity stands (the sentence is
 truthful, the label is non-canonical). A `ph_phaladesa` re-run is needed for the fix to reach the 7
 already-`ready` rows — folded into **C1-REBUILD**, not a separate rebuild.
+
+> **Wording precision (DVA Ruling 75 Q(ii), ratified).** The defective narration is **already
+> shipping in production data, not yet selected by any serve surface.** An earlier draft of this
+> section said "already served," which overstates the blast radius: the rows exist and are
+> `narration_status = 'ready'`, but `narration_jsonb` is not selected by any current serve surface
+> (`query_domain_result.ts` checked directly). This changes nothing about the disposition — the
+> reversal itself is CONFIRMED — only the exposure claim. Any downstream citation of F18 must carry
+> the corrected wording.
 
 **Shared root cause worth recording:** `general` is a live `phala_anchors.domain` value that never
 survives into a phaladesa record because `_ALL_DOMAINS` alone drives emission and
