@@ -53,16 +53,23 @@
  * unaffected. This is the honest, disclosed gap noted in the M-2 report: a
  * future protocol lane should add a dedicated
  * `prediction_candidate.define` structured event.
+ *
+ * SCOPE NOTE (SAMĀPTI lane B-PB8-BYTEEQ, 2026-07-30). This file remains the
+ * ONE-FIXTURE gate, and a green run here proves ONLY that this fixture's event
+ * sequence round-trips. The full 12-fixture corpus assertion the PB-2 brief
+ * §G-1 actually demanded now lives in `./canonical_serialization_corpus.test.ts`
+ * (via `./c2_corpus_bridge.ts`); the two reducer/writer drivers were extracted
+ * to `./canonical_paths.ts` so both gates drive the SAME code, not two copies.
+ * Extraction surfaced two driver bugs this single fixture could never see — an
+ * uncommitted block wrongly persisting, and interleaved-vs-kind-grouped part
+ * ordering; both are fixed in `canonical_paths.ts` and gated in the corpus
+ * file. The "against one real deployed reading" half of §G-1 is still OPEN.
  */
 import { describe, expect, it } from 'vitest'
 import { PariprashnaEventSchema, type PariprashnaEvent } from '@/lib/pariprashna/protocol/events'
 import { serializeCanonical } from '@/lib/pariprashna/store/serialize'
-import type { CanonicalMessage, MessagePartInput } from '@/lib/pariprashna/store/schema'
-import {
-  textPartFromBlock,
-  citationPartFromDetection,
-  predictionCandidatePartFromDetection,
-} from '@/lib/pariprashna/store/route_writer_adapter'
+import type { CanonicalMessage } from '@/lib/pariprashna/store/schema'
+import { parsePredictionFlagDetail, runReducerPath, runWriterPath } from './canonical_paths'
 
 // ---------------------------------------------------------------------------
 // Fixture — one representative turn, authored directly in the REAL wire shape.
@@ -133,190 +140,6 @@ const IDENTITY: Pick<CanonicalMessage, 'id' | 'conversation_id' | 'role' | 'sche
   schema_version: 1,
   model_id: 'claude-opus-4-8[1m]',
   provider: 'anthropic',
-}
-
-// ---------------------------------------------------------------------------
-// (a) REDUCER PATH — independently-coded client-side simulation.
-// ---------------------------------------------------------------------------
-
-interface ReducerBlockState {
-  role: 'prose' | 'thinking'
-  text: string
-}
-interface ReducerCitationState {
-  index: number
-  signal_id: string
-  layer: string
-  snippet: string
-  reader_label?: string
-  grade?: string
-}
-interface ReducerState {
-  blockOrder: string[]
-  blocks: Map<string, ReducerBlockState>
-  citations: ReducerCitationState[]
-  predictionFlagDetails: string[]
-}
-
-function createReducerState(): ReducerState {
-  return { blockOrder: [], blocks: new Map(), citations: [], predictionFlagDetails: [] }
-}
-
-/** A from-scratch client reducer — deliberately NOT importing
- *  route_writer_adapter.ts, so a bug in either this function or the
- *  production mapping surfaces as a byte mismatch, not as a shared bug. */
-function applyToReducerState(state: ReducerState, event: PariprashnaEvent): void {
-  switch (event.type) {
-    case 'block.open':
-      state.blockOrder.push(event.block_id)
-      state.blocks.set(event.block_id, { role: event.role, text: '' })
-      break
-    case 'block.delta': {
-      const b = state.blocks.get(event.block_id)
-      if (b) b.text += event.delta
-      break
-    }
-    case 'block.commit': {
-      const b = state.blocks.get(event.block_id)
-      if (b) b.text = event.text // final_text is authoritative, per the real protocol
-      break
-    }
-    case 'citation.define':
-      state.citations.push({
-        index: event.index,
-        signal_id: event.signal_id,
-        layer: event.layer,
-        snippet: event.snippet,
-        ...(event.reader_label !== undefined ? { reader_label: event.reader_label } : {}),
-        ...(event.grade !== undefined ? { grade: event.grade } : {}),
-      })
-      break
-    case 'flag':
-      if (event.code === 'prediction_candidate' && event.detail) {
-        state.predictionFlagDetails.push(event.detail)
-      }
-      break
-    default:
-      break // other event types don't drive canonical-part state
-  }
-}
-
-/** Regex-reconstruction of route.ts's `${text} (score=${score}[, horizon=${horizon}])`
- *  flag-detail format. Returns null if the string doesn't parse — this is the
- *  fragility the disclosed-asymmetry note above warns about. */
-function parsePredictionFlagDetail(
-  detail: string,
-): { claim: string; score: number; horizon: string | null } | null {
-  const m = /^(.*) \(score=([\d.]+)(?:, horizon=(.+))?\)$/.exec(detail)
-  if (!m) return null
-  return { claim: m[1], score: Number(m[2]), horizon: m[3] ?? null }
-}
-
-/**
- * Small adapter: reducer-state -> canonical MessagePartInput[]. This is the
- * "adapter mapping reducer state fields to M-1's canonical message/parts
- * shape" the M-2 brief anticipated. Independently coded from
- * route_writer_adapter.ts — reimplements the SAME intended mapping rule
- * (prose block -> text; citation.define -> citation; prediction_candidate
- * flag -> prediction_candidate), not a call-through to it.
- */
-function reducerStateToCanonicalParts(state: ReducerState): MessagePartInput[] {
-  const parts: MessagePartInput[] = []
-  let seq = 0
-  for (const blockId of state.blockOrder) {
-    const b = state.blocks.get(blockId)
-    if (b && b.role === 'prose') {
-      parts.push({ seq: seq++, kind: 'text', body: { text: b.text, block_id: blockId }, model_visible: true })
-    }
-  }
-  for (const c of state.citations) {
-    parts.push({
-      seq: seq++,
-      kind: 'citation',
-      body: {
-        index: c.index,
-        signal_id: c.signal_id,
-        layer: c.layer,
-        snippet: c.snippet,
-        ...(c.reader_label !== undefined ? { reader_label: c.reader_label } : {}),
-        ...(c.grade !== undefined ? { grade: c.grade } : {}),
-      },
-      model_visible: false,
-    })
-  }
-  for (const detail of state.predictionFlagDetails) {
-    const parsed = parsePredictionFlagDetail(detail)
-    if (!parsed) continue // honest drop — a malformed/unparseable flag can't be reconstructed
-    parts.push({
-      seq: seq++,
-      kind: 'prediction_candidate',
-      body: {
-        claim: parsed.claim,
-        confidence: Math.max(0, Math.min(1, parsed.score)),
-        ...(parsed.horizon !== null ? { window: parsed.horizon } : {}),
-        source_flag_code: 'prediction_candidate',
-      },
-      model_visible: false,
-    })
-  }
-  return parts
-}
-
-function runReducerPath(events: readonly PariprashnaEvent[]): MessagePartInput[] {
-  const state = createReducerState()
-  for (const event of events) applyToReducerState(state, event)
-  return reducerStateToCanonicalParts(state)
-}
-
-// ---------------------------------------------------------------------------
-// (b) WRITER PATH — the REAL production mapping (route_writer_adapter.ts),
-// fed by replaying the fixture the same way route.ts's own live accumulation
-// does (block.open/delta/commit -> committed prose blocks;
-// citation.define -> detections), PLUS the server-only structured
-// prediction-candidate detection (never on the wire — see the module header).
-// ---------------------------------------------------------------------------
-
-function runWriterPath(
-  events: readonly PariprashnaEvent[],
-  predictionCandidates: readonly { text: string; score: number; horizon: string | null }[],
-): MessagePartInput[] {
-  const parts: MessagePartInput[] = []
-  let seq = 0
-  const blockRoleById = new Map<string, 'prose' | 'thinking'>()
-  const blockTextById = new Map<string, string>()
-
-  for (const event of events) {
-    if (event.type === 'block.open') {
-      blockRoleById.set(event.block_id, event.role)
-      blockTextById.set(event.block_id, '')
-    } else if (event.type === 'block.commit') {
-      blockTextById.set(event.block_id, event.text)
-      const role = blockRoleById.get(event.block_id)
-      if (role === 'prose') {
-        parts.push(textPartFromBlock({ block_id: event.block_id, text: event.text }, seq++))
-      }
-    } else if (event.type === 'citation.define') {
-      parts.push(
-        citationPartFromDetection(
-          {
-            index: event.index,
-            signal_id: event.signal_id,
-            layer: event.layer,
-            snippet: event.snippet,
-            ...(event.reader_label !== undefined ? { reader_label: event.reader_label } : {}),
-            ...(event.grade !== undefined ? { grade: event.grade } : {}),
-          },
-          seq++,
-        ),
-      )
-    }
-  }
-
-  for (const c of predictionCandidates) {
-    parts.push(predictionCandidatePartFromDetection(c, seq++))
-  }
-
-  return parts
 }
 
 // ---------------------------------------------------------------------------
