@@ -1,8 +1,20 @@
 ---
 artifact: SAMAPTI_N8_EARNED_SIGNAL_REGISTER
 canonical_id: SAMAPTI_N8_REGISTER
-version: 1.0
+version: 1.1
 status: FINDINGS-COMPLETE (audit lane — ships no fixes)
+changelog: >
+  v1.1 (2026-07-30, post-VER-verification corrections, DVA-applied): fixed F-04's Julian Day
+  citation (:112 -> :111); fixed F-11's envelope.ts citation (:1620-1624 -> :1622-1625, both
+  occurrences) which previously contradicted F-25/F-38's correct citation of the same check;
+  corrected F-02's ci.yml quote splice (was presented as one continuous remark about
+  dag_edge_guard's own test, is actually two remarks about two different test files;
+  re-verified the underlying finding independently instead, confirmed to survive); narrowed
+  F-27's "two independent reasons" to one demonstrated reason (--synthetic short-circuits
+  before the second, undemonstrated reason is ever reached); disambiguated bare `envelope.ts`
+  (two files exist, platform/src/lib/retrieval/ vs platform-mcp/src/generated/) and
+  `ga_dashas_writer.py` citations to full paths. No finding's substance or severity changed;
+  citation precision only, required before the 8 lanes depending on this register consume it.
 created: 2026-07-30
 lane: A7-N8-AUDIT (SAMĀPTI conductor swarm)
 track: SAMAPTI_IMPLEMENTATION_BRIEF_v2_0.md §7 (T4.3 + T4.4)
@@ -265,13 +277,22 @@ def test_live_registry_has_no_hard_violations():
     res = g.analyze()
 ```
 
-`.github/workflows/ci.yml:344-372` is the only job that runs the sidecar suite. Its own comment, at
-`:347-350`, states the outcome:
+`.github/workflows/ci.yml:344-372` is the only job that runs the sidecar suite. Its own comment
+spans two separate remarks, about two different test files, spliced here for context — `:345-346`
+states the general policy, `:347-348` is specifically about `test_a3_schema_smoke.py`, not about
+`dag_edge_guard`'s own test:
 
 > *"All tests here are self-contained (conn=None dry-run or `@pytest.mark.skipif(not DATABASE_URL)`
-> for integration tests). … **CI has no DB, so those 6 tests skip cleanly.**"*
+> for integration tests)."* (`:345-346`) *"...test_a3_schema_smoke.py uses pytestmark to skip when
+> DATABASE_URL is absent — CI has no DB, so those 6 tests skip cleanly."* (`:347-348`)
 
-So the guard's live check is skipped on every CI run. The remaining four tests in that file exercise
+The "6 tests" in the second remark are `test_a3_schema_smoke.py`'s, not `test_dag_edge_guard.py`'s —
+correcting an earlier version of this citation that spliced the two into one continuous quote as if
+both concerned the same test file. The finding itself does not depend on this comment: verified
+directly instead, `test_dag_edge_guard.py:96-98` carries its own
+`@pytest.mark.skipif(not os.environ.get("DATABASE_URL"))`, and CI's `ci.yml:344-372` job sets no
+`DATABASE_URL` — so the guard's live check is independently confirmed skipped on every CI run,
+regardless of what the neighboring comment says. The remaining four tests in that file exercise
 the pure `evaluate()` against synthetic fixtures — they verify the *detector's logic*, never the
 *live DAG*.
 
@@ -421,7 +442,7 @@ this probe promotes the asset.** Two independent defects produce that:
    assertion, not the tautological '1 <= sign <= 12'"* — it is a real assertion, with a wrong
    expected value, i.e. an always-false one.
 2. **The Julian Day is wrong by 33.77 days.** `_FORENSIC_POSITION["jd"] = 2445701.948264` is
-   commented `# 1984-02-05 10:43 IST → UTC Julian Day` (`:112`). Recomputed: `swe.revjul` decodes it
+   commented `# 1984-02-05 10:43 IST → UTC Julian Day` (`:111`). Recomputed: `swe.revjul` decodes it
    to **1984-01-02 10:45 UT**; the correct JD for 1984-02-05 05:13 UT is **2445735.717361**. This is
    load-bearing for check 2: on the code's JD the tropical Sun is `281.222°`, inside the probe's own
    `[255, 315]` window (`:136-137`) → passes; on the **correct** JD it is `315.588°`, **outside** the
@@ -635,7 +656,7 @@ identical `'PASS'`. Live: **3,955 `chart_facts` rows** carry it.
 
 > **Second-order defect, and it cuts the other way — surface this to `DVA`.** `'PASS'` is outside the
 > documented vocabulary (`test_verification_pass_status_vocab.py`, `ganita/types.ts:45`), and
-> `envelope.ts:1620-1624`'s grounding-score check matches only lowercase `'pass'` /
+> `envelope.ts:1622-1625`'s grounding-score check matches only lowercase `'pass'` /
 > `'two_pass_verified'`. So these 3,955 rows score as **UNGROUNDED in production**. The literal is
 > simultaneously an unearned green at the writer and an unearned *red* at the serving layer. A naive
 > fix that merely lowercases the constant would convert 3,955 unverified rows into
@@ -767,7 +788,7 @@ cross-reference that matters most in this register.** The serving layer turns a 
 into response-level *"X% confirmed"* prose — a genuine relabel. The sub-auditor could not trace the
 writer-side origin of `'two_pass_verified'`. **It is very likely the same root cause as F-11 seen from
 the other side:** F-11 establishes that `ga_nakshatra.py:87` stamps a literal `'PASS'` on 3,955 rows
-with no verification, and that `envelope.ts:1620-1624` matches only lowercase `'pass'` /
+with no verification, and that `envelope.ts:1622-1625` matches only lowercase `'pass'` /
 `'two_pass_verified'`. F-11 and F-25 must be dispositioned **together**; fixing either alone can move
 rows across the grounded/ungrounded boundary in the wrong direction. **Flagged as one joint work item.**
 
@@ -793,9 +814,11 @@ absent in that worktree, so **F-33 (PB-2) is static-only** — read, not execute
 Confirmed by live run: **exit=0 always**. 8 of 15 gates have no RED branch at all. A gate script that
 cannot return non-zero cannot gate.
 
-**F-27 · `icr_weekly_scan.yml` — CANNOT-FAIL.** `--dry-run` suppresses the only non-zero exit path,
-and the step points at a **hardcoded, nonexistent MSR file path**. Two independent reasons it can
-never go red.
+**F-27 · `icr_weekly_scan.yml` — CANNOT-FAIL.** `--dry-run` suppresses the only non-zero exit path.
+The step also points at a hardcoded, nonexistent MSR file path — but `--synthetic` short-circuits
+path resolution before that second defect is ever reached, so only the `--dry-run` suppression is
+demonstrated to be load-bearing; the nonexistent-path defect is real but not independently proven to
+also cause the cannot-fail behavior on its own. One demonstrated reason it can never go red, not two.
 
 **F-28 · `secret_scan.sh` excludes `00_ARCHITECTURE/` — and a live plaintext production DB password
 sits in the excluded zone.** The scanner's own detector logic is sound (rejected as a finding, §3);
@@ -853,8 +876,8 @@ Sub-auditor deliverable; each candidate self-refuted inline. Not personally re-d
 
 | ID | Signal | file:line | Class | Sev |
 |---|---|---|---|---|
-| F-36 | `_verify_vimshottari` → `two_pass_verified` | `ga_dashas_writer.py:661-675` | TAUTOLOGY | **HIGH** |
-| F-37 | `_verify_yogini` / `_verify_ashtottari` / `_verify_naisargika` | `ga_dashas_writer.py:678-738` | TAUTOLOGY | **HIGH** |
+| F-36 | `_verify_vimshottari` → `two_pass_verified` | `ga_writers/ga_dashas_writer.py:661-675` | TAUTOLOGY | **HIGH** |
+| F-37 | `_verify_yogini` / `_verify_ashtottari` / `_verify_naisargika` | `ga_writers/ga_dashas_writer.py:678-738` | TAUTOLOGY | **HIGH** |
 | F-38 | 11 × hardcoded `verification_pass_status: "pass"` | 5 `bo_*` writers | LITERAL | **HIGH** |
 | F-39 | `points_only_assertion: True` | `bo_drishti.py:244` | TAUTOLOGY | MED |
 | F-40 | `source_corroboration_count_by_text` | `bo_laksana.py:2204` | PROXY (B.10) | MED |
@@ -887,7 +910,8 @@ consumer and best-case in the other. That divergence is itself the proof that no
 
 > **Three-way cross-reference — F-11 · F-25 · F-38 are one defect seen from three sides.** F-11:
 > `ga_nakshatra.py:87` stamps literal `'PASS'` (uppercase) on 3,955 rows with no verification. F-38:
-> eleven `bo_*` sites stamp literal `'pass'` (lowercase). F-25: `envelope.ts` relabels the column into
+> eleven `bo_*` sites stamp literal `'pass'` (lowercase). F-25: `platform/src/lib/retrieval/envelope.ts`
+(disambiguated — a second, unrelated `envelope.ts` exists at `platform-mcp/src/generated/`) relabels the column into
 > user-facing *"X% confirmed"* prose, matching lowercase only. Net effect: the **uppercase** literals
 > read as *ungrounded* and the **lowercase** literals read as *grounded* — and **neither was verified
 > by anything.** The grounded/ungrounded boundary in production is currently drawn by string casing.
@@ -991,7 +1015,8 @@ evidentiary bar, and are recorded so no one re-spends the effort.
    a finding only because nothing consumes it. **B-N8-LINT should still catch this shape.**
 8. **Serving-layer weak candidates, named not asserted:** `register_server_info.ts:58`
    stale-on-omitted-version; `AssetNode.tsx`'s `service_ok → 'complete'` UI relabel; and the §N.6
-   density sentence at `envelope.ts:860-862`, which is wired but has **zero production call sites
+   density sentence at `platform/src/lib/retrieval/envelope.ts:860-862` (same file as F-11/F-25/F-38's
+   check, not the unrelated `platform-mcp/src/generated/envelope.ts`), which is wired but has **zero production call sites
    passing `hasDensityContract`** — it would inherit F-21's false-green the moment it is wired, so it
    is a **pre-emptive** note for whoever wires it.
 9. **CI weak candidates, named not asserted:** `chat-v2-smoke.yml` secret-provisioning status
