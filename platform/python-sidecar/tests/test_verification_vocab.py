@@ -250,6 +250,22 @@ def _strip_ts_comments(text: str) -> str:
     return "\n".join(re.sub(r"//.*$", "", ln) for ln in text.splitlines())
 
 
+def test_typescript_union_type_matches_the_table_and_python():
+    """`VerificationPassStatus` is what makes the TS table self-checking (tsc rejects a
+    table member missing from the union). It must also match Python, or the union — a
+    type other modules import — becomes a fifth definition again."""
+    text = _ENVELOPE_TS.read_text()
+    start = text.index("export type VerificationPassStatus")
+    body = text[start:text.index("export interface VerificationVocabEntry", start)]
+    union = set(re.findall(r"\|\s*'([a-z_0-9]+)'", body))
+    py = {e.status for e in VERIFICATION_PASS_STATUS_VOCAB}
+    assert union == py, (
+        f"union-vs-table drift: only in union {sorted(union - py)}, "
+        f"only in table {sorted(py - union)}"
+    )
+    assert not (union & PROHIBITED_STATUSES)
+
+
 def test_typescript_grounding_predicate_is_derived_not_hand_written():
     """The serve-layer grounding check must call the shared predicate. An inline
     `s === 'two_pass_verified' || s === 'pass'` is the exact hand-maintained literal

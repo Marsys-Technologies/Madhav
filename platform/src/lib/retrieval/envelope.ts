@@ -65,8 +65,31 @@ export function resolveEnvelopeFormat(requested: unknown): EnvelopeFormat {
 // those two spellings were audited under Ruling 13 and every one was an unconditional
 // literal with no verification behind it.
 
+/**
+ * The closed set of legal `verification_pass_status` values. Declaring this as a union
+ * (rather than `string`) is what makes the table below mechanically self-checking: add a
+ * member to VERIFICATION_PASS_STATUS_VOCAB without adding it here and `tsc` fails, and
+ * vice-versa the union cannot grow a member the table never describes.
+ *
+ * `pass` / `PASS` are absent deliberately — see the note above.
+ */
+export type VerificationPassStatus =
+  | 'two_pass_verified'
+  | 'classical_match'
+  | 'divergent_flagged'
+  | 'single'
+  | 'single_pass'
+  | 'documented_approximation'
+  | 'computed_extension'
+  | 'floored'
+  | 'not_defined_for_nodes'
+  | 'scope_cap_sentinel'
+  | 'skipped_malformed_source'
+  | 'external_computation_required'
+  | 'pending_w3_verification'
+
 export interface VerificationVocabEntry {
-  status: string
+  status: VerificationPassStatus
   verified: boolean
   meaning: string
   /** Spelling variant kept so stored rows stay readable; new writers use the target. */
