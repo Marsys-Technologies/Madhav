@@ -37,20 +37,109 @@ since nothing is fabricated and the reading discloses the emptiness in prose.
 **All 12 W1 registry items are now VERIFIED-FIXED, live, both charts.** Wave W2's design +
 both Lane D preconditions were already merged before Gate W1 closed; the campaign ran W2's
 five build lanes (A/B/C/D/E) in parallel with the W1 reverify cycle, since neither blocks the
-other (frozen anti-collision file/table contract per the design doc's own §0). **Status as of
-this write: Lanes A (#945), B (#944), D (#946), E (#947) all opened, scope-verified, holding
-for the post-all-five-lanes integration pass (no auto-merge). Lane C (the hazard-formula +
-`ka_kshetra` orchestration-shim centre of gravity, Opus effort) still in flight** — the
-integration pass (field integration → determinism hash-replay → weights-v0 seed → skill score
-publish, brief §3 W2 "3b sequential") cannot start until it lands, since Lane C owns the one
-file (`ka_kshetra.py`) that actually wires the other four lanes together. Sibling lanes each
-flagged real cross-lane gaps for that integration pass to resolve: Lane E found `ka_gochara_sweep`/
-`ka_gochara_resonance` (2 of `ka_kshetra`'s 8 depends_on edges) have no `asset_registry` seed
-row at all; Lane E also placed a throwaway inert `ka_kshetra` seed row purely so its own
-`mi_bhara` edge would resolve in isolation — Lane C's real seed row replaces it wholesale;
-§9.3 vs §0 disagree on which lane owns `kala_field_snapshots` (Lane E left it to Lane C, noted
-in its own migration header). **Once Lane C lands: run the integration pass, then Gate W2's
-acceptance criteria (brief §3 W2 / design doc §10).**
+other (frozen anti-collision file/table contract per the design doc's own §0). All five lanes
+(#944/#945/#946/#947/#949) landed and were independently scope-verified.
+
+**MERGE-TRAIN PASS (2026-07-30, Conductor).** Before merging, found and fixed two real
+cross-cutting issues the anti-collision contract's per-lane isolation couldn't itself catch:
+
+1. **A real cross-directory migration collision, freshly landed.** Lane A's PR (474/475 in
+   `platform/supabase/migrations/`) failed CI: a DIFFERENT campaign's
+   `platform/migrations/474_asset_throughput_incomplete_state.sql` had landed on the SAME
+   number in the OTHER directory since the night's earlier "474–483 free" check (which only
+   ever looked at `platform/supabase/migrations/`) — the exact two-directory trap this
+   codebase's own history repeatedly warns about, now hitting this campaign's own migrations
+   directly rather than someone else's. **Renumbered all five W2 lanes' migrations to a
+   clean, non-colliding block, 488–497** (above the true combined-directory max of 486, and
+   clear of every sibling lane's own claim), rather than fixing one collision at a time and
+   re-discovering the next as each lane merged: A → 488/489, B → 490, C → 491/492/493/494, D →
+   495, E → 496/497. Each renumber verified independently: `migration_number_guard.ts` PASS +
+   full relevant test suite green, before pushing.
+2. **Lane E's own flagged "real gap" (ka_gochara_sweep/ka_gochara_resonance missing seed
+   rows) was a false negative for THOSE two assets — correctly investigated and corrected —
+   but the fix over-generalized and removed a row that was, in fact, still needed, catching
+   itself on CI one round later. Full sequence, corrected in place rather than silently
+   re-edited:**
+   `ka_gochara_sweep`/`ka_gochara_resonance` ARE registered in production via a direct
+   `INSERT INTO asset_registry` in their own migrations (460 and 459, pre-existing, confirmed
+   `is_active:true, has_writer:true` live) — the same mechanism Lane C's `ka_kshetra` row uses
+   (migration 494). On that basis, Lane E's inert `ka_kshetra` placeholder in
+   `asset_registry_seed.ts` was judged unnecessary and removed, and the Kāla-layer asset-count
+   test lowered 15→14. **This broke CI on PR #947** (`catalog_reconciliation.test.ts`:
+   `mi_bhara → missing dep 'ka_kshetra'`), because that test resolves every `depends_on` entry
+   purely against this file's own `ASSETS` array — never the DB. `ka_gochara_sweep`/
+   `ka_gochara_resonance` get away with no TS row because nothing in this file's `depends_on`
+   arrays names them; `ka_kshetra` does not, because `mi_bhara.depends_on = ['ka_kshetra']`
+   lives in this same file. **Restored the `ka_kshetra` row** (count back 14→15), mirroring
+   migration 494's identity fields exactly but with `depends_on: []` (a documented,
+   intentional divergence from the migration's real 8-edge array, since two of those edges —
+   `ka_gochara_sweep`/`ka_gochara_resonance` — still have no TS row themselves; closing that
+   is separate legacy-asset cleanup, left as an open follow-up, not silently absorbed). Same
+   defect class as the historical `ga_vichara`/`bo_pratijna` seed-registry gaps this
+   codebase has hit before — the fix is always "add the row," never "the test doesn't need
+   it." `w2_weights_acyclicity.test.ts` already independently constructs its own test
+   registry from a literal mirror of migration 494's real INSERT, so it was unaffected by
+   either the removal or the restore.
+
+**Merged in dependency order: A → B → C → D → E — all five lane PRs (#945/#944/#949/#946/#947)
+now landed on `main`.** Resolved each lane's real merge conflicts as they surfaced
+(`services/ka_kshetra/__init__.py` across all five, `contracts.py` between A/C) — same
+never-force-push, always-empirically-verify discipline as every prior merge this campaign.
+Lane C (the hazard-formula + `ka_kshetra` orchestration-shim centre of gravity, Opus effort)
+verified to `rel. err` ≤ 4.5e-13 against numerical integration, Circularity Guard proven three
+ways. Both cross-lane gaps flagged during development are resolved (migration collision fixed
+by the 488–497 renumber; `ka_gochara_sweep`/`ka_gochara_resonance` false-negative corrected —
+see item 2 above for its own follow-on correction). The §9.3-vs-§0 `kala_field_snapshots`
+ownership question resolved itself: Lane E correctly deferred it, and Lane C's migration 492
+(`kala_field_core`) does create it, matching §0's lane-ownership table.
+
+**Four further real integration bugs surfaced ONLY by combining all five lanes — none visible
+within any single lane's own isolated test suite, which is exactly the value a dedicated
+merge-train pass is for:**
+1. **`stage1_symbolization.py`'s `build_sandhi_band_primitives()` crashed on `conn=None`.**
+   The now-importable real `boundary_breakpoints` function is DB-backed with no None-handling
+   of its own (correctly so — it is never meant to run standalone). Fixed with an explicit
+   `if conn is None: return [], CoverageGap(...)` guard at the call site.
+2. **A duplicate `ClockApplicability` dataclass, two different field orders.** Lane C's
+   `contracts.py` had independently redefined a class Lane B already owned in
+   `stage3_clocks.py`, with a different field order — found via import-site cross-referencing
+   (`hazard.py` imports from `contracts`; `stage3_clocks.py` had its own local definition).
+   Consolidated to ONE definition in `contracts.py`; `stage3_clocks.py` now imports it. This
+   cascaded into 5 stale positional `Route(...)` test constructions across
+   `test_hazard.py`/`test_stage4_field.py`/`test_stage5_null.py` (each lane's tests guessed a
+   different field order before the other lane's code existed) — fixed by converting to
+   keyword arguments, tracing each original call back to its author's intended semantic
+   values rather than remapping by position number (an initial attempt did this wrong —
+   `route_gain=0.60` was almost mapped to `path_edge_ids` — caught before running tests, redone
+   correctly).
+3. **`FakeConn`/`promise_prior` fixture mismatch.** `stage4_field.py`'s `load_promise_prior`
+   now successfully imports Lane A's real `promise_prior` module (previously an ImportError
+   fallback only), but Lane C's own `test_writer.py`/`test_circularity_guard.py` fixtures
+   (`FakeConn`) don't implement the `.execute()` interface Lane A's real code needs. Fixed via
+   a documented `monkeypatch.setitem(sys.modules, 'services.ka_kshetra.stage2_promise', None)`
+   in both suites' fixtures, forcing the fallback path their `FakeConn` actually supports —
+   rather than expanding `FakeConn` to simulate Lane A's full data model, which would make
+   these unit tests into accidental integration tests of a different lane's code.
+4. **`catalog_reconciliation.test.ts` / Kāla-asset-count regression** — see item 2 above
+   (the `ka_kshetra` seed-row removal that needed correcting).
+
+**⚠ A real, honestly-disclosed blocker for the next session's integration/Gate-W2 work, from
+Lane C directly: §5.1 C-1's lifetime-count priors (N_e) do not exist in the corpus.**
+`brahma_class_priors` holds only signal-salience priors; `brahma_event_ontology.base_rate_by_age`
+is a distribution over age bands, not the century-count N_e the hazard formula's baseline term
+needs — reading it as N_e would be the exact §N.7-item-6 fabrication defect, and §5.1 C-1
+forecloses that explicitly. Lane C's writer correctly SKIPS every event class with
+`no_class_prior_row` rather than fabricate, which means **a real `ka_kshetra` build will write
+ZERO field rows until an L0 lane seeds `fact_kind='lifetime_count_per_100y'`** — the same shape
+of prerequisite as ADJUDICATION-1's `bg_synthetic_cohort_md` gap. This must be resolved (likely
+its own small L0 corpus-seeding lane, possibly another ANTARYĀMIN-adjudicated design choice for
+where the priors come from) BEFORE the integration pass's "field integration" step can produce
+anything other than an honest empty field.
+
+**Once the merge train lands all five PRs: (1) resolve the N_e blocker above, (2) run the actual
+field-integration/hash-replay/weights-v0-seed/skill-score-publish sequence, (3) evaluate Gate
+W2's acceptance criteria (brief §3 W2 / design doc §10) — this is real, substantial work in
+its own right and is correctly a separate session's focus, not squeezed into this one's tail.**
 
 ---
 
@@ -834,11 +923,16 @@ lanes each re-verified "live max" at a moment that predated the other's merge. C
 direct query that BOTH tables exist in production (`to_regclass` resolves both) — the runner
 dedupes by full filename, not the leading number, so nothing was silently skipped. Not
 renaming the already-applied files (renaming something the runner has already tracked as
-applied is its own risk for zero benefit). **Live max going into W2 is 486** (486 = an
-unrelated `samiksha_ledger` migration from a different concurrent campaign) — 474–483 remain
-genuinely free and reserved for W2's five build lanes exactly as `KALA_W2_FIELD_DESIGN_v1_0.md`
-§9.3 specifies; re-verify immediately before writing regardless, per that doc's own standing
-instruction.
+applied is its own risk for zero benefit). **Superseded (2026-07-30, merge-train pass):** the
+474–483 reservation itself proved unsafe in practice — a DIFFERENT campaign's
+`platform/migrations/474_asset_throughput_incomplete_state.sql` landed in the OTHER directory
+before all five W2 lanes could merge, colliding with Lane A's `platform/supabase/migrations/
+474_kala_field_stage0_1.sql`. All five lanes' migrations were renumbered to **488–497** (A:
+488/489, B: 490, C: 491/492/493/494, D: 495, E: 496/497) — above the combined-directory true
+max (486 at renumber time) and clear of every sibling lane's own claim. **474–483 is no
+longer a live reservation for this campaign** — any future ṢAḌ-DARŚANA migration should
+re-verify the actual combined max fresh (per the design doc's own standing instruction) rather
+than assume that range is still free or still reserved.
 
 **472–495, in `platform/supabase/migrations/`** (reserved 2026-07-29, Night 1). Two migration
 directories both apply to prod and are deduped by filename (`migrate.ts`); the standing policy
