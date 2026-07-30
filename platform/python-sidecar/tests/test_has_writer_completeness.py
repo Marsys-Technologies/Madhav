@@ -76,6 +76,10 @@ KNOWN_HAS_WRITER_TRUE: frozenset[str] = frozenset({
     "bg_cohort",
     # ── L0 Brahmagyan — migration 473 (ṢAḌ-DARŚANA item 3, sky-event calendar) ──
     "bg_sky_calendar",
+    # ── L0 Brahmagyan — migration 484 (ṢAḌ-DARŚANA item 36-substrate, muhūrta lattice) ──
+    "bg_muhurta_lattice",
+    # ── L0 Brahmagyan — migration 485 (ṢAḌ-DARŚANA item 36-substrate/41, parihāra rules) ──
+    "bg_parihara_rules",
     # ── L1 Gaṇita — migration 342 ────────────────────────────────────────────
     "ga_condition",
     "ga_dashas",
