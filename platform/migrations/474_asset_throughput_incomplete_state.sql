@@ -1,4 +1,4 @@
--- Migration 474: asset_throughput CHECK constraint — add 'incomplete' state
+-- Migration 467: asset_throughput CHECK constraint — add 'incomplete' state
 -- (SATYA-DIPA, 2026-07-29)
 --
 -- Purpose: the no-op-completion rescue in asset_runner.py (`_run_data_writer`,
