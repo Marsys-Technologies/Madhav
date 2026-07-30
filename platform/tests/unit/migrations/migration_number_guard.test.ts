@@ -185,14 +185,32 @@ describe('CAN-FAIL — every hard-failure class goes red on a synthetic collisio
   })
 })
 
-describe('advisory band — reported, never fatal', () => {
-  it('header/filename mismatches are warnings and do not contribute to errors', () => {
-    const result = runGuard(REPO_ROOT)
-    const headerWarnings = result.warnings.filter(w => w.includes('header-mismatch'))
-    // At least the known offender: 474_asset_throughput_incomplete_state.sql still says
-    // "Migration 467" after the 467→474 renumber (75a5d9e6). Owned by lane B-MIG474-COMMENT.
+describe('advisory band — reported, never fatal (Dvārapāla RULING 44)', () => {
+  const result = runGuard(REPO_ROOT)
+  const headerWarnings = result.warnings.filter(w => w.includes('header-mismatch'))
+
+  it('header/filename mismatches NEVER contribute to errors', () => {
+    // RULING 44: 17 mismatches predate this campaign. A blocking check would turn main red on
+    // merge and read as a regression this PR introduced. This assertion is the enforcement.
     expect(headerWarnings.length).toBeGreaterThan(0)
-    expect(headerWarnings.join('\n')).toContain('474_asset_throughput_incomplete_state.sql')
     expect(result.errors).toEqual([])
+    // Deliberately NOT asserting a specific filename: lane B-MIG474-COMMENT is fixing
+    // 474_asset_throughput_incomplete_state.sql, and this suite must not go red when it lands.
+  })
+
+  it('scans whole files, not a prefix — 227 (line 24) and 237 (line 10) declare late', () => {
+    // A 5-line window found 15 of 17. An advisory that under-counts invites the reader to treat
+    // the list as complete, so the scan window is the whole file.
+    const joined = headerWarnings.join('\n')
+    for (const late of ['227_ga_structural_floor_update.sql', '237_drop_signal_type_registry.sql']) {
+      expect(joined).toContain(late)
+    }
+  })
+
+  it('does not score a PROSE reference to another migration as a mismatch', () => {
+    // 183_bg_texts_and_text_dependent_floors.sql contains "never set by migration 174 or 179" in
+    // running text and has no `-- Migration N` declaration. A looser grep reports it as a
+    // mismatch; it is not one.
+    expect(headerWarnings.join('\n')).not.toContain('183_bg_texts_and_text_dependent_floors.sql')
   })
 })

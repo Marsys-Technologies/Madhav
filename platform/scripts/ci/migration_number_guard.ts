@@ -41,10 +41,12 @@
  *   • It does NOT check that a migration is idempotent, reversible, or correct SQL.
  *   • It does NOT check that a migration was applied in production (that is SAṂGATI §8.5).
  *   • Header-number mismatch (`-- Migration 467:` inside `474_*.sql`) is reported as an
- *     ADVISORY WARNING ONLY and never fails CI. Rationale: one known offender exists on `main`
- *     (`platform/migrations/474_asset_throughput_incomplete_state.sql`) and is owned by a
- *     different lane (B-MIG474-COMMENT); hard-failing here would red-light `main` for another
- *     lane's file. The warning is real output from a real parse — it is not a silent pass.
+ *     ADVISORY WARNING ONLY and never fails CI. This is a standing constraint, not an oversight:
+ *     **Dvārapāla RULING 44** requires it to stay warn-only until the 17-file backlog is cleared,
+ *     because 17 pre-existing mismatches exist on `main` that this campaign did not create — a
+ *     blocking check would turn `main` red on merge and read exactly like a regression this PR
+ *     introduced. The warning is real output from a real full-file parse; it is not a silent pass.
+ *     Full register: `00_ARCHITECTURE/MIGRATION_AND_MERGE_PROTOCOL_v1_0.md` §3.1.
  *   • Unnumbered `.sql` files (27 in platform/migrations/: `brahma_*`, `ws2_*`, `v13_*`) are
  *     outside the numeric sequence and are ignored entirely by the duplicate checks.
  *
@@ -143,15 +145,29 @@ export function computeNextMigrationNumber(entries: MigrationEntry[]): number {
   return Math.max(...entries.map(e => e.number)) + 1
 }
 
-/** Advisory only — see the header block. Reads the first 5 lines for `-- Migration <N>`. */
+/**
+ * ADVISORY ONLY — never contributes to `errors`. See the file header for why, and
+ * `00_ARCHITECTURE/MIGRATION_AND_MERGE_PROTOCOL_v1_0.md` §3.1 for the full 17-row register.
+ *
+ * Scans the WHOLE file, not a fixed prefix. A 5-line window was the first implementation and it
+ * under-reported: `227_ga_structural_floor_update.sql` declares its header at line 24 and
+ * `237_drop_signal_type_registry.sql` at line 10, so a prefix scan found 15 of the 17 real
+ * mismatches. An advisory that silently under-counts is worse than none — it invites the reader
+ * to treat the list as complete.
+ *
+ * Matches only the DECLARATION form `-- Migration <N>` anchored at the start of a comment line.
+ * Prose references are deliberately NOT matched: `183_bg_texts_and_text_dependent_floors.sql`
+ * says "never set by migration 174 or 179" in running text and is NOT a mismatch — a looser grep
+ * scores it as one.
+ */
 function headerNumberMismatch(repoRoot: string, e: MigrationEntry): string | null {
-  let head: string
+  let text: string
   try {
-    head = fs.readFileSync(path.join(repoRoot, e.relPath), 'utf8').split('\n').slice(0, 5).join('\n')
+    text = fs.readFileSync(path.join(repoRoot, e.relPath), 'utf8')
   } catch {
     return null
   }
-  const m = /^\s*--\s*Migration\s+0*(\d+)\b/im.exec(head)
+  const m = /^[ \t]*--[ \t]*Migration[ \t]+0*(\d+)\b/im.exec(text)
   if (!m) return null
   const declared = parseInt(m[1], 10)
   if (declared === e.number) return null

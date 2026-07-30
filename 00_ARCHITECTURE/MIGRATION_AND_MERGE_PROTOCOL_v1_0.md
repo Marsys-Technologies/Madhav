@@ -115,8 +115,9 @@ number at the moment MERGE-LOCK is taken**, not when the builder writes the file
 1. the filename, and
 2. the file's internal header comment (`-- Migration 475: <what it does>`).
 
-The 467→474 renumber updated only the filename. Fifteen files on `main` currently disagree with
-their own header (the guard lists them as advisory warnings).
+The 467→474 renumber updated only the filename. **Seventeen** files on `main` currently disagree
+with their own header — the full register, and the Dvārapāla ruling that keeps the check
+non-blocking, are in §3.1.
 
 ### The CI guard
 
@@ -137,15 +138,64 @@ than bare numbers. **Do not add entries to that file to silence a new collision*
 file instead. Widening the baseline is the one way to defeat this guard, and doing so is a
 governance violation, not a fix.
 
-The header-mismatch check is deliberately non-fatal and says so in its own docstring: 15 files on
-`main` already mismatch, one of them owned by a different lane, and hard-failing would red-light
-`main` for someone else's file. It is a real parse producing real output — not a silenced check.
+The header-mismatch check is deliberately non-fatal and says so in its own docstring. This is a
+standing constraint under **Dvārapāla RULING 44**, not an oversight — see §3.1.
 
 Locally, before you open a PR:
 
 ```bash
 cd platform && npm run guard:migration-numbers
 ```
+
+### §3.1 — The header/filename mismatch register (17 files) · Dvārapāla RULING 44
+
+**Ruling:** the duplicate-number checks (E1/E2/E3) are **blocking**. The header-consistency check
+is **WARN-ONLY** and must stay that way until this backlog is cleared. All 17 predate the MIG-1
+campaign; a blocking check would turn `main` red the moment the guard merged, on 17 defects this
+campaign did not create, which would read exactly like a regression it introduced.
+
+**Status:** these are **comment-only** defects with **no functional SQL effect** — the applied SQL
+is correct and live in production. Fixing them is **authorized but not required**, and not blocking
+for any lane. They were left unfixed by B-MIGGUARD under CONDUCTOR_PROMPT §9 ("report residuals
+rather than fixing them out of lane") — editing 17 historical migrations mid-run, while eight lanes
+hold worktrees cut from `origin/main`, buys a cosmetic gain at the price of avoidable conflicts.
+
+Reproduce this table at any time with `cd platform && npm run guard:migration-numbers`.
+
+| # | File | Filename says | Header says |
+|---|---|---|---|
+| 1 | `platform/migrations/474_asset_throughput_incomplete_state.sql` | 474 | 467 |
+| 2 | `platform/supabase/migrations/182_bg_ephemeris_target_floor_825084.sql` | 182 | 174 |
+| 3 | `platform/supabase/migrations/209_ga5_sensitive_points_mv.sql` | 209 | 208 |
+| 4 | `platform/supabase/migrations/210_ga6_chart_divisionals_extension.sql` | 210 | 209 |
+| 5 | `platform/supabase/migrations/211_ga7_dashas_kp_sublevel.sql` | 211 | 208 |
+| 6 | `platform/supabase/migrations/225_fix_asset_throughput_pk.sql` | 225 | 171 |
+| 7 | `platform/supabase/migrations/227_ga_structural_floor_update.sql` | 227 | 220 |
+| 8 | `platform/supabase/migrations/237_drop_signal_type_registry.sql` | 237 | 226 |
+| 9 | `platform/supabase/migrations/335_phala_rectification.sql` | 335 | 333 |
+| 10 | `platform/supabase/migrations/336_phala_rectification_best.sql` | 336 | 334 |
+| 11 | `platform/supabase/migrations/337_phala_sankrama.sql` | 337 | 335 |
+| 12 | `platform/supabase/migrations/338_phala_pramana.sql` | 338 | 336 |
+| 13 | `platform/supabase/migrations/339_phala_phaladesa.sql` | 339 | 337 |
+| 14 | `platform/supabase/migrations/340_kala_convergence_horizon_tier.sql` | 340 | 338 |
+| 15 | `platform/supabase/migrations/341_school_consensus_tables.sql` | 341 | 340 |
+| 16 | `platform/supabase/migrations/369_ga_nakshatra_structural_count_fix.sql` | 369 | 368 |
+| 17 | `platform/supabase/migrations/433_bodha_cgm_edges_constituent_fact_ids.sql` | 433 | 431 |
+
+**Row 1** is the 467→474 renumber (`75a5d9e6`) that updated the filename and not the header —
+the original incident. **Rows 9–15** are a contiguous 335–341 run drifting 1–3 behind, i.e. a
+whole block was renumbered once and the headers were not carried along.
+
+**Two detection notes, both load-bearing:**
+
+- **Scan the whole file, not a prefix.** Rows 7 and 8 declare their header at lines 24 and 10.
+  A 5-line window — the guard's first implementation — reported **15 of 17**. An advisory that
+  silently under-counts is worse than none, because it invites the reader to treat the list as
+  complete.
+- **`183_bg_texts_and_text_dependent_floors.sql` is NOT a mismatch.** It contains
+  *"never set by migration 174 or 179"* in running prose and carries no `-- Migration N`
+  declaration. A looser grep scores it as an 18th row; it is a false positive. The guard matches
+  only the declaration form anchored at the start of a comment line.
 
 ---
 
@@ -281,7 +331,7 @@ The CI guard makes the split *safe to live with* in the meantime; it does not ma
 
 | # | Residual | Owner |
 |---|---|---|
-| R1 | 15 files whose header comment disagrees with their filename number (guard lists them). Lane B-MIG474-COMMENT scopes only `474_asset_throughput_incomplete_state.sql`; the other 14 are unowned. | unassigned |
+| R1 | **17** files whose header comment disagrees with their filename number — full register in §3.1. Comment-only, no functional SQL effect. Lane B-MIG474-COMMENT scopes only `474_asset_throughput_incomplete_state.sql`; the other 16 are unowned. Fixing them is authorized (RULING 44), not required, not blocking. | unassigned |
 | R2 | No check enforces that new migrations land in `platform/supabase/migrations/`. `474_*` violated it. | consolidation spec |
 | R3 | `CLAUDE.md`/`ONGOING_HYGIENE_POLICIES` §N.4 "never deploy.yml-auto" contradicts the live `deploy.yml` behaviour (§5). One of the two must move. | governance |
 | R4 | The two directories are not consolidated. | consolidation spec |

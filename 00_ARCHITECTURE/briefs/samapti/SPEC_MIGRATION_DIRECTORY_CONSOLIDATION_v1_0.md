@@ -41,7 +41,8 @@ a second active directory that nobody is treating as one.
 
 **Consequences on record:** 35 duplicate-number groups; migration 467 claimed concurrently by two
 campaigns (`f7160b5c` PB-2 vs `455033ed` SATYA-DĪPA) and untangled by a manual renumber
-(`75a5d9e6`); 15 files whose header comment disagrees with their own filename.
+(`75a5d9e6`); 17 files whose header comment disagrees with their own filename (register:
+`MIGRATION_AND_MERGE_PROTOCOL_v1_0.md` §3.1).
 
 **Disposition: recorded as unintentional-in-effect.** The MIG-1 CI guard makes the split *safe to
 live with*. It does not make it correct, and it does not stop the legacy directory from growing.
