@@ -3,9 +3,10 @@ artifact: FOLLOWUP_PB-2_BYTE_EQUALITY_FIXTURE_COVERAGE
 type: FIRST-CLASS FOLLOW-UP (not a residual, not "partial coverage")
 campaign: PB — Paripraśna Build
 wave: PB-2 SMṚTI
-version: 1.0
-status: OPEN — unscheduled, no owner assigned yet
+version: 1.1
+status: HALF-CLOSED — (a) fixture-corpus bridge DONE; (b) real-reading capture BUILT, run still OPEN
 date: 2026-07-28
+amended: 2026-07-30 (SAMĀPTI lane B-PB8-BYTEEQ — see §5)
 authored_by: Claude Code (autonomous execution session)
 governing: BRIEF_PB-2.md §G-1, REPORT_PB-2.md §3/§5
 ---
@@ -61,7 +62,12 @@ to try to break this claim) confirmed:
    because **no mechanism persists a real reading's raw event stream at all**
    (`route.ts` accumulates state server-side and writes only the terminal
    `message_parts` via `writeTurn` — the stream itself is emitted to the
-   client and discarded, never logged).
+   client and discarded, never logged). **[AMENDED 2026-07-30, §5: REFUTED as
+   worded. PB-2/M-5's `protocol/ring_buffer.ts` already appends EVERY event of
+   EVERY turn to Redis (`parp:buf:<turn_id>`) — that is how resume works. The
+   true blocker is narrower: that buffer is deliberately ephemeral (500-event
+   cap, 600 s / 180 s TTL, absent when Redis is unconfigured) and not queryable
+   after the fact.]**
 
 ## §2 — Why this isn't a quick wiring fix (investigated 2026-07-28)
 
@@ -77,7 +83,11 @@ wire protocol the byte-equality gate needs:
   `citation_anchor.open`/`citation_anchor.set` PAIR for inline citation
   placement that **has no equivalent event in the real protocol at all**, and
   `flag{flag_key: 'honest_gap.*'}` where the real protocol has no
-  corresponding flag code.
+  corresponding flag code. **[AMENDED 2026-07-30, §5: this last clause is
+  wrong as worded — `FlagEventSchema.code` is `z.string()`, a free label_key,
+  so `honest_gap.*` rides the real `flag` event unchanged. What is true is
+  that no `honest_gap` flag produces a canonical part, so it is a
+  byte-equality no-op either way.]**
 - There IS an existing adapter for the 12-fixture shape —
   `src/components/pariprashna/state/c2ProtocolAdapter.ts` — but it converts
   into a **third**, UI-renderer-internal shape (`ScheduledEvent`/`WireEvent`
@@ -123,7 +133,9 @@ being filed rather than attempted live.
 
 Even with (A) or (B) done, the gate still would not satisfy BRIEF_PB-2 §G-1's
 second clause, because **there is currently no way to capture a real reading's
-raw SSE stream to replay it against**. Closing this half requires its own
+raw SSE stream to replay it against** **[AMENDED 2026-07-30, §5: narrowed — the
+ring buffer holds the stream ephemerally; what was missing is a DURABLE,
+queryable sink. Built in this lane, not yet run.]**. Closing this half requires its own
 design decision (a bounded, sampled, non-production-impacting capture
 mechanism — e.g. temporarily mirroring N sampled real turns' event streams to
 a debug log or table, gated behind a flag, with a retention/privacy story) and
@@ -150,4 +162,91 @@ originally specified.
   proof than that is repeating the same overstatement this follow-up exists
   to correct.
 
-*End FOLLOWUP_PB-2_BYTE_EQUALITY_FIXTURE_COVERAGE v1.0.*
+---
+
+## §5 — Disposition (SAMĀPTI lane B-PB8-BYTEEQ, 2026-07-30)
+
+Scoped as the two independent deliverables §4 demanded. **One closed, one built
+but not yet run.** This section is the honest split; do not read it as "PB-8
+closed".
+
+### (a) Fixture-corpus bridge — **DONE**
+
+Option **(A)**, not (B): `build_fixtures.ts` and the 12 golden JSON files are
+untouched.
+
+- `platform/tests/pariprashna/reducer/c2_corpus_bridge.ts` — C-2 harness shape →
+  real, Zod-validated `PariprashnaEvent[]`. 13 authored per-type decisions;
+  every SOURCE event produces exactly one recorded `BridgeDecision`
+  (`mapped` / `mapped_with_synthesis` / `dropped_no_target` /
+  `dropped_malformed`) with a stated reason — the §4 warning about silent drops
+  is enforced by a test, not by intention.
+  - `citation_anchor.open`/`.set` → **dropped, no target**: character-offset
+    anchoring has no wire event AND no field anywhere in the canonical
+    `message_parts` model, so the drop loses no canonical-part information.
+  - `flag{honest_gap.*}` → **mapped** (see the §2 amendment above).
+  - The `blck.open` typo and the type-less event in
+    `malformed-sentinel-variants.json` → recorded as `dropped_malformed`.
+- `platform/tests/pariprashna/reducer/canonical_paths.ts` — the two gate drivers,
+  extracted so the one-fixture gate and the corpus gate drive the SAME code.
+- `platform/tests/pariprashna/reducer/canonical_serialization_corpus.test.ts` —
+  the byte-equality assertion over **all 12** fixtures + bridge-integrity,
+  drop-inventory, non-vacuity and mutation-sensitivity guards. 23 assertions.
+
+**Two real defects the one-fixture gate could never see**, surfaced by the wider
+corpus and by reading `route.ts`:
+
+1. The reducer driver emitted a canonical `text` part for every OPENED prose
+   block. `route.ts` persists `committedBlocks` only. With the old behaviour
+   restored, `stop-mid-pass` and `malformed-sentinel-variants` go RED.
+2. The writer driver interleaved parts in wire order; `route.ts` groups by kind
+   (all text → all citations → all predictions). **Measured honestly: the corpus
+   does NOT discriminate this** (no fixture defines a citation between two block
+   commits), so a dedicated ordering test plus a source-level guard on
+   `route.ts` were added rather than claiming corpus coverage for it.
+
+The writer side of the gate is now production code end-to-end
+(`src/lib/pariprashna/store/replay_paths.ts`); only the reducer side remains a
+test-owned simulation, and that independence is the point of the gate.
+
+### (b) Real-reading stream capture — **MECHANISM BUILT, RUN STILL OPEN**
+
+- `platform/supabase/migrations/475_pariprashna_stream_capture.sql` — durable,
+  queryable capture table. **Not applied.** (Migration number re-allocated by the
+  Conductor at merge; applying it is the Integrator/Rebuild path, not a builder's.)
+- `platform/src/lib/pariprashna/protocol/stream_capture.ts` — OFF by default
+  (`PARIPRASHNA_STREAM_CAPTURE`), sampled per TURN (whole or nothing), never
+  throws, bounded retention (`expires_at`, default 14 days, `--purge` sweep).
+  Privacy: no member of the `PariprashnaEvent` union carries the native's
+  question — asserted against `protocol/events.ts`'s source, not merely stated.
+- `platform/src/lib/pariprashna/store/replay_compare.ts` — pure comparator core.
+- `platform/scripts/pariprashna/verify_captured_turn.ts` +
+  `npm run pariprashna:verify-captured` — the operator run. Exit 0
+  byte-identical / 1 diverged / **2 not-comparable, never 0** ("we could not
+  check" must never read as "it passed").
+
+**What is still required before §G-1's second clause may be claimed** — none of
+it is a builder's to do:
+1. merge + deploy;
+2. set `PARIPRASHNA_STREAM_CAPTURE=1` (and a sample rate) on `amjis-web`;
+3. run migration 475;
+4. take one real reading;
+5. run `npm run pariprashna:verify-captured -- --latest` and record the output.
+
+**Expected to surface at step 5, and by design, not as a tool bug:** the wire's
+`citation.define` (from the write-through's `data-citation` parts) and the
+writer's own `extractCitations(accumulatedText)` + `fetchMsrSnippets` are two
+INDEPENDENT derivations of the same citations. If they disagree on a real
+reading, that disagreement is the finding this whole follow-up was written to
+find.
+
+### Still true, unchanged by this lane
+
+§4's last paragraph stands with one narrowing. `canonical_serialization_golden.test.ts`
+passing still proves only its own fixture. `canonical_serialization_corpus.test.ts`
+passing proves the 12 harness shapes — and **neither** proves anything about the
+SHIPPED client reducer (`state/reducer.ts` + `s1LiveAdapter.ts` produce UI turn
+state, never canonical parts; there is no shipped client→canonical adapter to
+call) or about a real deployed reading.
+
+*End FOLLOWUP_PB-2_BYTE_EQUALITY_FIXTURE_COVERAGE v1.1.*

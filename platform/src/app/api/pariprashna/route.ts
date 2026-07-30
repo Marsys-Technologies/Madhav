@@ -107,6 +107,7 @@ import {
   type LengthTier,
 } from '@/lib/pariprashna/protocol/events'
 import { openTurnBuffer, appendBufferedEvent } from '@/lib/pariprashna/protocol/ring_buffer'
+import { beginTurnCapture, captureEvent, endTurnCapture } from '@/lib/pariprashna/protocol/stream_capture'
 import { getCapability } from '@/lib/retrieval/registry'
 import { TOOL_NAME_TO_URI } from '@/lib/retrieval/registry/tool_name_bridge'
 import { resolveReaderLabel, FALLBACK_READER_LABEL } from '@/lib/pariprashna/lexicon'
@@ -300,8 +301,15 @@ export async function POST(request: Request): Promise<Response> {
       // reason — the write is a single Redis SET (or in-memory Map.set) and
       // is not on the model-latency critical path.
       await openTurnBuffer({ turnId, chartId, conversationId })
+      // SAMĀPTI/B-PB8-BYTEEQ: opt-in, sampled, durable capture of this turn's
+      // raw wire stream so BRIEF_PB-2 §G-1's "byte-equality against one real
+      // deployed reading" can actually be run (see
+      // protocol/stream_capture.ts). OFF unless PARIPRASHNA_STREAM_CAPTURE=1;
+      // decided ONCE here so a turn is captured whole or not at all.
+      beginTurnCapture({ turnId, conversationId, chartId })
       const em = new PariprashnaEmitter(controller, (event) => {
         void appendBufferedEvent(turnId, event)
+        void captureEvent(turnId, event)
       })
 
       // FIRST BYTES — before the planner, before any DB/LLM work.
@@ -318,6 +326,9 @@ export async function POST(request: Request): Promise<Response> {
       const finish = (status: 'ok' | 'error' | 'aborted'): void => {
         em.turnClose({ turn_id: turnId, status, ms: Date.now() - requestStartedAt })
         em.close()
+        // Release the in-process capture mark AFTER the terminal turn.close has
+        // been emitted (and therefore captured) — never before.
+        endTurnCapture(turnId)
       }
 
       try {

@@ -42,11 +42,9 @@
 
 import type { PariprashnaEvent } from '@/lib/pariprashna/protocol/events'
 import type { MessagePartInput } from '@/lib/pariprashna/store/schema'
-import {
-  textPartFromBlock,
-  citationPartFromDetection,
-  predictionCandidatePartFromDetection,
-} from '@/lib/pariprashna/store/route_writer_adapter'
+import { parsePredictionFlagDetail, replayCanonicalParts } from '@/lib/pariprashna/store/replay_paths'
+
+export { parsePredictionFlagDetail }
 
 // ---------------------------------------------------------------------------
 // (a) REDUCER PATH — independently-coded client-side simulation.
@@ -116,17 +114,6 @@ export function applyToReducerState(state: ReducerState, event: PariprashnaEvent
   }
 }
 
-/** Regex-reconstruction of route.ts's `${text} (score=${score}[, horizon=${horizon}])`
- *  flag-detail format. Returns null if the string doesn't parse — this is the
- *  fragility the golden test's disclosed-asymmetry note warns about. */
-export function parsePredictionFlagDetail(
-  detail: string,
-): { claim: string; score: number; horizon: string | null } | null {
-  const m = /^(.*) \(score=([\d.]+)(?:, horizon=(.+))?\)$/.exec(detail)
-  if (!m) return null
-  return { claim: m[1], score: Number(m[2]), horizon: m[3] ?? null }
-}
-
 /**
  * Reducer-state → canonical `MessagePartInput[]`. Independently coded from
  * `route_writer_adapter.ts` — reimplements the SAME intended mapping rule
@@ -183,53 +170,13 @@ export function runReducerPath(events: readonly PariprashnaEvent[]): MessagePart
 }
 
 // ---------------------------------------------------------------------------
-// (b) WRITER PATH — the REAL production mapping (route_writer_adapter.ts),
-// driven in route.ts's own kind-grouped order.
+// (b) WRITER PATH — the PRODUCTION replay module, re-exported under the name
+// the two gate files use. Deliberately not redefined here.
 // ---------------------------------------------------------------------------
-
-export interface WriterPathCitationSource {
-  index: number
-  signal_id: string
-  layer: string
-  snippet: string
-  reader_label?: string
-  grade?: string
-}
 
 export function runWriterPath(
   events: readonly PariprashnaEvent[],
   predictionCandidates: readonly { text: string; score: number; horizon: string | null }[],
 ): MessagePartInput[] {
-  const blockRoleById = new Map<string, 'prose' | 'thinking'>()
-  /** Committed prose blocks in commit order — route.ts's `committedBlocks`. */
-  const committedBlocks: { block_id: string; text: string }[] = []
-  const citations: WriterPathCitationSource[] = []
-
-  for (const event of events) {
-    if (event.type === 'block.open') {
-      blockRoleById.set(event.block_id, event.role)
-    } else if (event.type === 'block.commit') {
-      if (blockRoleById.get(event.block_id) === 'prose') {
-        committedBlocks.push({ block_id: event.block_id, text: event.text })
-      }
-    } else if (event.type === 'citation.define') {
-      citations.push({
-        index: event.index,
-        signal_id: event.signal_id,
-        layer: event.layer,
-        snippet: event.snippet,
-        ...(event.reader_label !== undefined ? { reader_label: event.reader_label } : {}),
-        ...(event.grade !== undefined ? { grade: event.grade } : {}),
-      })
-    }
-  }
-
-  // Kind-grouped, exactly as app/api/pariprashna/route.ts's writeMessages does:
-  // every text part, then every citation part, then every prediction candidate.
-  const parts: MessagePartInput[] = []
-  let seq = 0
-  for (const b of committedBlocks) parts.push(textPartFromBlock(b, seq++))
-  for (const c of citations) parts.push(citationPartFromDetection(c, seq++))
-  for (const c of predictionCandidates) parts.push(predictionCandidatePartFromDetection(c, seq++))
-  return parts
+  return replayCanonicalParts(events, predictionCandidates)
 }
