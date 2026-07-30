@@ -8,8 +8,8 @@
  * exists to correct.
  *
  *   (a) REDUCER PATH — an independently-coded, test-owned simulation of a
- *       CLIENT reducer. Deliberately does NOT import
- *       `route_writer_adapter.ts`, so a bug in either this function or the
+ *       CLIENT reducer. `reducerStateToCanonicalParts` deliberately does NOT
+ *       call the production mapping functions, so a bug in either it or the
  *       production mapping surfaces as a byte mismatch, not as a shared bug.
  *
  *       DISCLOSED (unchanged from M-2, and NOT closed by this lane): the real
@@ -19,9 +19,14 @@
  *       exists, "the reducer path" is necessarily a simulation. See the lane's
  *       residuals.
  *
- *   (b) WRITER PATH — the REAL production mapping functions from
- *       `route_writer_adapter.ts`, driven in the SAME ORDER
- *       `app/api/pariprashna/route.ts` drives them at its persistence seam.
+ *   (b) WRITER PATH — `@/lib/pariprashna/store/replay_paths.ts`'s
+ *       `replayCanonicalParts`, re-exported below as `runWriterPath` and NOT
+ *       redefined here. That is the SAME production module the real-reading
+ *       comparator (`scripts/pariprashna/verify_captured_turn.ts`) replays a
+ *       captured deployed reading through, and it calls the real
+ *       `route_writer_adapter.ts` mapping functions. So the writer side of this
+ *       gate is production code end to end; only the reducer side is a
+ *       simulation, and that independence is the point.
  *
  * ORDERING CONTRACT (corrected by lane B-PB8-BYTEEQ — see the corpus test's
  * can-fail note). `route.ts`'s `writeMessages` builds parts GROUPED BY KIND:
