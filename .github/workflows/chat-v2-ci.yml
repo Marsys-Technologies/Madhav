@@ -1,13 +1,24 @@
 name: Chat V2 — Workstream CI
 
-# Runs on the chat-v2 workstream branch only.
-# 13 active stages (Stages 8 and 9 removed as echo-only no-ops).
-# Stages added incrementally as work items add real tests.
-# No-op stages succeed until their work item activates them.
+# Chat V2 workstream CI. Stages 1/2/3 (lint+typecheck+unit, component+integration,
+# E2E chromium) are HARD gates; 5/6/7 follow.
+#
+# CI efficiency audit (2026-07-31) removed Stages 4, 10, 11, 12, 13, 14 and 15.
+# They were not "not yet activated" — they were unreachable:
+#   - Stages 4/10/11/12/14 gated on PR labels `beta`, `pre-merge`, `mobile-active`.
+#     None of those labels exists in this repo (`gh label list`) and none has ever
+#     been applied to a PR, so no run of these stages has ever occurred.
+#   - Stage 13 (Stryker mutation) ran only on the weekly cron, where it echoed a
+#     no-op because stryker.conf.json was never created and stryker is not a
+#     dependency in platform/package.json.
+#   - Stage 15 was `if: ${{ false }}`.
+# The weekly `schedule:` trigger went with them — it existed solely for Stage 13.
+# Re-add any of these as a real gate when the work item lands; do not restore the
+# label-gated scaffolding.
+#
+# (Stages 8 and 9 were removed earlier, also as echo-only no-ops.)
 
 on:
-  schedule:
-    - cron: '0 3 * * 0'   # Sunday 03:00 UTC — weekly scheduled run (Stage 13 mutation)
   pull_request:
     branches:
       - main
@@ -21,6 +32,12 @@ on:
       - 'platform/src/lib/persistence/**'
       - 'platform/src/lib/ppl/**'
       - 'platform/src/lib/citations/**'
+      # Absorbed from the deleted chat-v2-smoke.yml (CI efficiency audit 2026-07-31)
+      # so its trigger coverage is not lost. The other paths it watched were already
+      # covered by the wildcards above; these three were not.
+      - 'platform/src/components/chat-v2/**'
+      - 'platform/src/lib/providers/**'
+      - 'platform/src/lib/retrieve/**'
       - 'platform/tests/e2e/chat-v2/**'
       - 'platform/tests/unit/chat-v2/**'
       - 'platform/tests/components/chat-v2/**'
@@ -62,7 +79,19 @@ jobs:
       - name: Install deps
         run: npm ci
 
-      - name: ESLint (chat-v2 paths)
+      - name: ESLint (chat-v2 paths) — REPORT-ONLY, see comment
+        # CI efficiency audit (2026-07-31). This step used to end in
+        # `|| echo "STAGE-1-LINT no-op (paths not fully populated yet)"`, which was
+        # doubly misleading: the paths ARE populated, and the `||` meant the step
+        # could never fail no matter what eslint found. Measured on this tree:
+        # 119 problems (26 errors, 93 warnings) across these paths.
+        #
+        # Hardening it now would red-X every chat-v2 PR on a pre-existing backlog
+        # that is not this audit's to fix, so it stays non-blocking — but as an
+        # explicit `continue-on-error`, with the real numbers named here and the
+        # eslint output visible in the log, rather than a false "no-op" claim.
+        # TO CLOSE: fix the 26 errors, then delete continue-on-error.
+        continue-on-error: true
         run: |
           npx eslint \
             src/components/consume \
@@ -75,8 +104,7 @@ jobs:
             src/lib/ppl \
             src/lib/citations \
             src/lib/fixtures \
-            --max-warnings 0 2>/dev/null \
-            || echo "STAGE-1-LINT no-op (paths not fully populated yet)"
+            --max-warnings 0
 
       - name: TypeScript check
         run: npx tsc --noEmit --skipLibCheck
@@ -154,41 +182,6 @@ jobs:
           NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: ${{ secrets.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET }}
           NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID }}
           NEXT_PUBLIC_FIREBASE_APP_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_APP_ID }}
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Stage 4 — E2E Firefox + WebKit
-# Gate: HARD from β
-# ─────────────────────────────────────────────────────────────────────────────
-  stage-4-e2e-firefox-webkit:
-    name: 'Stage 4 — E2E (Firefox + WebKit)'
-    runs-on: ubuntu-latest
-    needs: stage-3-e2e-chromium
-    # Activates when β label is present on PR (TODO: remove condition at β start)
-    if: ${{ github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'beta') }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-          cache-dependency-path: platform/package-lock.json
-
-      - name: Install deps
-        run: npm ci
-
-      - name: Install Playwright browsers
-        run: npx playwright install firefox webkit --with-deps
-
-      - name: E2E tests — chat-v2 (Firefox)
-        run: npx playwright test tests/e2e/chat-v2 --project=firefox --reporter=github
-        env:
-          MARSYS_FIXTURE_MODE: 'true'
-
-      - name: E2E tests — chat-v2 (WebKit)
-        run: npx playwright test tests/e2e/chat-v2 --project=webkit --reporter=github
-        env:
-          MARSYS_FIXTURE_MODE: 'true'
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Stage 5 — Visual regression
@@ -283,183 +276,3 @@ jobs:
         run: npx playwright test tests/e2e/chat-v2/perf/web-vitals.spec.ts --config=tests/e2e/chat-v2/playwright.config.ts --project=chromium --reporter=github
         env:
           MARSYS_FIXTURE_MODE: 'true'
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Stage 10 — Chaos / fault injection
-# Gate: HARD pre-merge (PM1)
-# ─────────────────────────────────────────────────────────────────────────────
-  stage-10-chaos:
-    name: 'Stage 10 — Chaos / Fault Injection [pre-merge]'
-    runs-on: ubuntu-latest
-    needs: stage-2-component-integration
-    if: ${{ github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'pre-merge') }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-          cache-dependency-path: platform/package-lock.json
-
-      - name: Install deps
-        run: npm ci
-
-      - name: Chaos tests — chat-v2
-        continue-on-error: true
-        run: |
-          if [ -d "tests/integration/chat-v2/chaos" ] && \
-             find tests/integration/chat-v2/chaos -name "*.test.ts" | grep -q .; then
-            npx vitest run tests/integration/chat-v2/chaos
-          else
-            echo "STAGE-10-CHAOS no-op (no chaos tests until beta/PM1)"
-          fi
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Stage 11 — Security tests
-# Gate: HARD pre-merge (PM1)
-# ─────────────────────────────────────────────────────────────────────────────
-  stage-11-security:
-    name: 'Stage 11 — Security [pre-merge]'
-    runs-on: ubuntu-latest
-    needs: stage-3-e2e-chromium
-    if: ${{ github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'pre-merge') }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-          cache-dependency-path: platform/package-lock.json
-
-      - name: Install deps
-        run: npm ci
-
-      - name: Install Playwright browsers
-        run: npx playwright install chromium --with-deps
-
-      - name: Security tests — chat-v2
-        run: |
-          if [ -d "tests/e2e/chat-v2/security" ] && \
-             find tests/e2e/chat-v2/security -name "*.spec.ts" | grep -q .; then
-            npx playwright test tests/e2e/chat-v2/security --project=chromium --reporter=github
-          else
-            echo "STAGE-11-SECURITY no-op (no security specs until beta5/PM1)"
-          fi
-        env:
-          MARSYS_FIXTURE_MODE: 'true'
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Stage 12 — Mobile Playwright profiles
-# Gate: HARD from γ9
-# ─────────────────────────────────────────────────────────────────────────────
-  stage-12-mobile:
-    name: 'Stage 12 — Mobile (Playwright)'
-    runs-on: ubuntu-latest
-    needs: stage-3-e2e-chromium
-    # Activates when gamma9 mobile label is present (TODO: remove condition at gamma9)
-    if: ${{ github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'mobile-active') }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-          cache-dependency-path: platform/package-lock.json
-
-      - name: Install deps
-        run: npm ci
-
-      - name: Install Playwright browsers
-        run: npx playwright install webkit chromium --with-deps
-
-      - name: Mobile tests — 375px iPhone SE
-        run: npx playwright test tests/e2e/chat-v2/mobile --project='Mobile Safari 375' --reporter=github
-        env:
-          MARSYS_FIXTURE_MODE: 'true'
-
-      - name: Mobile tests — 768px iPad
-        run: npx playwright test tests/e2e/chat-v2/mobile --project='iPad Safari 768' --reporter=github
-        env:
-          MARSYS_FIXTURE_MODE: 'true'
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Stage 13 — Mutation tests (Stryker)
-# Gate: SOFT weekly; HARD pre-merge (PM2)
-# ─────────────────────────────────────────────────────────────────────────────
-  stage-13-mutation:
-    name: 'Stage 13 — Mutation (Stryker) [weekly/pre-merge]'
-    runs-on: ubuntu-latest
-    needs: stage-2-component-integration
-    if: >-
-      ${{ github.event_name == 'schedule' ||
-          (github.event_name == 'pull_request' &&
-           contains(github.event.pull_request.labels.*.name, 'pre-merge')) }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-          cache-dependency-path: platform/package-lock.json
-
-      - name: Install deps
-        run: npm ci
-
-      - name: Mutation tests (Stryker)
-        continue-on-error: true
-        run: |
-          if [ -f "stryker.conf.json" ]; then
-            npx stryker run
-          else
-            echo "STAGE-13-MUTATION no-op (stryker.conf.json not yet created until PM1)"
-          fi
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Stage 14 — Cross-browser smoke (staging deploy)
-# Gate: HARD pre-merge (PM2)
-# ─────────────────────────────────────────────────────────────────────────────
-  stage-14-staging-smoke:
-    name: 'Stage 14 — Cross-browser Smoke (staging) [pre-merge]'
-    runs-on: ubuntu-latest
-    needs:
-      - stage-3-e2e-chromium
-      - stage-2-component-integration
-    if: ${{ github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'pre-merge') }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-          cache-dependency-path: platform/package-lock.json
-
-      - name: Install deps
-        run: npm ci
-
-      - name: Install Playwright browsers
-        run: npx playwright install chromium firefox webkit --with-deps
-
-      - name: Staging smoke (placeholder)
-        continue-on-error: true
-        run: |
-          echo "STAGE-14-STAGING no-op (staging URL configured at PM2)"
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Stage 15 — Synthetic monitoring (post-merge, continuous)
-# Gate: Alerts only — not a PR gate
-# NOTE: Runs via Cloud Scheduler + Observatory post-merge (see CLAUDECODE_BRIEF §M item 5)
-# ─────────────────────────────────────────────────────────────────────────────
-  stage-15-synthetic-monitoring-noop:
-    name: 'Stage 15 — Synthetic Monitoring [post-merge via Cloud Scheduler]'
-    runs-on: ubuntu-latest
-    needs: stage-1-lint-typecheck-unit
-    if: ${{ false }}
-    steps:
-      - name: No-op placeholder
-        run: |
-          echo "Stage 15 is post-merge synthetic monitoring via Cloud Scheduler + Observatory."

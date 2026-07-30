@@ -65,62 +65,80 @@ jobs:
         working-directory: platform
         run: npx tsx scripts/audit/tap/sc_pointer_validation.ts
 
+  # CI efficiency audit (2026-07-31) — the secret-gated TAP gates below are now
+  # `if:`-guarded on their secret being present, instead of running unconditionally
+  # under continue-on-error.
+  #
+  # WHY: `gh secret list` shows this repo has NO TAP_DATABASE_URL,
+  # TAP_MCP_SERVER_URL, TAP_MCP_SMOKE_BEARER_TOKEN or TAP7_API_BASE_URL. So every
+  # one of these steps has, on every push and every PR since the workflow merged,
+  # started a runner, compiled the script via npx tsx, exited 3
+  # (SKIPPED-WITH-REASON) and been swallowed by continue-on-error — a green check
+  # that asserted nothing.
+  #
+  # The gates are NOT deleted: TOTAL_AUDIT_PROTOCOL_v1_0.md §3 still wants them, and
+  # the scripts are real. Guarding on the secret means they show as honestly SKIPPED
+  # in the UI rather than falsely green, cost nothing while unconfigured, and light
+  # up automatically the moment a secret is added — at which point drop the
+  # remaining continue-on-error so a genuine failure blocks. See
+  # platform/scripts/audit/tap/README.md for the Cloud SQL Auth Proxy wiring.
   mcp-tool-smoke-plan:
-    name: MCP per-tool smoke battery (plan mode; LIVE mode needs a deployed server)
+    name: MCP per-tool smoke battery (LIVE — needs TAP_MCP_SERVER_URL)
     runs-on: ubuntu-latest
+    env:
+      MCP_SERVER_URL: ${{ secrets.TAP_MCP_SERVER_URL }}
+      MCP_SMOKE_BEARER_TOKEN: ${{ secrets.TAP_MCP_SMOKE_BEARER_TOKEN }}
     steps:
       - uses: actions/checkout@v4
+        if: env.MCP_SERVER_URL != ''
       - uses: actions/setup-node@v4
+        if: env.MCP_SERVER_URL != ''
         with:
           node-version: '20'
       - name: Enumerate + classify every registered tool
+        if: env.MCP_SERVER_URL != ''
         working-directory: platform
-        # Exit code 3 = SKIPPED-WITH-REASON (no live server) — expected here.
-        # continue-on-error so the job still surfaces the per-tool plan in
-        # the log without red-X'ing merges on an infra precondition this
-        # lane cannot satisfy from a hosted runner alone. Wire MCP_SERVER_URL
-        # + MCP_SMOKE_BEARER_TOKEN as repo secrets once a staging platform-mcp
-        # deployment is available, then drop continue-on-error.
         continue-on-error: true
         run: npx tsx scripts/audit/tap/mcp_tool_smoke.ts
-        env:
-          MCP_SERVER_URL: ${{ secrets.TAP_MCP_SERVER_URL }}
-          MCP_SMOKE_BEARER_TOKEN: ${{ secrets.TAP_MCP_SMOKE_BEARER_TOKEN }}
+      - name: No MCP server configured — gate skipped (not a pass)
+        if: env.MCP_SERVER_URL == ''
+        run: echo "TAP_MCP_SERVER_URL is not set; the per-tool smoke battery did not run."
 
   tap-db-gates:
     name: TAP-5 / TAP-7 / S-13 — DB-backed conservation + distribution gates
     runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.TAP_DATABASE_URL }}
+      TAP7_API_BASE_URL: ${{ secrets.TAP7_API_BASE_URL }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: platform/package-lock.json
       - name: npm ci (platform)
         working-directory: platform
         run: npm ci
+      # The one gate in this job that needs neither a DB nor a secret — always runs.
       - name: R-18 param no-op audit (static, no DB required)
         working-directory: platform
         run: npx tsx --conditions=react-server scripts/audit/tap/r18_param_noop_audit.ts
       - name: S-13 live coverage matrix
+        if: env.DATABASE_URL != ''
         working-directory: platform
-        # See file header: exits 3 (SKIPPED-WITH-REASON) instead of a false
-        # PASS when DATABASE_URL is unset. continue-on-error until the repo
-        # wires a DATABASE_URL secret pointed at a Cloud SQL Auth Proxy
-        # sidecar (see platform/scripts/audit/tap/README.md).
         continue-on-error: true
         run: npx tsx --conditions=react-server scripts/audit/tap/s13_coverage_matrix_live.ts
-        env:
-          DATABASE_URL: ${{ secrets.TAP_DATABASE_URL }}
       - name: TAP-5 seam conservation (7 laws)
+        if: env.DATABASE_URL != ''
         working-directory: platform
         continue-on-error: true
         run: npx tsx --conditions=react-server scripts/audit/tap/tap5_seam_conservation.ts
-        env:
-          DATABASE_URL: ${{ secrets.TAP_DATABASE_URL }}
       - name: TAP-7 distribution gates (8 gates)
+        if: env.DATABASE_URL != ''
         working-directory: platform
         continue-on-error: true
         run: npx tsx --conditions=react-server scripts/audit/tap/tap7_distribution_gates.ts
-        env:
-          DATABASE_URL: ${{ secrets.TAP_DATABASE_URL }}
-          TAP7_API_BASE_URL: ${{ secrets.TAP7_API_BASE_URL }}
+      - name: No DATABASE_URL configured — TAP-5/TAP-7/S-13 skipped (not a pass)
+        if: env.DATABASE_URL == ''
+        run: echo "TAP_DATABASE_URL is not set; the DB-backed conservation and distribution gates did not run."
