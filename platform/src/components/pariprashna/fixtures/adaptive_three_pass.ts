@@ -103,11 +103,16 @@ export function buildAdaptiveThreePassFixture(turnId = 't-adaptive'): Fixture {
     prediction: {
       id: 'pred-1',
       claim: 'An occupational shift, self-initiated, most likely around mid-2027.',
+      // PB-6 (SAMĀPTI): real ISO kāla-rekhā anchors — the geometry is computed
+      // live from these (computeKalaRekha), never a pre-baked fraction. The
+      // "today" dot is NOT fixed here; it is read from the real clock at
+      // render time, so this fixture still shows real, live-advancing
+      // geometry rather than a frozen demo position.
+      readingDate: '2026-06-01',
+      windowStart: '2027-01-01',
+      windowEnd: '2027-12-31',
       windowStartLabel: '2026',
       windowEndLabel: '2028',
-      todayFractionOfSpan: 0.3,
-      windowStartFraction: 0.55,
-      windowEndFraction: 0.77,
       confidencePhrase: 'more likely than not',
       ref: 'PRED.CAREER.2027-06',
       lifecycle: 'window_open',

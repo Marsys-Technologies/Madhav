@@ -33,6 +33,24 @@
   margin-top: 8px;
   font-feature-settings: 'lnum' 1;
 }
+/* §6.9 item 4 — confidence phrase chip + mono prediction ref */
+.pp-prediction-card__footer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+}
+.pp-prediction-card__confidence {
+  font-family: var(--pp-font-sans);
+  font-size: 10.5px;
+  color: var(--pp-ink-dim);
+}
+.pp-prediction-card__ref {
+  font-family: var(--pp-font-mono);
+  font-size: 9px;
+  color: var(--pp-gold-tertiary);
+  margin-left: auto;
+}
 
 /* ── kāla-rekhā (the time hairline) ────────────────────────────────────── */
 .pp-kala-rekha {

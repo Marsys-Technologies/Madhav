@@ -52,27 +52,36 @@ export function windowLabel(w: ParsedDateWindow | null): string {
 }
 
 /**
- * kāla-rekhā geometry: given a window and "now", compute the today-dot fraction across a span
- * that pads the window on both sides so the dot has room to travel. Returns fractions in [0,1].
- * Deterministic given `nowIso` (injected, never `Date.now()` inside — so tests are stable).
+ * kāla-rekhā geometry: given a reading date, a window, and "now", compute the
+ * today-dot + window-segment fractions across the timeline's domain.
+ *
+ * PB-6 (SAMĀPTI, 2026-07-30): the domain is `[readingDate, windowEnd]` —
+ * "a full-width hairline spanning from the reading's date to the window's
+ * far edge" (design authority §6.9, verbatim) — matching the dock card's own
+ * `computeKalaRekha` (lib/pariprashna/samiksha/kala_rekha.ts). It was
+ * previously `[windowStart - 0.5*duration, windowEnd + 0.5*duration]` — a
+ * window-padded span with no reading-date anchor at all, so the line's left
+ * edge did not correspond to any real date the caption row could label.
+ * Returns fractions in [0,1]. Deterministic given `nowIso`/`readingDateIso`
+ * (injected, never `Date.now()` inside — so tests are stable).
  */
 export function kalaRekhaGeometry(
   w: ParsedDateWindow | null,
   nowIso: string,
+  readingDateIso: string,
 ): { windowStartFraction: number; windowEndFraction: number; todayFraction: number } | null {
   if (!w) return null
+  const reading = Date.parse(readingDateIso.slice(0, 10) + 'T00:00:00Z')
   const start = Date.parse(w.start + 'T00:00:00Z')
   const end = Date.parse(w.end + 'T00:00:00Z')
   const now = Date.parse(nowIso.slice(0, 10) + 'T00:00:00Z')
-  if (Number.isNaN(start) || Number.isNaN(end) || end <= start) return null
-  const dur = end - start
-  const spanStart = start - dur * 0.5
-  const spanEnd = end + dur * 0.5
-  const span = spanEnd - spanStart
+  if (Number.isNaN(reading) || Number.isNaN(start) || Number.isNaN(end) || Number.isNaN(now)) return null
+  if (end <= start || end <= reading) return null
+  const span = end - reading
   const clamp = (v: number) => Math.max(0, Math.min(1, v))
   return {
-    windowStartFraction: clamp((start - spanStart) / span),
-    windowEndFraction: clamp((end - spanStart) / span),
-    todayFraction: clamp((now - spanStart) / span),
+    windowStartFraction: clamp((start - reading) / span),
+    windowEndFraction: clamp((end - reading) / span),
+    todayFraction: clamp((now - reading) / span),
   }
 }

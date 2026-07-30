@@ -57,12 +57,21 @@ describe('display helpers', () => {
     expect(windowLabel({ start: '2026-07-01', end: '2027-01-01' })).toBe('Jul 2026 – Jan 2027')
   })
 
-  it('kalaRekhaGeometry places the today-dot deterministically inside the padded span', () => {
-    const geo = kalaRekhaGeometry({ start: '2026-01-01', end: '2026-12-31' }, '2026-07-01')
+  it('kalaRekhaGeometry places the today-dot deterministically across [readingDate, windowEnd] (§6.9)', () => {
+    // PB-6 (SAMĀPTI): domain is [readingDate, windowEnd] — the window's end is
+    // always the domain's right edge (windowEndFraction === 1), and the
+    // window's start floats wherever it genuinely falls relative to the
+    // reading date (no longer padded 0.5x on either side).
+    const geo = kalaRekhaGeometry({ start: '2026-01-01', end: '2026-12-31' }, '2026-07-01', '2025-10-01')
     expect(geo).not.toBeNull()
     expect(geo!.windowStartFraction).toBeGreaterThan(0)
-    expect(geo!.windowEndFraction).toBeLessThan(1)
+    expect(geo!.windowEndFraction).toBe(1)
     expect(geo!.todayFraction).toBeGreaterThan(geo!.windowStartFraction)
     expect(geo!.todayFraction).toBeLessThan(geo!.windowEndFraction)
+  })
+
+  it('kalaRekhaGeometry returns null when the window ends at/before the reading date (degenerate domain)', () => {
+    const geo = kalaRekhaGeometry({ start: '2025-01-01', end: '2025-06-01' }, '2025-03-01', '2025-06-01')
+    expect(geo).toBeNull()
   })
 })
