@@ -105,10 +105,47 @@ describe('the real repository', () => {
     expect(result.errors).toEqual([])
   })
 
-  it('still carries exactly the frozen legacy collisions — no more, no fewer', () => {
+  it('still carries exactly the frozen legacy collisions PLUS disclosed additions — no more, no fewer', () => {
+    // RULING 70: a collision found live on `main` after the freeze (484, ṢAḌ-DARŚANA, not owned
+    // by SAMĀPTI) is not folded into the immutable `legacy_duplicate_groups` baseline — it is
+    // recorded separately in `disclosed_additions`, itemized/dated/attributed. The real repo's
+    // duplicate-number set must equal the UNION of both, not `legacy_duplicate_groups` alone.
     const baseline = loadBaseline(REPO_ROOT)
-    expect(Object.keys(result.duplicateGroups).sort()).toEqual(
-      Object.keys(baseline.legacy_duplicate_groups).sort()
+    const expectedKeys = [
+      ...Object.keys(baseline.legacy_duplicate_groups),
+      ...Object.keys(baseline.disclosed_additions ?? {}),
+    ].sort()
+    expect(Object.keys(result.duplicateGroups).sort()).toEqual(expectedKeys)
+  })
+
+  it('the 484 collision is present ONLY in disclosed_additions, never folded into the frozen legacy baseline', () => {
+    // The whole point of RULING 70's third option: a post-freeze, not-owned collision must NOT
+    // be smuggled into the immutable `legacy_duplicate_groups` list — that would be indistinguishable
+    // from silently widening the baseline, exactly what the freeze exists to prevent.
+    const baseline = loadBaseline(REPO_ROOT)
+    expect(baseline.legacy_duplicate_groups['484']).toBeUndefined()
+    expect(baseline.disclosed_additions?.['484']).toBeDefined()
+  })
+
+  it('the 484 disclosure is fully itemized — owner, date, and ruling are all named, not vague', () => {
+    const baseline = loadBaseline(REPO_ROOT)
+    const disclosed = baseline.disclosed_additions?.['484']
+    expect(disclosed).toBeDefined()
+    expect(disclosed?.owner).toBe('ṢAḌ-DARŚANA')
+    expect(disclosed?.landed_at).toBe('2026-07-30')
+    expect(disclosed?.disclosed_via).toContain('RULING 70')
+    expect(disclosed?.fixed_by_samapti).toBe(false)
+    expect(disclosed?.files.sort()).toEqual([
+      'platform/supabase/migrations/484_bg_muhurta_lattice.sql',
+      'platform/supabase/migrations/484_bg_synthetic_cohort_md.sql',
+    ])
+  })
+
+  it('the disclosure is visible, not hidden — surfaces as a warning even though it does not fail CI', () => {
+    // "disclosed not hidden" (Ruling 70's own phrase): the guard must still SAY something about
+    // 484 even while passing, so a reader of CI output sees it without having to open the JSON.
+    expect(result.warnings.some(w => w.includes('[disclosed-residual]') && w.includes('484'))).toBe(
+      true
     )
   })
 
@@ -181,7 +218,62 @@ describe('CAN-FAIL — every hard-failure class goes red on a synthetic collisio
   it('the failure message names the correct replacement number', () => {
     const mutated = [...real, entry('platform/supabase/migrations/474_synthetic_collision.sql')]
     const out = checkMigrationNumbers(mutated, baseline)
-    expect(out.errors.join('\n')).toContain('Renumber the NEW file to 475')
+    // Computed, not hardcoded: the real repo's max climbs as new migrations land (485 as of
+    // ṢAḌ-DARŚANA's 2026-07-30 batch — see RULING 70), so "the next free number" is whatever
+    // computeNextMigrationNumber says TODAY, not whatever it said when this test was written.
+    // A hardcoded literal here is exactly the kind of assertion that goes stale silently.
+    const expectedNext = computeNextMigrationNumber(mutated)
+    expect(out.errors.join('\n')).toContain(`Renumber the NEW file to ${expectedNext}`)
+  })
+})
+
+describe('disclosed_additions — RULING 70: exit-clean iff itemized, never a blanket pass', () => {
+  const baseline = loadBaseline(REPO_ROOT)
+  const real = collectNumberedMigrations(REPO_ROOT)
+
+  it('the 484 disclosure alone is enough for the real repo to pass (sanity check: mechanism does not over-fire)', () => {
+    const out = checkMigrationNumbers(real, baseline)
+    expect(out.errors).toEqual([])
+  })
+
+  it('SANITY CHECK — a SECOND, undisclosed collision still fails even with 484 disclosed', () => {
+    // Proves the disclosed_additions mechanism is scoped to exactly the number it names — adding
+    // 484 to the baseline must not act as a blanket amnesty for some other, unrelated collision.
+    const mutated = [...real, entry('platform/supabase/migrations/470_undisclosed_synthetic.sql')]
+    const out = checkMigrationNumbers(mutated, baseline)
+    expect(out.errors.some(e => e.startsWith('[E2 NEW-COLLISION]') && e.includes('470'))).toBe(true)
+    // ...and the legitimately-disclosed 484 is still not re-flagged alongside it.
+    expect(out.errors.some(e => e.includes('484'))).toBe(false)
+  })
+
+  it('a THIRD file added to the disclosed 484 group fails (E3, same as a legacy group)', () => {
+    const mutated = [...real, entry('platform/supabase/migrations/484_sneaky_third_claim.sql')]
+    const out = checkMigrationNumbers(mutated, baseline)
+    expect(
+      out.errors.some(e => e.startsWith('[E3 WIDENED-DISCLOSED-GROUP]') && e.includes('484'))
+    ).toBe(true)
+  })
+
+  it('E4 — a disclosed_additions entry missing a required field is treated as UNDISCLOSED, not a partial pass', () => {
+    for (const missingField of ['owner', 'landed_at', 'disclosed_via', 'fixed_by_samapti', 'files'] as const) {
+      const incomplete = JSON.parse(JSON.stringify(baseline)) as typeof baseline
+      const entry484 = incomplete.disclosed_additions!['484']
+      delete (entry484 as unknown as Record<string, unknown>)[missingField]
+      const out = checkMigrationNumbers(real, incomplete)
+      expect(
+        out.errors.some(e => e.startsWith('[E4 INCOMPLETE-DISCLOSURE]') && e.includes('484')),
+        `expected E4 when "${missingField}" is missing`
+      ).toBe(true)
+    }
+  })
+
+  it('E4 — an empty files array also counts as incomplete (itemization means non-empty, named files)', () => {
+    const incomplete = JSON.parse(JSON.stringify(baseline)) as typeof baseline
+    incomplete.disclosed_additions!['484'].files = []
+    const out = checkMigrationNumbers(real, incomplete)
+    expect(out.errors.some(e => e.startsWith('[E4 INCOMPLETE-DISCLOSURE]') && e.includes('484'))).toBe(
+      true
+    )
   })
 })
 

@@ -1,9 +1,10 @@
 {
-  "_README": "FROZEN BASELINE — do not add entries by hand to silence a new collision. This file records the duplicate migration numbers that ALREADY existed on origin/main when platform/scripts/ci/migration_number_guard.ts was introduced. The guard fails on any duplicate number NOT listed here, and on any NEW file added to a group listed here. Governing protocol: 00_ARCHITECTURE/MIGRATION_AND_MERGE_PROTOCOL_v1_0.md.",
+  "_README": "FROZEN BASELINE — do not add entries by hand to silence a new collision. `legacy_duplicate_groups` records the duplicate migration numbers that ALREADY existed on origin/main when platform/scripts/ci/migration_number_guard.ts was introduced, and is immutable going forward. A collision that lands AFTER the freeze, owned by a campaign this guard's own lane does not control, is NOT added here — it goes in `disclosed_additions` instead: one itemized, dated, attributed entry per number (Dvārapāla RULING 70), same discipline as schema_validator.py's known_residuals whitelist (exit-clean iff itemized, never a blanket pass — see migration_number_guard.ts's DisclosedAddition interface for the required fields). The guard fails on any duplicate number in NEITHER list, on any NEW file added to a group in EITHER list, and on any disclosed_additions entry missing a required field. Governing protocol: 00_ARCHITECTURE/MIGRATION_AND_MERGE_PROTOCOL_v1_0.md §3.2/R6.",
   "frozen_at": "2026-07-30",
   "frozen_at_commit": "5f5033a55def0b9006aec29a66946b7a57f25121",
   "frozen_by": "SAMAPTI lane B-MIGGUARD (brief v2.0 §4.4 / MIG-1)",
   "group_count": 35,
+  "disclosed_additions_count": 1,
   "legacy_duplicate_groups": {
     "0": [
       "platform/supabase/migrations/0000_seed_legacy_applied.sql",
@@ -146,5 +147,17 @@
       "platform/migrations/466_omega8_floor_wiring.sql",
       "platform/supabase/migrations/466_brahma_prospective_ledger_lapsed_unobserved.sql"
     ]
+  },
+  "disclosed_additions": {
+    "484": {
+      "files": [
+        "platform/supabase/migrations/484_bg_muhurta_lattice.sql",
+        "platform/supabase/migrations/484_bg_synthetic_cohort_md.sql"
+      ],
+      "owner": "ṢAḌ-DARŚANA",
+      "landed_at": "2026-07-30",
+      "disclosed_via": "DVA RULING 70 (00_ARCHITECTURE/briefs/samapti/SAMAPTI_DVARAPALA_LEDGER.md), residual R6 in MIGRATION_AND_MERGE_PROTOCOL_v1_0.md",
+      "fixed_by_samapti": false
+    }
   }
 }

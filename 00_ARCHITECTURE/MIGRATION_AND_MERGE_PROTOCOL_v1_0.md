@@ -1,7 +1,7 @@
 ---
 artifact: MIGRATION_AND_MERGE_PROTOCOL_v1_0.md
 canonical_id: MIGRATION_AND_MERGE_PROTOCOL
-version: 1.1
+version: 1.2
 status: CURRENT
 authored_by: SAMĀPTI lane B-MIGGUARD (Claude Code, Opus) 2026-07-30
 implements: >
@@ -399,7 +399,7 @@ The CI guard makes the split *safe to live with* in the meantime; it does not ma
 | R3 | `CLAUDE.md`/`ONGOING_HYGIENE_POLICIES` §N.4 "never deploy.yml-auto" contradicts the live `deploy.yml` behaviour (§5). One of the two must move. | governance |
 | R4 | The two directories are not consolidated. | consolidation spec |
 | R5 | The renumbering/filename-keyed re-apply hazard (§3.2, hazard 2) is NOT closed by the RULING 58 sha256 fix — closing it needs a content-keyed (not filename-keyed) tracker, a structural change out of B-MIGGUARD's authorization. | unassigned |
-| R6 | **NEW, discovered 2026-07-30 rebasing this lane onto `origin/main` (`d5c4b359`):** `platform/supabase/migrations/484_bg_muhurta_lattice.sql` and `484_bg_synthetic_cohort_md.sql` (SHAD-DARSHANA, `#930`/`#932`) both claim migration number 484 — a genuine E2 duplicate-number collision, NOT in the frozen legacy baseline (`migration_number_guard.ts`'s baseline is 35; this makes 36 groups present). `npm run guard:migration-numbers` confirmed **exit 1** on this collision alone. This guard is not yet on `main` (it ships with this PR), so nothing currently catches it — but the moment this PR merges, its own CI step (wired in `.github/workflows/ci.yml`, runs BEFORE `npm test`) will fail on this pre-existing, cross-campaign collision at the first PR that rebases onto it, reading exactly like a regression the merging PR introduced (the same shape Ruling 44 named for header mismatches, but this class is BLOCKING not advisory). Not fixed here: renumbering `484_bg_synthetic_cohort_md.sql` to `486` is a SHAD-DARSHANA-owned file, cross-campaign, out of this lane's authorization to touch unilaterally (same principle as Ruling 60/61's cross-campaign caution). **Flagged for DVA**, not silently widening the frozen baseline (the guard's own docstring forbids that as "a governance violation, not a fix") and not resolved by this lane. | DVA / SHAD-DARSHANA |
+| R6 | **RESOLVED via Dvārapāla RULING 70** (was: discovered 2026-07-30 rebasing this lane onto `origin/main` `d5c4b359`; independently found twice — once by this lane's own rebase, once by VER via a different path). `platform/supabase/migrations/484_bg_muhurta_lattice.sql` and `484_bg_synthetic_cohort_md.sql` (ṢAḌ-DARŚANA, `#930`/`#932`) both claim migration number 484 — a genuine E2 duplicate-number collision, NOT in the frozen legacy baseline. Ruling 70 rejected both the "hard-fail B-MIGGUARD's own PR on someone else's bug" option and the "silently widen the frozen baseline" option, and directed the SAME itemized-disclosure mechanism this codebase already uses for `schema_validator.py`'s `known_residuals` whitelist: a new `disclosed_additions` block in `migration_number_legacy_duplicates.json`, separate from (never merged into) the immutable `legacy_duplicate_groups` baseline, carrying one itemized/dated/attributed entry — `484_bg_muhurta_lattice.sql` / `484_bg_synthetic_cohort_md.sql`, owner ṢAḌ-DARŚANA, landed 2026-07-30, disclosed via RULING 70, `fixed_by_samapti: false`. `migration_number_guard.ts` now validates this entry structurally (new **E4** class: a `disclosed_additions` entry missing any required field — `owner`/`landed_at`/`disclosed_via`/`fixed_by_samapti`/`files` — is treated as UNDISCLOSED, not a partial pass) and surfaces it as a non-fatal `[disclosed-residual]` warning even while passing — disclosed, not hidden. `npm run guard:migration-numbers` now exits **0**; all 4 previously-red tests in `migration_number_guard.test.ts` pass; 5 new tests added, including a synthetic-second-undisclosed-collision sanity check confirming the mechanism still discriminates (stays red) and does not act as a blanket amnesty. Still not fixed: renumbering the ṢAḌ-DARŚANA file itself remains out of this lane's authorization — this entry records the collision, it does not close it. | DVA (Ruling 70) — actual renumbering still owned by ṢAḌ-DARŚANA |
 
 ---
 
@@ -417,9 +417,16 @@ The CI guard makes the split *safe to live with* in the meantime; it does not ma
 
 ---
 
-*End of MIGRATION_AND_MERGE_PROTOCOL v1.1 (2026-07-30, SAMĀPTI lane B-MIGGUARD — Dvārapāla RULING 58:
-§3.2 added, the tracker's sha256 is now compared and fails loudly on drift for an already-applied
-migration whose filename is unchanged; R5 records the renumbering hazard this does NOT close; R6
-records a newly-discovered, currently-undetected E2 duplicate-number collision at migration 484
-introduced by a concurrent campaign, flagged for DVA rather than fixed out-of-lane). Prior: v1.0
-(2026-07-30, SAMĀPTI lane B-MIGGUARD, first issue).*
+*End of MIGRATION_AND_MERGE_PROTOCOL v1.2 (2026-07-30, SAMĀPTI lane B-MIGGUARD — Dvārapāla RULING 70:
+R6 resolved. The 484 duplicate (ṢAḌ-DARŚANA, not owned by SAMĀPTI) is now an itemized/dated/
+attributed `disclosed_additions` entry in `migration_number_legacy_duplicates.json`, kept separate
+from the immutable `legacy_duplicate_groups` freeze, validated structurally by a new E4 guard class
+(missing field = treated as undisclosed, never a partial pass) and surfaced as a non-fatal warning —
+same itemize-or-it-doesn't-count discipline as `schema_validator.py`'s `known_residuals` whitelist.
+`guard:migration-numbers` exits 0; all 4 previously-red tests pass; 5 new tests, including a
+synthetic-second-undisclosed-collision check that the mechanism still discriminates. Renumbering
+the ṢAḌ-DARŚANA file itself remains that campaign's own open item, not SAMĀPTI's.).
+Prior: v1.1 (2026-07-30, SAMĀPTI lane B-MIGGUARD — Dvārapāla RULING 58: §3.2 added, the tracker's
+sha256 is now compared and fails loudly on drift for an already-applied migration whose filename is
+unchanged; R5 records the renumbering hazard this does NOT close; R6 records the newly-discovered
+484 collision, flagged for DVA). Prior: v1.0 (2026-07-30, SAMĀPTI lane B-MIGGUARD, first issue).*

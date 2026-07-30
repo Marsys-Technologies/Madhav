@@ -34,8 +34,26 @@
  *       baseline `migration_number_legacy_duplicates.json`. This is the 467 class. Detected
  *       across BOTH directories AND within each directory.
  *
- *   E3  A NEW FILE ADDED TO A BASELINED GROUP. The baseline freezes exact file lists, not bare
- *       numbers, so a legacy collision cannot be used as cover for a new one.
+ *   E3  A NEW FILE ADDED TO A BASELINED OR DISCLOSED GROUP. The baseline freezes exact file
+ *       lists, not bare numbers, so a legacy collision cannot be used as cover for a new one.
+ *
+ *   E4  AN INCOMPLETE `disclosed_additions` ENTRY (missing owner/landed_at/disclosed_via/
+ *       fixed_by_samapti/files). Same discipline as `schema_validator.py`'s `known_residuals`
+ *       whitelist: exit-clean iff ITEMIZED. A bare or partial entry is treated as UNDISCLOSED,
+ *       not as a partial pass — see DisclosedAddition's docstring below.
+ *
+ * ── DISCLOSED (not fixed) COLLISIONS — Dvārapāla RULING 70 ─────────────────────
+ * The frozen baseline (`legacy_duplicate_groups`) is deliberately immutable — it is the exact set
+ * that existed when this guard was introduced, and MUST NOT be hand-edited to silence a new
+ * collision (that is the erosion the freeze exists to prevent). But a collision CAN still land
+ * after the freeze, from a concurrent campaign this one does not own (RULING 70's own case: two
+ * ṢAḌ-DARŚANA files both claimed migration 484 while B-MIGGUARD was in flight). Hard-failing
+ * B-MIGGUARD's own PR on a bug it does not own is wrong; silently widening the baseline is
+ * exactly the erosion the freeze exists to prevent. The third option — same one this codebase
+ * already uses for `schema_validator`/`drift_detector`'s `known_residuals` whitelist — is a
+ * SEPARATE, itemized `disclosed_additions` block: one entry per number, naming the files, the
+ * owning campaign, the date it landed, the ruling that disclosed it, and whether SAMĀPTI has
+ * since fixed it. See the `DisclosedAddition` interface for the required fields.
  *
  * ── WHAT THIS GUARD DOES *NOT* ENFORCE (stated so it cannot overclaim — CLAUDE.md §N.8) ──
  *   • It does NOT check that a migration is idempotent, reversible, or correct SQL.
@@ -75,10 +93,34 @@ export interface MigrationEntry {
   number: number
 }
 
+/**
+ * A duplicate-number group discovered AFTER the baseline was frozen, disclosed rather than fixed.
+ * Same discipline as `schema_validator.py`'s `known_residuals` whitelist (Dvārapāla RULING 70):
+ * exit-clean iff ITEMIZED — every field below is required, or the entry does not count as
+ * disclosed and the guard fails exactly as if it were never listed at all. This is what makes
+ * `disclosed_additions` categorically different from silently widening `legacy_duplicate_groups`
+ * by hand: a bare filename list would be indistinguishable from tampering; a complete record
+ * with an owner, a date, and a named ruling is not.
+ */
+export interface DisclosedAddition {
+  /** repo-root-relative paths claiming this number — must match the ACTUAL colliding set exactly. */
+  files: string[]
+  /** the campaign/lane that landed the collision (never "SAMĀPTI" for one this lane didn't create). */
+  owner: string
+  /** ISO date the collision landed on `main`. */
+  landed_at: string
+  /** where this was ruled/disclosed — a ledger ruling ID, not a vague "known issue". */
+  disclosed_via: string
+  /** true only once a future session has actually renumbered one of the files. */
+  fixed_by_samapti: boolean
+}
+
 export interface Baseline {
   frozen_at?: string
   frozen_at_commit?: string
   legacy_duplicate_groups: Record<string, string[]>
+  /** Post-freeze collisions, itemized/dated/attributed per DisclosedAddition — see its docstring. */
+  disclosed_additions?: Record<string, DisclosedAddition>
 }
 
 export interface GuardResult {
@@ -219,8 +261,11 @@ export function checkMigrationNumbers(
     const paths = group.map(g => g.relPath).sort()
     duplicateGroups[number] = paths
 
-    const baselined = baseline.legacy_duplicate_groups[String(number)]
-    if (!baselined) {
+    const key = String(number)
+    const legacyFiles = baseline.legacy_duplicate_groups[key]
+    const disclosed = baseline.disclosed_additions?.[key]
+
+    if (!legacyFiles && !disclosed) {
       errors.push(
         `[E2 NEW-COLLISION] migration number ${number} is claimed ${group.length} times:\n` +
           paths.map(p => `      - ${p}`).join('\n') +
@@ -232,7 +277,49 @@ export function checkMigrationNumbers(
       continue
     }
 
-    const baselineSet = new Set(baselined)
+    // ── disclosed_additions path — RULING 70: exit-clean iff ITEMIZED, never a blanket pass ──
+    // Same mechanism as schema_validator.py's known_residuals whitelist: an entry that is present
+    // but missing a required field is treated as UNDISCLOSED, not as a partial pass.
+    if (disclosed && !legacyFiles) {
+      const missing: string[] = []
+      if (!disclosed.owner) missing.push('owner')
+      if (!disclosed.landed_at) missing.push('landed_at')
+      if (!disclosed.disclosed_via) missing.push('disclosed_via')
+      if (typeof disclosed.fixed_by_samapti !== 'boolean') missing.push('fixed_by_samapti')
+      if (!Array.isArray(disclosed.files) || disclosed.files.length === 0) missing.push('files')
+
+      if (missing.length > 0) {
+        errors.push(
+          `[E4 INCOMPLETE-DISCLOSURE] migration number ${number} is listed in disclosed_additions ` +
+            `but is missing required field(s): ${missing.join(', ')}. An itemized disclosure needs ` +
+            `owner + landed_at + disclosed_via + fixed_by_samapti + files — an incomplete entry is ` +
+            `treated as UNDISCLOSED (same as if it were never listed), never a partial pass.`
+        )
+        continue
+      }
+
+      const disclosedSet = new Set(disclosed.files)
+      const added = paths.filter(p => !disclosedSet.has(p))
+      if (added.length > 0) {
+        errors.push(
+          `[E3 WIDENED-DISCLOSED-GROUP] migration number ${number} is a disclosed collision ` +
+            `(owner: ${disclosed.owner}, via ${disclosed.disclosed_via}), but these files are new ` +
+            `to it:\n` +
+            added.map(p => `      - ${p}`).join('\n') +
+            `\n      A disclosed collision is not a licence to add another. Renumber to ` +
+            `${computeNextMigrationNumber(entries)}. Do not edit the baseline file to silence this.`
+        )
+      }
+      warnings.push(
+        `[disclosed-residual] migration number ${number}: owner ${disclosed.owner}, landed ` +
+          `${disclosed.landed_at}, disclosed via ${disclosed.disclosed_via}, fixed by SAMĀPTI: ` +
+          `${disclosed.fixed_by_samapti}. See ${disclosed.disclosed_via}.`
+      )
+      continue
+    }
+
+    // ── legacy_duplicate_groups path — the original frozen-at-instrument-creation baseline ──
+    const baselineSet = new Set(legacyFiles)
     const added = paths.filter(p => !baselineSet.has(p))
     if (added.length > 0) {
       errors.push(
@@ -243,7 +330,7 @@ export function checkMigrationNumbers(
           `${computeNextMigrationNumber(entries)}. Do not edit the baseline file to silence this.`
       )
     }
-    const removed = baselined.filter(p => !paths.includes(p))
+    const removed = (legacyFiles ?? []).filter(p => !paths.includes(p))
     if (removed.length > 0) {
       warnings.push(
         `[baseline drift] legacy group ${number} no longer contains: ${removed.join(', ')} ` +
@@ -252,10 +339,15 @@ export function checkMigrationNumbers(
     }
   }
 
-  // Baselined groups that fully disappeared — advisory, never fatal.
+  // Baselined/disclosed groups that fully disappeared — advisory, never fatal.
   for (const key of Object.keys(baseline.legacy_duplicate_groups)) {
     if (!(Number(key) in duplicateGroups)) {
       warnings.push(`[baseline drift] legacy duplicate group ${key} is fully resolved — entry is now stale.`)
+    }
+  }
+  for (const key of Object.keys(baseline.disclosed_additions ?? {})) {
+    if (!(Number(key) in duplicateGroups)) {
+      warnings.push(`[baseline drift] disclosed group ${key} is fully resolved — entry is now stale.`)
     }
   }
 
@@ -306,11 +398,13 @@ function main(): void {
     return `  ${d}: ${nums.length} numbered .sql, highest ${nums.length ? Math.max(...nums) : '—'}`
   }).join('\n')
 
+  const baselineForPrint = loadBaseline(repoRoot)
   process.stdout.write(
     `MIGRATION NUMBER GUARD (cross-directory)\n${perDir}\n` +
       `  next allocatable number (max across BOTH + 1): ${result.nextNumber}\n` +
       `  duplicate-number groups present: ${Object.keys(result.duplicateGroups).length} ` +
-      `(frozen legacy baseline: ${Object.keys(loadBaseline(repoRoot).legacy_duplicate_groups).length})\n\n`
+      `(frozen legacy baseline: ${Object.keys(baselineForPrint.legacy_duplicate_groups).length} + ` +
+      `disclosed additions: ${Object.keys(baselineForPrint.disclosed_additions ?? {}).length})\n\n`
   )
 
   for (const w of result.warnings) process.stdout.write(`WARN  ${w}\n`)
