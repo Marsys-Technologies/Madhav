@@ -299,6 +299,59 @@ jobs:
         # baseline-style auto-accept for future violations.
         run: python platform/scripts/governance/check_fact_category_pinning.py
 
+  earned-signal-lint:
+    # SAMĀPTI v2.0 §7.5, lane B-N8-LINT — the standing CLAUDE.md §N.8
+    # Earned-Signal guard, and a deliberate sibling to fact-category-pin-lint
+    # above (same shape: bundled fixtures + self-test, then an allowlist-aware
+    # repo scan). Enforces ONE mechanisable corollary of §N.8: a field whose
+    # name asserts a status / verification / grade / gate / violation-count must
+    # not be bound to an edit-time constant — the sanctioned value for a signal
+    # with no detector is None/null, in either polarity. The ground-truth
+    # defects it was calibrated against are F-09/F-10/F-11/F-23 in
+    # 00_ARCHITECTURE/briefs/samapti/SAMAPTI_N8_EARNED_SIGNAL_REGISTER_v1_0.md.
+    #
+    # SCOPE, STATED HONESTLY (the lane's own charter forbids overclaiming): this
+    # catches the LITERAL class only. PROXY, dataflow-TAUTOLOGY and
+    # CANNOT-FAIL-GATE findings are NOT caught, and a green here is not evidence
+    # that a status field is earned. The script's module docstring enumerates
+    # every uncaught class and every deliberate suppression, with counts.
+    # Stdlib-only script (no pyyaml needed).
+    name: Earned-Signal Gate (§N.8)
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Earned-signal lint — self-test (bundled fixtures)
+        # The lint's own can-fail proof. FAIL fixtures cover all five Python
+        # binding sites and both TypeScript ones, and each declares an exact
+        # EXPECT-VIOLATIONS count so a partial regression (four of five sites
+        # still firing) fails rather than passing quietly. PASS fixtures pin the
+        # boundary: a real detector, an honest None, a rebound counter, a
+        # string-literal union in a type position, and — deliberately — register
+        # finding F-07, a PROXY violation this lint does not claim to catch.
+        run: python platform/scripts/governance/check_earned_signal.py --self-test
+
+      - name: Earned-signal lint — repo scan (allowlist-aware)
+        # Fails ONLY on violations not present in earned_signal_allowlist.json.
+        # That file records 169 pre-existing violations across 81 (file, field)
+        # groups found at rollout, each with a stated disposition CATEGORY —
+        # including entries that say plainly "not individually reviewed", which
+        # is the §N.8-honest disposition rather than a fabricated justification.
+        # Each group is frozen by `max_occurrences`: the backlog can be paid
+        # down but never grown, and occurrence N+1 in a covered group is a hard
+        # fail exactly like a brand-new one.
+        run: python platform/scripts/governance/check_earned_signal.py
+
   governance-gates:
     # v1.2 follow-on (2026-05-28): four gates from session_queue.yaml that the
     # seal-time ci.yml was missing (per OPERATOR_CLEANUP_REPORT_v1_0 line 57 +
