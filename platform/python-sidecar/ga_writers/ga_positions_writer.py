@@ -209,10 +209,27 @@ def forensic_gate(chart_output: dict[str, Any], ayanamsha_id: str) -> None:
 
 
 def _write_halt_log(gate_name: str, msg: str) -> None:
-    """Append failure to CONDUCTOR_HALT_LOG.md if path is resolvable."""
+    """Append failure to CONDUCTOR_HALT_LOG.md if path is resolvable.
+
+    Target directory is overridable via CONDUCTOR_HALT_LOG_DIR_OVERRIDE, which
+    the test suite sets to an isolated tmp dir (see tests/conftest.py) so that
+    forensic-gate unit tests exercising deliberately-bad chart data (e.g.
+    test_ga3_writers.py::TestForensicGate) never append fixture noise to the
+    real repo-tracked CONDUCTOR_HALT_LOG.md.
+    """
     try:
-        # Walk up from current file to find project root
         import pathlib
+        override = os.environ.get("CONDUCTOR_HALT_LOG_DIR_OVERRIDE")
+        if override:
+            candidate = pathlib.Path(override) / "CONDUCTOR_HALT_LOG.md"
+            candidate.parent.mkdir(parents=True, exist_ok=True)
+            with open(candidate, "a", encoding="utf-8") as fh:
+                fh.write(
+                    f"\n## HALT: {gate_name} — {datetime.now(timezone.utc).isoformat()}\n"
+                    f"{msg}\n"
+                )
+            return
+        # Walk up from current file to find project root
         p = pathlib.Path(__file__).resolve()
         for _ in range(8):
             candidate = p / "00_ARCHITECTURE" / "CONDUCTOR" / "CONDUCTOR_HALT_LOG.md"
