@@ -13,6 +13,47 @@ governing: SHAD_DARSHANA_NIGHT_RUN_v1_0.md (orchestration) + SHAD_DARSHANA_BRIEF
 
 ## NEXT-ACTION
 
+**GATE W1 FORMALLY VERIFIED-CLOSED (2026-07-30, Night 2 — see full PARĪKṢAKA round-1/round-2
+record above in the deploy-#2 section).** Round 1 rejected 5 of 12 items with concrete live
+evidence (items 8/28/29/32/30) — a real "coverage says computed while payload is 100% null"
+honesty-inversion bug (missing sidecar API-key header, masking every 401 as an empty result),
+a wrong panchāṅga parameter name causing an uncaught 500 on the single-date call path only,
+and an undisclosed muntha schema mismatch. Fix (PR #940, Opus effort per the campaign's
+post-rejection escalation rule) redeployed (revision `amjis-mcp-00525-hrd`, confirmed 100%
+traffic via direct `gcloud run services describe`). **Round 2 independently re-verified all 5
+fixes against live production, both charts — not trusted from the fix PR's self-report**:
+recomputed Sun/Rahu sidereal longitudes from first principles and cross-checked against served
+values (±1.5° tolerance for true-node wobble); traced 8 served `fact_id`s back to `chart_facts`
+confirming 3 FORENSIC birth anchors exactly; cross-checked muntha against a repo FORENSIC test
+fixture (`Libra, 7th house` — matched exactly). All 5 items + ND-1 (tri-plane null-shape) →
+**VERIFIED-FIXED. Gate W1 → VERIFIED-CLOSED.** Two honest non-blocking notes filed: (a) the fix
+PR's §N.5 rationale was directionally right but imprecise (claimed "near a nakshatra cusp" —
+actually mid-nakshatra but 2.94° from the Aquarius/Pisces SIGN boundary, a related but more
+precise hazard); (b) a NEW minor advisory (not a reopen): `kala_ahead_get` on Abhinandan's
+chart returns `projections: []` while coverage labels it `"computed"` rather than the
+system's own `honest_empty` convention — ticketed as a follow-up, does not block this closure
+since nothing is fabricated and the reading discloses the emptiness in prose.
+
+**All 12 W1 registry items are now VERIFIED-FIXED, live, both charts.** Wave W2's design +
+both Lane D preconditions were already merged before Gate W1 closed; the campaign ran W2's
+five build lanes (A/B/C/D/E) in parallel with the W1 reverify cycle, since neither blocks the
+other (frozen anti-collision file/table contract per the design doc's own §0). **Status as of
+this write: Lanes A (#945), B (#944), D (#946), E (#947) all opened, scope-verified, holding
+for the post-all-five-lanes integration pass (no auto-merge). Lane C (the hazard-formula +
+`ka_kshetra` orchestration-shim centre of gravity, Opus effort) still in flight** — the
+integration pass (field integration → determinism hash-replay → weights-v0 seed → skill score
+publish, brief §3 W2 "3b sequential") cannot start until it lands, since Lane C owns the one
+file (`ka_kshetra.py`) that actually wires the other four lanes together. Sibling lanes each
+flagged real cross-lane gaps for that integration pass to resolve: Lane E found `ka_gochara_sweep`/
+`ka_gochara_resonance` (2 of `ka_kshetra`'s 8 depends_on edges) have no `asset_registry` seed
+row at all; Lane E also placed a throwaway inert `ka_kshetra` seed row purely so its own
+`mi_bhara` edge would resolve in isolation — Lane C's real seed row replaces it wholesale;
+§9.3 vs §0 disagree on which lane owns `kala_field_snapshots` (Lane E left it to Lane C, noted
+in its own migration header). **Once Lane C lands: run the integration pass, then Gate W2's
+acceptance criteria (brief §3 W2 / design doc §10).**
+
+---
+
 **GATE W0 FORMALLY CLOSED (2026-07-29, between Night 1 and Night 2 — see the GATE W0 CLOSURE
 RECORD below for full evidence).** The native applied the `mcp-canary-key` Secret Manager IAM
 binding; `deploy.yml` re-ran clean (run `30484976742`), all three auth probes passed for real,
@@ -655,7 +696,7 @@ collision pattern is better understood from the first lane.
 | Wave | Status | Evidence | Notes |
 |---|---|---|---|
 | W0 | **VERIFIED-CLOSED** | PRs #877/#880/#882/#883/#884/#881 (merged main@`42151b24`+); deploy run `30484976742`; direct production `tools/list` + functional calls on both charts; see GATE W0 CLOSURE RECORD above | All 8 tools live on production, both charts, envelope-conformant, Mode-3 routing live-verified. |
-| W1 | **DEPLOYED, PARĪKṢAKA-REJECTED (5 of 12 items), fix in flight** | All 12 items code-complete + merged + deployed (run `30525058905`); live acceptance: 7/12 VERIFIED-FIXED (1-lite,2,10,24-lite,38-lite,43,E6-lite), 5/12 FAILED-REOPENED (8,28,29,30,32) — 3 real root causes, all confirmed narrow wiring bugs not architecture; fix lane `shad-darshana/w1-verify-reopen-fixes` (Opus, post-rejection effort escalation) dispatched | **Gate W1 is NOT VERIFIED-CLOSED.** Do not treat items 8/28/29/30/32 as done until a second PARĪKṢAKA pass confirms the fix. This is exactly the honesty-inversion class of bug the campaign's verification apparatus exists to catch — see NEXT-ACTION for full finding. |
+| W1 | **VERIFIED-CLOSED** | All 12 items VERIFIED-FIXED, both charts, live production (revision `amjis-mcp-00525-hrd`, 100% traffic). Round 1 rejected 5/12 (8,28,29,30,32) with real evidence; fix (PR #940, Opus) redeployed; round 2 independently re-verified all 5 via recomputed ephemeris + fact_id tracing + FORENSIC fixture cross-check, not self-report | Real honesty-inversion bugs caught and fixed by the verification apparatus exactly as designed — see NEXT-ACTION for the full round-1/round-2 record. Two non-blocking advisory notes filed. |
 | W2 | **DESIGN-COMPLETE + Lane D unblocked, build lanes not yet dispatched** | PR #886 (`KALA_W2_FIELD_DESIGN_v1_0.md`), PR #918 (Lane D §6.3 reconciliation, ADJUDICATION-1), PR #932 (bg_cohort MD-lord chain table, APPROVE-WITH-NOTES) all merged | Hazard formula, skill-score/GOF, DAG acyclicity, AND Lane D's cohort contract all specified precisely against reality; 5 build lanes (A/B/C/D/E) ready to dispatch together. |
 | W2G | NOT-STARTED | — | GOCHARA-2.0 sub-day. **BLOCKED on N1–N5 ratification (W2G.0) — see below.** |
 | W3 | NOT-STARTED | — | New computations over the field. |
@@ -689,7 +730,7 @@ illegal.
 | 5 | Vedha + Sarvatobhadra grid | W3 | NOT-STARTED | — | — |
 | 6 | Activity-specific muhūrta tables | W3 | NOT-STARTED | — | — |
 | 7 | Muhūrta-lagna | W3 | NOT-STARTED | — | — |
-| 8 | Gochara dual-reference | W1 | **FAILED-REOPENED** (live PARĪKṢAKA rejection, 2026-07-30) | N — all 9 grahas' transit fields 100% NULL on both charts while coverage falsely claims `computed` | PR #891 (code); root cause: narrow wiring bug in `now.ts`'s L0 ephemeris transit call, NOT a substrate outage (confirmed via direct `ref_planet_transit_get` call); fix in `shad-darshana/w1-verify-reopen-fixes`, awaiting reverify |
+| 8 | Gochara dual-reference | W1 | **VERIFIED-FIXED** (round-2 PARĪKṢAKA, 2026-07-30) | Y — all 9 grahas non-null both charts, live-recomputed (Sun/Rahu sidereal longitude independently verified against served values), house arithmetic self-consistent | PR #891 (code) + PR #940 (fix: missing sidecar `x-api-key` header masked every 401 as empty) |
 | 9 | Health/adverse event class | W3 | NOT-STARTED | — | — |
 | 10 | Per-chapter LEL pinning | W1 | **VERIFIED-FIXED** | Y (code-level) | PR #889; Circularity Guard empirically verified |
 | 11 | Provenance edges | W2 | NOT-STARTED | — | — |
@@ -709,11 +750,11 @@ illegal.
 | 25 | Salience vector + submodular selection | W2 | NOT-STARTED | — | — |
 | 26 | UPĀYA-SETU | W4 | NOT-STARTED | — | — |
 | 27 | kala_timeline_spec v1 | W2 | NOT-STARTED | — | — |
-| 28 | Daśā-lord transit-condition | W1 | **FAILED-REOPENED** (live PARĪKṢAKA rejection, 2026-07-30) | N — natal half correct + chart-differentiated; transit half (the actual deliverable) 100% NULL both charts, current AND forward variants, coverage falsely claims `computed` | PR #891 (code); same root cause as item 8; fix in `shad-darshana/w1-verify-reopen-fixes`, awaiting reverify |
-| 29 | Chandrāṣṭama/horā/janma-resonance flags | W1 | **FAILED-REOPENED** (live PARĪKṢAKA rejection, 2026-07-30) | N — null on both charts, all 3 dates tested; coverage reason ("L0 panchāṅga service unreachable") proven FALSE — same service's range-mode call works seconds apart in the same session | PR #892 (code); root cause: `kala_now_get`'s single-date panchāṅga call mode specifically, not a service outage; fix in `shad-darshana/w1-verify-reopen-fixes`, awaiting reverify |
-| 30 | Mudda daśā join | W1 | **FAILED-REOPENED (narrow)** (live PARĪKṢAKA rejection, 2026-07-30) | Partial — core mudda-chain deliverable genuinely works, chart-differentiated; `muntha_sign`/`muntha_house` undisclosed nulls leak into served prose as "Muntha in unknown" | PR #924 (code, core join correct); fix in `shad-darshana/w1-verify-reopen-fixes`, awaiting reverify |
+| 28 | Daśā-lord transit-condition | W1 | **VERIFIED-FIXED** (round-2 PARĪKṢAKA, 2026-07-30) | Y — current + forward, both charts, real transit sign/house/dignity (e.g. C1 Mercury MD own_sign; forward Saturn AD Aries debilitated) | PR #891 (code) + PR #940 (fix: same root cause as item 8) |
+| 29 | Chandrāṣṭama/horā/janma-resonance flags | W1 | **VERIFIED-FIXED** (round-2 PARĪKṢAKA, 2026-07-30) | Y — all populated both charts, 2 dates tested, panchāṅga single-date path confirmed healthy; C2 correctly fires a real `is_chandrashtama:true` positive | PR #892 (code) + PR #940 (fix: `panchang.py` wrong kwarg name causing an uncaught 500 on the single-date path only) |
+| 30 | Mudda daśā join | W1 | **VERIFIED-FIXED** (round-2 PARĪKṢAKA, 2026-07-30) | Y — muntha now real both charts (C1 Libra/7th/Venus, C2 Virgo/6th/Mercury), cross-checked against a repo FORENSIC fixture; prose leak gone | PR #924 (code) + PR #940 (fix: reader expected nonexistent flat columns instead of `muntha_position_jsonb`) |
 | 31 | Period-echo mining | W3 | NOT-STARTED | — | — |
-| 32 | Diśā-śūla + gulika-kālam joins | W1 | **FAILED-REOPENED** (live PARĪKṢAKA rejection, 2026-07-30) | N — `disha_shula`/`gulika_kalam_now` null on both charts, all dates; the sibling `gulika_kalam_ahead` in `kala_ahead_get` DOES work (31 real windows), proving this is `now.ts`'s single-date mode specifically, not the substrate | PR #892 (code); same root cause as item 29; fix in `shad-darshana/w1-verify-reopen-fixes`, awaiting reverify |
+| 32 | Diśā-śūla + gulika-kālam joins | W1 | **VERIFIED-FIXED** (round-2 PARĪKṢAKA, 2026-07-30) | Y — both fields populated both charts, both dates | PR #892 (code) + PR #940 (fix: same root cause as item 29) |
 | 33 | Absence-of-expected detector | W3 | NOT-STARTED | — | — |
 | 34 | Contrastive EXPLAIN | W3 | NOT-STARTED | — | — |
 | 35 | Planner wiring verified LIVE (hard gate) | W5 | NOT-STARTED | — | — |
@@ -786,6 +827,18 @@ illegal.
   branches, no PRs matching the campaign) — confirmed first night.
 
 ## Migration range reserved
+
+**Known hygiene issue, not a data-loss bug (2026-07-30):** `484_bg_muhurta_lattice.sql` (PR
+#930) and `484_bg_synthetic_cohort_md.sql` (PR #932) both used number 484 — two independent
+lanes each re-verified "live max" at a moment that predated the other's merge. Confirmed via
+direct query that BOTH tables exist in production (`to_regclass` resolves both) — the runner
+dedupes by full filename, not the leading number, so nothing was silently skipped. Not
+renaming the already-applied files (renaming something the runner has already tracked as
+applied is its own risk for zero benefit). **Live max going into W2 is 486** (486 = an
+unrelated `samiksha_ledger` migration from a different concurrent campaign) — 474–483 remain
+genuinely free and reserved for W2's five build lanes exactly as `KALA_W2_FIELD_DESIGN_v1_0.md`
+§9.3 specifies; re-verify immediately before writing regardless, per that doc's own standing
+instruction.
 
 **472–495, in `platform/supabase/migrations/`** (reserved 2026-07-29, Night 1). Two migration
 directories both apply to prod and are deduped by filename (`migrate.ts`); the standing policy
