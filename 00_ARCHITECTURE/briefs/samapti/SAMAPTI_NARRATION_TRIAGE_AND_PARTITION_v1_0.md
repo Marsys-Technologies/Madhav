@@ -106,7 +106,15 @@ REJECTED is a valuable outcome. Because the describing census is lost (§6.1), e
 finding), 3 REJECTED.** Two rejections retire work outright; the third (§2.3) redirects a lane onto a
 different, reachable defect in the same file. Two confirmations escalate above their filed severity.
 
-### §2.1 — `mi_bhavisya.py:161` (seed F25) → **CONFIRMED**, severity escalated GAP → **P1-class**
+### §2.1 — `mi_bhavisya.py:161` (seed F25) → **CONFIRMED**, severity **P1** (DVA-RATIFIED)
+
+> **Severity band: P1.** DVA Ruling 75 Q(iii) RATIFIED the escalation P2 → **P1**. VER independently
+> reproduced the domain-mismatch scoring bug live: strength pinned at `1.0` for non-domain-matched
+> buckets while domain-matched buckets run **2.16–2.81**, across both the transition
+> (50/250/0-matched) and general (3/15/0-matched) queries. A live, reproducible scoring distortion on
+> every non-domain-matched row is a **correctness defect, not a plausible-severity judgment call**.
+> B-NAR-MI inherits this as **P1**, not P2 — same §N.8-class rigor as any other confirmed finding
+> (real fix or explicit NULL, never a silent default).
 
 The original auditor could not confirm this because no surface exposed
 `mimamsa_predictions.driving_signals`. That blocker is now **discharged** — the column was read
@@ -165,7 +173,27 @@ The queue lists it as one P2 line item; it is the heaviest finding in the whole 
 - **Reconciling the L4-anchor vs L2-MSR domain vocabularies** so `transition`/`general` can match at
   all: **out of scope** — file as a costed spec. Do **not** let B-NAR-MI attempt it.
 
-### §2.2 — `bo_cdlm_summary.py:348` → **CONFIRMED**, and the fix is in a *different file*
+### §2.2 — `bo_cdlm_summary.py:348` → **CONFIRMED**, severity **P0** (DVA-RATIFIED), fix in a *different file*
+
+> **Severity band: P0.** DVA Ruling 75 Q(iii) RATIFIED the escalation P2 → **P0**, and explicitly
+> rejected the "scoring nuance" framing. VER's mechanical parse of the actual `INSERT` statement:
+> **59 columns / 59 values**, with `domain_relationship_class` at **slot 48** a literal `NULL` in the
+> INSERT — despite being computed in the writer's own row dict, and never repaired by any subsequent
+> `UPDATE`. Live query confirms **225/225 cells NULL**, all 15 clusters reading
+> `unclassified`/`mixed`. This is **a value computed and then discarded before its own INSERT**,
+> silently NULL on every row since the writer shipped, with nothing anywhere signaling the loss.
+> The fix is to make the field **actually reach the INSERT**, not to decide whether to null it —
+> NULL is already the observed state, so a "null it honestly" disposition would be a no-op that
+> changes nothing.
+>
+> **Owning lane — correction to Ruling 75's attribution.** Ruling 75 Q(iii) routes both escalated
+> items to "B-NAR-MI for both, on current evidence." That is correct for F25
+> (`mi_bhavisya.py` → B-NAR-MI, §4.4) but **wrong for this one**: `bo_cdlm_summary.py` is owned by
+> **B-NAR-BO** (§4.1, §4.9), and so is its actual root cause `bo_sangati.py`'s `_CELL_INSERT` slot
+> 48. B-NAR-MI owns neither file. **This P0 therefore lands on B-NAR-BO**, and because the defect
+> and its root cause sit in two files that are *both* B-NAR-BO's, it stays inside one lane and one
+> PR — no cross-lane reach, no §4.0 violation. Flagged to DVA as an attribution correction, not a
+> re-litigation of the severity itself (the P0 band stands as ratified).
 
 Line 348 exact, inside `_build_clusters`:
 
@@ -549,8 +577,8 @@ twice — verified mechanically in §4.5.
 | `platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py` | P2 `:1387` | |
 | `platform/python-sidecar/pipeline/orchestrator/writers/bo_upaya.py` | P2 `:1251` | |
 | `platform/python-sidecar/pipeline/orchestrator/writers/bo_pratijna.py` | P2 `:102` | `_grade_to_status` |
-| `platform/python-sidecar/pipeline/orchestrator/writers/bo_cdlm_summary.py` | P2 `:348` **CONFIRMED §2.2** | dead classification chain |
-| `platform/python-sidecar/pipeline/orchestrator/writers/bo_sangati.py` | seed **F21** `:292` + **root cause of `:348`** (`_CELL_INSERT` slot 48) | **added by this triage** — not in the queue's inline scope |
+| `platform/python-sidecar/pipeline/orchestrator/writers/bo_cdlm_summary.py` | **P0** `:348` **CONFIRMED §2.2** | **escalated P2 → P0, DVA Ruling 75 Q(iii).** Dead classification chain; 225/225 cells NULL since the writer shipped |
+| `platform/python-sidecar/pipeline/orchestrator/writers/bo_sangati.py` | seed **F21** `:292` + **root cause of the P0 at `bo_cdlm_summary.py:348`** (`_CELL_INSERT` slot 48) | **added by this triage** — not in the queue's inline scope. Carries the P0's actual fix site: slot 48 is a literal `NULL` in a 59-col/59-val INSERT |
 | `platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py` | seed **F20** `:326` (`_infer_valence` benefic-before-malefic) | **added by this triage.** Confirmed still open: `:327` scans `_BENEFIC_VALUE_SUBSTRINGS` first, `:330` malefic only on no-hit. The P0-5/6 fix (#838) touched `_build_strength_lookup` only |
 
 `rebuild_required: true` → deferred to **C1-REBUILD**.
@@ -600,7 +628,7 @@ and `bo_pramana_mapa.py` — both wholly B-N8-FIX, neither claimed by any B-NAR 
 | `platform/python-sidecar/pipeline/orchestrator/writers/mi_darshana.py` | **SV-5** `verdict_note` tradition-blindness — post-fix `:376-377`, and **P2 `:360` is the SAME item under a pre-fix line number (§2.6). ONE finding, not two.** Now **CONFIRMED**, not PLAUSIBLE, with a structural trigger | **`:159` REMOVED — already fixed in #839** (§1). Fix keys on both axes (grade **and** `tradition_concordance` presence) at `:361-363` + `:376-381`. Secondary D6 same line: `trad_by_class.get(event_class_id)` is unreachable for 100% of rows. **Do NOT widen `bo_sangati.KNOWN_DOMAINS`** — that is the out-of-scope root cause (§6.3) |
 | `platform/python-sidecar/pipeline/orchestrator/writers/mi_sambandha.py` | P2 `:81` | `verdict = row.get("composite_verdict") or ""` |
 | `platform/python-sidecar/pipeline/orchestrator/writers/mi_pramana.py` | P2 `:382` | |
-| `platform/python-sidecar/pipeline/orchestrator/writers/mi_bhavisya.py` | seed **F25** `:161` **CONFIRMED, escalated (§2.1)**. P2 `:103` **REJECTED (§2.7)** — fold its one-line hardening in as a free rider. Seed **F28** `:152` remains **trigger-not-reproduced** | scope-limited per §2.1: tag the fallback (`match_mode`) + preserve real salience. **Do NOT attempt the cross-layer vocabulary reconciliation (§6.3)** |
+| `platform/python-sidecar/pipeline/orchestrator/writers/mi_bhavisya.py` | seed **F25** `:161` **CONFIRMED, P1 — escalated P2 → P1 per DVA Ruling 75 Q(iii) (§2.1)**. P2 `:103` **REJECTED (§2.7)** — fold its one-line hardening in as a free rider. Seed **F28** `:152` remains **trigger-not-reproduced** | scope-limited per §2.1: tag the fallback (`match_mode`) + preserve real salience. **Do NOT attempt the cross-layer vocabulary reconciliation (§6.3)** |
 | `platform/python-sidecar/pipeline/orchestrator/writers/mi_gunanaka.py` | P3 `:337` `'UUID' object is not subscriptable` in snapshot-publish | plus F25 consumer duty at `:108/:130` |
 | `platform/python-sidecar/pipeline/orchestrator/writers/mi_pariksha.py` | F25 consumer `:404/:446/:487` | **added by this triage** — must honour the new `match_mode` flag |
 | `platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_predictions.ts` | F25 serving surface `:88` | **CARVE-OUT from B-NAR-TS.** Owned by **MI**, not TS, because it is the serve half of one atomic fix. **B-NAR-TS must not open this file** |
