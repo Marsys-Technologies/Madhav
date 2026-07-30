@@ -4,7 +4,7 @@
   "disclosed_via": "DVA RULING 73 (00_ARCHITECTURE/briefs/samapti/SAMAPTI_DVARAPALA_LEDGER.md)",
   "disclosed_at_commit": "81af26b743a5d00c659313eb18a9cf3c209e5fcf",
   "investigation_note": "Ruling 73 asked whether commit 751ce3b8 ('fix(migrations): seed all 86 pre-tracking legacy migration files into _migrations_applied', 2026-06-22) explains some or all of the 16. Verified via `git log --follow` per file plus a full-history blob search (`git rev-list --all --objects`, all branches/tags) comparing each historical revision's sha256 against the stored production value. Finding: 751ce3b8 explains exactly ONE of the 16 — 0000_seed_legacy_applied.sql itself, which it directly edited 9 minutes after that file was applied to production. It does NOT explain any of the other 15; each of those traces to a DIFFERENT cause, itemized per-entry below. Four distinct causal classes found, none guessed: (1) a later, unrelated commit edited an already-applied file (0000_seed_legacy_applied.sql, 250, 358, 370 — each pinned to the exact prior commit whose content matches the stored hash and the exact later commit that changed it); (2) a single bulk pre-tracking seed action on 2026-06-05 stored 32-hex-character (MD5-length, not SHA-256) values for 4 files, an algorithm mismatch at seed time that can never match sha256Of() regardless of content (v13_pyramid_layers, 158_classical_texts_schema, ws2_l0_ontology, 002_ganita_divisionals); (3) four individually-dated manual/direct INSERTs via Cloud SQL Auth Proxy stored descriptive placeholder strings instead of hashes, bypassing sha256Of() entirely (215, 229, 231, 322); (4) four files (237, 294, 314, 377) have a well-formed 64-hex SHA-256 stored value but NO blob matching it exists anywhere in git history reachable from any branch or tag — the applied-time content was never committed under this filename. Marked UNDER-INVESTIGATION per Ruling 73's instruction not to fabricate a cause.",
-  "entries_count": 16,
+  "entries_count": 17,
   "entries": [
     {
       "filename": "0000_seed_legacy_applied.sql",
@@ -148,6 +148,15 @@
       "current_sha256_at_disclosure": "94019aeefe5a98733af066a270ef8a41df0faa4fd2ba6f91a571a98b0266d4f0",
       "cause": "Bulk pre-tracking seed action, 2026-06-05 ~16:09-16:29 UTC — same 4-file cluster (applied_at 2026-06-05T16:16:16.375Z). Stored value is 32 hex characters (MD5-length, not SHA-256) — algorithm mismatch at seed time, structurally can never match sha256Of(). Not commit 751ce3b8. No specific seeding commit identified; a direct database action, not a code change.",
       "disclosed_via": "DVA RULING 73",
+      "fixed_by_samapti": false
+    },
+    {
+      "filename": "165_chart_panchanga.sql",
+      "path": "platform/migrations/165_chart_panchanga.sql",
+      "stored_sha256": "87aba81910f35280b52f359301a0ec84",
+      "current_sha256_at_disclosure": "34066564bbe761643adddde688a2b9346606d2116cbe13c6a13ee6eabb62202b",
+      "cause": "A 17th instance of the SAME bulk pre-tracking seed action already itemized above as a 4-file cluster (2026-06-05 ~16:09-16:29 UTC) — found by the ṢAḌ-DARŚANA campaign 2026-07-30 when a routine deploy failed on this exact guard; RULING 73's own investigation window (which found only 4 files) simply missed it. `_migrations_applied.applied_at` for this file is 2026-06-05T16:31:46.277Z — 2 minutes after the cluster's own latest member (002_ganita_divisionals.sql, 16:28:49.938Z) and 22 minutes after its earliest (v13_pyramid_layers.sql, 16:09:07.407Z) — squarely inside/immediately adjacent to the same window. Stored value is 32 hex characters (MD5-length, not SHA-256) — the identical algorithm-mismatch-at-seed-time signature as the other 4 cluster members, structurally incapable of ever matching sha256Of() regardless of on-disk content. This file has exactly ONE commit in its entire git history (0463ada1, 'feat(brahma/l1/panchanga): add chart_panchanga DB writer + retrieval tool + migration [BRAHMA-GA-1-7]') and it was never edited afterward — confirmed via `git log --oneline` for the file, no second commit exists. Not commit 751ce3b8 (different date, different file). No specific seeding commit identified; a direct database action, not a code change — extends the cluster from 4 files to 5.",
+      "disclosed_via": "ṢAḌ-DARŚANA campaign, 2026-07-30, following DVA RULING 73's established investigation method",
       "fixed_by_samapti": false
     }
   ]
