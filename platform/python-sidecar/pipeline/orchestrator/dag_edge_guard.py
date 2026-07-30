@@ -10,9 +10,41 @@ reads asset X's output table but X is not (transitively) declared, the scheduler
 can run the writer before X completes -> build on incomplete/missing data. The
 serial build hides this via sort-order luck; the wave-parallel scheduler does not.
 
-This automates, as a CI gate, the manual reads-vs-declared audit that produced
-migration 365. It catches drift the moment a writer adds an undeclared cross-asset
-read.
+This automates the manual reads-vs-declared audit that produced migration 365.
+
+HOW IT IS ACTUALLY INVOKED — read this before citing the guard as an enforcement
+mechanism (SAMĀPTI B-N8-SWEEPFIX, F-02). The previous version of this docstring
+said the guard runs "as a CI gate" and "catches drift the moment a writer adds an
+undeclared cross-asset read". Neither was true, and downstream governance prose
+repeated the claim (`BA_ORCHESTRATOR_INTEGRITY_REPORT_v1_0.md:82`,
+`ORCHESTRATOR_WAVE_PARALLEL_SCHEDULER_v1_0.md:64`). Its only automated caller was
+`tests/test_dag_edge_guard.py`'s live check, which carries
+`@pytest.mark.skipif(not DATABASE_URL)`; push/PR CI provides no database, so that
+test skipped on every run and no mutation to any writer could turn the guard red.
+The project's own record confirms the consequence: 3 real HARD violations were
+found by a HUMAN running it during an audit, not by CI.
+
+What runs now, and what each run actually proves:
+  * `--self-test` — DB-free mutation proof of the DETECTOR: a synthetic writer with
+    an undeclared cross-asset read must be FLAGGED, and the same writer with the
+    edge declared must come back CLEAN. Wired as a hard gate in
+    `.github/workflows/ci.yml`, so a change that breaks the detection logic fails
+    the PR. It proves the detector; it says NOTHING about the live DAG.
+  * live scan (`python -m pipeline.orchestrator.dag_edge_guard`, exit 1 on any HARD
+    violation) — needs `DATABASE_URL`. Wired into
+    `.github/workflows/fresh_chart_smoke.yml` immediately after that job restores a
+    production schema snapshot and applies the branch's migrations, which is the
+    only automated context in this repo with a real registry to scan. That workflow
+    is scheduled + `workflow_dispatch`, NOT per-commit.
+  * Therefore: undeclared-read drift is caught on the fresh-chart-smoke cadence and
+    by manual invocation — NOT "the moment" it is introduced. Do not describe this
+    guard as a per-commit gate.
+  * A scan that resolves fewer than `--min-assets` writer assets EXITS 1 rather than
+    printing OK. A live scan that checked nothing is a broken scan, not a clean DAG.
+
+Known detection bound (unchanged by the above): `_reads()` regex-matches literal
+`FROM`/`JOIN <table>` in writer source. A query assembled from a variable table
+name is invisible to it. The guard does not claim to cover dynamic SQL.
 
 Two tiers:
   * HARD  — reads of a table owned by exactly ONE per_chart asset (1:1). A missing
@@ -25,10 +57,12 @@ Globals / L0 (always-present bedrock: bg_*, reference_*, ephemeris_daily, etc.)
 and external ingest tables (life_event*) are never gated.
 
 Run as a script:  python -m pipeline.orchestrator.dag_edge_guard   (exit 1 on hard violation)
-Used by:          pipeline/__tests__/test_dag_edge_guard.py
+                  python -m pipeline.orchestrator.dag_edge_guard --self-test
+Used by:          tests/test_dag_edge_guard.py
 """
 from __future__ import annotations
 
+import argparse
 import os
 import re
 import sys
@@ -198,7 +232,90 @@ def analyze() -> dict:
     return evaluate(reg, real_tables, items)
 
 
-def main() -> int:
+# ── DB-free self-test (the CI hard gate) ──────────────────────────────────────
+
+# Kept deliberately small and readable: this fixture IS the gate's specification.
+_SELF_TEST_REGISTRY = {
+    "ka_sangam": {
+        "asset_id": "ka_sangam", "scope": "per_chart",
+        "target_table": "kala_convergence",
+        "count_sql": "SELECT count(*) FROM kala_convergence",
+        "depends_on": [],
+    },
+    "ph_pratikara": {
+        "asset_id": "ph_pratikara", "scope": "per_chart",
+        "target_table": "phala_mitigation",
+        "count_sql": "SELECT count(*) FROM phala_mitigation",
+        "depends_on": [],          # the seeded defect: ka_sangam NOT declared
+    },
+}
+_SELF_TEST_TABLES = {"kala_convergence", "phala_mitigation"}
+_SELF_TEST_SRC = (
+    "@register('ph_pratikara')\n"
+    "SQL = 'SELECT * FROM kala_convergence WHERE chart_id=%s'\n"
+)
+
+
+def run_self_test() -> int:
+    """Prove the detector by mutation, with no database.
+
+    Exits 0 iff BOTH hold:
+      (a) a writer reading a producer table whose asset is NOT in its depends_on
+          closure is FLAGGED as a HARD violation;
+      (b) the same writer, with the edge declared, comes back CLEAN.
+    (b) is what stops a degenerate "always flag everything" detector from passing;
+    (a) is what stops the degenerate "always return []" detector — which is the
+    failure mode a gate that never runs is indistinguishable from.
+
+    Honest bound: this proves `evaluate()`'s logic against a synthetic fixture. It
+    proves NOTHING about the live registry — that is `analyze()`, which needs
+    DATABASE_URL. See the module docstring for where the live scan runs.
+    """
+    import copy
+
+    broken = copy.deepcopy(_SELF_TEST_REGISTRY)
+    res_broken = evaluate(broken, _SELF_TEST_TABLES, [("ph_pratikara.py", _SELF_TEST_SRC)])
+    ok_broken = any(
+        "ph_pratikara" in h and "kala_convergence" in h and "ka_sangam" in h
+        for h in res_broken["hard"]
+    )
+
+    declared = copy.deepcopy(_SELF_TEST_REGISTRY)
+    declared["ph_pratikara"]["depends_on"] = ["ka_sangam"]
+    res_declared = evaluate(declared, _SELF_TEST_TABLES, [("ph_pratikara.py", _SELF_TEST_SRC)])
+    ok_declared = res_declared["hard"] == []
+
+    print(f"[dag_edge_guard --self-test] undeclared cross-asset read -> "
+          f"{len(res_broken['hard'])} HARD (expected >=1 naming ph_pratikara/"
+          f"kala_convergence/ka_sangam): {'PASS' if ok_broken else 'FAIL'}")
+    print(f"[dag_edge_guard --self-test] same read, edge declared -> "
+          f"{len(res_declared['hard'])} HARD (expected 0): "
+          f"{'PASS' if ok_declared else 'FAIL'}")
+    if ok_broken and ok_declared:
+        print("[dag_edge_guard --self-test] OK — the detector fires on a missing "
+              "edge and clears when it is declared")
+        return 0
+    print("[dag_edge_guard --self-test] FAILED — the detector does not "
+          "discriminate; it cannot be relied on as a gate")
+    return 1
+
+
+# A live scan resolving fewer than this many writer assets is a broken scan (a
+# missing writer root, an empty registry, a bad checkout) — not a clean DAG.
+# Matches the floor the live integration test has always asserted.
+_MIN_CHECKED_ASSETS = 50
+
+
+def main(argv: list[str] | None = None) -> int:
+    ap = argparse.ArgumentParser(description="DAG edge-completeness guard")
+    ap.add_argument("--self-test", action="store_true",
+                    help="Run the DB-free fixture mutation self-test (the CI hard gate).")
+    ap.add_argument("--min-assets", type=int, default=_MIN_CHECKED_ASSETS,
+                    help="Fail if the live scan resolved fewer writer assets than this.")
+    args = ap.parse_args(argv)
+    if args.self_test:
+        return run_self_test()
+
     res = analyze()
     print(f"[dag_edge_guard] checked {res['checked_assets']} writer assets")
     if res["soft"]:
@@ -210,7 +327,17 @@ def main() -> int:
         for h in res["hard"]:
             print(f"  ✗ {h}")
         return 1
-    print("[dag_edge_guard] OK — no hard edge-completeness violations")
+    # F-02: a scan that resolved nothing must not print a pass. Zero violations
+    # over zero assets is the absence of a measurement, not a clean result.
+    if res["checked_assets"] < args.min_assets:
+        print(f"[dag_edge_guard] INCONCLUSIVE — only {res['checked_assets']} writer "
+              f"assets resolved (floor {args.min_assets}). The scan did not cover the "
+              f"DAG; this is NOT a pass. Check the writer roots and the registry.")
+        return 1
+    print(f"[dag_edge_guard] OK — no hard edge-completeness violations across "
+          f"{res['checked_assets']} writer assets (HARD tier: 1:1-owned per_chart "
+          f"tables; chart_facts reads are SOFT/warn-only; dynamic-SQL reads are "
+          f"outside this guard's detection)")
     return 0
 
 

@@ -58,7 +58,16 @@ def propagate_downstream_staleness(
       - Assets with state 'dormant' (no data to be stale about)
       - Assets with state 'building' (leave in-flight workers alone)
 
-    Uses RETURNING to emit events only for rows that actually changed.
+    Uses RETURNING to emit events only for rows that actually changed, and reads the
+    row's ACTUAL prior state so `from_state` is measured rather than asserted.
+
+    §N.8 note (SAMĀPTI B-N8-SWEEPFIX, F-05): `from_state` used to be the literal
+    "lit". The UPDATE matches `state IN ('lit', 'service_ok')` and the old RETURNING
+    returned only `asset_id`, so the prior state was never read — an asset that was
+    `service_ok` produced an operator-facing event (WorkflowView.tsx renders
+    `from_state → to_state` verbatim) claiming it had been `lit`. A state-transition
+    assertion is the narrowest possible status claim; it must be computed.
+
     Commits on conn — caller must provide a dedicated connection (not the main
     advisory-lock connection) and must close it after.
     """
@@ -68,28 +77,41 @@ def propagate_downstream_staleness(
         return
 
     try:
+        # The self-join against a pre-UPDATE snapshot is how the OLD value is
+        # obtained: a plain `RETURNING state` yields the post-UPDATE value
+        # ('stale') and would be just as unearned as the literal it replaces.
         cur.execute(
             """
-            UPDATE asset_throughput
+            UPDATE asset_throughput AS t
                SET state = 'stale'
-             WHERE chart_id = %s
-               AND asset_id = ANY(%s::text[])
-               AND state IN ('lit', 'service_ok')
-            RETURNING asset_id
+              FROM (
+                    SELECT asset_id AS prev_asset_id, state AS prev_state
+                      FROM asset_throughput
+                     WHERE chart_id = %s
+                       AND asset_id = ANY(%s::text[])
+                       AND state IN ('lit', 'service_ok')
+                       FOR UPDATE
+                   ) AS old
+             WHERE t.chart_id = %s
+               AND t.asset_id = old.prev_asset_id
+            RETURNING t.asset_id, old.prev_state
             """,
-            (chart_id, targets),
+            (chart_id, targets, chart_id),
         )
         rows = cur.fetchall()
-        staled = [r[0] if isinstance(r, (tuple, list)) else r['asset_id'] for r in rows]
+        staled = [
+            (r[0], r[1]) if isinstance(r, (tuple, list)) else (r['asset_id'], r['prev_state'])
+            for r in rows
+        ]
         conn.commit()
 
-        for asset_id in staled:
+        for asset_id, prev_state in staled:
             try:
                 emit_fn({
                     "type": "asset.state_change",
                     "chart_id": chart_id,
                     "asset_id": asset_id,
-                    "from_state": "lit",
+                    "from_state": prev_state,
                     "to_state": "stale",
                     "run_id": run_id,
                 })
@@ -101,7 +123,7 @@ def propagate_downstream_staleness(
         if staled:
             logger.info(
                 "[staleness] %s completed → marked %d downstream stale: %s",
-                completed_asset_id, len(staled), staled,
+                completed_asset_id, len(staled), [a for a, _ in staled],
             )
 
     except Exception as exc:
