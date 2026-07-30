@@ -335,7 +335,7 @@ def test_an_empty_spec_carries_a_machine_readable_reason():
 
 
 def test_a_populated_spec_carries_no_empty_reason():
-    """Mirrors migration 482's CHECK constraint exactly, so the two cannot drift apart."""
+    """Mirrors migration 496's CHECK constraint exactly, so the two cannot drift apart."""
     counts = spec_counts(_build(ABHISEK))
     assert counts["n_intervals"] == 3
     assert counts["empty_reason"] is None

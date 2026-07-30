@@ -2091,48 +2091,25 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
   // Spec: 00_ARCHITECTURE/llm_consumption_audit/briefs/kala_elevation/
   //       KALA_W2_FIELD_DESIGN_v1_0.md §9.1 (DAG edges), §9.2 (these rows).
   {
-    // ⚠ LANE-C-OWNED ROW — PLACEHOLDER, reconciled at the W2 integration pass.
+    // Lane E's own row — the authoritative one. Mirrors migration 497's INSERT exactly.
     //
-    // `ka_kshetra` (stages 0–8 of the field pipeline) is Lane C's asset and its seed row
-    // lands with its writer, per brief §2.5.1. This lane (E) owns `mi_bhara`, whose
-    // `depends_on: ['ka_kshetra']` is required by §7.5's acyclicity rule — and
-    // scripts/__tests__/catalog_reconciliation.test.ts requires every depends_on entry to
-    // resolve. So a lane-isolated Lane E PR cannot be green without SOME ka_kshetra row.
-    //
-    // This one is deliberately INERT rather than authoritative:
-    //   • `has_writer` is absent (defaults false) and `is_active: false`, so no build plan
-    //     can select it and no cockpit surface counts it;
-    //   • `depends_on: []` rather than §9.1's eight edges, because TWO of those eight —
-    //     `ka_gochara_sweep` and `ka_gochara_resonance` — HAVE NO SEED ROW IN THIS FILE
-    //     today (verified 2026-07-30). Declaring them here would fail the very
-    //     depends_on-resolution test this row exists to satisfy. That gap is Lane C's to
-    //     close (§2.5.1 "every edge must resolve to an existing asset_id"), and it is
-    //     recorded here rather than discovered at integration.
-    // Lane C's version REPLACES this row wholesale.
-    asset_id: 'ka_kshetra',
-    layer: 'kala', sort_order: 15,
-    sanskrit_name: 'Kāla Kṣetra',
-    english_name: 'Temporal Field',
-    english_description:
-      'The ten-stage point-process temporal field: kinematics, symbolization, promise graph, ' +
-      'clocks, hazard assembly with persisted provenance, circular-shift null, salience, ' +
-      'insight synthesis, and the renderer-agnostic timeline spec. Built BESIDE the legacy ' +
-      'Kāla writers (strangler-fig). ṢAḌ-DARŚANA W2, Lanes A–E.',
-    storage_type: 'postgres_table',
-    target_table: 'kala_field',
-    count_sql: 'SELECT count(*) FROM kala_field WHERE chart_id = $1',
-    size_sql: "SELECT pg_total_relation_size('kala_field')",
-    target_floor: null,
-    expected_volume_formula: null,
-    expected_volume_inputs: null,
-    volume_explanation:
-      'Log-linear hazard segments per event class over a 100-year horizon; set to the ' +
-      'ACHIEVED count after the first build (§N.4 — floors are aspirational, never fabricated).',
-    depends_on: [],
-    scope: 'per_chart', is_active: false, estimated_seconds: null,
-  },
-  {
-    // Lane E's own row — the authoritative one. Mirrors migration 483's INSERT exactly.
+    // MERGE-TRAIN NOTE (2026-07-30, Conductor integration pass): Lane E's own draft PR
+    // included an inert placeholder `ka_kshetra` row here, reasoned to be needed because
+    // `depends_on: ['ka_kshetra']` below requires the id to resolve for
+    // catalog_reconciliation.test.ts, and because it believed `ka_gochara_sweep` /
+    // `ka_gochara_resonance` (two of §9.1's eight ka_kshetra edges) had no seed row anywhere
+    // and would themselves fail to resolve once Lane C's real ka_kshetra row landed.
+    // BOTH premises were investigated and found incorrect: (1) Lane C's `ka_kshetra` row
+    // lands via a direct `INSERT INTO asset_registry` in its own migration (494, later
+    // renumbered 494 -> still 494 in the final block, see that file), the same mechanism
+    // used here — no placeholder was ever needed, this file's own depends_on resolution
+    // check only needs the id to exist in the DB, not in this TS file. (2) `ka_gochara_sweep`
+    // and `ka_gochara_resonance` are NOT missing — they are registered the identical way,
+    // via `INSERT INTO asset_registry` in migrations 460 and 459 respectively (both
+    // pre-existing, live in production long before this campaign: confirmed
+    // `is_active:true, has_writer:true` for both via a direct production query). Lane E's
+    // own investigation only checked this TS file and got a false negative. The placeholder
+    // row has been removed as superseded; no gap remains for Lane C to close.
     //
     // `depends_on: ['ka_kshetra']` and NOTHING ELSE, and `ka_kshetra` must NEVER list
     // `mi_bhara` in return: that pair of edges forms the cycle ka_kshetra → mi_bhara →

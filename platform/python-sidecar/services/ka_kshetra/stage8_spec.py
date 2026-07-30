@@ -23,7 +23,7 @@ computes a second, possibly divergent, view of the same field.
    exists on this path. The argument composer is template-over-computed-data at SERVING time.
 
 3. **LAW ZERO / honest-empty.** A view with nothing to render emits an empty spec WITH a
-   machine-readable `empty_reason` (and migration 482's CHECK constraint makes that structural:
+   machine-readable `empty_reason` (and migration 496's CHECK constraint makes that structural:
    `empty_reason` is non-NULL exactly when the spec has no renderable content). An empty
    `bands` array beside populated `intervals` is a legitimate, silent state — the reason is
    about the WHOLE spec being empty, not about each array.
@@ -279,7 +279,7 @@ def build_timeline_spec(
 
 
 def spec_counts(spec: Mapping[str, Any]) -> dict:
-    """The denormalised counts migration 482 stores beside the blob, plus `empty_reason`.
+    """The denormalised counts migration 496 stores beside the blob, plus `empty_reason`.
 
     `empty_reason` is non-`None` exactly when nothing renderable exists — which is precisely
     the CHECK constraint on `kala_timeline_spec`, so the two cannot drift apart.

@@ -1,4 +1,4 @@
--- Migration 482: kala_timeline_spec — the renderer-agnostic timeline spec (ṢAḌ-DARŚANA W2,
+-- migration 496: kala_timeline_spec — the renderer-agnostic timeline spec (ṢAḌ-DARŚANA W2,
 --                Lane E, stage 8, registry item 27)
 -- =============================================================================
 -- Spec: `00_ARCHITECTURE/llm_consumption_audit/briefs/kala_elevation/

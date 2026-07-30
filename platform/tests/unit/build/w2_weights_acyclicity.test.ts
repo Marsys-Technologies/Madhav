@@ -34,16 +34,56 @@ import { describe, it, expect } from 'vitest'
 import { ASSETS } from '../../../scripts/seed/asset_registry_seed'
 import { resolveBuildPlan, type RegistryEntry, type ThroughputEntry, type AssetId } from '@/lib/build/plan'
 
-const byId = new Map(ASSETS.map(a => [a.asset_id, a]))
+/**
+ * `ka_kshetra` does NOT live in `asset_registry_seed.ts` — it registers via a direct
+ * `INSERT INTO asset_registry` in its own migration (494_kala_field_null.sql), the same
+ * mechanism the pre-existing `ka_gochara_sweep` (migration 460) and `ka_gochara_resonance`
+ * (migration 459) already use. This is a deliberate integration-pass finding, not a gap: an
+ * earlier draft of this test assumed an (inert placeholder) `ka_kshetra` row would be present
+ * in `ASSETS`, which was only ever true because of that placeholder — removed once Lane C's
+ * real migration-embedded row made it redundant. This synthetic row is a literal mirror of
+ * migration 494's INSERT (asset_id/layer/depends_on only — the fields `resolveBuildPlan`
+ * actually reads), so this suite still exercises the real §9.1 edge set and §7.5's acyclicity
+ * rule against production reality, not a fixture that only ever existed in this test file.
+ */
+const KA_KSHETRA_SYNTHETIC: RegistryEntry = {
+  asset_id: 'ka_kshetra',
+  layer: 'kala',
+  depends_on: [
+    'ka_dasha_kala',
+    'ka_gochara_sweep',
+    'ka_gochara_resonance',
+    'ga_panchanga',
+    'bo_pratijna',
+    'bo_sangati',
+    'bo_upaya',
+    'bg_cohort',
+  ],
+  estimated_seconds: null,
+}
 
-/** The seed rows, in the shape `resolveBuildPlan` reads them out of `asset_registry`. */
+type TestAssetRow = (typeof ASSETS)[number] | (typeof KA_KSHETRA_SYNTHETIC & { count_sql: string; asset_kind: string; scope: string })
+
+const byId = new Map<AssetId, TestAssetRow>([
+  ...ASSETS.map(a => [a.asset_id, a] as const),
+  [
+    KA_KSHETRA_SYNTHETIC.asset_id,
+    { ...KA_KSHETRA_SYNTHETIC, count_sql: 'SELECT COUNT(*) FROM kala_field WHERE chart_id=$1', asset_kind: 'data', scope: 'per_chart' },
+  ],
+])
+
+/** The seed rows, in the shape `resolveBuildPlan` reads them out of `asset_registry`,
+ *  plus the migration-registered `ka_kshetra` row (see the comment above). */
 function registryFromSeed(): RegistryEntry[] {
-  return ASSETS.map(a => ({
-    asset_id: a.asset_id,
-    layer: a.layer,
-    depends_on: a.depends_on,
-    estimated_seconds: a.estimated_seconds,
-  }))
+  return [
+    ...ASSETS.map(a => ({
+      asset_id: a.asset_id,
+      layer: a.layer,
+      depends_on: a.depends_on,
+      estimated_seconds: a.estimated_seconds,
+    })),
+    KA_KSHETRA_SYNTHETIC,
+  ]
 }
 
 function dormant(ids: AssetId[]): Map<AssetId, ThroughputEntry> {

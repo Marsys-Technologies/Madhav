@@ -1,4 +1,4 @@
--- Migration 483: kala_field_skill + kala_field_gof + the mi_bhara asset_registry row
+-- migration 497: kala_field_skill + kala_field_gof + the mi_bhara asset_registry row
 --                (ṢAḌ-DARŚANA W2, Lane E, stage 9 — registry items 21/39, E1's D3 fit)
 -- =============================================================================
 -- Spec: `KALA_W2_FIELD_DESIGN_v1_0.md` §7.3 (the two tables, verbatim), §7.5 (weights

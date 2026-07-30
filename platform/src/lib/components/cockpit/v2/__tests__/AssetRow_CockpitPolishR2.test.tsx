@@ -334,7 +334,7 @@ describe('CF.L3.8 — StatusDot: DRAFT catalog_status does not override healthy 
 
 // ── Seed governance: Kāla layer count after hard-removal of ka_transit_almanac ──
 describe('Asset seed governance — Kāla layer', () => {
-  it('has exactly 15 kala assets in the seed (ka_transit_almanac removed; ka_avadhi + ka_taranga + ka_kshetra registered)', () => {
+  it('has exactly 14 kala assets in the seed (ka_transit_almanac removed; ka_avadhi + ka_taranga registered; ka_kshetra registers via migration, not this file)', () => {
     const { readFileSync } = require('fs')
     const { resolve } = require('path')
     const seedContent: string = readFileSync(resolve(process.cwd(), 'scripts/seed/asset_registry_seed.ts'), 'utf8')
@@ -345,12 +345,17 @@ describe('Asset seed governance — Kāla layer', () => {
     // this same session. Raised the count from 12 to 14; did not reintroduce
     // ka_transit_almanac (see the next test).
     //
-    // ṢAḌ-DARŚANA W2 (2026-07-30): 14 → 15 with `ka_kshetra`, the temporal-field
-    // pipeline (stages 0–8), added by Lane E as an INERT placeholder so that
-    // `mi_bhara.depends_on = ['ka_kshetra']` resolves in a lane-isolated PR —
-    // see that row's own comment in the seed. Lane C replaces the row's content
-    // at the W2 integration pass; the COUNT does not change when it does.
-    expect(kalaMatches).toHaveLength(15)
+    // ṢAḌ-DARŚANA W2 (2026-07-30): Lane E's draft PR briefly added `ka_kshetra`
+    // here (14 → 15) as an INERT placeholder so `mi_bhara.depends_on =
+    // ['ka_kshetra']` would resolve in a lane-isolated PR. At the W2 integration
+    // pass this was found unnecessary and removed: `ka_kshetra`'s real
+    // asset_registry row lands via a direct `INSERT INTO asset_registry` in
+    // Lane C's own migration (494), the identical mechanism `ka_gochara_sweep`
+    // (migration 460) and `ka_gochara_resonance` (migration 459) already use —
+    // neither of those pre-existing, already-live assets has a row in THIS file
+    // either, and both resolve fine in production today. `ka_kshetra` will
+    // likewise never appear in this TS file; the count stays 14.
+    expect(kalaMatches).toHaveLength(14)
   })
 
   it('contains no ka_transit_almanac entry in the seed', () => {
