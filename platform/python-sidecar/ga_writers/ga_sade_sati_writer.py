@@ -275,8 +275,24 @@ def _citation_ref(category: str, subject: str, key: str,
 # ── HALT log writer ──────────────────────────────────────────────────────────
 
 def _write_halt_log(gate_name: str, msg: str) -> None:
-    """Write to CONDUCTOR_HALT_LOG in l1-ganita-build directory."""
+    """Write to CONDUCTOR_HALT_LOG in l1-ganita-build directory.
+
+    Target directory is overridable via CONDUCTOR_HALT_LOG_DIR_OVERRIDE, which
+    the test suite sets to an isolated tmp dir (see tests/conftest.py) so unit
+    tests never append fixture noise to the real repo-tracked
+    l1-ganita-build/CONDUCTOR_HALT_LOG.md.
+    """
     try:
+        override = os.environ.get("CONDUCTOR_HALT_LOG_DIR_OVERRIDE")
+        if override:
+            candidate = pathlib.Path(override) / "l1-ganita-build" / "CONDUCTOR_HALT_LOG.md"
+            candidate.parent.mkdir(parents=True, exist_ok=True)
+            with open(candidate, "a", encoding="utf-8") as fh:
+                fh.write(
+                    f"\n## HALT: {gate_name} — {datetime.now(timezone.utc).isoformat()}\n"
+                    f"{msg}\n"
+                )
+            return
         p = pathlib.Path(__file__).resolve()
         for _ in range(10):
             candidate = p / "00_ARCHITECTURE" / "CONDUCTOR" / "l1-ganita-build" / "CONDUCTOR_HALT_LOG.md"

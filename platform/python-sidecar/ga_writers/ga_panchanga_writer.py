@@ -282,9 +282,27 @@ def panchanga_forensic_gate(pi: Any) -> None:
 
 
 def _write_halt_log(gate_name: str, msg: str) -> None:
-    """Append failure to CONDUCTOR_HALT_LOG.md (best-effort)."""
+    """Append failure to CONDUCTOR_HALT_LOG.md (best-effort).
+
+    Target directory is overridable via CONDUCTOR_HALT_LOG_DIR_OVERRIDE, which
+    the test suite sets to an isolated tmp dir (see tests/conftest.py) so that
+    forensic-gate unit tests exercising deliberately-bad PanchangaInstant mocks
+    (e.g. test_ga4_writer.py::TestForensicGate) never append fixture noise to
+    the real repo-tracked l1-ganita-build/CONDUCTOR_HALT_LOG.md.
+    """
     try:
         import pathlib
+        override = os.environ.get("CONDUCTOR_HALT_LOG_DIR_OVERRIDE")
+        if override:
+            candidate = pathlib.Path(override) / "l1-ganita-build" / "CONDUCTOR_HALT_LOG.md"
+            candidate.parent.mkdir(parents=True, exist_ok=True)
+            with open(candidate, "a", encoding="utf-8") as fh:
+                fh.write(
+                    f"\n## HALT: {gate_name} — "
+                    f"{datetime.now(timezone.utc).isoformat()}\n"
+                    f"{msg}\n"
+                )
+            return
         p = pathlib.Path(__file__).resolve()
         for _ in range(10):
             candidate = (
