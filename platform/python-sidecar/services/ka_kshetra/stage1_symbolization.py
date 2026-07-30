@@ -310,6 +310,16 @@ def build_sandhi_band_primitives(chart_id: str, conn,
                 "sandhi_band", "not_computed",
                 "Lane B's services.ka_kshetra.stage3_clocks not yet available in this build",
             )
+        # Lane B's boundary_breakpoints is a real DB-backed function (queries
+        # kala_field_boundaries directly) — it requires a genuine connection and has
+        # no reason to special-case None itself. A missing connection here means this
+        # primitive genuinely cannot be computed right now, the same honest outcome
+        # as Lane B's module being altogether absent — not a crash.
+        if conn is None:
+            return [], CoverageGap(
+                "sandhi_band", "not_computed",
+                "No database connection available to read kala_field_boundaries",
+            )
     breakpoints = fn(chart_id, conn)
     rows = []
     for t_b in breakpoints:
