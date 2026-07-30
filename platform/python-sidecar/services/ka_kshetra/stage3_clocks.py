@@ -9,7 +9,7 @@ Lane C calls (`applicable_systems`, `clock_activation`, `boundary_breakpoints`).
 Legacy is untouched (design doc §1 rail 2): this module only reads
 `chart_dashas` / `chart_facts` / `brahma_dasha_systems` / `ephemeris`
 read-only, and only writes `kala_field_clocks` / `kala_field_boundaries`
-(the two tables this lane owns, migration 477).
+(the two tables this lane owns, migration 490).
 
 ── Corpus-vs-design gaps this builder resolved, and how (all documented
    inline at point of use too) ──────────────────────────────────────────

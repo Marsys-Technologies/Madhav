@@ -1,4 +1,4 @@
--- Migration 477: kala_field_clocks — Lane B, ṢAḌ-DARŚANA W2 ("the field as
+-- Migration 490: kala_field_clocks — Lane B, ṢAḌ-DARŚANA W2 ("the field as
 -- science"). Per KALA_W2_FIELD_DESIGN_v1_0.md §4 (Lane B: Stage 3 clocks,
 -- Law-1 applicability item 12, uncertainty-budget item 24-full) + §9.3's
 -- reserved migration-table list (474-483 in this directory; 473 was the
