@@ -142,6 +142,9 @@ def test_circularity_guard_ka_jivana_parva_invariant_under_lel_mutation():
     except ImportError:
         pytest.skip("psycopg not installed in this environment")
 
+    if not LIVE_DSN:
+        pytest.skip("DATABASE_URL not set — export it to run this integration test")
+
     try:
         conn = psycopg.connect(LIVE_DSN, row_factory=psycopg.rows.dict_row, connect_timeout=5)
     except Exception:
