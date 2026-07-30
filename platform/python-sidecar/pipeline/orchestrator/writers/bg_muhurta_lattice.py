@@ -36,7 +36,18 @@ math is reimplemented here, exactly the `bg_sky_calendar` precedent):
      never fabricated).
 
   4. GHAṬĪ-MUHŪRTA BOUNDARIES — the 30 named ghaṭī-grained day+night muhūrtas
-     via `panchang_engine.timings.compute_day_muhurtas`.
+     via `panchang_engine.timings.compute_day_muhurtas`. CORRECTION (Opus
+     corpus-citation review, 2026-07-30): this writer's earlier text implied
+     the day/night boundary is the true computed sunset. It is NOT —
+     `compute_day_muhurtas(sunrise_utc, next_sunrise_utc)` takes only
+     sunrise and the FOLLOWING day's sunrise (never the true `sunset_utc`
+     this writer already computes) and internally APPROXIMATES the day/night
+     midpoint as the exact arithmetic half of the sunrise-to-next-sunrise
+     interval (`sunset_approx = sunrise_utc + (next_sunrise_utc -
+     sunrise_utc) / 2`), not the real, asymmetric sunrise/sunset split. The
+     15 day-muhūrtas and 15 night-muhūrtas are real ghaṭī (24-min) grained
+     boundaries computed relative to this approximated midpoint, not the
+     chart's true sunset — disclosed here rather than silently assumed.
 
 WHAT THIS WRITER DOES NOT BUILD:
   - The base pañcāṅga aṅgas (tithi/vāra/nakṣatra/yoga/karaṇa) as their own factor
@@ -51,8 +62,11 @@ WHAT THIS WRITER DOES NOT BUILD:
 
 REFERENCE LOCATION (explicit scope decision — mirrors bg_sky_calendar's own
 documented boundary-drawing style): Agnivāsa/combination-yoga membership is a pure
-function of tithi/vāra/nakṣatra (location-independent), but kālam windows and
-ghaṭī-muhūrtas are sunrise/sunset-anchored, i.e. genuinely LOCATION-dependent —
+function of tithi/vāra/nakṣatra (location-independent), but kālam windows are
+sunrise/sunset-anchored and ghaṭī-muhūrtas are sunrise/next-sunrise-anchored
+(see the family-4 correction note below for the exact, non-true-sunset
+midpoint `compute_day_muhurtas` actually uses) — both genuinely
+LOCATION-dependent —
 "chart-independent" does not mean "location-independent." This writer computes at
 ONE FIXED reference location: Bhubaneswar/IST, (lat=20.27, lon=85.84,
 tz_offset_minutes=+330) — the exact (lat, lon, tz_offset) triple
@@ -183,8 +197,19 @@ _BS = "Bṛhat Saṃhitā"
 _DP = "Drik Panchang (drikpanchang.com) published convention"
 
 COMBINATION_YOGA_CITATIONS: dict[str, tuple[str, str]] = {
-    "sarvartha_siddhi": (f"{_MC} §10 (5.16); {_DP}", "computed_cited"),
-    "amrit_siddhi": (f"{_MC} §10 (5.17); {_DP}", "computed_cited"),
+    # NOTE (Opus corpus-citation review, 2026-07-30): earlier text over-cited
+    # specific verse numbers "(5.16)"/"(5.17)" here. shastra_tables.py's own
+    # per-table comments do assign those numbers to these two tables, but
+    # special_yogas.py's own docstring for Amrit Siddhi separately states
+    # "may be blocked by death-yoga overrides (MC 5.17)" as an UNIMPLEMENTED
+    # exclusion rule -- i.e. 5.17 is cited for two different things in this
+    # codebase's own source (the formation table AND a distinct, unbuilt
+    # blocking rule), which is an ambiguity in the source, not something this
+    # writer can honestly resolve. Narrowed to the un-ambiguous "MC §10"
+    # (both tables' shared parent section) rather than assert a specific
+    # sub-verse split that isn't cleanly attributable.
+    "sarvartha_siddhi": (f"{_MC} §10; {_DP}", "computed_cited"),
+    "amrit_siddhi": (f"{_MC} §10; {_DP} (note: MC 5.17 also names a separate, unimplemented death-yoga/Visha-Yoga blocking rule on this table -- see bg_muhurta_factor_census)", "computed_cited"),
     "ravi_pushya": (f"{_MC} §10; {_DP} 'Ravi Pushya Yoga' dedicated page", "computed_cited"),
     "guru_pushya": (f"{_MC} §10; {_DP} 'Guru Pushya Nakshatra Yoga' dedicated page", "computed_cited"),
     "tripushkar": (f"{_MC} §11; {_DP}", "computed_cited"),
@@ -198,7 +223,14 @@ KALAM_CITATIONS: dict[str, tuple[str, str]] = {
     "rahu_kalam": (f"{_DP} published index tables (RAHU_KALAM_INDEX)", "computed_cited"),
     "yamaganda": (f"{_DP} published index tables (YAMAGANDAM_INDEX)", "computed_cited"),
     "gulika_kalam": (f"{_DP} published index tables (GULIKA_INDEX)", "computed_cited"),
-    "durmuhurta": (f"{_MC} §9; {_BS} §2", "computed_cited"),
+    # NOTE (Opus corpus-citation review, 2026-07-30): earlier text cited
+    # "BS §2" for durmuhurta -- that citation does not appear anywhere in
+    # source for this table. The two REAL citations that DO appear (in two
+    # different source files, for the same DUR_MUHURTA_TABLE) are combined
+    # here: timings.py's own compute_inauspicious_timings docstring says
+    # "Source: MC §9"; shastra_tables.py's own §15 table comment says
+    # "Source: DP published Dur Muhurta times."
+    "durmuhurta": (f"{_MC} §9 (per panchang_engine.timings docstring); {_DP} published Dur Muhurta times (per shastra_tables.py table comment)", "computed_cited"),
     "varjyam": (f"{_MC} §8; {_DP} convention", "computed_cited"),
     "amrit_kalam": (f"{_MC} §7; {_DP} convention", "computed_cited"),
     "brahma_muhurta": (f"{_DP} convention (96-48 min before sunrise)", "computed_cited"),
@@ -362,6 +394,23 @@ def compute_day_factors(day: date) -> list[_Row]:
             source_citation=citation, corpus_status=corpus_status,
         ))
     for t in auspicious:
+        # BUG FOUND AND FIXED (Opus corpus-citation review, 2026-07-30):
+        # `compute_extended_auspicious` (panchang_engine/timings.py:463-489)
+        # ignores vara_id entirely and always emits "abhijit" -- but the
+        # KALAM_CITATIONS entry for "abhijit" cites "Muhurta Chintamani §5
+        # (excluded on Wednesday)", the SAME rule the base (non-extended)
+        # `compute_auspicious_timings` correctly implements (it returns None
+        # for abhijit when vara_id==4). Empirically confirmed on a real
+        # Wednesday (2026-08-05, vara.id=4): extended path returned "abhijit"
+        # present while the base path correctly returned None. Serving
+        # "abhijit present" on a Wednesday while citing "excluded on
+        # Wednesday" is a self-contradicting row -- filtered here rather than
+        # patching the shared, reused `compute_extended_auspicious` (out of
+        # this writer's scope; the same "don't touch shared reused utilities"
+        # discipline bg_sky_calendar's own docstring already establishes for
+        # `find_ingress_events`'s sign-cusp artifact).
+        if t.label == "abhijit" and vara.id == 4:
+            continue
         citation, corpus_status = KALAM_CITATIONS.get(
             t.label, (f"{_DP} (uncatalogued kalam key; corpus gap)", "computed_uncited_convention")
         )

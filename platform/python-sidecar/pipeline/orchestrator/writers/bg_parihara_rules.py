@@ -281,6 +281,9 @@ CENSUS_ROWS: list[tuple[str, str, str, str, str, str | None]] = [
     ("combination_yoga", "siddha_yoga", "computed",
      "Muhurta Chintamani §10; Brihat Samhita §3; Drik Panchang published table.",
      "bg_muhurta_lattice (factor_family=combination_yoga)", "drik_panchang"),
+    ("combination_yoga", "panchaka", "computed",
+     "Brihat Samhita §3; Drik Panchang 'Panchaka' dedicated page.",
+     "bg_muhurta_lattice (factor_family=combination_yoga)", "drik_panchang"),
     ("combination_yoga", "mrityu_yoga", "not_in_corpus",
      "No standalone Mrityu-yoga day-quality detector/table found anywhere in "
      "the codebase (grep-verified: 'mrityu'/'mrutyu' + 'yoga' across "
@@ -296,24 +299,45 @@ CENSUS_ROWS: list[tuple[str, str, str, str, str, str | None]] = [
      "classical_text_chunks (text_id='muhurta_chintamani') ch.17-18 contains "
      "untranslated Devanagari Dagdha-yoga tithi x vara tables (confirmed via "
      "direct corpus query: chunks matching Devanagari dagdha/hutasana tokens "
-     "in that chapter range) — content_en/cleaned_translation_text are NULL "
-     "on all of Muhurta Chintamani's 274 chunks, so no queryable/translated "
-     "row exists. Distinct from the L1 CHART-BOUND 'Dagdha Rashi' concept in "
-     "ga_sensitive_writer.py (a different, sign-based, per-chart computation) "
-     "— do not conflate the two. Ingestion work item: OCR-cleanup pass + "
-     "structured table extraction for Muhurta Chintamani ch.17-18.",
-     "classical_text_chunks (text_id='muhurta_chintamani', ch.17-18, untranslated)", None),
+     "in that chapter range). CORRECTED (Opus corpus-citation review, "
+     "2026-07-30): 'content_en NULL on all 274 chunks' was WRONG -- "
+     "content_en is NOT NULL on any of the 274 rows; it is byte-IDENTICAL to "
+     "content_sa (the raw Devanagari was copied into the English column, "
+     "never actually translated) -- live-verified: 0/274 NULL on content_en, "
+     "274/274 equal to content_sa. Only cleaned_translation_text is genuinely "
+     "NULL on all 274 rows. Net effect is the same (no usable English "
+     "translation exists, so this table is not queryable/citable at verse "
+     "grain), but the evidence must be stated accurately: content_en holds "
+     "untranslated Devanagari, not NULL. Distinct from the L1 CHART-BOUND "
+     "'Dagdha Rashi' concept in ga_sensitive_writer.py (a different, "
+     "sign-based, per-chart computation) — do not conflate the two. "
+     "Ingestion work item: OCR-cleanup pass + structured table extraction "
+     "for Muhurta Chintamani ch.17-18.",
+     "classical_text_chunks (text_id='muhurta_chintamani', ch.17-18, content_en=content_sa untranslated)", None),
     ("combination_yoga", "hutasana_yoga", "not_in_corpus",
      "Same untranslated-corpus evidence as dagdha_yoga (co-located in Muhurta "
      "Chintamani ch.17-18's Devanagari OCR). Ingestion work item: same OCR-"
      "cleanup pass.",
      "classical_text_chunks (text_id='muhurta_chintamani', ch.17-18, untranslated)", None),
     ("combination_yoga", "jvalamukhi_yoga", "not_in_corpus",
-     "No corpus evidence found even in untranslated form (grep across "
-     "classical_text_chunks.content_en and the Muhurta Chintamani chapter "
-     "range checked for dagdha/hutasana). Ingestion work item: targeted "
-     "search once Muhurta Chintamani's later chapters are OCR-translated.",
-     "not found in corpus (verified by grep + targeted chunk query)", None),
+     "CORRECTED (Opus corpus-citation review, 2026-07-30): the earlier claim "
+     "'no corpus evidence found even in untranslated form' was WRONG -- a "
+     "direct query found exactly 1 muhurta_chintamani chunk "
+     "(chunk_id='muhurta_chintamani_pg0033_c01', ch.33, verse 1) whose "
+     "content_sa contains the Devanagari string 'ज्वालामुखी'. Inspecting the "
+     "surrounding untranslated text: it occurs in a Makara-Guru "
+     "dosha-exception passage listing GEOGRAPHIC/pilgrimage place names "
+     "(alongside Delhi/Agra/Mathura) -- i.e. it reads as the place name "
+     "Jvalamukhi (Himachal Pradesh), not clearly the Jvalamukhi-yoga "
+     "muhurta doctrine itself. Because the term is untranslated and "
+     "homographic with the place name, doctrinal content cannot be ruled "
+     "out from this one hit alone, and no OTHER chunk in the corpus was "
+     "found naming this yoga. Disposition remains not_in_corpus (no usable "
+     "STRUCTURED rule exists either way) but the note is corrected to state "
+     "the real, ambiguous finding rather than a false zero. Ingestion work "
+     "item: OCR-translate ch.33 and re-scan the full text once translated "
+     "to confirm whether the yoga doctrine appears anywhere.",
+     "classical_text_chunks (text_id='muhurta_chintamani', chunk_id=muhurta_chintamani_pg0033_c01, ch.33, untranslated, ambiguous place-name-vs-yoga hit)", None),
 
     # ── Rite-specific residences ──
     ("rite_residence", "agnivasa", "computed",
@@ -321,7 +345,7 @@ CENSUS_ROWS: list[tuple[str, str, str, str, str, str | None]] = [
      "per-row classical citation in source (Drik Panchang module-level "
      "fallback only) — disclosed as computed_uncited_convention on the row "
      "itself, not upgraded to a specific verse citation.",
-     "bg_muhurta_lattice (factor_family=agnivasa)", None),
+     "bg_muhurta_lattice (factor_family=agnivasa, factor_key=agni_vasa)", None),
     ("rite_residence", "shiva_vasa", "not_in_corpus",
      "No Siva-vasa (or any other rite-specific vasa sibling beyond Agni/"
      "Chandra/Rahu/Disha/Nakshatra/Bhadra vasa) table found in "
@@ -351,13 +375,66 @@ CENSUS_ROWS: list[tuple[str, str, str, str, str, str | None]] = [
      "Drik Panchang published index tables (YAMAGANDAM_INDEX).",
      "bg_muhurta_lattice (factor_family=kalam, factor_key=yamaganda)", None),
     ("day_part", "durmuhurta", "computed",
-     "Muhurta Chintamani §9; Brihat Samhita §2.",
+     "CORRECTED (Opus corpus-citation review, 2026-07-30): 'Brihat Samhita "
+     "§2' was fabricated -- it does not appear anywhere in source for this "
+     "table. The two REAL citations that DO appear (in two different source "
+     "files, for the same DUR_MUHURTA_TABLE): Muhurta Chintamani §9 (per "
+     "panchang_engine.timings' compute_inauspicious_timings docstring) and "
+     "Drik Panchang published Dur Muhurta times (per shastra_tables.py's own "
+     "§15 table comment).",
      "bg_muhurta_lattice (factor_family=kalam, factor_key=durmuhurta)", None),
     ("day_part", "amrita_ghati_amrit_kalam", "computed",
-     "Muhurta Chintamani §7; Drik Panchang convention. (Sibling visha_ghati "
-     "carries no inline citation in source and is disclosed as "
-     "computed_uncited_convention on its own row.)",
-     "bg_muhurta_lattice (factor_family=kalam, factor_key=amrit_kalam / visha_ghati)", None),
+     "Muhurta Chintamani §7; Drik Panchang convention.",
+     "bg_muhurta_lattice (factor_family=kalam, factor_key=amrit_kalam)", None),
+    ("day_part", "visha_ghati", "computed",
+     "No inline classical citation found in source (shastra_tables.py's "
+     "VISHA_GHATI_TABLE carries no 'Source:' comment, unlike the numbered "
+     "§1-§24 tables) — disclosed as computed_uncited_convention on the "
+     "lattice row itself, not upgraded to a specific citation.",
+     "bg_muhurta_lattice (factor_family=kalam, factor_key=visha_ghati)", None),
+    ("day_part", "varjyam", "computed",
+     "Muhurta Chintamani §8; Drik Panchang convention (shastra_tables.py's "
+     "§14 VARJYAM_TABLE comment).",
+     "bg_muhurta_lattice (factor_family=kalam, factor_key=varjyam)", None),
+    ("day_part", "yamakantaka", "computed",
+     "No inline classical citation found in source (YAMAKANTAKA_INDEX, in "
+     "shastra_tables.py's uncited 'Rich output contract additions' section) "
+     "— disclosed as computed_uncited_convention.",
+     "bg_muhurta_lattice (factor_family=kalam, factor_key=yamakantaka)", None),
+    ("day_part", "krakaca", "computed",
+     "No inline classical citation found in source (KRAKACA_INDEX, same "
+     "uncited section as yamakantaka) — disclosed as "
+     "computed_uncited_convention.",
+     "bg_muhurta_lattice (factor_family=kalam, factor_key=krakaca)", None),
+    ("day_part", "sashtighati", "computed",
+     "No inline classical citation found in source (SASHTIGHATI_GHATIKAS, "
+     "same uncited section) — disclosed as computed_uncited_convention.",
+     "bg_muhurta_lattice (factor_family=kalam, factor_key=sashtighati)", None),
+    ("day_part", "pratah_sandhya", "computed",
+     "No inline classical citation found in source (compute_extended_"
+     "auspicious's own Sandhya-type windows carry no per-type 'Source:' "
+     "comment) — disclosed as computed_uncited_convention.",
+     "bg_muhurta_lattice (factor_family=kalam, factor_key=pratah_sandhya)", None),
+    ("day_part", "madhyahna_sandhya", "computed",
+     "No inline classical citation found in source — disclosed as "
+     "computed_uncited_convention.",
+     "bg_muhurta_lattice (factor_family=kalam, factor_key=madhyahna_sandhya)", None),
+    ("day_part", "vijaya", "computed",
+     "No inline classical citation found in source — disclosed as "
+     "computed_uncited_convention.",
+     "bg_muhurta_lattice (factor_family=kalam, factor_key=vijaya)", None),
+    ("day_part", "godhuli", "computed",
+     "No inline classical citation found in source — disclosed as "
+     "computed_uncited_convention.",
+     "bg_muhurta_lattice (factor_family=kalam, factor_key=godhuli)", None),
+    ("day_part", "sayam_sandhya", "computed",
+     "No inline classical citation found in source — disclosed as "
+     "computed_uncited_convention.",
+     "bg_muhurta_lattice (factor_family=kalam, factor_key=sayam_sandhya)", None),
+    ("day_part", "nishita", "computed",
+     "No inline classical citation found in source — disclosed as "
+     "computed_uncited_convention.",
+     "bg_muhurta_lattice (factor_family=kalam, factor_key=nishita)", None),
     ("day_part", "disha_shula", "computed",
      "panchang_engine.shastra_tables.DISHA_SHUL_TABLE (vara-keyed travel-"
      "direction avoidance); already served via kala_now_get per w1-flags PR "
@@ -396,6 +473,19 @@ CENSUS_ROWS: list[tuple[str, str, str, str, str, str | None]] = [
      "not_in_corpus.",
      "derivable from existing sign/nakshatra boundary computations; not yet built", None),
 
+    # ── Ghaṭī-muhūrta (the 30-fold day+night boundary family) ──
+    ("ghati_muhurta", "ghati_muhurta_30fold", "computed",
+     "panchang_engine.timings.compute_day_muhurtas — 30-fold day+night "
+     "ghati-muhurta naming (Rudra..Bhaga day; Girisha..Samudram night), a "
+     "well-known classical convention (cf. the cited Dur Muhurta subset, "
+     "MC §9), but no inline per-row classical citation was found in source "
+     "for this exact list — disclosed as computed_uncited_convention. Also "
+     "note (Opus corpus-citation review, 2026-07-30): the day/night "
+     "boundary this function uses is an ARITHMETIC MIDPOINT of sunrise-to-"
+     "next-sunrise, not the chart's true computed sunset — see "
+     "bg_muhurta_lattice's module docstring family-4 correction note.",
+     "bg_muhurta_lattice (factor_family=ghati_muhurta)", None),
+
     # ── Chart-personal (explicitly out of this global lane's scope) ──
     ("chart_personal", "janma_tithi_vara_nakshatra_resonance", "not_computed",
      "Chart-personal by definition (reads a specific native's own birth "
@@ -407,11 +497,19 @@ CENSUS_ROWS: list[tuple[str, str, str, str, str, str | None]] = [
 
     # ── Structural-ritual ──
     ("structural_ritual", "deity_graha_correspondence", "computed",
-     "brahma_remedy_corpus (planet-domain-remedy mapping, real BPHS/"
-     "Phaladeepika citations on 221 of 266 rows) joined with "
+     "brahma_remedy_corpus (planet-domain-remedy mapping) joined with "
      "panchang_engine.shastra_tables.NAKSHATRA_DEITIES (Source: Brihat "
-     "Samhita §2; Taittiriya Brahmana). Served via existing "
-     "ref_remedies_by_planet_get.",
+     "Samhita §2; Taittiriya Brahmana). CORRECTED (Opus corpus-citation "
+     "review, 2026-07-30): the earlier claim '221 of 266 rows real-cited' "
+     "was wrong -- that number came from a narrower check (source_"
+     "canonical_id = 'classical_tradition' literal match only, 45 "
+     "placeholder / 221 real). Live-verified against production with the "
+     "correct, broader placeholder definition (source_citation OR "
+     "classical_ref ILIKE '%classical tradition%', which also catches "
+     "domain-specific-but-non-verse-cited variants like 'classical "
+     "tradition (navagraha vrata)'): 266 total, 102 placeholder-like, "
+     "164 real-cited (mostly BPHS Ch.88-94 Upaya-adhyaya + Phaladeepika). "
+     "Served via existing ref_remedies_by_planet_get.",
      "brahma_remedy_corpus + panchang_engine/shastra_tables.py:NAKSHATRA_DEITIES", None),
 
     # ── Astronomical ──

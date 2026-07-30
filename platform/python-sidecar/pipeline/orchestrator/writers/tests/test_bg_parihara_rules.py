@@ -138,6 +138,52 @@ def test_census_rows_no_duplicate_natural_keys():
     assert len(keys) == len(set(keys)), "duplicate (factor_family, factor_name) in CENSUS_ROWS"
 
 
+def test_census_has_no_dangling_lattice_pointers():
+    """Regression test for the Opus corpus-citation review defect (2026-07-30):
+    several bg_muhurta_lattice.py factor_keys (yamakantaka, krakaca,
+    sashtighati, visha_ghati, varjyam, panchaka, ghati_muhurta, and the 6
+    Sandhya/Vijaya/Godhuli/Nishita keys) were disclosed as
+    computed_uncited_convention / 'corpus gap' but had NO corresponding row
+    in CENSUS_ROWS -- an honesty mechanism that points to a census entry
+    which doesn't exist. Every factor_key bg_muhurta_lattice.py emits must
+    resolve to at least one CENSUS_ROWS evidence_pointer mentioning it."""
+    from pipeline.orchestrator.writers.bg_muhurta_lattice import (
+        COMBINATION_YOGA_CITATIONS,
+        KALAM_CITATIONS,
+    )
+
+    all_factor_keys = set(COMBINATION_YOGA_CITATIONS.keys()) | set(KALAM_CITATIONS.keys()) | {
+        "agni_vasa", "ghati_muhurta_30fold",
+    }
+    # A handful of lattice factor_keys are deliberately renamed in the census
+    # (e.g. the census groups amrit_kalam under a combined
+    # 'amrita_ghati_amrit_kalam' row, and 'gulika_kalam' under
+    # 'gulika_mandi_kalam') -- these resolve via the evidence_pointer's
+    # explicit 'factor_key=X' text, checked separately below.
+    census_factor_names = {(row[0], row[1]) for row in CENSUS_ROWS}  # (family, name)
+    evidence_text = " ".join(row[4] for row in CENSUS_ROWS)  # evidence_pointer is index 4
+
+    missing = []
+    for key in sorted(all_factor_keys):
+        if key == "ghati_muhurta_30fold":
+            if ("ghati_muhurta", "ghati_muhurta_30fold") not in census_factor_names:
+                missing.append(key)
+            continue
+        # Resolves if EITHER some census row's own factor_name IS this key
+        # (the common case: combination_yoga/agnivasa keys), OR some row's
+        # evidence_pointer explicitly names it via 'factor_key=X' (the
+        # day_part-family rows, which reference bg_muhurta_lattice's kalam
+        # factor_keys by name even when the census factor_name differs).
+        resolved = (
+            any(name == key for _fam, name in census_factor_names)
+            or f"factor_key={key}" in evidence_text
+        )
+        if not resolved:
+            missing.append(key)
+
+    assert not missing, f"factor_keys with no resolving census evidence_pointer: {missing}"
+
+
 def test_census_includes_the_named_corpus_gaps_honestly():
     """The brief explicitly names Agnivasa combination-yoga rules as the
     expected 'genuinely lacks a rule' example — the four brief-named

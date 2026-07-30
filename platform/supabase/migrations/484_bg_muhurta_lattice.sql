@@ -132,7 +132,7 @@ INSERT INTO asset_registry (
     depends_on, scope, is_active, has_writer,
     layer_name, layer_index, catalog_status, asset_kind
 ) VALUES (
-    'bg_muhurta_lattice', 'brahmagyan', 22,
+    'bg_muhurta_lattice', 'brahmagyan', 70,
     'Muhūrta Jālaka', 'Muhūrta Boundary/Factor Lattice',
     'Global chart-independent muhūrta factor lattice — Agnivāsa states, combination-'
     'yoga spans (Sarvārtha-siddhi, Amṛta-siddhi, Ravi/Guru-Puṣya, Tripuṣkara/'
@@ -143,11 +143,15 @@ INSERT INTO asset_registry (
     'ka_kshetra''s job (W3). ṢAḌ-DARŚANA campaign item 36-substrate.',
     'postgres_table', 'bg_muhurta_lattice',
     'SELECT COUNT(*) FROM bg_muhurta_lattice', 'SELECT pg_total_relation_size(''bg_muhurta_lattice'')',
-    91737, NULL, NULL,
-    'Live-verified 2026-07-30 against a real throwaway Postgres (pg17 + pgvector): '
-    '1,826 agnivasa + 1,481 combination_yoga + 33,650 kalam + 54,780 ghati_muhurta '
-    '= 91,737, over horizon 2026-07-30 -> 2031-07-30 (today+5y at verification '
-    'time), computed at the fixed Bhubaneswar/IST reference location. Because the '
+    91477, NULL, NULL,
+    'Live-verified 2026-07-30 against a real throwaway Postgres (pg17 + pgvector), '
+    're-verified after the Opus corpus-citation review''s abhijit-Wednesday-'
+    'exclusion fix: 1,826 agnivasa + 1,481 combination_yoga + 33,390 kalam + '
+    '54,780 ghati_muhurta = 91,477, over horizon 2026-07-30 -> 2031-07-30 '
+    '(today+5y at verification time), computed at the fixed Bhubaneswar/IST '
+    'reference location. (Prior count was 91,737 before the fix; the 260-row '
+    'delta is exactly the ~261 Wednesdays in the horizon whose incorrectly-'
+    'served abhijit row is now correctly excluded.) Because the '
     'horizon rolls FORWARD from "today" every rebuild and old rows are never '
     'deleted (ON CONFLICT DO NOTHING only), a later build reads >= this count, '
     'never less — a legal floor, not a guess (mirrors bg_sky_calendar''s '

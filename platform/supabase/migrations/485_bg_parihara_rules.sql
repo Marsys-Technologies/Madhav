@@ -14,9 +14,13 @@
 -- This migration creates ONLY the three tables + the asset_registry row. All
 -- content is computed/materialized by the bg_parihara_rules writer
 -- (pipeline/orchestrator/writers/bg_parihara_rules.py) at build time, by
--- REUSING/JOINING existing ingested corpus tables (brahma_dosha_catalog,
--- brahma_remedy_corpus) and the existing panchang_engine per-activity muhūrta
--- quality tables — NEVER re-ingesting or duplicating corpus content. Where the
+-- REUSING/JOINING the existing ingested corpus table `brahma_dosha_catalog`
+-- and the existing panchang_engine per-activity muhūrta quality tables
+-- (EVENT_TABLES) — NEVER re-ingesting or duplicating corpus content.
+-- (`brahma_remedy_corpus` is cited as evidence in the factor census for the
+-- deity_graha_correspondence row only; the writer does not query it
+-- directly — corrected 2026-07-30, Opus corpus-citation review, from an
+-- earlier draft that overstated this as a direct join.) Where the
 -- corpus genuinely lacks a rule (e.g. mṛtyu-yoga, dagdha-yoga as day-quality
 -- combination-yogas; Śiva-vāsa; mṛtyu-bhāga; gaṇḍānta spans), the honest
 -- disposition is `not_in_corpus`/`not_computed`, recorded in the census, never a
@@ -156,28 +160,33 @@ INSERT INTO asset_registry (
     depends_on, scope, is_active, has_writer,
     layer_name, layer_index, catalog_status, asset_kind
 ) VALUES (
-    'bg_parihara_rules', 'brahmagyan', 23,
+    'bg_parihara_rules', 'brahmagyan', 71,
     'Parihāra Jāla', 'Parihāra Rule Graph + Muhūrta Factor Census',
     'Global chart-independent parihāra (doṣa-cancellation) graph, per-activity '
     'muhūrta factor-quality rules, and the Muhūrta Factor Census + corpus-gap '
-    'register. Reuses/joins brahma_dosha_catalog, brahma_remedy_corpus, and '
+    'register. Directly queries brahma_dosha_catalog and materializes '
     'panchang_engine.shastra_tables.EVENT_TABLES — never re-ingests corpus '
-    'content. Corpus gaps (e.g. mṛtyu-yoga, dagdha-yoga day-quality tables, '
-    'Śiva-vāsa) are honestly recorded as not_in_corpus, never fabricated. '
-    'ṢAḌ-DARŚANA campaign item 36-substrate/41.',
+    'content (brahma_remedy_corpus is referenced only as evidence in the '
+    'factor census, for the deity_graha_correspondence row; this writer does '
+    'not query it directly). Corpus gaps (e.g. mṛtyu-yoga, dagdha-yoga '
+    'day-quality tables, Śiva-vāsa) are honestly recorded as not_in_corpus, '
+    'never fabricated. ṢAḌ-DARŚANA campaign item 36-substrate/41.',
     'postgres_table', 'bg_parihara_rules',
     'SELECT (SELECT COUNT(*) FROM bg_parihara_rules) + (SELECT COUNT(*) FROM bg_muhurta_activity_rules) + (SELECT COUNT(*) FROM bg_muhurta_factor_census)',
     'SELECT pg_total_relation_size(''bg_parihara_rules'') + pg_total_relation_size(''bg_muhurta_activity_rules'') + pg_total_relation_size(''bg_muhurta_factor_census'')',
-    426, NULL, NULL,
+    439, NULL, NULL,
     'Live-verified 2026-07-30: 60 parihara-graph condition rows (queried directly '
     'against the REAL production brahma_dosha_catalog: 26 doshas carry a real, '
     'non-placeholder citation, flattening to 60 individual cancellation-condition '
     'rows) + 329 activity-rule rows (exact, deterministic — sum of tithi/'
-    'nakshatra/vara entries across panchang_engine''s 8 EVENT_TABLES) + 37 census '
-    'rows (exact — len(CENSUS_ROWS)) = 426. The 329 + 37 = 366 portion is a hard '
-    'deterministic floor; the parihara-graph portion depends on brahma_dosha_'
-    'catalog''s live content and was confirmed via a direct read-only query '
-    'against production, not fabricated or estimated.',
+    'nakshatra/vara entries across panchang_engine''s 8 EVENT_TABLES) + 50 census '
+    'rows (exact — len(CENSUS_ROWS), updated from 37 by the Opus corpus-citation '
+    'review''s dangling-pointer fix, which added 13 rows: panchaka, varjyam, '
+    'visha_ghati, yamakantaka, krakaca, sashtighati, ghati_muhurta_30fold, and '
+    '6 sandhya/vijaya/godhuli/nishita keys) = 439. The 329 + 50 = 379 portion is '
+    'a hard deterministic floor; the parihara-graph portion depends on '
+    'brahma_dosha_catalog''s live content and was confirmed via a direct '
+    'read-only query against production, not fabricated or estimated.',
     ARRAY[]::text[], 'global', true, true,
     'Brahmagyan', 'L0', 'CURRENT', 'data'
 ) ON CONFLICT (asset_id) DO UPDATE SET

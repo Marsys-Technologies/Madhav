@@ -144,6 +144,36 @@ def test_compute_day_factors_kalam_includes_core_periods():
         assert expected in kalam_keys, f"expected kalam factor {expected!r} present"
 
 
+def test_compute_day_factors_abhijit_excluded_on_wednesday():
+    """Regression test for the Opus corpus-citation review defect (2026-07-30):
+    `compute_extended_auspicious` (panchang_engine/timings.py) ignores vara_id
+    and always emits 'abhijit', but the KALAM_CITATIONS entry for abhijit
+    cites 'Muhurta Chintamani §5 (excluded on Wednesday)' -- the same rule the
+    BASE compute_auspicious_timings correctly implements. Serving abhijit as
+    present on a Wednesday while citing its own exclusion is a self-
+    contradicting row. 2026-08-05 is a real Wednesday (vara.id=4,
+    Budhavara) -- confirmed via compute_vara before this test was written."""
+    from panchang_engine.angas import compute_vara
+    wednesday = date(2026, 8, 5)
+    assert compute_vara(wednesday).id == 4, "test fixture date must be a real Wednesday"
+
+    rows = compute_day_factors(wednesday)
+    kalam_keys = {r.factor_key for r in rows if r.factor_family == "kalam"}
+    assert "abhijit" not in kalam_keys, "abhijit must be excluded on Wednesday (Muhurta Chintamani §5)"
+
+
+def test_compute_day_factors_abhijit_present_on_non_wednesday():
+    """Positive control: abhijit MUST still appear on a non-Wednesday (guards
+    against the fix over-correcting into an always-absent stub)."""
+    from panchang_engine.angas import compute_vara
+    thursday = date(2026, 8, 6)
+    assert compute_vara(thursday).id != 4, "test fixture date must NOT be a Wednesday"
+
+    rows = compute_day_factors(thursday)
+    kalam_keys = {r.factor_key for r in rows if r.factor_family == "kalam"}
+    assert "abhijit" in kalam_keys, "abhijit must be present on a non-Wednesday"
+
+
 def test_compute_day_factors_every_row_has_start_before_end():
     rows = compute_day_factors(date(2026, 8, 15))
     for r in rows:
