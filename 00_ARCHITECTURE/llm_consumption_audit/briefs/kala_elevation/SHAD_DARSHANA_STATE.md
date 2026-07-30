@@ -38,6 +38,28 @@ should either resolve it via ANTARYĀMIN or raise it if it touches a FROZEN-cont
 (it does not appear to — it's a schema/approach choice, not an orchestrator-contract change).
 No other blockers outstanding.
 
+**NIGHT 2 IN PROGRESS (2026-07-30, live).** Four lanes dispatched this session, all in
+worktrees off `origin/main@5f5033a5`, all IN-PROGRESS as of this write (no PRs confirmed
+merged yet — verify independently before trusting any lane's self-report, per standing
+discipline): `shad-darshana/w1-mudda-sandhi` (items 30, 1-lite) · `shad-darshana/w1-intervals-grading`
+(items 24-lite, 38-lite, frontier v0, 43) · `shad-darshana/bg-muhurta-parihara` (bg_muhurta_lattice.py
++ bg_parihara_rules.py, migrations 484/485, holds for Opus review before merge — no auto-merge) ·
+`shad-darshana/w2-lane-d-design-fix` (docs-only, corrects `KALA_W2_FIELD_DESIGN_v1_0.md` §6.3
+against the real `bg_synthetic_cohort` schema per ADJUDICATION-1). **ADJUDICATION-1 resolved**
+(see ADJUDICATION log below): W2 Lane D's cohort-schema precondition ruled — precompute an
+age-based MD-lord chain table (`bg_synthetic_cohort_md`), not a scalar column, not a
+query-time derivation. **Operational note:** builder sandboxes reject git operations against
+shared `.worktrees/...` checkout paths entirely; the working pattern this session is: each
+agent operates in its own harness-provisioned isolated worktree, then pushes its finished
+branch to `origin` under the intended `shad-darshana/<lane>` name via explicit refspec
+(`git push origin HEAD:refs/heads/shad-darshana/<lane>`) and opens its PR from there. Future
+sessions should dispatch with this pattern from the start rather than pre-creating shared
+`.worktrees/shad-darshana-*` paths (four such empty/unused paths from this session should be
+`git worktree remove`d at next cleanup — harmless, just clutter). **Next: verify each of the
+four lanes' PRs independently as they land (do not trust self-reports), run the merge train,
+then dispatch the `bg_cohort` md-lord-chain builder lane once w2-lane-d-design-fix merges,
+then W2 Lanes A/B/C/E once the 3 remaining W1 items + bg-muhurta-parihara close Gate W1.**
+
 ---
 
 ## POST-NIGHT-1 ADVERSARIAL AUDIT RECORD (2026-07-30, between Night 1 and Night 2)
@@ -670,13 +692,27 @@ Not started.
 
 ## ADJUDICATION log (ANTARYĀMIN)
 
-**None.** No would-be-human question actually arose tonight — W2G and W3K (the two waves whose
-pre-queued adjudications exist for exactly this) never started, since W2G is correctly blocked
-on the native's own N1–N5 ratification (not yet requested — Night 1 never reached W2G) and W3K
-depends on W2's clock machinery (not built yet). The one naming decision made (item 17 →
-`ka_sudarshana_varsha`) was plain Conductor engineering authority per brief §2 ("Conductor
-confirms against live registries at W0"), not a would-be-human judgment call, so it's recorded
-under item 17's evidence, not here. This is an honest empty log, not an unused mechanism.
+**ADJUDICATION-1 (2026-07-30, Night 2 — matched sub-cohort MD-lord, Gap #3 from the
+post-Night-1 audit, W2 Lane D precondition).** Question: precompute MD-lord into `bg_cohort`
+storage, or derive it at rarity-query time in `cohort_client.py`? **Ruling: precompute — but
+as an age-based MD-lord CHAIN table, not a scalar column.** MD-lord is cheap arithmetic off the
+Moon `sidereal_longitude` already stored in `bg_synthetic_cohort.positions` (no new ephemeris
+call), so the audit's "needs the full dasha engine" deferral was overstated; a scalar
+`md_lord` was rejected because cohort births span 1900–2099 and a fixed-epoch "current lord"
+is undefined for future-born synthetic rows — so a new table `bg_synthetic_cohort_md
+(synthetic_id, md_index, md_lord, start_age_years, end_age_years)` carries the full chain,
+joined by the caller on an explicit reference age, not a stored "as of" date. Not a
+FROZEN-contract question (no orchestrator-contract, untouchable, or rail touched — purely an
+additive L0 schema + one lane's internal join strategy). Fully reversible (drops cleanly,
+recomputes byte-identically from the fixed cohort seed). **Also surfaced, same investigation,
+broader than the original question: the design doc's whole Lane D §6.3 contract (three tables
+`cohort_charts`/`cohort_positions`/`cohort_feature_counts`) does not match the actual shipped
+`bg_cohort` schema at all** (real table is the single JSONB `bg_synthetic_cohort`, no
+`cohort_id`/`cohort_version`/`lagna_sign`/`md_lord` columns) — routed to a dedicated docs-only
+design-correction lane (`shad-darshana/w2-lane-d-design-fix`, dispatched same session) to
+reconcile §6.3 with reality before Lane D itself is dispatched; W2 Lanes A/B/C/E have no
+dependency on this and are not blocked by it. Full ruling text preserved in this session's
+agent transcript; summarized here per the ledger's evidence-link convention.
 
 ## MORNING REPORT — Night 1 close (2026-07-29 → 2026-07-30)
 

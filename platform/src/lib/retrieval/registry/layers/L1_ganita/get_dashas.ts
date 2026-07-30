@@ -516,7 +516,7 @@ export const getDashasCapability: CapabilityDescriptor = {
               .join(' ')
 
             drill_pointers.push({
-              instrument: 'get_dashas',
+              instrument: 'ganita_dashas_get',
               hint: `The period after the current Pratyantardasha (ends ${pdEnd}) is not returned by ` +
                 `an as_of_date call — re-call with as_of_date just after ${pdEnd} (or window_start=${pdEnd}) ` +
                 `to see the next lord and its natal condition.`,

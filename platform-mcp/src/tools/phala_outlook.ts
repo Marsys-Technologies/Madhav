@@ -56,12 +56,12 @@ function phalaOutlookSections(): TrimmableSection<PhalOutlookResult>[] {
     {
       path: 'mitigations', label: 'mitigations', minKeep: 10,
       getArray: (c) => c.mitigations, setArray: (c, kept) => { c.mitigations = kept as PhalOutlookResult['mitigations'] },
-      recover: { instrument: 'get_remedies', hint: 'full mitigation/remedy list' },
+      recover: { instrument: 'bodha_remedies_get', hint: 'full mitigation/remedy list' },
     },
     {
       path: 'auspicious_windows', label: 'auspicious_windows', minKeep: 5,
       getArray: (c) => c.auspicious_windows, setArray: (c, kept) => { c.auspicious_windows = kept as PhalOutlookResult['auspicious_windows'] },
-      recover: { instrument: 'muhurta_finder', hint: 'full auspicious-window list for the horizon' },
+      recover: { instrument: 'kala_muhurta_get', hint: 'full auspicious-window list for the horizon' },
     },
   ]
 }

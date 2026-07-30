@@ -637,7 +637,7 @@ export function registerP1GanitaTools(server: McpServer, principal: Principal): 
         if (rows.length === 0) judgment_flags.push(judgmentFlag('zero_rows_returned'))
 
         const drill_pointers: { instrument: string; hint: string; pointer_type: DrillPointerType }[] = [
-          { instrument: 'get_signals', hint: 'signal_type_class=yoga|dosha for salience-ranked cross-validation against L2 Bodha (SC-18: was previously mis-pointed at the non-existent MCP tool name "query_signals").', pointer_type: 'opposing_yoga' },
+          { instrument: 'bodha_signals_get', hint: 'signal_type_class=yoga|dosha for salience-ranked cross-validation against L2 Bodha (SC-18: was previously mis-pointed at the non-existent MCP tool name "query_signals").', pointer_type: 'opposing_yoga' },
         ]
 
         let verdict: unknown = {
@@ -1081,7 +1081,7 @@ export function registerP1GanitaTools(server: McpServer, principal: Principal): 
         // pre-existing {instrument, hint} shape.
         const drill_pointers: { instrument: string; hint: string; pointer_type: DrillPointerType }[] = [
           { instrument: 'ganita_yoga_firings_get', hint: 'firings-authoritative source (ga_yoga_firings): per-yoga strength, bhaṅga/cancellation state, partial-formation %, dāśā-activation windows — cross-check before asserting fired/not-fired (A3/CR-92, R-3).', pointer_type: 'opposing_yoga' },
-          { instrument: 'get_signals', hint: 'signal_type_class=yoga|dosha for salience-ranked cross-validation against L2 Bodha (SC-18: was previously mis-pointed at the non-existent MCP tool name "query_signals").', pointer_type: 'opposing_yoga' },
+          { instrument: 'bodha_signals_get', hint: 'signal_type_class=yoga|dosha for salience-ranked cross-validation against L2 Bodha (SC-18: was previously mis-pointed at the non-existent MCP tool name "query_signals").', pointer_type: 'opposing_yoga' },
           { instrument: 'mimamsa_insight_get', hint: 'calibrated_outlook / load_bearing insight units built on top of these firings.', pointer_type: 'other' },
         ]
 
