@@ -332,9 +332,9 @@ describe('CF.L3.8 — StatusDot: DRAFT catalog_status does not override healthy 
   })
 })
 
-// ── Seed governance: Kāla layer must have exactly 14 assets after hard-removal of ka_transit_almanac ──
+// ── Seed governance: Kāla layer count after hard-removal of ka_transit_almanac ──
 describe('Asset seed governance — Kāla layer', () => {
-  it('has exactly 14 kala assets in the seed (ka_transit_almanac removed; ka_avadhi + ka_taranga registered)', () => {
+  it('has exactly 15 kala assets in the seed (ka_transit_almanac removed; ka_avadhi + ka_taranga + ka_kshetra registered)', () => {
     const { readFileSync } = require('fs')
     const { resolve } = require('path')
     const seedContent: string = readFileSync(resolve(process.cwd(), 'scripts/seed/asset_registry_seed.ts'), 'utf8')
@@ -342,9 +342,20 @@ describe('Asset seed governance — Kāla layer', () => {
     // BA Phase 2.5: ka_avadhi and ka_taranga are real, already-registered
     // (@register) writers with live populated tables that were never added to
     // this seed catalog — the same class of gap fixed for bo_pratijna/bg_ghatana
-    // this same session. Raises the count from 12 to 14; does not reintroduce
+    // this same session. Raised the count from 12 to 14; did not reintroduce
     // ka_transit_almanac (see the next test).
-    expect(kalaMatches).toHaveLength(14)
+    //
+    // ṢAḌ-DARŚANA W2 (2026-07-30/31): a merge-train pass briefly removed Lane E's
+    // `ka_kshetra` row, reasoning it was redundant with migration 494's own
+    // `INSERT INTO asset_registry` — the same mechanism `ka_gochara_sweep`
+    // (migration 460) / `ka_gochara_resonance` (migration 459) use without any
+    // TS row. That reasoning missed that `catalog_reconciliation.test.ts`
+    // resolves `depends_on` purely against THIS file's own `ASSETS` array, and
+    // `mi_bhara.depends_on = ['ka_kshetra']` lives in this same file — so unlike
+    // ka_gochara_sweep/resonance (which nothing in this file depends on),
+    // `ka_kshetra` must have a row here too. Restored (14 → 15); same defect
+    // class as the historical ga_vichara/bo_pratijna gaps.
+    expect(kalaMatches).toHaveLength(15)
   })
 
   it('contains no ka_transit_almanac entry in the seed', () => {
