@@ -1,0 +1,29 @@
+{
+  "artifact": "MIMAMSA_PREDICTIONS_SCHEMA_PIN",
+  "version": "1.0",
+  "status": "CURRENT",
+  "table": "public.mimamsa_predictions",
+  "schema_hash_sha256": "72733fc6b8ea188ab5b12b679f28fcac9435835ab26a3cdefa7848a6f00fe8a4",
+  "pinned_at": "2026-07-30",
+  "pinned_by": "SAMAPTI B-PB-SCHEMA-PIN (lane track SAMAPTI_IMPLEMENTATION_BRIEF_v2_0.md §8.5)",
+  "hash_algorithm": "sha256",
+  "hash_covers": [
+    "every column: name, udt_name (exact type), is_nullable, column_default; ordered by ordinal_position",
+    "every constraint: conname, contype, pg_get_constraintdef(oid); ordered by conname",
+    "every index: indexname, indexdef; ordered by indexname"
+  ],
+  "hash_does_not_cover": [
+    "row count — tracked separately below as informational context only. Per MEMO_PB-3_0.md, mimamsa_predictions' row count moves legitimately via L5 STRUCTURAL-mode rebuilds (mi_bhavisya.py DELETE-then-INSERT idempotency, CLAUDE.md §N.3); folding it into the hash would make every routine rebuild read as schema drift."
+  ],
+  "row_count_at_pin": 286,
+  "row_count_source": "SELECT count(*) FROM mimamsa_predictions; run read-only against production Postgres (amjis) 2026-07-30, via the postgres MCP tool. Matches REPORT_PB-3.md's 286-row BIND figure exactly — no drift since PB-3 closed.",
+  "canonical_text": "TABLE|public.mimamsa_predictions\nCOL|chart_id|uuid|NO|\nCOL|prediction_id|text|NO|\nCOL|source_pramana_id|text|NO|\nCOL|outcome_claim|text|NO|\nCOL|domain|text|NO|\nCOL|observation_window|daterange|NO|\nCOL|eval_date|date|NO|\nCOL|confidence_band|numrange|NO|\nCOL|magnitude_expected|text|NO|\nCOL|falsifier_jsonb|jsonb|NO|\nCOL|base_rate|numeric|YES|\nCOL|emitted_at|timestamptz|NO|\nCOL|lifecycle_status|text|NO|\nCOL|driving_signals|jsonb|NO|\nCOL|frozen_bundle_hash|text|NO|\nCOL|bundle_formula_version|text|NO|\nCOL|created_at|timestamptz|NO|now()\nCON|mimamsa_predictions_pkey|p|PRIMARY KEY (chart_id, prediction_id)\nIDX|idx_mimamsa_predictions_chart_id|CREATE INDEX idx_mimamsa_predictions_chart_id ON public.mimamsa_predictions USING btree (chart_id)\nIDX|idx_mimamsa_predictions_eval_date|CREATE INDEX idx_mimamsa_predictions_eval_date ON public.mimamsa_predictions USING btree (chart_id, eval_date)\nIDX|idx_mimamsa_predictions_lifecycle|CREATE INDEX idx_mimamsa_predictions_lifecycle ON public.mimamsa_predictions USING btree (chart_id, lifecycle_status)\nIDX|mimamsa_predictions_pkey|CREATE UNIQUE INDEX mimamsa_predictions_pkey ON public.mimamsa_predictions USING btree (chart_id, prediction_id)",
+  "verified_against": {
+    "database": "amjis",
+    "server_version": "PostgreSQL 15.17 on x86_64-pc-linux-gnu",
+    "access_mode": "read-only, via the postgres MCP tool (no row ever hand-inserted, no schema mutated)",
+    "date": "2026-07-30"
+  },
+  "context": "Established per SAMAPTI_IMPLEMENTATION_BRIEF_v2_0.md §8.5 / PB-3 §G item 1. Corrects the gap REPORT_PB-3.md recorded: the brief's demanded schema HASH pin never existed prior to this file — only a prose row-count sentence, plus a bare recorded fingerprint (b730b9f3...) with nothing prior to compare it against and no reproducible computation behind it. This file + schema_pin_mimamsa_predictions.py (same directory) is the first real, reproducible baseline.",
+  "re_derivation_instructions": "See schema_pin_mimamsa_predictions.py module docstring and 00_ARCHITECTURE/briefs/pariprashna_build/PB_SCHEMA_HASH_PIN_v1_0.md for the full runbook. Short form: export DATABASE_URL, then `python3 platform/scripts/governance/schema_pin_mimamsa_predictions.py --verify`. Exit 0 = matches this baseline; exit 1 = drift (compare canonical_text by eye or via `--print-canonical`); exit 2 = environment error."
+}

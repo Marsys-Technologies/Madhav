@@ -126,6 +126,22 @@ python platform/scripts/governance/check_reconciliation_cadence.py              
 MCP_CANARY_KEY=... python platform/scripts/governance/check_reconciliation_cadence.py --live
 ```
 
+### `schema_pin_mimamsa_predictions.py` ← **SAMĀPTI B-PB-SCHEMA-PIN**
+The real schema HASH pin for `mimamsa_predictions`, replacing the prose-only "286 rows matching the
+BIND pin" + opaque `b730b9f3…` fingerprint `REPORT_PB-3.md` §G item 1 recorded with nothing
+reproducible behind it. Computes a SHA-256 over the table's deterministically-ordered
+columns/constraints/indexes (never row count — that's tracked separately as informational context,
+since `MEMO_PB-3_0.md` expects it to move legitimately via L5 rebuilds) and compares against the
+committed baseline in `MIMAMSA_PREDICTIONS_SCHEMA_PIN.json`.
+
+```
+python platform/scripts/governance/schema_pin_mimamsa_predictions.py --self-test        # DB-free, CI-safe
+DATABASE_URL=... python platform/scripts/governance/schema_pin_mimamsa_predictions.py --verify
+DATABASE_URL=... python platform/scripts/governance/schema_pin_mimamsa_predictions.py --print-canonical
+```
+
+Full runbook: `00_ARCHITECTURE/briefs/pariprashna_build/PB_SCHEMA_HASH_PIN_v1_0.md`.
+
 ---
 
 ## Shared library: `_ca_loader.py`
