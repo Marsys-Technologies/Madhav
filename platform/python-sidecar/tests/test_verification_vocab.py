@@ -242,10 +242,22 @@ def test_python_and_typescript_vocabularies_are_identical():
     )
 
 
+def _strip_ts_comments(text: str) -> str:
+    """Drop // line comments and /* */ blocks so an assertion about CODE is not
+    satisfied or defeated by prose. (The envelope's comments deliberately quote the
+    old predicate verbatim to explain what was removed.)"""
+    text = re.sub(r"/\*.*?\*/", "", text, flags=re.S)
+    return "\n".join(re.sub(r"//.*$", "", ln) for ln in text.splitlines())
+
+
 def test_typescript_grounding_predicate_is_derived_not_hand_written():
     """The serve-layer grounding check must call the shared predicate. An inline
     `s === 'two_pass_verified' || s === 'pass'` is the exact hand-maintained literal
     pair that Ruling 13 exists to delete."""
-    text = _ENVELOPE_TS.read_text()
-    assert "isVerifiedPassStatus(" in text
-    assert "=== 'pass'" not in text
+    code = _strip_ts_comments(_ENVELOPE_TS.read_text())
+    assert "isVerifiedPassStatus(r['verification_pass_status'])" in code
+    # No executable line may compare the field against a status literal directly.
+    assert not re.search(r"verification_pass_status'?\]?\s*===", code)
+    assert "=== 'pass'" not in code
+    # And the banned spellings must not appear as vocabulary members anywhere.
+    assert not re.search(r"status:\s*'(pass|PASS)'", code)
