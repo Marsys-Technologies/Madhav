@@ -74,8 +74,16 @@ export class RegistrySurfaceGateway implements SurfaceGateway {
       const verdict_map: GestaltOrientation['verdict_map'] = {}
       for (const [domain, v] of Object.entries(vmRaw)) {
         const o = asRecord(v)
+        // SAMĀPTI B-N8-FIX / Ruling 76: bo_chart_gestalt no longer STORES a verdict —
+        // post-fix rows carry a pointer + whole-domain evidence counts only. Keeping
+        // signal_id populated for such a row would satisfy instrument.ts's
+        // `verdict && verdict.signal_id` guard and render a fabricated
+        // "…is unknown (confidence 0)". Emptying it routes that guard to its existing
+        // honest-empty branch. Rows in the old/full shape (verdict_class present) are
+        // unaffected.
+        const hasVerdict = o['verdict_class'] != null && String(o['verdict_class']).length > 0
         verdict_map[domain] = {
-          signal_id: String(o['signal_id'] ?? ''),
+          signal_id: hasVerdict ? String(o['signal_id'] ?? '') : '',
           confidence: Number(o['confidence'] ?? 0),
           verdict_class: String(o['verdict_class'] ?? 'unknown'),
         }
