@@ -591,35 +591,99 @@ twice — verified mechanically in §4.5.
 | `platform/python-sidecar/ga_writers/ga_sade_sati_writer.py` | P2 `:974` | |
 | `platform/python-sidecar/ga_writers/ga_sensitive_writer.py` | P2 `:2677` **CONFIRMED (§2.5)** | fix spans `:2677-2687` **and** `_build_aprakasha_rows` `:1942-1978` — one file, one lane. Run the §2.5 settling query first to establish whether the fabrication is live or dormant |
 
-**`ga_nakshatra.py` is NOT in this lane** — see §4.3.
+| `platform/python-sidecar/pipeline/orchestrator/writers/ga_nakshatra.py` | P2 `:289` **only** (`agree_cnt = total_ay if len(unique) == 1 else 0`) | **`:87` IS OUT OF SCOPE — DO NOT OPEN IT.** Owned exclusively by B-VERIFSTATUS-VOCAB (#910) per Rulings 13 / 13-CORRECTION. Lowercasing `:87` is PROHIBITED OUTRIGHT — it would falsely ground 3,955 rows. See §4.3 for the full ruling and the live ordering conflict |
+
+**`ga_nakshatra.py` IS in this lane — but scoped to `:289` only.** This reverses the original §4.3,
+which wrongly gave the whole file to B-N8-FIX. See **§4.3** for the corrected ownership, the
+`:87` prohibition, and the unresolved merge-ordering escalation.
+
 `rebuild_required: true` → **C1-REBUILD**. §N.5 (L1 is authority over L2+) binds this lane.
 
-### §4.3 — The one queue collision this triage had to resolve: `ga_nakshatra.py`
+> **Collision note (see §4.9):** `gates.py:144` collides with PR #910 **inside the same function**
+> (`run_g7_only_facts_gate_db`). #910 rewrites the exact `valid_statuses` set this lane's P1-f
+> finding is about. Read §4.9's collision table before starting this lane.
 
-The queue creates a genuine two-lane claim on a single file:
-- **B-N8-FIX** owns `ga_nakshatra.py:87` (`"verification_pass_status": "PASS"` hardcoded on every row
-  with zero verification logic — confirmed present verbatim; the purest §N.8 violation in the corpus).
-- **B-NAR-GA** is scoped `ga_nakshatra.py:289` and explicitly told *"NOT `ga_nakshatra.py:87` — that
-  is an §N.8 violation, routed to B-N8-FIX."*
+### §4.3 — `ga_nakshatra.py` — CORRECTED per DVA Rulings 13 / 13-CORRECTION / 74
 
-The two lanes sit on **different dependency chains** (`B-N8-FIX ← A7-N8-AUDIT`;
-`B-NAR-GA ← A8-NAR-TRIAGE`) and would therefore run **concurrently on the same file** — exactly the
-merge conflict this design exists to prevent. Line distance does not help: git conflicts on files,
-and both lanes would rebase onto each other.
+> **This section was REFUTED in its original form and has been rewritten.** The original text
+> resolved the file to **B-N8-FIX, exclusively**, with `:289` riding along. That resolution was
+> authored against a stale read of the ordering rulings and is **wrong**: DVA Rulings 13 and
+> 13-CORRECTION had *already* routed `:87` away from **both** B-NAR-GA and B-N8-FIX, to a dedicated
+> lane. Recording the corrected picture below; the superseded resolution must not be actioned.
 
-**Resolution (this triage's ruling, and the only place §4 overrides the queue):**
+**The two sites are different defects with different owners. They are not one collision.**
 
-> **`ga_nakshatra.py` → B-N8-FIX, exclusively.** The P2 narration finding at `:289`
-> (`agree_cnt = total_ay if len(unique) == 1 else 0`) rides along in **B-N8-FIX's** PR, carrying its
-> narration acceptance criterion with it. **B-NAR-GA must not open this file.**
+#### `ga_nakshatra.py:87` — NOT ASSIGNED TO ANY B-NAR-* OR B-N8-* LANE
 
-Rationale: the `:87` §N.8 defect is the higher-severity, architecturally-significant one and must not
-be blocked, rebased, or delayed by a P2 mislabel; a P2 rider is cheap for the lane already inside the
-file. The reverse assignment would subordinate the §N.8 fix to a cosmetic one.
+Verified verbatim on current `origin/main`
+(`platform/python-sidecar/pipeline/orchestrator/writers/ga_nakshatra.py`, line 87):
 
-**Routed to DVA as a scope question (§4 of the Conductor manual), with this as the recommended
-default so nothing blocks.** Same-file riders also apply, with no collision, to `bo_chart_gestalt.py`
-and `bo_pramana_mapa.py` — both wholly B-N8-FIX, neither claimed by any B-NAR lane.
+```python
+"verification_pass_status":  "PASS",
+```
+
+This site is owned **exclusively by `B-VERIFSTATUS-VOCAB` (PR #910)** per **Ruling 13**, which made
+it one atomic PR with `envelope.ts:1608` and `register_p1_ganita.ts`, and **explicitly removed it
+from B-NAR-GA's *and* B-N8-FIX's scope**. **Ruling 13-CORRECTION** then confirmed the net effect:
+*"B-N8-FIX will not touch `ga_nakshatra.py` at all, confirmed."*
+
+The reason this matters is a safety property, not a bookkeeping preference. Ruling 13's rationale:
+the uppercase `'PASS'` literal **fails** the serve layer's case-sensitive lowercase-only allowlist
+(`envelope.ts` `extractGroundingFromFactRows` accepts only `'two_pass_verified'` / `'pass'`). That
+mismatch is an **accidental safety net** — it is the only thing currently keeping **3,955**
+never-actually-verified rows out of the grounding path. Ruling 13 clause (1) is therefore absolute:
+`:87` **must never be lowercased**; casing normalization on that line is **PROHIBITED OUTRIGHT**.
+A well-meant isolated "fix" here, without the companion `envelope.ts` / `register_p1_ganita.ts`
+vocabulary reconciliation, would hand the LLM 3,955 fake groundings.
+
+> **Binding instruction: no B-NAR-* lane and no B-N8-* lane may open `ga_nakshatra.py:87`.**
+> It is not "assigned" anywhere in this partition. It is out of scope, by ruling, for every lane
+> this document governs.
+
+#### `ga_nakshatra.py:289` — STAYS WITH B-NAR-GA
+
+Verified verbatim on current `origin/main`, line 289:
+
+```python
+agree_cnt = total_ay if len(unique) == 1 else 0
+```
+
+**Ruling 13-CORRECTION** states it directly: *"B-NAR-GA still owns `ga_nakshatra.py:289`;
+B-VERIFSTATUS-VOCAB owns `ga_nakshatra.py:87`."* **Ruling 74** re-confirms, and names the exact
+failure mode the original §4.3 would have caused: had `:87` been handed to B-N8-FIX, `:289` would
+have been **orphaned** — B-NAR-GA's own scope text excludes `:87`, and nothing else claims `:289`.
+
+`ga_nakshatra.py` is therefore **restored to B-NAR-GA's file table (§4.2) and to the §4.9
+enumeration**, scoped to `:289` only.
+
+#### Same-file, two-lane ordering
+
+Both lanes are `rebuild_required: true`. Ruling 13-CORRECTION set the order:
+**B-NAR-GA merges FIRST** (narration-only, simpler), then **B-VERIFSTATUS-VOCAB rebases onto it**
+before touching the file. Per Ruling 25's standing rule, line-level disjointness (`:87` vs `:289`)
+reduces conflict probability but **does not eliminate it** — no lane may treat "different lines" as
+"no conflict."
+
+> ⚠️ **ORDERING CONFLICT — LIVE, UNRESOLVED, ESCALATED TO DVA.** Ruling 74 instructs the B-NAR-*
+> lanes to *"rebase onto #910's already-landed content, not treat it as still-pending."* **#910 has
+> not landed.** Verified twice, this session, against ground truth:
+>
+> - `gh pr view 910` → `"state": "OPEN"`, `"mergedAt": null`.
+> - `git show origin/main:…/ga_nakshatra.py | sed -n 87p` → still `"verification_pass_status":
+>   "PASS"`. The uppercase literal #910 exists to remove **is still on `main`**.
+>
+> Ruling 74 was written on the premise that #910 was merged and VER-CONFIRMED; that premise is
+> false as of this writing. The two rulings give **opposite** orders — 13-CORRECTION says B-NAR-GA
+> first with #910 rebasing onto it; 74 says #910 first with B-NAR-GA rebasing onto it. **This
+> document does not silently pick one.** Until DVA re-rules on the corrected facts, the operative
+> order is **Ruling 13-CORRECTION's** (B-NAR-GA first), because it is the ruling whose factual
+> premise still holds. If #910 merges before B-NAR-GA dispatches, Ruling 74's order becomes the
+> correct one automatically and B-NAR-GA rebases instead — **whichever lane moves second must
+> re-derive its line citations post-rebase**, since `:87`/`:289` will both shift.
+
+**Unchanged from the original section:** same-file riders apply, with no collision, to
+`bo_chart_gestalt.py` and `bo_pramana_mapa.py` — both wholly B-N8-FIX, neither claimed by any
+B-NAR lane.
 
 ### §4.4 — B-NAR-MI · Mīmāṃsā writers
 
