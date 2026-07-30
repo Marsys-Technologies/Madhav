@@ -1,28 +1,54 @@
 """
-`ka_kshetra` (Kāla Kṣetra — "the field of time") — the ṢAḌ-DARŚANA W2 ten-stage point-process
-pipeline, L3 Kāla-seated, built BESIDE the legacy Kāla writers (strangler-fig; brief §7 rail
-2 — `kala_gochara_windows` data, `build_substep_progress` and the sealed harness are
-untouchable, and `ka_gochara_sweep` / `ka_sangam` / `ka_yojaka` / `ka_kalasutra` / `ka_taranga`
-keep running and keep serving through W2).
+services/ka_kshetra — ṢAḌ-DARŚANA Wave W2, "the field as science".
 
-This package is built by FIVE PARALLEL LANES with disjoint file ownership
-(`KALA_W2_FIELD_DESIGN_v1_0.md` §0):
+The ten-stage point-process pipeline behind the `ka_kshetra` asset. Built BESIDE
+the legacy L3 writers (strangler-fig): `ka_gochara_sweep`, `ka_sangam`,
+`ka_yojaka`, `ka_kalasutra` and `ka_taranga` keep running and keep serving
+through W2, and this package writes ZERO rows to any legacy table.
 
-    Lane A  stage0_kinematics.py · stage1_symbolization.py · stage2_promise.py
-    Lane B  stage3_clocks.py · uncertainty.py
-    Lane C  stage4_field.py · hazard.py · integrator.py · stage5_null.py
-    Lane D  stage6_salience.py · submodular.py · cohort_client.py · stage65_insights.py
-    Lane E  stage8_spec.py                                              ← this lane's only file
+MODULE MAP (lane ownership per KALA_W2_FIELD_DESIGN_v1_0.md §0):
+  contracts.py       shared dataclasses that cross lane boundaries (owned by
+                     nobody; frozen by the design, edited only by a cross-lane PR)
+  hazard.py          §5.1 the hazard formula                          Lane C
+  integrator.py      §5.2 log-linear segments + exact integration     Lane C
+  stage4_field.py    §5.2-§5.4 field assembly + provenance            Lane C
+  stage5_null.py     §5.5-§5.6 circular-shift null + robustness       Lane C
+  writer.py          the @register('ka_kshetra') WriterBase subclass  Lane C
+  stage0_kinematics.py / stage1_symbolization.py / stage2_promise.py  Lane A
+  stage3_clocks.py / uncertainty.py                                   Lane B
+  stage6_salience.py / submodular.py / cohort_client.py /
+    stage65_insights.py                                               Lane D
+  stage8_spec.py                                                      Lane E
 
-A lane never reads another lane's CODE; it reads another lane's TABLE (or calls its one
-published function). This `__init__.py` is therefore deliberately inert — no re-exports, no
-imports — so that adding a module to the package can never, by itself, create a cross-lane
-import edge.
+Lane D owns Stage 6 (salience vector + submodular selection + rarity axis,
+registry items 25/15) and Stage 6.5 (insight synthesis, E2):
 
-CIRCULARITY GUARD (brief §7 rail, peer of LAW ZERO): stages 0–8 NEVER read the LEL. The field
-is a pure function of `(chart, corpus_pin, config_pin, weights_version, cohort_version)`.
-Stage 9 (`services/mi_bhara/`) is the only stage that may see it. Both halves of the guard —
-a static census over this package's source, and an empirical LEL-mutation invariance proof —
-are enforced by `tests/l5/test_mi_bhara_circularity_guard_w2.py` and by
-`.github/workflows/shad-darshana-circularity-guard.yml`.
+    from services.ka_kshetra.cohort_client import cohort_base_rate, CohortRate
+    from services.ka_kshetra.stage6_salience import compute_salience_vector
+    from services.ka_kshetra.submodular import select_submodular
+    from services.ka_kshetra.stage65_insights import synthesize_insights
+
+This `__init__.py` is shared, additive territory: each lane exports its own
+published symbols here without importing (or depending on the presence of)
+another lane's module, so a lane landing before or after another never breaks
+import. A lane with nothing to pre-export (e.g. Lane C's modules are imported
+directly by the orchestration shim, not re-exported here) adds none.
+
+THE CIRCULARITY GUARD (section 8.3 - a HARD, unsoftenable campaign gate, peer of
+LAW ZERO): stages 0-8 NEVER read the life-event log. The field is a pure function
+of (chart, corpus_pin, config_pin, weights_version, cohort_version); only stage 9
+(`mi_bhara`, Lane E) may see lived outcomes. The invariant is stated over the
+field CONTENT hash and is enforced by two independent detectors - a static source
+census and a dynamic hash-invariance test under LEL mutation - in
+tests/l3/ka_kshetra/test_circularity_guard.py.
+
+The orchestration shim (`pipeline/orchestrator/writers/ka_kshetra.py`,
+`@register('ka_kshetra')`) is written ONCE by Lane C and is NOT part of this
+package — it imports from here, never the reverse.
 """
+from __future__ import annotations
+
+from . import stage3_clocks
+from . import uncertainty
+
+__all__ = ["stage3_clocks", "uncertainty"]
