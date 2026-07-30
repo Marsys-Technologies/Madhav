@@ -2086,6 +2086,91 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     scope: 'per_chart', is_active: true, estimated_seconds: null,
     asset_kind: 'service',
   },
+
+  // ══ ṢAḌ-DARŚANA W2 — the temporal field as science ═══════════════════════════
+  // Spec: 00_ARCHITECTURE/llm_consumption_audit/briefs/kala_elevation/
+  //       KALA_W2_FIELD_DESIGN_v1_0.md §9.1 (DAG edges), §9.2 (these rows).
+  {
+    // ⚠ LANE-C-OWNED ROW — PLACEHOLDER, reconciled at the W2 integration pass.
+    //
+    // `ka_kshetra` (stages 0–8 of the field pipeline) is Lane C's asset and its seed row
+    // lands with its writer, per brief §2.5.1. This lane (E) owns `mi_bhara`, whose
+    // `depends_on: ['ka_kshetra']` is required by §7.5's acyclicity rule — and
+    // scripts/__tests__/catalog_reconciliation.test.ts requires every depends_on entry to
+    // resolve. So a lane-isolated Lane E PR cannot be green without SOME ka_kshetra row.
+    //
+    // This one is deliberately INERT rather than authoritative:
+    //   • `has_writer` is absent (defaults false) and `is_active: false`, so no build plan
+    //     can select it and no cockpit surface counts it;
+    //   • `depends_on: []` rather than §9.1's eight edges, because TWO of those eight —
+    //     `ka_gochara_sweep` and `ka_gochara_resonance` — HAVE NO SEED ROW IN THIS FILE
+    //     today (verified 2026-07-30). Declaring them here would fail the very
+    //     depends_on-resolution test this row exists to satisfy. That gap is Lane C's to
+    //     close (§2.5.1 "every edge must resolve to an existing asset_id"), and it is
+    //     recorded here rather than discovered at integration.
+    // Lane C's version REPLACES this row wholesale.
+    asset_id: 'ka_kshetra',
+    layer: 'kala', sort_order: 15,
+    sanskrit_name: 'Kāla Kṣetra',
+    english_name: 'Temporal Field',
+    english_description:
+      'The ten-stage point-process temporal field: kinematics, symbolization, promise graph, ' +
+      'clocks, hazard assembly with persisted provenance, circular-shift null, salience, ' +
+      'insight synthesis, and the renderer-agnostic timeline spec. Built BESIDE the legacy ' +
+      'Kāla writers (strangler-fig). ṢAḌ-DARŚANA W2, Lanes A–E.',
+    storage_type: 'postgres_table',
+    target_table: 'kala_field',
+    count_sql: 'SELECT count(*) FROM kala_field WHERE chart_id = $1',
+    size_sql: "SELECT pg_total_relation_size('kala_field')",
+    target_floor: null,
+    expected_volume_formula: null,
+    expected_volume_inputs: null,
+    volume_explanation:
+      'Log-linear hazard segments per event class over a 100-year horizon; set to the ' +
+      'ACHIEVED count after the first build (§N.4 — floors are aspirational, never fabricated).',
+    depends_on: [],
+    scope: 'per_chart', is_active: false, estimated_seconds: null,
+  },
+  {
+    // Lane E's own row — the authoritative one. Mirrors migration 483's INSERT exactly.
+    //
+    // `depends_on: ['ka_kshetra']` and NOTHING ELSE, and `ka_kshetra` must NEVER list
+    // `mi_bhara` in return: that pair of edges forms the cycle ka_kshetra → mi_bhara →
+    // ka_kshetra, and `resolveBuildPlan`'s topoSort would then reject EVERY plan containing
+    // either asset — breaking every future chart build, not just this wave's. The
+    // calibration loop closes by VERSION PIN across builds (weights v0 seeded by migration
+    // 476; ka_kshetra reads the newest active version as a DATA dependency; mi_bhara writes
+    // a new version; the next rebuild pins it), which keeps the DAG acyclic within every
+    // build. Asserted by platform/tests/unit/build/w2_weights_acyclicity.test.ts.
+    //
+    // count_sql points at kala_field_skill rather than at target_table
+    // (kala_field_weight_versions) on purpose: weight VERSIONS are partly global, while the
+    // chart-scoped evidence this asset produces for a given chart is its skill rows — and
+    // the cockpit stats route reads count_sql, not asset_throughput (§N.4 cockpit-truth rail).
+    asset_id: 'mi_bhara',
+    layer: 'mimamsa', sort_order: 13,
+    sanskrit_name: 'Kāla Bhāra',
+    english_name: 'Field Weight Calibration',
+    english_description:
+      'Stage 9 of the temporal-field pipeline: fits the hazard field\'s weights against this ' +
+      'chart\'s recorded life events (blocked forward-chaining CV, shrinkage to the classical ' +
+      'structural priors), publishes a new versioned weights artifact, and reports the ' +
+      'temporal skill score and the time-rescaling goodness-of-fit. The ONLY stage permitted ' +
+      'to read the LEL (CIRCULARITY GUARD). ṢAḌ-DARŚANA items 21/39.',
+    storage_type: 'postgres_table',
+    target_table: 'kala_field_weight_versions',
+    count_sql: 'SELECT count(*) FROM kala_field_skill WHERE chart_id = $1',
+    size_sql: "SELECT pg_total_relation_size('kala_field_skill')",
+    target_floor: null,
+    expected_volume_formula: null,
+    expected_volume_inputs: null,
+    volume_explanation:
+      'One skill row per scored event class plus one chart-level aggregate; grows only as the ' +
+      'LEL grows. A chart with no LEL correctly produces the structural-prior state with ' +
+      'skill_state = underpowered — an honest zero, not an error.',
+    depends_on: ['ka_kshetra'],
+    scope: 'per_chart', is_active: true, estimated_seconds: null,
+  },
 ]
 
 // ── Coefficient definitions ───────────────────────────────────────────────────

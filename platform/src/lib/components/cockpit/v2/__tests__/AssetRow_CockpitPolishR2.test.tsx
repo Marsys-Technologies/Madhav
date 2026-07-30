@@ -332,9 +332,9 @@ describe('CF.L3.8 — StatusDot: DRAFT catalog_status does not override healthy 
   })
 })
 
-// ── Seed governance: Kāla layer must have exactly 14 assets after hard-removal of ka_transit_almanac ──
+// ── Seed governance: Kāla layer count after hard-removal of ka_transit_almanac ──
 describe('Asset seed governance — Kāla layer', () => {
-  it('has exactly 14 kala assets in the seed (ka_transit_almanac removed; ka_avadhi + ka_taranga registered)', () => {
+  it('has exactly 15 kala assets in the seed (ka_transit_almanac removed; ka_avadhi + ka_taranga + ka_kshetra registered)', () => {
     const { readFileSync } = require('fs')
     const { resolve } = require('path')
     const seedContent: string = readFileSync(resolve(process.cwd(), 'scripts/seed/asset_registry_seed.ts'), 'utf8')
@@ -342,9 +342,15 @@ describe('Asset seed governance — Kāla layer', () => {
     // BA Phase 2.5: ka_avadhi and ka_taranga are real, already-registered
     // (@register) writers with live populated tables that were never added to
     // this seed catalog — the same class of gap fixed for bo_pratijna/bg_ghatana
-    // this same session. Raises the count from 12 to 14; does not reintroduce
+    // this same session. Raised the count from 12 to 14; did not reintroduce
     // ka_transit_almanac (see the next test).
-    expect(kalaMatches).toHaveLength(14)
+    //
+    // ṢAḌ-DARŚANA W2 (2026-07-30): 14 → 15 with `ka_kshetra`, the temporal-field
+    // pipeline (stages 0–8), added by Lane E as an INERT placeholder so that
+    // `mi_bhara.depends_on = ['ka_kshetra']` resolves in a lane-isolated PR —
+    // see that row's own comment in the seed. Lane C replaces the row's content
+    // at the W2 integration pass; the COUNT does not change when it does.
+    expect(kalaMatches).toHaveLength(15)
   })
 
   it('contains no ka_transit_almanac entry in the seed', () => {

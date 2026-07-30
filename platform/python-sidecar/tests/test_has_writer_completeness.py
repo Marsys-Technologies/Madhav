@@ -173,6 +173,13 @@ KNOWN_HAS_WRITER_TRUE: frozenset[str] = frozenset({
     "mi_sambandha",
     "mi_seva",
     "mi_vistara",
+    # ── L5 Mīmāṃsā — migration 483 (ṢAḌ-DARŚANA W2 Lane E, items 21/39) ──────
+    # Stage 9 of the temporal-field pipeline: weight fitting, weights versioning,
+    # temporal skill score, time-rescaling GOF, and the Living-LEL plane.
+    # depends_on = ['ka_kshetra'] ONLY — never the reverse (KALA_W2_FIELD_DESIGN
+    # §7.5: that edge would form an L3↔L5 cycle and topoSort would reject every
+    # build plan containing either asset).
+    "mi_bhara",
 })
 
 # Sub-registrations that share a writer with their parent.
