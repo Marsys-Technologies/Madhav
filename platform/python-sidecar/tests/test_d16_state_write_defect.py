@@ -123,7 +123,9 @@ class _PartialPlanWriter(WriterBase):
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _patch_common(monkeypatch, writer_cls, events: list | None = None):
-    monkeypatch.setattr(ar, "emit_event", (events.append if events is not None else lambda e: None))
+    monkeypatch.setattr(ar, "emit_event",
+                        (lambda e, cur=None: events.append(e)) if events is not None
+                        else (lambda e, cur=None: None))
     monkeypatch.setattr(ar, "discover_all", lambda: None)
     monkeypatch.setattr(ar, "get_writer", lambda aid: writer_cls)
     monkeypatch.setattr(ar, "fetch_birth_params", lambda conn, cid: {"chart_id": cid})
@@ -235,7 +237,7 @@ def test_d16_zero_rows_probe_unavailable_stays_dormant(monkeypatch):
 
 def test_guard_state_write_recovers_zero_rowcount(monkeypatch):
     events: list = []
-    monkeypatch.setattr(ar, "emit_event", events.append)
+    monkeypatch.setattr(ar, "emit_event", lambda e, cur=None: events.append(e))
     cur = FakeCursor(rowcount=0)
     ar._guard_state_write(cur, "run-1", "chart-abc", "ka_sangam", "lit")
     inserts = cur.sqls_containing("INSERT INTO asset_throughput")
@@ -244,7 +246,7 @@ def test_guard_state_write_recovers_zero_rowcount(monkeypatch):
 
 
 def test_guard_state_write_noop_on_normal_rowcount(monkeypatch):
-    monkeypatch.setattr(ar, "emit_event", lambda e: None)
+    monkeypatch.setattr(ar, "emit_event", lambda e, cur=None: None)
     cur = FakeCursor(rowcount=1)
     ar._guard_state_write(cur, "run-1", "chart-abc", "ka_sangam", "lit")
     assert not cur.sqls_containing("INSERT INTO asset_throughput")
@@ -252,7 +254,7 @@ def test_guard_state_write_noop_on_normal_rowcount(monkeypatch):
 
 def test_guard_state_write_tolerates_missing_rowcount(monkeypatch):
     """Cursors without a rowcount attribute (fakes, exotic drivers) are a no-op."""
-    monkeypatch.setattr(ar, "emit_event", lambda e: None)
+    monkeypatch.setattr(ar, "emit_event", lambda e, cur=None: None)
     cur = FakeCursor(rowcount=1)
     del cur.rowcount
     ar._guard_state_write(cur, "run-1", "chart-abc", "ka_sangam", "lit")
@@ -261,7 +263,7 @@ def test_guard_state_write_tolerates_missing_rowcount(monkeypatch):
 
 def test_mark_asset_error_zero_rowcount_recovers(monkeypatch):
     """mark_asset_error on a missing throughput row must not silently lose 'error'."""
-    monkeypatch.setattr(ar, "emit_event", lambda e: None)
+    monkeypatch.setattr(ar, "emit_event", lambda e, cur=None: None)
     conn, cur = FakeConn(), FakeCursor(rowcount=0)
     ar.mark_asset_error(conn, cur, "run-1", "chart-abc", "ka_sangam", "boom")
     assert cur.sqls_containing("INSERT INTO asset_throughput")
@@ -278,7 +280,7 @@ def test_dep_assert_block_names_data_present_anomaly(monkeypatch):
     def fake_mark_error(conn, cur, run_id, chart_id, asset_id, msg):
         captured["msg"] = msg
 
-    monkeypatch.setattr(ar, "emit_event", events.append)
+    monkeypatch.setattr(ar, "emit_event", lambda e, cur=None: events.append(e))
     monkeypatch.setattr(ar, "deps_unsatisfied", lambda cur, cid, aid: ["ka_sangam(dormant)"])
     monkeypatch.setattr(ar, "mark_asset_error", fake_mark_error)
     monkeypatch.setattr(ar, "_data_rows_present", lambda conn, cur, aid, cid: 2488)
@@ -298,7 +300,7 @@ def test_dep_assert_block_names_data_present_anomaly(monkeypatch):
 def test_dep_assert_block_without_data_has_no_anomaly(monkeypatch):
     """A legitimate block (dep truly absent) must not claim an anomaly."""
     captured: dict = {}
-    monkeypatch.setattr(ar, "emit_event", lambda e: None)
+    monkeypatch.setattr(ar, "emit_event", lambda e, cur=None: None)
     monkeypatch.setattr(ar, "deps_unsatisfied", lambda cur, cid, aid: ["ka_sangam(absent)"])
     monkeypatch.setattr(ar, "mark_asset_error",
                         lambda conn, cur, run_id, chart_id, asset_id, msg: captured.update(msg=msg))

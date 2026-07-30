@@ -68,7 +68,7 @@ class _NonZeroRowWriter(WriterBase):
 
 def _run_with_writer(monkeypatch, writer_cls, chart_id) -> FakeCursor:
     """Run _run_data_writer with the given writer class injected via get_writer stub."""
-    monkeypatch.setattr(ar, 'emit_event', lambda e: None)
+    monkeypatch.setattr(ar, 'emit_event', lambda e, cur=None: None)
     monkeypatch.setattr(ar, 'discover_all', lambda: None)
     monkeypatch.setattr(ar, 'get_writer', lambda aid: writer_cls)
     monkeypatch.setattr(ar, 'fetch_birth_params', lambda conn, cid: {'chart_id': cid})
