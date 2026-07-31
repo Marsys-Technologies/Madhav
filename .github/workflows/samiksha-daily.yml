@@ -56,18 +56,45 @@ jobs:
     defaults:
       run:
         working-directory: platform
+    # CI efficiency audit (2026-07-31): the DATABASE_URL check happened AFTER
+    # checkout + setup-node + `npm ci`, so this workflow spent ~40s of runner time
+    # every single day to print "no secret configured" and exit 0. The secret does
+    # not exist in this repo (`gh secret list` shows PROD_DATABASE_URL, not
+    # DATABASE_URL — worth confirming which one this job is actually meant to use),
+    # so that has been the outcome of every run since it merged.
+    #
+    # The check is hoisted ahead of the setup steps so an unconfigured run costs a
+    # couple of seconds instead of ~40s. It is a step-level guard, not a job-level
+    # `if:`, because the `secrets` context is NOT available in `jobs.<id>.if` —
+    # only github/needs/vars/inputs are. Promoting the secret to job-level `env`
+    # and testing `env.` in a step `if:` is the supported way to do this.
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
     steps:
+      - name: Preflight — DATABASE_URL configured?
+        working-directory: ${{ github.workspace }}
+        run: |
+          if [ -z "${DATABASE_URL}" ]; then
+            echo "[samiksha-daily] DATABASE_URL is not configured — nothing to do."
+            echo "[samiksha-daily] Set the DATABASE_URL repo secret to enable the daily sweep."
+            echo "[samiksha-daily] NOTE: this repo has PROD_DATABASE_URL but no DATABASE_URL;"
+            echo "[samiksha-daily] confirm which one this job is meant to read."
+          fi
+
       - uses: actions/checkout@v4
+        if: env.DATABASE_URL != ''
       - uses: actions/setup-node@v4
+        if: env.DATABASE_URL != ''
         with:
           node-version: '20'
           cache: 'npm'
           cache-dependency-path: platform/package-lock.json
       - run: npm ci
+        if: env.DATABASE_URL != ''
 
       - name: Run the consolidated daily job (log-only digest — W-5 stub)
+        if: env.DATABASE_URL != ''
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
           AS_OF: ${{ inputs.as_of }}
           CHART: ${{ inputs.chart }}
         run: |

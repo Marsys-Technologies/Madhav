@@ -12,13 +12,19 @@ name: Chat V2 — Workstream CI
 #     no-op because stryker.conf.json was never created and stryker is not a
 #     dependency in platform/package.json.
 #   - Stage 15 was `if: ${{ false }}`.
-# The weekly `schedule:` trigger went with them — it existed solely for Stage 13.
-# Re-add any of these as a real gate when the work item lands; do not restore the
-# label-gated scaffolding.
+# The old weekly `schedule:` went with them — it existed solely for Stage 13. The
+# nightly cron below is a NEW trigger, for Stage 7 (see that job's comment).
+# Re-add any removed stage as a real gate when the work item lands; do not restore
+# the label-gated scaffolding.
 #
 # (Stages 8 and 9 were removed earlier, also as echo-only no-ops.)
 
 on:
+  schedule:
+    # 02:00 UTC nightly — Stage 7 (performance) only; every other stage is
+    # pull_request-scoped and no-ops on this event.
+    - cron: '0 2 * * *'
+  workflow_dispatch:
   pull_request:
     branches:
       - main
@@ -184,36 +190,8 @@ jobs:
           NEXT_PUBLIC_FIREBASE_APP_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_APP_ID }}
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Stage 5 — Visual regression
-# Gate: HARD from α1
-# ─────────────────────────────────────────────────────────────────────────────
-  stage-5-visual-regression:
-    name: 'Stage 5 — Visual Regression'
-    runs-on: ubuntu-latest
-    needs: stage-3-e2e-chromium
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-          cache-dependency-path: platform/package-lock.json
-
-      - name: Install deps
-        run: npm ci
-
-      - name: Install Playwright browsers
-        run: npx playwright install chromium --with-deps
-
-      - name: Visual regression — chat-v2
-        run: npx playwright test --config=tests/e2e/chat-v2/playwright.config.ts --grep "@visual" --project=chromium --reporter=github || echo "STAGE-5-VISUAL no visual specs yet (baselines added incrementally per work item)"
-        env:
-          MARSYS_FIXTURE_MODE: 'true'
-
-# ─────────────────────────────────────────────────────────────────────────────
 # Stage 6 — Accessibility (axe-core)
-# Gate: HARD from γ8; SOFT before that
+# Gate: HARD (flipped by the CI efficiency audit, 2026-07-31)
 # ─────────────────────────────────────────────────────────────────────────────
   stage-6-a11y:
     name: 'Stage 6 — Accessibility (axe-core)'
@@ -235,20 +213,39 @@ jobs:
         run: npx playwright install chromium --with-deps
 
       - name: a11y — axe-core audit
-        # SOFT gate (continue-on-error) until γ8 flips it HARD
-        continue-on-error: true
+        # HARDENED by the CI efficiency audit (2026-07-31). This was `continue-on-error:
+        # true` "until γ8 flips it HARD" — a flip that never happened, so the stage spent
+        # 190s per PR proving nothing: no outcome of axe.spec.ts could fail the build.
+        # It passes today (verified against the 2026-07-30 run: every step `success`, and
+        # the job is green on its own merits, not on the error suppression). A gate that
+        # passes is a gate worth enforcing, so the suppression is gone.
         run: npx playwright test tests/e2e/chat-v2/a11y/axe.spec.ts --config=tests/e2e/chat-v2/playwright.config.ts --project=chromium --reporter=github
         env:
           MARSYS_FIXTURE_MODE: 'true'
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Stage 7 — Performance (Lighthouse CI + streaming metrics)
-# Gate: SOFT (warn) until γ; HARD at γ
+# Stage 7 — Performance (streaming metrics + Web Vitals budgets)
+# Gate: HARD, but nightly/on-demand rather than per-PR (CI efficiency audit,
+#       2026-07-31). See the job comment for why it moved off the PR path.
 # ─────────────────────────────────────────────────────────────────────────────
   stage-7-perf:
-    name: 'Stage 7 — Performance'
+    name: 'Stage 7 — Performance [nightly]'
     runs-on: ubuntu-latest
-    needs: stage-3-e2e-chromium
+    # Both steps were `continue-on-error: true` "until γ activates hard gating" —
+    # a flip that never happened. So this stage spent 313s on EVERY chat-v2 PR (the
+    # single most expensive job in the workflow) and could not fail the build: pure
+    # cost, zero signal.
+    #
+    # Both specs pass today, so the honest fix is to enforce them. But perf
+    # assertions on shared GitHub runners are the textbook flake source — noisy
+    # neighbours move streaming and Web Vitals numbers independent of the diff —
+    # and that flakiness is almost certainly WHY the suppression was added and never
+    # removed. Hardening it per-PR would trade a useless green for a random red.
+    #
+    # So: enforced, but on a schedule where a flake costs an investigation rather
+    # than a blocked merge, and available on demand for PRs that touch streaming.
+    # If it proves stable here, move it back onto pull_request as a hard gate.
+    if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -265,14 +262,11 @@ jobs:
         run: npx playwright install chromium --with-deps
 
       - name: Streaming perf tests
-        # SOFT gate until γ activates hard gating
-        continue-on-error: true
         run: npx playwright test tests/e2e/chat-v2/perf/streaming.spec.ts --config=tests/e2e/chat-v2/playwright.config.ts --project=chromium --reporter=github
         env:
           MARSYS_FIXTURE_MODE: 'true'
 
       - name: Web Vitals budget assertions
-        continue-on-error: true
         run: npx playwright test tests/e2e/chat-v2/perf/web-vitals.spec.ts --config=tests/e2e/chat-v2/playwright.config.ts --project=chromium --reporter=github
         env:
           MARSYS_FIXTURE_MODE: 'true'
