@@ -10,9 +10,10 @@ synthesis_quality_scorecard:
   - Formula versions in use
   - Trap checks (authority inversion = MSR re-deriving L1 facts)
   - §N.8 earned-signal detectors (see the detector block below): LEL leak,
-    pillar reachability, trap-2 narration leak, verification divergence.
-    Every one of these has a reachable false/non-zero branch — none is a
-    proxy, a tautology, or a literal.
+    pillar reachability, no-threshold-drop (weak-tail presence), trap-2
+    narration leak, verification divergence. Every one of these has a
+    reachable false/non-zero branch — none is a proxy, a tautology, or a
+    literal.
   - Materialised view refresh (3 MVs from A10, 5 from A11)
 
 Also refreshes the 3 spec materialized views:
@@ -114,12 +115,14 @@ def _refresh_mv(conn: Any, mv_name: str) -> None:
 # measured, and returns `None` (not a clean-looking default) when a term could
 # not be evaluated at all.  None of these gates may be true-by-construction.
 #
-# Prior state (all four were §N.8 violations, confirmed in
+# Prior state (all §N.8 violations, confirmed in
 # SAMAPTI_N8_EARNED_SIGNAL_REGISTER_v1_0.md §2.1):
 #   F-07 lel_zero_leak_pass             — PROXY    (trap1_count == 0; no LEL read at all)
 #   F-08 pillars_meet_reachability_pass — TAUTOLOGY (msr_count > 0, already raised above)
 #   F-09 trap2_narration_leak_count     — LITERAL 0 (no detector)
 #   F-10 divergent_flagged_count        — LITERAL 0 (no detector)
+#   F-13 msr_no_threshold_drop_flag     — TAUTOLOGY (msr_count > 0, IDENTICAL shape to F-08,
+#                                          fixed in the PŪRṆATĀ pass — see the F-13 block below)
 
 # ── F-07 · LEL leakage into the deterministic Bodha base ──────────────────────
 # L2 Bodha is timeless-structural; Life-Event-Log data is L3-gated. Every bo_*
@@ -254,6 +257,71 @@ def detect_pillar_reachability(
     terms["orphan_cgm_edge_endpoints"] = orphan_endpoints
     terms["orphan_cgm_edge_signal_refs"] = orphan_signal_refs
     passed = all(presence.values()) and orphan_endpoints == 0 and orphan_signal_refs == 0
+    return {"pass": passed, "terms": terms, "error": None}
+
+
+# ── F-13 · no-threshold-drop (weak-tail-present) gate ─────────────────────────
+# Doctrine (L2_BODHA_MASTER_PLAN_v3_0.md, L2_BODHA_OVERALL_APPROACH_v1_0.md,
+# CLAUDECODE_BRIEF_BO_LAKSANA_v1_0.md et al.): Bodha projects ALL of L1 into MSR
+# signals — salience is a column, NEVER a filter. "No threshold drop" is the
+# claim that the weak tail (low-salience signals) actually reached
+# bodha_msr_signals, i.e. no upstream writer silently curated signals below
+# some salience cutoff before they landed in this table.
+#
+# The prior expression (`msr_count > 0`) is the IDENTICAL tautology to F-08:
+# msr_count == 0 already raises ~300 lines above this dict, so the branch that
+# would prove a drop occurred was unreachable. Mirroring the F-08 repair
+# pattern exactly: presence is kept only as a stored breakdown term; the actual
+# pass condition needs a second, independent term the tautology lacked — here,
+# that at least one signal for this chart actually carries a low-salience
+# value, proving the weak tail was not curated away.
+#
+# _WEAK_TAIL_SALIENCE_THRESHOLD reuses the "background" tier boundary already
+# in use on the shared computed_salience scale every bo_* writer emits into via
+# salience_formula_v1/v2 (bodha_writers/formulas.py): bo_arudha.py's own
+# _TIER_SUPPORTING = 0.3 (below which bo_arudha itself calls a signal
+# "background" tier, i.e. the weak tail). Reusing the existing boundary keeps
+# this detector from inventing a second, uncoordinated definition of "weak".
+_WEAK_TAIL_SALIENCE_THRESHOLD = 0.3
+
+_WEAK_TAIL_COUNT_SQL = """
+SELECT count(*) FROM bodha_msr_signals
+ WHERE chart_id = %s AND computed_salience < %s
+"""
+
+
+def detect_no_threshold_drop(conn: Any, chart_id: str, msr_count: int) -> dict:
+    """REAL no-threshold-drop (weak-tail-present) gate.
+
+    Term 1 (presence): msr_count > 0 — already enforced ~300 lines above this
+      call, so on its own it is exactly the F-08-shaped tautology this
+      replaces. Kept only as a stored breakdown term, never as the sole pass
+      condition.
+    Term 2 (weak-tail presence — the independent term the tautology lacked):
+      at least one signal for this chart carries computed_salience below
+      `_WEAK_TAIL_SALIENCE_THRESHOLD`. If every signal clears that boundary,
+      either this chart is a genuine outlier or a salience-based curation
+      filter has been (re)introduced upstream — either way "no drop" cannot be
+      certified from mere row presence.
+
+    Returns {"pass": bool|None, "terms": {...}, "error": str|None}.
+
+    Can-fail: delete (or never insert) every bodha_msr_signals row with
+    computed_salience below 0.3 for this chart — term 2 goes to 0 and `pass`
+    flips to False, something `msr_count > 0` can never do.
+    """
+    terms: dict[str, Any] = {
+        "msr_signal_count": msr_count,
+        "weak_tail_salience_threshold": _WEAK_TAIL_SALIENCE_THRESHOLD,
+    }
+    try:
+        weak_tail_count = _count_one(conn, _WEAK_TAIL_COUNT_SQL, [chart_id, _WEAK_TAIL_SALIENCE_THRESHOLD])
+    except Exception as exc:  # unevaluable ⇒ unknown, NOT a pass
+        logger.warning("[bo_pramana_mapa] no-threshold-drop detector unevaluable: %s", exc)
+        return {"pass": None, "terms": terms, "error": str(exc)}
+
+    terms["weak_tail_signal_count"] = weak_tail_count
+    passed = msr_count > 0 and weak_tail_count > 0
     return {"pass": passed, "terms": terms, "error": None}
 
 
@@ -533,15 +601,17 @@ class BoPramanaMapa(WriterBase):
         res_ver  = _formula_version(conn, chart_id, "resonance_score_formula_version", "bodha_rm_resonances")
         conv_ver = _formula_version(conn, chart_id, "convergence_formula_version", "bodha_convergence")
 
-        # ── §N.8 earned-signal detectors (lane B-N8-FIX; register F-07…F-10) ──
-        # Each of the four fields below previously carried a proxy, a tautology,
-        # or a literal 0. They now carry a real detector whose False/non-zero
-        # branch is reachable from real DB state; see the detector docstrings for
-        # the exact mutation that makes each one fail.
+        # ── §N.8 earned-signal detectors (lane B-N8-FIX + PŪRṆATĀ; register
+        # F-07…F-10, F-13) ──────────────────────────────────────────────────
+        # Each of the five fields below previously carried a proxy, a
+        # tautology, or a literal 0. They now carry a real detector whose
+        # False/non-zero branch is reachable from real DB state; see the
+        # detector docstrings for the exact mutation that makes each one fail.
         lel_result      = detect_lel_leak(conn, chart_id)
         pillars_result  = detect_pillar_reachability(
             conn, chart_id, msr_count, cdlm_count, node_count, edge_count, res_count,
         )
+        no_drop_result  = detect_no_threshold_drop(conn, chart_id, msr_count)
         trap2_result    = count_narration_leaks(conn, chart_id)
         divergent_result = count_divergent_signals(conn, chart_id)
 
@@ -599,7 +669,10 @@ class BoPramanaMapa(WriterBase):
             "divergent_flagged_count": divergent_result["count"],
             "two_pass_verified_pct": two_pass_pct,
             "documented_approximation_pct": doc_approx_pct,
-            "msr_no_threshold_drop_flag": msr_count > 0,
+            # F-13 (was `msr_count > 0`, the IDENTICAL tautology to F-08 —
+            # msr_count == 0 already raises ~300 lines above): real
+            # weak-tail-presence gate. None when unevaluable — never True.
+            "msr_no_threshold_drop_flag": no_drop_result["pass"],
             "msr_citation_ref_coverage_pct": citation_pct,
             "salience_formula_version": sal_ver or VERSION_SALIENCE_FORMULA,
             "linkage_formula_version": link_ver or VERSION_LINKAGE_FORMULA,
@@ -658,6 +731,7 @@ class BoPramanaMapa(WriterBase):
                 "n8_detectors": {
                     "lel_zero_leak_pass": lel_result,
                     "pillars_meet_reachability_pass": pillars_result,
+                    "msr_no_threshold_drop_flag": no_drop_result,
                     "trap2_narration_leak_count": trap2_result,
                     "divergent_flagged_count": divergent_result,
                 },
@@ -668,9 +742,10 @@ class BoPramanaMapa(WriterBase):
         conn.execute(_SCORECARD_INSERT, scorecard)
         logger.info(
             "[bo_pramana_mapa] scorecard written: trap1=%d msr=%d "
-            "lel_zero_leak=%s pillars_reachable=%s trap2_leaks=%d divergent=%d",
+            "lel_zero_leak=%s pillars_reachable=%s no_threshold_drop=%s "
+            "trap2_leaks=%d divergent=%d",
             trap1_count, msr_count,
-            lel_result["pass"], pillars_result["pass"],
+            lel_result["pass"], pillars_result["pass"], no_drop_result["pass"],
             trap2_result["count"], divergent_result["count"],
         )
 
