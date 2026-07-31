@@ -33,11 +33,33 @@ name: Elevation Campaign — Serving Gates (Stream α / SATYA, Lane K1)
 # validity and consistency with ci.yml's own Node/npm-ci/working-directory conventions is what
 # was checked before landing it; the first real execution is CI's, not this session's.
 
+# Trigger scoping (CI efficiency audit, 2026-07-31). This workflow previously ran on
+# EVERY pull request with no path filter. Its gates only ever read two source trees —
+# verified by reading the scripts, not by assuming:
+#   _tool_enumeration.ts  -> platform-mcp/src/tools        (smoke / budget-census / receipt)
+#   absence_lint_gate.ts  -> platform/src/lib/retrieval/registry
+# so a PR touching neither cannot change any gate's verdict. Measured over the last 60
+# commits to main, 75% of them touch none of the paths below.
+#
+# Safe because none of this workflow's checks is required by branch protection on main
+# (verified 2026-07-31: the only required checks are TypeScript (src only), Unit Tests,
+# Secret Scan, Governance Gates). A non-required check that stops firing simply does not
+# appear; it cannot leave a PR permanently pending. NEVER add a path filter to ci.yml.
+#
+# To revert: delete the `paths:` block.
 on:
   push:
     branches: [main, 'feature/**']
   pull_request:
     branches: [main]
+    paths:
+      # The gates' own source
+      - 'platform/scripts/census/elev_gates/**'
+      # What the gates actually scan
+      - 'platform-mcp/src/**'
+      - 'platform/src/lib/retrieval/**'
+      # This file
+      - '.github/workflows/elev-serving-gates.yml'
   workflow_dispatch:
 
 # CI efficiency audit (2026-07-31): no workflow in this repo had a concurrency
