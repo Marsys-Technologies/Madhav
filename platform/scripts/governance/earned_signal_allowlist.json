@@ -74,7 +74,7 @@
       "field": "orientation_ok",
       "line": null,
       "pattern": null,
-      "max_occurrences": 1,
+      "max_occurrences": 2,
       "sample_lines": [
         1875
       ],
