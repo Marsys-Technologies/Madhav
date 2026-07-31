@@ -102,7 +102,7 @@ const CHART_FACT_1 = {
   citation_ref: 'graha_position.JUPITER.rashi@chart=482012f1...',
   citation_human: 'Jupiter in Cancer (LAHIRI).',
   source_calculation: 'pyjhora/1.0.0',
-  verification_pass_status: 'PASS',
+  verification_pass_status: 'single',  // SAMĀPTI Ruling 13: 'PASS' was never a legal vocabulary member
   computed_salience: null,  // not a signal field but included for completeness
 }
 
@@ -120,7 +120,7 @@ const CHART_FACT_2 = {
   citation_ref: 'graha_position.JUPITER.longitude_deg@chart=482012f1...',
   citation_human: 'Jupiter at 103.25° (LAHIRI).',
   source_calculation: 'pyjhora/1.0.0',
-  verification_pass_status: 'PASS',
+  verification_pass_status: 'single',  // SAMĀPTI Ruling 13: 'PASS' was never a legal vocabulary member
   computed_salience: null,
 }
 

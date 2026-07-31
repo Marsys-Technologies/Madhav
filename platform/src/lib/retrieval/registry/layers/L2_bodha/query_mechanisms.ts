@@ -24,9 +24,15 @@
  * No row is silently dropped (B.10) — everything is counted in `total_matching` and the
  * facet rollups even when it falls outside the current page.
  *
- * All `bodha_mechanisms` rows carry `verification_pass_status='pass'` (writer-confirmed,
- * single tier) — there is no catalog-only vs. confirmed split in this table, so a flat
- * (facet-annotated) list is honest; the field is still served per row for transparency.
+ * All `bodha_mechanisms` rows carry `verification_pass_status='single'` — there is no
+ * catalog-only vs. confirmed split in this table, so a flat (facet-annotated) list is
+ * honest; the field is still served per row for transparency.
+ *
+ * This docstring previously read `'pass'` and described it as "writer-confirmed". It was
+ * neither: `bo_yantra_mechanism.py` stamped the literal unconditionally with no detector
+ * behind it (SAMĀPTI A7-N8-AUDIT F-25, DVA Ruling 13 — 11/11 audited sites unearned), and
+ * the serve layer's grounding check counted a bare `'pass'` as verified. Both are fixed;
+ * the stored rows change at the next rebuild (C1-REBUILD).
  *
  * Chart-scoped (principle #14). Sparse-to-moderate by design (0 → a few hundred rows
  * across 5 ayanamshas); an empty list (total=0) is a valid result with an honest

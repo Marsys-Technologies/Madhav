@@ -16,6 +16,8 @@ import os
 import pathlib
 from typing import Any
 
+from brahmagyan.verification_vocab import ALL_STATUSES
+
 logger = logging.getLogger(__name__)
 
 # ── Forbidden narration patterns (A3 §17.3) ─────────────────────────────────
@@ -140,22 +142,33 @@ def run_g7_only_facts_gate_db(
             f"fact_id={row[0]} category={row[1]} key={row[2]}"
         )
 
-    # Check 3: invalid verification_pass_status
-    valid_statuses = {"single", "two_pass_verified", "classical_match", "divergent_flagged"}
+    # Check 3: invalid verification_pass_status.
+    #
+    # SAMĀPTI B-VERIFSTATUS-VOCAB (DVA Ruling 13 step 3). This check used to hardcode
+    # its own four-value set — a THIRD definition of the vocabulary, disagreeing with
+    # both the DB CHECK constraints and what writers actually emit, and unreachable in
+    # practice (the `valid_statuses` local was dead; the literal list lived in the SQL).
+    # Since chart_facts legitimately carries tiers the two restricted tables do not
+    # (documented_approximation, floored, computed_extension, …), the old list would
+    # have failed essentially every real build, which is why 5,428 'PASS' rows reached
+    # production unflagged. It now reads the single settled vocabulary, so it accepts
+    # every legitimate tier and rejects exactly the drift — including 'pass'/'PASS'.
+    valid_statuses = sorted(ALL_STATUSES)
     cursor3 = conn.execute(
         """
         SELECT fact_id, verification_pass_status
         FROM chart_facts
         WHERE chart_id = %s
           AND build_id = %s
-          AND verification_pass_status NOT IN ('single', 'two_pass_verified',
-                                                'classical_match', 'divergent_flagged')
+          AND verification_pass_status <> ALL(%s)
         """,
-        [chart_id, build_id],
+        [chart_id, build_id, valid_statuses],
     )
     for row in cursor3.fetchall():
         findings.append(
-            f"G7: invalid verification_pass_status='{row[1]}' at fact_id={row[0]}"
+            f"G7: invalid verification_pass_status='{row[1]}' at fact_id={row[0]} "
+            f"(settled vocabulary: {valid_statuses}; see "
+            f"brahmagyan/verification_vocab.py)"
         )
 
     return {
