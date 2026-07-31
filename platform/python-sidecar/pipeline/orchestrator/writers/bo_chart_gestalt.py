@@ -8,7 +8,11 @@ Reads all earlier Bodha assets and synthesizes a per-chart gestalt:
   - central_dynamics_ids: CDLM strongest-linkage cell ids (cross-domain synergies)
   - pivot_ids: placeholder for CDLM §C3 pivot factor ids (populated when available)
   - center_of_gravity_node_ids: top-pagerank CGM node ids + final-dispositor node ids
-  - domain_verdict_map_jsonb: {domain → {ledger_id, verdict_class, confidence}} — POINTERS only
+  - domain_verdict_map_jsonb: {domain → {signal_id, evidence{…}, verdict_note}} — POINTERS
+    plus deterministic per-domain evidence counts. NO verdict_class and NO
+    confidence are stored (SAMĀPTI B-N8-FIX / register F-12): storing them
+    violated this writer's own ANTI-DRIFT rule below, and they were derived from
+    a single top-salience row rather than from the domain's evidence.
   - headline_jsonb: top signature thread + strongest domain — pointers only
   - watch_list_jsonb: strongest malefic-valenced signals + weakest domain — pointers only
   - central_question_jsonb: antagonistic axis — pointers only
@@ -199,27 +203,70 @@ def _write_aya(conn: Any, chart_id: str, aya: str, build_id: str, now: str) -> i
         [chart_id, aya],
     )
 
+    # ── §N.8 / ANTI-DRIFT (SAMĀPTI lane B-N8-FIX · register F-12) ─────────────
+    # PRIOR STATE: this block computed `verdict_class` and `confidence` and
+    # STORED them — in a writer whose own docstring (:19-21) says it "NEVER
+    # stores verdicts, computed values, or interpretive text", and whose own
+    # schema comment (migration 325:981) says "pointer-only; no stored verdicts".
+    #
+    # It was also wrong on its own terms: the verdict was read off ONE row (the
+    # DISTINCT ON top-salience signal), so the career domain served
+    # "strong_positive" on a chart holding 136 benefic vs 632 malefic signals.
+    # The verdict was not a summary of the evidence, it was the first row of it.
+    #
+    # THE FIX: store the POINTER plus the deterministic per-domain EVIDENCE a
+    # verdict must be computed from, and store NO verdict. Counts are facts, not
+    # judgments — they are exactly what this writer is allowed to carry. The
+    # verdict belongs to whatever layer legitimately computes verdicts; it is not
+    # this writer's to invent, and a consumer can no longer read one from here
+    # without also seeing the 136-vs-632 evidence that contradicts it.
+    domain_evidence = {
+        str(r["domain"]): r
+        for r in _fetch_dict(
+            conn,
+            """SELECT unnest(domains_affected_array) AS domain,
+                      COUNT(*)                                            AS signal_count,
+                      COUNT(*) FILTER (WHERE valence = 'benefic')         AS benefic_count,
+                      COUNT(*) FILTER (WHERE valence = 'malefic')         AS malefic_count,
+                      COUNT(*) FILTER (WHERE valence = 'mixed')           AS mixed_count,
+                      COUNT(*) FILTER (WHERE valence = 'neutral'
+                                          OR valence IS NULL)             AS neutral_count,
+                      COUNT(*) FILTER (WHERE signature_tier
+                                             IN ('chart_defining','major')) AS major_tier_count
+                 FROM bodha_msr_signals
+                WHERE chart_id = %s AND ayanamsha_id = %s
+                GROUP BY 1""",
+            [chart_id, aya],
+        )
+    }
+
     domain_verdict_map: dict[str, dict] = {}
     for ds in domain_signals:
         domain = str(ds.get("unnested_domain") or "")
         if not domain or domain in domain_verdict_map:
             continue
-        valence = str(ds.get("valence") or "neutral")
-        salience = _safe_float(ds.get("computed_salience"))
-        # verdict_class = deterministic heuristic from valence + salience tier
-        tier = str(ds.get("signature_tier") or "")
-        if valence in ("benefic",) and tier in ("chart_defining", "major"):
-            verdict_class = "strong_positive"
-        elif valence in ("malefic",) and tier in ("chart_defining", "major"):
-            verdict_class = "strong_challenge"
-        elif valence in ("mixed",):
-            verdict_class = "mixed"
-        else:
-            verdict_class = "neutral"
+        ev = domain_evidence.get(domain, {})
         domain_verdict_map[domain] = {
-            "signal_id": str(ds["signal_id"]),    # pointer-only
-            "verdict_class": verdict_class,
-            "confidence": round(min(salience / 10.0, 1.0), 3) if salience > 0 else 0.5,
+            # pointer — the only thing this writer is entitled to store
+            "signal_id": str(ds["signal_id"]),
+            # deterministic evidence, whole-domain (not the top row alone)
+            "evidence": {
+                "signal_count":    int(ev.get("signal_count") or 0),
+                "benefic_count":   int(ev.get("benefic_count") or 0),
+                "malefic_count":   int(ev.get("malefic_count") or 0),
+                "mixed_count":     int(ev.get("mixed_count") or 0),
+                "neutral_count":   int(ev.get("neutral_count") or 0),
+                "major_tier_count": int(ev.get("major_tier_count") or 0),
+                "top_signal_valence":        str(ds.get("valence") or "") or None,
+                "top_signal_signature_tier": str(ds.get("signature_tier") or "") or None,
+                "top_signal_salience":       _safe_float(ds.get("computed_salience")) or None,
+            },
+            "verdict_note": (
+                "no verdict stored — this writer carries pointers and deterministic "
+                "evidence only (docstring ANTI-DRIFT ABSOLUTE; migration 325 col "
+                "comment). A verdict must be computed by the consuming layer from "
+                "`evidence`, which is whole-domain, not the top signal alone."
+            ),
         }
 
     # ── 5. Headline: top signal + strongest domain (pointers only) ─────────────
