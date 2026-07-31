@@ -154,28 +154,57 @@ these jobs.
 | Tier | Change | Result (measured on CI) |
 |---|---|---|
 | 1 | vitest `node`+`jsdom` projects | Unit Tests **418s → 195s** |
-| 1 | `requirements-ci.txt` + pip cache (xdist tried and reverted, §6.1) | pip install **145s → ~17s**; Governance Gates 452s → ~365s → ~327s expected after the xdist revert |
+| 1 | `requirements-ci.txt` + pip cache (xdist tried and reverted, §6.1) | pip install **145s → ~17s** (deterministic). Governance Gates job total is NOT reliably improved: pytest wall on this runner varies 285s–422s independent of any change (§6.1), which swamps the install saving |
 | 1 | `concurrency:` groups on all workflows | superseded PR runs cancel instead of stacking |
 | 2 | Removed 7 unreachable chat-v2 stages, `chat-v2-smoke.yml`, `brahma-conductor.yml`; `if:`-guarded the secret-gated TAP gates | −215 lines; honest SKIPPED instead of fabricated green |
 | 3 | Collapsed elev-serving-gates 5→1 and shad-darshana 5→1 jobs | ~400 runner-sec/PR |
 | 4 | Stage 5 deleted (duplicate); Stages 6 and 7 off the PR path to a HARD nightly | 604 runner-sec/PR removed; two broken harnesses surfaced instead of hidden |
 
-**Net on the required path: ~452s → ~327s**, plus ~1,000 runner-sec/PR removed from
-the advisory workflows. The Ganga critical path is now bounded by the sidecar pytest
-run (~286s serial), not by dependency installation or jsdom construction.
+**Net on the required path:** Unit Tests is a solid, repeatable **418s → ~200s**.
+Governance Gates is bounded by the sidecar pytest run, which this audit did NOT speed
+up — the 145s install saving is real, but pytest's own 285s–422s run-to-run variance
+is larger than it. So the honest claim is: **one of the two required long poles was
+halved; the other was diagnosed, its fixed overhead removed, and its remaining cost
+shown to be test-suite runtime plus runner noise rather than anything CI config can
+address.** Speeding it further means making the sidecar suite itself faster.
+
+Separately, ~1,000 runner-sec/PR was removed from the advisory workflows, and
+`concurrency:` groups stop superseded runs from stacking — which under this repo's
+rebase/force-push load is likely the largest practical improvement of the lot.
 
 ## §6 — Two corrections this audit had to make to itself
 
 Both were caught by running the changes through CI rather than reasoning about them,
 which is the argument for doing that.
 
-**6.1 pytest-xdist was reverted.** `-n 4 --dist loadfile` measured **2.9× faster
-locally** (226s → 78s) and was landed on that basis. On the runner it was **slower**:
-323.49s against the 285.77s serial baseline. `ubuntu-latest` provides 4 vCPU, and
-every xdist worker re-imports the full PyJHora/swisseph/numpy/scipy tree, so the
-import cost exceeds the parallel gain. Reverted to serial. The `requirements-ci.txt`
-half of that change held up fine (145s → ~17s). **Lesson: a local parallelism
-measurement does not transfer to a 4-vCPU runner; measure on CI.**
+**6.1 pytest-xdist was reverted as UNPROVEN — and the first version of this section
+overstated that, twice.** The sequence is worth recording because it is a clean
+example of drawing conclusions from single samples.
+
+`-n 4 --dist loadfile` measured **2.9× faster locally** (226s → 78s) and was landed
+on that basis. The next CI run came in at 323.49s against a 285.77s baseline, and
+this section originally read "xdist is SLOWER on CI — 4 vCPU, worker import cost
+exceeds the parallel gain." Then the revert run — identical serial command, identical
+`4647 passed / 12 skipped / 83 deselected / 7 subtests` — came in at **422.22s**.
+
+| run | configuration | pytest wall |
+|---|---|---|
+| 30587431953 | serial, full requirements | 285.77s |
+| 30594499554 | xdist `-n 4`, slim requirements | 323.49s |
+| 30595102066 | serial, slim requirements | **422.22s** |
+
+**Serial alone spans 285s–422s, and the xdist sample sits inside that range.** The
+runner's variance is larger than the effect, so n=1 per arm supports no conclusion in
+either direction. The honest statement is that xdist is unproven here, not that it is
+slower. It stays reverted because unproven complexity is not worth carrying — and
+settling it properly needs several samples per arm compared on medians.
+
+**What IS solid in this job is the install**, which is deterministic:
+`requirements.txt` → `requirements-ci.txt` took it from 145s to ~17s. That saving is
+real and repeatable; the pytest run itself is simply noisy on this hardware.
+
+**Lesson: a local parallelism measurement does not transfer to a 4-vCPU runner —
+but neither does a single CI measurement settle anything on a noisy one.**
 
 **6.2 Stages 6 and 7 were hardened on a misread, then corrected.** See the trap box
 in §4.7 — the API's `conclusion` field reports `success` for `continue-on-error`

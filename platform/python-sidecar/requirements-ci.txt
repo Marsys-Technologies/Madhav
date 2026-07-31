@@ -56,7 +56,8 @@ networkx>=3.2
 pyyaml>=6.0
 
 # ── Test runner ──
-# No pytest-xdist: `-n 4` measured FASTER locally but SLOWER on ubuntu-latest
-# (323s vs 285s serial) — 4 vCPU, and each worker re-imports the whole
-# PyJHora/swisseph/numpy/scipy tree. See the ci.yml pytest step comment.
+# No pytest-xdist. It was tried and reverted as UNPROVEN: this runner's pytest wall
+# time varies 285s..422s for the identical serial command, which is wider than the
+# effect, so the single xdist sample (323s) settled nothing. See the ci.yml pytest
+# step comment before re-adding — it needs multiple samples per arm, not one.
 pytest>=8.0
