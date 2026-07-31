@@ -42,12 +42,18 @@ on:
         required: false
         default: false
 
-# Serialise per ref but NEVER cancel: this workflow mutates real infrastructure
-# (deploy / terraform / commit-push), and killing it mid-flight can leave a
-# half-applied state. Queue instead.
+# CI efficiency audit (2026-07-31). Two different behaviours in one workflow:
+#   - pull_request  -> the `build-check` job only, which builds with `push: false`
+#                      for both the web and pipeline-job images (verified). Nothing
+#                      leaves the runner, so a superseded run is safe to cancel, and
+#                      at ~346s it is worth cancelling.
+#   - everything else (workflow_run on main, workflow_dispatch) -> the real deploy
+#                      jobs, which push images and update Cloud Run. NEVER cancel
+#                      these; killing one mid-flight can leave a half-applied state.
+#                      They serialise on the group and queue instead.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   GCP_REGION: asia-south1
