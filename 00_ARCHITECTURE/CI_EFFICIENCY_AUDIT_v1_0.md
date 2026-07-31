@@ -437,6 +437,63 @@ merges/day against a ~9.5 min CI wall). With the queue unavailable, the remainin
 
 Native decision required; not taken here.
 
+## §6.10 — `strict` dropped from `main` (2026-07-31). The campaign's closing change.
+
+**What changed.** `required_status_checks.strict` on `main`'s classic branch protection:
+`true` → `false`. Nothing else. All four required checks still gate `main`.
+
+**Why.** The merge queue — the remedy this campaign spent four passes building toward — is
+unavailable on a User-owned repository (§6.9). `strict` was the thing the queue was meant to
+make redundant, so with the queue off the table it was dropped directly.
+
+The cost `strict` was imposing is measured, not asserted: at a median **37 merges/day**
+(peak 104) against a **~9.5 min** CI wall, a PR cannot reliably stay current long enough to
+merge. It livelocked **this campaign's own PRs four times** — #963 once, #964 twice, #968
+once — each needing a manual `git merge origin/main` + push, because GitHub's auto-merge
+does not update a behind branch (§6.6). The audit was repeatedly blocked by the thing it was
+auditing.
+
+**What was given up, stated plainly.** `strict` guaranteed a branch was tested against the
+tip of `main` at merge time. That guarantee is gone: two PRs that each pass independently can
+now merge in sequence and interact badly. It is worth being honest that this is a real loss,
+not a free win — the argument is that at 37 merges/day the guarantee was already largely
+illusory, since `main` moves *during* the very CI run that certifies a branch. The
+compensating controls: all four required checks still run on every PR, `ci.yml` runs again on
+`main` post-merge, and `deploy.yml` gates on that run's success — so a bad interaction
+surfaces in minutes rather than never.
+
+**How it was applied.** The narrow endpoint
+(`PATCH .../branches/main/protection/required_status_checks`), deliberately, because a
+partial `PUT .../protection` silently drops every omitted protection — the failure mode to
+avoid on a branch whose protection is the only thing guarding it.
+
+One correction to the instruction as written: it specified `gh api ... -f strict=false`.
+`-f` sends the **string** `"false"`; the typed form `-F strict=false` is required for a JSON
+boolean. Used `-F`.
+
+**Verified by diff, not by assumption.** Full protection JSON captured before and after,
+normalised and sorted, then diffed. Exactly one line moved:
+
+```
+57c57
+<   "strict": true,
+---
+>   "strict": false,
+```
+
+Re-asserted on the after-state: the four contexts byte-identical, `checks[]` app_ids
+unchanged, `enforce_admins` still true, `required_pull_request_reviews` still absent
+(require-PR still OFF), force-pushes/deletions/linear-history/conversation-resolution/lock
+all still false. The only top-level key that differs is `required_status_checks`.
+
+**Rollback — one command:**
+`gh api --method PATCH repos/amonty84/Madhav/branches/main/protection/required_status_checks -F strict=true`
+
+**Left in place deliberately:** #967's `merge_group:` trigger in `ci.yml`. It is inert without
+a queue (it fires only on a `merge_group` event, which cannot occur here) and re-arms
+instantly if the repository ever moves to an organization. One dead line is cheaper than a
+churn PR.
+
 ## §7 — Verification standard applied
 
 No change was made on reasoning alone. Every claim was measured, and every gate
