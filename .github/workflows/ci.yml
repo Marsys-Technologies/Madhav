@@ -510,26 +510,75 @@ jobs:
       - name: Install Python dependencies
         run: pip install pyyaml pytest
 
+      # ── SAMĀPTI B-N8-CI-GATES / finding F-29 (2026-07-30) ──────────────────────
+      # Both steps below accepted exit 3 UNCONDITIONALLY, so the entire MEDIUM/LOW
+      # severity band passed green permanently and without limit: one pre-existing
+      # medium violation and four hundred new ones produced the identical green
+      # tick. The schema_validator comment additionally asserted "schema_validator
+      # exits 0. Gate hardened." — factually false at the time it was read here: a
+      # live run on this same tree reports "43 violations; exit=3". drift_detector
+      # at least names a `known_residuals[]` whitelist; schema_validator has no
+      # whitelist mechanism at all, so exit 3 was a blanket pass.
+      #
+      # Both steps now pin a COUNT CEILING at the T0 baseline fixed by Dvārapāla
+      # Ruling 4 (216 drift findings / 43 schema violations, measured at
+      # origin/main and reproduced independently). Exit 3 still passes — but only
+      # while the count does not GROW. A new medium/low violation now reddens CI,
+      # which is the entire point of a baseline: it is a ratchet, not an amnesty.
+      # Lowering a ceiling after cleanup is encouraged; raising one requires a
+      # recorded ruling, not a quiet edit.
       - name: drift_detector — repo scan
-        # Exit code policy: 0=clean, 3=baseline residuals (both pass), 1/2=regression (fail).
-        # exit 0 = clean; exit 3 = known_residuals (whitelisted, passes CI)
+        # Exit code policy: 0=clean, 3=baseline residuals, 1/2=regression (fail).
         # Whitelist location: platform/scripts/governance/drift_detector.py known_residuals[]
         # Current whitelisted tickets: WARN.2–WARN.8 (dead Gemini mirror pointers,
         # historical PHASE_B_PLAN refs — booked for quarterly governance pass 2026-07-24)
-        # exit 1 or 2 = real failure; investigate immediately
         # Use || to capture exit code without set -e aborting on non-zero exit.
+        env:
+          DRIFT_BASELINE_MAX: '216'   # DVA Ruling 4 T0 baseline. Lower freely; raise only by ruling.
         run: |
-          ec=0; python platform/scripts/governance/drift_detector.py || ec=$?
-          [ "$ec" = 0 ] || [ "$ec" = 3 ] || { echo "drift_detector exit=$ec (expected 0 or 3)"; exit "$ec"; }
+          ec=0
+          out=$(python platform/scripts/governance/drift_detector.py) || ec=$?
+          printf '%s\n' "$out"
+          if [ "$ec" != 0 ] && [ "$ec" != 3 ]; then
+            echo "::error::drift_detector exit=$ec (expected 0 or 3)"; exit "$ec"
+          fi
+          n=$(printf '%s\n' "$out" | sed -n 's/^drift_detector: \([0-9]*\) findings.*/\1/p' | tail -1)
+          if [ -z "$n" ]; then
+            echo "::error::Could not parse drift_detector's finding count from its output. Refusing to pass a gate whose result could not be read."
+            exit 1
+          fi
+          echo "drift_detector findings: $n (baseline ceiling ${DRIFT_BASELINE_MAX})"
+          if [ "$n" -gt "${DRIFT_BASELINE_MAX}" ]; then
+            echo "::error::drift_detector findings ${n} EXCEEDS the ${DRIFT_BASELINE_MAX} T0 baseline (DVA Ruling 4). New drift must be fixed, not absorbed into the whitelist."
+            exit 1
+          fi
 
       - name: schema_validator — repo scan
-        # Hard gate: SESSION_LOG governance pass (2026-05-31) confirmed all 4 previously-known
-        # pre-existing entries (GH-LEARNING-LAYER-FRONTMATTER, DAR-P7-S26,
-        # UDA-1-GOVERNANCE-CLOSE, UDA-234-GOVERNANCE-CLOSE) now have valid
-        # session_open/session_close YAML blocks. schema_validator exits 0. Gate hardened.
+        # Exit code policy: 0=clean, 3=medium/low only, 1/2/4+ = fail.
+        # NOTE (F-29): the previous comment here claimed the validator "exits 0. Gate
+        # hardened." It does not, and has not for some time — 43 violations / exit=3
+        # on this tree. The 2026-05-31 governance pass did resolve the four SESSION_LOG
+        # entries it named; that was mistaken for the whole picture. Corrected to state
+        # the live behaviour, with a ceiling so the band can no longer grow silently.
+        env:
+          SCHEMA_BASELINE_MAX: '43'   # DVA Ruling 4 T0 baseline. Lower freely; raise only by ruling.
         run: |
-          ec=0; python platform/scripts/governance/schema_validator.py || ec=$?
-          [ "$ec" = 0 ] || [ "$ec" = 3 ] || { echo "schema_validator exit=$ec (regression — all known pre-existing violations were resolved 2026-05-31)"; exit "$ec"; }
+          ec=0
+          out=$(python platform/scripts/governance/schema_validator.py) || ec=$?
+          printf '%s\n' "$out"
+          if [ "$ec" != 0 ] && [ "$ec" != 3 ]; then
+            echo "::error::schema_validator exit=$ec (expected 0 or 3)"; exit "$ec"
+          fi
+          n=$(printf '%s\n' "$out" | sed -n 's/^schema_validator: \([0-9]*\) violations.*/\1/p' | tail -1)
+          if [ -z "$n" ]; then
+            echo "::error::Could not parse schema_validator's violation count from its output. Refusing to pass a gate whose result could not be read."
+            exit 1
+          fi
+          echo "schema_validator violations: $n (baseline ceiling ${SCHEMA_BASELINE_MAX})"
+          if [ "$n" -gt "${SCHEMA_BASELINE_MAX}" ]; then
+            echo "::error::schema_validator violations ${n} EXCEEDS the ${SCHEMA_BASELINE_MAX} T0 baseline (DVA Ruling 4). A new medium/low violation is a regression, not a residual."
+            exit 1
+          fi
 
       - name: msr_referential_integrity — self-test (§N.5 constituent guard)
         # Hard gate (WP-2.4 / LCA-9b-5). Every bodha_msr_signals.constituent_facts_array

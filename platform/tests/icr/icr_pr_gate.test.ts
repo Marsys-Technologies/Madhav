@@ -204,3 +204,76 @@ describe('scheduled_job_smoke', () => {
     expect(exitCode).toBe(1);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SAMĀPTI B-N8-CI-GATES / finding F-27 regression tests (2026-07-30).
+//
+// Added after VER observed that reverting either half of the F-27 fix left the
+// then-existing 13 tests all passing — the suite was blind to both defects, so a
+// regression would have gone unnoticed until a weekly cron printed a vacuous PASS.
+// Every fixture below is in the REAL corpus format (SIG.MSR.NNN: blocks with a
+// derivation_ledger), which is what MSR_v5_0.md actually contains and what the
+// pre-fix parser matched zero of.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const MSR_REAL_FORMAT_GROUNDED = `
+SIG.MSR.001:
+  signal_name: "Sasha Mahapurusha Yoga"
+  signal_type: yoga
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H (exalted)"
+    grounding_status: GROUNDED
+
+SIG.MSR.002:
+  signal_name: "Second Grounded Signal"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SATURN
+    grounding_status: GROUNDED
+`;
+
+const MSR_REAL_FORMAT_UNGROUNDED = `
+SIG.MSR.003:
+  signal_name: "Classically Sourced Only"
+  derivation_ledger:
+    l1_sources:
+      - ref: "BPHS Chapter 26 Sloka 19"
+        fact_id: NONE
+    grounding_status: UNGROUNDED
+`;
+
+describe('F-27 regression — real corpus format (SIG.MSR.NNN + derivation_ledger)', () => {
+  it('parses real-format signal blocks at all (pre-fix parser matched 0 of 569)', () => {
+    const result = runGate(MSR_REAL_FORMAT_GROUNDED);
+    expect(result.signals_scanned).toBe(2);
+  });
+
+  it('treats a FORENSIC_v8.0-style ref as grounded (pre-fix /\\bFORENSIC\\b/ could not match it — "_" is a word char, so there is no trailing boundary)', () => {
+    const result = runGate(MSR_REAL_FORMAT_GROUNDED);
+    expect(result.violations).toEqual([]);
+    expect(result.pass).toBe(true);
+  });
+
+  it('still flags a real-format signal whose ledger carries no FORENSIC/LEL ref', () => {
+    const result = runGate(MSR_REAL_FORMAT_UNGROUNDED);
+    expect(result.signals_scanned).toBe(1);
+    expect(result.pass).toBe(false);
+    expect(result.violations).toHaveLength(1);
+    expect(result.violations[0].signal_id).toBe('SIG.MSR.003');
+    expect(result.violations[0].reason).toMatch(/no FORENSIC or LEL citation/);
+  });
+
+  it('reports signals_scanned = 0 on empty content, which main() treats as a FAILURE (an unperformed scan is not a pass)', () => {
+    expect(runGate('').signals_scanned).toBe(0);
+  });
+
+  it('legacy "## MSR.NNN" format still parses, so the --synthetic positive control keeps working', () => {
+    const result = runGate(MSR_ALL_GROUNDED);
+    expect(result.signals_scanned).toBe(2);
+    expect(result.pass).toBe(true);
+  });
+});

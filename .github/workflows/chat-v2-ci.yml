@@ -85,20 +85,31 @@ jobs:
       - name: Install deps
         run: npm ci
 
-      - name: ESLint (chat-v2 paths) — REPORT-ONLY, see comment
-        # CI efficiency audit (2026-07-31). This step used to end in
-        # `|| echo "STAGE-1-LINT no-op (paths not fully populated yet)"`, which was
-        # doubly misleading: the paths ARE populated, and the `||` meant the step
-        # could never fail no matter what eslint found. Measured on this tree:
-        # 119 problems (26 errors, 93 warnings) across these paths.
-        #
-        # Hardening it now would red-X every chat-v2 PR on a pre-existing backlog
-        # that is not this audit's to fix, so it stays non-blocking — but as an
-        # explicit `continue-on-error`, with the real numbers named here and the
-        # eslint output visible in the log, rather than a false "no-op" claim.
-        # TO CLOSE: fix the 26 errors, then delete continue-on-error.
-        continue-on-error: true
+      # SAMĀPTI B-N8-CI-GATES / finding F-30 (2026-07-30). Reconciled against the concurrent
+      # 2026-07-31 CI-efficiency-audit's independent arrival at "continue-on-error is wrong here"
+      # (same diagnosis, weaker remedy — see PŪRṆATĀ Step 4). This ratchet is kept over that
+      # continue-on-error version: it can genuinely fail on a NEW error, which continue-on-error
+      # structurally cannot, ever — the §N.8 Earned-Signal distinction this whole arc exists to
+      # enforce. Lower ESLINT_ERROR_BASELINE as the pre-existing 26-error debt is paid.
+      # This step previously ended in:
+      #     --max-warnings 0 2>/dev/null \
+      #     || echo "STAGE-1-LINT no-op (paths not fully populated yet)"
+      # Both halves were wrong. The `2>/dev/null || echo` swallowed every ESLint
+      # failure, and the message it printed instead was false: all ten paths are
+      # populated (185 files at the time of writing), and ESLint reports 26 ERRORS
+      # plus 93 warnings across them. The swallow was load-bearing, not defensive —
+      # it was the only thing keeping this stage green.
+      #
+      # Un-swallowing outright would redden the chat-v2 workstream on 26 errors that
+      # belong to another arc and are not this lane's to fix. So this is a RATCHET,
+      # the same shape as ci.yml's governance baselines: the existing debt is pinned
+      # and disclosed, and any NEW error fails the stage. Lower the baseline as the
+      # debt is paid; raising it should require a recorded decision.
+      - name: ESLint (chat-v2 paths)
+        env:
+          ESLINT_ERROR_BASELINE: '26'   # measured 2026-07-30 on origin/main. Lower freely.
         run: |
+          set +e
           npx eslint \
             src/components/consume \
             src/components/chat \
@@ -110,7 +121,24 @@ jobs:
             src/lib/ppl \
             src/lib/citations \
             src/lib/fixtures \
-            --max-warnings 0
+            > eslint_chatv2.out 2>&1
+          ec=$?
+          set -e
+          cat eslint_chatv2.out
+          errs=$(grep -oE '\([0-9]+ errors' eslint_chatv2.out | tail -1 | grep -oE '[0-9]+' || true)
+          if [ -z "$errs" ]; then
+            if [ "$ec" -eq 0 ]; then
+              errs=0
+            else
+              echo "::error::ESLint exited $ec but its summary line could not be parsed. Refusing to pass a gate whose result could not be read."
+              exit 1
+            fi
+          fi
+          echo "ESLint errors on chat-v2 paths: $errs (baseline ceiling ${ESLINT_ERROR_BASELINE})"
+          if [ "$errs" -gt "${ESLINT_ERROR_BASELINE}" ]; then
+            echo "::error::ESLint errors ${errs} exceed the ${ESLINT_ERROR_BASELINE} baseline — a NEW lint error landed on the chat-v2 paths."
+            exit 1
+          fi
 
       - name: TypeScript check
         run: npx tsc --noEmit --skipLibCheck
