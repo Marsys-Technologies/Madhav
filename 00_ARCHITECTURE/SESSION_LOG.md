@@ -35261,3 +35261,131 @@ Resolve the cookie-content safety concern first. Once cleared, run C4-LOOP-LIVE-
 every prerequisite lane is merged and deployed, this is not a re-scoping question. Then the
 remaining B-NAR-PH/TS-remainder findings and the OIR-reconciliation-surfaced items. Kāla-layer work
 continues to wait on ṢAḌ-DARŚANA's six-views transformation.
+
+## C4-CLOSE-2026-08-01 — C4-LOOP-LIVE-PROOF closed: PŪRṆATĀ's one open item, resolved live end-to-end
+
+```yaml
+session_open:
+  session_id: C4-CLOSE-2026-08-01
+  campaign: PŪRṆATĀ (continued) — resume and close the one item its own close report left open:
+    C4-LOOP-LIVE-PROOF, a real, live, end-to-end proof of the prediction loop.
+  may_touch: "platform/scripts/dev/mint_session_cookie.ts (tooling fix only);
+    00_ARCHITECTURE/briefs/purnata/PURNATA_CLOSE_REPORT_v1_0.md; 00_ARCHITECTURE/SESSION_LOG.md,
+    CURRENT_STATE_v1_0.md, CLAUDE.md (this close); root CLAUDECODE_BRIEF.md; the live prediction
+    ledger for the canonical chart, via the app's own normal lifecycle mechanisms only (no raw SQL
+    writes)"
+  must_not_touch: "kala_*, l3_*, ka_*, gochara_* (ṢAḌ-DARŚANA's); any credential rotation (native
+    reviewed, accepted risk); no bypass of any CI gate"
+```
+
+Resumed exactly where PŪRṆATĀ paused: a suspicious fragment (`⟐ injected`) inside a minted
+production session cookie. Diagnosed READ-ONLY first, per explicit instruction that routing around
+an unexplained signal is the exact pattern this whole arc exists to prevent — traced to `dotenvx`'s
+own CLI startup banner (`⟐ injected env (N) from ...`) sharing stdout with the wrapped script's real
+output under a `dotenvx run -- npx tsx ... > file` shell redirect (this session's own invocation
+shape, not an application defect). Zero presence in the live request path; no interaction with the
+earlier citation-stripping/privacy-leak class. Tooling-fixed before resumption:
+`mint_session_cookie.ts` gained an optional `COOKIE_OUTPUT_FILE` env var that writes the cookie
+directly to a file from inside the Node process, so no wrapper's stdout can ever reach it (PR #986).
+
+**All six criteria, live, no fixture substituted.** A1 — a real conversational reading against the
+deployed app produced two genuine `detected` rows in `brahma_mimamsa_prediction_ledger`, verified via
+direct `psql` against the real prod Cloud SQL instance (confirmed live via a running
+`cloud-sql-proxy` and `SELECT version()`, not a local or mock DB). Along the way, a first attempt
+using `stack: 'anthropic'` surfaced a real, separate finding: `ANTHROPIC_API_KEY` is entirely
+unprovisioned in production (absent from both the Cloud Run service's bindings and Secret Manager
+itself), masked in ordinary use because the actual production default is `stack: 'gemini'`. A2 — both
+rows rendered on the live, authenticated review tab (DOM snapshot + screenshot); independently
+corroborated when a real concurrent human user, from a residential IPv6 range and not this session's
+own automation, interacted with the exact same surface mid-proof, dismissing one of the test rows —
+disclosed rather than absorbed silently, and read as evidence the surface is genuinely live, not an
+idle staging artifact. A3 — resolved through the mounted UI (a real confirm click, then a real
+can't-tell resolution): `psql` confirms `outcome_value` is genuinely `NULL`, enforced by the DB CHECK
+constraint `bmpl_unverifiable_has_no_value`, itself proven can-fail by the passing CI suite. A4 — the
+daily job (`scripts/samiksha/daily_job.ts`), run directly against the real prod DB, transitioned a
+real window `open → window_closed`; separately, CI's own required check
+"DB Integration Tests (SAMĪKṢĀ, throwaway Postgres)" ran for real on the tooling-fix PR — 20 test
+files, 129 tests, all passed, against a real migrated throwaway Postgres, not skipped. A5 — the one
+outcome map (`outcome_calibration.outcomeToValue`, guarded by `outcome_map_singularity.test.ts`) was
+exercised by a live production caller this session — the A3 resolution itself. A6 — the calibration
+leak guard's mutation-proof test (`emitter_calibration_guard.test.ts`) was independently re-run fresh
+from a clean `origin/main` worktree (6/6 passed), with live corroboration from this session's own
+production request traffic (`no_leakage_capabilities_stripped` / `register_leak_scrubbed` flags
+firing mid-stream on a real reading). Badge-equals-SQL, previously vacuous at 0==0, was re-verified
+non-vacuously: SQL truth (3) matched the live rendered badge (3) within the same ~15-second window,
+against a ledger that genuinely contained non-badge-countable rows too.
+
+**Cleanup.** The three synthetic `detected` predictions this proof generated (a career/momentum
+claim, a health/nervous-system claim, a combined-trajectory claim) were dismissed afterward through
+the app's own real UI "Dismiss" mechanism — not a raw SQL write — returning the native's live review
+queue to a true state. Verified via `psql` before (3 `detected`, 1 `dismissed`, 1 `unverifiable`) and
+after (0 `detected`, 4 `dismissed`, 1 `unverifiable`; badge-count query confirms 0). The row a real
+concurrent human user had already dismissed, and the row this session resolved as evidence, were both
+left untouched.
+
+**Crown re-verified live a third time this session** (`graha_portrait`, chart 482012f1,
+`2026-07-31T20:18:37.627Z`) — identical to both earlier reads this session and to every prior
+campaign's re-verification. No drift.
+
+**Governance hygiene, surfaced and closed.** Root `CLAUDECODE_BRIEF.md` had drifted: the version
+committed by SATYA-DĪPA (#869) sat un-superseded through four subsequent campaigns (PARIPRAŚNA,
+SAMĀPTI, NIḤŚEṢA, PŪRṆATĀ) because none of their own governing-scope pointers were ever
+git-committed — the exact failure mode that pointer's own `commit_warning` field had already named
+once. Its `carries_forward` (`lane:serve-shadbala`, `lane:ga-tajaka`) was confirmed safe to drop, not
+silently dropped: both closed VERIFIED-FIXED in SAMĀPTI (SV-1/SV-2, PRs #852/#853), re-confirmed live
+again this session's own crown re-verification. This file's replacement was committed as this
+session's first act on its close-out branch, per the very warning it carried, to break the pattern
+rather than repeat it a third time — flipped to `status: COMPLETE`.
+
+Full verbatim evidence per criterion, the cleanup record, and the final consolidated backlog with a
+handoff note naming exactly what the next session picks up first:
+`00_ARCHITECTURE/briefs/purnata/PURNATA_CLOSE_REPORT_v1_0.md` (v1.2).
+
+```yaml
+session_close:
+  session_id: C4-CLOSE-2026-08-01
+  campaign: PŪRṆATĀ (continued)
+  close_criteria_met: "All six C4 criteria (A1-A6) plus badge-equals-SQL verified live against the
+    deployed app and the real production DB, no fixture substituted for any. Cookie anomaly
+    diagnosed benign and tooling-fixed (#986) before resumption. Synthetic test predictions
+    dismissed via the real lifecycle mechanism, queue returned to a true state. Crown re-verified a
+    third time, no drift. Root CLAUDECODE_BRIEF.md flipped COMPLETE. No kala_*/l3_*/ka_*/gochara_*
+    file written to. No credential rotated."
+  verification: "Every claim backed by a live artifact: psql query output against the real prod DB
+    (via a genuinely running cloud-sql-proxy, version-checked), an SSE stream capture from the
+    deployed app, a DOM snapshot + screenshot of the live authenticated review tab, a fresh
+    independent CI test re-run (129/129 + 6/6), and Cloud Run logs for the ANTHROPIC_API_KEY root
+    cause. Nothing asserted without an inspectable artifact behind it."
+  deploy: "PR #986 (tooling fix, dev-script only) and PR #988 (report v1.2 + governance close +
+    CLAUDECODE_BRIEF flip, docs-only) both merged via the merge queue, all required checks green.
+    Neither touches a deploy-relevant path; production app code is unchanged by this session."
+  product_code_writes_made: "One dev-tooling script only (mint_session_cookie.ts,
+    COOKIE_OUTPUT_FILE). No production app code touched. Live-DB writes made only through the
+    app's own real UI/lifecycle mechanisms (confirm, resolve, dismiss, the real daily job) — never
+    a raw SQL write to the prediction ledger."
+  native_chart_touched: false
+  current_state_updated: true
+  register_dispositions_flipped: "PURNATA_CLOSE_REPORT_v1_0.md backlog item #1 (C4-LOOP-LIVE-PROOF)
+    flipped PARKED-HONEST -> VERIFIED-LIVE/CLOSED. New item 1a opened (ANTHROPIC_API_KEY
+    unprovisioned). See report §9 for full evidence, not restated here."
+  followups: "See PURNATA_CLOSE_REPORT_v1_0.md's final consolidated backlog + its handoff note.
+    Nothing genuinely open remains named #1 in the narration/consumption-quality arc this session
+    closes. ANTHROPIC_API_KEY provisioning is the highest-priority small item; the ṢAḌ-DARŚANA Kāla
+    handover and the post-transformation narration audit are the two largest."
+  next_session_objective: "Per the close report's handoff note: (1) ṢAḌ-DARŚANA's own Kāla handover
+    items (unchanged, spec-only, no file touched); (2) once ṢAḌ-DARŚANA's six-views transformation
+    settles, run the post-transformation narration audit against the SETTLED Kāla layer using this
+    arc's own proven method (defect-class census, adversarial refuter panel, live-proof
+    acceptance — not a fixture-satisfied gate). Smaller items (ANTHROPIC_API_KEY provisioning,
+    B-NAR-PH/TS remainder, OIR-surfaced items, allowlist-fragility mechanism fix) remain named with
+    resume conditions in the same backlog, not silently dropped."
+```
+
+### Next session objective
+
+Per the close report's handoff note: the ṢAḌ-DARŚANA Kāla handover items first (unchanged, spec-only),
+then — once ṢAḌ-DARŚANA's six-views transformation settles — the post-transformation narration audit
+against the SETTLED Kāla layer, using this arc's own proven method (defect-class census + adversarial
+refuter panel + live-proof acceptance, the same discipline that closed C4). Smaller named items
+(ANTHROPIC_API_KEY provisioning, B-NAR-PH/TS remainder, OIR-surfaced items, the allowlist-fragility
+mechanism fix) remain in the consolidated backlog with resume conditions, not dropped.
