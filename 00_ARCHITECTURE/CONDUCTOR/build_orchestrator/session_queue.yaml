@@ -584,7 +584,7 @@ sessions:
     parallel_eligible: true
     estimated_hours: 2
     check_commands:
-      - "PGPASSWORD=aYtv6SN5TwRBShzHfxN4Qz_ccW3a49qnCAA2L-VF psql -h 127.0.0.1 -p 5433 -U amjis_app -d amjis_staging -f platform/migrations/124_builds.sql && echo 'mig 124 staging OK'"
+      - "PGPASSWORD=${PGPASSWORD:?} psql -h 127.0.0.1 -p 5433 -U amjis_app -d amjis_staging -f platform/migrations/124_builds.sql && echo 'mig 124 staging OK'"
     commit_pattern: "feat(schema/mig-124): builds table [BUILD-ORCH-B-01]"
     tracker_update:
       item: INF2
@@ -602,7 +602,7 @@ sessions:
     parallel_eligible: false
     estimated_hours: 2
     check_commands:
-      - "PGPASSWORD=aYtv6SN5TwRBShzHfxN4Qz_ccW3a49qnCAA2L-VF psql -h 127.0.0.1 -p 5433 -U amjis_app -d amjis_staging -f platform/migrations/125_build_steps.sql && echo 'mig 125 OK'"
+      - "PGPASSWORD=${PGPASSWORD:?} psql -h 127.0.0.1 -p 5433 -U amjis_app -d amjis_staging -f platform/migrations/125_build_steps.sql && echo 'mig 125 OK'"
     commit_pattern: "feat(schema/mig-125): build_steps table [BUILD-ORCH-B-02]"
     tracker_update:
       item: INF2
@@ -620,7 +620,7 @@ sessions:
     parallel_eligible: false
     estimated_hours: 1
     check_commands:
-      - "PGPASSWORD=aYtv6SN5TwRBShzHfxN4Qz_ccW3a49qnCAA2L-VF psql -h 127.0.0.1 -p 5433 -U amjis_app -d amjis_staging -f platform/migrations/126_engine_versions.sql && echo 'mig 126 OK'"
+      - "PGPASSWORD=${PGPASSWORD:?} psql -h 127.0.0.1 -p 5433 -U amjis_app -d amjis_staging -f platform/migrations/126_engine_versions.sql && echo 'mig 126 OK'"
     commit_pattern: "feat(schema/mig-126): engine_versions table + seed row [BUILD-ORCH-B-03]"
     tracker_update:
       item: INF2
@@ -638,7 +638,7 @@ sessions:
     parallel_eligible: false
     estimated_hours: 2
     check_commands:
-      - "PGPASSWORD=aYtv6SN5TwRBShzHfxN4Qz_ccW3a49qnCAA2L-VF psql -h 127.0.0.1 -p 5433 -U amjis_app -d amjis_staging -f platform/migrations/127_chart_facts_ayanamsha.sql && echo 'mig 127 OK'"
+      - "PGPASSWORD=${PGPASSWORD:?} psql -h 127.0.0.1 -p 5433 -U amjis_app -d amjis_staging -f platform/migrations/127_chart_facts_ayanamsha.sql && echo 'mig 127 OK'"
     commit_pattern: "feat(schema/mig-127): chart_facts ayanamsha_id + fact_id sha256 [BUILD-ORCH-B-04]"
     tracker_update:
       item: INF2
@@ -656,7 +656,7 @@ sessions:
     parallel_eligible: false
     estimated_hours: 2
     check_commands:
-      - "PGPASSWORD=aYtv6SN5TwRBShzHfxN4Qz_ccW3a49qnCAA2L-VF psql -h 127.0.0.1 -p 5433 -U amjis_app -d amjis_staging -f platform/migrations/128_chart_facts_history.sql && echo 'mig 128 OK'"
+      - "PGPASSWORD=${PGPASSWORD:?} psql -h 127.0.0.1 -p 5433 -U amjis_app -d amjis_staging -f platform/migrations/128_chart_facts_history.sql && echo 'mig 128 OK'"
     commit_pattern: "feat(schema/mig-128): chart_facts_history audit trigger [BUILD-ORCH-B-05]"
     tracker_update:
       item: INF2
@@ -674,7 +674,7 @@ sessions:
     parallel_eligible: false
     estimated_hours: 2
     check_commands:
-      - "PGPASSWORD=aYtv6SN5TwRBShzHfxN4Qz_ccW3a49qnCAA2L-VF psql -h 127.0.0.1 -p 5433 -U amjis_app -d amjis_staging -f platform/migrations/129_chart_facts_supersedence.sql && echo 'mig 129 OK'"
+      - "PGPASSWORD=${PGPASSWORD:?} psql -h 127.0.0.1 -p 5433 -U amjis_app -d amjis_staging -f platform/migrations/129_chart_facts_supersedence.sql && echo 'mig 129 OK'"
     commit_pattern: "feat(schema/mig-129): chart_facts_supersedence table + fn_supersede_build [BUILD-ORCH-B-06]"
     tracker_update:
       item: INF2
@@ -692,7 +692,7 @@ sessions:
     parallel_eligible: false
     estimated_hours: 1
     check_commands:
-      - "PGPASSWORD=aYtv6SN5TwRBShzHfxN4Qz_ccW3a49qnCAA2L-VF psql -h 127.0.0.1 -p 5433 -U amjis_app -d amjis_staging -f platform/migrations/130_chart_ayanamsha_reports.sql && echo 'mig 130 OK'"
+      - "PGPASSWORD=${PGPASSWORD:?} psql -h 127.0.0.1 -p 5433 -U amjis_app -d amjis_staging -f platform/migrations/130_chart_ayanamsha_reports.sql && echo 'mig 130 OK'"
     commit_pattern: "feat(schema/mig-130): chart_ayanamsha_reports cross-ayanamsha divergence [BUILD-ORCH-B-07]"
     tracker_update:
       item: INF2
@@ -710,7 +710,7 @@ sessions:
     parallel_eligible: false
     estimated_hours: 1
     check_commands:
-      - "PGPASSWORD=aYtv6SN5TwRBShzHfxN4Qz_ccW3a49qnCAA2L-VF psql -h 127.0.0.1 -p 5433 -U amjis_app -d amjis_staging -f platform/migrations/131_chart_documents.sql && echo 'mig 131 OK'"
+      - "PGPASSWORD=${PGPASSWORD:?} psql -h 127.0.0.1 -p 5433 -U amjis_app -d amjis_staging -f platform/migrations/131_chart_documents.sql && echo 'mig 131 OK'"
     commit_pattern: "feat(schema/mig-131): chart_documents rendered artifacts table [BUILD-ORCH-B-08]"
     tracker_update:
       item: INF2
@@ -728,7 +728,7 @@ sessions:
     parallel_eligible: false
     estimated_hours: 1
     check_commands:
-      - "PGPASSWORD=aYtv6SN5TwRBShzHfxN4Qz_ccW3a49qnCAA2L-VF psql -h 127.0.0.1 -p 5433 -U amjis_app -d amjis_staging -f platform/migrations/132_ayanamsha_registry.sql && echo 'mig 132 OK'"
+      - "PGPASSWORD=${PGPASSWORD:?} psql -h 127.0.0.1 -p 5433 -U amjis_app -d amjis_staging -f platform/migrations/132_ayanamsha_registry.sql && echo 'mig 132 OK'"
     commit_pattern: "feat(schema/mig-132): ayanamsha_registry table schema [BUILD-ORCH-B-09]"
     tracker_update:
       item: INF2
@@ -1946,7 +1946,7 @@ sessions:
     parallel_eligible: false
     estimated_hours: 3
     check_commands:
-      - "PGPASSWORD=aYtv6SN5TwRBShzHfxN4Qz_ccW3a49qnCAA2L-VF psql -h 127.0.0.1 -p 5433 -U amjis_app -d amjis_staging -f platform/migrations/135_notification_views.sql && echo 'I-03 mig OK'"
+      - "PGPASSWORD=${PGPASSWORD:?} psql -h 127.0.0.1 -p 5433 -U amjis_app -d amjis_staging -f platform/migrations/135_notification_views.sql && echo 'I-03 mig OK'"
       - "cd ../MadhavBO-I && pnpm test -- --testPathPattern='api/build/seen' && echo 'I-03 api OK'"
     commit_pattern: "feat(notif/I03): notification_views mig 135 + /api/build/seen [BUILD-ORCH-I-03]"
     tracker_update:
@@ -2246,7 +2246,7 @@ sessions:
     parallel_eligible: false
     estimated_hours: 3
     check_commands:
-      - "PGPASSWORD=aYtv6SN5TwRBShzHfxN4Qz_ccW3a49qnCAA2L-VF psql -h 127.0.0.1 -p 5433 -U amjis_app -d amjis_staging -f platform/migrations/136_conversations_active_ayanamshas.sql && echo 'J-01 OK'"
+      - "PGPASSWORD=${PGPASSWORD:?} psql -h 127.0.0.1 -p 5433 -U amjis_app -d amjis_staging -f platform/migrations/136_conversations_active_ayanamshas.sql && echo 'J-01 OK'"
     commit_pattern: "feat(consume/J01): conversations.active_ayanamshas mig 136 [BUILD-ORCH-J-01]"
     tracker_update:
       item: INF7

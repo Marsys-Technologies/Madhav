@@ -62,12 +62,13 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-# Same live DSN convention as routers/sutravali.py / routers/transit_search.py
-# (env override, hard-coded local-proxy fallback for dev).
-DB_URL = os.environ.get(
-    "DATABASE_URL",
-    "postgresql://amjis_app:50mii04kTKDUUu54CAKdS4Bv2gx1IoWy@127.0.0.1:5433/amjis",
-)
+# No hard-coded fallback (SAMAPTI security incident INC-2: a "local-proxy
+# fallback for dev" here previously held a live production credential in
+# plaintext; that convention was itself the defect). Empty default matches
+# the rest of this module's request-time (not import-time) DB usage — this
+# router is imported by main.py, which CI's test collection imports without
+# DATABASE_URL set, so this must not raise at import time.
+DB_URL = os.environ.get("DATABASE_URL", "")
 
 # The 12 PERMISSION system_ids this route can serve a curve for, in the
 # same order compute_permission's own `detail["systems"]` emits them

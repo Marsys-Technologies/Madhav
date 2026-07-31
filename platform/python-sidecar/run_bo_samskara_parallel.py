@@ -19,10 +19,7 @@ logger = logging.getLogger("bo_samskara_parallel")
 sys.path.insert(0, os.path.dirname(__file__))
 
 CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
-DB_URL = os.environ.get(
-    "DATABASE_URL",
-    "postgresql://amjis_app:50mii04kTKDUUu54CAKdS4Bv2gx1IoWy@127.0.0.1:5433/amjis",
-)
+DB_URL = os.environ["DATABASE_URL"]
 # Import from the writer — single source of truth for ayanamsha names
 from pipeline.orchestrator.writers.bo_samskara import CANONICAL_AYAS  # noqa: E402
 

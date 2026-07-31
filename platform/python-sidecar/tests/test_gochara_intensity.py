@@ -16,6 +16,7 @@ so a future session with the proxy running can re-run them directly.
 from __future__ import annotations
 
 import math
+import os
 
 import psycopg
 import pytest
@@ -34,7 +35,7 @@ from services.gochara_intensity.valence import is_adverse, VALENCE_MAP
 from services.gochara_intensity.engine import compute_lambda_e, compute_lambda_e_series, SHAPE_MAP
 
 CHART_ID = RM.CANONICAL_CHART_ID
-LIVE_DSN = "postgresql://amjis_app:50mii04kTKDUUu54CAKdS4Bv2gx1IoWy@127.0.0.1:5433/amjis"
+LIVE_DSN = os.environ.get("DATABASE_URL", "")
 
 
 def _jd(y, m, d, h=12.0):

@@ -154,7 +154,7 @@ COMMIT;
 - [ ] **Step 2: Apply**
 
 ```bash
-psql postgresql://amjis_app:50mii04kTKDUUu54CAKdS4Bv2gx1IoWy@127.0.0.1:5433/amjis \
+PGPASSWORD="${PGPASSWORD:?}" psql "postgresql://amjis_app@127.0.0.1:5433/amjis" \
   -f platform/supabase/migrations/241_ga_nakshatra_registry.sql
 ```
 
@@ -163,7 +163,7 @@ Expected: `INSERT 0 1` or `UPDATE 1`.
 - [ ] **Step 3: Verify**
 
 ```bash
-psql postgresql://amjis_app:50mii04kTKDUUu54CAKdS4Bv2gx1IoWy@127.0.0.1:5433/amjis \
+PGPASSWORD="${PGPASSWORD:?}" psql "postgresql://amjis_app@127.0.0.1:5433/amjis" \
   -c "SELECT asset_id, is_active, target_floor, sort_order FROM asset_registry WHERE asset_id = 'ga_nakshatra';"
 ```
 
@@ -1305,9 +1305,10 @@ If the orchestrator is unavailable/locked, invoke the writer directly (frozen co
 # Direct invocation (dry-run first):
 from pipeline.orchestrator.writers.ga_nakshatra import NakshatraWriter
 from pipeline.orchestrator.writers import ContextSpec
+import os
 import psycopg2
 
-conn = psycopg2.connect("postgresql://amjis_app:50mii04kTKDUUu54CAKdS4Bv2gx1IoWy@127.0.0.1:5433/amjis")
+conn = psycopg2.connect(os.environ["DATABASE_URL"])
 ctx = ContextSpec(
     db_conn=conn,
     build_id="test-build-ga-nak",
@@ -1337,7 +1338,7 @@ print(f"TOTAL: {total}")
 - [ ] **Step 2: FORENSIC spot-check**
 
 ```bash
-psql postgresql://amjis_app:50mii04kTKDUUu54CAKdS4Bv2gx1IoWy@127.0.0.1:5433/amjis -c "
+PGPASSWORD="${PGPASSWORD:?}" psql "postgresql://amjis_app@127.0.0.1:5433/amjis" -c "
 SELECT fact_key, fact_value_text, fact_value_num
 FROM chart_facts
 WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa'
@@ -1356,7 +1357,7 @@ Required:
 - `nakshatra_id_ref = 25`
 
 ```bash
-psql postgresql://amjis_app:50mii04kTKDUUu54CAKdS4Bv2gx1IoWy@127.0.0.1:5433/amjis -c "
+PGPASSWORD="${PGPASSWORD:?}" psql "postgresql://amjis_app@127.0.0.1:5433/amjis" -c "
 SELECT fact_key, fact_value_text
 FROM chart_facts
 WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa'
@@ -1371,7 +1372,7 @@ Required: `star_lord = 'Jupiter'` (PBP lord).
 - [ ] **Step 3: Total row count**
 
 ```bash
-psql postgresql://amjis_app:50mii04kTKDUUu54CAKdS4Bv2gx1IoWy@127.0.0.1:5433/amjis -c "
+PGPASSWORD="${PGPASSWORD:?}" psql "postgresql://amjis_app@127.0.0.1:5433/amjis" -c "
 SELECT fact_category, count(*) as rows
 FROM chart_facts
 WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa'
@@ -1397,7 +1398,7 @@ Run the build a second time. Verify total row count is unchanged (delete-then-in
 - [ ] **Step 5: Set target_floor + migration 242**
 
 ```bash
-TOTAL=$(psql postgresql://amjis_app:50mii04kTKDUUu54CAKdS4Bv2gx1IoWy@127.0.0.1:5433/amjis -t -c "
+TOTAL=$(PGPASSWORD="${PGPASSWORD:?}" psql "postgresql://amjis_app@127.0.0.1:5433/amjis" -t -c "
 SELECT count(*) FROM chart_facts
 WHERE chart_id='482012f1-710e-4a25-994a-93821f5871aa'
   AND fact_category IN (
@@ -1411,7 +1412,7 @@ WHERE chart_id='482012f1-710e-4a25-994a-93821f5871aa'
 echo "Total: $TOTAL"
 
 # Update DB
-psql postgresql://amjis_app:50mii04kTKDUUu54CAKdS4Bv2gx1IoWy@127.0.0.1:5433/amjis -c \
+PGPASSWORD="${PGPASSWORD:?}" psql "postgresql://amjis_app@127.0.0.1:5433/amjis" -c \
   "UPDATE asset_registry SET target_floor = $TOTAL WHERE asset_id = 'ga_nakshatra';"
 ```
 

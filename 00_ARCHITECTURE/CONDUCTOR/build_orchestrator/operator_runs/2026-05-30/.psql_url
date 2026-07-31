@@ -1,1 +1,2 @@
-postgresql://amjis_app:aYtv6SN5TwRBShzHfxN4Qz_ccW3a49qnCAA2L-VF@localhost:5433/amjis
+# credential redacted — see SAMAPTI security incident, 2026-07-30 (A7-N8-AUDIT)
+postgresql://amjis_app:REDACTED@localhost:5433/amjis
