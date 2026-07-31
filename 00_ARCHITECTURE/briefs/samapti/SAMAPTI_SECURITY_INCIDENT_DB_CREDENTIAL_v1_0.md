@@ -1,15 +1,30 @@
 ---
 artifact: SAMAPTI_SECURITY_INCIDENT_DB_CREDENTIAL
 canonical_id: SAMAPTI_SECURITY_INCIDENT_DB_CREDENTIAL
-version: 1.1
-status: UNRESOLVED-PENDING-NATIVE-EXECUTION
+version: 1.2
+status: CLOSED-BY-NATIVE-DISPOSITION — see §9-NATIVE-DISPOSITION
 created: 2026-07-30
+closed: 2026-07-31
 lane: B-SECRET-ROTATE-PREP
 governed_by: 00_ARCHITECTURE/briefs/samapti/SAMAPTI_DVARAPALA_LEDGER.md RULING 1, 18, 21, 22
 related_lanes: B-SECRET-REDACT (RULING 2), B-SECRETSCAN-SCOPE (RULING 3)
 ---
 
-# ⚠️ UNRESOLVED — PUBLIC EXPOSURE OF TWO LIVE EFFECTIVE-DATABASE-ADMINISTRATOR CREDENTIALS
+# CLOSED (2026-07-31, native disposition) — see §9-NATIVE-DISPOSITION before reading further
+
+> **NIḤŚEṢA closing note (2026-07-31):** the native has reviewed the credentials this document
+> concerns and classified them **SECURE / accepted risk**. No rotation is to be performed, and this
+> is not to be re-raised as a P0. This document's §0–§8 technical analysis (incident record,
+> consumer inventory, compromise assessment, rotation runbook, recurrence guard) is retained
+> in place, unedited, as the audit trail — per `ONGOING_HYGIENE_POLICIES_v1_0.md §A` archival
+> discipline, history is not rewritten to match a later decision. The "Priority: P0" banner
+> immediately below and the frontmatter's original `status: UNRESOLVED-PENDING-NATIVE-EXECUTION`
+> reflect this lane's own assessment **at the time it was written (2026-07-30)** — read them as
+> that, not as the document's current status. **§9-NATIVE-DISPOSITION (appended below §9) is the
+> authoritative, current disposition.** PR #905 (plaintext-credential redaction in 27 files) merged
+> separately as ordinary hygiene per the same native instruction.
+
+# ⚠️ UNRESOLVED (as assessed 2026-07-30 — SUPERSEDED, see banner above) — PUBLIC EXPOSURE OF TWO LIVE EFFECTIVE-DATABASE-ADMINISTRATOR CREDENTIALS
 
 > **THIS DOCUMENT IS PREPARATION ONLY. IT IS NOT A CLOSURE.**
 >
@@ -1380,7 +1395,40 @@ only; no infrastructure was modified.
 | §5.13 72h straggler check | — |
 | `postgres` (INC-3) rotated + stored in Secret Manager | — |
 | RES-8 `authorizedNetworks` history question answered | — |
-| Incident status | **UNRESOLVED** |
+| Incident status | **UNRESOLVED** (as of the runbook's own writing — see §9-NATIVE-DISPOSITION below) |
+
+---
+
+## §9-NATIVE-DISPOSITION — the actual, authoritative outcome (2026-07-31, NIḤŚEṢA campaign)
+
+The native reviewed the credentials INC-1/INC-2/INC-3 catalogued above and made the following
+disposition, relayed as an explicit, binding instruction to the NIḤŚEṢA campaign:
+
+- **Classification: SECURE / accepted risk.** No rotation is to be performed.
+- **Priority: not P0.** Not to be re-raised as a P0 in any future session.
+- **§5 (the zero-downtime rotation runbook) is NOT to be executed.** It remains in this document
+  as a prepared, reviewed procedure available if the native's risk assessment changes in the
+  future — not as an outstanding action item.
+- **Separately, PR #905** (redaction of plaintext DB credentials from 27 tracked files — the
+  B-SECRET-REDACT lane referenced in this document's frontmatter) **was merged** during NIḤŚEṢA,
+  as ordinary hygiene. That is independent of, and does not imply anything about, the rotation
+  question above: redacting a plaintext literal from tracked files is good hygiene regardless of
+  whether the credential itself is rotated.
+- **This document's technical content (§0–§8) is not disputed** — the consumer inventory, the
+  `cloudsqlsuperuser`/`rolcreaterole` self-escalation analysis, and the compromise assessment are
+  retained as accurate, useful audit-trail material. Only the *priority/action* conclusion is
+  superseded, by the native's explicit accepted-risk classification.
+
+No `gcloud`/`psql`/IAM/Secret Manager mutation was performed by this disposition — it is a
+documentation-only closure, consistent with the SAMĀPTI swarm never having held
+credential-administration authority (DVA Ruling 1).
+
+| field | value |
+|---|---|
+| Disposition date | 2026-07-31 |
+| Disposed by | Native (relayed via NIḤŚEṢA campaign brief) |
+| Rotation executed | **No — explicitly declined, not required** |
+| Incident status | **CLOSED — SECURE / accepted risk** |
 
 ---
 
