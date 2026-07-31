@@ -282,6 +282,43 @@ settled it. When a claim is cheap to test, test it rather than reason about it t
   views, a real defect" — was wrong. All eight are registered and called from
   `registry_bridge.ts`; see §4.8.
 
+**6.4 Third pass (2026-07-31, parked-decision close-out) — three things worth recording,
+two of which contradict the instructions they were executing.**
+
+- **A delegated plan asked for a verification that is impossible in the stated order.**
+  Step 1a required confirming the four required checks report on a `merge_group` event
+  *before* enabling the merge queue. `merge_group` events are generated **only** by an
+  enabled queue, so the trigger cannot be exercised first. Recorded rather than quietly
+  reordered. The achievable sequence — merge the trigger, enable the queue, watch ONE PR,
+  disable on failure — is what PR #967 documents. Rollback is a UI toggle.
+
+- **An "open question" was already answered in an unmerged PR.** Step 3 commissioned an
+  investigation into `samiksha-daily` reading a nonexistent `DATABASE_URL`. The
+  investigation confirms the defect (no repo secret, **no environments configured at
+  all**, no matching variable; three scheduled runs "succeeded" doing nothing). But
+  **PR #895, open since 2026-07-29, already fixes it** — repointing to
+  `secrets.PROD_DATABASE_URL` (the same secret `deploy.yml`'s migration step reads) and
+  replacing the silent `exit 0` with `exit 1` + a `::error::` annotation, under the same
+  §N.8 reasoning, filed as SAMĀPTI A5/G2. No competing PR was written. **Check for an
+  existing fix before commissioning an investigation into a known defect.**
+
+- **A "failed" run was a deliberate falsifiability probe, not a defect.** #895's branch
+  shows a failing run asserting `PROD_DATABASE_URL` was unconfigured, although the secret
+  exists. Its head commit `fec4692a` is *"TEMPORARY can-fail probe — bogus secret name to
+  prove visible-failure branch"* (it substituted
+  `PROD_DATABASE_URL_CANFAIL_PROBE_DO_NOT_USE`), reverted two minutes later in `1fc3eaad`.
+  The author was mutation-proving their own fail-fast path — the same discipline this
+  audit applies. **Read the commit before reading a red run as a defect.**
+
+- **One more invalid mutation of my own.** Testing whether `authority_basis_census_seed`
+  can fail, I first mutated `_kala_tool_registration.ts`'s `MCP_TOOLS_ROOT` and observed
+  exit 0 — and nearly recorded "this gate cannot fail either." That mutation never reached
+  the code path: `authority_basis_census_seed.ts` declares its **own** `MCP_TOOLS_ROOT` at
+  line 49 and does not import the shared helper's. Mutating the right constant gives
+  exit 1 / FAIL=1. Both census seeds are falsifiable and were kept on the PR path for
+  that reason. **Confirm a mutation actually reaches the code under test before believing
+  a negative result.**
+
 ## §7 — Verification standard applied
 
 No change was made on reasoning alone. Every claim was measured, and every gate
