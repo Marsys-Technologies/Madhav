@@ -265,8 +265,11 @@ jobs:
       # TAP-7 also consults TAP7_API_BASE_URL for ONE gate, which self-quarantines without it
       # (see the script header). No existing secret holds an amjis-web URL, so that single gate
       # stays quarantined and is surfaced for the native to decide — the DB-backed gates run.
+      # `!cancelled()` so a failing S-13 does not HIDE TAP-7's result. Without it the first
+      # dispatch reported S-13 FAIL and skipped TAP-7 entirely, leaving TAP-7 unverified — the
+      # job still fails if either gate fails, but both now actually report.
       - name: TAP-7 distribution gates [dispatch-only; API gate self-quarantines without TAP7_API_BASE_URL]
-        if: github.event_name == 'workflow_dispatch'
+        if: ${{ !cancelled() && github.event_name == 'workflow_dispatch' }}
         working-directory: platform
         env:
           DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
