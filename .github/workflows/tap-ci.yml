@@ -131,8 +131,15 @@ jobs:
   # RE-ARM: add the TAP_MCP_SERVER_URL secret (plus TAP_MCP_SMOKE_BEARER_TOKEN), then
   # delete the `if:` line below.
   # ─────────────────────────────────────────────────────────────────────────────
+  # STILL NOT ARMABLE (re-checked 2026-08-01). Unlike the DB gates below, this one could NOT
+  # be fixed by repointing: it needs MCP_SERVER_URL *and* MCP_SMOKE_BEARER_TOKEN, and the
+  # bearer token is genuine credential material with NO existing equivalent anywhere in the
+  # repo's secrets. (`MARSYS_MCP_KEY`, referenced by other workflows, does not exist either.)
+  # Creating that value is not an agent's to do, so this stays honestly SKIPPED.
+  # RE-ARM: native sets MCP_SMOKE_BEARER_TOKEN (+ TAP_MCP_SERVER_URL → the amjis-mcp URL);
+  # no code change is then needed — the guards already key off the secrets.
   mcp-tool-smoke-plan:
-    name: MCP per-tool smoke battery [dispatch-only — needs TAP_MCP_SERVER_URL]
+    name: 'MCP per-tool smoke battery [dispatch-only — BLOCKED, needs a bearer token only the native can set]'
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     env:
@@ -151,9 +158,14 @@ jobs:
   tap-db-gates:
     name: TAP-5 / TAP-7 / S-13 — DB-backed conservation + distribution gates
     runs-on: ubuntu-latest
-    env:
-      DATABASE_URL: ${{ secrets.TAP_DATABASE_URL }}
-      TAP7_API_BASE_URL: ${{ secrets.TAP7_API_BASE_URL }}
+    # id-token needed for the WIF auth used by the dispatch-only Cloud SQL proxy below.
+    permissions:
+      contents: read
+      id-token: write
+    # NOTE: DATABASE_URL is deliberately NOT set at job level. Setting it here would make
+    # TAP-5 attempt a live connection on ordinary PR runs instead of honestly self-reporting
+    # its 5 DB laws as SKIPPED — the exact behaviour TAP-5 is held up as the model for. It is
+    # supplied per-step, on the dispatch-only steps only.
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -164,6 +176,33 @@ jobs:
       - name: npm ci (platform)
         working-directory: platform
         run: npm ci
+
+      # ── DB reachability for the dispatch-only gates (2026-08-01) ────────────────────────
+      # amjis-postgres has a public IP but ZERO authorized networks, so a runner cannot reach
+      # it directly. deploy.yml already solves this (lines ~279-295): authenticate via WIF,
+      # then run the Cloud SQL Auth Proxy on 127.0.0.1:5432. This replicates that exact,
+      # already-proven pattern against the SAME instance
+      # (madhav-astrology:asia-south1:amjis-postgres), which is how the estate match was
+      # confirmed — not by trusting a secret's name.
+      #
+      # Both steps are dispatch-gated, so ordinary PR runs pay nothing and TAP-5's honest-skip
+      # behaviour on the PR path is untouched.
+      - name: Authenticate to Google Cloud (dispatch-only)
+        if: github.event_name == 'workflow_dispatch'
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: projects/938361928218/locations/global/workloadIdentityPools/github/providers/github-actions
+          service_account: github-actions@madhav-astrology.iam.gserviceaccount.com
+
+      - name: Start Cloud SQL Auth Proxy (dispatch-only)
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          curl -fsSL \
+            "https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.10.1/cloud-sql-proxy.linux.amd64" \
+            -o cloud-sql-proxy && chmod +x cloud-sql-proxy
+          ./cloud-sql-proxy --address 127.0.0.1 --port 5432 \
+            madhav-astrology:asia-south1:amjis-postgres &
+          sleep 5
       # R-18 — KEEP, always. Ratchet PROVEN 2026-07-31: a probe tool declaring a zod param
       # (`never_read_param`) never referenced in its own handler made this exit 1 and NAME
       # both the tool and the param. That is the real ratchet firing on a NEW violation, not
@@ -202,13 +241,26 @@ jobs:
       # Nothing deleted; the scripts are real.
       # RE-ARM: add the TAP_DATABASE_URL secret (and TAP7_API_BASE_URL for TAP-7), then
       # delete the `if:` line on the step.
-      - name: S-13 live coverage matrix [dispatch-only — needs TAP_DATABASE_URL]
+      # ARMED 2026-08-01 by REPOINTING, not by creating a secret (the #895 move):
+      # TAP_DATABASE_URL never existed; PROD_DATABASE_URL does, and deploy.yml already uses it
+      # against this same amjis-postgres instance through the same proxy. So these now read the
+      # existing secret. continue-on-error is DROPPED — with real DB access a failure is a real
+      # finding, and swallowing it would recreate the fabricated-green problem this campaign
+      # spent its length removing.
+      - name: S-13 live coverage matrix [dispatch-only]
         if: github.event_name == 'workflow_dispatch'
         working-directory: platform
-        continue-on-error: true
+        env:
+          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
         run: npx tsx --conditions=react-server scripts/audit/tap/s13_coverage_matrix_live.ts
-      - name: TAP-7 distribution gates [dispatch-only — needs TAP_DATABASE_URL + TAP7_API_BASE_URL]
+
+      # TAP-7 also consults TAP7_API_BASE_URL for ONE gate, which self-quarantines without it
+      # (see the script header). No existing secret holds an amjis-web URL, so that single gate
+      # stays quarantined and is surfaced for the native to decide — the DB-backed gates run.
+      - name: TAP-7 distribution gates [dispatch-only; API gate self-quarantines without TAP7_API_BASE_URL]
         if: github.event_name == 'workflow_dispatch'
         working-directory: platform
-        continue-on-error: true
+        env:
+          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+          TAP7_API_BASE_URL: ${{ secrets.TAP7_API_BASE_URL }}
         run: npx tsx --conditions=react-server scripts/audit/tap/tap7_distribution_gates.ts
