@@ -8,6 +8,8 @@
  *      that changes after settle; in-place text swap at fixed geometry, P1).
  *   2. Claim — Cormorant (the chart's voice is serif; §6.2).
  *   3. The kāla-rekhā — the time hairline whose geometry IS the calendar (AC-16).
+ *   4. Footer row — confidence phrase chip + mono prediction ref (§6.9 item 4;
+ *      PB-6/SAMĀPTI — added to close the gap against the settled-block spec).
  *
  * Lives in the collapsible right dock (§10.3 "the right dock"): the prediction
  * card + kāla-rekhā dock right rather than mount inline in the prose column.
@@ -32,7 +34,13 @@ export interface PredictionCardProps {
   windowEnd?: string | null
   today?: string
   windowLabel?: string
-  /** Optional in-stream/dock action slot (e.g. the Log-to-Samīkṣā affordance). */
+  /** §6.9 footer row (item 4): framed confidence phrase + mono prediction ref.
+   *  Named `predictionRef` (not `ref`) — `ref` is a reserved JSX attribute and
+   *  would be intercepted by React rather than passed through as a prop. */
+  confidencePhrase?: string
+  predictionRef?: string
+  /** Optional in-stream/dock action slot (e.g. the Log-to-Samīkṣā affordance
+   *  or, per §6.9 item 4 Phase 2, "Record what happened"). */
   action?: React.ReactNode
 }
 
@@ -42,6 +50,7 @@ export function PredictionCard(props: PredictionCardProps) {
     closingSoon: props.closingSoon,
   })
   const hasTimeline = !!(props.readingDate && props.windowStart && props.windowEnd && props.today)
+  const hasFooter = !!(props.confidencePhrase || props.predictionRef || props.action)
 
   return (
     <div className="pp-prediction-card" data-testid="prediction-card" data-lifecycle={props.lifecycleStatus}>
@@ -60,7 +69,17 @@ export function PredictionCard(props: PredictionCardProps) {
           windowLabel={props.windowLabel}
         />
       ) : null}
-      {props.action ? <div className="pp-prediction-card__action">{props.action}</div> : null}
+      {hasFooter ? (
+        <div className="pp-prediction-card__footer" data-testid="prediction-card-footer">
+          {props.confidencePhrase ? (
+            <span className="pp-prediction-card__confidence">{props.confidencePhrase}</span>
+          ) : null}
+          {props.predictionRef ? (
+            <span className="pp-prediction-card__ref">{props.predictionRef}</span>
+          ) : null}
+          {props.action ? <span className="pp-prediction-card__action">{props.action}</span> : null}
+        </div>
+      ) : null}
     </div>
   )
 }

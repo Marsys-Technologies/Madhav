@@ -72,11 +72,18 @@ export interface CommittedBlock {
 export interface PredictionCardData {
   id: string
   claim: string
+  /**
+   * PB-6 (SAMĀPTI): real ISO `yyyy-mm-dd` kāla-rekhā anchors — the geometry is
+   * computed live from these by the PURE `computeKalaRekha`
+   * (lib/pariprashna/samiksha/kala_rekha.ts), never pre-baked as a fraction.
+   * `today` is deliberately NOT stored here — it is read from the real clock
+   * at render time (dock/PredictionCard.tsx), so the dot always advances.
+   */
+  readingDate: string
+  windowStart: string
+  windowEnd: string
   windowStartLabel: string
   windowEndLabel: string
-  todayFractionOfSpan: number // 0..1 position of "today" dot across [span start, span end]
-  windowStartFraction: number // 0..1 start of the gold window segment
-  windowEndFraction: number // 0..1 end of the gold window segment
   confidencePhrase: string
   ref: string
   lifecycle: 'window_open' | 'window_closing' | 'awaiting_outcome' | 'resolved_confirmed' | 'resolved_missed' | 'resolved_mixed'

@@ -1,71 +1,62 @@
 import type { PredictionCardData } from '../state/types'
-
-const LIFECYCLE_LABEL: Record<PredictionCardData['lifecycle'], string> = {
-  window_open: 'TIME-INDEXED READING · WINDOW OPEN',
-  window_closing: 'TIME-INDEXED READING · WINDOW CLOSING',
-  awaiting_outcome: 'TIME-INDEXED READING · AWAITING OUTCOME',
-  resolved_confirmed: 'TIME-INDEXED READING · RESOLVED — CONFIRMED',
-  resolved_missed: 'TIME-INDEXED READING · RESOLVED — MISSED',
-  resolved_mixed: 'TIME-INDEXED READING · RESOLVED — MIXED',
-}
+import { PredictionCard as SamikshaPredictionCard } from '../samiksha/PredictionCard'
+import type { LifecycleState, Outcome } from '@/lib/pariprashna/samiksha/schema'
 
 /**
- * The signature component (§6.9): the prediction card + kāla-rekhā (time
- * hairline). Lifecycle restyles only the eyebrow text (in place, fixed
- * height — the same discipline as the working band, P1 honored even by the
- * one living component) and advances the today-dot; nothing else changes
- * post-commit. Lives in the right dock per the 2026-07-27 native ruling,
- * not inline in the conversation column.
+ * PB-6 (SAMĀPTI, 2026-07-30): this used to be its own fixture-fed
+ * re-implementation of the kāla-rekhā geometry, fed a HARDCODED
+ * `todayFractionOfSpan` fixture literal (`0.3`) — so it never rendered
+ * correctly outside the one demo fixture that supplied it, and never at all
+ * on the live SSE path (which has no producer for that fraction). It now
+ * mounts the spec-conformant `samiksha/PredictionCard` + `samiksha/KalaRekha`
+ * pair (previously dead code, imported by nothing) and feeds it REAL ISO date
+ * anchors, so the geometry is computed live by the pure `computeKalaRekha`
+ * (lib/pariprashna/samiksha/kala_rekha.ts) — never a pre-baked fraction —
+ * and the today-dot is read from the real clock at render time, not stored
+ * data. Dot size follows `samiksha/KalaRekha.tsx`'s CSS (3px, per §6.9),
+ * replacing this file's former 7px inline dot.
+ *
+ * This adapter's only job is translating the dock's simpler view-level
+ * `PredictionCardData['lifecycle']` enum into samiksha's
+ * `(lifecycleStatus, outcome, closingSoon)` triple — the DB lifecycle enum
+ * plus the two derived signals `lifecycleEyebrow` needs — so the eyebrow
+ * text this renders is IDENTICAL to the former `LIFECYCLE_LABEL` map.
  */
+const DOCK_LIFECYCLE_MAP: Record<
+  PredictionCardData['lifecycle'],
+  { status: LifecycleState; outcome?: Outcome; closingSoon?: boolean }
+> = {
+  window_open: { status: 'open', closingSoon: false },
+  window_closing: { status: 'open', closingSoon: true },
+  awaiting_outcome: { status: 'window_closed' },
+  resolved_confirmed: { status: 'outcome_recorded', outcome: 'happened' },
+  resolved_missed: { status: 'outcome_recorded', outcome: 'did_not_happen' },
+  resolved_mixed: { status: 'outcome_recorded', outcome: 'partial' },
+}
+
+/** Today's REAL date, ISO yyyy-mm-dd, UTC — never a stored/fixture value. */
+function todayIso(): string {
+  return new Date().toISOString().slice(0, 10)
+}
+
 export function PredictionCard({ prediction }: { prediction: PredictionCardData }) {
+  const { status, outcome, closingSoon } = DOCK_LIFECYCLE_MAP[prediction.lifecycle]
+
   return (
-    <div
-      className="rounded p-4 mb-4"
-      style={{ border: '1px solid var(--pp-rule-strong)', borderRadius: '4px', background: 'var(--pp-surface)' }}
-    >
-      <div style={{ fontSize: '9px', letterSpacing: '0.24em', textTransform: 'uppercase', color: 'var(--pp-gold)', marginBottom: '8px' }}>
-        {LIFECYCLE_LABEL[prediction.lifecycle]}
-      </div>
-      <div className="pp-prose" style={{ fontSize: '15px', lineHeight: 1.45, marginBottom: '12px' }}>
-        {prediction.claim}
-      </div>
-
-      {/* kāla-rekhā — the time hairline; the one element on the surface that moves on the scale of months */}
-      <div className="relative mb-1" style={{ height: '14px' }}>
-        <span className="absolute" style={{ top: 6, left: 0, right: 0, height: 1, background: 'rgba(201,162,76,0.2)' }} />
-        <span
-          className="absolute"
-          style={{
-            top: 5.5,
-            left: `${prediction.windowStartFraction * 100}%`,
-            width: `${(prediction.windowEndFraction - prediction.windowStartFraction) * 100}%`,
-            height: 2,
-            background: 'var(--pp-gold)',
-          }}
-        />
-        <span
-          className="absolute rounded-full"
-          style={{
-            top: 3,
-            left: `${prediction.todayFractionOfSpan * 100}%`,
-            width: 7,
-            height: 7,
-            background: 'var(--pp-gold)',
-          }}
-          title="Today"
-        />
-      </div>
-      <div className="flex justify-between font-mono" style={{ fontSize: '8px', color: 'var(--pp-gold-tertiary)', marginBottom: '10px' }}>
-        <span>{prediction.windowStartLabel}</span>
-        <span>{prediction.windowEndLabel}</span>
-      </div>
-
-      <div className="flex items-center gap-2.5">
-        <span style={{ fontSize: '10.5px', color: 'var(--pp-ink-dim)' }}>{prediction.confidencePhrase}</span>
-        <span className="font-mono ml-auto" style={{ fontSize: '9px', color: 'var(--pp-gold-tertiary)' }}>
-          {prediction.ref}
-        </span>
-      </div>
+    <div className="mb-4">
+      <SamikshaPredictionCard
+        claimText={prediction.claim}
+        lifecycleStatus={status}
+        outcome={outcome ?? null}
+        closingSoon={closingSoon}
+        readingDate={prediction.readingDate}
+        windowStart={prediction.windowStart}
+        windowEnd={prediction.windowEnd}
+        today={todayIso()}
+        windowLabel={`${prediction.windowStartLabel} – ${prediction.windowEndLabel}`}
+        confidencePhrase={prediction.confidencePhrase}
+        predictionRef={prediction.ref}
+      />
     </div>
   )
 }

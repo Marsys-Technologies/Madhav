@@ -1,6 +1,11 @@
 'use client'
 
 import '../pariprashna/pariprashna.css'
+// PB-6 (SAMĀPTI): samiksha.css was never imported anywhere, so the
+// spec-conformant KalaRekha/PredictionCard pair's CSS classes (.pp-kala-rekha*,
+// .pp-prediction-card*) had no effect wherever they were used — now mounted
+// live in the right dock (dock/PredictionCard.tsx).
+import './samiksha/samiksha.css'
 import { useCallback, useMemo } from 'react'
 import { ThreadHeader, type ChartPin } from './ThreadHeader'
 import { Transcript } from './Transcript'

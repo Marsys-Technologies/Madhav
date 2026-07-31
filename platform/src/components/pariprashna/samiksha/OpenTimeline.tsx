@@ -23,6 +23,11 @@ function OpenRow({
 }) {
   const win = parseDaterange(row.window)
   const conf = parseNumrange(row.confidence)
+  // PB-6 (SAMĀPTI): the kāla-rekhā's domain is [readingDate, windowEnd] (§6.9)
+  // — `now_context_date` is the genuine wall-clock date the reading was made
+  // on (the "reading's date"); `created_at` (row insert time) is the honest
+  // fallback for the rare row predating that column's backfill.
+  const readingDateIso = row.now_context_date ?? row.created_at
   return (
     <li
       style={{
@@ -53,7 +58,7 @@ function OpenRow({
       >
         {row.claim_text}
       </p>
-      <KalaRekhaTimeline window={win} nowIso={nowIso} />
+      <KalaRekhaTimeline window={win} nowIso={nowIso} readingDateIso={readingDateIso} />
       <div
         className="flex items-center"
         style={{ gap: '10px', marginTop: '6px', fontSize: '11px', color: 'var(--pp-ink-dim, rgba(235,227,210,0.64))' }}
