@@ -182,12 +182,52 @@ document's §5 for the exact procedure. SAMĀPTI cancelled its own in-flight dis
 
 ---
 
-## §4 — Flagged for awareness, no specific defect found
+## §4 — Flagged for awareness, no specific defect found (SUPERSEDED for kala_envelope.ts — see §4-ADDENDUM)
 
 **`platform-mcp/src/lib/kala_envelope.ts`** — a Kāla-domain serving file. SAMĀPTI's N8/
 narration sweeps did not surface a specific finding against it, but it is structurally
 Kāla-serving and worth a look as part of the six-views transformation's own review — flagging
 its existence rather than asserting a defect that wasn't found.
+
+---
+
+## §4-ADDENDUM (NIḤŚEṢA, 2026-07-31) — kala_envelope.ts F-20, a real defect, code withheld
+
+A later SAMĀPTI lane (B-N8-TS-SERVE, DVA Ruling 12, commit `b480d87b`) found a real,
+specific defect in this file after §4 above was written — this addendum supersedes §4's
+"no specific defect found" for this file only.
+
+**F-20 · `KalaFreshness.stale` — literal `false`, estate-wide, no horizon ever checked.**
+`stale` could only be `true` when `params.staleAfter` was supplied to `buildKalaFreshness`
+in `kala_envelope.ts`. Grep at the time: **zero of the eight production `kala_views/*.ts`
+call sites pass `staleAfter`.** `false` was therefore the only value the field could ever
+take in production, while all three provenance fields (`ephemeris_version`,
+`sweep_build_date`, `field_hash`) were simultaneously `null` — and
+`composeFreshnessSentence` (in `platform-mcp/src/lib/argument_composer.ts`) rendered the
+affirmative prose **"Freshness: current."** on every served response, regardless of
+whether anything was actually checked. An unparseable `staleAfter` also silently fell
+through to `false`. This is the CLAUDE.md §N.8 clean-looking-default shape.
+
+**Prescribed fix (spec only — NOT applied to the file):** change `stale: boolean` to
+`stale: boolean | null`. `null` = not determinable, carrying a named reason (mirror the
+three-state discipline `KalaCoverageEntry` already uses in the same file: `'computed'` /
+`'honest_empty'` / `'not_in_corpus'`). Reserve `false` for a horizon that was actually
+declared and genuinely checked. Update `composeFreshnessSentence` to render the third
+state as `"Freshness: UNKNOWN — <reason>"`, never as `"current"`. A working reference
+implementation (not merged, do not treat as authoritative for the six-views rewrite —
+re-derive against the new architecture) exists at commit `b480d87b` in this repo's
+history, touching exactly: `kala_envelope.ts`, `kala_envelope.test.ts`,
+`argument_composer.ts`'s `composeFreshnessSentence`, and one new test in
+`argument_composer.test.ts`. NIḤŚEṢA (2026-07-31) extracted the other three, independent
+fixes in that same commit (F-22/F-23/F-24, non-Kāla files) into a separate merged commit
+and reverted this file and its coupled hunks back to main's pre-fix state before merging —
+per the hard scope boundary, no Kāla-touching code from that commit was merged. See
+`SAMAPTI_DVARAPALA_LEDGER.md` Ruling 12 (original finding) and the NIḤŚEṢA close report's
+disposition table (PR #909) for the split decision.
+
+**Why this is real, not speculative:** the finding shipped with a can-fail proof (source
+reverted to pre-fix semantics, 4 tests observed to go red, then reverted to green) and
+passed both a full `platform-mcp` test run and `tsc --noEmit` at the time it was written.
 
 ---
 
