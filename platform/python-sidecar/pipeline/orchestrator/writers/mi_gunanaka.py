@@ -304,9 +304,20 @@ class MiGunakaWriter(WriterBase):
 
 
 def _publish_snapshot(conn, chart_id: str, cells: list[dict], formula_version: str) -> None:
-    """Publish a versioned calibration snapshot (key-1 signed; key-2 pending native)."""
+    """Publish a versioned calibration snapshot (key-1 signed; key-2 pending native).
+
+    SV-6 fix (parked ŚUDDHA-VĀCA finding, NIḤŚEṢA Track B): `chart_id` is annotated
+    `str`, but the value actually delivered via `ctx.config["chart_id"]` is not
+    guaranteed to already be a plain `str` at the call site (a `uuid.UUID` instance
+    reaches here in practice for some callers) — `chart_id[:8]` then raised
+    `'UUID' object is not subscriptable`, caught non-fatally by the except block
+    below and logged as a warning, silently skipping the snapshot publish for the
+    affected chart every time it occurred. `str(chart_id)[:8]` makes the id-prefix
+    slice work correctly for both a `str` and a `uuid.UUID` input, fixing the
+    computation at its root rather than merely tolerating the exception.
+    """
     try:
-        snapshot_id = f"snap_{chart_id[:8]}_{int(time.time())}"
+        snapshot_id = f"snap_{str(chart_id)[:8]}_{int(time.time())}"
         sp = "sp_snapshot"
         with conn.cursor() as cur:
             cur.execute(f"SAVEPOINT {sp}")

@@ -125,14 +125,16 @@ def _run_grammar(grammar_rows):
     return conn, result
 
 
-def _run_verdict(pratijna_rows):
+def _run_verdict(pratijna_rows, triangulation_rows=None):
     """Drive the Section-5 verdict_object branch: bodha_pratijna +
     bodha_triangulation both 'exist', with the given pratijna rows and no
-    corroborating signals/contradictions/triangulation (kept empty so the
-    test isolates the grade-fallback logic under scrutiny)."""
+    corroborating signals/contradictions (kept empty so the test isolates the
+    grade-fallback / verdict_note logic under scrutiny). `triangulation_rows`
+    defaults to empty (no cross-tradition data) unless a test opts in."""
     conn = _FakeConn([])
     conn.existing_tables = {"bodha_pratijna", "bodha_triangulation"}
     conn.pratijna_rows = pratijna_rows
+    conn.triangulation_rows = triangulation_rows or []
     writer = MiDarshanaWriter()
     result = writer._substep_insight_units(conn, NATIVE_CHART_ID, t0=0.0)
     return conn, result
@@ -287,3 +289,98 @@ def test_channel_propensity_missing_falls_back_to_prior():
     assert result.rows_inserted == 1
     row = conn.inserted_rows[0]
     assert row[RANK_CONSEQUENCE] == 0.35
+
+
+# ── SV-5 — `verdict_note` tradition-blindness (ŚUDDHA-VĀCA parked finding,
+# fixed by NIḤŚEṢA Track B) ───────────────────────────────────────────────────
+#
+# Pre-fix, `verdict_note` said "Strong evidence across traditions." purely from
+# `grade >= 6.0`, regardless of whether `tradition_concordance` (sourced from
+# `bodha_triangulation` via `trad_by_class`) held any actual cross-tradition
+# data for the row's domain — an invented judgment, not a restatement of a
+# cited fact (§N.7 item 6). The fix restructures the note across both axes:
+# grade tier, and whether real concordance data exists. It also removes a dead
+# `trad_by_class.get(event_class_id)` lookup: bo_sangati.py always writes
+# `bodha_triangulation.question_class = domain`, never `event_class_id`, so
+# that lookup could never hit — a fact confirmed by the third test below.
+
+def test_verdict_note_high_grade_no_tradition_data_is_honest():
+    """No bodha_triangulation rows at all for this domain: the note must say
+    so honestly, not claim a cross-tradition check that never ran."""
+    import json
+
+    conn, result = _run_verdict(
+        [_pratijna_row("ec_strong", grade=8.0, status="active", domain="career")],
+    )
+    assert result.rows_inserted == 1
+    row = conn.inserted_rows[0]
+    prov = json.loads(row[PROVENANCE_CHAIN])
+    assert (
+        "Strong evidence (single-tradition basis; no cross-tradition concordance data)."
+        in row[STATEMENT]
+    )
+    assert prov["grade"] == 8.0
+
+
+def test_verdict_note_high_grade_with_tradition_data_is_corroborated():
+    """A real bodha_triangulation row keyed to this row's domain must flip the
+    note to the corroborated phrasing — the positive-data axis."""
+    conn, result = _run_verdict(
+        [_pratijna_row("ec_strong", grade=8.0, status="active", domain="career")],
+        triangulation_rows=[
+            {
+                "question_class": "career",
+                "tradition": "parashari",
+                "concordance_score": 0.8,
+                "signal_ids": ["s1"],
+            }
+        ],
+    )
+    assert result.rows_inserted == 1
+    row = conn.inserted_rows[0]
+    assert "Strong evidence, corroborated across traditions." in row[STATEMENT]
+
+
+def test_verdict_note_event_class_id_keyed_row_does_not_match_domain_lookup():
+    """Regression for the removed dead lookup: bo_sangati.py never writes
+    `question_class = event_class_id`, only `question_class = domain`. A
+    triangulation row keyed to the event_class_id string (not the domain) must
+    NOT be picked up by the domain-only lookup — proving the old
+    `trad_by_class.get(event_class_id)` branch was genuinely unreachable, not
+    just redundant."""
+    conn, result = _run_verdict(
+        [_pratijna_row("ec_strong", grade=8.0, status="active", domain="career")],
+        triangulation_rows=[
+            {
+                "question_class": "ec_strong",  # matches event_class_id, NOT domain
+                "tradition": "parashari",
+                "concordance_score": 0.9,
+                "signal_ids": [],
+            }
+        ],
+    )
+    assert result.rows_inserted == 1
+    row = conn.inserted_rows[0]
+    assert (
+        "Strong evidence (single-tradition basis; no cross-tradition concordance data)."
+        in row[STATEMENT]
+    )
+
+
+def test_verdict_note_mid_grade_with_tradition_data():
+    """Middle grade band, data present — the conditional-band phrasing must
+    also honor the data-presence axis, not just the high/low bands."""
+    conn, result = _run_verdict(
+        [_pratijna_row("ec_mid", grade=4.5, status="conditional", domain="health")],
+        triangulation_rows=[
+            {
+                "question_class": "health",
+                "tradition": "jaimini",
+                "concordance_score": 0.5,
+                "signal_ids": ["s2"],
+            }
+        ],
+    )
+    assert result.rows_inserted == 1
+    row = conn.inserted_rows[0]
+    assert "Conditional — context-dependent, per cross-tradition concordance." in row[STATEMENT]
