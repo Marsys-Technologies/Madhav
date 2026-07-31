@@ -134,9 +134,22 @@ jobs:
           fi
           echo "All four blocking PLAN-mode gates passed."
 
-      - name: absence_lint_gate — ontological-absence phrasing candidates (WARN, non-blocking)
-        # Report-only by design, unchanged: kept as its own step so its
-        # non-blocking status stays visible rather than buried in the loop above.
+      # RELABELLED 2026-07-31 — it was calling itself a "gate" while being unable to fail.
+      #
+      # Mutation-tested: with its REGISTRY_ROOT repointed at a nonexistent directory it
+      # still exits 0 (WARN=10) in default mode, but ABSENCE_LINT_STRICT=true on the SAME
+      # mutation exits 1 with FAIL=10. So the detector is SOUND and merely UNARMED — this
+      # is NOT the ṢAḌ-DARŚANA failure mode, where the detector itself was wrong. Retiring
+      # it would delete a working report, so it stays; the name now tells the truth.
+      #
+      # NOT ARMED, deliberately: on unmutated main today, ABSENCE_LINT_STRICT=true yields
+      # FAIL=21. Flipping it on blind would red CI on 21 untriaged pre-existing findings.
+      # They are enumerated in this PR's description. Reading them, most are comments,
+      # doc-strings and Postgres error-matching regexes (`/column ".*" does not exist/`)
+      # rather than user-facing absence claims — so arming this probably wants a scope
+      # narrowing (skip comments and regex literals) BEFORE the flag, not just the flag.
+      # TO ARM: triage the 21, then set ABSENCE_LINT_STRICT=true and drop continue-on-error.
+      - name: absence lint (REPORT-ONLY, non-blocking — cannot fail; see comment)
         continue-on-error: true
         run: npx tsx scripts/census/elev_gates/absence_lint_gate.ts
 
