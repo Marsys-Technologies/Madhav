@@ -1942,12 +1942,24 @@ def _build_kp_cuspal_rows(
 def _build_aprakasha_rows(
     all_longs: dict[str, float],
     chart_id: str, ayanamsha_id: str, build_id: str, eng_ver: str,
-    gulika_long: float,
-    mandi_long: float,
+    gulika_long: float | None,
+    mandi_long: float | None,
 ) -> list[dict[str, Any]]:
     """
     Category 24: aprakasha_position — 5 invisible grahas
     BPHS Ch.8: Dhwaja, Patala, Kandanga, Pidaa, Vighni
+
+    NAR-GA fix (SAMAPTI_NARRATION_TRIAGE_AND_PARTITION_v1_0.md §2.5): PIDAA
+    and VIGHNI derive from gulika_long/mandi_long, which the caller now seeds
+    honestly as None (not a hand-rolled Saturn+6°/+8° proxy) whenever
+    PyJHora's native Gulika/Maandi computation is unavailable this build.
+    Floor both rows in that case rather than serving a fabricated constant
+    under an ordinary (non-floored) verification status — mirrors
+    `_build_saturn_derived_rows`'s own floor-on-adapter-error handling for
+    the identical gulika/maandi lookup. `pidaa` also now gets the `% 360.0`
+    normalization `vighni` already had (previously absent, so a raw Gulika
+    longitude near 360° could overflow into 360–366°, which no native value
+    or constraint can produce).
     """
     rows = []
     lagna = all_longs.get("LAGNA", 0.0)
@@ -1958,15 +1970,11 @@ def _build_aprakasha_rows(
     dhwaja  = (sun - 12.0) % 360.0
     patala  = (moon + 12.0) % 360.0
     kandanga = (sun + (mer - sun)) % 360.0   # Sun + Mercury relative offset
-    pidaa    = gulika_long
-    vighni   = (mandi_long + 20.0) % 360.0
 
-    subjects = {
+    subjects: dict[str, tuple[float, str]] = {
         "DHWAJA":    (dhwaja,   "BPHS Ch.8: Dhwaja = Sun - 12°"),
         "PATALA":    (patala,   "BPHS Ch.8: Patala = Moon + 12°"),
         "KANDANGA":  (kandanga, "BPHS Ch.8: Kandanga = Sun + Mercury offset"),
-        "PIDAA":     (pidaa,    "BPHS Ch.8: Pidaa = Gulika longitude"),
-        "VIGHNI":    (vighni,   "BPHS Ch.8: Vighni = Mandi + 20°"),
     }
 
     for subj, (long_val, prov) in subjects.items():
@@ -1975,6 +1983,49 @@ def _build_aprakasha_rows(
             chart_id, ayanamsha_id, build_id, eng_ver, lagna,
             formula_provenance_text=prov, tolerance_arcsec=30.0,
         ))
+
+    if gulika_long is not None:
+        pidaa = gulika_long % 360.0
+        rows.extend(_long_rows(
+            "aprakasha_position", "PIDAA", pidaa,
+            chart_id, ayanamsha_id, build_id, eng_ver, lagna,
+            formula_provenance_text="BPHS Ch.8: Pidaa = Gulika longitude",
+            tolerance_arcsec=30.0,
+        ))
+    else:
+        rows.append(_make_row(
+            "aprakasha_position", "PIDAA", "longitude_sidereal",
+            None, None, None, chart_id, ayanamsha_id, build_id, eng_ver,
+            verification_pass_status="floored",
+            formula_provenance_text=(
+                "[EXTERNAL_COMPUTATION_REQUIRED] PyJHora native Gulika "
+                "computation unavailable this build; Pidaa (= Gulika "
+                "longitude, BPHS Ch.8) cannot be derived without it — no "
+                "fabricated Saturn+6° substitute served."
+            ),
+        ))
+
+    if mandi_long is not None:
+        vighni = (mandi_long + 20.0) % 360.0
+        rows.extend(_long_rows(
+            "aprakasha_position", "VIGHNI", vighni,
+            chart_id, ayanamsha_id, build_id, eng_ver, lagna,
+            formula_provenance_text="BPHS Ch.8: Vighni = Mandi + 20°",
+            tolerance_arcsec=30.0,
+        ))
+    else:
+        rows.append(_make_row(
+            "aprakasha_position", "VIGHNI", "longitude_sidereal",
+            None, None, None, chart_id, ayanamsha_id, build_id, eng_ver,
+            verification_pass_status="floored",
+            formula_provenance_text=(
+                "[EXTERNAL_COMPUTATION_REQUIRED] PyJHora native Maandi "
+                "computation unavailable this build; Vighni (= Mandi + 20°, "
+                "BPHS Ch.8) cannot be derived without it — no fabricated "
+                "Saturn+8° substitute served."
+            ),
+        ))
+
     return rows
 
 
@@ -2671,19 +2722,29 @@ def _build_all_sensitive_rows_for_ayanamsha(
     rows.extend(saturn_rows)
 
     # Extract Gulika and Mandi for Aprakasha computation later.
-    # M-11 fix: read the correct "sensitive_points" key (was "upagrahas", never
-    # populated by compute_chart — always empty, so these silently fell back
-    # to the hand-rolled Saturn+6/Saturn+8 constants every build).
-    gulika_long = all_longs.get("SAT", 0.0) + 6.0
-    mandi_long  = all_longs.get("SAT", 0.0) + 8.0
+    # NAR-GA fix (SAMAPTI_NARRATION_TRIAGE_AND_PARTITION_v1_0.md §2.5,
+    # ga_sensitive_writer.py:2677): the comment below used to say the M-11 fix
+    # (which stopped `_build_saturn_derived_rows` from ever serving this same
+    # proxy) applied "as in" that sibling function — but this site alone kept
+    # the rejected hand-rolled Saturn+6°/Saturn+8° constants as its *seed*,
+    # so any adapter error (sensitive_points.py's error path returns
+    # {"error": ...} — still `isinstance(..., dict)`, still with no
+    # `longitude_deg`) silently fell through to the fabricated proxy under an
+    # ordinary (non-floored) verification status. Seed honestly as None —
+    # mirrors _build_saturn_derived_rows's own floor-on-adapter-error
+    # handling for the identical gulika/maandi lookup — and use `is not None`
+    # rather than bare truthiness, which also discarded a legitimate
+    # `longitude_deg == 0.0` (0°00′ Aries).
+    gulika_long: float | None = None
+    mandi_long: float | None = None
     sensitive_native_top = chart_data.get("sensitive_points", {})
     if isinstance(sensitive_native_top.get("gulika"), dict):
         v = sensitive_native_top["gulika"].get("longitude_deg")
-        if v:
+        if v is not None:
             gulika_long = float(v)
     if isinstance(sensitive_native_top.get("maandi"), dict):
         v = sensitive_native_top["maandi"].get("longitude_deg")
-        if v:
+        if v is not None:
             mandi_long = float(v)
 
     # ── 3–5. Bhrigu Bindu, Yogi, Avayogi ─────────────────────────────────────
