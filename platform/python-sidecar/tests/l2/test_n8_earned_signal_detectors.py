@@ -3,13 +3,23 @@ tests/l2/test_n8_earned_signal_detectors.py — SAMĀPTI lane B-N8-FIX regressio
 ====================================================================================
 
 Locks in the §N.8 (CLAUDE.md "Earned-Signal Principle") repairs for the findings
-`SAMAPTI_N8_EARNED_SIGNAL_REGISTER_v1_0.md` §2.1 recorded against two writers:
+`SAMAPTI_N8_EARNED_SIGNAL_REGISTER_v1_0.md` §2.1 recorded against two writers,
+plus the four PŪRṆATĀ-campaign residuals named in `SAMAPTI_DVARAPALA_LEDGER.md`
+Ruling 86 ("B-N8-FIX/SWEEPFIX residuals") that were explicitly left unfixed at
+the time (out of declared scope) and are now closed here:
 
   F-07 `lel_zero_leak_pass`             — PROXY     (was `trap1_count == 0`; never read LEL data)
   F-08 `pillars_meet_reachability_pass` — TAUTOLOGY (was `msr_count > 0`, already raised above)
   F-09 `trap2_narration_leak_count`     — LITERAL 0 (no detector at all)
   F-10 `divergent_flagged_count`        — LITERAL 0 (no detector at all)
   F-12 `bo_chart_gestalt` stored a verdict its own docstring forbids
+  F-13 `msr_no_threshold_drop_flag`     — TAUTOLOGY (was `msr_count > 0`, IDENTICAL shape to
+                                          F-08 — PŪRṆATĀ residual, closed here)
+  F-15 `fragility_class`                — LITERAL "multi_ayanamsha_tested" — PŪRṆATĀ residual
+  F-16 `linking_mechanism`               — LITERAL "domain_tension" — PŪRṆATĀ residual
+  F-17 `contested_areas` "genuinely balanced" — PROXY (both-nonzero, no threshold) — PŪRṆATĀ residual
+  strongest_domain/weakest_domain        — INSERTION-ORDER bug (alphabetical, not by strength) —
+                                          PŪRṆATĀ residual
 
 TEST LAYERING, and the honest bounds of each layer:
 
@@ -69,6 +79,11 @@ def test_pramana_mapa_no_longer_carries_the_four_prefix_expressions():
     assert '"divergent_flagged_count": 0,' not in src, (
         "F-10 regression: divergent_flagged_count is back to a literal 0"
     )
+    assert '"msr_no_threshold_drop_flag": msr_count > 0,' not in src, (
+        "F-13 regression: msr_no_threshold_drop_flag is back to the IDENTICAL "
+        "tautology as F-08 (msr_count == 0 already raises ~300 lines earlier, "
+        "so this expression can only ever evaluate True)"
+    )
 
 
 def test_pramana_mapa_fields_are_wired_to_detector_results():
@@ -76,6 +91,7 @@ def test_pramana_mapa_fields_are_wired_to_detector_results():
     for field, expr in [
         ("lel_zero_leak_pass", 'lel_result["pass"]'),
         ("pillars_meet_reachability_pass", 'pillars_result["pass"]'),
+        ("msr_no_threshold_drop_flag", 'no_drop_result["pass"]'),
         ("trap2_narration_leak_count", 'trap2_result["count"]'),
         ("divergent_flagged_count", 'divergent_result["count"]'),
     ]:
@@ -90,6 +106,7 @@ def test_every_detector_reads_a_real_table():
         bo_pramana_mapa._LEL_TERM_C_SQL,
         bo_pramana_mapa._ORPHAN_EDGE_ENDPOINTS_SQL,
         bo_pramana_mapa._ORPHAN_EDGE_SIGNAL_REFS_SQL,
+        bo_pramana_mapa._WEAK_TAIL_COUNT_SQL,
         bo_pramana_mapa._NARRATION_LEAK_SQL,
         bo_pramana_mapa._EXPLICIT_DIVERGENT_SQL,
         bo_pramana_mapa._TIER_INVERSION_SQL,
@@ -102,6 +119,32 @@ def test_every_detector_reads_a_real_table():
     # The reachability gate must carry a second, independent term (the F-19
     # lesson: a gate whose operands cannot disagree is not a gate).
     assert "bodha_cgm_nodes" in bo_pramana_mapa._ORPHAN_EDGE_ENDPOINTS_SQL
+    # F-13: the no-threshold-drop gate must actually read computed_salience —
+    # the second, independent term the msr_count>0 tautology lacked.
+    assert "computed_salience" in bo_pramana_mapa._WEAK_TAIL_COUNT_SQL
+
+
+def test_no_threshold_drop_needs_both_presence_and_weak_tail():
+    """F-13: msr_count alone must not be sufficient — a second independent
+    term (a real weak-tail signal) is required, unlike the tautology it
+    replaces."""
+    class FakeCursor:
+        def __init__(self, count):
+            self._count = count
+        def fetchone(self):
+            return (self._count,)
+
+    class ZeroWeakTail:
+        """msr_count > 0 but no signal clears the weak-tail scan."""
+        def execute(self, *_a, **_k):
+            return FakeCursor(0)
+
+    res = bo_pramana_mapa.detect_no_threshold_drop(ZeroWeakTail(), CHART_ID, msr_count=5)
+    assert res["pass"] is False, (
+        "msr_count > 0 alone flipped the gate true — this is the F-08-shaped "
+        "tautology again; the weak-tail term must be independently required"
+    )
+    assert res["terms"]["weak_tail_signal_count"] == 0
 
 
 def test_unevaluable_detector_returns_none_not_a_pass():
@@ -114,6 +157,7 @@ def test_unevaluable_detector_returns_none_not_a_pass():
     assert bo_pramana_mapa.detect_lel_leak(conn, CHART_ID)["pass"] is None
     assert bo_pramana_mapa.detect_pillar_reachability(
         conn, CHART_ID, 1, 1, 1, 1, 1)["pass"] is None
+    assert bo_pramana_mapa.detect_no_threshold_drop(conn, CHART_ID, msr_count=1)["pass"] is None
     assert bo_pramana_mapa.count_narration_leaks(conn, CHART_ID)["count"] is None
     assert bo_pramana_mapa.count_divergent_signals(conn, CHART_ID)["count"] is None
 
@@ -139,6 +183,267 @@ def test_gestalt_writer_stores_no_verdict():
     assert '"verdict_class": verdict_class' not in src
     assert '"confidence": round(min(salience / 10.0, 1.0), 3)' not in src
     assert "NEVER stores verdicts" in src  # the rule itself must stay
+
+
+def test_gestalt_no_longer_carries_the_purnata_residual_literals():
+    """PŪRṆATĀ residual sweep regression guard: F-15, F-16, F-17, and the
+    strongest/weakest-domain insertion-order bug must not come back."""
+    src = inspect.getsource(bo_chart_gestalt)
+
+    assert '"fragility_class": "multi_ayanamsha_tested"' not in src, (
+        "F-15 regression: fragility_class is back to a hardcoded literal a "
+        "single ayanamsha's write cannot honestly assert"
+    )
+    assert '"linking_mechanism": "domain_tension",' not in src, (
+        "F-16 regression: linking_mechanism is back to a hardcoded literal "
+        "that never checks whether the two poles actually share a domain"
+    )
+    assert '"note": "domains where benefic and malefic evidence is genuinely balanced"' not in src, (
+        "F-17 regression: contested_areas is back to asserting 'balanced' "
+        "from a HAVING clause that only requires both counts to be non-zero"
+    )
+    assert (
+        'strongest_domain = list(domain_verdict_map.keys())[0]' not in src
+    ), (
+        "strongest_domain regression: back to reading dict insertion order "
+        "(== alphabetical, from the DISTINCT ON ORDER BY) instead of ranking "
+        "by evidence.top_signal_salience"
+    )
+    assert (
+        'weakest_domain_entry = list(domain_verdict_map.items())[-1]' not in src
+    ), (
+        "weakest_domain regression: back to reading dict insertion order "
+        "(== alphabetical) instead of ranking by evidence.top_signal_salience"
+    )
+    # The real replacements must be present.
+    assert "domain_strength_order" in src
+    assert "_CONTESTED_BALANCE_RATIO_THRESHOLD" in src
+    assert "_assess_fragility" in src and "_patch_fragility" in src
+
+
+def test_strongest_and_weakest_domain_rank_by_salience_not_alphabet():
+    """The register's own diagnosis: an INSERTION-ORDER bug, not a
+    sorting-by-value bug. Domain names are chosen so that alphabetical order
+    gives the WRONG answer, proving the fix ranks by real salience."""
+    captured: dict = {}
+    top_signal = {
+        "signal_id": "sig-top", "signal_type_id": "t1",
+        "signal_type_class": "position", "computed_salience": 5.0,
+        "signature_tier": "major", "valence": "benefic",
+        "source_l1_asset": "ga_structural", "domains_affected_array": ["aaa_domain"],
+        "constituent_facts_array": ["fact0001"],
+    }
+    canned = [
+        ("signature_tier IN ('chart_defining', 'major')", [top_signal]),
+        # domain_signals: 'aaa_domain' (alphabetically first) is DELIBERATELY
+        # the WEAKEST signal; 'zzz_domain' (alphabetically last) is the
+        # STRONGEST. If the bug were still present, strongest_domain would
+        # read 'aaa_domain' and weakest_domain would read 'zzz_domain' —
+        # exactly backwards.
+        ("DISTINCT ON (unnested_domain)", [
+            {"unnested_domain": "aaa_domain", "signal_id": "sig-weak",
+             "computed_salience": 0.9, "valence": "benefic",
+             "signature_tier": "supporting"},
+            {"unnested_domain": "zzz_domain", "signal_id": "sig-strong",
+             "computed_salience": 9.5, "valence": "malefic",
+             "signature_tier": "chart_defining"},
+        ]),
+        ("major_tier_count", [
+            {"domain": "aaa_domain", "signal_count": 3, "benefic_count": 3,
+             "malefic_count": 0, "mixed_count": 0, "neutral_count": 0,
+             "major_tier_count": 0},
+            {"domain": "zzz_domain", "signal_count": 50, "benefic_count": 5,
+             "malefic_count": 45, "mixed_count": 0, "neutral_count": 0,
+             "major_tier_count": 40},
+        ]),
+        # NOTE: "HAVING COUNT(*)" (unique to the `contested` query) MUST be
+        # checked before the generic "valence = 'malefic'"/"valence =
+        # 'benefic'" fragments below, because `contested`'s own SQL also
+        # contains those substrings (its FILTER clauses) — first-match-wins.
+        ("HAVING COUNT(*)", []),        # contested
+        ("valence = 'malefic'", []),    # malefic_signals
+        ("valence = 'benefic'", []),    # benefic_top
+        ("bodha_discoveries", []),      # outlier_discoveries
+    ]
+    conn = _CannedConn(canned, captured)
+    bo_chart_gestalt._write_aya(conn, CHART_ID, AYA, "build-1", "2026-07-31T00:00:00Z")
+
+    headline = json.loads(captured["row"]["headline_jsonb"])
+    watch_list = json.loads(captured["row"]["watch_list_jsonb"])
+
+    assert headline["strongest_domain"] == "zzz_domain", (
+        f"strongest_domain read '{headline['strongest_domain']}' — this is "
+        "alphabetical/insertion order, not the real highest-salience domain"
+    )
+    assert watch_list["weakest_domain"] == "aaa_domain", (
+        f"weakest_domain read '{watch_list['weakest_domain']}' — this is "
+        "alphabetical/insertion order, not the real lowest-salience domain"
+    )
+
+
+def test_linking_mechanism_reflects_real_domain_overlap():
+    """F-16: linking_mechanism must be computed from the actual overlap
+    between the two poles' domains, not hardcoded to 'domain_tension'."""
+    captured: dict = {}
+    top_signal = {
+        "signal_id": "sig-top", "signal_type_id": "t1",
+        "signal_type_class": "position", "computed_salience": 5.0,
+        "signature_tier": "major", "valence": "benefic",
+        "source_l1_asset": "ga_structural", "domains_affected_array": ["career"],
+        "constituent_facts_array": ["fact0001"],
+    }
+    canned = [
+        ("signature_tier IN ('chart_defining', 'major')", [top_signal]),
+        ("DISTINCT ON (unnested_domain)", [
+            {"unnested_domain": "career", "signal_id": "sig-top",
+             "computed_salience": 5.0, "valence": "benefic",
+             "signature_tier": "major"},
+        ]),
+        ("major_tier_count", [
+            {"domain": "career", "signal_count": 1, "benefic_count": 1,
+             "malefic_count": 0, "mixed_count": 0, "neutral_count": 0,
+             "major_tier_count": 1},
+        ]),
+        ("HAVING COUNT(*)", []),  # contested — must be checked before valence fragments below
+        # malefic_signals: top malefic signal touches "health", NOT "career"
+        ("valence = 'malefic'", [
+            {"signal_id": "sig-malefic", "signal_type_id": "t2",
+             "computed_salience": 4.0, "domains_affected_array": ["health"]},
+        ]),
+        # benefic_top: shares no domain with the malefic pole above
+        ("valence = 'benefic'", [
+            {"signal_id": "sig-benefic", "signal_type_id": "t3",
+             "domains_affected_array": ["career"]},
+        ]),
+        ("bodha_discoveries", []),
+    ]
+    conn = _CannedConn(canned, captured)
+    bo_chart_gestalt._write_aya(conn, CHART_ID, AYA, "build-1", "2026-07-31T00:00:00Z")
+
+    cq = json.loads(captured["row"]["central_question_jsonb"])
+    assert cq["linking_mechanism"] == "cross_domain_contrast", (
+        "career (positive pole) and health (negative pole) share no domain — "
+        "linking_mechanism must not claim 'domain_tension' unconditionally"
+    )
+    assert cq["linking_mechanism_terms"]["positive_pole_domains"] == ["career"]
+    assert cq["linking_mechanism_terms"]["negative_pole_domains"] == ["health"]
+
+
+def test_contested_areas_lopsided_is_not_genuinely_balanced():
+    """F-17: the register's own live disproof — 136 benefic vs 632 malefic
+    must be reported as contested but NOT genuinely balanced."""
+    captured: dict = {}
+    top_signal = {
+        "signal_id": "sig-top", "signal_type_id": "t1",
+        "signal_type_class": "position", "computed_salience": 5.0,
+        "signature_tier": "major", "valence": "benefic",
+        "source_l1_asset": "ga_structural", "domains_affected_array": ["career"],
+        "constituent_facts_array": ["fact0001"],
+    }
+    canned = [
+        ("signature_tier IN ('chart_defining', 'major')", [top_signal]),
+        ("DISTINCT ON (unnested_domain)", [
+            {"unnested_domain": "career", "signal_id": "sig-top",
+             "computed_salience": 5.0, "valence": "benefic",
+             "signature_tier": "major"},
+        ]),
+        ("major_tier_count", [
+            {"domain": "career", "signal_count": 768, "benefic_count": 136,
+             "malefic_count": 632, "mixed_count": 0, "neutral_count": 0,
+             "major_tier_count": 12},
+        ]),
+        # contested: the live 136/632 case. Must be checked BEFORE the
+        # generic valence fragments below — this query's own FILTER clauses
+        # also contain "valence = 'benefic'"/"valence = 'malefic'" text.
+        ("HAVING COUNT(*)", [
+            {"domain": "career", "benefic_count": 136, "malefic_count": 632},
+        ]),
+        ("valence = 'malefic'", []),
+        ("valence = 'benefic'", []),
+        ("bodha_discoveries", []),
+    ]
+    conn = _CannedConn(canned, captured)
+    bo_chart_gestalt._write_aya(conn, CHART_ID, AYA, "build-1", "2026-07-31T00:00:00Z")
+
+    contested = json.loads(captured["row"]["contested_areas_jsonb"])
+    career = contested["contested_domains"][0]
+    assert career["domain"] == "career"
+    assert career["genuinely_balanced"] is False, (
+        "136 vs 632 (ratio 0.215) was served as 'genuinely balanced' — the "
+        "register's own live disproof; the HAVING clause only checked both "
+        "counts were non-zero, never an actual balance threshold"
+    )
+    assert abs(career["balance_ratio"] - round(136 / 632, 4)) < 1e-9
+
+
+def test_assess_fragility_needs_at_least_two_ayanamsha_rows():
+    """F-15: fragility_class cannot be established from a single ayanamsha's
+    row — must be None (not a default), not a guess."""
+    class OneRowConn:
+        def cursor(self, *_a, **_k):
+            class Cur:
+                def __enter__(self_inner):
+                    return self_inner
+                def __exit__(self_inner, *_exc):
+                    return False
+                def execute(self_inner, *_a, **_k):
+                    pass
+                def fetchall(self_inner):
+                    return [{"ayanamsha_id": AYA, "domain_verdict_map_jsonb": "{}"}]
+                @property
+                def description(self_inner):
+                    return None
+            return Cur()
+
+    res = bo_chart_gestalt._assess_fragility(OneRowConn(), CHART_ID, "build-1")
+    assert res["fragility_class"] is None
+    assert res["terms"]["ayanamsha_rows_compared"] == 1
+
+
+def test_assess_fragility_detects_a_real_disagreement():
+    """F-15 can-fail proof (in-process): two ayanamsha rows whose stored
+    domain evidence disagrees on which valence dominates a shared domain must
+    flip fragility_class from stable to ayanamsha_sensitive."""
+    def _rows(agree: bool):
+        career_lahiri = {"career": {"evidence": {"benefic_count": 10, "malefic_count": 1}}}
+        career_raman = (
+            {"career": {"evidence": {"benefic_count": 9, "malefic_count": 1}}}
+            if agree else
+            {"career": {"evidence": {"benefic_count": 1, "malefic_count": 10}}}
+        )
+        return [
+            {"ayanamsha_id": "lahiri_chitrapaksha", "domain_verdict_map_jsonb": json.dumps(career_lahiri)},
+            {"ayanamsha_id": "raman", "domain_verdict_map_jsonb": json.dumps(career_raman)},
+        ]
+
+    class RowsConn:
+        def __init__(self, rows):
+            self._rows = rows
+        def cursor(self, *_a, **_k):
+            rows = self._rows
+            class Cur:
+                def __enter__(self_inner):
+                    return self_inner
+                def __exit__(self_inner, *_exc):
+                    return False
+                def execute(self_inner, *_a, **_k):
+                    pass
+                def fetchall(self_inner):
+                    return rows
+                @property
+                def description(self_inner):
+                    return None
+            return Cur()
+
+    stable = bo_chart_gestalt._assess_fragility(RowsConn(_rows(True)), CHART_ID, "build-1")
+    assert stable["fragility_class"] == "stable_across_ayanamsha"
+
+    fragile = bo_chart_gestalt._assess_fragility(RowsConn(_rows(False)), CHART_ID, "build-1")
+    assert fragile["fragility_class"] == "ayanamsha_sensitive", (
+        "career flips from benefic-leaning (lahiri) to malefic-leaning "
+        "(raman) — this MUST be reported as ayanamsha-sensitive"
+    )
+    assert "career" in fragile["terms"]["domains_disagreeing"]
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -247,7 +552,8 @@ CREATE TABLE bodha_msr_signals (
   signal_id UUID PRIMARY KEY, chart_id UUID NOT NULL, ayanamsha_id TEXT NOT NULL,
   lel_origin BOOLEAN NOT NULL DEFAULT false, configuration_jsonb JSONB NOT NULL,
   constituent_facts_array TEXT[] NOT NULL, signal_summary_text TEXT,
-  signal_headline_text TEXT, verification_pass_status TEXT);
+  signal_headline_text TEXT, verification_pass_status TEXT,
+  computed_salience NUMERIC NOT NULL DEFAULT 1.0);
 CREATE TABLE bodha_cdlm_cells (cell_id UUID PRIMARY KEY, chart_id UUID NOT NULL);
 CREATE TABLE bodha_cgm_nodes (node_id UUID PRIMARY KEY, chart_id UUID NOT NULL);
 CREATE TABLE bodha_cgm_edges (
@@ -257,6 +563,7 @@ CREATE TABLE bodha_rm_resonances (resonance_id UUID PRIMARY KEY, chart_id UUID N
 """
 
 _SIG_A = "11111111-1111-4111-8111-111111111111"
+_SIG_B = "22222222-2222-4222-8222-222222222222"  # low-salience "weak tail" signal (F-13)
 _NODE_A = "33333333-3333-4333-8333-333333333333"
 _NODE_B = "44444444-4444-4444-8444-444444444444"
 _EDGE_A = "55555555-5555-4555-8555-555555555555"
@@ -274,8 +581,16 @@ def _seed(conn):
     conn.execute(
         """INSERT INTO bodha_msr_signals VALUES
              (%s, %s, 'lahiri_chitrapaksha', false, '{"house":10}'::jsonb,
-              ARRAY['fact0001'], 'Sun occupies house 10.', 'Sun in 10th.', 'single_pass')""",
+              ARRAY['fact0001'], 'Sun occupies house 10.', 'Sun in 10th.', 'single_pass', 1.5)""",
         [_SIG_A, CHART_ID])
+    # F-13: a genuine weak-tail signal (computed_salience below the 0.3
+    # boundary) — its presence is the independent term the msr_count>0
+    # tautology lacked.
+    conn.execute(
+        """INSERT INTO bodha_msr_signals VALUES
+             (%s, %s, 'lahiri_chitrapaksha', false, '{"house":3}'::jsonb,
+              ARRAY['fact0001'], 'Minor background signal.', 'Minor.', 'single_pass', 0.05)""",
+        [_SIG_B, CHART_ID])
     conn.execute("INSERT INTO bodha_cdlm_cells VALUES (%s, %s)", [_CELL_A, CHART_ID])
     conn.execute("INSERT INTO bodha_cgm_nodes VALUES (%s, %s)", [_NODE_A, CHART_ID])
     conn.execute("INSERT INTO bodha_cgm_nodes VALUES (%s, %s)", [_NODE_B, CHART_ID])
@@ -293,18 +608,20 @@ def _snapshot(conn):
 
     # Counts are read live, exactly as the writer reads them, so a deleted pillar
     # actually reaches the presence term.
+    msr_count = n("bodha_msr_signals")
     return {
         "lel": bo_pramana_mapa.detect_lel_leak(conn, CHART_ID)["pass"],
         "pillars": bo_pramana_mapa.detect_pillar_reachability(
             conn, CHART_ID,
-            n("bodha_msr_signals"), n("bodha_cdlm_cells"), n("bodha_cgm_nodes"),
+            msr_count, n("bodha_cdlm_cells"), n("bodha_cgm_nodes"),
             n("bodha_cgm_edges"), n("bodha_rm_resonances"))["pass"],
+        "no_drop": bo_pramana_mapa.detect_no_threshold_drop(conn, CHART_ID, msr_count)["pass"],
         "trap2": bo_pramana_mapa.count_narration_leaks(conn, CHART_ID)["count"],
         "divergent": bo_pramana_mapa.count_divergent_signals(conn, CHART_ID)["count"],
     }
 
 
-_CLEAN = {"lel": True, "pillars": True, "trap2": 0, "divergent": 0}
+_CLEAN = {"lel": True, "pillars": True, "no_drop": True, "trap2": 0, "divergent": 0}
 
 # (label, field that must go red, mutation SQL, revert SQL)
 _MUTATIONS = [
@@ -333,6 +650,14 @@ _MUTATIONS = [
      f"ARRAY['aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa']::uuid[] WHERE edge_id='{_EDGE_A}'",
      f"UPDATE bodha_cgm_edges SET underlying_msr_signal_ids_array="
      f"ARRAY['{_SIG_A}']::uuid[] WHERE edge_id='{_EDGE_A}'"),
+    ("no_drop · weak-tail signal's salience raised above the threshold", "no_drop",
+     f"UPDATE bodha_msr_signals SET computed_salience=1.2 WHERE signal_id='{_SIG_B}'",
+     f"UPDATE bodha_msr_signals SET computed_salience=0.05 WHERE signal_id='{_SIG_B}'"),
+    ("no_drop · weak-tail signal deleted entirely", "no_drop",
+     f"DELETE FROM bodha_msr_signals WHERE signal_id='{_SIG_B}'",
+     f"""INSERT INTO bodha_msr_signals VALUES
+             ('{_SIG_B}', '{CHART_ID}', 'lahiri_chitrapaksha', false, '{{"house":3}}'::jsonb,
+              ARRAY['fact0001'], 'Minor background signal.', 'Minor.', 'single_pass', 0.05)"""),
     ("trap2 · deliberation committed into a deterministic text field", "trap2",
      f"UPDATE bodha_msr_signals SET signal_summary_text="
      f"'Wait: re-reading. Corrected: Ketu aspects 1H.' WHERE signal_id='{_SIG_A}'",
