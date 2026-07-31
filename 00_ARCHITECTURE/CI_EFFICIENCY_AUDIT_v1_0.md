@@ -494,6 +494,68 @@ a queue (it fires only on a `merge_group` event, which cannot occur here) and re
 instantly if the repository ever moves to an organization. One dead line is cheaper than a
 churn PR.
 
+## §6.11 — Repository moved to an organization; merge queue LIVE. The campaign's real close.
+
+§6.9 recorded that merge queue was impossible here because `amonty84/Madhav` was owned by a
+**User**. On 2026-07-31 the native created the **`Marsys-Technologies`** organization and the
+repository was transferred. Merge queue is now live and proven end to end.
+
+**The order mattered, and it was chosen to avoid a broken window.** GCP first, transfer second:
+
+1. **GCP prepared BEFORE the transfer, additively.** Workload Identity Federation was
+   hard-pinned to the old owner in two places, and either alone would have broken deploys:
+   - provider attribute condition: `assertion.repository_owner == 'amonty84'`
+   - both service-account bindings (`github-actions@`, `brahma-conductor-bot@`):
+     `principalSet://…/attribute.repository/amonty84/Madhav`
+
+   The new `Marsys-Technologies/Madhav` principalSet was **added alongside** the old one on
+   both SAs, and the provider condition **widened** to
+   `assertion.repository_owner == 'amonty84' || assertion.repository_owner == 'Marsys-Technologies'`.
+   Both owners were therefore valid simultaneously, so `deploy.yml`, `fresh_chart_smoke.yml`,
+   `iac-apply.yml` and `shad-darshana-circularity-guard.yml` were never dark for a moment.
+
+2. **Transfer.** `POST /repos/amonty84/Madhav/transfer` → `Marsys-Technologies/Madhav`
+   (asynchronous; the 202 response still echoes the old name, so completion was polled for).
+   Audited afterwards, not assumed: branch protection intact with all four required checks and
+   `enforce_admins`; **11 secrets** present; **2 variables** present; **4 open PRs** carried
+   over. The old URL still redirects, so other sessions' worktrees kept working.
+
+3. **Ruleset with `merge_queue` — accepted immediately.** The identical rule that returned
+   `HTTP 422 Invalid rule 'merge_queue'` on the user account (§6.9) was accepted on the org
+   without modification. That is the cleanest possible confirmation that org ownership, and
+   nothing else, was the blocker. Ruleset `20141220`, active, empty bypass list: the four
+   required checks, `pull_request`, `merge_queue` (batch 1 / SQUASH / ALLGREEN),
+   `non_fast_forward`, `deletion`.
+
+**Proven, at step level.** Two PRs went through the queue: #983 (real work, not a test) and
+the throwaway canary #984. Checks executed on
+`gh-readonly-queue/main/pr-984-8d8cb38b…` under the `merge_group` event — which is #967's
+trigger, dormant since the morning, firing for the first time. All four required checks were
+`success` at **job** level *and* at **step** level (8 / 11 / 7 / 16 non-skipped steps, zero
+non-success), so no `continue-on-error` masking (§6 rule 1).
+
+**Classic protection retired.** Only after the queue was proven. Coverage was verified
+field-by-field first — 4 checks → 4 checks; `enforce_admins: true` → empty `bypass_actors`;
+`allow_force_pushes: false` → `non_fast_forward`; `allow_deletions: false` → `deletion`. The
+classic rule was then deleted; `repos/…/rules/branches/main` confirms all five rule types now
+in effect from the ruleset alone.
+
+**One intentional behaviour change.** Classic had **Require a pull request: OFF** — direct
+pushes to `main` were permitted. A merge queue *requires* PRs, so the ruleset's `pull_request`
+rule turns that ON. Direct pushes to `main` are now blocked. This is a real change and it was
+unavoidable, not incidental.
+
+**`strict` stays OFF, deliberately.** §6.10 dropped it to end the livelock. It stays off
+*for a different reason now*: the queue builds and tests the actual prospective merge commit,
+so requiring branches be up to date beforehand is redundant work rather than added safety —
+it would simply reintroduce the rebase treadmill the queue exists to remove. The freshness
+guarantee §6.10 gave up is now genuinely restored by the queue, which is the outcome the whole
+campaign was aiming at.
+
+**Rollback:** delete ruleset `20141220` and recreate classic protection from
+`prot_before.json`; remove the `Marsys-Technologies` principalSets and narrow the provider
+condition back to `amonty84`; transfer the repository back. Each step is independent.
+
 ## §7 — Verification standard applied
 
 No change was made on reasoning alone. Every claim was measured, and every gate
