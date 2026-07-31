@@ -15,10 +15,17 @@ name: Samīkṣā Daily Job (PB-3 L-4)
 # LOGGED (visible in this workflow's run log), never emailed. Wire a real DigestTransport when
 # one lands.
 #
-# SAFETY: the live run is a no-op unless a DATABASE_URL secret is configured (the step logs and
-# exits 0). So enabling this daily cron does not silently begin making live production DB calls
-# on a repo that has not opted in by setting the secret — the same discipline
-# reconciliation-cadence.yml applies to its own schedule.
+# SECRET: reads secrets.PROD_DATABASE_URL — the SAME repo secret deploy.yml's migration step
+# reads (deploy.yml:203), not a bespoke DATABASE_URL. (SAMĀPTI A5/G2, 2026-07-30: this job
+# previously read secrets.DATABASE_URL, a secret that does not exist in this repo, so every
+# scheduled run silently no-op'd via the exit-0 branch below and reported GREEN — the exact
+# misconfiguration this fix closes.)
+#
+# SAFETY (REVISED, A5/G2): a missing PROD_DATABASE_URL secret now FAILS the job LOUDLY
+# (`exit 1` with a `::error::` annotation) instead of exiting 0. The prior silent-exit-0
+# design was the root cause of the secret-name bug going undetected for as long as it did — a
+# misconfigured run must never again be able to report green. If this repo genuinely wants the
+# daily sweep OFF, disable/unschedule the workflow; do not rely on an absent secret to no-op it.
 #
 # IDEMPOTENCY CAVEAT (honest): the per-day digest sent-marker (DigestJournal) defaults to a file
 # under the runner workspace, which a fresh ephemeral GitHub runner does NOT carry between
@@ -56,53 +63,52 @@ jobs:
     defaults:
       run:
         working-directory: platform
-    # CI efficiency audit (2026-07-31): the DATABASE_URL check happened AFTER
-    # checkout + setup-node + `npm ci`, so this workflow spent ~40s of runner time
-    # every single day to print "no secret configured" and exit 0. The secret does
-    # not exist in this repo (`gh secret list` shows PROD_DATABASE_URL, not
-    # DATABASE_URL — worth confirming which one this job is actually meant to use),
-    # so that has been the outcome of every run since it merged.
+    # MERGE-RESOLUTION NOTE (2026-07-31). Merging main into this branch auto-combined two
+    # changes into something strictly WORSE than either parent, with no conflict marker.
+    # Recorded because the silent-combination failure mode is the point:
     #
-    # The check is hoisted ahead of the setup steps so an unconfigured run costs a
-    # couple of seconds instead of ~40s. It is a step-level guard, not a job-level
-    # `if:`, because the `secrets` context is NOT available in `jobs.<id>.if` —
-    # only github/needs/vars/inputs are. Promoting the secret to job-level `env`
-    # and testing `env.` in a step `if:` is the supported way to do this.
+    #   from main (#964): job-level `env: DATABASE_URL: ${{ secrets.DATABASE_URL }}` plus
+    #     `if: env.DATABASE_URL != ''` on every step, to hoist the check ahead of npm ci.
+    #   from this branch (A5/G2): the real fix — read secrets.PROD_DATABASE_URL and exit 1
+    #     with a ::error:: annotation when it is missing.
+    #
+    #   COMBINED: the job-level env still read the NONEXISTENT secrets.DATABASE_URL, so
+    #   env.DATABASE_URL was always empty, so EVERY step's `if:` was false — including the
+    #   fail-loud step. The job would have reported SUCCESS with every step skipped, which
+    #   is exactly the silent no-op this branch exists to eliminate, reintroduced by the
+    #   merge that was supposed to preserve it.
+    #
+    # RESOLVED by keeping both intents and dropping the mechanism that broke them: the
+    # job-level env reads PROD_DATABASE_URL (this branch's fix), and the preflight FAILS
+    # rather than merely logging (this branch's semantics). That makes the per-step `if:`
+    # guards unnecessary — a failed preflight stops the job before checkout/npm ci, which
+    # is what #964's hoisting was for.
     env:
-      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
     steps:
-      - name: Preflight — DATABASE_URL configured?
+      - name: Preflight — PROD_DATABASE_URL must be configured (fails before any setup cost)
         working-directory: ${{ github.workspace }}
         run: |
           if [ -z "${DATABASE_URL}" ]; then
-            echo "[samiksha-daily] DATABASE_URL is not configured — nothing to do."
-            echo "[samiksha-daily] Set the DATABASE_URL repo secret to enable the daily sweep."
-            echo "[samiksha-daily] NOTE: this repo has PROD_DATABASE_URL but no DATABASE_URL;"
-            echo "[samiksha-daily] confirm which one this job is meant to read."
+            echo "::error::[samiksha-daily] PROD_DATABASE_URL secret not configured — failing loudly (A5/G2: a misconfigured run must never report green)."
+            echo "[samiksha-daily] Set the PROD_DATABASE_URL repo secret (the same secret deploy.yml's migration step reads) to enable the daily sweep."
+            exit 1
           fi
+          echo "[samiksha-daily] PROD_DATABASE_URL is configured; proceeding."
 
       - uses: actions/checkout@v4
-        if: env.DATABASE_URL != ''
       - uses: actions/setup-node@v4
-        if: env.DATABASE_URL != ''
         with:
           node-version: '20'
           cache: 'npm'
           cache-dependency-path: platform/package-lock.json
       - run: npm ci
-        if: env.DATABASE_URL != ''
 
       - name: Run the consolidated daily job (log-only digest — W-5 stub)
-        if: env.DATABASE_URL != ''
         env:
           AS_OF: ${{ inputs.as_of }}
           CHART: ${{ inputs.chart }}
         run: |
-          if [ -z "${DATABASE_URL}" ]; then
-            echo "[samiksha-daily] No DATABASE_URL secret configured — skipping live run (exit 0)."
-            echo "[samiksha-daily] Set the DATABASE_URL repo secret to enable the daily sweep."
-            exit 0
-          fi
           ARGS=""
           if [ -n "${AS_OF}" ]; then ARGS="$ARGS --as-of ${AS_OF}"; fi
           if [ -n "${CHART}" ]; then ARGS="$ARGS --chart ${CHART}"; fi
