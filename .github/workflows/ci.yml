@@ -20,6 +20,27 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  # MERGE-QUEUE PRECONDITION (CI efficiency audit, 2026-07-31). This is the ONLY change in
+  # the PR that adds it, deliberately, because getting it wrong hangs every queued PR.
+  #
+  # A merge queue runs its checks against a temporary `refs/heads/gh-readonly-queue/...`
+  # ref and reports them on a `merge_group` event. A required check whose workflow does
+  # not declare `merge_group:` NEVER REPORTS on that event, and the queue waits for it
+  # forever. All four of this repo's required checks — TypeScript (src only), Unit Tests,
+  # Secret Scan (unit 0b.2), Governance Gates — live in THIS file, so this trigger is
+  # exactly what makes a queue viable here.
+  #
+  # No other workflow needs it: nothing else in .github/workflows/ contributes a required
+  # check (verified 2026-07-31 against branch protection). The advisory workflows are
+  # deliberately left off the queue — they would double queue latency for checks that
+  # cannot block a merge anyway.
+  #
+  # Shape copied from this repo's own prior art: the (now-deleted) chat-v2-smoke.yml
+  # declared `merge_group: branches: [main]`. Recovered from cec28c1c^.
+  #
+  # To revert: delete these three lines.
+  merge_group:
+    branches: [main]
   # D-2 Lane V-0 (BIND_D-2.md §F1.7 ledger row 2): the census-battery job below hits the LIVE
   # deployed connector with real credentials and takes several minutes (135-tool paced sweep) —
   # it must never run on every push/PR (cost, rate-limit risk, and it needs a secret that may not
@@ -32,13 +53,19 @@ on:
 # group, so every push to a PR branch stacked a full new set of runs while the
 # superseded ones kept burning runner minutes.
 #
-# cancel-in-progress is deliberately FALSE on main: deploy.yml triggers on this
-# workflow's `workflow_run` completion, so cancelling a main run would swallow the
-# deploy that run was supposed to gate. On PR branches (the force-push/rebase churn
-# this is actually aimed at) superseded runs are cancelled.
+# Cancellation is scoped to pull_request ONLY — the force-push/rebase churn this was
+# aimed at. Two events must never be cancelled:
+#   - push to main: deploy.yml triggers on this workflow's `workflow_run` completion, so
+#     cancelling a main run would swallow the deploy it was supposed to gate.
+#   - merge_group: a cancelled check on a queue ref can be read as a failure and evict the
+#     PR from the queue. Note the previous expression (`github.ref != 'refs/heads/main'`)
+#     would have evaluated TRUE for a merge-queue ref
+#     (refs/heads/gh-readonly-queue/main/...) and cancelled it — corrected here as part of
+#     making the queue viable, since queue refs did not exist when that expression was
+#     written.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   typecheck:
