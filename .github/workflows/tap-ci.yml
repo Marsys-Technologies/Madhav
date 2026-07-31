@@ -71,6 +71,14 @@ on:
       - 'platform/src/lib/retrieval/**'
       # This file
       - '.github/workflows/tap-ci.yml'
+  # BUG FIX (2026-08-01). This trigger was MISSING, and its absence silently defeated the
+  # 2026-07-31 retirement: three jobs/steps were guarded with
+  # `if: github.event_name == 'workflow_dispatch'` on a workflow that had no such trigger, so
+  # the event could never occur and they were not "dispatch-only" — they were UNREACHABLE.
+  # Caught only by trying to dispatch one: HTTP 422 "Workflow does not have 'workflow_dispatch'
+  # trigger". Every comparable workflow here (ci.yml, elev-serving-gates.yml, deploy.yml, ...)
+  # already declares it. A guard is only honest if the event it names can actually fire.
+  workflow_dispatch:
 
 # CI efficiency audit (2026-07-31): no workflow in this repo had a concurrency
 # group, so every push to a PR branch stacked a full new set of runs while the
