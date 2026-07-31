@@ -1,6 +1,6 @@
 ---
 artifact: CLAUDE.md
-version: "7.1"
+version: "7.2"
 status: CURRENT
 role: >
   Root governance surface. Master orientation document for every Claude session on the MARSYS-JIS
@@ -372,16 +372,37 @@ usually true" or "nothing has broken yet" is not a substitute for a real detecto
 
 ---
 
-*End of CLAUDE.md v7.1 (2026-07-31, PŪRṆATĀ close) — the final close of the whole layer-build arc
-(ŚUDDHA-VĀCA → SATYA-DĪPA → PARIPRAŚNA → SAMĀPTI → NIḤŚEṢA → PŪRṆATĀ). Drained NIḤŚEṢA's entire
-auto-merge-armed queue (31 PRs merged this session), diagnosed and worked around a real branch-
-protection livelock, caught and closed a self-authored consolidation branch before it could revert
-merged work, fixed 3 live CI-gate failures on `main`, landed 6 real narration-fidelity fixes
-(including a genuine privacy-leak repair), closed 5 named residuals, and reconciled one previously-
-parked PR on the merits. No `kala_*`/`l3_*`/`ka_*`/`gochara_*` file was written to; no credential was
-rotated. The one item left genuinely open (C4-LOOP-LIVE-PROOF) was paused, not blocked, on a safety
-flag raised mid-session — full account `00_ARCHITECTURE/briefs/purnata/PURNATA_CLOSE_REPORT_v1_0.md`
-/ `CURRENT_STATE_v1_0.md` v6.50. No doctrine changed by this entry. Prior: v7.0 (2026-07-31, NIḤŚEṢA
+*End of CLAUDE.md v7.2 (2026-08-01, C4-LOOP-LIVE-PROOF close) — the arc's one remaining open item
+closed out. All six criteria (A1–A6: real reading → real `detected` ledger row → live review-tab
+render → real UI resolution with can't-tell→NULL DB-CHECK-enforced → real daily-job window
+transition with CI's DB-integration suite actually running (129/129) → one outcome map with a live
+caller → the calibration leak guard's mutation-proof independently re-run) plus badge-equals-SQL
+were verified LIVE against the deployed app and the real production DB — no fixture substituted for
+any of them. The cookie-content anomaly that paused C4 was diagnosed READ-ONLY to a fully-traced
+benign root cause (dotenvx's own CLI banner sharing stdout with a wrapped script under a shell
+redirect — zero application-code involvement) before any resumption, and tooling-fixed (stream
+separation, PR #986) as the first act. Three synthetic test predictions generated to prove the loop
+were dismissed via the real lifecycle mechanism afterward, returning the native's live review queue
+to a true state (0 badge-countable rows) without touching the one row a real concurrent human user
+had already dismissed mid-session — itself surfaced as corroborating evidence the surface under test
+is genuinely live. Two honest, non-blocking findings carried to the backlog, not fixed in this pass:
+`ANTHROPIC_API_KEY` is entirely unprovisioned in production (masked because the actual default
+stack is `gemini`), and the concurrent-user observation. No `kala_*`/`l3_*`/`ka_*`/`gochara_*` file
+was written to; no credential was rotated. Full account:
+`00_ARCHITECTURE/briefs/purnata/PURNATA_CLOSE_REPORT_v1_0.md` v1.2 / `CURRENT_STATE_v1_0.md`
+v6.51. Root `CLAUDECODE_BRIEF.md` flipped to `status: COMPLETE` for this arc — see its own
+`stale_pointer_incident` field for a governance-hygiene note on why it had drifted. No doctrine
+changed by this entry. Prior: v7.1 (2026-07-31, PŪRṆATĀ close) — the final close of the whole
+layer-build arc (ŚUDDHA-VĀCA → SATYA-DĪPA → PARIPRAŚNA → SAMĀPTI → NIḤŚEṢA → PŪRṆATĀ). Drained
+NIḤŚEṢA's entire auto-merge-armed queue (31 PRs merged this session), diagnosed and worked around a
+real branch-protection livelock, caught and closed a self-authored consolidation branch before it
+could revert merged work, fixed 3 live CI-gate failures on `main`, landed 6 real narration-fidelity
+fixes (including a genuine privacy-leak repair), closed 5 named residuals, and reconciled one
+previously-parked PR on the merits. No `kala_*`/`l3_*`/`ka_*`/`gochara_*` file was written to; no
+credential was rotated. The one item left genuinely open (C4-LOOP-LIVE-PROOF) was paused, not
+blocked, on a safety flag raised mid-session — full account
+`00_ARCHITECTURE/briefs/purnata/PURNATA_CLOSE_REPORT_v1_0.md` / `CURRENT_STATE_v1_0.md` v6.50. No
+doctrine changed by this entry. Prior: v7.0 (2026-07-31, NIḤŚEṢA
 close) — the SAMĀPTI wrap-up campaign drained the VER-confirmed merge backlog SAMĀPTI left queued
 (PB-3.1 loop lanes, two re-diagnosed PRs, two narration fixes, ~a dozen standalone lanes), split one
 PR mid-merge to withhold a Kāla-touching hunk and hand it to ṢAḌ-DARŚANA as a spec addendum instead

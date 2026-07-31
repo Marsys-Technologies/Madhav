@@ -1,13 +1,20 @@
 ---
 artifact: PURNATA_CLOSE_REPORT
 canonical_id: PURNATA_CLOSE_REPORT
-version: 1.1
+version: 1.2
 status: CURRENT
 created: 2026-07-31
 updated: 2026-08-01
 campaign: PŪRṆATĀ — the final close of the ŚUDDHA-VĀCA → SATYA-DĪPA → PARIPRAŚNA → SAMĀPTI → NIḤŚEṢA → PŪRṆATĀ arc
 governed_by: 00_ARCHITECTURE/briefs/nihshesha/NIHSHESHA_CLOSE_REPORT_v1_0.md, BRIEF_PB-3.1_MAKE_THE_LOOP_LIVE.md, CLAUDE.md §N.7/§N.8
 changelog: |
+  v1.2 (2026-08-01) — Final wrap-up: the 3 synthetic test predictions §9 generated were dismissed
+  via the real lifecycle mechanism (§9.10), returning the native's live queue to a true state; §9.3
+  (A2) reframed to name the concurrent real-user interaction as corroborating evidence, not just an
+  oddity; crown re-verified a third time (§2); the ONE consolidated backlog (§5) gained a HANDOFF
+  note naming exactly what a future session picks up first; §7 governance-close section confirms
+  the atomic SESSION_LOG/CURRENT_STATE/CLAUDE.md append and the CLAUDECODE_BRIEF.md COMPLETE flip.
+  This is the arc's terminal version — nothing genuinely open remains.
   v1.1 (2026-08-01) — C4-LOOP-LIVE-PROOF addendum (§9): cookie anomaly diagnosed benign and
   tooling-fixed (#986); all six criteria (A1-A6) + badge-equals-SQL re-verified live against the
   deployed app and real production DB; crown re-verified a second time; two honest non-blocking
@@ -168,7 +175,24 @@ Matches the 7/7 FORENSIC birth anchors exactly. No drift.
 **Re-verified a second time, per the C4-close instruction, at `2026-07-31T20:03:49.541Z`** (§9
 final step) — `chart_header`: `lagna_sign=Aries` (`lagna_deg=12.4311495988431`),
 `moon_sign=Aquarius`, `sun_sign=Capricorn`, `current_maha_antar="Mercury MD / Saturn AD"`. Identical
-to the first read. No drift across the ~2-hour session span.
+to the first read.
+
+**Re-verified a third and final time, per the FINAL WRAP-UP close instruction, at
+`2026-07-31T20:18:37.627Z`** — narration, verbatim:
+
+> Sun = 5th lord for Aries lagna (temporal malefic). Sun is neutral (Capricorn, 10th house) in D1.
+> In D9: neutral (Cancer, 1st house) — and a consistent read across D1 and D9. Shadbala: 8.47
+> rupas vs 5.00 required — grade: strong (surplus) (+3.47 rupas).
+
+`chart_header` identical to both prior reads: `lagna_sign=Aries`, `lagna_deg=12.4311495988431`,
+`moon_sign=Aquarius`, `sun_sign=Capricorn`, `current_maha_antar="Mercury MD / Saturn AD"`. **No
+drift across three independent live calls spanning the full ~2h14m session.**
+
+**The loop is live end-to-end** — every criterion in §9 is backed by a live psql/DOM/screenshot
+artifact against the deployed app and the real production database, no fixture substituted for
+any of them. **The crown is live and stable** — three independent live `graha_portrait` calls this
+session, and every prior campaign's own re-verification before it, return the identical Sun/Lagna/
+Moon/dasha facts with zero drift.
 
 ## 3 — Merge ledger (this session)
 
@@ -204,6 +228,25 @@ both sides).
 
 ## 5 — The ONE consolidated backlog (final)
 
+**HANDOFF — what a future session picks up first.** Nothing genuinely open remains named #1: this
+close report is the terminal deliverable of the whole ŚUDDHA-VĀCA → SATYA-DĪPA → PARIPRAŚNA →
+SAMĀPTI → NIḤŚEṢA → PŪRṆATĀ arc, and every item below has an explicit owner and resume condition —
+none silently dropped. The two items that actually matter for a future session's planning:
+
+1. **ṢAḌ-DARŚANA's own Kāla handover (item 14)** — spec-only, no file ever touched across this
+   whole six-campaign arc. Not this arc's to resume; wait for ṢAḌ-DARŚANA's own cadence.
+2. **The post-six-views-transformation narration audit (item 14's resume condition)** — once
+   ṢAḌ-DARŚANA's Kāla rewrite settles, run a scoped narration audit against the now-SETTLED Kāla
+   layer using this arc's own proven method: a defect-class census (the same B-NAR-BO/GA/PH/TS
+   taxonomy this arc used repeatedly), an adversarial refuter panel (not a single self-graded
+   pass), and live-proof acceptance (a real `psql`/DOM/screenshot artifact per claim — the exact
+   discipline that closed C4, not a fixture-satisfied gate). This is the largest remaining item by
+   scope and the one this whole arc's method was built to eventually turn on Kāla.
+
+Everything else below (items 1a, 2–13) is smaller, individually scoped, and can be picked up by
+whichever session's `may_touch` happens to match its file — no particular order required among
+them.
+
 | # | Item | Owner | Resume condition |
 |---|---|---|---|
 | 1 | ~~C4-LOOP-LIVE-PROOF~~ | **CLOSED this session** | See §9 — all six criteria live-verified, no fixture substituted. |
@@ -234,17 +277,37 @@ commit for its confirmed final status.
 ## 7 — Governance close
 
 Atomic `SESSION_LOG.md` / `CURRENT_STATE_v1_0.md` / `CLAUDE.md` close committed alongside this
-report — a new, later entry appended after NIḤŚEṢA's own close, not an edit to it.
+report, in two waves matching the two actual close sessions: PURNATA-CLOSE-2026-07-31 (the v1.0
+close, C4 paused) and **C4-CLOSE-2026-08-01 (this wrap-up — a new, later entry appended after
+PURNATA-CLOSE's own, not an edit to it)**. `CLAUDE.md` bumped 7.1 → 7.2 with a matching footer
+changelog entry; `CURRENT_STATE_v1_0.md` bumped 6.50 → 6.51 with a new §2 banner (prepended, newest
+first) and a matching §3 narrative paragraph; `SESSION_LOG.md` gained the `C4-CLOSE-2026-08-01`
+entry (`session_open` → narrative → `session_close` yaml) appended at file end. No version or
+section collisions — each file's existing newest-first / append-at-end convention was followed
+exactly, verified by re-reading each file's structure before editing rather than assuming it.
+
+Root `CLAUDECODE_BRIEF.md` — separately, per CLAUDE.md §C item 0 — was found to be stale (still
+pointing at SATYA-DĪPA, `status: READY-FOR-EXECUTION`, committed by PR #869 and never superseded
+through four subsequent campaigns because none of their own pointers were ever git-committed). Its
+`carries_forward` was confirmed safe to drop (both named lanes closed VERIFIED-FIXED in SAMĀPTI,
+re-confirmed live again by this session's own crown re-verification, §2). Replaced with a
+`PURNATA`-scoped pointer, `status: COMPLETE`, and — per the very `commit_warning` the stale version
+itself carried — **committed as this close-out branch's first act**, not written and left
+uncommitted a third time.
 
 ## 8 — Confirmation
 
-**No file matching `kala_*`, `l3_*`, `ka_*`, or `gochara_*` was written to this session.** Every
-Kāla-adjacent finding (`kala_envelope.ts`'s prior F-20, no new ones this session) remains
-handed-over, spec-only. **No credential was rotated.** The one live, in-session safety concern (a
-suspicious fragment in a minted session-cookie value) was flagged directly to the native per this
-session's own safety obligation, diagnosed READ-ONLY to a fully-traced benign root cause before any
-further action, and only then acted on (tooling fix + C4 resumption) — never silently worked
-around. See §9 for the full diagnosis and the completed C4 run.
+**No file matching `kala_*`, `l3_*`, `ka_*`, or `gochara_*` was written to this session, across
+either close (PURNATA-CLOSE-2026-07-31 or C4-CLOSE-2026-08-01).** Every Kāla-adjacent finding
+(`kala_envelope.ts`'s prior F-20, no new ones from this arc) remains handed-over, spec-only, to
+ṢAḌ-DARŚANA — see §5's HANDOFF note. **No credential was rotated, in either close.** The one live,
+in-session safety concern (a suspicious fragment in a minted session-cookie value) was flagged
+directly to the native per this session's own safety obligation, diagnosed READ-ONLY to a
+fully-traced benign root cause before any further action, and only then acted on (tooling fix + C4
+resumption) — never silently worked around. All live-database writes made while proving and then
+cleaning up C4 went through the app's own real UI/lifecycle mechanisms (confirm, resolve, dismiss,
+the real daily job) — not one raw SQL write to the prediction ledger, in either direction. See §9
+for the full diagnosis, the completed C4 run, and the cleanup record.
 
 ## 9 — C4-LOOP-LIVE-PROOF addendum (this session, resumed)
 
@@ -307,6 +370,14 @@ Accessibility-tree DOM snapshot AND a full-page screenshot both confirm both row
 (`Jan 2025 – Jan 2026`, `Jan 2026 – Jan 2027`), each linking `view source turn` to
 `/pariprashna?thread=13caf111-ba7d-44ae-8c40-5f685f24f1d6#turn-1` — the exact `conversation_id`
 from §9.2.
+
+**Corroborating evidence, not just an oddity:** between the confirm click and the badge re-check,
+Cloud Run request logs show a real `POST /clients/482012f1-.../samiksha` from a residential/mobile
+IPv6 range (§9.9 finding 2) — an independent human, not this session's own Playwright automation,
+interacting with the exact same live route under test, mid-proof. A2's claim is "renders on the
+live review tab"; a second, uncoordinated party successfully loading and acting on that same tab at
+the same time is external confirmation the surface is genuinely live production, not a staged or
+cached artifact only this session's own automation could reach.
 
 ### 9.4 — A3: resolves through the mounted UI; can't-tell → NULL
 
@@ -395,6 +466,46 @@ row-count).
    require driving one additional live reading (§9.8) to complete the badge-equals-SQL check
    cleanly after the interference.
 
+### 9.10 — Cleanup: synthetic test predictions dismissed, queue returned to a true state
+
+Per native decision: the 3 synthetic `detected` predictions §9.8's proof generated (the two
+"Trajectory to August 2027" claims and the "Combined Trajectory and Timeline" claim) had served
+their evidentiary purpose — verbatim-recorded above — and leaving them in the native's real review
+queue would read as genuine months from now. **Dismissed, not deleted**: each moved to the
+`dismissed` terminal state through the app's own real "Dismiss" button on the live review tab (not
+a raw SQL write), the same lifecycle mechanism the concurrent real user had already exercised once
+this session.
+
+**Before** (`psql`, canonical chart):
+
+```
+ lifecycle_status | count
+-------------------+-------
+ detected          |     3
+ dismissed         |     1   (the concurrent real user's own dismissal, §9.9 finding 2)
+ unverifiable      |     1   (the §9.4 evidentiary resolution)
+```
+
+**After** (`psql`, same query, post-dismissal):
+
+```
+ lifecycle_status | count
+-------------------+-------
+ dismissed         |     4
+ unverifiable      |     1
+```
+
+Badge query (`lifecycle_status = ANY(['detected','window_closed'])`) confirms **0** — the queue is
+genuinely empty of anything awaiting review, matching a chart with no live conversational activity
+right now. The real user's own dismissal (`06d56961-...`, `updated_at` unchanged at `20:00:37`) and
+the evidentiary can't-tell resolution (`e3e7e4f1-...`, still `unverifiable`) were both left
+completely untouched — confirmed by comparing `updated_at` before and after. This is the first real
+exercise of the ledger's terminal-state lifecycle on genuinely mixed data (one machine-dismissed
+batch, one human-dismissed row, one resolved row), not just a schema/constraint proof.
+
 ---
 
-*End of PURNATA_CLOSE_REPORT_v1_0.md (2026-07-31, C4-LOOP-LIVE-PROOF addendum appended 2026-08-01).*
+*End of PURNATA_CLOSE_REPORT_v1_0.md v1.2 (2026-07-31, initial close; C4-LOOP-LIVE-PROOF addendum
+appended 2026-08-01; final wrap-up — cleanup record, A2 corroboration reframe, HANDOFF note, §7/§8
+governance-close confirmation — appended 2026-08-01). This is the arc's terminal artifact. The
+whole ŚUDDHA-VĀCA → SATYA-DĪPA → PARIPRAŚNA → SAMĀPTI → NIḤŚEṢA → PŪRṆATĀ arc is closed.*

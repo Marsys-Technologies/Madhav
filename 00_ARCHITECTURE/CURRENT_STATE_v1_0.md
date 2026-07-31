@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.50
+version: 6.51
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,17 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.51 (2026-08-01, C4-LOOP-LIVE-PROOF close — the one item PŪRṆATĀ left open): full account in
+    the new banner immediately above and in `00_ARCHITECTURE/briefs/purnata/PURNATA_CLOSE_REPORT_v1_0.md`
+    §9 (v1.2). Headline facts: cookie anomaly diagnosed benign + tooling-fixed (#986) before
+    resumption; all six criteria (A1-A6) plus badge-equals-SQL verified live against the deployed
+    app and the real production DB, no fixture substituted for any of them; three synthetic test
+    predictions dismissed via the real lifecycle mechanism, queue returned to a true state (badge
+    0), real user's own dismissal and the evidentiary resolution left untouched; two honest
+    findings carried to backlog (ANTHROPIC_API_KEY unprovisioned; concurrent real-user
+    observation); crown re-verified a third time, no drift; root CLAUDECODE_BRIEF.md flipped
+    COMPLETE. The whole PŪRṆATĀ arc — and the whole narration/consumption-quality arc it closes —
+    is now fully closed, nothing genuinely open remains named #1.
   - v6.50 (2026-07-31, PŪRṆATĀ close — final close of the whole layer-build arc): full account in
     the new banner immediately above and in `00_ARCHITECTURE/briefs/purnata/PURNATA_CLOSE_REPORT_v1_0.md`.
     Headline facts: 31 PRs merged (drained NIḤŚEṢA's entire auto-merge-armed queue, diagnosed and
@@ -5595,6 +5606,38 @@ block (post-rebuild era), and proceeds.
 
 ## §2 — Canonical state block
 
+> 🟢 **C4-LOOP-LIVE-PROOF close (2026-08-01, session C4-CLOSE-2026-08-01) — the one item
+> PŪRṆATĀ's own banner below left genuinely open, now closed; supersedes that banner's "one
+> genuinely open item" framing, not its historical record.** The cookie-content anomaly that had
+> paused C4 was diagnosed READ-ONLY before any resumption: fully traced to `dotenvx`'s own CLI
+> startup banner sharing stdout with the wrapped script's real output under a shell redirect —
+> disposition (c) benign, zero application-code involvement, zero presence in the live request
+> path. Tooling-fixed (stream separation via `COOKIE_OUTPUT_FILE`, PR #986) as the first act, then
+> C4 resumed. **All six criteria ran to completion with live evidence, no fixture substituted for
+> any of them:** A1 — a real reading against the deployed app produced two genuine `detected` rows
+> in `brahma_mimamsa_prediction_ledger`, verified via direct `psql` against the real prod Cloud
+> SQL instance. A2 — both rendered on the live, authenticated review tab (DOM snapshot +
+> screenshot); **independently corroborated when a real concurrent human user, from a residential
+> IPv6 range, interacted with the exact same surface mid-proof.** A3 — resolved through the
+> mounted UI (can't-tell → `outcome_value` genuinely `NULL`, enforced by a DB CHECK constraint
+> itself proven can-fail in CI). A4 — the daily job transitioned a real window against the real
+> prod DB, and CI's DB-integration suite ran for real (129/129 passed, not skipped). A5 — one
+> outcome map, exercised by a live production caller this session. A6 — the calibration leak
+> guard's mutation-proof independently re-run fresh (6/6 pass), with live corroboration from this
+> session's own production traffic. Badge-equals-SQL re-verified non-vacuously (3 == 3) against a
+> genuinely mixed-state ledger. The three synthetic test predictions this proof generated were
+> then dismissed through the real lifecycle mechanism, returning the native's live review queue to
+> a true state (verified badge = 0) without touching the real user's own dismissal or the
+> evidentiary resolution. Two honest, non-blocking findings carried to the backlog, not fixed this
+> pass: `ANTHROPIC_API_KEY` is entirely unprovisioned in production (masked because the actual
+> default stack is `gemini`, not `anthropic`), and the concurrent-user observation above. Crown
+> re-verified live a third time this session (`graha_portrait`, chart 482012f1,
+> `2026-07-31T20:18:37.627Z`) — identical to both earlier reads, no drift. Root `CLAUDECODE_BRIEF.md`
+> flipped to `status: COMPLETE` for the whole arc, its own `stale_pointer_incident` field
+> documenting (and finally breaking) a 4-campaign-old governance-hygiene drift. Full evidence per
+> criterion: `00_ARCHITECTURE/briefs/purnata/PURNATA_CLOSE_REPORT_v1_0.md` §9 (v1.2). See changelog
+> v7.2.
+
 > 🟢 **PŪRṆATĀ close (2026-07-31, session PURNATA-CLOSE-2026-07-31) — the final close of the
 > ŚUDDHA-VĀCA → SATYA-DĪPA → PARIPRAŚNA → SAMĀPTI → NIḤŚEṢA → PŪRṆATĀ arc; supersedes NIḤŚEṢA's
 > banner below for "what remains," not its historical record.** Drained all ~24 PRs NIḤŚEṢA left
@@ -6749,7 +6792,7 @@ current_state:
   # ------------------------------------------------------------------
   # Last-session pointer
   # ------------------------------------------------------------------
-  last_session_id: SUDDHA-VACA-PHASE-CDEF-2026-07-28  # 2026-07-28: SUDDHA-VACA Phase C/D/E/F CLOSED PARTIAL — 5/7 P0 narration defects VERIFIED-FIXED + rebuilt into both charts, 2/7 PARKED on PARISHODHANA #827/#828; see SUDDHA_VACA_REPORT_v1_0.md and this file's §2 banner. This field was stale at DOCTRINE-WAVES-D-5-CLOSE-2026-07-20 across every intervening session close since (including PURNA-VIRAMA-FINAL-CLOSE-2026-07-27) — corrected here as an in-scope hygiene fix per schema_validator's cross-check, not a claim that the omitted predecessors are individually documented in this chain. Predecessor DOCTRINE-WAVES-D-5-CLOSE-2026-07-20  # 2026-07-20/21: D-5 "Gochara-Chitra" CLOSED GREEN-WITH-PARTIALS, current_wave advances to D-4b — see REPORT_D-5.md §10/STATE_D-5.md (gate_run_3/native_disposition_gate_run_2 blocks) for full detail. Predecessor DOCTRINE-WAVES-D-5-CONDUCTOR-HALT-2026-07-20 (2026-07-20: D-5 HALTED-AND-REPORTED, not closed, on gate_run_2's RED-C/RED-D findings — this field was stale since 2026-07-13 across several intervening wave closes, corrected as an in-scope hygiene fix). Predecessor LLM-CONSUMPTION-REMEDIATION-W1-2026-07-13  # 2026-07-13: LLM Consumption Remediation W1 (serving plane, 16 lanes) CLOSED — deployed amjis-web 2385fb62 + amjis-mcp fc84cd0d (both == main HEAD, deploy-parity confirmed), 7/7 prod-verified on deployed channel (attribution/grounding/discrimination; WP-1.3 assets; envelope+dates honest; WP-1.8 varga→chart_facts; LCA-17 0-substitution; lel_query 57 native/honest-0 Abhinandan post-ADJ-2). ND-W1.1 295-finding gate PASS (0 unreconciled: 108 REMEDIATED-PENDING-W4 / 136 PENDING-W2 / 50 PENDING-W3 / 1 PARKED). NEXT: W2 writer wave (WP-2.1..2.5). See v6.39 changelog + run ledger §6.6/§6.7. Predecessor LLM-CONSUMPTION-REMEDIATION-W0-2026-07-12 (2026-07-12: W0 CLOSED — WP-0.1/LCA-17 wrong-chart substitution REMEDIATED (SHA-256 cache key + echo-back guard; PR #553 6ec244c0; deployed amjis-web-00955-qt5; blind-verified 0 subs/2M iters); program conductor ACTIVE, REMEDIATION_PLAN_v3_0). Predecessor LLM-CONSUMPTION-AUDIT-EXECUTION-2026-07-12 (audit campaign COMPLETE, 1,009 findings). Predecessor LLM-CONSUMPTION-AUDIT-BRIEF-FOUNDRY-2026-07-12  # 2026-07-12: BRIEF FOUNDRY session CLOSED (BUILD-ONLY — no audit/fix/DB-write). Built 8 ledgers + CHARTER + Item-0 brief + 10 lane briefs + AUDIT_STATE skeleton + TRACEABILITY_MATRIX (0 unmapped) for the upcoming LLM Consumption Audit program under 00_ARCHITECTURE/llm_consumption_audit/. See v6.36 changelog entry above and FOUNDRY_CLOSE_REPORT.md. Independent of the L0-L5 layer-build arc (§E) — no macro-phase/layer-campaign change. Predecessor R5.3-CONTENT-DEPTH-2026-07-10 (2026-07-10: R5.3 content-depth iteration CLOSED — §B/B1/B2/B3/B4 complete, gate NOT MET (39.5%), honest close, backlog transfers to R6 TOTAL ELEVATION. Predecessor R5.2-ACCEPTANCE-2026-07-09.)
+  last_session_id: C4-CLOSE-2026-08-01  # 2026-08-01: C4-LOOP-LIVE-PROOF closed — the one item PŪRṆATĀ left open, resolved live end-to-end against the deployed app and the real production DB; see PURNATA_CLOSE_REPORT_v1_0.md v1.2 §9 and this file's §2 banner (top entry). This field was stale at SUDDHA-VACA-PHASE-CDEF-2026-07-28 across every intervening session close since (including PURNATA-CLOSE-2026-07-31) — corrected here as an in-scope hygiene fix per schema_validator's cross-check, not a claim that the omitted predecessors are individually documented in this chain. Predecessor SUDDHA-VACA-PHASE-CDEF-2026-07-28  # 2026-07-28: SUDDHA-VACA Phase C/D/E/F CLOSED PARTIAL — 5/7 P0 narration defects VERIFIED-FIXED + rebuilt into both charts, 2/7 PARKED on PARISHODHANA #827/#828; see SUDDHA_VACA_REPORT_v1_0.md and this file's §2 banner. Predecessor DOCTRINE-WAVES-D-5-CLOSE-2026-07-20  # 2026-07-20/21: D-5 "Gochara-Chitra" CLOSED GREEN-WITH-PARTIALS, current_wave advances to D-4b — see REPORT_D-5.md §10/STATE_D-5.md (gate_run_3/native_disposition_gate_run_2 blocks) for full detail. Predecessor DOCTRINE-WAVES-D-5-CONDUCTOR-HALT-2026-07-20 (2026-07-20: D-5 HALTED-AND-REPORTED, not closed, on gate_run_2's RED-C/RED-D findings — this field was stale since 2026-07-13 across several intervening wave closes, corrected as an in-scope hygiene fix). Predecessor LLM-CONSUMPTION-REMEDIATION-W1-2026-07-13  # 2026-07-13: LLM Consumption Remediation W1 (serving plane, 16 lanes) CLOSED — deployed amjis-web 2385fb62 + amjis-mcp fc84cd0d (both == main HEAD, deploy-parity confirmed), 7/7 prod-verified on deployed channel (attribution/grounding/discrimination; WP-1.3 assets; envelope+dates honest; WP-1.8 varga→chart_facts; LCA-17 0-substitution; lel_query 57 native/honest-0 Abhinandan post-ADJ-2). ND-W1.1 295-finding gate PASS (0 unreconciled: 108 REMEDIATED-PENDING-W4 / 136 PENDING-W2 / 50 PENDING-W3 / 1 PARKED). NEXT: W2 writer wave (WP-2.1..2.5). See v6.39 changelog + run ledger §6.6/§6.7. Predecessor LLM-CONSUMPTION-REMEDIATION-W0-2026-07-12 (2026-07-12: W0 CLOSED — WP-0.1/LCA-17 wrong-chart substitution REMEDIATED (SHA-256 cache key + echo-back guard; PR #553 6ec244c0; deployed amjis-web-00955-qt5; blind-verified 0 subs/2M iters); program conductor ACTIVE, REMEDIATION_PLAN_v3_0). Predecessor LLM-CONSUMPTION-AUDIT-EXECUTION-2026-07-12 (audit campaign COMPLETE, 1,009 findings). Predecessor LLM-CONSUMPTION-AUDIT-BRIEF-FOUNDRY-2026-07-12  # 2026-07-12: BRIEF FOUNDRY session CLOSED (BUILD-ONLY — no audit/fix/DB-write). Built 8 ledgers + CHARTER + Item-0 brief + 10 lane briefs + AUDIT_STATE skeleton + TRACEABILITY_MATRIX (0 unmapped) for the upcoming LLM Consumption Audit program under 00_ARCHITECTURE/llm_consumption_audit/. See v6.36 changelog entry above and FOUNDRY_CLOSE_REPORT.md. Independent of the L0-L5 layer-build arc (§E) — no macro-phase/layer-campaign change. Predecessor R5.3-CONTENT-DEPTH-2026-07-10 (2026-07-10: R5.3 content-depth iteration CLOSED — §B/B1/B2/B3/B4 complete, gate NOT MET (39.5%), honest close, backlog transfers to R6 TOTAL ELEVATION. Predecessor R5.2-ACCEPTANCE-2026-07-09.)
     # === Predecessor FOUNDATION-SESSION-1 (2026-06-18) ===
     # FOUNDATION-SESSION-1: Pre-L2 foundation close-out COMPLETE. All 6 ITEM close criteria met. Migrations 315-317 prod-applied. 4 autonomy writers REGENERABLE confirmed. bg_rules full mine (2,912 ceiling). Catalogs ACCEPTED. Endpoint ALL L0+L1 lit/service_ok. Sealing artifact: FOUNDATION_SESSION_1_CLOSE.md. Predecessor L1-GANITA-REBASE-AND-PR.
     # === Predecessor L1-GANITA-REBASE-AND-PR (2026-06-18) ===
@@ -8688,6 +8731,41 @@ current_state:
 ---
 
 ## §3 — Narrative (human-reading surface — must agree with §2)
+
+At the close of **C4-CLOSE-2026-08-01 — the one item PŪRṆATĀ left open, closed**, this session
+picked up exactly where PŪRṆATĀ paused: a suspicious fragment (`⟐ injected`) inside a minted
+production session cookie. Diagnosed READ-ONLY first, per explicit instruction not to route
+around an unexplained signal — traced to `dotenvx`'s own CLI startup banner sharing stdout with
+the wrapped script's real output under a shell redirect, benign, zero application involvement.
+Tooling-fixed (stream separation, PR #986) before resumption. C4 then ran to completion with live
+evidence for every criterion: a real conversational reading against the deployed app produced two
+genuine `detected` rows in the production prediction ledger (verified via direct `psql` against
+the real Cloud SQL instance, not a test double); both rendered on the live, authenticated review
+tab; one was resolved through the mounted UI with a can't-tell resolution genuinely writing
+`NULL` (DB-CHECK-enforced); the daily job, run against the real prod DB, transitioned a real
+window, and CI's DB-integration suite ran for real — 129 tests, not skipped; the one outcome map
+was exercised by a live caller this session; the calibration leak guard's mutation-proof was
+independently re-run fresh (6/6); and the badge-equals-SQL check was re-verified non-vacuously.
+Along the way, a real concurrent human user — from a residential IPv6 range, not this session's
+own automation — interacted with the exact review-tab surface under test, dismissing one of the
+test predictions; disclosed rather than absorbed silently, and reframed as corroborating evidence
+the surface is genuinely live, not an idle staging artifact. The three synthetic predictions this
+proof generated were dismissed afterward through the real UI lifecycle mechanism (not raw SQL),
+returning the native's live queue to a true state — verified badge count 0 before and after
+compared against a full `psql` row listing, the real user's own dismissal and the evidentiary
+resolution both left untouched. Two honest findings surfaced along the way were carried to the
+backlog rather than fixed in this pass: `ANTHROPIC_API_KEY` is entirely unprovisioned in
+production (no such secret exists in Secret Manager at all; masked in ordinary use because the
+actual default stack is `gemini`), and the concurrent-user observation above. The crown was
+re-verified live a third time this session, identical to both earlier reads — no drift across the
+whole arc. Root `CLAUDECODE_BRIEF.md` was flipped to `status: COMPLETE`, its own new
+`stale_pointer_incident` field documenting a governance-hygiene drift (a stale SATYA-DĪPA pointer
+had sat un-superseded through four subsequent campaigns because none of their own pointers were
+ever git-committed) and breaking the pattern by being committed as this session's first
+governance act, per the very warning that pointer itself carried. **No `kala_*`/`l3_*`/`ka_*`/
+`gochara_*` file was written to this session; no credential was rotated.** Full evidence per
+criterion, the cleanup record, and the final consolidated backlog with its handoff note:
+`00_ARCHITECTURE/briefs/purnata/PURNATA_CLOSE_REPORT_v1_0.md` §9 (v1.2).
 
 At the close of **PURNATA-CLOSE-2026-07-31 — the final close of the whole layer-build arc**
 (ŚUDDHA-VĀCA → SATYA-DĪPA → PARIPRAŚNA → SAMĀPTI → NIḤŚEṢA → PŪRṆATĀ), the session drained every one
