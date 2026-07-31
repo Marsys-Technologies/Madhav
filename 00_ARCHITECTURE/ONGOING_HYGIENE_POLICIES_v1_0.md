@@ -652,7 +652,7 @@ migrations split across two directories on `main`: `platform/migrations/` (367, 
 as governance close-out item #20, **NOT DONE**. A split migration surface risks numbering
 collisions, silent no-ops (a migration applied against the wrong tracked directory never runs),
 and an auditor who checks only one directory missing state entirely — exactly the class of drift
-`CLAUDE.md §N.4` ("surgical migrations only") exists to prevent. `CONDUCTOR_PROTOCOL.md` §1 (the
+`CLAUDE.md §N.4` ("Surgical migrations, verified:") exists to prevent. `CONDUCTOR_PROTOCOL.md` §1 (the
 Migration guard role) and §8.5 (the surgical-migration procedure) both already codify
 `platform/migrations/` as the single directory for the doctrine-waves campaign; this entry is the
 project-wide governance record of that ruling, per BRIEF_D1_5A.md Lane A-0's A6 process item

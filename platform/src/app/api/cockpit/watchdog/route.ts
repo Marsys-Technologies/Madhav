@@ -10,6 +10,14 @@
  * (data landed, state-flip write itself raced a crash/connection drop) is rescued
  * to 'lit' instead of blind-failed. See the stuck-asset block for detail.
  *
+ * SAMĀPTI B-WATCHDOG-LIT (DVA Ruling 10, finding F3): that rescue is now gated on
+ * the asset having NO substep plan. A has_substeps=true writer commits data per
+ * substep, so rows exist after substep 1 of N — rows-present alone would promote a
+ * 78/303-complete asset to 'lit' the moment its heartbeat went stale. This route
+ * cannot prove plan completeness (no access to the Python writers' plan_substeps,
+ * and no persisted plan total anywhere), so for those assets it withholds the
+ * promotion and records 'incomplete' instead. See the stuck-asset block.
+ *
  * ── Reaper thresholds (Orchestrator Convergence Phase 1 — confirmed, do NOT loosen) ──
  * These thresholds protect against genuine hangs and MUST hold. A long-running heavy
  * asset (e.g. ga_dashas, ~40 min) is kept visibly alive NOT by relaxing the reaper but
@@ -26,6 +34,7 @@
  */
 import { type NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db/client'
+import { classifyStuckCandidate } from './classifyStuckCandidate'
 
 async function publishEvent(event: Record<string, unknown>): Promise<void> {
   if (process.env.PUBSUB_DISABLED || !process.env.GOOGLE_CLOUD_PROJECT) return
@@ -83,13 +92,56 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   //    drop / crash (last_built_at goes stale even though the work is done) must
   //    not be misreported as a failure — a slow-but-succeeding write is not a
   //    stuck write.
+  //
+  //    ── SAMĀPTI B-WATCHDOG-LIT (DVA Ruling 10, F3) ────────────────────────────
+  //    Rows-present is NECESSARY BUT NOT SUFFICIENT for a multi-substep writer.
+  //    A writer with a real substep plan (asset_registry.has_substeps = true)
+  //    commits data incrementally — one commit per substep (see asset_runner.py
+  //    `_drive_substeps`). Rows therefore exist after substep 1 of N. The probe
+  //    above cannot tell 78/303-done from 303/303-done, so before this fix ANY
+  //    stale heartbeat on a heavy writer promoted it straight to 'lit' at
+  //    whatever partial state it happened to be in — falsely unblocking every
+  //    downstream dependant on a half-built asset. That is the same "unearned
+  //    lit" defect class the Python path already closed (SATYA-DĪPA,
+  //    asset_runner.py:596-630 + migration 474's 'incomplete' state); this route
+  //    implemented only the rows-present half of that pattern and omitted the
+  //    plan-completeness half.
+  //
+  //    The Python path proves completeness by re-invoking the writer's own
+  //    `plan_substeps(ctx)` and requiring it to return zero remaining substeps.
+  //    THIS ROUTE CANNOT DO THAT: it is an out-of-band TypeScript reaper with no
+  //    access to the Python writers, and the plan's total size is never persisted
+  //    anywhere — `build_substep_progress` records only which substeps DID commit
+  //    (migration 436), and `_drive_substeps`'s `total = len(substeps)` lives only
+  //    in-process and in a transient SSE event. Inferring a total would be a
+  //    fabricated computation (CLAUDE.md §B.10).
+  //
+  //    So the honest rule, and the strictly-more-conservative one, is:
+  //      * has_substeps = false/NULL  → no plan to complete; retain today's
+  //        rows-present rescue exactly as-is (light writers stay rescuable).
+  //      * has_substeps = true        → completeness is UNPROVEN from here, and
+  //        unproven is not proven. Never promote to 'lit'. If data is present,
+  //        record the honest 'incomplete' state (migration 474: "ran, some data
+  //        present, plan work may remain" — deliberately NOT in the
+  //        ('lit','service_ok') dependency-satisfied allowlist, so downstream
+  //        stays correctly blocked). If no data is present, it falls through to
+  //        the unchanged 'error' path below.
+  //    This can only ever promote FEWER assets than before, never more.
+  //
+  //    The committed-substep count is read (read-only) purely as evidence for the
+  //    log line and the emitted event — it is never used to synthesise a total.
   const stuckCandidates = await query<{
     chart_id: string | null
     asset_id: string
     count_sql: string | null
     target_floor: number | null
+    has_substeps: boolean | null
+    substeps_committed: number | null
   }>(
-    `SELECT at.chart_id, at.asset_id, ar.count_sql, ar.target_floor
+    `SELECT at.chart_id, at.asset_id, ar.count_sql, ar.target_floor, ar.has_substeps,
+            (SELECT COUNT(*) FROM build_substep_progress bsp
+              WHERE bsp.chart_id = at.chart_id
+                AND bsp.asset_id = at.asset_id)::int AS substeps_committed
      FROM asset_throughput at
      JOIN asset_registry ar ON ar.asset_id = at.asset_id
      WHERE at.state = 'building'
@@ -98,6 +150,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   const rescued: { chart_id: string | null; asset_id: string; rows: number }[] = []
   const trulyStuck: { chart_id: string | null; asset_id: string }[] = []
+  // has_substeps assets with data present but unprovable plan completeness.
+  const withheld: {
+    chart_id: string | null
+    asset_id: string
+    rows: number
+    substepsCommitted: number
+  }[] = []
 
   for (const c of stuckCandidates.rows) {
     let actualRows: number | null = null
@@ -114,14 +173,21 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         actualRows = null
       }
     }
-    // Same "zero_rows_is_complete" rule as the Python writer path (§N.4): rows
-    // present, OR target_floor=0 declaring 0 rows as the correct complete state.
-    const dataConfirmedComplete =
-      actualRows != null && (actualRows > 0 || c.target_floor === 0)
-    if (dataConfirmedComplete) {
-      rescued.push({ chart_id: c.chart_id, asset_id: c.asset_id, rows: actualRows ?? 0 })
-    } else {
-      trulyStuck.push({ chart_id: c.chart_id, asset_id: c.asset_id })
+    switch (classifyStuckCandidate(c, actualRows)) {
+      case 'error':
+        trulyStuck.push({ chart_id: c.chart_id, asset_id: c.asset_id })
+        break
+      case 'withhold-incomplete':
+        withheld.push({
+          chart_id: c.chart_id,
+          asset_id: c.asset_id,
+          rows: actualRows ?? 0,
+          substepsCommitted: c.substeps_committed ?? 0,
+        })
+        break
+      case 'rescue-lit':
+        rescued.push({ chart_id: c.chart_id, asset_id: c.asset_id, rows: actualRows ?? 0 })
+        break
     }
   }
 
@@ -153,6 +219,54 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       asset_id: r.asset_id,
       to_state: 'lit',
       watchdog_rescue: true,
+    })
+  }
+
+  // SAMĀPTI B-WATCHDOG-LIT: withheld promotions → 'incomplete'.
+  //
+  // Deliberately mirrors the 'error' path below, NOT the rescue path above: the
+  // asset_throughput row is restated and `last_error` explains why, but
+  // build_run_assets.state is left untouched. Flipping it to 'complete' (as the
+  // rescue path does) would be exactly the false completion claim this fix
+  // exists to prevent.
+  //
+  // `last_error` is set rather than left NULL on purpose. It is the field the
+  // cockpit's existing badge-honesty path keys on: deriveState() downgrades a
+  // has_substeps asset with committed substeps to the 'partial' badge when an
+  // error string is present, whereas a NULL error with rows present would render
+  // a 'lit' badge from count_sql — re-introducing the falsely-lit report at the
+  // UI layer even though the stored state is honest.
+  for (const w of withheld) {
+    await query(
+      `UPDATE asset_throughput
+       SET state = 'incomplete', rows_written = $3, last_built_at = NOW(),
+           last_error = $4
+       WHERE chart_id IS NOT DISTINCT FROM $1 AND asset_id = $2 AND state = 'building'`,
+      [
+        w.chart_id,
+        w.asset_id,
+        w.rows,
+        'orphan-watchdog: heartbeat went stale while a substep plan was in flight. ' +
+          `${w.substepsCommitted} substep(s) committed and ${w.rows} data row(s) are present, ` +
+          'but this route cannot prove the plan finished, so the asset was NOT promoted to ' +
+          "'lit'. Re-run the build to complete the plan (substep progress is resumable).",
+      ]
+    )
+    console.warn(
+      `[watchdog] WITHHELD promotion for ${w.asset_id} (chart ${w.chart_id ?? 'NULL'}): ` +
+      `${w.rows} row(s) present and ${w.substepsCommitted} substep(s) committed, but ` +
+      `has_substeps=true and substep-plan completeness is not provable from this route — ` +
+      `marked 'incomplete', NOT 'lit'. Downstream dependants stay blocked until a rebuild ` +
+      `actually finishes the plan.`
+    )
+    await publishEvent({
+      type: 'asset.state_change',
+      chart_id: w.chart_id,
+      asset_id: w.asset_id,
+      to_state: 'incomplete',
+      watchdog_promotion_withheld: true,
+      substeps_committed: w.substepsCommitted,
+      rows_present: w.rows,
     })
   }
 
@@ -236,6 +350,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   return NextResponse.json({
     orphan_runs_failed: orphanRuns.rowCount ?? 0,
     stuck_assets_rescued: rescued.length,
+    // SAMĀPTI B-WATCHDOG-LIT: has_substeps assets with data present whose plan
+    // completeness could not be proven — marked 'incomplete' instead of 'lit'.
+    stuck_assets_withheld_incomplete: withheld.length,
     stuck_assets_failed: stuckAssets.rowCount ?? 0,
     undispatched_runs_failed: undispatchedRuns.rowCount ?? 0,
     pruned_runs: pruned.rowCount ?? 0,
