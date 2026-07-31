@@ -1,6 +1,6 @@
 ---
 artifact: CLAUDE.md
-version: "6.8"
+version: "6.9"
 status: CURRENT
 role: >
   Root governance surface. Master orientation document for every Claude session on the MARSYS-JIS
@@ -13,6 +13,19 @@ mirror_obligations_retired: "2026-05-27 — Gemini mirror discipline retired per
 supersedes:
   - "CLAUDE.md v5.1 (2026-06-09 — realigned to L1-done/L2-next reality at v6.0)"
 changelog:
+  - v6.9 (2026-07-31, SAMĀPTI campaign close — CLOSED PARTIAL on a mid-run native strategic
+      redirect): no doctrine or §N content changed by this entry — it records the campaign's
+      close. Full account: `00_ARCHITECTURE/briefs/samapti/SAMAPTI_CLOSE_REPORT_v1_0.md` and
+      `CURRENT_STATE_v1_0.md` v6.48. Headline: 18 real production merges (17 clean + 1
+      self-inflicted-and-recovered within the hour), all 4 DVA RULING-73-CLOSE integrity
+      residuals closed, crown re-verified live at close, Kāla (L3) layer work stopped mid-run and
+      handed to ṢAḌ-DARŚANA as a written spec (that campaign is actively rewriting the layer into
+      a six-views architecture — auditing code with a scheduled expiry is waste; see the close
+      report §1 for the full rationale). One live item flagged for immediate native decision, not
+      routine backlog: a VER-CONFIRMED credential-redaction fix (PR #905) remains unmerged against
+      a real production credential exposure found earlier this campaign. New standing artifact:
+      `00_ARCHITECTURE/WORKTREE_ISOLATION_PROTOCOL_v1_0.md` — the shared checkout is no longer a
+      build surface for any campaign, effective this close.
   - v6.8 (2026-07-30, SAMĀPTI/B-DOCS-GOVERNANCE, DVA Ruling 58 / B-MIGGUARD finding R3):
       §N.4's "Surgical migrations only" line re-worded to its narrower, historically-accurate
       original intent. The prior wording ("never deploy.yml-auto or bulk `migrate.ts`") was found
@@ -161,7 +174,7 @@ Canonical artifact versions and paths are defined in `00_ARCHITECTURE/CANONICAL_
 | ORCHESTRATOR_CONVERGENCE_CLOSE | `00_ARCHITECTURE/ORCHESTRATOR_CONVERGENCE_CLOSE_v1_0.md` | 1.0 | CURRENT |
 | L1_GANITA_CLOSURE | `00_ARCHITECTURE/L1_GANITA_CLOSURE_v2_0.md` (v1.0 SUPERSEDED — premature seal, floors stale, enrichment not folded) | 2.1 | CURRENT |
 | L2_BODHA_CAMPAIGN_HANDOFF | `00_ARCHITECTURE/L2_BODHA_CAMPAIGN_HANDOFF_v1_0.md` | 1.0 | CURRENT |
-| CLAUDE | `CLAUDE.md` | 6.8 | CURRENT |
+| CLAUDE | `CLAUDE.md` | 6.9 | CURRENT |
 
 Any path in this snapshot that conflicts with `CANONICAL_ARTIFACTS_v1_0.md §1` is wrong here, not there. `drift_detector.py` enforces this via the canonical-path cross-check (protocol §H.3).
 
@@ -359,7 +372,11 @@ usually true" or "nothing has broken yet" is not a substitute for a real detecto
 
 ---
 
-*End of CLAUDE.md v6.8 (2026-07-30, SAMĀPTI/B-DOCS-GOVERNANCE, DVA Ruling 58 / B-MIGGUARD R3) — §N.4's
+*End of CLAUDE.md v6.9 (2026-07-31, SAMĀPTI campaign close) — SAMĀPTI closed CLOSED-PARTIAL on a
+mid-run native strategic redirect (Kāla-layer work stopped and handed to ṢAḌ-DARŚANA as a written
+spec; full account `SAMAPTI_CLOSE_REPORT_v1_0.md` / `CURRENT_STATE_v1_0.md` v6.48). No doctrine
+changed by this entry. Prior: v6.8 (2026-07-30, SAMĀPTI/B-DOCS-GOVERNANCE, DVA Ruling 58 /
+B-MIGGUARD R3) — §N.4's
 "Surgical migrations only" line re-worded to its narrower original intent: the deploy-time bulk
 `migrate.ts` runner is fine and intended (transactional, tracked, loud-failing); the doctrine's real
 hazard was always "migrations silently doing nothing while the deploy reports success," not "bulk
