@@ -11,6 +11,12 @@
  * [BRAHMA-GA-1-8]
  */
 
+// The settled verification vocabulary is declared once, in the retrieval envelope
+// (which is the zero-import module the serve side and the codegen both read).
+import type { VerificationPassStatus } from '@/lib/retrieval/envelope'
+
+export type { VerificationPassStatus }
+
 // ─── Provenance envelope (every fact carries this) ────────────────────────────
 
 export interface FactProvenance {
@@ -42,7 +48,11 @@ export interface ChartFactRow {
   is_stale?: boolean
   created_at?: string
   engine_version?: string
-  verification_pass_status?: 'single' | 'two_pass_verified' | 'classical_match' | 'divergent_flagged'
+  /** SAMĀPTI Ruling 13: was a hand-written 4-value union — a FIFTH definition of the
+   *  vocabulary, and a false one: chart_facts legitimately stores 10 distinct values
+   *  (documented_approximation, floored, computed_extension, …), so this type told
+   *  callers a row shape the database never had. Now the settled union. */
+  verification_pass_status?: VerificationPassStatus
   citation_ref?: string
   citation_human?: string
   unit?: string

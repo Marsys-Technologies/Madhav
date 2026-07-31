@@ -32,6 +32,7 @@ import {
   resolveEnvelopeFormat,
   extractGroundingFromFactRows,
   buildEpistemicSummary,
+  VERIFIED_PASS_STATUSES,
   judgmentFlag,
   type EnvelopeFormat,
   type ChartHeader,
@@ -713,7 +714,11 @@ export function registerP1GanitaTools(server: McpServer, principal: Principal): 
         }
         const epistemic = buildEpistemicSummary({
           verifiedFraction: grounding.grounding_score,
-          note: 'verified_fraction = share of this page\'s rows with verification_pass_status=two_pass_verified.',
+          note: 'verified_fraction = share of this page\'s rows whose verification_pass_status is in '
+            + VERIFIED_PASS_STATUSES.join('|')
+            + ' — the one settled definition of verified (envelope.ts VERIFICATION_PASS_STATUS_VOCAB). '
+            + 'Previously this note said "two_pass_verified" while the number beside it was computed '
+            + 'from a wider two-value check including a bare "pass"; SAMĀPTI Ruling 13 collapsed the two.',
         })
         const coverage: CoverageStamp = {
           family: `${facet}_rows[categories=${declaredCategories?.join(',') ?? 'all'}]`,
@@ -1096,7 +1101,11 @@ export function registerP1GanitaTools(server: McpServer, principal: Principal): 
 
         const epistemic = buildEpistemicSummary({
           verifiedFraction: grounding.grounding_score,
-          note: 'verified_fraction = share of this page\'s rows with verification_pass_status=two_pass_verified.',
+          note: 'verified_fraction = share of this page\'s rows whose verification_pass_status is in '
+            + VERIFIED_PASS_STATUSES.join('|')
+            + ' — the one settled definition of verified (envelope.ts VERIFICATION_PASS_STATUS_VOCAB). '
+            + 'Previously this note said "two_pass_verified" while the number beside it was computed '
+            + 'from a wider two-value check including a bare "pass"; SAMĀPTI Ruling 13 collapsed the two.',
         })
 
         // D5 coverage receipt (design §10.5): `total` above is a genuine COUNT(*) against

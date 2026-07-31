@@ -54,6 +54,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from . import WriterBase, ContextSpec, WriterResult, register
+from brahmagyan.verification_vocab import UNVERIFIED_DEFAULT
 
 logger = logging.getLogger(__name__)
 
@@ -662,7 +663,11 @@ def _compute_sub_graphs(
             "subgraph_centroid_node_id": centroid,
             "representative_path_jsonb": json.dumps({"members": labels}),
             "classical_archetype_match": None,
-            "verification_pass_status": "pass",
+            # SAMĀPTI B-VERIFSTATUS-VOCAB (DVA Ruling 13 step 2): this was the literal
+            # "pass" — an unconditional stamp with no verification logic behind it, and a
+            # live false-green the serve layer counted as verified. Audited: nothing here
+            # re-derives or cross-checks the row, so per §N.8 it is unverified, not green.
+            "verification_pass_status": UNVERIFIED_DEFAULT,
             "citation_ref": "bo_cgm_motifs:connected_component:v2",
             "citation_human": (
                 f"Connected component: {n} CGM nodes joined through {len(set(edge_ids))} "
@@ -732,7 +737,11 @@ def _compute_topology(
         "hub_dominance_score": hub_dominance,
         "fragmentation_score": fragmentation,
         "graph_fingerprint_hash": fingerprint,
-        "verification_pass_status": "pass",
+        # SAMĀPTI B-VERIFSTATUS-VOCAB (DVA Ruling 13 step 2): this was the literal
+        # "pass" — an unconditional stamp with no verification logic behind it, and a
+        # live false-green the serve layer counted as verified. Audited: nothing here
+        # re-derives or cross-checks the row, so per §N.8 it is unverified, not green.
+        "verification_pass_status": UNVERIFIED_DEFAULT,
         "citation_ref": "bo_cgm_motifs:chart_topology:v2",
         "citation_human": (
             f"CGM topology summary: {n_total} nodes / {len(all_edges)} edges, "
@@ -798,7 +807,11 @@ def _write_aya(conn: Any, chart_id: str, aya: str, build_id: str, now: str) -> t
                 "motif_strength": m["strength"],
                 "classical_citation_id": m.get("classical_citation_id"),
                 "fingerprint_hash": _fingerprint(m["node_ids"], m["motif_class"]),
-                "verification_pass_status": "pass",
+                # SAMĀPTI B-VERIFSTATUS-VOCAB (DVA Ruling 13 step 2): this was the literal
+                # "pass" — an unconditional stamp with no verification logic behind it, and a
+                # live false-green the serve layer counted as verified. Audited: nothing here
+                # re-derives or cross-checks the row, so per §N.8 it is unverified, not green.
+                "verification_pass_status": UNVERIFIED_DEFAULT,
                 "citation_ref": f"bo_cgm_motifs:{m['motif_class']}:v2",
                 "citation_human": m.get("citation_human", f"CGM structural motif: {m['motif_class']}"),
                 "computed_at": now,
