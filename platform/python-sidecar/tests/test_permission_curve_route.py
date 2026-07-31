@@ -11,6 +11,8 @@ CI invocation.
 """
 from __future__ import annotations
 
+import os
+
 import psycopg
 import pytest
 from fastapi.testclient import TestClient
@@ -21,7 +23,7 @@ from services.gochara_intensity.permission import SYSTEM_WEIGHTS
 
 client = TestClient(app)
 
-LIVE_DSN = "postgresql://amjis_app:50mii04kTKDUUu54CAKdS4Bv2gx1IoWy@127.0.0.1:5433/amjis"
+LIVE_DSN = os.environ.get("DATABASE_URL", "")
 CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
 
 

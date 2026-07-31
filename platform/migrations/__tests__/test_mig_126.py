@@ -2,6 +2,7 @@
 Migration 126 verification tests: engine_versions + build_engine_versions tables
 MARSYS-JIS Multi-Ayanamsha Build Orchestrator [BUILD-ORCH-B-03]
 """
+import os
 import uuid
 import pytest
 import psycopg2
@@ -12,7 +13,7 @@ DB_PARAMS = {
     "host": "127.0.0.1",
     "port": 5433,
     "user": "amjis_app",
-    "password": "aYtv6SN5TwRBShzHfxN4Qz_ccW3a49qnCAA2L-VF",
+    "password": os.environ.get("PGPASSWORD", ""),
     "dbname": "amjis",
 }
 

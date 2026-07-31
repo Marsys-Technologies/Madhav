@@ -43,7 +43,7 @@ gate "G5_G3_contract" \
 gate "G6_G4_no_native_lit" \
   "python3 -c \"
 import psycopg2, os
-conn = psycopg2.connect(host='127.0.0.1', port=5433, user='amjis_app', password='aYtv6SN5TwRBShzHfxN4Qz_ccW3a49qnCAA2L-VF', dbname='amjis')
+conn = psycopg2.connect(host='127.0.0.1', port=5433, user='amjis_app', password=os.environ['PGPASSWORD'], dbname='amjis')
 cur = conn.cursor()
 cur.execute(\\\"SELECT COUNT(*) FROM chart_facts WHERE fact_value_json::text ~* '(indicates|suggests|implies|means that|denotes)'\\\")
 count = cur.fetchone()[0]

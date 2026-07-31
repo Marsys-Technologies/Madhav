@@ -653,10 +653,7 @@ class TestCrossDashaAgreement:
 # Integration tests — PROD DB required
 # ---------------------------------------------------------------------------
 
-_DB_DSN = os.environ.get(
-    "DB_DSN",
-    "postgresql://amjis_app:50mii04kTKDUUu54CAKdS4Bv2gx1IoWy@127.0.0.1:5433/amjis",
-)
+_DB_DSN = os.environ.get("DB_DSN", "")
 _NATIVE_CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
 
 

@@ -13,7 +13,7 @@ DB_PARAMS = {
     "host": "127.0.0.1",
     "port": 5433,
     "user": "amjis_app",
-    "password": "aYtv6SN5TwRBShzHfxN4Qz_ccW3a49qnCAA2L-VF",
+    "password": os.environ.get("PGPASSWORD", ""),
     "dbname": "amjis",
 }
 

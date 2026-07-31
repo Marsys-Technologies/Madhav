@@ -68,7 +68,10 @@ To start the proxy if it is not running:
 
 Once the proxy is up, apply migrations:
 
-  export DATABASE_URL="postgresql://amjis_app:KO09dpIN3SvNZCij6t7YtHNji4uv10D@127.0.0.1:5433/amjis"
+  # credential redacted — see SAMAPTI security incident INC-3, 2026-07-30 (this
+  # DSN previously held a live `postgres`-role superuser credential, mislabelled
+  # as amjis_app; supply your own via the PGPASSWORD-backed secret, never a literal)
+  export DATABASE_URL="postgresql://amjis_app:${PGPASSWORD:?}@127.0.0.1:5433/amjis"
 
   for f in platform/migrations/022_dasha_periods.sql \
             platform/migrations/023_signal_states.sql \

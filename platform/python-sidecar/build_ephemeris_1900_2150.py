@@ -22,11 +22,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Set DATABASE_URL if not already set
 if not os.environ.get("DATABASE_URL"):
-    os.environ["DATABASE_URL"] = (
-        "postgresql://amjis_app:50mii04kTKDUUu54CAKdS4Bv2gx1IoWy@127.0.0.1:5433/amjis"
-    )
+    raise SystemExit("ERROR: DATABASE_URL env var required (e.g. postgresql://user:pass@127.0.0.1:5433/db via Cloud SQL Auth Proxy)")
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 

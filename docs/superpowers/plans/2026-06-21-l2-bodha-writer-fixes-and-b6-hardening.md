@@ -444,7 +444,7 @@ Expected: the image tag should contain the merge SHA from Task 6. If it doesn't,
 Using the cockpit or direct SQL via proxy:
 
 ```sql
--- Connect: psql postgresql://amjis_app:50mii04kTKDUUu54CAKdS4Bv2gx1IoWy@127.0.0.1:5433/amjis
+-- Connect: PGPASSWORD="${PGPASSWORD:?}" psql "postgresql://amjis_app@127.0.0.1:5433/amjis"
 UPDATE asset_throughput
 SET state = 'stale', last_built_at = NOW()
 WHERE asset_id = 'bo_anveshana'

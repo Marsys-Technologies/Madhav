@@ -4,7 +4,7 @@
 set -e
 MIG_FILE="$1"
 SESSION_ID="$2"
-DB_PASS="aYtv6SN5TwRBShzHfxN4Qz_ccW3a49qnCAA2L-VF"
+DB_PASS="${PGPASSWORD:?PGPASSWORD env var required}"
 
 [ -z "$MIG_FILE" ] && echo "ERROR: migration file required" && exit 1
 [ ! -f "$MIG_FILE" ] && echo "ERROR: file not found: $MIG_FILE" && exit 1

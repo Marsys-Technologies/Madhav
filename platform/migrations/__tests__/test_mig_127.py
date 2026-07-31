@@ -3,6 +3,7 @@ Migration 127 verification tests: build_notifications SSE event log table
 MARSYS-JIS Multi-Ayanamsha Build Orchestrator [BUILD-ORCH-B-04]
 """
 import json
+import os
 import uuid
 import pytest
 import psycopg2
@@ -13,7 +14,7 @@ DB_PARAMS = {
     "host": "127.0.0.1",
     "port": 5433,
     "user": "amjis_app",
-    "password": "aYtv6SN5TwRBShzHfxN4Qz_ccW3a49qnCAA2L-VF",
+    "password": os.environ.get("PGPASSWORD", ""),
     "dbname": "amjis",
 }
 
