@@ -6,13 +6,13 @@
   "entries": [
     {
       "file": "platform-mcp/src/tools/register_p1_ganita.ts",
-      "line": 364,
+      "line": 365,
       "pattern": null,
       "justification": "PRE-EXISTING, not in this wave's scope. yoga_label rows matched by fact_category + `fact_value_text.startsWith(entry.yoga)` \u2014 a text prefix match, not a fact_key pin, and genuinely weaker than the 225/657 entries above (a prefix match can in principle match more than one yoga_label row, e.g. 'Ruchaka' vs 'Ruchaka Maha' if such names ever coexist). Judged lower-severity than the P0 items only because current yoga names in the catalog are not known to collide on prefix, not because the code proves it. Worth a closer look in a future hygiene pass; not blocking this lane."
     },
     {
       "file": "platform-mcp/src/tools/register_p1_ganita.ts",
-      "line": 657,
+      "line": 658,
       "pattern": null,
       "justification": "PRE-EXISTING, not in this wave's scope. dosha_label matched by fact_category + exact fact_value_text==='Kala Sarpa Dosha' \u2014 an effectively-unique label match (one row per exact dosha name per chart), lower risk than P0-1. Recommend future hygiene pass to add fact_key for defense-in-depth."
     },
@@ -66,19 +66,19 @@
     },
     {
       "file": "platform/python-sidecar/ga_writers/ga_sade_sati_writer.py",
-      "line": 1365,
+      "line": 1394,
       "pattern": null,
       "justification": "PRE-EXISTING, not in this wave's scope. `SELECT COUNT(*) ... fact_category='graha_position' AND fact_subject='MOON'` \u2014 a presence/count check (used as a boolean gate), not a value read."
     },
     {
       "file": "platform/python-sidecar/ga_writers/ga_sade_sati_writer.py",
-      "line": 1399,
+      "line": 1428,
       "pattern": null,
       "justification": "PRE-EXISTING, not in this wave's scope. `SELECT COUNT(*) ... fact_category='argala_natal_matrix'` \u2014 a presence/count check, not a value read."
     },
     {
       "file": "platform/python-sidecar/ga_writers/ga_sade_sati_writer.py",
-      "line": 1551,
+      "line": 1580,
       "pattern": null,
       "justification": "PRE-EXISTING, not in this wave's scope. fact_subject is bound to a specific caller-supplied parameter (%s) and the snippet is truncated by the scanner at 160 chars \u2014 the full WHERE clause continues past 'fact_key' in source; reviewed in file and confirmed the query does carry a fact_key-shaped filter continuing past the truncation point."
     },
@@ -114,19 +114,19 @@
     },
     {
       "file": "platform/python-sidecar/pipeline/orchestrator/writers/bo_upaya.py",
-      "line": 391,
+      "line": 392,
       "pattern": null,
       "justification": "PRE-EXISTING, not in this wave's scope. `SELECT fact_key FROM ... fact_category='graha_yoga_karaka_flag' AND fact_value_text IN (...)` \u2014 selects the SET of qualifying fact_keys itself as data (which grahas are yoga karakas), not a value keyed by fact_category; there is no row to misselect."
     },
     {
       "file": "platform/python-sidecar/pipeline/orchestrator/writers/bo_upaya.py",
-      "line": 409,
+      "line": 410,
       "pattern": null,
       "justification": "PRE-EXISTING, not in this wave's scope. `SELECT fact_key, fact_value_text FROM ... fact_category='karaka_chara_position'` \u2014 fact_key selected and preserved per row, not collapsed to one value."
     },
     {
       "file": "platform/python-sidecar/pipeline/orchestrator/writers/bo_upaya.py",
-      "line": 806,
+      "line": 807,
       "pattern": null,
       "justification": "PRE-EXISTING, not in this wave's scope. dosha_label rows filtered by fact_category + a fact_value_text predicate (truncated in the scan snippet) \u2014 same catalog-label shape as the register_p1_ganita.ts entries above; one-per-name-per-chart by convention, lower risk."
     },
