@@ -242,6 +242,24 @@ DASHA_LOOKUP_SPECS: list[tuple[str, str, int]] = [
     ("mudda_lord", "mudda", 1),
 ]
 
+# NAR-GA fix (SAMAPTI_NARRATION_TRIAGE_AND_PARTITION_v1_0.md §4.2 P2 :974):
+# _emit_cycle_rows' per-phase concurrent-dasha loop narrated the raw
+# "concurrent_<key>" snake_case fact_key directly in citation_human (e.g.
+# "concurrent_vimshottari_maha_lord during CYCLE_1 VISHAKHA: MARS (Lahiri)."),
+# instead of a human-readable label — a drift from the sibling
+# sade_sati_concurrent_dasha_overlay block (below, cycle-start variant) which
+# already carries a proper (key, description) pair for the identical 7 keys.
+# This map lets both call sites narrate the same label.
+CONCURRENT_DASHA_LABELS: dict[str, str] = {
+    "concurrent_vimshottari_maha_lord": "Vimshottari mahadasha lord",
+    "concurrent_vimshottari_antar_lord": "Vimshottari antardasha lord",
+    "concurrent_yogini_period_lord": "Yogini period lord",
+    "concurrent_ashtottari_lord": "Ashtottari dasha lord",
+    "concurrent_chara_karaka_sign": "Jaimini Chara Karaka sign",
+    "concurrent_naisargika_age_bracket": "Naisargika dasha age bracket",
+    "concurrent_mudda_lord": "Mudda (annual) dasha lord",
+}
+
 
 # ── DB helpers ────────────────────────────────────────────────────────────────
 
@@ -955,8 +973,10 @@ def _emit_cycle_rows(
         )
 
         # Concurrent dasha lords (Q6=A) — atomic text keys (7 separate keys)
-        # These are read from GA7 chart_dashas during the build; here seeded as TBD
-        # The actual lookup happens in _enrich_concurrent_dashas()
+        # These are read from GA7 chart_dashas during the build via
+        # DASHA_LOOKUP_SPECS + _lookup_dasha_lord_at, populated per-phase into
+        # cycle_natal_facts[f"concurrent_{dk}_at_{phase_lower}"] by the caller
+        # (build_ga_sade_sati's Step 4 loop) before _emit_cycle_rows runs.
         for dasha_key in [
             "concurrent_vimshottari_maha_lord",
             "concurrent_vimshottari_antar_lord",
@@ -967,10 +987,19 @@ def _emit_cycle_rows(
             "concurrent_mudda_lord",
         ]:
             dasha_val = natal_facts.get(f"{dasha_key}_at_{phase_name.lower()}", "PENDING_GA7_LOOKUP")
+            # NAR-GA fix (P2 :974): citation_human previously narrated the raw
+            # snake_case dasha_key verbatim ("concurrent_vimshottari_maha_lord
+            # during ..."), a mislabel/drift against the sibling
+            # sade_sati_concurrent_dasha_overlay block below, which already
+            # narrates a proper human label for the identical 7 keys.
+            # fact_key (the DB column) is correctly left as the machine key.
             rows.append(
                 R(cat_ph, subj, dasha_key,
                   value_text=str(dasha_val),
-                  citation_human=f"{dasha_key} during {cy_id} {phase_name}: {dasha_val} ({ayanamsha_id}).",
+                  citation_human=(
+                      f"{CONCURRENT_DASHA_LABELS[dasha_key]} during {cy_id} "
+                      f"{phase_name}: {dasha_val} ({ayanamsha_id})."
+                  ),
                   verification=_verif_for_text(dasha_val))
             )
 
