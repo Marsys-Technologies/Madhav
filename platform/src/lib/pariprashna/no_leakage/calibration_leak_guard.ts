@@ -12,16 +12,35 @@
  * data into a serving response at runtime, it fails loudly and immediately
  * rather than silently shipping a non-byte-identical answer.
  *
- * ── Grant honesty (disclosed) ─────────────────────────────────────────────────
- * Lane L-6's `may_touch` covers `platform/src/lib/pariprashna/**` and the
- * registry, but NOT the serving route files themselves (`api/pariprashna`,
- * `api/chat`). This module is therefore the reusable guard; it is exercised by
- * the byte-identity harness (which runs it on every capture) and unit-proven
- * here. Wiring `assertNoCalibrationLeak()` into the live route/envelope emit
- * seam is a one-line ADDITIVE call the INTEGRATE step (or a follow-up in-grant of
- * the route) should add — recorded as a recommendation in REPORT_PB-3, never
- * silently claimed as already-wired. The guard is real and demonstrated-can-fail
- * regardless of where it is called from.
+ * ── Production call sites (G5 — SAMĀPTI §8.1 / BRIEF_PB-3.1 G5) ───────────────
+ * This guard previously had ZERO production call sites: it was exercised only by
+ * the byte-identity harness and its own unit test, so "collect-only is enforced
+ * at runtime" was a claim about a function nobody called. It is now wired at the
+ * two real reading-serving boundaries:
+ *
+ *   1. `PariprashnaEmitter.write()` (protocol/emitter.ts) — EVERY event of the
+ *      Paripraśna reading stream crosses this one method, so the whole served
+ *      stream is covered by a single call site. The protocol's Zod event schemas
+ *      are fully closed (no `z.record`/`z.unknown`/`.passthrough()`), so the set
+ *      of keys that can appear is bounded by the schema and this guard cannot
+ *      false-positive on a well-formed event.
+ *   2. `/api/mcp/prashna_ask`'s `final` body — the MCP reading envelope.
+ *
+ * ── Why the raw evidence array is guarded SEPARATELY from the envelope ────────
+ * `prashna_ask`'s final body carries `results`: the verbatim row payloads of the
+ * tools the planner selected. Those rows are NOT an envelope annotation — they
+ * are the tool's own disclosed output, explicitly requested. Two live tools
+ * return rows whose COLUMN NAMES match this guard's key set for entirely
+ * legitimate reasons: `query_calibration` (the declared calibration surface,
+ * deliberately kept planner-selectable — see descriptor_defaults.ts's
+ * CALIBRATION_CONTEXT_ONLY_URIS comment) returns a `brier_score` column, and
+ * `query_projections` returns an `outcome_recorded` column. Guarding raw rows
+ * with the envelope's key set would therefore fire on correct behaviour, and a
+ * guard that cries wolf on correct behaviour gets deleted. The envelope — the
+ * layer W-3 actually protects ("served phala/kala envelopes are byte-identical
+ * whether or not calibration data exists") — is guarded; the evidence array is
+ * excluded EXPLICITLY, named, and covered instead by NO-LEAKAGE arm 2 (the
+ * `calibration_context_only` dispatch filter) and arm 1 (the static grep gate).
  */
 
 /**
@@ -33,12 +52,23 @@
  * adjustment, a "priors bumped" marker), not the version string an audit stamp
  * records.
  */
-const CALIBRATION_LEAK_KEYS: readonly RegExp[] = [
+export const CALIBRATION_LEAK_KEYS: readonly RegExp[] = [
   /brier[_-]?score/i,
   /calibration[_-]?(annotation|badge|adjustment|weight|applied)/i,
   /priors[_-]?bumped/i,
   /outcome[_-]?recorded/i,
   /mimamsa_calibration/i,
+  // G5: a BARE `calibration` key. Before this, the guard's suffixed patterns above
+  // could not match the one real calibration payload in the estate —
+  // `compute_spine_bundle.ts` names its section exactly `calibration`
+  // ({ verdict_distribution, reliability, multipliers, qa_fail_count }), so a
+  // guard wired to a serving envelope would have waved it straight through. ANCHORED
+  // (^…$) on purpose: it matches the bare key and nothing else, so legitimate
+  // neighbours such as `calibration_context_only` (a descriptor flag, not a result)
+  // and free-prose keys containing the word are not swept up. A calibration RESULT
+  // object on a served envelope is a leak whatever it is named; this closes the
+  // most obvious name.
+  /^calibration$/i,
 ]
 
 export interface CalibrationLeakViolation {

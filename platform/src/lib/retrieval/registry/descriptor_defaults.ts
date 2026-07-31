@@ -176,6 +176,38 @@ const CALIBRATION_CONTEXT_ONLY_URIS: ReadonlySet<CapabilityUri> = new Set([
   // "Returns logged predictions for a chart from mimamsa_predictions
   // (mi_bhavisya)" — raw prediction ledger read, matched against outcomes.
   'marsys://tool/L5/query_predictions',
+  // ── EVALUATED AND DELIBERATELY NOT ADDED: query_spine_bundle ────────────────
+  // `marsys://tool/L-SPINE/query_spine_bundle` returns a bare `calibration`
+  // section (compute_spine_bundle.ts). SAMĀPTI §8.1 G5 / BRIEF_PB-3.1 G5
+  // instructed adding it here to "close the containment deliberately." It is NOT
+  // added, on evidence that refutes the instruction's own premise, and this note
+  // exists so the state is a recorded decision rather than an accident — which is
+  // what G5 actually asks for:
+  //   (a) G5's premise is that the section "cannot currently reach a user-facing
+  //       surface." It can: query_spine_bundle is in the LIVE `full` profile and
+  //       compact's overflow set. So the flag is not the no-op G5 assumed — it
+  //       DELETES a live capability from every profile (no_leakage_filter.ts drops
+  //       it pre-dispatch; projection_compiler_parity.test.ts asserts flagged
+  //       capabilities appear in no profile).
+  //   (b) That contradicts an accepted plan item —
+  //       RETRIEVAL_PLANE_ELEVATION_PLAN_v1_0.md §8 item 11 / RETRIEVAL_STRATEGY
+  //       §S-5 charter spine bundles as "first-class capabilities on all profiles."
+  //   (c) It contradicts this list's own stated semantic (above): the flag is for
+  //       raw context SUPPLY, not a calibration SURFACE — the exact reason
+  //       query_calibration is excluded and stays planner-selectable.
+  //   (d) Applying it requires regenerating the MCP surface profiles, and the
+  //       committed generated artifacts are ALREADY 6 tools stale at origin/main
+  //       (152 → 158 on a no-source-change regeneration). Regenerating inside a P2
+  //       containment lane would commit ~4000 lines of other campaigns' catalog
+  //       drift; NOT regenerating would leave registry and served catalog
+  //       disagreeing — the precise mismatch SAMĀPTI §8.6 exists to catch.
+  // What covers the section instead, today: NO-LEAKAGE arm 1 — the four spine-chain
+  // files are now inside the COLLECT-ONLY grep gate (serving_path_manifest.ts) — and
+  // arm 3 — the runtime guard now matches a bare `calibration` key and runs at both
+  // reading-serving boundaries (calibration_leak_guard.ts).
+  // To flag it after a ruling: add 'marsys://tool/L-SPINE/query_spine_bundle' to this
+  // set, extend descriptor_defaults.test.ts's exact-list assertion, and run
+  // `npm run codegen:projections` in a lane that owns the generated-artifact refresh.
 ])
 
 /**
