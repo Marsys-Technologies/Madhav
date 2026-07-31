@@ -358,9 +358,14 @@ class MiDarshanaWriter(WriterBase):
                         if domain in (c.get("domains_affected_array") or [])
                     ][:3]
 
-                    tradition_concordance = (
-                        trad_by_class.get(event_class_id) or trad_by_class.get(domain) or {}
-                    )
+                    # SV-5 fix (ŚUDDHA-VĀCA parked finding, NIḤŚEṢA Track B): `trad_by_class`
+                    # is keyed by `question_class`, which bo_sangati.py always populates as
+                    # `domain` (never `event_class_id` — see bo_sangati.py's bodha_triangulation
+                    # INSERT, "question_class": domain). The `trad_by_class.get(event_class_id)`
+                    # lookup this line used to try first was therefore unreachable for 100% of
+                    # rows — dead code implying an event-class-level granularity that does not
+                    # exist. Removed; the only real lookup is by domain.
+                    tradition_concordance = trad_by_class.get(domain) or {}
 
                     g_norm = grade / 10.0
                     if grade >= 6.0:
@@ -373,12 +378,34 @@ class MiDarshanaWriter(WriterBase):
                         conf_lo = round(max(0.0, g_norm), 2)
                         conf_hi = round(min(1.0, g_norm + 0.2), 2)
 
+                    # SV-5 fix continued: the old single-axis verdict_note said "across
+                    # traditions" purely from `grade >= 6.0`, regardless of whether
+                    # `tradition_concordance` (just above) actually held any cross-tradition
+                    # data — an invented judgment, not a restatement of a cited fact (§N.7
+                    # item 6: "an honest null beats an invented judgment"). Restructured
+                    # across both axes the source finding named: grade tier AND whether
+                    # `bodha_triangulation` actually produced concordance data for this
+                    # domain. When there is no data, the note says so explicitly instead of
+                    # implying a cross-tradition check that never ran.
+                    has_tradition_data = bool(tradition_concordance)
                     if grade >= 6.0:
-                        verdict_note = "Strong evidence across traditions."
+                        verdict_note = (
+                            "Strong evidence, corroborated across traditions."
+                            if has_tradition_data
+                            else "Strong evidence (single-tradition basis; no cross-tradition concordance data)."
+                        )
                     elif grade < 3.0:
-                        verdict_note = "Mixed or insufficient evidence."
+                        verdict_note = (
+                            "Mixed or insufficient evidence, disputed across traditions."
+                            if has_tradition_data
+                            else "Mixed or insufficient evidence."
+                        )
                     else:
-                        verdict_note = "Conditional — context-dependent."
+                        verdict_note = (
+                            "Conditional — context-dependent, per cross-tradition concordance."
+                            if has_tradition_data
+                            else "Conditional — context-dependent."
+                        )
 
                     statement = f"{name_en}: {status} (grade {grade:.1f}/10). {verdict_note}"
 
