@@ -35267,8 +35267,8 @@ continues to wait on ṢAḌ-DARŚANA's six-views transformation.
 ```yaml
 session_open:
   session_id: C4-CLOSE-2026-08-01
-  campaign: PŪRṆATĀ (continued) — resume and close the one item its own close report left open:
-    C4-LOOP-LIVE-PROOF, a real, live, end-to-end proof of the prediction loop.
+  campaign: "PŪRṆATĀ (continued) — resume and close the one item its own close report left open
+    (C4-LOOP-LIVE-PROOF), a real, live, end-to-end proof of the prediction loop."
   may_touch: "platform/scripts/dev/mint_session_cookie.ts (tooling fix only);
     00_ARCHITECTURE/briefs/purnata/PURNATA_CLOSE_REPORT_v1_0.md; 00_ARCHITECTURE/SESSION_LOG.md,
     CURRENT_STATE_v1_0.md, CLAUDE.md (this close); root CLAUDECODE_BRIEF.md; the live prediction
