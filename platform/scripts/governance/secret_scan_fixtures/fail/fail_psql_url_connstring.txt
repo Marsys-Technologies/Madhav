@@ -1,0 +1,24 @@
+postgresql://synthetic_fixture_user:SYNTH4WkxwQjZ0RmVIc0M5eG5UMmFN@localhost:5433/synthetic_fixture_db
+# ── Seeded failure fixture — SAMAPTI-SEC-001 shape #2. ───────────────────────
+#
+# This reproduces the EXACT shape of the `.psql_url` file that defeated the
+# pre-2026-07-30 scanner in TWO independent ways:
+#
+#   (a) SCOPE — the real file lives at
+#       00_ARCHITECTURE/CONDUCTOR/build_orchestrator/operator_runs/2026-05-30/.psql_url,
+#       outside the old 8-entry SCAN_TARGETS allowlist, so it was never read.
+#
+#   (b) TOLERANCE — even inside the allowlist it would have been forgiven. The
+#       old scanner tolerated any LINE containing `:<digits>` (intended for
+#       Secret Manager version pins such as `DB_PASSWORD=amjis-db-password:2`).
+#       A connection string carrying a port — `@localhost:5433/db` — satisfied
+#       that on every single line. Tolerance is now scoped to the matched
+#       substring, which ends at the `@`, before the port.
+#
+# The `:5433` on line 1 is therefore load-bearing: remove the port and this
+# fixture stops proving (b). Keep it.
+#
+# The credential above is SYNTHETIC — randomly generated for this fixture on
+# 2026-07-30, never used against any system, unrelated to any real credential.
+#
+# Expected: trips pattern id `pg_conn_string`.

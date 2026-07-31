@@ -310,10 +310,27 @@ jobs:
           echo "icr_pr_gate_importable: PASS"
 
   secret-scan:
+    # NAME KEPT AS-IS (DVA RULING 82): main's branch protection requires the
+    # status-check CONTEXT "Secret Scan (unit 0b.2)" by exact name
+    # (strict: true, enforce_admins: true). Renaming this job — even to a more
+    # accurate "repo-wide" label — breaks that binding: every future PR would
+    # face a permanently-pending required check, the exact setup for someone to
+    # "fix" by deleting the required-context binding later. The scope widening
+    # itself (see the comment block below) is real and unaffected by the name.
     name: Secret Scan (unit 0b.2)
     runs-on: ubuntu-latest
     # Stream B modernization unit 0b.2 — on_red: halt_queue.
-    # Any literal credential introduced by a future PR fails this job.
+    #
+    # BLOCKING. No `continue-on-error` — a red job here makes this workflow red,
+    # and "Deploy to Cloud Run" fires on `workflow_run` gated on this workflow's
+    # conclusion == 'success', so a literal credential also blocks the deploy.
+    # Do not add `continue-on-error` to this job.
+    #
+    # Scope widened 2026-07-30 (SAMĀPTI DVĀRAPĀLA RULING 3, lane
+    # B-SECRETSCAN-SCOPE): the scanner previously read an allowlist of 8
+    # directories while claiming a repo-wide scan, and a live production DB
+    # credential sat unseen in 27 tracked files for ~2 months. See the §SCOPE
+    # block in secret_scan.sh for the current, reconciled bounds.
 
     permissions:
       contents: read
@@ -321,16 +338,45 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        # DVA RULING 30 — the gate must measure the tree that is actually being
+        # merged, never a stale or partial one.
+        #   · on pull_request, actions/checkout@v4 checks out refs/pull/N/merge
+        #     — the merge of the PR head into the base. That IS the tree that
+        #     lands, and is exactly what must be scanned. Do not override `ref:`
+        #     to github.event.pull_request.head.sha: that would scan the branch
+        #     in isolation and miss a credential arriving via the base.
+        #   · `git ls-files` (the scanner's file enumeration) needs the index,
+        #     which a depth-1 checkout provides. Do not switch to a sparse or
+        #     partial checkout — a smaller tree is a smaller census.
+        # The scanner prints the SHA it actually scanned in its own output, so
+        # every CI log states what was measured.
+
+      - name: Report the tree under scan
+        # Provenance, printed before any verdict: "a census that cannot say what
+        # it measured is not a census."
+        run: |
+          echo "event=${{ github.event_name }}"
+          echo "scanning commit: $(git rev-parse HEAD)"
+          echo "base ref:        ${{ github.base_ref || github.ref_name }}"
+          git status --porcelain | head -5
 
       - name: Self-test scanner against fixtures
-        # Validates that the scanner catches seeded fail fixtures and
-        # tolerates pass fixtures. Exits non-zero if either side breaks.
+        # Three assertions, all blocking:
+        #   1. every secret_scan_fixtures/fail/* trips the scanner — including
+        #      the five fixtures reproducing the SAMAPTI-SEC-001 shapes;
+        #   2. every secret_scan_fixtures/pass/* stays clean (no false positives);
+        #   3. the scan surface actually reaches 00_ARCHITECTURE/,
+        #      platform/migrations/, platform/src/, platform-mcp/src/, infra/
+        #      and 99_ARCHIVE/ — the trees the old allowlist could not see.
+        # (3) is what stops this gate from ever going green by scanning nothing.
         run: bash platform/scripts/governance/secret_scan.sh --self-test
 
-      - name: Scan tree for literal credentials
-        # Scans scripts/, platform/scripts/, platform-mcp/scripts/,
-        # .github/workflows/, and cloudbuild*.yaml files. Hard fail on
-        # any literal credential. Prefers gitleaks if on PATH.
+      - name: Scan repository for literal credentials
+        # Repo-wide: every file `git ls-files --cached --others --exclude-standard`
+        # reports, minus the explicitly-reasoned SUPPRESS_RE exclusions.
+        # Fails on ANY finding not itemized in secret_scan_inherited.txt, on any
+        # itemized finding whose count grew, and on any itemized finding past its
+        # expiry date. The register can only shrink or expire.
         run: bash platform/scripts/governance/secret_scan.sh
 
   coverage-gate:
