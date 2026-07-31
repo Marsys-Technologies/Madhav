@@ -101,6 +101,39 @@ def _handle_sigterm(signum, frame):
     _shutdown = True
 
 
+# ── Asset-outcome vocabulary (SAMĀPTI B-N8-SWEEPFIX, F-01) ────────────────────
+# The EXHAUSTIVE allowlist of per-asset states that mean "this asset's work in this
+# run finished successfully". Everything not listed is a failure.
+#
+# Why an allowlist. `build_run_assets.state` is written by `asset_runner.py` as the
+# unconditional literal 'complete' for every terminal outcome — including the
+# 'incomplete' state SATYA-DĪPA introduced (migration 474) to mean "this build did
+# NOT finish". The run-level verdict therefore could not see 'incomplete' at all:
+# the scheduler's success rule was a DENYLIST (`if result == 'error': failed`), so
+# every non-'error' string — 'incomplete' included — scored as success and the run
+# reported `build_runs.state = 'completed'`. That is the exact "green over-report"
+# the guard comment at the bottom of execute_run says must not happen.
+#
+# The three-part fix in THIS file (the `build_run_assets` write itself lives in
+# `asset_runner.py`, outside this lane's scope — see the module note below):
+#   1. worker() cross-checks `asset_throughput` — the state the writer path
+#      actually computed — and returns THAT when it is not a success state;
+#   2. execute_dag uses this allowlist instead of the `!= 'error'` denylist
+#      (which is also what execute_dag's own docstring has always claimed);
+#   3. _reconcile_failed_assets_from_db will not promote an asset out of the
+#      failed set on `build_run_assets.state = 'complete'` alone.
+#
+# A state added to `asset_throughput` in future is a FAILURE here until someone
+# deliberately adds it — the safe default direction for a build-success signal.
+_SUCCESS_OUTCOMES: frozenset[str] = frozenset({
+    "complete",    # build_run_assets: terminal success for this run
+    "lit",         # asset_throughput: writer produced a complete slice
+    "mature",      # asset_throughput: lit and past its maturity gate
+    "dormant",     # asset_throughput: DECLARED outcome — ran, legitimately 0 rows
+    "service_ok",  # asset_throughput: service asset's health probe returned GREEN
+})
+
+
 # ── Writer-gap guard ──────────────────────────────────────────────────────────
 # Mode: enforce (default) — fail the run; warn — log only; off — skip.
 # A "writer gap" is an asset_id registered via @register() in the Python codebase
@@ -347,10 +380,16 @@ def execute_dag(
                     continue
                 a = in_flight.pop(fut)
                 deadlines.pop(fut, None)
-                # Serial-equivalent success rule: only 'error' is failure; any other
-                # terminal state ('lit'/'complete') counts as success (matches the old
-                # `if state == 'error'` gate). run_fn returns 'error' on crash too.
-                if fut.result() == "error":
+                # F-01: ALLOWLIST, not a denylist. Success is one of the enumerated
+                # terminal success states; anything else — 'incomplete', 'error',
+                # 'building', a state added later, an unexpected string — is failure.
+                _outcome = fut.result()
+                if _outcome not in _SUCCESS_OUTCOMES:
+                    if _outcome != "error":
+                        logger.error(
+                            "[execute_dag] asset %s returned non-success outcome %r — "
+                            "counting as FAILED (not a recognised success state)", a, _outcome,
+                        )
                     failed.add(a)
                 else:
                     completed.add(a)
@@ -365,7 +404,8 @@ def execute_dag(
             a = in_flight.pop(fut)
             deadlines.pop(fut, None)
             try:
-                if fut.result() == "error":
+                # F-01: same allowlist as the main loop above.
+                if fut.result() not in _SUCCESS_OUTCOMES:
                     failed.add(a)
                 else:
                     completed.add(a)
@@ -492,7 +532,31 @@ def _schedule_parallel(
                 (run_id, asset_id),
             )
             r = wcur.fetchone()
-            return r["state"] if r else "error"
+            run_state = r["state"] if r else "error"
+
+            # F-01: `build_run_assets.state` is written as the unconditional literal
+            # 'complete' for every terminal outcome, so on its own it cannot report a
+            # failed build. `asset_throughput.state` is what the writer path actually
+            # COMPUTED (including 'incomplete' — the no-op-completion rejection state).
+            # Where the two disagree, the computed one wins: a signal with a detector
+            # behind it beats a literal (CLAUDE.md §N.8).
+            wcur.execute(
+                "SELECT state FROM asset_throughput "
+                "WHERE asset_id = %s AND chart_id IS NOT DISTINCT FROM %s",
+                (asset_id, eff(asset_id)),
+            )
+            tr = wcur.fetchone()
+            throughput_state = tr["state"] if tr else None
+            if throughput_state is not None and throughput_state not in _SUCCESS_OUTCOMES:
+                if run_state in _SUCCESS_OUTCOMES:
+                    logger.error(
+                        "[orchestrator] STATE DIVERGENCE: asset %s (chart %s, run %s) — "
+                        "build_run_assets.state=%r but asset_throughput.state=%r. "
+                        "Reporting the computed state; this asset FAILS the run.",
+                        asset_id, eff(asset_id), run_id, run_state, throughput_state,
+                    )
+                return throughput_state
+            return run_state
         except Exception as exc:
             logger.error("[orchestrator] worker crashed for %s: %s", asset_id, exc, exc_info=True)
             # When the connection is dead (e.g. server-side timeout killed it while the
@@ -575,7 +639,29 @@ def _schedule_parallel(
     )
 
 
-def _reconcile_failed_assets_from_db(cur, run_id: str, plan: list[str], failed_assets: set[str]) -> set[str]:
+def _throughput_states(cur, chart_id, plan: list[str]) -> dict[str, str]:
+    """{asset_id: asset_throughput.state} for the plan, chart-scoped rows preferred.
+
+    Global assets carry a `chart_id IS NULL` row; per-chart assets carry one keyed to
+    the run's chart. Both are admitted and the chart-scoped row wins where both exist
+    (the same convention `is_asset_complete` uses).
+    """
+    if not plan:
+        return {}
+    cur.execute(
+        "SELECT asset_id, state, chart_id FROM asset_throughput "
+        "WHERE asset_id = ANY(%s) AND (chart_id = %s OR chart_id IS NULL) "
+        "ORDER BY (chart_id IS NULL)",
+        (list(plan), chart_id),
+    )
+    out: dict[str, str] = {}
+    for r in cur.fetchall():
+        out.setdefault(r["asset_id"], r["state"])
+    return out
+
+
+def _reconcile_failed_assets_from_db(cur, run_id: str, plan: list[str], failed_assets: set[str],
+                                     chart_id=None) -> set[str]:
     """RR-fix (D-3 carried-forward from D-2 close report): the run-rollup race.
 
     `_schedule_parallel` tracks `failed_assets` IN-PROCESS (an in-memory Python set
@@ -593,16 +679,42 @@ def _reconcile_failed_assets_from_db(cur, run_id: str, plan: list[str], failed_a
       - DB shows 'complete' for an asset the in-process set believed failed →
         trust the DB and drop it from the failed set (a false failure would
         report a run 'failed' when every child asset actually landed clean).
+
+    F-01 (SAMĀPTI B-N8-SWEEPFIX): `build_run_assets.state` is written as the
+    unconditional literal 'complete' for every terminal outcome, so it CANNOT by
+    itself distinguish a finished build from one the writer path classified
+    'incomplete'. This function therefore cross-checks `asset_throughput.state` —
+    the state actually computed — and:
+      - treats a non-success computed state as failed even when build_run_assets
+        says 'complete';
+      - refuses to drop an asset from the failed set on 'complete' alone; the
+        computed state must ALSO be a success state.
+    Without the second rule the fix in worker()/execute_dag would be undone right
+    here: the incomplete asset would be put back into the clean column at rollup.
     """
     cur.execute(
         "SELECT asset_id, state FROM build_run_assets WHERE run_id = %s",
         (run_id,),
     )
     db_state = {r["asset_id"]: r["state"] for r in cur.fetchall()}
+    throughput = _throughput_states(cur, chart_id, plan)
 
     reconciled = set(failed_assets)
     for asset_id in plan:
         state = db_state.get(asset_id)
+        computed = throughput.get(asset_id)
+        # F-01: the computed state is authoritative over the literal, in the
+        # failing direction, regardless of what build_run_assets claims.
+        if computed is not None and computed not in _SUCCESS_OUTCOMES:
+            if asset_id not in reconciled:
+                logger.error(
+                    "[orchestrator] F-01: run %s asset %s — build_run_assets.state=%r "
+                    "but asset_throughput.state=%r (not a success state). The run is "
+                    "NOT clean; reconciling to failed.",
+                    run_id, asset_id, state, computed,
+                )
+            reconciled.add(asset_id)
+            continue
         if state in ("error", "aborted"):
             if asset_id not in reconciled:
                 logger.error(
@@ -619,12 +731,25 @@ def _reconcile_failed_assets_from_db(cur, run_id: str, plan: list[str], failed_a
             )
             reconciled.add(asset_id)
         elif state == "complete" and asset_id in reconciled:
-            logger.warning(
-                "[orchestrator] RR-fix: run %s asset %s was in the in-process "
-                "failed set but build_run_assets shows 'complete' — trusting DB, "
-                "removing from failed set", run_id, asset_id,
-            )
-            reconciled.discard(asset_id)
+            # F-01: 'complete' is a literal, not a measurement. Only release the
+            # asset when the COMPUTED state corroborates it. When no
+            # asset_throughput row exists at all there is nothing corroborating a
+            # successful build, so the in-process failure stands.
+            if computed is not None and computed in _SUCCESS_OUTCOMES:
+                logger.warning(
+                    "[orchestrator] RR-fix: run %s asset %s was in the in-process "
+                    "failed set but build_run_assets shows 'complete' and "
+                    "asset_throughput shows %r — trusting DB, removing from failed set",
+                    run_id, asset_id, computed,
+                )
+                reconciled.discard(asset_id)
+            else:
+                logger.error(
+                    "[orchestrator] F-01: run %s asset %s shows build_run_assets="
+                    "'complete' but asset_throughput=%r — the literal is NOT "
+                    "corroborated by a computed success state; keeping it failed.",
+                    run_id, asset_id, computed,
+                )
 
     if reconciled != failed_assets:
         emit_event({
@@ -784,7 +909,7 @@ def execute_run(run_id: str) -> None:
         # reality (build_run_assets for this run_id) before computing the final
         # state — see _reconcile_failed_assets_from_db for the race this closes.
         conn.rollback()  # release the read snapshot so the reconciliation query sees fresh commits
-        failed_assets = _reconcile_failed_assets_from_db(cur, run_id, plan, failed_assets)
+        failed_assets = _reconcile_failed_assets_from_db(cur, run_id, plan, failed_assets, chart_id)
         conn.commit()
 
         # BA-P3 FIX 3: a run whose plan included any failed/blocked asset must NOT

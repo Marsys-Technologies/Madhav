@@ -211,8 +211,39 @@ jobs:
           DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/fresh_chart_smoke
         run: npx tsx scripts/migrate.ts
 
+      - name: dag_edge_guard — LIVE scan against the restored registry (SAMĀPTI F-02)
+        # This is the guard's only automated LIVE invocation in the repo. It needs a real
+        # asset_registry (depends_on / target_table / count_sql) plus information_schema,
+        # which exists here and nowhere else in CI — push/PR CI has no database, so the
+        # guard's live check has always skipped there (its docstring's "catches drift the
+        # moment a writer adds an undeclared cross-asset read" was untrue; see F-02).
+        #
+        # Placed BEFORE the multi-hour fixture build so an undeclared cross-asset read
+        # fails fast — that read is precisely a reason the build downstream would be
+        # scheduled on incomplete data.
+        #
+        # Exits 1 on any HARD violation AND on an inconclusive scan (fewer writer assets
+        # resolved than the floor) — a scan that covered nothing must not read as a pass.
+        working-directory: platform/python-sidecar
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/fresh_chart_smoke
+        run: python -m pipeline.orchestrator.dag_edge_guard
+
       - name: Build one fixture chart through every active asset
         working-directory: platform
         env:
           DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/fresh_chart_smoke
         run: python3 scripts/ci/fresh_chart_smoke_bootstrap.py
+
+      - name: kala_derivation_completeness_guard — LIVE scan (SAMĀPTI F-02)
+        # Runs AFTER the fixture build: this guard compares chart_id sets between
+        # kala_convergence and its three derived tables, so it needs per-chart kala_* rows
+        # to measure anything. Running it before the build would compare empty set against
+        # empty set and print a pass — a vacuous green, which is the same §N.8 defect
+        # class the guard is being repaired for. (The guard now prints an explicit
+        # NO COVERAGE line rather than OK when zero charts are in scope, so a vacuous run
+        # is at least visible, but the correct placement is still here.)
+        working-directory: platform/python-sidecar
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/fresh_chart_smoke
+        run: python -m pipeline.orchestrator.kala_derivation_completeness_guard
