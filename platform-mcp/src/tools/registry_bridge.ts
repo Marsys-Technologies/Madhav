@@ -658,8 +658,32 @@ interface CoverageMapEntry {
 
 const DOSSIER_COVERAGE_MAP_MAX_TOOLS = 60
 
+/** Hard ceiling on coverage-walk iterations. Hitting it means the walk was TRUNCATED — the slice
+ *  never reported itself done — not that the walk finished. */
+const DOSSIER_PAGE_WALK_MAX = 64
+
+/** Why a coverage walk stopped before the slice's own paging reported `more_available: false`.
+ *  `null` means it ended naturally, and only then is the cumulative tally a COMPLETE measurement. */
+type CoverageWalkTermination =
+  | 'page_fetch_threw'
+  | 'page_fetch_not_ok'
+  | 'page_guard_limit_reached'
+  | 'cursor_missing_while_more_available'
+
 /** Page the dossier engine to 100% (pure, embedded slices) and assemble a compact completeness
- *  block. Returns null when no slice is precompiled for (domain, chart) — assess_* then unchanged. */
+ *  block. Returns null when no slice is precompiled for (domain, chart) — assess_* then unchanged.
+ *
+ *  SAMĀPTI F-19 (§N.8): `fully_accounted` asserts "this domain slice is completely accounted for."
+ *  It used to be computed as `cov.accounted === cov.slice_size` over the LAST page reached, with no
+ *  term for whether the walk actually FINISHED — so it measured "did pagination stop", which every
+ *  terminating loop satisfies. The sharp edge was the mid-walk `!page.ok` branch: `runDossier`'s
+ *  error shape carries a zeroed `coverage_so_far` (`accounted: 0`, `slice_size: 0`), and the loop
+ *  adopted that page before testing `ok`, so a FAILED walk compared `0 === 0` and reported
+ *  `fully_accounted: true` on assess_wealth / assess_career / judgment_query.
+ *
+ *  Now: a not-ok page is never adopted as the coverage source, every early exit is recorded, and a
+ *  truncated walk yields `fully_accounted: null` (UNKNOWN — we stopped measuring) reported
+ *  distinctly from `false` (we measured, and the slice is genuinely under-accounted). */
 export function assembleDomainCompleteness(domain: string, chart_id: string): Record<string, unknown> | null {
   let page: DossierPage
   try {
@@ -690,23 +714,56 @@ export function assembleDomainCompleteness(domain: string, chart_id: string): Re
   }
 
   accumulate(page)
-  let guard = 0
-  while (page.more_available && page.cursor && guard < 64) {
-    guard += 1
+  let pagesWalked = 1
+  let truncated: CoverageWalkTermination | null = null
+  while (page.more_available && page.cursor && pagesWalked <= DOSSIER_PAGE_WALK_MAX) {
+    let next: DossierPage
     try {
-      page = runDossier({ domain, chart_id, budget_kb: 64, cursor: page.cursor })
+      next = runDossier({ domain, chart_id, budget_kb: 64, cursor: page.cursor })
     } catch {
+      truncated = 'page_fetch_threw'
       break
     }
-    if (!page.ok) break
+    // F-19: a not-ok page carries a ZEROED coverage_so_far (accounted 0, slice_size 0). Adopting
+    // it as `page` — as this loop used to, by assigning before testing `ok` — is what let a failed
+    // walk compare 0 === 0 and report FULL accounting. Never adopt a not-ok page.
+    if (!next.ok) {
+      truncated = 'page_fetch_not_ok'
+      break
+    }
+    page = next
+    pagesWalked += 1
     accumulate(page)
   }
+  // Fell out of the loop with pages still outstanding ⇒ the walk was truncated, not finished.
+  // (`more_available` without a `cursor` is a dossier invariant break — treated as truncation
+  // because it is likewise a walk we could not complete, never as a completed measurement.)
+  if (truncated === null && page.more_available) {
+    truncated = page.cursor ? 'page_guard_limit_reached' : 'cursor_missing_while_more_available'
+  }
 
-  // `page` is now the LAST page — its coverage_so_far is cumulative and its synthesis_gate
-  // reflects whether 100% was reached (it is, for a fully-paged flagship slice).
+  // `page` is now the last page the walk SUCCESSFULLY reached — its coverage_so_far is the
+  // cumulative tally to that point, and its synthesis_gate is that page's own (correctly
+  // conjunctive) gate. Whether the walk reached the end is a SEPARATE fact, held in `truncated`.
   const cov = page.coverage_so_far
   const allTools = Array.from(perTool.values()).sort((a, b) => b.concept_count - a.concept_count)
   const coverage_map = allTools.slice(0, DOSSIER_COVERAGE_MAP_MAX_TOOLS)
+
+  // F-19 / §N.8 — two INDEPENDENT facts, reported as two fields, never collapsed into one bool:
+  //   `coverage_walk`     — did we finish MEASURING? (complete | truncated | empty_slice)
+  //   `fully_accounted`   — is the slice accounted for? true | false | null(=unknown)
+  // `accounted === slice_size` only measures the second claim when the first is 'complete'. A
+  // truncated walk yields null (we stopped counting), NOT false (we counted, and it came up short)
+  // and never true. A zero denominator is a vacuous 0 === 0, so it is null too — an empty slice is
+  // an accounting gap, not a fully-accounted territory.
+  const walkFinished = truncated === null
+  const denominatorUsable = cov.slice_size > 0
+  const fully_accounted: boolean | null =
+    walkFinished && denominatorUsable ? cov.accounted === cov.slice_size : null
+  const coverage_walk: 'complete' | 'truncated' | 'empty_slice' =
+    !walkFinished ? 'truncated' : denominatorUsable ? 'complete' : 'empty_slice'
+  const walkComplete = coverage_walk === 'complete'
+  const trulyFullyAccounted = fully_accounted === true
 
   return {
     source: 'dossier (Ω5 gather-then-compose engine)',
@@ -715,7 +772,24 @@ export function assembleDomainCompleteness(domain: string, chart_id: string): Re
     slice_size: cov.slice_size,
     accounted: cov.accounted,
     pct: cov.pct,
-    fully_accounted: cov.accounted === cov.slice_size,
+    fully_accounted,
+    coverage_walk,
+    pages_walked: pagesWalked,
+    ...(walkComplete
+      ? {}
+      : {
+          coverage_walk_reason: truncated ?? 'slice_size_zero',
+          coverage_walk_note:
+            'INCOMPLETE MEASUREMENT: ' +
+            (coverage_walk === 'truncated'
+              ? 'the dossier coverage walk stopped before the slice reported itself done, so ' +
+                `\`accounted\`/\`pct\` above are a PARTIAL tally over ${pagesWalked} page(s)`
+              : 'the slice reported a zero denominator, so `accounted === slice_size` would be a ' +
+                'vacuous 0 === 0 rather than an accounting') +
+            ' and `fully_accounted` is null — UNKNOWN, not false and never true. Do not treat ' +
+            'this domain as fully accounted; page ' +
+            `dossier(domain="${domain}", chart_id="${chart_id}") directly to establish coverage.`,
+        }),
     synthesis_gate: page.synthesis_gate,
     coverage_by_state: {
       served: cov.served,
@@ -734,17 +808,34 @@ export function assembleDomainCompleteness(domain: string, chart_id: string): Re
     full_hydration: {
       tool: 'dossier',
       args: { domain, chart_id, budget_kb: 64 },
-      note: 'This block accounts for 100% of the domain concept slice by serving-tool and state — ' +
-        'the complete territory, not a shallow default. To HYDRATE the actual rows for any unit, ' +
+      // F-19: this note used to hardcode "100%" regardless of the computed coverage. It now states
+      // what the walk actually established.
+      note: (trulyFullyAccounted
+        ? 'This block accounts for 100% of the domain concept slice by serving-tool and state — ' +
+          'the complete territory, not a shallow default. '
+        : `This block accounts for ${cov.accounted}/${cov.slice_size} (${cov.pct}%) of the domain ` +
+          'concept slice by serving-tool and state — a PARTIAL accounting, not the complete ' +
+          'territory. ') +
+        'To HYDRATE the actual rows for any unit, ' +
         'call its serving_tool with {chart_id, ...args}; to walk the whole slice row-by-row with a ' +
         'structural synthesis gate, call `dossier` and follow `cursor` until synthesis_gate=OPEN, ' +
         'then compose the reading over the WHOLE slice.',
     },
-    note: 'Complete-accounting domain territory, sourced from the dossier engine (a deterministic ' +
-      'join of the Total Concept Inventory × completeness accounting — no computation reimplemented, ' +
-      'B.10). The reconciled assessment below is BOUNDED by this: every concept this domain carries ' +
-      'is accounted here (by state, with its live serving handle), so a reader holds the whole ' +
-      'territory before composing, never a ~15% default slice.',
+    note: (trulyFullyAccounted
+      ? 'Complete-accounting domain territory, sourced from the dossier engine (a deterministic ' +
+        'join of the Total Concept Inventory × completeness accounting — no computation ' +
+        'reimplemented, B.10). The reconciled assessment below is BOUNDED by this: every concept ' +
+        'this domain carries is accounted here (by state, with its live serving handle), so a ' +
+        'reader holds the whole territory before composing, never a ~15% default slice.'
+      : 'PARTIAL-accounting domain territory, sourced from the dossier engine (a deterministic ' +
+        'join of the Total Concept Inventory × completeness accounting — no computation ' +
+        'reimplemented, B.10). ' +
+        (walkComplete
+          ? `The walk completed but the slice accounts for only ${cov.accounted}/${cov.slice_size} ` +
+            'of its own concepts — a build gap in the slice itself. '
+          : 'The coverage walk did not finish, so what is accounted below is what was reached, ' +
+            'not what exists. ') +
+        'Do NOT read this block as the whole territory; see `coverage_walk` / `fully_accounted`.'),
   }
 }
 
@@ -756,21 +847,36 @@ export function attachDomainCompleteness(response: Record<string, unknown>, doma
   response['domain_completeness'] = completeness
   const pct = (completeness['pct'] as number | undefined) ?? 0
   const sliceSize = (completeness['slice_size'] as number | undefined) ?? 0
-  response['completeness_directive'] =
-    `COMPLETE ACCOUNTING ATTACHED: this response is backed by the full ${domain} concept slice ` +
-    `(${sliceSize} concepts, ${pct}% accounted) via domain_completeness — read that map before ` +
-    `concluding. For a row-by-row hydrated reading of the whole territory, call ` +
-    `dossier(domain="${domain}", chart_id="${chart_id}") and page to synthesis_gate=OPEN.`
+  // F-19: the steer must not assert "the full slice" when the accounting could not establish it.
+  const fullyAccounted = completeness['fully_accounted'] === true
+  const walkReason = String(completeness['coverage_walk_reason'] ?? 'unknown')
+  response['completeness_directive'] = fullyAccounted
+    ? `COMPLETE ACCOUNTING ATTACHED: this response is backed by the full ${domain} concept slice ` +
+      `(${sliceSize} concepts, ${pct}% accounted) via domain_completeness — read that map before ` +
+      `concluding. For a row-by-row hydrated reading of the whole territory, call ` +
+      `dossier(domain="${domain}", chart_id="${chart_id}") and page to synthesis_gate=OPEN.`
+    : `INCOMPLETE ACCOUNTING ATTACHED: the ${domain} concept-slice accounting did NOT establish ` +
+      `full coverage (${pct}% of ${sliceSize} concepts reached; coverage_walk=` +
+      `${String(completeness['coverage_walk'])}, reason=${walkReason}). domain_completeness is a ` +
+      `PARTIAL map — do not read it as the whole territory. Call ` +
+      `dossier(domain="${domain}", chart_id="${chart_id}") and page to synthesis_gate=OPEN to ` +
+      `establish coverage before composing.`
   // Un-missable structured flag (string entry — a valid JudgmentFlagEntry; renders via
   // judgmentFlagText). Prepended so it is the first flag a reader encounters.
   const existingFlags = Array.isArray(response['judgment_flags'])
     ? (response['judgment_flags'] as unknown[])
     : []
   response['judgment_flags'] = [
-    `complete_domain_accounting_attached: the full ${domain} concept slice (${sliceSize} concepts, ` +
-      `${pct}% accounted) is attached as domain_completeness. This assessment is a reconciled ` +
-      `HEADLINE over that complete territory — do not treat it as the whole reading. Call ` +
-      `dossier(domain="${domain}", chart_id) to page the full slice row-by-row.`,
+    fullyAccounted
+      ? `complete_domain_accounting_attached: the full ${domain} concept slice (${sliceSize} concepts, ` +
+        `${pct}% accounted) is attached as domain_completeness. This assessment is a reconciled ` +
+        `HEADLINE over that complete territory — do not treat it as the whole reading. Call ` +
+        `dossier(domain="${domain}", chart_id) to page the full slice row-by-row.`
+      : `domain_accounting_incomplete: the ${domain} concept-slice accounting is PARTIAL ` +
+        `(${pct}% of ${sliceSize} concepts; coverage_walk=${String(completeness['coverage_walk'])}, ` +
+        `reason=${walkReason}). fully_accounted is null — UNKNOWN, not confirmed. The attached ` +
+        `domain_completeness map is what was reached, not what exists; call ` +
+        `dossier(domain="${domain}", chart_id) to establish the real territory.`,
     ...existingFlags,
   ]
 }
@@ -782,6 +888,10 @@ export function buildDomainCompletenessPointer(domain: unknown, chart_id: string
   if (typeof domain !== 'string' || !domain) return null
   const full = assembleDomainCompleteness(domain, chart_id)
   if (!full) return null
+  // F-19: the pointer must carry the SAME honest signal as the full block — a compact surface is
+  // not a licence to flatten `true | false | null` back into a bare boolean, nor to keep asserting
+  // "100% accounted" in prose when the walk never established it.
+  const fullyAccounted = full['fully_accounted'] === true
   return {
     source: full['source'],
     domain,
@@ -789,13 +899,23 @@ export function buildDomainCompletenessPointer(domain: unknown, chart_id: string
     accounted: full['accounted'],
     pct: full['pct'],
     fully_accounted: full['fully_accounted'],
+    coverage_walk: full['coverage_walk'],
+    ...(full['coverage_walk_reason'] !== undefined
+      ? { coverage_walk_reason: full['coverage_walk_reason'] }
+      : {}),
     synthesis_gate: full['synthesis_gate'],
     coverage_by_state: full['coverage_by_state'],
     distinct_serving_tools: full['distinct_serving_tools'],
     full_hydration: full['full_hydration'],
-    note: `A COMPLETE ${domain} reading (all ${String(full['slice_size'])} domain concepts, 100% ` +
-      `accounted) is available via dossier(domain="${domain}", chart_id) — this judgment is a ` +
-      `bhava/domain-scoped verdict, not the whole-territory sweep.`,
+    note: fullyAccounted
+      ? `A COMPLETE ${domain} reading (all ${String(full['slice_size'])} domain concepts, 100% ` +
+        `accounted) is available via dossier(domain="${domain}", chart_id) — this judgment is a ` +
+        `bhava/domain-scoped verdict, not the whole-territory sweep.`
+      : `INCOMPLETE accounting for ${domain}: only ${String(full['accounted'])}/` +
+        `${String(full['slice_size'])} concepts (${String(full['pct'])}%) were accounted ` +
+        `(coverage_walk=${String(full['coverage_walk'])}), so fully_accounted is null — UNKNOWN, ` +
+        `not confirmed. Call dossier(domain="${domain}", chart_id) to establish the territory; ` +
+        `this judgment remains a bhava/domain-scoped verdict either way.`,
   }
 }
 
