@@ -34,13 +34,24 @@ class GaDashasWriter(WriterBase):
         return steps
 
     def run_substep(self, ctx: ContextSpec, step: SubStep) -> WriterResult:
-        from ga_writers.ga_dashas_writer import build_system, _run_concurrency_post_pass_db
+        from ga_writers.ga_dashas_writer import (
+            build_system,
+            _run_concurrency_post_pass_db,
+            write_dasha_scope_cap_sentinels,
+        )
 
         chart_id = ctx.config['chart_id']
         if step.key == _POST_PASS_KEY:
             _run_concurrency_post_pass_db(chart_id, ctx.build_id, conn=ctx.db_conn)
-            return WriterResult(asset_id=self.asset_id, rows_inserted=0,
-                                notes='concurrency post-pass')
+            # SD-DASHA-1 (SAMĀPTI v2.0 §9.5): this path previously never wrote
+            # the 2 scope_cap sentinel rows (Prana Dasha / KP-beyond-sub_sub)
+            # that build_ga_dashas() (CLI path) writes — orchestrator-built
+            # charts (i.e. every real chart) silently diverged from the CLI
+            # path on this. Runs on ctx.db_conn, does not commit (orchestrator
+            # owns the transaction per §N.2).
+            rows = write_dasha_scope_cap_sentinels(chart_id, ctx.build_id, conn=ctx.db_conn)
+            return WriterResult(asset_id=self.asset_id, rows_inserted=rows,
+                                notes='concurrency post-pass + scope-cap sentinels')
 
         system, aya = step.key.split(':', 1)
         res = build_system(system, aya, chart_id, ctx.build_id,
