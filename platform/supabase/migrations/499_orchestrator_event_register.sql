@@ -1,4 +1,4 @@
--- Migration XXX (PLACEHOLDER — REAL NUMBER ALLOCATED BY THE CONDUCTOR AT MERGE TIME):
+-- Migration 499:
 -- orchestrator_event_register — a durable, queryable register for no-op-completion events
 -- (SAMĀPTI lane B-EVENTREG · brief v2.0 §9.6 · register item SD-EVENTREG-1)
 -- =============================================================================

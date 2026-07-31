@@ -51,7 +51,7 @@ from pipeline.orchestrator.writers import SubStep, WriterBase, WriterResult  # n
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[3]
 MIGRATION = (REPO_ROOT / "platform" / "supabase" / "migrations"
-             / "XXX_PLACEHOLDER_orchestrator_event_register.sql")
+             / "499_orchestrator_event_register.sql")
 
 COUNT_SQL = "SELECT count(*) FROM kala_convergence WHERE chart_id = $1"
 
