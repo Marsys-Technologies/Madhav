@@ -99,12 +99,47 @@ export type AbsenceCandidate = {
 /** Scans one file's lines for absence-claim phrasing, then checks a ±WINDOW line window
  *  around each hit for any GROUNDING_TOKENS token (Task 4's "resolver-miss code path nearby"
  *  heuristic — see header for the documented limitations of this approximation). */
+/**
+ * SCOPE NARROWING (2026-08-01, parked-item triage). The lint previously matched raw source
+ * lines, which made it fire on text that can never reach a served response. A full triage of
+ * its 21 STRICT-mode findings classified ALL 21 as false positives of exactly three kinds:
+ *   13 x pure comment / docblock prose  (e.g. "// that does not exist.")
+ *    5 x Postgres error-matching REGEX  (/column ".*" does not exist|relation ".*" .../) —
+ *        code that DETECTS a database error, i.e. the opposite of claiming absence to a user
+ *    1 x trailing `//` comment on a type-union line
+ *   (+2 string literals, retained — see below)
+ *
+ * This strips the non-served portions of a line BEFORE pattern matching. It deliberately does
+ * NOT touch string literals: a string is the one thing that plausibly IS served, so those stay
+ * in scope and remain visible.
+ *
+ * Returns '' when the whole line is non-served (skip it entirely).
+ */
+export function servedTextOnly(rawLine: string): string {
+  const trimmed = rawLine.trim()
+  // Whole-line comment or docblock continuation.
+  if (trimmed.startsWith('//') || trimmed.startsWith('*') || trimmed.startsWith('/*')) return ''
+  let line = rawLine
+  // ORDER MATTERS. Strip the trailing `//` comment BEFORE regex literals: the regex-literal
+  // pattern is greedy enough to treat a path-like fragment such as `L1/L2/L3` as a literal,
+  // which would consume the `//` and defeat the comment strip. (Caught by a line that
+  // survived narrowing when it should not have:
+  //   `| 'not_computed' //  the underlying L1/L2/L3 asset does not exist for this chart yet`)
+  const c = line.indexOf('//')
+  if (c !== -1) line = line.slice(0, c)
+  // Regex literals: /.../flags — error-matching patterns, not served prose.
+  line = line.replace(/\/(?:[^/\\\n]|\\.)+\/[gimsuy]*/g, ' ')
+  return line
+}
+
 export function scanFileForAbsenceCandidates(filePath: string, fileText: string, windowSize = WINDOW): AbsenceCandidate[] {
   const lines = fileText.split('\n')
   const candidates: AbsenceCandidate[] = []
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i]!
-    const matches = scanLineForAbsenceClaims(line)
+    const scannable = servedTextOnly(line)
+    if (scannable.trim() === '') continue
+    const matches = scanLineForAbsenceClaims(scannable)
     if (matches.length === 0) continue
     const windowStart = Math.max(0, i - windowSize)
     const windowEnd = Math.min(lines.length, i + windowSize + 1)

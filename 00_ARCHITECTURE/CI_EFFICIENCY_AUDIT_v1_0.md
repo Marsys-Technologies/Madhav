@@ -371,8 +371,12 @@ return to exit 0. All mutations reverted; working tree verified clean afterwards
 
 - **`r18_param_noop_audit` is only partly proven.** Exit 4 on a missing tools directory
   shows it is not a no-op, but that exercises crash-on-missing-input, **not** its ratchet.
-  Whether the baseline ratchet catches a genuinely new param no-op is **unproven** —
-  constructing that mutation needs a hand-built violating tool file.
+  Whether the baseline ratchet catches a genuinely new param no-op was **unproven** at the
+  time of writing. **It has since been proven — see §6.12 item 1.** (This paragraph is left
+  in place rather than rewritten, because the sequence matters: §6.8 was written before the
+  proof existed, and the workflow comment in tap-ci.yml asserted "Ratchet PROVEN" while this
+  section still said "unproven". Two surfaces disagreeing about the same fact is exactly the
+  drift this document exists to catch.)
 
 - **Three TAP jobs are unfalsifiable in this environment, and that is not a pass.**
   `mcp_tool_smoke` (exit 3, no live server), `s13_coverage_matrix_live` (exit 3) and
@@ -555,6 +559,95 @@ campaign was aiming at.
 **Rollback:** delete ruleset `20141220` and recreate classic protection from
 `prot_before.json`; remove the `Marsys-Technologies` principalSets and narrow the provider
 condition back to `amonty84`; transfer the repository back. Each step is independent.
+
+## §6.12 — The three parked items, closed (2026-08-01)
+
+Three signals were left honestly labelled but not doing all they claimed. All three are now
+resolved. **Nothing was armed that red-gates `main`.**
+
+### Item 1 — `r18` ratchet: PROVEN. No change needed.
+
+Prior evidence was only exit 4 on a missing directory — crash-on-missing-input, not the
+ratchet. Now tested properly, and **rule 4 was satisfied before the result was trusted**: r18
+globs `platform-mcp/src/tools/**/*.ts` (excluding `*.test.ts`), and the probe was confirmed to
+be inside the 45 files it enumerates *before* the run, not merely written to disk.
+
+A probe tool declaring `never_read_param` in its zod schema and never referencing it in its
+handler produced **exit 1**, naming `r18_ratchet_probe_tool`, `never_read_param` **and** the
+file. Probe removed → exit 0, tree clean. The ratchet genuinely catches new violations.
+
+**Documentation drift found and fixed:** `tap-ci.yml`'s step comment already said "Ratchet
+PROVEN" (from the #974 pass) while §6.8 above still said "unproven" — the audit doc was stale
+relative to the code. §6.8 now points here.
+
+### Item 2 — `absence_lint`: narrowed 21 → 2, still report-only, 2 findings need native sign-off.
+
+**Triage of all 21 STRICT findings — every one a false positive, in three clusters:**
+
+| Class | Count | Why it is not a defect |
+|---|---|---|
+| Pure comment / docblock | 13 | prose, never served |
+| Postgres error-matching regex | 5 | `/column ".*" does not exist\|.../` — code that DETECTS a DB error; the opposite of claiming absence to a user |
+| Trailing `//` on a type-union line | 1 | the match sits in the comment half |
+| String literals | 2 | genuinely served — kept in scope deliberately |
+
+**Narrowing applied.** `servedTextOnly()` in `absence_lint_gate.ts` strips whole-line comments,
+trailing `//` comments and regex literals before matching, and **deliberately keeps string
+literals**, since a string is the one thing that plausibly *is* served. Result: **21 → 2**.
+
+**A bug in my own narrowing, caught by re-checking rather than assuming.** The first version
+stripped regex literals *before* trailing comments. The regex-literal pattern is greedy enough
+to treat `L1/L2/L3` as a literal, which consumed the `//` and defeated the comment strip — so
+`reading_checklist.ts:32` survived when it should not have. Order corrected (comments first,
+then regex literals); 3 → 2. Recorded because the failure mode is generic: a sanitiser whose
+stages fight each other looks like a detector finding.
+
+**The detector still has teeth after the narrowing — re-proven, not assumed.** A seeded served
+claim (`'That reading is not in your data.'`) took FAIL 2 → 3 and was named by file:line;
+removed, back to 2. (First probe attempt used "do not exist" and matched nothing — the pattern
+is `/does(?:n'?t| not) exist/i`. The probe was wrong, not the detector; checked before drawing
+any conclusion.)
+
+**NOT ARMED — and not because of volume. Neither survivor is a defect:**
+- `L0_brahmagyan/tool_search.ts:30` — a tool *description* advising the model to search the
+  catalog "before assuming a needed capability does not exist". The inverse of an ungrounded
+  absence claim.
+- `layers/register_d9_judgment.ts:363` — served text disclosing a real gap *and* its handling
+  ("bhanga_checked reports false, not fabricated"). Honest disclosure; the grounding token
+  merely falls outside the ±25-line window the heuristic can see.
+
+Arming today would red-gate `main` on two non-defects, which §N.8 makes worse than leaving it
+honest. **TO ARM: native sign-off on those two specific lines, then `ABSENCE_LINT_STRICT=true`
+and drop `continue-on-error`.**
+
+### Item 3 — TAP secrets: the infra EXISTS, and the wiring pattern is already in this repo.
+
+Checked before designing anything (rule 8):
+
+| Need | Exists? | Evidence |
+|---|---|---|
+| MCP endpoint for `TAP_MCP_SERVER_URL` | **yes, production only** | Cloud Run `amjis-mcp` at `https://amjis-mcp-qm256lasva-el.a.run.app`. `deploy.yml`'s `--no-traffic` step is a pre-smoke *revision* of that same service — there is **no separate staging deployment**. |
+| Postgres for `TAP_DATABASE_URL` | **yes, production only** | Cloud SQL `amjis-postgres`, POSTGRES_15, RUNNABLE, asia-south1. Public IP enabled but **zero authorized networks**, so no direct access. |
+| A way for a runner to reach it | **yes — already proven here** | `deploy.yml` lines 291–293 download and run `cloud-sql-proxy` on a GitHub runner and connect with `PROD_DATABASE_URL` under WIF. |
+| `TAP7_API_BASE_URL` | **yes, production only** | Cloud Run `amjis-web`. |
+
+So this is *not* the merge-queue situation — the capability is real. But **all three point at
+PRODUCTION**, because no staging estate exists. That changes the recommendation:
+
+**Recommended: wire the secrets, keep the jobs `workflow_dispatch`-only.** `mcp_tool_smoke`
+calls *every* registered tool, and the DB gates query the live database. That is fine as a
+deliberate on-demand sweep and wrong as per-PR load on production. Dispatch-only is where they
+already are, so this costs nothing and makes them genuinely runnable.
+
+**Not recommended: deleting them.** The capability exists, the scripts are real, and
+`TOTAL_AUDIT_PROTOCOL_v1_0.md §3` still wants them.
+
+**Native action — secret values are not mine to handle:** set `TAP_MCP_SERVER_URL` =
+the `amjis-mcp` URL; `TAP_DATABASE_URL` = the same DSN as the existing `PROD_DATABASE_URL`
+secret (reached via the cloud-sql-proxy pattern above); `TAP7_API_BASE_URL` = the `amjis-web`
+URL. No code change is required to arm them — the `if:` guards already key off the secrets.
+
+`tap5` untouched, as instructed — it remains the pattern the others should copy.
 
 ## §7 — Verification standard applied
 
