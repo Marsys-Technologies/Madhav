@@ -27,11 +27,50 @@ name: TAP CI — Total Audit Protocol Suite
 # discipline (TOTAL_AUDIT_PROTOCOL_v1_0.md §3), an absent oracle must be
 # declared, never silently passed.
 
+# Trigger scoping (CI efficiency audit, 2026-07-31). This workflow previously ran on
+# EVERY pull request with no path filter. Its three live gates scan, verified by reading
+# each script's own roots rather than inferring them:
+#   tap6_method_grep.ts       -> platform/python-sidecar  (every pattern's `root:`)
+#   sc_pointer_validation.ts  -> platform-mcp/src  +  platform/src/lib/retrieval
+#   r18_param_noop_audit.ts   -> platform-mcp/src/tools
+# The DB-backed gates (TAP-5 / TAP-7 / S-13) and the MCP smoke battery are already
+# `if:`-guarded on secrets that do not exist in this repo, so they contribute nothing
+# either way. Measured over the last 60 commits to main, 55% touch none of the paths
+# below — a lower skip rate than the other two lanes because python-sidecar is busy.
+#
+# Safe because none of this workflow's checks is required by branch protection on main
+# (verified 2026-07-31). NEVER add a path filter to ci.yml.
+#
+# To revert: delete the `paths:` block.
+# DUPLICATE-TRIGGER FIX (CI efficiency audit, 2026-07-31). The `push:` list used to
+# include 'feature/**' and 'r6/**'. That caused a PR opened from such a branch to run this
+# entire workflow TWICE per push — once for `push`, once for `pull_request` — because
+# the two events land in DIFFERENT concurrency groups (`github.ref` is
+# refs/heads/<branch> for push but refs/pull/<n>/merge for pull_request), so the
+# concurrency block below cannot dedupe them.
+#
+# This was PROVEN, not assumed. A scratch branch `feature/ci-concurrency-probe` with an
+# open PR was pushed to, and commit d8e82d5 produced BOTH a push run and a
+# pull_request run of all four always-on workflows — 8 runs for one commit. (The same
+# probe also confirmed the concurrency groups DO work within an event type: push A's
+# four runs went `cancelled` the instant push B landed 7s later.)
+#
+# `push: [main]` is retained — post-merge runs on main are legitimate and gate deploy.
+# To revert: put 'feature/**' and 'r6/**' back in the push branches list.
 on:
   push:
-    branches: [main, 'feature/**', 'r6/**']
+    branches: [main]
   pull_request:
     branches: [main]
+    paths:
+      # The gates' own source
+      - 'platform/scripts/audit/tap/**'
+      # What the gates actually scan
+      - 'platform/python-sidecar/**'
+      - 'platform-mcp/src/**'
+      - 'platform/src/lib/retrieval/**'
+      # This file
+      - '.github/workflows/tap-ci.yml'
 
 # CI efficiency audit (2026-07-31): no workflow in this repo had a concurrency
 # group, so every push to a PR branch stacked a full new set of runs while the

@@ -243,17 +243,30 @@ which is how the error surfaced. Corrected: both are genuinely broken (webServer
 never boots), so they are now HARD but nightly-only, with the breakage documented
 in-place rather than re-suppressed.
 
-**6.3 A second-pass re-verification (2026-07-31) refuted three of this audit's own
-structural claims and caught two more of its errors.** Recorded here so the pattern is
-visible: every one of them came from a plausible inference that nobody had executed.
+**6.3 A second-pass re-verification (2026-07-31) revisited every structural claim.**
+Recorded here so the pattern is visible: each error below came from a plausible
+inference that nobody had executed. Note that the FIRST item is a correction to a
+correction — the second pass initially over-corrected, and only a direct experiment
+settled it. When a claim is cheap to test, test it rather than reason about it twice.
 
-- **"The `push: [main, feature/**]` triggers double every PR run" — REFUTED.** The
-  `feature/**` and `r6/**` branches do exist on origin (21 of them), but **none has run
-  CI in the last 200 runs**; all active work uses `samapti/`, `chore/`, `shad-darshana/`
-  prefixes. The doubling is latent, not actual. (One apparent counter-example — a `push`
-  run of `ci.yml` on `shad-darshana/integration` — resolved to that branch carrying its
-  own edited copy of `ci.yml` that adds itself to the trigger list; GitHub uses the
-  workflow file from the pushed branch.)
+- **"The `push: [main, feature/**]` triggers double every PR run" — HALF-REFUTED, then
+  CONFIRMED by experiment. My first answer was wrong and is corrected here.**
+  The static evidence said: `feature/**` and `r6/**` branches exist on origin (21 of
+  them) but **none has run CI in the last 200 runs**; all active work uses `samapti/`,
+  `chore/`, `shad-darshana/`. I recorded that as "refuted." That conclusion confused
+  *"does not fire today"* with *"the mechanism does not exist."*
+  A direct experiment settled it: a scratch branch `feature/ci-concurrency-probe` with an
+  open PR was pushed to, and **commit `d8e82d5` produced BOTH a `push` run and a
+  `pull_request` run of all four always-on workflows — 8 runs for one commit.** The
+  duplication is real; it is merely dormant because nobody currently names a branch
+  `feature/*`. It is a live trap for whoever next does. Removed in PR #964.
+  The experiment also established that **concurrency groups cannot dedupe across event
+  types**: `github.ref` is `refs/heads/<branch>` for push but `refs/pull/<n>/merge` for
+  pull_request, so the two runs land in different groups.
+  (One apparent counter-example seen earlier — a `push` run of `ci.yml` on
+  `shad-darshana/integration` — resolved separately: that branch carries its own edited
+  copy of `ci.yml` adding itself to the trigger list; GitHub uses the workflow file from
+  the pushed branch, not main's.)
 - **"`services/ka_*/**` in the circularity guard is a dead/mis-written glob" — REFUTED.**
   10 `ka_*` service directories (50 files) and 17 `ka_*.py` writers exist, and GitHub
   Actions path globs support `*` inside a path segment. The filter is correct and live.

@@ -32,11 +32,54 @@ name: ṢAḌ-DARŚANA — W0.6 CI Skeletons (Lane shad-darshana-ci-skeletons)
 # failures ... wiring the whole suite into CI is a follow-on hygiene item, not this lane's
 # job" — the same reasoning applies here, unchanged).
 
+# Trigger scoping (CI efficiency audit, 2026-07-31). This workflow previously ran on
+# EVERY pull request with no path filter. What it actually reads, verified by reading
+# the scripts:
+#   _kala_tool_registration.ts -> platform-mcp/src/tools   (all five PLAN-mode gates)
+#   the three unit batteries   -> platform-mcp/src/__tests__/shad_darshana_w0_* plus the
+#                                 kala_envelope / argument_composer / response_budget
+#                                 modules they exercise, all under platform-mcp/src.
+# Measured over the last 60 commits to main, 76% touch none of the paths below.
+#
+# Safe because none of this workflow's checks is required by branch protection on main
+# (verified 2026-07-31). A non-required check that stops firing simply does not appear;
+# it cannot leave a PR permanently pending. NEVER add a path filter to ci.yml.
+#
+# NOTE, unrelated to triggers but recorded where it will be seen: the three PLAN-mode
+# gates print "exit 0 always" and cannot fail without an MCP_SERVER_URL secret (none
+# exists), and their registration census reports 4 of the 8 kala_* tools as unregistered
+# when all 8 are in fact registered via registry_bridge.ts — the detector greps for a
+# string literal next to server.tool() and cannot see through
+# `server.tool(TOOL_NAME, …)`. See CI_EFFICIENCY_AUDIT_v1_0.md §4.8.
+#
+# To revert: delete the `paths:` block.
+# DUPLICATE-TRIGGER FIX (CI efficiency audit, 2026-07-31). The `push:` list used to
+# include 'feature/**'. That caused a PR opened from such a branch to run this
+# entire workflow TWICE per push — once for `push`, once for `pull_request` — because
+# the two events land in DIFFERENT concurrency groups (`github.ref` is
+# refs/heads/<branch> for push but refs/pull/<n>/merge for pull_request), so the
+# concurrency block below cannot dedupe them.
+#
+# This was PROVEN, not assumed. A scratch branch `feature/ci-concurrency-probe` with an
+# open PR was pushed to, and commit d8e82d5 produced BOTH a push run and a
+# pull_request run of all four always-on workflows — 8 runs for one commit. (The same
+# probe also confirmed the concurrency groups DO work within an event type: push A's
+# four runs went `cancelled` the instant push B landed 7s later.)
+#
+# `push: [main]` is retained — post-merge runs on main are legitimate and gate deploy.
+# To revert: put 'feature/**' back in the push branches list.
 on:
   push:
-    branches: [main, 'feature/**']
+    branches: [main]
   pull_request:
     branches: [main]
+    paths:
+      # The gates' own source
+      - 'platform/scripts/census/shad_darshana_gates/**'
+      # What the gates and unit batteries actually read
+      - 'platform-mcp/src/**'
+      # This file
+      - '.github/workflows/shad-darshana-ci-skeletons.yml'
   workflow_dispatch:
 
 # CI efficiency audit (2026-07-31): no workflow in this repo had a concurrency
