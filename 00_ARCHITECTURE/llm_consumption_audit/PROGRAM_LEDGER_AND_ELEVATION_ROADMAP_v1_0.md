@@ -114,6 +114,19 @@ so they can be verified in batches rather than one at a time:
   > - **EL-31 → LIVE-OPEN (confirmed via code, not a false alarm).** `platform/src/lib/retrieval/registry/layers/L1_ganita/index.ts` carries the comment "query_house (the house-entity face) is PARKED-HONEST this session — not yet built; only query_planet is wired." No `query_house`/`ganita_house_get` tool exists anywhere in `platform-mcp/src` or the registry. `query_planet` (EL-31's other half) is live.
   > - **EL-07 (15 ungrounded absence candidates) → LIVE-OPEN, but a documentation/audit-hygiene item, not a runtime API defect.** Ran `absence_lint_gate.ts` live against the current working tree: **37 total candidates, 19 ungrounded** (up from the 15 recorded at merge #3) — the underlying condition reproduces and has not improved. However this is a non-blocking, report-only static lint (`ABSENCE_LINT_STRICT` unset ⇒ WARN only, never fails CI) scanning source comments/strings for absence-phrasing heuristically — it is not a live MCP response defect. Route to Phase-B hygiene tier (T4), not the urgent-fix tier.
   >
+  > **UPDATE 2026-08-01 (CI campaign, §6.12–§6.13 of `CI_EFFICIENCY_AUDIT_v1_0.md`) — EL-07 is
+  > CLOSED, and the counts above are superseded.** The lint's scope was narrowed: it matched raw
+  > source lines, so it fired on comments, docblocks and Postgres error-matching regexes
+  > (`/column ".*" does not exist|.../` — code that *detects* a DB error, the opposite of
+  > claiming absence). `servedTextOnly()` now strips comments and regex literals before matching
+  > while deliberately keeping string literals in scope. **STRICT-mode findings went 21 → 2**, and
+  > a full triage found **both survivors are working-as-intended**: a tool description advising
+  > the model to search "before assuming a needed capability does not exist", and an honest
+  > disclosure ("bhanga_checked reports false, not fabricated"). There is no ungrounded
+  > absence-claim defect here to route anywhere. The gate stays report-only **by decision**, not
+  > pending triage; the detector remains sound (re-proven post-narrowing) so a genuinely new
+  > absence claim would still surface.
+  >
   > Annotation-applied: R-08, R-27/EL-19, R-44 (register-stale closures, cross-annotated in `ELEVATION_REGISTER_v1_0.md` and/or `ledgers/elevation_v2/ELEVATION_V2_COVERAGE_MATRIX_FINAL_v1_0.md` where those items have their own canonical entry). R-29/EL-51, R-42/EL-58, R-43/EL-60a, EL-31, EL-07 remain open per above — no annotation applied to their entries per protocol (annotations are for closures only).
 - **Second-chart systematic under-coverage** [DOC] — chart `1c826d5a`'s `ka_gochara_sweep` stale (blocked on an incomplete upstream run); Ω7 dark-corpus never executed for it; several verifications only ever ran on 482012f1.
 
