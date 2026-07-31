@@ -21,6 +21,7 @@ import express from 'express'
 import cookieParser from 'cookie-parser'
 import type { Request, Response } from 'express'
 import { validateMcpKeyFromHeader } from './auth.js'
+import { resolveAuthHeader } from './lib/auth_url_token.js'
 import type { Principal } from './types.js'
 // M8: structured logging + request-ID + in-process rate limiting
 import { generateRequestId, log, logError } from './lib/logger.js'
@@ -230,10 +231,10 @@ app.post('/mcp', async (req: Request, res: Response) => {
     generateRequestId()
   const requestStart = Date.now()
 
-  const headerAuth = req.headers['authorization']
+  // B-MCP-LOG-REDACT (Ruling 64): extracted to lib/auth_url_token.ts so the URL-token
+  // fallback's request-framing logic is unit-testable without a live network round-trip.
   const queryKey = typeof req.query['api_key'] === 'string' ? req.query['api_key'] : undefined
-  const fromUrlParam = !headerAuth && !!queryKey
-  const authHeader = headerAuth ?? (queryKey ? `Bearer ${queryKey}` : undefined)
+  const { authHeader, fromUrlParam } = resolveAuthHeader(req.headers['authorization'], queryKey)
 
   let principal: Principal | null = await validateMcpKeyFromHeader(authHeader)
 

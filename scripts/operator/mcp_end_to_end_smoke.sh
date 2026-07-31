@@ -23,6 +23,30 @@
 # it, this script still runs the health + no-auth probes but FAILS LOUDLY on
 # the missing auth probes rather than silently skipping them — a canary that
 # cannot authenticate does not verify the one thing this gate exists to check.
+#
+# B-MCP-LOG-REDACT (DVA Ruling 64 / SAMAPTI_DVARAPALA_LEDGER.md INC-4, 2026-07-30):
+# Probe 4 (URL-token fallback, `?api_key=...`) no longer sends the real canary key
+# over the wire. Cloud Run logs `httpRequest.requestUrl` (full path + query string)
+# automatically for EVERY request, independent of anything this app logs itself —
+# so the old Probe 4 wrote a live, production-capable bearer credential into Cloud
+# Logging in plaintext on every single deploy. That is INC-4: a NEW, ACTIVE,
+# RECURRING credential exposure, same class as this campaign's earlier INC-1/2/3
+# static-file leaks but worse because it re-fired on a schedule rather than being a
+# one-time historical leak.
+#
+# Probe 4 below therefore checks something narrower and HONEST about it: that the
+# `/mcp` route accepts request framing with an `api_key` query parameter present
+# (i.e. it exercises route-matching + query-string parsing on the live candidate
+# revision) using an obviously-fake placeholder value, and expects the SAME 401
+# auth-rejection shape Probe 2 (no-auth) gets — proving the endpoint didn't error
+# out (500/404/etc.) on that request shape. It does NOT prove a valid credential
+# successfully authenticates via this path on the live revision — that would
+# require putting a real secret in the URL, which is exactly the leak this fix
+# closes. The actual "does ?api_key=<valid-key> authenticate correctly" assertion
+# now lives in `platform-mcp/src/__tests__/auth_url_token.test.ts`, run on every CI
+# build (not just deploys) against the real `resolveAuthHeader()` +
+# `validateMcpKeyFromHeader()` code path, in-process, with a mocked platform
+# response — no live network call, no Secret Manager value, ever.
 
 set -euo pipefail
 
@@ -80,16 +104,21 @@ probe_bearer_auth() {
   [ "$status" = "200" ]
 }
 
-# Probe 4 (URL-token fallback): ?api_key=... query-param path.
-probe_url_token() {
-  local url="$1" key="$2"
+# Probe 4 (URL-token fallback — WIRING CHECK ONLY, see B-MCP-LOG-REDACT banner above):
+# uses an obviously-fake placeholder, never the real canary key. Confirms the /mcp
+# route accepts an api_key= query parameter and produces the standard auth-rejection
+# shape (401), i.e. the route + query-string parsing are live on this revision. This
+# does NOT verify that a VALID credential authenticates via this path — see
+# platform-mcp/src/__tests__/auth_url_token.test.ts for that assertion.
+probe_url_token_wiring() {
+  local url="$1"
   local status
-  status=$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 -X POST "${url}/mcp?api_key=${key}" \
+  status=$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 -X POST "${url}/mcp?api_key=smoke-test-placeholder-not-a-real-credential" \
     -H "Content-Type: application/json" \
     -H "Accept: application/json, text/event-stream" \
     -d "$INIT_BODY")
-  echo "  [probe: url-token-fallback] POST /mcp?api_key=... -> ${status} (expect 200)"
-  [ "$status" = "200" ]
+  echo "  [probe: url-token-wiring] POST /mcp?api_key=<placeholder> -> ${status} (expect 401 — wiring check only, NOT an auth-success verification; see script banner)"
+  [ "$status" = "401" ]
 }
 
 echo "=== Post-deploy smoke: amjis-mcp (${MCP_URL}) ==="
@@ -106,7 +135,7 @@ else
 fi
 
 if [ -z "$CANARY_KEY" ]; then
-  echo "  FAIL: MCP_CANARY_KEY not set — cannot run the Bearer-auth / URL-token-fallback probes."
+  echo "  FAIL: MCP_CANARY_KEY not set — cannot run the Bearer-auth probe."
   echo "        A canary that cannot authenticate does not verify the auth path this deploy"
   echo "        gate exists to protect. See the PARISHODHANA Phase-C deploy-pipeline-parity PR"
   echo "        and deploy.yml's 'Fetch MCP canary key for post-deploy smoke' step for the"
@@ -119,13 +148,15 @@ else
     echo "  FAIL: Authorization: Bearer auth path rejected a valid canary key"
     FAIL=1
   fi
+fi
 
-  if probe_url_token "$MCP_URL" "$CANARY_KEY"; then
-    echo "  PASS: URL-token (?api_key=) fallback auth path works"
-  else
-    echo "  FAIL: URL-token (?api_key=) fallback auth path rejected a valid canary key"
-    FAIL=1
-  fi
+# Probe 4 uses a placeholder, not CANARY_KEY — runs regardless of whether the
+# canary key is set (see B-MCP-LOG-REDACT banner above for why).
+if probe_url_token_wiring "$MCP_URL"; then
+  echo "  PASS: URL-token (?api_key=) route + query-string parsing is wired (wiring check only — see banner)"
+else
+  echo "  FAIL: URL-token (?api_key=) route did not produce the expected 401 auth-rejection shape"
+  FAIL=1
 fi
 
 if [ "$FAIL" -ne 0 ]; then

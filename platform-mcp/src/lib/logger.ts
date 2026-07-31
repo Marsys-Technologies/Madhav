@@ -21,8 +21,51 @@
  * The request_id is propagated via X-Request-ID header to the platform,
  * enabling end-to-end trace correlation: MCP sidecar → platform → sidecar.
  *
+ * B-MCP-LOG-REDACT (DVA Ruling 64 / SAMAPTI_DVARAPALA_LEDGER.md INC-4): every
+ * entry passes through `redactCredentials()` before it is written. This module
+ * never itself logs a raw request URL today (the auth query-string leak this
+ * ruling addresses is Cloud Run's own automatic `httpRequest.requestUrl`
+ * capture, mitigated separately via a Cloud Logging exclusion filter — see
+ * `infra/logging/`), but this is defense-in-depth: if any future code path ever
+ * passes an `api_key=`-bearing URL or message into `log()`/`logWarn()`/
+ * `logError()`, it is redacted before it reaches stdout/stderr — and stdout/
+ * stderr are ALSO captured into Cloud Logging by Cloud Run, as jsonPayload/
+ * textPayload entries distinct from the httpRequest field.
+ *
  * @module logger
  */
+
+/**
+ * Redact credential-bearing query-parameter values from a string before it is
+ * logged. Matches `api_key=<value>` case-insensitively, wherever it appears — as
+ * a query string, inside an error message, etc. — and replaces the value with
+ * `[REDACTED]`, leaving the parameter name and everything else in the string intact.
+ */
+export function redactCredentials(value: string): string {
+  return value.replace(/(api[_-]?key=)[^&\s"'\\]+/gi, '$1[REDACTED]')
+}
+
+/**
+ * Recursively apply `redactCredentials()` to every string value in a plain object.
+ * Log entries are flat-ish JSON; this is intentionally shallow-recursive, not a
+ * general deep-clone.
+ */
+function redactEntry<T>(entry: T): T {
+  if (typeof entry === 'string') {
+    return redactCredentials(entry) as unknown as T
+  }
+  if (Array.isArray(entry)) {
+    return entry.map((v) => redactEntry(v)) as unknown as T
+  }
+  if (entry !== null && typeof entry === 'object') {
+    const out: Record<string, unknown> = {}
+    for (const [k, v] of Object.entries(entry as Record<string, unknown>)) {
+      out[k] = redactEntry(v)
+    }
+    return out as T
+  }
+  return entry
+}
 
 export interface LogEntry {
   timestamp: string
@@ -65,7 +108,7 @@ export function log(entry: Omit<LogEntry, 'timestamp' | 'service'>): void {
     Object.entries(full).filter(([, v]) => v !== undefined)
   )
   // eslint-disable-next-line no-console
-  console.log(JSON.stringify(compact))
+  console.log(JSON.stringify(redactEntry(compact)))
 }
 
 /**
@@ -90,5 +133,5 @@ export function logError(entry: Omit<LogEntry, 'timestamp' | 'service' | 'level'
     Object.entries(full).filter(([, v]) => v !== undefined)
   )
   // eslint-disable-next-line no-console
-  console.error(JSON.stringify(compact))
+  console.error(JSON.stringify(redactEntry(compact)))
 }
