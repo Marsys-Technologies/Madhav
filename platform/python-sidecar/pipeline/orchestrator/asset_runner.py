@@ -649,13 +649,16 @@ def _run_data_writer(conn, cur, run_id: str, chart_id: str, asset_id: str) -> bo
                     "'lit', not 'dormant' — downstream deps stay unblocked.",
                     asset_id, chart_id, run_id, present,
                 )
+                # cur= persists this to orchestrator_event_register, in THIS
+                # transaction — so the register row commits iff the 'lit' promotion
+                # below commits (SAMĀPTI §9.6 / SD-EVENTREG-1; see events.py).
                 emit_event({
                     "type": "asset.noop_completion",
                     "chart_id": chart_id,
                     "asset_id": asset_id,
                     "run_id": run_id,
                     "rows_present": present,
-                })
+                }, cur=cur)
                 final_state = 'lit'
                 rows_written = present
             else:
@@ -666,6 +669,9 @@ def _run_data_writer(conn, cur, run_id: str, chart_id: str, asset_id: str) -> bo
                     "NOT 'lit' — downstream deps stay blocked until the plan actually finishes.",
                     asset_id, chart_id, run_id, present, remaining_count,
                 )
+                # cur= persists this to orchestrator_event_register, in THIS
+                # transaction — so the register row commits iff the 'incomplete' hold
+                # below commits (SAMĀPTI §9.6 / SD-EVENTREG-1; see events.py).
                 emit_event({
                     "type": "asset.noop_completion_rejected",
                     "chart_id": chart_id,
@@ -673,7 +679,7 @@ def _run_data_writer(conn, cur, run_id: str, chart_id: str, asset_id: str) -> bo
                     "run_id": run_id,
                     "rows_present": present,
                     "substeps_remaining": remaining_count,
-                })
+                }, cur=cur)
                 final_state = 'incomplete'
                 rows_written = present
 
