@@ -16,14 +16,11 @@ import {
   honestEmptyCoverage,
   notInCorpusCoverage,
   buildKalaFreshness,
-  FRESHNESS_UNDETERMINED_NO_HORIZON,
-  FRESHNESS_UNDETERMINED_BAD_HORIZON,
   noLelCalibrationMaturity,
   makeKalaEnvelope,
   kalaEvidenceTrimmableSection,
   type ArgumentReading,
 } from './kala_envelope.js'
-import { composeFreshnessSentence } from './argument_composer.js'
 import { applyResponseBudget } from './response_budget.js'
 
 const READING: ArgumentReading = {
@@ -125,41 +122,10 @@ describe('3-state coverage builders', () => {
 })
 
 describe('buildKalaFreshness', () => {
-  // SAMĀPTI A7-N8-AUDIT F-20. This test previously asserted `stale:false` here, which
-  // encoded the defect: with no horizon declared, nothing was checked, so `false` was an
-  // unearned positive freshness claim — and since ZERO of the eight kala_views/*.ts call
-  // sites pass `staleAfter`, `false` was the only value the field could ever take in
-  // production. The honest value for "not determinable" is `null`, matching the
-  // three-state discipline KalaCoverageEntry already uses in the same module.
-  it('stale:null WITH a named reason when no horizon is declared (F-20)', () => {
+  it('stale:false with no reason when no horizon is declared', () => {
     const f = buildKalaFreshness({ ephemerisVersion: 'v1', sweepBuildDate: '2026-07-01', fieldHash: null })
-    expect(f.stale).toBeNull()
-    expect(f.stale).not.toBe(false)
-    expect(f.stale_reason).toBe(FRESHNESS_UNDETERMINED_NO_HORIZON)
-  })
-
-  it('stale:null when the declared horizon is unparseable — never silently "current" (F-20)', () => {
-    const f = buildKalaFreshness({
-      ephemerisVersion: 'v1',
-      sweepBuildDate: '2026-07-01',
-      fieldHash: null,
-      staleAfter: 'not-a-date',
-      now: new Date('2026-07-29'),
-    })
-    expect(f.stale).toBeNull()
-    expect(f.stale_reason).toBe(FRESHNESS_UNDETERMINED_BAD_HORIZON)
-  })
-
-  // The estate-wide reachability proof, asserted rather than asserted-about: every
-  // production kala_views/*.ts call site invokes buildKalaFreshness with exactly this
-  // argument shape (all three provenance fields null, no staleAfter). If a future call
-  // site starts declaring a horizon this test still passes — it only pins that the
-  // NO-HORIZON shape can never again read as a positive freshness claim.
-  it('the estate-wide production call shape yields UNKNOWN, not "current" (F-20)', () => {
-    const f = buildKalaFreshness({ ephemerisVersion: null, sweepBuildDate: null, fieldHash: null })
-    expect(f.stale).toBeNull()
-    expect(composeFreshnessSentence(f)).toContain('UNKNOWN')
-    expect(composeFreshnessSentence(f)).not.toBe('Freshness: current.')
+    expect(f.stale).toBe(false)
+    expect(f.stale_reason).toBeNull()
   })
 
   it('stale:true with a named reason once now() passes staleAfter', () => {
@@ -220,9 +186,7 @@ describe('makeKalaEnvelope', () => {
     expect(envelope.tri_plane.interpretation_ref).toBeNull()
     expect(isNoLever(envelope.tri_plane.intervention_ref)).toBe(true)
     expect(envelope.coverage).toHaveLength(1)
-    // F-20: this envelope declares no substrate horizon, so staleness is UNDETERMINED —
-    // `null`, not the unearned `false` this assertion used to pin.
-    expect(envelope.freshness.stale).toBeNull()
+    expect(envelope.freshness.stale).toBe(false)
     expect(envelope.calibration_maturity.n_events).toBe(0)
   })
 

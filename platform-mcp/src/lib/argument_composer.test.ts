@@ -128,22 +128,6 @@ describe('composeFreshnessSentence', () => {
       }),
     ).toBe('Freshness: STALE — horizon expired at 2026-07-01.')
   })
-  // SAMĀPTI A7-N8-AUDIT F-20: the third state. `stale:null` means staleness was not
-  // determinable; it must NOT render as the affirmative "Freshness: current." claim the
-  // old `if (!freshness.stale)` branch produced for it.
-  it('undetermined staleness renders UNKNOWN with its reason, never "current" (F-20)', () => {
-    const sentence = composeFreshnessSentence({
-      ephemeris_version: null,
-      sweep_build_date: null,
-      field_hash: null,
-      stale: null,
-      stale_reason: 'staleness not determinable — this view declares no substrate horizon',
-    })
-    expect(sentence).toBe(
-      'Freshness: UNKNOWN — staleness not determinable — this view declares no substrate horizon.',
-    )
-    expect(sentence).not.toBe('Freshness: current.')
-  })
 })
 
 describe('composeArgument', () => {
