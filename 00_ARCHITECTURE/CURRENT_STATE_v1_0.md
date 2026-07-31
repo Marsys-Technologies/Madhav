@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.49
+version: 6.50
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,15 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.50 (2026-07-31, PŪRṆATĀ close — final close of the whole layer-build arc): full account in
+    the new banner immediately above and in `00_ARCHITECTURE/briefs/purnata/PURNATA_CLOSE_REPORT_v1_0.md`.
+    Headline facts: 31 PRs merged (drained NIḤŚEṢA's entire auto-merge-armed queue, diagnosed and
+    worked around a real branch-protection livelock, closed a stale self-authored consolidation
+    branch before it could revert good work, fixed 3 live CI-gate failures on main, landed 6 real
+    narration-fidelity fixes including a genuine privacy-leak fix, closed 5 named B-N8-FIX residuals,
+    reconciled PR #913 on the merits). Crown re-verified live, no drift. C4-LOOP-LIVE-PROOF paused
+    (not blocked) on a safety flag raised mid-session over a suspicious minted-cookie fragment — the
+    one item still genuinely open, named #1 in the final consolidated backlog (14 items).
   - v6.49 (2026-07-31, NIḤŚEṢA close — the SAMĀPTI wrap-up campaign): full account in the new
     banner immediately above and in `00_ARCHITECTURE/briefs/nihshesha/NIHSHESHA_CLOSE_REPORT_v1_0.md`
     (the terminal deliverable, full disposition table + one consolidated backlog register).
@@ -5586,6 +5595,29 @@ block (post-rebuild era), and proceeds.
 
 ## §2 — Canonical state block
 
+> 🟢 **PŪRṆATĀ close (2026-07-31, session PURNATA-CLOSE-2026-07-31) — the final close of the
+> ŚUDDHA-VĀCA → SATYA-DĪPA → PARIPRAŚNA → SAMĀPTI → NIḤŚEṢA → PŪRṆATĀ arc; supersedes NIḤŚEṢA's
+> banner below for "what remains," not its historical record.** Drained all ~24 PRs NIḤŚEṢA left
+> auto-merge-armed (diagnosed and worked around a genuine repo-level branch-protection livelock —
+> `strict:true` prevented GitHub's own auto-merge from ever landing more than one of ~20
+> simultaneously-armed PRs, independently confirmed and later fixed at the source by a concurrent
+> CI-audit session, PR #978); found and fixed three live CI-gate failures on `main` itself along the
+> way (two stale line-keyed allowlist entries, one occurrence-cap allowlist entry — all mechanical
+> re-keys, zero detection logic touched); caught and closed without merging a self-authored
+> consolidation branch that had gone stale mid-flight and would have reverted real work if merged;
+> landed six real narration-fidelity fixes across three lanes (B-NAR-BO/GA/PH) including one genuine
+> privacy-leak fix (health data escaping a citation-stripping regex at a period boundary); closed all
+> 5 named B-N8-FIX/SWEEPFIX residuals; reconciled PR #913 against the now-settled concurrent CI audit
+> instead of forcing it. **31 PRs merged this session, 2 closed without merging (both correctly).**
+> Crown re-verified live at close (`graha_portrait`, chart 482012f1, no drift). **The one genuinely
+> open item: C4-LOOP-LIVE-PROOF was paused, not blocked** — while minting a live session cookie to
+> drive the proof, its content produced an implausible fragment; flagged directly to the native per
+> this session's own safety obligation, work did not resume pending reply. Full disposition table and
+> the final consolidated backlog (14 named items, each with a resume condition, including several
+> newly-surfaced OIR-reconciliation findings and a durable allowlist-fragility fix worth doing once
+> rather than three more times): `00_ARCHITECTURE/briefs/purnata/PURNATA_CLOSE_REPORT_v1_0.md`. See
+> changelog v6.50.
+
 > 🟢 **NIḤŚEṢA close (2026-07-31, session NIHSHESHA-CLOSE-2026-07-31) — the wrap-up campaign
 > immediately following SAMĀPTI's CLOSED-PARTIAL close below; this banner supersedes that one's
 > "truly open items" framing, not its historical record, which stands as-is.** Drained the
@@ -8656,6 +8688,41 @@ current_state:
 ---
 
 ## §3 — Narrative (human-reading surface — must agree with §2)
+
+At the close of **PURNATA-CLOSE-2026-07-31 — the final close of the whole layer-build arc**
+(ŚUDDHA-VĀCA → SATYA-DĪPA → PARIPRAŚNA → SAMĀPTI → NIḤŚEṢA → PŪRṆATĀ), the session drained every one
+of the ~24 PRs NIḤŚEṢA left auto-merge-armed. Doing so surfaced a genuine repo-level problem: `main`'s
+branch protection required `strict: true` (branches must be up to date before merge), but GitHub's
+own auto-merge never rebases a behind branch, only waits — with ~20 PRs simultaneously in flight,
+every successful merge invalidated every other PR's "up to date" status, so none could reach a merge
+window unassisted. This was independently diagnosed here, then found to have already been diagnosed
+and fixed at the source by a concurrent CI-audit session (`strict` dropped from `main`'s branch
+protection, PR #978) partway through this session's own manual rebase-push-merge cycles. A
+consolidated integration branch this session built to work around the livelock (merging 17
+independent PR branches together, zero conflicts) was, once the livelock resolved itself, discovered
+to be dangerously stale — built before #920/#925/#927 had individually landed, it would have
+**reverted their work** had it been merged as-is. Caught via direct diff inspection before merging,
+not after; closed without merging, its two still-needed branches finished individually. Along the
+way, this session's own merges surfaced (and fixed) three live CI-gate failures on `main` itself — two
+allowlists keyed on line-number rather than content, one on occurrence-count rather than semantic
+correctness — all mechanical re-keys, zero detection logic touched, the same fragility class the DVA
+ledger had already named once before. Six real narration-fidelity defects were fixed across three
+lanes (B-NAR-BO's fabricated dignity read, three B-NAR-GA writer fixes, three B-NAR-PH fixes
+including a genuine privacy-leak repair — health data escaping a citation-stripping regex at an
+internal-period boundary), and all 5 named B-N8-FIX/SWEEPFIX residuals were closed with can-fail
+proofs. PR #913, parked by NIḤŚEṢA against then-actively-evolving concurrent CI-audit work, was
+reconciled on the merits once that audit's state had settled, rather than forced. **31 PRs merged
+this session, 2 closed without merging (both correctly — one superseded, one caught-stale).** The
+crown was re-verified live at close (`graha_portrait`, chart 482012f1, no drift). **The one
+genuinely open item is C4-LOOP-LIVE-PROOF, and it is paused, not blocked**: every prerequisite lane
+is merged and deployed, but while minting a live production session cookie to drive the proof, the
+cookie value's content produced an implausible fragment, which was flagged directly to the native
+per this session's own safety obligation rather than worked around — C4 did not resume pending a
+reply, and is named as the immediate next action, no re-scoping needed, once that is resolved. Full
+disposition table and the final consolidated backlog (14 named items, each with a resume condition,
+including several newly-surfaced findings from the `OPEN_ITEMS_REGISTER` reconciliation this session
+also merged, and a durable fix for the allowlist-fragility class worth doing once rather than three
+more times): `00_ARCHITECTURE/briefs/purnata/PURNATA_CLOSE_REPORT_v1_0.md`.
 
 At the close of **NIHSHESHA-CLOSE-2026-07-31 — the SAMĀPTI wrap-up campaign** ("leaving no
 remainder"), the session drained the VER-confirmed merge backlog SAMĀPTI left queued: the PB-3.1
