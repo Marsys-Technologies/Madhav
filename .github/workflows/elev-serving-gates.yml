@@ -47,9 +47,24 @@ name: Elevation Campaign — Serving Gates (Stream α / SATYA, Lane K1)
 # appear; it cannot leave a PR permanently pending. NEVER add a path filter to ci.yml.
 #
 # To revert: delete the `paths:` block.
+# DUPLICATE-TRIGGER FIX (CI efficiency audit, 2026-07-31). The `push:` list used to
+# include 'feature/**'. That caused a PR opened from such a branch to run this
+# entire workflow TWICE per push — once for `push`, once for `pull_request` — because
+# the two events land in DIFFERENT concurrency groups (`github.ref` is
+# refs/heads/<branch> for push but refs/pull/<n>/merge for pull_request), so the
+# concurrency block below cannot dedupe them.
+#
+# This was PROVEN, not assumed. A scratch branch `feature/ci-concurrency-probe` with an
+# open PR was pushed to, and commit d8e82d5 produced BOTH a push run and a
+# pull_request run of all four always-on workflows — 8 runs for one commit. (The same
+# probe also confirmed the concurrency groups DO work within an event type: push A's
+# four runs went `cancelled` the instant push B landed 7s later.)
+#
+# `push: [main]` is retained — post-merge runs on main are legitimate and gate deploy.
+# To revert: put 'feature/**' back in the push branches list.
 on:
   push:
-    branches: [main, 'feature/**']
+    branches: [main]
   pull_request:
     branches: [main]
     paths:
