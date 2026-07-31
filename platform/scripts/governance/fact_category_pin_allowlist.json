@@ -66,19 +66,19 @@
     },
     {
       "file": "platform/python-sidecar/ga_writers/ga_sade_sati_writer.py",
-      "line": 1365,
+      "line": 1394,
       "pattern": null,
       "justification": "PRE-EXISTING, not in this wave's scope. `SELECT COUNT(*) ... fact_category='graha_position' AND fact_subject='MOON'` \u2014 a presence/count check (used as a boolean gate), not a value read."
     },
     {
       "file": "platform/python-sidecar/ga_writers/ga_sade_sati_writer.py",
-      "line": 1399,
+      "line": 1428,
       "pattern": null,
       "justification": "PRE-EXISTING, not in this wave's scope. `SELECT COUNT(*) ... fact_category='argala_natal_matrix'` \u2014 a presence/count check, not a value read."
     },
     {
       "file": "platform/python-sidecar/ga_writers/ga_sade_sati_writer.py",
-      "line": 1551,
+      "line": 1580,
       "pattern": null,
       "justification": "PRE-EXISTING, not in this wave's scope. fact_subject is bound to a specific caller-supplied parameter (%s) and the snippet is truncated by the scanner at 160 chars \u2014 the full WHERE clause continues past 'fact_key' in source; reviewed in file and confirmed the query does carry a fact_key-shaped filter continuing past the truncation point."
     },
