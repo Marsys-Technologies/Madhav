@@ -353,7 +353,7 @@ return to exit 0. All mutations reverted; working tree verified clean afterwards
 | `budget_census_gate` | same | exit 2 | exit 0 | **teeth** |
 | `receipt_gate` | same | exit 1, FAIL=3 | exit 0 | **teeth** |
 | `w1_bare_empty_census_gate` | delete one `CENSUS` entry (it asserts `length === 46`) | exit 1, FAIL=1 | exit 0 | **teeth** |
-| `absence_lint_gate` | own `REGISTRY_ROOT` → nonexistent | **exit 0** (WARN=10) / `ABSENCE_LINT_STRICT=true`: exit 1, FAIL=10 | exit 0 | **detector sound, NOT ARMED** |
+| `absence_lint_gate` | own `REGISTRY_ROOT` → nonexistent | **exit 0** (WARN=10) / `ABSENCE_LINT_STRICT=true`: exit 1, FAIL=10 | exit 0 | **detector sound, NOT ARMED** — *counts here are PRE-NARROWING; superseded by §6.12 (21→2) and §6.13 (report-only by decision)* |
 | `tap6_method_grep` | inject a new un-baselined `# rough` + `two_pass_verified` file under python-sidecar | exit 1, named the probe file | exit 0 | **teeth** |
 | `sc_pointer_validation` | inject a bogus `instrument:` pointer | exit 1, named the instrument | exit 0 | **teeth** |
 | `tap5_seam_conservation` (static half) | same bogus pointer | exit 1, Law-7 FAIL | exit 0 | **teeth** |
@@ -648,6 +648,44 @@ secret (reached via the cloud-sql-proxy pattern above); `TAP7_API_BASE_URL` = th
 URL. No code change is required to arm them — the `if:` guards already key off the secrets.
 
 `tap5` untouched, as instructed — it remains the pattern the others should copy.
+
+## §6.13 — `absence_lint` is report-only BY DECISION, permanently (2026-07-31)
+
+Closed decision, not a pending TODO. Recorded so nobody "finishes the job" by arming it.
+
+**Why it is not armed.** After the §6.12 narrowing took STRICT findings from 21 to 2, both
+survivors were judged **working-as-intended**:
+
+- `L0_brahmagyan/tool_search.ts:30` — a tool *description* telling the model to search the
+  catalog "before assuming a needed capability does not exist". That is the **inverse** of the
+  ungrounded absence claim the lint exists to catch.
+- `layers/register_d9_judgment.ts:363` — served text disclosing a real gap **and its handling**
+  ("bhanga_checked reports false, not fabricated"). Honest disclosure; the grounding token
+  merely falls outside the ±25-line window the heuristic can see.
+
+Arming would make `main` un-mergeable on two non-defects. Per §N.8 a gate that blocks on
+findings nobody believes is worse than one that reports honestly.
+
+**What report-only still buys.** The detector is sound and was re-proven *after* the
+narrowing — a seeded served claim moved FAIL 2 → 3 and was named by file:line. So a genuinely
+NEW absence claim introduced tomorrow still shows up in the run output. The lint keeps its
+detection value; it simply does not gate.
+
+**Surfaces reconciled**, because this campaign has already been bitten once by two places
+disagreeing about one fact (the `r18` "PROVEN" vs §6.8 "unproven" drift, §6.12 item 1):
+- `elev-serving-gates.yml` — job name and rationale now say "REPORT-ONLY BY DECISION", with
+  an explicit note that reopening needs a deliberate native decision.
+- §6.8's mutation table — its `WARN=10 / FAIL=10` figures are **pre-narrowing**; the row is now
+  annotated as superseded by §6.12 and this section.
+- `llm_consumption_audit/PROGRAM_LEDGER_AND_ELEVATION_ROADMAP_v1_0.md` — **EL-07** was routed to
+  the Phase-B hygiene tier on the strength of "37 candidates, 19 ungrounded". Those counts are
+  superseded and the item is CLOSED: after narrowing there are 2, and both are intended. There
+  is no ungrounded absence-claim defect there to route anywhere.
+
+**Detector logic deliberately untouched by this change** — labelling and documentation only.
+
+**To reopen:** a native decision to accept blocking on those two specific lines, then
+`ABSENCE_LINT_STRICT=true` and drop `continue-on-error`. One line each.
 
 ## §7 — Verification standard applied
 

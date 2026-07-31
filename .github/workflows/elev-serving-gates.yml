@@ -159,9 +159,16 @@ jobs:
       # Arming today would red-gate `main` on two non-defects. Per §N.8 that is worse than
       # leaving it honest: a gate should not block on findings nobody believes.
       #
-      # TO ARM: get native sign-off on those two specific lines (ground them, reword them, or
-      # accept them), then set ABSENCE_LINT_STRICT=true and drop continue-on-error.
-      - name: absence lint (REPORT-ONLY — detector sound, 2 known non-defect findings; see comment)
+      # DECIDED 2026-07-31: report-only PERMANENTLY. This is a closed decision, not a TODO.
+      # The 2 residual matches are working-as-intended (a search-before-absence tool
+      # description; an honest "bhanga_checked reports false, not fabricated" disclosure), so
+      # arming would block `main` on non-defects. The detector remains SOUND — re-proven after
+      # the narrowing: a seeded served claim took FAIL 2 -> 3 — so this report-only run still
+      # surfaces a genuine NEW absence claim if one is ever introduced. That is the value it
+      # provides, and it provides it without gating.
+      # Reopening this requires a deliberate native decision to accept blocking on those two
+      # lines; it is not a housekeeping follow-up someone should flip on sight.
+      - name: 'absence lint (REPORT-ONLY BY DECISION 2026-07-31 — closed, not a pending TODO; see comment)'
         continue-on-error: true
         run: npx tsx scripts/census/elev_gates/absence_lint_gate.ts
 
