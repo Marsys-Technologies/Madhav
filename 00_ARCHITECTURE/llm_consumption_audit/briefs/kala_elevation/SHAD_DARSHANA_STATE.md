@@ -15,32 +15,41 @@ governing: SHAD_DARSHANA_NIGHT_RUN_v1_0.md (orchestration) + SHAD_DARSHANA_BRIEF
 
 **CAMPAIGN ON HOLD (2026-07-31, native decision) — paused until SAMĀPTI dissolves/closes.**
 No shad-darshana build work (lane dispatch, W2 integration, deploys) happens until the native
-resumes the campaign. **Three infrastructure changes landed during the hold** (main-branch
-contention + wave-parallelism review, same session) — Night 3's Conductor MUST read
-`SHAD_DARSHANA_NIGHT_RUN_v1_0.md` (now v1.1) fresh before resuming, not rely on cached
-knowledge of v1.0's mechanics:
+resumes the campaign. **Four infrastructure changes have landed during the hold** — Night 3's
+Conductor MUST read `SHAD_DARSHANA_NIGHT_RUN_v1_0.md` (now v1.2) fresh before resuming, not
+rely on cached knowledge of v1.0/v1.1's mechanics:
 
 1. **The integration branch is now the merge target for every lane PR** — `main` receives one
-   deliberate merge per wave-gate close only (NIGHT_RUN §B.1/§B.2, v1.1). `main ==
-   production` remains the invariant; `shad-darshana/integration == main` does NOT, between
-   gates, by design.
+   deliberate merge per wave-gate close only (NIGHT_RUN §B.1/§B.2). `main == production`
+   remains the invariant; `shad-darshana/integration == main` does NOT, between gates, by
+   design.
 2. **The two chronic multi-lane hot-file collisions are fixed structurally**: the 8 kala_*
    tool registrations are consolidated into `kala_views/register_all.ts` (registry_bridge.ts
    touches it exactly once, never again); `m8_e2e_proof.test.ts`'s two hand-bumped exact-count
    literals are replaced with a duplicate-registration check + a mass-regression floor (needs
    no bumping for ordinary tool additions). Neither change touches `server.ts`'s
-   `REGISTERED_TOOL_COUNT` — that remains SAMĀPTI's own territory (PR #912).
+   `REGISTERED_TOOL_COUNT` — that remains SAMĀPTI's own territory (PR #912, still open as of
+   this writing).
 3. **W4's Phase 4/5 boundary is now item-triggered, not gate-triggered**: Phase 5a (the W4
    Opus design pass) starts the moment items 36+41 land, not when W3/W2G/W3K's gates close —
    genuine additional parallelism, since W4 needs nothing from W2G or W3K.
+4. **The repo migrated orgs (2026-07-31): `amonty84/Madhav` → `Marsys-Technologies/Madhav`.**
+   `main` now merges through GitHub's merge queue (ruleset `20141220`, not classic branch
+   protection) — the gate-close PR takes up to ~5–60 min to actually merge after checks pass,
+   not seconds; do not treat a queued-but-unmerged green PR as stuck (NIGHT_RUN §B.2a).
+   `shad-darshana/integration` carries no ruleset. Any `gh`/`git` invocation hardcoding
+   `amonty84/Madhav` is now wrong — use `Marsys-Technologies/Madhav` or omit `--repo` and let
+   it infer from the local remote.
 
 **Resume checklist for whoever restarts the campaign:** (a) confirm SAMĀPTI has genuinely
 dissolved/closed before dispatching anything; (b) rebase `shad-darshana/integration` onto the
-current `origin/main` tip FIRST (it was last synced 2026-07-31 at commit `445b76e9`+ — real
-drift is likely if the hold is long); (c) THEN resume from the Night-2-authored NEXT-ACTION
-below, which remains the substantive "what to do next" for the campaign's own build state
-(Gate W1 closed, Gate W2 blocked on the N_e resolution, `main` one deploy ahead of production
-by design).
+current `origin/main` tip FIRST if it's been more than a few days — it was last rebased
+2026-08-01 at `origin/main`@`8d7dee58`+; 52 commits of drift had already accumulated by that
+point in ~36h (the PURNATA campaign's close-out + the org migration itself), so treat drift as
+the norm, not the exception, for this repo; (c) THEN resume from the Night-2-authored
+NEXT-ACTION below, which remains the substantive "what to do next" for the campaign's own
+build state (Gate W1 closed, Gate W2 blocked on the N_e resolution, `main` one deploy ahead of
+production by design).
 
 ---
 
