@@ -176,6 +176,55 @@ def _fetch_msr_signals(conn, chart_id: str, aya: str) -> list[dict]:
     return [dict(zip(keys, r)) if not isinstance(r, dict) else r for r in rows]
 
 
+def _fetch_d1_dignity(conn, chart_id: str, aya: str) -> dict[str, str]:
+    """Returns {graha_name: dignity_text} from L1 chart_facts, D1 varga only.
+
+    Reads fact_category='graha_dignity_per_varga' fact_key='dignity_state',
+    filtered to fact_value_jsonb->>'varga'='D1'. fact_subject is 'D1_SUN' etc.
+    (same query shape as bo_laksana._build_d1_dignity_map).
+
+    P2 fix (was bo_bimba.py:253 — mislabel/drift): the graha-node dignity_state
+    used to be harvested from whichever bodha_msr_signals row happened to
+    reference the graha via _parse_graha_from_signal's generic key match
+    (signal_type_class-agnostic), then read that row's own fact_value_text as
+    if it were a dignity classification. Live on chart 482012f1: a
+    'conjunction_special_point:conjunct_VEN' signal's fact_value_text is the
+    literal string "Venus" (the conjunction partner's name), and a
+    'lord_in_house_per_varga:lord_placement' signal's fact_value_text is
+    "Venus_in_H12" (a house-placement label) — neither is a dignity state,
+    yet both were being stored verbatim in dignity_state. No signal_type_class
+    in bodha_msr_signals is actually "dignity", so the fabrication was
+    guaranteed, not just possible. L1 chart_facts.graha_dignity_per_varga is
+    the correct authority per CLAUDE.md §N.5 (L1 is authority over L2+
+    derivations) — read it directly instead of re-deriving from an unrelated
+    MSR signal's config.
+    """
+    dignity: dict[str, str] = {}
+    rows = conn.execute(
+        """SELECT fact_subject, fact_value_text
+           FROM chart_facts
+           WHERE chart_id = %s
+             AND ayanamsha_id = %s
+             AND fact_category = 'graha_dignity_per_varga'
+             AND fact_key = 'dignity_state'
+             AND fact_value_jsonb->>'varga' = 'D1'""",
+        [chart_id, aya],
+    ).fetchall()
+    for r in rows:
+        if isinstance(r, dict):
+            subject = r["fact_subject"]
+            val     = r["fact_value_text"]
+        else:
+            subject = str(r[0])
+            val     = str(r[1]) if r[1] is not None else None
+        if val:
+            subject_key = str(subject).removeprefix("D1_").upper()
+            graha = _SUBJECT_TO_GRAHA.get(subject_key)
+            if graha:
+                dignity[graha] = val
+    return dignity
+
+
 def _parse_graha_from_signal(cfg: dict) -> str | None:
     for k in ("graha", "primary_graha", "lord", "fact_key"):
         v = cfg.get(k)
@@ -235,12 +284,12 @@ def _parse_house_from_signal(cfg: dict) -> int | None:
 def _build_nodes_for_aya(
     chart_id: str, aya: str, build_id: str, signals: list[dict], now: str,
     graha_positions: dict[str, dict] | None = None,
+    d1_dignity: dict[str, str] | None = None,
 ) -> list[dict]:
     nodes: list[dict] = []
 
     # ── Graha nodes (always 9, with strength from MSR signals) ──────────────
     graha_strength: dict[str, float] = {}
-    graha_dignity: dict[str, str] = {}
     graha_tradition: dict[str, set] = {g: set() for g in KNOWN_GRAHAS}
 
     for sig in signals:
@@ -256,7 +305,6 @@ def _build_nodes_for_aya(
             sal = float(sig.get("computed_salience") or 0.0)
             if sal > curr:
                 graha_strength[g] = sal
-                graha_dignity[g] = cfg.get("fact_value_text") or cfg.get("dignity_state") or "neutral"
             if sig.get("signal_tradition"):
                 graha_tradition[g].add(str(sig["signal_tradition"]))
 
@@ -274,7 +322,7 @@ def _build_nodes_for_aya(
             "node_label_human": graha,
             "position_in_chart_jsonb": _pos_json,
             "strength_score": round(graha_strength.get(graha, 0.5), 6),
-            "dignity_state": graha_dignity.get(graha),
+            "dignity_state": (d1_dignity or {}).get(graha),
             "degree_in": 0,
             "degree_out": 0,
             "primary_domain": None,
@@ -507,7 +555,14 @@ class BoBimbaWriter(WriterBase):
                     "graha nodes will have position_in_chart_jsonb=None (stellium/paths detectors will be blind)",
                     aya,
                 )
-            nodes   = _build_nodes_for_aya(chart_id, aya, build_id, signals, now, graha_positions)
+            d1_dignity = _fetch_d1_dignity(conn, chart_id, aya)
+            if not d1_dignity:
+                logger.warning(
+                    "[bo_bimba] %s — _fetch_d1_dignity returned 0 rows; "
+                    "graha nodes will have dignity_state=None (honest null, not a fabricated value)",
+                    aya,
+                )
+            nodes   = _build_nodes_for_aya(chart_id, aya, build_id, signals, now, graha_positions, d1_dignity)
 
             deleted = replace_prior_cgm_nodes(conn, chart_id, aya, SNAPSHOT_TYPE)
             logger.info("[bo_bimba] %s — deleted %d prior, inserting %d nodes", aya, deleted, len(nodes))
