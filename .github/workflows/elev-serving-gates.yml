@@ -134,22 +134,34 @@ jobs:
           fi
           echo "All four blocking PLAN-mode gates passed."
 
-      # RELABELLED 2026-07-31 — it was calling itself a "gate" while being unable to fail.
+      # REPORT-ONLY, and here is exactly why it stays that way (triaged 2026-08-01).
       #
-      # Mutation-tested: with its REGISTRY_ROOT repointed at a nonexistent directory it
-      # still exits 0 (WARN=10) in default mode, but ABSENCE_LINT_STRICT=true on the SAME
-      # mutation exits 1 with FAIL=10. So the detector is SOUND and merely UNARMED — this
-      # is NOT the ṢAḌ-DARŚANA failure mode, where the detector itself was wrong. Retiring
-      # it would delete a working report, so it stays; the name now tells the truth.
+      # The detector is SOUND — mutation-proven twice: ABSENCE_LINT_STRICT=true goes red on a
+      # seeded served absence claim, and did so again AFTER the scope narrowing below.
       #
-      # NOT ARMED, deliberately: on unmutated main today, ABSENCE_LINT_STRICT=true yields
-      # FAIL=21. Flipping it on blind would red CI on 21 untriaged pre-existing findings.
-      # They are enumerated in this PR's description. Reading them, most are comments,
-      # doc-strings and Postgres error-matching regexes (`/column ".*" does not exist/`)
-      # rather than user-facing absence claims — so arming this probably wants a scope
-      # narrowing (skip comments and regex literals) BEFORE the flag, not just the flag.
-      # TO ARM: triage the 21, then set ABSENCE_LINT_STRICT=true and drop continue-on-error.
-      - name: absence lint (REPORT-ONLY, non-blocking — cannot fail; see comment)
+      # SCOPE NARROWED 2026-08-01: the lint used to match raw source lines and reported 21
+      # STRICT findings. Full triage classified ALL 21 as false positives of three kinds —
+      # 13 pure comments/docblocks, 5 Postgres error-matching regexes (/column ".*" does not
+      # exist|.../, i.e. code that DETECTS a DB error, the opposite of claiming absence), and
+      # 1 trailing comment on a type-union line. `servedTextOnly()` in absence_lint_gate.ts now
+      # strips comments and regex literals before matching, deliberately KEEPING string
+      # literals in scope because a string is the one thing that plausibly IS served.
+      # Result: 21 -> 2.
+      #
+      # NOT ARMED, and not because of volume — because neither survivor is a defect:
+      #   tool_search.ts:30        a tool DESCRIPTION advising the model to search the catalog
+      #                            "before assuming a needed capability does not exist" — the
+      #                            inverse of an ungrounded absence claim.
+      #   register_d9_judgment.ts  served text disclosing a real gap AND its handling
+      #     :363                   ("bhanga_checked reports false, not fabricated") — honest
+      #                            disclosure; the grounding token merely falls outside the
+      #                            ±25-line window the heuristic can see.
+      # Arming today would red-gate `main` on two non-defects. Per §N.8 that is worse than
+      # leaving it honest: a gate should not block on findings nobody believes.
+      #
+      # TO ARM: get native sign-off on those two specific lines (ground them, reword them, or
+      # accept them), then set ABSENCE_LINT_STRICT=true and drop continue-on-error.
+      - name: absence lint (REPORT-ONLY — detector sound, 2 known non-defect findings; see comment)
         continue-on-error: true
         run: npx tsx scripts/census/elev_gates/absence_lint_gate.ts
 
