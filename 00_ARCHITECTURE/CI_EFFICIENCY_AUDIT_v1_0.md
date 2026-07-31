@@ -319,6 +319,74 @@ two of which contradict the instructions they were executing.**
   that reason. **Confirm a mutation actually reaches the code under test before believing
   a negative result.**
 
+**6.6 `strict: true` livelocked this campaign four times, on the PRs auditing it.**
+#963 once, #964 twice, and #968 once — each needing a manual `git merge origin/main` +
+push before it could land, because GitHub's auto-merge does not update a behind branch.
+At a median 37 merges/day (peak 104) against a ~9.5 min CI wall, a PR cannot reliably stay
+current long enough to merge. The empirical case for a merge queue was produced *by
+accident*, by the audit repeatedly being blocked by the thing it was auditing.
+
+**6.7 A clean `git merge` produced a silently worse workflow than either parent.**
+Merging main into PR #895's branch raised NO conflict, and combined #964's
+`if: env.DATABASE_URL != ''` step guards with #895's fix in a way that made the
+fail-loud step unreachable: the job-level env still read the nonexistent
+`secrets.DATABASE_URL`, so every guard was false and the job would have reported SUCCESS
+with all steps skipped — reintroducing precisely the silent no-op #895 exists to remove.
+Caught only by reading the merged job body. **A conflict-free merge of two correct changes
+is not evidence that the result is correct.**
+
+## §6.8 — Gate-teeth audit (2026-07-31): every testable gate has teeth. Retire bucket EMPTY.
+
+The earlier observation that `elev-serving-gates` and `tap-ci` had **0 failures across 100
+runs each** was treated as suspicious. It was not evidence of anything. Run history
+measures **usage, not capability** — the same error shape as the "21 `feature/**` branches,
+0 CI runs → doubling refuted" reversal in §6.3. Every gate was therefore mutation-tested
+the way #968's census seeds were, and **not one belongs in the retire bucket.**
+
+Method for each: mutate an input the gate *claims* to check, confirm the mutation actually
+reached the code under test (§6.3's `authority_basis` near-miss), then restore and confirm
+return to exit 0. All mutations reverted; working tree verified clean afterwards.
+
+| Gate | Mutation | Mutated | Restored | Verdict |
+|---|---|---|---|---|
+| `smoke_gate` | `_tool_enumeration.MCP_TOOLS_ROOT` → nonexistent | exit 1, FAIL=1 | exit 0 | **teeth** |
+| `budget_census_gate` | same | exit 2 | exit 0 | **teeth** |
+| `receipt_gate` | same | exit 1, FAIL=3 | exit 0 | **teeth** |
+| `w1_bare_empty_census_gate` | delete one `CENSUS` entry (it asserts `length === 46`) | exit 1, FAIL=1 | exit 0 | **teeth** |
+| `absence_lint_gate` | own `REGISTRY_ROOT` → nonexistent | **exit 0** (WARN=10) / `ABSENCE_LINT_STRICT=true`: exit 1, FAIL=10 | exit 0 | **detector sound, NOT ARMED** |
+| `tap6_method_grep` | inject a new un-baselined `# rough` + `two_pass_verified` file under python-sidecar | exit 1, named the probe file | exit 0 | **teeth** |
+| `sc_pointer_validation` | inject a bogus `instrument:` pointer | exit 1, named the instrument | exit 0 | **teeth** |
+| `tap5_seam_conservation` (static half) | same bogus pointer | exit 1, Law-7 FAIL | exit 0 | **teeth** |
+| `r18_param_noop_audit` | `TOOLS_DIR` → nonexistent | exit 4 | exit 0 | **responds — see caveat** |
+
+**Stated honestly, three results are not a clean "has teeth":**
+
+- **`absence_lint_gate` cannot fail as wired**, and that is by design, not by accident: it
+  is documented report-only and additionally carries `continue-on-error` in the workflow.
+  Its detector is provably sound — under `ABSENCE_LINT_STRICT=true` the same mutation
+  produces exit 1 with FAIL=10. So this is *not* the ṢAḌ-DARŚANA failure mode (there the
+  detector was **wrong**); it is a working detector deliberately left unarmed. Retiring it
+  would delete a working report. **Recommend: arm `ABSENCE_LINT_STRICT=true`, or leave it
+  and accept that it asserts nothing in CI — but say which.**
+
+- **`r18_param_noop_audit` is only partly proven.** Exit 4 on a missing tools directory
+  shows it is not a no-op, but that exercises crash-on-missing-input, **not** its ratchet.
+  Whether the baseline ratchet catches a genuinely new param no-op is **unproven** —
+  constructing that mutation needs a hand-built violating tool file.
+
+- **Three TAP jobs are unfalsifiable in this environment, and that is not a pass.**
+  `mcp_tool_smoke` (exit 3, no live server), `s13_coverage_matrix_live` (exit 3) and
+  `tap7_distribution_gates` (exit 3) all need secrets this repo does not have. They have
+  **never been able to run**. A gate that has never run is not a passing gate.
+  `tap5_seam_conservation` is the honest counter-example worth copying: it splits into 7
+  laws, marks the 5 DB-backed ones `SKIPPED` with a reason, and genuinely executes Laws 4
+  and 7 — so its exit 0 is earned by the static half rather than fabricated.
+  **Recommend: wire the secrets or retire the three jobs.**
+
+**Conclusion: no retirement PR was raised for Item 3, because the retire bucket is empty.**
+The decision not to retire on run history was correct, and the earlier framing of these two
+workflows as suspect was wrong — recorded here rather than quietly dropped.
+
 ## §7 — Verification standard applied
 
 No change was made on reasoning alone. Every claim was measured, and every gate
