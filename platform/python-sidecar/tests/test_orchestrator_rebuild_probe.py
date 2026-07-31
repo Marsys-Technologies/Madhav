@@ -43,7 +43,7 @@ class FakeConn:
 def _calls(monkeypatch):
     """Stub every dispatch helper to record which fired."""
     rec = {'probe': [], 'data_writer': 0, 'mark_green': 0, 'mark_error': 0, 'service_probe': 0}
-    monkeypatch.setattr(ar, 'emit_event', lambda e: None)
+    monkeypatch.setattr(ar, 'emit_event', lambda e, cur=None: None)
     monkeypatch.setattr(ar, '_mark_probe_green', lambda *a, **k: rec.__setitem__('mark_green', rec['mark_green'] + 1))
     monkeypatch.setattr(ar, 'mark_asset_error', lambda *a, **k: rec.__setitem__('mark_error', rec['mark_error'] + 1))
     monkeypatch.setattr(ar, '_run_service_health_probe', lambda *a, **k: rec.__setitem__('service_probe', rec['service_probe'] + 1))

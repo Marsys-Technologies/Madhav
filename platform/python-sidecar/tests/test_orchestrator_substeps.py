@@ -126,7 +126,7 @@ class _Heavy3(WriterBase):
 
 def test_driver_runs_each_substep_with_heartbeat(monkeypatch):
     events: list[dict] = []
-    monkeypatch.setattr(asset_runner, 'emit_event', lambda e: events.append(e))
+    monkeypatch.setattr(asset_runner, 'emit_event', lambda e, cur=None: events.append(e))
 
     conn, cur = FakeConn(), FakeCursor()
     ins, upd = asset_runner._drive_substeps(
@@ -151,7 +151,7 @@ def test_driver_runs_each_substep_with_heartbeat(monkeypatch):
 
 def test_driver_resume_skips_completed(monkeypatch):
     events: list[dict] = []
-    monkeypatch.setattr(asset_runner, 'emit_event', lambda e: events.append(e))
+    monkeypatch.setattr(asset_runner, 'emit_event', lambda e, cur=None: events.append(e))
 
     runs = {'n': 0}
 
@@ -177,7 +177,7 @@ def test_driver_resume_skips_completed(monkeypatch):
 
 def test_driver_failure_rolls_back_substep_and_reraises(monkeypatch):
     events: list[dict] = []
-    monkeypatch.setattr(asset_runner, 'emit_event', lambda e: events.append(e))
+    monkeypatch.setattr(asset_runner, 'emit_event', lambda e, cur=None: events.append(e))
 
     class Heavy3Boom(_Heavy3):
         def run_substep(self, ctx, step):
