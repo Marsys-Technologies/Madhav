@@ -73,6 +73,9 @@ vi.mock('@/lib/storage', () => ({
 }))
 
 import { callPipelinePlanner } from '@/lib/pipeline/pipeline_planner'
+// F-23: compared against directly so the metric is proven to be READ from the
+// deterministic classifier rather than restated as a literal.
+import { classifyScope } from '@/lib/vidhi/scope_classifier'
 
 // ── Helpers ─────────────────────────────────────────────────────────────────────
 
@@ -274,5 +277,94 @@ describe('callPipelinePlanner — provider-error fault', () => {
     if (outcome.outcome === 'fault') {
       expect(outcome.retryable).toBe(true)
     }
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SAMĀPTI · lane B-N8-TS-SERVE · finding F-23
+//
+// F-23 (A7-N8-AUDIT register §2.3): `pipeline_planner.ts` computes real values —
+// `classifyScope(query).confidence`, `fallbackWasUsed`, and whether the primary output
+// parsed — but `PlanReceipt` carried none of them, so `/api/chat/consult` wrote the
+// constants `planning_confidence: 1.0`, `fallback_used: false`, `parsing_success: true`
+// instead. Consequence, by construction: consult-route traffic could never register as
+// low-confidence or fallback in `AnalyticsTab`'s metric
+// (`rows.filter(r => r.planning_confidence === 0)`).
+//
+// These tests pin that the metrics now cross the boundary AND carry the real values.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('F-23 · PlanReceipt.metrics carries the planner\'s real computed values', () => {
+  it('planning_confidence equals the deterministic classifier\'s own confidence — not a stamped 1.0', async () => {
+    runAdapter.mockResolvedValueOnce(adapterReturn(VALID_PLAN_JSON))
+    const outcome = await callPipelinePlanner(CLASSIFIED_QUERY, [], 'test-model', 'chart-1')
+    expect(outcome.outcome).toBe('plan')
+    if (outcome.outcome !== 'plan') return
+
+    const expected = classifyScope(CLASSIFIED_QUERY).confidence
+    expect(outcome.metrics.planning_confidence).toBe(expected)
+    // It is a real measurement, so it must be a finite number in range — the point is
+    // that it is READ from the classifier, not that it has any particular value.
+    expect(Number.isFinite(outcome.metrics.planning_confidence)).toBe(true)
+    expect(outcome.metrics.planning_confidence).toBeGreaterThanOrEqual(0)
+    expect(outcome.metrics.planning_confidence).toBeLessThanOrEqual(1)
+  })
+
+  it('parsed_on_first_attempt:true with a null first_parse_error on clean first-attempt JSON', async () => {
+    runAdapter.mockResolvedValueOnce(adapterReturn(VALID_PLAN_JSON))
+    const outcome = await callPipelinePlanner(CLASSIFIED_QUERY, [], 'test-model', 'chart-1')
+    if (outcome.outcome !== 'plan') throw new Error('expected a plan')
+    expect(outcome.metrics.parsed_on_first_attempt).toBe(true)
+    expect(outcome.metrics.first_parse_error).toBeNull()
+  })
+
+  it('parsed_on_first_attempt:FALSE, with the reason, when the plan only survived the repair-retry', async () => {
+    // This is the case the hardcoded `parsing_success: true` could never express: the
+    // route still gets a plan, but the planner's first output was garbage.
+    runAdapter
+      .mockResolvedValueOnce(adapterReturn('Here you go (prose, not json)'))
+      .mockResolvedValueOnce(adapterReturn(VALID_PLAN_JSON))
+
+    const outcome = await callPipelinePlanner(CLASSIFIED_QUERY, [], 'test-model', 'chart-1')
+    if (outcome.outcome !== 'plan') throw new Error('expected a plan')
+    expect(outcome.metrics.parsed_on_first_attempt).toBe(false)
+    expect(outcome.metrics.first_parse_error).toMatch(/non-JSON|schema-invalid|no text output/i)
+  })
+
+  it('fallback_used reflects the model actually used, and active_model_id names it', async () => {
+    runAdapter.mockResolvedValueOnce(adapterReturn(VALID_PLAN_JSON))
+    const outcome = await callPipelinePlanner(
+      CLASSIFIED_QUERY, [], 'primary-model', 'chart-1', undefined, undefined, 'fallback-model',
+    )
+    if (outcome.outcome !== 'plan') throw new Error('expected a plan')
+    // No provider error occurred, so the primary served it.
+    expect(outcome.metrics.fallback_used).toBe(false)
+    expect(outcome.metrics.active_model_id).toBe('primary-model')
+  })
+
+  it('fallback_used:TRUE and active_model_id switches when the primary 429s', async () => {
+    const rateLimited = Object.assign(new Error('429 Too Many Requests'), { status: 429 })
+    runAdapter
+      .mockRejectedValueOnce(rateLimited)
+      .mockResolvedValueOnce(adapterReturn(VALID_PLAN_JSON))
+
+    const outcome = await callPipelinePlanner(
+      CLASSIFIED_QUERY, [], 'primary-model', 'chart-1', undefined, undefined, 'fallback-model',
+    )
+    if (outcome.outcome !== 'plan') throw new Error('expected a plan')
+    expect(outcome.metrics.fallback_used).toBe(true)
+    expect(outcome.metrics.active_model_id).toBe('fallback-model')
+  })
+
+  it('every metrics field is present on every plan outcome — none is optional', async () => {
+    runAdapter.mockResolvedValueOnce(adapterReturn(VALID_PLAN_JSON))
+    const outcome = await callPipelinePlanner(CLASSIFIED_QUERY, [], 'test-model', 'chart-1')
+    if (outcome.outcome !== 'plan') throw new Error('expected a plan')
+    expect(Object.keys(outcome.metrics).sort()).toEqual([
+      'active_model_id',
+      'fallback_used',
+      'first_parse_error',
+      'parsed_on_first_attempt',
+      'planning_confidence',
+    ])
   })
 })
