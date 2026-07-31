@@ -4,7 +4,16 @@ import { useEffect, useRef } from 'react'
 
 // ── Event shape ────────────────────────────────────────────────────────────────
 
-type AssetState = 'dormant' | 'building' | 'lit' | 'stale' | 'error'
+// asset_throughput vocabulary as it appears on the SSE wire. 'incomplete' (migration 474)
+// is emitted TODAY by two live producers and was missing here — the union was a type lie,
+// not a forward-looking gap:
+//   * asset_runner.py:702 — `emit_event({... "to_state": final_state})` where final_state
+//     is 'incomplete' whenever the no-op-completion rescue is rejected for a partial plan;
+//   * the cockpit watchdog route — `publishEvent({... to_state: 'incomplete'})` when it
+//     withholds a promotion it cannot prove.
+// SAMĀPTI B-COCKPIT-INCOMPLETE (DVA Ruling 24). Consumers must treat it as terminal-but-
+// NOT-done: the asset's dispatch has ended, and it is not lit.
+type AssetState = 'dormant' | 'building' | 'lit' | 'stale' | 'error' | 'incomplete'
 type RunState   = 'planned' | 'running' | 'paused' | 'completed' | 'stopped' | 'failed'
 
 export type CockpitEvent =

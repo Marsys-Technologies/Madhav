@@ -17,8 +17,13 @@ export interface AssetStats {
   // 'query'     = per-asset SQL error (real data problem).
   // undefined   = no error.
   error_class?: 'dataplane' | 'query'
-  // Derived server-side; never null
-  state: 'dormant' | 'building' | 'lit' | 'stale' | 'error' | 'partial' | 'not_migrated' | 'service_ok'
+  // Derived server-side; never null.
+  // 'incomplete' (migration 474, surfaced by SAMĀPTI B-COCKPIT-INCOMPLETE / DVA Ruling 24):
+  // the writer ran, data from committed substeps IS present, but its substep plan reports
+  // work remaining. Emitted verbatim by deriveState from asset_throughput.state — it must
+  // never be collapsed into 'lit' by a consumer, and it is not in the dependency-satisfied
+  // allowlist on the backend either.
+  state: AssetState
   last_built_at: string | null
   // True when count_sql shows rows present but asset_throughput says stale/dormant/absent.
   // The bar shows lit-equivalent; this flag enables a "build-state stale" badge.
@@ -29,10 +34,11 @@ export interface AssetStats {
   // Service-asset health fields (populated for asset_type='service'; null for data assets)
   service_health: 'healthy' | 'degraded' | 'unhealthy' | 'unknown' | null
   last_invoked_at: string | null
-  // Populated only when state === 'partial': real, honest progress sourced from the
-  // cross-attempt substep-resumption ledger (build_substep_progress). `total` is null
-  // unless the asset's own registry row declares a computable expected count — never
-  // fabricated (B.10). See deriveState's own comment for the badge-honesty rationale.
+  // Populated when state === 'partial' OR state === 'incomplete': real, honest progress
+  // sourced from the cross-attempt substep-resumption ledger (build_substep_progress).
+  // `total` is null unless the asset's own registry row declares a computable expected
+  // count — never fabricated (B.10); the substep plan's size is not persisted anywhere.
+  // See deriveState's own comment for the badge-honesty rationale.
   substep_progress?: { committed: number; total: number | null }
 }
 
@@ -274,7 +280,10 @@ export async function GET(req: NextRequest) {
         ...base,
         volume: base.actual_rows,
         state: derivedState,
-        substep_progress: derivedState === 'partial' && substepsCommitted != null
+        // 'incomplete' carries the same evidence as 'partial' and for the same reason:
+        // the operator needs to see that real substeps DID commit (so a rebuild resumes
+        // rather than restarts) without being told a fabricated denominator.
+        substep_progress: (derivedState === 'partial' || derivedState === 'incomplete') && substepsCommitted != null
           ? { committed: substepsCommitted, total: null }
           : undefined,
         last_built_at: tp?.last_built_at ?? null,

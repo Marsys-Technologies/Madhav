@@ -128,17 +128,22 @@ class TestBoChartGestalt:
         ]
 
         # For _write_aya: we need cursors for all the sub-queries
-        # Order of _fetch_dict calls inside _write_aya:
+        # Order of _fetch_dict calls inside _write_aya (post-B-N8-FIX, register
+        # F-12: the domain_evidence whole-domain GROUP BY query was ADDED between
+        # domain_signals and malefic_signals when the writer stopped storing a
+        # computed verdict and started storing deterministic per-domain evidence
+        # counts instead — see bo_chart_gestalt.py's §N.8/ANTI-DRIFT block):
         # 1. top_signals (bodha_msr_signals, chart_defining/major)
         # 2. strong_cells (bodha_cdlm_cells)
         # 3. top_nodes (bodha_cgm_nodes)
         # 4. final_disp_nodes (bodha_cgm_paths)
         # 5. domain_signals (bodha_msr_signals unnested)
-        # 6. malefic_signals
-        # 7. benefic_top
-        # 8. outlier_discoveries
-        # 9. contested
-        # 10. INSERT cursor
+        # 6. domain_evidence (bodha_msr_signals GROUP BY — whole-domain counts)
+        # 7. malefic_signals
+        # 8. benefic_top
+        # 9. outlier_discoveries
+        # 10. contested
+        # 11. INSERT cursor
 
         def make_row_cursor(rows):
             cur = MagicMock()
@@ -167,6 +172,15 @@ class TestBoChartGestalt:
                 "computed_salience": 8.0,
                 "valence": "benefic",
                 "signature_tier": "chart_defining",
+            }]),
+            make_row_cursor([{                      # domain_evidence (whole-domain counts)
+                "domain": "career",
+                "signal_count": 1,
+                "benefic_count": 1,
+                "malefic_count": 0,
+                "mixed_count": 0,
+                "neutral_count": 0,
+                "major_tier_count": 1,
             }]),
             make_row_cursor([]),                    # malefic_signals
             make_row_cursor([]),                    # benefic_top

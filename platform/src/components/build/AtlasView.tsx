@@ -9,11 +9,13 @@ type AssetStat = {
   asset_id: string
   actual_rows: number | null
   error: string | null
-  state: 'dormant' | 'building' | 'lit' | 'stale' | 'error' | 'partial' | 'not_migrated' | 'service_ok'
+  // Mirrors AssetState in src/app/api/cockpit/stats/deriveState.ts — keep in step.
+  // 'incomplete': migration 474 / SAMĀPTI B-COCKPIT-INCOMPLETE (DVA Ruling 24).
+  state: 'dormant' | 'building' | 'lit' | 'stale' | 'error' | 'partial' | 'incomplete' | 'not_migrated' | 'service_ok'
   last_built_at: string | null
   // Badge-honesty (pre-D-4b readiness pass): real progress from the substep-resumption
-  // ledger, populated only when state === 'partial'. `total` is honestly null unless the
-  // asset declares a computable expected count — never fabricated.
+  // ledger, populated when state === 'partial' or 'incomplete'. `total` is honestly null
+  // unless the asset declares a computable expected count — never fabricated.
   substep_progress?: { committed: number; total: number | null }
 }
 
@@ -57,6 +59,12 @@ function stateBadgeClass(state: AssetStat['state'] | undefined, loading: boolean
     // either "done" (lit) or "broken" (error) at a glance.
     case 'partial':
       return 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200'
+    // 'incomplete' (migration 474): the writer ran and committed real substeps, but its
+    // own plan says work remains. Shares the 'partial' treatment because it is the same
+    // operator situation — resumable, not broken, and emphatically NOT done. The one
+    // thing it must never be is emerald.
+    case 'incomplete':
+      return 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200'
     case 'not_migrated':
       return 'bg-muted text-muted-foreground'
   }
@@ -86,6 +94,12 @@ function stateBadgeLabel(
       return substepProgress.total != null
         ? `${substepProgress.committed}/${substepProgress.total} — in progress, resumable`
         : `${substepProgress.committed} substeps committed — in progress, resumable`
+    // Never renders a row count: a row count next to an unfinished asset is exactly the
+    // "looks done" signal this state exists to deny. The rebuild prompt is the point.
+    case 'incomplete':
+      return substepProgress
+        ? `${substepProgress.committed} substeps committed — incomplete, rebuild to finish`
+        : 'incomplete — rebuild to finish'
     case 'not_migrated':
       return 'not built'
     case 'service_ok':
@@ -106,6 +120,7 @@ function reconciliationDot(state: AssetStat['state'] | undefined, loading: boole
     case 'error':
       return 'bg-red-500'
     case 'partial':
+    case 'incomplete':
       return 'bg-blue-500'
     case 'not_migrated':
       return 'bg-muted-foreground/30'
@@ -447,8 +462,10 @@ export function AtlasView({
     for (const a of assets) {
       const s = stats.get(a.asset_id)
       if (!s) { grey++; continue }
+      // 'incomplete' is counted with the amber (unfinished) group, never with lit —
+      // the summary bar is the one number an operator reads at a glance.
       if (s.state === 'lit' || s.state === 'service_ok') lit++
-      else if (s.state === 'dormant' || s.state === 'stale' || s.state === 'building' || s.state === 'partial') amber++
+      else if (s.state === 'dormant' || s.state === 'stale' || s.state === 'building' || s.state === 'partial' || s.state === 'incomplete') amber++
       else if (s.state === 'error') red++
       else grey++
     }

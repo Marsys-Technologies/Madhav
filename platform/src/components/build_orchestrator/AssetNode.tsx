@@ -1,6 +1,9 @@
 'use client'
 
-export type AssetState = 'pending' | 'running' | 'complete' | 'failed' | 'cancelled' | 'skipped'
+// 'incomplete' — SAMĀPTI B-COCKPIT-INCOMPLETE (DVA Ruling 24). A first-class UI state
+// rather than a fallback: the safe-looking fallback ('pending') would have been WRONG in
+// the other direction, reading as "not started" for an asset that has real committed data.
+export type AssetState = 'pending' | 'running' | 'complete' | 'failed' | 'cancelled' | 'skipped' | 'incomplete'
 
 export interface AssetNodeData {
   asset_id: string       // e.g. 'A3_chart_facts'
@@ -22,10 +25,14 @@ interface AssetNodeProps {
 
 /**
  * M-13: Explicit mapping from DB states (asset_throughput + build_run_assets) to UI AssetState.
- * DB uses: 'dormant'|'building'|'lit'|'stale'|'error'|'service_ok'|'service_down' (asset_throughput)
+ * DB uses: 'dormant'|'building'|'lit'|'stale'|'error'|'incomplete'|'service_ok'|'service_down'
+ *          (asset_throughput — 'incomplete' added by migration 474)
  *          and 'queued'|'running'|'complete'|'aborted' (build_run_assets).
- * UI type: 'pending'|'running'|'complete'|'failed'|'cancelled'|'skipped'.
+ * UI type: 'pending'|'running'|'complete'|'failed'|'cancelled'|'skipped'|'incomplete'.
  * Safe fallback to 'pending' for any unrecognised state so the component never crashes.
+ * The fallback is a crash guard, NOT a licence to leave a known state unmapped: an
+ * unmapped 'incomplete' silently became 'pending', which is a false report in its own
+ * right (it claims no data exists when partial data does).
  */
 export function mapDbStateToUiState(dbState: string): AssetState {
   const mapping: Record<string, AssetState> = {
@@ -35,6 +42,8 @@ export function mapDbStateToUiState(dbState: string): AssetState {
     lit:          'complete',
     stale:        'pending',
     error:        'failed',
+    // NOT 'complete' — that is the whole defect this state exists to prevent.
+    incomplete:   'incomplete',
     service_ok:   'complete',
     service_down: 'failed',
     // build_run_assets states
@@ -58,6 +67,8 @@ const STATE_CONFIG: Record<AssetState, { color: string; icon: string; label: str
   failed:    { color: 'text-red-400 border-red-600',       icon: '✗', label: 'Failed' },
   cancelled: { color: 'text-yellow-400 border-yellow-600', icon: '⊘', label: 'Cancelled' },
   skipped:   { color: 'text-gray-500 border-gray-700',     icon: '—', label: 'Skipped' },
+  // Half-filled glyph, blue not green: real data committed, plan not finished.
+  incomplete:{ color: 'text-blue-400 border-blue-500',     icon: '◐', label: 'Incomplete' },
 }
 
 // Short name mapping for compact display

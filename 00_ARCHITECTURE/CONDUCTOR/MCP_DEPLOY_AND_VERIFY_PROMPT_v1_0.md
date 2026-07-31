@@ -19,7 +19,7 @@ It does NOT register the connector in claude.ai (that's a browser UI step you do
 Export your MCP API key as `MCP_API_KEY` (single quotes to survive the `$` in the password):
 
 ```bash
-export MCP_API_KEY='mcp_prod_eZzHrD2CJ0Iw8VaruuQmoWyEe34bKN6XlEP2oaK5'
+export MCP_API_KEY='<your-mcp-prod-api-key>'  # fetch: gcloud secrets versions access latest --secret=mcp-canary-key
 ```
 
 Then launch Claude Code in this directory:
