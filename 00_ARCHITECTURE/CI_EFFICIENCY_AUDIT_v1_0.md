@@ -387,6 +387,56 @@ return to exit 0. All mutations reverted; working tree verified clean afterwards
 The decision not to retire on run history was correct, and the earlier framing of these two
 workflows as suspect was wrong — recorded here rather than quietly dropped.
 
+## §6.9 — Merge queue is UNAVAILABLE on this repository. The campaign's headline remedy cannot be applied.
+
+Recorded because four passes of this campaign built toward a merge queue, and the reason it
+cannot exist here was not discovered until the migration was actually attempted.
+
+**`amonty84/Madhav` is owned by a USER, not an organization.** `gh api repos/.../--jq .owner.type`
+returns `User`, and `gh api orgs/amonty84` returns 404. **GitHub's merge queue requires an
+organization-owned repository.** That single fact explains every dead end hit along the way:
+
+| Where we looked | What we saw | Why |
+|---|---|---|
+| Classic branch protection (REST) | no merge-queue key among 11 keys | unsupported |
+| GraphQL `BranchProtectionRule` / `UpdateBranchProtectionRuleInput` | no queue fields | unsupported |
+| Classic rule's edit page (read in-browser) | no checkbox | unsupported |
+| **Rulesets API** | **HTTP 422 `Invalid rule 'merge_queue'`** | **unsupported** |
+
+The ruleset attempt is the decisive one, and it was isolated properly rather than guessed at:
+
+- A **control** ruleset containing only `deletion` + `non_fast_forward` **created successfully**
+  (id 20136552, immediately deleted) — so rulesets work on this repo and the token's permissions
+  are sufficient. The failure is specific to the rule type.
+- `merge_queue` was rejected **with no `parameters` key at all**, not merely with bad parameter
+  values. So it is not a schema/tuning problem; the rule type itself is not accepted.
+- All probes used `enforcement: "disabled"` against a never-matching ref
+  (`refs/heads/__never__`) so nothing could take effect while testing.
+
+**Nothing was applied.** `gh api repos/.../rulesets` returns empty, and classic protection reads
+exactly as before: `strict=true`, the same 4 contexts, `enforce_admins=true`, force-pushes and
+deletions off. The migration was abandoned at Step 2 and Steps 3–4 are moot.
+
+**The migration should NOT proceed anyway.** Its only purpose was the queue. Without it, moving
+`main` to a ruleset would be pure churn — and worse than neutral: merge queue is what *forces*
+`pull_request` to be required, and classic protection currently has **Require a pull request:
+OFF**. Migrating would therefore impose a real behaviour change (blocking direct pushes to `main`)
+in exchange for no benefit at all.
+
+**What remains of the original problem.** The queue was the *means*; the *goal* was ending the
+`strict: true` livelock (§6.6 — it blocked this campaign's own PRs four times, at a median 37
+merges/day against a ~9.5 min CI wall). With the queue unavailable, the remaining levers are:
+
+1. **Drop `strict: true`**, keeping all four required checks. Directly removes the livelock. Costs
+   the "tested against latest main" guarantee — which is already largely illusory at this cadence,
+   since main moves during the very CI run that certifies a branch. Post-merge CI on `main` still
+   runs, and `deploy.yml` gates on it, so a bad interaction is caught quickly rather than never.
+2. **Transfer the repository to a GitHub organization**, which makes merge queue available and
+   delivers the original design. Far larger than a CI change; out of scope for this campaign.
+3. **Leave `strict: true`** and accept the livelock as the cost of the freshness guarantee.
+
+Native decision required; not taken here.
+
 ## §7 — Verification standard applied
 
 No change was made on reasoning alone. Every claim was measured, and every gate
