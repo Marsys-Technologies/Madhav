@@ -1,6 +1,6 @@
 ---
 artifact: CLAUDE.md
-version: "7.0"
+version: "7.1"
 status: CURRENT
 role: >
   Root governance surface. Master orientation document for every Claude session on the MARSYS-JIS
@@ -174,7 +174,7 @@ Canonical artifact versions and paths are defined in `00_ARCHITECTURE/CANONICAL_
 | ORCHESTRATOR_CONVERGENCE_CLOSE | `00_ARCHITECTURE/ORCHESTRATOR_CONVERGENCE_CLOSE_v1_0.md` | 1.0 | CURRENT |
 | L1_GANITA_CLOSURE | `00_ARCHITECTURE/L1_GANITA_CLOSURE_v2_0.md` (v1.0 SUPERSEDED — premature seal, floors stale, enrichment not folded) | 2.1 | CURRENT |
 | L2_BODHA_CAMPAIGN_HANDOFF | `00_ARCHITECTURE/L2_BODHA_CAMPAIGN_HANDOFF_v1_0.md` | 1.0 | CURRENT |
-| CLAUDE | `CLAUDE.md` | 7.0 | CURRENT |
+| CLAUDE | `CLAUDE.md` | 7.1 | CURRENT |
 
 Any path in this snapshot that conflicts with `CANONICAL_ARTIFACTS_v1_0.md §1` is wrong here, not there. `drift_detector.py` enforces this via the canonical-path cross-check (protocol §H.3).
 
@@ -372,14 +372,23 @@ usually true" or "nothing has broken yet" is not a substitute for a real detecto
 
 ---
 
-*End of CLAUDE.md v7.0 (2026-07-31, NIḤŚEṢA close) — the SAMĀPTI wrap-up campaign drained the
-VER-confirmed merge backlog SAMĀPTI left queued (PB-3.1 loop lanes, two re-diagnosed PRs, two
-narration fixes, ~a dozen standalone lanes), split one PR mid-merge to withhold a Kāla-touching
-hunk and hand it to ṢAḌ-DARŚANA as a spec addendum instead of code, and closed the credential item
-with the native's actual SECURE/accepted-risk disposition recorded in place (no rotation). No
-`kala_*`/`l3_*`/`ka_*`/`gochara_*` file was written to. Full account
+*End of CLAUDE.md v7.1 (2026-07-31, PŪRṆATĀ close) — the final close of the whole layer-build arc
+(ŚUDDHA-VĀCA → SATYA-DĪPA → PARIPRAŚNA → SAMĀPTI → NIḤŚEṢA → PŪRṆATĀ). Drained NIḤŚEṢA's entire
+auto-merge-armed queue (31 PRs merged this session), diagnosed and worked around a real branch-
+protection livelock, caught and closed a self-authored consolidation branch before it could revert
+merged work, fixed 3 live CI-gate failures on `main`, landed 6 real narration-fidelity fixes
+(including a genuine privacy-leak repair), closed 5 named residuals, and reconciled one previously-
+parked PR on the merits. No `kala_*`/`l3_*`/`ka_*`/`gochara_*` file was written to; no credential was
+rotated. The one item left genuinely open (C4-LOOP-LIVE-PROOF) was paused, not blocked, on a safety
+flag raised mid-session — full account `00_ARCHITECTURE/briefs/purnata/PURNATA_CLOSE_REPORT_v1_0.md`
+/ `CURRENT_STATE_v1_0.md` v6.50. No doctrine changed by this entry. Prior: v7.0 (2026-07-31, NIḤŚEṢA
+close) — the SAMĀPTI wrap-up campaign drained the VER-confirmed merge backlog SAMĀPTI left queued
+(PB-3.1 loop lanes, two re-diagnosed PRs, two narration fixes, ~a dozen standalone lanes), split one
+PR mid-merge to withhold a Kāla-touching hunk and hand it to ṢAḌ-DARŚANA as a spec addendum instead
+of code, and closed the credential item with the native's actual SECURE/accepted-risk disposition
+recorded in place (no rotation). Full account
 `00_ARCHITECTURE/briefs/nihshesha/NIHSHESHA_CLOSE_REPORT_v1_0.md` / `CURRENT_STATE_v1_0.md` v6.49.
-No doctrine changed by this entry. Prior: v6.9 (2026-07-31, SAMĀPTI campaign close) — SAMĀPTI
+Prior: v6.9 (2026-07-31, SAMĀPTI campaign close) — SAMĀPTI
 closed CLOSED-PARTIAL on a mid-run native strategic redirect (Kāla-layer work stopped and handed to
 ṢAḌ-DARŚANA as a written spec; full account `SAMAPTI_CLOSE_REPORT_v1_0.md` / `CURRENT_STATE_v1_0.md`
 v6.48). Prior: v6.8 (2026-07-30, SAMĀPTI/B-DOCS-GOVERNANCE, DVA Ruling 58 /

@@ -35113,3 +35113,151 @@ session_close:
 Run C4-LOOP-LIVE-PROOF first (the one item this close names as genuinely still open, blocked only
 on deploy confirmation, not design). Then the never-dispatched B-NAR-BO/GA/PH lanes and the small
 named bo_pramana_mapa/bo_chart_gestalt residuals. Kāla-layer work continues to wait on ṢAḌ-DARŚANA.
+
+## PURNATA-CLOSE-2026-07-31 — PŪRṆATĀ close: the final close of the layer-build arc
+
+```yaml
+session_open:
+  session_id: PURNATA-CLOSE-2026-07-31
+  campaign: PŪRṆATĀ — final closing campaign of the ŚUDDHA-VĀCA → SATYA-DĪPA → PARIPRAŚNA →
+    SAMĀPTI → NIḤŚEṢA → PŪRṆATĀ arc. Land the live prediction-loop proof and empty the
+    consolidated backlog. Fully autonomous, no human gates.
+  may_touch: "00_ARCHITECTURE/briefs/purnata/** (new); 00_ARCHITECTURE/SESSION_LOG.md,
+    CURRENT_STATE_v1_0.md, CLAUDE.md (this close); every lane's own declared file scope; CI
+    governance allowlists (fact_category_pin_allowlist.json, earned_signal_allowlist.json,
+    secret_scan_inherited.txt) for mechanical re-keys"
+  must_not_touch: "kala_*, l3_*, ka_*, gochara_* (ṢAḌ-DARŚANA's); any credential rotation
+    (native classified SECURE/accepted risk); any PARISHODHANA branch/worktree/PR"
+```
+
+PŪRṆATĀ picked up immediately after NIḤŚEṢA's close, with ~24 PRs left auto-merge-armed. Draining
+that queue surfaced a genuine repo-level problem: `main`'s branch protection carried `strict: true`
+(a PR's branch must be up to date with `main` before it can merge), but GitHub's own auto-merge
+mechanism never rebases a behind branch — it only waits for one. With ~20 PRs simultaneously armed,
+every successful merge invalidated every other PR's "up to date" status, so none could reach a merge
+window without manual intervention. This was independently diagnosed here via direct branch-
+protection API inspection, then confirmed to have already been diagnosed and fixed at the source by
+a concurrent, separately-running CI-audit session (`strict` dropped from `main`'s protection
+entirely, PR #978) partway through this session's own manual rebase-push-merge cycles for the most
+time-critical lanes.
+
+**A self-inflicted near-miss, caught before it mattered.** To work around the livelock before #978's
+fix was known, this session built a single consolidated integration branch merging 17 independent PR
+branches together (zero conflicts, all disjoint files) — collapsing ~17 serial rebase cycles into
+one. By the time that branch was ready to merge, the livelock had already resolved itself via #978,
+and every one of its 17 constituent branches except two had already landed individually through
+ordinary auto-merge. Diffing the consolidation branch against the now-current `main` revealed it was
+dangerously stale: built before #920/#925/#927 had individually merged, merging it as-is would have
+**reverted their work** (`stream_capture.ts`, `replay_compare.ts`, `PredictionCard.tsx`, and others).
+Caught via direct diff inspection before merging, not after — the branch was closed without merging;
+its two still-needed constituent PRs were finished individually instead. Recorded here as the arc's
+own discipline working exactly as intended: a plausible-looking shortcut, checked before trusting it,
+not after.
+
+**Three live CI-gate failures on `main` itself, found and fixed on the spot.** This session's own
+merges — and, independently, one already-merged sibling PR — shifted line numbers or occurrence
+counts above three separate governance-lint allowlist entries, each keyed on a fragile pointer (line
+number, or a bare occurrence cap) rather than content or semantics: `check_fact_category_pinning.py`
+(8, then on bare `main` 5, stale line-keyed entries), `secret_scan.sh` (a documentation shape-match
+in PR #907's native-disposition amendment, quoting an already-redacted example), and
+`check_earned_signal.py` (an occurrence cap of 1 correctly exceeded once PR #909's F-22 fix
+legitimately split one hardcoded literal into two distinct, both-genuinely-earned branches). All
+three were mechanical re-keys — zero detection logic touched, zero justification text altered where
+the underlying reasoning still held — landed as dedicated hotfix PRs (#981, #982) the moment each was
+found, since a currently-failing gate on `main` blocks every subsequent PR, not just this campaign's
+own. The same fragility class (line/count-keyed rather than content-keyed allowlists) fired three
+times in one session; fixing the mechanism itself is named in the final backlog rather than
+re-patched a fourth time.
+
+**Real work landed alongside the merge-queue drain.** Six narration-fidelity defects across three
+lanes: B-NAR-BO (`bo_bimba.py`'s graha `dignity_state` was fabricated from whichever unrelated MSR
+signal happened to match a graha, rather than read from L1 `chart_facts.graha_dignity_per_varga`
+directly — fixed, honest null otherwise); three B-NAR-GA fixes (`ga_sade_sati_writer.py`'s dasha
+citation narrating a raw fact_key instead of a human label; `ga_sensitive_writer.py`'s Pidaa/Vighni
+floor using a hand-rolled proxy the M-11 fix had already rejected elsewhere in the same file;
+`ga_nakshatra.py`'s cross-ayanamsha agreement count collapsing to a literal 0 on any disagreement,
+even 4-of-5 agreement) — plus one B-NAR-GA finding (`gates.py:144`) correctly left untouched, per the
+partition document's own explicit instruction to wait for PR #910's rewrite of that exact function
+first; three B-NAR-PH fixes (`ph_phaladesa.py`'s contradiction/precedent narration was dead code —
+selected from the database but never assigned to the output; two stale/overclaiming comments in
+`ph_sodhana/engine.py` honest-labeled; and, found while re-deriving a different named finding in the
+same file, a genuine privacy-leak repair in `l4_anchors.py` — its citation-stripping regex stopped at
+internal periods in identifiers like `PATTERN.ACROPHOBIA.01`, leaking real health data from a
+production catalog note, fixed with proper sentence-boundary splitting). All five named
+B-N8-FIX/SWEEPFIX residuals from DVA Ruling 86 (`bo_pramana_mapa.py` F-13, `bo_chart_gestalt.py`
+F-15/F-16/F-17, and the strongest/weakest-domain insertion-order bug) were also closed, can-fail
+proven against a real throwaway Postgres. PR #913, parked by NIḤŚEṢA against then-actively-evolving
+concurrent CI-audit work, was reconciled on the merits once that audit's own state had settled
+(Stage 4/5/10-15's deletion kept as the concurrent audit's own independently-verified finding; the
+ESLint continue-on-error-vs-ratchet question resolved in favor of the ratchet, strictly the more
+capable gate) rather than forced through blind.
+
+**INF-3 and the OPEN_ITEMS_REGISTER reconciliation.** INF-3 was restated CONFIRMED-ALREADY-CLOSED a
+third time across three campaigns now (Ruling 56). A full sweep of the DVA ledger for
+residual-shaped language surfaced the already-in-flight `OPEN_ITEMS_REGISTER` reconciliation (PR
+#923, merged this session as part of the batch) — its own 5 genuinely-still-open findings (a
+deferred PgBouncer pooler, a light→heavy audit gap across 5 more `ga_*` writers, two DROP-migration
+blockers, and a broken upstream-hash change-detection mechanism affecting 11+ root assets, broader
+than originally recorded) are carried into the final consolidated backlog rather than re-derived or
+silently dropped.
+
+**C4-LOOP-LIVE-PROOF: paused, not blocked.** Every prerequisite lane (G1 through G8) is merged and
+deployed. While minting a live production session cookie to drive the proof (a documented,
+previously-used-successfully operator technique — `scripts/dev/mint_session_cookie.ts`), inspecting
+the minted cookie value's content produced a fragment that does not read as plausible session-cookie
+content. Per this session's own standing safety obligation to flag suspected prompt-injection content
+in tool results directly rather than continue past it, work on C4 stopped at that point and the
+concern was raised to the native. This is the one item this close names as genuinely still open —
+not a technical blocker, not a design question, simply not yet resumed pending a reply.
+
+Full disposition table (every item in the PŪRṆATĀ brief, plus every carried-forward NIḤŚEṢA and OIR
+finding) and the final, single consolidated backlog (14 named items, each with an explicit owner and
+resume condition): `00_ARCHITECTURE/briefs/purnata/PURNATA_CLOSE_REPORT_v1_0.md`.
+
+```yaml
+session_close:
+  session_id: PURNATA-CLOSE-2026-07-31
+  campaign: PŪRṆATĀ
+  close_criteria_met: "All ~24 NIḤŚEṢA-armed PRs drained (31 merged total this session, 2 closed
+    without merging, both correctly). Three live CI-gate failures on main found and fixed. A
+    self-authored stale consolidation branch caught and closed before it could revert merged work.
+    Six real narration-fidelity fixes landed (one a genuine privacy-leak repair). Five named
+    B-N8-FIX/SWEEPFIX residuals closed. PR #913 reconciled on the merits. One item genuinely still
+    open (C4-LOOP-LIVE-PROOF), paused on a safety flag, named #1 in the final consolidated backlog,
+    not silently dropped. No kala_*/l3_*/ka_*/gochara_* file written to. No credential rotated."
+  verification: "Every merge watched through its real CI run; every consolidation/hotfix verified
+    against a freshly-checked-out origin/main baseline before merging (identical pre-existing
+    failure counts reproduced on both sides — zero regressions introduced). Deploy health spot-
+    checked via direct gcloud run revisions describe commit-sha comparison at multiple points,
+    catching zero silent promotion failures; the final deploy for this session's own last merge
+    was watched to completion before this report was finalized. Crown re-verified live via a
+    direct graha_portrait call at report-writing time (2026-07-31T18:04:42Z)."
+  deploy: "Every merge this session individually deploy-verified. The prediction-loop lanes
+    (G1-G8) are confirmed merged and deployed, clearing C4's only prerequisite."
+  product_code_writes_made: "Yes — see PURNATA_CLOSE_REPORT_v1_0.md §3 for the complete per-lane
+    file scope of all 31 merges. This close entry itself touches only
+    00_ARCHITECTURE/briefs/purnata/** (new) and this SESSION_LOG/CURRENT_STATE/CLAUDE.md entry."
+  native_chart_touched: false
+  current_state_updated: true
+  register_dispositions_flipped: "See PURNATA_CLOSE_REPORT_v1_0.md §4 for the complete disposition
+    table — not restated here to avoid a second copy drifting out of sync with the authoritative
+    one."
+  followups: "The ONE final consolidated backlog (PURNATA_CLOSE_REPORT_v1_0.md §5, 14 items)
+    replaces every scattered park across every prior close report in this arc. Highest priority,
+    by a wide margin: C4-LOOP-LIVE-PROOF, paused on the cookie-content safety flag, not blocked by
+    anything else. Kāla items (unchanged from NIḤŚEṢA) remain ṢAḌ-DARŚANA's, spec-only."
+  next_session_objective: "Resolve the cookie-content safety concern first. Once cleared,
+    C4-LOOP-LIVE-PROOF is the immediate next action — every prerequisite is already merged and
+    deployed, no re-scoping needed. After that: the remaining B-NAR-PH/TS findings, the OIR-
+    surfaced items (light->heavy audit gap, two DROP-migration blockers, the broken upstream-hash
+    detector), and the allowlist-fragility mechanism fix (line/count-keyed, not content-keyed —
+    fired three times this session alone). Kāla-layer work continues to wait on ṢAḌ-DARŚANA's
+    six-views transformation."
+```
+
+### Next session objective
+
+Resolve the cookie-content safety concern first. Once cleared, run C4-LOOP-LIVE-PROOF immediately —
+every prerequisite lane is merged and deployed, this is not a re-scoping question. Then the
+remaining B-NAR-PH/TS-remainder findings and the OIR-reconciliation-surfaced items. Kāla-layer work
+continues to wait on ṢAḌ-DARŚANA's six-views transformation.
