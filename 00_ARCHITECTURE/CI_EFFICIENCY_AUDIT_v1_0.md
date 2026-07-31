@@ -387,6 +387,113 @@ return to exit 0. All mutations reverted; working tree verified clean afterwards
 The decision not to retire on run history was correct, and the earlier framing of these two
 workflows as suspect was wrong — recorded here rather than quietly dropped.
 
+## §6.9 — Merge queue is UNAVAILABLE on this repository. The campaign's headline remedy cannot be applied.
+
+Recorded because four passes of this campaign built toward a merge queue, and the reason it
+cannot exist here was not discovered until the migration was actually attempted.
+
+**`amonty84/Madhav` is owned by a USER, not an organization.** `gh api repos/.../--jq .owner.type`
+returns `User`, and `gh api orgs/amonty84` returns 404. **GitHub's merge queue requires an
+organization-owned repository.** That single fact explains every dead end hit along the way:
+
+| Where we looked | What we saw | Why |
+|---|---|---|
+| Classic branch protection (REST) | no merge-queue key among 11 keys | unsupported |
+| GraphQL `BranchProtectionRule` / `UpdateBranchProtectionRuleInput` | no queue fields | unsupported |
+| Classic rule's edit page (read in-browser) | no checkbox | unsupported |
+| **Rulesets API** | **HTTP 422 `Invalid rule 'merge_queue'`** | **unsupported** |
+
+The ruleset attempt is the decisive one, and it was isolated properly rather than guessed at:
+
+- A **control** ruleset containing only `deletion` + `non_fast_forward` **created successfully**
+  (id 20136552, immediately deleted) — so rulesets work on this repo and the token's permissions
+  are sufficient. The failure is specific to the rule type.
+- `merge_queue` was rejected **with no `parameters` key at all**, not merely with bad parameter
+  values. So it is not a schema/tuning problem; the rule type itself is not accepted.
+- All probes used `enforcement: "disabled"` against a never-matching ref
+  (`refs/heads/__never__`) so nothing could take effect while testing.
+
+**Nothing was applied.** `gh api repos/.../rulesets` returns empty, and classic protection reads
+exactly as before: `strict=true`, the same 4 contexts, `enforce_admins=true`, force-pushes and
+deletions off. The migration was abandoned at Step 2 and Steps 3–4 are moot.
+
+**The migration should NOT proceed anyway.** Its only purpose was the queue. Without it, moving
+`main` to a ruleset would be pure churn — and worse than neutral: merge queue is what *forces*
+`pull_request` to be required, and classic protection currently has **Require a pull request:
+OFF**. Migrating would therefore impose a real behaviour change (blocking direct pushes to `main`)
+in exchange for no benefit at all.
+
+**What remains of the original problem.** The queue was the *means*; the *goal* was ending the
+`strict: true` livelock (§6.6 — it blocked this campaign's own PRs four times, at a median 37
+merges/day against a ~9.5 min CI wall). With the queue unavailable, the remaining levers are:
+
+1. **Drop `strict: true`**, keeping all four required checks. Directly removes the livelock. Costs
+   the "tested against latest main" guarantee — which is already largely illusory at this cadence,
+   since main moves during the very CI run that certifies a branch. Post-merge CI on `main` still
+   runs, and `deploy.yml` gates on it, so a bad interaction is caught quickly rather than never.
+2. **Transfer the repository to a GitHub organization**, which makes merge queue available and
+   delivers the original design. Far larger than a CI change; out of scope for this campaign.
+3. **Leave `strict: true`** and accept the livelock as the cost of the freshness guarantee.
+
+Native decision required; not taken here.
+
+## §6.10 — `strict` dropped from `main` (2026-07-31). The campaign's closing change.
+
+**What changed.** `required_status_checks.strict` on `main`'s classic branch protection:
+`true` → `false`. Nothing else. All four required checks still gate `main`.
+
+**Why.** The merge queue — the remedy this campaign spent four passes building toward — is
+unavailable on a User-owned repository (§6.9). `strict` was the thing the queue was meant to
+make redundant, so with the queue off the table it was dropped directly.
+
+The cost `strict` was imposing is measured, not asserted: at a median **37 merges/day**
+(peak 104) against a **~9.5 min** CI wall, a PR cannot reliably stay current long enough to
+merge. It livelocked **this campaign's own PRs four times** — #963 once, #964 twice, #968
+once — each needing a manual `git merge origin/main` + push, because GitHub's auto-merge
+does not update a behind branch (§6.6). The audit was repeatedly blocked by the thing it was
+auditing.
+
+**What was given up, stated plainly.** `strict` guaranteed a branch was tested against the
+tip of `main` at merge time. That guarantee is gone: two PRs that each pass independently can
+now merge in sequence and interact badly. It is worth being honest that this is a real loss,
+not a free win — the argument is that at 37 merges/day the guarantee was already largely
+illusory, since `main` moves *during* the very CI run that certifies a branch. The
+compensating controls: all four required checks still run on every PR, `ci.yml` runs again on
+`main` post-merge, and `deploy.yml` gates on that run's success — so a bad interaction
+surfaces in minutes rather than never.
+
+**How it was applied.** The narrow endpoint
+(`PATCH .../branches/main/protection/required_status_checks`), deliberately, because a
+partial `PUT .../protection` silently drops every omitted protection — the failure mode to
+avoid on a branch whose protection is the only thing guarding it.
+
+One correction to the instruction as written: it specified `gh api ... -f strict=false`.
+`-f` sends the **string** `"false"`; the typed form `-F strict=false` is required for a JSON
+boolean. Used `-F`.
+
+**Verified by diff, not by assumption.** Full protection JSON captured before and after,
+normalised and sorted, then diffed. Exactly one line moved:
+
+```
+57c57
+<   "strict": true,
+---
+>   "strict": false,
+```
+
+Re-asserted on the after-state: the four contexts byte-identical, `checks[]` app_ids
+unchanged, `enforce_admins` still true, `required_pull_request_reviews` still absent
+(require-PR still OFF), force-pushes/deletions/linear-history/conversation-resolution/lock
+all still false. The only top-level key that differs is `required_status_checks`.
+
+**Rollback — one command:**
+`gh api --method PATCH repos/amonty84/Madhav/branches/main/protection/required_status_checks -F strict=true`
+
+**Left in place deliberately:** #967's `merge_group:` trigger in `ci.yml`. It is inert without
+a queue (it fires only on a `merge_group` event, which cannot occur here) and re-arms
+instantly if the repository ever moves to an organization. One dead line is cheaper than a
+churn PR.
+
 ## §7 — Verification standard applied
 
 No change was made on reasoning alone. Every claim was measured, and every gate
