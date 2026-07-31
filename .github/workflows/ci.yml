@@ -115,28 +115,6 @@ jobs:
         working-directory: platform
     env:
       NODE_ENV: test
-      # SAMĀPTI A5/G3 — wire a real throwaway Postgres into CI so the 6 permanently-skipped
-      # SAMĪKṢĀ DB-integration test files (gated on these two env vars via `describe.skip`)
-      # actually RUN on every push/PR — "the net that should have caught G2" per
-      # SAMAPTI_IMPLEMENTATION_BRIEF_v2_0.md §8.1. Two separate databases, deliberately:
-      # samiksha_test carries migration 470 pre-applied (the 5 files that assume the ledger
-      # table already exists — see l5_roundtrip_harness.sh, the same pattern this mirrors);
-      # samiksha_e2e is left bare because confirm_e2e.db.test.ts creates its own idempotent
-      # schema and would collide with samiksha_test's partial message_parts stub otherwise.
-      SAMIKSHA_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/samiksha_test
-      SAMIKSHA_E2E_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/samiksha_e2e
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_PASSWORD: postgres
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -165,25 +143,6 @@ jobs:
         # Mutation-proven: adding a duplicate number in EITHER directory makes it exit 1.
         run: npm run guard:migration-numbers
 
-      - name: SAMĀPTI A5/G3 — provision the SAMĪKṢĀ throwaway test DB
-        # Mirrors platform/tests/pariprashna/samiksha/l5_roundtrip_harness.sh's local recipe:
-        # a minimal message_parts(id) stub (just enough for migration 470's FK to resolve —
-        # migration 467's full table is out of this lane's scope) then migration 470 itself,
-        # the real DDL the 5 gated tests below run against. samiksha_e2e is created bare;
-        # confirm_e2e.db.test.ts is self-contained and builds its own tables at beforeAll.
-        env:
-          PGPASSWORD: postgres
-        run: |
-          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE samiksha_test;"
-          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE samiksha_e2e;"
-          psql -h localhost -U postgres -d samiksha_test -v ON_ERROR_STOP=1 \
-            -c "CREATE EXTENSION IF NOT EXISTS pgcrypto;"
-          psql -h localhost -U postgres -d samiksha_test -v ON_ERROR_STOP=1 \
-            -c "CREATE TABLE message_parts (id uuid PRIMARY KEY DEFAULT gen_random_uuid());"
-          psql -h localhost -U postgres -d samiksha_test -v ON_ERROR_STOP=1 \
-            -f supabase/migrations/470_pariprashna_samiksha_prediction_ledger.sql
-          psql -h localhost -U postgres -d samiksha_test -v ON_ERROR_STOP=1 \
-            -c "SELECT to_regclass('public.brahma_mimamsa_prediction_ledger') AS ledger;"
 
       - run: npm test -- --reporter=verbose
 
@@ -206,6 +165,81 @@ jobs:
         # staleness (a separate, larger backlog — see parity_check.test.ts file header);
         # it hard-gates only on the bridge module failing to load.
         run: npx vitest run src/lib/retrieval/registry/parity_check.test.ts
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # SPLIT OUT of `unit-tests` (2026-07-31, CI close-out review of PR #895).
+  #
+  # The Postgres service and the 7 SAMĪKṢĀ DB-integration tests originally hung off
+  # `unit-tests`, which is one of the FOUR REQUIRED checks on main. A service container
+  # that fails to start there fails a required check and blocks EVERY merge in the repo,
+  # including PRs with nothing to do with the sidecar or the DB. On its own job the
+  # identical flake is contained and diagnosable, and `unit-tests` keeps exactly the
+  # dependency surface it had before.
+  #
+  # The container itself is approved on its merits: a directly-measured 31s
+  # `Initialize containers` buys 7 real DB-integration tests (verified against main:
+  # same 713 test files, 670 passed/43 skipped -> 677 passed/36 skipped).
+  #
+  # NOT a required check, deliberately — adding one is a branch-protection decision, not
+  # a workflow edit. To revert the split: move `services:`, the two SAMIKSHA_* env vars
+  # and the provision step back onto `unit-tests` and delete this job.
+  # ─────────────────────────────────────────────────────────────────────────────
+  db-integration-tests:
+    name: DB Integration Tests (SAMĪKṢĀ, throwaway Postgres)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: platform
+    env:
+      NODE_ENV: test
+      # Two separate databases, deliberately: samiksha_test carries migration 470
+      # pre-applied (the files that assume the ledger table already exists — see
+      # l5_roundtrip_harness.sh, the pattern this mirrors); samiksha_e2e is left bare
+      # because confirm_e2e.db.test.ts builds its own idempotent schema and would collide
+      # with samiksha_test's partial message_parts stub otherwise.
+      SAMIKSHA_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/samiksha_test
+      SAMIKSHA_E2E_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/samiksha_e2e
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: platform/package-lock.json
+      - run: npm ci
+
+      - name: SAMĀPTI A5/G3 — provision the SAMĪKṢĀ throwaway test DB
+        # Mirrors platform/tests/pariprashna/samiksha/l5_roundtrip_harness.sh's local
+        # recipe: a minimal message_parts(id) stub (just enough for migration 470's FK to
+        # resolve) then migration 470 itself, the real DDL these tests run against.
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE samiksha_test;"
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE samiksha_e2e;"
+          psql -h localhost -U postgres -d samiksha_test -v ON_ERROR_STOP=1 \
+            -c "CREATE EXTENSION IF NOT EXISTS pgcrypto;"
+          psql -h localhost -U postgres -d samiksha_test -v ON_ERROR_STOP=1 \
+            -c "CREATE TABLE message_parts (id uuid PRIMARY KEY DEFAULT gen_random_uuid());"
+          psql -h localhost -U postgres -d samiksha_test -v ON_ERROR_STOP=1 \
+            -f supabase/migrations/470_pariprashna_samiksha_prediction_ledger.sql
+          psql -h localhost -U postgres -d samiksha_test -v ON_ERROR_STOP=1 \
+            -c "SELECT to_regclass('public.brahma_mimamsa_prediction_ledger') AS ledger;"
+
+      - name: SAMĪKṢĀ DB-integration suites (skip themselves without the env vars above)
+        run: npx vitest run tests/pariprashna/samiksha src/lib/pariprashna/samiksha --reporter=verbose
 
   planner-regression:
     name: Planner Regression Gate
