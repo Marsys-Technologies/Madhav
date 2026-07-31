@@ -91,6 +91,15 @@ vi.mock('@/lib/pipeline/pipeline_planner', () => ({
           : 'interpretive'
     return {
       outcome: 'plan' as const,
+      // SAMĀPTI A7-N8-AUDIT F-23: PlanReceipt now carries the planner's real computed
+      // metrics; the consult route reads them instead of writing constants.
+      metrics: {
+        planning_confidence: 0.82,
+        fallback_used: false,
+        active_model_id: 'mock-planner-model',
+        parsed_on_first_attempt: true,
+        first_parse_error: null,
+      },
       plan: {
         query_class,
         domains: ['career'],

@@ -13,8 +13,26 @@ export interface WriteConversationMessagesParams {
 export interface WriteConversationMessagesResult {
   /** IDs of the written conversation_message rows, in order */
   messageIds: string[]
-  /** Whether read-after-write verification passed */
+  /**
+   * Whether read-after-write verification passed — i.e. whether EVERY id this call
+   * claims to have written is actually readable back from `conversation_messages`
+   * under this `conversation_id`.
+   *
+   * SAMĀPTI A7-N8-AUDIT F-24: this used to be `dbCount >= messageIds.length` where
+   * `dbCount` was an UNFILTERED `COUNT(*) ... WHERE conversation_id = $1`. That count
+   * includes every message from every prior turn, so on any conversation past its first
+   * turn the comparison held by construction and `verified: true` was unreachable-false —
+   * it could not detect the very thing it was named for. (The inline comment conceded the
+   * `>=` had been loosened to compensate for exactly that pollution.) It is now scoped to
+   * the ids in question, so it tests its own claim.
+   */
   verified: boolean
+  /**
+   * The ids this call wrote that did NOT read back. Empty iff `verified`. Populated
+   * rather than merely counted so a caller/operator can act on the specific rows — an
+   * honest gap surfaced, never a bare false (B.10).
+   */
+  missingMessageIds: string[]
 }
 
 /**
@@ -22,14 +40,17 @@ export interface WriteConversationMessagesResult {
  *
  * Strategy: upsert each UIMessage by its stable AI SDK `id` into
  * `conversation_messages` so the operation is idempotent on reconnect/retry.
- * After writing, performs a read-after-write count check.
+ * After writing, performs an ID-SCOPED read-after-write check: every id this call
+ * claims to have written must read back. (F-24 — it was formerly an unfiltered
+ * per-conversation `COUNT(*)` comparison that held by construction; see
+ * `WriteConversationMessagesResult.verified`.)
  */
 export async function writeConversationMessages(
   params: WriteConversationMessagesParams,
 ): Promise<WriteConversationMessagesResult> {
   const { conversationId, messages, lastAssistantMetadata } = params
   if (messages.length === 0) {
-    return { messageIds: [], verified: true }
+    return { messageIds: [], verified: true, missingMessageIds: [] }
   }
 
   const messageIds: string[] = []
@@ -77,16 +98,36 @@ export async function writeConversationMessages(
     }
   }
 
-  // Read-after-write: count rows in DB and compare against written messages.
-  const { rows: countRows } = await query<{ n: string }>(
-    'SELECT COUNT(*) AS n FROM conversation_messages WHERE conversation_id = $1',
-    [conversationId],
+  // ── Read-after-write, ID-SCOPED (SAMĀPTI A7-N8-AUDIT F-24) ────────────────────────
+  // Previously: `SELECT COUNT(*) ... WHERE conversation_id = $1` compared with `>=`
+  // against `messageIds.length`. That count is polluted by every message from every
+  // prior turn of the same conversation, so on turn 2 onward the inequality held no
+  // matter what happened to THIS turn's rows — the check could not fail, and the `>=`
+  // was itself the loosening introduced to keep the polluted count from tripping it.
+  //
+  // Now: select back exactly the ids we claim to have written, under the same
+  // conversation_id, and require every one of them to be present. This is the check the
+  // field name always promised. A partially-failed write is now visible, and the
+  // specific missing ids are returned rather than collapsed into a bare boolean.
+  const uniqueWrittenIds = Array.from(new Set(messageIds))
+  const { rows: presentRows } = await query<{ id: string }>(
+    `SELECT id FROM conversation_messages
+      WHERE conversation_id = $1 AND id = ANY($2::uuid[])`,
+    [conversationId, uniqueWrittenIds],
   )
-  const dbCount = parseInt(countRows[0]?.n ?? '0', 10)
-  // DB count ≥ written count (may have older messages from prior turns).
-  const verified = dbCount >= messageIds.length
+  const presentIds = new Set(presentRows.map(r => r.id))
+  const missingMessageIds = uniqueWrittenIds.filter(id => !presentIds.has(id))
+  const verified = missingMessageIds.length === 0
+  if (!verified) {
+    console.error(
+      '[conversation_writer] read-after-write verification FAILED for conversation %s — ' +
+      '%d of %d written ids did not read back: %s',
+      conversationId, missingMessageIds.length, uniqueWrittenIds.length,
+      missingMessageIds.join(', '),
+    )
+  }
 
-  return { messageIds, verified }
+  return { messageIds, verified, missingMessageIds }
 }
 
 /** Restore conversation: load all non-archived messages as UIMessage array. */

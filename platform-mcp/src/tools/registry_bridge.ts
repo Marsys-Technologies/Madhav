@@ -1971,6 +1971,96 @@ export function resolveOrientationFetchParams(
   return { top_k_signals: 10, response_format: 'digest' }
 }
 
+/**
+ * SAMĀPTI A7-N8-AUDIT F-22 — the B.11 enforcement signal, made into a real assertion.
+ *
+ * BEFORE: `orientation_ok` was set to the literal `true` on the sole basis that the
+ * `query_ucd` call did not THROW. Three independent ways that produced a false green:
+ *
+ *   1. `query_ucd`'s own handler (`platform/src/lib/retrieval/registry/layers/L2_bodha/
+ *      query_ucd.ts`) catches every error it raises and RETURNS `{ content: { error },
+ *      is_error: true }` — it does not throw. So the ordinary DB-failure path never
+ *      reached the `catch` below, and an error payload read `orientation_ok: true`.
+ *   2. An unbuilt / partially-built chart returns HTTP 200 with `digest` empty,
+ *      `entity_profiles: []` and `convergence_domains: []` — no holistic context at all —
+ *      and still read `orientation_ok: true`.
+ *   3. Nothing checked that the payload was even ABOUT the requested chart.
+ *
+ * AFTER: `orientation_ok` asserts what its name claims — that holistic context is actually
+ * present for THIS chart. The repair pattern is `resolveChartHeader` in this same file
+ * (unwrap, check `is_error`, check the inner payload, emit an honest flag), applied to the
+ * signal B.11 rests on. Never blocking: a failed/hollow orientation still serves the domain
+ * tool, and the payload is passed through untouched (B.10 — nothing is dropped); only the
+ * boolean tells the truth, plus an added `b11_note` naming the reason.
+ *
+ * Note on the substance test: this call site requests `response_format: 'digest'`, which
+ * returns `top_signals: []` BY DESIGN, so an empty `top_signals` is never on its own
+ * evidence of a hollow orientation. Substance is therefore read from the surfaces `digest`
+ * actually populates — `entity_profiles`, `convergence_domains`, and the digest counts.
+ */
+export interface OrientationAssessment {
+  ok: boolean
+  /** `null` iff ok; otherwise names exactly what failed. Never a silent false. */
+  reason: string | null
+}
+
+export function assessOrientationPayload(payload: unknown, chart_id: string): OrientationAssessment {
+  if (payload == null || typeof payload !== 'object') {
+    return { ok: false, reason: 'UCD orientation returned no payload object.' }
+  }
+  const wrapper = payload as Record<string, unknown>
+
+  // query_ucd returns its errors in-band as { content: { error }, is_error: true } — it
+  // does not throw — so this, not the try/catch, is the branch that actually fires.
+  if (wrapper['is_error'] === true) {
+    const innerErr = (wrapper['content'] as Record<string, unknown> | undefined)?.['error']
+    return { ok: false, reason: `UCD orientation returned an error payload: ${String(innerErr ?? 'unspecified')}` }
+  }
+
+  // `callRegistryCapability` returns the DOUBLE-WRAPPED capability shape
+  // (`{ content, is_error }`) — see the EL-36 note at the top of this file and the
+  // identical `content ?? wrapper` unwrap `get_domain_reading` already performs. The
+  // fallback to `wrapper` covers a already-unwrapped payload rather than mis-grading it.
+  const inner = (wrapper['content'] as Record<string, unknown> | undefined) ?? wrapper
+  if (inner == null || typeof inner !== 'object') {
+    return { ok: false, reason: 'UCD orientation payload carried no content block.' }
+  }
+  if (inner['error'] != null) {
+    return { ok: false, reason: `UCD orientation content reported an error: ${String(inner['error'])}` }
+  }
+
+  // Identity: the orientation must be about the chart we asked about. (The platform side
+  // enforces the same invariant via `orientationEchoMatches`; this process cannot import
+  // that module across the package boundary — see envelope.ts's PROCESS-BOUNDARY NOTE — so
+  // the check is independently restated here rather than assumed.)
+  const echoed = inner['chart_id']
+  if (typeof echoed === 'string' && echoed !== chart_id) {
+    return { ok: false, reason: `UCD orientation echoed chart_id ${echoed}, not the requested ${chart_id}.` }
+  }
+
+  // Substance: is there any holistic context in here at all?
+  const entityProfiles = inner['entity_profiles']
+  const convergence   = inner['convergence_domains']
+  const digest        = (inner['digest'] as Record<string, unknown> | undefined) ?? {}
+  const msrCount      = Number(digest['msr_signal_count'] ?? 0)
+  const hasSubstance =
+    (Array.isArray(entityProfiles) && entityProfiles.length > 0) ||
+    (Array.isArray(convergence) && convergence.length > 0) ||
+    (Number.isFinite(msrCount) && msrCount > 0)
+
+  if (!hasSubstance) {
+    return {
+      ok: false,
+      reason:
+        'UCD orientation is empty for this chart — no entity_profiles, no convergence_domains, ' +
+        'and msr_signal_count is 0/absent. The chart is unbuilt or only partially built at L2, ' +
+        'so the B.11 whole-chart-read floor was NOT actually satisfied by this call.',
+    }
+  }
+
+  return { ok: true, reason: null }
+}
+
 async function fetchOrientationContext(
   chart_id: string,
   ayanamsha_id: string | undefined,
@@ -1984,7 +2074,20 @@ async function fetchOrientationContext(
       { chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id), top_k_signals, response_format },
       chart_id, principal,
     )
-    return { orientation_context: ucdData, orientation_ok: true }
+    // F-22: the boolean now reflects an assessment of the payload, not merely the absence
+    // of a thrown exception.
+    const assessment = assessOrientationPayload(ucdData, chart_id)
+    if (assessment.ok) return { orientation_context: ucdData, orientation_ok: true }
+    // Non-blocking and non-destructive: the real payload is preserved verbatim alongside
+    // an honest note, so nothing is dropped (B.10) and no caller can read the hollow case
+    // as a satisfied B.11 floor.
+    return {
+      orientation_context: {
+        ...(ucdData as Record<string, unknown>),
+        b11_note: `UCD orientation did not establish holistic context. ${assessment.reason}`,
+      },
+      orientation_ok: false,
+    }
   } catch (err) {
     // Non-blocking: domain tool still runs; orientation failure is annotated
     return {

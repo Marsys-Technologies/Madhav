@@ -500,6 +500,10 @@ export async function POST(request: Request) {
   }
 
   const plan: PipelinePlan = plannerOutcome.plan
+  // SAMĀPTI A7-N8-AUDIT F-23: the planner's REAL computed metrics, previously discarded
+  // at this boundary and replaced downstream by the constants 1.0 / false / true. See
+  // `PlannerMetrics` in lib/pipeline/types.ts for what each field actually measures.
+  const plannerMetrics = plannerOutcome.metrics
   const plannerLatencyMs = Date.now() - plannerStartedAt
 
   // Stamp route-controlled fields — never LLM output
@@ -708,9 +712,15 @@ export async function POST(request: Request) {
     query_class: plan.query_class,
     tool_count: plan.tool_calls.length,
     plan_json: plan as unknown as Record<string, unknown>,
-    parsing_success: true,
-    parse_error: null,
-    fallback_used: false,
+    // F-23: real values from the planner, not constants.
+    // `parsing_success` = "the planner's output parsed and validated on the FIRST
+    // attempt". A plan that exists only because the single structured repair-retry
+    // succeeded records `false` here WITH the first attempt's reason in `parse_error` —
+    // the plan is still served (the route only reaches this line on outcome 'plan'), but
+    // the planner-output-quality signal is no longer a value that can never go red.
+    parsing_success: plannerMetrics.parsed_on_first_attempt,
+    parse_error: plannerMetrics.first_parse_error,
+    fallback_used: plannerMetrics.fallback_used,
     planner_latency_ms: plannerLatencyMs,
   })
 
@@ -732,8 +742,18 @@ export async function POST(request: Request) {
       data_summary: {
         result: plan.query_class,
         query_class: plan.query_class,
-        confidence: 1.0,
-        planning_confidence: 1.0,
+        // F-23: the deterministic scope classifier's REAL confidence for this query.
+        // These two keys are what `trace/writer.ts`'s history aggregation COALESCEs into
+        // `planning_confidence`, which `AnalyticsTab` then reads to count low-confidence
+        // planning. Hardcoding 1.0 here pinned that metric at zero for all consult-route
+        // traffic by construction.
+        confidence: plannerMetrics.planning_confidence,
+        planning_confidence: plannerMetrics.planning_confidence,
+        // Carried alongside so a trace reader can see the planner-model fallback and the
+        // repair-retry without joining back to query_plan_log.
+        fallback_used: plannerMetrics.fallback_used,
+        planner_model_id: plannerMetrics.active_model_id,
+        parsed_on_first_attempt: plannerMetrics.parsed_on_first_attempt,
       },
       payload: {
         query_plan: {
