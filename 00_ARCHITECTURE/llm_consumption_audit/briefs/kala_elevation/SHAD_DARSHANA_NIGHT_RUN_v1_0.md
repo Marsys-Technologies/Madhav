@@ -1,12 +1,22 @@
 ---
 artifact: SHAD_DARSHANA_NIGHT_RUN (Autonomous Overnight Execution Protocol)
 canonical_id: SHAD_DARSHANA_NIGHT_RUN
-version: 1.1
+version: 1.2
 status: READY-FOR-EXECUTION — the orchestration layer over SHAD_DARSHANA_BRIEF_v2_0.
   The BRIEF owns WHAT/GATES/RAILS; THIS doc owns WHO/WHEN/HOW-PARALLEL. On any conflict about
   scope or acceptance, the brief wins; on any conflict about orchestration, this doc wins.
 created: 2026-07-29
-revised: 2026-07-31 — v1.1: adopted the shad-darshana/integration branch as the merge target
+revised: 2026-08-01 — v1.2: documented the main merge-queue (§B.2a) that came with the repo's
+  org migration to Marsys-Technologies/Madhav (2026-07-31) — classic branch protection on
+  main replaced by a ruleset+merge-queue; the campaign's one gate-close PR now takes up to
+  ~5-60 min to actually merge after checks pass, not seconds, and the campaign's own full-
+  battery verification bar is unchanged despite the ruleset formally requiring only 4 checks.
+  shad-darshana/integration itself carries no ruleset. Also rebased the integration branch
+  onto main (52 commits of drift across the PURNATA campaign close + the org migration
+  itself) — one real merge conflict in .github/workflows/ci.yml resolved by preserving main's
+  own newly-proven double-trigger fix (integration branch added to pull_request.branches
+  only, not push.branches or merge_group).
+  Prior: v1.1 (2026-07-31) — adopted the shad-darshana/integration branch as the merge target
   for all lane PRs (§B.1), replacing direct-to-main, to eliminate cross-campaign merge
   contention observed across Night 1/Night 2 (this repo runs many concurrent autonomous
   campaigns against main simultaneously); tightened the Phase 4/5 boundary so W4's design pass
@@ -88,6 +98,28 @@ production` is asserted at every gate close AND at night end, whichever comes fi
 `shad-darshana/integration == production` is explicitly NOT an invariant the campaign holds
 between gates; it is normal and correct for the integration branch to run ahead of production
 for the entire span of a wave's build-out.
+
+**B.2a `main` merge queue (repo change, 2026-07-31 — org migration to
+Marsys-Technologies/Madhav, verified 2026-08-01 against ruleset `20141220`).** Classic branch
+protection on `main` is gone, replaced by a ruleset with a merge queue. This changes what
+happens at the ONE gate-close moment B.2 describes (`shad-darshana/integration` → `main`):
+opening that PR with all checks green does not merge it immediately — GitHub enqueues it
+(`min/max_entries_to_merge: 1`, so PRs merge one at a time, sequentially; grouping strategy
+`ALLGREEN`; `min_entries_to_merge_wait_minutes: 5`; `check_response_timeout_minutes: 60`). The
+Conductor does not need to do anything differently to ENTER the queue — `gh pr merge --auto
+--squash` (or the equivalent merge-when-ready action) still works, it now means "join the
+queue" rather than "merge now." What changes is patience and verification: **the merge can
+take up to ~5–60 minutes after all checks pass, not seconds; do not treat a queued-but-not-yet-
+merged PR as stuck or failed.** Only 4 checks are formally required by the ruleset
+(`TypeScript (src only)`, `Unit Tests`, `Secret Scan (unit 0b.2)`, `Governance Gates`) — this
+is a SUBSET of the full CI battery this campaign already treats as gating (specificity gate,
+tri-plane, Mode-3 routing, census seeds, etc. are NOT in that 4). **The campaign's own
+verification bar does not lower to match GitHub's minimum** — the Conductor still waits for
+and checks the FULL battery before treating a gate as genuinely closed, exactly as before;
+the ruleset's narrower requirement is a GitHub-side merge precondition, not a relaxation of
+this campaign's own "no passed with caveats" discipline. `shad-darshana/integration` itself
+carries NO ruleset/merge-queue (verified — the ruleset's `conditions.ref_name.include` is
+`["refs/heads/main"]` only), so every lane PR merges exactly as before, instantly on green.
 
 **B.3 Model/effort escalation matrix (Conductor applies without asking):** Opus+high
 mandatory for: W2 field/science design · stage-4/hazard numerics + skill-score/GOF math ·
