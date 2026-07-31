@@ -41,7 +41,7 @@
         616
       ],
       "sample_snippet": "synthesis_gate: 'BLOCKED', gate_basis: 'completeness_receipt',",
-      "justification": "CATEGORY A/B \u2014 CONFIRMED FINDING F-19 in SAMAPTI_N8_EARNED_SIGNAL_REGISTER_v1_0; owned by lane unassigned (register \u00a76.1 Q5). Allowlisted only so this lint can merge ahead of / independently of the fix lane. Independently rediscovered by this lint at rollout, which is the lint's ground-truth check against the register."
+      "justification": "CATEGORY A/B \u2014 CONFIRMED FINDING F-19 in SAMAPTI_N8_EARNED_SIGNAL_REGISTER_v1_0; owned by lane unassigned (register \u00a76.1 Q5). FIXED by PR #909 (assessOrientationPayload) — the single unconditional literal became two legitimately-distinct earned-false branches (an assessment.ok===false result, and a caught-exception path); both are contextually earned (a failed assessment or a caught exception both genuinely mean orientation did not succeed), not a hardcoded stub. max_occurrences bumped 1->2 to match."
     },
     {
       "file": "platform-mcp/src/tools/mimamsa_lel_intake.ts",
@@ -74,7 +74,7 @@
       "field": "orientation_ok",
       "line": null,
       "pattern": null,
-      "max_occurrences": 1,
+      "max_occurrences": 2,
       "sample_lines": [
         1875
       ],
