@@ -461,11 +461,15 @@ jobs:
         #      145s. The CI file is the verified subset (10s). See its header before
         #      editing — geopy/geocoder/timezonefinder/pytz are NOT dead entries, PyJHora
         #      imports them internally, and httpx is required by starlette.testclient.
-        #   2. -n 4 --dist loadfile (pytest-xdist). loadfile, not the default, so tests
-        #      sharing module-level fixtures stay on one worker.
+        #   2. NO pytest-xdist. This was tried and REVERTED on CI evidence, 2026-07-31.
+        #      `-n 4 --dist loadfile` measured 2.9x faster locally (226s -> 78s) but was
+        #      SLOWER on the runner: 323.49s vs the 285.77s serial baseline (run
+        #      30594499554). ubuntu-latest gives 4 vCPU, and each xdist worker re-imports
+        #      the full PyJHora/swisseph/numpy/scipy tree — 4 workers' import cost eats
+        #      more than the parallelism returns. Do not re-add without measuring ON CI;
+        #      a local speedup does not transfer here.
         # Verified in a clean venv against the slim file: 4647 passed, 12 skipped,
-        # 7 subtests passed — identical to the pre-change run (which took 285s serial
-        # on top of a 145s install). Any drift from those counts is a real regression.
+        # 7 subtests passed — identical to the pre-change run. Any drift is a regression.
         run: |
           pip install -r platform/python-sidecar/requirements-ci.txt --quiet
           cd platform/python-sidecar
@@ -475,7 +479,6 @@ jobs:
             --ignore=tests/extractors/test_cgm_extractor.py \
             --ignore=tests/test_l0_remedy_corpus.py \
             -m "not integration" \
-            -n 4 --dist loadfile \
             -q --tb=short --no-header
 
   density-census:

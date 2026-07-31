@@ -191,12 +191,33 @@ jobs:
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Stage 6 — Accessibility (axe-core)
-# Gate: HARD (flipped by the CI efficiency audit, 2026-07-31)
+# Gate: HARD, nightly/on-demand. NOT on the PR path — the harness is currently
+#       BROKEN in CI; see the job comment. Expect this to be RED until fixed.
 # ─────────────────────────────────────────────────────────────────────────────
   stage-6-a11y:
-    name: 'Stage 6 — Accessibility (axe-core)'
+    name: 'Stage 6 — Accessibility (axe-core) [nightly]'
     runs-on: ubuntu-latest
-    needs: stage-3-e2e-chromium
+    # ⚠️ THIS STAGE HAS NEVER PASSED IN CI. It fails with
+    #     `Error: Timed out waiting 120000ms from config.webServer.`
+    # i.e. the Playwright dev server never boots, so axe-core never runs at all.
+    # `continue-on-error: true` hid that completely: it spent 190s on every chat-v2
+    # PR reporting green while asserting nothing.
+    #
+    # CAUTION FOR ANYONE AUDITING THIS AGAIN — the GitHub API reports
+    # `steps[].conclusion == "success"` for a continue-on-error step EVEN WHEN the
+    # command exited 1. The audit that produced this comment initially concluded
+    # "Stage 6 passes today" from that field and was wrong; only the job LOG shows
+    # `Process completed with exit code 1`. Read the log, not the conclusion field.
+    #
+    # Stage 3 boots the same webServer successfully in the same workflow, so this is
+    # specific to these jobs, not a global harness break — most likely resource
+    # contention from several dev servers starting at once, or a config difference.
+    #
+    # Resolution: taken off the PR path (saves 190s/PR of pure noise) and made a
+    # HARD nightly gate, so the breakage is visible and pressures a fix instead of
+    # being swallowed. TO CLOSE: fix the webServer boot, confirm axe actually runs
+    # green, then move back onto pull_request.
+    if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -213,12 +234,6 @@ jobs:
         run: npx playwright install chromium --with-deps
 
       - name: a11y — axe-core audit
-        # HARDENED by the CI efficiency audit (2026-07-31). This was `continue-on-error:
-        # true` "until γ8 flips it HARD" — a flip that never happened, so the stage spent
-        # 190s per PR proving nothing: no outcome of axe.spec.ts could fail the build.
-        # It passes today (verified against the 2026-07-30 run: every step `success`, and
-        # the job is green on its own merits, not on the error suppression). A gate that
-        # passes is a gate worth enforcing, so the suppression is gone.
         run: npx playwright test tests/e2e/chat-v2/a11y/axe.spec.ts --config=tests/e2e/chat-v2/playwright.config.ts --project=chromium --reporter=github
         env:
           MARSYS_FIXTURE_MODE: 'true'
@@ -231,20 +246,21 @@ jobs:
   stage-7-perf:
     name: 'Stage 7 — Performance [nightly]'
     runs-on: ubuntu-latest
-    # Both steps were `continue-on-error: true` "until γ activates hard gating" —
-    # a flip that never happened. So this stage spent 313s on EVERY chat-v2 PR (the
-    # single most expensive job in the workflow) and could not fail the build: pure
-    # cost, zero signal.
+    # ⚠️ LIKE STAGE 6, THIS HAS NEVER PASSED IN CI. The baseline run's log shows FOUR
+    # `Timed out waiting 120000ms from config.webServer` errors across its two steps —
+    # the dev server never boots, so neither the streaming nor the Web Vitals spec
+    # actually executes. `continue-on-error: true` on both steps hid it entirely,
+    # making this the single most expensive job in the workflow (313s per chat-v2 PR)
+    # while asserting nothing at all.
     #
-    # Both specs pass today, so the honest fix is to enforce them. But perf
-    # assertions on shared GitHub runners are the textbook flake source — noisy
-    # neighbours move streaming and Web Vitals numbers independent of the diff —
-    # and that flakiness is almost certainly WHY the suppression was added and never
-    # removed. Hardening it per-PR would trade a useless green for a random red.
+    # See the Stage 6 comment for the API-reports-success-for-continue-on-error trap
+    # that made this look green to a first pass.
     #
-    # So: enforced, but on a schedule where a flake costs an investigation rather
-    # than a blocked merge, and available on demand for PRs that touch streaming.
-    # If it proves stable here, move it back onto pull_request as a hard gate.
+    # Resolution: off the PR path, HARD nightly, so the breakage is visible instead of
+    # swallowed. Note that perf assertions on shared runners are ALSO a genuine flake
+    # source independent of this — so even once the webServer boot is fixed, prefer
+    # keeping this nightly rather than per-PR. TO CLOSE: fix the boot, confirm both
+    # specs actually run, then decide about promotion.
     if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
     steps:
       - uses: actions/checkout@v4
