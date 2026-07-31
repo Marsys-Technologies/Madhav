@@ -48,6 +48,13 @@ on:
     - cron: '0 3 * * 3'
   workflow_dispatch:
 
+# Serialise per ref but NEVER cancel: this workflow mutates real infrastructure
+# (deploy / terraform / commit-push), and killing it mid-flight can leave a
+# half-applied state. Queue instead.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   fresh-chart-smoke:
     name: Fresh-chart end-to-end build (schema-drift smoke)

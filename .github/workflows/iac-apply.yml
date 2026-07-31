@@ -23,6 +23,13 @@ on:
           - plan
           - apply
 
+# Serialise per ref but NEVER cancel: this workflow mutates real infrastructure
+# (deploy / terraform / commit-push), and killing it mid-flight can leave a
+# half-applied state. Queue instead.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 permissions:
   contents: read
   id-token: write   # Workload Identity Federation

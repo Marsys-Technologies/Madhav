@@ -40,9 +40,28 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# CI efficiency audit (2026-07-31): no workflow in this repo had a concurrency
+# group, so every push to a PR branch stacked a full new set of runs while the
+# superseded ones kept burning runner minutes. Pure check workflow — safe to cancel.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  smoke-gate-plan:
-    name: K1 — smoke_gate (PLAN mode)
+  # CI efficiency audit (2026-07-31) — the five PLAN-mode gates below were five
+  # separate jobs, each spending ~30s on its own `npm ci` to run one ~1-second tsx
+  # script: 233 runner-seconds for about five seconds of actual gate work. They are
+  # one job now.
+  #
+  # The Elevation arc itself is closed (PŪRṆA-VIRĀMA, 2026-07-27), but these gates
+  # still guard live serving code, so they are consolidated — NOT retired. Same five
+  # scripts, same semantics. The runner loop runs ALL five even after one fails, then
+  # exits non-zero, preserving the "see every failing gate in one run" property that
+  # separate jobs gave. absence_lint_gate stays report-only (WARN) as before: it is
+  # invoked through the same loop but its result is reported, not counted as failure,
+  # unless ABSENCE_LINT_STRICT upgrades it (see the workflow header).
+  plan-gates:
+    name: K1 + W1 — PLAN-mode serving gates (smoke / budget / receipt / absence / bare-empty)
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -55,78 +74,34 @@ jobs:
           cache: 'npm'
           cache-dependency-path: platform/package-lock.json
       - run: npm ci
-      - name: smoke_gate — static tool enumeration + call plan (no live calls)
-        run: npx tsx scripts/census/elev_gates/smoke_gate.ts
+      - name: K1 + W1 PLAN-mode gates (no live calls)
+        run: |
+          failed=""
+          run_gate() {
+            echo "::group::$1"
+            if npx tsx "scripts/census/elev_gates/$2"; then
+              echo "PASS  $1"
+            else
+              echo "FAIL  $1"
+              failed="$failed\n  - $1"
+            fi
+            echo "::endgroup::"
+          }
+          run_gate "smoke_gate — static tool enumeration + call plan"                smoke_gate.ts
+          run_gate "budget_census_gate — MCP_RESPONSE_BUDGET_KB ledger extraction"   budget_census_gate.ts
+          run_gate "receipt_gate — multi-category param scan + drift check"          receipt_gate.ts
+          run_gate "w1_bare_empty_census_gate — 46-concept census validation"        w1_bare_empty_census_gate.ts
+          if [ -n "$failed" ]; then
+            printf 'PLAN-mode serving gates FAILED:%b\n' "$failed" >&2
+            exit 1
+          fi
+          echo "All four blocking PLAN-mode gates passed."
 
-  budget-census-gate-plan:
-    name: K1 — budget_census_gate (PLAN mode)
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: platform
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: platform/package-lock.json
-      - run: npm ci
-      - name: budget_census_gate — MCP_RESPONSE_BUDGET_KB ledger extraction (no live calls)
-        run: npx tsx scripts/census/elev_gates/budget_census_gate.ts
-
-  receipt-gate-plan:
-    name: K1 — receipt_gate (PLAN mode)
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: platform
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: platform/package-lock.json
-      - run: npm ci
-      - name: receipt_gate — static multi-category param scan + drift check (no live calls)
-        run: npx tsx scripts/census/elev_gates/receipt_gate.ts
-
-  absence-lint-gate:
-    name: K1 — absence_lint_gate (static, report-only)
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: platform
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: platform/package-lock.json
-      - run: npm ci
       - name: absence_lint_gate — ontological-absence phrasing candidates (WARN, non-blocking)
+        # Report-only by design, unchanged: kept as its own step so its
+        # non-blocking status stays visible rather than buried in the loop above.
+        continue-on-error: true
         run: npx tsx scripts/census/elev_gates/absence_lint_gate.ts
-
-  w1-bare-empty-census-gate-plan:
-    # SATYA-ŚEṢA W1 (SATYA_SHESHA_BRIEF_v1_0.md §2 W1) — ADDITIVE job; does not touch or gate
-    # any pre-existing job above.
-    name: W1 — bare_empty_census_gate (PLAN mode)
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: platform
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: platform/package-lock.json
-      - run: npm ci
-      - name: w1_bare_empty_census_gate — static 46-concept census validation + call plan (no live calls)
-        run: npx tsx scripts/census/elev_gates/w1_bare_empty_census_gate.ts
 
   serving-gates-live:
     # D-2 Lane V-0 precedent (ci.yml's census-battery job): a live-estate check against the

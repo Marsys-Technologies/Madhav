@@ -39,6 +39,13 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# CI efficiency audit (2026-07-31): no workflow in this repo had a concurrency
+# group, so every push to a PR branch stacked a full new set of runs while the
+# superseded ones kept burning runner minutes. Pure check workflow — safe to cancel.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   unit-batteries:
     name: W0.6 — unit-level batteries (prose-survival, tri-plane, mode3-routing)
@@ -61,8 +68,16 @@ jobs:
       - name: item 6 — Mode-3 single-route assertion (unit level; SKIPS honestly pre-merge of the sibling upaya-ritual-stub lane)
         run: npx vitest run src/__tests__/shad_darshana_w0_mode3_routing.test.ts
 
-  completeness-census-seed:
-    name: W0.6 item 4 — completeness census seed (registry 1-44 + E1-E8)
+  # CI efficiency audit (2026-07-31) — items 1/3/4/5/6 were five separate jobs, each
+  # spending ~30s on its own `npm ci` to run one ~1-second tsx script: 256 runner-
+  # seconds for about five seconds of actual gate work. They are one job now.
+  #
+  # Nothing about the gates changed — same five scripts, same PLAN-mode semantics,
+  # same pass/fail meaning. The runner loop below deliberately runs ALL five even
+  # after one fails, then exits non-zero at the end, so consolidating does not cost
+  # the "see every failing gate in a single run" property that separate jobs gave.
+  plan-gates:
+    name: W0.6 — PLAN-mode gates (items 1, 3, 4, 5, 6)
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -75,76 +90,32 @@ jobs:
           cache: 'npm'
           cache-dependency-path: platform/package-lock.json
       - run: npm ci
-      - name: completeness_census_seed — structural validation (real gate, no live server needed)
-        run: npx tsx scripts/census/shad_darshana_gates/completeness_census_seed.ts
-
-  authority-basis-census-seed:
-    name: W0.6 item 5 — authority-basis census seed (item 44)
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: platform
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: platform/package-lock.json
-      - run: npm ci
-      - name: authority_basis_census_seed — enumeration + presence-detector validation (real gate, no live server needed)
-        run: npx tsx scripts/census/shad_darshana_gates/authority_basis_census_seed.ts
-
-  specificity-gate-v0-plan:
-    name: W0.6 item 1 — specificity_gate_v0 (PLAN mode)
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: platform
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: platform/package-lock.json
-      - run: npm ci
-      - name: specificity_gate_v0 — static registration census + call plan (no live calls)
-        run: npx tsx scripts/census/shad_darshana_gates/specificity_gate_v0.ts
-
-  tri-plane-no-dead-end-gate-plan:
-    name: W0.6 item 3 — tri_plane_no_dead_end_gate (PLAN mode)
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: platform
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: platform/package-lock.json
-      - run: npm ci
-      - name: tri_plane_no_dead_end_gate — static registration census + call plan (no live calls)
-        run: npx tsx scripts/census/shad_darshana_gates/tri_plane_no_dead_end_gate.ts
-
-  mode3-single-route-gate-plan:
-    name: W0.6 item 6 — mode3_single_route_gate (PLAN mode)
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: platform
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: platform/package-lock.json
-      - run: npm ci
-      - name: mode3_single_route_gate — static registration check + call plan (no live calls)
-        run: npx tsx scripts/census/shad_darshana_gates/mode3_single_route_gate.ts
+      - name: items 1/3/4/5/6 — census seeds + PLAN-mode registration gates
+        # items 4 and 5 (completeness / authority-basis census seeds) are FULL real
+        # gates with teeth even here — they need no live server (CLAUDE.md §N.7).
+        # items 1, 3 and 6 are PLAN mode: static registration census + call plan.
+        run: |
+          failed=""
+          run_gate() {
+            echo "::group::$1"
+            if npx tsx "scripts/census/shad_darshana_gates/$2"; then
+              echo "PASS  $1"
+            else
+              echo "FAIL  $1"
+              failed="$failed\n  - $1"
+            fi
+            echo "::endgroup::"
+          }
+          run_gate "item 4 — completeness_census_seed (registry 1-44 + E1-E8)" completeness_census_seed.ts
+          run_gate "item 5 — authority_basis_census_seed (item 44)"            authority_basis_census_seed.ts
+          run_gate "item 1 — specificity_gate_v0 (PLAN)"                       specificity_gate_v0.ts
+          run_gate "item 3 — tri_plane_no_dead_end_gate (PLAN)"                tri_plane_no_dead_end_gate.ts
+          run_gate "item 6 — mode3_single_route_gate (PLAN)"                   mode3_single_route_gate.ts
+          if [ -n "$failed" ]; then
+            printf 'W0.6 PLAN-mode gates FAILED:%b\n' "$failed" >&2
+            exit 1
+          fi
+          echo "All five W0.6 PLAN-mode gates passed."
 
   live-gates:
     # Mirrors elev-serving-gates.yml's own `serving-gates-live` job precedent exactly:

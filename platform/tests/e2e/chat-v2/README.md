@@ -53,9 +53,20 @@ As R6.4 → R6.6 → R6.2 → R6.3 land in sequence, additional tests flip green
 
 ## CI status
 
-The `chat-v2 smoke / smoke` workflow at `.github/workflows/chat-v2-smoke.yml` runs on PRs touching chat-v2 paths. Until `SMOKE_SESSION_COOKIE` and `SMOKE_CHART_ID` are provisioned as GitHub Actions secrets, the spec skips in CI and the workflow exits 0 vacuously. Local operator runs are the binding gate today.
+`round6-walkthrough.spec.ts` runs in CI as part of **Stage 3 — E2E (Chromium)** of
+`.github/workflows/chat-v2-ci.yml`, which executes the whole `tests/e2e/chat-v2` directory
+against `--config=tests/e2e/chat-v2/playwright.config.ts`.
 
-R7 follow-up: provision secrets and flip the workflow to required-check.
+> **Corrected 2026-07-31 (CI efficiency audit).** This section previously pointed at a
+> separate `.github/workflows/chat-v2-smoke.yml` and said the spec "skips in CI and the
+> workflow exits 0 vacuously" pending `SMOKE_SESSION_COOKIE` / `SMOKE_CHART_ID`. Both of
+> those statements were wrong by the time they were read: the two secrets **are** provisioned
+> in this repo, so the workflow was not skipping — it was running and **failing on every
+> single run** since at least 2026-07-21, across four unrelated branches. The cause was that
+> it invoked the spec *without* `--config=tests/e2e/chat-v2/playwright.config.ts`, so it
+> loaded the repo-default Playwright config. That workflow has been deleted; Stage 3 already
+> runs the same spec with the correct config, green, and the three path globs only
+> chat-v2-smoke watched were folded into `chat-v2-ci.yml`.
 
 ## Troubleshooting
 

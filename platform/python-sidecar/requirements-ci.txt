@@ -1,0 +1,63 @@
+# CI-ONLY dependency set for the `pytest — pyjhora_adapter + pipeline` gate in
+# .github/workflows/ci.yml (job: governance-gates).
+#
+# WHY THIS FILE EXISTS (CI efficiency audit, 2026-07-31)
+# `pip install -r requirements.txt` took 145s of the governance-gates job's 435s,
+# because the runtime set pulls sentence-transformers (→ torch, ~2GB), ragas,
+# google-cloud-aiplatform, openai, anthropic and tiktoken — none of which the
+# DB-free CI test suite imports. This file is the subset the suite actually needs.
+#
+# THIS FILE DOES NOT REPLACE requirements.txt. The sidecar service still installs
+# the full runtime set; only the CI test gate uses this one. If a test starts
+# failing on ModuleNotFoundError, the fix is to add the module HERE (and confirm
+# it is in requirements.txt too) — never to point CI back at the full file.
+#
+# Derived by an import census over platform/python-sidecar/**/*.py, then VERIFIED
+# by running the exact CI pytest invocation in a clean venv against this file and
+# confirming an identical pass/skip/deselect count vs. the full requirements.txt.
+# Re-verify the same way if you change it.
+
+# ── Chart computation engine ──
+PyJHora==4.8.6
+pyswisseph==2.10.3.2
+
+# ── Core numerics / data ──
+numpy>=2.1.1
+scipy>=1.13.0
+python-dateutil>=2.9.0
+
+# ── Service + model layer (imported by pipeline/services modules under test) ──
+fastapi==0.115.0
+pydantic==2.9.0
+python-dotenv==1.0.1
+# starlette.testclient (test_panchanga_get.py, test_permission_curve_route.py)
+# refuses to import without httpx. NOTE: httpx is absent from requirements.txt —
+# it arrives there transitively via google-cloud-aiplatform/openai. Pinning it
+# explicitly here is what keeps those two modules collectable under the slim set.
+httpx>=0.27
+
+# ── Geo/timezone stack ──
+# NOT imported by sidecar code directly — PyJHora imports these internally at
+# module load, so dropping them breaks collection of every chart-touching test.
+# Found by running the suite, not by grepping our own sources. Do not remove.
+pytz>=2024.1
+geopy>=2.4.1
+geocoder>=1.38.1
+timezonefinder>=6.5.2
+
+# ── Database drivers (imported at module scope; tests skip without DATABASE_URL) ──
+psycopg[binary]>=3.2
+psycopg2-binary>=2.9
+asyncpg>=0.29
+pgvector>=0.3.0
+
+# ── Graph + config ──
+networkx>=3.2
+pyyaml>=6.0
+
+# ── Test runner ──
+# No pytest-xdist. It was tried and reverted as UNPROVEN: this runner's pytest wall
+# time varies 285s..422s for the identical serial command, which is wider than the
+# effect, so the single xdist sample (323s) settled nothing. See the ci.yml pytest
+# step comment before re-adding — it needs multiple samples per arm, not one.
+pytest>=8.0

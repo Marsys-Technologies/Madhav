@@ -38,6 +38,13 @@ on:
       - 'platform/src/lib/pipeline/no_leakage_filter.ts'
       - 'platform/src/lib/retrieval/registry/**'
 
+# CI efficiency audit (2026-07-31): no workflow in this repo had a concurrency
+# group, so every push to a PR branch stacked a full new set of runs while the
+# superseded ones kept burning runner minutes. Pure check workflow — safe to cancel.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   NODE_VERSION: '20'
 

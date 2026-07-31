@@ -13,6 +13,18 @@ on:
   # changing push/pull_request behavior for any other job in this file.
   workflow_dispatch:
 
+# CI efficiency audit (2026-07-31): no workflow in this repo had a concurrency
+# group, so every push to a PR branch stacked a full new set of runs while the
+# superseded ones kept burning runner minutes.
+#
+# cancel-in-progress is deliberately FALSE on main: deploy.yml triggers on this
+# workflow's `workflow_run` completion, so cancelling a main run would swallow the
+# deploy that run was supposed to gate. On PR branches (the force-push/rebase churn
+# this is actually aimed at) superseded runs are cancelled.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
 jobs:
   typecheck:
     name: TypeScript (src only)
@@ -370,6 +382,12 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+          # CI efficiency audit (2026-07-31): the sidecar install below was 145s of
+          # this job's 435s, uncached on every run. Caching keyed on both requirement
+          # files so a change to either invalidates correctly.
+          cache: 'pip'
+          cache-dependency-path: |
+            platform/python-sidecar/requirements-ci.txt
 
       - name: Install Python dependencies
         run: pip install pyyaml pytest
@@ -466,8 +484,30 @@ jobs:
         # is a positional-arg scope, not a repo-wide discovery, so a whole test package sat
         # invisible to CI. Added as a second positional arg; verified green standalone and in
         # combination with tests/ before landing here.
+        #
+        # CI efficiency audit (2026-07-31) — two changes, both count-verified:
+        #   1. requirements.txt → requirements-ci.txt. The runtime file pulls
+        #      sentence-transformers (→ torch), ragas, google-cloud-aiplatform, openai,
+        #      anthropic and tiktoken, none of which this suite imports; the install was
+        #      145s. The CI file is the verified subset (10s). See its header before
+        #      editing — geopy/geocoder/timezonefinder/pytz are NOT dead entries, PyJHora
+        #      imports them internally, and httpx is required by starlette.testclient.
+        #   2. NO pytest-xdist — tried, then reverted as UNPROVEN (not as disproven).
+        #      `-n 4 --dist loadfile` was 2.9x faster locally (226s -> 78s). Three CI
+        #      samples of the identical suite (4647 passed / 12 skipped every time):
+        #          285.77s  serial, full reqs   (run 30587431953)
+        #          323.49s  xdist -n 4          (run 30594499554)
+        #          422.22s  serial, slim reqs   (run 30595102066)
+        #      Serial alone spans 285s..422s, and the xdist sample sits INSIDE that
+        #      range — so this runner's variance is larger than the effect being
+        #      measured, and n=1 per arm proves nothing either way. Reverted because
+        #      unproven complexity is not worth carrying, NOT because xdist is slower.
+        #      To settle it, run each arm several times and compare medians; do not
+        #      re-add (or re-reject) on a single sample.
+        # Verified in a clean venv against the slim file: 4647 passed, 12 skipped,
+        # 7 subtests passed — identical to the pre-change run. Any drift is a regression.
         run: |
-          pip install -r platform/python-sidecar/requirements.txt --quiet
+          pip install -r platform/python-sidecar/requirements-ci.txt --quiet
           cd platform/python-sidecar
           pytest tests/ bodha_writers/__tests__ \
             --ignore=tests/test_pyjhora_adapter \
