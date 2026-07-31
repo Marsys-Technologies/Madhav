@@ -71,7 +71,26 @@ def strip_lel_citations(text: str) -> str:
       - '(LEL EVT.YYYY ...)' parenthetical blocks
       - 'per LEL...' phrases up to period
       - bare 'LEL EVT.YYYY' fragments
-      - any remaining sentence/clause containing 'LEL' (catch-all)
+      - any remaining sentence still containing 'LEL' (catch-all)
+
+    NARRATION FIDELITY FIX (SAMAPTI B-NAR-PH, P2 :211 re-derived — see
+    tests/test_nar_ph_l4_anchors.py). The catch-all used to be
+    `[^.]*\\bLEL\\b[^.]*(?:\\.|$)`, which treats ANY bare '.' as a sentence
+    end — including periods inside a mid-sentence identifier like
+    'PATTERN.ACROPHOBIA.01'. Live production catalog data hit exactly this:
+    ANC.HLTH.2026.01's note reads "...Active LEL chronic patterns: headaches,
+    acrophobia (PATTERN.ACROPHOBIA.01)." — the old regex stopped at the first
+    period inside "PATTERN.ACROPHOBIA", leaking "ACROPHOBIA.01)." (private
+    health information, sourced from LEL) into the served notes field. This
+    was a live C2-002 privacy violation in the very function meant to
+    prevent it, not merely a cosmetic residue.
+
+    Fixed by splitting on REAL sentence boundaries only — a '.'/'!'/'?'
+    followed by whitespace or end-of-string, never a bare mid-token period —
+    then dropping any whole sentence that still contains 'LEL'. A trailing
+    dangling-space artifact left by the parenthetical strip (e.g.
+    "...native's US move ." from ANC.CAREER.2027.01, the original :211
+    pointer) is also tidied.
     """
     if not text:
         return text
@@ -81,8 +100,15 @@ def strip_lel_citations(text: str) -> str:
     cleaned = re.sub(r'\bper LEL\b[^.]*\.?', '', cleaned, flags=re.IGNORECASE)
     # Strip bare 'LEL EVT.XXXX' fragments not already caught
     cleaned = re.sub(r'\bLEL\s+EVT\.[^\s,;)]+', '', cleaned, flags=re.IGNORECASE)
-    # Catch-all: remove any remaining clause/sentence still containing 'LEL'
-    cleaned = re.sub(r'[^.]*\bLEL\b[^.]*(?:\.|$)', '', cleaned, flags=re.IGNORECASE)
+    # Catch-all: drop any WHOLE SENTENCE that still contains 'LEL'. Sentence
+    # boundary = a '.'/'!'/'?' followed by whitespace (or end of string) —
+    # NOT every bare period, so a mid-sentence identifier cannot fool this
+    # into truncating before the leak is fully removed.
+    sentences = re.split(r'(?<=[.!?])\s+', cleaned)
+    cleaned = ' '.join(s for s in sentences if 'lel' not in s.lower())
+    # Tidy a dangling space-before-punctuation artifact the parenthetical
+    # strip can leave behind (e.g. "...move ." → "...move.").
+    cleaned = re.sub(r'\s+([.,;:])', r'\1', cleaned)
     # Collapse multiple spaces
     return re.sub(r'  +', ' ', cleaned).strip()
 

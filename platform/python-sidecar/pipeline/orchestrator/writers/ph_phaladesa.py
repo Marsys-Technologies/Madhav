@@ -66,11 +66,18 @@ _ANCHOR_TO_PHALADESA_DOMAIN: dict[str, str] = {
 # deterministic method is recorded inside narration_jsonb.
 _NARRATION_METHOD = "deterministic_template_v1"
 
+# F18 fix (SAMAPTI B-NAR-PH, seed F18 CONFIRMED §3): _ALL_DOMAINS (engine.py) is the
+# authoritative emission set. Before this fix, 'transition' — a real _ALL_DOMAINS
+# member — had no entry here, so the `.get(domain, domain)` fallback in
+# _build_deterministic_narration emitted the raw slug "transition" mid-sentence
+# instead of a proper label; 'general' had an entry but is never emitted by
+# _ALL_DOMAINS (dead config, kept below — harmless, and removing it is not what
+# the finding is about). _DOMAIN_LABEL must cover every _ALL_DOMAINS member.
 _DOMAIN_LABEL: dict[str, str] = {
     'career': 'career and profession', 'wealth': 'wealth and finances',
     'health': 'health and vitality', 'relationship': 'relationships and marriage',
     'spirituality': 'spirituality and dharma', 'character': 'character and psychology',
-    'general': 'general life-arc',
+    'transition': 'transition and change', 'general': 'general life-arc',
 }
 
 
@@ -357,6 +364,15 @@ class PhPhaladesakWriter(WriterBase):
                         s.malleability    = r.get('malleability')
                         s.pramana_window_status = r.get('pramana_status')
                         s.evidence_type         = r.get('pramana_evidence_type')
+                        # P1-b fix (SAMAPTI B-NAR-PH): pa.precedent_refs_jsonb and
+                        # pa.contradiction_jsonb are SELECTed above (:317-321) but were
+                        # never assigned onto the summary — so PhaladosaRecord.contradiction_
+                        # summary_jsonb / precedent_refs_jsonb were always None and the
+                        # narration builder's "N contradiction signal(s)" branch
+                        # (_build_deterministic_narration :121-125) was dead code on every
+                        # build, regardless of real phala_anchors data.
+                        s.precedent_refs_jsonb  = r.get('precedent_refs_jsonb')
+                        s.contradiction_summary = r.get('contradiction_jsonb')
         except Exception as exc:
             logger.debug("ph_phaladesa: domain summaries load skipped: %s", exc)
         return summaries

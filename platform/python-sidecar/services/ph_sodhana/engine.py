@@ -35,7 +35,19 @@ __all__ = [
     'derive_sodhana_flags',
 ]
 
-# G-LADDER ceiling formula (mirrors ph_nimitta engine.py)
+# G-LADDER ceiling formula. NARRATION FIDELITY (SAMAPTI B-NAR-PH, P2 :38): a
+# prior version of this comment claimed shared authorship with ph_nimitta's
+# confidence model — stale since BA-P5B (2026-07-04, commit ab99ada1), when
+# ph_nimitta REPLACED its G-LADDER confidence_range model with a structured
+# posterior (base_rate × promise_lift × activation_lift × trigger_lift ×
+# robustness_mod; see services/ph_nimitta/engine.py module docstring).
+# ph_sodhana's copy of the formula was never updated to track that change and
+# has been this detector's OWN independent QA ceiling ever since — it has not
+# tracked any live ph_nimitta computation for months. Kept as ph_sodhana's own
+# heuristic (a structural rewrite to align the two is out of this lane's
+# one-function scope); the outdated cross-reference is removed here so a
+# reader does not assume this ceiling still tracks ph_nimitta's actual
+# confidence-generating model.
 _LADDER_FLOORS = [0.50, 0.55, 0.60, 0.65, 0.70, 0.75, 0.80]  # n=1..6+
 _ROBUSTNESS_FACTOR_MIN = 0.80
 _ROBUSTNESS_FACTOR_MAX = 1.00
@@ -134,13 +146,32 @@ def detect_confidence_inflation(anchor: AnchorRow) -> Optional[SodhanaRecord]:
 
 
 def detect_magnitude_drift(anchor: AnchorRow) -> Optional[SodhanaRecord]:
-    """Magnitude label must be consistent with convergence_score quartile."""
+    """
+    Magnitude label consistency check.
+
+    NARRATION FIDELITY (SAMAPTI B-NAR-PH, P2 :136): the docstring previously
+    claimed this checks magnitude against "convergence_score quartile" — the
+    phala_anchors.confidence formula's actual third factor
+    (score = dasha_quality × signal_strength × convergence_score). It does not.
+    AnchorRow carries only `convergence_id` (a kala_convergence FK), never the
+    raw convergence_score value — wiring the real score in requires a join in
+    the ph_sodhana WRITER (pipeline/orchestrator/writers/ph_sodhana.py), a file
+    this engine-only lane does not own (§4.0: one file → one lane; flagged as
+    an out-of-lane residual, not attempted here). So this detector uses
+    confidence_high as a PROXY signal instead — an honest, in-lane, one-function
+    fix: the docstring now says so, and the returned record's
+    derivation_ledger_jsonb carries an explicit `check_basis` key naming the
+    substitution, so no downstream consumer of the 'magnitude_drift' anomaly can
+    mistake this for a genuine convergence_score check.
+    """
     mag = (anchor.magnitude or '').lower()
     if mag not in _MAGNITUDE_THRESHOLDS:
         return None
-    # We can't check convergence_score directly (not in AnchorRow), so check
-    # the inverse: if magnitude='pivotal' but confidence_high is below the pivot threshold,
-    # the magnitude claim is inconsistent with the confidence range.
+    # Proxy check (see docstring above): confidence_high stands in for the
+    # convergence_score this engine cannot see. If magnitude claims a high tier
+    # but confidence_high sits well below the tier's threshold, flag the
+    # inconsistency — honestly labelled as a proxy-basis finding, not a
+    # convergence_score-basis one.
     conf_high = float(anchor.confidence_high or 0.0)
     threshold = _MAGNITUDE_THRESHOLDS[mag]
     if threshold > 0 and conf_high < threshold * 0.80:
@@ -154,9 +185,13 @@ def detect_magnitude_drift(anchor: AnchorRow) -> Optional[SodhanaRecord]:
             leakage_class=None,
             recommendation_text=(
                 f'Anchor claims magnitude={mag!r} but confidence_high={conf_high:.3f} is well below '
-                f'the {mag} threshold ({threshold:.2f}). Downgrade magnitude or verify convergence evidence.'
+                f'the {mag} threshold ({threshold:.2f}). Downgrade magnitude or verify convergence evidence. '
+                '(Basis: confidence_high proxy, not a direct convergence_score check — see check_basis.)'
             ),
-            derivation_ledger_jsonb={'anchor_id': anchor.anchor_id, 'magnitude': mag, 'conf_high': conf_high},
+            derivation_ledger_jsonb={
+                'anchor_id': anchor.anchor_id, 'magnitude': mag, 'conf_high': conf_high,
+                'check_basis': 'confidence_high_proxy_not_convergence_score',
+            },
             source_citation=f'ph_sodhana/magnitude_drift/{anchor.anchor_id}',
         )
     return None
