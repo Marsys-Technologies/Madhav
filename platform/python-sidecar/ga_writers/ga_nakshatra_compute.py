@@ -181,6 +181,31 @@ def compute_center_of_gravity(
     return {"terminus_body": top_body, "chain_count": top_count}
 
 
+def compute_cross_ayanamsha_agreement(nak_ids: list[float]) -> tuple[int, int]:
+    """
+    NAR-GA fix (P2 :289 in ga_nakshatra.py). Returns (agree_cnt, total_ay) for
+    the nak_5ay_consistency fact — how many of the (usually 5) sidereal
+    ayanamsha computations for one graha agree on the same nakshatra id.
+
+    Prior defect: the writer computed `agree_cnt = total_ay if len(unique) == 1
+    else 0` — a full collapse to a literal 0 the instant ANY ayanamsha
+    disagreed, even when e.g. 4 of 5 shared the same nakshatra. That 0 is
+    narrated verbatim by registry_bridge.ts's readCrossAyanamshaFamily as
+    "holds the SAME nakshatra in 0 of the 5 sidereal ayanamshas" — a false
+    report of zero agreement when substantial (4/5) agreement existed.
+
+    agree_cnt is the size of the largest agreeing subset (the mode count of
+    nak_ids) — honest for the unanimous case (== total_ay), for every partial
+    case, and for total disagreement (mode count == 1, not 0).
+    """
+    from collections import Counter
+    total_ay = len(nak_ids)
+    if not nak_ids:
+        return 0, 0
+    agree_cnt = Counter(nak_ids).most_common(1)[0][1]
+    return agree_cnt, total_ay
+
+
 def _self_check() -> None:
     # KP: Purva Bhadrapada (nakshatra 25, lord=Jupiter)
     # PBP spans from 24×13.333...° = 320° to 333.333°
@@ -196,5 +221,12 @@ def _self_check() -> None:
     # Tara: Moon in PBP (nak 25), body in PBP (nak 25) → count=1 → Janma
     t = compute_tara(25, 25)
     assert t["tara_name"] == "Janma"
+
+    # Cross-ayanamsha agreement: 4 of 5 share id 25.0, one is 26.0 —
+    # agree_cnt must be 4 (the majority), never 0.
+    agree_cnt, total_ay = compute_cross_ayanamsha_agreement([25.0, 25.0, 25.0, 25.0, 26.0])
+    assert (agree_cnt, total_ay) == (4, 5), (
+        f"Expected (4, 5) for 4-of-5 partial agreement, got ({agree_cnt}, {total_ay})"
+    )
 
 _self_check()

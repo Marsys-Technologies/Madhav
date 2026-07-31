@@ -21,6 +21,7 @@ from ga_writers.ga_nakshatra_emitters import (
     emit_dispositor_graph, emit_tara_bala, emit_statistics,
     PLANET_TO_SUBJECT,
 )
+from ga_writers.ga_nakshatra_compute import compute_cross_ayanamsha_agreement
 from pyjhora_adapter.compute import compute_chart
 from pyjhora_adapter.version import ENGINE_VERSION
 
@@ -389,16 +390,23 @@ class NakshatraWriter(WriterBase):
                     body_naks.setdefault(subj, []).append(float(val_num))
 
             for body, nak_ids in body_naks.items():
-                unique    = set(nak_ids)
-                total_ay  = len(nak_ids)
-                agree_cnt = total_ay if len(unique) == 1 else 0
+                unique = set(nak_ids)
+                # NAR-GA fix (P2 :289): agree_cnt previously collapsed to a
+                # literal 0 the instant ANY of the 5 ayanamshas disagreed — so
+                # 4/5 agreement narrated as "0 of the 5 sidereal ayanamshas"
+                # via registry_bridge.ts's readCrossAyanamshaFamily, a false
+                # report of zero agreement when substantial agreement existed.
+                # compute_cross_ayanamsha_agreement returns the size of the
+                # largest agreeing subset (the mode count), honest for both
+                # the unanimous case and every partial-agreement case.
+                agree_cnt, total_ay = compute_cross_ayanamsha_agreement(nak_ids)
                 rows.append({
                     "chart_id": chart_id, "ayanamsha_id": "INVARIANT",
                     "build_id": build_id,
                     "fact_category": "nakshatra_cross_ayanamsha",
                     "fact_subject": body,
                     "fact_key": "nak_5ay_consistency",
-                    "fact_value_text": f"{total_ay if len(unique)==1 else agree_cnt}/{total_ay}",
+                    "fact_value_text": f"{agree_cnt}/{total_ay}",
                     "fact_value_num": None,
                     "source_calculation": "ga_nakshatra:cross_ayanamsha",
                 })
