@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.47
+version: 6.48
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,15 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.48 (2026-07-31, SAMĀPTI campaign close — CLOSED PARTIAL): full account in the new banner
+    immediately above and in `00_ARCHITECTURE/briefs/samapti/SAMAPTI_CLOSE_REPORT_v1_0.md` (the
+    terminal deliverable, with the complete 4-way disposition table this summary doesn't repeat).
+    Headline facts: crown re-verified live at close; 18 production merges (17 clean + 1
+    self-inflicted-and-recovered); all 4 RULING-73-CLOSE integrity residuals closed; mid-run native
+    redirect stopped all Kāla-layer work and handed it to ṢAḌ-DARŚANA as a spec; a live credential
+    exposure remains unmerged (`B-SECRET-REDACT` #905) and is flagged for immediate native
+    decision, not buried in routine backlog. `SAMAPTI_DVARAPALA_LEDGER.md` carries 86 individual
+    rulings; `SAMAPTI_MERGE_LEDGER.md` carries the full per-merge deploy-verification record.
   - v6.47 (2026-07-29, SATYA-DĪPA close — "Make `lit` Mean Lit"): **The orchestrator's no-op-
     completion promotion predicate now verifies substep-plan completeness before promoting to
     `lit`, closing the defect flagged NEW-not-fixed at the end of v6.46.** Fix: `asset_runner.py`'s
@@ -5566,6 +5575,43 @@ block (post-rebuild era), and proceeds.
 
 ## §2 — Canonical state block
 
+> 🟡 **CLOSED — PARTIAL (2026-07-31, SAMĀPTI campaign close, session SAMAPTI-CLOSE-2026-07-31) —
+> a fully-autonomous tick-swarm campaign closing every open item across the ŚUDDHA-VĀCA ·
+> SATYA-DĪPA · PARKED-FINDINGS · PARIPRAŚNA arc, closed deliberately PARTIAL mid-run on a native
+> strategic redirect, not a scope failure.** The crown holds, live, re-verified fresh at close time:
+> `graha_portrait` for the canonical chart (482012f1) returns, verbatim, "Sun = 5th lord for Aries
+> lagna. Shadbala: 8.47 rupas vs 5.00 required — grade: strong (surplus) (+3.47 rupas)." **18 real
+> production merges landed this campaign** (17 successful + 1 self-inflicted deploy failure caught
+> and reverted within the hour — a comment-only migration-header edit collided with this same
+> campaign's own newly-landed hash-integrity guard; production was never degraded), every one
+> individually rebased, CI-verified, and Cloud-Run-health-verified before the next. **Closes all 4
+> integrity residuals from DVA RULING 73-CLOSE**: 7 applied-but-missing migration files explained
+> (6 were `git mv`-renamed into `platform/migrations/_archive/` by the Legacy Teardown, not
+> deleted — byte-recoverable, correctly left un-restored; the 7th was a genuine renumber-hazard
+> double-apply); 4 unexplained hash mismatches dispositioned (3 immaterial, 1 real bug —
+> `294_ga_vastu_target_floor.sql` filtered on a table name instead of an asset_id, fixed forward by
+> migration 498); the `workflow_dispatch` CI-bypass (observed 3× total across this campaign) closed
+> on both its halves while preserving emergency-override capability behind an explicit two-act
+> confirmation; the filename-keyed migration-renumber tracker hazard closed with a dual raw-sha256
+> + comment-normalized `sql_identity` guard. **Mid-run native strategic redirect (binding,
+> superseding this campaign's own Rulings 7/8 on the point):** SAMĀPTI stops auditing/fixing/
+> rebuilding the Kāla (L3) layer while ṢAḌ-DARŚANA actively rewrites it into a six-views
+> architecture — that code has a scheduled expiry, and the concurrency was itself the source of
+> this run's migration-number races and shared-checkout near-misses. The in-flight
+> `ka_gochara_sweep` rebuild dispatch was cancelled clean (verified zero corruption:
+> `1c826d5a` 209/303 substeps intact, no partial rows) and every Kāla-touching finding (7 files +
+> the B-NAR-TS `kala_temporal.ts` slice + the full gochara root-cause diagnosis) was handed to
+> ṢAḌ-DARŚANA as a written spec (`SAMAPTI_KALA_HANDOVER_v1_0.md`, delivered to both campaigns'
+> brief directories), never as code. **Security item requiring native attention, not silently
+> carried as backlog:** 3 live production DB credential incidents were found earlier this
+> campaign (one authenticating as Postgres SUPERUSER); rotation was NOT executed (out of this
+> run's authorization) and the VER-CONFIRMED redaction fix (`B-SECRET-REDACT`, PR #905) was NOT
+> merged this run — plaintext credentials remain in the tracked repo until it lands. Full
+> four-way disposition table (VERIFIED-FIXED / PARKED-HONEST / HANDED-OVER / NOT-APPLICABLE) over
+> every register item and lane: `00_ARCHITECTURE/briefs/samapti/SAMAPTI_CLOSE_REPORT_v1_0.md`. The
+> shared checkout is retired as a build surface effective this close
+> (`00_ARCHITECTURE/WORKTREE_ISOLATION_PROTOCOL_v1_0.md`). See changelog v6.48.
+
 > 🟠 **SHIP-DEGRADED (2026-07-29, PARIPRAŚNA BUILD campaign, PB-3 SAMĪKṢĀ wave close, session
 > PB-3-GATE-CLOSE-2026-07-29) — a separate, fully-autonomous campaign (`CAMPAIGN_PB_MASTER_BRIEF_v1_0.md`)
 > operating in its own territory (`platform/src/app/api/pariprashna/**`,
@@ -8578,6 +8624,41 @@ current_state:
 ---
 
 ## §3 — Narrative (human-reading surface — must agree with §2)
+
+At the close of **SAMAPTI-CLOSE-2026-07-31 — SAMĀPTI campaign closed PARTIAL on a mid-run native
+strategic redirect**:
+
+**Campaign summary.** SAMĀPTI's tick-swarm run landed 18 real production merges (17 clean, 1
+self-inflicted deploy failure — a comment-only migration-header edit colliding with the
+campaign's own newly-landed hash-integrity guard — caught and reverted within the hour, zero
+degradation). All 4 DVA RULING-73-CLOSE integrity residuals closed (7 missing-migration files
+explained, 4 hash mismatches dispositioned with one real bug fixed forward via migration 498, the
+`workflow_dispatch` bypass closed on both halves, the filename-keyed renumber-tracker hazard
+closed with a dual-hash guard). Crown re-verified live at close: `graha_portrait` on 482012f1
+still returns the exact target Ṣaḍbala string.
+
+**The redirect.** Mid-run, the native directed SAMĀPTI to stop all Kāla (L3) layer work — audit,
+fix, and rebuild — because ṢAḌ-DARŚANA is actively rewriting that layer into a six-views
+architecture, and the concurrency itself was generating migration-number races and shared-checkout
+near-misses. The in-flight `ka_gochara_sweep` rebuild was cancelled cleanly (verified: no
+corruption, 209/303 substeps intact on the operator chart) and every Kāla-touching finding was
+handed to ṢAḌ-DARŚANA as a written spec (`SAMAPTI_KALA_HANDOVER_v1_0.md`), never as code. A small
+"protective set" (governance/integrity guards disjoint from Kāla structure) landed instead — the
+stated principle: a guard landed BEFORE the rewrite means the new layer is born under it; a guard
+landed after means re-auditing new code for old sins.
+
+**Open items, named not dropped.** Full four-way disposition table (VERIFIED-FIXED /
+PARKED-HONEST / HANDED-OVER / NOT-APPLICABLE) covering every register item and lane in
+`SAMAPTI_CLOSE_REPORT_v1_0.md`. The single most important open item: a live production credential
+exposure (3 incidents found earlier this campaign, one SUPERUSER-privileged) has a VER-CONFIRMED
+redaction fix (#905) NOT YET MERGED — flagged for immediate native decision, not routine backlog.
+
+**Governance.** `00_ARCHITECTURE/WORKTREE_ISOLATION_PROTOCOL_v1_0.md` retires the shared checkout
+as a build surface effective this close. 79→48 worktrees pruned this session (all removals
+independently PR-merge-verified before deletion). `SAMAPTI_DVARAPALA_LEDGER.md` carries 86
+individual rulings; `SAMAPTI_MERGE_LEDGER.md` the full per-merge deploy-verification record.
+
+*(Below: retained narrative from prior session L3-CLOSEOUT-DOCS for audit trail.)*
 
 At the close of **L3-CLOSEOUT-DOCS (2026-06-21) — L3 SEALED + closed-out; NEXT = L4 Phala**:
 
