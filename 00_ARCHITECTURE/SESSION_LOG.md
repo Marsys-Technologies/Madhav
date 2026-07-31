@@ -34974,3 +34974,142 @@ no re-verification needed. Kāla-layer work (the handover in `SAMAPTI_KALA_HANDO
 resumes only after ṢAḌ-DARŚANA's six-views transformation settles.
 
 *End of SAMAPTI-CLOSE-2026-07-31 entry.*
+
+## NIHSHESHA-CLOSE-2026-07-31 — NIḤŚEṢA campaign close (SAMĀPTI wrap-up, "leaving no remainder")
+
+```yaml
+session_open:
+  session_id: NIHSHESHA-CLOSE-2026-07-31
+  campaign: NIḤŚEṢA — final wrap-up campaign after SAMĀPTI closed CLOSED-PARTIAL. Close every
+    remaining closeable item; consolidate what genuinely isn't into ONE tracked register.
+    Fully autonomous, no human gates (Conductor + parallel builders + one Verifier + one
+    Dvārapāla, isolated worktrees, same standing rails as SAMĀPTI).
+  may_touch: "00_ARCHITECTURE/briefs/nihshesha/** (new); SAMAPTI_KALA_HANDOVER_v1_0.md (§4-ADDENDUM
+    only); 00_ARCHITECTURE/SESSION_LOG.md, CURRENT_STATE_v1_0.md, CLAUDE.md (this close); every
+    lane's own declared file scope per the merge backlog; migration files (numbers allocated fresh
+    at merge time)"
+  must_not_touch: "kala_*, l3_*, ka_*, gochara_* (ṢAḌ-DARŚANA's — hand over as spec only, never as
+    code); any credential rotation (native classified SECURE/accepted risk — PR #905 merges as
+    ordinary hygiene ONLY, not P0); any PARISHODHANA branch/worktree/PR; .mcp.json,
+    CONDUCTOR_HALT_LOG.md (unknown provenance)"
+```
+
+NIḤŚEṢA picked up immediately after SAMĀPTI's CLOSED-PARTIAL close and drained the VER-confirmed
+merge backlog that close report left queued. Six parallel investigative tracks ran concurrently
+with a serial merge-lock drain:
+
+**Track A (PB-3.1 prediction loop).** G1 was already merged before this session (#902). G2/G3
+(#895 — cron secret + CI DB-integration un-skip), G4/G5 (#925 — one outcome map + a calibration
+leak guard that can fire), G6 (#920 — kāla-rekhā UI mount, independently re-verified by a builder
+summary track before merging), and G8 (#927 — byte-equality gate) were each rebased through a
+moving `main`, resolved through two genuine merge conflicts (a CI-step ordering conflict in
+`ci.yml`, an env-block conflict in `samiksha-daily.yml`), and merged or merge-armed. The one
+genuinely open item is C4-LOOP-LIVE-PROOF — a real, live, end-to-end proof of the loop — which
+cannot honestly be attempted until the merge-armed lanes above are confirmed *deployed*, not
+merely merged; this is named as the #1 item in the new consolidated backlog, not silently dropped.
+
+**Tracks B/C/D/E/F/G (parallel investigation).** B chased down SV-3..7: SV-3/SV-4/SV-7 were
+NOT-APPLICABLE (no second instance of the defect class exists; nothing to fix), SV-5
+(`mi_darshana.py` narration gap) and SV-6 (`mi_gunanaka.py` UUID-subscript bug) were real defects,
+fixed and tested. C completed FC-4's 4th sub-audit (runner.py/staleness.py/dag_edge_guard.py/
+service_probes.py) and found nothing further needing a fix — the module-level-import defect class
+was already fully closed by the prior B-N8-SWEEPFIX lane. D re-diagnosed two previously-parked PRs
+properly rather than repeating the reopen cycle: B-N8-FIX (#952) was a genuinely stale white-box
+test mock, fixed and merged; B-SECRETSCAN-SCOPE (#911) had a confused *local, never-pushed*
+worktree, but the actual PR branch was untouched — rebuilt cleanly, mutation-tested, merge-armed.
+E confirmed worktree isolation is being observed by ṢAḌ-DARŚANA in practice (zero shad-darshana
+worktrees, ~130 recent commits show a clean branch→PR→merge flow throughout), pruned 39 confirmed-
+safe stale worktrees (68→43), and reconfirmed `satyadipa/orchestrator-lit-predicate` absent for a
+third time. F closed four standing investigations: the `chart_dashas` −52,084 delta's named
+truncation hypothesis was REFUTED and the real mechanism (a Kalachakra dasha-engine correctness
+fix, M-6, replacing a naive repeating walker with PyJHora's real classical engine) fully explained
+to the exact row; the MCP tool-count mismatch was live-reproduced and confirmed (124 authoritative,
+152/167 explained, fix already exists unmerged at #912); the deferred 19-PR-body recheck (Ruling
+41) was completed clean against all 24 currently-open lanes; INF-3's EXPLAINED disposition was
+re-confirmed and independently corroborated. G wrote real, independently-reproduced (not
+rubber-stamped) builder summaries for two PRs blocked on a missing write-up (#920, #922 — both
+confirmed correct and merge-ready) and found one task premise false (the "stale CI comment" fix
+for 6 test files assumed #895 had already merged; it had not yet, at investigation time — no false
+edit was made).
+
+**The one Kāla near-miss, caught and handled correctly.** Rebasing PR #909 (B-N8-TS-SERVE, four
+independent signal-earning fixes bundled in one commit) surfaced a hunk touching
+`platform-mcp/src/lib/kala_envelope.ts` (F-20: `freshness.stale` was structurally always `false`
+across the entire estate — a real, correctly-diagnosed defect). Per the hard scope boundary, this
+hunk was split OUT of the merge — the other three fixes (F-22/F-23/F-24, independent files, zero
+coupling once separated) were merged; F-20's code was withheld entirely and instead written into
+`SAMAPTI_KALA_HANDOVER_v1_0.md` as a new §4-ADDENDUM (PR #969), correcting that document's own
+prior "no specific defect found" note for this file. **No `kala_*`/`l3_*`/`ka_*`/`gochara_*` file
+was written to by this session** — this is the one case where the boundary was actually tested
+against a real, legitimate, already-written fix, and it held.
+
+**The credential item, closed by disposition, not by rotation.** PR #907 (a rotation-prep runbook,
+previously `status: UNRESOLVED-PENDING-NATIVE-EXECUTION`, `Priority: P0`) was not merged as-is — its
+live banner would have re-asserted a now-superseded urgency. It was amended with a new
+§9-NATIVE-DISPOSITION section recording the native's actual, binding instruction: the credentials
+are classified SECURE / accepted risk, no rotation is to be performed, and this is not to be
+re-raised as a P0. The technical analysis (§0-§8) is retained unedited as audit trail, per
+`ONGOING_HYGIENE_POLICIES §A` — only the priority/action conclusion is superseded, and by a new
+section, not by rewriting history. PR #905 (plaintext credential redaction, 27 files) merged
+separately and independently as ordinary hygiene, per explicit native instruction.
+
+**One PR closed outright, not merged.** #903 (an earlier A8-NAR-TRIAGE partition document) was
+found, on rebase conflict, to be superseded by an already-merged later reopen of the same document
+(#956, on `main` since earlier this campaign) — closed without merging, to avoid regressing the
+document back to its stale v1.0 content.
+
+**One PR deliberately parked against concurrent work, not forced.** #913 (F-29/F-30/F-31 CI-gate
+hardening) conflicts substantively with an actively-evolving, already-authoritative concurrent CI
+efficiency audit (PR #963/#964/#967/#968, extensively evidence-verified, still landing changes to
+the same file during this session). Forcing a resolution risked stomping on live concurrent work;
+parked honest, named for the next session or the audit's own owner to reconcile deliberately.
+
+Full disposition table (every NIḤŚEṢA-brief item and every surviving SAMĀPTI register ID) and the
+one consolidated backlog register replacing all scattered parks:
+`00_ARCHITECTURE/briefs/nihshesha/NIHSHESHA_CLOSE_REPORT_v1_0.md`.
+
+```yaml
+session_close:
+  session_id: NIHSHESHA-CLOSE-2026-07-31
+  campaign: NIḤŚEṢA
+  close_criteria_met: "Every closeable item closed (VERIFIED-FIXED, merged or merge-armed) or
+    correctly HANDED-OVER/PARKED-HONEST with a named resume condition. One item genuinely still
+    open (C4-LOOP-LIVE-PROOF), named #1 in the new consolidated backlog, not silently dropped.
+    No kala_*/l3_*/ka_*/gochara_* file written to. No credential rotated."
+  verification: "Every merge individually rebased onto the then-current origin/main immediately
+    before merging; CI watched to green (or fixed at root cause when genuinely red — #952, #911);
+    three real merge conflicts resolved on their actual merits (migration-number placeholder
+    allocated fresh per the Conductor rule, a clean 3-way F-20/F-22-24 split, one deliberate park).
+    Crown re-verified live via a direct graha_portrait call at report-writing time
+    (2026-07-31T14:49:25Z), not a historical citation."
+  deploy: "Deploy health independently verified after each of this session's own direct merges
+    (gcloud run revisions describe commit-sha matched the merge SHA each time). The larger
+    auto-merge-armed batch drains via GitHub's own serial merge-queue mechanism after this
+    session's active work concluded — each PR was CI-green or fixed at arm-time; see the
+    consolidated backlog item 12 for how to confirm a straggler is a queue-depth artifact, not
+    a new defect."
+  product_code_writes_made: "Yes — see the close report's disposition table for the complete
+    per-lane file scope. This close entry itself touches only 00_ARCHITECTURE/briefs/nihshesha/**
+    (new), SAMAPTI_KALA_HANDOVER_v1_0.md (§4-ADDENDUM only), and this SESSION_LOG/CURRENT_STATE/
+    CLAUDE.md entry."
+  native_chart_touched: false
+  current_state_updated: true
+  register_dispositions_flipped: "See NIHSHESHA_CLOSE_REPORT_v1_0.md §2/§3 for the complete
+    disposition table over every NIḤŚEṢA-brief item and every surviving SAMĀPTI register ID —
+    not restated here to avoid a second copy drifting out of sync with the authoritative one."
+  followups: "The ONE consolidated backlog register (NIHSHESHA_CLOSE_REPORT_v1_0.md §5) replaces
+    every scattered park across ŚUDDHA-VĀCA/SATYA-DĪPA/PB/SAMĀPTI close reports. Highest priority:
+    C4-LOOP-LIVE-PROOF. Kāla items (unchanged 7 files + kala_temporal.ts + gochara diagnosis, plus
+    this session's new kala_envelope.ts F-20 addition) remain ṢAḌ-DARŚANA's, spec-only."
+  next_session_objective: "Run C4-LOOP-LIVE-PROOF first — it is READY-FOR-EXECUTION, blocked only
+    on confirming this session's merge-armed PRs are deployed, not on any unresolved design
+    question. After that, the B-NAR-BO/GA/PH lanes (never dispatched, resume spec = PR #956's
+    45-path partition) and the small named F-13/F-15/F-16/F-17 residuals are the next cheapest
+    closeable items. Kāla-layer work continues to wait on ṢAḌ-DARŚANA's six-views transformation."
+```
+
+### Next session objective
+
+Run C4-LOOP-LIVE-PROOF first (the one item this close names as genuinely still open, blocked only
+on deploy confirmation, not design). Then the never-dispatched B-NAR-BO/GA/PH lanes and the small
+named bo_pramana_mapa/bo_chart_gestalt residuals. Kāla-layer work continues to wait on ṢAḌ-DARŚANA.

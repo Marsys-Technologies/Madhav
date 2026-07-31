@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.48
+version: 6.49
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,17 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.49 (2026-07-31, NIḤŚEṢA close — the SAMĀPTI wrap-up campaign): full account in the new
+    banner immediately above and in `00_ARCHITECTURE/briefs/nihshesha/NIHSHESHA_CLOSE_REPORT_v1_0.md`
+    (the terminal deliverable, full disposition table + one consolidated backlog register).
+    Headline facts: drained SAMĀPTI's VER-confirmed merge backlog (PB-3.1 loop lanes G2/G3/G4/G5/
+    G6/G8, two real re-diagnoses B-N8-FIX/#952 + B-SECRETSCAN-SCOPE/#911, two narration fixes
+    SV-5/SV-6, ~a dozen standalone lanes); split PR #909 so its Kāla-touching hunk was withheld and
+    handed to ṢAḌ-DARŚANA as a spec addendum instead of merged as code; PR #905 (credential
+    redaction) merged as ordinary hygiene per explicit native instruction, PR #907 closed with the
+    native's actual SECURE/accepted-risk disposition recorded in place (no rotation performed);
+    crown re-verified live, no drift. One genuinely open item carried forward:
+    C4-LOOP-LIVE-PROOF, prioritized #1 in the new consolidated backlog.
   - v6.48 (2026-07-31, SAMĀPTI campaign close — CLOSED PARTIAL): full account in the new banner
     immediately above and in `00_ARCHITECTURE/briefs/samapti/SAMAPTI_CLOSE_REPORT_v1_0.md` (the
     terminal deliverable, with the complete 4-way disposition table this summary doesn't repeat).
@@ -5575,6 +5586,27 @@ block (post-rebuild era), and proceeds.
 
 ## §2 — Canonical state block
 
+> 🟢 **NIḤŚEṢA close (2026-07-31, session NIHSHESHA-CLOSE-2026-07-31) — the wrap-up campaign
+> immediately following SAMĀPTI's CLOSED-PARTIAL close below; this banner supersedes that one's
+> "truly open items" framing, not its historical record, which stands as-is.** Drained the
+> VER-confirmed merge backlog SAMĀPTI left queued: the PB-3.1 prediction-loop lanes (G2/G3, G4/G5,
+> G6, G8 — G1 and G7's blocker C4-LOOP-LIVE-PROOF are the two genuinely still-open loop items),
+> two real re-diagnoses (B-N8-FIX #952 merged, B-SECRETSCAN-SCOPE #911 merge-armed), two narration
+> fixes (SV-5 mi_darshana, SV-6 mi_gunanaka), and roughly a dozen more standalone lanes, plus one
+> PR (#909) split so its Kāla-touching hunk (kala_envelope.ts F-20) was withheld and handed to
+> ṢAḌ-DARŚANA as a spec addendum instead of merged as code — **no kala_*/l3_*/ka_*/gochara_* file
+> was written to this session.** PR #905 (credential redaction) merged as ordinary hygiene per
+> explicit native instruction; PR #907 (rotation-prep runbook) was closed out with the native's
+> actual SECURE/accepted-risk disposition recorded in place, not left asserting a superseded P0 —
+> no credential was rotated. Crown re-verified live at close: `graha_portrait` for chart 482012f1,
+> computed `2026-07-31T14:49:25Z`, Sun = Capricorn, Lagna = Aries (12.43°), current Mercury MD /
+> Saturn AD — no drift. Full disposition table (every NIḤŚEṢA-brief item + every surviving SAMĀPTI
+> register ID) and the one consolidated backlog register replacing all scattered parks:
+> `00_ARCHITECTURE/briefs/nihshesha/NIHSHESHA_CLOSE_REPORT_v1_0.md`. **The one genuinely open item
+> carried forward, named and prioritized #1 in that backlog:** C4-LOOP-LIVE-PROOF, a real live
+> end-to-end proof of the prediction loop — blocked only on the merge-armed PRs above finishing
+> their deploy, not on any unresolved design question. See changelog v6.49.
+
 > 🟡 **CLOSED — PARTIAL (2026-07-31, SAMĀPTI campaign close, session SAMAPTI-CLOSE-2026-07-31) —
 > a fully-autonomous tick-swarm campaign closing every open item across the ŚUDDHA-VĀCA ·
 > SATYA-DĪPA · PARKED-FINDINGS · PARIPRAŚNA arc, closed deliberately PARTIAL mid-run on a native
@@ -8624,6 +8656,29 @@ current_state:
 ---
 
 ## §3 — Narrative (human-reading surface — must agree with §2)
+
+At the close of **NIHSHESHA-CLOSE-2026-07-31 — the SAMĀPTI wrap-up campaign** ("leaving no
+remainder"), the session drained the VER-confirmed merge backlog SAMĀPTI left queued: the PB-3.1
+prediction-loop lanes (G2/G3, G4/G5, G6, G8 merged or merge-armed), two PRs given a real
+re-diagnosis rather than a repeat reopen (B-N8-FIX/#952 merged, B-SECRETSCAN-SCOPE/#911
+merge-armed), two genuine narration fixes found by archaeology (SV-5 `mi_darshana.py`, SV-6
+`mi_gunanaka.py`), and roughly a dozen more standalone lanes — each individually rebased against a
+moving `main`, three genuine merge conflicts resolved (a migration-number placeholder allocated
+fresh, a clean 3-file split, one deliberate park against actively-evolving concurrent CI-audit
+work rather than a forced resolution). One PR (#909) was split mid-merge when its rebase surfaced
+a hunk touching `kala_envelope.ts` — the fix (F-20, `freshness.stale` always `false`) was withheld
+from the merge and instead written into `SAMAPTI_KALA_HANDOVER_v1_0.md` as a new §4-ADDENDUM
+(PR #969), the first concrete exercise of SAMĀPTI's own "hold the audit, ship the guards, hand
+over the rest" doctrine. **No `kala_*`/`l3_*`/`ka_*`/`gochara_*` file was written to this session.**
+The credential item (PR #907, previously `Priority: P0`) was closed with the native's actual,
+binding disposition (SECURE / accepted risk, no rotation) recorded in a new §9-NATIVE-DISPOSITION
+section rather than left asserting a now-superseded urgency; PR #905 merged separately as ordinary
+hygiene. The crown was re-verified live at close (`graha_portrait`, chart 482012f1, no drift). One
+item remains genuinely open and is named #1 in the new consolidated backlog:
+C4-LOOP-LIVE-PROOF — a real, live, end-to-end proof of the prediction loop, blocked only on the
+already-merge-armed lanes finishing their deploy. Full disposition table (every NIḤŚEṢA-brief item
+plus every surviving SAMĀPTI register ID) and the single consolidated backlog register replacing
+all scattered parks: `00_ARCHITECTURE/briefs/nihshesha/NIHSHESHA_CLOSE_REPORT_v1_0.md`.
 
 At the close of **SAMAPTI-CLOSE-2026-07-31 — SAMĀPTI campaign closed PARTIAL on a mid-run native
 strategic redirect**:

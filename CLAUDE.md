@@ -1,6 +1,6 @@
 ---
 artifact: CLAUDE.md
-version: "6.9"
+version: "7.0"
 status: CURRENT
 role: >
   Root governance surface. Master orientation document for every Claude session on the MARSYS-JIS
@@ -174,7 +174,7 @@ Canonical artifact versions and paths are defined in `00_ARCHITECTURE/CANONICAL_
 | ORCHESTRATOR_CONVERGENCE_CLOSE | `00_ARCHITECTURE/ORCHESTRATOR_CONVERGENCE_CLOSE_v1_0.md` | 1.0 | CURRENT |
 | L1_GANITA_CLOSURE | `00_ARCHITECTURE/L1_GANITA_CLOSURE_v2_0.md` (v1.0 SUPERSEDED — premature seal, floors stale, enrichment not folded) | 2.1 | CURRENT |
 | L2_BODHA_CAMPAIGN_HANDOFF | `00_ARCHITECTURE/L2_BODHA_CAMPAIGN_HANDOFF_v1_0.md` | 1.0 | CURRENT |
-| CLAUDE | `CLAUDE.md` | 6.9 | CURRENT |
+| CLAUDE | `CLAUDE.md` | 7.0 | CURRENT |
 
 Any path in this snapshot that conflicts with `CANONICAL_ARTIFACTS_v1_0.md §1` is wrong here, not there. `drift_detector.py` enforces this via the canonical-path cross-check (protocol §H.3).
 
@@ -372,10 +372,17 @@ usually true" or "nothing has broken yet" is not a substitute for a real detecto
 
 ---
 
-*End of CLAUDE.md v6.9 (2026-07-31, SAMĀPTI campaign close) — SAMĀPTI closed CLOSED-PARTIAL on a
-mid-run native strategic redirect (Kāla-layer work stopped and handed to ṢAḌ-DARŚANA as a written
-spec; full account `SAMAPTI_CLOSE_REPORT_v1_0.md` / `CURRENT_STATE_v1_0.md` v6.48). No doctrine
-changed by this entry. Prior: v6.8 (2026-07-30, SAMĀPTI/B-DOCS-GOVERNANCE, DVA Ruling 58 /
+*End of CLAUDE.md v7.0 (2026-07-31, NIḤŚEṢA close) — the SAMĀPTI wrap-up campaign drained the
+VER-confirmed merge backlog SAMĀPTI left queued (PB-3.1 loop lanes, two re-diagnosed PRs, two
+narration fixes, ~a dozen standalone lanes), split one PR mid-merge to withhold a Kāla-touching
+hunk and hand it to ṢAḌ-DARŚANA as a spec addendum instead of code, and closed the credential item
+with the native's actual SECURE/accepted-risk disposition recorded in place (no rotation). No
+`kala_*`/`l3_*`/`ka_*`/`gochara_*` file was written to. Full account
+`00_ARCHITECTURE/briefs/nihshesha/NIHSHESHA_CLOSE_REPORT_v1_0.md` / `CURRENT_STATE_v1_0.md` v6.49.
+No doctrine changed by this entry. Prior: v6.9 (2026-07-31, SAMĀPTI campaign close) — SAMĀPTI
+closed CLOSED-PARTIAL on a mid-run native strategic redirect (Kāla-layer work stopped and handed to
+ṢAḌ-DARŚANA as a written spec; full account `SAMAPTI_CLOSE_REPORT_v1_0.md` / `CURRENT_STATE_v1_0.md`
+v6.48). Prior: v6.8 (2026-07-30, SAMĀPTI/B-DOCS-GOVERNANCE, DVA Ruling 58 /
 B-MIGGUARD R3) — §N.4's
 "Surgical migrations only" line re-worded to its narrower original intent: the deploy-time bulk
 `migrate.ts` runner is fine and intended (transactional, tracked, loud-failing); the doctrine's real
