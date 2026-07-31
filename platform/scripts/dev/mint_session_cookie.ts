@@ -15,14 +15,33 @@
 //   SERVICE_URL                     Target service base URL. Default: http://localhost:3000.
 //                                   For prod: https://amjis-web-qm256lasva-el.a.run.app
 //                                   (or fetch via `gcloud run services describe`).
+//   COOKIE_OUTPUT_FILE              If set, the cookie value is written DIRECTLY to this
+//                                   file (fs.writeFileSync, no trailing newline) instead of
+//                                   stdout. This is the recommended invocation when running
+//                                   under a wrapper like `dotenvx run` — PŪRṆATĀ 2026-08-01
+//                                   found that `dotenvx run`'s own startup banner ("⟐ injected
+//                                   env (N) from ...") shares stdout with any wrapped command,
+//                                   so a shell redirect of the combined invocation
+//                                   (`dotenvx run -- npx tsx this-script.ts > file`) captures
+//                                   the banner as line 1 and the real cookie as line 2 — a
+//                                   correctly-formed artifact that LOOKS corrupted if only its
+//                                   first bytes are inspected. Writing straight to a file from
+//                                   inside this process bypasses that entirely: no wrapper's
+//                                   own stdout can ever reach this file, regardless of which
+//                                   env-loader or log level it uses. Prefer this over the
+//                                   wrapper's own `-q`/`--quiet` flag — silencing a symptom at
+//                                   the wrapper regresses silently if its logging defaults ever
+//                                   change; writing to a dedicated file does not depend on that.
 //
 // Usage:
 //   SERVICE_URL=https://... SUPER_ADMIN_UID=<uid> npx tsx platform/scripts/dev/mint_session_cookie.ts
+//   COOKIE_OUTPUT_FILE=/tmp/cookie.txt SERVICE_URL=... SUPER_ADMIN_UID=<uid> npx tsx platform/scripts/dev/mint_session_cookie.ts
 //
-// Prints the __session cookie VALUE (not the full Set-Cookie line) to stdout.
-// Pipe directly into curl: COOKIE=$(... ); curl -H "Cookie: __session=$COOKIE" ...
+// Without COOKIE_OUTPUT_FILE: prints the __session cookie VALUE (not the full Set-Cookie
+// line) to stdout. Pipe directly into curl: COOKIE=$(... ); curl -H "Cookie: __session=$COOKIE" ...
 // Exit 0 on success, non-zero on any failure (with error written to stderr).
 
+import { writeFileSync } from 'node:fs'
 import { initializeApp, getApps, cert } from 'firebase-admin/app'
 import { getAuth } from 'firebase-admin/auth'
 
@@ -83,7 +102,13 @@ async function main() {
     process.exit(1)
   }
 
-  process.stdout.write(match[1])
+  const outputFile = process.env.COOKIE_OUTPUT_FILE
+  if (outputFile) {
+    writeFileSync(outputFile, match[1])
+    console.error(`Cookie written to ${outputFile} (${match[1].length} bytes, no wrapper stdout can reach this file).`)
+  } else {
+    process.stdout.write(match[1])
+  }
 }
 
 main().catch((e) => {
