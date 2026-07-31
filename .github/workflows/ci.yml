@@ -634,6 +634,15 @@ jobs:
         # Live-DB scan (--chart-id) runs at W3 rebuild verification.
         run: python platform/scripts/governance/msr_referential_integrity.py --self-test
 
+      - name: schema_pin_mimamsa_predictions — self-test (SAMĀPTI B-PB-SCHEMA-PIN)
+        # DB-free CI-safe gate. Proves the mimamsa_predictions schema-hash function
+        # (platform/scripts/governance/MIMAMSA_PREDICTIONS_SCHEMA_PIN.json baseline)
+        # is deterministic AND sensitive to column/constraint/index mutation, so the
+        # pin can actually catch drift and isn't a tautology. Live --verify against
+        # DATABASE_URL is a manual/future-session runbook, not wired into CI (no DB
+        # in this job) — see 00_ARCHITECTURE/briefs/pariprashna_build/PB_SCHEMA_HASH_PIN_v1_0.md.
+        run: python platform/scripts/governance/schema_pin_mimamsa_predictions.py --self-test
+
       - name: assert_no_native_literal — repo scan
         # Hard gate: no literal native birth-chart values in code outside L1.
         # G4_no_native_lit per PROJECT_ARCHITECTURE B.10.
