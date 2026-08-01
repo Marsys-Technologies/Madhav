@@ -124,7 +124,10 @@ describe('R-1.1 descriptor migration — universal field coverage', () => {
     // capabilities the acharya-grade interpretive floor surfaces a working-band
     // label for (see platform/src/lib/pariprashna/lexicon.ts). withRegister now
     // tracks that count; withFamilyOverrides remains an honest zero.
-    expect(withRegister).toBe(33)
+    // 33 -> 35: ṢAḌ-DARŚANA W3 items 16/17 (query_kota_chakra.ts,
+    // query_sudarshana_varsha.ts) each hand-set their own `register.reader_label`
+    // on the descriptor, +1 each — see those two files' `register:` field.
+    expect(withRegister).toBe(35)
     expect(withFamilyOverrides).toBe(0)
   })
 
