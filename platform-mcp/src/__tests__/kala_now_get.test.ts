@@ -111,6 +111,45 @@ function mockRegistryFetch(opts: { reachable: boolean }) {
   })
 }
 
+// PARĪKṢAKA live-production regression, defect 2: the registry call succeeds (fetch resolves
+// ok) but returns zero darshana rows — reproduces chart 1c826d5a's live behavior, distinct
+// from the "unreachable" fixture above (mockRegistryFetch({ reachable: false })), which throws
+// before a response shape even exists.
+function mockRegistryFetchEmptyDarshana() {
+  return vi.fn(async (url: string, init?: RequestInit) => {
+    const body = JSON.parse(String(init?.body ?? '{}')) as { uri?: string; args?: Record<string, unknown>; sql?: string; params?: unknown[] }
+
+    if (String(url).includes('/api/mcp/db/query')) {
+      return { ok: true, json: async () => ({ rows: [] }), text: async () => '' } as Response
+    }
+
+    let inner: Record<string, unknown> = {}
+    if (body.uri === 'marsys://tool/L3/query_temporal_activation') {
+      inner = { window_families: [WINDOW_FAMILY], forward_windows: [] }
+    } else if (body.uri === 'marsys://tool/L3/query_temporal_view') {
+      inner = { rows: [] } // fetch succeeds, zero rows — the exact live-production shape
+    } else if (body.uri === 'marsys://tool/L1/get_dignity') {
+      inner = {
+        rows: [
+          { fact_subject: 'LAGNA', fact_key: 'sign_num', fact_value_num: LAGNA_SIGN, fact_id: 'fact-lagna' },
+          { fact_subject: 'MOON', fact_key: 'sign_num', fact_value_num: MOON_SIGN, fact_id: 'fact-moon' },
+        ],
+      }
+    } else if (body.uri === 'marsys://tool/L3/query_active_dashas') {
+      inner = { systems: [{ system_id: 'vimshottari', active_chain: ACTIVE_CHAIN }] }
+    } else if (body.uri === 'marsys://tool/L0/query_planet_transit') {
+      const planet = String(body.args?.['planet'] ?? '')
+      const row = TRANSIT_BY_PLANET[planet]
+      inner = { rows: row ? [row] : [] }
+    }
+    return {
+      ok: true,
+      json: async () => ({ ok: true, content: { content: inner, is_error: false } }),
+      text: async () => '',
+    } as Response
+  })
+}
+
 beforeEach(() => {
   vi.unstubAllGlobals()
 })
@@ -166,6 +205,33 @@ describe('kala_now_get — honest-empty on unreachable registry', () => {
     const result = await computeKalaNow(TEST_CHART_ID, { as_of: AS_OF }, TEST_PRINCIPAL)
     expect(result.reading.verdict.tier).toBe('structural_prior')
     expect(result.reading.verdict.statement).toMatch(/No structural activation/)
+  })
+})
+
+describe('kala_now_get — coverage honesty: kala_darshana_confluence (PARĪKṢAKA regression, defect 2)', () => {
+  // Reproduces the exact live-production defect on chart 1c826d5a: the L3 registry call
+  // succeeds (darshanaOk === true) but returns zero rows, yet coverage claimed `computed`
+  // while `darshana` was null. Fails on pre-fix code because the old ternary only checked
+  // `darshanaOk` (fetch succeeded), never whether a row actually came back.
+  it('reports honest_empty — not computed — when the registry succeeds but returns zero rows', async () => {
+    vi.stubGlobal('fetch', mockRegistryFetchEmptyDarshana())
+    const result = await computeKalaNow(TEST_CHART_ID, { as_of: AS_OF }, TEST_PRINCIPAL)
+    expect(result.darshana).toBeNull()
+    const byConcept = Object.fromEntries(result.coverage.map((c) => [c.concept, c]))
+    // The honesty invariant this regression protects: `computed` may never be claimed while
+    // the payload (`darshana`) is absent.
+    expect(byConcept['kala_darshana_confluence']?.state).toBe('honest_empty')
+    expect(byConcept['kala_darshana_confluence']?.reason).toMatch(/zero rows/)
+    // Distinguishes this case from "registry unreachable" — same vocabulary as
+    // story.ts's lel_pinning_per_chapter fetch-succeeded-zero-rows reason, not the
+    // unreachable-registry reason used elsewhere in this same coverage array.
+    expect(byConcept['kala_darshana_confluence']?.reason).not.toMatch(/unreachable/)
+  })
+
+  it('still narrates the absence in prose (preserved — only the machine-readable state changed)', async () => {
+    vi.stubGlobal('fetch', mockRegistryFetchEmptyDarshana())
+    const result = await computeKalaNow(TEST_CHART_ID, { as_of: AS_OF }, TEST_PRINCIPAL)
+    expect(result.reading.thesis).toContain('No Kāla-Darshana confluence window is active today')
   })
 })
 
