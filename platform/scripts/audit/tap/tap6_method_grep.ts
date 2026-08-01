@@ -64,8 +64,37 @@ const PATTERNS: Pattern[] = [
     // RESIDUAL, named not solved: `two_pass_verdict(x, x)` still fabricates a pass. That is
     // a separate grep (call sites whose two arguments are the same expression) for a later
     // lane — going through the helper is not proof a detector ran.
-    description: "the 'two_pass_verified' literal assigned OUTSIDE the sanctioned verification module (brahmagyan/verification_vocab.py). Sanctioned production is two_pass_verdict(engine, derived), which requires both values; a bare literal anywhere else is unearned (M-22 / CLAUDE.md §N.8)",
-    pattern: /(=|:)\s*['"]two_pass_verified['"]/,
+    // 2026-08-01 WIDENING (positional blind spot). The `(=|:)` prefix above assumed the
+    // literal always follows an assignment or a dict colon. ga_dashas_writer.py passes it
+    // POSITIONALLY — `None, None, "two_pass_verified", ref, human,` — and eight functions
+    // `return "two_pass_verified"` directly. Both forms were invisible, so a green TAP-6 was
+    // never evidence the estate was clean: chart_dashas carries 1,358,993 two-pass rows,
+    // ~4x the entire chart_facts population, written through exactly those unseen forms.
+    // The alternation was derived from an AST census (not guessed): every string constant
+    // 'two_pass_verified' in the sidecar was classified by its PARENT NODE, and the prefixes
+    // below are the closure of the emit-bearing roles. Measured against that ground truth:
+    // 146 of 147 emit sites caught, 1 false positive (bo_laksana.py:2204, a `==` comparison
+    // already baselined and matched by the pre-widening pattern too — no regression).
+    // Deliberately NOT matched, because the same literal is also a dict KEY and a summary
+    // flag name — a role that emits no status at all: `summary["two_pass_verified"]`,
+    // `taj_summary.get("two_pass_verified", False)`, `("two_pass_verified", 3)` (a tier-rank
+    // tuple). Widening to a bare unanchored literal would flag 27 such lines and re-teach
+    // the estate to ignore this gate.
+    description:
+      "the 'two_pass_verified' literal reaching an emit site OUTSIDE the sanctioned verification " +
+      'module (brahmagyan/verification_vocab.py). Sanctioned production is ' +
+      'two_pass_verdict(engine, derived), which requires both values; the literal in any other ' +
+      'emit position is unearned (M-22 / CLAUDE.md §N.8). MEASURES five lexical forms: after ' +
+      '`=` (assignment/keyword-arg/default-param), after `:` (dict value), after `,` ' +
+      '(positional argument or tuple element), after `return`, and after `else` (the tail of a ' +
+      'conditional expression). DOES NOT MEASURE, and cannot: (1) a literal opening a ' +
+      'parenthesised multi-line expression (`verification = (` then the literal on the next line) — one such ' +
+      'site exists, ga_tajaka_writer.py:574, and it is baselined by hand, not by this pattern; ' +
+      '(2) any status assembled at runtime (built by concatenation, .format(), an f-string, or ' +
+      'read from config/DB) — static grep cannot reach those and this gate does not claim to; ' +
+      '(3) indirection through a non-sanctioned alias constant. It also deliberately does NOT ' +
+      'flag the literal used as a dict key or summary flag name, which emits no status.',
+    pattern: /(=|:|,|\breturn\b|\belse\b)\s*['"]two_pass_verified['"]/,
     root: 'platform/python-sidecar',
     excludeDirNames: ['__tests__', 'tests'],
     exemptFiles: ['platform/python-sidecar/brahmagyan/verification_vocab.py'],
