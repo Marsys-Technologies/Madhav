@@ -159,6 +159,10 @@ KNOWN_HAS_WRITER_TRUE: frozenset[str] = frozenset({
     # registry items 16/17) ──────────────────────────────────────────────────
     "ka_kota_chakra",
     "ka_sudarshana_varsha",
+    # ── L3 Kāla — migrations 525/526 (ṢAḌ-DARŚANA W3 Lane w3-moorti-vedha,
+    # registry items 4/5) ─────────────────────────────────────────────────────
+    "ka_moorti_nirnaya",
+    "ka_vedha_gochara",
     # ── L4 Phala — migration 342 ─────────────────────────────────────────────
     "ph_muhurta",
     "ph_nimitta",
