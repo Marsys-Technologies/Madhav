@@ -877,10 +877,10 @@ collision pattern is better understood from the first lane.
 |---|---|---|---|
 | W0 | **VERIFIED-CLOSED** | PRs #877/#880/#882/#883/#884/#881 (merged main@`42151b24`+); deploy run `30484976742`; direct production `tools/list` + functional calls on both charts; see GATE W0 CLOSURE RECORD above | All 8 tools live on production, both charts, envelope-conformant, Mode-3 routing live-verified. |
 | W1 | **VERIFIED-CLOSED** | All 12 items VERIFIED-FIXED, both charts, live production (revision `amjis-mcp-00525-hrd`, 100% traffic). Round 1 rejected 5/12 (8,28,29,30,32) with real evidence; fix (PR #940, Opus) redeployed; round 2 independently re-verified all 5 via recomputed ephemeris + fact_id tracing + FORENSIC fixture cross-check, not self-report | Real honesty-inversion bugs caught and fixed by the verification apparatus exactly as designed — see NEXT-ACTION for the full round-1/round-2 record. Two non-blocking advisory notes filed. |
-| W2 | **DESIGN-COMPLETE + Lane D unblocked, build lanes not yet dispatched** | PR #886 (`KALA_W2_FIELD_DESIGN_v1_0.md`), PR #918 (Lane D §6.3 reconciliation, ADJUDICATION-1), PR #932 (bg_cohort MD-lord chain table, APPROVE-WITH-NOTES) all merged | Hazard formula, skill-score/GOF, DAG acyclicity, AND Lane D's cohort contract all specified precisely against reality; 5 build lanes (A/B/C/D/E) ready to dispatch together. |
-| W2G | NOT-STARTED | — | GOCHARA-2.0 sub-day. **BLOCKED on N1–N5 ratification (W2G.0) — see below.** |
-| W3 | NOT-STARTED | — | New computations over the field. |
-| W3K | NOT-STARTED | — | KP sub-lord engine (item 18, built from zero). |
+| W2 | **BUILT, NOT CLOSED — PARKED-HONEST (Night 3)** | Design PR #886 + PR #918 + PR #932; all 5 build lanes merged (#944/#945/#946/#947/#949); **migrations 488–497 APPLIED IN PRODUCTION Night 3** (deploy runs `30678888444` + `30679075712`, all 18 `kala_field*`/`kala_timeline_spec` tables verified live) | **The gate did NOT close and could not.** Two independent reasons, both recorded honestly: (1) the **N_e lifetime-count-priors blocker is still unruled** — ANTARYĀMIN was cancelled mid-session before issuing the priors-source ruling, so no seeding lane could be dispatched and `ka_kshetra` still writes ZERO field rows (correctly refusing to fabricate, per §5.1 C-1 / B.10); (2) the **`w2-integration` lane was cancelled mid-session** — it owned field integration, hash-replay determinism, the real `field_snapshot_id` (E5), weights-v0 seed, the item-44 census, and the specificity-gate flip to HARD. Neither cancellation lost work (both lanes had zero commits). Gate W2's §3 criteria — skill score + GOF published both charts, null exceedance per window, salience visible in PRIORITIZE, insight rows leading readings — ALL require a non-empty field, hence all require N_e first. |
+| W2G | NOT-STARTED | — | GOCHARA-2.0 sub-day. **STILL BLOCKED on N1–N5 ratification — now for the THIRD consecutive night.** ANTARYĀMIN was dispatched Night 3 with N1–N4 + N5's pre-ruled conservative default as its up-front docket (per the v1.3 §D protocol, which exists precisely because this block sat empty through Nights 1–2), but was cancelled before ruling. The N-block below remains empty. |
+| W3 | **IN PROGRESS (first items landed Night 3)** | PR #999 (items 16 Kota-Chakra + 17 `ka_sudarshana_varsha`); `w3-moorti-vedha` lane (items 4+5, closes R-19) in flight at session end | New computations. Items 16/17 land as new L3 per-chart writers with Nirmāṇa seed rows + chart-scoped `count_sql` in the same PR. **Item 36's remaining half (the query-time lattice engine) was dispatched and CANCELLED mid-session — so W4's Phase-5a trigger (36+41) is still NOT met.** |
+| W3K | **INVENTORY IN FLIGHT** | `w3k-inventory` lane (item 18 substrate inventory + layer-seating recommendation) running at session end | KP sub-lord engine. Per §C, W3K correctly begins with existing-substrate inventory before any build. Note the layer-seating question was on ANTARYĀMIN's docket and is now **unruled** — the lane produces a recommendation, but nothing can ratify it this session. |
 | W4 | NOT-STARTED | — | Intervention flagship (UPĀYA/YAJÑA). Opus design mandatory. |
 | W5 | NOT-STARTED | — | Planner integration; native's hard gate (real MCP calls). |
 | W6 | NOT-STARTED | — | Cutover + retirement. |
@@ -889,11 +889,11 @@ collision pattern is better understood from the first lane.
 
 | Item | Ruling | Ruled by | Date | Rationale |
 |---|---|---|---|---|
-| N1 (wave naming) | — | — | — | Pending ANTARYĀMIN pre-queued adjudication. |
-| N2 (multi-chart rollout order) | — | — | — | Pending. |
-| N3 (pre-1984 backfill) | — | — | — | Pending. |
-| N4 (cutover posture) | — | — | — | Pending. |
-| N5 (lock granularity) | — | — | — | **FROZEN-contract question. Native ruling required; ANTARYĀMIN may only apply the pre-ruled CONSERVATIVE-DEFAULT (chart-level lock stays, no orchestrator change, reversible) if the native has not yet spoken. Not yet recorded.** |
+| N1 (wave naming) | — | — | — | **STILL UNRULED after 3 nights.** ANTARYĀMIN dispatched Night 3 with N1–N4 as its explicit up-front docket per the v1.3 §D protocol; **cancelled mid-session before issuing any ruling.** |
+| N2 (multi-chart rollout order) | — | — | — | **STILL UNRULED after 3 nights** — same cause as N1. |
+| N3 (pre-1984 backfill) | — | — | — | **STILL UNRULED after 3 nights** — same cause as N1. |
+| N4 (cutover posture) | — | — | — | **STILL UNRULED after 3 nights** — same cause as N1. |
+| N5 (lock granularity) | **CONSERVATIVE-DEFAULT: the chart-level advisory lock STAYS. No orchestrator-contract change. Intra-chart shard parallelism is forfeited. Recorded REVERSIBLE.** | **The native, directly** — stated verbatim in the Night-3 §D kickoff paste (2026-08-01) | 2026-08-01 | **Recorded by the Conductor, NOT by ANTARYĀMIN** — provenance matters here and is stated precisely because this is the one FROZEN-contract question in the block, which an adjudicator may never decide on its own. The native's Night-3 kickoff contains the ruling in its own words ("N5 lock-granularity is ruled CONSERVATIVE-DEFAULT: chart-level lock stays, no orchestrator change, recorded reversible"), so no adjudication was needed or performed. Reversible: re-opening it costs only a future decision, since nothing was built against shard parallelism. **N5 alone does NOT unblock W2G — N1–N4 remain unruled.** |
 
 ## Registry item status (1–44 + E1–E8)
 
@@ -1092,6 +1092,53 @@ design-correction lane (`shad-darshana/w2-lane-d-design-fix`, dispatched same se
 reconcile §6.3 with reality before Lane D itself is dispatched; W2 Lanes A/B/C/E have no
 dependency on this and are not blocked by it. Full ruling text preserved in this session's
 agent transcript; summarized here per the ledger's evidence-link convention.
+
+**ADJUDICATION-2 through -5 — NOT ISSUED (Night 3, 2026-08-01). ANTARYĀMIN was dispatched
+and then cancelled mid-session before ruling on anything.** This entry exists so the docket
+is not silently lost between nights; none of the four is a ruling, and no lane may proceed as
+if one were made.
+
+The adjudicator was launched at Opus/max with a four-item docket, per the v1.3 §D protocol's
+"adjudications discharged UP FRONT" step (a step that exists precisely because the N-block sat
+empty through Nights 1–2). It was cancelled externally before returning. **No work was lost —
+it produced no artifact — but nothing on the docket was decided:**
+
+1. **The N_e priors-source ruling — tonight's designated critical path.** Where the hazard
+   formula's `fact_kind='lifetime_count_per_100y'` priors come from. Candidates it was briefed
+   to weigh: classical-text-derived counts with citations · documented demographic base rates
+   entered as `structural_prior` · cohort-derived where genuinely non-circular · or PARK. It
+   was explicitly forbidden from reading `brahma_event_ontology.base_rate_by_age` as N_e
+   (§5.1 C-1 forecloses exactly that, and doing so would be the §N.7-item-6 fabrication
+   defect). **Consequence: no seeding lane could be dispatched; `ka_kshetra` still writes zero
+   field rows; Gate W2 cannot close.**
+2. **N1–N4** (wave naming · multi-chart rollout order · pre-1984 backfill · cutover posture).
+   **Consequence: W2G remains unstartable for a third consecutive night.**
+3. **W3K layer seating** (`bg_*` vs `ga_*`/`ka_*` split for the KP sub-lord engine, item 18).
+   The `w3k-inventory` lane still produces a recommendation, but **nothing can ratify it**.
+4. **Paddhati-profile defaults** where the corpus is silent — specifically the Agnivāsa
+   favorable-residence convention, to be pinned to the native's own stated lineage practice
+   (yajña when Agnivāsa is favorable) with the corpus default served alongside, clearly
+   labelled.
+
+**A fifth item was routed to the docket mid-session and is also unruled — NEW, and it blocks a
+gate-close rather than a wave start.** The `ka_kota_chakra` writer (item 16, PR #999)
+disclosed — honestly and unprompted — that its **fort-chakra ring table is a tier-(iii)
+secondary-source transcription that is NOT in this repo's ingested corpus.** Its mitigation:
+every served row carries `ring_table_citation` + `uncited_extension=true`, so nothing claims
+primary-corpus authority. The open question, which generalizes well beyond item 16: **does a
+cited secondary source with an explicit `uncited_extension` flag satisfy the DATA-HONESTY RAIL
+(NIGHT_RUN v1.3 §D — "every value cited, versioned, structural_prior-labeled; a number without
+a source is a build error"), or does the rail demand primary-corpus ingestion?** Options
+tabled for the ruling: (a) accept on the disclosure flags; (b) accept but require the ring
+table seeded as a versioned `bg_*` L0 reference table with its citation rather than inline in
+writer code; (c) require corpus ingestion first, parking item 16; (d) serve behind a
+disclosure tier. **Conductor's interim disposition, recorded as reversible:** PR #999 lands on
+`shad-darshana/integration` (not `main`, not production) under strangler discipline — build
+beside, cut over classified — and **the Kota citation tier is registered as a BLOCKING
+precondition on the W3 gate-close PR to `main`.** Landing on an integration branch is
+reversible; shipping an uncited classical table to production is not. That the question is
+adjudicable at all is a credit to the builder's disclosure — a lane that had quietly inlined
+the table would have shipped a silent B.3 violation.
 
 ## MORNING REPORT — Night 1 close (2026-07-29 → 2026-07-30)
 
