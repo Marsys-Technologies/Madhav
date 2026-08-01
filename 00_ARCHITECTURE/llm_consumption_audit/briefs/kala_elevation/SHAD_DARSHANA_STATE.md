@@ -132,6 +132,100 @@ The inventory's seating recommendation is consistent with ADJUDICATION-7's rulin
 corrected the premise independently). Gap list + two-lane build plan in
 `W3K_SUBSTRATE_INVENTORY_v1_0.md`.
 
+**NIGHT-3 RESUMED SESSION — BUILD RECORD (running log, finalized in the MORNING REPORT below).**
+
+**Merge train (all → `shad-darshana/integration`, each on green CI, scope-verified):**
+- **PR #1004** — item 36's query-time lattice engine (Opus lane; §N.6 density layering:
+  real-cited findings vs `computed_uncited_convention` counted separately, `hardFloor` on
+  candidates; ONE-ENGINE RULE asserted by test). One CI count-fix cycle (whitelist 54→56,
+  both literals updated semantically with the +2 named). **Item 36 LANDED → W4 Phase-5a
+  trigger (36+41) MET.**
+- **PR #1005** — ADJUDICATION-9 discharged: `bg_kota_chakra_rings` versioned L0 table
+  (migration 523), inline dict deleted, byte-identity proven against a frozen golden
+  partition + live throwaway-Postgres idempotency check. One disclosed precision note: 27
+  rows (27-nakshatra arithmetic in actual use), not the ruling's "~28". **Item 16's
+  citation-tier blocker on the W3 gate-close → CLEARED.**
+- **PR #1008** — ADJUDICATION-10 Part 1 discharged: the Abhijit sarva-doṣaghna parihāra row
+  (migration 524), source chunk `bphs_jaimini_pg0213_c01` verified in production corpus
+  BEFORE seeding, transcribed verbatim, `extraction_context='translator_gloss_in_narrative'`.
+  Schema-forced narrowing disclosed: engine matches per-doṣa (`rahu_kalam` chosen), no
+  wildcard convention — a narrowing of practical reach, not of transcribed doctrine. Rescue
+  proven in test against the real seeded row. Live-candidate demonstration = W3 gate
+  Verifier item.
+- **PR #1006** — W2G V1–V6 bind-time validations as real code (38 tests, each asserted both
+  ways). **HONEST GATE RESULT: `may_proceed: false`** — V2 PASS (ephemeris 1900→2150 all 9
+  bodies, zero gaps; ADJUDICATION-5's 1900 floor fully supported) · V3 PASS (spline worst
+  error 0.314″ vs 60″ target; recommended root-find tol 1.0″) · **V4 FAIL** (779,595 contact
+  events vs design §2.3's 10k–100k band — the design's per-cycle multiplier assumption is
+  refuted by measurement; E-3 re-scope needed: Moon is 76% of events but the eager layer
+  alone still exceeds the band) · **V5 FAIL** (no generation discriminator existed — see PR
+  #1013; and Tier 1 cannot open: `1c826d5a` at 215/303 substeps, a row-count check would
+  call it populated — the substep-plan check catches it) · V1/V6 INDETERMINATE with reasons
+  (no per-phase timing instrumentation exists; classifier needs a 2.0 side). Grid convention
+  finding: ephemeris knots at noon UT, v1 sweeps at midnight — half-day offset to reconcile.
+  One real bug found by the live run (bare `%` in parameterised SQL), fixed + regression-
+  tested.
+- **PR #1013** — ADJUDICATION-6's schema landed: `kala_gochara_windows.generation` (DEFAULT
+  'v1', catalog-only ALTER proven via xmin probe) + `kala_gochara_authority` pointer table
+  (absent row = v1 authoritative). Two serving surfaces filtered; remaining readers
+  documented as the 2.0 writer lane's checklist. Migration 527. v1 rows untouched
+  (untouchable respected; behavior byte-identical today).
+- **PR #1010** — W4 Phase-5a design pass (Opus): `KALA_W4_UPAYA_DESIGN_v1_0.md` v1.1. Lane
+  split U/R/S with anti-collision file table; no new MCP tools (W0 shells filled — removes
+  the historical registry_bridge collision surface); the lattice CHECK gap (4 factor
+  families, no hora/vara/tara atoms) found and ruled R-1; Mode-2 fixture mapped to 4 named
+  detectors incl. a two-part both-charts detector; ADJUDICATION-12/-13 folded in as v1.1
+  (equality-not-negation basis check; DB CHECK making inferred-rows-never-sealed structural;
+  mortality exclusion as a SUBSTRATE ban — forbidden identifiers ayurdaya|longevity|maraka|
+  ayus — with G16 re-running under native_self and still refusing; §1 rail 11: a detector
+  that cannot be shown to fire is treated as OFF — non-vacuity assertions required).
+- **PR #1011** — the watchdog false-kill fix (campaign-discovered production defect, root
+  cause pinned: Postgres `NOW()` = transaction start, so a multi-minute substep's own
+  heartbeat understates its commit time; clause-1's 10-min window left no margin at 5–6.5
+  min/substep cadence). Fix additive in the watchdog route only: 15-min window +
+  `build_substep_progress.completed_at` as second evidence-of-life (read-only). RED-first
+  repro of tonight's false kill + truly-orphaned still reaped, both proven.
+- **PR #1007 — THE CRITICAL PATH: N_e priors LANDED, VERIFIED.** `bg_class_lifetime_counts`
+  (migration 522): all SIX Tranche-1 classes at genuine Tier N-i — childbirth 3.09 (NFHS-5
+  FR375 Tbl 4.5), marriage 0.984 + separation 0.00806 (Census 2011 C-2), relocation 0.376
+  (Census D-2), surgery 0.356 (Zadey 2024 measured HMIS rate; Weiser's famous 904/100k
+  REJECTED as a regression imputation — India sits in the missing-data table), foreign_
+  settlement 0.0129 (UN DESA IMS 2020). Tranche 2: ZERO rows (nothing reached Tier N-i —
+  the hard stop held; 21 classes honestly skip `no_class_prior_row`). DATA-HONESTY RAIL now
+  MACHINE-ENFORCED (prior_basis + source_ref CHECK). Two beyond-spec catches: the
+  `query_class_priors` serving surface would have flattened salience multipliers and event
+  counts into one column (scoped out with excluded_fact_kinds disclosure, §N.6) and a real
+  transaction-poisoning bug (un-rolled-back savepoint probe) fixed. **ADJUDICATION-2 item-7
+  two-pass acceptance DISCHARGED: independent re-derivation (own downloads, MD5-recorded,
+  figures read from the source cells/pages) confirmed all 6 figures TO THE DIGIT — verdict
+  PASS, zero deletions, zero amendments; surgery choice upheld on the imputation ground.**
+  Three advisory prose corrections to permanent audit fields applied pre-merge. Conductor
+  resolved the lane's merge conflict (KNOWN_HAS_WRITER_TRUE additively) per §B.1.
+- **PR #1003** — W3K substrate inventory (see above).
+
+**Verification, adjudication + design artifacts this session:** deploy-main ACCEPTED
+(PARĪKṢAKA, above) · **ADJUDICATION-2 through -13 — twelve rulings, the entire docket +
+five mid-session escalations, zero lanes stalled waiting on a ruling** (full text:
+`SHAD_DARSHANA_ADJUDICATIONS_NIGHT3_v1_0.md`) · `W3K_SUBSTRATE_INVENTORY_v1_0.md` ·
+`KALA_W4_UPAYA_DESIGN_v1_0.md` v1.1 · W2G honest-FAIL validation record (PR #1006).
+
+**Corpus findings elevated to standing work items:** (1) **`muhurta_chintamani` is ingested
+but untranslated** (274 chunks, content_en byte-identical to content_sa, raw OCR) — now
+blocking FOUR deliverables (Agnivāsa second convention, Kota primary source, muhūrta-scope
+parihāra extraction, SBC grid candidates); the single highest-leverage corpus action
+available, zero acquisition cost. (2) SBC-specific text (Nārada-Saṃhitā class) — genuine
+acquisition. (3) KP texts — none ingested (tier-ii design doc is primary for W3K).
+
+**Operational: the gochara-sweep watchdog false-kill class is now DIAGNOSED and FIXED (PR
+#1011).** Both of tonight's early kill events (03:30:06 `run never dispatched` = the
+Conductor's own bare-execute mistake, recorded above; 04:30:05 clause-1 kill of run
+`e5cde4dc` with a 5.2-min-fresh heartbeat while the container ran on) are explained. The
+container survived the false kill and kept committing substeps all session (209 → 230+/303,
+~5–6.5 min cadence). The DB run-state row for `e5cde4dc` reads `failed` and is COSMETICALLY
+WRONG — the substep ledger is the truth. ~70–90 substeps will remain at container timeout
+(~09:53Z); ONE further dispatch (using the `--run-id` + `MARSYS_RUN_ID` invocation recorded
+above) should complete the 303. The fix deploys with the next gate-close.
+
 **Gochara-sweep resume (operational): first re-dispatch attempt `dbcd45e1` FAILED with
 `orphan-watchdog: run never dispatched` — root cause: a bare `gcloud run jobs execute` runs the
 container with NO run-id; the job requires `--args="--run-id,<id>"` +
