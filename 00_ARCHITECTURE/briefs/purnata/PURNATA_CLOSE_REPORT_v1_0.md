@@ -1,13 +1,26 @@
 ---
 artifact: PURNATA_CLOSE_REPORT
 canonical_id: PURNATA_CLOSE_REPORT
-version: 1.2
+version: 1.3
 status: CURRENT
 created: 2026-07-31
 updated: 2026-08-01
 campaign: PŪRṆATĀ — the final close of the ŚUDDHA-VĀCA → SATYA-DĪPA → PARIPRAŚNA → SAMĀPTI → NIḤŚEṢA → PŪRṆATĀ arc
 governed_by: 00_ARCHITECTURE/briefs/nihshesha/NIHSHESHA_CLOSE_REPORT_v1_0.md, BRIEF_PB-3.1_MAKE_THE_LOOP_LIVE.md, CLAUDE.md §N.7/§N.8
 changelog: |
+  v1.3 (2026-08-01) — Independent verification pass (read-only) found two real discrepancies;
+  both fixed here, nothing else touched. (1) Backlog item #2's resume condition said "Unchanged
+  from NIḤŚEṢA" — stale, since C4 (its cited blocker) landed this arc; reworded to state the
+  actual condition inline and cite SAMAPTI_CONDUCTOR_PROMPT_v1_0.md §4's R-0/PB-4 ruling directly.
+  Same sweep found item 5 (B-NAR-GA gates.py:144) citing PR #910 as a pending blocker when #910
+  had already merged this arc — fixed likewise, plus the matching §4 disposition-table row. (2)
+  The absolute "no kala_*/gochara_* file written" claim was literally false: PR #900 (in this
+  arc's own merge ledger) added two read-only governance diagnosis scripts whose basenames match
+  gochara_* (A6/GOCH-1 root-cause investigation, not Kāla code). §8's claim (and the matching ones
+  in CLAUDE.md and SESSION_LOG's PURNATA-CLOSE-2026-07-31 entry) now carve this out explicitly and
+  correctly scope the claim to Kāla PRODUCTION source. CURRENT_STATE's own occurrences were checked
+  and found already correctly scoped (per-session, predating or excluding PR #900) — no edit
+  needed there. This is the arc's terminal version.
   v1.2 (2026-08-01) — Final wrap-up: the 3 synthetic test predictions §9 generated were dismissed
   via the real lifecycle mechanism (§9.10), returning the native's live queue to a true state; §9.3
   (A2) reframed to name the concurrent real-user interaction as corroborating evidence, not just an
@@ -212,7 +225,7 @@ both sides).
 | #913 (F-29/F-30/F-31 CI-gate hardening) | VERIFIED-FIXED, merged | Reconciled against the concurrent CI-audit's now-settled state (Stage 4/5/10-15 deletion kept, ESLint ratchet kept over continue-on-error). 18/18 F-27 regression tests pass. |
 | B-NAR-BO (`bo_bimba.py` dignity fabrication) | VERIFIED-FIXED, merged | Reads L1 `chart_facts.graha_dignity_per_varga` directly; can-fail proven (4/4 tests, reverted→red→restored→green). |
 | B-NAR-GA (3 of 4 findings) | VERIFIED-FIXED, merged | `ga_sade_sati_writer.py`, `ga_sensitive_writer.py`, `ga_nakshatra.py` fixes; 15 new tests, can-fail proven. |
-| B-NAR-GA (`gates.py:144`, P1-f) | BLOCKED-PENDING-UPSTREAM, correctly deferred | Partition document's own §4.9.3 instruction: wait for PR #910's rewrite of this exact function, re-verify after. Not touched. |
+| B-NAR-GA (`gates.py:144`, P1-f) | PARKED-HONEST, unblocked (was BLOCKED-PENDING-UPSTREAM) | PR #910 (the upstream rewrite this item waited on) merged `2026-07-31T17:20:21Z`, this arc. Not touched this session (out of scope), but the wait condition is cleared — see backlog item 5. |
 | B-NAR-PH (3 of 7 findings + 1 privacy fix) | VERIFIED-FIXED, merged | `ph_phaladesa.py`, `ph_sodhana/engine.py` fixed; `l4_anchors.py`'s citation-stripping regex fixed (genuine health-data leak, not just a narration nit). 17 new tests, can-fail proven. |
 | B-NAR-PH (4 remaining findings) | PARKED-HONEST, not reached | `answer_quality.py:180`, `ph_rectification/engine.py:253`, `ph_nimitta.py` (F4/F17), `ph_nimitta/engine.py` (NEW-PH-1). Named, not silently dropped. |
 | B-NAR-TS-remainder (6 files) | PARKED-HONEST, not started | `capabilities.ts`, `envelope.ts` (+generated mirror), `vidhi_registry_resource.ts`, `server.ts`, `register_p1_synthesis.ts`, `register_p1_ganita.ts`. |
@@ -251,10 +264,10 @@ them.
 |---|---|---|---|
 | 1 | ~~C4-LOOP-LIVE-PROOF~~ | **CLOSED this session** | See §9 — all six criteria live-verified, no fixture substituted. |
 | 1a | **ANTHROPIC_API_KEY unprovisioned in production** | Next infra/ops session | No secret named anything like it exists in Secret Manager at all (confirmed `gcloud secrets list`), and it is absent from the Cloud Run service's env/secret bindings (every other provider key — OpenAI, Google, DeepSeek, NIM — is bound). Any request that explicitly selects `stack: 'anthropic'` fails immediately at the planner with `AI_LoadAPIKeyError` (confirmed via Cloud Run logs, §9). Masked in ordinary use because `DEFAULT_STACK_ID = 'gemini'`. Fix: either provision the secret and bind it, or remove `'anthropic'` from the selectable stack list until it is. Not fixed this pass — out of C4's scope and touching Cloud Run/Secret Manager config warrants its own deliberate, confirmed session. |
-| 2 | C5-PB7-BADGE, C6-PB4-PURNATA / R-0 PB-4 | Next session | Unchanged from NIḤŚEṢA. |
+| 2 | C5-PB7-BADGE, C6-PB4-PURNATA / R-0 PB-4 | Next PB-3-class session | C5-PB7-BADGE was blocked on C4-LOOP-LIVE-PROOF landing (NIḤŚEṢA's own condition) — **C4 has now landed, this arc** (§9: A1–A6 all `CONFIRMED` live, no fixture substituted). C5-PB7-BADGE is therefore UNBLOCKED and ready to run next. C6-PB4-PURNATA's PB-4 gate follows once C5 resolves: per `00_ARCHITECTURE/CONDUCTOR/SAMAPTI_CONDUCTOR_PROMPT_v1_0.md` §4's standing ruling **R-0/PB-4**, PB-4 executes if (a) the prediction loop is proven live end-to-end (T5 acceptance A1–A6 all `CONFIRMED` — now true) and (b) no higher-priority lane is blocked on swarm capacity — DVA makes that second call at the gate, on evidence, not pre-decided here. |
 | 3 | B-NAR-PH remaining 4 findings | Next narration-fix session | `answer_quality.py:180`, `ph_rectification/engine.py:253`, `ph_nimitta.py` F4/F17, `ph_nimitta/engine.py` NEW-PH-1. |
 | 4 | B-NAR-TS-remainder (6 files) | Next narration-fix session | `capabilities.ts`, `envelope.ts` (+generated mirror), `vidhi_registry_resource.ts`, `server.ts`, `register_p1_synthesis.ts`, `register_p1_ganita.ts`. `register_p1_ganita.ts` will very likely disposition NOT-APPLICABLE (§2.4 REJECTED per the partition doc) but needs a confirming read. |
-| 5 | B-NAR-GA `gates.py:144` | Next session, after PR #910 lands | Wait for #910's rewrite, re-verify per the partition document's own instruction, then fix if still applicable. |
+| 5 | B-NAR-GA `gates.py:144` | Next narration-fix session | **PR #910 has now landed** (merged `2026-07-31T17:20:21Z`, part of this arc's own merge ledger) — the wait condition is cleared. Re-verify `gates.py:144`'s stale verified-status vocabulary against #910's rewrite per the partition document's own §4.9.3 instruction, then fix if still applicable. Ready now, not gated on anything further. |
 | 6 | OIR-B5 — PgBouncer pooler | Operator, correctly deferred | Live probe (2026-07-30): 10/50 connections, 0 idle-in-transaction, worst-case draw 30. Not urgent; re-check if connection pressure ever appears. |
 | 7 | OIR-B6 — light→heavy audit gap, 5 `ga_*` writers | Next L1-writer-touching session | `ga_panchanga`, `ga_positions`, `ga_sade_sati`, `ga_strength` (13,195 rows/chart, largest exposure), `ga_tajaka` still loop all 5 ayanamshas inside a single orchestrator-owned transaction (standalone-CLI only, `owns_conn`-guarded). Same class as the already-fixed `ga_sensitive` split. |
 | 8 | OIR-C2 — `reference_nakshatras` DROP | Next hygiene session | Refactor half already done (dead INSERT code, commit `1efa18dd`); remaining: delete the dead block, retarget 2 test files, then the DROP migration. Stale table comment (R-3) also needs correcting. |
@@ -297,10 +310,17 @@ uncommitted a third time.
 
 ## 8 — Confirmation
 
-**No file matching `kala_*`, `l3_*`, `ka_*`, or `gochara_*` was written to this session, across
-either close (PURNATA-CLOSE-2026-07-31 or C4-CLOSE-2026-08-01).** Every Kāla-adjacent finding
-(`kala_envelope.ts`'s prior F-20, no new ones from this arc) remains handed-over, spec-only, to
-ṢAḌ-DARŚANA — see §5's HANDOFF note. **No credential was rotated, in either close.** The one live,
+**No Kāla PRODUCTION source file matching `kala_*`, `l3_*`, `ka_*`, or `gochara_*` was written to
+this session, across either close (PURNATA-CLOSE-2026-07-31 or C4-CLOSE-2026-08-01).** (PR #900,
+merged during PURNATA-CLOSE-2026-07-31, added two files whose basenames literally match the
+`gochara_*` glob — `gochara_fingerprint_reproducer.py` and `gochara_readonly_query.py`, both under
+`00_ARCHITECTURE/briefs/samapti/diagnostics/`. These are read-only governance diagnosis scripts —
+the A6 root-cause investigation of the `ka_gochara_sweep` operator-chart parity defect, GOCH-1 —
+not Kāla production code; consistent with this arc's "audit yes, code no" doctrine, they were
+handed to ṢAḌ-DARŚANA as findings, never as a code change to any Kāla asset or writer.) Every
+Kāla-adjacent finding (`kala_envelope.ts`'s prior F-20, no new ones from this arc) remains
+handed-over, spec-only, to ṢAḌ-DARŚANA — see §5's HANDOFF note. **No credential was rotated, in
+either close.** The one live,
 in-session safety concern (a suspicious fragment in a minted session-cookie value) was flagged
 directly to the native per this session's own safety obligation, diagnosed READ-ONLY to a
 fully-traced benign root cause before any further action, and only then acted on (tooling fix + C4
@@ -505,7 +525,9 @@ batch, one human-dismissed row, one resolved row), not just a schema/constraint 
 
 ---
 
-*End of PURNATA_CLOSE_REPORT_v1_0.md v1.2 (2026-07-31, initial close; C4-LOOP-LIVE-PROOF addendum
+*End of PURNATA_CLOSE_REPORT_v1_0.md v1.3 (2026-07-31, initial close; C4-LOOP-LIVE-PROOF addendum
 appended 2026-08-01; final wrap-up — cleanup record, A2 corroboration reframe, HANDOFF note, §7/§8
-governance-close confirmation — appended 2026-08-01). This is the arc's terminal artifact. The
-whole ŚUDDHA-VĀCA → SATYA-DĪPA → PARIPRAŚNA → SAMĀPTI → NIḤŚEṢA → PŪRṆATĀ arc is closed.*
+governance-close confirmation — appended 2026-08-01; independent verification pass — two real
+discrepancies found and fixed, backlog items 2/5 and the kala/gochara-file claim — appended
+2026-08-01). This is the arc's terminal artifact. The whole ŚUDDHA-VĀCA → SATYA-DĪPA → PARIPRAŚNA
+→ SAMĀPTI → NIḤŚEṢA → PŪRṆATĀ arc is closed.*
