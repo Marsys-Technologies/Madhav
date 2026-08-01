@@ -45,7 +45,7 @@
 import { z } from 'zod'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { Principal } from '../../types.js'
-import { handleMuhurtaFinder, MuhurtaFinderInputSchema, type MuhurtaFinderResult, type MuhurtaWindow } from '../muhurta_finder.js'
+import { handleMuhurtaFinder, MuhurtaFinderInputSchema, type MuhurtaFinderResult, type MuhurtaWindow, type HoraSlot } from '../muhurta_finder.js'
 import {
   makeKalaEnvelope,
   buildFieldSnapshotIdStub,
@@ -125,6 +125,14 @@ export interface KalaElectCandidate {
   // full doṣa/parihāra-aware contender-lattice grade.
   grading_tier: CandidateGradingTier
   grading_tier_label: string
+  // Honesty-inversion fix (PARĪKṢAKA live-production acceptance pass, pre-existing since
+  // commit 2cba21c5 / PR #940): `coverage` has always asserted `hora_ladder: computed` —
+  // the data genuinely IS computed by muhurta_finder.ts's enrichWindowsLaneF (every window
+  // gains a horā ladder unconditionally, ~line 776) — but this facade never projected it
+  // onto the served candidate, so the claim was unbacked by any actual field in the
+  // response. Fix option (a): serve the already-computed ladder verbatim (thin-facade
+  // discipline — no new computation, same as every other candidate field here).
+  hora_ladder: HoraSlot[]
 }
 
 export interface KalaElectResponse extends KalaEnvelope<ArgumentReading> {
@@ -225,7 +233,23 @@ function buildCoverage(result: MuhurtaFinderResult): KalaCoverageEntry[] {
     } else {
       coverage.push(honestEmptyCoverage('target_graha_transit_gate', 'target_graha not requested for this call'))
     }
-    coverage.push(computedCoverage('hora_ladder'))
+    // Honesty-inversion fix (defect 1, PARĪKṢAKA live-production pass): this used to push
+    // `computed` unconditionally the instant `laneF` existed, with no check that any window
+    // actually carried a ladder — and, separately, the served candidate never carried the
+    // field at all (see KalaElectCandidate.hora_ladder above). Both are fixed now: the field
+    // is genuinely projected onto every candidate, and this check confirms the projection
+    // actually produced something before claiming `computed` — an honest_empty fallback for
+    // the (currently theoretical, since enrichWindowsLaneF always populates it) case where a
+    // future change makes the ladder computation itself yield zero slots.
+    const hasHoraLadder = (result.windows ?? []).some((w) => (w.hora_ladder?.length ?? 0) > 0)
+    coverage.push(
+      hasHoraLadder
+        ? computedCoverage('hora_ladder')
+        : honestEmptyCoverage(
+            'hora_ladder',
+            'no candidate window in this horizon carries a horā ladder (either no windows were computed, or the ladder computation yielded zero slots for every window)',
+          )
+    )
   }
 
   // Item 38-lite + ELECT frontier v0 (wave W1) — thin serving-layer normalization over the
@@ -344,6 +368,7 @@ export async function handleKalaElectGet(
       source_citation: w.source_citation,
       grading_tier: grade.tier,
       grading_tier_label: grade.tier_label,
+      hora_ladder: w.hora_ladder ?? [],
     }
   })
 
