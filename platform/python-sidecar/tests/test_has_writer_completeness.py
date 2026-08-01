@@ -168,6 +168,9 @@ KNOWN_HAS_WRITER_TRUE: frozenset[str] = frozenset({
     # registry items 4/5) ─────────────────────────────────────────────────────
     "ka_moorti_nirnaya",
     "ka_vedha_gochara",
+    # ── L3 Kāla — migration 531 (ṢAḌ-DARŚANA W3 Lane w3-tithi-pravesha,
+    # registry item 13, Tithi-Praveśa lunar-return annual chart) ─────────────
+    "ka_tithi_pravesha",
     # ── Brahmagyan — migration 528 (ADJUDICATION-11 Part 4, mandatory cited
     # vedha rows for R-19 closure; bg_sarvatobhadra_grid, migration 529, has
     # NO writer — deliberately empty, migration-seeded only) ─────────────────
