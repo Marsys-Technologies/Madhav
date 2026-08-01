@@ -68,6 +68,14 @@ import { queryVicharaConstantsCapability } from './query_vichara_constants'
 import { callPanchangaServiceCapability } from './call_panchanga_service'
 // W5 Lane L4: tool-search metadata — keyword search over the full ~120-capability catalog
 import { toolSearchCapability } from './tool_search'
+// ṢAḌ-DARŚANA W3 items 36/41: the query-time read path over the muhūrta election
+// substrate that landed with PR #930 (bg_muhurta_lattice + bg_parihara_rules /
+// bg_muhurta_activity_rules / bg_muhurta_factor_census). These two capabilities are
+// pure readers — the annotation/adjudication/Pareto engine over them lives in
+// platform-mcp `lib/kala_lattice_query.ts` (ONE engine, per the campaign's
+// ONE-ENGINE RULE: ELECT and YAJÑA share it, neither reimplements it).
+import { queryMuhurtaLatticeCapability } from './query_muhurta_lattice'
+import { queryPariharaGraphCapability } from './query_parihara_graph'
 
 export const L0_CAPABILITIES = [
   // Stream A: foundation + ontology
@@ -120,6 +128,9 @@ export const L0_CAPABILITIES = [
   callPanchangaServiceCapability,
   // W5 Lane L4: tool-search metadata
   toolSearchCapability,
+  // ṢAḌ-DARŚANA W3 items 36/41: muhūrta election substrate readers
+  queryMuhurtaLatticeCapability,
+  queryPariharaGraphCapability,
 ] as const
 
 export function registerL0Capabilities(): void {
@@ -182,4 +193,6 @@ export {
   queryFormulaConstantsCapability,
   queryVicharaConstantsCapability,
   toolSearchCapability,
+  queryMuhurtaLatticeCapability,
+  queryPariharaGraphCapability,
 }
