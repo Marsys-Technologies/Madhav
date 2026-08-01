@@ -149,7 +149,11 @@ LIFETIME_COUNT_ROWS: list[LifetimeCountRow] = [
             "Ministry of Health and Family Welfare, Government of India"
         ),
         edition="National Family Health Survey (NFHS-5), India Report Volume 1, report no. FR375",
-        edition_year="2022 (fieldwork 2019-21)",
+        edition_year=(
+            "2022 (fieldwork 2019-21; the report's cover reads March 2022 while its own "
+            "suggested-citation line reads 2021 — noted so a Verifier who cites the other "
+            "year knows it is the source's own inconsistency, not a transcription error)"
+        ),
         indicator_id=(
             "Table 4.5 'Children ever born and living', ALL WOMEN panel, row age 45-49, "
             "column 'Mean number of CEB', p.128"
@@ -174,14 +178,23 @@ LIFETIME_COUNT_ROWS: list[LifetimeCountRow] = [
             "row is served as the per-woman completed-fertility figure it is."
         ),
         conversion_arithmetic=(
-            "Completed fertility is ALREADY an expected count per person over a lifetime, "
-            "so the per-person-year rule N_e = 100*r does NOT apply here (3.09 is not an "
-            "incidence per year). Repeatable-class convention N_e = p * E[count|>=1], with "
-            "BOTH figures cited separately and both read off the SAME table row: "
-            "p(>=1 birth) = 1 - 0.033 = 0.967; E[count|>=1] = 3.09 / 0.967 = 3.20. "
-            "N_e = 0.967 * 3.20 = 3.09 (3 s.f.). Births after age 49 are outside the "
-            "survey's window; over the 100-year horizon assuming survival they add nothing "
-            "material for women and are unmeasured for men."
+            "THE SUBSTANTIVE CLAIM, stated plainly because it is the whole of the "
+            "conversion: mean children ever born to women aged 45-49 IS the expected "
+            "lifetime count of this event per person in that population. Nothing is "
+            "computed. N_e = 3.09 as published. The per-person-year rule N_e = 100*r does "
+            "NOT apply (3.09 is not an incidence per year, so there is no annual rate to "
+            "scale). "
+            "The repeatable-class decomposition N_e = p * E[count|>=1] is exhibited below "
+            "for the ruling's audit trail, but it is ALGEBRAICALLY TAUTOLOGICAL here and "
+            "must not be read as corroboration: E[count|>=1] is itself defined as m/p, so "
+            "p * (m/p) returns m identically for ANY value of p. Both figures are read off "
+            "the SAME table row: p(>=1 birth) = 1 - 0.033 = 0.967; E[count|>=1] = 3.09 / "
+            "0.967 = 3.20; p * E[count|>=1] = 0.967 * 3.20 = 3.09. That identity would hold "
+            "even if the underlying figure were wrong — it checks arithmetic, not "
+            "substance. "
+            "Births after age 49 are outside the survey's window; over the 100-year horizon "
+            "assuming survival they add nothing material for women and are unmeasured for "
+            "men."
         ),
         ratified_by=RATIFIED_BY,
     ),
@@ -269,8 +282,18 @@ LIFETIME_COUNT_ROWS: list[LifetimeCountRow] = [
         inclusion_criteria=(
             "The census 'Separated' and 'Divorced' categories together span both limbs of "
             "the class's chain (physical_separation -> legal_filing -> final_decree) and "
-            "match its 'significant' magnitude_floor and its legal-filing / final-decree "
-            "evidence requirement. "
+            "match its 'significant' magnitude_floor. On the EVIDENCE requirement the two "
+            "limbs differ, and the difference is stated rather than averaged over: the "
+            "Divorced limb (132,871) matches the final-decree evidence requirement; the "
+            "Separated limb (369,587, i.e. 74% of the 502,458 total) is SELF-DECLARED with "
+            "no legal record, and matches the chain's FIRST milestone "
+            "(physical_separation) rather than its irreversibility milestone. Both are "
+            "counted, because the ontology's chain BEGINS at physical_separation — "
+            "restricting to Divorced-only would give 0.00213 and would silently redefine "
+            "the class as its final milestone. (An earlier draft of this field claimed the "
+            "combined figure matched the legal-filing/final-decree requirement outright; "
+            "that was inaccurate for the Separated limb and contradicted disclosure (2) "
+            "below, and was corrected in the ADJUDICATION-2 re-derivation pass.) "
             "TWO DISCLOSED UNDERCOUNTS, both in the same direction and neither correctable "
             "from this source: (1) this is POINT PREVALENCE on census day, not "
             "lifetime-ever — a person who separated and later remarried is enumerated as "
@@ -344,6 +367,22 @@ LIFETIME_COUNT_ROWS: list[LifetimeCountRow] = [
             "makes it at-most-once by construction and is what licenses the prevalence "
             "convention. N_e is a LOWER BOUND on total relocation events, and for this "
             "class the gap is large. "
+            "IN-MIGRANTS FROM OUTSIDE INDIA — the numerator's composition, and the choice "
+            "made about it (raised in the ADJUDICATION-2 re-derivation pass). Of the "
+            "455,787,621 migrants, 5,491,194 (1.20%) had their last residence OUTSIDE "
+            "India. THE FIGURE IS KEPT AS PUBLISHED, at 0.376, for one reason: the "
+            "denominator is 'persons enumerated in India', and those 5,491,194 were "
+            "themselves enumerated in India and did genuinely change their usual residence, "
+            "so numerator and denominator range over the SAME universe. Note the two "
+            "alternatives are not equivalent, which is why this is stated rather than left "
+            "to a reader: trimming the numerator ALONE gives 450,296,427 / 1,210,854,977 = "
+            "0.372, but that mismatches the universes by leaving those persons in the "
+            "denominator; the universe-CONSISTENT exclusion trims both, 450,296,427 / "
+            "(1,210,854,977 - 5,491,194) = 450,296,427 / 1,205,363,783 = 0.374. Either way "
+            "the effect is a third-significant-figure shift (0.376 -> 0.372 or 0.374), well "
+            "inside the far larger repeat-migration undercount disclosed above, and it does "
+            "not bear on whether this row should exist. A Verifier who prefers the stricter "
+            "within-India reading should take 0.374, not 0.372. "
             "Cross-check on a different definition, stated not hidden: Census Table D-1 "
             "(place of BIRTH) gives 447,287,419 / 1,210,854,977 = 36.9% ever enumerated "
             "away from birthplace, and the sample surveys on a stricter six-month "
@@ -428,13 +467,18 @@ LIFETIME_COUNT_ROWS: list[LifetimeCountRow] = [
     # India figures competed, so the choice is recorded rather than left implicit):
     # the widely-cited alternative is 904 per 100,000/year (Weiser et al., Bull
     # World Health Organ 2016;94(3):201-209F, DOI 10.2471/BLT.15.159293, Table 4).
-    # It is NOT used, on the ruling's own inclusion-criteria test, for two reasons
-    # that both point the same way: (a) India appears only in that paper's Table 4,
-    # "…for 128 Member States … with MISSING surgical volume data" — 904 is a
-    # regression IMPUTATION from health expenditure per capita, not a measurement;
-    # (b) its universe is broader than this class — it counts all operating-theatre
-    # procedures under anaesthesia including outpatient ones, whereas the class
-    # floor is 'significant'. The figure used below is MEASURED, national, and
+    # It is NOT used, and the reason rests on ONE ground only: India appears solely
+    # in that paper's Table 4, "…for 128 Member States … with MISSING surgical
+    # volume data" — 904 is a regression IMPUTATION from health expenditure per
+    # capita for a country the authors classify as having no observed surgical
+    # volume data, not a measurement of India.
+    # (An earlier draft of this note gave a second ground — that Weiser's universe
+    # is broader than this class. That was withdrawn in the ADJUDICATION-2
+    # re-derivation pass as not supported by the sources: BOTH papers gate on
+    # anaesthesia, Weiser's definition being "procedures performed in operating
+    # theatres that require general or regional anaesthesia or profound sedation to
+    # control pain". Weiser's definition is only MARGINALLY broader, and the
+    # rejection does not need it.) The figure used below is MEASURED, national, and
     # restricted to "major (those requiring anesthesia)". The two are reconciled by
     # the chosen paper itself, verbatim: "Our national major surgical rate falls
     # much below the modeled rate of 904 per 100 000 people, while the total
@@ -489,9 +533,16 @@ LIFETIME_COUNT_ROWS: list[LifetimeCountRow] = [
             "(2) A HIGHER PUBLISHED ALTERNATIVE EXISTS and is recorded rather than "
             "suppressed: 904 per 100,000/year (Weiser et al. 2016, DOI "
             "10.2471/BLT.15.159293, Table 4), which would give N_e = 0.904. It is not used "
-            "because it is imputed for India rather than measured, and because its universe "
-            "is broader than this class — see the source-selection note above the row. A "
-            "Verifier who re-adjudicates that choice should change this row, not patch it. "
+            "on ONE ground: 904 is a regression imputation from health expenditure per "
+            "capita for a country the authors classify as having no observed surgical "
+            "volume data (Weiser Table 4 caption), not a measurement of India; its "
+            "definition is only marginally broader. Both papers gate on anaesthesia — "
+            "Weiser's is 'procedures performed in operating theatres that require general "
+            "or regional anaesthesia or profound sedation to control pain' — so the "
+            "inclusion-criteria difference between them is NOT a reason to prefer one over "
+            "the other, and an earlier draft of this field that claimed otherwise was "
+            "corrected in the ADJUDICATION-2 re-derivation pass. A Verifier who "
+            "re-adjudicates the choice should change this row, not patch it. "
             "(3) TEMPORAL MISMATCH — a single FY2019 cross-sectional rate is applied flat "
             "across the 100-year horizon, per the ruling's own convention that lambda-zero "
             "is flat over H. The paper measures major-surgery rates rising 4.16% per year "
