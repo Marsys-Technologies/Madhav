@@ -687,6 +687,39 @@ disagreeing about one fact (the `r18` "PROVEN" vs §6.8 "unproven" drift, §6.12
 **To reopen:** a native decision to accept blocking on those two specific lines, then
 `ABSENCE_LINT_STRICT=true` and drop `continue-on-error`. One line each.
 
+## §6.14 — Re-audit of §6.12–§6.13: four surfaces still disagreed (2026-08-01)
+
+The two final decisions were executed in #989 and #990. Re-reading the brief against `main`
+afterwards — rather than trusting that "the PRs merged" meant "the work is done" — found **four
+surfaces still describing the old state.** All were documentation; none changed behaviour; all
+would have misled the next reader. Recorded because the pattern is now this campaign's most
+frequent defect, ahead of any code bug.
+
+1. **`elev-serving-gates.yml`'s FILE HEADER** still read "report-only (WARN) by default;
+   `ABSENCE_LINT_STRICT=true` upgrades ungrounded candidates to FAIL" — presenting arming as an
+   intended upgrade path, which is exactly the reading §6.13 exists to prevent. The brief said
+   to update *the job/step name **and the workflow header***; only the former had been done.
+
+2. **`tap-ci.yml` carried two contradictory comment blocks ADJACENT to each other**: the old
+   "RETIRED … TAP_DATABASE_URL and TAP7_API_BASE_URL HAVE NEVER EXISTED … RE-ARM: add the
+   TAP_DATABASE_URL secret" block sat immediately above the new "ARMED 2026-08-01 by
+   REPOINTING" block. Both were in the same file, four lines apart, saying opposite things. The
+   superseded block is deleted.
+
+3. **`platform/scripts/audit/tap/README.md` §CI wiring** was stale on three counts: it said the
+   DB job runs with `continue-on-error: true` (removed), that arming means provisioning
+   `TAP_DATABASE_URL` (it means reading `PROD_DATABASE_URL`), and implied those batteries would
+   then "start gating merges" (they are deliberately dispatch-only). Rewritten.
+
+4. §6.8's pre-narrowing table row — already annotated in #989, listed here for completeness.
+
+**The generalisable lesson.** Every one of this campaign's documentation-drift bugs — `r18`
+"PROVEN" vs §6.8 "unproven" (§6.12), EL-07's superseded counts (§6.13), and all four above —
+shares one cause: **a change was made in one place and the other places that assert the same
+fact were not swept.** Landing a PR is not the same as reconciling a claim. The cheap
+countermeasure, used here, is to grep for the *old* state's vocabulary after the change lands
+(`ABSENCE_LINT_STRICT`, `TAP_DATABASE_URL`, "RE-ARM", "TO ARM") and read every hit.
+
 ## §7 — Verification standard applied
 
 No change was made on reasoning alone. Every claim was measured, and every gate

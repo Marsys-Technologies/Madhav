@@ -10,8 +10,17 @@ name: Elevation Campaign — Serving Gates (Stream α / SATYA, Lane K1)
 #   - absence_lint_gate.ts   — static grep lint over platform-mcp/src/tools/** +
 #                              platform/src/lib/retrieval/registry/** for ontological-absence
 #                              phrasing not backed by a resolver-miss code path nearby. Pure
-#                              source-tree scan, no MCP calls — report-only (WARN) by default;
-#                              ABSENCE_LINT_STRICT=true upgrades ungrounded candidates to FAIL.
+#                              source-tree scan, no MCP calls. REPORT-ONLY BY DECISION
+#                              (2026-07-31) — permanently, not "by default pending arming".
+#                              Scope was narrowed (comments and regex literals no longer match)
+#                              taking STRICT findings 21 -> 2, and BOTH survivors are
+#                              working-as-intended, so arming would block `main` on non-defects.
+#                              ABSENCE_LINT_STRICT=true still exists and still goes red, and the
+#                              detector was re-proven sound after the narrowing — so the
+#                              report-only run still surfaces a genuinely NEW absence claim. But
+#                              flipping it is a deliberate native decision, not a follow-up
+#                              someone should action on sight. See the job comment below and
+#                              CI_EFFICIENCY_AUDIT_v1_0.md §6.12-§6.13.
 #   - w1_bare_empty_census_gate.ts — SATYA-ŚEṢA W1 (SATYA_SHESHA_BRIEF_v1_0.md §2 W1). Probes
 #                              all 46 Phase-0.7-census concepts by their naive English/Sanskrit
 #                              name against chart_facts_query's `keyword` filter (the S4-03
