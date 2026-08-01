@@ -790,6 +790,78 @@ entries are `two_pass_verified_literal`.
 **Scan scope settled** (the brief flagged it as an open question): `walk()` collects only `.py`
 and `.ts`. **`.json` is not scanned**, so `CHART_FACTS_SCHEMA.json`'s 592 textual matches are
 irrelevant and the diagnosis above is unaffected.
+## §6.16 — STOPPED: draining the TAP-6 baseline uncovered ~104 unearned `two_pass_verified` claims
+
+**Item 1 of the remaining-open brief was to drain `tap6_baseline.json` — "`ga_structural_writer.py`:
+81 sites, mechanical". It is not mechanical, and it was stopped before any conversion.** The
+premise rests on a baseline note asserting the sites are "genuinely-computed … correct as-is."
+Reading the code contradicts that (§6 rule 9: a description is not evidence about the code —
+this applies to a baseline note as much as to a detector).
+
+**What the code does.** `ga_structural_writer._base_row()` takes `verif: str =
+"two_pass_verified"` and writes it straight to `row["verification_pass_status"]`. There is no
+comparison in it. 77 call sites pass the bare literal as a keyword argument. `ga_vargas_writer`
+has the same shape as a direct dict literal. Neither file contains any re-derivation,
+agreement, or cross-check machinery.
+
+**The clearest single case — verification theatre, at `ga_structural_writer.py:1497-1500`:**
+
+```python
+# Pass 2 verification: sum check
+sub_sum = positional + directional + temporal + aspectual + occupant_strength + lord_str
+verif_status = "two_pass_verified"  # Algebraic invariant holds
+```
+
+`sub_sum` is assigned and **never referenced again** (grep-confirmed: one occurrence in the
+file). The comment says a pass ran; no comparison exists; no different answer was possible.
+That is worse than the bare keyword arguments, because it performs the appearance of checking.
+
+**Census across the sidecar** (excluding the sanctioned module, tests, and `*.test.py`):
+
+| Kind | Count |
+|---|---|
+| **Bare asserted literal** | **106** |
+| Computed conditional (a real comparison) | 5 |
+
+Of the 106, two are not emit sites and are correctly adjudicated innocent in the baseline —
+`bo_pramana_mapa.py` (a read-only SQL `WHERE … = 'two_pass_verified'`) and `bo_laksana.py`
+(a `== "two_pass_verified"` comparison). That leaves **~104 genuine emit-site assertions**
+across `ga_structural_writer` (79), `ga_vargas_writer` (18), `ga_sensitive_writer` (5) and
+`ga_sade_sati_writer` (2).
+
+**Why this is the F-11 defect again, at larger scale.** `verification_vocab.py` states the rule:
+*"A status is `verified: True` only if a detector ran that could have produced a DIFFERENT
+answer."* DVA Ruling 13 banned `pass`/`PASS` on exactly that basis, and F-11 covered 5,428 rows.
+These ~104 sites assert the strongest member of the vocabulary with nothing behind it. "The
+value was computed" is not "a second pass ran" — and `two_pass_verified` is the one member the
+serve layer counts as grounding.
+
+**Why no conversion was made — both available moves are wrong without a decision:**
+
+- Converting the literals to a `TWO_PASS_VERIFIED` constant would turn TAP-6 green while leaving
+  ~104 unearned claims in the data. That is a **detector-dodging rewrite**, explicitly forbidden,
+  and precisely the failure this campaign has spent its length removing.
+- Demoting them to the honest tier (`single`) is the correct fix, but it changes
+  `verification_pass_status` on a large share of `chart_facts` rows and therefore changes what
+  the serve layer counts as grounded. That is a **data-honesty change of campaign scale**, not a
+  line item to list in a PR body, and it is the native's call — not a side effect of a
+  CI-baseline cleanup.
+
+**Consequence for the baseline.** It cannot yet mean "register-tracked open defects only",
+because the entries that look like innocents-held-by-hash-collision are in fact **masking real
+M-22 residue**. The 7 entries previously described as adjudicated "NOT A VIOLATION" break down
+as: 3 (`ga_sensitive_degree_writer`) genuinely computed and correct; 2 (`bo_pramana_mapa`,
+`bo_laksana`) not emit sites and correct; and the `ga_structural`/`ga_vargas`/`ga_sensitive`/
+`ga_sade_sati` entries covering assertions that are **not** correct-as-is.
+
+**Recommended sequencing** (native decision required before any of it):
+1. Decide the tier for asserted rows — almost certainly `single`, matching the F-11 remediation.
+2. Convert per writer, smallest first (`ga_sade_sati` 2 → `ga_sensitive` 5 → `ga_vargas` 18 →
+   `ga_structural` 79), each with its row-tier delta stated and a rebuild.
+3. Only then does deleting each file's baseline entry mean what the ratchet intends.
+
+**Nothing was changed by this investigation.** No conversions, no baseline edits, no writer
+output altered.
 
 ## §7 — Verification standard applied
 
