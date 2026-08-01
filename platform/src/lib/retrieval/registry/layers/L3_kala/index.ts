@@ -10,6 +10,8 @@
  *   query_temporal_view        — ka_kala_darshana (STUBBED-PENDING-DATA, 0 rows)
  *   query_kota_chakra          — ka_kota_chakra (W3 item 16, fort chart)
  *   query_sudarshana_varsha    — ka_sudarshana_varsha (W3 item 17, year-wheel)
+ *   query_moorti_nirnaya       — ka_moorti_nirnaya (W3 item 4, moorti-nirṇaya)
+ *   query_vedha_gochara        — ka_vedha_gochara (W3 item 5, vedha + sarvatobhadra; closes R-19)
  *
  * Service wrappers (5):
  *   call_transit_search        — ka_gochara
@@ -36,6 +38,9 @@ import { queryActiveDashasCapability }        from './query_active_dashas'
 // ṢAḌ-DARŚANA W3 Lane w3-kota-sudarshana, registry items 16/17.
 import { queryKotaChakraCapability }          from './query_kota_chakra'
 import { querySudarshanaVarshaCapability }    from './query_sudarshana_varsha'
+// ṢAḌ-DARŚANA W3 Lane w3-moorti-vedha, registry items 4/5 (item 5 closes R-19).
+import { queryMoortiNirnayaCapability }       from './query_moorti_nirnaya'
+import { queryVedhaGocharaCapability }        from './query_vedha_gochara'
 import {
   callTransitSearchCapability,
   callEphemerisAtTCapability,
@@ -55,6 +60,8 @@ registerCapability(queryActivationWaveformCapability)
 registerCapability(queryActiveDashasCapability)
 registerCapability(queryKotaChakraCapability)
 registerCapability(querySudarshanaVarshaCapability)
+registerCapability(queryMoortiNirnayaCapability)
+registerCapability(queryVedhaGocharaCapability)
 
 registerCapability(callTransitSearchCapability)
 registerCapability(callEphemerisAtTCapability)
