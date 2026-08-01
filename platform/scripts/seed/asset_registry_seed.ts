@@ -2431,6 +2431,48 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     depends_on: ['ka_kshetra'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
+
+  // ══ ṢAḌ-DARŚANA W4 Lane S — the Unified Intervention Ledger (item 42) ═══════
+  // Spec: KALA_W4_UPAYA_DESIGN_v1_0.md §4.2 (table), §8.2 (this row, verbatim
+  // shape). Mirrors migration NNN_mimamsa_intervention_ledger.sql's own
+  // `INSERT INTO asset_registry ... ON CONFLICT (asset_id) DO UPDATE` — same
+  // discipline as `ka_kshetra` (migration 494) / `mi_bhara` (migration 497)
+  // above: the catalog-reconciliation check builds its id set purely from THIS
+  // file, so the row lands here in the SAME PR as the `mi_sankalpa` writer
+  // (§2.5.1 Nirmāṇa contract).
+  //
+  // `depends_on: ['ka_kshetra']`, per brief §2.5.3 and KALA_W2_FIELD_DESIGN
+  // §9.1 verbatim. `ka_kshetra` never lists `mi_sankalpa` back (§2.5.4
+  // acyclicity rule) — the ledger flows forward only, same shape as the
+  // ka_kshetra/mi_bhara pair immediately above.
+  {
+    asset_id: 'mi_sankalpa',
+    layer: 'mimamsa', sort_order: 14,
+    sanskrit_name: 'Saṅkalpa',
+    english_name: 'Intervention Ledger',
+    english_description:
+      'Unified intervention ledger — every elected act (upāya · yajña · elected activity) ' +
+      'with its adjudication record (the JudgmentLedger, frozen verbatim at election time), ' +
+      'predicted differential, native performance attestation and LEL outcome linkage; the ' +
+      'three-armed study of election itself (elected_pending / acted_with_election / ' +
+      'elected_not_acted / acted_without_election). Prediction spine is ' +
+      'brahma_prospective_ledger by FK (ruling S-1) — this writer never inserts into it ' +
+      'directly; filing happens at serve time through platform-mcp\'s ' +
+      '`fileInterventionFalsifier` (intervention_filing.ts). ṢAḌ-DARŚANA W4 item 42.',
+    storage_type: 'postgres_table',
+    target_table: 'mimamsa_intervention_ledger',
+    count_sql: 'SELECT count(*) FROM mimamsa_intervention_ledger WHERE chart_id = $1',
+    size_sql: "SELECT pg_total_relation_size('mimamsa_intervention_ledger')",
+    target_floor: null,
+    expected_volume_formula: null,
+    expected_volume_inputs: null,
+    volume_explanation:
+      'Accumulates as interventions are elected and attested — not a deterministic target ' +
+      '(§N.4: floors are aspirational, set to the ACHIEVED count after first build, never ' +
+      'fabricated).',
+    depends_on: ['ka_kshetra'],
+    scope: 'per_chart', is_active: true, estimated_seconds: null,
+  },
 ]
 
 // ── Coefficient definitions ───────────────────────────────────────────────────
