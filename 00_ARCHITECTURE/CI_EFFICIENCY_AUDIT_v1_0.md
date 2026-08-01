@@ -790,7 +790,12 @@ entries are `two_pass_verified_literal`.
 **Scan scope settled** (the brief flagged it as an open question): `walk()` collects only `.py`
 and `.ts`. **`.json` is not scanned**, so `CHART_FACTS_SCHEMA.json`'s 592 textual matches are
 irrelevant and the diagnosis above is unaffected.
-## §6.16 — STOPPED: draining the TAP-6 baseline uncovered ~104 unearned `two_pass_verified` claims
+## §6.16 — STOPPED: draining the TAP-6 baseline uncovered unearned `two_pass_verified` claims
+
+> **SUPERSEDED IN PART by §6.17 (2026-08-01).** Every "~104" in this section was a count of what
+> TAP-6 could *see*, not of what exists. The detector was blind to the positional and `return`
+> forms; the true emit-site count is **147**, and the earned/unearned split below is corrected in
+> §6.17. The reasoning in this section stands; the numbers do not. Read §6.17 for the live figures.
 
 **Item 1 of the remaining-open brief was to drain `tap6_baseline.json` — "`ga_structural_writer.py`:
 81 sites, mechanical". It is not mechanical, and it was stopped before any conversion.** The
@@ -825,21 +830,21 @@ That is worse than the bare keyword arguments, because it performs the appearanc
 
 Of the 106, two are not emit sites and are correctly adjudicated innocent in the baseline —
 `bo_pramana_mapa.py` (a read-only SQL `WHERE … = 'two_pass_verified'`) and `bo_laksana.py`
-(a `== "two_pass_verified"` comparison). That leaves **~104 genuine emit-site assertions**
+(a `== "two_pass_verified"` comparison). That leaves **~104 genuine emit-site assertions** *(corrected: 147 emit sites exist — see §6.17)*
 across `ga_structural_writer` (79), `ga_vargas_writer` (18), `ga_sensitive_writer` (5) and
 `ga_sade_sati_writer` (2).
 
 **Why this is the F-11 defect again, at larger scale.** `verification_vocab.py` states the rule:
 *"A status is `verified: True` only if a detector ran that could have produced a DIFFERENT
 answer."* DVA Ruling 13 banned `pass`/`PASS` on exactly that basis, and F-11 covered 5,428 rows.
-These ~104 sites assert the strongest member of the vocabulary with nothing behind it. "The
+These sites assert the strongest member of the vocabulary with nothing behind it. "The
 value was computed" is not "a second pass ran" — and `two_pass_verified` is the one member the
 serve layer counts as grounding.
 
 **Why no conversion was made — both available moves are wrong without a decision:**
 
 - Converting the literals to a `TWO_PASS_VERIFIED` constant would turn TAP-6 green while leaving
-  ~104 unearned claims in the data. That is a **detector-dodging rewrite**, explicitly forbidden,
+  the unearned claims in the data. That is a **detector-dodging rewrite**, explicitly forbidden,
   and precisely the failure this campaign has spent its length removing.
 - Demoting them to the honest tier (`single`) is the correct fix, but it changes
   `verification_pass_status` on a large share of `chart_facts` rows and therefore changes what
@@ -862,6 +867,100 @@ as: 3 (`ga_sensitive_degree_writer`) genuinely computed and correct; 2 (`bo_pram
 
 **Nothing was changed by this investigation.** No conversions, no baseline edits, no writer
 output altered.
+
+## §6.17 — TAP-6 was blind to two emit forms; the corrected census is 147 sites (2026-08-01)
+
+**A green TAP-6 was not evidence the estate was clean.** The `two_pass_verified_literal` pattern
+was `/(=|:)\s*['"]two_pass_verified['"]/` — it assumed the literal always follows an assignment
+or a dict colon. `ga_dashas_writer.py` passes it **positionally** (`None, None,
+"two_pass_verified", ref, human,`) and eight functions `return` it directly. Both forms were
+invisible. §6.16's "~104 sites" was therefore a measure of the detector's reach, not of the code.
+
+**The taxonomy was derived from an AST census, not from guessing at regexes.** Every string
+constant `'two_pass_verified'` in the sidecar was classified by its parent node. That is what makes
+the widened pattern's coverage claim checkable rather than asserted:
+
+| Form | n | Before | Now |
+|---|---|---|---|
+| keyword arg (`verif="…"`) | 81 | caught | caught |
+| dict value (`"…": "…"`) | 18 | caught | caught |
+| **positional arg / tuple element** | **30** | **MISSED** | caught (28/30) |
+| **`return "…"`** | **8** | **MISSED** | caught |
+| conditional-expression tail (`else "…"`) | 7 | 5 of 7 | caught |
+| default param | 4 | caught | caught |
+| plain assignment | 1 | caught | caught |
+| *dict KEY / `.get()` lookup / tier-rank tuple* | *27* | *not matched* | *deliberately still not matched — emits no status* |
+
+Measured against that ground truth the widened pattern catches **146 of 147** emit sites with **one**
+false positive (`bo_laksana.py:2204`, a `==` comparison that the pre-widening pattern also matched —
+no regression). **The one it cannot reach** is `ga_tajaka_writer.py:574`, where the literal opens a
+parenthesised multi-line expression; a line-based regex cannot see it, and the pattern's description
+now says so rather than implying full coverage. **Also beyond static reach, and stated as such:** any
+status assembled at runtime (concatenation, `.format()`, f-string, config/DB lookup) and indirection
+through a non-sanctioned alias constant.
+
+**Why the literal is NOT simply matched anywhere it appears.** The same string is also a dict key
+and a summary flag name — `summary["two_pass_verified"]`, `taj_summary.get("two_pass_verified",
+False)`, `("two_pass_verified", 3)`. Those emit no status. An unanchored match would flag 27 such
+lines, and a gate that cries wolf 27 times is a gate the estate learns to ignore.
+
+**The corrected census — and a correction to a claim I made on 2026-08-01 before this measurement.**
+I reported that `ga_dashas_writer`'s ~28 positional sites meant `chart_dashas`'s 1,358,993 two-pass
+rows were unearned assertions. **That was wrong, and the error was the same one §6 rule 9 warns
+about: I read the emit site and not the code that follows it.** `ga_dashas_writer.py:3047-3048`
+does `for row in rows: row["verification_pass_status"] = verification`, unconditionally overwriting
+every row with the `_verify_<system>()` verdict. The positional literals are dead placeholders that
+never reach the database.
+
+| Verdict | Sites | Where |
+|---|---|---|
+| **EARNED-BY-RAISE** | 10 | `ga_dashas` 7 `return` sites (each `_verify_*` raises `ValueError` on disagreement); `ga_sensitive_degree` 3 (genuine `if yogi_ok else divergent_flagged`) |
+| **DEAD PLACEHOLDER** | 27 | `ga_dashas` positional literals, overwritten at :3048 |
+| **UNEARNED** | 109 | `ga_structural` 81, `ga_vargas` 20, `ga_sensitive` 5, `ga_sade_sati` 3 |
+| **UNDETERMINED** | 1 | `ga_tajaka_writer.py:574` (the form the detector cannot reach) |
+
+**One earned verdict is only half-earned, and the baseline says so.** `_verify_vimshottari`'s Pass 2
+— the FORENSIC birth-period-lord check, the part that can actually fail — is wrapped in
+`if chart_id == CANONICAL_CHART_ID`. The native chart earns its status; **every other chart does
+not**, because Pass 1's tolerance comparison ends in a bare `pass` and cannot fail. That is a
+per-chart split, not a uniform verdict, and it is recorded as such rather than as "NOT A VIOLATION".
+
+**Row exposure per table** (live DB, read-only; `chart_divisionals` and the L2 tables were not
+enumerated in the prior pass):
+
+| Table | `two_pass_verified` rows | Standing |
+|---|---|---|
+| `chart_dashas` | 1,358,993 | **earned** by `_verify_*`, minus the non-native vimshottari caveat |
+| `chart_facts` | 352,485 | 97.9% traced to the four unearned writers |
+| `bodha_msr_signals` | 121,060 | L2, out of this lane's scope |
+| `chart_divisionals` | 39,516 | `ga_vargas` policy lookup — unearned |
+| `bodha_cgm_edges` / `l1_tajik_varsha_year_lords` / `bodha_cgm_nodes` | 1,080 / 780 / 44 | out of scope |
+
+**The corrected figure the demotion decision should be made against is ~392,001 L1 rows**
+(`chart_facts` 352,485 + `chart_divisionals` 39,516) — **not** the 1.7M implied by adding
+`chart_dashas`.
+
+**Baseline: 15 → 35 entries.** The 38 newly-surfaced hits collapse to 20 distinct
+`(file, line_hash)` groups, because identical source lines share a hash. Each note names **every
+line the hash covers** and states its verdict — a single note describing one site while silently
+covering seven is the §6.16 failure mode repeating. One entry records an accepted false positive:
+`ga_dashas_writer.py:762` is docstring prose describing a prior defect, matched by the `return`
+rule. No entry says "NOT A VIOLATION" for anything not read.
+
+**Verification (all three directions, per rule 4):**
+
+| Check | Result |
+|---|---|
+| Widened pattern, honest baseline | **exit 0** — 2 QUARANTINED, 12 PASS |
+| Probe in each newly-covered form (positional / `return` / `else`) | **exit 1** each, naming `__m22_probe.py` |
+| Sanctioned module still exempt | **exit 0** — no `verification_vocab.py` hit |
+| Exemption removed | **exit 1**, naming `verification_vocab.py:240,242,265` — load-bearing, and the widening surfaces a third line the old pattern missed |
+
+**TAP-6 arming precondition, amended.** ≥7 consecutive green days on `main` read from run history
+remains necessary but is **no longer sufficient**. Arming now also requires this widening on `main`
+and a clean re-census. Arming a detector with a known blind spot manufactures precisely the false
+confidence this campaign exists to remove. Earliest date is unchanged (2026-08-08); the added
+condition is coverage, not time.
 
 ## §7 — Verification standard applied
 

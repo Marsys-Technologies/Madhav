@@ -1,110 +1,250 @@
 {
-  "_comment": "TAP-6 method-audit grep baseline. Every entry is a KNOWN, register-tracked hit — i.e. a location the 2026-07-10 audit already found and filed as an OPEN register row (MARSYS_DEFECT_GAP_REGISTER_v2_0.md §11.1). tap6_method_grep.ts treats any grep hit matching (pattern, file, line_hash) here as QUARANTINED (expected, tracked, not a new failure). Any grep hit whose exact matched line is NOT in this baseline — whether a brand-new file or a second, unrelated occurrence in an already-baselined file — is a NEW violation and fails CI (Ring-2 fix, post-bacade1c: file-level keying was too coarse to catch a second unrelated occurrence in an already-baselined file). When a Phase-1 lane fixes an M-row, delete its baseline entries here so the grep starts enforcing the fix (ratchet). Regenerated 2026-07-10 by walking the live tree and hashing every matched line.",
+  "_comment": "TAP-6 method-audit grep baseline. Every entry is a KNOWN, register-tracked hit \u2014 i.e. a location the 2026-07-10 audit already found and filed as an OPEN register row (MARSYS_DEFECT_GAP_REGISTER_v2_0.md \u00a711.1). tap6_method_grep.ts treats any grep hit matching (pattern, file, line_hash) here as QUARANTINED (expected, tracked, not a new failure). Any grep hit whose exact matched line is NOT in this baseline \u2014 whether a brand-new file or a second, unrelated occurrence in an already-baselined file \u2014 is a NEW violation and fails CI (Ring-2 fix, post-bacade1c: file-level keying was too coarse to catch a second unrelated occurrence in an already-baselined file). When a Phase-1 lane fixes an M-row, delete its baseline entries here so the grep starts enforcing the fix (ratchet). Regenerated 2026-07-10 by walking the live tree and hashing every matched line.",
   "entries": [
     {
       "pattern": "two_pass_verified_literal",
       "file": "platform/python-sidecar/ga_writers/ga_sade_sati_writer.py",
       "line_hash": "e77d402723dd",
       "register_row": "M-22",
-      "note": "R6-1f PARTIAL: _verif_for_text/_verif_for_maybe_none (the real M-20-linked vacuous verifiers) demoted to single_pass. This hash is the shared _make_row/R() default param 'two_pass_verified' still used at ~9 other call sites in this file for genuinely upstream-joined date/dignity/house facts (not the M-20 vargottama approximation) — left as-is; a full per-call-site audit of this file's ~9 default-relying rows is out of this lane's scope."
+      "note": "R6-1f PARTIAL: _verif_for_text/_verif_for_maybe_none (the real M-20-linked vacuous verifiers) demoted to single_pass. This hash is the shared _make_row/R() default param 'two_pass_verified' still used at ~9 other call sites in this file for genuinely upstream-joined date/dignity/house facts (not the M-20 vargottama approximation) \u2014 left as-is; a full per-call-site audit of this file's ~9 default-relying rows is out of this lane's scope."
     },
     {
       "pattern": "two_pass_verified_literal",
       "file": "platform/python-sidecar/ga_writers/ga_sade_sati_writer.py",
       "line_hash": "48e1c2650d1e",
       "register_row": "M-22",
-      "note": "R6-1f PARTIAL: see sibling entry above — same file, same disposition."
+      "note": "R6-1f PARTIAL: see sibling entry above \u2014 same file, same disposition."
     },
     {
       "pattern": "two_pass_verified_literal",
       "file": "platform/python-sidecar/ga_writers/ga_sensitive_writer.py",
       "line_hash": "1dcd54c85512",
       "register_row": "M-22",
-      "note": "R6-1f PARTIAL: the M-9/M-10/M-11 fabricated-formula call sites (Pranapada, Trikona Dasha Sphuta, Sri Yantra, HL/GL/BL special lagnas, Upagraha Kala, Gulika-Hindu) now pass an explicit verification_pass_status='documented_approximation' override. This hash is the shared _make_row default param declaration ('two_pass_verified') still in force for the OTHER, non-fabricated sensitive points this file also builds (e.g. Yogi Graha, BPHS Ch.3 upagrahas with a real native cross-check) — left as-is, correctly high-tier for those."
+      "note": "R6-1f PARTIAL: the M-9/M-10/M-11 fabricated-formula call sites (Pranapada, Trikona Dasha Sphuta, Sri Yantra, HL/GL/BL special lagnas, Upagraha Kala, Gulika-Hindu) now pass an explicit verification_pass_status='documented_approximation' override. This hash is the shared _make_row default param declaration ('two_pass_verified') still in force for the OTHER, non-fabricated sensitive points this file also builds (e.g. Yogi Graha, BPHS Ch.3 upagrahas with a real native cross-check) \u2014 left as-is, correctly high-tier for those."
     },
     {
       "pattern": "two_pass_verified_literal",
       "file": "platform/python-sidecar/ga_writers/ga_sensitive_writer.py",
       "line_hash": "e5c9e1db5e33",
       "register_row": "M-22",
-      "note": "R6-1f PARTIAL: see sibling entry above — same file, same disposition (Yogi Graha rows, genuinely BPHS Ch.20 formula, no M-9/M-10/M-11 defect; correctly left at the default tier)."
+      "note": "R6-1f PARTIAL: see sibling entry above \u2014 same file, same disposition (Yogi Graha rows, genuinely BPHS Ch.20 formula, no M-9/M-10/M-11 defect; correctly left at the default tier)."
     },
     {
       "pattern": "two_pass_verified_literal",
       "file": "platform/python-sidecar/ga_writers/ga_structural_writer.py",
       "line_hash": "27d6bd724945",
       "register_row": "M-22",
-      "note": "R6-1f FIXED at the cited M-12 (Tajik aspects, aspect_tajik category) and M-14 (graha_in_house_composite_strength, 3 rows) emit sites — all demoted to documented_approximation with rationale comments. This hash remains QUARANTINED because the identical trimmed line text 'verif=\"two_pass_verified\",' also appears at ~95 OTHER emit sites in this 6000-line file for unrelated, genuinely-computed categories (dignity facts, conjunctions, real cross-checked positions) — those are correct as-is and out of this lane's scope to touch."
+      "note": "R6-1f FIXED at the cited M-12 (Tajik aspects, aspect_tajik category) and M-14 (graha_in_house_composite_strength, 3 rows) emit sites \u2014 all demoted to documented_approximation with rationale comments. This hash remains QUARANTINED because the identical trimmed line text 'verif=\"two_pass_verified\",' also appears at ~95 OTHER emit sites in this 6000-line file for unrelated, genuinely-computed categories (dignity facts, conjunctions, real cross-checked positions) \u2014 those are correct as-is and out of this lane's scope to touch."
     },
     {
       "pattern": "two_pass_verified_literal",
       "file": "platform/python-sidecar/ga_writers/ga_structural_writer.py",
       "line_hash": "d36b57e6e562",
       "register_row": "M-22",
-      "note": "R6-1f: see sibling entry above — M-12/M-14 cited sites fixed; remaining hits are the same shared literal text at unrelated correct emit sites."
+      "note": "R6-1f: see sibling entry above \u2014 M-12/M-14 cited sites fixed; remaining hits are the same shared literal text at unrelated correct emit sites."
     },
     {
       "pattern": "two_pass_verified_literal",
       "file": "platform/python-sidecar/ga_writers/ga_structural_writer.py",
       "line_hash": "31addb48f10e",
       "register_row": "M-22",
-      "note": "R6-1f: see sibling entry above — M-12/M-14 cited sites fixed; remaining hits are the same shared literal text at unrelated correct emit sites."
+      "note": "R6-1f: see sibling entry above \u2014 M-12/M-14 cited sites fixed; remaining hits are the same shared literal text at unrelated correct emit sites."
     },
     {
       "pattern": "two_pass_verified_literal",
       "file": "platform/python-sidecar/ga_writers/ga_structural_writer.py",
       "line_hash": "dde14a215b5e",
       "register_row": "M-22",
-      "note": "R6-1f: see sibling entry above — M-12/M-14 cited sites fixed; remaining hits are the same shared literal text at unrelated correct emit sites."
+      "note": "R6-1f: see sibling entry above \u2014 M-12/M-14 cited sites fixed; remaining hits are the same shared literal text at unrelated correct emit sites."
     },
     {
       "pattern": "two_pass_verified_literal",
       "file": "platform/python-sidecar/ga_writers/ga_structural_writer.py",
       "line_hash": "9dcb9f71884d",
       "register_row": "M-22",
-      "note": "R6-1f: see sibling entry above — M-12/M-14 cited sites fixed; remaining hits are the same shared literal text at unrelated correct emit sites."
+      "note": "R6-1f: see sibling entry above \u2014 M-12/M-14 cited sites fixed; remaining hits are the same shared literal text at unrelated correct emit sites."
     },
     {
       "pattern": "two_pass_verified_literal",
       "file": "platform/python-sidecar/ga_writers/ga_vargas_writer.py",
       "line_hash": "deeeb0bc4be1",
       "register_row": "M-22",
-      "note": "R6-1f PARTIAL: M-17 (D60 deity/quality attribution) and M-18 (saptavargaja bala) cited sites fixed — both demoted to documented_approximation (D60 conditionally, saptavargaja unconditionally). M-4 (BAV per-varga loop bug) NOT fixed this lane: _compute_ashtakavarga_bav (lines ~570-605, the function the register cites) is dead code with zero call sites found in this file — the live BAV-per-varga emit path could not be located within this lane's scope/budget; computation-truth fix (and locating its real emit site) is left to a computation-domain lane. Remaining hits are the shared literal text at other, unrelated correct varga emit sites."
+      "note": "R6-1f PARTIAL: M-17 (D60 deity/quality attribution) and M-18 (saptavargaja bala) cited sites fixed \u2014 both demoted to documented_approximation (D60 conditionally, saptavargaja unconditionally). M-4 (BAV per-varga loop bug) NOT fixed this lane: _compute_ashtakavarga_bav (lines ~570-605, the function the register cites) is dead code with zero call sites found in this file \u2014 the live BAV-per-varga emit path could not be located within this lane's scope/budget; computation-truth fix (and locating its real emit site) is left to a computation-domain lane. Remaining hits are the shared literal text at other, unrelated correct varga emit sites."
     },
     {
       "pattern": "two_pass_verified_literal",
       "file": "platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py",
       "line_hash": "f2282a906d7b",
       "register_row": "M-22",
-      "note": "NOT A VIOLATION (confirmed R6-1f): line ~1150 reads `5 if vpass == \"two_pass_verified\" else 2` — a legitimate comparison against an upstream-computed value (now honestly demoted at its real emit sites by this lane), not an emit-site assignment of the literal. Kept baselined only because the grep's assign-or-colon regex pattern-matches the comparison syntax; left in place as a documented false-positive rather than reworded to dodge the grep (the code is correct as written)."
+      "note": "NOT A VIOLATION (confirmed R6-1f): line ~1150 reads `5 if vpass == \"two_pass_verified\" else 2` \u2014 a legitimate comparison against an upstream-computed value (now honestly demoted at its real emit sites by this lane), not an emit-site assignment of the literal. Kept baselined only because the grep's assign-or-colon regex pattern-matches the comparison syntax; left in place as a documented false-positive rather than reworded to dodge the grep (the code is correct as written)."
     },
     {
       "pattern": "two_pass_verified_literal",
       "file": "platform/python-sidecar/pipeline/orchestrator/writers/bo_pramana_mapa.py",
       "line_hash": "1ceb2c533f47",
       "register_row": "M-22",
-      "note": "NOT A VIOLATION (confirmed R6-1f): line ~144 is `SELECT count(*) ... WHERE verification_pass_status = 'two_pass_verified'` — a read-only SQL aggregation counting real, already-persisted row statuses for a quality metric (two_pass_verified_pct). Not a fabricated stamp. Kept baselined only because the grep's assign-or-colon regex pattern-matches the SQL comparison syntax; left in place as a documented false-positive."
+      "note": "NOT A VIOLATION (confirmed R6-1f): line ~144 is `SELECT count(*) ... WHERE verification_pass_status = 'two_pass_verified'` \u2014 a read-only SQL aggregation counting real, already-persisted row statuses for a quality metric (two_pass_verified_pct). Not a fabricated stamp. Kept baselined only because the grep's assign-or-colon regex pattern-matches the SQL comparison syntax; left in place as a documented false-positive."
     },
     {
       "pattern": "two_pass_verified_literal",
       "file": "platform/python-sidecar/ga_writers/ga_sensitive_degree_writer.py",
       "line_hash": "45fc7b7770ff",
       "register_row": "M-22",
-      "note": "NOT A VIOLATION (MC-029 / Śodhana Builder T6, YOGI-BINDU): `yogi_status = \"two_pass_verified\" if yogi_ok else \"divergent_flagged\"` — yogi_ok is the real boolean result of _yogi_point_two_pass()'s independent plain-degree-vs-integer-arcsecond cross-check (agrees iff divergence <=1 arcsec, a rounding-only tolerance). The literal is the display label for a genuinely computed verifier outcome, not a fabricated stamp — same disposition as the bo_laksana.py/bo_pramana_mapa.py entries above (comparison/branch syntax the grep's regex necessarily also matches)."
+      "note": "NOT A VIOLATION (MC-029 / \u015aodhana Builder T6, YOGI-BINDU): `yogi_status = \"two_pass_verified\" if yogi_ok else \"divergent_flagged\"` \u2014 yogi_ok is the real boolean result of _yogi_point_two_pass()'s independent plain-degree-vs-integer-arcsecond cross-check (agrees iff divergence <=1 arcsec, a rounding-only tolerance). The literal is the display label for a genuinely computed verifier outcome, not a fabricated stamp \u2014 same disposition as the bo_laksana.py/bo_pramana_mapa.py entries above (comparison/branch syntax the grep's regex necessarily also matches)."
     },
     {
       "pattern": "two_pass_verified_literal",
       "file": "platform/python-sidecar/ga_writers/ga_sensitive_degree_writer.py",
       "line_hash": "c0aefbd52039",
       "register_row": "M-22",
-      "note": "NOT A VIOLATION (MC-029 / Śodhana Builder T6): sibling of the entry above — `avayogi_status = \"two_pass_verified\" if avayogi_ok else \"divergent_flagged\"`, avayogi_ok from _avayogi_point_two_pass()'s equivalent independent cross-check on the Avayogi point."
+      "note": "NOT A VIOLATION (MC-029 / \u015aodhana Builder T6): sibling of the entry above \u2014 `avayogi_status = \"two_pass_verified\" if avayogi_ok else \"divergent_flagged\"`, avayogi_ok from _avayogi_point_two_pass()'s equivalent independent cross-check on the Avayogi point."
     },
     {
       "pattern": "two_pass_verified_literal",
       "file": "platform/python-sidecar/ga_writers/ga_sensitive_degree_writer.py",
       "line_hash": "2e7410e0f078",
       "register_row": "M-22",
-      "note": "NOT A VIOLATION (MC-029 / Śodhana Builder T6): sibling of the two entries above — `duplicate_status = \"two_pass_verified\" if duplicate_ok else \"divergent_flagged\"`, duplicate_ok from an independently re-derived arcsecond-pass sign index matching the degree-pass sign index (Duplicate-Yogi/Sahayogi rasi-lord agreement check)."
+      "note": "NOT A VIOLATION (MC-029 / \u015aodhana Builder T6): sibling of the two entries above \u2014 `duplicate_status = \"two_pass_verified\" if duplicate_ok else \"divergent_flagged\"`, duplicate_ok from an independently re-derived arcsecond-pass sign index matching the degree-pass sign index (Duplicate-Yogi/Sahayogi rasi-lord agreement check)."
+    },
+    {
+      "pattern": "two_pass_verified_literal",
+      "file": "platform/python-sidecar/ga_writers/ga_dashas_writer.py",
+      "line_hash": "dc6566db53ce",
+      "register_row": "M-22",
+      "note": "SURFACED by the 2026-08-01 TAP-6 detector widening (positional/return forms were previously invisible). This hash covers 7 site(s): :675, :691, :707, :726, :738, :804, :2025. THIS IS the emitted value: ga_dashas_writer.py:3047-3048 assigns the _verify_<system>() return to every row of that system. EARNED-BY-RAISE for yogini/ashtottari/chara/naisargika/mudda/narayana \u2014 each enclosing _verify_* raises ValueError on disagreement, so reaching the return means a check that could have failed did not. NOT uniformly earned: the same hash covers _verify_vimshottari (:675), whose Pass 2 (FORENSIC birth-period lord) is wrapped in `if chart_id == CANONICAL_CHART_ID` \u2014 the NATIVE chart earns the status and EVERY OTHER CHART DOES NOT, because Pass 1's tolerance comparison ends in a bare `pass` (no-op) and cannot fail. A per-chart split, not a uniform verdict. Read and verified 2026-08-01; NOT adjudicated as correct."
+    },
+    {
+      "pattern": "two_pass_verified_literal",
+      "file": "platform/python-sidecar/ga_writers/ga_dashas_writer.py",
+      "line_hash": "18a8cf4c3159",
+      "register_row": "M-22",
+      "note": "SURFACED by the 2026-08-01 TAP-6 detector widening (positional/return forms were previously invisible). This hash covers 1 site(s): :762. DOCSTRING PROSE, not code \u2014 narrative inside _verify_mudda describing a PRIOR defect. Not an emit site, not a defect. A known and accepted false positive of the widened pattern. Read and verified 2026-08-01."
+    },
+    {
+      "pattern": "two_pass_verified_literal",
+      "file": "platform/python-sidecar/ga_writers/ga_dashas_writer.py",
+      "line_hash": "3004cfbf1c41",
+      "register_row": "M-22",
+      "note": "SURFACED by the 2026-08-01 TAP-6 detector widening (positional/return forms were previously invisible). This hash covers 6 site(s): :1040, :1366, :1544, :1852, :2201, :2512. NOT the emitted value \u2014 a DEAD PLACEHOLDER. ga_dashas_writer.py:3047-3048 unconditionally overwrites every row's verification_pass_status with the _verify_<system>() verdict, so this positional literal in the row tuple never reaches the DB. Misleading, not unearned. Read and verified 2026-08-01; remove with the demotion lane, not before."
+    },
+    {
+      "pattern": "two_pass_verified_literal",
+      "file": "platform/python-sidecar/ga_writers/ga_dashas_writer.py",
+      "line_hash": "99482a4832e0",
+      "register_row": "M-22",
+      "note": "SURFACED by the 2026-08-01 TAP-6 detector widening (positional/return forms were previously invisible). This hash covers 4 site(s): :1073, :1238, :1574, :2229. NOT the emitted value \u2014 a DEAD PLACEHOLDER. ga_dashas_writer.py:3047-3048 unconditionally overwrites every row's verification_pass_status with the _verify_<system>() verdict, so this positional literal in the row tuple never reaches the DB. Misleading, not unearned. Read and verified 2026-08-01; remove with the demotion lane, not before."
+    },
+    {
+      "pattern": "two_pass_verified_literal",
+      "file": "platform/python-sidecar/ga_writers/ga_dashas_writer.py",
+      "line_hash": "dd71d61263cb",
+      "register_row": "M-22",
+      "note": "SURFACED by the 2026-08-01 TAP-6 detector widening (positional/return forms were previously invisible). This hash covers 3 site(s): :1104, :1603, :2257. NOT the emitted value \u2014 a DEAD PLACEHOLDER. ga_dashas_writer.py:3047-3048 unconditionally overwrites every row's verification_pass_status with the _verify_<system>() verdict, so this positional literal in the row tuple never reaches the DB. Misleading, not unearned. Read and verified 2026-08-01; remove with the demotion lane, not before."
+    },
+    {
+      "pattern": "two_pass_verified_literal",
+      "file": "platform/python-sidecar/ga_writers/ga_dashas_writer.py",
+      "line_hash": "a39cdaa6a025",
+      "register_row": "M-22",
+      "note": "SURFACED by the 2026-08-01 TAP-6 detector widening (positional/return forms were previously invisible). This hash covers 3 site(s): :1133, :1631, :2284. NOT the emitted value \u2014 a DEAD PLACEHOLDER. ga_dashas_writer.py:3047-3048 unconditionally overwrites every row's verification_pass_status with the _verify_<system>() verdict, so this positional literal in the row tuple never reaches the DB. Misleading, not unearned. Read and verified 2026-08-01; remove with the demotion lane, not before."
+    },
+    {
+      "pattern": "two_pass_verified_literal",
+      "file": "platform/python-sidecar/ga_writers/ga_dashas_writer.py",
+      "line_hash": "9a9a6a1b2b1b",
+      "register_row": "M-22",
+      "note": "SURFACED by the 2026-08-01 TAP-6 detector widening (positional/return forms were previously invisible). This hash covers 1 site(s): :1281. NOT the emitted value \u2014 a DEAD PLACEHOLDER. ga_dashas_writer.py:3047-3048 unconditionally overwrites every row's verification_pass_status with the _verify_<system>() verdict, so this positional literal in the row tuple never reaches the DB. Misleading, not unearned. Read and verified 2026-08-01; remove with the demotion lane, not before."
+    },
+    {
+      "pattern": "two_pass_verified_literal",
+      "file": "platform/python-sidecar/ga_writers/ga_dashas_writer.py",
+      "line_hash": "0305f4bde1e1",
+      "register_row": "M-22",
+      "note": "SURFACED by the 2026-08-01 TAP-6 detector widening (positional/return forms were previously invisible). This hash covers 1 site(s): :1399. NOT the emitted value \u2014 a DEAD PLACEHOLDER. ga_dashas_writer.py:3047-3048 unconditionally overwrites every row's verification_pass_status with the _verify_<system>() verdict, so this positional literal in the row tuple never reaches the DB. Misleading, not unearned. Read and verified 2026-08-01; remove with the demotion lane, not before."
+    },
+    {
+      "pattern": "two_pass_verified_literal",
+      "file": "platform/python-sidecar/ga_writers/ga_dashas_writer.py",
+      "line_hash": "2d045efc426b",
+      "register_row": "M-22",
+      "note": "SURFACED by the 2026-08-01 TAP-6 detector widening (positional/return forms were previously invisible). This hash covers 1 site(s): :1430. NOT the emitted value \u2014 a DEAD PLACEHOLDER. ga_dashas_writer.py:3047-3048 unconditionally overwrites every row's verification_pass_status with the _verify_<system>() verdict, so this positional literal in the row tuple never reaches the DB. Misleading, not unearned. Read and verified 2026-08-01; remove with the demotion lane, not before."
+    },
+    {
+      "pattern": "two_pass_verified_literal",
+      "file": "platform/python-sidecar/ga_writers/ga_dashas_writer.py",
+      "line_hash": "12ca1f686d59",
+      "register_row": "M-22",
+      "note": "SURFACED by the 2026-08-01 TAP-6 detector widening (positional/return forms were previously invisible). This hash covers 1 site(s): :1460. NOT the emitted value \u2014 a DEAD PLACEHOLDER. ga_dashas_writer.py:3047-3048 unconditionally overwrites every row's verification_pass_status with the _verify_<system>() verdict, so this positional literal in the row tuple never reaches the DB. Misleading, not unearned. Read and verified 2026-08-01; remove with the demotion lane, not before."
+    },
+    {
+      "pattern": "two_pass_verified_literal",
+      "file": "platform/python-sidecar/ga_writers/ga_dashas_writer.py",
+      "line_hash": "8a5af75cf308",
+      "register_row": "M-22",
+      "note": "SURFACED by the 2026-08-01 TAP-6 detector widening (positional/return forms were previously invisible). This hash covers 1 site(s): :1881. NOT the emitted value \u2014 a DEAD PLACEHOLDER. ga_dashas_writer.py:3047-3048 unconditionally overwrites every row's verification_pass_status with the _verify_<system>() verdict, so this positional literal in the row tuple never reaches the DB. Misleading, not unearned. Read and verified 2026-08-01; remove with the demotion lane, not before."
+    },
+    {
+      "pattern": "two_pass_verified_literal",
+      "file": "platform/python-sidecar/ga_writers/ga_dashas_writer.py",
+      "line_hash": "8f1c88540a6e",
+      "register_row": "M-22",
+      "note": "SURFACED by the 2026-08-01 TAP-6 detector widening (positional/return forms were previously invisible). This hash covers 1 site(s): :1910. NOT the emitted value \u2014 a DEAD PLACEHOLDER. ga_dashas_writer.py:3047-3048 unconditionally overwrites every row's verification_pass_status with the _verify_<system>() verdict, so this positional literal in the row tuple never reaches the DB. Misleading, not unearned. Read and verified 2026-08-01; remove with the demotion lane, not before."
+    },
+    {
+      "pattern": "two_pass_verified_literal",
+      "file": "platform/python-sidecar/ga_writers/ga_dashas_writer.py",
+      "line_hash": "a46b1b5a8838",
+      "register_row": "M-22",
+      "note": "SURFACED by the 2026-08-01 TAP-6 detector widening (positional/return forms were previously invisible). This hash covers 1 site(s): :1938. NOT the emitted value \u2014 a DEAD PLACEHOLDER. ga_dashas_writer.py:3047-3048 unconditionally overwrites every row's verification_pass_status with the _verify_<system>() verdict, so this positional literal in the row tuple never reaches the DB. Misleading, not unearned. Read and verified 2026-08-01; remove with the demotion lane, not before."
+    },
+    {
+      "pattern": "two_pass_verified_literal",
+      "file": "platform/python-sidecar/ga_writers/ga_dashas_writer.py",
+      "line_hash": "e58900d044f7",
+      "register_row": "M-22",
+      "note": "SURFACED by the 2026-08-01 TAP-6 detector widening (positional/return forms were previously invisible). This hash covers 1 site(s): :2537. NOT the emitted value \u2014 a DEAD PLACEHOLDER. ga_dashas_writer.py:3047-3048 unconditionally overwrites every row's verification_pass_status with the _verify_<system>() verdict, so this positional literal in the row tuple never reaches the DB. Misleading, not unearned. Read and verified 2026-08-01; remove with the demotion lane, not before."
+    },
+    {
+      "pattern": "two_pass_verified_literal",
+      "file": "platform/python-sidecar/ga_writers/ga_dashas_writer.py",
+      "line_hash": "f6836f2b9d89",
+      "register_row": "M-22",
+      "note": "SURFACED by the 2026-08-01 TAP-6 detector widening (positional/return forms were previously invisible). This hash covers 1 site(s): :2568. NOT the emitted value \u2014 a DEAD PLACEHOLDER. ga_dashas_writer.py:3047-3048 unconditionally overwrites every row's verification_pass_status with the _verify_<system>() verdict, so this positional literal in the row tuple never reaches the DB. Misleading, not unearned. Read and verified 2026-08-01; remove with the demotion lane, not before."
+    },
+    {
+      "pattern": "two_pass_verified_literal",
+      "file": "platform/python-sidecar/ga_writers/ga_dashas_writer.py",
+      "line_hash": "bc4e77d44530",
+      "register_row": "M-22",
+      "note": "SURFACED by the 2026-08-01 TAP-6 detector widening (positional/return forms were previously invisible). This hash covers 1 site(s): :2596. NOT the emitted value \u2014 a DEAD PLACEHOLDER. ga_dashas_writer.py:3047-3048 unconditionally overwrites every row's verification_pass_status with the _verify_<system>() verdict, so this positional literal in the row tuple never reaches the DB. Misleading, not unearned. Read and verified 2026-08-01; remove with the demotion lane, not before."
+    },
+    {
+      "pattern": "two_pass_verified_literal",
+      "file": "platform/python-sidecar/ga_writers/ga_dashas_writer.py",
+      "line_hash": "04f5f788223f",
+      "register_row": "M-22",
+      "note": "SURFACED by the 2026-08-01 TAP-6 detector widening (positional/return forms were previously invisible). This hash covers 1 site(s): :2708. NOT the emitted value \u2014 a DEAD PLACEHOLDER. ga_dashas_writer.py:3047-3048 unconditionally overwrites every row's verification_pass_status with the _verify_<system>() verdict, so this positional literal in the row tuple never reaches the DB. Misleading, not unearned. Read and verified 2026-08-01; remove with the demotion lane, not before."
+    },
+    {
+      "pattern": "two_pass_verified_literal",
+      "file": "platform/python-sidecar/ga_writers/ga_sade_sati_writer.py",
+      "line_hash": "692f83bfba77",
+      "register_row": "M-22",
+      "note": "SURFACED by the 2026-08-01 TAP-6 detector widening (positional/return forms were previously invisible). This hash covers 1 site(s): :1299. UNEARNED: the local R() helper passes the literal positionally into _make_row and nothing overwrites it (unlike ga_dashas, which does). Read and verified 2026-08-01; pending the demotion decision; NOT adjudicated as correct."
+    },
+    {
+      "pattern": "two_pass_verified_literal",
+      "file": "platform/python-sidecar/ga_writers/ga_vargas_writer.py",
+      "line_hash": "dc6566db53ce",
+      "register_row": "M-22",
+      "note": "SURFACED by the 2026-08-01 TAP-6 detector widening (positional/return forms were previously invisible). This hash covers 1 site(s): :345. UNEARNED: _verification_status(category, varga_n) is a POLICY LOOKUP \u2014 it returns 'single' for two enumerated category/varga combinations and 'two_pass_verified' as the fall-through default. No engine-vs-derived comparison exists anywhere in the file. Read and verified 2026-08-01; pending the demotion decision; NOT adjudicated as correct."
+    },
+    {
+      "pattern": "two_pass_verified_literal",
+      "file": "platform/python-sidecar/ga_writers/ga_vargas_writer.py",
+      "line_hash": "5ec0fd2666a2",
+      "register_row": "M-22",
+      "note": "SURFACED by the 2026-08-01 TAP-6 detector widening (positional/return forms were previously invisible). This hash covers 1 site(s): :1327. UNEARNED: _verification_status(category, varga_n) is a POLICY LOOKUP \u2014 it returns 'single' for two enumerated category/varga combinations and 'two_pass_verified' as the fall-through default. No engine-vs-derived comparison exists anywhere in the file. Read and verified 2026-08-01; pending the demotion decision; NOT adjudicated as correct."
     }
   ]
 }
