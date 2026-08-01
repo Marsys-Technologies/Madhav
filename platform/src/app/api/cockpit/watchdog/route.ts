@@ -18,19 +18,45 @@
  * and no persisted plan total anywhere), so for those assets it withholds the
  * promotion and records 'incomplete' instead. See the stuck-asset block.
  *
- * ── Reaper thresholds (Orchestrator Convergence Phase 1 — confirmed, do NOT loosen) ──
+ * ── Reaper thresholds (Orchestrator Convergence Phase 1 — confirmed; REVISED post-incident) ──
  * These thresholds protect against genuine hangs and MUST hold. A long-running heavy
  * asset (e.g. ga_dashas, ~40 min) is kept visibly alive NOT by relaxing the reaper but
  * by the Phase 3 per-sub-step heartbeat (each sub-step UPDATEs asset_throughput.last_built_at).
  * The heartbeat cadence must beat BOTH thresholds below:
  *   1. Orphan-run reaper: a build_runs row 'running' for > 30 min with NO asset_throughput
- *      row (for that chart) whose last_built_at advanced in the last 10 min → 'failed'.
- *      ⇒ Heartbeat must advance last_built_at at least every 10 min while a run is in flight.
+ *      row (for that chart) whose last_built_at advanced in the last 15 min, AND NO
+ *      build_substep_progress row (for that chart) whose completed_at advanced in the last
+ *      15 min → 'failed'.
+ *      ⇒ Heartbeat must advance last_built_at (or commit a substep) at least every 15 min
+ *        while a run is in flight.
  *   2. Stuck-asset reaper: an asset_throughput row 'building' whose last_built_at is
  *      older than 15 min → 'error'.
  *      ⇒ Heartbeat must advance last_built_at at least every 15 min while an asset is building.
- * Phase 3 emits a heartbeat per sub-step (35 sub-steps over ~40 min ⇒ ~1-2 min cadence),
- * which clears both with wide margin. No logic change here in Phase 1 — thresholds confirmed only.
+ *
+ * INCIDENT (2026-07-31/08-01, ka_gochara_sweep chart 1c826d5a, run e5cde4dc): clause 1's
+ * original 10-min window (and its reliance on asset_throughput alone) false-killed a run
+ * whose Cloud Run container was ALIVE and progressing — build_substep_progress showed
+ * substeps landing every ~5-6.5 min (worst case ~7 min for this writer), leaving only a
+ * thin margin against a 10-min window. Root-cause read (systematic-debugging pass over
+ * platform/python-sidecar/pipeline/orchestrator/asset_runner.py, the heartbeat write path):
+ * the "client-stamped naive utcnow() vs DB clock" hypothesis is RULED OUT — every
+ * last_built_at / build_substep_progress.completed_at write already uses DB-side NOW(),
+ * not a Python-side timestamp (asset_runner.py `_drive_substeps` heartbeat UPDATE;
+ * services/ka_gochara_sweep/writer.py `_record_substep` INSERT). The genuinely
+ * contributing factor is a PostgreSQL semantic, not a client-clock bug: NOW()/
+ * CURRENT_TIMESTAMP returns the START time of the CURRENT TRANSACTION, not the actual
+ * wall-clock moment of the statement — and each heavy-writer substep runs as ONE
+ * multi-minute transaction (SAVEPOINT open → run_substep() compute → commit), so a
+ * substep's own heartbeat stamp can silently understate its true commit time by up to
+ * that substep's own duration. That structurally eats into the reaper's grace window
+ * before the reaper even starts counting, on top of ordinary jitter (a slow substep, a
+ * DB round-trip stall). Fix here is additive and does not touch the FROZEN orchestrator
+ * or writer code (out of this lane's scope; flagged as a follow-up candidate): widen the
+ * window to 15 min (comfortably above the ~7 min worst-case substep cadence) AND treat a
+ * recent build_substep_progress row for the chart as independent, corroborating evidence
+ * of life — a truly dead run has NEITHER signal, so the genuine-hang case is unchanged.
+ * build_substep_progress is READ-ONLY from this route; its data is never written or
+ * deleted here.
  */
 import { type NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db/client'
@@ -69,7 +95,15 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
 
   try {
-  // 1. Orphan build_runs: running > 30 min with no recent asset progress
+  // 1. Orphan build_runs: running > 30 min with no recent asset progress.
+  //    Two independent "still alive" signals are checked (either is sufficient to
+  //    spare the run): asset_throughput.last_built_at (the per-substep heartbeat) AND
+  //    build_substep_progress.completed_at (the substep-commit ledger, migration 436 —
+  //    read-only here; never written or deleted by this route). See the file-header
+  //    incident note above for why a single 10-min asset_throughput-only check false-
+  //    killed a genuinely progressing heavy writer. Window widened 10min -> 15min to
+  //    comfortably clear the slowest known substep cadence (ka_gochara_sweep, ~7 min
+  //    worst case) with margin.
   const orphanRuns = await query<{ id: string; chart_id: string }>(
     `UPDATE build_runs
      SET state = 'failed', ended_at = NOW()
@@ -78,7 +112,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
        AND NOT EXISTS (
          SELECT 1 FROM asset_throughput
          WHERE chart_id = build_runs.chart_id
-           AND last_built_at > NOW() - INTERVAL '10 minutes'
+           AND last_built_at > NOW() - INTERVAL '15 minutes'
+       )
+       AND NOT EXISTS (
+         SELECT 1 FROM build_substep_progress
+         WHERE chart_id = build_runs.chart_id
+           AND completed_at > NOW() - INTERVAL '15 minutes'
        )
      RETURNING id, chart_id`
   )
