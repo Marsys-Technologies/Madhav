@@ -113,6 +113,33 @@ production by design).
 
 **Swarm dispatched this session (per §D v1.3, maximally parallel):** ANTARYĀMIN (Opus, full unruled docket: N_e priors-source · N1–N4 · W3K seating · paddhati/Agnivāsa · Kota ring-table citation tier) · `w3-moorti-vedha` (items 4+5, Sonnet) · `w3-lattice-engine` (item 36 query engine, Opus — W4 5a trigger) · `w3k-inventory` (item 18 inventory, Sonnet) · PARĪKṢAKA (acceptance above). Results recorded below as they land.
 
+**ANTARYĀMIN DOCKET FULLY DISCHARGED (2026-08-01).** All eight rulings issued — the N-block is
+COMPLETE for the first time (N1–N4 ruled + native's N5), so **W2G is startable**; the N_e
+critical path has a binding build spec (`bg_class_lifetime_counts`, Tranche-1 of 6 classes
+mandatory at Tier N-i sourcing, hard stop = seed zero rows if sourcing fails); the Kota
+gate-blocker is a bounded task (`bg_kota_chakra_rings`); W3K seating ratified as a three-way
+split. Full text: `SHAD_DARSHANA_ADJUDICATIONS_NIGHT3_v1_0.md`. N-block + ADJUDICATION log
+updated below.
+
+**W3K INVENTORY LANDED (PR #1003, docs-only, scope-verified).** Headline: the brief's "KP
+exists nowhere" premise is FALSE — `ganita_kp_cusps_get` (CR-30) serves a live, tested 249-fold
+sub-lord substrate (`compute_kp_lords`, 4 levels), 5 KP fact categories live on both canonical
+charts across all 5 ayanāṃśas, and `chart_dashas` already carries a `vimshottari_kp` system
+(576 + 5,184 rows on the native chart). Also flagged: a stale "PHANTOM DROPPED" disposition in
+`retrieval_capability_spec.ts`/`tool_metadata.ts` predating CR-30; a fabricated-data fallback
+`schools/kp_engine.ts` (unrelated, flagged); a `bhava_cusps` cockpit-truth gap (no `count_sql`).
+The inventory's seating recommendation is consistent with ADJUDICATION-7's ruling (which also
+corrected the premise independently). Gap list + two-lane build plan in
+`W3K_SUBSTRATE_INVENTORY_v1_0.md`.
+
+**Gochara-sweep resume (operational): first re-dispatch attempt `dbcd45e1` FAILED with
+`orphan-watchdog: run never dispatched` — root cause: a bare `gcloud run jobs execute` runs the
+container with NO run-id; the job requires `--args="--run-id,<id>"` +
+`--update-env-vars MARSYS_RUN_ID=<id>` (per `src/lib/build/jobInvoker.ts:187`). Re-dispatched
+correctly as run `e5cde4dc-3640-4fe8-b1b0-1e3439a06792` (execution
+`brahma-build-pipeline-job-f5jkh`) — confirmed `state='running'`. Recorded so no future session
+repeats the bare-execute mistake.**
+
 ---
 
 **NIGHT 2 CLOSED (2026-07-31 — see MORNING REPORT at the end of this file for the full
@@ -910,10 +937,10 @@ collision pattern is better understood from the first lane.
 
 | Item | Ruling | Ruled by | Date | Rationale |
 |---|---|---|---|---|
-| N1 (wave naming) | — | — | — | **STILL UNRULED after 3 nights.** ANTARYĀMIN dispatched Night 3 with N1–N4 as its explicit up-front docket per the v1.3 §D protocol; **cancelled mid-session before issuing any ruling.** |
-| N2 (multi-chart rollout order) | — | — | — | **STILL UNRULED after 3 nights** — same cause as N1. |
-| N3 (pre-1984 backfill) | — | — | — | **STILL UNRULED after 3 nights** — same cause as N1. |
-| N4 (cutover posture) | — | — | — | **STILL UNRULED after 3 nights** — same cause as N1. |
+| N1 (wave naming) | **W2G is the operative wave id; "D-6" RETIRED as a wave label (survives only as `historical_alias` in the GOCHARA_SWEEP_2_0 design frontmatter). Engine name stays GOCHARA-2.0.** | ANTARYĀMIN (ADJUDICATION-3) | 2026-08-01 | Prior status: unruled Nights 1–2, adjudicator cancelled Night-3-first-session before ruling. Full text: `SHAD_DARSHANA_ADJUDICATIONS_NIGHT3_v1_0.md`. Reversibility: TOTAL (docs-only). |
+| N2 (multi-chart rollout order) | **Three tiers by descending equivalence-evidence: Tier 1 = both canonical charts TOGETHER (this IS the W2G gate); Tier 2 = `cb73cd3d` Kiran Shenoy (only third chart with a v1 corpus, 1970→2027, scoped divergence report); Tier 3 = Arunima/Musk/Jobs 2.0-native with `equivalence_basis='no_v1_baseline'`, never counted toward divergence completeness, Jobs/Musk excluded from any skill/GOF scoreboard. Hard tier gate: zero unclassified divergences before advancing.** | ANTARYĀMIN (ADJUDICATION-4) | 2026-08-01 | Full text: `SHAD_DARSHANA_ADJUDICATIONS_NIGHT3_v1_0.md`. Reversibility: HIGH (per-chart, monotone). |
+| N3 (pre-1984 backfill) | **Backfill the global event calendar to the ephemeris floor: `calendar_epoch_start=1900-01-01` (derived from live `ephemeris_daily` coverage 1899-12-31→2150-12-30, 825,084 rows — verified, not assumed). Epoch bounds served as data; outside-epoch queries return honest-empty `reason='outside_calendar_epoch'`. W2G validation V2 amended to verify 1900–2084 × 9 bodies; floor = max-over-bodies first-covered date if any body starts later.** | ANTARYĀMIN (ADJUDICATION-5) | 2026-08-01 | Lazy per-chart backfill rejected (would make a chart-independent asset chart-dependent). Full text: `SHAD_DARSHANA_ADJUDICATIONS_NIGHT3_v1_0.md`. Reversibility: HIGH. |
+| N4 (cutover posture) | **Dual-serve shadow with authority gated on EVIDENCE, not elapsed days ("N days of agreement" on a batch-computed century table measures nothing — category error, rejected). Generation-stamped 2.0 rows beside v1 (v1 rows NEVER touched — untouchable); authority flip requires ALL FOUR: zero unclassified divergences · §3.3 specimen continuity · §3.4 byte-identical determinism · §3.5 battery within tolerance (drift = finding, never tuning). 7-day post-flip observation window; revert = one per-chart `authoritative_generation` pointer flip. v1 writer retirement only per strangler discipline.** | ANTARYĀMIN (ADJUDICATION-6) | 2026-08-01 | Full text: `SHAD_DARSHANA_ADJUDICATIONS_NIGHT3_v1_0.md`. Reversibility: MAXIMAL (chosen for exactly that). |
 | N5 (lock granularity) | **CONSERVATIVE-DEFAULT: the chart-level advisory lock STAYS. No orchestrator-contract change. Intra-chart shard parallelism is forfeited. Recorded REVERSIBLE.** | **The native, directly** — stated verbatim in the Night-3 §D kickoff paste (2026-08-01) | 2026-08-01 | **Recorded by the Conductor, NOT by ANTARYĀMIN** — provenance matters here and is stated precisely because this is the one FROZEN-contract question in the block, which an adjudicator may never decide on its own. The native's Night-3 kickoff contains the ruling in its own words ("N5 lock-granularity is ruled CONSERVATIVE-DEFAULT: chart-level lock stays, no orchestrator change, recorded reversible"), so no adjudication was needed or performed. Reversible: re-opening it costs only a future decision, since nothing was built against shard parallelism. **N5 alone does NOT unblock W2G — N1–N4 remain unruled.** |
 
 ## Registry item status (1–44 + E1–E8)
@@ -1113,6 +1140,20 @@ design-correction lane (`shad-darshana/w2-lane-d-design-fix`, dispatched same se
 reconcile §6.3 with reality before Lane D itself is dispatched; W2 Lanes A/B/C/E have no
 dependency on this and are not blocked by it. Full ruling text preserved in this session's
 agent transcript; summarized here per the ledger's evidence-link convention.
+
+**[SUPERSEDED same day — Night-3 resumed session, 2026-08-01.] The block below records the
+cancelled first attempt and is retained as evidence trail. A fresh ANTARYĀMIN (Opus/max) was
+dispatched by the resumed session with the identical docket plus the Kota citation-tier item,
+and RULED ALL EIGHT: ADJUDICATION-2 (N_e priors source — demographic structural priors,
+Tranche-1 mandatory, classical + cohort sources affirmatively foreclosed) · -3 (N1 W2G naming)
+· -4 (N2 rollout tiers) · -5 (N3 1900 backfill) · -6 (N4 evidence-gated dual-serve) · -7 (W3K
+three-way seating; corrects the "KP exists nowhere" premise — L1 natal KP substrate already
+live) · -8 (Agnivāsa: practice pinned hard, convention = labelled corpus default, second slot
+declared-not-computed) · -9 (Kota ring table → versioned `bg_kota_chakra_rings` L0 row; item
+16 VERIFIED-FIXED path, not parked). Full verbatim text (with per-ruling rationale,
+reversibility, and DB evidence): `SHAD_DARSHANA_ADJUDICATIONS_NIGHT3_v1_0.md` (same
+directory). The N-block table above now carries N1–N4. Native morning review may overrule any
+of the eight; every ruling is reversible per its own note.**
 
 **ADJUDICATION-2 through -5 — NOT ISSUED (Night 3, 2026-08-01). ANTARYĀMIN was dispatched
 and then cancelled mid-session before ruling on anything.** This entry exists so the docket
