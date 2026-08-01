@@ -13,42 +13,34 @@ Madhya (the inner-middle ward), Prākāra (the boundary wall), and Bāhya (the
 exterior) — and reads a transiting graha's classical nature (benefic/malefic)
 against which ring it currently occupies as an "attack vs. defence" signal.
 
-── RING TABLE — CITATION AND HONESTY DISCLOSURE (B.10 / §N.7 / W3K precedent) ─
-As of this writer's authorship, no ingested-corpus row (checked: no
-`brahma_*` ontology table, no `bg_muhurta_lattice`/`bg_parihara_rules` factor
-census — those are items 36/41, not yet built) carries the Kota-Chakra ring
-table. Per the citation-source hierarchy SHAD_DARSHANA_BRIEF_v2_0.md §3 W3K
-sets for exactly this situation — "(i) ingested KP texts → (ii) design doc
-worked tables → (iii) published reader examples transcribed into a committed
-fixture file; if only (iii) is available, the item is VERIFIED against the
-fixture and the corpus gap is filed as an ingestion work item" — the table
-below is tier-(iii): transcribed verbatim from a secondary published
-description of the classical technique (counting is "from janma nakshatra",
-1-indexed inclusive of the janma nakshatra itself as position 1):
+── RING TABLE — NOW A VERSIONED L0 ASSET (ADJUDICATION-9, 2026-08-01) ────────
+The Kota-Chakra ring partition (which nakshatra-counts-from-janma fall in
+Stambha/Durgantara/Prakara/Bahya) previously lived as an inline dict in this
+module. ANTARYĀMIN's ADJUDICATION-9
+(00_ARCHITECTURE/llm_consumption_audit/briefs/kala_elevation/
+SHAD_DARSHANA_ADJUDICATIONS_NIGHT3_v1_0.md) ruled that the DATA-HONESTY RAIL's
+three conjuncts — "cited, versioned L0 row" — require the partition to live
+in `bg_kota_chakra_rings` (see `brahmagyan.l0_kota_chakra_rings` for the full
+disclosure: citation tier, row-count note, versioning), not as writer-code.
+**No served value changed** — this module no longer HOLDS the ring
+assignment, it only computes WITH one handed to it. `ring_for_count()` below
+now takes the ring-position partition as a parameter (`ring_sets`), sourced
+by `services/ka_kota_chakra/writer.py` from the L0 table at run time via
+`brahmagyan.l0_kota_chakra_rings.ring_sets_by_name()` semantics (read from
+the DB, not the Python module, in production — the module is the seed/write
+path and the shared byte-identity reference for tests).
 
-    Stambha (innermost/pillar):      4th, 11th, 18th, 25th
-    Durgantara / Madhya (inner-mid): 3rd, 5th, 10th, 12th, 17th, 19th, 24th, 26th
-    Prākāra (boundary wall):         2nd, 6th, 9th, 13th, 16th, 20th, 23rd, 27th
-    Bāhya (exterior):                everything else — 1st, 7th, 8th, 14th,
-                                      15th, 21st, 22nd (7 positions; the janma
-                                      nakshatra ITSELF, position 1, is not
-                                      named in any of the other three sets in
-                                      the source description, so it falls to
-                                      Bāhya by the partition — disclosed here
-                                      explicitly rather than silently assumed)
-
-This is filed as an ADJUDICATION-PENDING corpus-ingestion gap (see the PR
-description) — a future L0/L1 ingestion pass replacing this table with a
-primary-source-cited one (tier i/ii) is a strict upgrade, not a behavior
-change, since the classical description sources checked (independently,
-multiple secondary descriptions) agree on this exact partition.
+For the counting convention and the full tier-(iii) citation disclosure, see
+`brahmagyan/l0_kota_chakra_rings.py`'s own module docstring — it is now the
+canonical source, not a restatement here (duplicate-copy rail).
 
 ── WHAT IS PURE ARITHMETIC (no citation needed) ──────────────────────────────
 `count_from_janma`, `ring_for_count`, `detect_ring_runs`, `run_containing_date`
 are deterministic arithmetic over already-established facts (a graha's
-sidereal nakshatra index and the janma nakshatra index) — not classical
-doctrine themselves, so B.10 does not apply to them the way it applies to the
-ring table.
+sidereal nakshatra index, the janma nakshatra index, and — for
+`ring_for_count` — a ring-position partition handed in by the caller) — not
+classical doctrine themselves, so B.10 does not apply to them the way it
+applies to the ring table.
 
 ── ATTACK/DEFENCE READING ─────────────────────────────────────────────────────
 `attack_defence_reading` combines the (cited, tier-iii) ring assignment with
@@ -67,35 +59,25 @@ from __future__ import annotations
 from datetime import date
 from typing import TypedDict
 
-# ── Ring table (tier-iii citation — see module docstring) ────────────────────
-
-STAMBHA_COUNTS: frozenset[int] = frozenset({4, 11, 18, 25})
-DURGANTARA_COUNTS: frozenset[int] = frozenset({3, 5, 10, 12, 17, 19, 24, 26})
-PRAKARA_COUNTS: frozenset[int] = frozenset({2, 6, 9, 13, 16, 20, 23, 27})
-# Bāhya is defined as the COMPLEMENT of the other three within {1..27} — this
-# both matches the source description (bāhya = "everything else, the exterior")
-# and gives us a partition invariant we can assert in tests, rather than
-# hand-listing a 4th set that could silently drift out of sync.
-BAHYA_COUNTS: frozenset[int] = frozenset(
-    c for c in range(1, 28) if c not in (STAMBHA_COUNTS | DURGANTARA_COUNTS | PRAKARA_COUNTS)
-)
+# ── Ring NAMES (pure vocabulary — not the partition data; see module
+# docstring) ───────────────────────────────────────────────────────────────
 
 ALL_RING_NAMES: tuple[str, str, str, str] = ("stambha", "durgantara", "prakara", "bahya")
 
-_RING_SETS: dict[str, frozenset[int]] = {
-    "stambha": STAMBHA_COUNTS,
-    "durgantara": DURGANTARA_COUNTS,
-    "prakara": PRAKARA_COUNTS,
-    "bahya": BAHYA_COUNTS,
-}
 
-
-def ring_for_count(count: int) -> str:
+def ring_for_count(count: int, ring_sets: dict[str, frozenset[int]]) -> str:
     """count is 1..27 (1-indexed distance from janma nakshatra, inclusive of
-    the janma nakshatra itself as count=1). Raises ValueError outside 1..27."""
+    the janma nakshatra itself as count=1). Raises ValueError outside 1..27.
+
+    ring_sets: {ring_name: frozenset(ring_position)} — the ring-position
+    partition, now sourced from the bg_kota_chakra_rings L0 table
+    (ADJUDICATION-9), not a module constant here. Callers: writer.py builds
+    this from a DB read; tests build it from
+    brahmagyan.l0_kota_chakra_rings.ring_sets_by_name() (or the byte-identity
+    fixture, for the pre-move golden comparison)."""
     if not (1 <= count <= 27):
         raise ValueError(f"count_from_janma out of range: {count} (expected 1..27)")
-    for ring_name, members in _RING_SETS.items():
+    for ring_name, members in ring_sets.items():
         if count in members:
             return ring_name
     raise AssertionError(f"count {count} not in any ring — partition invariant violated")

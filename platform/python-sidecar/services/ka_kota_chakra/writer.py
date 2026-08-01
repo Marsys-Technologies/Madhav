@@ -30,6 +30,13 @@ Contract adherence (FROZEN orchestrator contract, ORCHESTRATOR_CONVERGENCE_CLOSE
     what this campaign requires pre-W2G (SHAD_DARSHANA_BRIEF_v2_0.md §4: "No
     wave may be designed to REQUIRE sub-day precision"). This avoids ~9 x
     460 individual swisseph ayanamsha calls in favour of one.
+  - Ring partition (STAMBHA/DURGANTARA/PRAKARA/BAHYA position sets): read from
+    bg_kota_chakra_rings (L0 global, ADJUDICATION-9 — see
+    brahmagyan/l0_kota_chakra_rings.py). This writer no longer holds an
+    inline ring-table dict; `_fetch_ring_assignments` below reads the L0 row
+    set once per run and both `ring_table_citation` and the ring-membership
+    partition passed to `ring_for_count` are sourced from it. Honest-empty
+    (never fabricated) if the L0 dependency has not been built yet.
 
 Scope note (single ayanamsha): this writer computes against ONE canonical
 ayanamsha (lahiri_chitrapaksha, the project default), matching the L3
@@ -48,6 +55,7 @@ import psycopg.rows
 from pipeline.orchestrator.writers import WriterBase, WriterResult, register
 from services.ka_graha_sancara.engine import ALL_GRAHAS, NAKSHATRAS, NAK_SIZE_DEG
 from services.ka_kota_chakra.logic import (
+    ALL_RING_NAMES,
     attack_defence_reading,
     count_from_janma,
     detect_ring_runs,
@@ -65,19 +73,22 @@ CANONICAL_AYANAMSHA = "lahiri_chitrapaksha"
 HORIZON_BACK_DAYS = 60
 HORIZON_FORWARD_DAYS = 400
 
-RING_TABLE_CITATION = (
-    "Kota-Chakra ring table (Stambha 4/11/18/25th, Durgantara 3/5/10/12/17/19/24/26th, "
-    "Prakara 2/6/9/13/16/20/23/27th from janma nakshatra, Bahya = remainder) — tier-(iii) "
-    "secondary-source transcription per the W3K citation hierarchy "
-    "(SHAD_DARSHANA_BRIEF_v2_0.md §3 W3K); NOT YET traced to a primary ingested classical "
-    "text. Corpus-ingestion gap filed; see services/ka_kota_chakra/logic.py docstring."
-)
-
 _FETCH_JANMA_MOON_SQL = """
 SELECT fact_id, fact_value_num
 FROM chart_facts
 WHERE chart_id = %s AND ayanamsha_id = %s
   AND fact_category = 'graha_position' AND fact_subject = 'MOON' AND fact_key = 'longitude_sidereal'
+"""
+
+# ADJUDICATION-9: ring partition now lives in bg_kota_chakra_rings (L0 global),
+# not an inline dict here. Reads the LATEST table_version present (zero-padded
+# vNN per ADJUDICATION-2's precedent, so string DESC ordering sorts correctly
+# across v01..v10+; see brahmagyan/l0_kota_chakra_rings.py).
+_FETCH_RING_ASSIGNMENTS_SQL = """
+SELECT ring_position, ring_name, table_version, citation
+FROM bg_kota_chakra_rings
+WHERE table_version = (SELECT MAX(table_version) FROM bg_kota_chakra_rings)
+ORDER BY ring_position
 """
 
 _FETCH_EPHEMERIS_RANGE_SQL = """
@@ -117,6 +128,33 @@ def _fetch_janma_nakshatra_idx(conn: Any, chart_id: str) -> tuple[int, str] | No
     lon = float(row[1])
     nak_idx = int(lon // NAK_SIZE_DEG) % 27
     return nak_idx, str(row[0])
+
+
+def _fetch_ring_assignments(conn: Any) -> tuple[dict[str, frozenset[int]], str] | None:
+    """Returns ({ring_name: frozenset(ring_position)}, citation) for the
+    LATEST table_version in bg_kota_chakra_rings, or None if the L0
+    dependency (bg_kota_chakra_rings) has not been built yet — honest
+    absence, never fabricated (B.10), mirroring
+    _fetch_janma_nakshatra_idx's own honest-None convention.
+
+    ADJUDICATION-9: this is the sole place the ring partition enters this
+    writer — no module-level fallback dict. `citation` is read verbatim off
+    the L0 row (same text for every row of a given table_version), so the
+    served `ring_table_citation` on kala_kota_chakra rows is a reference to
+    the L0 row's table_version, per the ruling's item 4, rather than a
+    Python string literal duplicated in this module."""
+    with conn.cursor() as cur:
+        cur.execute(_FETCH_RING_ASSIGNMENTS_SQL)
+        rows = cur.fetchall()
+    if not rows:
+        return None
+
+    ring_sets: dict[str, set[int]] = {name: set() for name in ALL_RING_NAMES}
+    citation: str | None = None
+    for (ring_position, ring_name, _table_version, row_citation) in rows:
+        ring_sets.setdefault(ring_name, set()).add(int(ring_position))
+        citation = row_citation  # identical across rows of one table_version
+    return {name: frozenset(members) for name, members in ring_sets.items()}, citation
 
 
 def _compute_ayanamsha_offset(reference_date: date) -> float:
@@ -166,6 +204,17 @@ class KaKotaChakraWriter(WriterBase):
             )
         janma_nak_idx, janma_fact_id = janma
 
+        # ADJUDICATION-9: ring partition is an L0 dependency now (§N.5 — L0 is
+        # the authority). Honest-empty, never fabricated, if bg_kota_chakra_rings
+        # has not been built yet.
+        ring_assignments = _fetch_ring_assignments(conn)
+        if ring_assignments is None:
+            return WriterResult(
+                asset_id=self.asset_id, rows_inserted=0,
+                notes="no bg_kota_chakra_rings rows — run bg_kota_chakra_rings first",
+            )
+        ring_sets, ring_table_citation = ring_assignments
+
         today = date.today()
         horizon_start = today - timedelta(days=HORIZON_BACK_DAYS)
         horizon_end = today + timedelta(days=HORIZON_FORWARD_DAYS)
@@ -187,7 +236,7 @@ class KaKotaChakraWriter(WriterBase):
             runs = detect_ring_runs(daily, horizon_start=horizon_start, horizon_end=horizon_end)
             for run in runs:
                 count = count_from_janma(run["nakshatra_idx"], janma_nak_idx)
-                ring = ring_for_count(count)
+                ring = ring_for_count(count, ring_sets)
                 reading = attack_defence_reading(graha, ring)
                 all_rows.append({
                     "chart_id": chart_id,
@@ -205,7 +254,7 @@ class KaKotaChakraWriter(WriterBase):
                     "start_truncated": run["start_truncated"],
                     "end_truncated": run["end_truncated"],
                     "janma_nakshatra_fact_id": janma_fact_id,
-                    "ring_table_citation": RING_TABLE_CITATION,
+                    "ring_table_citation": ring_table_citation,
                     "uncited_extension": True,  # the posture/severity synthesis — see logic.py docstring
                     "formula_version": FORMULA_VERSION,
                 })

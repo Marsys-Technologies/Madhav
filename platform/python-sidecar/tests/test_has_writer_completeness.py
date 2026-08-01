@@ -80,6 +80,9 @@ KNOWN_HAS_WRITER_TRUE: frozenset[str] = frozenset({
     "bg_muhurta_lattice",
     # ── L0 Brahmagyan — migration 485 (ṢAḌ-DARŚANA item 36-substrate/41, parihāra rules) ──
     "bg_parihara_rules",
+    # ── L0 Brahmagyan — migration 523 (ṢAḌ-DARŚANA W3 Lane w3-kota-rings,
+    # ADJUDICATION-9 — Kota-Chakra ring table moved to a versioned L0 asset) ──
+    "bg_kota_chakra_rings",
     # ── L1 Gaṇita — migration 342 ────────────────────────────────────────────
     "ga_condition",
     "ga_dashas",
