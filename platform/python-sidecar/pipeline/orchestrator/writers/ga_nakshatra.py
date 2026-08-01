@@ -15,7 +15,7 @@ from typing import Any
 
 from pipeline.orchestrator.writers import WriterBase, WriterResult, SubStep, register, ContextSpec
 from ga_writers._idempotency import replace_prior_chart_facts
-from brahmagyan.verification_vocab import UNVERIFIED_DEFAULT, assert_legal
+from brahmagyan.verification_vocab import UNVERIFIED_DEFAULT, assert_legal, two_pass_verdict
 from ga_writers.ga_nakshatra_emitters import (
     emit_nakshatra_join, emit_kp_lords, emit_gandanta_flags,
     emit_dispositor_graph, emit_tara_bala, emit_statistics,
@@ -121,8 +121,11 @@ def _nakshatra_pada_verdicts(chart_output: dict) -> dict[str, dict[str, str]]:
             if engine_value is None:
                 per_claim[claim] = UNVERIFIED_DEFAULT
                 continue
-            agrees = int(engine_value) == int(derived_value)
-            per_claim[claim] = "two_pass_verified" if agrees else "divergent_flagged"
+            # int() coercion stays HERE, deliberately: two_pass_verdict compares as-given
+            # and must never silently redefine what "agrees" means for a caller.
+            engine_i, derived_i = int(engine_value), int(derived_value)
+            agrees = engine_i == derived_i
+            per_claim[claim] = two_pass_verdict(engine_i, derived_i)
             if not agrees:
                 logger.warning(
                     "[ga_nakshatra] second-pass DIVERGENCE for %s %s: engine=%s "

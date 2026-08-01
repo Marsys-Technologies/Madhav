@@ -230,3 +230,55 @@ def assert_legal(status: Any, *, table: str | None = None) -> str:
             "psycopg.errors.CheckViolation."
         )
     return status
+
+
+# ─────────────────────────────────────────────────────────────────────────────────────
+# THE SANCTIONED PRODUCER (added 2026-08-01, TAP-6 M-22 precision fix)
+#
+# WHY THIS EXISTS. TAP-6's `two_pass_verified_literal` pattern is
+# `/(=|:)\s*['"]two_pass_verified['"]/`. It cannot distinguish
+#     status = "two_pass_verified"                       # asserted — a real M-22 defect
+# from
+#     status = "two_pass_verified" if agrees else ...    # computed — M-22 COMPLIANT
+# Both match. So the check's description ("must be computed by a verifier, never passed
+# as a literal") claimed more than the regex measured — the §N.8 earned-signal defect,
+# in a RED signal rather than a green one. It went red on `main` over the M-22 *fix* in
+# ga_nakshatra.py, i.e. the detector was anti-correlated with code health.
+#
+# Teaching the regex to parse conditionals is not the answer: a conditional is not proof
+# (`"two_pass_verified" if True else ...` asserts too). Instead we make the honest path
+# LEXICALLY DISTINCT — callers stop writing the literal at all and call this instead —
+# and then let the grep be exact, exempting only this one file.
+#
+# WHY HERE and not a new module: this file is already THE single source of truth for the
+# vocabulary, already lives in L0 so every layer may import it, and was created precisely
+# because the field once had SIX disagreeing definitions. A second "verification" module
+# would be a seventh.
+#
+# KNOWN RESIDUAL, named rather than solved: `two_pass_verdict(x, x)` — passing the same
+# value twice, or two values that cannot disagree — still yields `two_pass_verified`
+# without a real second pass. That is fraud this function cannot detect, and it remains
+# greppable later (call sites where both arguments are the same expression). Do not read
+# "went through the helper" as proof a detector ran.
+# ─────────────────────────────────────────────────────────────────────────────────────
+
+TWO_PASS_VERIFIED: Final[str] = "two_pass_verified"
+DIVERGENT_FLAGGED: Final[str] = "divergent_flagged"
+
+
+def two_pass_verdict(engine_value: Any, derived_value: Any) -> str:
+    """The ONLY sanctioned producer of `two_pass_verified` (M-22 / CLAUDE.md §N.8).
+
+    Callers must present BOTH the engine value and an INDEPENDENTLY derived value; the
+    comparison happens here, so the verdict cannot be asserted without evidence.
+
+    Comparison semantics are deliberately IDENTITY on the values as given — this function
+    does NOT coerce. `ga_nakshatra` compared `int(engine) == int(derived)`; that coercion
+    stays at the call site so this helper never silently redefines what "agrees" means for
+    a caller with different types. Coerce before calling if your domain needs it.
+
+    Returns `two_pass_verified` on agreement, `divergent_flagged` otherwise. It does NOT
+    log: the divergence WARNING belongs at the call site, which has the subject/claim
+    context this function lacks.
+    """
+    return TWO_PASS_VERIFIED if engine_value == derived_value else DIVERGENT_FLAGGED

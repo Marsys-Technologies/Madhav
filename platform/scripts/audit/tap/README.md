@@ -206,8 +206,21 @@ false positives dropped out of the unresolved-pointer report.
 
 `.github/workflows/tap-ci.yml` runs the static jobs (`tap6-method-audit`,
 `sc-pointer-validation`) unconditionally — they gate every push/PR today.
-The DB-backed job (`tap-db-gates`) and the live MCP smoke job
-(`mcp-tool-smoke-plan`) run with `continue-on-error: true` until
-`TAP_DATABASE_URL` / `TAP_MCP_SERVER_URL` / `TAP_MCP_SMOKE_BEARER_TOKEN`
-repo secrets are provisioned — remove `continue-on-error` once they are, so
-those batteries start gating merges too.
+**Updated 2026-08-01.** Within `tap-db-gates`, R-18 and TAP-5 run unconditionally on
+every push/PR (TAP-5 executes its static Laws 4 and 7 and honestly self-reports its 5
+DB-backed laws as SKIPPED). **S-13 and TAP-7 are ARMED but `workflow_dispatch`-only**:
+they read the existing **`PROD_DATABASE_URL`** secret — `TAP_DATABASE_URL` was never
+created; the job instead replicates `deploy.yml`'s WIF-auth + Cloud SQL Auth Proxy
+against the same `madhav-astrology:asia-south1:amjis-postgres` instance. Their
+`continue-on-error` has been **removed**: with real DB access a failure is a real
+finding. They stay dispatch-only deliberately — these gates query live production, which
+is right as a deliberate sweep and wrong as per-PR load.
+
+`mcp-tool-smoke-plan` remains **BLOCKED**, not merely unconfigured: it needs
+`MCP_SMOKE_BEARER_TOKEN` (plus `TAP_MCP_SERVER_URL` → the `amjis-mcp` URL). The bearer
+token is credential material with no existing equivalent in the repo, so only a human
+with credentials can set it. No code change is needed once it exists — the guards
+already key off the secrets.
+
+`TAP7_API_BASE_URL` (→ the `amjis-web` URL) is likewise unset; TAP-7 runs its DB gates
+and self-quarantines exactly one gate (`pagination_disjointness`) without it.

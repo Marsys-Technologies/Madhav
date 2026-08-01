@@ -42,15 +42,33 @@ type Pattern = {
   root: string // directory to search, relative to repo root
   pattern: RegExp
   excludeDirNames?: string[]
+  /** Repo-relative FILE paths exempt from this pattern. File-level, deliberately not a
+   *  directory: a directory exemption would silently cover future files dropped beside
+   *  the sanctioned one. Keep this list to modules that are, by design, the only
+   *  sanctioned producer of the string the pattern hunts. */
+  exemptFiles?: string[]
 }
 
 const PATTERNS: Pattern[] = [
   {
     id: 'two_pass_verified_literal',
-    description: "'two_pass_verified' assigned as a string literal at an emit site (M-22: verification status must be computed by a verifier, never passed as a literal)",
+    // DESCRIPTION REWRITTEN 2026-08-01 to say exactly what the regex measures, no more.
+    // It previously claimed "must be computed by a verifier, never passed as a literal" —
+    // but the regex matches `= "two_pass_verified"` whether the RHS is an assertion or a
+    // computed conditional, so it could not tell those apart. It went RED on `main` over
+    // ga_nakshatra.py's M-22 *fix*: anti-correlated with code health. Teaching it to parse
+    // conditionals would not help (`"two_pass_verified" if True else ...` asserts too), so
+    // the honest path was instead made lexically distinct: callers use
+    // brahmagyan.verification_vocab.two_pass_verdict(), which demands both values, and that
+    // one file is exempt below.
+    // RESIDUAL, named not solved: `two_pass_verdict(x, x)` still fabricates a pass. That is
+    // a separate grep (call sites whose two arguments are the same expression) for a later
+    // lane — going through the helper is not proof a detector ran.
+    description: "the 'two_pass_verified' literal assigned OUTSIDE the sanctioned verification module (brahmagyan/verification_vocab.py). Sanctioned production is two_pass_verdict(engine, derived), which requires both values; a bare literal anywhere else is unearned (M-22 / CLAUDE.md §N.8)",
     pattern: /(=|:)\s*['"]two_pass_verified['"]/,
     root: 'platform/python-sidecar',
     excludeDirNames: ['__tests__', 'tests'],
+    exemptFiles: ['platform/python-sidecar/brahmagyan/verification_vocab.py'],
   },
   {
     id: 'rough_estimate_comment',
@@ -122,8 +140,10 @@ function runSearch(p: Pattern): Hit[] {
   const rootAbs = path.join(REPO_ROOT, p.root)
   const files: string[] = []
   walk(rootAbs, p.excludeDirNames ?? [], files)
+  const exempt = new Set(p.exemptFiles ?? [])
   const hits: Hit[] = []
   for (const f of files) {
+    if (exempt.has(path.relative(REPO_ROOT, f))) continue
     const content = readFileSync(f, 'utf-8')
     const lines = content.split('\n')
     for (let i = 0; i < lines.length; i++) {

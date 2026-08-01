@@ -86,69 +86,6 @@
       "note": "NOT A VIOLATION (confirmed R6-1f): line ~144 is `SELECT count(*) ... WHERE verification_pass_status = 'two_pass_verified'` — a read-only SQL aggregation counting real, already-persisted row statuses for a quality metric (two_pass_verified_pct). Not a fabricated stamp. Kept baselined only because the grep's assign-or-colon regex pattern-matches the SQL comparison syntax; left in place as a documented false-positive."
     },
     {
-      "pattern": "rough_estimate_comment",
-      "file": "platform/python-sidecar/ga_writers/ga_structural_writer.py",
-      "line_hash": "78ab35f78fbf",
-      "register_row": "M-14",
-      "note": "shadbala_proxy = sthana * 5.0 + 1.0  # rough rupa estimate"
-    },
-    {
-      "pattern": "safe_fallback_comment",
-      "file": "platform/python-sidecar/ga_writers/ga_dashas_writer.py",
-      "line_hash": "09d101e866d5",
-      "register_row": "M-7",
-      "note": "years = 7  # safe fallback if chart_facts absent for this graha"
-    },
-    {
-      "pattern": "falling_back_to_forensic",
-      "file": "platform/python-sidecar/ga_writers/ga_dashas_writer.py",
-      "line_hash": "818541c7f236",
-      "register_row": "M-7",
-      "note": "\"falling back to FORENSIC hardcoded. cause=%s\" — Chara dasha native-fallback contamination"
-    },
-    {
-      "pattern": "native_fallback_longitudes",
-      "file": "platform/python-sidecar/panchang_engine/jaimini_chara.py",
-      "line_hash": "5bb33b29e84a",
-      "register_row": "M-8",
-      "note": "NATIVE_FALLBACK_LONGITUDES table with wrong-even-for-the-native values"
-    },
-    {
-      "pattern": "native_fallback_longitudes",
-      "file": "platform/python-sidecar/panchang_engine/jaimini_chara.py",
-      "line_hash": "e26203764005",
-      "register_row": "M-8",
-      "note": "NATIVE_FALLBACK_LONGITUDES table with wrong-even-for-the-native values"
-    },
-    {
-      "pattern": "native_fallback_longitudes",
-      "file": "platform/python-sidecar/panchang_engine/jaimini_chara.py",
-      "line_hash": "0e914d00538e",
-      "register_row": "M-8",
-      "note": "NATIVE_FALLBACK_LONGITUDES table with wrong-even-for-the-native values"
-    },
-    {
-      "pattern": "native_fallback_longitudes",
-      "file": "platform/python-sidecar/routers/jaimini.py",
-      "line_hash": "4af0d5a036b9",
-      "register_row": "M-8",
-      "note": "register evidence column cites routers/jaimini.py:108-129 explicitly alongside jaimini_chara.py — the live HTTP endpoint side of the same fallback table"
-    },
-    {
-      "pattern": "fabricated_citation_bphs_pranapada",
-      "file": "platform/python-sidecar/ga_writers/ga_sensitive_writer.py",
-      "line_hash": "13a82e3396ce",
-      "register_row": "M-9",
-      "note": "formula_provenance_text cites 'BPHS' for a non-BPHS Pranapada formula (ga_sensitive_writer.py:826-831 in register evidence)"
-    },
-    {
-      "pattern": "fabricated_citation_jaimini_sutram_trikona",
-      "file": "platform/python-sidecar/ga_writers/ga_sensitive_writer.py",
-      "line_hash": "0422fce605d0",
-      "register_row": "M-9",
-      "note": "formula_provenance_text cites 'Jaimini Sutram' for an invented 'Trikona Dasha Sphuta' (ga_sensitive_writer.py:843-848 in register evidence)"
-    },
-    {
       "pattern": "two_pass_verified_literal",
       "file": "platform/python-sidecar/ga_writers/ga_sensitive_degree_writer.py",
       "line_hash": "45fc7b7770ff",
