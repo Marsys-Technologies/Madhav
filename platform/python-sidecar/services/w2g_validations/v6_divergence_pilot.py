@@ -43,11 +43,11 @@ January 1). The census counts candidates and names them that.
 """
 from __future__ import annotations
 
-from datetime import date, timedelta
+from datetime import date
 from typing import Any, Iterable
 
 from ._db import QueryFn, table_exists
-from .types import INDETERMINATE, PASS, ValidationResult
+from .types import INDETERMINATE, ValidationResult
 
 WINDOWS_TABLE = "kala_gochara_windows"
 

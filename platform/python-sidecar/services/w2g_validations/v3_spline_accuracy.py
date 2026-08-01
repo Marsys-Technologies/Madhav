@@ -248,7 +248,7 @@ def validate_v3_spline_accuracy(
             ),
         )
     try:
-        import scipy.interpolate  # noqa: F401
+        import scipy.interpolate  # noqa: F401  # presence probe only
     except Exception as exc:  # noqa: BLE001
         return ValidationResult(
             validation_id="V3",

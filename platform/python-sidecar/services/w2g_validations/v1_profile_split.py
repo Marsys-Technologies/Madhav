@@ -35,7 +35,7 @@ import statistics
 from datetime import datetime
 from typing import Any
 
-from ._db import QueryFn, column_names, table_exists
+from ._db import QueryFn, table_exists
 from .types import INDETERMINATE, PASS, ValidationResult
 
 V1_ASSET_ID = "ka_gochara_sweep"
