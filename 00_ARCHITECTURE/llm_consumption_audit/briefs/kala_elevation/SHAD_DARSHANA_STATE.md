@@ -13,11 +13,52 @@ governing: SHAD_DARSHANA_NIGHT_RUN_v1_0.md (orchestration) + SHAD_DARSHANA_BRIEF
 
 ## NEXT-ACTION
 
-**CAMPAIGN ON HOLD (2026-07-31, native decision) — paused until SAMĀPTI dissolves/closes.**
-No shad-darshana build work (lane dispatch, W2 integration, deploys) happens until the native
-resumes the campaign. **Four infrastructure changes have landed during the hold** — Night 3's
-Conductor MUST read `SHAD_DARSHANA_NIGHT_RUN_v1_0.md` (now v1.2) fresh before resuming, not
-rely on cached knowledge of v1.0/v1.1's mechanics:
+**HOLD LIFTED (2026-08-01, native — requested the Night-3 kickoff; the §D paste authorizes
+the run).** The hold condition was verified satisfied before lift, not assumed: **zero open
+SAMĀPTI PRs** as of 2026-08-01 (checked live against Marsys-Technologies/Madhav).
+
+**NIGHT-3 OPENING ORDERS (the frontier; supersedes the generic §C night-map for tonight):**
+1. **Session-open protocol per §D (v1.3)**: rebase integration onto main · ledger-
+   reconciliation sweep · ANTARYĀMIN discharges ALL pending adjudications up front · deploy.
+2. **Deploy current `main` to production first** (Night 2's standing next-action — `main` has
+   been one deploy ahead since Night 2's close, by explicit native decision then; the
+   blocking consideration at the time, other campaigns' unshipped work, has since resolved:
+   PŪRṆATĀ closed 2026-07-31, SAMĀPTI zero open PRs). Full verify discipline + Verifier
+   acceptance on both charts before any new build work lands on top.
+3. **Ledger-reconciliation sweep known target**: item 2's row reads IN-PROGRESS but PR #934
+   (`w1-recurrence-digest`) is MERGED and the W1 gate-close record claims 12/12 VERIFIED —
+   reconcile the row against the W1 round-2 evidence, append-only, citing it.
+4. **ANTARYĀMIN's up-front docket (all before builders dispatch):** N1–N4 rulings + record
+   N5's CONSERVATIVE-DEFAULT verbatim into the N-block (it has sat empty for two nights —
+   W2G is unstartable until it is filled) · **the N_e priors-source design ruling** (see 5).
+5. **The N_e blocker is tonight's critical path** (Lane C's honest disclosure, see the
+   Night-2 record below): the hazard formula's lifetime-count priors
+   (`fact_kind='lifetime_count_per_100y'`) exist nowhere in the corpus; a real `ka_kshetra`
+   build writes ZERO field rows until an L0 lane seeds them. ANTARYĀMIN rules the source
+   design (candidates: classical-text-derived counts with citations; documented demographic
+   base rates as structural priors; cohort-derived where genuinely derivable — NEVER read
+   `base_rate_by_age` as N_e, §5.1 C-1 forecloses that exactly); then a small L0 seeding
+   lane lands it under the §D data-honesty rail: every value cited, versioned,
+   structural_prior-labeled. A number without a source is a build error.
+6. **Then the real Gate-W2 integration sequence** (design doc §10 / brief §3 W2): field
+   build both charts → hash-replay determinism → weights-v0 seed → skill score published
+   (both charts; FIRST score = CI baseline) → time-rescaling GOF report → specificity gate
+   flips HARD → authority-basis census population → insight rows lead readings → Nirmāṇa
+   checks green (L0 assets built in production BEFORE the first per-chart field build).
+7. **In parallel with 5–6, dispatch the W3 lanes whose prerequisites are already met**
+   (need L1/ephemeris/views, not the field): moorti (4) · vedha + REAL Sarvatobhadra grid
+   (5) · Tithi-Praveśa (13) · Kota (16) · Sudarśana (17, writer `ka_sudarshana_varsha`) ·
+   health/adverse class (9, S4-05 re-test). The lattice-query ENGINE (36's remaining half)
+   + activity tables (6) + muhūrta-lagna (7) can also start — substrate (PR #930) is in.
+   W2G starts the moment the N-block is filled (order 4). W4 design (5a) the moment 36+41's
+   engine work lands. Field-dependent W3 items (33, 34, state_delta, decision_value) wait
+   for 6.
+8. **Gate W2 close = the §B.2 gate-close PR** (integration → main, rides the merge queue,
+   5–60 min is normal) → deploy → PARĪKṢAKA live acceptance → ledger + morning report.
+
+**Four infrastructure changes landed during the hold** — Night 3's Conductor MUST read
+`SHAD_DARSHANA_NIGHT_RUN_v1_0.md` (now v1.3 — the §D prompt itself was elevated 2026-08-01,
+read it fresh) rather than rely on cached knowledge of earlier mechanics:
 
 1. **The integration branch is now the merge target for every lane PR** — `main` receives one
    deliberate merge per wave-gate close only (NIGHT_RUN §B.1/§B.2). `main == production`
