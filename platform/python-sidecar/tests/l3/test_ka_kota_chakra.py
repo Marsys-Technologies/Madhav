@@ -16,11 +16,22 @@ Per the W3K citation-source hierarchy (SHAD_DARSHANA_BRIEF_v2_0.md §3 W3K
 Gate — "(iii) published reader examples transcribed into a committed fixture
 file; if only (iii) is available, the item is VERIFIED against the fixture
 and the corpus gap is filed as an ingestion work item"), the ring table below
-is transcribed from a secondary published description (cited in
-services/ka_kota_chakra/logic.py's own docstring) and is treated as tier-(iii)
-evidence: the writer marks it honestly (not a primary-corpus citation), and
-this is filed as an ADJUDICATION-PENDING corpus-ingestion gap in the PR, not
-silently upgraded to `classical_citation` status.
+is transcribed from a secondary published description and is treated as
+tier-(iii) evidence: the writer marks it honestly (not a primary-corpus
+citation), and this is filed as an ADJUDICATION-PENDING corpus-ingestion gap
+in the PR, not silently upgraded to `classical_citation` status.
+
+── ADJUDICATION-9 UPDATE (2026-08-01) ────────────────────────────────────────
+The ring partition itself moved out of this module's inline dict into the
+versioned L0 asset `bg_kota_chakra_rings` (brahmagyan/l0_kota_chakra_rings.py
++ migration 523) — see that module's docstring for the full disclosure.
+`ring_for_count()` now takes the partition as a parameter; these tests import
+it from the new L0 seed module (the single source of truth) instead of from
+`services.ka_kota_chakra.logic`, which no longer holds it.
+`TestByteIdenticalAfterL0Move` below is the byte-identity proof that the move
+changed nothing servable — it re-derives the OLD (pre-move) hardcoded
+partition as a golden fixture and asserts it is identical, ring-position by
+ring-position, to what the new L0 module now serves.
 """
 from __future__ import annotations
 
@@ -30,12 +41,15 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from services.ka_kota_chakra.logic import (
-    ALL_RING_NAMES,
+from brahmagyan.l0_kota_chakra_rings import (
     STAMBHA_COUNTS,
     DURGANTARA_COUNTS,
     PRAKARA_COUNTS,
     BAHYA_COUNTS,
+    ring_sets_by_name,
+)
+from services.ka_kota_chakra.logic import (
+    ALL_RING_NAMES,
     count_from_janma,
     ring_for_count,
     attack_defence_reading,
@@ -43,6 +57,10 @@ from services.ka_kota_chakra.logic import (
     NATURAL_MALEFICS,
     NATURAL_BENEFICS,
 )
+
+# Shared ring-set fixture for tests below — the same shape writer.py builds
+# from a DB read of bg_kota_chakra_rings at run time.
+_RING_SETS = ring_sets_by_name()
 
 
 class TestRingTableInvariant:
@@ -60,14 +78,95 @@ class TestRingTableInvariant:
         assert total_len == 27  # disjoint — no count double-counted
 
     def test_stambha_is_the_four_pillar_positions(self):
-        # Transcribed source (see logic.py docstring): 4th, 11th, 18th, 25th from janma.
+        # Transcribed source (see brahmagyan/l0_kota_chakra_rings.py docstring):
+        # 4th, 11th, 18th, 25th from janma.
         assert STAMBHA_COUNTS == {4, 11, 18, 25}
 
     def test_janma_itself_falls_in_bahya(self):
         # count=1 (the janma nakshatra itself, 0 nakshatras away) is not listed in any of
         # stambha/durgantara/prakara in the source table, so it falls to bahya by the
-        # partition — see logic.py docstring for the explicit disclosure of this point.
-        assert ring_for_count(1) == "bahya"
+        # partition — see brahmagyan/l0_kota_chakra_rings.py for the explicit disclosure
+        # of this point.
+        assert ring_for_count(1, _RING_SETS) == "bahya"
+
+
+# Frozen, literal transcription of the exact sets that lived inline in
+# services/ka_kota_chakra/logic.py BEFORE ADJUDICATION-9's L0 move (preserved
+# here, never edited going forward, as the golden pre-move reference — not
+# imported from either module, so it cannot silently track a future change to
+# either side). Module-level (not class-body) because a genexpr inside a
+# class body cannot see other class-body names — a Python scoping quirk, not
+# a design choice.
+_PRE_MOVE_GOLDEN_STAMBHA = frozenset({4, 11, 18, 25})
+_PRE_MOVE_GOLDEN_DURGANTARA = frozenset({3, 5, 10, 12, 17, 19, 24, 26})
+_PRE_MOVE_GOLDEN_PRAKARA = frozenset({2, 6, 9, 13, 16, 20, 23, 27})
+_PRE_MOVE_GOLDEN_BAHYA = frozenset(
+    c for c in range(1, 28)
+    if c not in (_PRE_MOVE_GOLDEN_STAMBHA | _PRE_MOVE_GOLDEN_DURGANTARA | _PRE_MOVE_GOLDEN_PRAKARA)
+)
+
+
+class TestByteIdenticalAfterL0Move:
+    """ADJUDICATION-9's binding constraint: "no served value changes
+    whatsoever." This class is the fixture proof: it asserts the new
+    L0-sourced partition (brahmagyan.l0_kota_chakra_rings) is IDENTICAL,
+    ring-position by ring-position, to the `_PRE_MOVE_GOLDEN_*` sets above,
+    and that ring_for_count()'s output for every count in 1..27 is
+    unchanged."""
+
+    def test_stambha_set_unchanged(self):
+        assert STAMBHA_COUNTS == _PRE_MOVE_GOLDEN_STAMBHA
+
+    def test_durgantara_set_unchanged(self):
+        assert DURGANTARA_COUNTS == _PRE_MOVE_GOLDEN_DURGANTARA
+
+    def test_prakara_set_unchanged(self):
+        assert PRAKARA_COUNTS == _PRE_MOVE_GOLDEN_PRAKARA
+
+    def test_bahya_set_unchanged(self):
+        assert BAHYA_COUNTS == _PRE_MOVE_GOLDEN_BAHYA
+
+    def test_every_ring_position_1_to_27_resolves_identically(self):
+        golden_sets = {
+            "stambha": _PRE_MOVE_GOLDEN_STAMBHA,
+            "durgantara": _PRE_MOVE_GOLDEN_DURGANTARA,
+            "prakara": _PRE_MOVE_GOLDEN_PRAKARA,
+            "bahya": _PRE_MOVE_GOLDEN_BAHYA,
+        }
+
+        def golden_ring_for_count(count: int) -> str:
+            for ring_name, members in golden_sets.items():
+                if count in members:
+                    return ring_name
+            raise AssertionError(count)
+
+        for count in range(1, 28):
+            assert ring_for_count(count, _RING_SETS) == golden_ring_for_count(count), (
+                f"ring assignment for count={count} changed after the L0 move"
+            )
+
+    def test_rows_module_matches_ring_sets_exactly(self):
+        # brahmagyan.l0_kota_chakra_rings.ROWS is what the migration + writer
+        # actually persist — cross-check it independently reconstructs the
+        # same partition ring_sets_by_name() returns, so the DB-facing rows
+        # and the in-memory sets can never silently diverge.
+        from brahmagyan.l0_kota_chakra_rings import ROWS
+
+        reconstructed: dict[str, set[int]] = {name: set() for name in ALL_RING_NAMES}
+        for (ring_position, ring_name, _ring_index, _dvara) in ROWS:
+            reconstructed[ring_name].add(ring_position)
+
+        for ring_name in ALL_RING_NAMES:
+            assert frozenset(reconstructed[ring_name]) == _RING_SETS[ring_name]
+
+    def test_attack_defence_reading_unchanged_for_every_ring_and_every_natural_malefic_benefic(self):
+        # uncited_extension synthesis (posture/severity per ring x nature) is
+        # explicitly UNAFFECTED by ADJUDICATION-9 (item 4) — re-assert it here
+        # as part of the byte-identity proof for the full served row shape.
+        for graha in list(NATURAL_MALEFICS) + list(NATURAL_BENEFICS):
+            for ring in ALL_RING_NAMES:
+                reading = attack_defence_reading(graha, ring)
+                assert set(reading.keys()) == {"posture", "severity", "is_natural_malefic"}
 
 
 class TestCountFromJanma:
@@ -95,9 +194,9 @@ class TestRingForCount:
     def test_out_of_range_raises(self):
         import pytest
         with pytest.raises(ValueError):
-            ring_for_count(0)
+            ring_for_count(0, _RING_SETS)
         with pytest.raises(ValueError):
-            ring_for_count(28)
+            ring_for_count(28, _RING_SETS)
 
     def test_all_ring_names_are_the_four_classical_rings(self):
         assert ALL_RING_NAMES == ("stambha", "durgantara", "prakara", "bahya")
