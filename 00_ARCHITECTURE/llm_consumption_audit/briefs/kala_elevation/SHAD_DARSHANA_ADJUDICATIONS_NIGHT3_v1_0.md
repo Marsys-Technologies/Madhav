@@ -646,6 +646,193 @@ path.
 
 ---
 
+## ADJUDICATION-10: Muhūrta-scope parihāra rules and the W3 "Abhijit-override" gate criterion
+
+*(Issued as a supplemental ruling after the item-36 lattice-engine lane's PR #1004 disclosure.)*
+
+**Question.** Every seeded `bg_parihara_rules` row is `scope='natal'`; the corpus holds no
+muhūrta-scope cancellation rules. The W3 gate criterion *"the Abhijit-override case
+demonstrably rescues a candidate"* therefore appears unmeetable. Amend, hold, or satisfy?
+
+**Corpus findings.** `bg_parihara_rules` is empty in production (0 rows — L0 trigger not yet
+run; expected). The "cannot be met by data that exists today" premise is **REFUTED**:
+`abhijit`/`abhijin` returns 24 hits across 8 ingested texts, including
+`bphs_jaimini_pg0213_c01` (`[HIGH]` citation, Jaimini Sutras trans. B. Suryanarain Rao 1949,
+PG213): *"...the time goes under the special name of Abhijin Moohurta, and Abhijit Sarva
+Doshaghnam or that noon time which cuts and cures all evil influences."* — a muhūrta-scope,
+universal-cancellation rule, in the corpus, in English, today.
+
+### RULING — (a) as the general policy for the parihāra graph; but the Abhijit clause is NOT
+amended — it is MET, by extracting the one rule already in the corpus.
+
+**Part 1 — one-row extraction discharges the clause.** Seed one `bg_parihara_rules` row:
+scope='muhurta', cancellation_condition_text = the Abhijit madhyāhna sarva-doṣaghna rule,
+net_standing='cancelled', source `bphs_jaimini` PG213 chunk `bphs_jaimini_pg0213_c01`, and
+**mandatorily** `extraction_context='translator_gloss_in_narrative'` (it is a translator's
+doctrinal gloss, not a mūla-sūtra — seeding it as a sūtra would be citation inflation;
+labelled honestly it is stronger evidence than the Kota ring table's tier-(iii) source, and
+genuinely in-corpus). Transcribe EXACTLY what the source states — the unqualified
+sarva-doṣaghna; lineage qualifications (weekday exceptions, unreachable doṣa classes) are NOT
+in the passage and may not be invented into the row — they are paddhati-profile matter
+(ADJUDICATION-8 machinery, `factor_family='abhijit_override'`, native_confirmed=FALSE). The
+rescue must be demonstrated against a LIVE candidate (real horizon candidate, real doṣa, full
+judgment ledger with citation) — now achievable.
+
+**Part 2 — general policy for every OTHER muhūrta-scope cancellation** (Guru-Puṣya,
+Sarvārtha-Siddhi — 0 corpus hits — strong-lagna overrides, dāna-parihāras): mechanism accepted
+as demonstrated against the committed fixture; each missing rule registered BY NAME in item
+41's not_in_corpus register; honest-empty cancellation sets rather than natal rules pressed
+into muhūrta service. The lane's refusal to reach for a natal bhaṅga rule is **affirmed** — a
+natal-scope cancellation applied to a muhūrta doṣa is a fabricated cancellation and a §N.5
+authority inversion.
+
+**(b) rejected as stated** (a general extraction lane blocks on muhurta_chintamani
+translation) but partially adopted as the bounded one-row extraction. **(c) rejected**
+(self-inflicted stall on a demonstrably meetable criterion).
+
+**Disclosure 2 (rite_specific_resonance axis excluded pending items 6/7 name→id mapping) —
+accepted, with one condition:** the exclusion is explicit and visible (`axes_evaluated` minus
+the axis with `reason='pending_items_6_7_activity_id_mapping'`); §6.1
+renormalise-over-present-factors applies; the axis is never imputed and never silently dropped
+from the axis count.
+
+**Rationale.** DATA-HONESTY RAIL · brief §3 W3 gate + W3K tier hierarchy · B.3 · B.10
+(transcription is not fabrication; a natal rule reused at muhūrta scope IS) · §N.5 · honest-
+empty rail · Elevation §"parihāra graph — adjudication, not addition" (which names Abhijit's
+daily wipe as its first example — confirming this rule is the intended anchor case) · design
+§6.1.
+
+**Reversibility: HIGH.** Part 1 = one versioned, cited L0 row; retract by deleting it (gate
+reverts to Part 2 fixture posture, no code change). Part 2 amends brief/ledger text only. The
+extraction_context label makes a later mūla-verse upgrade a field update, not re-litigation.
+
+---
+
+## ADJUDICATION-11: Sarvatobhadra-Chakra grid provenance and the closure of R-19 (item 5)
+
+*(Issued as a supplemental ruling after the w3-moorti-vedha lane's PR #1009 disclosure.)*
+
+**Question.** Item 5's SBC half ships an explicitly-disclosed algorithmic approximation (no
+grid in corpus; grid geometry genuinely varies by tradition, so transcribing one from memory
+is a school-selection judgment, not a transcription). Does this close R-19, and what is the
+sanctioned path to a real grid?
+
+**Corpus findings.** `sarvatobhadra` variants: 8 hits, ALL noise (index pages, OCR ligature
+soup, a pillar-proportion false positive) except one passing `[MEDIUM]` mention. Neither
+Jyotish Sara Sangraha nor Nārada Saṃhitā is held (0 hits each). **But vedha doctrine as such
+IS in the corpus** — 30 hits across 5 texts; two load-bearing and citable today:
+Phaladeepika Adh. XXVI **PG353** (malefic-count 1–5 → fear/failure/killing/death/ignominy
+scale) and **PG339** (the Lattā rules: 9th from Mercury, 22nd from Moon, natal-star-as-Lattā
+affliction), both `[HIGH]` provenance.
+
+### RULING — (a) for the SBC grid, in a school-tagged form; PLUS a mandatory citable-vedha
+component; **R-19 closes CLOSED-PARTIAL-BY-DESIGN, never as a bare "CLOSED"**.
+
+**Part 1.** The lane's refusal to transcribe a grid is AFFIRMED; option (c) (transcribe one
+named source's grid à la ADJUDICATION-9) is REJECTED: where geometry varies by tradition,
+selecting one grid IS an interpretive act, and seating it as an L0 base fact is a B.1 layer
+violation (the structural_prior-masquerading-as-fact defect). ADJUDICATION-9's transcription
+logic does not extend here — one-source/one-geometry (Kota) vs multi-tradition (SBC).
+
+**Part 2.** School-variant rule tables use the ADJUDICATION-8 machinery, not a single-truth
+table: `bg_sarvatobhadra_grid` (L0, global) keyed by `school_tag`, registered **EMPTY** (an
+empty school-keyed table honestly states that variants exist and none is held); selection is
+a `kala_paddhati_profile` matter (`factor_family='sarvatobhadra_grid'`,
+native_confirmed=FALSE); the writer's DB-sourced-grid-first path is affirmed — a sourced grid
+activates with zero code change.
+
+**Part 3.** The disclosed approximation IS accepted as the served layer, with three data-only
+additions: `grid_basis='algorithmic_approximation'` + `grid_school_tag=null` machine-readable
+on every such row; those rows EXCLUDED from any "cited" count (served and counted separately,
+§N.6); `r19_disclosure` restated as the measured corpus fact.
+
+**Part 4 — MANDATORY for R-19 closure:** item 5 also seeds + serves at least the two cited
+vedha rules the corpus holds today, transcribed exactly: Phaladeepika PG353 (vedha scale) and
+PG339 (Lattā, `vedha_kind='latta'`, `uncited_extension=false`), as versioned cited L0 rows.
+Remaining vedha hits (13 Phaladeepika + Sarvartha Chintāmaṇi 5 + Uttara Kālāmṛta 5) filed as
+follow-on extraction, not attempted under time pressure.
+
+**Part 5.** Item 5 = VERIFIED-FIXED with disclosure; R-19 = CLOSED-PARTIAL-BY-DESIGN with the
+two halves stated separately in the ledger (vedha doctrine cited+served; SBC grid =
+approximation, uncited, school-tagged table registered empty pending source). Option (b)
+adopted as a TRACKED OBLIGATION riding W6's dark-corpus re-measure (a named, classified
+residual), never as a gate-blocker hostage to a purchase order. Option (d) rejected.
+
+**Part 6.** Corpus work item filed with real cost: (i) translate/extract muhurta_chintamani —
+now blocking FOUR deliverables (ADJ-8/9/10/11 all converge on it; prioritise accordingly);
+(ii) acquire a Nārada-Saṃhitā/SBC-specific text (genuine acquisition). Even a successful
+extraction yields ONE school's grid — which is why the school-tagged schema is built now.
+
+**Rationale.** DATA-HONESTY RAIL · brief §3 item 5/R-19 + W3K tier hierarchy · B.1 (the
+decisive clause) · B.3 · B.10 · §N.6 · Elevation §"Lineage variation is data" ·
+ADJUDICATION-8 (school-tag precedent) · ADJUDICATION-9 (transcription precedent and its
+limit).
+
+**Reversibility: HIGH.** Field-level metadata + an empty table + independently-standing cited
+rows; a real grid inserts under a school_tag and activates via the existing DB-first path
+with zero code change.
+
+---
+
+## ADJUDICATION-12: `adopt_intervention` MCP parameter vs §11 explicit-filing governance (W4 design OQ-1)
+
+**RULING — (a) mechanically, with one mandatory field.** The §11 explicit-filing clause is an
+ANTI-MINING rail ("never inferred from a conversation transcript"); `filed_by` is a separate
+PROVENANCE requirement; neither is a consent rail. A structured `adopt_intervention`
+parameter (intervention_id + confidence + falsifier) satisfies anti-mining — but an agentic
+caller can synthesize it, which is mining performed by the model. Therefore
+`adopt_intervention` gains a REQUIRED fourth field `adoption_basis:
+'native_directed'|'session_inferred'` — `native_directed` files via the sanctioned route;
+`session_inferred` OR absent/unrecognised returns the filing-ready payload with
+`filing_state:'awaiting_native_confirmation'` and does NOT file (fail-closed).
+`adoption_basis` persists on the row so the ledger audits by intent-origin, not just
+principal. Self-attestation is the honest limit of an MCP boundary — declared basis beats an
+invisible failure mode. `filed_by`=MCP principal is CORRECT (provenance, not authorship);
+engine-composed claim text is RATIFIED (B.10 prose rule requires template-over-computed-data;
+`generator_class='engine'` coupling to DR-16 preserved). Gate fixture G3 gains one assertion
+(session_inferred → awaiting_native_confirmation, ledger unchanged). The reversibility
+asymmetry (§3.5.E: filed = sealed forever; unfiled = filable later) sets every default toward
+not-filing. **Reversibility: HIGH.**
+
+---
+
+## ADJUDICATION-13: Adverse/health-class auto-filing (W4 design OQ-2)
+
+**RULING — Refusal RATIFIED and STRENGTHENED.** The §3.5.B-vs-§3.5.C tension DISSOLVES on the
+correct reading: §3.5.B governs DISCLOSURE (what the native sees — served in full: diagnosis,
+falsifier, window, calibration band, constraints_applied); filing governs what gets SEALED
+under §3.5.E (locked at emission, never modifiable). Refusing to auto-file withholds ONLY the
+irreversible DB write, nothing §3.5.B grants. Independent dispositive grounds: §3.5.A p3
+(double red-team required for health/mortality/mental-health — unobtainable by a night run);
+§3.5.C explicit sign-off; §3.5.A p6 (every output rescindable) is internally contradictory
+with auto-sealing. Adjudicator bounds alone would also decide it (Ethical Framework is a
+rail).
+
+**Three mandatory amendments to the W4 design:**
+**A — THE DESIGNED PREDICATE IS A NO-OP.** `domain='health' AND magnitude_floor IN
+('major','life_altering')` matches ZERO live ontology rows ('major' does not exist; health
+classes top out at 'significant'; the only life_altering row is birth_anchor). Every
+health-class intervention would have auto-filed. Replace with: `domain='health' OR
+lel_category='psychological' OR event_class_id='bereavement'` — NO magnitude filter — plus a
+CI assertion that fails if the set resolves to zero rows against the live ontology.
+**B — bereavement included on its own ground:** a sealed bereavement window is an
+individualized mortality window for an unconsenting third party (§3.5.A p4, §3.5.D) — cite as
+consent, not health.
+**C — rename** `filing_refused_adverse_class` → `filing_withheld_pending_native_signoff`
+("refused" misdescribes the native's own manual-filing option — itself a §3.5.B
+under-service).
+
+**Binding additional exposure ruled:** §3.5.C's absolute no-date-of-death clause vs the live
+`ganita_ayurdaya_get` tool — an individualized-mortality-window DETECTOR is a HARD EXCLUSION
+evaluated BEFORE any computation (same detector-first shape as isMode3ShapedRequest); no W4
+surface may read āyurdāya/longevity facts into a window bound, under ANY tier, filed or
+unfiled — this one withholds the output itself, native included.
+
+**Reversibility: MAXIMAL and asymmetric — the whole argument.** A withheld filing becomes a
+filing by one native-directed call; a filed adverse prediction can never be unfiled.
+
+---
+
 ### Closing notes for the Conductor
 
 - **Nothing above touches a FROZEN contract, an untouchable, or a rail.** Every new writer is

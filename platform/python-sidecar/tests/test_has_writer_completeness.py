@@ -85,6 +85,9 @@ KNOWN_HAS_WRITER_TRUE: frozenset[str] = frozenset({
     # INSERT, which carries `has_writer` true / `has_substeps` false: this writer
     # implements run(ctx), not plan_substeps.
     "bg_class_lifetime_counts",
+    # ── L0 Brahmagyan — migration 523 (ṢAḌ-DARŚANA W3 Lane w3-kota-rings,
+    # ADJUDICATION-9 — Kota-Chakra ring table moved to a versioned L0 asset) ──
+    "bg_kota_chakra_rings",
     # ── L1 Gaṇita — migration 342 ────────────────────────────────────────────
     "ga_condition",
     "ga_dashas",

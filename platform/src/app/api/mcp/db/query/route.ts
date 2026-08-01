@@ -62,6 +62,13 @@ const ALLOWED_TABLES = new Set([
   // brahma_remedy_corpus = the BPHS-cited remedy table election-avoidance pairs its DR-16
   // mitigation from (global read-only reference). Read-only; no write path added.
   'kala_gochara_windows',
+  // ADJUDICATION-6 (migration 527, w2g-generation-schema): the per-chart
+  // authority pointer register_gochara_windows.ts's three serving queries
+  // now correlate against (COALESCE((SELECT authoritative_generation FROM
+  // kala_gochara_authority WHERE chart_id=...), 'v1')) to resolve which
+  // generation is currently served. Read-only; the table itself is written
+  // only by a future cutover flip, never by any MCP-served query.
+  'kala_gochara_authority',
   'brahma_remedy_corpus',
   // SATYA-ŚEṢA W2 (2026-07-25): gochara_forecast_get/activation_get/election_avoidance_get's
   // new category-coverage attestation (`coverage` block, S4-05 fix) computes, mechanically per

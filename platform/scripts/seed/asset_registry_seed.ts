@@ -789,6 +789,40 @@ export const ASSETS: AssetDef[] = [
     scope: 'global', is_active: true, estimated_seconds: null,
     asset_kind: 'data',
   },
+  {
+    // ṢAḌ-DARŚANA W3 Lane w3-kota-rings, ADJUDICATION-9 (migration 523,
+    // SHAD_DARSHANA_ADJUDICATIONS_NIGHT3_v1_0.md, ANTARYĀMIN, 2026-08-01).
+    // The Kota-Chakra ring partition (stambha/durgantara/prakara/bahya, from
+    // janma nakshatra), previously an inline dict in
+    // services/ka_kota_chakra/logic.py, moved to this versioned L0 table —
+    // the DATA-HONESTY RAIL's "cited, versioned L0 row" conjuncts. NO SERVED
+    // VALUE CHANGES: transcribed exactly (see brahmagyan/l0_kota_chakra_rings.py
+    // + the byte-identity fixture test, tests/l3/test_ka_kota_chakra.py).
+    // Row count is 27 (not the ruling's own "~28" estimate) — matches the
+    // 27-nakshatra mod-27 arithmetic ka_kota_chakra's writer uses; disclosed
+    // in the migration header, not silently reconciled. Tier-(iii)
+    // secondary-source transcription; corpus_status='not_in_corpus' on every
+    // row. Ingestion work item filed (not attempted): muhurta_chintamani
+    // (ingested but untranslated OCR — ADJUDICATION-8) and a
+    // Nārada-Saṃhitā-class text not yet held.
+    asset_id: 'bg_kota_chakra_rings',
+    layer: 'brahmagyan', sort_order: 72,
+    catalog_status: 'CURRENT',
+    sanskrit_name: 'Koṭa-Cakra Valaya-Sāraṇī',
+    english_name: 'Kota-Chakra Ring Table',
+    english_description: 'ADJUDICATION-9: the Kota-Chakra fort-chakra ring partition (stambha/durgantara/prakara/bahya, 1-indexed distance from janma nakshatra), moved from an inline writer-code dict to a versioned L0 global reference table. Tier-(iii) secondary-source transcription; corpus_status=\'not_in_corpus\' on every row; ingestion work item filed for the primary source, not attempted here. Consumed by ka_kota_chakra.',
+    storage_type: 'postgres_table',
+    target_table: 'bg_kota_chakra_rings',
+    count_sql: 'SELECT COUNT(*) FROM bg_kota_chakra_rings',
+    size_sql: "SELECT pg_total_relation_size('bg_kota_chakra_rings')",
+    target_floor: 27,
+    expected_volume_formula: null,
+    expected_volume_inputs: null,
+    volume_explanation: '27 rows: the 1..27 ring_position partition (Stambha 4 + Durgantara 8 + Prakara 8 + Bahya 7 = 27), one row per nakshatra-count-from-janma. Not 28 — see migration 523 header for the disclosed count discrepancy against the ruling\'s own "~28" estimate.',
+    depends_on: [],
+    scope: 'global', is_active: true, estimated_seconds: null,
+    asset_kind: 'data',
+  },
 
   // ── GANITA (8) ────────────────────────────────────────────────────────────
   {
@@ -1754,16 +1788,17 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     // ṢAḌ-DARŚANA W3 Lane w3-kota-sudarshana, registry item 16 (migration 520).
     // Kota-Chakra: transiting grahas mapped to the fort's stambha/durgantara/
     // prakara/bahya rings relative to the janma nakshatra, with entry/exit
-    // windows + an attack/defence reading. Ring table is a disclosed
-    // tier-(iii) secondary-source transcription pending corpus ingestion
-    // (see services/ka_kota_chakra/logic.py). Single canonical ayanamsha
-    // (lahiri_chitrapaksha) — matches the L3 convention (ka_avadhi et al.).
+    // windows + an attack/defence reading. Ring table lives in the versioned
+    // L0 asset bg_kota_chakra_rings (ADJUDICATION-9, migration 523 — moved
+    // off an inline services/ka_kota_chakra/logic.py dict; no served value
+    // changed). Single canonical ayanamsha (lahiri_chitrapaksha) — matches
+    // the L3 convention (ka_avadhi et al.).
     asset_id: 'ka_kota_chakra',
     layer: 'kala', sort_order: 120,
     catalog_status: 'CURRENT',
     sanskrit_name: 'Koṭa-Cakra',
     english_name: 'Fort Chart (Transit Fortress)',
-    english_description: 'Transiting grahas mapped to the kota\'s stambha/durgantara/prakara/bahya rings relative to the janma nakshatra, with entry/exit windows and an attack/defence reading. Reads natal Moon longitude from chart_facts (ga_positions) and transiting positions from ephemeris_daily (bg_ephemeris).',
+    english_description: 'Transiting grahas mapped to the kota\'s stambha/durgantara/prakara/bahya rings relative to the janma nakshatra, with entry/exit windows and an attack/defence reading. Reads natal Moon longitude from chart_facts (ga_positions), transiting positions from ephemeris_daily (bg_ephemeris), and the ring partition from bg_kota_chakra_rings (L0, ADJUDICATION-9).',
     storage_type: 'postgres_table',
     target_table: 'kala_kota_chakra',
     count_sql: 'SELECT COUNT(*) FROM kala_kota_chakra WHERE chart_id=$1',
@@ -1772,7 +1807,7 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     expected_volume_formula: null,
     expected_volume_inputs: null,
     volume_explanation: 'One row per (graha, contiguous same-nakshatra ring-run) over a ~460-day scanned horizon (60 days back, 400 forward) around build time — typically 15-40 rows/chart across the 9 grahas. Floors are aspirational per §N.4; seeded 0, set to the achieved count after the first real build.',
-    depends_on: ['ga_positions', 'bg_ephemeris'],
+    depends_on: ['ga_positions', 'bg_ephemeris', 'bg_kota_chakra_rings'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
     asset_kind: 'data',
   },

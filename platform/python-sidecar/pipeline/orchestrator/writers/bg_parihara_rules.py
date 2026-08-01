@@ -30,8 +30,25 @@ THREE TABLES
    assumed). Honest scope disclosure: this content is NATAL dosha-bhanga
    (Manglik/Kāla-Sarpa/Kemadruma/Bāla-ariṣṭa/etc conditions) — the corpus has
    NO muhūrta-specific dosha-cancellation content ("Abhijit cancels most
-   doshas", dāna-parihāras) at chapter/verse grain. That gap is recorded
-   honestly in `bg_muhurta_factor_census`, never fabricated here.
+   doshas", dāna-parihāras) at chapter/verse grain, WITH ONE NAMED EXCEPTION:
+   ṢAḌ-DARŚANA ADJUDICATION-10 Part 1 (SHAD_DARSHANA_ADJUDICATIONS_NIGHT3_v1_0.md)
+   ruled that one genuinely muhūrta-scope, universal-cancellation rule DOES
+   exist in the ingested corpus — `bphs_jaimini` (Jaimini Sutras, trans. B.
+   Suryanarain Rao 1949) PG213, chunk `bphs_jaimini_pg0213_c01`: "...the time
+   goes under the special name of Abhijin Moohurta, and Abhijit Sarva
+   Doshaghnam or that noon time which cuts and cures all evil influences."
+   Verified read-only against production `classical_text_chunks` before this
+   row was added (see PR body). See `MUHURTA_PARIHARA_ROWS` below — ONE
+   hand-curated row (the writer's existing CENSUS_ROWS pattern for
+   verified-but-not-SQL-derivable content), honestly labelled
+   `extraction_context='translator_gloss_in_narrative'` per the ruling: this
+   is B. Suryanarain Rao's own translator's doctrinal gloss embedded in
+   narrative prose (an autobiographical aside at PG213), NOT a mūla-sūtra
+   verse — seeding it unmarked as a sūtra citation would be citation
+   inflation. Every OTHER muhūrta-scope cancellation (Guru-Puṣya,
+   Sarvārtha-Siddhi strong-lagna overrides, dāna-parihāras) remains
+   genuinely not_in_corpus and is registered by name in the factor census,
+   never invented to match this one exception.
 
 2. bg_muhurta_activity_rules — per-activity (vivāha/gṛha-praveśa/vyāpāra/yātrā/
    property-purchase/mantra-dīkṣā/upāya-ritual/sādhanā-initiation) muhūrta
@@ -172,8 +189,73 @@ def fetch_parihara_rows(conn: Any, build_id: str) -> list[dict[str, Any]]:
                     "source_text_id": text_id,
                     "source_chapter": chapter,
                     "source_citation": citation,
+                    # Honest null (§N.7 item 6): whether each of these 79
+                    # brahma_dosha_catalog-derived conditions is itself a
+                    # mūla-sūtra verse or a translator/commentary gloss was
+                    # not individually re-verified when this column was
+                    # added (migration 524) — classifying all of them now
+                    # would be an invented judgment, not a migration's job.
+                    "extraction_context": None,
                     "build_id": build_id,
                 })
+    return rows
+
+
+# ── Table 1b: the ONE hand-curated muhūrta-scope row (ADJUDICATION-10) ───────
+# ṢAḌ-DARŚANA ADJUDICATION-10 Part 1 ruled this clause MET by extracting the
+# one muhūrta-scope, universal-cancellation rule genuinely present in the
+# ingested corpus, rather than amending the W3 gate criterion or reaching for
+# a NATAL bhaṅga rule (which would be a §N.5 authority inversion — a natal
+# cancellation applied to a muhūrta doṣa is a fabricated cancellation).
+#
+# `dosha_canonical_id='rahu_kalam'`: the source text states the cancellation
+# UNQUALIFIED ("Abhijit Sarva Doshaghnam... cuts and cures all evil
+# influences" — no doṣa-class restriction anywhere in the passage). But
+# `bg_parihara_rules.dosha_canonical_id` is a single NOT NULL matching key
+# (no wildcard/all-doṣa convention exists anywhere in this schema or in the
+# `kala_lattice_query.ts` engine's `matchingPariharas` join, which matches a
+# lattice doṣa's `factor_key` against this column by case-insensitive
+# equality) — the schema FORCES a per-doṣa row. `rahu_kalam` is chosen as
+# the one concrete, real, cited (`corpus_status=computed_cited`), commonly
+# co-occurring inauspicious `kalam` factor_key to demonstrate the rescue
+# mechanism against (see `bg_muhurta_lattice.py`'s `KALAM_CITATIONS`). This
+# NARROWS the row's practical reach to one doṣa key without narrowing what
+# `cancellation_condition_text` actually asserts — the text below transcribes
+# the source's unqualified claim verbatim; the narrowing is a schema/engine
+# limitation, disclosed here and in the PR body, not a doctrinal qualification
+# invented into the passage (ADJUDICATION-10 Part 1 forbids inventing weekday
+# exceptions or doṣa-class qualifications — none are added).
+MUHURTA_PARIHARA_ROWS: list[dict[str, Any]] = [
+    {
+        "dosha_canonical_id": "rahu_kalam",
+        "dosha_name_en": "Rahu Kalam",
+        "dosha_category": "muhurta_kalam",
+        "cancellation_index": 1,
+        "cancellation_condition_text": (
+            "...the time goes under the special name of Abhijin Moohurta, and "
+            "Abhijit Sarva Doshaghnam or that noon time which cuts and cures "
+            "all evil influences."
+        ),
+        "net_standing": "cancelled",
+        "scope": "muhurta",
+        "source_text_id": "bphs_jaimini",
+        "source_chapter": 213,  # PG213 — a page number in this text's chunking convention, not a verse chapter.
+        "source_citation": (
+            "Jaimini Sutras (bphs_jaimini), trans. B. Suryanarain Rao, 1949, "
+            "PG213 [chunk bphs_jaimini_pg0213_c01]"
+        ),
+        "extraction_context": "translator_gloss_in_narrative",
+    },
+]
+
+
+def build_muhurta_parihara_rows(build_id: str) -> list[dict[str, Any]]:
+    """The one ADJUDICATION-10 Part 1 hand-curated muhūrta-scope row, stamped
+    with this build's build_id. Pure function, no DB access — mirrors
+    build_census_rows' pattern for verified-but-not-SQL-derivable content."""
+    rows: list[dict[str, Any]] = []
+    for row in MUHURTA_PARIHARA_ROWS:
+        rows.append({**row, "build_id": build_id})
     return rows
 
 
@@ -569,7 +651,7 @@ class BgPariharaRulesWriter(WriterBase):
         rows_written = 0
 
         try:
-            parihara_rows = fetch_parihara_rows(conn, ctx.build_id)
+            parihara_rows = fetch_parihara_rows(conn, ctx.build_id) + build_muhurta_parihara_rows(ctx.build_id)
             activity_rows = build_activity_rule_rows(ctx.build_id)
             census_rows = build_census_rows(ctx.build_id)
         except Exception as exc:
@@ -619,19 +701,23 @@ class BgPariharaRulesWriter(WriterBase):
               (dosha_canonical_id, dosha_name_en, dosha_category,
                cancellation_index, cancellation_condition_text, net_standing,
                scope, source_text_id, source_chapter, source_citation,
-               build_id, computed_at)
+               extraction_context, build_id, computed_at)
             VALUES
               (%(dosha_canonical_id)s, %(dosha_name_en)s, %(dosha_category)s,
                %(cancellation_index)s, %(cancellation_condition_text)s,
                %(net_standing)s, %(scope)s, %(source_text_id)s,
-               %(source_chapter)s, %(source_citation)s, %(build_id)s, NOW())
+               %(source_chapter)s, %(source_citation)s,
+               %(extraction_context)s, %(build_id)s, NOW())
             ON CONFLICT (dosha_canonical_id, cancellation_index) DO UPDATE SET
               dosha_name_en = EXCLUDED.dosha_name_en,
               dosha_category = EXCLUDED.dosha_category,
               cancellation_condition_text = EXCLUDED.cancellation_condition_text,
+              net_standing = EXCLUDED.net_standing,
+              scope = EXCLUDED.scope,
               source_text_id = EXCLUDED.source_text_id,
               source_chapter = EXCLUDED.source_chapter,
               source_citation = EXCLUDED.source_citation,
+              extraction_context = EXCLUDED.extraction_context,
               build_id = EXCLUDED.build_id,
               computed_at = NOW()
             """,

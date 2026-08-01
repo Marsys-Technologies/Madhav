@@ -32,6 +32,20 @@
  *   - It does NOT compute muhūrta-lagna, Sarvatobhadra vedha, or Kota-Chakra — all W3 items.
  *   - It does NOT pair the elected act-time with a preparatory ritual (item 38's W4 half).
  *
+ * W3 ADDITION (item 36 — the contender lattice + parihāra adjudication ENGINE):
+ * this facade now ALSO consults `lib/kala_lattice_query.ts` — the single engine ELECT and
+ * YAJÑA-SETU share (ONE-ENGINE RULE) — over the `bg_muhurta_lattice` / `bg_parihara_rules`
+ * substrate that landed with PR #930. Each candidate gains a `judgment_ledger`
+ * (`doṣas_present → parihāras_applied → residual_doṣas → net standing`, Elevation §9 stage 3)
+ * and the response gains a `lattice_adjudication` block (Pareto survival across factor
+ * groups + the gap report + the density counts). Three honesty properties are load-bearing
+ * and asserted by tests: uncited-convention lattice rows are served but never become
+ * findings or doṣas (§N.6); a doṣa is cancelled only by a genuinely-existing muhūrta-scope
+ * parihāra rule, of which the corpus currently has ZERO, so residuals are reported
+ * uncancelled with the gap named; and the coverage entry reads `computed` only when cited
+ * rows genuinely annotated a candidate, `honest_empty` otherwise. The muhūrta-lagna refinement
+ * (item 7) and ritual pairing (item 38's W4 half) remain honestly unbuilt below.
+ *
  * W1 ADDITIONS (item 38-lite + ELECT frontier v0, SHAD_DARSHANA_BRIEF_v2_0.md §3 W1):
  * every candidate now also carries `grading_tier`/`grading_tier_label` — a thin, SERVING-
  * LAYER normalization of the already-computed score/veto into the gold/silver/bronze
@@ -67,6 +81,13 @@ import {
 import { composeArgument } from '../../lib/argument_composer.js'
 import { finalizeMcpBudget, type TrimmableSection } from '../../lib/response_budget.js'
 import { gradeCandidate, buildFrontierStatement, type CandidateGradingTier, type FrontierStatement } from '../../lib/kala_grading.js'
+import {
+  adjudicateCandidates,
+  fetchLatticeSubstrate,
+  type JudgmentLedger,
+  type LatticeAdjudication,
+  type LatticeSubstrate,
+} from '../../lib/kala_lattice_query.js'
 
 // ── Input schema ─────────────────────────────────────────────────────────────────────
 
@@ -133,6 +154,12 @@ export interface KalaElectCandidate {
   // response. Fix option (a): serve the already-computed ladder verbatim (thin-facade
   // discipline — no new computation, same as every other candidate field here).
   hora_ladder: HoraSlot[]
+  // Item 36 (W3): the per-candidate judgment ledger from the shared contender-lattice
+  // engine — doṣas_present → parihāras_applied (citations) → residual_doṣas → net standing,
+  // plus the separately-counted uncited-convention factor layer (§N.6). Null when the
+  // lattice substrate could not be read for this call — an honest absence, never a
+  // fabricated clean verdict.
+  judgment_ledger: JudgmentLedger | null
 }
 
 export interface KalaElectResponse extends KalaEnvelope<ArgumentReading> {
@@ -148,6 +175,11 @@ export interface KalaElectResponse extends KalaEnvelope<ArgumentReading> {
   // A modest first version — the full W3 gap-report engine (next-occurrence search beyond
   // the horizon, Pareto near-frontier band) is a later wave; see lib/kala_grading.ts.
   frontier: FrontierStatement
+  // Item 36 (W3) — the contender-lattice engine's slate-level output: Pareto survival across
+  // factor groups (with the axes it could NOT evaluate named, never zero-filled), the gap
+  // report including the Muhūrta Factor Census dispositions, and the density counts that keep
+  // cited findings and uncited conventions from ever reading as one number.
+  lattice_adjudication: LatticeAdjudication | null
   composed_text: string
   empty_reason?: string
 }
@@ -216,7 +248,7 @@ function buildArgumentReading(
   return { thesis, evidence, dissent, verdict, falsifier }
 }
 
-function buildCoverage(result: MuhurtaFinderResult): KalaCoverageEntry[] {
+function buildCoverage(result: MuhurtaFinderResult, adjudication: LatticeAdjudication | null): KalaCoverageEntry[] {
   const coverage: KalaCoverageEntry[] = [computedCoverage('panchanga_dasha_transit_muhurta_scoring')]
 
   const laneF = result.lane_f
@@ -257,14 +289,53 @@ function buildCoverage(result: MuhurtaFinderResult): KalaCoverageEntry[] {
   coverage.push(computedCoverage('candidate_grading_lite'))
   coverage.push(computedCoverage('elect_frontier_v0'))
 
-  // Honest W0/W1 gaps — the full election-doctrine engine (item 36/41, W3) does not exist yet.
-  coverage.push(notInCorpusCoverage(
-    'contender_lattice_parihara_adjudication',
-    'the full contender lattice + parihāra graph + Pareto survival engine (item 36, ' +
-    'KALA_SUPREME_ELEVATION_v1_0.md §9) lands at W3; this facade serves the existing ' +
-    'muhurta_finder score/veto stack only — no doṣa→parihāra judgment ledger yet. ' +
-    'candidate_grading_lite (above) is a thin single-scalar tier label, not this engine.',
-  ))
+  // Item 36 (W3) — the contender lattice + parihāra adjudication engine is now WIRED. Its
+  // coverage state is whatever the engine honestly reports; this facade never upgrades it.
+  // (Before W3 this was an unconditional `not_in_corpus`; the engine now decides.)
+  if (adjudication === null) {
+    coverage.push(honestEmptyCoverage(
+      'contender_lattice_parihara_adjudication',
+      'the muhūrta lattice substrate could not be consulted for this call — no judgment ' +
+      'ledger was computed, and none is simulated.',
+    ))
+  } else if (adjudication.coverage_state === 'computed') {
+    coverage.push(computedCoverage('contender_lattice_parihara_adjudication'))
+  } else {
+    coverage.push(honestEmptyCoverage(
+      'contender_lattice_parihara_adjudication',
+      adjudication.coverage_reason ?? 'the lattice engine returned no cited annotation for this horizon',
+    ))
+  }
+
+  // Item 41 — the Muhūrta Factor Census, served in coverage exactly as Elevation §9's
+  // "what are you NOT considering" block requires.
+  if (adjudication === null || adjudication.gap_report.census_state === 'not_in_corpus') {
+    coverage.push(notInCorpusCoverage(
+      'muhurta_factor_census',
+      'the Muhūrta Factor Census (item 41) could not be read for this call, so the ' +
+      'not-computed / not-in-corpus factor register is not available to qualify this answer.',
+    ))
+  } else if (adjudication.gap_report.census_state === 'computed') {
+    coverage.push(computedCoverage('muhurta_factor_census'))
+  } else {
+    coverage.push(honestEmptyCoverage(
+      'muhurta_factor_census',
+      'the factor census returned zero rows — the bg_parihara_rules asset may not be built ' +
+      'in this environment.',
+    ))
+  }
+
+  // The muhūrta-scope parihāra layer is a REAL, NAMED corpus gap (not an unbuilt feature):
+  // every row in bg_parihara_rules is scope=natal. Disclosed as its own coverage entry so a
+  // caller reading "adjudication: computed" cannot infer that cancellations were available.
+  if (adjudication !== null && adjudication.density.parihara_rules_muhurta_scope === 0) {
+    coverage.push(notInCorpusCoverage(
+      'muhurta_scope_parihara_rules',
+      adjudication.gap_report.parihara_corpus_gap ??
+      'no muhūrta-scope doṣa-cancellation rule exists in the ingested corpus.',
+    ))
+  }
+
   coverage.push(notInCorpusCoverage(
     'muhurta_lagna_strength',
     'instant-lagna computation + strength check (item 7) not yet built; candidates are not ' +
@@ -316,8 +387,42 @@ export async function handleKalaElectGet(
   }
 
   const result = raw.structuredContent?.object as MuhurtaFinderResult
+
+  // ── Item 36 (W3): the contender-lattice + parihāra adjudication pass ────────────
+  // Candidate intervals are built FIRST (they are the engine's input), then the shared
+  // engine annotates and adjudicates them. `id` is positional and stable within the
+  // response — the substrate has no candidate identity of its own.
+  const windows = result.windows ?? []
+  const intervals = windows.map((w, i) => ({
+    id: `c${i}`,
+    start: w.start,
+    end: w.end,
+    score: w.score,
+    disqualified: w.disqualified ?? false,
+  }))
+
+  // A lattice/parihāra read failure must never fail the whole election — ELECT's W0/W1
+  // answer stands on its own. The engine degrades to an honest `honest_empty` coverage
+  // entry instead (see buildCoverage), which is exactly the 3-state contract.
+  let adjudication: LatticeAdjudication | null = null
+  try {
+    const substrate: LatticeSubstrate = await fetchLatticeSubstrate(
+      {
+        start_utc: new Date(`${dateRange.start}T00:00:00Z`).toISOString(),
+        end_utc: new Date(`${dateRange.end}T23:59:59Z`).toISOString(),
+      },
+      principal,
+    )
+    adjudication = adjudicateCandidates(intervals, substrate, {
+      subject_label: `${input.undertaking} (ELECT act-time)`,
+    })
+  } catch {
+    adjudication = null
+  }
+  const ledgerById = new Map((adjudication?.ledgers ?? []).map((l) => [l.candidate_id, l]))
+
   const reading = buildArgumentReading(input.undertaking, result)
-  const coverage = buildCoverage(result)
+  const coverage = buildCoverage(result, adjudication)
   const composed = composeArgument(reading)
 
   const questionFrame: QuestionFrame | null = input.question_frame ?? null
@@ -355,7 +460,7 @@ export async function handleKalaElectGet(
     calibrationMaturity: noLelCalibrationMaturity(),
   })
 
-  const candidates: KalaElectCandidate[] = (result.windows ?? []).map((w) => {
+  const candidates: KalaElectCandidate[] = windows.map((w, i) => {
     const grade = gradeCandidate({ score: w.score, disqualified: w.disqualified ?? false })
     return {
       start: w.start,
@@ -369,14 +474,21 @@ export async function handleKalaElectGet(
       grading_tier: grade.tier,
       grading_tier_label: grade.tier_label,
       hora_ladder: w.hora_ladder ?? [],
+      judgment_ledger: ledgerById.get(`c${i}`) ?? null,
     }
   })
 
-  const gapReport = candidates.length === 0
+  // The W0/W1 gap statement, now ALSO carrying the item-36 engine's own gap report when the
+  // engine ran. The two are concatenated rather than one overwriting the other: the veto/empty
+  // statement is about muhurta_finder's slate, the lattice statement is about the frontier and
+  // the named corpus gaps. Neither is fabricated when absent.
+  const baseGapReport = candidates.length === 0
     ? (result.empty_reason ?? `no candidate windows computed for ${input.undertaking} in ${dateRange.start}..${dateRange.end}`)
     : (candidates.every((c) => c.disqualified)
       ? 'every candidate in this horizon carries a hard veto — widen the date range or supply native_janma_nakshatra/target_graha context to re-check'
       : null)
+  const latticeGapStatement = adjudication?.gap_report.statement ?? null
+  const gapReport = [baseGapReport, latticeGapStatement].filter((s): s is string => !!s).join(' ') || null
 
   // ELECT frontier statement v0 (item 38-lite's sibling deliverable, E6) — built from the
   // SAME already-graded candidates, never a second scoring pass.
@@ -397,19 +509,48 @@ export async function handleKalaElectGet(
     candidate_count: candidates.length,
     gap_report: gapReport,
     frontier,
+    lattice_adjudication: adjudication,
     composed_text: composed.full_text,
     ...(result.empty_reason ? { empty_reason: result.empty_reason } : {}),
   }
 
   const sections: TrimmableSection<KalaElectResponse>[] = [
     kalaEvidenceTrimmableSection<KalaElectResponse>({ instrument: 'kala_elect_get', hint: 'call again with a narrower date_range for full evidence' }),
+    // §N.6 part 2 — the LOW-density layer is the one a trim eats first. Every candidate's
+    // uncited-convention factor list is fully floorable to zero (it is served context, not a
+    // finding), and is declared BEFORE the candidates section so the trimmer's disposable
+    // tier absorbs the cut before any confirmed judgment ledger is touched.
+    {
+      path: 'candidates[].judgment_ledger.convention_only_factors',
+      label: 'uncited-convention factor spans (all candidates)',
+      minKeep: 0,
+      getArray: (c) => c.candidates.flatMap((cand) => cand.judgment_ledger?.convention_only_factors ?? []),
+      setArray: (c, kept) => {
+        // Distribute the surviving entries back in order, then truncate the rest. The
+        // per-candidate `convention_only_factor_count` is deliberately NOT rewritten — it
+        // remains the TRUE count, so a trimmed response still tells the honest number.
+        let remaining = kept.length
+        for (const cand of c.candidates) {
+          const ledger = cand.judgment_ledger
+          if (!ledger) continue
+          const take = Math.max(0, Math.min(ledger.convention_only_factors.length, remaining))
+          ledger.convention_only_factors = ledger.convention_only_factors.slice(0, take)
+          remaining -= take
+        }
+      },
+      recover: { instrument: 'query_muhurta_lattice', hint: 'read the lattice directly for the full convention-row set' },
+    },
     {
       path: 'candidates',
-      label: 'candidate windows',
+      label: 'candidate windows (with judgment ledgers)',
       minKeep: 1,
       getArray: (c) => c.candidates,
       setArray: (c, kept) => { c.candidates = kept as KalaElectCandidate[] },
       recover: { instrument: 'kala_elect_get', hint: 'call again with a smaller limit or narrower date_range' },
+      // §N.6 part 2: candidates now carry the confirmed doṣa→parihāra→residual ledger — the
+      // densest, most-actionable layer in this response. hardFloor keeps at least one alive
+      // even under the hard-cap fallback pass.
+      hardFloor: true,
     },
   ]
 
@@ -447,11 +588,17 @@ export function registerKalaElectTool(server: McpServer, principal: Principal): 
     'normalization, see coverage.candidate_grading_lite), personal-star (tāra-bala) and ' +
     'target-graha vetoes, a top-level frontier statement (best candidate + whether a ' +
     'gold-tier exists in this horizon), and an honest gap report when no clean election ' +
-    'exists in the searched horizon. A ritual/yajña question with no named undertaking ' +
-    'routes to kala_ritual_get instead (Modes 1-2) — this tool never accepts a bare sky-' +
-    'pattern or opportunity-scan query. W1 depth: the full contender-lattice + parihāra ' +
-    'adjudication engine (item 36) and ritual pairing (item 38\'s W4 half) are not yet wired ' +
-    '— reported honestly via this response\'s coverage block, never silently omitted.',
+    'exists in the searched horizon. Each candidate also carries a judgment_ledger from the ' +
+    'contender-lattice engine (doṣas present → parihāras applied with citations → residual ' +
+    'doṣas → net standing), and the response carries a lattice_adjudication block with Pareto ' +
+    'survival across factor groups, the Muhūrta Factor Census dispositions, and separate counts ' +
+    'for cited findings versus uncited-convention factor spans — never read as one number. ' +
+    'A ritual/yajña question with no named undertaking routes to kala_ritual_get instead ' +
+    '(Modes 1-2) — this tool never accepts a bare sky-pattern or opportunity-scan query. ' +
+    'Honest remaining gaps: no muhūrta-scope doṣa-cancellation rule exists in the ingested ' +
+    'corpus, so residual doṣas are reported uncancelled; muhūrta-lagna refinement (item 7) and ' +
+    'ritual pairing (item 38\'s W4 half) are not yet wired — all reported via this response\'s ' +
+    'coverage block, never silently omitted.',
     KalaElectInputShape,
     async (args) => {
       const parsed = args as KalaElectInput
