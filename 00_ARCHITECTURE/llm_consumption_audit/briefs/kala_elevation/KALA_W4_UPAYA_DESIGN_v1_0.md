@@ -1,11 +1,35 @@
 ---
 artifact: KALA_W4_UPAYA_DESIGN (Wave W4 — UPĀYA / YAJÑA / the Intervention Ledger: build-precise design for the three Phase-5b lanes)
 canonical_id: KALA_W4_UPAYA_DESIGN
-version: 1.0
+version: 1.1
 status: DESIGN — Phase-5a output of the ṢAḌ-DARŚANA campaign. DESIGN-ONLY: this pass wrote no
   production code, no migration, no ledger edit. It is the build contract the three Phase-5b
   lanes execute from.
 created: 2026-08-01
+changelog: >
+  **v1.1 (2026-08-01)** — ADJUDICATION-12 and ADJUDICATION-13 folded in; both of v1.0's open
+  questions are now RULED and nothing in this document is awaiting adjudication.
+  (1) **OQ-1 → ADJUDICATION-12.** Ruling U-4 STANDS, amended: `adopt_intervention` gains a
+  REQUIRED fourth field `adoption_basis: 'native_directed' | 'session_inferred'`; only
+  `native_directed` files, and `session_inferred`/absent/unrecognised fails CLOSED to
+  `awaiting_native_confirmation`. `adoption_basis` is persisted on the ledger row.
+  `filed_by`=MCP principal and engine-composed claim text are RATIFIED. Gate G3 gains the
+  session_inferred assertion (§2.6, §2.7, §4.2, §4.4, §9 G3).
+  (2) **OQ-2 → ADJUDICATION-13.** Refusal RATIFIED and STRENGTHENED, with three mandatory
+  amendments: **(A)** v1.0's guardrail predicate was a **NO-OP against the live ontology** —
+  `magnitude_floor='major'` matches zero health rows (health classes top out at `significant`)
+  so **every** health-class intervention would have auto-filed; replaced with a
+  three-disjunct, magnitude-free predicate plus a CI assertion that FAILS if the set resolves
+  to zero rows; **(B)** `bereavement` is included on the third-party-consent ground
+  (§3.5.A p4 / §3.5.D), not on health; **(C)** `filing_refused_adverse_class` renamed
+  `filing_withheld_pending_native_signoff` ("refused" misdescribed the native's own
+  manual-filing option). (§5.3, §4.4, §9 G14.)
+  (3) **NEW BINDING REQUIREMENT from ADJUDICATION-13** — an **individualized-mortality-window
+  HARD EXCLUSION detector**, evaluated BEFORE any computation on every W4 surface: no reading
+  of āyurdāya/longevity facts into any window bound, under any audience tier, filed or
+  unfiled. `ganita_ayurdaya_get` is the named exposure. New §5.4; wired into the Lane U and
+  Lane R specs and into the gate battery as G16.
+  Prior: **v1.0 (2026-08-01)** — initial Phase-5a design pass.
 author: `w4-design` lane (Opus, §B.3 mandatory-Opus for the W4 design pass)
 campaign: ṢAḌ-DARŚANA v2 · Wave W4 ("the intervention wave", flagship)
 trigger: >
@@ -16,8 +40,10 @@ trigger: >
   that exact tip.
 authority_order: >
   KALA_SUPREME_ELEVATION_v1_0.md (v1.2, "the Elevation") > KALA_SIX_VIEWS_DESIGN_v2_0.md >
-  KALA_SIX_VIEWS_DESIGN_v1_0.md > SHAD_DARSHANA_ADJUDICATIONS_NIGHT3_v1_0.md (BINDING rulings,
-  ADJUDICATION-8 and -10 in particular) > SHAD_DARSHANA_BRIEF_v2_0.md (execution contract) >
+  KALA_SIX_VIEWS_DESIGN_v1_0.md > SHAD_DARSHANA_ADJUDICATIONS_NIGHT3_v1_0.md (BINDING rulings —
+  ADJUDICATION-8 and -10 shape §3; ADJUDICATION-12 and -13 shape §2.6/§4.4/§5.3/§5.4 and are
+  the reason v1.0's two open questions are closed) > SHAD_DARSHANA_BRIEF_v2_0.md (execution
+  contract) >
   THIS DOCUMENT. This document is a BUILD SPECIFICATION, not a design authority: where it
   appears to conflict with any of the above, they win and this document is the thing that gets
   fixed. Where they say WHAT and this says HOW/IN-WHICH-FILE/PROVE-IT, this is binding on the
@@ -153,7 +179,11 @@ needs nothing from U or R.
     sealed evaluator harness, root `CLAUDECODE_BRIEF.md`. Nothing in W4 goes near any of them.
 11. **Ethical Framework** (`MACRO_PLAN_v2_0.md` §3.5.A–H). Binding on this wave more than any
     other, because this is the wave that tells a human being to *do something*. §5 states the
-    concrete serving constraints.
+    concrete serving constraints, as ruled by ADJUDICATION-13. Two of them are **detector-first
+    hard stops** rather than serving preferences — the §5.3 filing withhold and the §5.4
+    mortality exclusion — and ADJUDICATION-13's finding that v1.0's withhold predicate silently
+    matched zero rows is the reason both now carry a **non-vacuity assertion** (§9 G14b): in
+    this wave, a guardrail that cannot be shown to fire is treated as a guardrail that is off.
 12. **CIRCULARITY GUARD.** W4 touches the LEL only at the two sanctioned entry points
     (stage-9 calibration, and biographical joins at serving time). Nothing in this wave feeds a
     value back into a field input. Lane S reads the prospective ledger; it never writes into the
@@ -219,6 +249,13 @@ This is the highest duplication risk in the wave. Three remedy surfaces are alre
   `uncited_remedy_rows` / `uncited_remedy_row_count` / `uncited_remedy_note`.
 
 ### 2.2 The diagnosis: which link failed
+
+> **ENTRY-POINT ORDER (binding, ADJUDICATION-13).** Before **any** of the below runs — before
+> `pact_query`, before any substrate read — `kala_upaya_get` evaluates the
+> **individualized-mortality-window hard exclusion** (§5.4). It is the first statement in the
+> handler, pure and synchronous, and it short-circuits completely. Detector-first, exactly like
+> `isMode3ShapedRequest`: an excluded request reaches no diagnosis code path at all, which is
+> what makes the guarantee structural rather than procedural.
 
 The PACT chain is already implemented, with a closed vocabulary, at
 `platform/src/lib/retrieval/registry/layers/register_d10_pact.ts` (capability
@@ -362,15 +399,47 @@ CHECK. `falsifier` is mandatory; `confidence` must be in the open interval (0,1)
 it); `generator_class='engine'` on an adverse-valence class trips DR-16's five-property
 disclosure gate.
 
-> **DESIGN RULING U-4 (reversible; and see §7 OQ-1 — this is one of the two questions that
-> genuinely wants ANTARYĀMIN).** Filing happens **only** on an explicit adoption act:
-> `kala_upaya_get` gains `adopt_intervention: { intervention_id, confidence, falsifier }` (all
-> three required together). A plain read **never files**. Rationale: §11's governance text is
-> "explicit filing only; chat is never mined" — a read-triggered file would mine reads. An
-> explicit `adopt_intervention` parameter *is* an explicit filing action, and `filed_by` carries
-> the principal, so provenance survives. The response reports `filing_state` from a closed set:
-> `not_requested` · `filed` (+ `prediction_id`) · `filing_path_not_yet_available` ·
-> `filing_refused_adverse_class` (§5.3) · `filing_failed` (+ the verbatim error).
+> **DESIGN RULING U-4 — STANDS, AMENDED per ADJUDICATION-12 (v1.1).** Filing happens **only**
+> on an explicit adoption act: `kala_upaya_get` gains
+> `adopt_intervention: { intervention_id, confidence, falsifier, adoption_basis }` — **all four
+> required together**. A plain read **never files**.
+>
+> **The amendment, and why it is not a formality.** v1.0 reasoned that a structured
+> `adopt_intervention` parameter satisfies §11's anti-mining rail ("explicit filing only; chat
+> is never mined"). ADJUDICATION-12 ratifies that reading but identifies the residual hole: **an
+> agentic caller can synthesize the parameter, which is mining performed by the model rather
+> than by the transcript scraper §11 was written against.** The structured shape moves the
+> mining one layer up; it does not remove it. The fix is a declared intent-origin:
+>
+> - `adoption_basis: 'native_directed'` — the native asked for this intervention to be filed.
+>   Files via the sanctioned route (§4.4).
+> - `adoption_basis: 'session_inferred'` — the model concluded the native would want it.
+>   **Does NOT file.** Returns the filing-ready payload with
+>   `filing_state: 'awaiting_native_confirmation'`.
+> - **Absent, null, or unrecognised → treated as `session_inferred`. Fail-CLOSED.** A malformed
+>   or omitted basis must never fall through to a filing.
+>
+> **`adoption_basis` is persisted on the ledger row** (§4.2), so the ledger audits by
+> *intent-origin*, not merely by principal — a `native_directed` claim that later proves wrong
+> is a different object from an inferred one, and the three-armed study needs to tell them
+> apart. Self-attestation is the honest limit of an MCP boundary: a **declared** basis that can
+> be audited beats an invisible failure mode that cannot.
+>
+> **Ratified without change by the same ruling:** `filed_by` = the resolved MCP principal is
+> *correct* — it is a **provenance** requirement, not an authorship or consent claim; and
+> engine-composed claim text is *required*, not tolerated, because B.10's prose rule mandates
+> template-over-computed-data and `generator_class='engine'` is what couples the entry to
+> DR-16's adverse-disclosure gate.
+>
+> The response reports `filing_state` from the closed set:
+> `not_requested` · `filed` (+ `prediction_id`) · `awaiting_native_confirmation` ·
+> `filing_path_not_yet_available` · `filing_withheld_pending_native_signoff` (§5.3) ·
+> `filing_failed` (+ the verbatim error).
+>
+> **The default direction is set by the reversibility asymmetry, and every ambiguous case
+> follows it:** a filed entry is sealed forever under §3.5.E ("locked at emission… never
+> modifiable"); an unfiled one can be filed later by one native-directed call. When in doubt,
+> do not file.
 
 ### 2.7 Lane U's response shape (additions to the existing envelope)
 
@@ -393,8 +462,11 @@ export interface KalaUpayaResponse extends KalaEnvelope {
   uncited_remedy_note: string | null
   alternate_routes: AlternateRoute[]   // each carries fact_ids that MUST resolve
   efficacy_report: EfficacyReport | null       // §2.5 / §4.5; null ⇒ coverage says why
-  filing_state: UpayaFilingState
+  filing_state: UpayaFilingState       // the §2.6 closed set (ADJUDICATION-12)
+  adoption_basis: 'native_directed' | 'session_inferred' | null   // echoed back; null ⇒ not requested
   filed_prediction_id: string | null
+  filing_ready_payload: FilingReadyPayload | null  // populated whenever filing was withheld,
+                                                   // so a native-directed follow-up call is one hop
   disclosure: DisclosureBlock          // §5
   composed_text: string
 }
@@ -603,6 +675,14 @@ factors were present; a caller can never mistake a 3-factor score for a 4-factor
 
 ### 3.4 R4 — `kala_ritual_get` Modes 1–2 REAL (item 40) + the sky-pattern compiler
 
+> **ENTRY-POINT ORDER (binding, ADJUDICATION-13) — and note this file now runs TWO detectors
+> first, in a fixed order.** `kala_ritual_get`'s handler evaluates, before any computation:
+> **(1)** the §5.4 individualized-mortality-window hard exclusion, then **(2)** the existing
+> `isMode3ShapedRequest` Mode-3 detector. Mortality first, because it withholds the output
+> itself under every tier, whereas the Mode-3 detector merely redirects to a surface that would
+> then have to run the mortality check anyway. Both are pure and synchronous; neither may be
+> reordered after a fetch. The same §5.4 check heads the ELECT rite-pairing path in `elect.ts`.
+
 Two new libraries, both owned by Lane R, both *beside* the frozen engine and neither a second
 copy of it:
 
@@ -810,7 +890,16 @@ CREATE TABLE IF NOT EXISTS mimamsa_intervention_ledger (
     outcome_linked_at       TIMESTAMPTZ,
     -- PROVENANCE
     authority_basis         TEXT,                   -- item 44: the field window-id / ELECT candidate id
-    filed_by                TEXT        NOT NULL,
+    filed_by                TEXT        NOT NULL,   -- the resolved MCP principal (ADJUDICATION-12: provenance, not authorship)
+    -- ADJUDICATION-12: the ledger audits by INTENT-ORIGIN, not merely by principal. A row whose
+    -- basis is 'session_inferred' was never sealed into brahma_prospective_ledger (fail-closed),
+    -- so prediction_id IS NULL for it — the CHECK below makes that invariant structural rather
+    -- than conventional, and is what lets the three-armed study separate native-directed
+    -- interventions from model-inferred ones instead of pooling them.
+    adoption_basis          TEXT        NOT NULL DEFAULT 'session_inferred'
+        CHECK (adoption_basis IN ('native_directed', 'session_inferred')),
+    CONSTRAINT mimamsa_intervention_ledger_inferred_never_sealed
+        CHECK (adoption_basis = 'native_directed' OR prediction_id IS NULL),
     engine_version          TEXT        NOT NULL,
     build_id                UUID,
     created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -897,9 +986,26 @@ Lane S's spine PR:
    lanes:
 
 ```ts
+// ADJUDICATION-12 + -13 (v1.1): 'filing_refused_adverse_class' is RENAMED
+// 'filing_withheld_pending_native_signoff' — "refused" misdescribed the native's own
+// manual-filing option, which is itself a §3.5.B under-service. 'awaiting_native_confirmation'
+// is new: the session_inferred / absent-basis fail-closed outcome.
 export type FilingState =
-  | 'not_requested' | 'filed' | 'filing_path_not_yet_available'
-  | 'filing_refused_adverse_class' | 'filing_failed'
+  | 'not_requested'
+  | 'filed'
+  | 'awaiting_native_confirmation'              // ADJUDICATION-12 fail-closed outcome
+  | 'filing_path_not_yet_available'
+  | 'filing_withheld_pending_native_signoff'    // ADJUDICATION-13 amendment (C)
+  | 'filing_failed'
+
+export interface FilingReadyPayload {
+  /** Exactly the body the sanctioned route would have received. Returned, never sent, whenever
+   *  filing was withheld — so a native-directed follow-up is one hop and nothing is recomposed
+   *  (a recomposed claim would not be the claim the native saw). */
+  action: 'prospective_ledger_file'
+  entry: Record<string, unknown>
+  withheld_reason: string
+}
 
 export async function fileInterventionFalsifier(
   input: {
@@ -913,12 +1019,33 @@ export async function fileInterventionFalsifier(
     source_citation: string
     model: string
     formula_version: string
+    /** ADJUDICATION-12. REQUIRED. Anything other than the literal 'native_directed' —
+     *  including undefined, null, and any unrecognised string — fails CLOSED to
+     *  'awaiting_native_confirmation'. Written as an explicit equality test against the one
+     *  filing value, never as a `!== 'session_inferred'` negation: a negation would let a
+     *  typo, a future third basis, or a dropped field fall through into a permanent seal. */
+    adoption_basis: 'native_directed' | 'session_inferred'
   },
   principal: Principal,
-): Promise<{ state: FilingState; prediction_id: string | null; detail: string | null }>
+): Promise<{
+  state: FilingState
+  prediction_id: string | null
+  filing_ready_payload: FilingReadyPayload | null
+  detail: string | null
+}>
 ```
 
-It **adds no validation of its own** beyond the adverse-class refusal (§5.3) — every other rule
+**Two gates, in this order, both BEFORE any network call:**
+1. **The §5.3 withhold predicate** — an adverse/consent-bearing class returns
+   `filing_withheld_pending_native_signoff` with the filing-ready payload.
+2. **The ADJUDICATION-12 basis check** — `adoption_basis === 'native_directed'` or return
+   `awaiting_native_confirmation` with the filing-ready payload.
+
+Ordering matters and is not arbitrary: the withhold predicate is the *stronger* constraint (a
+`native_directed` basis does **not** override it — §3.5.C's sign-off requirement is not
+satisfiable by a tool parameter), so it is evaluated first and its state is the one reported.
+
+Beyond those two gates the function **adds no validation of its own** — every other rule
 (`claim_shape` vs `temporal_shape`, DR-16's five-property adverse gate, `filed_by` stamping) is
 already enforced server-side, and duplicating a validator is how two copies drift.
 
@@ -943,7 +1070,9 @@ Elevation §13's "no percentages before calibration", applied literally.
 ## §5 — The ethical / disclosure contract for remedy serving (MACRO_PLAN §3.5)
 
 This is the wave that tells a human to act. Every rule below is a build requirement with a named
-detector, not an aspiration.
+detector, not an aspiration — and after ADJUDICATION-13, one with a **non-vacuity** assertion
+too, because v1.0 proved that a guardrail can be written, reviewed, and shipped while matching
+zero rows. A detector that cannot be shown to fire is not evidence that the danger is absent.
 
 ### 5.1 Framing and calibration disclosure (§3.5.A.1–2, §3.5.G)
 
@@ -977,30 +1106,123 @@ unfiltered) — but the tier is **resolved and stated**, never defaulted silentl
 assumes the most permissive tier is one principal-resolution bug away from serving a
 non-consenting subject.
 
-### 5.3 The self-harm guardrail (§3.5.C) — the one hard exclusion in this wave
+### 5.3 The withhold predicate (§3.5.C) — RATIFIED and CORRECTED per ADJUDICATION-13
 
-§3.5.C is absolute and this wave must honour it mechanically, not by good intentions:
+§3.5.C is absolute and this wave must honour it mechanically, not by good intentions.
 
-1. **No individualized mortality window, under any audience tier.** No W4 surface accepts, or
-   diagnoses over, a mortality-class event.
-2. **Suicide-adjacent output is disallowed under all tiers.** A hard exclusion list, evaluated
-   before any computation runs — the same detector-first shape as `isMode3ShapedRequest`.
-3. **Health-crisis and mental-health output require double red-team + explicit native sign-off.**
-   In W4 this becomes: a diagnosis whose `event_class` resolves in `brahma_event_ontology` to
-   `domain='health'` with `magnitude_floor IN ('major','life_altering')` is served **only** with
-   `disclosure.constraints_applied` naming the requirement, and:
+> **DESIGN RULING S-2 / U-5 — RATIFIED per ADJUDICATION-13, with three mandatory amendments
+> (v1.1).** For the class set defined below, `fileInterventionFalsifier` returns
+> **`filing_withheld_pending_native_signoff`** and files nothing. The diagnosis, the falsifier,
+> the window, the calibration band, and the `constraints_applied` list are **all still served in
+> full** — withholding the filing withholds only the irreversible DB write.
 
-> **DESIGN RULING S-2 / U-5 (see §7 OQ-2 — the second question that genuinely wants
-> ANTARYĀMIN).** For such classes, `fileInterventionFalsifier` returns
-> `filing_refused_adverse_class` and files nothing. The falsifier is still *stated* in the
-> response text (so the claim remains falsifiable and honest), but it is not auto-filed into the
-> pre-registration ledger. Rationale: auto-filing a machine-generated adverse health prediction
-> is exactly the case DR-16's five-property adverse-disclosure gate exists to slow down, and
-> §3.5.C requires native sign-off *before any output leaves a session* — which an autonomous
-> lane cannot obtain. Refusing to file is the conservative, reversible posture; the native can
-> file manually at any time through the same sanctioned route.
+**Why the §3.5.B-vs-§3.5.C tension v1.0 flagged actually dissolves** (ADJUDICATION-13's
+reading, recorded because a builder will otherwise re-open it): **§3.5.B governs DISCLOSURE** —
+what the native *sees* — and is fully honoured, nothing is hidden from `native_self`. **Filing
+governs what gets SEALED** under §3.5.E ("locked at emission, never modifiable"). Refusing to
+auto-file withholds nothing §3.5.B grants. Three independent grounds each decide it alone:
+§3.5.A p3 (double red-team for health/mortality/mental-health — unobtainable by an autonomous
+night run) · §3.5.C's explicit sign-off · §3.5.A p6 (every output rescindable), which is
+*internally contradictory* with auto-sealing.
 
-### 5.4 Pre-registration integrity (§3.5.E)
+#### Amendment (A) — v1.0's predicate was a NO-OP. This is the correction.
+
+v1.0 specified `domain='health' AND magnitude_floor IN ('major','life_altering')`. Against the
+**live** `brahma_event_ontology` that matches **zero rows**: no health class carries
+`magnitude_floor='major'` (health classes top out at `significant`), and the only
+`life_altering` row is `birth_anchor`. **Every health-class intervention would have auto-filed,
+and the guardrail would have reported itself as working.** This is the §N.7/§N.8 Earned-Signal
+failure in its purest form — a check with no code path that could make it fire.
+
+**The corrected predicate — three disjuncts, NO magnitude filter:**
+
+```sql
+SELECT event_class_id FROM brahma_event_ontology
+ WHERE domain = 'health'                  -- illness_acute · chronic_onset · surgery
+    OR lel_category = 'psychological'     -- psychological_arc (domain='character' — a
+                                          --   domain-only predicate misses it entirely)
+    OR event_class_id = 'bereavement';    -- amendment (B), below
+```
+
+Verified against the live ontology at design time: the set resolves to **five** classes —
+`illness_acute`, `chronic_onset`, `surgery` (health), `psychological_arc` (psychological), and
+`bereavement`. Note that `bereavement` carries `domain='transition'`, `lel_category='loss'` — it
+is caught by **neither** of the first two disjuncts, which is exactly why it needs its own.
+
+**Mandatory CI assertion (this is the part that keeps the fix from silently rotting):** a test
+that resolves the predicate against the **live** ontology and **FAILS if it returns zero rows**.
+A guardrail whose class set is empty is indistinguishable from a guardrail that is off, and that
+is precisely the state v1.0 shipped into this document. The assertion also fails if any of the
+five named classes disappears from the resolved set, so an ontology edit cannot quietly narrow
+the guard.
+
+#### Amendment (B) — `bereavement` is a CONSENT ground, not a health ground
+
+Cite it as **§3.5.A p4 (consent required for non-native subjects) + §3.5.D**, never as health.
+A sealed bereavement window is **an individualized mortality window for an unconsenting third
+party** — someone who is not the native, never consented, and cannot withdraw. That is a
+different and in some ways graver violation than an adverse claim about the native's own health,
+and mis-filing it under "health" would lose the reason the moment someone tries to relax the
+health rule.
+
+#### Amendment (C) — the state is `filing_withheld_pending_native_signoff`
+
+Renamed from v1.0's `filing_refused_adverse_class`. "Refused" misdescribes the situation: the
+native retains the manual-filing option through the same sanctioned route at any time, and
+naming the state "refused" understates what the native may still do — itself a §3.5.B
+under-service. The new name states the actual condition and its release condition in one string.
+
+#### What is served anyway
+
+`disclosure.constraints_applied` names the requirement verbatim, the falsifier is **stated in
+the response text** (so the claim stays falsifiable and honest even unfiled), and
+`filing_ready_payload` carries exactly the body the route would have received — so a
+native-directed follow-up is one hop and the claim the native confirms is byte-identical to the
+claim the native read.
+
+### 5.4 The individualized-mortality-window HARD EXCLUSION (ADJUDICATION-13, binding, NEW in v1.1)
+
+This is the one rule in W4 that withholds **the output itself**, native included. It is not a
+filing gate — §5.3 governs filing; this governs computation.
+
+> **BINDING.** §3.5.C's no-date-of-death clause is **absolute across every audience tier**, and
+> the live tool `ganita_ayurdaya_get` (āyurdāya / longevity) is the named exposure: a W4 surface
+> that read a longevity fact into a window bound would produce an individualized mortality
+> window by composition, without any surface ever *claiming* to serve one. **No W4 surface may
+> read āyurdāya or longevity facts into any window bound, under any tier, filed or unfiled.**
+
+**Shape of the detector — deliberately the same shape as `isMode3ShapedRequest`, because that
+one is already proven in production and already has the properties this needs:**
+
+- **Evaluated FIRST, before any computation**, on every W4 entry point — `kala_upaya_get`
+  (Lane U), `kala_ritual_get` Modes 1–2 and the ELECT rite-pairing path (Lane R), and
+  `fileInterventionFalsifier` (Lane S) as defence in depth.
+- **Pure and synchronous**, so it is structurally incapable of awaiting I/O and cannot be
+  reordered after a fetch by a later refactor.
+- **Short-circuits completely.** The excluded request returns an honest refusal envelope naming
+  §3.5.C. No partial computation, no candidate list, no window — the `buildMode3WrongViewResponse`
+  pattern: a response that carries no content because none was attempted.
+
+**What it excludes (three tests, any one sufficient):**
+1. **Substrate:** any read of `ganita_ayurdaya_get` / `chart_facts` āyurdāya-category facts /
+   any longevity-bearing field, anywhere in a W4 code path. Enforced as a **source-level import
+   and call-site scan** in the same style as the `ritual.ts` rail (§3.5.2) — `ayurdaya`,
+   `longevity`, `maraka`, `ayus` as forbidden identifiers in the three lanes' files.
+2. **Request shape:** an `event_class` or `question_frame` naming a mortality/longevity subject.
+3. **Composition:** any window bound whose derivation chain includes a longevity fact — the
+   subtle case, and why test 1 is a *substrate* ban rather than a *topic* ban. A topic ban alone
+   would let a longevity fact reach a window through an intermediate computation that never says
+   "mortality" anywhere.
+
+**Two properties this must have, stated so a builder does not weaken them:**
+- **It is not a disclosure tier.** `native_self` does not unlock it. §3.5.C says "under any
+  audience tier" and means it.
+- **It is not conditioned on filing.** An unfiled individualized mortality window is still an
+  individualized mortality window, and this wave serves readings, not just ledger rows.
+
+Detector for the gate battery: G16 (§9).
+
+### 5.5 Pre-registration integrity (§3.5.E)
 
 A filed falsifier is **locked at emission**. `brahma_prospective_ledger` already enforces this
 structurally. W4 adds one rule of its own: **`mi_sankalpa` never updates
@@ -1317,7 +1539,8 @@ dispositions and no "passed with caveats".
 |---|---|---|---|
 | **G1** | on `482012f1`: a weakly-promised event class returns **correct link diagnosis** | live `kala_upaya_get` call on an event class whose `pact_query` returns `denied_at_promise`/`denied_at_confirmation`; assert `diagnosis.failing_link` equals the stage `pact_query` itself halted at | a mismatch between `pact_status` and `failing_link`; a `failing_link` outside the closed set |
 | **G2** | …+ **honestly-tiered non-empty ledger** | same call; assert `interventions.length >= 1`, every row carries `efficacy_tier` from the closed set + a resolvable citation, and `uncited_remedy_rows` is a **separate** array with its own count (§N.6) | any served row with a null tier; any uncited row appearing in `interventions` |
-| **G3** | …+ **filed prospective entry** | second call with `adopt_intervention`; assert `filing_state === 'filed'` and `filed_prediction_id` resolves in `brahma_prospective_ledger` with `filing_method='explicit_filing_tool'` and a non-blank `falsifier` | a plain read that files (⇒ FAIL); a `filed` state with an unresolvable id |
+| **G3** | …+ **filed prospective entry** | second call with `adopt_intervention` carrying `adoption_basis:'native_directed'`; assert `filing_state === 'filed'`, `filed_prediction_id` resolves in `brahma_prospective_ledger` with `filing_method='explicit_filing_tool'` and a non-blank `falsifier`, and the ledger row's `adoption_basis` reads `native_directed` | a plain read that files (⇒ FAIL); a `filed` state with an unresolvable id |
+| **G3b** | **ADJUDICATION-12 fail-closed** (the assertion the ruling adds by name) | three calls: `adoption_basis:'session_inferred'` · basis **absent** · basis set to an unrecognised string. Each must return `filing_state === 'awaiting_native_confirmation'` with a populated `filing_ready_payload`, **and `brahma_prospective_ledger` must be byte-unchanged across all three** (count + max(created_at) captured before and after) | any of the three filing (⇒ FAIL); an absent basis defaulting to `native_directed`; a `session_inferred` row reaching the ledger — also caught structurally by the §4.2 `..._inferred_never_sealed` CHECK |
 | **G4** | **"pressure without delivery"** verified on an un-promised window | live call on an event class with no natal promise; assert the Six-Views §C.1 graded-gate language is served (window **served, not suppressed**, labelled *"temporal pressure without strong natal promise"*), and that a lever is still offered or an honest `no_lever` given | a suppressed window (silently absent) — the failure the amendment exists to prevent |
 | **G5** | **Mode 1 returns ranked (window, rite) pairs with 4-factor score vectors** | live `kala_ritual_get` Mode-1 call; assert each pair carries `{structural_resonance, temporal_intensity, election_quality, rarity}` with **each factor's own state**, and that any absent factor is `not_computed` with a reason and renormalised out — never zero-filled | a 4-factor vector with an imputed value; a score with no factor-state breakdown |
 | **G6** | **Mode 2 discharges the CANNED FIXTURE** | `yajna_mode2_fixture_gate.ts`, PASS conditions 1–4 (§6.2) + the two-part both-charts detector (§6.3) | each of the four conditions has its own named detector; §6.3 part 2 catches a difference that does not trace to the chart |
@@ -1328,8 +1551,10 @@ dispositions and no "passed with caveats".
 | **G11** | **ONE-ENGINE RULE** | `D-ONE-ENGINE` source assertion (§6.3) | a second `adjudicateCandidates`/`buildLedger`/Pareto `dominates` anywhere under `platform-mcp/src` |
 | **G12** | **Nirmāṇa**: the wave's new data asset appears with DB-true counts on both charts (§2.5.1, implicit in every wave gate) | cockpit/stats read of `mi_sankalpa`'s `count_sql` on both charts; `catalog_reconciliation.test.ts` + `test_has_writer_completeness.py` green in the writer's own PR | a seed row missing ⇒ invisible to Nirmāṇa ⇒ gate fails |
 | **G13** | **Both charts, identical coverage** (standing rail) | every clause above re-run on `1c826d5a`; coverage **concept sets** must be identical even where values differ | a concept present on one chart and absent on the other |
-| **G14** | **Ethical framework respected** (§5) | assert every response carries a `disclosure` block with a resolved `audience_tier`; assert an adverse/health-class adoption returns `filing_refused_adverse_class` and files nothing | a defaulted tier; an adverse-class row appearing in `brahma_prospective_ledger` |
+| **G14** | **Ethical framework respected** (§5) | assert every response carries a `disclosure` block with a resolved `audience_tier`; assert an adoption on **each of the five** §5.3 classes (`illness_acute`, `chronic_onset`, `surgery`, `psychological_arc`, `bereavement`) returns `filing_withheld_pending_native_signoff`, files nothing, and still serves the diagnosis + falsifier + calibration band in full (§3.5.B) | a defaulted tier; any of the five reaching `brahma_prospective_ledger`; a withheld filing that also suppresses the *reading* (that would be the §3.5.B under-service amendment (C) is named after) |
+| **G14b** | **The §5.3 predicate is non-vacuous** (ADJUDICATION-13 amendment A — the mandatory CI assertion) | resolve the three-disjunct predicate against the **live** `brahma_event_ontology`; assert it returns **> 0** rows and that all five named classes are in the set | **this is the gate that would have caught v1.0.** A zero-row set (the `magnitude_floor='major'` no-op) FAILS; so does an ontology edit that quietly drops a class from the guard |
 | **G15** | **W2G retro-clause** (brief §3 W2G) | if W2G closes **after** W4, the Mode-2 fixture is **re-run** and its precision-regime assertions must still pass; if W2G closed first, the clause is discharged retroactively at W4 | a fixture that only passes at one precision regime |
+| **G16** | **Individualized-mortality-window HARD EXCLUSION** (§5.4, ADJUDICATION-13, binding) | three-part: **(a)** a mortality/longevity-shaped request to each of `kala_upaya_get`, `kala_ritual_get`, and the ELECT rite-pairing path returns the §5.4 refusal envelope naming §3.5.C, with **no** candidates/windows/diagnosis of any kind; **(b)** a source-level scan asserts no W4 lane file imports or calls `ganita_ayurdaya_get` or matches `/ayurdaya|longevity|maraka|\bayus\b/i`; **(c)** the exclusion is re-run under `audience_tier: 'native_self'` and must **still** refuse | a tier that unlocks it (`native_self` must NOT); a longevity fact reaching a window bound through an intermediate computation — which (b)'s *substrate* ban catches and a topic-only ban would miss; the detector being async or running after a fetch |
 
 **Standing negatives re-verified at this gate (E8, the non-elevations register):** no generative
 LLM call in any serving path · no percentage before calibration · no sub-day *transit* precision
@@ -1338,50 +1563,54 @@ harness and `build_substep_progress` unmodified.
 
 ---
 
-## §10 — Open questions this design deliberately does NOT decide
+## §10 — Question register (v1.0's two adjudication-grade questions are now RULED)
 
-Two of these genuinely want ANTARYĀMIN, precisely because each touches a governance rail rather
-than an engineering choice. The other two are recorded as in-design rulings that a Verifier or
-the native may overturn cheaply; neither blocks a lane.
+**Nothing in this document is awaiting adjudication.** v1.0 raised two questions for ANTARYĀMIN;
+both were ruled on 2026-08-01 as ADJUDICATION-12 and ADJUDICATION-13, and both rulings are folded
+into the body of this document rather than left as an appendix — §2.6, §4.2, §4.4, §5.3, §5.4 and
+the §9 battery are the operative text, and this section is the audit trail. OQ-3 and OQ-4 remain
+in-design rulings a Verifier or the native may overturn cheaply; neither blocks a lane.
 
-### OQ-1 (ANTARYĀMIN) — does an explicit `adopt_intervention` MCP call satisfy §11's explicit-filing governance?
+### OQ-1 — RESOLVED by ADJUDICATION-12 (does `adopt_intervention` satisfy §11's explicit-filing governance?)
 
-`brahma_prospective_ledger` enforces `filing_method = 'explicit_filing_tool'` by DB CHECK, and
-`prospective_ledger.ts`'s governance text is *"explicit filing only; chat is never mined."*
-Ruling U-4 reads an explicit `adopt_intervention: {intervention_id, confidence, falsifier}`
-parameter as an explicit filing action, with `filed_by` stamped from the resolved principal.
+**Ruled: yes, mechanically — with one mandatory field.** The adjudicator's decomposition is worth
+recording because it corrects the frame v1.0 asked the question in: §11's explicit-filing clause
+is an **anti-mining** rail ("never inferred from a conversation transcript"); `filed_by` is a
+separate **provenance** requirement; **neither is a consent rail.** A structured
+`adopt_intervention` parameter does satisfy anti-mining — *but an agentic caller can synthesize
+it, which is mining performed by the model.* v1.0 did not see that; the structured shape moves
+the mining one layer up rather than removing it.
 
-**The question is narrow and worth ruling deliberately:** the `filed_by` stamp becomes the *MCP
-principal* rather than the native personally, and the *claim text* is engine-composed rather than
-native-authored. Is that within `filing_method='explicit_filing_tool'`, or does item 26's
-"auto-files a falsifiable prospective entry" require a distinct, native-visible confirmation step
-(a portal action rather than a tool parameter)?
+**Disposition:** ruling U-4 STANDS with the required `adoption_basis` field, fail-closed
+semantics, and row-level persistence (§2.6). `filed_by` = MCP principal RATIFIED as provenance,
+not authorship. Engine-composed claim text RATIFIED — B.10's prose rule *requires* it, and
+`generator_class='engine'` is what couples the entry to DR-16. Gate G3b is the assertion the
+ruling adds by name. **Reversibility: HIGH.**
 
-**Consequence either way — and note the lane is not blocked by this.** If ANTARYĀMIN rules for
-the tool-parameter reading, U-4 stands as written. If it rules for a native-visible confirmation,
-Lane U emits a **filing-ready payload** and `filing_state: 'awaiting_native_confirmation'`
-instead of calling the route — the precedent already exists in `muhurta_finder.ts`, which emits a
-prospective-ledger-shaped `prediction_filing` payload it deliberately does not persist. **Lane U
-builds the payload either way**; only the final call is gated. Fully reversible; no schema.
+### OQ-2 — RESOLVED by ADJUDICATION-13 (may an adverse/health-class intervention auto-file?)
 
-### OQ-2 (ANTARYĀMIN) — may an adverse/health-class intervention auto-file at all?
+**Ruled: refusal RATIFIED and STRENGTHENED — and v1.0's implementation of it was broken.**
 
-Ruling U-5/S-2 refuses auto-filing for `brahma_event_ontology` classes with `domain='health'` and
-`magnitude_floor IN ('major','life_altering')`, on §3.5.C ("health-crisis output requires double
-red-team **and explicit native sign-off before any output leaves a session**") plus DR-16's
-five-property adverse-disclosure gate. An autonomous lane cannot obtain native sign-off, so it
-refuses to file and states the falsifier in text only.
+The §3.5.B-vs-§3.5.C tension v1.0 posed **dissolves** on the correct reading (§5.3): §3.5.B
+governs *disclosure*, filing governs what gets *sealed*; withholding a filing withholds nothing
+§3.5.B grants. So the question v1.0 framed as a genuine conflict was not one — which is itself
+the useful finding, because a builder who believed it was a conflict might have tried to
+"balance" it.
 
-**The question:** is refusal the right conservative posture, or does it under-serve the native's
-own chart (audience tier `native_self`, where §3.5.B grants *full output, unfiltered*)? These two
-clauses point in opposite directions for exactly this case, and the tension is real rather than
-an oversight — §3.5.C is written as an absolute and §3.5.B as a tier grant.
+The ruling then caught the defect that mattered more than the question: **v1.0's predicate
+matched zero live ontology rows**, so every health-class intervention would have auto-filed while
+the guardrail reported itself as working. Three mandatory amendments (A: the magnitude-free
+three-disjunct predicate + a non-vacuity CI assertion; B: `bereavement` on the consent ground;
+C: the `filing_withheld_pending_native_signoff` rename) are all folded into §5.3, and G14b is the
+assertion that would have caught the original. **Reversibility: MAXIMAL and asymmetric — that
+asymmetry is the whole argument.** A withheld filing becomes a filing by one native-directed
+call; a filed adverse prediction can never be unfiled.
 
-**Recorded position:** refusal, because it is the reversible direction (a refusal can be
-converted into a filing later; an adverse machine-generated prediction, once pre-registered
-under §3.5.E's "locked at emission" seal, **cannot be unfiled**). But the ruling should be the
-adjudicator's, not a builder's, because it narrows a chartered item-26 behaviour for a named
-class of events.
+**Additional binding exposure ruled in the same block** (not asked by v1.0, and the more serious
+of the two findings): the individualized-mortality-window **hard exclusion** — §5.4, gate G16. A
+W4 surface reading a longevity fact into a window bound would produce a date-of-death claim *by
+composition*, with no surface ever claiming to serve one. Unlike everything else in §5, this one
+withholds the output itself, native included.
 
 ### OQ-3 (in-design ruling; Conductor confirms, not adjudication-grade) — extending an item-36/41 asset
 
@@ -1425,6 +1654,13 @@ Stated so a builder does not helpfully add it, and so the W4 gate is not judged 
 8. **No muhūrta-scope cancellation invented from a natal rule.** ADJUDICATION-10 Part 2: a
    natal-scope cancellation applied to a muhūrta doṣa is a fabricated cancellation and a §N.5
    authority inversion. Empty `pariharas_applied` with the gap named is the correct output.
+9. **No individualized mortality window, and no āyurdāya/longevity read of any kind** —
+   §5.4 / ADJUDICATION-13. Not a topic this wave handles carefully; a substrate this wave does
+   not touch. `ganita_ayurdaya_get` stays exactly where it is, serving its own callers, and no
+   W4 file imports it.
+10. **No auto-filing on inference.** ADJUDICATION-12: absent, malformed, or `session_inferred`
+    intent-origin never reaches the sealed pre-registration ledger. The filing-ready payload is
+    built and returned; the write is not performed.
 
 ---
 
