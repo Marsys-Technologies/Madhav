@@ -131,7 +131,7 @@ Supplemental ruling issued after PR #1009's disclosure
    `school_tag` string when `bg_sarvatobhadra_grid` supplied the row, else
    `None`. These fields let a caller (and the item-41 factor census) EXCLUDE
    `sarvatobhadra` rows from any "cited" count without parsing prose (§N.6).
-2. **`bg_sarvatobhadra_grid`-first lookup** (migration 527): the writer tries
+2. **`bg_sarvatobhadra_grid`-first lookup** (migration 529): the writer tries
    this school-tagged table BEFORE `l1_sarvatobhadra_vedha` (the original
    fallback, migration `_archive/140`) before falling back to the algorithmic
    approximation — three tiers, tried in that order, every tier already

@@ -1,4 +1,4 @@
--- Migration 527: bg_sarvatobhadra_grid — school-tagged SBC grid, versioned L0 (ADJUDICATION-11)
+-- Migration 529: bg_sarvatobhadra_grid — school-tagged SBC grid, versioned L0 (ADJUDICATION-11)
 -- =============================================================================
 -- ṢAḌ-DARŚANA campaign · ANTARYĀMIN supplemental ruling ADJUDICATION-11
 -- (00_ARCHITECTURE/llm_consumption_audit/briefs/kala_elevation/

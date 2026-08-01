@@ -184,7 +184,7 @@ def _fetch_vedha_rules(conn: Any) -> dict[tuple[str, int], dict[str, Any]]:
 
 def _fetch_school_tagged_vedha_pair(conn: Any, nakshatra_id_1based: int) -> tuple[int, str] | None:
     """ADJUDICATION-11 Part 2: tries `bg_sarvatobhadra_grid` (school-tagged,
-    deliberately empty as of this writing — migration 527) for a
+    deliberately empty as of this writing — migration 529) for a
     `cell_kind='vedha_pair'` row. Returns (paired_nakshatra_id_1based,
     school_tag), or None if the table has no matching row (the honest, only
     -currently-possible outcome). A future native-approved, source-verified
@@ -312,7 +312,7 @@ class KaVedhaGocharaWriter(WriterBase):
         # Vedha-target nakshatra: the SBC vedha nakshatra of the janma nakshatra.
         # ADJUDICATION-11 Part 2: THREE tiers, tried in order, each already
         # wired so a future populated source activates with zero code change:
-        #   1. bg_sarvatobhadra_grid (school-tagged, migration 527) — the
+        #   1. bg_sarvatobhadra_grid (school-tagged, migration 529) — the
         #      ruling's own affirmed "DB-sourced-grid-first path".
         #   2. l1_sarvatobhadra_vedha (migration _archive/140, the original
         #      fallback sarvatobhadra.py::find_sarvatobhadra_vedha_states uses).
