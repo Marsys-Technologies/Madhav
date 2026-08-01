@@ -763,6 +763,8 @@ jobs:
     # narrow-allowlist gate for platform-mcp overall (not §N.6-specific), so it also now
     # carries PR #995's two coverage-honesty regressions (kala_elect_get / kala_now_get) —
     # both files are 100% green (10/10, 26/26), added here rather than left CI-unguarded.
+    # PR #999 (ṢAḌ-DARŚANA W3 items 16/17, Kota-Chakra + Sudarshana-Chakra year-wheel) adds
+    # its own kala_now_get serving test the same way — 6/6 green, no pre-existing failures.
     name: Density Census (§N.6)
     runs-on: ubuntu-latest
     defaults:
@@ -799,6 +801,9 @@ jobs:
       - name: kala_now_get kala_darshana_confluence coverage-honesty regression (platform-mcp)
         working-directory: platform-mcp
         run: npx vitest run src/__tests__/kala_now_get.test.ts
+      - name: kala_now_get kota_chakra + sudarshana_varsha serving regression (platform-mcp) — ṢAḌ-DARŚANA W3 items 16/17
+        working-directory: platform-mcp
+        run: npx vitest run src/__tests__/kala_now_get_kota_sudarshana_w3.test.ts
       - name: vidhi registry codegen drift check (platform) — GT-56
         run: npm run codegen:vidhi:check
       - name: vidhi registry codegen parity test (platform-mcp) — GT-56
