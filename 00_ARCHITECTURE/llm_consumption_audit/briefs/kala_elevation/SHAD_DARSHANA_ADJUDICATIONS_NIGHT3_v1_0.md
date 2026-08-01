@@ -646,6 +646,68 @@ path.
 
 ---
 
+## ADJUDICATION-10: Muhūrta-scope parihāra rules and the W3 "Abhijit-override" gate criterion
+
+*(Issued as a supplemental ruling after the item-36 lattice-engine lane's PR #1004 disclosure.)*
+
+**Question.** Every seeded `bg_parihara_rules` row is `scope='natal'`; the corpus holds no
+muhūrta-scope cancellation rules. The W3 gate criterion *"the Abhijit-override case
+demonstrably rescues a candidate"* therefore appears unmeetable. Amend, hold, or satisfy?
+
+**Corpus findings.** `bg_parihara_rules` is empty in production (0 rows — L0 trigger not yet
+run; expected). The "cannot be met by data that exists today" premise is **REFUTED**:
+`abhijit`/`abhijin` returns 24 hits across 8 ingested texts, including
+`bphs_jaimini_pg0213_c01` (`[HIGH]` citation, Jaimini Sutras trans. B. Suryanarain Rao 1949,
+PG213): *"...the time goes under the special name of Abhijin Moohurta, and Abhijit Sarva
+Doshaghnam or that noon time which cuts and cures all evil influences."* — a muhūrta-scope,
+universal-cancellation rule, in the corpus, in English, today.
+
+### RULING — (a) as the general policy for the parihāra graph; but the Abhijit clause is NOT
+amended — it is MET, by extracting the one rule already in the corpus.
+
+**Part 1 — one-row extraction discharges the clause.** Seed one `bg_parihara_rules` row:
+scope='muhurta', cancellation_condition_text = the Abhijit madhyāhna sarva-doṣaghna rule,
+net_standing='cancelled', source `bphs_jaimini` PG213 chunk `bphs_jaimini_pg0213_c01`, and
+**mandatorily** `extraction_context='translator_gloss_in_narrative'` (it is a translator's
+doctrinal gloss, not a mūla-sūtra — seeding it as a sūtra would be citation inflation;
+labelled honestly it is stronger evidence than the Kota ring table's tier-(iii) source, and
+genuinely in-corpus). Transcribe EXACTLY what the source states — the unqualified
+sarva-doṣaghna; lineage qualifications (weekday exceptions, unreachable doṣa classes) are NOT
+in the passage and may not be invented into the row — they are paddhati-profile matter
+(ADJUDICATION-8 machinery, `factor_family='abhijit_override'`, native_confirmed=FALSE). The
+rescue must be demonstrated against a LIVE candidate (real horizon candidate, real doṣa, full
+judgment ledger with citation) — now achievable.
+
+**Part 2 — general policy for every OTHER muhūrta-scope cancellation** (Guru-Puṣya,
+Sarvārtha-Siddhi — 0 corpus hits — strong-lagna overrides, dāna-parihāras): mechanism accepted
+as demonstrated against the committed fixture; each missing rule registered BY NAME in item
+41's not_in_corpus register; honest-empty cancellation sets rather than natal rules pressed
+into muhūrta service. The lane's refusal to reach for a natal bhaṅga rule is **affirmed** — a
+natal-scope cancellation applied to a muhūrta doṣa is a fabricated cancellation and a §N.5
+authority inversion.
+
+**(b) rejected as stated** (a general extraction lane blocks on muhurta_chintamani
+translation) but partially adopted as the bounded one-row extraction. **(c) rejected**
+(self-inflicted stall on a demonstrably meetable criterion).
+
+**Disclosure 2 (rite_specific_resonance axis excluded pending items 6/7 name→id mapping) —
+accepted, with one condition:** the exclusion is explicit and visible (`axes_evaluated` minus
+the axis with `reason='pending_items_6_7_activity_id_mapping'`); §6.1
+renormalise-over-present-factors applies; the axis is never imputed and never silently dropped
+from the axis count.
+
+**Rationale.** DATA-HONESTY RAIL · brief §3 W3 gate + W3K tier hierarchy · B.3 · B.10
+(transcription is not fabrication; a natal rule reused at muhūrta scope IS) · §N.5 · honest-
+empty rail · Elevation §"parihāra graph — adjudication, not addition" (which names Abhijit's
+daily wipe as its first example — confirming this rule is the intended anchor case) · design
+§6.1.
+
+**Reversibility: HIGH.** Part 1 = one versioned, cited L0 row; retract by deleting it (gate
+reverts to Part 2 fixture posture, no code change). Part 2 amends brief/ledger text only. The
+extraction_context label makes a later mūla-verse upgrade a field update, not re-litigation.
+
+---
+
 ### Closing notes for the Conductor
 
 - **Nothing above touches a FROZEN contract, an untouchable, or a rail.** Every new writer is
