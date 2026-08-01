@@ -181,14 +181,22 @@ _RESUME_VERSION = 7
 # change -- never an automatic runtime dependency.
 _SCORING_SPAN_END_YEAR = 2027
 
-# All 3 of this chart's currently-populated gochara_resonance_map event
-# classes correspond to a categorized LEL specimen in the D4B pre-
-# registration packet (§1: career, major_gain/windfall, marriage) -- so
-# there is currently no "populated but not pre-registered" class for this
-# chart. Kept as an explicit, named set (not "all discovered classes") so a
-# FUTURE chart/event_class that IS populated but has no scored LEL category
-# correctly falls into the lower-priority tier below, rather than silently
-# inheriting priority it hasn't earned.
+# The event classes that correspond to a categorized LEL specimen in the D4B
+# pre-registration packet (§1: career, major_gain/windfall, marriage). Kept as
+# an explicit, named set (not "all discovered classes") so a chart/event_class
+# that IS populated but has no scored LEL category correctly falls into the
+# lower-priority tier below, rather than silently inheriting priority it hasn't
+# earned.
+#
+# STILL EXACTLY THESE THREE after ṢAḌ-DARŚANA item 9 (2026-08-02) added the
+# health classes (illness_acute / chronic_onset / surgery) to the sweep scope
+# -- deliberately, and this is the honest state, not an oversight: the D4B
+# packet pre-registers no health specimen, so the health classes have earned no
+# scoring priority and correctly dispatch in tier 2 (scoring span) / tier 3
+# (forward span). They do NOT starve: within a tier the sort key is
+# (tier, event_class, year_idx), so health years interleave alphabetically with
+# the legacy classes rather than queueing behind all of them. Substep count per
+# chart goes 3x101 = 303 -> 6x101 = 606.
 _PRE_REGISTERED_EVENT_CLASSES = frozenset({"career_advancement", "major_gain", "marriage"})
 
 

@@ -168,6 +168,9 @@ KNOWN_HAS_WRITER_TRUE: frozenset[str] = frozenset({
     # registry items 4/5) ─────────────────────────────────────────────────────
     "ka_moorti_nirnaya",
     "ka_vedha_gochara",
+    # ── L3 Kāla — migration 531 (ṢAḌ-DARŚANA W3 Lane w3-tithi-pravesha,
+    # registry item 13, Tithi-Praveśa lunar-return annual chart) ─────────────
+    "ka_tithi_pravesha",
     # ── Brahmagyan — migration 528 (ADJUDICATION-11 Part 4, mandatory cited
     # vedha rows for R-19 closure; bg_sarvatobhadra_grid, migration 529, has
     # NO writer — deliberately empty, migration-seeded only) ─────────────────
@@ -203,6 +206,14 @@ KNOWN_HAS_WRITER_TRUE: frozenset[str] = frozenset({
     # §7.5: that edge would form an L3↔L5 cycle and topoSort would reject every
     # build plan containing either asset).
     "mi_bhara",
+    # ── L5 Mīmāṃsā — migration 531 (ṢAḌ-DARŚANA W4 Lane S, item 42) ──────────
+    # Unified Intervention Ledger: falsifier resolution against the LEL, study-arm
+    # reclassification, and arm-4 (acted_without_election) origination. Filing
+    # itself happens live, at serve time, through the sanctioned HTTP action
+    # (platform-mcp/src/lib/intervention_filing.ts) — never inserted by this
+    # writer. depends_on = ['ka_kshetra'] ONLY (KALA_W2_FIELD_DESIGN §7.5
+    # acyclicity rule, mirrored from mi_bhara above).
+    "mi_sankalpa",
 })
 
 # Sub-registrations that share a writer with their parent.

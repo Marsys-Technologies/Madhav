@@ -1838,6 +1838,38 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     asset_kind: 'data',
   },
   {
+    // ṢAḌ-DARŚANA W3 Lane w3-tithi-pravesha, registry item 13 (migration 531;
+    // renumbered from 530 -> 531 after a cross-branch collision with
+    // shad-darshana/w4-lane-r-yajna-setu's 530_bg_muhurta_lattice_panchangika_families.sql,
+    // an independent unmerged lane — migration-collision rail. sort_order 124
+    // (122/123 already taken by ka_moorti_nirnaya/ka_vedha_gochara below).
+    // Tithi-Praveśa: the lunar-return counterpart to Tājika Vārṣaphala
+    // (ga_tajaka, L1 solar-return). Annual chart cast for the instant the
+    // Moon returns to its exact natal sidereal longitude nearest each
+    // solar-birthday anniversary — real Swiss-Ephemeris root-find
+    // (pyjhora_adapter, same engine ga_tajaka uses), full 120-year lifespan.
+    // Return-instant + chart-cast only; the Tājika-specific Muntha/Vārṣeśa/
+    // yoga apparatus is Vārṣaphala-only and out of scope (disclosed choice,
+    // see services/ka_tithi_pravesha/logic.py docstring).
+    asset_id: 'ka_tithi_pravesha',
+    layer: 'kala', sort_order: 124,
+    catalog_status: 'CURRENT',
+    sanskrit_name: 'Tithi-Praveśa',
+    english_name: 'Tithi-Praveśa (Lunar-Return Annual Chart)',
+    english_description: 'The lunar-return counterpart to Tājika Vārṣaphala (ga_tajaka): the annual chart cast for the instant the transiting Moon returns to its exact natal sidereal longitude nearest each solar-birthday anniversary, full 120-year lifespan. Real ephemeris root-find (pyjhora_adapter) + full annual-chart cast (Praveśa Lagna + graha positions). Natal Moon longitude read verbatim from chart_facts (ga_positions), never re-derived.',
+    storage_type: 'postgres_table',
+    target_table: 'kala_tithi_pravesha',
+    count_sql: 'SELECT COUNT(*) FROM kala_tithi_pravesha WHERE chart_id=$1',
+    size_sql: "SELECT pg_total_relation_size('kala_tithi_pravesha')",
+    target_floor: 0,
+    expected_volume_formula: '120',
+    expected_volume_inputs: null,
+    volume_explanation: 'Exactly 120 rows/chart (pravesha years 1..120, full-life horizon) once a real build runs — benchmarked ~3.4ms/row (root-find + annual-chart cast) during design, no partial-coverage failure mode expected. Seeded 0 per §N.4 until the first real build confirms it.',
+    depends_on: ['ga_positions'],
+    scope: 'per_chart', is_active: true, estimated_seconds: null,
+    asset_kind: 'data',
+  },
+  {
     // ṢAḌ-DARŚANA W3 Lane w3-moorti-vedha, registry item 4 (migration 525).
     // Moorti-nirṇaya: the classical gold/silver/copper/iron quality of a
     // transiting graha's stay in a sign, determined by the Moon's nakshatra
@@ -2396,6 +2428,48 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
       'One skill row per scored event class plus one chart-level aggregate; grows only as the ' +
       'LEL grows. A chart with no LEL correctly produces the structural-prior state with ' +
       'skill_state = underpowered — an honest zero, not an error.',
+    depends_on: ['ka_kshetra'],
+    scope: 'per_chart', is_active: true, estimated_seconds: null,
+  },
+
+  // ══ ṢAḌ-DARŚANA W4 Lane S — the Unified Intervention Ledger (item 42) ═══════
+  // Spec: KALA_W4_UPAYA_DESIGN_v1_0.md §4.2 (table), §8.2 (this row, verbatim
+  // shape). Mirrors migration NNN_mimamsa_intervention_ledger.sql's own
+  // `INSERT INTO asset_registry ... ON CONFLICT (asset_id) DO UPDATE` — same
+  // discipline as `ka_kshetra` (migration 494) / `mi_bhara` (migration 497)
+  // above: the catalog-reconciliation check builds its id set purely from THIS
+  // file, so the row lands here in the SAME PR as the `mi_sankalpa` writer
+  // (§2.5.1 Nirmāṇa contract).
+  //
+  // `depends_on: ['ka_kshetra']`, per brief §2.5.3 and KALA_W2_FIELD_DESIGN
+  // §9.1 verbatim. `ka_kshetra` never lists `mi_sankalpa` back (§2.5.4
+  // acyclicity rule) — the ledger flows forward only, same shape as the
+  // ka_kshetra/mi_bhara pair immediately above.
+  {
+    asset_id: 'mi_sankalpa',
+    layer: 'mimamsa', sort_order: 14,
+    sanskrit_name: 'Saṅkalpa',
+    english_name: 'Intervention Ledger',
+    english_description:
+      'Unified intervention ledger — every elected act (upāya · yajña · elected activity) ' +
+      'with its adjudication record (the JudgmentLedger, frozen verbatim at election time), ' +
+      'predicted differential, native performance attestation and LEL outcome linkage; the ' +
+      'three-armed study of election itself (elected_pending / acted_with_election / ' +
+      'elected_not_acted / acted_without_election). Prediction spine is ' +
+      'brahma_prospective_ledger by FK (ruling S-1) — this writer never inserts into it ' +
+      'directly; filing happens at serve time through platform-mcp\'s ' +
+      '`fileInterventionFalsifier` (intervention_filing.ts). ṢAḌ-DARŚANA W4 item 42.',
+    storage_type: 'postgres_table',
+    target_table: 'mimamsa_intervention_ledger',
+    count_sql: 'SELECT count(*) FROM mimamsa_intervention_ledger WHERE chart_id = $1',
+    size_sql: "SELECT pg_total_relation_size('mimamsa_intervention_ledger')",
+    target_floor: null,
+    expected_volume_formula: null,
+    expected_volume_inputs: null,
+    volume_explanation:
+      'Accumulates as interventions are elected and attested — not a deterministic target ' +
+      '(§N.4: floors are aspirational, set to the ACHIEVED count after first build, never ' +
+      'fabricated).',
     depends_on: ['ka_kshetra'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
