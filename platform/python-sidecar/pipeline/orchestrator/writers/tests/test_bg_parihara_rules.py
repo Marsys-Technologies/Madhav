@@ -212,6 +212,126 @@ def test_build_census_rows_row_count_matches_constant():
     assert len(rows) == len(CENSUS_ROWS)
 
 
+# ── ṢAḌ-DARŚANA W4 ruling R-1 / registry items 6 + 7: census obligations ──────
+# These are the assertions that make R-1's honesty claims EARNED rather than
+# asserted (§N.8): each names the exact condition that would make it read false.
+
+
+def test_r1_materialized_families_point_at_the_lattice_not_at_a_function():
+    """The R-1 defect, stated as a test. Before migration 530 these four rows
+    were disposed `computed` with an evidence_pointer naming a panchang_engine
+    FUNCTION — true, but nothing a Mode-2 search could scan, which is why three
+    of the canned W4 fixture's six constraints were unsearchable
+    (KALA_W4_UPAYA_DESIGN §3.1). Each must now resolve to a real lattice family.
+    Reverting an emitter without reverting the pointer fails HERE."""
+    by_name = {(fam, name): (disp, ptr) for fam, name, disp, _note, ptr, _tag in CENSUS_ROWS}
+    expected = {
+        ("panchangika", "tithi"): "factor_family=tithi",
+        ("panchangika", "vara"): "factor_family=vara",
+        ("panchangika", "nakshatra"): "factor_family=nakshatra",
+        ("day_part", "hora_lord"): "factor_family=hora",
+    }
+    for key, family_marker in expected.items():
+        assert key in by_name, f"missing census row {key}"
+        disposition, pointer = by_name[key]
+        assert disposition == "computed"
+        assert pointer.startswith("bg_muhurta_lattice"), (
+            f"{key} evidence_pointer must resolve to the lattice, got {pointer!r}"
+        )
+        assert family_marker in pointer, f"{key} must name {family_marker}, got {pointer!r}"
+
+
+def test_r1_deferred_lattice_families_are_named_not_silently_dropped():
+    """R-1's own clause, verbatim: 'If Lane R defers them, the census must say so
+    by name … Deferring them does not block the fixture; pretending they are
+    covered does.' Both deferrals must exist, be `not_computed`, and carry the
+    exact phrase a Mode-2 coverage block keys on."""
+    by_name = {(fam, name): (disp, note) for fam, name, disp, note, _ptr, _tag in CENSUS_ROWS}
+    for name in ("nityayoga_lattice_family", "karana_lattice_family"):
+        key = ("panchangika", name)
+        assert key in by_name, f"deferred family {name!r} must be named in the census"
+        disposition, note = by_name[key]
+        assert disposition == "not_computed"
+        assert "lattice family not materialized" in note
+
+
+def test_tara_bala_stays_not_computed_globally_and_says_why():
+    """Design §3.1, verbatim: 'that disposition is correct and must not be
+    fixed'. A future session that "helpfully" flips this to `computed` because
+    W4's query-time chart-relative filter exists has conflated two scopes and
+    broken §N.5 — this test is the tripwire."""
+    by_name = {(fam, name): (disp, note) for fam, name, disp, note, _ptr, _tag in CENSUS_ROWS}
+    disposition, note = by_name[("panchangika", "nakshatra_tara_bala")]
+    assert disposition == "not_computed"
+    assert "chart-relative" in note.lower()
+    assert "query time" in note.lower()
+
+
+def test_item_6_join_row_is_computed_and_carries_the_provenance_rail():
+    """Registry item 6. The census must record that the id join is now
+    deterministic AND restate the rail that governs it, so a reader cannot
+    mistake this for permission to hand-map."""
+    by_name = {(fam, name): (disp, note) for fam, name, disp, note, _ptr, _tag in CENSUS_ROWS}
+    disposition, note = by_name[("rite_specific", "activity_rule_id_join")]
+    assert disposition == "computed"
+    assert "bg_muhurta_activity_rules" in note
+    assert "B.10" in note
+
+
+def test_item_6_frozen_engine_axis_is_disclosed_as_an_honest_partial():
+    """The half of item 6 that did NOT close. kala_lattice_query.ts is FROZEN for
+    W4 and exposes no injection point for an excluded Pareto axis, so Lane R
+    stopped and reported rather than editing it. That partial must be visible in
+    the census as `not_computed`, never rolled into the `computed` row above."""
+    by_name = {(fam, name): (disp, note) for fam, name, disp, note, _ptr, _tag in CENSUS_ROWS}
+    key = ("rite_specific", "activity_rule_pareto_axis_in_frozen_engine")
+    assert key in by_name, "the frozen-engine partial must be disclosed, not omitted"
+    disposition, note = by_name[key]
+    assert disposition == "not_computed"
+    assert "FROZEN" in note
+
+
+def test_item_7_muhurta_lagna_rows_present_with_honest_dispositions():
+    """Registry item 7. The SPAN is computed (a real bisection over
+    compute_lagna); the STRENGTH is computed at query time against
+    bg_dignity_reference/BPHS Ch.26; the classical lagna-śuddhi DOCTRINE is
+    not_in_corpus. Three rows, three different honest answers — collapsing them
+    into one `computed` claim would be the over-claim this split exists to
+    prevent."""
+    by_name = {(fam, name): (disp, note) for fam, name, disp, note, _ptr, _tag in CENSUS_ROWS}
+    assert by_name[("muhurta_lagna", "rising_sign_span")][0] == "computed"
+    strength_disp, strength_note = by_name[("muhurta_lagna", "lagna_lord_strength")]
+    assert strength_disp == "computed"
+    assert "bg_dignity_reference" in strength_note
+    doctrine_disp, doctrine_note = by_name[("muhurta_lagna", "lagna_shuddhi_rules")]
+    assert doctrine_disp == "not_in_corpus"
+    assert "muhurta_chintamani" in doctrine_note
+
+
+def test_vishti_conditional_exception_finding_is_recorded_but_not_encoded():
+    """The parihāra corpus-extraction finding. A real, translated, cited
+    muhūrta-scope Viṣṭi exception exists (Bṛhat Saṃhitā Adh. C sl.3-4) but is
+    CONDITIONAL on the undertaking class, and bg_parihara_rules has no
+    undertaking-class qualifier while kala_lattice_query.ts's matchingPariharas()
+    cancels unconditionally on an id match. Encoding it would make the engine
+    cancel Bhadra for a wedding — a cancellation the source does not license.
+    So: recorded in the census with its chunk_id and verbatim text, and NOT
+    present as a bg_parihara_rules row. Both halves are asserted."""
+    by_name = {(fam, name): (disp, note, ptr) for fam, name, disp, note, ptr, _tag in CENSUS_ROWS}
+    key = ("parihara_scope", "vishti_conditional_undertaking_exception")
+    assert key in by_name, "the corpus finding must be recorded"
+    disposition, note, pointer = by_name[key]
+    assert disposition == "not_computed"
+    assert "brihat_samhita_pg0768_c01" in pointer, "the exact source chunk must be cited"
+    assert "Nothing done in Vishti leads to beneficial results" in note, (
+        "the source text must be transcribed verbatim, not paraphrased"
+    )
+    # …and it must NOT have been quietly seeded as a rule row.
+    assert not any(
+        r["dosha_canonical_id"] == "bhadra" for r in MUHURTA_PARIHARA_ROWS
+    ), "the conditional Viṣṭi exception must NOT be encoded as an unconditional parihāra row"
+
+
 # ── Offline tests: MUHURTA_PARIHARA_ROWS / build_muhurta_parihara_rows ───────
 # ṢAḌ-DARŚANA ADJUDICATION-10 Part 1: the one hand-curated muhūrta-scope row
 # (Abhijit sarva-doṣaghna, bphs_jaimini PG213 chunk bphs_jaimini_pg0213_c01).
