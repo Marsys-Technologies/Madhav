@@ -56,12 +56,17 @@ const VEDHA_ROWS = [
     start_truncated: false, end_truncated: false,
     janma_reference_fact_id: 'fact-moon-1',
     classical_citation: 'BPHS Ch.29', uncited_extension: false,
+    grid_basis: null, grid_school_tag: null,
     detail: {
       primary_house: 3, primary_sign_idx: 2, primary_sign_name: 'Gemini',
       vedha_house: 9, vedha_sign_idx: 8, vedha_sign_name: 'Sagittarius',
       phala: 'Courage, travel, gain from siblings',
       obstruction_active: true, obstructing_graha: 'Mars',
       obstruction_window_start: '2026-07-20', obstruction_window_end: '2026-07-25',
+      malefic_obstructing_grahas: ['Mars'], malefic_count: 1,
+      malefic_effect_grade: 'fear', malefic_effect_description: 'Vedha caused by one malefic: fear.',
+      malefic_scale_citation: '[HIGH] Phaladeepika — Trans. V. Subrahmanya Sastri, 2nd Ed. 1950 | PG353',
+      malefic_grade_uncited_extension: true,
     },
     is_current: true,
   },
@@ -72,12 +77,29 @@ const VEDHA_ROWS = [
     janma_reference_fact_id: 'fact-moon-1',
     classical_citation: 'Prasna Marga (Sarvatobhadra Chakra vedha geometry: rekha/kona/vithi vedha); cf. ga_sensitive_degree_writer.py sarvatobhadra_vedha evidence row',
     uncited_extension: true,
+    grid_basis: 'algorithmic_approximation', grid_school_tag: null,
     detail: {
       target_nakshatra_idx: 24, target_nakshatra_name: 'Purva Bhadrapada',
       vedha_nakshatra_idx: 11, vedha_nakshatra_name: 'Uttara Phalguni',
-      vedha_pair_source: 'algorithmic_opposition_approximation',
       cancellation_effect: 'While Mars dwells in Uttara Phalguni ...',
-      r19_disclosure: 'l1_sarvatobhadra_positions/l1_sarvatobhadra_vedha remain unpopulated ...',
+      r19_disclosure: 'no SBC grid in the ingested corpus (8 term hits, all index/OCR/passing-mention); grid geometry varies by tradition; served value is an algorithmic approximation, not a transcribed grid.',
+    },
+    is_current: false, // NOT current — must be filtered out
+  },
+  {
+    vedha_kind: 'latta', graha: 'Moon',
+    window_start: '2026-04-01', window_end: '2026-04-10',
+    start_truncated: false, end_truncated: false,
+    janma_reference_fact_id: 'fact-moon-1',
+    classical_citation: '[HIGH] Phaladeepika — Trans. V. Subrahmanya Sastri, 2nd Ed. 1950 | PG339',
+    uncited_extension: false,
+    grid_basis: null, grid_school_tag: null,
+    detail: {
+      count_from_graha: 22, direction: 'backward',
+      latta_nakshatra_idx: 24, latta_nakshatra_name: 'Purva Bhadrapada',
+      janma_nakshatra_idx: 24, janma_nakshatra_name: 'Purva Bhadrapada',
+      effect_description: 'A great loss.',
+      affliction_condition: 'If, when thus counting, the Janma-nakshatra (natal star) happens to come as the Latta star, there will be sickness and anguish.',
     },
     is_current: false, // NOT current — must be filtered out
   },
@@ -243,5 +265,59 @@ describe('kala_now_get item 5 — vedha_gochara (closes R-19)', () => {
     const cov = result.coverage.find((c) => c.concept === 'vedha_gochara')
     expect(cov?.state).toBe('honest_empty')
     expect(result.provenance_envelope.vedha_gochara_reachable).toBe(true) // reached, genuinely empty
+  })
+
+  // ── ADJUDICATION-11 additions ──────────────────────────────────────────────
+  it('serves grid_basis/grid_school_tag verbatim (machine-readable, not prose-only) on sarvatobhadra rows', async () => {
+    vi.stubGlobal('fetch', mockRegistryFetch({
+      vedhaRows: [{ ...VEDHA_ROWS[1]!, is_current: true }],
+    }))
+    const result = await computeKalaNow(TEST_CHART_ID, {}, TEST_PRINCIPAL)
+    const sbcRow = result.vedha_gochara.find((r) => r.vedha_kind === 'sarvatobhadra')
+    expect(sbcRow?.grid_basis).toBe('algorithmic_approximation')
+    expect(sbcRow?.grid_school_tag).toBeNull()
+  })
+
+  it('serves house_vedha rows carrying null grid_basis (not grid-based)', async () => {
+    vi.stubGlobal('fetch', mockRegistryFetch({}))
+    const result = await computeKalaNow(TEST_CHART_ID, {}, TEST_PRINCIPAL)
+    expect(result.vedha_gochara[0]?.grid_basis).toBeNull()
+    expect(result.vedha_gochara[0]?.grid_school_tag).toBeNull()
+  })
+
+  it('serves the PG353 malefic-count grading verbatim in house_vedha detail', async () => {
+    vi.stubGlobal('fetch', mockRegistryFetch({}))
+    const result = await computeKalaNow(TEST_CHART_ID, {}, TEST_PRINCIPAL)
+    expect(result.vedha_gochara[0]?.detail).toMatchObject({
+      malefic_count: 1,
+      malefic_effect_grade: 'fear',
+      malefic_grade_uncited_extension: true,
+    })
+  })
+
+  it('serves vedha_kind=latta rows as REAL cited (uncited_extension=false), distinct from sarvatobhadra', async () => {
+    vi.stubGlobal('fetch', mockRegistryFetch({
+      vedhaRows: [{ ...VEDHA_ROWS[2]!, is_current: true }],
+    }))
+    const result = await computeKalaNow(TEST_CHART_ID, {}, TEST_PRINCIPAL)
+    const lattaRow = result.vedha_gochara.find((r) => r.vedha_kind === 'latta')
+    expect(lattaRow).toBeDefined()
+    expect(lattaRow?.uncited_extension).toBe(false)
+    expect(lattaRow?.classical_citation).toContain('PG339')
+    expect(lattaRow?.detail['effect_description']).toBe('A great loss.')
+  })
+
+  it('never conflates all three vedha_kind values when all are current simultaneously', async () => {
+    vi.stubGlobal('fetch', mockRegistryFetch({
+      vedhaRows: [
+        { ...VEDHA_ROWS[0]!, is_current: true },
+        { ...VEDHA_ROWS[1]!, is_current: true },
+        { ...VEDHA_ROWS[2]!, is_current: true },
+      ],
+    }))
+    const result = await computeKalaNow(TEST_CHART_ID, {}, TEST_PRINCIPAL)
+    expect(result.vedha_gochara).toHaveLength(3)
+    const kinds = result.vedha_gochara.map((r) => r.vedha_kind).sort()
+    expect(kinds).toEqual(['house_vedha', 'latta', 'sarvatobhadra'])
   })
 })

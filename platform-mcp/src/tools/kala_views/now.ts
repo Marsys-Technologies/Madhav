@@ -533,20 +533,28 @@ async function fetchMoortiNirnayaNow(
 }
 
 export interface VedhaGocharaRow {
-  vedha_kind: 'house_vedha' | 'sarvatobhadra'
+  vedha_kind: 'house_vedha' | 'sarvatobhadra' | 'latta'
   graha: string
   window_start: string
   window_end: string
   classical_citation: string
   uncited_extension: boolean
+  /** ADJUDICATION-11 Part 3: populated only on vedha_kind='sarvatobhadra' rows
+   *  ('db_sourced_grid' | 'algorithmic_approximation'); null on house_vedha/latta. */
+  grid_basis: string | null
+  /** ADJUDICATION-11 Part 3: the bg_sarvatobhadra_grid school_tag that supplied this row's
+   *  pairing, when grid_basis='db_sourced_grid' via that table specifically; null otherwise
+   *  (including every row as of this writing, since that table is registered empty). */
+  grid_school_tag: string | null
   detail: Record<string, unknown>
 }
 
-/** item 5 (closes R-19): current vedha rows (both house_vedha and sarvatobhadra kinds,
- *  never conflated — §N.6) whose window contains `asOfDate`. Honest-empty when the writer
- *  has not yet built this chart, or no vedha-checkable transit / sarvatobhadra-dwelling is
- *  currently active — an empty result here is the classically NORMAL case (most days carry
- *  no active vedha), not a failure. */
+/** item 5 (closes R-19, CLOSED-PARTIAL-BY-DESIGN per ADJUDICATION-11): current vedha rows
+ *  (house_vedha, sarvatobhadra, and latta kinds, never conflated — §N.6) whose window
+ *  contains `asOfDate`. Honest-empty when the writer has not yet built this chart, or no
+ *  vedha-checkable transit / sarvatobhadra-dwelling / latta-affliction is currently active —
+ *  an empty result here is the classically NORMAL case (most days carry no active vedha),
+ *  not a failure. */
 async function fetchVedhaGocharaNow(
   chartId: string,
   asOfDate: string,
@@ -562,12 +570,14 @@ async function fetchVedhaGocharaNow(
   const rows: VedhaGocharaRow[] = rawRows
     .filter((r) => r['is_current'] === true)
     .map((r) => ({
-      vedha_kind: String(r['vedha_kind']) as 'house_vedha' | 'sarvatobhadra',
+      vedha_kind: String(r['vedha_kind']) as 'house_vedha' | 'sarvatobhadra' | 'latta',
       graha: String(r['graha']),
       window_start: String(r['window_start']),
       window_end: String(r['window_end']),
       classical_citation: String(r['classical_citation']),
       uncited_extension: Boolean(r['uncited_extension']),
+      grid_basis: r['grid_basis'] != null ? String(r['grid_basis']) : null,
+      grid_school_tag: r['grid_school_tag'] != null ? String(r['grid_school_tag']) : null,
       detail: (r['detail'] as Record<string, unknown> | undefined) ?? {},
     }))
   return { reachable: true, rows }

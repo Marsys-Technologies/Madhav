@@ -118,6 +118,29 @@ already keeps separate).
 and houses with no rule at all are out of scope for THIS writer (item 5 is
 specifically "vedha application", not a restatement of all Gochara
 favourable/unfavourable phala, which `ka_gochara_sweep` already serves).
+
+── ADJUDICATION-11 ADDITIONS (school-tagged grid + mandatory cited vedha) ────
+Supplemental ruling issued after PR #1009's disclosure
+(SHAD_DARSHANA_ADJUDICATIONS_NIGHT3_v1_0.md ADJUDICATION-11). Three additions:
+
+1. **`grid_basis` + `grid_school_tag`** (data-only, machine-readable) on every
+   `sarvatobhadra` row: `grid_basis` names WHICH source produced the served
+   vedha-nakshatra pairing (`'db_sourced_grid'` if `bg_sarvatobhadra_grid` or
+   `l1_sarvatobhadra_vedha` supplied a row, else `'algorithmic_approximation'`
+   — the current, only-populated state); `grid_school_tag` carries the
+   `school_tag` string when `bg_sarvatobhadra_grid` supplied the row, else
+   `None`. These fields let a caller (and the item-41 factor census) EXCLUDE
+   `sarvatobhadra` rows from any "cited" count without parsing prose (§N.6).
+2. **`bg_sarvatobhadra_grid`-first lookup** (migration 527): the writer tries
+   this school-tagged table BEFORE `l1_sarvatobhadra_vedha` (the original
+   fallback, migration `_archive/140`) before falling back to the algorithmic
+   approximation — three tiers, tried in that order, every tier already
+   wired so a future populated table activates with zero code change.
+3. **`vedha_kind='latta'`** rows (Phaladeepika PG338-339, REAL, cited,
+   `uncited_extension=False`) and a **malefic-count grading** on `house_vedha`
+   rows (Phaladeepika PG353, REAL, cited scale — see writer.py for the
+   `uncited_extension` disclosure on the specific field that APPLIES the
+   scale outside its literal battle-muhurta verse context).
 """
 from __future__ import annotations
 
@@ -126,7 +149,14 @@ from typing import Optional, TypedDict
 
 HOUSE_VEDHA = "house_vedha"
 SARVATOBHADRA = "sarvatobhadra"
-VEDHA_KINDS: tuple[str, ...] = (HOUSE_VEDHA, SARVATOBHADRA)
+LATTA = "latta"
+VEDHA_KINDS: tuple[str, ...] = (HOUSE_VEDHA, SARVATOBHADRA, LATTA)
+
+# Matches the codebase's own repeated convention (ka_kota_chakra.logic,
+# ga_sensitive_degree_writer.py, ga_yoga_writer.py, ga_structural_writer.py) —
+# duplicated per this campaign's established one-writer-per-module convention,
+# not invented for this writer.
+NATURAL_MALEFICS: frozenset[str] = frozenset({"Sun", "Mars", "Saturn", "Rahu", "Ketu"})
 
 
 class SignRun(TypedDict):
@@ -209,14 +239,47 @@ def overlap_window(
     return {"start": start, "end": end}
 
 
+def latta_nakshatra_idx(graha_nak_idx: int, count_from_graha: int, direction: str) -> int:
+    """The Lattā nakshatra for a graha currently transiting `graha_nak_idx`
+    (0-based), per Phaladeepika PG338-339 Sloka 42-44 (bg_phaladeepika_latta):
+    `count_from_graha` nakshatras forward or backward from the graha's own
+    current nakshatra. `count_from_graha` is 1-indexed per the verse's own
+    counting convention (matching `nakshatra_offset_from_janma`'s identical
+    1-indexed, 27-wraparound arithmetic in ka_moorti_nirnaya.logic) — e.g.
+    the Sun's Lattā is the "12th asterism counted from that occupied by the
+    Sun", i.e. offset 12 in the forward direction."""
+    if direction == "forward":
+        return (graha_nak_idx + count_from_graha - 1) % 27
+    if direction == "backward":
+        return (graha_nak_idx - count_from_graha + 1) % 27
+    raise ValueError(f"direction must be 'forward' or 'backward', got {direction!r}")
+
+
+def malefic_count_grade(
+    malefic_count: int, scale: dict[int, dict[str, str]],
+) -> Optional[dict[str, str]]:
+    """Looks up the PG353 malefic-count -> effect-grade scale
+    (bg_vedha_malefic_scale, via `scale` = {malefic_count: {effect_grade,
+    effect_description}}) for `malefic_count` simultaneously-obstructing
+    natural malefics. Returns None (honest gap, never guessed) if
+    `malefic_count` is 0 (no scale entry — the scale only covers 1-5) or
+    exceeds 5 (only 5 of the 9 grahas are natural malefics, so this cannot
+    occur in practice, but the lookup stays honest rather than clamping)."""
+    return scale.get(malefic_count)
+
+
 __all__ = [
     "HOUSE_VEDHA",
     "SARVATOBHADRA",
+    "LATTA",
     "VEDHA_KINDS",
+    "NATURAL_MALEFICS",
     "SignRun",
     "detect_sign_runs",
     "house_from_moon",
     "sign_from_house",
     "Overlap",
     "overlap_window",
+    "latta_nakshatra_idx",
+    "malefic_count_grade",
 ]

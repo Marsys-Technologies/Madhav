@@ -20,22 +20,80 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from services.ka_vedha_gochara.logic import (
     HOUSE_VEDHA,
+    LATTA,
+    NATURAL_MALEFICS,
     SARVATOBHADRA,
     VEDHA_KINDS,
     detect_sign_runs,
     house_from_moon,
+    latta_nakshatra_idx,
+    malefic_count_grade,
     overlap_window,
     sign_from_house,
 )
 
 
 class TestVedhaKinds:
-    def test_exactly_two_kinds(self):
-        assert VEDHA_KINDS == (HOUSE_VEDHA, SARVATOBHADRA)
+    def test_exactly_three_kinds(self):
+        assert VEDHA_KINDS == (HOUSE_VEDHA, SARVATOBHADRA, LATTA)
 
     def test_kind_names(self):
         assert HOUSE_VEDHA == "house_vedha"
         assert SARVATOBHADRA == "sarvatobhadra"
+        assert LATTA == "latta"
+
+
+class TestNaturalMalefics:
+    # Matches the codebase's own repeated convention (ka_kota_chakra.logic,
+    # ga_sensitive_degree_writer.py, ga_yoga_writer.py, ga_structural_writer.py).
+    def test_malefics(self):
+        assert NATURAL_MALEFICS == {"Sun", "Mars", "Saturn", "Rahu", "Ketu"}
+
+
+class TestLattaNakshatraIdx:
+    """Phaladeepika PG338-339 Sloka 42-44 (ADJUDICATION-11 Part 4): the
+    Lattā nakshatra is count_from_graha nakshatras forward/backward from the
+    graha's own current nakshatra."""
+
+    def test_sun_12th_forward(self):
+        # Sun at Ashwini (0) -> 12th forward = index 11 (0-indexed: 0+12-1=11)
+        assert latta_nakshatra_idx(0, 12, "forward") == 11
+
+    def test_moon_22nd_backward(self):
+        # Moon at Ashwini (0) -> 22nd backward, wraps: (0-22+1) % 27 = 6
+        assert latta_nakshatra_idx(0, 22, "backward") == 6
+
+    def test_forward_wraps_around_27(self):
+        assert latta_nakshatra_idx(26, 3, "forward") == 1  # (26+3-1) % 27 = 1
+
+    def test_backward_wraps_around_27(self):
+        assert latta_nakshatra_idx(0, 5, "backward") == 23  # (0-5+1) % 27 = -4 % 27 = 23
+
+    def test_invalid_direction_raises(self):
+        import pytest
+        with pytest.raises(ValueError):
+            latta_nakshatra_idx(0, 5, "sideways")
+
+
+class TestMaleficCountGrade:
+    """Phaladeepika PG353 (ADJUDICATION-11 Part 4): malefic-count -> effect-
+    grade scale."""
+
+    def test_looks_up_by_count(self):
+        scale = {
+            1: {"effect_grade": "fear", "effect_description": "..."},
+            3: {"effect_grade": "killing", "effect_description": "..."},
+        }
+        assert malefic_count_grade(1, scale)["effect_grade"] == "fear"
+        assert malefic_count_grade(3, scale)["effect_grade"] == "killing"
+
+    def test_missing_count_returns_none(self):
+        assert malefic_count_grade(2, {1: {"effect_grade": "fear"}}) is None
+
+    def test_zero_count_returns_none_even_if_present(self):
+        # Defensive: the scale only covers 1-5; a caller should not call this
+        # with 0, but the lookup itself is honest (no entry -> None).
+        assert malefic_count_grade(0, {}) is None
 
 
 class TestHouseFromMoon:

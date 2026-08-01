@@ -10,7 +10,13 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from services.ka_vedha_gochara.writer import _fetch_janma_moon, _fetch_vedha_rules
+from services.ka_vedha_gochara.writer import (
+    _fetch_janma_moon,
+    _fetch_latta_rules,
+    _fetch_malefic_scale,
+    _fetch_school_tagged_vedha_pair,
+    _fetch_vedha_rules,
+)
 
 
 class _FakeCursorOne:
@@ -100,3 +106,64 @@ class TestFetchVedhaRules:
         assert set(rules.keys()) == {("sun", 3), ("moon", 1)}
         assert rules[("sun", 3)]["vedha_house"] == 9
         assert rules[("moon", 1)]["phala"] == "Good health, mental peace"
+
+
+class TestFetchSchoolTaggedVedhaPair:
+    """ADJUDICATION-11 Part 2: bg_sarvatobhadra_grid lookup — the currently-
+    empty table returns None (honest, only-possible-today outcome)."""
+
+    def test_empty_table_returns_none(self):
+        conn = _FakeConnOne(fetchone_result=None)
+        assert _fetch_school_tagged_vedha_pair(conn, 1) is None
+
+    def test_null_cell_value_returns_none(self):
+        conn = _FakeConnOne(fetchone_result=(None, "some_school"))
+        assert _fetch_school_tagged_vedha_pair(conn, 1) is None
+
+    def test_populated_row_returns_pair_and_school_tag(self):
+        conn = _FakeConnOne(fetchone_result=("15", "test_school_v01"))
+        assert _fetch_school_tagged_vedha_pair(conn, 1) == (15, "test_school_v01")
+
+    def test_malformed_cell_value_returns_none(self):
+        conn = _FakeConnOne(fetchone_result=("not_a_number", "test_school_v01"))
+        assert _fetch_school_tagged_vedha_pair(conn, 1) is None
+
+
+class TestFetchLattaRules:
+    def test_empty_returns_empty_dict(self):
+        conn = _FakeConnAll([])
+        assert _fetch_latta_rules(conn) == {}
+
+    def test_rows_keyed_by_graha(self):
+        conn = _FakeConnAll([
+            {"graha": "Sun", "count_from_graha": 12, "direction": "forward",
+             "effect_description": "Ruin of every business.",
+             "affliction_condition": "...", "source_citation": "PG339"},
+            {"graha": "Mars", "count_from_graha": 3, "direction": "forward",
+             "effect_description": None,
+             "affliction_condition": "...", "source_citation": "PG339"},
+        ])
+        rules = _fetch_latta_rules(conn)
+        assert set(rules.keys()) == {"Sun", "Mars"}
+        assert rules["Sun"]["count_from_graha"] == 12
+        assert rules["Mars"]["effect_description"] is None
+        # Ketu absent — never a key here (see brahmagyan/l0_phaladeepika_vedha.py)
+        assert "Ketu" not in rules
+
+
+class TestFetchMaleficScale:
+    def test_empty_returns_empty_dict(self):
+        conn = _FakeConnAll([])
+        assert _fetch_malefic_scale(conn) == {}
+
+    def test_rows_keyed_by_malefic_count(self):
+        conn = _FakeConnAll([
+            {"malefic_count": 1, "effect_grade": "fear",
+             "effect_description": "...", "source_citation": "PG353"},
+            {"malefic_count": 5, "effect_grade": "ignominy",
+             "effect_description": "...", "source_citation": "PG353"},
+        ])
+        scale = _fetch_malefic_scale(conn)
+        assert set(scale.keys()) == {1, 5}
+        assert scale[1]["effect_grade"] == "fear"
+        assert scale[5]["effect_grade"] == "ignominy"
