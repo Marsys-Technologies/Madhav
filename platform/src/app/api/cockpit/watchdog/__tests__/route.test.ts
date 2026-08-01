@@ -166,3 +166,60 @@ describe('POST /api/cockpit/watchdog — existing clauses unchanged', () => {
     expect(secondCall).toMatch(/15 minutes/)
   })
 })
+
+// ─── E — clause 1 false-kill fix (infra-watchdog-fix, 2026-08-01) ────────────
+//
+// INCIDENT: clause 1 checked asset_throughput.last_built_at ALONE with a 10-min
+// window, and killed a run (e5cde4dc, chart 1c826d5a, ka_gochara_sweep) whose
+// container was alive and progressing — build_substep_progress showed a fresh
+// commit the reaper never consulted. Fix: widen the window to 15 min AND treat
+// a recent build_substep_progress row for the chart as independent evidence of
+// life. See orphanRunReaperPolicy.test.ts for the decision-boundary proof (RED
+// pre-fix / GREEN post-fix over both directions); these tests confirm route.ts
+// actually emits the fixed SQL and wires its result through.
+
+describe('POST /api/cockpit/watchdog — clause 1 false-kill fix', () => {
+  it('orphan-run reaper SQL uses a 15-minute asset_throughput window (widened from 10)', async () => {
+    noOrphans()
+    const { POST } = await import('../route')
+    await POST(makeReq())
+
+    const calls = mockQuery.mock.calls as [string][]
+    const firstCall = calls[0][0]
+    expect(firstCall).toMatch(/last_built_at > NOW\(\) - INTERVAL '15 minutes'/)
+    expect(firstCall).not.toMatch(/10 minutes/)
+  })
+
+  it('orphan-run reaper SQL also checks build_substep_progress.completed_at within 15 minutes', async () => {
+    noOrphans()
+    const { POST } = await import('../route')
+    await POST(makeReq())
+
+    const calls = mockQuery.mock.calls as [string][]
+    const firstCall = calls[0][0]
+    expect(firstCall).toMatch(/build_substep_progress/)
+    expect(firstCall).toMatch(/completed_at > NOW\(\) - INTERVAL '15 minutes'/)
+    // build_substep_progress is read-only from this route — never DELETE/INSERT/UPDATE
+    // targeting that table directly (a plain SELECT/NOT EXISTS reference is fine).
+    expect(firstCall).not.toMatch(/(UPDATE|DELETE\s+FROM|INSERT\s+INTO)\s+build_substep_progress/i)
+  })
+
+  it('still marks a genuinely orphaned run failed and reports the count', async () => {
+    mockQuery
+      .mockResolvedValueOnce({                                    // 1. orphan running runs
+        rows: [{ id: 'run-dead', chart_id: 'chart-dead' }],
+        rowCount: 1,
+      })
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 })            // 2. stuck assets
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 })            // 3. M-5 UPDATE build_run_assets
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 })            // 4. undispatched planned
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 })            // 5. M-4 DELETE build_run_assets
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 })            // 6. M-4 DELETE build_runs
+
+    const { POST } = await import('../route')
+    const res = await POST(makeReq())
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.orphan_runs_failed).toBe(1)
+  })
+})
