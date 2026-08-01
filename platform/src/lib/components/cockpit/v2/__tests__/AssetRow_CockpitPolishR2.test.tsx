@@ -334,7 +334,7 @@ describe('CF.L3.8 — StatusDot: DRAFT catalog_status does not override healthy 
 
 // ── Seed governance: Kāla layer count after hard-removal of ka_transit_almanac ──
 describe('Asset seed governance — Kāla layer', () => {
-  it('has exactly 17 kala assets in the seed (ka_transit_almanac removed; ka_avadhi + ka_taranga + ka_kshetra registered; ka_kota_chakra + ka_sudarshana_varsha added (SHAD-DARSHANA W3 items 16/17))', () => {
+  it('has exactly 19 kala assets in the seed (ka_transit_almanac removed; ka_avadhi + ka_taranga + ka_kshetra registered; ka_kota_chakra + ka_sudarshana_varsha + ka_moorti_nirnaya + ka_vedha_gochara added (SHAD-DARSHANA W3 items 16/17/4/5))', () => {
     const { readFileSync } = require('fs')
     const { resolve } = require('path')
     const seedContent: string = readFileSync(resolve(process.cwd(), 'scripts/seed/asset_registry_seed.ts'), 'utf8')
@@ -360,7 +360,12 @@ describe('Asset seed governance — Kāla layer', () => {
     // writers landed with their own Nirmāṇa asset_registry seed rows —
     // `ka_kota_chakra` (item 16, migration 520) and `ka_sudarshana_varsha`
     // (item 17, migration 521). 15 → 17.
-    expect(kalaMatches).toHaveLength(17)
+    //
+    // ṢAḌ-DARŚANA W3 (2026-08-01, Lane w3-moorti-vedha): two more brand-new
+    // Kāla writers landed with their own Nirmāṇa asset_registry seed rows —
+    // `ka_moorti_nirnaya` (item 4, migration 525) and `ka_vedha_gochara`
+    // (item 5, migration 526, closes defect R-19). 17 → 19.
+    expect(kalaMatches).toHaveLength(19)
   })
 
   it('contains no ka_transit_almanac entry in the seed', () => {

@@ -1837,6 +1837,62 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     scope: 'per_chart', is_active: true, estimated_seconds: null,
     asset_kind: 'data',
   },
+  {
+    // ṢAḌ-DARŚANA W3 Lane w3-moorti-vedha, registry item 4 (migration 525).
+    // Moorti-nirṇaya: the classical gold/silver/copper/iron quality of a
+    // transiting graha's stay in a sign, determined by the Moon's nakshatra
+    // at the moment of ingress, offset from the janma nakshatra. Resolved
+    // against the REAL, cited bg_transit_moorti table (Phaladeepika Ch.26;
+    // BPHS Ch.28) — never re-derived. Scoped to the 8 grahas other than the
+    // Moon (see services/ka_moorti_nirnaya/logic.py for the disclosed
+    // scope rationale).
+    asset_id: 'ka_moorti_nirnaya',
+    layer: 'kala', sort_order: 122,
+    catalog_status: 'CURRENT',
+    sanskrit_name: 'Mūrti-Nirṇaya',
+    english_name: 'Moorti-Nirṇaya (Transit Quality)',
+    english_description: 'The classical gold/silver/copper/iron quality of a transiting graha\'s stay in a sign, determined by the Moon\'s nakshatra at the moment of ingress, offset from the janma nakshatra. Reads natal Moon longitude from chart_facts (ga_positions), transiting positions from ephemeris_daily (bg_ephemeris), and the moorti quality table verbatim from bg_transit_moorti (bg_transit_rules, real cited reference data).',
+    storage_type: 'postgres_table',
+    target_table: 'kala_moorti_nirnaya',
+    count_sql: 'SELECT COUNT(*) FROM kala_moorti_nirnaya WHERE chart_id=$1',
+    size_sql: "SELECT pg_total_relation_size('kala_moorti_nirnaya')",
+    target_floor: 0,
+    expected_volume_formula: null,
+    expected_volume_inputs: null,
+    volume_explanation: 'One row per (graha, contiguous same-sign occupancy window) over a ~460-day scanned horizon (60 days back, 400 forward) around build time, across the 8 grahas other than the Moon — typically 15-60 rows/chart. Floors are aspirational per §N.4; seeded 0, set to the achieved count after the first real build.',
+    depends_on: ['ga_positions', 'bg_ephemeris', 'bg_transit_rules'],
+    scope: 'per_chart', is_active: true, estimated_seconds: null,
+    asset_kind: 'data',
+  },
+  {
+    // ṢAḌ-DARŚANA W3 Lane w3-moorti-vedha, registry item 5 (migration 526,
+    // closes defect R-19). Vedha application: two distinct classical
+    // obstruction mechanisms, distinguished by vedha_kind — house_vedha
+    // (REAL, cited: BPHS Ch.29/Phaladeepika Ch.26, from bg_transit_rules)
+    // and sarvatobhadra (nakshatra-level; an honestly disclosed algorithmic
+    // approximation — the primary-cited 9x9 grid tables
+    // l1_sarvatobhadra_positions/l1_sarvatobhadra_vedha remain unpopulated;
+    // see services/ka_vedha_gochara/logic.py for the full R-19 disclosure —
+    // no responsibly-transcribable source was found this session, honest
+    // gap over fabrication per LAW ZERO).
+    asset_id: 'ka_vedha_gochara',
+    layer: 'kala', sort_order: 123,
+    catalog_status: 'CURRENT',
+    sanskrit_name: 'Vedha-Gocara',
+    english_name: 'Vedha Application (Transit Obstruction)',
+    english_description: 'Two classical vedha (obstruction) mechanisms applied to a chart\'s currently-active and forward transits — house_vedha (BPHS Ch.29/Phaladeepika Ch.26, from bg_transit_rules, REAL cited data) and sarvatobhadra (nakshatra-level, an honestly disclosed algorithmic approximation pending corpus ingestion — closes defect R-19 partially; see services/ka_vedha_gochara/logic.py). Reads natal Moon longitude from chart_facts (ga_positions) and transiting positions from ephemeris_daily (bg_ephemeris).',
+    storage_type: 'postgres_table',
+    target_table: 'kala_vedha_gochara',
+    count_sql: 'SELECT COUNT(*) FROM kala_vedha_gochara WHERE chart_id=$1',
+    size_sql: "SELECT pg_total_relation_size('kala_vedha_gochara')",
+    target_floor: 0,
+    expected_volume_formula: null,
+    expected_volume_inputs: null,
+    volume_explanation: 'One row per vedha-checkable house transit (house_vedha) or per sarvatobhadra-vedha-nakshatra dwelling window, over the same ~460-day scanned horizon — small, gated by rule/nakshatra match, typically a handful per chart. Floors are aspirational per §N.4; seeded 0, set to the achieved count after the first real build.',
+    depends_on: ['ga_positions', 'bg_ephemeris', 'bg_transit_rules'],
+    scope: 'per_chart', is_active: true, estimated_seconds: null,
+    asset_kind: 'data',
+  },
 
   // ── PHALA (8) ────────────────────────────────────────────────────────────────────────────
   // Updated 2026-06-22 (L4 Phala SETUP-7 / CS1): depends_on + descriptions corrected per
