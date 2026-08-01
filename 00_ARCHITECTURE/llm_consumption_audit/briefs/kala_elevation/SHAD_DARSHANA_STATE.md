@@ -17,12 +17,13 @@ governing: SHAD_DARSHANA_NIGHT_RUN_v1_0.md (orchestration) + SHAD_DARSHANA_BRIEF
 NIGHT-3-RESUMED immediately below for the full close-out).** The single next action for the
 next session:
 
-1. **Confirm the final two merges landed** (PR #1009 items 4+5 with ADJUDICATION-11
-   additions; PR #1014 W2 determinism pre-check evidence record) — both were green-pending at
-   close; if green, merge to integration first thing (one CI cycle each, no other blockers).
-2. **Confirm gochara run `d95583c8` completed `1c826d5a` to 303/303** (it was RUNNING at
-   close with 11 substeps to go — full 58yr horizon parity expected unattended). If short,
-   one more dispatch using the recorded `--run-id`/`MARSYS_RUN_ID` invocation.
+1. ~~Confirm the final two merges landed~~ **DONE before close: PR #1009 MERGED
+   (`a3a6a743`) and PR #1014 MERGED (`c84ae621`) — every lane PR of the session landed;
+   nothing half-merged.**
+2. **Confirm gochara run `d95583c8` completed `1c826d5a` to 303/303** — at the final
+   pre-close check it stood at **302/303, state=running**; completion expected within
+   minutes, unattended. If short, one more dispatch using the recorded
+   `--run-id`/`MARSYS_RUN_ID` invocation.
 3. **Then the W3 gate-close sequence is the main event**: remaining W3 items per brief §1
    (activity tables 6 · muhūrta-lagna 7 · janma rules 14 · health class 9/S4-05 · Tithi-
    Praveśa 13 · period-echo 31 · sandhi-full 1 · sky-calendar joins 3 · E6-full; field-
@@ -338,8 +339,16 @@ the SendMessage-resume pattern + worktree isolation held). Two lanes' completed 
 landed by the Conductor from their verified working trees (N_e polish, ADJ-11 additions) —
 each noted in the commit message, each independently test-verified before landing.
 
-**Single next action:** merge the two green-pending PRs (#1009, #1014), then open the W3
-gate-close sequence (see NEXT-ACTION above).
+**Single next action:** open the W3 gate-close sequence (remaining W3 item lanes → gate-
+close PR → deploy → L0 builds → Verifier live acceptance) — see NEXT-ACTION above. (#1009
+and #1014 were merged before close; the gochara sweep stood at 302/303 running.)
+
+**Final close state:** every session lane PR merged (13 total: #1000 #999 #1003 #1004 #1005
+#1006 #1007 #1008 #1010 #1011 #1013 #1009 #1014); all campaign worktrees removed except the
+standing `sd-conductor`; `main`@`334436a9` deployed and serving 100% (post-acceptance main
+movement was the TAP-6 CI workstream's own docs/fix commits + its path-gated deploys — not
+this campaign's); `shad-darshana/integration` ahead of `main` by design pending the W3/W2
+gate close.
 
 ---
 
