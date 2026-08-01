@@ -378,6 +378,52 @@ def test_seed_refuses_to_write_without_migration_522():
         m.seed_class_lifetime_counts(_NoColumnsConn(), autocommit=False)
 
 
+def test_failed_coverage_probe_rolls_back_to_savepoint():
+    """REGRESSION — found by running this writer against a real Postgres.
+
+    The unseeded-class count is ADVISORY and must never fail the build, so it is
+    caught. But in Postgres, catching the Python exception is not enough: a failed
+    statement puts the whole transaction into `InFailedSqlTransaction`, and every
+    later command — the orchestrator's own work and every LATER writer sharing
+    `ctx.db_conn` — is refused until a rollback. The first version of this code
+    swallowed the exception without rolling back, which silently converted an
+    advisory probe into a poisoned transaction for everyone downstream.
+
+    Asserted here: the probe is wrapped in a SAVEPOINT, the failure path issues
+    ROLLBACK TO SAVEPOINT + RELEASE, coverage still reports -1 (unknown, never 0),
+    and no commit happens.
+    """
+    class _ProbeFailsCursor(_RecordingCursor):
+        def execute(self, sql, params=None):
+            self.sink["statements"].append((sql, params))
+            if "brahma_event_ontology" in sql:
+                raise RuntimeError('relation "brahma_event_ontology" does not exist')
+
+    class _ProbeFailsConn(_RecordingConn):
+        def cursor(self):
+            return _ProbeFailsCursor(self.sink)
+
+    conn = _ProbeFailsConn()
+    out = m.seed_class_lifetime_counts(conn, autocommit=False)
+
+    assert out["brahma_class_priors"] == len(LIFETIME_COUNT_ROWS)
+    assert out["classes_not_seeded"] == -1, "must report unknown, never 0 (= full coverage)"
+
+    issued = [s for s, _ in conn.sink["statements"]]
+    assert any(s.startswith("SAVEPOINT ") for s in issued), "probe must open a savepoint"
+    assert any(s.startswith("ROLLBACK TO SAVEPOINT ") for s in issued), (
+        "a failed probe MUST roll back, or the caller's transaction stays aborted"
+    )
+    assert any(s.startswith("RELEASE SAVEPOINT ") for s in issued)
+    assert conn.sink["commits"] == 0, "a savepoint is not a commit (§N.2)"
+
+    # …and the 6 real INSERTs must all have been issued BEFORE the probe, so a probe
+    # failure cannot cost the rows this writer exists to write.
+    insert_idx = [i for i, s in enumerate(issued) if "INSERT INTO brahma_class_priors" in s]
+    probe_idx = next(i for i, s in enumerate(issued) if "brahma_event_ontology" in s)
+    assert insert_idx and max(insert_idx) < probe_idx
+
+
 def test_dry_run_reports_unknown_coverage_not_zero():
     """0 unseeded classes would read as FULL COVERAGE. A dry run has not measured
     anything, so it must say so (-1 = unknown), never imply a clean result

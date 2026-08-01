@@ -689,21 +689,47 @@ def seed_class_lifetime_counts(
             )
             upserted += 1
 
-        # Honest per-class coverage gap, MEASURED (§N.8) — never assumed.
+        # ── Honest per-class coverage gap, MEASURED (§N.8) — never assumed ──────
+        #
+        # WRAPPED IN A SAVEPOINT, and that is load-bearing, not defensive style.
+        # This probe is ADVISORY: it must never fail the build, so it is caught. But
+        # in Postgres, catching the Python exception is NOT enough — a failed
+        # statement puts the whole transaction into `InFailedSqlTransaction` and
+        # every subsequent command, including the orchestrator's own work and every
+        # LATER writer sharing `ctx.db_conn`, is refused until a rollback. Swallowing
+        # the exception without rolling back would convert an advisory probe into a
+        # silent poisoning of someone else's transaction. Found by running this
+        # against a real Postgres where `brahma_event_ontology` was absent — the
+        # exact condition the try/except exists for.
+        #
+        # A SAVEPOINT is not a commit: §N.2's "never commits or closes ctx.db_conn"
+        # is respected. The orchestrator's own per-substep savepoint is unaffected;
+        # this one nests inside it and is always released.
         not_seeded = -1
+        probe_sp = "ne_coverage_probe"
         try:
-            cur.execute(
-                "SELECT COUNT(*) AS count FROM brahma_event_ontology "
-                "WHERE event_class_id <> ALL(%s)",
-                ([r.event_class_id for r in LIFETIME_COUNT_ROWS] or [""],),
-            )
-            got = cur.fetchone()
-            not_seeded = got["count"] if isinstance(got, dict) else got[0]
-        except Exception:  # noqa: BLE001 — coverage reporting must never fail the build
-            logger.warning(
-                "[L0/class_lifetime_counts] could not count unseeded ontology classes; "
-                "reporting -1 (unknown) rather than 0 (which would read as full coverage)"
-            )
+            cur.execute(f"SAVEPOINT {probe_sp}")
+        except Exception:  # noqa: BLE001 — no transaction to nest in; skip the probe
+            probe_sp = ""
+        if probe_sp:
+            try:
+                cur.execute(
+                    "SELECT COUNT(*) AS count FROM brahma_event_ontology "
+                    "WHERE event_class_id <> ALL(%s)",
+                    ([r.event_class_id for r in LIFETIME_COUNT_ROWS] or [""],),
+                )
+                got = cur.fetchone()
+                not_seeded = got["count"] if isinstance(got, dict) else got[0]
+                cur.execute(f"RELEASE SAVEPOINT {probe_sp}")
+            except Exception:  # noqa: BLE001 — coverage reporting must never fail the build
+                cur.execute(f"ROLLBACK TO SAVEPOINT {probe_sp}")
+                cur.execute(f"RELEASE SAVEPOINT {probe_sp}")
+                logger.warning(
+                    "[L0/class_lifetime_counts] could not count unseeded ontology "
+                    "classes; reporting -1 (unknown) rather than 0 (which would read as "
+                    "full coverage). Transaction rolled back to savepoint — the caller's "
+                    "transaction is intact."
+                )
 
     if autocommit:
         conn.commit()
