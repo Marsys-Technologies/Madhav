@@ -54,11 +54,17 @@
  *    substrate ships without polarity (`agnivasa`, `ghati_muhurta`) is a NEUTRAL
  *    ANNOTATION, not a silently-assigned doṣa. And a doṣa is cancelled only by a
  *    parihāra row that genuinely exists with `scope='muhurta'`. As of the
- *    substrate PR #930, ZERO such rows exist — every row in `bg_parihara_rules`
- *    is `scope='natal'` (Manglik/Kāla-Sarpa-class bhaṅga), because the ingested
- *    corpus holds no muhūrta-specific cancellation content at chapter/verse
- *    grain. The engine therefore reports residual doṣas uncancelled and NAMES the
- *    gap. It does not reach for a natal bhaṅga rule to rescue a Tuesday.
+ *    substrate PR #930, ZERO such rows existed — every row in `bg_parihara_rules`
+ *    was `scope='natal'` (Manglik/Kāla-Sarpa-class bhaṅga), because the ingested
+ *    corpus held no muhūrta-specific cancellation content at chapter/verse
+ *    grain. ADJUDICATION-10 Part 1 (SHAD_DARSHANA_ADJUDICATIONS_NIGHT3_v1_0.md)
+ *    later found ONE genuine exception already in the corpus (bphs_jaimini
+ *    PG213's Abhijit sarva-doṣaghna gloss) and seeded it as the corpus's first
+ *    `scope='muhurta'` row (migration 524, `dosha_canonical_id='rahu_kalam'`).
+ *    For any OTHER doṣa this one row does not key-match, the engine still
+ *    reports residual doṣas uncancelled and NAMES the gap — it never reaches
+ *    for a natal bhaṅga rule to rescue a Tuesday, and it never invents a
+ *    wildcard/all-doṣa match the schema does not support.
  *
  * 3. 3-STATE COVERAGE HONESTY. A null or empty substrate payload yields
  *    `honest_empty` (or `not_in_corpus` for the census), never `computed`. An
@@ -100,6 +106,11 @@ export interface PariharaRuleRow {
   source_text_id: string
   source_chapter: number | null
   source_citation: string
+  /** ADJUDICATION-10 / migration 524: NULL on every row seeded before that
+   *  migration (not retroactively classified). 'mula_sutra_citation' | 'translator_gloss_in_narrative'
+   *  when set — carried through to `AppliedParihara` so a caller can never mistake a translator's
+   *  narrative aside for a mūla-sūtra verse. */
+  extraction_context?: string | null
 }
 
 /** One row of `bg_muhurta_factor_census`. */
@@ -152,6 +163,9 @@ export interface AppliedParihara {
   cancellation_condition_text: string
   net_standing: string
   source_citation: string
+  /** See `PariharaRuleRow.extraction_context` — carried through so a translator's gloss is never
+   *  presented with a mūla-sūtra verse's evidentiary weight. */
+  extraction_context?: string | null
 }
 
 export type NetStanding = 'clean' | 'fully_cancelled' | 'residual_dosas_present' | 'not_adjudicated'
@@ -283,6 +297,22 @@ const NO_MUHURTA_PARIHARA_NOTE =
   'The adjudication mechanism is live and will cancel the moment cited muhūrta-scope rows land; ' +
   'applying a natal bhaṅga rule to a moment would be a fabricated cancellation, not a rescue.'
 
+// ADJUDICATION-10 Part 1 landed exactly ONE muhūrta-scope row (bphs_jaimini
+// PG213, dosha_canonical_id='rahu_kalam') — the corpus is therefore no longer
+// UNIVERSALLY empty of muhūrta-scope rules, so NO_MUHURTA_PARIHARA_NOTE's
+// blanket "no muhūrta-scope parihāra rule exists in the corpus" claim would be
+// false to attach to every response regardless of substrate content. This note
+// covers the narrower, still-true residual case: rule(s) exist, but none
+// matches THIS specific residual doṣa's dosha_canonical_id (the schema has no
+// wildcard/all-doṣa convention — see bg_parihara_rules.py's MUHURTA_PARIHARA_ROWS
+// docstring). Still named "no muhūrta-scope" (not "no muhūrta-scope RULE
+// MATCHES") to keep the phrase callers/tests already key on.
+const RESIDUAL_UNMATCHED_MUHURTA_NOTE =
+  'No muhūrta-scope parihāra rule in the corpus matches this specific residual doṣa by ' +
+  'dosha_canonical_id, though at least one muhūrta-scope rule exists for a different doṣa ' +
+  '(e.g. ADJUDICATION-10\'s Abhijit sarva-doṣaghna row, keyed to rahu_kalam). Residual doṣas ' +
+  'below are therefore reported UNCANCELLED for this candidate.'
+
 // ── Stage 3: adjudication ───────────────────────────────────────────────────
 
 /**
@@ -325,6 +355,11 @@ function buildLedger(
   let net_standing: NetStanding
   let adjudication_note: string
 
+  // Whether the corpus has ANY muhūrta-scope rule at all — computed live from
+  // the substrate, never assumed, since ADJUDICATION-10 Part 1 means this is
+  // no longer unconditionally false the way it was when this engine landed.
+  const hasMuhurtaRules = substrate.parihara_rules.some((r) => r.scope === 'muhurta')
+
   if (!substrate.parihara_available) {
     net_standing = 'not_adjudicated'
     adjudication_note =
@@ -334,8 +369,9 @@ function buildLedger(
       'residual standing is deliberately left uncomputed rather than assumed clean.'
   } else if (dosas_present.length === 0) {
     net_standing = 'clean'
-    adjudication_note =
-      'No cited doṣa-bearing factor span overlaps this candidate. ' + NO_MUHURTA_PARIHARA_NOTE
+    adjudication_note = hasMuhurtaRules
+      ? 'No cited doṣa-bearing factor span overlaps this candidate.'
+      : 'No cited doṣa-bearing factor span overlaps this candidate. ' + NO_MUHURTA_PARIHARA_NOTE
   } else {
     for (const dosa of dosaRows) {
       const matches = matchingPariharas(dosa.factor_key, substrate.parihara_rules)
@@ -350,6 +386,7 @@ function buildLedger(
           cancellation_condition_text: rule.cancellation_condition_text,
           net_standing: rule.net_standing,
           source_citation: rule.source_citation,
+          extraction_context: rule.extraction_context ?? null,
         })
       }
     }
@@ -357,7 +394,8 @@ function buildLedger(
     adjudication_note =
       residual_dosas.length === 0
         ? `Every doṣa on this candidate is cancelled by a cited muhūrta-scope parihāra rule (${pariharas_applied.length} applied).`
-        : `${residual_dosas.length} of ${dosas_present.length} doṣa(s) remain residual. ` + NO_MUHURTA_PARIHARA_NOTE
+        : `${residual_dosas.length} of ${dosas_present.length} doṣa(s) remain residual. ` +
+          (hasMuhurtaRules ? RESIDUAL_UNMATCHED_MUHURTA_NOTE : NO_MUHURTA_PARIHARA_NOTE)
   }
 
   return {

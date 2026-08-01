@@ -24,6 +24,7 @@ function pariharaRow(over: Record<string, unknown> = {}) {
     source_text_id: 'bphs',
     source_chapter: 80,
     source_citation: 'Brihat Parasara Hora Sastra (bphs), ch.80',
+    extraction_context: null,
     ...over,
   }
 }
@@ -65,6 +66,36 @@ describe('queryPariharaGraphCapability', () => {
     const section = (result.content as Record<string, unknown>)['parihara_rules'] as Record<string, unknown>
     expect(section['muhurta_scope_rule_count']).toBe(1)
     expect(String(section['scope_note'])).not.toContain('ZERO')
+  })
+
+  it('ADJUDICATION-10: serves the real seeded Abhijit row with extraction_context intact', async () => {
+    const abhijitRow = pariharaRow({
+      dosha_canonical_id: 'rahu_kalam',
+      dosha_name_en: 'Rahu Kalam',
+      dosha_category: 'muhurta_kalam',
+      cancellation_condition_text:
+        '...the time goes under the special name of Abhijin Moohurta, and Abhijit Sarva ' +
+        'Doshaghnam or that noon time which cuts and cures all evil influences.',
+      net_standing: 'cancelled',
+      scope: 'muhurta',
+      source_text_id: 'bphs_jaimini',
+      source_chapter: 213,
+      source_citation: 'Jaimini Sutras (bphs_jaimini), trans. B. Suryanarain Rao, 1949, PG213 [chunk bphs_jaimini_pg0213_c01]',
+      extraction_context: 'translator_gloss_in_narrative',
+    })
+    mockQuery
+      .mockResolvedValueOnce({ rows: [abhijitRow] })
+      .mockResolvedValueOnce({ rows: [{ real_cited: '26', placeholder_only: '53' }] })
+    const result = await queryPariharaGraphCapability.handler({ section: 'parihara_rules' }, undefined)
+    const section = (result.content as Record<string, unknown>)['parihara_rules'] as Record<string, unknown>
+    const rows = section['rows'] as Record<string, unknown>[]
+
+    expect(rows).toHaveLength(1)
+    expect(rows[0]!['extraction_context']).toBe('translator_gloss_in_narrative')
+    expect(rows[0]!['net_standing']).toBe('cancelled')
+    expect(section['muhurta_scope_rule_count']).toBe(1)
+    // The SQL must actually select the column, not just pass through a mock shape:
+    expect(mockQuery.mock.calls[0][0] as string).toContain('extraction_context')
   })
 
   it('returns activity rules filtered and param-bound', async () => {
