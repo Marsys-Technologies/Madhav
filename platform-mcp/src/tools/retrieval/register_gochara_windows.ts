@@ -248,6 +248,22 @@ const ROW_COLUMNS = `
   computed_at, continuity_state
 `
 
+// ADJUDICATION-6 (SHAD_DARSHANA_ADJUDICATIONS_NIGHT3_v1_0.md, migration 527):
+// GOCHARA-2.0 writes generation-stamped rows BESIDE v1, never over it — so
+// every read that SERVES rows to a caller must resolve which generation is
+// currently authoritative for this chart and filter to exactly that one, or
+// a 2.0 row and its v1 counterpart for the same (chart_id, event_class,
+// window) would both appear in one response. An ABSENT `kala_gochara_authority`
+// row means 'v1' authoritative BY DEFINITION (never requires a seeded row —
+// see migration 527's COMMENT ON TABLE). Today this is a no-op: every row is
+// generation='v1' and the authority table is empty everywhere, so this filter
+// is byte-identical to its absence — it only becomes load-bearing once a 2.0
+// writer lands a second generation's rows for the same chart.
+const AUTHORITATIVE_GENERATION_FILTER =
+  " AND kala_gochara_windows.generation = COALESCE(" +
+  '(SELECT authoritative_generation FROM kala_gochara_authority ' +
+  "WHERE chart_id = kala_gochara_windows.chart_id), 'v1')"
+
 async function queryRows(
   sql: string,
   params: unknown[],
@@ -529,7 +545,8 @@ export async function computeGocharaActivation(
 
   const params: unknown[] = [chartId, asOfDate]
   let sql = `SELECT ${ROW_COLUMNS} FROM kala_gochara_windows
-             WHERE chart_id = $1 AND window_start <= $2 AND window_end >= $2`
+             WHERE chart_id = $1 AND window_start <= $2 AND window_end >= $2` +
+    AUTHORITATIVE_GENERATION_FILTER
   if (eventClass) {
     params.push(eventClass)
     sql += ` AND event_class = $${params.length}`
@@ -672,7 +689,8 @@ export async function computeGocharaForecast(
 
   const params: unknown[] = [chartId, dateRange.end, dateRange.start]
   let sql = `SELECT ${ROW_COLUMNS} FROM kala_gochara_windows
-             WHERE chart_id = $1 AND window_start <= $2 AND window_end >= $3`
+             WHERE chart_id = $1 AND window_start <= $2 AND window_end >= $3` +
+    AUTHORITATIVE_GENERATION_FILTER
   if (eventClass) {
     params.push(eventClass)
     sql += ` AND event_class = $${params.length}`
@@ -873,7 +891,8 @@ export async function computeGocharaElectionAvoidance(
 
   const params: unknown[] = [chartId, dateRange.end, dateRange.start]
   let sql = `SELECT ${ROW_COLUMNS} FROM kala_gochara_windows
-             WHERE chart_id = $1 AND is_adverse = true AND window_start <= $2 AND window_end >= $3`
+             WHERE chart_id = $1 AND is_adverse = true AND window_start <= $2 AND window_end >= $3` +
+    AUTHORITATIVE_GENERATION_FILTER
   if (eventClass) {
     params.push(eventClass)
     sql += ` AND event_class = $${params.length}`
