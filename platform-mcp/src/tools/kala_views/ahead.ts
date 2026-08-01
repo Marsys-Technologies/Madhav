@@ -115,6 +115,12 @@ import {
 } from '../../lib/kala_envelope.js'
 import { composeArgument } from '../../lib/argument_composer.js'
 import { autoDetectTrimmableSections, finalizeMcpBudget } from '../../lib/response_budget.js'
+// ṢAḌ-DARŚANA W4 (Lane R, Elevation §6 D4): Mode-1 ritual-opportunity rows join the
+// 90-day digest. `fetchLatticeSubstrate` is the FROZEN engine's own fetcher and
+// `scoreMode1Opportunities` terminates at that same engine — the ONE-ENGINE RULE holds
+// through this path too; nothing here re-implements adjudication or grading.
+import { fetchLatticeSubstrate } from '../../lib/kala_lattice_query.js'
+import { scoreMode1Opportunities } from '../../lib/kala_ritual_resonance.js'
 
 // ── Infrastructure (self-contained proxy helper — see now.ts's identical header note on
 // why this is duplicated rather than shared: avoids coupling this lane's facade to files
@@ -900,11 +906,24 @@ function computeRecurrenceLadder(
 // computation, template-composed prose only (B.10). ─────────────────────────────────────
 
 export interface AheadDigestItem {
-  kind: 'temporal_window' | 'probabilistic_projection' | 'gulika_kalam' | 'recurrence_ladder_point' | 'mudda_dasha_varsha'
+  // 'ritual_opportunity' added at ṢAḌ-DARŚANA W4 (Lane R, the Elevation §6 D4 clause):
+  // Mode-1 (window, rite) pairs join the digest now that Mode 1 exists. The digest stays a
+  // SELECTION over already-computed rows — Mode 1 is computed by the ritual path and joined
+  // here, never recomputed inside ahead.ts.
+  kind: 'temporal_window' | 'probabilistic_projection' | 'gulika_kalam' | 'recurrence_ladder_point' | 'mudda_dasha_varsha' | 'ritual_opportunity'
   label: string
   window_or_date: string
   detail: string
   fact_ids: string[]
+}
+
+/** One already-computed Mode-1 opportunity, in the minimal shape this digest needs.
+ *  Structurally identical to the fields `RitualOpportunity` exposes — declared locally so
+ *  `ahead.ts` takes no import-graph dependency on Lane R's scorer for a SELECTION step. */
+export interface AheadRitualOpportunityInput {
+  window: { start_utc: string; end_utc: string }
+  rite: { rite_class: string | null; planet: string | null; citation: string | null }
+  score_vector: { composite: number | null; factors_present: string[]; factors_absent: string[] }
 }
 
 export interface AheadDigest90d {
@@ -930,10 +949,34 @@ function overlapsDigestWindow(
   return end >= asOf && start <= to
 }
 
-const RITUAL_OPPORTUNITIES_NOTE =
-  'Ritual-opportunity rows (kala_ritual_get Mode 1) are not included in this digest — that ' +
-  'computation lands at wave W4 (SHAD_DARSHANA_BRIEF_v2_0.md §3 W4); per the campaign\'s own ' +
-  'Gate W1 note, a ritual-free digest is the correct W1 state, not an omission.'
+/**
+ * ṢAḌ-DARŚANA W4 (Lane R, the Elevation §6 D4 clause) REPLACED THIS NOTE'S SEMANTICS.
+ *
+ * At W1 it was a standing placeholder naming W4 as future work. Post-W4 its survival
+ * UNCHANGED would itself be the gate failure (design §9 G8: "the W1 placeholder note
+ * surviving unchanged — its presence post-W4 is itself the FAIL"). It is now either the
+ * EMPTY STRING (rows are present, so no note is needed) or an honest-empty statement
+ * NAMING THE HORIZON ACTUALLY SEARCHED — dates, not "the horizon".
+ */
+function ritualOpportunitiesNote(
+  rows: AheadRitualOpportunityInput[] | null,
+  asOfDate: string,
+  digestToDate: string,
+): string {
+  if (rows !== null && rows.length > 0) return ''
+  if (rows === null) {
+    return (
+      `No ritual-opportunity rows were joined into this digest: the Mode-1 opportunity scan was ` +
+      `not supplied to this call, so the horizon ${asOfDate} .. ${digestToDate} was NOT searched ` +
+      `for them. This is an unsearched horizon, not an empty one — the two are different claims.`
+    )
+  }
+  return (
+    `No ritual opportunity was found in ${asOfDate} .. ${digestToDate} — the horizon WAS searched ` +
+    `(kala_ritual_get Mode 1, over the muhūrta lattice's auspicious combination-yoga spans) and ` +
+    `returned nothing for this chart. An honest empty over a named, searched horizon.`
+  )
+}
 
 /**
  * E6-lite: builds the fixed 90-day-forward digest by SELECTING (never computing) from the
@@ -952,8 +995,12 @@ function buildAheadDigest90d(params: {
   gulikaKalamAhead: GulikaKalamAheadWindow[]
   recurrenceLadder: RecurrenceLadderEntry[]
   muddaDashaVarsha: MuddaDashaVarshaJoin | null
+  /** W4 D4: already-computed Mode-1 rows to SELECT from. `null` means the scan was not
+   *  supplied to this call — distinct from `[]`, which means it ran and found nothing. */
+  ritualOpportunities?: AheadRitualOpportunityInput[] | null
 }): AheadDigest90d {
   const { asOfDate, digestToDate, windowFamilies, projectionFamilies, gulikaKalamAhead, recurrenceLadder, muddaDashaVarsha } = params
+  const ritualOpportunities = params.ritualOpportunities ?? null
   const items: AheadDigestItem[] = []
 
   for (const w of windowFamilies) {
@@ -1044,6 +1091,23 @@ function buildAheadDigest90d(params: {
     })
   }
 
+  // ── W4 D4: ritual-opportunity rows, SELECTED (never computed here) ──────────────────
+  for (const o of ritualOpportunities ?? []) {
+    if (!overlapsDigestWindow(o.window.start_utc, o.window.end_utc, asOfDate, digestToDate)) continue
+    const present = o.score_vector.factors_present
+    items.push({
+      kind: 'ritual_opportunity',
+      label: `${o.rite.rite_class ?? 'rite'}${o.rite.planet ? ` (${o.rite.planet})` : ''}`,
+      window_or_date: `${o.window.start_utc.slice(0, 10)} .. ${o.window.end_utc.slice(0, 10)}`,
+      detail:
+        `composite ${o.score_vector.composite ?? 'not scored'} over ${present.length} present ` +
+        `factor(s) [${present.join(', ') || 'none'}]; ${o.score_vector.factors_absent.length} absent ` +
+        `and dropped from the product, never imputed. ` +
+        (o.rite.citation ?? 'no resolvable citation — this row is NOT offered as a prescription'),
+      fact_ids: [],
+    })
+  }
+
   items.sort((a, b) => a.window_or_date.localeCompare(b.window_or_date))
 
   return {
@@ -1052,7 +1116,7 @@ function buildAheadDigest90d(params: {
     horizon_days: 90,
     items,
     item_count: items.length,
-    ritual_opportunities_note: RITUAL_OPPORTUNITIES_NOTE,
+    ritual_opportunities_note: ritualOpportunitiesNote(ritualOpportunities, asOfDate, digestToDate),
   }
 }
 
@@ -1286,6 +1350,57 @@ export async function computeKalaAhead(
 
   // E6-lite — the fixed 90-day forward digest, a pure selection over the fields above.
   const digestToDate = new Date(today.getTime() + 90 * 86400000).toISOString().slice(0, 10)
+
+  // ── W4 D4 (Elevation §6): Mode-1 ritual-opportunity rows join the digest. ────────────
+  // COMPUTED BY THE RITUAL PATH, JOINED HERE — the digest's own discipline is "SELECTING,
+  // never computing", so this calls Lane R's Mode-1 scorer (which itself terminates at the
+  // FROZEN lattice engine) and then SELECTS from its output. `null` on any failure means
+  // "not searched", which the note distinguishes from "searched and empty" — two different
+  // claims that a single empty array would have collapsed into one.
+  let ritualOpportunities: AheadRitualOpportunityInput[] | null = null
+  try {
+    const ritualSubstrate = await fetchLatticeSubstrate(
+      {
+        start_utc: new Date(`${dateFrom}T00:00:00Z`).toISOString(),
+        end_utc: new Date(`${digestToDate}T23:59:59Z`).toISOString(),
+      },
+      principal,
+    )
+    if (ritualSubstrate.lattice_available) {
+      const windows = ritualSubstrate.lattice_rows
+        .filter((r) => r.factor_family === 'combination_yoga')
+        .filter((r) => String((r.detail as { strength?: unknown } | null)?.strength ?? '') === 'auspicious')
+        .map((r) => ({
+          start_utc: r.start_utc,
+          end_utc: r.end_utc,
+          authority_basis: [`${r.factor_family}/${r.factor_key}@${r.start_utc}`],
+          binding_families: [r.factor_family],
+        }))
+      const scan = await scoreMode1Opportunities(
+        {
+          chartId,
+          activityClass: 'upaya_ritual',
+          windows,
+          substrate: ritualSubstrate,
+          subjectLabel: 'ritual opportunity (AHEAD 90-day digest, Mode 1)',
+          limit: 5,
+        },
+        principal,
+      )
+      ritualOpportunities = scan.opportunities.map((o) => ({
+        window: o.window,
+        rite: { rite_class: o.rite.rite_class, planet: o.rite.planet, citation: o.rite.citation },
+        score_vector: {
+          composite: o.score_vector.composite,
+          factors_present: o.score_vector.factors_present,
+          factors_absent: o.score_vector.factors_absent,
+        },
+      }))
+    }
+  } catch {
+    ritualOpportunities = null
+  }
+
   const digest90d = buildAheadDigest90d({
     asOfDate: dateFrom,
     digestToDate,
@@ -1294,6 +1409,7 @@ export async function computeKalaAhead(
     gulikaKalamAhead,
     recurrenceLadder,
     muddaDashaVarsha: muddaDashaVarsha.result,
+    ritualOpportunities,
   })
 
   const reading = buildAheadReading({ horizonLabel, windowFamilies, projectionFamilies, windowsOk, projectionsOk })
@@ -1551,7 +1667,7 @@ identical column name is confirmed genuinely NULL in production and is never the
 digest_90d (E6-lite): a curated, fixed 90-day-forward digest — a selection over windows / \
 projections / gulika_kalam_ahead / recurrence_ladder / mudda_dasha_varsha bounded to \
 today..+90d, never new computation. Ritual-opportunity rows are intentionally absent \
-(kala_ritual_get Mode 1 lands at wave W4) — see the digest's own ritual_opportunities_note.
+(kala_ritual_get Mode 1) — see the digest's own ritual_opportunities_note, which names the exact horizon searched when no row is present.
 
 Output includes: reading (structured argument) + reading_prose (composed text) + windows + \
 projections + gulika_kalam_ahead + dasha_lord_transit_condition_forward + mudda_dasha_varsha \

@@ -1,0 +1,26 @@
+{
+  "_source": "SHAD_DARSHANA_BRIEF_v2_0.md §3 W4 — CANNED W4 MODE-2 TEST FIXTURE (authoritative). Brief path string: tests/fixtures/yajna_mode2_gate.json; actual path per KALA_W4_UPAYA_DESIGN_v1_0.md ruling R-3. The brief's literal string names a directory that has never existed in this package — neither `tests/fixtures/` nor `platform-mcp/tests/`. The MCP package's convention is `test/` (singular), included by vitest.config.ts as `test/**/*.test.ts`, and the only fixtures directory under the package is `platform-mcp/test/accuracy/fixtures/`. Ruling R-3 corrects the path to `platform-mcp/test/fixtures/yajna_mode2_gate.json` and records the divergence HERE so it is deliberate and traceable rather than a silent relocation. Matching the package's real layout beats matching a path that has never existed.",
+  "_note": "This file is the FIRST COMMITTED INSTANCE of sky_pattern_spec v1 (KALA_SUPREME_ELEVATION_v1_0.md §8: 'the W4 fixture is its first committed instance'), so its shape is also the schema's worked example. The six constraints below are the brief's, verbatim and unaltered — the Conductor discharges this fixture exactly and does not substitute an easier query.",
+  "_charts": {
+    "primary": "482012f1-710e-4a25-994a-93821f5871aa",
+    "mirror": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+    "why_two": "Design §6.3's both-charts clause: the two charts must return DIFFERENT candidate sets, and the difference must TRACE TO the chart-relative constraint. Part 2 of that detector re-runs both charts with the chart_relative/tara_bala constraint REMOVED; the two sets must then COINCIDE. If they still differ, something other than the chart is varying the answer — nondeterminism, or a leak — and the gate FAILS with that diagnosis. Part 2 is what makes this an earned signal rather than an inequality that happens to hold."
+  },
+  "spec_version": "sky_pattern_spec_v1",
+  "all": [
+    { "planet_state":   { "body": "Guru", "in": { "hora_lord": true } } },
+    { "panchanga":      { "vara": "guru-vara" } },
+    { "residence":      { "kind": "agnivasa", "state": "favorable", "per": "paddhati_profile" } },
+    { "panchanga_not":  { "karana": ["vishti"] } },
+    { "chart_relative": { "kind": "tara_bala", "not_in": ["vadha", "vipat", "pratyak"] } },
+    { "kalam_not":      ["rahu_kalam"] }
+  ],
+  "horizon": { "months": 24 },
+  "_pass_conditions": {
+    "1_non_empty_or_honestly_empty": "candidates.length >= 1 OR (candidates.length === 0 AND gap_report.eliminating_constraint !== null AND gap_report.next_occurrence_state !== 'not_searched'). An unexplained empty result FAILS. Expected shape per ADJUDICATION-8's own arithmetic: Guru-vara (~104 days in 24 months) × Prithvi tithi (7 of 30 ~ 23%) × non-vishti × tara-bala (excluding 3 of 9) ~ 10-16 candidate day-hours before the Guru-hora and rahu-kalam intra-day cuts. The gate asserts the PASS CONDITION, not the predicted count — a count assertion would be fitting the test to the prediction.",
+    "2_precision_labels_correct": "every candidate has precision_regime === 'intra_day' AND a non-blank precision_basis naming a panchangika or day-part family. This fixture is panchangika-bound throughout, so 'day_grade' here is a FAIL — it would mean Elevation §8's precision-regime honesty is being applied BACKWARDS. Second assertion: no constraint in the fixture is of kind transit_contact or mutual_configuration, so nothing in it can legitimately degrade the label (this asserts the REASON the label is right, not just the label — §N.8).",
+    "3_judgment_ledger_present": "every candidate carries a judgment_ledger with all of dosas_present, pariharas_applied, residual_dosas, net_standing (the frozen engine's JudgmentLedger type), AND the response carries the paddhati divergence block whose state is drawn from the closed set {none_computed, diverges, agrees}. NOTE ON CANCELLATIONS: every bg_parihara_rules row is scope='natal' except the one muhurta-scope Abhijit row ADJUDICATION-10 authorises, so pariharas_applied will usually be EMPTY and residuals reported uncancelled with the gap named — which is correct. The gate must NOT treat an empty pariharas_applied as a defect. Pressing a natal-scope cancellation into muhurta service is a fabricated cancellation and a §N.5 authority inversion.",
+    "4_census_honesty": "the coverage block enumerates ALL SIX constraints, each with a state from {computed, honest_empty, not_in_corpus} and, for the non-computed ones, a reason. After ruling R-1's lattice extension all six are expected computed — with tara_bala explicitly labelled COMPUTED CHART-RELATIVE AT QUERY TIME and citing the janma-nakshatra fact_id, NOT claimed against the global census row (which correctly stays not_computed). Six entries, one per constraint, no more and no fewer.",
+    "precedence_between_1_and_4": "A not_in_corpus constraint is DROPPED from the conjunction and the search runs on the remaining five. If the reduced search returns candidates, (1) is satisfied normally and the fixture is PARKED-HONEST solely on the missing rule table. If it returns zero, (1) still requires the gap report to name the eliminating constraint. An empty result with NEITHER a not_in_corpus flag NOR a gap report is a FAIL in every case — 'it returned nothing' is never itself an explanation."
+  }
+}

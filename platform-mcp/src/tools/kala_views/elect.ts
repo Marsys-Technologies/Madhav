@@ -88,6 +88,18 @@ import {
   type LatticeAdjudication,
   type LatticeSubstrate,
 } from '../../lib/kala_lattice_query.js'
+// ṢAḌ-DARŚANA W4 Lane R — item 38's closing half (the ritual pairing) and the §5.4
+// mortality hard exclusion that heads the rite-pairing path (ADJUDICATION-13, binding).
+import {
+  buildMortalityExclusionRefusal,
+  detectMortalityExclusion,
+  type MortalityExclusionRefusal,
+} from '../../lib/kala_sky_pattern.js'
+import {
+  scoreMode1Opportunities,
+  type ActivityClass,
+  type RitualOpportunity,
+} from '../../lib/kala_ritual_resonance.js'
 
 // ── Input schema ─────────────────────────────────────────────────────────────────────
 
@@ -160,6 +172,18 @@ export interface KalaElectCandidate {
   // lattice substrate could not be read for this call — an honest absence, never a
   // fabricated clean verdict.
   judgment_ledger: JudgmentLedger | null
+  // ── Item 38's CLOSING half (ṢAḌ-DARŚANA W4, design §3.5) ───────────────────────────
+  // ELECT now serves the act-time slate AND the paired preparatory rite with its own best
+  // time, as ONE answer. For each surviving act-time candidate, Lane R's Mode-1 resonance
+  // scorer runs over a PREPARATORY HORIZON ENDING AT THIS CANDIDATE'S START — a rite that
+  // has not happened yet cannot prepare an act that has.
+  //
+  // `null` WITH A REASON is a legal and frequent answer (design §3.5, verbatim), and the
+  // reason is carried in `paired_rite_reason` rather than dropped — an unexplained null
+  // would be indistinguishable from an unwired field, which is the `hora_ladder` inversion
+  // class this campaign already caught once.
+  paired_rite: RitualOpportunity | null
+  paired_rite_reason: string | null
 }
 
 export interface KalaElectResponse extends KalaEnvelope<ArgumentReading> {
@@ -248,7 +272,11 @@ function buildArgumentReading(
   return { thesis, evidence, dissent, verdict, falsifier }
 }
 
-function buildCoverage(result: MuhurtaFinderResult, adjudication: LatticeAdjudication | null): KalaCoverageEntry[] {
+function buildCoverage(
+  result: MuhurtaFinderResult,
+  adjudication: LatticeAdjudication | null,
+  pairing: PairingOutcome | null,
+): KalaCoverageEntry[] {
   const coverage: KalaCoverageEntry[] = [computedCoverage('panchanga_dasha_transit_muhurta_scoring')]
 
   const laneF = result.lane_f
@@ -336,25 +364,196 @@ function buildCoverage(result: MuhurtaFinderResult, adjudication: LatticeAdjudic
     ))
   }
 
-  coverage.push(notInCorpusCoverage(
+  // Item 7 (ṢAḌ-DARŚANA W4 ruling R-1): the muhūrta-lagna substrate now EXISTS as
+  // bg_muhurta_lattice factor_family='lagna' (12–13 rising-sign spans/day, each carrying
+  // the lagna lord and every graha's sign at the span start). What this ELECT facade does
+  // NOT yet do is refine its act-time candidates to that precision — so the coverage state
+  // is `honest_empty` (the substrate is there; this surface has not consumed it) rather
+  // than `not_in_corpus` (which would now be false). Stating the difference is the point:
+  // a stale `not_in_corpus` would keep reporting a corpus gap that has closed.
+  const lagnaAtoms = adjudication === null
+    ? 0
+    : adjudication.gap_report.factor_families_evaluated.filter((f) => f === 'lagna').length
+  coverage.push(honestEmptyCoverage(
     'muhurta_lagna_strength',
-    'instant-lagna computation + strength check (item 7) not yet built; candidates are not ' +
-    'refined to intra-day muhurta-lagna precision.',
-  ))
-  coverage.push(notInCorpusCoverage(
-    'ritual_pairing',
-    'Mode-3 ritual pairing (item 38\'s W4 half, Elevation §8) — the preparatory rite + its ' +
-    'own best time served alongside the act-time slate as one answer — is not yet wired; ' +
-    'this response serves the act-time slate only.',
+    lagnaAtoms > 0
+      ? 'the muhūrta-lagna substrate IS built (bg_muhurta_lattice factor_family=lagna, ruling ' +
+        'R-1) and carries the rising-sign span + lagna lord + every graha\'s sign at span start, ' +
+        'but this ELECT facade does not yet refine its act-time candidates to that precision. ' +
+        'The gap is in THIS surface, not in the corpus.'
+      : 'instant-lagna strength is not refined into these candidates. The substrate exists ' +
+        '(bg_muhurta_lattice factor_family=lagna, ruling R-1) but no lagna atom was returned for ' +
+        'this horizon — the L0 lattice may not be rebuilt in this environment.',
   ))
 
+  // Item 38's CLOSING half. This was an UNCONDITIONAL not_in_corpus at W1 — the exact
+  // shape the `hora_ladder` honesty inversion took. It is now genuinely conditioned on
+  // whether a paired rite was actually produced, and the empty case names WHY.
+  const pairedCount = pairing?.paired.filter((p) => p !== null).length ?? 0
+  if (pairing === null) {
+    coverage.push(honestEmptyCoverage(
+      'ritual_pairing',
+      'the ritual-pairing pass did not run for this call (no surviving act-time candidate, or ' +
+      'the rite substrate could not be read). No paired rite is simulated.',
+    ))
+  } else if (pairedCount > 0) {
+    coverage.push(computedCoverage('ritual_pairing'))
+  } else {
+    coverage.push(honestEmptyCoverage(
+      'ritual_pairing',
+      pairing.reason ??
+      'the pairing pass ran and produced no rite for any candidate — an honest empty, not an ' +
+      'unwired field. Each candidate carries its own paired_rite_reason.',
+    ))
+  }
+
   return coverage
+}
+
+// ── Item 38's closing half: the ritual pairing ───────────────────────────────────────
+
+/** The outcome of one pairing pass over the whole slate. `paired[i]` corresponds to
+ *  `candidates[i]`; a `null` entry is legal and carries its reason in `reasons[i]`. */
+interface PairingOutcome {
+  paired: (RitualOpportunity | null)[]
+  reasons: (string | null)[]
+  /** Slate-level reason when NOTHING paired. `null` when at least one did. */
+  reason: string | null
+}
+
+/** Maps an ELECT undertaking to the `bg_muhurta_activity_rules` class the rite should be
+ *  graded against. This is a closed-vocabulary → closed-vocabulary mapping between two
+ *  tables THIS repo owns, not an astrological correspondence: `remedial_ritual` IS
+ *  `upaya_ritual`, `japa_start` IS `mantra_initiation`. Anything with no exact counterpart
+ *  falls back to `upaya_ritual` — the preparatory rite for an arbitrary undertaking IS a
+ *  remedial rite, which is that class's own definition. */
+function activityClassForUndertaking(undertaking: string): ActivityClass {
+  switch (undertaking) {
+    case 'marriage': return 'vivah'
+    case 'travel': return 'yatra'
+    case 'business': return 'vyapara'
+    case 'property': return 'property_purchase'
+    case 'japa_start': return 'mantra_initiation'
+    case 'spiritual_initiation': return 'sadhana_initiation'
+    case 'remedial_ritual': return 'upaya_ritual'
+    default: return 'upaya_ritual'
+  }
+}
+
+/**
+ * For each surviving act-time candidate, find the best-scoring preparatory rite window in
+ * the horizon ENDING AT that candidate's start (design §3.5). Uses Lane R's Mode-1 scorer
+ * and, through it, the FROZEN engine — no second scoring path.
+ */
+async function buildRitualPairing(
+  input: KalaElectInput,
+  candidates: { start: string; end: string; disqualified: boolean }[],
+  substrate: LatticeSubstrate | null,
+  principal: Principal,
+): Promise<PairingOutcome | null> {
+  if (candidates.length === 0) return null
+  if (substrate === null || !substrate.lattice_available) {
+    return {
+      paired: candidates.map(() => null),
+      reasons: candidates.map(
+        () =>
+          'the muhūrta lattice payload could not be read for this call, so no preparatory-rite ' +
+          'window was searched. No rite is simulated.',
+      ),
+      reason:
+        'the muhūrta lattice payload could not be read for this call — the pairing pass had no ' +
+        'substrate to search and produced nothing. Not an unwired field: an unavailable substrate.',
+    }
+  }
+
+  const activityClass = activityClassForUndertaking(input.undertaking)
+  const paired: (RitualOpportunity | null)[] = []
+  const reasons: (string | null)[] = []
+
+  for (const c of candidates) {
+    if (c.disqualified) {
+      paired.push(null)
+      reasons.push('candidate carries a hard veto — no preparatory rite is paired to a disqualified act-time window.')
+      continue
+    }
+    const actStart = Date.parse(c.start)
+    if (Number.isNaN(actStart)) {
+      paired.push(null)
+      reasons.push('candidate start could not be parsed, so no preparatory horizon could be bounded.')
+      continue
+    }
+    // The preparatory horizon ENDS at the act-time candidate's start. A rite that has not
+    // happened yet cannot prepare an act that has.
+    const prepStart = new Date(Math.max(Date.now(), actStart - 30 * 86_400_000)).toISOString()
+    const prepEnd = new Date(actStart).toISOString()
+    const windows = substrate.lattice_rows
+      .filter((r) => r.factor_family === 'combination_yoga')
+      .filter((r) => String((r.detail as { strength?: unknown } | null)?.strength ?? '') === 'auspicious')
+      .filter((r) => {
+        const rs = Date.parse(r.start_utc)
+        const re = Date.parse(r.end_utc)
+        return !Number.isNaN(rs) && !Number.isNaN(re) && rs < Date.parse(prepEnd) && re > Date.parse(prepStart)
+      })
+      .map((r) => ({
+        start_utc: new Date(Math.max(Date.parse(r.start_utc), Date.parse(prepStart))).toISOString(),
+        end_utc: new Date(Math.min(Date.parse(r.end_utc), Date.parse(prepEnd))).toISOString(),
+        authority_basis: [`${r.factor_family}/${r.factor_key}@${r.start_utc}`],
+        binding_families: [r.factor_family],
+      }))
+
+    if (windows.length === 0) {
+      paired.push(null)
+      reasons.push(
+        `no auspicious combination-yoga span exists in the preparatory horizon ` +
+        `(${prepStart} .. ${prepEnd}) for this candidate. An honest empty — no rite window is invented.`,
+      )
+      continue
+    }
+
+    const scored = await scoreMode1Opportunities(
+      { chartId: input.chart_id, activityClass, windows, substrate, subjectLabel: `${input.undertaking} (preparatory rite)`, limit: 1 },
+      principal,
+    )
+    const best = scored.opportunities[0] ?? null
+    paired.push(best)
+    reasons.push(
+      best === null
+        ? 'preparatory windows exist but none could be scored (every score factor was absent for this chart).'
+        : null,
+    )
+  }
+
+  const anyPaired = paired.some((p) => p !== null)
+  return {
+    paired,
+    reasons,
+    reason: anyPaired
+      ? null
+      : 'the pairing pass ran over every surviving candidate and produced no rite — each candidate ' +
+        'carries its own paired_rite_reason. An honest empty, not an unwired field.',
+  }
 }
 
 export async function handleKalaElectGet(
   input: KalaElectInput,
   principal: Principal,
-): Promise<{ response?: KalaElectResponse; error?: { message: string; extra?: Record<string, unknown> } }> {
+): Promise<{
+  response?: KalaElectResponse
+  withheld?: MortalityExclusionRefusal
+  error?: { message: string; extra?: Record<string, unknown> }
+}> {
+  // ══════════════════════════════════════════════════════════════════════════════
+  // §5.4 INDIVIDUALIZED-MORTALITY-WINDOW HARD EXCLUSION (ADJUDICATION-13, binding).
+  // FIRST, before any computation. Pure and synchronous — structurally incapable of
+  // awaiting I/O, so it cannot be reordered after a fetch by a later refactor.
+  // NOT a disclosure tier (`native_self` does not unlock it) and NOT conditioned on
+  // filing. Design §3.4: "The same §5.4 check heads the ELECT rite-pairing path."
+  // ══════════════════════════════════════════════════════════════════════════════
+  const mortality = detectMortalityExclusion(input)
+  if (mortality.excluded) {
+    return { withheld: buildMortalityExclusionRefusal(mortality) }
+  }
+
   const dateRange = input.date_range ?? defaultDateRange()
 
   const finderInput = MuhurtaFinderInputSchema.parse({
@@ -405,24 +604,41 @@ export async function handleKalaElectGet(
   // answer stands on its own. The engine degrades to an honest `honest_empty` coverage
   // entry instead (see buildCoverage), which is exactly the 3-state contract.
   let adjudication: LatticeAdjudication | null = null
+  let latticeSubstrate: LatticeSubstrate | null = null
   try {
-    const substrate: LatticeSubstrate = await fetchLatticeSubstrate(
+    latticeSubstrate = await fetchLatticeSubstrate(
       {
         start_utc: new Date(`${dateRange.start}T00:00:00Z`).toISOString(),
         end_utc: new Date(`${dateRange.end}T23:59:59Z`).toISOString(),
       },
       principal,
     )
-    adjudication = adjudicateCandidates(intervals, substrate, {
+    adjudication = adjudicateCandidates(intervals, latticeSubstrate, {
       subject_label: `${input.undertaking} (ELECT act-time)`,
     })
   } catch {
     adjudication = null
+    latticeSubstrate = null
   }
   const ledgerById = new Map((adjudication?.ledgers ?? []).map((l) => [l.candidate_id, l]))
 
+  // ── Item 38's closing half: pair each act-time candidate with its preparatory rite ──
+  // A pairing failure must never fail the whole election — ELECT's act-time answer stands
+  // on its own and the coverage entry reports the gap honestly.
+  let pairing: PairingOutcome | null = null
+  try {
+    pairing = await buildRitualPairing(
+      input,
+      windows.map((w) => ({ start: w.start, end: w.end, disqualified: w.disqualified ?? false })),
+      latticeSubstrate,
+      principal,
+    )
+  } catch {
+    pairing = null
+  }
+
   const reading = buildArgumentReading(input.undertaking, result)
-  const coverage = buildCoverage(result, adjudication)
+  const coverage = buildCoverage(result, adjudication, pairing)
   const composed = composeArgument(reading)
 
   const questionFrame: QuestionFrame | null = input.question_frame ?? null
@@ -475,6 +691,12 @@ export async function handleKalaElectGet(
       grading_tier_label: grade.tier_label,
       hora_ladder: w.hora_ladder ?? [],
       judgment_ledger: ledgerById.get(`c${i}`) ?? null,
+      paired_rite: pairing?.paired[i] ?? null,
+      paired_rite_reason:
+        pairing?.reasons[i] ??
+        (pairing === null
+          ? 'the ritual-pairing pass did not run for this call — no rite is simulated.'
+          : null),
     }
   })
 
@@ -596,15 +818,24 @@ export function registerKalaElectTool(server: McpServer, principal: Principal): 
     'A ritual/yajña question with no named undertaking routes to kala_ritual_get instead ' +
     '(Modes 1-2) — this tool never accepts a bare sky-pattern or opportunity-scan query. ' +
     'Honest remaining gaps: no muhūrta-scope doṣa-cancellation rule exists in the ingested ' +
-    'corpus, so residual doṣas are reported uncancelled; muhūrta-lagna refinement (item 7) and ' +
-    'ritual pairing (item 38\'s W4 half) are not yet wired — all reported via this response\'s ' +
-    'coverage block, never silently omitted.',
+    'corpus, so residual doṣas are reported uncancelled. ITEM 38 IS NOW CLOSED: each surviving ' +
+    'candidate also carries paired_rite — the preparatory rite AND its own best time, scored ' +
+    'over a horizon that ENDS at that candidate\'s start, served as one answer with the ' +
+    'act-time slate. A null paired_rite is legal and always carries paired_rite_reason. ' +
+    'Muhūrta-lagna refinement (item 7) has substrate but is not yet consumed by this facade — ' +
+    'reported via the coverage block, never silently omitted. A request whose shape or ' +
+    'substrate touches the span-of-life / death-timing question is WITHHELD outright under ' +
+    'MACRO_PLAN §3.5.C, under every audience tier.',
     KalaElectInputShape,
     async (args) => {
       const parsed = args as KalaElectInput
       if (!parsed.chart_id) return errorOutput('kala_elect_get', 'chart_id is required')
       try {
-        const { response, error } = await handleKalaElectGet(parsed, principal)
+        const { response, error, withheld } = await handleKalaElectGet(parsed, principal)
+        // §5.4 (ADJUDICATION-13): the refusal is a SUCCESSFUL response carrying no content,
+        // not an error. Reporting it as an error would let a caller retry it as a transient
+        // failure; it is a permanent, deliberate withholding.
+        if (withheld) return dualOutput(withheld as unknown as KalaElectResponse)
         if (error) return errorOutput('kala_elect_get', error.message, error.extra)
         return dualOutput(response)
       } catch (err) {
