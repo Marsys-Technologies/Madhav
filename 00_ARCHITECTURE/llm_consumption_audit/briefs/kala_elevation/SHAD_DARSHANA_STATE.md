@@ -94,6 +94,27 @@ production by design).
 
 ---
 
+## NIGHT 3 RESUMED SESSION (2026-08-01, ~08:36 IST — the prior Night-3 session was stopped externally ~08:31; this session resumed from its honest park)
+
+**Session-open protocol discharged:**
+- **Ledger PRs landed**: PR #1000 (the stopped session's honest wave-status/N-block/docket close) merged to integration @ `52deb3a1`. All four cancelled-lane worktrees (`w2-integration`, `w3-lattice-engine`, `w3-moorti-vedha`, `w3k-inventory`) verified clean, zero commits — the stopped session's "no work lost" claim independently confirmed.
+- **PR #999 (W3 items 16+17) CI failure diagnosed + fixed**: two stale exact-count assertions — `descriptor_defaults.test.ts` (33→35 `register.reader_label` capabilities; the +2 traced by diff to exactly `query_kota_chakra.ts` + `query_sudarshana_varsha.ts`) and `AssetRow_CockpitPolishR2.test.tsx` (Kāla seed count 15→17; the +2 traced to exactly the two new seed entries). Semantic fixes with named additions, not blind bumps — commit `0f15baa2`, CI re-running.
+- **Gochara-sweep resume, `1c826d5a` (standing operational item)**: collision check clean (zero running runs in `build_runs`); progress verified 209/303 substeps (prior dispatches gained ~131 ≫ the ≥40 gate). New dispatch `dbcd45e1-f90a-4e7c-8160-254b35de5bc6` created via the established script + `gcloud run jobs execute` (execution `brahma-build-pipeline-job-d6zlw`); ~94 substeps remain (likely dispatch 2-of-3).
+
+**PARĪKṢAKA LIVE ACCEPTANCE — deploy-main@`6e53f7cb` → ACCEPTED (2026-08-01 ~03:13–03:17Z, both charts, all evidence from real calls).**
+- Traffic independently re-derived to LATEST on 3/3 services (`amjis-mcp-00526-4p7` / `amjis-sidecar-00953-hzz` / `amjis-web-01345-c9d`, each 100%, `latestRevision:true`).
+- W2 schema live: 18/18 `kala_field*`/`kala_timeline_spec` tables; migrations 488–497 all recorded in `_migrations_applied` (ids 367–376) with sha256 + sql_identity, no gaps.
+- Gate-W1 baseline: all 7 spot-verifiable item families intact on both charts, zero regression. 8/8 cited `fact_id`s resolved against `chart_facts` with matching values, incl. 3 FORENSIC anchors re-confirmed through the live serve path; daśā claim cross-checked against `ganita_dashas_get` exactly.
+- **Standing advisory RESOLVED**: `kala_ahead_get` on Abhinandan now returns 5 populated projections + ladder + digest — the `projections:[]`-with-`computed` advisory from Gate W1 is closable; `computed` is now earned.
+- **PR #995 inversions confirmed present in production as expected** (fix is on integration, not main — strangler discipline working). **Ledger precision correction (from the Verifier, adopted here): the HARD inversion is `hora_ladder` in `elect.ts:228` (unconditional `computedCoverage('hora_ladder')` for a concept the tool never computes), NOT `hora_now` — `now.ts:1366`'s `hora_now` is correctly payload-conditioned and populated on both charts.** The soft inversion is `kala_darshana_confluence` (`now.ts:1146` gates coverage on reachability, not payload; prose layer is honest).
+- **Two NEW minor disclosure defects filed, non-blocking** (register items for a small lane):
+  - **ND-A**: `kala_ahead_get` thesis narrates already-open windows as "forward-dated" (e.g. `2010-08-18..2027-08-18` on Abhisek) — narration imprecision, rows themselves honest. Suggested wording: "currently-active or forward-dated windows overlapping the next N years."
+  - **ND-B**: projection/window member arrays silently capped at 10 against an uncapped `member_count` (85 vs 10 ids, no `truncated`/`more_available` marker) — §N.6(4) says the cap should be declared machine-readably, not left to inference.
+
+**Swarm dispatched this session (per §D v1.3, maximally parallel):** ANTARYĀMIN (Opus, full unruled docket: N_e priors-source · N1–N4 · W3K seating · paddhati/Agnivāsa · Kota ring-table citation tier) · `w3-moorti-vedha` (items 4+5, Sonnet) · `w3-lattice-engine` (item 36 query engine, Opus — W4 5a trigger) · `w3k-inventory` (item 18 inventory, Sonnet) · PARĪKṢAKA (acceptance above). Results recorded below as they land.
+
+---
+
 **NIGHT 2 CLOSED (2026-07-31 — see MORNING REPORT at the end of this file for the full
 close-out).** Gate W1 VERIFIED-CLOSED. All 5 W2 build lanes merged to `main`; Gate W2 itself
 NOT closed (Lane C's disclosed N_e lifetime-count-priors gap must resolve first). `main` is
