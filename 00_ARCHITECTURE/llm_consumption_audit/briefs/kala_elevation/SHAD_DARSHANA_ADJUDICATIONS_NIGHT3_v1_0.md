@@ -850,3 +850,42 @@ filing by one native-directed call; a filed adverse prediction can never be unfi
   primary source for Agnivāsa, parihāra, combination-yogas — item 41's entire charter — and
   quite possibly for Kota-Chakra. Translating/extracting it is the highest-leverage single
   corpus action available to this campaign, and it costs no acquisition.
+
+---
+
+## NATIVE CONFIRMATIONS (2026-08-02, morning review — append-only addendum; original rulings above are unmodified)
+
+The native reviewed the Night-3 docket the following morning and ruled on the three items
+flagged for him. Recorded verbatim-in-substance, with provenance, so downstream builders can
+cite this section rather than a chat transcript:
+
+**1. ADJUDICATION-8 (Agnivāsa) — CONVENTION CONTENT CONFIRMED: Pṛthvī-favourable, corpus
+default correct.** The native's words: he does yajña "when it is Pṛthvī, not Pātāla" — and he
+explicitly identified his earlier elevation-session statement ("I generally do a yajna when
+Agni Vasa is in Patala") as HIS OWN MISSTATEMENT, now corrected on the record. Consequences:
+- Convention (A) `agnivasa_tithi_element_prithvi` is the native's lineage convention, not
+  merely the corpus default. When item 37's builder seeds `kala_paddhati_profile`, the row
+  ships `native_confirmed = TRUE`, `awaiting_native_confirmation = FALSE`,
+  `confirmation_provenance = 'native statement 2026-08-02 (correcting the 2026-07-28
+  elevation-session misstatement); recorded in SHAD_DARSHANA_ADJUDICATIONS_NIGHT3_v1_0.md
+  §NATIVE CONFIRMATIONS'`.
+- The hard-constraint part of the ruling (unfavourable Agnivāsa ELIMINATES a yajña-class
+  candidate) was already unconditional and is unchanged.
+- Convention (B) `agnivasa_muhurta_chintamani_arithmetic` remains `declared_not_computed` —
+  unchanged — but its `corpus_gap_ref` now points at a COMMISSIONED work item (see 3).
+
+**2. ADJUDICATION-2 (N_e priors) — ne_v01 AFFIRMED AS-IS, all six values.** The native
+reviewed the six Tranche-1 figures (childbirth 3.09 · marriage 0.984 · separation 0.00806 ·
+relocation 0.376 · foreign_settlement 0.0129 · surgery 0.356) with the reviewer's two
+framing flags surfaced (childbirth = completed-cohort not TFR; surgery = India-volume
+framing) and affirmed the set as seeded. Standing consequence: any future revision is a
+clean `ne_v02` versioned supersession — never an in-place edit, never a rework of outputs
+already built on `ne_v01`.
+
+**3. Muhūrta-Cintāmaṇi translation — COMMISSIONED (2026-08-02).** The native commissioned
+the translation of the 274 ingested-but-untranslated chunks as its own supervised
+corpus-curation task — deliberately OUTSIDE the night runs, per the campaign's own
+deterministic-first rail (generative translation is curation, not build). Scope + provenance
+rules: `MUHURTA_CHINTAMANI_TRANSLATION_BRIEF_v1_0.md` (this directory). The four blocked
+deliverables (item 41's Agnivāsa corpus grounding · convention (B) · parihāra depth ·
+possible Kota corroboration) remain PARKED-HONEST until the task lands, then re-open.

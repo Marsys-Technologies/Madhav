@@ -13,6 +13,19 @@ governing: SHAD_DARSHANA_NIGHT_RUN_v1_0.md (orchestration) + SHAD_DARSHANA_BRIEF
 
 ## NEXT-ACTION
 
+**ALL THREE NATIVE DECISIONS FROM THE NIGHT-3 DOCKET ARE RULED (2026-08-02, morning review —
+full record: `SHAD_DARSHANA_ADJUDICATIONS_NIGHT3_v1_0.md` §NATIVE CONFIRMATIONS):**
+1. **Agnivāsa CONFIRMED: Pṛthvī-favourable, corpus default correct** (the elevation-session
+   "Pātāla" statement was the native's own misstatement, corrected on the record). Item 37's
+   builder seeds `kala_paddhati_profile` with `native_confirmed=TRUE` citing that section —
+   no unconfirmed-default caveat needed on yajña elections once seeded.
+2. **N_e `ne_v01` AFFIRMED as-is, all six values.** Future revision = `ne_v02` supersession
+   only.
+3. **Muhūrta-Cintāmaṇi translation COMMISSIONED** — as its own supervised corpus-curation
+   task, NOT a night-run lane (see `MUHURTA_CHINTAMANI_TRANSLATION_BRIEF_v1_0.md`, this
+   directory). The four PARKED-HONEST deliverables re-open when it lands; night runs do NOT
+   attempt it.
+
 **NIGHT-3 RESUMED SESSION CLOSED (2026-08-01, ~08:36–16:15 IST — see MORNING REPORT
 NIGHT-3-RESUMED immediately below for the full close-out).** The single next action for the
 next session:
