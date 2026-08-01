@@ -1,4 +1,4 @@
--- Migration 531: kala_paddhati_profile — the per-chart convention profile (item 37's storage home)
+-- Migration 533: kala_paddhati_profile — the per-chart convention profile (item 37's storage home)
 -- =============================================================================
 -- ṢAḌ-DARŚANA Wave W4, Lane R (YAJÑA-SETU), design ruling R-2
 -- (KALA_W4_UPAYA_DESIGN_v1_0.md §3.2), implementing ADJUDICATION-8, which is BINDING
