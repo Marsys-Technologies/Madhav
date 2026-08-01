@@ -291,11 +291,18 @@ export async function fetchGocharaSweep(
   }
   try {
     // Coverage probe: does this chart carry ANY gochara windows in the domain at all?
+    // ADJUDICATION-6 (migration 527): scoped to the chart's currently-authoritative
+    // generation — an absent kala_gochara_authority row means 'v1' by definition, so
+    // this is byte-identical to the pre-527 query until a 2.0 writer lands rows and a
+    // chart's authority is actually flipped.
     const covRes = await query<{ n: string }>(
       `SELECT COUNT(*)::text AS n
          FROM kala_gochara_windows w
          JOIN brahma_event_ontology eo ON eo.event_class_id = w.event_class
-        WHERE w.chart_id = $1 AND eo.domain = $2`,
+        WHERE w.chart_id = $1 AND eo.domain = $2
+          AND w.generation = COALESCE(
+                (SELECT authoritative_generation FROM kala_gochara_authority WHERE chart_id = w.chart_id),
+                'v1')`,
       [chart_id, signal_domain],
     )
     const domainTotal = Number(covRes.rows[0]?.n ?? 0)
@@ -314,6 +321,9 @@ export async function fetchGocharaSweep(
          JOIN brahma_event_ontology eo ON eo.event_class_id = w.event_class
         WHERE w.chart_id = $1 AND eo.domain = $2
           AND w.window_end >= $3 AND w.window_start <= $4
+          AND w.generation = COALESCE(
+                (SELECT authoritative_generation FROM kala_gochara_authority WHERE chart_id = w.chart_id),
+                'v1')
         ORDER BY ABS(w.signed_intensity) DESC NULLS LAST
         LIMIT 200`,
       [chart_id, signal_domain, start, end],
