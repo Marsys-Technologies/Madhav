@@ -80,6 +80,11 @@ KNOWN_HAS_WRITER_TRUE: frozenset[str] = frozenset({
     "bg_muhurta_lattice",
     # ── L0 Brahmagyan — migration 485 (ṢAḌ-DARŚANA item 36-substrate/41, parihāra rules) ──
     "bg_parihara_rules",
+    # ── L0 Brahmagyan — migration 522 (ṢAḌ-DARŚANA W2 / ADJUDICATION-2, N_e priors) ──
+    # Step 1 (migration setting has_writer=true) is migration 522's asset_registry
+    # INSERT, which carries `has_writer` true / `has_substeps` false: this writer
+    # implements run(ctx), not plan_substeps.
+    "bg_class_lifetime_counts",
     # ── L0 Brahmagyan — migration 523 (ṢAḌ-DARŚANA W3 Lane w3-kota-rings,
     # ADJUDICATION-9 — Kota-Chakra ring table moved to a versioned L0 asset) ──
     "bg_kota_chakra_rings",

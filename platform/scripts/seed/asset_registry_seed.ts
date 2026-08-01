@@ -508,6 +508,59 @@ export const ASSETS: AssetDef[] = [
     scope: 'global', is_active: true, estimated_seconds: null,
     asset_kind: 'data',
   },
+  {
+    // ṢAḌ-DARŚANA W2 · lane `l0-ne-priors`. Governing ruling:
+    // 00_ARCHITECTURE/llm_consumption_audit/briefs/kala_elevation/
+    // SHAD_DARSHANA_ADJUDICATIONS_NIGHT3_v1_0.md § ADJUDICATION-2 item 5.
+    // Mirrors migration 522's asset_registry INSERT exactly — a clean reseed must
+    // not silently drop this asset (the ga_vichara / bo_pratijna defect class).
+    // Global L0, `depends_on: []`, super-admin-triggered only (brief §2.5.2).
+    //
+    // `count_sql` counts the ROWS AT THE RESERVED COORDINATE, not the whole table:
+    // brahma_class_priors also holds 164 signal-salience priors from
+    // bg_class_priors, and a bare COUNT(*) would report this asset as "164 rows
+    // built" the moment migration 522 lands and BEFORE a single N_e row exists —
+    // a cockpit-truth violation (§N.4) and an §N.8 signal that cannot read false.
+    //
+    // `target_floor: 0` is deliberate, not a placeholder. §N.4: floors are
+    // aspirational and set to the ACHIEVED count after a build. On this asset
+    // specifically, a non-zero floor would be pressure to fabricate exactly the
+    // rows ADJUDICATION-2's hard stop forbids ("honest-empty beats fabricated-full").
+    asset_id: 'bg_class_lifetime_counts',
+    layer: 'brahmagyan', sort_order: 21,
+    catalog_status: 'CURRENT',
+    sanskrit_name: 'Jīvana-Ghaṭanā-Saṅkhyā',
+    english_name: 'Event-Class Lifetime Counts',
+    english_description:
+      'ṢAḌ-DARŚANA W2 (ADJUDICATION-2): N_e — the expected lifetime count of each ' +
+      'brahma_event_ontology event class over a 100-year modelled timeline from ' +
+      'birth, assuming survival. The chart-INDEPENDENT structural baseline λ⁰_e of ' +
+      'the Kāla Kṣetra hazard field. Every value is Tier N-i: a published ' +
+      'demographic / actuarial / epidemiological statistic carrying publisher, ' +
+      'edition, year, indicator id, geography+cohort and a retrievable URL/DOI, ' +
+      'together with the arithmetic converting it to a per-100-year count — or ' +
+      'Tier N-ii, a stated arithmetic identity over such a value. Classical-text ' +
+      'counts are FORECLOSED (chart-conditional; already carried by P_e) and ' +
+      'cohort/LEL-derived counts are FORECLOSED by the circularity guard. A class ' +
+      'with no defensible source is NOT seeded and is honestly skipped by ' +
+      'ka_kshetra with no_class_prior_row — honest-empty per class, never a ' +
+      'fabricated baseline.',
+    storage_type: 'postgres_table',
+    target_table: 'brahma_class_priors',
+    count_sql: "SELECT COUNT(*) FROM brahma_class_priors WHERE fact_kind='lifetime_count_per_100y'",
+    size_sql: null,
+    target_floor: 0,
+    expected_volume_formula: null,
+    expected_volume_inputs: null,
+    volume_explanation:
+      'One row per event class for which a Tier N-i (or Tier N-ii derived-identity) ' +
+      'source could actually be obtained and cited. Set to the ACHIEVED count after ' +
+      'the first build (§N.4). Unseeded classes are an honest per-class coverage gap ' +
+      'registered by name in the ledger, never a reason to invent a row.',
+    depends_on: [],
+    scope: 'global', is_active: true, estimated_seconds: null,
+    asset_kind: 'data',
+  },
 
   // ── BRAHMAGYAN continued — assets built-and-seeded 2026-06-17 (P2-C fix) ──
   {
@@ -2208,6 +2261,20 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     // depends_on to `[]`; closing that gap requires adding TS rows for
     // `ka_gochara_sweep`/`ka_gochara_resonance` too, which is legacy-asset cleanup out of
     // scope for this PR and is left as an open follow-up, not silently absorbed here.
+    //
+    // NINTH EDGE, added by migration 522 (ṢAḌ-DARŚANA W2 lane `l0-ne-priors`,
+    // ADJUDICATION-2 item 6): `bg_class_lifetime_counts` — the L0 asset carrying N_e,
+    // the field's chart-independent structural baseline λ⁰_e. It is deliberately NOT
+    // added to the array below, because that would mean this file's `depends_on`
+    // claimed ONE of ka_kshetra's nine real edges and silently dropped the other
+    // eight — strictly worse than the honest `[]` the paragraph above establishes.
+    // The edge lives in migration 522's guarded `UPDATE ... SET depends_on = depends_on
+    // || ARRAY['bg_class_lifetime_counts']`, which is EXACTLY the `bg_cohort` precedent:
+    // `bg_cohort` likewise has a seed row in this file, is likewise an L0 global, and
+    // likewise enters ka_kshetra's dependency set only through a migration's
+    // depends_on array (494's), never through this one. Both are per-chart-BLOCKING
+    // L0 prerequisites: §2.5.2's "L0 dependency not built" state is correct behaviour,
+    // and the L0 asset must be built in production before the first ka_kshetra build.
     asset_id: 'ka_kshetra',
     layer: 'kala', sort_order: 110,
     sanskrit_name: 'Kāla Kṣetra',
