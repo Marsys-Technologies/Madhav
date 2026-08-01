@@ -1697,6 +1697,58 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     depends_on: ['ka_avadhi', 'bo_pratijna', 'ka_sangam', 'ga_dashas', 'bg_ghatana'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
+  {
+    // ṢAḌ-DARŚANA W3 Lane w3-kota-sudarshana, registry item 16 (migration 520).
+    // Kota-Chakra: transiting grahas mapped to the fort's stambha/durgantara/
+    // prakara/bahya rings relative to the janma nakshatra, with entry/exit
+    // windows + an attack/defence reading. Ring table is a disclosed
+    // tier-(iii) secondary-source transcription pending corpus ingestion
+    // (see services/ka_kota_chakra/logic.py). Single canonical ayanamsha
+    // (lahiri_chitrapaksha) — matches the L3 convention (ka_avadhi et al.).
+    asset_id: 'ka_kota_chakra',
+    layer: 'kala', sort_order: 120,
+    catalog_status: 'CURRENT',
+    sanskrit_name: 'Koṭa-Cakra',
+    english_name: 'Fort Chart (Transit Fortress)',
+    english_description: 'Transiting grahas mapped to the kota\'s stambha/durgantara/prakara/bahya rings relative to the janma nakshatra, with entry/exit windows and an attack/defence reading. Reads natal Moon longitude from chart_facts (ga_positions) and transiting positions from ephemeris_daily (bg_ephemeris).',
+    storage_type: 'postgres_table',
+    target_table: 'kala_kota_chakra',
+    count_sql: 'SELECT COUNT(*) FROM kala_kota_chakra WHERE chart_id=$1',
+    size_sql: "SELECT pg_total_relation_size('kala_kota_chakra')",
+    target_floor: 0,
+    expected_volume_formula: null,
+    expected_volume_inputs: null,
+    volume_explanation: 'One row per (graha, contiguous same-nakshatra ring-run) over a ~460-day scanned horizon (60 days back, 400 forward) around build time — typically 15-40 rows/chart across the 9 grahas. Floors are aspirational per §N.4; seeded 0, set to the achieved count after the first real build.',
+    depends_on: ['ga_positions', 'bg_ephemeris'],
+    scope: 'per_chart', is_active: true, estimated_seconds: null,
+    asset_kind: 'data',
+  },
+  {
+    // ṢAḌ-DARŚANA W3 Lane w3-kota-sudarshana, registry item 17 (migration 521).
+    // Sudarśana-Chakra year-wheel triple-lagna progression. BINDING NAMING
+    // RULING: named ka_sudarshana_varsha, never bare `sudarshana` — confirmed
+    // namesake-only collision against the unrelated L2 bo_sudarshana static
+    // tri-frame signal writer (see services/ka_sudarshana_varsha/logic.py for
+    // the full distinction). Year-wheel progression ONLY (not the fuller
+    // Sudarshana Chakra Dasha sub-period structure — disclosed scope).
+    asset_id: 'ka_sudarshana_varsha',
+    layer: 'kala', sort_order: 121,
+    catalog_status: 'CURRENT',
+    sanskrit_name: 'Sudarśana-Cakra Varṣa',
+    english_name: 'Sudarśana-Chakra Year-Wheel',
+    english_description: 'The rotating annual house-per-year progression of the tri-lagna framework (Janma/Chandra/Sūrya Lagna), full 120-year lifespan. Pure arithmetic over natal chart_facts (ga_positions) — no ephemeris calls.',
+    storage_type: 'postgres_table',
+    target_table: 'kala_sudarshana_varsha',
+    count_sql: 'SELECT COUNT(*) FROM kala_sudarshana_varsha WHERE chart_id=$1',
+    size_sql: "SELECT pg_total_relation_size('kala_sudarshana_varsha')",
+    target_floor: 0,
+    expected_volume_formula: '120',
+    expected_volume_inputs: null,
+    volume_explanation: 'Exactly 120 rows/chart (varsha years 1..120, full-life horizon) once a real build runs — pure arithmetic, no partial-coverage failure mode. Seeded 0 per §N.4 until the first real build confirms it.',
+    depends_on: ['ga_positions'],
+    scope: 'per_chart', is_active: true, estimated_seconds: null,
+    asset_kind: 'data',
+  },
 
   // ── PHALA (8) ────────────────────────────────────────────────────────────────────────────
   // Updated 2026-06-22 (L4 Phala SETUP-7 / CS1): depends_on + descriptions corrected per
