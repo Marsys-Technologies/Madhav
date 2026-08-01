@@ -152,6 +152,10 @@ KNOWN_HAS_WRITER_TRUE: frozenset[str] = frozenset({
     "ka_gochara_sweep",
     # ── L3 Kāla — migration 480 (ṢAḌ-DARŚANA W2 Lane C, the temporal field) ──
     "ka_kshetra",
+    # ── L3 Kāla — migrations 520/521 (ṢAḌ-DARŚANA W3 Lane w3-kota-sudarshana,
+    # registry items 16/17) ──────────────────────────────────────────────────
+    "ka_kota_chakra",
+    "ka_sudarshana_varsha",
     # ── L4 Phala — migration 342 ─────────────────────────────────────────────
     "ph_muhurta",
     "ph_nimitta",
