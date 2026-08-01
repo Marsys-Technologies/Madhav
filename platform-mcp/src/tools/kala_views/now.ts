@@ -1328,9 +1328,24 @@ export async function computeKalaNow(
     windowsOk
       ? computedCoverage('temporal_activation_windows')
       : honestEmptyCoverage('temporal_activation_windows', 'L3 Kāla registry unreachable this call.'),
-    darshanaOk
+    // Honesty-inversion fix (defect 2, PARĪKṢAKA live-production pass, pre-existing since
+    // commit 2cba21c5 / PR #940): `darshanaOk` only meant "the registry call succeeded" —
+    // it said nothing about whether a row actually came back, so a reachable-but-zero-rows
+    // response (chart 1c826d5a) claimed `computed` while `darshana` was null. Matches the
+    // established convention immediately below (`dashaSandhi.result ? computed :
+    // honest_empty(...)`) and story.ts's `lel_pinning_per_chapter` (fetch-succeeded-zero-rows
+    // gets its own honest_empty reason, distinct from unreachable) — same fetch-succeeded-
+    // but-empty shape, same vocabulary, not a third pattern. The prose disclosure at
+    // `darshanaOk && !darshana` (buildNowReading, above) already narrates this honestly and
+    // is unchanged — only this machine-readable coverage state was wrong.
+    darshanaOk && darshana
       ? computedCoverage('kala_darshana_confluence')
-      : honestEmptyCoverage('kala_darshana_confluence', 'L3 Kāla registry unreachable this call.'),
+      : honestEmptyCoverage(
+          'kala_darshana_confluence',
+          !darshanaOk
+            ? 'L3 Kāla registry unreachable this call.'
+            : 'The L3 Kāla darshana registry fetch succeeded but returned zero rows for this chart/date — no darshana confluence window is active today.',
+        ),
     dashaSandhi.result
       ? computedCoverage('dasha_sandhi')
       : honestEmptyCoverage(
