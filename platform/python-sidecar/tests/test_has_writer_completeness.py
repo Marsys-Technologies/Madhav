@@ -203,6 +203,14 @@ KNOWN_HAS_WRITER_TRUE: frozenset[str] = frozenset({
     # §7.5: that edge would form an L3↔L5 cycle and topoSort would reject every
     # build plan containing either asset).
     "mi_bhara",
+    # ── L5 Mīmāṃsā — migration 531 (ṢAḌ-DARŚANA W4 Lane S, item 42) ──────────
+    # Unified Intervention Ledger: falsifier resolution against the LEL, study-arm
+    # reclassification, and arm-4 (acted_without_election) origination. Filing
+    # itself happens live, at serve time, through the sanctioned HTTP action
+    # (platform-mcp/src/lib/intervention_filing.ts) — never inserted by this
+    # writer. depends_on = ['ka_kshetra'] ONLY (KALA_W2_FIELD_DESIGN §7.5
+    # acyclicity rule, mirrored from mi_bhara above).
+    "mi_sankalpa",
 })
 
 # Sub-registrations that share a writer with their parent.
