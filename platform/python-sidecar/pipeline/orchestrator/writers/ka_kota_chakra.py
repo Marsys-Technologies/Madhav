@@ -17,7 +17,9 @@ Contract compliance (FROZEN orchestrator contract, ORCHESTRATOR_CONVERGENCE_CLOS
 
 Layer: L3 Kāla · Asset: ka_kota_chakra (per_chart data writer)
 Depends on: ga_positions (natal Moon longitude), bg_ephemeris (transiting
-positions).
+positions), bg_kota_chakra_rings (ring partition — ADJUDICATION-9,
+SHAD_DARSHANA_ADJUDICATIONS_NIGHT3_v1_0.md; moved off an inline writer-code
+dict onto this versioned L0 asset).
 """
 from services.ka_kota_chakra.writer import KaKotaChakraWriter  # noqa: F401
 
