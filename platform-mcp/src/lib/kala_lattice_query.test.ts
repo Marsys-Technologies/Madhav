@@ -209,6 +209,110 @@ describe('stage 3 — parihāra adjudication (juridical, never additive)', () =>
   })
 })
 
+// ── ADJUDICATION-10 — the real seeded Abhijit sarva-doṣaghna row ───────────
+//
+// SHAD_DARSHANA_ADJUDICATIONS_NIGHT3_v1_0.md ADJUDICATION-10 Part 1 ruled the
+// W3 gate criterion ("the Abhijit-override case demonstrably rescues a
+// candidate") MET by extracting the ONE muhūrta-scope, universal-cancellation
+// rule genuinely present in the corpus: bphs_jaimini PG213, chunk
+// bphs_jaimini_pg0213_c01 — "...Abhijit Sarva Doshaghnam or that noon time
+// which cuts and cures all evil influences." Verified read-only against
+// production `classical_text_chunks` before this test was written (see PR
+// body for the verification query + returned content_en).
+//
+// The fixture below is the ACTUAL row seeded by migration 524 +
+// bg_parihara_rules.py's MUHURTA_PARIHARA_ROWS constant — every field is
+// transcribed from that source, not invented for this test. This is
+// deliberately a DIFFERENT fixture from the "applies a muhūrta-scope rule
+// when one genuinely exists" test above (which is a synthetic, hypothetical
+// muhurta_chintamani rule illustrating the mechanism in the abstract) — this
+// one proves the mechanism against the real, in-corpus row.
+const ABHIJIT_PARIHARA_ROW: PariharaRuleRow = {
+  dosha_canonical_id: 'rahu_kalam',
+  dosha_name_en: 'Rahu Kalam',
+  dosha_category: 'muhurta_kalam',
+  cancellation_index: 1,
+  cancellation_condition_text:
+    '...the time goes under the special name of Abhijin Moohurta, and Abhijit Sarva ' +
+    'Doshaghnam or that noon time which cuts and cures all evil influences.',
+  net_standing: 'cancelled',
+  scope: 'muhurta',
+  source_text_id: 'bphs_jaimini',
+  source_chapter: 213,
+  source_citation:
+    'Jaimini Sutras (bphs_jaimini), trans. B. Suryanarain Rao, 1949, PG213 [chunk bphs_jaimini_pg0213_c01]',
+  extraction_context: 'translator_gloss_in_narrative',
+}
+
+describe('ADJUDICATION-10 — the real seeded Abhijit sarva-doṣaghna row rescues a real doṣa', () => {
+  it('rescues a rahu_kalam candidate via the real seeded row, with the full judgment ledger', () => {
+    const out = adjudicateCandidates([CANDIDATE_A], substrate({
+      lattice_rows: [latticeRow()],  // real, cited rahu_kalam dosha overlapping CANDIDATE_A
+      parihara_rules: [ABHIJIT_PARIHARA_ROW],
+    }))
+    const ledger = out.ledgers[0]!
+
+    // doṣas_present → parihāras_applied (citations) → residual → net standing
+    expect(ledger.dosas_present.map((d) => d.factor_key)).toEqual(['rahu_kalam'])
+    expect(ledger.pariharas_applied).toHaveLength(1)
+    expect(ledger.pariharas_applied[0]).toMatchObject({
+      dosha_key: 'rahu_kalam',
+      dosha_name_en: 'Rahu Kalam',
+      net_standing: 'cancelled',
+      extraction_context: 'translator_gloss_in_narrative',
+    })
+    expect(ledger.pariharas_applied[0]!.cancellation_condition_text).toContain('Abhijit Sarva Doshaghnam')
+    expect(ledger.pariharas_applied[0]!.source_citation).toContain('bphs_jaimini_pg0213_c01')
+    expect(ledger.residual_dosas).toHaveLength(0)
+    expect(ledger.net_standing).toBe('fully_cancelled')
+    expect(ledger.adjudication_note).toMatch(/cancelled by a cited muhūrta-scope parihāra rule/i)
+  })
+
+  it('leaves a DIFFERENT doṣa (not rahu_kalam) residual — the row does not silently rescue everything', () => {
+    // Same real seeded row, but the overlapping doṣa is yamaganda, not rahu_kalam.
+    // The schema has no wildcard/all-doṣa convention, so this row's reach is
+    // exactly and only what its dosha_canonical_id key-matches — proving the
+    // engine does NOT over-apply the "sarva" (all) claim beyond what the
+    // schema can honestly encode.
+    const out = adjudicateCandidates([CANDIDATE_A], substrate({
+      lattice_rows: [latticeRow({
+        factor_key: 'yamaganda',
+        source_citation: 'Drik Panchang published index tables (YAMAGANDAM_INDEX)',
+      })],
+      parihara_rules: [ABHIJIT_PARIHARA_ROW],
+    }))
+    const ledger = out.ledgers[0]!
+    expect(ledger.dosas_present.map((d) => d.factor_key)).toEqual(['yamaganda'])
+    expect(ledger.pariharas_applied).toHaveLength(0)
+    expect(ledger.residual_dosas.map((d) => d.factor_key)).toEqual(['yamaganda'])
+    expect(ledger.net_standing).toBe('residual_dosas_present')
+    // Honest wording: a muhūrta rule exists, it just doesn't key-match this doṣa.
+    expect(ledger.adjudication_note).toMatch(/no muhūrta-scope parihāra rule in the corpus matches this specific residual doṣa/i)
+  })
+
+  it('a clean (doṣa-free) candidate no longer claims "no muhūrta-scope parihāra rule exists in the corpus"', () => {
+    // Regression guard: once ANY muhurta-scope row is present, the engine must
+    // not attach the blanket "no muhūrta-scope parihāra rule exists in the
+    // corpus" disclaimer to an unrelated clean candidate — that claim would
+    // now be false.
+    const out = adjudicateCandidates([CANDIDATE_A], substrate({
+      lattice_rows: [latticeRow({ factor_key: 'abhijit', detail: { category: 'auspicious' } })],
+      parihara_rules: [ABHIJIT_PARIHARA_ROW],
+    }))
+    expect(out.ledgers[0]!.net_standing).toBe('clean')
+    expect(out.ledgers[0]!.adjudication_note).not.toMatch(/no muhūrta-scope parihāra rule exists in the corpus/i)
+  })
+
+  it('gap_report reports no parihāra corpus gap once the real row is present', () => {
+    const out = adjudicateCandidates([CANDIDATE_A], substrate({
+      lattice_rows: [latticeRow()],
+      parihara_rules: [ABHIJIT_PARIHARA_ROW],
+    }))
+    expect(out.gap_report.parihara_corpus_gap).toBeNull()
+    expect(out.density.parihara_rules_muhurta_scope).toBe(1)
+  })
+})
+
 // ── Stage 4: Pareto survival ────────────────────────────────────────────────
 
 describe('stage 4 — Pareto survival across factor groups', () => {

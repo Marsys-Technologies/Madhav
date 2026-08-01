@@ -24,10 +24,12 @@ from pipeline.orchestrator.writers.bg_parihara_rules import (
     ACTIVITY_CITATIONS,
     BgPariharaRulesWriter,
     CENSUS_ROWS,
+    MUHURTA_PARIHARA_ROWS,
     _build_citation,
     _extract_conditions,
     build_activity_rule_rows,
     build_census_rows,
+    build_muhurta_parihara_rows,
 )
 from pipeline.orchestrator.writers import ContextSpec
 
@@ -210,6 +212,100 @@ def test_build_census_rows_row_count_matches_constant():
     assert len(rows) == len(CENSUS_ROWS)
 
 
+# ── Offline tests: MUHURTA_PARIHARA_ROWS / build_muhurta_parihara_rows ───────
+# ṢAḌ-DARŚANA ADJUDICATION-10 Part 1: the one hand-curated muhūrta-scope row
+# (Abhijit sarva-doṣaghna, bphs_jaimini PG213 chunk bphs_jaimini_pg0213_c01).
+
+def test_muhurta_parihara_rows_is_exactly_one_row():
+    """Part 1 discharges the clause with ONE row, not a family of rows."""
+    assert len(MUHURTA_PARIHARA_ROWS) == 1
+
+
+def test_muhurta_parihara_row_scope_and_net_standing():
+    row = MUHURTA_PARIHARA_ROWS[0]
+    assert row["scope"] == "muhurta"
+    assert row["net_standing"] == "cancelled"
+
+
+def test_muhurta_parihara_row_extraction_context_is_mandatory_and_honest():
+    """ADJUDICATION-10 Part 1: mandatorily extraction_context=
+    'translator_gloss_in_narrative' — this is a translator's doctrinal gloss
+    (B. Suryanarain Rao's own narrative aside), not a mūla-sūtra verse.
+    Seeding it unmarked would be citation inflation."""
+    row = MUHURTA_PARIHARA_ROWS[0]
+    assert row["extraction_context"] == "translator_gloss_in_narrative"
+
+
+def test_muhurta_parihara_row_source_is_the_verified_chunk():
+    row = MUHURTA_PARIHARA_ROWS[0]
+    assert row["source_text_id"] == "bphs_jaimini"
+    assert row["source_chapter"] == 213
+    assert "bphs_jaimini_pg0213_c01" in row["source_citation"]
+
+
+def test_muhurta_parihara_row_transcribes_the_unqualified_sarva_doshaghna():
+    """Transcribe EXACTLY what the source states — no weekday exceptions, no
+    doṣa-class qualifications invented into the passage (those are
+    paddhati-profile matter, out of scope per ADJUDICATION-10 Part 1)."""
+    text = MUHURTA_PARIHARA_ROWS[0]["cancellation_condition_text"]
+    assert "Abhijit Sarva Doshaghnam" in text
+    assert "cuts and cures all evil influences" in text
+    # Not narrowed with an invented qualification (weekday exceptions,
+    # doṣa-class restrictions) — none of these appear in the source passage.
+    lowered = text.lower()
+    for forbidden in ("wednesday", "except", "only for", "excludes"):
+        assert forbidden not in lowered, f"invented qualification {forbidden!r} found in transcribed text"
+
+
+def test_muhurta_parihara_row_dosha_canonical_id_is_a_real_lattice_factor_key():
+    """The engine's matchingPariharas join (kala_lattice_query.ts) matches a
+    lattice doṣa's factor_key against dosha_canonical_id by case-insensitive
+    equality — no wildcard/all-doṣa convention exists in the schema or the
+    engine. rahu_kalam is chosen because it is a REAL, cited
+    (corpus_status=computed_cited) inauspicious kalam factor_key in
+    bg_muhurta_lattice.py's own KALAM_CITATIONS, so the row is genuinely
+    consumable by the engine as seeded."""
+    from pipeline.orchestrator.writers.bg_muhurta_lattice import KALAM_CITATIONS
+
+    row = MUHURTA_PARIHARA_ROWS[0]
+    assert row["dosha_canonical_id"] == "rahu_kalam"
+    assert "rahu_kalam" in KALAM_CITATIONS
+    citation, corpus_status = KALAM_CITATIONS["rahu_kalam"]
+    assert corpus_status == "computed_cited"
+
+
+def test_muhurta_parihara_row_does_not_collide_with_a_natal_dosha_natural_key():
+    """bg_parihara_rules' UNIQUE natural key is (dosha_canonical_id,
+    cancellation_index) -- it does not include scope. rahu_kalam must never
+    also appear as a brahma_dosha_catalog-derived NATAL canonical_id, or the
+    two rows would collide on upsert."""
+    row = MUHURTA_PARIHARA_ROWS[0]
+    natal_rows = fetch_parihara_rows_natal_ids_fixture()
+    assert row["dosha_canonical_id"] not in natal_rows
+
+
+def fetch_parihara_rows_natal_ids_fixture() -> set[str]:
+    """No live DB in offline tests -- this is the known, hand-verified set of
+    brahma_dosha_catalog canonical_ids matching rahu/kala* at construction
+    time (verified via a live read-only query; see PR body). Kept as an
+    explicit fixture rather than a live query so this offline test has no DB
+    dependency; the live test tier below re-confirms against production."""
+    return {
+        "kala_sarpa", "kala_sarpa_anant", "kala_sarpa_kulik", "kala_sarpa_vasuki",
+        "kala_sarpa_shankhpal", "kala_sarpa_padma", "kala_sarpa_mahapadma",
+        "kala_sarpa_takshak", "kala_sarpa_karkotak", "kala_sarpa_shankhachud",
+        "kala_sarpa_ghatak", "kala_sarpa_vishdhar", "kala_sarpa_sheshnag",
+        "kala_amrita_dosha", "pitra_dosha_sun_rahu", "naga_dosha_rahu_lagna",
+    }
+
+
+def test_build_muhurta_parihara_rows_stamps_build_id():
+    rows = build_muhurta_parihara_rows(build_id="test-build-id")
+    assert len(rows) == 1
+    assert rows[0]["build_id"] == "test-build-id"
+    assert rows[0]["dosha_canonical_id"] == "rahu_kalam"
+
+
 # ── Offline: writer registration + dry_run ────────────────────────────────────
 
 def test_writer_registered():
@@ -274,6 +370,31 @@ def test_bg_muhurta_factor_census_dispositions_are_valid(db_conn):
     cur.execute("SELECT DISTINCT disposition FROM bg_muhurta_factor_census")
     dispositions = {r["disposition"] for r in cur.fetchall()}
     assert dispositions <= {"computed", "not_computed", "not_in_corpus"}
+
+
+def test_bg_parihara_rules_writer_seeds_the_adjudication_10_muhurta_row(db_conn):
+    """Live confirmation of ADJUDICATION-10 Part 1: exactly one muhurta-scope
+    row lands, matching the seeded content exactly (net_standing='cancelled',
+    extraction_context='translator_gloss_in_narrative', the verified
+    bphs_jaimini_pg0213_c01 citation)."""
+    writer = BgPariharaRulesWriter()
+    ctx = ContextSpec(asset_id="bg_parihara_rules", build_id=str(uuid.uuid4()), db_conn=db_conn)
+    writer.run(ctx)
+    db_conn.commit()
+
+    cur = db_conn.cursor()
+    cur.execute("SELECT * FROM bg_parihara_rules WHERE scope = 'muhurta'")
+    muhurta_rows = cur.fetchall()
+    assert len(muhurta_rows) == 1, f"expected exactly 1 muhurta-scope row, got {len(muhurta_rows)}"
+
+    row = muhurta_rows[0]
+    assert row["dosha_canonical_id"] == "rahu_kalam"
+    assert row["net_standing"] == "cancelled"
+    assert row["extraction_context"] == "translator_gloss_in_narrative"
+    assert row["source_text_id"] == "bphs_jaimini"
+    assert row["source_chapter"] == 213
+    assert "bphs_jaimini_pg0213_c01" in row["source_citation"]
+    assert "Abhijit Sarva Doshaghnam" in row["cancellation_condition_text"]
 
 
 def test_bg_parihara_rules_writer_idempotent(db_conn):

@@ -26,13 +26,18 @@
  *      `not_in_corpus` with a citation or an honest gap reason.
  *
  * THE SCOPE DISCLOSURE THAT MATTERS (carried through verbatim from the substrate,
- * never softened): every parihāra row is `scope='natal'`. The ingested corpus holds
- * NO muhūrta-specific doṣa-cancellation content at chapter/verse grain — no
- * "Abhijit cancels most doṣas", no dāna-parihāra table. That gap is registered in
- * the factor census, and this handler surfaces it as an explicit
- * `muhurta_scope_rule_count` (a live COUNT, not an assumption) so the downstream
- * adjudication engine reports "no cancellation rule available in corpus" rather
- * than inventing one (B.10 / the campaign's data-honesty rail).
+ * never softened): at PR #930, every parihāra row was `scope='natal'` — the ingested
+ * corpus held NO muhūrta-specific doṣa-cancellation content at chapter/verse grain.
+ * ADJUDICATION-10 Part 1 (SHAD_DARSHANA_ADJUDICATIONS_NIGHT3_v1_0.md, migration 524)
+ * later found and seeded the ONE genuine exception the corpus actually holds — the
+ * Abhijit sarva-doṣaghna gloss at bphs_jaimini PG213 — as a single `scope='muhurta'`
+ * row keyed to `dosha_canonical_id='rahu_kalam'` (the schema has no wildcard/all-doṣa
+ * convention, so this one row narrows to one doṣa key by construction, disclosed via
+ * `extraction_context='translator_gloss_in_narrative'`, not invented as a mūla-sūtra).
+ * Every OTHER muhūrta-scope cancellation remains genuinely absent and is registered
+ * in the factor census; this handler surfaces the LIVE count as `muhurta_scope_rule_count`
+ * (never a hardcoded assumption) so the downstream adjudication engine reports the
+ * corpus's actual, current state rather than a stale snapshot (B.10 / data-honesty rail).
  *
  * Global chart-independent reference — no chart_id, by construction.
  */
@@ -60,9 +65,11 @@ export const queryPariharaGraphCapability: CapabilityDescriptor = {
     'Parihāra rows are citation-filtered: only doṣas carrying a real, non-placeholder classical',
     'citation are represented, and the count of doṣas excluded for carrying only a',
     "'classical_tradition' placeholder is returned alongside — never read the served row count as",
-    'the whole corpus. Every parihāra row is scope=natal: the corpus holds no muhūrta-specific',
-    'cancellation content, which the census registers as a gap and this response reports as an',
-    'explicit muhurta_scope_rule_count. The census disposes each named timing-factor family as',
+    'the whole corpus. Rows also carry extraction_context (translator_gloss_in_narrative vs',
+    'mula_sutra_citation, nullable) so a translator gloss is never read with a mūla-sūtra’s',
+    'evidentiary weight. Nearly every row is scope=natal; the one named muhūrta-scope exception is',
+    'reported via the live muhurta_scope_rule_count, never assumed absent or assumed present.',
+    'The census disposes each named timing-factor family as',
     'computed, not_computed or not_in_corpus with a citation or an honest gap reason and an',
     'ingestion pointer. Global classical reference — no chart_id needed; returns RULES, not any',
     "chart's verdict.",
@@ -123,7 +130,7 @@ export const queryPariharaGraphCapability: CapabilityDescriptor = {
         const rulesResult = await query<Record<string, unknown>>(
           `SELECT dosha_canonical_id, dosha_name_en, dosha_category, cancellation_index,
                   cancellation_condition_text, net_standing, scope,
-                  source_text_id, source_chapter, source_citation
+                  source_text_id, source_chapter, source_citation, extraction_context
              FROM bg_parihara_rules
             WHERE ${filters.join(' AND ')}
             ORDER BY dosha_canonical_id, cancellation_index`,
