@@ -774,6 +774,65 @@ with zero code change.
 
 ---
 
+## ADJUDICATION-12: `adopt_intervention` MCP parameter vs §11 explicit-filing governance (W4 design OQ-1)
+
+**RULING — (a) mechanically, with one mandatory field.** The §11 explicit-filing clause is an
+ANTI-MINING rail ("never inferred from a conversation transcript"); `filed_by` is a separate
+PROVENANCE requirement; neither is a consent rail. A structured `adopt_intervention`
+parameter (intervention_id + confidence + falsifier) satisfies anti-mining — but an agentic
+caller can synthesize it, which is mining performed by the model. Therefore
+`adopt_intervention` gains a REQUIRED fourth field `adoption_basis:
+'native_directed'|'session_inferred'` — `native_directed` files via the sanctioned route;
+`session_inferred` OR absent/unrecognised returns the filing-ready payload with
+`filing_state:'awaiting_native_confirmation'` and does NOT file (fail-closed).
+`adoption_basis` persists on the row so the ledger audits by intent-origin, not just
+principal. Self-attestation is the honest limit of an MCP boundary — declared basis beats an
+invisible failure mode. `filed_by`=MCP principal is CORRECT (provenance, not authorship);
+engine-composed claim text is RATIFIED (B.10 prose rule requires template-over-computed-data;
+`generator_class='engine'` coupling to DR-16 preserved). Gate fixture G3 gains one assertion
+(session_inferred → awaiting_native_confirmation, ledger unchanged). The reversibility
+asymmetry (§3.5.E: filed = sealed forever; unfiled = filable later) sets every default toward
+not-filing. **Reversibility: HIGH.**
+
+---
+
+## ADJUDICATION-13: Adverse/health-class auto-filing (W4 design OQ-2)
+
+**RULING — Refusal RATIFIED and STRENGTHENED.** The §3.5.B-vs-§3.5.C tension DISSOLVES on the
+correct reading: §3.5.B governs DISCLOSURE (what the native sees — served in full: diagnosis,
+falsifier, window, calibration band, constraints_applied); filing governs what gets SEALED
+under §3.5.E (locked at emission, never modifiable). Refusing to auto-file withholds ONLY the
+irreversible DB write, nothing §3.5.B grants. Independent dispositive grounds: §3.5.A p3
+(double red-team required for health/mortality/mental-health — unobtainable by a night run);
+§3.5.C explicit sign-off; §3.5.A p6 (every output rescindable) is internally contradictory
+with auto-sealing. Adjudicator bounds alone would also decide it (Ethical Framework is a
+rail).
+
+**Three mandatory amendments to the W4 design:**
+**A — THE DESIGNED PREDICATE IS A NO-OP.** `domain='health' AND magnitude_floor IN
+('major','life_altering')` matches ZERO live ontology rows ('major' does not exist; health
+classes top out at 'significant'; the only life_altering row is birth_anchor). Every
+health-class intervention would have auto-filed. Replace with: `domain='health' OR
+lel_category='psychological' OR event_class_id='bereavement'` — NO magnitude filter — plus a
+CI assertion that fails if the set resolves to zero rows against the live ontology.
+**B — bereavement included on its own ground:** a sealed bereavement window is an
+individualized mortality window for an unconsenting third party (§3.5.A p4, §3.5.D) — cite as
+consent, not health.
+**C — rename** `filing_refused_adverse_class` → `filing_withheld_pending_native_signoff`
+("refused" misdescribes the native's own manual-filing option — itself a §3.5.B
+under-service).
+
+**Binding additional exposure ruled:** §3.5.C's absolute no-date-of-death clause vs the live
+`ganita_ayurdaya_get` tool — an individualized-mortality-window DETECTOR is a HARD EXCLUSION
+evaluated BEFORE any computation (same detector-first shape as isMode3ShapedRequest); no W4
+surface may read āyurdāya/longevity facts into a window bound, under ANY tier, filed or
+unfiled — this one withholds the output itself, native included.
+
+**Reversibility: MAXIMAL and asymmetric — the whole argument.** A withheld filing becomes a
+filing by one native-directed call; a filed adverse prediction can never be unfiled.
+
+---
+
 ### Closing notes for the Conductor
 
 - **Nothing above touches a FROZEN contract, an untouchable, or a rail.** Every new writer is
