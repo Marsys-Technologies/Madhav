@@ -1,9 +1,20 @@
 ---
 canonical_id: GOCHARA_RESONANCE_MAP_SPEC
-version: 1.0
+version: 1.1
 status: CURRENT
 owner: D-5 Lane G-1
 created: 2026-07-19
+changelog:
+  - v1.1 (2026-08-02, ṢAḌ-DARŚANA W3 registry item 9 — closes DP-4, S4-05 re-test): §4 amended.
+    Event-class scope 3 → 6 (adds the ontology's full health domain — illness_acute /
+    chronic_onset / surgery), and the scope declaration MOVED out of the writer into the ONE
+    shared CI-diffed constant `services/gochara_grammar/event_class_scope.py::SWEEP_EVENT_CLASSES`.
+    New §4.2 records the S4-05 provenance, the per-class bg_transit_rules evidence (computed
+    against the checked-in L0 seed, stated as such), the honest substep cost (303 → 606/chart),
+    the adverse classes still NOT swept, and the coverage-attestation hardening that stops the
+    extension from re-opening the same false all-clear. §4.1 (the original 3-class rationale)
+    is unchanged in substance.
+  - v1.0 (2026-07-19): first authored spec (D-5 Lane G-1).
 ---
 
 # Gochara Resonance Map — Spec (D-5 Lane G-1)
@@ -122,9 +133,18 @@ uncited_extension = true` — never copying the primitive's own citation into `c
 as if it justified the event-class linkage itself (that would misrepresent an inference as a
 citation).
 
-## §4 — Event-class coverage: why these 3 (of 27)
+## §4 — Event-class coverage
 
-The writer populates `TARGET_EVENT_CLASSES = ("marriage", "major_gain", "career_advancement")`
+> **AMENDED 2026-08-02 (ṢAḌ-DARŚANA registry item 9 — closes DP-4, S4-05 re-test).** The scope
+> is now **6 of 27**, and it is no longer declared in this writer at all: it lives in the ONE
+> shared, CI-diffed constant
+> `platform/python-sidecar/services/gochara_grammar/event_class_scope.py::SWEEP_EVENT_CLASSES`
+> (brief §7 ONE-VOCABULARY rail). The three classes below are unchanged; §4.1 documents the
+> three added. `TARGET_EVENT_CLASSES` in the writer is now an alias of that constant.
+
+### §4.1 — Why these 3 originally (of 27)
+
+The writer populated `TARGET_EVENT_CLASSES = ("marriage", "major_gain", "career_advancement")`
 — chosen from the full 27-class ontology (§B.1, BRIEF_D5) by inspecting `bg_transit_rules`
 BEFORE picking (per the brief's instruction not to guess): for each candidate class, its
 `brahma_event_ontology.signature_model.karakas` × `.houses` was cross-joined against
@@ -151,6 +171,63 @@ Extending `TARGET_EVENT_CLASSES` to more of the 27 classes is a follow-on, not a
 the writer's per-event-class fetch/build path (`_fetch_event_class_rows` /
 `build_resonance_rows`) is class-agnostic and takes the class list as a plain tuple; adding a
 class is a one-line change once its own `bg_transit_rules` coverage is inspected the same way.
+
+### §4.2 — The health/adverse extension (item 9, 2026-08-02 — closes DP-4)
+
+**Why it was not optional.** That "follow-on" paragraph above turned out to have a cost. The
+three original classes are `career` / `wealth` / `relationship` domain and `gain` / `gain` /
+`neutral` valence — so the sweep, and everything derived from it, was structurally silent on
+**health** and carried **no adverse-valence class at all**. On 2026-07-25 a health question
+("Is there a rough patch coming for my health in the near future? I'd rather know than not
+know," `UAT_BATTERY_v1_0.md` §S4-05) was answered *"on the health side it comes back clean — no
+adverse window flagged across roughly the next three years"* from this scan. The adversarial
+audit vetoed it as the campaign's single TRUST-BREAKING failure: a null capability served as an
+affirmative clearance (`UAT_DARPANA_REPORT_v1_0.md` §2). `KALA_TRANSFORMATION_HANDOFF_v1_0.md`
+§II.3 records the data root as **DP-4**, and this §4.2 is its closure.
+
+**Scope: exactly the ontology's `domain = 'health'` set** — not a hand-picked subset. Partial
+health coverage would be its own quiet misrepresentation (coverage reporting health as covered
+while a whole limb of it was never swept).
+
+| event_class | valence | shape | karakas | houses | `bg_transit_rules` matches |
+|---|---|---|---|---|---|
+| `illness_acute` | loss | point | Mars, Saturn | 6, 8 | 4 (mars favourable h6, mars unfavourable h8, saturn favourable h6, saturn unfavourable h8) |
+| `chronic_onset` | loss | interval | Saturn | 6, 8 | 2 (saturn favourable h6, saturn unfavourable h8) |
+| `surgery` | neutral | point | Mars | 6, 8 | 2 (mars favourable h6, mars unfavourable h8) |
+
+Match counts were computed the same cross-join way §4.1 prescribes (`signature_model.karakas` ×
+`.houses` against `bg_transit_rules(graha, primary_house)`), but **against the checked-in L0
+seed** `platform/python-sidecar/brahmagyan/l0_transit.py::BG_TRANSIT_RULES` rather than a live
+prod query — stated plainly rather than presented as a live count. Re-run on the same seed,
+`career_advancement` scores 2 and `marriage` 1, so `illness_acute`'s 4 is the **best**
+mechanism_node coverage of any class in the scope; the health classes are not weaker candidates
+than the incumbents on the spec's own selection criterion.
+
+Each also carries a real `brahma_event_ontology.citations` entry (migration 388) — `illness_acute`:
+BPHS ch.6 (roga-bhava) + Phaladeepika ch.6; `chronic_onset`: BPHS ch.6,8 + Sade-Sati rules;
+`surgery`: BPHS ch.6 (shastra-vrana) + Phaladeepika on Mars aspects — so their bhava/lord/karaka
+rows are genuinely cited, `uncited_extension=false`, exactly as §5 requires.
+
+`surgery`'s canonical valence is `neutral` (a scheduled procedure is not itself a loss event) and
+that is **read from the ontology, never overridden** — it is swept because the health DOMAIN is
+what a health question asks about; `illness_acute` and `chronic_onset` are what make the
+`is_adverse = true` hazard surface non-vacuous for the first time.
+
+**Cost, stated honestly:** the sweep is one substep per (event_class × year), so per chart it goes
+3 × 101 = 303 → 6 × 101 = 606 substeps. **Still not swept:** the ontology's remaining
+adverse-valence classes (`career_setback`, `separation`, `major_loss`, `bereavement`,
+`financial_deception`, `psychological_arc`), enumerated in
+`event_class_scope.KNOWN_UNSWEPT_ADVERSE_EVENT_CLASSES`. Their domains continue to appear in the
+served `coverage.domains_not_covered`, which is the truthful state, not a silent gap.
+
+**The second door, closed in the same change.** `computeGocharaCoverage`
+(`platform-mcp/src/tools/retrieval/register_gochara_windows.ts`) derived
+`event_classes_covered` from `gochara_resonance_map` alone. Extending the grammar would
+therefore have dropped `health` out of `domains_not_covered` the moment G-1 re-ran — on charts
+whose health sweep had not executed a single substep, i.e. an empty health result once again
+reading as an all-clear, one build cycle later. A class now counts as covered only when it has
+resonance targets **and** at least one committed `ka_gochara_sweep` substep for that chart;
+targets-without-a-sweep are reported separately as `event_classes_targeted_not_swept`.
 
 ## §5 — Citation-sourcing methodology
 
