@@ -85,11 +85,57 @@ never spawned from inside a worktree:**
   session") and was judged too large to fold into tonight's already-6-lane wave; planned as
   Wave 2 once Wave-1 capacity frees, still within tonight's ~7.5h budget if it does.
 
-**Next**: monitor Wave 1 to green/PR, run the merge train onto `shad-darshana/integration` as
-each lands (Conductor-resolved conflicts only, never force-push over a lane's real work), then
-either dispatch Wave 2 (W2 field-integration) if capacity/time allow, or proceed straight to
-the gate-close sequence (integration → main PR, merge-queue wait, deploy, L0 super-admin
-trigger for new `bg_*` assets, `ka_kshetra` rebuild both charts, PARĪKṢAKA live acceptance).
+**WAVE 1 — MERGE TRAIN COMPLETE (2026-08-02, ~01:22–04:45 IST). Seven PRs landed on
+`shad-darshana/integration`, each independently CI-verified green before merge (not trusted
+from self-report):**
+
+| PR | Lane | Landed |
+|---|---|---|
+| #1017 | W4 Lane S spine | `intervention_filing.ts` + `client.ts` one-line widening — the published `FilingState` contract Lanes U/R build against |
+| #1018 | item 31 | period-echo mining on `kala_ahead_get`, hypothesis-framed, no new table (pure serving-layer join) |
+| #1019 | W4 Lane R pt.1 | R-1 lattice widening (migration 530, +71k rows, `hora`/`vara`/`nakshatra`/`tithi`/`lagna` families) + items 6 (data-layer closed, engine-axis blocked — see gaps) + 7 (muhūrta-lagna substrate + query-time strength) |
+| #1020 | item 9 | health/adverse event class in sweep grammar — **closes DP-4, S4-05 re-test PASS** (red-then-green proof against the real UAT_DARPANA S4-05 scenario text, not reconstructed) |
+| #1021 | W4 Lane U | UPĀYA-SETU full (item 26) + E6 efficacy, mortality-exclusion rail (G16) proven non-vacuous, `for_intervention` contract published for Lane R |
+| #1022 | item 13 | Tithi-Praveśa lunar-return annual chart, new `ka_tithi_pravesha` writer, migration 531 |
+| #1023 | W4 Lane S writer | `mi_sankalpa` / `mimamsa_intervention_ledger`, migration 532, status-preserving idempotency live-proven against a real throwaway Postgres |
+
+**PR #1024 (W4 Lane R pt.2 — R-2/R-3/R-4/R-5: `kala_paddhati_profile`, Mode-2 fixture, chart_relative
+constraint kind, `ritual.ts`/items 37/38/40) — CI caught a real cross-lane migration collision**
+(this branch's `531_kala_paddhati_profile.sql` was cut before `w3-tithi-pravesha`'s
+`531_kala_tithi_pravesha.sql` merged — the exact "re-verify live max immediately before writing,
+don't trust a stale reservation" trap this campaign's own docs warn about, recurring right on
+schedule). **Conductor-fixed directly** (a one-line renumber doesn't warrant re-dispatching the
+whole lane): merged `origin/shad-darshana/integration` into the branch, re-verified true live max
+(532, both directories), renumbered to 533, updated the header comment, ran
+`migration_number_guard.ts` locally — PASS, no new collision — pushed. CI re-running; will merge
+on green like every other lane, not force-pushed through.
+
+**Deep gaps surfaced honestly by the builders, carried forward (not silently dropped):**
+- **Item 6's Pareto axis (`rite_specific_resonance`) could NOT be enabled** — `kala_lattice_query.ts`'s
+  `EXCLUDED_AXES` is a module-private const with no injection point, and the file is FROZEN for W4.
+  The builder correctly stopped rather than editing a frozen file. Item 6 is data-layer CLOSED,
+  engine-axis OPEN — needs a small, deliberate one-line unfreeze PR, Conductor-authorized, in a
+  future session (not tonight — a frozen-file exception is exactly the kind of call that should get
+  its own deliberate PR, not be folded into a builder's larger lane).
+- **Item 37 partial**: storage/reader/divergence-block closed; `query_kala_paddhati_profile`
+  capability itself doesn't exist yet — needs a shared `index.ts` boundary negotiation the lane
+  correctly declined to resolve unilaterally. Degrades honestly (`honest_empty`, corpus-default
+  fallback disclosed) in the meantime.
+- **Production `bg_muhurta_lattice` currently has 0 rows** — migration 530's schema is live but the
+  L0 rebuild (super-admin trigger) hasn't run. The Mode-2 fixture gate is correctly honest-empty
+  until then; this is a Nirmāṇa §2.5.2 prerequisite for the gate-close deploy below.
+- **Item 9's sweep-grammar fix is code-live, DATA is not**: no chart has health/adverse windows
+  until `ka_gochara_sweep` + `ka_gochara_resonance` re-run against production for both canonical
+  charts. Sweep substep count doubles (303→606/chart). **This is a required step in the gate-close
+  sequence, not optional** — S4-05 is not actually closed until the live query is re-run post-rebuild.
+- Item 14 (janma-anchored election rules) — confirmed still NOT-STARTED, as instructed.
+- The parihāra corpus pass found exactly one new genuine citable rule (Bṛhat Saṃhitā Viṣṭi
+  exception) and correctly declined to encode it (schema has no undertaking-class qualifier column
+  — encoding it unconditionally would wrongly cancel Bhadra for a wedding). Named as a work item,
+  not silently dropped.
+
+**Next**: land PR #1024 on green CI, then run the gate-close sequence — this is now the
+critical path, not a further build wave (see below for the Wave-2 decision).
 
 ---
 
