@@ -241,14 +241,6 @@ jobs:
         working-directory: platform
         run: npx tsx --conditions=react-server scripts/audit/tap/tap5_seam_conservation.ts
 
-      # ── RETIRED 2026-07-31 to workflow_dispatch: S-13 and TAP-7 ──────────────────────
-      # TAP_DATABASE_URL and TAP7_API_BASE_URL HAVE NEVER EXISTED in this repo and nothing
-      # is scheduled to create them. Both steps have therefore exited 3 (SKIPPED-WITH-REASON)
-      # on every push and PR, swallowed by continue-on-error — a runner started per PR to
-      # print a skip. A gate that has never been able to run is not a passing gate.
-      # Nothing deleted; the scripts are real.
-      # RE-ARM: add the TAP_DATABASE_URL secret (and TAP7_API_BASE_URL for TAP-7), then
-      # delete the `if:` line on the step.
       # ARMED 2026-08-01 by REPOINTING, not by creating a secret (the #895 move):
       # TAP_DATABASE_URL never existed; PROD_DATABASE_URL does, and deploy.yml already uses it
       # against this same amjis-postgres instance through the same proxy. So these now read the

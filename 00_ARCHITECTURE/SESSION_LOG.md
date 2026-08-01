@@ -35224,7 +35224,10 @@ session_close:
     Six real narration-fidelity fixes landed (one a genuine privacy-leak repair). Five named
     B-N8-FIX/SWEEPFIX residuals closed. PR #913 reconciled on the merits. One item genuinely still
     open (C4-LOOP-LIVE-PROOF), paused on a safety flag, named #1 in the final consolidated backlog,
-    not silently dropped. No kala_*/l3_*/ka_*/gochara_* file written to. No credential rotated."
+    not silently dropped. No Kāla PRODUCTION file matching kala_*/l3_*/ka_*/gochara_* written to
+    (PR #900 added two read-only governance diagnosis scripts matching gochara_* by basename —
+    A6/GOCH-1 root-cause investigation, not Kāla code; see PURNATA_CLOSE_REPORT_v1_0.md §8,
+    corrected 2026-08-01). No credential rotated."
   verification: "Every merge watched through its real CI run; every consolidation/hotfix verified
     against a freshly-checked-out origin/main baseline before merging (identical pre-existing
     failure counts reproduced on both sides — zero regressions introduced). Deploy health spot-

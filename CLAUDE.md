@@ -1,6 +1,6 @@
 ---
 artifact: CLAUDE.md
-version: "7.2"
+version: "7.3"
 status: CURRENT
 role: >
   Root governance surface. Master orientation document for every Claude session on the MARSYS-JIS
@@ -372,7 +372,16 @@ usually true" or "nothing has broken yet" is not a substitute for a real detecto
 
 ---
 
-*End of CLAUDE.md v7.2 (2026-08-01, C4-LOOP-LIVE-PROOF close) — the arc's one remaining open item
+*End of CLAUDE.md v7.3 (2026-08-01, close-verification pass) — an independent, read-only
+verification of the v7.2/PURNATA_CLOSE_REPORT close found two real discrepancies and fixed both,
+nothing else touched: backlog items 2 and 5 cited blockers (C4, PR #910) that had already cleared
+within this same arc — reworded to state the actual condition inline rather than an indirect
+"unchanged" pointer that had gone stale; and the absolute "no kala_*/gochara_* file written" claim
+was literally false (PR #900 added two read-only diagnosis scripts matching `gochara_*` by
+basename) — now carved out to correctly scope the claim to Kāla PRODUCTION source, kept strong and
+true rather than weakened into vagueness. Full account:
+`00_ARCHITECTURE/briefs/purnata/PURNATA_CLOSE_REPORT_v1_0.md` v1.3. No doctrine changed by this
+entry. Prior: v7.2 (2026-08-01, C4-LOOP-LIVE-PROOF close) — the arc's one remaining open item
 closed out. All six criteria (A1–A6: real reading → real `detected` ledger row → live review-tab
 render → real UI resolution with can't-tell→NULL DB-CHECK-enforced → real daily-job window
 transition with CI's DB-integration suite actually running (129/129) → one outcome map with a live
@@ -398,8 +407,12 @@ NIḤŚEṢA's entire auto-merge-armed queue (31 PRs merged this session), diagn
 real branch-protection livelock, caught and closed a self-authored consolidation branch before it
 could revert merged work, fixed 3 live CI-gate failures on `main`, landed 6 real narration-fidelity
 fixes (including a genuine privacy-leak repair), closed 5 named residuals, and reconciled one
-previously-parked PR on the merits. No `kala_*`/`l3_*`/`ka_*`/`gochara_*` file was written to; no
-credential was rotated. The one item left genuinely open (C4-LOOP-LIVE-PROOF) was paused, not
+previously-parked PR on the merits. No Kāla PRODUCTION file matching `kala_*`/`l3_*`/`ka_*`/
+`gochara_*` was written to (PR #900 added two read-only governance diagnosis scripts whose
+basenames match `gochara_*` — `gochara_fingerprint_reproducer.py` / `gochara_readonly_query.py`
+under `00_ARCHITECTURE/briefs/samapti/diagnostics/`, the A6/GOCH-1 root-cause investigation, not
+Kāla code; see `PURNATA_CLOSE_REPORT_v1_0.md` §8, corrected 2026-08-01); no credential was
+rotated. The one item left genuinely open (C4-LOOP-LIVE-PROOF) was paused, not
 blocked, on a safety flag raised mid-session — full account
 `00_ARCHITECTURE/briefs/purnata/PURNATA_CLOSE_REPORT_v1_0.md` / `CURRENT_STATE_v1_0.md` v6.50. No
 doctrine changed by this entry. Prior: v7.0 (2026-07-31, NIḤŚEṢA
