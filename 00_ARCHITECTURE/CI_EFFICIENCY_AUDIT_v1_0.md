@@ -720,6 +720,77 @@ fact were not swept.** Landing a PR is not the same as reconciling a claim. The 
 countermeasure, used here, is to grep for the *old* state's vocabulary after the change lands
 (`ABSENCE_LINT_STRICT`, `TAP_DATABASE_URL`, "RE-ARM", "TO ARM") and read every hit.
 
+## §6.15 — TAP-6's red was a FALSE red: the detector failed over the M-22 fix (2026-08-01)
+
+**Correcting a diagnosis I gave.** On 2026-07-31 I reported `ga_nakshatra.py:125` as "a real
+M-22 violation — verification status assigned as a string literal", and recommended it to the
+team as a finding. **That was wrong.** The claim appeared in chat and in PR #990's body; it
+never reached a committed document, so there is no doc-drift to unwind — but the correction
+belongs on the record because a *false red* is the same §N.8 disease as a false green, and
+this one accused the fix of being the defect.
+
+**What line 125 actually is.** `per_claim[claim] = "two_pass_verified" if agrees else
+"divergent_flagged"`, where `agrees = int(engine_value) == int(derived_value)` and
+`derived_value` comes from an independent re-derivation, `_derive_nakshatra_pada(lon)`. That is
+M-22 **compliance**. The writer's own docstring records it as the 2026-07-30 remediation of the
+blanket `"PASS"` literal (SAMĀPTI A7-N8-AUDIT F-11, DVA Ruling 13) — the genuine defect, at
+line 87, since fixed.
+
+**Why the detector could not tell.** `tap6_method_grep.ts`'s pattern is
+`/(=|:)\s*['"]two_pass_verified['"]/`. It matches `= "two_pass_verified"` whether the
+right-hand side is a bare assertion or a computed conditional. Its description claimed "must be
+computed by a verifier, never passed as a literal" — strictly more than the regex measured. And
+because `ga_nakshatra.py` had no baseline entry, its single hit was NEW → FAIL. **The M-22 fix
+is what turned `main` red; the detector was anti-correlated with code health**, and stayed red
+across five consecutive `main` runs that everyone merged over.
+
+**Corroboration that this class was already known.** Three baseline entries for
+`ga_sensitive_degree_writer.py` are annotated *"NOT A VIOLATION"* and describe
+`yogi_status = "two_pass_verified" if yogi_ok else "divergent_flagged"` — structurally identical
+to line 125. The precision failure had already been adjudicated three times; ga_nakshatra simply
+lacked the entry.
+
+**The fix: lexical separation, not a smarter regex.** Teaching the pattern to parse conditionals
+would not help — `"two_pass_verified" if True else …` asserts too. Instead the honest path was
+made distinguishable by grep:
+
+- `brahmagyan.verification_vocab.two_pass_verdict(engine, derived)` is now the **only sanctioned
+  producer**; it demands both values and compares them itself. It went in that module — not a
+  new one — because that file already is the single source of truth for this vocabulary, lives
+  in L0 so every layer may import it, and exists *because* the field once had six disagreeing
+  definitions. (The task brief proposed a new `pipeline/verification.py`; that would have been a
+  seventh. Deviation recorded deliberately.)
+- `ga_nakshatra.py:125` calls it. The `int()` coercion stays at the call site so the helper never
+  silently redefines "agrees" for another caller, and the divergence WARNING stays too — the
+  helper lacks the subject/claim context.
+- TAP-6 exempts exactly that one **file** (not a directory) and its description now says what it
+  measures: *the literal assigned OUTSIDE the sanctioned module*.
+
+**Named residual, not solved:** `two_pass_verdict(x, x)` still fabricates a pass. Going through
+the helper is not proof a detector ran. That is a separate grep — call sites whose two arguments
+are the same expression — for a later lane.
+
+**Verification (both directions, because a green gate proves nothing on its own):**
+
+| Check | Result |
+|---|---|
+| TAP-6 after the fix | **exit 0** — 0 NEW, 1 QUARANTINED (111 known hits, all tracked), 6 PASS |
+| Remove the exemption | **exit 1**, naming `verification_vocab.py:240,242` — the exemption is load-bearing |
+| Inject a bare `status = "two_pass_verified"` elsewhere | **exit 1**, naming `__m22_probe.py:1` — still catches real assertions |
+| `ga_nakshatra` + vocab tests | 77 passed / 2 skipped, and 25 passed — emitted values unchanged |
+
+**Stale baseline entries deleted: 9 of 24** (across `rough_estimate_comment`,
+`safe_fallback_comment`, `falling_back_to_forensic`, `native_fallback_longitudes` ×4, and the two
+`fabricated_citation_*` patterns), per the ratchet's own protocol. *Correction to the task brief:
+it stated `ga_dashas_writer.py` had two stale entries under `two_pass_verified_literal`. It has
+two stale entries, but under `safe_fallback_comment` and `falling_back_to_forensic`; no
+`ga_dashas_writer.py` entry exists under `two_pass_verified_literal` at all.* All 15 surviving
+entries are `two_pass_verified_literal`.
+
+**Scan scope settled** (the brief flagged it as an open question): `walk()` collects only `.py`
+and `.ts`. **`.json` is not scanned**, so `CHART_FACTS_SCHEMA.json`'s 592 textual matches are
+irrelevant and the diagnosis above is unaffected.
+
 ## §7 — Verification standard applied
 
 No change was made on reasoning alone. Every claim was measured, and every gate
