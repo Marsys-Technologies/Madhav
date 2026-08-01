@@ -26,6 +26,73 @@ full record: `SHAD_DARSHANA_ADJUDICATIONS_NIGHT3_v1_0.md` §NATIVE CONFIRMATIONS
    directory). The four PARKED-HONEST deliverables re-open when it lands; night runs do NOT
    attempt it.
 
+---
+
+## NIGHT 4 — SESSION OPEN (2026-08-02, ~01:22–02:58 IST, in progress)
+
+**Session-open protocol discharged, per §D v1.3:**
+1. **Rebase**: `shad-darshana/integration` was 2 commits behind `origin/main` (TAP-6 CI fixes,
+   unrelated campaign). Clean rebase, no conflicts, force-with-lease pushed
+   (`1878ac02` → `ff9c1f9c`, same content, new base). Verified `origin/main` is now an ancestor.
+2. **Ledger-reconciliation sweep**: cross-checked NEXT-ACTION's open items against reality —
+   PR #1009 and #1014 confirmed merged (git log, not self-report); no open shad-darshana PRs
+   found repo-wide except unrelated campaigns (#1016 ci/m22-drain-and-probe, #899/#898 explicit
+   PRESERVE markers, #446 stale docs) — none collide with tonight's scope. **Gochara sweep
+   `d95583c8` on `1c826d5a` — CONFIRMED COMPLETE**: `build_runs.state='completed'`,
+   `build_run_assets.state='complete'`, `build_substep_progress` count = exactly 303 for
+   `(1c826d5a, ka_gochara_sweep)`. Both-charts horizon parity confirmed: `482012f1` 8,345 rows
+   to 2084-12-30; `1c826d5a` 8,061 rows to 2085-12-24 — the standing forward-window gap from
+   Phase-0 preflight (Night 1) is now CLOSED. This was NEXT-ACTION item 2; DONE.
+3. **ANTARYĀMIN docket check**: the three native-ruled docket items (Agnivāsa, N_e, Muhūrta-
+   Cintāmaṇi) are already recorded above (PR #1015). No new unruled adjudication blocks
+   tonight's dispatched wave. **Deliberately NOT resolved tonight**: the W2G V4 design-band
+   re-scope (779,595 measured contact events vs design §2.3's 10k–100k band — even the
+   eager-layer-only split exceeds the band) and V1's per-phase instrumentation gap — both
+   genuinely need dedicated Opus design attention, not a quick ruling, and W2G was judged lower
+   priority than closing out W3/W4 build capacity tonight. Recorded here so it isn't lost:
+   **W2G writer lane remains NOT DISPATCHED, blocked on this ruling, for a future session.**
+4. **Deploy check**: `main`@`334436a9` already matches the last production deploy (run
+   `30686193558`, 2026-08-01 05:37 UTC, confirmed via `gh run list` cross-checked against
+   `git log origin/main -1`) — no separate main-only deploy was owed tonight; the next deploy
+   is the wave's own gate-close (integration → main) once builders land.
+
+**Dispatched — Wave 1, six lanes, all in worktrees off `origin/shad-darshana/integration`,
+never spawned from inside a worktree:**
+- `shad-darshana/w3-health-adverse-class` (item 9, health/adverse event class closing DP-4,
+  **S4-05 re-test** — the historical trust-breaking-veto item; escalated to Opus/high on the
+  Conductor's own authority given the stakes, per §B.3's "escalate wherever value-adding")
+- `shad-darshana/w3-tithi-pravesha` (item 13, lunar-return annual chart, Sonnet)
+- `shad-darshana/w3-period-echo` (item 31, hypothesis-framed period-echo mining, Sonnet —
+  instructed to investigate and honestly report whether this is field-dependent before
+  building, park-honest rather than build a hollow placeholder if so)
+- `shad-darshana/w4-lane-u-upaya-setu` (W4 Lane U — item 26 full + E6 efficacy, Sonnet)
+- `shad-darshana/w4-lane-s-sankalpa` (W4 Lane S — item 42 Intervention Ledger, Sonnet,
+  spine-first: `intervention_filing.ts` + one-line `client.ts` widening lands before the
+  writer, since Lanes U/R both consume the published type)
+- `shad-darshana/w4-lane-r-yajna-setu` (W4 Lane R — items 37-full/40/38-W4-half PLUS items 6+7
+  folded in, since both share Lane R's exclusive file `bg_muhurta_lattice.py` and depend on
+  its R-1 lattice-widening work — dispatching 6/7 as a separate concurrent lane would have
+  collided; Opus/high per §B.3's mandatory list, parihāra corpus-extraction review + the
+  absolute mortality-exclusion rail ADJUDICATION-13)
+
+**Deliberately not dispatched tonight, honest scoping choice, not an oversight:**
+- Item 14 (janma-anchored election rules) — explicitly deferred by Lane R's own brief to a
+  future session; composes with R-4 but out of scope for tonight's lane size.
+- W2G writer lane — blocked on the V4/V1 Opus design ruling (see point 3 above).
+- The real W2 field-integration run itself (hash-replay determinism, weights-v0 seed,
+  skill-score/GOF publish, specificity-gate HARD flip, item-44 census population) — this is
+  substantial standalone work in its own right (per PR #1014, "steps 1–2 proven, 3–5 next
+  session") and was judged too large to fold into tonight's already-6-lane wave; planned as
+  Wave 2 once Wave-1 capacity frees, still within tonight's ~7.5h budget if it does.
+
+**Next**: monitor Wave 1 to green/PR, run the merge train onto `shad-darshana/integration` as
+each lands (Conductor-resolved conflicts only, never force-push over a lane's real work), then
+either dispatch Wave 2 (W2 field-integration) if capacity/time allow, or proceed straight to
+the gate-close sequence (integration → main PR, merge-queue wait, deploy, L0 super-admin
+trigger for new `bg_*` assets, `ka_kshetra` rebuild both charts, PARĪKṢAKA live acceptance).
+
+---
+
 **NIGHT-3 RESUMED SESSION CLOSED (2026-08-01, ~08:36–16:15 IST — see MORNING REPORT
 NIGHT-3-RESUMED immediately below for the full close-out).** The single next action for the
 next session:
