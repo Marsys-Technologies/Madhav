@@ -756,10 +756,13 @@ jobs:
     # Mechanically verifies the §N.6 density/layering discipline on the two surfaces that
     # implement it (judgment_query, ganita_yogas_get) — offline, no live MCP connector or DB
     # needed (see platform/scripts/audit/density_harness/run.ts's module doc-comment for the
-    # BEHAVIORAL vs CENSUS assertion split). Scoped to two known-good test files rather than
+    # BEHAVIORAL vs CENSUS assertion split). Scoped to known-good test files rather than
     # platform-mcp's full `npm test` — that suite currently carries pre-existing unrelated
     # failures (tracked separately; not a B-7 regression) and wiring the whole suite into CI
-    # is a follow-on hygiene item, not this lane's job.
+    # is a follow-on hygiene item, not this lane's job. This job has become the de facto
+    # narrow-allowlist gate for platform-mcp overall (not §N.6-specific), so it also now
+    # carries PR #995's two coverage-honesty regressions (kala_elect_get / kala_now_get) —
+    # both files are 100% green (10/10, 26/26), added here rather than left CI-unguarded.
     name: Density Census (§N.6)
     runs-on: ubuntu-latest
     defaults:
@@ -790,6 +793,12 @@ jobs:
       - name: envelope codegen parity test (platform-mcp) — GT-9
         working-directory: platform-mcp
         run: npx vitest run src/__tests__/r5_codegen_parity.test.ts
+      - name: kala_elect_get hora_ladder coverage-honesty regression (platform-mcp)
+        working-directory: platform-mcp
+        run: npx vitest run src/tools/kala_views/elect.test.ts
+      - name: kala_now_get kala_darshana_confluence coverage-honesty regression (platform-mcp)
+        working-directory: platform-mcp
+        run: npx vitest run src/__tests__/kala_now_get.test.ts
       - name: vidhi registry codegen drift check (platform) — GT-56
         run: npm run codegen:vidhi:check
       - name: vidhi registry codegen parity test (platform-mcp) — GT-56

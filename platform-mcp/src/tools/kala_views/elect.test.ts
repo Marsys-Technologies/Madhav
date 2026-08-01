@@ -42,6 +42,10 @@ function muhurtaResult(overrides: Partial<Record<string, unknown>> = {}) {
         hard_flag: false,
         disqualified: false,
         rank_penalty_reason: [],
+        hora_ladder: [
+          { start_ist: '2026-08-05T06:00:00+05:30', end_ist: '2026-08-05T07:00:00+05:30', hora_lord: 'Mercury', benefic: true },
+          { start_ist: '2026-08-05T07:00:00+05:30', end_ist: '2026-08-05T08:00:00+05:30', hora_lord: 'Moon', benefic: true },
+        ],
       },
       {
         start: '2026-08-12T00:00:00Z',
@@ -61,6 +65,10 @@ function muhurtaResult(overrides: Partial<Record<string, unknown>> = {}) {
           janma_nakshatra: 'Purva Bhadrapada', day_nakshatra: 'Ashwini', count_from_janma: 3, tara_index: 3,
           tara_name: 'Vipat', favorable: false, adverse: true, severity: 'severe', citation: 'Muhurta Chintamani',
         },
+        hora_ladder: [
+          { start_ist: '2026-08-12T06:00:00+05:30', end_ist: '2026-08-12T07:00:00+05:30', hora_lord: 'Saturn', benefic: false },
+          { start_ist: '2026-08-12T07:00:00+05:30', end_ist: '2026-08-12T08:00:00+05:30', hora_lord: 'Jupiter', benefic: true },
+        ],
       },
     ],
     window_count: 2,
@@ -223,5 +231,53 @@ describe('handleKalaElectGet', () => {
 
     expect(response).toBeUndefined()
     expect(error?.message).toContain('AUTHZ_DENIED')
+  })
+
+  describe('coverage honesty — hora_ladder (PARĪKṢAKA live-production regression, defect 1)', () => {
+    // Reproduces the exact live-production defect: coverage claimed
+    // { concept: 'hora_ladder', state: 'computed' } while no candidate object anywhere in the
+    // response carried a `hora_ladder` field, even though muhurta_finder.ts's
+    // enrichWindowsLaneF genuinely computes one per window (~line 776). Fails on pre-fix code
+    // because `KalaElectCandidate` never projected the field.
+    it('never claims hora_ladder computed while withholding it from every served candidate', async () => {
+      mockHandleMuhurtaFinder.mockResolvedValue({
+        structuredContent: { object: muhurtaResult() },
+        content: [{ type: 'text', text: '{}' }],
+      })
+
+      const { handleKalaElectGet } = await import('./elect.js')
+      const { response } = await handleKalaElectGet({ chart_id: CHART_ID, undertaking: 'business' }, PRINCIPAL)
+
+      const horaCoverage = response!.coverage.find((c) => c.concept === 'hora_ladder')
+      expect(horaCoverage?.state).toBe('computed')
+      // The honesty invariant this regression protects: if coverage says `computed`, the
+      // payload must actually exist somewhere in the response — not just upstream.
+      expect(response!.candidates.length).toBeGreaterThan(0)
+      for (const c of response!.candidates) {
+        expect(Array.isArray(c.hora_ladder)).toBe(true)
+        expect(c.hora_ladder.length).toBeGreaterThan(0)
+      }
+    })
+
+    it('falls back to honest_empty (never a bare unbacked "computed") when no window carries a ladder', async () => {
+      const noLadders = muhurtaResult()
+      for (const w of noLadders.windows as Record<string, unknown>[]) {
+        delete w['hora_ladder']
+      }
+      mockHandleMuhurtaFinder.mockResolvedValue({
+        structuredContent: { object: noLadders },
+        content: [{ type: 'text', text: '{}' }],
+      })
+
+      const { handleKalaElectGet } = await import('./elect.js')
+      const { response } = await handleKalaElectGet({ chart_id: CHART_ID, undertaking: 'business' }, PRINCIPAL)
+
+      const horaCoverage = response!.coverage.find((c) => c.concept === 'hora_ladder')
+      expect(horaCoverage?.state).toBe('honest_empty')
+      expect(horaCoverage?.reason?.length).toBeGreaterThan(0)
+      for (const c of response!.candidates) {
+        expect(c.hora_ladder).toEqual([])
+      }
+    })
   })
 })
