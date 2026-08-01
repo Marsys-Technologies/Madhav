@@ -708,6 +708,72 @@ extraction_context label makes a later mūla-verse upgrade a field update, not r
 
 ---
 
+## ADJUDICATION-11: Sarvatobhadra-Chakra grid provenance and the closure of R-19 (item 5)
+
+*(Issued as a supplemental ruling after the w3-moorti-vedha lane's PR #1009 disclosure.)*
+
+**Question.** Item 5's SBC half ships an explicitly-disclosed algorithmic approximation (no
+grid in corpus; grid geometry genuinely varies by tradition, so transcribing one from memory
+is a school-selection judgment, not a transcription). Does this close R-19, and what is the
+sanctioned path to a real grid?
+
+**Corpus findings.** `sarvatobhadra` variants: 8 hits, ALL noise (index pages, OCR ligature
+soup, a pillar-proportion false positive) except one passing `[MEDIUM]` mention. Neither
+Jyotish Sara Sangraha nor Nārada Saṃhitā is held (0 hits each). **But vedha doctrine as such
+IS in the corpus** — 30 hits across 5 texts; two load-bearing and citable today:
+Phaladeepika Adh. XXVI **PG353** (malefic-count 1–5 → fear/failure/killing/death/ignominy
+scale) and **PG339** (the Lattā rules: 9th from Mercury, 22nd from Moon, natal-star-as-Lattā
+affliction), both `[HIGH]` provenance.
+
+### RULING — (a) for the SBC grid, in a school-tagged form; PLUS a mandatory citable-vedha
+component; **R-19 closes CLOSED-PARTIAL-BY-DESIGN, never as a bare "CLOSED"**.
+
+**Part 1.** The lane's refusal to transcribe a grid is AFFIRMED; option (c) (transcribe one
+named source's grid à la ADJUDICATION-9) is REJECTED: where geometry varies by tradition,
+selecting one grid IS an interpretive act, and seating it as an L0 base fact is a B.1 layer
+violation (the structural_prior-masquerading-as-fact defect). ADJUDICATION-9's transcription
+logic does not extend here — one-source/one-geometry (Kota) vs multi-tradition (SBC).
+
+**Part 2.** School-variant rule tables use the ADJUDICATION-8 machinery, not a single-truth
+table: `bg_sarvatobhadra_grid` (L0, global) keyed by `school_tag`, registered **EMPTY** (an
+empty school-keyed table honestly states that variants exist and none is held); selection is
+a `kala_paddhati_profile` matter (`factor_family='sarvatobhadra_grid'`,
+native_confirmed=FALSE); the writer's DB-sourced-grid-first path is affirmed — a sourced grid
+activates with zero code change.
+
+**Part 3.** The disclosed approximation IS accepted as the served layer, with three data-only
+additions: `grid_basis='algorithmic_approximation'` + `grid_school_tag=null` machine-readable
+on every such row; those rows EXCLUDED from any "cited" count (served and counted separately,
+§N.6); `r19_disclosure` restated as the measured corpus fact.
+
+**Part 4 — MANDATORY for R-19 closure:** item 5 also seeds + serves at least the two cited
+vedha rules the corpus holds today, transcribed exactly: Phaladeepika PG353 (vedha scale) and
+PG339 (Lattā, `vedha_kind='latta'`, `uncited_extension=false`), as versioned cited L0 rows.
+Remaining vedha hits (13 Phaladeepika + Sarvartha Chintāmaṇi 5 + Uttara Kālāmṛta 5) filed as
+follow-on extraction, not attempted under time pressure.
+
+**Part 5.** Item 5 = VERIFIED-FIXED with disclosure; R-19 = CLOSED-PARTIAL-BY-DESIGN with the
+two halves stated separately in the ledger (vedha doctrine cited+served; SBC grid =
+approximation, uncited, school-tagged table registered empty pending source). Option (b)
+adopted as a TRACKED OBLIGATION riding W6's dark-corpus re-measure (a named, classified
+residual), never as a gate-blocker hostage to a purchase order. Option (d) rejected.
+
+**Part 6.** Corpus work item filed with real cost: (i) translate/extract muhurta_chintamani —
+now blocking FOUR deliverables (ADJ-8/9/10/11 all converge on it; prioritise accordingly);
+(ii) acquire a Nārada-Saṃhitā/SBC-specific text (genuine acquisition). Even a successful
+extraction yields ONE school's grid — which is why the school-tagged schema is built now.
+
+**Rationale.** DATA-HONESTY RAIL · brief §3 item 5/R-19 + W3K tier hierarchy · B.1 (the
+decisive clause) · B.3 · B.10 · §N.6 · Elevation §"Lineage variation is data" ·
+ADJUDICATION-8 (school-tag precedent) · ADJUDICATION-9 (transcription precedent and its
+limit).
+
+**Reversibility: HIGH.** Field-level metadata + an empty table + independently-standing cited
+rows; a real grid inserts under a school_tag and activates via the existing DB-first path
+with zero code change.
+
+---
+
 ### Closing notes for the Conductor
 
 - **Nothing above touches a FROZEN contract, an untouchable, or a rail.** Every new writer is
