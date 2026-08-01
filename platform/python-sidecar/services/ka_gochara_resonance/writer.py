@@ -6,8 +6,9 @@ at pipeline/orchestrator/writers/ka_gochara_resonance.py.
 
 Populates `gochara_resonance_map`: for each of a small, deliberately-scoped
 set of event_class values (from `brahma_event_ontology`'s 27-class ontology —
-see GOCHARA_RESONANCE_MAP_SPEC.md §4 for why THESE 3 classes), emits target
-rows across all 8 target_type values the schema supports:
+6 of them as of ṢAḌ-DARŚANA item 9; see GOCHARA_RESONANCE_MAP_SPEC.md §4 for
+the original 3 and §4.2 for the health/adverse extension that closed DP-4),
+emits target rows across all 8 target_type values the schema supports:
 
   bhava / lord / karaka        — read straight off brahma_event_ontology's
                                   `signature_model` (BPHS-cited via that
@@ -50,17 +51,30 @@ from __future__ import annotations
 import logging
 from typing import Any, Iterable
 
+from services.gochara_grammar.event_class_scope import SWEEP_EVENT_CLASSES
+
 logger = logging.getLogger(__name__)
 
 FORMULA_VERSION = "ka_gochara_resonance_v1.0"
 _CANONICAL_AYANAMSHA = "lahiri_chitrapaksha"
 
-# ── Event-class scope (§ GOCHARA_RESONANCE_MAP_SPEC.md §4 documents why) ──────
-# Chosen for richest bg_transit_rules (graha x house) coverage among the 27-
-# class ontology: each karaka below has multiple favourable/unfavourable/
-# double_transit bg_transit_rules rows whose primary_house lands inside the
-# event class's own signature_model houses.
-TARGET_EVENT_CLASSES: tuple[str, ...] = ("marriage", "major_gain", "career_advancement")
+# ── Event-class scope ────────────────────────────────────────────────────────
+# NO LONGER DECLARED HERE (ṢAḌ-DARŚANA item 9, 2026-08-02). The scope now lives
+# in `services.gochara_grammar.event_class_scope.SWEEP_EVENT_CLASSES`, the ONE
+# shared, CI-diffed declaration the whole gochara grammar coordinates through
+# (brief §7 ONE-VOCABULARY rail) — because this tuple silently governs far more
+# than this writer: `ka_gochara_sweep` plans its substeps from whatever
+# `gochara_resonance_map` rows exist, and the served
+# `coverage.event_classes_covered` / `domains_not_covered`
+# (platform-mcp `register_gochara_windows.ts`) are derived from the same table.
+# Its original 3 classes named no health-domain and no adverse-valence class,
+# which is DP-4 — the data root of the S4-05 trust-breaking veto. See that
+# module's docstring and `tests/l3/test_s4_05_health_adverse_class.py`.
+#
+# The original selection rationale (richest bg_transit_rules graha x house
+# coverage) is retained in GOCHARA_RESONANCE_MAP_SPEC.md §4 and still describes
+# the three legacy classes.
+TARGET_EVENT_CLASSES: tuple[str, ...] = SWEEP_EVENT_CLASSES
 
 # rule_type -> classical-prior weight (documented in GOCHARA_RESONANCE_MAP_SPEC.md §2)
 _MECHANISM_WEIGHTS: dict[str, float] = {
