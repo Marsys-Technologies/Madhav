@@ -493,9 +493,28 @@ REAL for the first time.
 `shad-darshana/integration` ahead of main by tonight's 8 lane PRs + ledger commits — the
 normal between-gates state (§B.2). No gate-close deploy tonight (no gate closed — honest).
 
-**Swarm health:** 3 builder-lane transient stalls (600s watchdog class), all resumed with
-zero work loss via SendMessage; 1 mid-session account-level pause (native reset it —
-sweeps and deploys continued unattended; state fully reconstructed from ledgers on resume).
+**LATE-SESSION LANDING — PR #1038 MERGED (integration) + Conductor-verified:** the
+ToolBundle unwrap fix turned out to be FAR wider than the two diagnosed sites. The lane's
+audit of every `callPlatformPrimitive` consumer found and fixed **seven silently-broken
+readers**: `fetchLatticeSubstrate` (the diagnosed defect — available-flags are now real
+detectors) · `kala_ritual_resonance` (unwrap + two capability names that were never
+whitelist keys and 400'd on EVERY call: `query_remedy_corpus`→`query_remedies`,
+`query_rm_resonances`→`bodha_rm_resonances_get`) · `kala_upaya_diagnosis` (unwrap + two
+more dead names repointed) · `kala_sky_pattern` readers · all 7 `remedy_tools` (served a
+double-encoded bundle with `count: undefined`). Five consumers verified already-correct;
+four passthrough sites flagged for follow-up, not silently absorbed. New shared
+`primitive_unwrap.ts` helper (mirroring #823's idiom) with six machine-readable failure
+causes; wire-shape regression fixtures now pin the actual ToolBundle encoding — the exact
+mock-drift that let all of this ship green is closed. Lane counts: 298/0 targeted, full
+suite failures verified pre-existing by stash-baseline. **Conductor verification:
+primitive_unwrap 17/17 + lattice wire suite 12/12 from the merged tree.** The live
+re-verification of adjudicated ledgers on production happens at the next gate-close deploy
+(this code is integration-only until then).
+
+**Swarm health:** 4 builder-lane transient stalls/drops (600s watchdog + connection
+class), all resumed with zero work loss via SendMessage; 1 mid-session account-level pause
+(native reset it — sweeps and deploys continued unattended; state fully reconstructed from
+ledgers on resume).
 
 *Truth over completion. The sweep relay is the single thing the next session must touch
 first.*
