@@ -13,15 +13,18 @@ import { fileURLToPath } from 'node:url'
 import {
   MORTALITY_EXCLUSION_PATTERN,
   MORTALITY_FORBIDDEN_IDENTIFIERS,
+  PADDHATI_CENSUS_UNCONFIRMED,
   PADDHATI_DIVERGENCE_STATES,
   SKY_PATTERN_CONSTRAINT_KINDS,
   TARA_CYCLE,
   buildMortalityExclusionRefusal,
   detectMortalityExclusion,
   intersectIntervals,
+  paddhatiCensusStatement,
   subtractIntervals,
   taraFor,
   type Interval,
+  type PaddhatiConventionRow,
 } from './kala_sky_pattern.js'
 
 const iv = (start: number, end: number, ...basis: string[]): Interval => ({ start, end, basis })
@@ -122,6 +125,79 @@ describe('sky_pattern_spec v1 — the frozen vocabulary', () => {
 
   it('the paddhati divergence closed set is exactly ADJUDICATION-8\'s three states', () => {
     expect([...PADDHATI_DIVERGENCE_STATES]).toEqual(['none_computed', 'diverges', 'agrees'])
+  })
+})
+
+describe('paddhati census statement — derived from the profile, never a static claim (§N.7/§N.8)', () => {
+  const row = (over: Partial<PaddhatiConventionRow> = {}): PaddhatiConventionRow => ({
+    factor_family: 'agnivasa',
+    convention_id: 'agnivasa_tithi_element_prithvi',
+    school_tag: 'corpus_default',
+    constraint_role: 'hard',
+    convention_status: 'computed',
+    provenance: 'L1 ga_panchanga / panchang_engine AGNI_VASA_TABLE (shipped)',
+    corpus_gap_ref: null,
+    native_confirmed: false,
+    awaiting_native_confirmation: true,
+    version: 'paddhati_v01',
+    ...over,
+  })
+
+  it('native_confirmed=TRUE (migration 534 applied) → cites the row\'s own confirmation_provenance', () => {
+    const s = paddhatiCensusStatement({
+      available: true,
+      unavailable_reason: null,
+      operative: [
+        row({
+          native_confirmed: true,
+          awaiting_native_confirmation: false,
+          confirmation_provenance:
+            'native statement 2026-08-02; recorded in SHAD_DARSHANA_ADJUDICATIONS_NIGHT3_v1_0.md §NATIVE CONFIRMATIONS',
+        }),
+      ],
+    })
+    expect(s).toContain('natively CONFIRMED')
+    expect(s).toContain('agnivasa_tithi_element_prithvi')
+    expect(s).toContain('§NATIVE CONFIRMATIONS')
+    // The superseded static claim must NOT survive into the confirmed state.
+    expect(s).not.toContain('not on record')
+  })
+
+  it('confirmed but the wire dropped confirmation_provenance → names the data gap instead of inventing a citation', () => {
+    const s = paddhatiCensusStatement({
+      available: true,
+      unavailable_reason: null,
+      operative: [row({ native_confirmed: true, awaiting_native_confirmation: false })],
+    })
+    expect(s).toContain('natively CONFIRMED')
+    expect(s).toContain('no confirmation_provenance')
+    expect(s).not.toContain('not on record')
+  })
+
+  it('profile read, no confirmed row → the original honest "not on record" text, with the awaiting note the row itself carries', () => {
+    const s = paddhatiCensusStatement({ available: true, unavailable_reason: null, operative: [row()] })
+    expect(s).toContain(PADDHATI_CENSUS_UNCONFIRMED)
+    expect(s).toContain('awaiting native confirmation')
+  })
+
+  it('profile read, empty profile → exactly the original ADJUDICATION-8 rail 1 statement', () => {
+    expect(paddhatiCensusStatement({ available: true, unavailable_reason: null, operative: [] })).toBe(
+      PADDHATI_CENSUS_UNCONFIRMED,
+    )
+  })
+
+  it('fetch FAILED → reported as unreachable with the reason, never restated as "not on record"', () => {
+    const s = paddhatiCensusStatement({
+      available: false,
+      unavailable_reason: 'query_kala_paddhati_profile returned status 404',
+      operative: [],
+    })
+    expect(s).toContain('could NOT be determined')
+    expect(s).toContain('status 404')
+    // A `declared_not_computed`-style honest absence and an unreachable record are
+    // DIFFERENT claims; the unreachable state must not assert absence.
+    expect(s.startsWith('agnivāsa convention = corpus default')).toBe(true)
+    expect(s.includes('lineage convention is not on record')).toBe(false)
   })
 })
 
