@@ -95,7 +95,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { Principal } from '../../types.js'
 import {
   makeKalaEnvelope,
-  buildFieldSnapshotIdStub,
+  resolveFieldSnapshot,
   pointerTo,
   noLeverPointer,
   computedCoverage,
@@ -630,16 +630,14 @@ export async function handleKalaStoryGet(
   const composed = composeArgument(reading)
   const questionFrame: QuestionFrame | null = input.question_frame ?? null
 
-  const mostRecentComputedAt = rawParvas.reduce<string | null>((acc, r) => {
-    if (!r.computed_at) return acc
-    if (acc === null || r.computed_at > acc) return r.computed_at
-    return acc
-  }, null)
+  // W2 (E5): the real field snapshot read — served id, or an honest marker; never a stub.
+  // (The W0 stub composed from ka_jivana_parva's newest computed_at is retired with it.)
+  const fieldSnapshot = await resolveFieldSnapshot(input.chart_id, principal)
 
   const envelope = makeKalaEnvelope<ArgumentReading>({
     reading,
     questionFrame,
-    fieldSnapshotId: buildFieldSnapshotIdStub({ ka_jivana_parva: mostRecentComputedAt }),
+    fieldSnapshot,
     triPlane: {
       // The envelope-level pointer is the whole-story frame; per-chapter pointers above
       // (item 43 "wired on real data") carry the actually-differentiated live pointers.
@@ -650,7 +648,7 @@ export async function handleKalaStoryGet(
         : noLeverPointer('every served chapter is in the past — no intervention lever applies'),
     },
     coverage,
-    freshness: buildKalaFreshness({ ephemerisVersion: null, sweepBuildDate: null, fieldHash: null }),
+    freshness: buildKalaFreshness({ ephemerisVersion: null, sweepBuildDate: null, fieldHash: fieldSnapshot.field_content_hash }),
     calibrationMaturity: noLelCalibrationMaturity(),
   })
 

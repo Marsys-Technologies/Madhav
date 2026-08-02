@@ -262,7 +262,12 @@ describe('handleKalaStoryGet', () => {
     expect(response!.tool).toBe('kala_story_get')
     expect(response!.chapters.length).toBe(2)
     expect(response!.calibration_maturity.n_events).toBe(0)
-    expect(response!.field_snapshot_id).toContain('ka_jivana_parva=')
+    // W2: the stub ('ka_jivana_parva=…') is retired. The mocked db/query returns no
+    // kala_field_snapshots rows, so the envelope serves the honest not-yet-built marker —
+    // never a fabricated id (B.10).
+    expect(response!.field_snapshot_id).toBe('field_not_yet_built')
+    expect(response!.field_snapshot_state).toBe('field_not_yet_built')
+    expect(response!.field_snapshot_reason).toContain('no kala_field_snapshots row')
 
     // The 1991-2010 Saturn chapter (current, since "now" is well inside 1991-2010... it
     // is not for 2026 — recompute expectation against actual temporal_position instead of

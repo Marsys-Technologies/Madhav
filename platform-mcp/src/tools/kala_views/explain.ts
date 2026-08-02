@@ -27,7 +27,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { Principal } from '../../types.js'
 import {
   makeKalaEnvelope,
-  buildFieldSnapshotIdStub,
+  resolveFieldSnapshot,
   pointerTo,
   noLeverPointer,
   computedCoverage,
@@ -263,15 +263,10 @@ export function registerKalaExplainTool(server: McpServer, principal: Principal)
           ),
         ]
 
-        const freshness = buildKalaFreshness({ ephemerisVersion: null, sweepBuildDate: null, fieldHash: null })
+        // W2 (E5): the real field snapshot read — served id, or an honest marker; never a stub.
+        const fieldSnapshot = await resolveFieldSnapshot(chart_id, principal)
 
-        const fieldSnapshotId = buildFieldSnapshotIdStub({
-          chart_id,
-          ayanamsha_id: resolvedAyanamsha,
-          as_of_date: resolvedAsOfDate,
-          domain: (domain as string | undefined) ?? null,
-          bhava: bhava !== undefined ? String(bhava) : null,
-        })
+        const freshness = buildKalaFreshness({ ephemerisVersion: null, sweepBuildDate: null, fieldHash: fieldSnapshot.field_content_hash })
 
         const densityContract: KalaDensityContract = {
           paginated: false,
@@ -282,7 +277,7 @@ export function registerKalaExplainTool(server: McpServer, principal: Principal)
         const envelope = makeKalaEnvelope({
           reading,
           questionFrame: (question_frame as QuestionFrame | undefined) ?? null,
-          fieldSnapshotId,
+          fieldSnapshot,
           triPlane,
           coverage,
           freshness,

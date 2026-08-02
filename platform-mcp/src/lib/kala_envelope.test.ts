@@ -1,14 +1,18 @@
 /**
- * kala_envelope.test.ts — ṢAḌ-DARŚANA W0.3.
- * Covers: argument-reading well-formedness, field_snapshot_id stub determinism, tri-plane
- * pointer honesty, 3-state coverage builders, freshness staleness detection, the LEL-absent
+ * kala_envelope.test.ts — ṢAḌ-DARŚANA W0.3 · W2 (w2-envelope-real-snapshot).
+ * Covers: argument-reading well-formedness, the REAL field_snapshot_id read
+ * (`resolveFieldSnapshot` — served / field_not_yet_built / field_snapshot_unreachable
+ * honesty states, replacing the retired W0 'stub:' composer), tri-plane pointer honesty,
+ * 3-state coverage builders, freshness staleness detection, the LEL-absent
  * calibration_maturity scenario (Elevation §7), envelope assembly, and the hardFloor
  * trimmable-section integration with response_budget.ts's actual trim mechanics.
  */
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, afterEach, vi } from 'vitest'
 import {
   isWellFormedArgumentReading,
-  buildFieldSnapshotIdStub,
+  resolveFieldSnapshot,
+  FIELD_NOT_YET_BUILT,
+  FIELD_SNAPSHOT_UNREACHABLE,
   pointerTo,
   noLeverPointer,
   isNoLever,
@@ -20,6 +24,7 @@ import {
   makeKalaEnvelope,
   kalaEvidenceTrimmableSection,
   type ArgumentReading,
+  type FieldSnapshotResolution,
 } from './kala_envelope.js'
 import { applyResponseBudget } from './response_budget.js'
 
@@ -50,22 +55,76 @@ describe('isWellFormedArgumentReading', () => {
   })
 })
 
-describe('buildFieldSnapshotIdStub', () => {
-  it('is deterministic regardless of input key order', () => {
-    const a = buildFieldSnapshotIdStub({ ka_dasha_kala: 'b1', ga_chart_facts: 'a1' })
-    const b = buildFieldSnapshotIdStub({ ga_chart_facts: 'a1', ka_dasha_kala: 'b1' })
-    expect(a).toBe(b)
-    expect(a).toBe('stub:ga_chart_facts=a1;ka_dasha_kala=b1')
+describe('resolveFieldSnapshot — W2 real read, 3 honesty states', () => {
+  const PRINCIPAL = { user_uid: 'u1', key_id: 'k1' }
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
   })
 
-  it('drops null/undefined/empty-string entries', () => {
-    const id = buildFieldSnapshotIdStub({ ga_chart_facts: 'a1', ka_gochara_sweep: null, ka_dasha_kala: undefined, x: '' })
-    expect(id).toBe('stub:ga_chart_facts=a1')
+  function stubDbQuery(response: { ok: boolean; status?: number; rows?: unknown[]; bodyText?: string }) {
+    const fetchMock = vi.fn(async () => ({
+      ok: response.ok,
+      status: response.status ?? (response.ok ? 200 : 400),
+      json: async () => ({ rows: response.rows ?? [] }),
+      text: async () => response.bodyText ?? '',
+    }))
+    vi.stubGlobal('fetch', fetchMock)
+    return fetchMock
+  }
+
+  it('serves the newest real kfs_/kfh_ pair when a snapshot row exists', async () => {
+    const fetchMock = stubDbQuery({
+      ok: true,
+      rows: [{ field_snapshot_id: 'kfs_' + 'a'.repeat(32), field_content_hash: 'kfh_' + 'b'.repeat(32) }],
+    })
+    const r = await resolveFieldSnapshot('chart-1', PRINCIPAL)
+    expect(r.field_snapshot_state).toBe('served')
+    expect(r.field_snapshot_id).toBe('kfs_' + 'a'.repeat(32))
+    expect(r.field_content_hash).toBe('kfh_' + 'b'.repeat(32))
+    expect(r.field_snapshot_reason).toBeNull()
+    // The query is a total-order newest-row read against kala_field_snapshots (§N.7 item 2).
+    const body = JSON.parse((fetchMock.mock.calls[0] as unknown as [string, { body: string }])[1].body) as {
+      sql: string
+      params: unknown[]
+    }
+    expect(body.sql).toContain('FROM kala_field_snapshots')
+    expect(body.sql).toContain('ORDER BY built_at DESC, field_snapshot_id DESC LIMIT 1')
+    expect(body.params).toEqual(['chart-1'])
   })
 
-  it('falls back to an honest unknown marker when nothing resolves', () => {
-    expect(buildFieldSnapshotIdStub({})).toBe('stub:unknown')
-    expect(buildFieldSnapshotIdStub({ a: null, b: undefined })).toBe('stub:unknown')
+  it('serves the explicit field_not_yet_built marker when the chart has no row (production today)', async () => {
+    stubDbQuery({ ok: true, rows: [] })
+    const r = await resolveFieldSnapshot('chart-1', PRINCIPAL)
+    expect(r.field_snapshot_state).toBe('field_not_yet_built')
+    expect(r.field_snapshot_id).toBe(FIELD_NOT_YET_BUILT)
+    expect(r.field_content_hash).toBeNull()
+    expect(r.field_snapshot_reason).toContain('no kala_field_snapshots row')
+  })
+
+  it('serves the DISTINCT unreachable marker (never a fabricated id) when the read fails', async () => {
+    stubDbQuery({ ok: false, status: 400, bodyText: "Table 'kala_field_snapshots' is not in the read-only whitelist" })
+    const r = await resolveFieldSnapshot('chart-1', PRINCIPAL)
+    expect(r.field_snapshot_state).toBe('field_snapshot_unreachable')
+    expect(r.field_snapshot_id).toBe(FIELD_SNAPSHOT_UNREACHABLE)
+    expect(r.field_content_hash).toBeNull()
+    expect(r.field_snapshot_reason).toContain('HTTP 400')
+  })
+
+  it('serves the unreachable marker when fetch throws (DB proxy down)', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => {
+      throw new Error('ECONNREFUSED')
+    }))
+    const r = await resolveFieldSnapshot('chart-1', PRINCIPAL)
+    expect(r.field_snapshot_state).toBe('field_snapshot_unreachable')
+    expect(r.field_snapshot_id).toBe(FIELD_SNAPSHOT_UNREACHABLE)
+    expect(r.field_snapshot_reason).toContain('ECONNREFUSED')
+  })
+
+  it('never emits a stub-shaped id in any state', async () => {
+    stubDbQuery({ ok: true, rows: [] })
+    const empty = await resolveFieldSnapshot('chart-1', PRINCIPAL)
+    expect(empty.field_snapshot_id).not.toContain('stub:')
   })
 })
 
@@ -164,36 +223,67 @@ describe('noLelCalibrationMaturity — Elevation §7 LEL-absent scenario', () =>
   })
 })
 
+const SERVED_SNAPSHOT: FieldSnapshotResolution = {
+  field_snapshot_id: 'kfs_' + 'a'.repeat(32),
+  field_content_hash: 'kfh_' + 'b'.repeat(32),
+  field_snapshot_state: 'served',
+  field_snapshot_reason: null,
+}
+
+const NOT_BUILT_SNAPSHOT: FieldSnapshotResolution = {
+  field_snapshot_id: FIELD_NOT_YET_BUILT,
+  field_content_hash: null,
+  field_snapshot_state: 'field_not_yet_built',
+  field_snapshot_reason: 'ka_kshetra has written no kala_field_snapshots row for this chart yet.',
+}
+
 describe('makeKalaEnvelope', () => {
   it('assembles every declared slot without silently defaulting a required one', () => {
     const envelope = makeKalaEnvelope({
       reading: READING,
       questionFrame: { domain: 'career', intent_verb: 'should_i' },
-      fieldSnapshotId: buildFieldSnapshotIdStub({ ga_chart_facts: 'a1' }),
+      fieldSnapshot: SERVED_SNAPSHOT,
       triPlane: {
         interpretation_ref: null,
         prediction_ref: pointerTo('kala_bundle_get', 'forward window'),
         intervention_ref: noLeverPointer('pure interpretation-plane NOW state'),
       },
       coverage: [computedCoverage('mercury_combustion')],
-      freshness: buildKalaFreshness({ ephemerisVersion: 'v1', sweepBuildDate: '2026-07-29', fieldHash: null }),
+      freshness: buildKalaFreshness({ ephemerisVersion: 'v1', sweepBuildDate: '2026-07-29', fieldHash: SERVED_SNAPSHOT.field_content_hash }),
       calibrationMaturity: noLelCalibrationMaturity(),
     })
 
     expect(envelope.reading).toBe(READING)
     expect(envelope.question_frame).toEqual({ domain: 'career', intent_verb: 'should_i' })
-    expect(envelope.field_snapshot_id).toBe('stub:ga_chart_facts=a1')
+    expect(envelope.field_snapshot_id).toBe('kfs_' + 'a'.repeat(32))
+    expect(envelope.field_snapshot_state).toBe('served')
+    expect(envelope.field_snapshot_reason).toBeNull()
     expect(envelope.tri_plane.interpretation_ref).toBeNull()
     expect(isNoLever(envelope.tri_plane.intervention_ref)).toBe(true)
     expect(envelope.coverage).toHaveLength(1)
     expect(envelope.freshness.stale).toBe(false)
+    expect(envelope.freshness.field_hash).toBe('kfh_' + 'b'.repeat(32))
     expect(envelope.calibration_maturity.n_events).toBe(0)
+  })
+
+  it('carries the honest not-yet-built marker + reason through to the envelope', () => {
+    const envelope = makeKalaEnvelope({
+      reading: READING,
+      fieldSnapshot: NOT_BUILT_SNAPSHOT,
+      triPlane: { interpretation_ref: null, prediction_ref: null, intervention_ref: null },
+      coverage: [],
+      freshness: buildKalaFreshness({ ephemerisVersion: null, sweepBuildDate: null, fieldHash: null }),
+      calibrationMaturity: noLelCalibrationMaturity(),
+    })
+    expect(envelope.field_snapshot_id).toBe(FIELD_NOT_YET_BUILT)
+    expect(envelope.field_snapshot_state).toBe('field_not_yet_built')
+    expect(envelope.field_snapshot_reason).toContain('no kala_field_snapshots row')
   })
 
   it('defaults question_frame to null (not undefined) when omitted', () => {
     const envelope = makeKalaEnvelope({
       reading: READING,
-      fieldSnapshotId: 'stub:unknown',
+      fieldSnapshot: NOT_BUILT_SNAPSHOT,
       triPlane: { interpretation_ref: null, prediction_ref: null, intervention_ref: null },
       coverage: [],
       freshness: buildKalaFreshness({ ephemerisVersion: null, sweepBuildDate: null, fieldHash: null }),
