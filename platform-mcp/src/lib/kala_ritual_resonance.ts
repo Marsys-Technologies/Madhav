@@ -62,6 +62,7 @@
  */
 
 import { callPlatformPrimitive } from '../client.js'
+import { unwrapPrimitiveResult, unwrapFailureReason } from './primitive_unwrap.js'
 import type { Principal } from '../types.js'
 import {
   adjudicateCandidates,
@@ -194,13 +195,21 @@ export async function fetchActivityRules(
     if (status !== 200 || !envelope.ok) {
       return { rows: [], available: false, unavailable_reason: `query_parihara_graph returned status ${status}` }
     }
-    const result = envelope.result as Record<string, unknown> | null
-    const section = result?.['activity_rules'] as { rows?: unknown } | undefined
+    // ToolBundle unwrap (primitive_unwrap.ts): the capability payload is at
+    // envelope.result.results[0].content as a JSON string — reading
+    // envelope.result.activity_rules directly is always undefined in production.
+    // `available` is a real detector on the parsed payload (§N.8), with distinct
+    // reasons for wrapper-parse failure vs a genuinely absent section.
+    const { payload, failure } = unwrapPrimitiveResult(envelope.result)
+    if (failure !== null) {
+      return { rows: [], available: false, unavailable_reason: unwrapFailureReason('query_parihara_graph', failure) }
+    }
+    const section = payload?.['activity_rules'] as { rows?: unknown } | undefined
     if (section === undefined) {
       return {
         rows: [],
         available: false,
-        unavailable_reason: 'query_parihara_graph returned no activity_rules section',
+        unavailable_reason: 'query_parihara_graph payload carried no activity_rules section',
       }
     }
     const rows = Array.isArray(section.rows) ? (section.rows as ActivityRuleRow[]) : []
@@ -337,13 +346,23 @@ export async function fetchStructuralSubstrate(
   let remedy_rows: RemedyCorpusRow[] = []
   let remedy_available = false
   try {
-    const { status, envelope } = await callPlatformPrimitive('query_remedy_corpus', { limit: 200 }, principal)
+    // MCP-facing primitive name is 'query_remedies' (whitelist key → remedial_codex_query
+    // → marsys://tool/L0/query_remedy_corpus). The previous 'query_remedy_corpus' name is
+    // the CAPABILITY's name, not a whitelisted MCP primitive — it 400'd on every call.
+    const { status, envelope } = await callPlatformPrimitive('query_remedies', { limit: 200 }, principal)
     if (status === 200 && envelope.ok) {
-      const r = envelope.result as { rows?: unknown } | null
-      remedy_rows = Array.isArray(r?.rows) ? (r.rows as RemedyCorpusRow[]) : []
-      remedy_available = true
+      // ToolBundle unwrap + real availability detector on the parsed payload (§N.8).
+      const { payload, failure } = unwrapPrimitiveResult(envelope.result)
+      if (failure !== null) {
+        missing.push(`brahma_remedy_corpus (${unwrapFailureReason('query_remedies', failure)})`)
+      } else if (!Array.isArray(payload?.['rows'])) {
+        missing.push('brahma_remedy_corpus (query_remedies payload carried no rows section)')
+      } else {
+        remedy_rows = payload['rows'] as RemedyCorpusRow[]
+        remedy_available = true
+      }
     } else {
-      missing.push(`brahma_remedy_corpus (query_remedy_corpus status ${status})`)
+      missing.push(`brahma_remedy_corpus (query_remedies status ${status})`)
     }
   } catch (err) {
     missing.push(`brahma_remedy_corpus (${String(err)})`)
@@ -352,17 +371,25 @@ export async function fetchStructuralSubstrate(
   let resonance_rows: RmResonanceRow[] = []
   let resonance_available = false
   try {
+    // MCP-facing primitive name is 'bodha_rm_resonances_get' (whitelist key →
+    // query_rm_resonances capability). The bare capability name 400'd on every call.
     const { status, envelope } = await callPlatformPrimitive(
-      'query_rm_resonances',
+      'bodha_rm_resonances_get',
       { chart_id: chartId, limit: 100 },
       principal,
     )
     if (status === 200 && envelope.ok) {
-      const r = envelope.result as { rows?: unknown } | null
-      resonance_rows = Array.isArray(r?.rows) ? (r.rows as RmResonanceRow[]) : []
-      resonance_available = true
+      const { payload, failure } = unwrapPrimitiveResult(envelope.result)
+      if (failure !== null) {
+        missing.push(`bodha_rm_resonances (${unwrapFailureReason('bodha_rm_resonances_get', failure)})`)
+      } else if (!Array.isArray(payload?.['rows'])) {
+        missing.push('bodha_rm_resonances (bodha_rm_resonances_get payload carried no rows section)')
+      } else {
+        resonance_rows = payload['rows'] as RmResonanceRow[]
+        resonance_available = true
+      }
     } else {
-      missing.push(`bodha_rm_resonances (query_rm_resonances status ${status})`)
+      missing.push(`bodha_rm_resonances (bodha_rm_resonances_get status ${status})`)
     }
   } catch (err) {
     missing.push(`bodha_rm_resonances (${String(err)})`)
