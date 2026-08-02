@@ -122,30 +122,138 @@ export interface QuestionFrame {
 // "Every envelope carries `field_snapshot_id` (the field build hash). Follow-ups resolve
 // against the same snapshot: ids stable, EXPLAIN drills always land, CONTRAST insights
 // computable against the pinned baseline."
+//
+// W2 (ṢAḌ-DARŚANA w2-envelope-real-snapshot lane): the W0 stub
+// (`buildFieldSnapshotIdStub` — 'stub:key=value;…' composed from substrate build ids) is
+// RETIRED. `ka_kshetra` (python sidecar, `services/ka_kshetra/writer.py`) now computes the
+// REAL snapshot row: `kala_field_snapshots.field_snapshot_id = 'kfs_' + sha256(pins)[:32]`
+// and `field_content_hash = 'kfh_' + sha256(stage-0–8 rows)[:32]` (KALA_W2_FIELD_DESIGN
+// _v1_0.md §7.4). This function reads the chart's NEWEST snapshot row and serves it.
+//
+// HONESTY CONTRACT (B.10 / §N.8): production `kala_field_snapshots` is EMPTY until the
+// first field build runs. When no row exists for the chart, the envelope serves the
+// explicit marker `FIELD_NOT_YET_BUILT` plus a reason — NEVER a fabricated id and NEVER a
+// silent null. When the read itself cannot be performed (route rejects the table / DB
+// unreachable / the migration creating the table has not been applied), the DISTINCT
+// marker `FIELD_SNAPSHOT_UNREACHABLE` is served — "not built" and "could not look" are
+// different honest states and must not be conflated (mirrors the 3-state coverage
+// vocabulary below: honest_empty vs not-evaluable).
+
+/** Honest marker served as `field_snapshot_id` when the read succeeded but the chart has
+ *  no `kala_field_snapshots` row yet (the first field build has not run). */
+export const FIELD_NOT_YET_BUILT = 'field_not_yet_built'
+
+/** Honest marker served as `field_snapshot_id` when the snapshot read itself could not be
+ *  performed (DB proxy rejected/unreachable) — distinct from "built nothing yet". */
+export const FIELD_SNAPSHOT_UNREACHABLE = 'field_snapshot_unreachable'
+
+export type FieldSnapshotState = 'served' | 'field_not_yet_built' | 'field_snapshot_unreachable'
+
+export interface FieldSnapshotResolution {
+  /** `'kfs_…'` (real, from the newest `kala_field_snapshots` row) when state='served';
+   *  otherwise exactly `FIELD_NOT_YET_BUILT` or `FIELD_SNAPSHOT_UNREACHABLE`. */
+  field_snapshot_id: string
+  /** `'kfh_…'` when served; `null` otherwise. Feeds `KalaFreshness.field_hash` (the
+   *  envelope slot the design names for it — KALA_W2_FIELD_DESIGN_v1_0.md §9's note that
+   *  `buildKalaFreshness` reads `kala_field_snapshots` at W2). */
+  field_content_hash: string | null
+  field_snapshot_state: FieldSnapshotState
+  /** Required in substance whenever state !== 'served'; `null` when served. */
+  field_snapshot_reason: string | null
+}
+
+/** Structural subset of `Principal` (types.ts) — declared here so this lib does not
+ *  import the tool-layer type; any real `Principal` satisfies it. */
+export interface FieldSnapshotPrincipalLike {
+  user_uid: string
+  key_id: string
+}
 
 /**
- * W0 STUB (brief §3 W0.3: "field_snapshot_id (stub = substrate build ids until W2)").
- * `ka_kshetra` (the real field pipeline) does not exist yet, so there is no field-build
- * hash to pin. This stub composes a deterministic, sorted, human-legible id from whatever
- * substrate build ids the response actually depended on — stable across repeated calls
- * against the same substrate state, which is enough to satisfy "follow-ups resolve against
- * the same snapshot" for W0/W1 facades, but it is NOT the real field hash and MUST NOT be
- * treated as one (it is not a determinism-contract hash of stages 0–8 — there are no
- * stages 0–8 yet).
+ * Reads the chart's newest `kala_field_snapshots` row through the platform's whitelisted
+ * read-only DB proxy (`POST /api/mcp/db/query`) — the SAME serving path every kala_views
+ * facade already uses for its own direct-SQL reads (now.ts / ahead.ts /
+ * register_gochara_windows.ts precedent; the MCP server holds no direct DB connection).
  *
- * TODO(W2 — SHAD_DARSHANA_BRIEF_v2_0.md §3 W2 "E5: field_snapshot_id = real field hash";
- * KALA_SUPREME_ELEVATION_v1_0.md §3 "Determinism contract: stages 0–8 pure functions of
- * (chart, corpus, pinned config, pinned weights version); hash-replay verified."):
- * once `ka_kshetra` lands, replace the body of this function (and ONLY this function —
- * every caller in the eight tool facades goes through it) with the real field-build hash
- * emitted by the W2 pipeline. No other file should need to change.
+ * "Newest" is a total order (§N.7 item 2): `ORDER BY built_at DESC, field_snapshot_id
+ * DESC LIMIT 1` — never a bare category read that could flap between generations.
+ *
+ * THE ONE replacement point the W0 stub's TODO reserved: every one of the eight kala_*
+ * facades goes through this function; none composes its own snapshot id.
+ *
+ * KNOWN HONEST GAP (disclosed, not papered over): until `kala_field_snapshots` is added
+ * to the db/query route's `ALLOWED_TABLES` whitelist
+ * (platform/src/app/api/mcp/db/query/route.ts — owned outside this lane's file contract),
+ * the route 400s the query and this function serves `FIELD_SNAPSHOT_UNREACHABLE` with the
+ * route's own reason text. That marker is CORRECT for that state — the moment the
+ * whitelist entry lands, this same code path starts serving real rows with no further
+ * change here.
  */
-export function buildFieldSnapshotIdStub(substrateBuildIds: Record<string, string | null | undefined>): string {
-  const parts = Object.entries(substrateBuildIds)
-    .filter((entry): entry is [string, string] => entry[1] != null && entry[1] !== '')
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([key, value]) => `${key}=${value}`)
-  return parts.length > 0 ? `stub:${parts.join(';')}` : 'stub:unknown'
+export async function resolveFieldSnapshot(
+  chartId: string,
+  principal: FieldSnapshotPrincipalLike,
+): Promise<FieldSnapshotResolution> {
+  const platformUrl = (process.env['PLATFORM_URL'] ?? 'http://localhost:3000').replace(/\/$/, '')
+  const internalToken = process.env['MCP_INTERNAL_TOKEN'] ?? ''
+  try {
+    const res = await fetch(`${platformUrl}/api/mcp/db/query`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-mcp-internal-token': internalToken,
+        'x-mcp-user': principal.user_uid,
+        'x-mcp-key-id': principal.key_id,
+      },
+      body: JSON.stringify({
+        sql:
+          'SELECT field_snapshot_id, field_content_hash FROM kala_field_snapshots ' +
+          'WHERE chart_id = $1 ORDER BY built_at DESC, field_snapshot_id DESC LIMIT 1',
+        params: [chartId],
+      }),
+      signal: AbortSignal.timeout(10_000),
+    })
+    if (!res.ok) {
+      const text = await res.text().catch(() => '')
+      return {
+        field_snapshot_id: FIELD_SNAPSHOT_UNREACHABLE,
+        field_content_hash: null,
+        field_snapshot_state: 'field_snapshot_unreachable',
+        field_snapshot_reason:
+          `kala_field_snapshots read failed (HTTP ${res.status}): ${text.slice(0, 200)} — ` +
+          'served as an explicit unreachable marker, never a fabricated id (B.10).',
+      }
+    }
+    const data = (await res.json()) as { rows?: Array<Record<string, unknown>> }
+    const row = data.rows?.[0]
+    const snapshotId = typeof row?.['field_snapshot_id'] === 'string' ? (row['field_snapshot_id'] as string) : null
+    if (!row || !snapshotId) {
+      return {
+        field_snapshot_id: FIELD_NOT_YET_BUILT,
+        field_content_hash: null,
+        field_snapshot_state: 'field_not_yet_built',
+        field_snapshot_reason:
+          'ka_kshetra has written no kala_field_snapshots row for this chart yet — the first ' +
+          'field build has not run. Honest empty marker per B.10/§N.8; the real ' +
+          "'kfs_…' id is served automatically once the field build lands.",
+      }
+    }
+    return {
+      field_snapshot_id: snapshotId,
+      field_content_hash:
+        typeof row['field_content_hash'] === 'string' ? (row['field_content_hash'] as string) : null,
+      field_snapshot_state: 'served',
+      field_snapshot_reason: null,
+    }
+  } catch (err) {
+    return {
+      field_snapshot_id: FIELD_SNAPSHOT_UNREACHABLE,
+      field_content_hash: null,
+      field_snapshot_state: 'field_snapshot_unreachable',
+      field_snapshot_reason:
+        `kala_field_snapshots read threw (${err instanceof Error ? err.message : String(err)}) — ` +
+        'served as an explicit unreachable marker, never a fabricated id (B.10).',
+    }
+  }
 }
 
 // ── item 43 (Elevation §11) — tri-plane traversability pointers ────────────────────
@@ -354,6 +462,11 @@ export interface KalaEnvelope<TReading = ArgumentReading> {
   reading: TReading
   question_frame: QuestionFrame | null
   field_snapshot_id: string
+  /** W2: machine-readable honesty state behind `field_snapshot_id` — 'served' carries a
+   *  real 'kfs_…' id; the other two states carry their honest marker string as the id. */
+  field_snapshot_state: FieldSnapshotState
+  /** `null` when served; the honest reason otherwise (mirrors coverage's reason rule). */
+  field_snapshot_reason: string | null
   tri_plane: TriPlanePointers
   coverage: KalaCoverageEntry[]
   freshness: KalaFreshness
@@ -363,7 +476,9 @@ export interface KalaEnvelope<TReading = ArgumentReading> {
 export interface MakeKalaEnvelopeParams<TReading = ArgumentReading> {
   reading: TReading
   questionFrame?: QuestionFrame | null
-  fieldSnapshotId: string
+  /** The resolved field snapshot (real row, or an honest marker) — from
+   *  `resolveFieldSnapshot`. Facades must not compose their own id (E5: ONE source). */
+  fieldSnapshot: FieldSnapshotResolution
   triPlane: TriPlanePointers
   coverage: KalaCoverageEntry[]
   freshness: KalaFreshness
@@ -381,7 +496,9 @@ export function makeKalaEnvelope<TReading = ArgumentReading>(
   return {
     reading: params.reading,
     question_frame: params.questionFrame ?? null,
-    field_snapshot_id: params.fieldSnapshotId,
+    field_snapshot_id: params.fieldSnapshot.field_snapshot_id,
+    field_snapshot_state: params.fieldSnapshot.field_snapshot_state,
+    field_snapshot_reason: params.fieldSnapshot.field_snapshot_reason,
     tri_plane: params.triPlane,
     coverage: params.coverage,
     freshness: params.freshness,
