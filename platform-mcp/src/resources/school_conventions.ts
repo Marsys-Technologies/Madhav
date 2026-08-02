@@ -69,7 +69,7 @@ const SCHOOL_CONVENTIONS_TEXT = `# MARSYS-JIS School Conventions
 ## 3. KP (Krishnamurti Paddhati)
 
 **What it is authoritative for:**
-- Sub-lord analysis (each sign divided into 249 subs proportional to Vimshottari years)
+- Sub-lord analysis. The zodiac carries **249** sub-lord divisions: each of the 27 nakshatras is divided into 9 subs proportional to Vimshottari years (243 segments), and the 12 rashi boundaries cut 6 of those in two — 243 + 6 = 249. Stored as the L0 reference table \`bg_kp_sublord_division\`, in SIDEREAL longitude with no ayanamsha key (the sidereal division is ayanamsha-invariant).
 - Cuspal sub-lord (the sign/nakshatra/sub at each house cusp determines if the house "fructifies")
 - Significators for houses 6/10/11 (primary lens for employment/career events)
 - Precise event-timing within dasha periods
@@ -77,15 +77,37 @@ const SCHOOL_CONVENTIONS_TEXT = `# MARSYS-JIS School Conventions
 **Classical anchors:**
 - KP Reader (K.S. Krishnamurti, 6 volumes)
 - Stellar Astrology (K.S. Krishnamurti)
+- **Corpus status: NOT INGESTED.** No KP source text is present in \`classical_text_chunks\`. KP-specific conventions in this instrument are verified against a committed fixture (\`05_TEMPORAL_ENGINES/kp/CROSSCHECK_v1_0.md\` §2/§6), NOT against ingested text. Do not claim a corpus citation for a KP convention.
 
 **Output form:**
 - Sub-lord tables for each house cusp
 - Significator lists per house
 - Event timing: when running dasha lord = sub-lord significator
 
+**Where the data actually lives** (\`chart_facts.fact_category\`, corrected 2026-08-02 — the four names this resource previously listed, \`kp_cusp\` / \`kp_planet\` / \`kp_significator\` / \`varshphal\`, have **0 rows in production** and never existed as categories):
+
+| fact_category | grain | emitted by |
+|---|---|---|
+| \`graha_kp_lords\` | per graha + Lagna: star / sub / sub-sub / prana lord | \`ga_nakshatra\` |
+| \`cusp_kp_lords\` | per cusp (CUSP_01..12): the same 4-level chain | \`ga_nakshatra\` |
+| \`kp_house_significators\` | per house (HOUSE_01..12): the 4-limbed ladder + owner + ranking | \`ga_nakshatra\` |
+| \`kp_planet_significations\` | per graha: houses signified at each level, both house frames | \`ga_nakshatra\` |
+| \`kp_cuspal_significators\` | per cusp: the cusp's own [sign_lord, star_lord, sub_lord] chain | \`ga_sensitive\` |
+| \`kp_ruling_planets_natal\` | 5 natal ruling-planet roles (fixed at birth, NOT query-moment) | \`ga_sensitive\` |
+| \`bhava_cusps\` | 12 houses x {sripati, placidus} x {start, madhya, end} | \`ga_positions\` |
+
+**The 4-limbed significator ladder** (\`kp_house_significators\`), strongest first — this is KP's own judgment rule and has no Parashari analogue:
+1. \`level_a_star_of_occupants\` — planets tenanting the STAR of an occupant of the house
+2. \`level_b_occupants\` — the occupants
+3. \`level_c_star_of_owner\` — planets tenanting the star of the house's OWNER
+4. \`level_d_owner\` — the owner
+\`ranked_significators\` is the deduped union in that order. An empty limb reports the literal \`none\`. KP's nodal agency rule (Rahu/Ketu acting for conjoined/aspecting planets) is NOT applied — each node carries an explicit \`nodal_agency_not_applied\` disclosure row.
+
 **Known disagreements:**
-- Ayanamsha: KP uses Krishnamurti ayanamsha (~23°05′ for 1984); MARSYS uses Lahiri (23°37′). This shifts nakshatra positions slightly. KP-specific queries should use KP ayanamsha values from FORENSIC §KP if available.
-- Node type: KP uses True Node; MARSYS primary uses Mean Node. KP rows in chart_facts (category: kp_cusp) use KP-specific positions.
+- Ayanamsha: KP uses the Krishnamurti ayanamsha (~23°05′ for 1984); the project's primary elsewhere is Lahiri (23°37′). This is served as DATA, not reconciled: all 5 ayanamshas including \`krishnamurti\` are stored per chart, and \`ganita_kp_cusps_get\` already DEFAULTS to \`ayanamsha_id='krishnamurti'\`.
+- House system: KP is cuspal (Placidus); the project's primary frame is whole-sign. Both are stored — \`bhava_cusps\` holds Placidus AND Sripati, and \`kp_planet_significations\` carries \`kp_cuspal_house\`, \`whole_sign_house\` and an explicit \`house_system_divergence\` flag per graha. A planet can be 9th cuspally and 10th whole-sign; neither value overwrites the other.
+- Node type: KP uses True Node; the project's primary uses Mean Node.
+- KP is NOT an independent timing generator. \`chart_dashas.system_id='vimshottari_kp'\` sub-periods are proportional subdivisions of the SAME Vimshottari windows already counted once — which is why the transit-permission plurality count deliberately excludes them. KP's independence is a judgment-method independence, not a clock.
 
 ---
 
@@ -109,7 +131,7 @@ const SCHOOL_CONVENTIONS_TEXT = `# MARSYS-JIS School Conventions
 **Known disagreements:**
 - Tajaka uses Sayana (tropical) positions for some calculations. FORENSIC §22 uses Nirayana (sidereal) for MARSYS consistency.
 - Annual dasha systems vary across Tajaka texts; MARSYS uses Mudda Dasha as primary.
-- KP and Tajaka data (chart_facts categories: kp_cusp, kp_planet, kp_significator, varshphal) are backfilled in phase v3.3 — queries before that phase return 0 rows.
+- Tajaka rows live under \`chart_facts\` categories prefixed \`tajik_%\`, not \`varshphal\` — that name has 0 rows in production and is not a real category. For the KP categories see the table in §3 above; the "backfilled in phase v3.3" note was stale and is removed — KP and Tajaka rows are live on both canonical charts across all 5 ayanamshas.
 
 ---
 
@@ -135,13 +157,14 @@ For scores < 0.50: report each school's stance explicitly; do not synthesize as 
 |---|---|---|
 | Natal synthesis | \`holistic_bundle\` + \`query_signals\` | \`vector_search\` (UCN) |
 | Jaimini karakas | \`query_chart_facts(category: "dasha_chara")\` | — (\`cross_school_lookup\` PARKED, F-WP17-1) |
-| KP significators | \`query_chart_facts(category: "kp_significator")\` | \`query_chart_facts(category: "kp_cusp")\` |
-| Tajaka annual | \`query_chart_facts(category: "varshphal")\` | \`query_chart_facts(category: "muntha")\` |
+| KP cusps / sub-lords | \`ganita_kp_cusps_get\` (dedicated serving face; defaults to \`ayanamsha_id='krishnamurti'\`) | \`ganita_chart_facts_get(category: "cusp_kp_lords")\` |
+| KP significators | \`ganita_chart_facts_get(category: "kp_house_significators")\` | \`ganita_chart_facts_get(category: "kp_planet_significations")\` |
+| Tajaka annual | \`ganita_tajaka_get\` | \`ganita_chart_facts_get\` on a \`tajik_*\` category |
 | Multi-school claim | \`multi_school_bundle\` (per-school evidence; \`cross_school_lookup\` PARKED, F-WP17-1) | — |
 
 ---
 
-*End school conventions. v3.1.0-S3. Update when classical text indexing (v3.2) expands coverage.*
+*End school conventions. v3.1.1-S3 (2026-08-02, ṢAḌ-DARŚANA W3K Lane 1 §3 housekeeping: §3's KP fact_category names corrected — the four previously documented (\`kp_cusp\`, \`kp_planet\`, \`kp_significator\`, \`varshphal\`) have 0 rows in production and never existed, so an LLM consumer reading this resource was being told to query categories that do not exist; §3 gains the 249-division derivation, the 4-limbed significator ladder, the corpus NOT-INGESTED disclosure, and the ayanamsha/house-system divergences as served data; §6's routing table re-pointed at the real live tools. The retired planner-facing names \`kp_query\` / \`query_kp_ruling_planets\` are deliberately NOT re-instated — that question was raised by W3K_SUBSTRATE_INVENTORY §3 but is UNRULED in the Night-3 and Night-5 adjudications, so the conservative path is taken and the phantom-dropped disposition stands. Update when classical text indexing expands coverage.)*
 `
 
 export function registerSchoolConventions(server: McpServer): void {
