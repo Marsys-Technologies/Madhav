@@ -38,7 +38,7 @@ import {
   makeKalaEnvelope,
   noLelCalibrationMaturity,
   buildKalaFreshness,
-  buildFieldSnapshotIdStub,
+  resolveFieldSnapshot,
   computedCoverage,
   honestEmptyCoverage,
   noLeverPointer,
@@ -303,10 +303,13 @@ export async function buildKalaUpayaResult(params: KalaUpayaParams, principal: P
           : 'One or more served rows carried no tier.',
       )
 
+  // W2 (E5): the real field snapshot read — served id, or an honest marker; never a stub.
+  const fieldSnapshot = await resolveFieldSnapshot(params.chart_id, principal)
+
   const envelope = makeKalaEnvelope({
     reading,
     questionFrame: params.question_frame ?? null,
-    fieldSnapshotId: buildFieldSnapshotIdStub({}),
+    fieldSnapshot,
     triPlane: {
       interpretation_ref: noLeverPointer(
         'kala_now_get (interpretation plane) is not yet wired to this facade — planner wiring lands at W5 (SHAD_DARSHANA_BRIEF_v2_0.md §3 W5).',
@@ -323,7 +326,7 @@ export async function buildKalaUpayaResult(params: KalaUpayaParams, principal: P
         ),
     },
     coverage: [pactCoverage, routingCoverage, efficacyCoverage],
-    freshness: buildKalaFreshness({ ephemerisVersion: null, sweepBuildDate: null, fieldHash: null }),
+    freshness: buildKalaFreshness({ ephemerisVersion: null, sweepBuildDate: null, fieldHash: fieldSnapshot.field_content_hash }),
     calibrationMaturity: noLelCalibrationMaturity(),
   })
 

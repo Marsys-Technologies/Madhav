@@ -62,7 +62,7 @@ import type { Principal } from '../../types.js'
 import { handleMuhurtaFinder, MuhurtaFinderInputSchema, type MuhurtaFinderResult, type MuhurtaWindow, type HoraSlot } from '../muhurta_finder.js'
 import {
   makeKalaEnvelope,
-  buildFieldSnapshotIdStub,
+  resolveFieldSnapshot,
   pointerTo,
   noLeverPointer,
   computedCoverage,
@@ -643,12 +643,13 @@ export async function handleKalaElectGet(
 
   const questionFrame: QuestionFrame | null = input.question_frame ?? null
 
+  // W2 (E5): the real field snapshot read — served id, or an honest marker; never a stub.
+  const fieldSnapshot = await resolveFieldSnapshot(input.chart_id, principal)
+
   const envelope = makeKalaEnvelope<ArgumentReading>({
     reading,
     questionFrame,
-    fieldSnapshotId: buildFieldSnapshotIdStub({
-      ph_muhurta_queried_at: result.provenance_envelope?.queried_at ?? null,
-    }),
+    fieldSnapshot,
     triPlane: {
       // ELECT is itself an interpretation of the chart's dasha/transit/panchanga stack —
       // it is not the interpretation plane, so it points there.
@@ -671,7 +672,7 @@ export async function handleKalaElectGet(
     freshness: buildKalaFreshness({
       ephemerisVersion: null,
       sweepBuildDate: null,
-      fieldHash: null,
+      fieldHash: fieldSnapshot.field_content_hash,
     }),
     calibrationMaturity: noLelCalibrationMaturity(),
   })
