@@ -89,7 +89,9 @@ const PATTERNS: Pattern[] = [
       '(positional argument or tuple element), after `return`, and after `else` (the tail of a ' +
       'conditional expression). DOES NOT MEASURE, and cannot: (1) a literal opening a ' +
       'parenthesised multi-line expression (`verification = (` then the literal on the next line) — one such ' +
-      'site exists, ga_tajaka_writer.py:574, and it is baselined by hand, not by this pattern; ' +
+      'site exists, ga_tajaka_writer.py:574; it has NO baseline entry and cannot have one (a baseline ' +
+      'key is the line-hash of a MATCHED line, so a line this pattern never matches can never be ' +
+      'quarantined) — it is recorded in CI_EFFICIENCY_AUDIT_v1_0.md §6.17 instead; ' +
       '(2) any status assembled at runtime (built by concatenation, .format(), an f-string, or ' +
       'read from config/DB) — static grep cannot reach those and this gate does not claim to; ' +
       '(3) indirection through a non-sanctioned alias constant. It also deliberately does NOT ' +
