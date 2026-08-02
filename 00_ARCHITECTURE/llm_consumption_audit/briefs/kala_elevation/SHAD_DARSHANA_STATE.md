@@ -300,6 +300,34 @@ untouched — run-state rows are orchestrator-owned; recorded here instead. (3) 
 clause diagnosis = recorded follow-up work item for a future lane (needs the specimen's
 timing against the watchdog's clauses; not rushed mid-night).
 
+- **PR #1036 MERGED** (integration) — `w4-paddhati-seed`: migration 534 seeds
+  `kala_paddhati_profile` Row A (`agnivasa_tithi_element_prithvi`) for BOTH canonical
+  charts with `native_confirmed=TRUE`, `awaiting_native_confirmation=FALSE`, and a new
+  `confirmation_provenance` column citing the adjudications doc §NATIVE CONFIRMATIONS —
+  implemented as an in-place v01 flip via `ON CONFLICT … DO UPDATE` (a bare DO NOTHING
+  would silently no-op where 533 already ran; a v02 insert would drop Row B's divergence
+  slot from serving — both traps identified and avoided by the lane); DO-block RAISEs
+  unless exactly 2 confirmed rows land. Guard PASS (534 = next after true both-directory
+  max 533). W4 gate scripts run in PLAN mode: Mode-2 fixture PASS=4/FAIL=0/SKIPPED=1
+  (live legs honestly pending a server), Mode-3 single-route registered=true. Night-4's
+  W4 tests actually run: UPĀYA-SETU weak-promise 81/81; `mi_sankalpa` filing 14 passed /
+  10 honest DB skips. **Conductor verification: diff scope 1 file confirmed; migration
+  content spot-checked (ON CONFLICT DO UPDATE, both chart ids, provenance, RAISE).**
+  Follow-up dispatched: micro-lane `w4-paddhati-census-statement` (the static
+  `PADDHATI_CENSUS_STATEMENT` in kala_sky_pattern.ts still asserts "not on record" —
+  becomes false once 534 applies; statement must derive from the profile's actual state
+  per §N.7/§N.8).
+
+**STAGE 1.1 FULLY DISCHARGED (2026-08-02 13:50 UTC):** L0 re-run `a22bc93c` (execution
+`6sbsb`, fixed image `f97fc78d`): **36 ok · 3 deferred (by design) · 3 failed** — vs the
+first walk's 35/3/4. `bg_parihara_rules` now builds clean: **61 parihāra rules · 329
+activity rules · 58 factor-census rows LIVE in production** (verified by direct count);
+`bg_reference` also now OK. The three remaining failures (`bg_ghatana` stale seed vs
+`temporal_shape`; `bg_transit_engine`/`bg_transit_rules` FK circularity with
+`gochara_resonance_map`) are recorded follow-ups whose live data is intact and current —
+not fabricated-green, not blocking any gate clause tonight. Nirmāṇa verification: DB-true
+counts confirmed for every directive-named asset + catalog reconciliation 6/6 green.
+
 **STAGE 1.2 — sweep telemetry (first measurement, ~08:14 UTC):** both charts committing
 substeps under the new 606-substep plan (A: 5, B: 4 in the first ~28 min) → **measured
 ~330s/substep ⇒ ~55h/chart projected** (vs ~22h for the old 303 plan). This confirms the
