@@ -13,6 +13,127 @@ governing: SHAD_DARSHANA_NIGHT_RUN_v1_0.md (orchestration) + SHAD_DARSHANA_BRIEF
 
 ## NEXT-ACTION
 
+## NIGHT 5 — SESSION OPEN (2026-08-02, ~12:57 IST, in progress)
+
+**NATIVE DIRECTIVE — recorded verbatim at session open as the native's standing order for
+this session (it refines, never overrides, the v1.3 standing contract):**
+
+> STAGE 1 — discharge the Night-4 next-action sequence, in dependency order, verified at
+> every step:
+> 1. L0 super-admin rebuilds: bg_class_lifetime_counts (N_e priors), the widened muhūrta
+>    lattice (items 6+7), bg_kota_chakra_rings, and every other L0 asset whose writer landed
+>    after its last production build. L0 builds BEFORE any per-chart build that consumes them
+>    (Nirmāṇa §2.5.2). Verify: Nirmāṇa DB-true counts + catalog reconciliation green.
+> 2. Gochara sweep + resonance re-run on BOTH canonical charts with the new grammar — this is
+>    what makes item 9's S4-05 fix DATA-real, not merely code-live. LAUNCH THESE EARLY AND IN
+>    THE BACKGROUND: they are long-running orchestrator builds; never idle-wait on them —
+>    overlap steps 1/3-prep while they run. Resume-don't-restart on any stall (Night-3's
+>    watchdog NOW()-fix is live); sweep DATA stays untouchable — rebuilds go through the
+>    orchestrator only.
+> 3. The real W2 field-integration sequence (KALA_W2_FIELD_DESIGN §10 / brief §3 W2):
+>    ka_kshetra field build both charts → hash-replay determinism → LEL-invariance green →
+>    weights v0 pinned → temporal skill score + time-rescaling GOF published for BOTH charts
+>    (the FIRST published score becomes the CI baseline) → specificity gate flips HARD →
+>    authority-basis census populated → insight rows lead readings → timeline-spec
+>    golden-render.
+> 4. AFTER the sweeps land: the S4-05 scenario re-test on real data (item 9's own gate
+>    clause), both charts.
+> 5. Gate-close: ONE integration→main PR (merge queue — queued-green up to ~60 min is normal,
+>    never bypassed) → deploy → traffic tracks LATEST → PARĪKṢAKA live acceptance on both
+>    charts against production → evaluate Gates W2 AND W3 against their FULL brief-§3
+>    criteria, every clause pass/fail on inspection, dispositions recorded.
+>
+> STAGE 2 — trigger the next waves IN THIS SAME SESSION, if and only if Stage 1's gates are
+> VERIFIED-CLOSED (or parked honest with reasons that do not undermine the frontier). If
+> Stage 1 cannot verify by mid-session, Stage 2 does NOT start on partial foundations — park
+> honest, report, and leave Stage 2 as the recorded next action. When cleared:
+> - W2G writer lane against the enumerated V1–V6 findings work-list (the 779k-contact-events
+>   scale finding; generation discriminator = migration 527, landed) — Opus numerics.
+> - W3K continuation from the completed inventory: sub-lord substrate (K.1) → cusps/
+>   significators/ruling planets (K.2) — Opus doctrine.
+> - W4 gate: discharge the canned Mode-2 fixture EXACTLY (both charts, different candidate
+>   sets required; Agnivāsa is now NATIVE-CONFIRMED Pṛthvī — seed kala_paddhati_profile with
+>   native_confirmed=TRUE citing the adjudications doc §NATIVE CONFIRMATIONS) · the
+>   weak-promise UPĀYA-SETU diagnosis test · the Intervention Ledger filing test · then Gate
+>   W4 evaluation. The Muhūrta-Cintāmaṇi translation is COMMISSIONED but is NOT a night lane —
+>   its four dependent deliverables stay PARKED-HONEST until it lands separately.
+> - W5 prep (eight primitives + question_frame threading) may start; its live-MCP hard gate
+>   runs only when the tool surface is final.
+
+**Session-open protocol discharged, per §D v1.3:**
+1. **Rebase**: `shad-darshana/integration` had diverged from `origin/main` by one
+   content-identical docs commit (local `31daa36e` vs. main's squash-merge `93a6ad17` of PR
+   #1028). Clean rebase dropped the duplicate; integration now == main @ `93a6ad17`,
+   force-with-lease pushed, verified 0/0 ahead/behind.
+2. **Ledger-reconciliation sweep — one material correction to Night-4's own record:** the
+   Night-4 morning report listed three L0 assets pending super-admin build (N_e, widened
+   lattice, Kota rings). Direct production DB census at open found the TRUE stale set is far
+   larger — **`bg_synthetic_cohort` = 0 rows, `bg_synthetic_cohort_md` = 0, `bg_sky_events`
+   = 0, `bg_parihara_rules` = 0, `bg_muhurta_activity_rules` = 0, `bg_muhurta_factor_census`
+   = 0, N_e priors = 0, `bg_muhurta_lattice` = 0** (only `bg_kota_chakra_rings` has 27
+   migration-seeded rows; `bg_sarvatobhadra_grid` = 0 is by-design). The Night-2/-3 L0
+   writers (cohort, sky calendar, parihāra corpus) were merged + deployed but their
+   super-admin L0 production build was NEVER run — every one of them. This directly matches
+   the directive's "every other L0 asset whose writer landed after its last production
+   build" clause, and `ka_kshetra.depends_on` includes `bg_cohort` +
+   `bg_class_lifetime_counts`, making these hard Stage-1.3 prerequisites. No stale-closed
+   rows found in the other direction this sweep.
+3. **Builds dispatched (all three launched in background at open, per the directive's
+   overlap rule — evidence: Cloud Run executions + build_runs rows):**
+   - **L0 super-admin global build** — `--global-build` run_id
+     `6fd72ed9-fb70-4867-b51e-2068d60a68f3`, Cloud Run execution
+     `brahma-build-pipeline-job-k622x`. Walks ALL scope='global' active assets (the
+     sanctioned trigger; writerless assets DEFERRED honestly — `bg_sarvatobhadra_grid` stays
+     empty by design). Verified before dispatch: all six target writers present in the
+     orchestrator discovery registry; deployed pipeline image `brahma-pipeline:f19969c5…`
+     carries the full Night-4 code.
+   - **Gochara re-grammar rebuild, chart 482012f1** — build_run
+     `3190c9ac-1fc3-41c3-936b-a9c106772daa`, plan `[ka_gochara_resonance,
+     ka_gochara_sweep]` (resonance is the sweep's upstream: it defines the per-event-class
+     target sets, including item 9's new health/adverse classes, that `plan_substeps`
+     discovers). Execution `brahma-build-pipeline-job-4gxq2`.
+   - **Gochara re-grammar rebuild, chart 1c826d5a** — build_run
+     `807f3aa3-90b3-4831-afa2-ce7c20ed55f9`, same plan. Execution
+     `brahma-build-pipeline-job-x948j`.
+   - **Load-bearing schedule fact, read from the sweep writer's own fingerprint contract
+     (writer.py `_compute_build_fingerprint`): the event-class list is part of the build
+     fingerprint.** Resonance adding the health/adverse classes CHANGES the fingerprint →
+     the sweep takes the full-replan branch: per-chart delete-then-insert of
+     `kala_gochara_windows` + `build_substep_progress`, then ALL ~606 substeps — not just
+     the ~303 new ones. At the historical ~255–280s/substep rate this is a multi-dispatch
+     rebuild per chart (writer budget 21600s per dispatch), realistically spanning beyond
+     tonight. This is the designed rebuild semantics (grammar change = full re-derivation),
+     dispatched orchestrator-only per the untouchable-data rail. Progress is monitored; each
+     eviction gets a resume dispatch (fingerprint then matches → resume path). If sweeps
+     cannot land tonight, S4-05 DATA-real verification and the sweep-dependent gate clauses
+     PARK HONEST per the directive's own Stage-2 rule.
+4. **ANTARYĀMIN docket — DISCHARGED at open.** Both W2G blockers ruled, full text in
+   `SHAD_DARSHANA_ADJUDICATIONS_NIGHT5_v1_0.md` (this directory), measurements taken live:
+   - **ADJUDICATION-14 (V4 band re-scope):** three-tier materialization split per design
+     §2.5 read correctly — Tier A EAGER (Saturn/Jupiter/Rahu/Ketu + Mars ruled in): 40,293 /
+     39,476 / 20,963 contact events for the three v1-corpus charts, INSIDE the original
+     10k–100k band unamended; Tier B (Sun/Mercury/Venus) conditionally materialized only
+     inside Tier-A-elevated intervals + own stations; Tier C (Moon) lazy-only, never
+     materialized full-span. §2.3's "1–3× per cycle" multiplier WITHDRAWN (refuted by
+     measurement: 1773.36 crossings/fixed° all-nine, Moon 76.1%). Amendment text supplied
+     for the W2G lane's PR. Reversible (config + backfill under same `generation`).
+   - **ADJUDICATION-15 (V1 instrumentation):** structured log + additive nullable
+     `phase_profile` jsonb on `build_substep_progress`, written inside the writer's own
+     existing upsert (no FROZEN-contract change — verified against three existing heavy
+     writers); fixed six-phase enum, explicit 0.0 for phases that didn't run (§N.8),
+     descriptive-never-gating (§N.4); names the exact column V1's existing detector already
+     hints for, flipping V1 INDETERMINATE→measurable with zero validation edits. Reversible
+     (DROP COLUMN).
+   **The W2G writer lane is now fully unblocked on rulings** (N-block complete since Night 3
+   + ADJ-14/-15 tonight); its remaining precondition is operational — the v1 equivalence
+   corpus needs intact v1 windows, which are mid-rebuild tonight (see 3 above).
+5. **Deploy check**: `main` @ `93a6ad17` — the ledger's own Night-4 close verified `main ==
+   production` (all three services) at `d0f9cb1c`; `93a6ad17` adds only the docs commit
+   (#1028), which per deploy path-detection does not owe a service deploy. No deploy owed at
+   open; the next deploy is Stage 1.5's gate-close.
+
+---
+
 **NIGHT 4 CLOSED (2026-08-02, ~01:22–~11:45 IST) — see "MORNING REPORT — NIGHT 4" below
 (after the Night-4 session narrative) for the authoritative close-out.** Headline: Wave 1 (8
 PRs — items 9/13/31/6/7, W4 Lanes U/R/S) built, merged, and **actually deployed to
