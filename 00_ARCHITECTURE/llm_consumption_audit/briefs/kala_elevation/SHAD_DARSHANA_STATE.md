@@ -196,6 +196,24 @@ LIVE in production for the first time.
   PASS=12 FAIL=0 SKIPPED=2 (both skips honest-named).** The specificity gate's LIVE
   pairwise leg runs at gate-close against production.
 
+- **PR #1033 MERGED** (integration) — `w2-envelope-real-snapshot`: `buildFieldSnapshotIdStub`
+  retired at its reserved single replacement point; new `resolveFieldSnapshot` reads the
+  chart's newest `kala_field_snapshots` row (total-order §N.7) via the established
+  read-only db proxy, serving three machine-readable honest states (`served` with real
+  `kfs_…`/`kfh_…` · `field_not_yet_built` — production's current state · `field_snapshot_unreachable`
+  kept distinct); all 8 facades routed through the one resolver. Item-44 census now
+  measures reality. **Independently re-verified by the Conductor: platform-mcp tsc clean,
+  100/100 across envelope+views suites.** One disclosed gap → micro-lane
+  `w2-dbquery-allow-snapshots` dispatched (whitelist `kala_field_snapshots` in the db/query
+  proxy route, platform/src, outside #1033's contract).
+- **ITEM-44 AUTHORITY-BASIS SCOREBOARD (W2 "reported" obligation, measured 2026-08-02
+  08:39 UTC by the Conductor from the merged census):** paths_enumerated=29 ·
+  paths_emitting_authority_basis=4 (elect/ahead/ritual/upaya) · basis kinds:
+  field_window_id=0, locally_constructed=4, absent=25 · own-window clause-(b) assessments:
+  inherits_substrate_window=7, no_window_emission=1, not_assessed=21 (each carrying an
+  explicit per-path reason — the eight kala facades are hand-audited; the honest
+  `field_window_id=0` is the number W6 gates on and the field-serving cutover moves).
+
 **STAGE 1.2 — sweep telemetry (first measurement, ~08:14 UTC):** both charts committing
 substeps under the new 606-substep plan (A: 5, B: 4 in the first ~28 min) → **measured
 ~330s/substep ⇒ ~55h/chart projected** (vs ~22h for the old 303 plan). This confirms the
