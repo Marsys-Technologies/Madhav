@@ -13,6 +13,471 @@ governing: SHAD_DARSHANA_NIGHT_RUN_v1_0.md (orchestration) + SHAD_DARSHANA_BRIEF
 
 ## NEXT-ACTION
 
+**ALL THREE NATIVE DECISIONS FROM THE NIGHT-3 DOCKET ARE RULED (2026-08-02, morning review —
+full record: `SHAD_DARSHANA_ADJUDICATIONS_NIGHT3_v1_0.md` §NATIVE CONFIRMATIONS):**
+1. **Agnivāsa CONFIRMED: Pṛthvī-favourable, corpus default correct** (the elevation-session
+   "Pātāla" statement was the native's own misstatement, corrected on the record). Item 37's
+   builder seeds `kala_paddhati_profile` with `native_confirmed=TRUE` citing that section —
+   no unconfirmed-default caveat needed on yajña elections once seeded.
+2. **N_e `ne_v01` AFFIRMED as-is, all six values.** Future revision = `ne_v02` supersession
+   only.
+3. **Muhūrta-Cintāmaṇi translation COMMISSIONED** — as its own supervised corpus-curation
+   task, NOT a night-run lane (see `MUHURTA_CHINTAMANI_TRANSLATION_BRIEF_v1_0.md`, this
+   directory). The four PARKED-HONEST deliverables re-open when it lands; night runs do NOT
+   attempt it.
+
+---
+
+## NIGHT 4 — SESSION OPEN (2026-08-02, ~01:22–02:58 IST, in progress)
+
+**Session-open protocol discharged, per §D v1.3:**
+1. **Rebase**: `shad-darshana/integration` was 2 commits behind `origin/main` (TAP-6 CI fixes,
+   unrelated campaign). Clean rebase, no conflicts, force-with-lease pushed
+   (`1878ac02` → `ff9c1f9c`, same content, new base). Verified `origin/main` is now an ancestor.
+2. **Ledger-reconciliation sweep**: cross-checked NEXT-ACTION's open items against reality —
+   PR #1009 and #1014 confirmed merged (git log, not self-report); no open shad-darshana PRs
+   found repo-wide except unrelated campaigns (#1016 ci/m22-drain-and-probe, #899/#898 explicit
+   PRESERVE markers, #446 stale docs) — none collide with tonight's scope. **Gochara sweep
+   `d95583c8` on `1c826d5a` — CONFIRMED COMPLETE**: `build_runs.state='completed'`,
+   `build_run_assets.state='complete'`, `build_substep_progress` count = exactly 303 for
+   `(1c826d5a, ka_gochara_sweep)`. Both-charts horizon parity confirmed: `482012f1` 8,345 rows
+   to 2084-12-30; `1c826d5a` 8,061 rows to 2085-12-24 — the standing forward-window gap from
+   Phase-0 preflight (Night 1) is now CLOSED. This was NEXT-ACTION item 2; DONE.
+3. **ANTARYĀMIN docket check**: the three native-ruled docket items (Agnivāsa, N_e, Muhūrta-
+   Cintāmaṇi) are already recorded above (PR #1015). No new unruled adjudication blocks
+   tonight's dispatched wave. **Deliberately NOT resolved tonight**: the W2G V4 design-band
+   re-scope (779,595 measured contact events vs design §2.3's 10k–100k band — even the
+   eager-layer-only split exceeds the band) and V1's per-phase instrumentation gap — both
+   genuinely need dedicated Opus design attention, not a quick ruling, and W2G was judged lower
+   priority than closing out W3/W4 build capacity tonight. Recorded here so it isn't lost:
+   **W2G writer lane remains NOT DISPATCHED, blocked on this ruling, for a future session.**
+4. **Deploy check**: `main`@`334436a9` already matches the last production deploy (run
+   `30686193558`, 2026-08-01 05:37 UTC, confirmed via `gh run list` cross-checked against
+   `git log origin/main -1`) — no separate main-only deploy was owed tonight; the next deploy
+   is the wave's own gate-close (integration → main) once builders land.
+
+**Dispatched — Wave 1, six lanes, all in worktrees off `origin/shad-darshana/integration`,
+never spawned from inside a worktree:**
+- `shad-darshana/w3-health-adverse-class` (item 9, health/adverse event class closing DP-4,
+  **S4-05 re-test** — the historical trust-breaking-veto item; escalated to Opus/high on the
+  Conductor's own authority given the stakes, per §B.3's "escalate wherever value-adding")
+- `shad-darshana/w3-tithi-pravesha` (item 13, lunar-return annual chart, Sonnet)
+- `shad-darshana/w3-period-echo` (item 31, hypothesis-framed period-echo mining, Sonnet —
+  instructed to investigate and honestly report whether this is field-dependent before
+  building, park-honest rather than build a hollow placeholder if so)
+- `shad-darshana/w4-lane-u-upaya-setu` (W4 Lane U — item 26 full + E6 efficacy, Sonnet)
+- `shad-darshana/w4-lane-s-sankalpa` (W4 Lane S — item 42 Intervention Ledger, Sonnet,
+  spine-first: `intervention_filing.ts` + one-line `client.ts` widening lands before the
+  writer, since Lanes U/R both consume the published type)
+- `shad-darshana/w4-lane-r-yajna-setu` (W4 Lane R — items 37-full/40/38-W4-half PLUS items 6+7
+  folded in, since both share Lane R's exclusive file `bg_muhurta_lattice.py` and depend on
+  its R-1 lattice-widening work — dispatching 6/7 as a separate concurrent lane would have
+  collided; Opus/high per §B.3's mandatory list, parihāra corpus-extraction review + the
+  absolute mortality-exclusion rail ADJUDICATION-13)
+
+**Deliberately not dispatched tonight, honest scoping choice, not an oversight:**
+- Item 14 (janma-anchored election rules) — explicitly deferred by Lane R's own brief to a
+  future session; composes with R-4 but out of scope for tonight's lane size.
+- W2G writer lane — blocked on the V4/V1 Opus design ruling (see point 3 above).
+- The real W2 field-integration run itself (hash-replay determinism, weights-v0 seed,
+  skill-score/GOF publish, specificity-gate HARD flip, item-44 census population) — this is
+  substantial standalone work in its own right (per PR #1014, "steps 1–2 proven, 3–5 next
+  session") and was judged too large to fold into tonight's already-6-lane wave; planned as
+  Wave 2 once Wave-1 capacity frees, still within tonight's ~7.5h budget if it does.
+
+**WAVE 1 — MERGE TRAIN COMPLETE (2026-08-02, ~01:22–04:45 IST). Seven PRs landed on
+`shad-darshana/integration`, each independently CI-verified green before merge (not trusted
+from self-report):**
+
+| PR | Lane | Landed |
+|---|---|---|
+| #1017 | W4 Lane S spine | `intervention_filing.ts` + `client.ts` one-line widening — the published `FilingState` contract Lanes U/R build against |
+| #1018 | item 31 | period-echo mining on `kala_ahead_get`, hypothesis-framed, no new table (pure serving-layer join) |
+| #1019 | W4 Lane R pt.1 | R-1 lattice widening (migration 530, +71k rows, `hora`/`vara`/`nakshatra`/`tithi`/`lagna` families) + items 6 (data-layer closed, engine-axis blocked — see gaps) + 7 (muhūrta-lagna substrate + query-time strength) |
+| #1020 | item 9 | health/adverse event class in sweep grammar — **closes DP-4, S4-05 re-test PASS** (red-then-green proof against the real UAT_DARPANA S4-05 scenario text, not reconstructed) |
+| #1021 | W4 Lane U | UPĀYA-SETU full (item 26) + E6 efficacy, mortality-exclusion rail (G16) proven non-vacuous, `for_intervention` contract published for Lane R |
+| #1022 | item 13 | Tithi-Praveśa lunar-return annual chart, new `ka_tithi_pravesha` writer, migration 531 |
+| #1023 | W4 Lane S writer | `mi_sankalpa` / `mimamsa_intervention_ledger`, migration 532, status-preserving idempotency live-proven against a real throwaway Postgres |
+
+**PR #1024 (W4 Lane R pt.2 — R-2/R-3/R-4/R-5: `kala_paddhati_profile`, Mode-2 fixture, chart_relative
+constraint kind, `ritual.ts`/items 37/38/40) — CI caught a real cross-lane migration collision**
+(this branch's `531_kala_paddhati_profile.sql` was cut before `w3-tithi-pravesha`'s
+`531_kala_tithi_pravesha.sql` merged — the exact "re-verify live max immediately before writing,
+don't trust a stale reservation" trap this campaign's own docs warn about, recurring right on
+schedule). **Conductor-fixed directly** (a one-line renumber doesn't warrant re-dispatching the
+whole lane): merged `origin/shad-darshana/integration` into the branch, re-verified true live max
+(532, both directories), renumbered to 533, updated the header comment, ran
+`migration_number_guard.ts` locally — PASS, no new collision — pushed. CI re-running; will merge
+on green like every other lane, not force-pushed through.
+
+**Deep gaps surfaced honestly by the builders, carried forward (not silently dropped):**
+- **Item 6's Pareto axis (`rite_specific_resonance`) could NOT be enabled** — `kala_lattice_query.ts`'s
+  `EXCLUDED_AXES` is a module-private const with no injection point, and the file is FROZEN for W4.
+  The builder correctly stopped rather than editing a frozen file. Item 6 is data-layer CLOSED,
+  engine-axis OPEN — needs a small, deliberate one-line unfreeze PR, Conductor-authorized, in a
+  future session (not tonight — a frozen-file exception is exactly the kind of call that should get
+  its own deliberate PR, not be folded into a builder's larger lane).
+- **Item 37 partial**: storage/reader/divergence-block closed; `query_kala_paddhati_profile`
+  capability itself doesn't exist yet — needs a shared `index.ts` boundary negotiation the lane
+  correctly declined to resolve unilaterally. Degrades honestly (`honest_empty`, corpus-default
+  fallback disclosed) in the meantime.
+- **Production `bg_muhurta_lattice` currently has 0 rows** — migration 530's schema is live but the
+  L0 rebuild (super-admin trigger) hasn't run. The Mode-2 fixture gate is correctly honest-empty
+  until then; this is a Nirmāṇa §2.5.2 prerequisite for the gate-close deploy below.
+- **Item 9's sweep-grammar fix is code-live, DATA is not**: no chart has health/adverse windows
+  until `ka_gochara_sweep` + `ka_gochara_resonance` re-run against production for both canonical
+  charts. Sweep substep count doubles (303→606/chart). **This is a required step in the gate-close
+  sequence, not optional** — S4-05 is not actually closed until the live query is re-run post-rebuild.
+- Item 14 (janma-anchored election rules) — confirmed still NOT-STARTED, as instructed.
+- The parihāra corpus pass found exactly one new genuine citable rule (Bṛhat Saṃhitā Viṣṭi
+  exception) and correctly declined to encode it (schema has no undertaking-class qualifier column
+  — encoding it unconditionally would wrongly cancel Bhadra for a wedding). Named as a work item,
+  not silently dropped.
+
+**Next**: land PR #1024 on green CI, then run the gate-close sequence — this is now the
+critical path, not a further build wave (see below for the Wave-2 decision).
+
+---
+
+**NIGHT-3 RESUMED SESSION CLOSED (2026-08-01, ~08:36–16:15 IST — see MORNING REPORT
+NIGHT-3-RESUMED immediately below for the full close-out).** The single next action for the
+next session:
+
+1. ~~Confirm the final two merges landed~~ **DONE before close: PR #1009 MERGED
+   (`a3a6a743`) and PR #1014 MERGED (`c84ae621`) — every lane PR of the session landed;
+   nothing half-merged.**
+2. **Confirm gochara run `d95583c8` completed `1c826d5a` to 303/303** — at the final
+   pre-close check it stood at **302/303, state=running**; completion expected within
+   minutes, unattended. If short, one more dispatch using the recorded
+   `--run-id`/`MARSYS_RUN_ID` invocation.
+3. **Then the W3 gate-close sequence is the main event**: remaining W3 items per brief §1
+   (activity tables 6 · muhūrta-lagna 7 · janma rules 14 · health class 9/S4-05 · Tithi-
+   Praveśa 13 · period-echo 31 · sandhi-full 1 · sky-calendar joins 3 · E6-full; field-
+   dependent 33/34 wait for the field) — dispatch as parallel lanes off integration; when the
+   wave's items are BUILT, open the §B.2 gate-close PR (integration → main, rides the merge
+   queue 5–60 min), deploy, run the super-admin L0 trigger for the new bg_* assets
+   (bg_class_lifetime_counts · bg_kota_chakra_rings · bg_muhurta_lattice/bg_parihara_rules
+   if not yet built · bg_sarvatobhadra_grid empty registration), rebuild ka_kshetra both
+   charts, and PARĪKṢAKA live-accepts — including the ADJUDICATION-10 LIVE Abhijit-rescue
+   demonstration and the first skill-score/GOF publication (Gate W2's close rides the same
+   deploy: N_e is now in the tree, so W2 + W3 likely close together).
+4. **W2G writer lane** is unblocked next (N-block complete + generation schema landed +
+   validations honest-FAIL findings enumerated): first resolve V4's design-band question
+   (779,595 measured contact events vs §2.3's 10k–100k band — an E-3 re-scope/design
+   amendment, Opus lane) and V1's per-phase instrumentation gap; Tier-1 equivalence can open
+   once `1c826d5a` hits 303/303 (item 2 above).
+5. **W4 Phase-5b lanes (U/R/S)** are fully specified (design v1.1 + ADJ-12/13) and can run
+   beside W3 lanes.
+
+**Native morning review requested on:** the twelve ADJUDICATION rulings (-2 through -13, all
+reversible, full text in `SHAD_DARSHANA_ADJUDICATIONS_NIGHT3_v1_0.md`) — in particular N_e's
+six seeded values (independently re-derived, but they are structural priors the native may
+wish to inspect), the Agnivāsa paddhati pin awaiting his one-line lineage-convention
+confirmation, and the `muhurta_chintamani` translation work item (now blocking four
+deliverables — the highest-leverage corpus action available).
+
+---
+
+
+**HOLD LIFTED (2026-08-01, native — requested the Night-3 kickoff; the §D paste authorizes
+the run).** The hold condition was verified satisfied before lift, not assumed: **zero open
+SAMĀPTI PRs** as of 2026-08-01 (checked live against Marsys-Technologies/Madhav).
+
+**NIGHT-3 OPENING ORDERS (the frontier; supersedes the generic §C night-map for tonight):**
+1. **Session-open protocol per §D (v1.3)**: rebase integration onto main · ledger-
+   reconciliation sweep · ANTARYĀMIN discharges ALL pending adjudications up front · deploy.
+2. **Deploy current `main` to production first** (Night 2's standing next-action — `main` has
+   been one deploy ahead since Night 2's close, by explicit native decision then; the
+   blocking consideration at the time, other campaigns' unshipped work, has since resolved:
+   PŪRṆATĀ closed 2026-07-31, SAMĀPTI zero open PRs). Full verify discipline + Verifier
+   acceptance on both charts before any new build work lands on top.
+3. **Ledger-reconciliation sweep known target**: item 2's row reads IN-PROGRESS but PR #934
+   (`w1-recurrence-digest`) is MERGED and the W1 gate-close record claims 12/12 VERIFIED —
+   reconcile the row against the W1 round-2 evidence, append-only, citing it.
+4. **ANTARYĀMIN's up-front docket (all before builders dispatch):** N1–N4 rulings + record
+   N5's CONSERVATIVE-DEFAULT verbatim into the N-block (it has sat empty for two nights —
+   W2G is unstartable until it is filled) · **the N_e priors-source design ruling** (see 5).
+5. **The N_e blocker is tonight's critical path** (Lane C's honest disclosure, see the
+   Night-2 record below): the hazard formula's lifetime-count priors
+   (`fact_kind='lifetime_count_per_100y'`) exist nowhere in the corpus; a real `ka_kshetra`
+   build writes ZERO field rows until an L0 lane seeds them. ANTARYĀMIN rules the source
+   design (candidates: classical-text-derived counts with citations; documented demographic
+   base rates as structural priors; cohort-derived where genuinely derivable — NEVER read
+   `base_rate_by_age` as N_e, §5.1 C-1 forecloses that exactly); then a small L0 seeding
+   lane lands it under the §D data-honesty rail: every value cited, versioned,
+   structural_prior-labeled. A number without a source is a build error.
+6. **Then the real Gate-W2 integration sequence** (design doc §10 / brief §3 W2): field
+   build both charts → hash-replay determinism → weights-v0 seed → skill score published
+   (both charts; FIRST score = CI baseline) → time-rescaling GOF report → specificity gate
+   flips HARD → authority-basis census population → insight rows lead readings → Nirmāṇa
+   checks green (L0 assets built in production BEFORE the first per-chart field build).
+7. **In parallel with 5–6, dispatch the W3 lanes whose prerequisites are already met**
+   (need L1/ephemeris/views, not the field): moorti (4) · vedha + REAL Sarvatobhadra grid
+   (5) · Tithi-Praveśa (13) · Kota (16) · Sudarśana (17, writer `ka_sudarshana_varsha`) ·
+   health/adverse class (9, S4-05 re-test). The lattice-query ENGINE (36's remaining half)
+   + activity tables (6) + muhūrta-lagna (7) can also start — substrate (PR #930) is in.
+   W2G starts the moment the N-block is filled (order 4). W4 design (5a) the moment 36+41's
+   engine work lands. Field-dependent W3 items (33, 34, state_delta, decision_value) wait
+   for 6.
+8. **Gate W2 close = the §B.2 gate-close PR** (integration → main, rides the merge queue,
+   5–60 min is normal) → deploy → PARĪKṢAKA live acceptance → ledger + morning report.
+
+**Four infrastructure changes landed during the hold** — Night 3's Conductor MUST read
+`SHAD_DARSHANA_NIGHT_RUN_v1_0.md` (now v1.3 — the §D prompt itself was elevated 2026-08-01,
+read it fresh) rather than rely on cached knowledge of earlier mechanics:
+
+1. **The integration branch is now the merge target for every lane PR** — `main` receives one
+   deliberate merge per wave-gate close only (NIGHT_RUN §B.1/§B.2). `main == production`
+   remains the invariant; `shad-darshana/integration == main` does NOT, between gates, by
+   design.
+2. **The two chronic multi-lane hot-file collisions are fixed structurally**: the 8 kala_*
+   tool registrations are consolidated into `kala_views/register_all.ts` (registry_bridge.ts
+   touches it exactly once, never again); `m8_e2e_proof.test.ts`'s two hand-bumped exact-count
+   literals are replaced with a duplicate-registration check + a mass-regression floor (needs
+   no bumping for ordinary tool additions). Neither change touches `server.ts`'s
+   `REGISTERED_TOOL_COUNT` — that remains SAMĀPTI's own territory (PR #912, still open as of
+   this writing).
+3. **W4's Phase 4/5 boundary is now item-triggered, not gate-triggered**: Phase 5a (the W4
+   Opus design pass) starts the moment items 36+41 land, not when W3/W2G/W3K's gates close —
+   genuine additional parallelism, since W4 needs nothing from W2G or W3K.
+4. **The repo migrated orgs (2026-07-31): `amonty84/Madhav` → `Marsys-Technologies/Madhav`.**
+   `main` now merges through GitHub's merge queue (ruleset `20141220`, not classic branch
+   protection) — the gate-close PR takes up to ~5–60 min to actually merge after checks pass,
+   not seconds; do not treat a queued-but-unmerged green PR as stuck (NIGHT_RUN §B.2a).
+   `shad-darshana/integration` carries no ruleset. Any `gh`/`git` invocation hardcoding
+   `amonty84/Madhav` is now wrong — use `Marsys-Technologies/Madhav` or omit `--repo` and let
+   it infer from the local remote.
+
+**Resume checklist for whoever restarts the campaign:** (a) confirm SAMĀPTI has genuinely
+dissolved/closed before dispatching anything; (b) rebase `shad-darshana/integration` onto the
+current `origin/main` tip FIRST if it's been more than a few days — it was last rebased
+2026-08-01 at `origin/main`@`8d7dee58`+; 52 commits of drift had already accumulated by that
+point in ~36h (the PURNATA campaign's close-out + the org migration itself), so treat drift as
+the norm, not the exception, for this repo; (c) THEN resume from the Night-2-authored
+NEXT-ACTION below, which remains the substantive "what to do next" for the campaign's own
+build state (Gate W1 closed, Gate W2 blocked on the N_e resolution, `main` one deploy ahead of
+production by design).
+
+---
+
+## NIGHT 3 RESUMED SESSION (2026-08-01, ~08:36 IST — the prior Night-3 session was stopped externally ~08:31; this session resumed from its honest park)
+
+**Session-open protocol discharged:**
+- **Ledger PRs landed**: PR #1000 (the stopped session's honest wave-status/N-block/docket close) merged to integration @ `52deb3a1`. All four cancelled-lane worktrees (`w2-integration`, `w3-lattice-engine`, `w3-moorti-vedha`, `w3k-inventory`) verified clean, zero commits — the stopped session's "no work lost" claim independently confirmed.
+- **PR #999 (W3 items 16+17) CI failure diagnosed + fixed**: two stale exact-count assertions — `descriptor_defaults.test.ts` (33→35 `register.reader_label` capabilities; the +2 traced by diff to exactly `query_kota_chakra.ts` + `query_sudarshana_varsha.ts`) and `AssetRow_CockpitPolishR2.test.tsx` (Kāla seed count 15→17; the +2 traced to exactly the two new seed entries). Semantic fixes with named additions, not blind bumps — commit `0f15baa2`, CI re-running.
+- **Gochara-sweep resume, `1c826d5a` (standing operational item)**: collision check clean (zero running runs in `build_runs`); progress verified 209/303 substeps (prior dispatches gained ~131 ≫ the ≥40 gate). New dispatch `dbcd45e1-f90a-4e7c-8160-254b35de5bc6` created via the established script + `gcloud run jobs execute` (execution `brahma-build-pipeline-job-d6zlw`); ~94 substeps remain (likely dispatch 2-of-3).
+
+**PARĪKṢAKA LIVE ACCEPTANCE — deploy-main@`6e53f7cb` → ACCEPTED (2026-08-01 ~03:13–03:17Z, both charts, all evidence from real calls).**
+- Traffic independently re-derived to LATEST on 3/3 services (`amjis-mcp-00526-4p7` / `amjis-sidecar-00953-hzz` / `amjis-web-01345-c9d`, each 100%, `latestRevision:true`).
+- W2 schema live: 18/18 `kala_field*`/`kala_timeline_spec` tables; migrations 488–497 all recorded in `_migrations_applied` (ids 367–376) with sha256 + sql_identity, no gaps.
+- Gate-W1 baseline: all 7 spot-verifiable item families intact on both charts, zero regression. 8/8 cited `fact_id`s resolved against `chart_facts` with matching values, incl. 3 FORENSIC anchors re-confirmed through the live serve path; daśā claim cross-checked against `ganita_dashas_get` exactly.
+- **Standing advisory RESOLVED**: `kala_ahead_get` on Abhinandan now returns 5 populated projections + ladder + digest — the `projections:[]`-with-`computed` advisory from Gate W1 is closable; `computed` is now earned.
+- **PR #995 inversions confirmed present in production as expected** (fix is on integration, not main — strangler discipline working). **Ledger precision correction (from the Verifier, adopted here): the HARD inversion is `hora_ladder` in `elect.ts:228` (unconditional `computedCoverage('hora_ladder')` for a concept the tool never computes), NOT `hora_now` — `now.ts:1366`'s `hora_now` is correctly payload-conditioned and populated on both charts.** The soft inversion is `kala_darshana_confluence` (`now.ts:1146` gates coverage on reachability, not payload; prose layer is honest).
+- **Two NEW minor disclosure defects filed, non-blocking** (register items for a small lane):
+  - **ND-A**: `kala_ahead_get` thesis narrates already-open windows as "forward-dated" (e.g. `2010-08-18..2027-08-18` on Abhisek) — narration imprecision, rows themselves honest. Suggested wording: "currently-active or forward-dated windows overlapping the next N years."
+  - **ND-B**: projection/window member arrays silently capped at 10 against an uncapped `member_count` (85 vs 10 ids, no `truncated`/`more_available` marker) — §N.6(4) says the cap should be declared machine-readably, not left to inference.
+
+**Swarm dispatched this session (per §D v1.3, maximally parallel):** ANTARYĀMIN (Opus, full unruled docket: N_e priors-source · N1–N4 · W3K seating · paddhati/Agnivāsa · Kota ring-table citation tier) · `w3-moorti-vedha` (items 4+5, Sonnet) · `w3-lattice-engine` (item 36 query engine, Opus — W4 5a trigger) · `w3k-inventory` (item 18 inventory, Sonnet) · PARĪKṢAKA (acceptance above). Results recorded below as they land.
+
+**ANTARYĀMIN DOCKET FULLY DISCHARGED (2026-08-01).** All eight rulings issued — the N-block is
+COMPLETE for the first time (N1–N4 ruled + native's N5), so **W2G is startable**; the N_e
+critical path has a binding build spec (`bg_class_lifetime_counts`, Tranche-1 of 6 classes
+mandatory at Tier N-i sourcing, hard stop = seed zero rows if sourcing fails); the Kota
+gate-blocker is a bounded task (`bg_kota_chakra_rings`); W3K seating ratified as a three-way
+split. Full text: `SHAD_DARSHANA_ADJUDICATIONS_NIGHT3_v1_0.md`. N-block + ADJUDICATION log
+updated below.
+
+**W3K INVENTORY LANDED (PR #1003, docs-only, scope-verified).** Headline: the brief's "KP
+exists nowhere" premise is FALSE — `ganita_kp_cusps_get` (CR-30) serves a live, tested 249-fold
+sub-lord substrate (`compute_kp_lords`, 4 levels), 5 KP fact categories live on both canonical
+charts across all 5 ayanāṃśas, and `chart_dashas` already carries a `vimshottari_kp` system
+(576 + 5,184 rows on the native chart). Also flagged: a stale "PHANTOM DROPPED" disposition in
+`retrieval_capability_spec.ts`/`tool_metadata.ts` predating CR-30; a fabricated-data fallback
+`schools/kp_engine.ts` (unrelated, flagged); a `bhava_cusps` cockpit-truth gap (no `count_sql`).
+The inventory's seating recommendation is consistent with ADJUDICATION-7's ruling (which also
+corrected the premise independently). Gap list + two-lane build plan in
+`W3K_SUBSTRATE_INVENTORY_v1_0.md`.
+
+**NIGHT-3 RESUMED SESSION — BUILD RECORD (running log, finalized in the MORNING REPORT below).**
+
+**Merge train (all → `shad-darshana/integration`, each on green CI, scope-verified):**
+- **PR #1004** — item 36's query-time lattice engine (Opus lane; §N.6 density layering:
+  real-cited findings vs `computed_uncited_convention` counted separately, `hardFloor` on
+  candidates; ONE-ENGINE RULE asserted by test). One CI count-fix cycle (whitelist 54→56,
+  both literals updated semantically with the +2 named). **Item 36 LANDED → W4 Phase-5a
+  trigger (36+41) MET.**
+- **PR #1005** — ADJUDICATION-9 discharged: `bg_kota_chakra_rings` versioned L0 table
+  (migration 523), inline dict deleted, byte-identity proven against a frozen golden
+  partition + live throwaway-Postgres idempotency check. One disclosed precision note: 27
+  rows (27-nakshatra arithmetic in actual use), not the ruling's "~28". **Item 16's
+  citation-tier blocker on the W3 gate-close → CLEARED.**
+- **PR #1008** — ADJUDICATION-10 Part 1 discharged: the Abhijit sarva-doṣaghna parihāra row
+  (migration 524), source chunk `bphs_jaimini_pg0213_c01` verified in production corpus
+  BEFORE seeding, transcribed verbatim, `extraction_context='translator_gloss_in_narrative'`.
+  Schema-forced narrowing disclosed: engine matches per-doṣa (`rahu_kalam` chosen), no
+  wildcard convention — a narrowing of practical reach, not of transcribed doctrine. Rescue
+  proven in test against the real seeded row. Live-candidate demonstration = W3 gate
+  Verifier item.
+- **PR #1006** — W2G V1–V6 bind-time validations as real code (38 tests, each asserted both
+  ways). **HONEST GATE RESULT: `may_proceed: false`** — V2 PASS (ephemeris 1900→2150 all 9
+  bodies, zero gaps; ADJUDICATION-5's 1900 floor fully supported) · V3 PASS (spline worst
+  error 0.314″ vs 60″ target; recommended root-find tol 1.0″) · **V4 FAIL** (779,595 contact
+  events vs design §2.3's 10k–100k band — the design's per-cycle multiplier assumption is
+  refuted by measurement; E-3 re-scope needed: Moon is 76% of events but the eager layer
+  alone still exceeds the band) · **V5 FAIL** (no generation discriminator existed — see PR
+  #1013; and Tier 1 cannot open: `1c826d5a` at 215/303 substeps, a row-count check would
+  call it populated — the substep-plan check catches it) · V1/V6 INDETERMINATE with reasons
+  (no per-phase timing instrumentation exists; classifier needs a 2.0 side). Grid convention
+  finding: ephemeris knots at noon UT, v1 sweeps at midnight — half-day offset to reconcile.
+  One real bug found by the live run (bare `%` in parameterised SQL), fixed + regression-
+  tested.
+- **PR #1013** — ADJUDICATION-6's schema landed: `kala_gochara_windows.generation` (DEFAULT
+  'v1', catalog-only ALTER proven via xmin probe) + `kala_gochara_authority` pointer table
+  (absent row = v1 authoritative). Two serving surfaces filtered; remaining readers
+  documented as the 2.0 writer lane's checklist. Migration 527. v1 rows untouched
+  (untouchable respected; behavior byte-identical today).
+- **PR #1010** — W4 Phase-5a design pass (Opus): `KALA_W4_UPAYA_DESIGN_v1_0.md` v1.1. Lane
+  split U/R/S with anti-collision file table; no new MCP tools (W0 shells filled — removes
+  the historical registry_bridge collision surface); the lattice CHECK gap (4 factor
+  families, no hora/vara/tara atoms) found and ruled R-1; Mode-2 fixture mapped to 4 named
+  detectors incl. a two-part both-charts detector; ADJUDICATION-12/-13 folded in as v1.1
+  (equality-not-negation basis check; DB CHECK making inferred-rows-never-sealed structural;
+  mortality exclusion as a SUBSTRATE ban — forbidden identifiers ayurdaya|longevity|maraka|
+  ayus — with G16 re-running under native_self and still refusing; §1 rail 11: a detector
+  that cannot be shown to fire is treated as OFF — non-vacuity assertions required).
+- **PR #1011** — the watchdog false-kill fix (campaign-discovered production defect, root
+  cause pinned: Postgres `NOW()` = transaction start, so a multi-minute substep's own
+  heartbeat understates its commit time; clause-1's 10-min window left no margin at 5–6.5
+  min/substep cadence). Fix additive in the watchdog route only: 15-min window +
+  `build_substep_progress.completed_at` as second evidence-of-life (read-only). RED-first
+  repro of tonight's false kill + truly-orphaned still reaped, both proven.
+- **PR #1007 — THE CRITICAL PATH: N_e priors LANDED, VERIFIED.** `bg_class_lifetime_counts`
+  (migration 522): all SIX Tranche-1 classes at genuine Tier N-i — childbirth 3.09 (NFHS-5
+  FR375 Tbl 4.5), marriage 0.984 + separation 0.00806 (Census 2011 C-2), relocation 0.376
+  (Census D-2), surgery 0.356 (Zadey 2024 measured HMIS rate; Weiser's famous 904/100k
+  REJECTED as a regression imputation — India sits in the missing-data table), foreign_
+  settlement 0.0129 (UN DESA IMS 2020). Tranche 2: ZERO rows (nothing reached Tier N-i —
+  the hard stop held; 21 classes honestly skip `no_class_prior_row`). DATA-HONESTY RAIL now
+  MACHINE-ENFORCED (prior_basis + source_ref CHECK). Two beyond-spec catches: the
+  `query_class_priors` serving surface would have flattened salience multipliers and event
+  counts into one column (scoped out with excluded_fact_kinds disclosure, §N.6) and a real
+  transaction-poisoning bug (un-rolled-back savepoint probe) fixed. **ADJUDICATION-2 item-7
+  two-pass acceptance DISCHARGED: independent re-derivation (own downloads, MD5-recorded,
+  figures read from the source cells/pages) confirmed all 6 figures TO THE DIGIT — verdict
+  PASS, zero deletions, zero amendments; surgery choice upheld on the imputation ground.**
+  Three advisory prose corrections to permanent audit fields applied pre-merge. Conductor
+  resolved the lane's merge conflict (KNOWN_HAS_WRITER_TRUE additively) per §B.1.
+- **PR #1003** — W3K substrate inventory (see above).
+
+**Verification, adjudication + design artifacts this session:** deploy-main ACCEPTED
+(PARĪKṢAKA, above) · **ADJUDICATION-2 through -13 — twelve rulings, the entire docket +
+five mid-session escalations, zero lanes stalled waiting on a ruling** (full text:
+`SHAD_DARSHANA_ADJUDICATIONS_NIGHT3_v1_0.md`) · `W3K_SUBSTRATE_INVENTORY_v1_0.md` ·
+`KALA_W4_UPAYA_DESIGN_v1_0.md` v1.1 · W2G honest-FAIL validation record (PR #1006).
+
+**Corpus findings elevated to standing work items:** (1) **`muhurta_chintamani` is ingested
+but untranslated** (274 chunks, content_en byte-identical to content_sa, raw OCR) — now
+blocking FOUR deliverables (Agnivāsa second convention, Kota primary source, muhūrta-scope
+parihāra extraction, SBC grid candidates); the single highest-leverage corpus action
+available, zero acquisition cost. (2) SBC-specific text (Nārada-Saṃhitā class) — genuine
+acquisition. (3) KP texts — none ingested (tier-ii design doc is primary for W3K).
+
+**Operational: the gochara-sweep watchdog false-kill class is now DIAGNOSED and FIXED (PR
+#1011).** Both of tonight's early kill events (03:30:06 `run never dispatched` = the
+Conductor's own bare-execute mistake, recorded above; 04:30:05 clause-1 kill of run
+`e5cde4dc` with a 5.2-min-fresh heartbeat while the container ran on) are explained. The
+container survived the false kill and kept committing substeps all session (209 → 230+/303,
+~5–6.5 min cadence). The DB run-state row for `e5cde4dc` reads `failed` and is COSMETICALLY
+WRONG — the substep ledger is the truth. ~70–90 substeps will remain at container timeout
+(~09:53Z); ONE further dispatch (using the `--run-id` + `MARSYS_RUN_ID` invocation recorded
+above) should complete the 303. The fix deploys with the next gate-close.
+
+**Gochara-sweep resume (operational): first re-dispatch attempt `dbcd45e1` FAILED with
+`orphan-watchdog: run never dispatched` — root cause: a bare `gcloud run jobs execute` runs the
+container with NO run-id; the job requires `--args="--run-id,<id>"` +
+`--update-env-vars MARSYS_RUN_ID=<id>` (per `src/lib/build/jobInvoker.ts:187`). Re-dispatched
+correctly as run `e5cde4dc-3640-4fe8-b1b0-1e3439a06792` (execution
+`brahma-build-pipeline-job-f5jkh`) — confirmed `state='running'`. Recorded so no future session
+repeats the bare-execute mistake.**
+
+---
+
+## MORNING REPORT — NIGHT-3 RESUMED SESSION (2026-08-01, 08:36–~16:15 IST)
+
+**Context:** the first Night-3 session was stopped externally ~08:31 after dispatching its
+swarm; this session resumed from its honest park (PR #1000), re-ran the §D v1.3 session-open
+protocol, and executed the full night.
+
+**Gates closed:** NONE — correct, not a shortfall. W3 is a multi-night wave (only a subset of
+its items landed); W2's close requires the L0 assets built in production, which rides the
+next gate-close deploy. `main == production` verified at open (PARĪKṢAKA ACCEPTED deploy of
+main@6e53f7cb, both charts, zero W1 regressions); `shad-darshana/integration` runs ahead of
+`main` by ~25 commits — the normal, by-design between-gates state (§B.2).
+
+**Items dispositioned (all on integration, none yet live-production):**
+- Item 36 (lattice query engine) — BUILT+MERGED (#1004); W4 5a trigger met.
+- Item 16 (Kota) — citation-tier blocker DISCHARGED (#1005, ADJ-9); VERIFIED-FIXED path
+  confirmed pending gate-deploy Verifier pass.
+- Abhijit parihāra (ADJ-10 Part 1) — extracted + merged (#1008); live rescue = gate item.
+- Items 4+5 (moorti + vedha) — BUILT (#1009, ADJ-11 additions landed; final CI green-pending
+  at close after a guard-caught 527 renumber).
+- N_e priors (ADJ-2) — **BUILT + INDEPENDENTLY VERIFIED + MERGED (#1007)**: 6 Tranche-1
+  classes at Tier N-i, two-pass re-derivation PASS to the digit; `ka_kshetra` proven locally
+  to produce its first non-empty class set (6 compute + 21 honest-skip, #1014 evidence).
+- W2G V1–V6 validations — BUILT+MERGED (#1006) with an HONEST `may_proceed:false` (V4/V5
+  findings are the W2G writer lane's work list, not defects).
+- ADJ-6 generation schema — BUILT+MERGED (#1013).
+- W4 design v1.1 — RATIFIED+MERGED (#1010).
+- Watchdog false-kill fix — BUILT+MERGED (#1011), root cause pinned (NOW() = txn start).
+- W3K inventory — MERGED (#1003): KP substrate already exists at L1 (premise corrected).
+
+**Rulings made:** ADJUDICATION-2 through -13 — the full pre-queued docket plus five
+mid-session escalations, every lane unblocked same-session, zero stalls waiting on a ruling.
+The N-block is COMPLETE (first time since the campaign opened); W2G is startable. Native may
+overrule any ruling; all are reversible by design.
+
+**Defects found + fixed:** the watchdog clause-1 false-kill (production, diagnosed with a
+live specimen, fixed additively, both directions tested) · the W4 design's no-op adverse-
+guardrail predicate (would have silently auto-filed every health intervention — caught by
+ANTARYĀMIN against the live ontology, replaced + CI-asserted non-vacuous) · four exact-count
+assertion regressions across three PRs (all bumped semantically with additions named) · a
+migration-527 collision (guard caught; renumbered 529) · a psycopg `%`-placeholder bug in
+V4's live path · a transaction-poisoning savepoint bug in the N_e writer · the Conductor's
+own bare-`gcloud run jobs execute` mistake (run never dispatched — invocation contract now
+recorded).
+
+**Parks + reasons:** Tranche-2 N_e classes (21) — no Tier N-i source reached; honest-skip by
+design. SBC grid — CLOSED-PARTIAL-BY-DESIGN per ADJ-11 (school-tagged table registered
+empty; approximation served with machine-readable basis). W2 field determinism double-run +
+ka_kshetra local build — NOT-REACHED in #1014's budget (steps 1–2 proven; 3–5 next session).
+`e5cde4dc`'s DB run-state row falsely reads `failed` (watchdog false-kill; substep ledger is
+the truth — fix merged, deploys at gate-close).
+
+**Operational:** gochara `1c826d5a` horizon rebuild advanced 209 → 292/303 across two
+container dispatches (the ≥40 gate more than doubled); the FINAL dispatch (`d95583c8`,
+execution `dnznp`) was confirmed RUNNING at close — 303/303 expected unattended. The correct
+job invocation (`--args="--run-id,<id>" --update-env-vars MARSYS_RUN_ID=<id>`) is recorded
+above; a bare execute silently does nothing.
+
+**Swarm health note for the native:** persistent infrastructure instability all session
+(~15 agent connection-drops/stalls across 10 lanes; every one resumed with zero work lost —
+the SendMessage-resume pattern + worktree isolation held). Two lanes' completed work was
+landed by the Conductor from their verified working trees (N_e polish, ADJ-11 additions) —
+each noted in the commit message, each independently test-verified before landing.
+
+**Single next action:** open the W3 gate-close sequence (remaining W3 item lanes → gate-
+close PR → deploy → L0 builds → Verifier live acceptance) — see NEXT-ACTION above. (#1009
+and #1014 were merged before close; the gochara sweep stood at 302/303 running.)
+
+**Final close state:** every session lane PR merged (13 total: #1000 #999 #1003 #1004 #1005
+#1006 #1007 #1008 #1010 #1011 #1013 #1009 #1014); all campaign worktrees removed except the
+standing `sd-conductor`; `main`@`334436a9` deployed and serving 100% (post-acceptance main
+movement was the TAP-6 CI workstream's own docs/fix commits + its path-gated deploys — not
+this campaign's); `shad-darshana/integration` ahead of `main` by design pending the W3/W2
+gate close.
+
+---
+
 **NIGHT 2 CLOSED (2026-07-31 — see MORNING REPORT at the end of this file for the full
 close-out).** Gate W1 VERIFIED-CLOSED. All 5 W2 build lanes merged to `main`; Gate W2 itself
 NOT closed (Lane C's disclosed N_e lifetime-count-priors gap must resolve first). `main` is
@@ -796,10 +1261,10 @@ collision pattern is better understood from the first lane.
 |---|---|---|---|
 | W0 | **VERIFIED-CLOSED** | PRs #877/#880/#882/#883/#884/#881 (merged main@`42151b24`+); deploy run `30484976742`; direct production `tools/list` + functional calls on both charts; see GATE W0 CLOSURE RECORD above | All 8 tools live on production, both charts, envelope-conformant, Mode-3 routing live-verified. |
 | W1 | **VERIFIED-CLOSED** | All 12 items VERIFIED-FIXED, both charts, live production (revision `amjis-mcp-00525-hrd`, 100% traffic). Round 1 rejected 5/12 (8,28,29,30,32) with real evidence; fix (PR #940, Opus) redeployed; round 2 independently re-verified all 5 via recomputed ephemeris + fact_id tracing + FORENSIC fixture cross-check, not self-report | Real honesty-inversion bugs caught and fixed by the verification apparatus exactly as designed — see NEXT-ACTION for the full round-1/round-2 record. Two non-blocking advisory notes filed. |
-| W2 | **DESIGN-COMPLETE + Lane D unblocked, build lanes not yet dispatched** | PR #886 (`KALA_W2_FIELD_DESIGN_v1_0.md`), PR #918 (Lane D §6.3 reconciliation, ADJUDICATION-1), PR #932 (bg_cohort MD-lord chain table, APPROVE-WITH-NOTES) all merged | Hazard formula, skill-score/GOF, DAG acyclicity, AND Lane D's cohort contract all specified precisely against reality; 5 build lanes (A/B/C/D/E) ready to dispatch together. |
-| W2G | NOT-STARTED | — | GOCHARA-2.0 sub-day. **BLOCKED on N1–N5 ratification (W2G.0) — see below.** |
-| W3 | NOT-STARTED | — | New computations over the field. |
-| W3K | NOT-STARTED | — | KP sub-lord engine (item 18, built from zero). |
+| W2 | **BUILT, NOT CLOSED — PARKED-HONEST (Night 3)** | Design PR #886 + PR #918 + PR #932; all 5 build lanes merged (#944/#945/#946/#947/#949); **migrations 488–497 APPLIED IN PRODUCTION Night 3** (deploy runs `30678888444` + `30679075712`, all 18 `kala_field*`/`kala_timeline_spec` tables verified live) | **The gate did NOT close and could not.** Two independent reasons, both recorded honestly: (1) the **N_e lifetime-count-priors blocker is still unruled** — ANTARYĀMIN was cancelled mid-session before issuing the priors-source ruling, so no seeding lane could be dispatched and `ka_kshetra` still writes ZERO field rows (correctly refusing to fabricate, per §5.1 C-1 / B.10); (2) the **`w2-integration` lane was cancelled mid-session** — it owned field integration, hash-replay determinism, the real `field_snapshot_id` (E5), weights-v0 seed, the item-44 census, and the specificity-gate flip to HARD. Neither cancellation lost work (both lanes had zero commits). Gate W2's §3 criteria — skill score + GOF published both charts, null exceedance per window, salience visible in PRIORITIZE, insight rows leading readings — ALL require a non-empty field, hence all require N_e first. |
+| W2G | NOT-STARTED | — | GOCHARA-2.0 sub-day. **STILL BLOCKED on N1–N5 ratification — now for the THIRD consecutive night.** ANTARYĀMIN was dispatched Night 3 with N1–N4 + N5's pre-ruled conservative default as its up-front docket (per the v1.3 §D protocol, which exists precisely because this block sat empty through Nights 1–2), but was cancelled before ruling. The N-block below remains empty. |
+| W3 | **IN PROGRESS (first items landed Night 3)** | PR #999 (items 16 Kota-Chakra + 17 `ka_sudarshana_varsha`); `w3-moorti-vedha` lane (items 4+5, closes R-19) in flight at session end | New computations. Items 16/17 land as new L3 per-chart writers with Nirmāṇa seed rows + chart-scoped `count_sql` in the same PR. **Item 36's remaining half (the query-time lattice engine) was dispatched and CANCELLED mid-session — so W4's Phase-5a trigger (36+41) is still NOT met.** |
+| W3K | **INVENTORY IN FLIGHT** | `w3k-inventory` lane (item 18 substrate inventory + layer-seating recommendation) running at session end | KP sub-lord engine. Per §C, W3K correctly begins with existing-substrate inventory before any build. Note the layer-seating question was on ANTARYĀMIN's docket and is now **unruled** — the lane produces a recommendation, but nothing can ratify it this session. |
 | W4 | NOT-STARTED | — | Intervention flagship (UPĀYA/YAJÑA). Opus design mandatory. |
 | W5 | NOT-STARTED | — | Planner integration; native's hard gate (real MCP calls). |
 | W6 | NOT-STARTED | — | Cutover + retirement. |
@@ -808,11 +1273,11 @@ collision pattern is better understood from the first lane.
 
 | Item | Ruling | Ruled by | Date | Rationale |
 |---|---|---|---|---|
-| N1 (wave naming) | — | — | — | Pending ANTARYĀMIN pre-queued adjudication. |
-| N2 (multi-chart rollout order) | — | — | — | Pending. |
-| N3 (pre-1984 backfill) | — | — | — | Pending. |
-| N4 (cutover posture) | — | — | — | Pending. |
-| N5 (lock granularity) | — | — | — | **FROZEN-contract question. Native ruling required; ANTARYĀMIN may only apply the pre-ruled CONSERVATIVE-DEFAULT (chart-level lock stays, no orchestrator change, reversible) if the native has not yet spoken. Not yet recorded.** |
+| N1 (wave naming) | **W2G is the operative wave id; "D-6" RETIRED as a wave label (survives only as `historical_alias` in the GOCHARA_SWEEP_2_0 design frontmatter). Engine name stays GOCHARA-2.0.** | ANTARYĀMIN (ADJUDICATION-3) | 2026-08-01 | Prior status: unruled Nights 1–2, adjudicator cancelled Night-3-first-session before ruling. Full text: `SHAD_DARSHANA_ADJUDICATIONS_NIGHT3_v1_0.md`. Reversibility: TOTAL (docs-only). |
+| N2 (multi-chart rollout order) | **Three tiers by descending equivalence-evidence: Tier 1 = both canonical charts TOGETHER (this IS the W2G gate); Tier 2 = `cb73cd3d` Kiran Shenoy (only third chart with a v1 corpus, 1970→2027, scoped divergence report); Tier 3 = Arunima/Musk/Jobs 2.0-native with `equivalence_basis='no_v1_baseline'`, never counted toward divergence completeness, Jobs/Musk excluded from any skill/GOF scoreboard. Hard tier gate: zero unclassified divergences before advancing.** | ANTARYĀMIN (ADJUDICATION-4) | 2026-08-01 | Full text: `SHAD_DARSHANA_ADJUDICATIONS_NIGHT3_v1_0.md`. Reversibility: HIGH (per-chart, monotone). |
+| N3 (pre-1984 backfill) | **Backfill the global event calendar to the ephemeris floor: `calendar_epoch_start=1900-01-01` (derived from live `ephemeris_daily` coverage 1899-12-31→2150-12-30, 825,084 rows — verified, not assumed). Epoch bounds served as data; outside-epoch queries return honest-empty `reason='outside_calendar_epoch'`. W2G validation V2 amended to verify 1900–2084 × 9 bodies; floor = max-over-bodies first-covered date if any body starts later.** | ANTARYĀMIN (ADJUDICATION-5) | 2026-08-01 | Lazy per-chart backfill rejected (would make a chart-independent asset chart-dependent). Full text: `SHAD_DARSHANA_ADJUDICATIONS_NIGHT3_v1_0.md`. Reversibility: HIGH. |
+| N4 (cutover posture) | **Dual-serve shadow with authority gated on EVIDENCE, not elapsed days ("N days of agreement" on a batch-computed century table measures nothing — category error, rejected). Generation-stamped 2.0 rows beside v1 (v1 rows NEVER touched — untouchable); authority flip requires ALL FOUR: zero unclassified divergences · §3.3 specimen continuity · §3.4 byte-identical determinism · §3.5 battery within tolerance (drift = finding, never tuning). 7-day post-flip observation window; revert = one per-chart `authoritative_generation` pointer flip. v1 writer retirement only per strangler discipline.** | ANTARYĀMIN (ADJUDICATION-6) | 2026-08-01 | Full text: `SHAD_DARSHANA_ADJUDICATIONS_NIGHT3_v1_0.md`. Reversibility: MAXIMAL (chosen for exactly that). |
+| N5 (lock granularity) | **CONSERVATIVE-DEFAULT: the chart-level advisory lock STAYS. No orchestrator-contract change. Intra-chart shard parallelism is forfeited. Recorded REVERSIBLE.** | **The native, directly** — stated verbatim in the Night-3 §D kickoff paste (2026-08-01) | 2026-08-01 | **Recorded by the Conductor, NOT by ANTARYĀMIN** — provenance matters here and is stated precisely because this is the one FROZEN-contract question in the block, which an adjudicator may never decide on its own. The native's Night-3 kickoff contains the ruling in its own words ("N5 lock-granularity is ruled CONSERVATIVE-DEFAULT: chart-level lock stays, no orchestrator change, recorded reversible"), so no adjudication was needed or performed. Reversible: re-opening it costs only a future decision, since nothing was built against shard parallelism. **N5 alone does NOT unblock W2G — N1–N4 remain unruled.** |
 
 ## Registry item status (1–44 + E1–E8)
 
@@ -823,7 +1288,7 @@ illegal.
 | # | Item | Wave | Status | Both-charts | Evidence |
 |---|---|---|---|---|---|
 | 1 | Daśā-sandhi calendar | W3 (lite@W1) | **W1-lite VERIFIED-FIXED** (band convention documented, not fabricated); full two-period calendar is W3 | Y (code-level) | PR #924, `dasha_sandhi` on `kala_now_get` |
-| 2 | Recurrence-ladder serving | W1 | IN-PROGRESS | — | `shad-darshana/w1-recurrence-digest` dispatched Night 2 |
+| 2 | Recurrence-ladder serving | W1 | **VERIFIED-FIXED** (row reconciled Night 3 — had read IN-PROGRESS against a PR merged 2026-07-30, while the W1 wave row already claimed 12/12 VERIFIED-CLOSED; drift closed append-only, not overwritten) | Y | PR #934 MERGED 2026-07-30T07:07:19Z (`w1-recurrence-digest`, items 2 + E6-lite); W1 round-2 PARĪKṢAKA record; **re-verified live Night 3** on rev `amjis-mcp-00526-4p7`: C2 10 ladders served (20 pre-trim, budget trimmer fired with `recover_via`), C1 2 ladders × 7 points, `point_kind` period_start/peak/end + graha, `source_citation: ka_kalasutra:v1.0:signal=…` — chart-differentiated |
 | 3 | Sky-event calendar | W3 | **VERIFIED-FIXED (bg_sky_calendar built; per-chart contact joins deferred to ka_kshetra per spec)** | Y (global asset) | PR #888, live-verified against throwaway Postgres |
 | 4 | Moorti-nirṇaya | W3 | NOT-STARTED | — | — |
 | 5 | Vedha + Sarvatobhadra grid | W3 | NOT-STARTED | — | — |
@@ -832,23 +1297,23 @@ illegal.
 | 8 | Gochara dual-reference | W1 | **VERIFIED-FIXED** (round-2 PARĪKṢAKA, 2026-07-30) | Y — all 9 grahas non-null both charts, live-recomputed (Sun/Rahu sidereal longitude independently verified against served values), house arithmetic self-consistent | PR #891 (code) + PR #940 (fix: missing sidecar `x-api-key` header masked every 401 as empty) |
 | 9 | Health/adverse event class | W3 | NOT-STARTED | — | — |
 | 10 | Per-chapter LEL pinning | W1 | **VERIFIED-FIXED** | Y (code-level) | PR #889; Circularity Guard empirically verified |
-| 11 | Provenance edges | W2 | NOT-STARTED | — | — |
-| 12 | Daśā-system applicability | W2 | NOT-STARTED | — | — |
+| 11 | Provenance edges | W2 | **BUILT — NOT VERIFIED** (W2 lane landed; no PARĪKṢAKA live acceptance yet, and the field is empty pending the N_e blocker, so no live evidence can exist until Gate W2's integration runs. Working state, deliberately NOT a disposition.) | — | PR #949 (Lane C) — stages 4–5 field assembly + provenance; table `kala_field_provenance` live in prod (migration 493) |
+| 12 | Daśā-system applicability | W2 | **BUILT — NOT VERIFIED** (W2 lane landed; no PARĪKṢAKA live acceptance yet, and the field is empty pending the N_e blocker, so no live evidence can exist until Gate W2's integration runs. Working state, deliberately NOT a disposition.) | — | PR #944 (Lane B) — stage 3 clocks + Law-1 applicability; table `kala_field_clocks` live (migration 490) |
 | 13 | Tithi-Praveśa | W3 | NOT-STARTED | — | — |
 | 14 | Janma-anchored election rules | W3 | NOT-STARTED | — | — |
-| 15 | Rarity axis | W2 | NOT-STARTED | — | — |
+| 15 | Rarity axis | W2 | **BUILT — NOT VERIFIED** (W2 lane landed; no PARĪKṢAKA live acceptance yet, and the field is empty pending the N_e blocker, so no live evidence can exist until Gate W2's integration runs. Working state, deliberately NOT a disposition.) | — | PR #946 (Lane D) — stage 6 rarity via cohort (22) + matched sub-cohort |
 | 16 | Kota-Chakra | W3 | NOT-STARTED | — | — |
 | 17 | Sudarśana-Chakra | W3 | NOT-STARTED (naming ruled) | — | Conductor ruling: writer named `ka_sudarshana_varsha` — confirmed namesake-only collision vs `bo_sudarshana.py` (different layer/computation), not built yet |
 | 18 | KP sub-lord clock (CR-75) | W3K | NOT-STARTED | — | — |
 | 19 | GOCHARA-2.0 sub-day | W2G | NOT-STARTED | — | — (blocked on N1–N5) |
-| 20 | Auto-filed prospective ledger entries | W2 | NOT-STARTED | — | — |
-| 21 | Per-tradition calibration weights | W2 (ongoing) | NOT-STARTED | — | — |
+| 20 | Auto-filed prospective ledger entries | W2 | **BUILT — NOT VERIFIED** (W2 lane landed; no PARĪKṢAKA live acceptance yet, and the field is empty pending the N_e blocker, so no live evidence can exist until Gate W2's integration runs. Working state, deliberately NOT a disposition.) | — | PR #947 (Lane E) — Living-LEL plane |
+| 21 | Per-tradition calibration weights | W2 (ongoing) | **BUILT — NOT VERIFIED** (W2 lane landed; no PARĪKṢAKA live acceptance yet, and the field is empty pending the N_e blocker, so no live evidence can exist until Gate W2's integration runs. Working state, deliberately NOT a disposition.) | — | PR #947 (Lane E); tables `kala_field_weights` (29 seed rows) + `kala_field_weight_versions` (1: `v0_classical`) live |
 | 22 | Synthetic reference cohort + matched sub-cohort | W2 | **VERIFIED-FIXED (cohort + MD-lord chain built; matched-sub-cohort JOIN logic itself is W2 Lane D's job)** | Y (global asset) | PR #887 (`bg_cohort`, 10k rows), PR #932 (`bg_synthetic_cohort_md` MD-lord chain, ADJUDICATION-1, ~100k rows, Vimśottarī arithmetic independently verified against native's own `chart_dashas`) |
-| 23 | Circular-shift null calibration | W2 | NOT-STARTED | — | — |
+| 23 | Circular-shift null calibration | W2 | **BUILT — NOT VERIFIED** (W2 lane landed; no PARĪKṢAKA live acceptance yet, and the field is empty pending the N_e blocker, so no live evidence can exist until Gate W2's integration runs. Working state, deliberately NOT a disposition.) | — | PR #949 (Lane C) — null calibration; table `kala_field_null` live (migration 494) |
 | 24 | Uncertainty-budget propagation | W1-lite/W2-full | **W1-lite VERIFIED-FIXED**; full budget propagation is W2's job | Y (code-level) | PR #926, `sukshma_boundary_uncertainty` on `kala_now_get`, documented lite-v0 interval convention |
-| 25 | Salience vector + submodular selection | W2 | NOT-STARTED | — | — |
+| 25 | Salience vector + submodular selection | W2 | **BUILT — NOT VERIFIED** (W2 lane landed; no PARĪKṢAKA live acceptance yet, and the field is empty pending the N_e blocker, so no live evidence can exist until Gate W2's integration runs. Working state, deliberately NOT a disposition.) | — | PR #946 (Lane D) — stage 6 salience; table `kala_field_salience` live (migration 495) |
 | 26 | UPĀYA-SETU | W4 | NOT-STARTED | — | — |
-| 27 | kala_timeline_spec v1 | W2 | NOT-STARTED | — | — |
+| 27 | kala_timeline_spec v1 | W2 | **BUILT — NOT VERIFIED** (W2 lane landed; no PARĪKṢAKA live acceptance yet, and the field is empty pending the N_e blocker, so no live evidence can exist until Gate W2's integration runs. Working state, deliberately NOT a disposition.) | — | PR #947 (Lane E) — stage 8 timeline spec; table `kala_timeline_spec` live (migration 496) |
 | 28 | Daśā-lord transit-condition | W1 | **VERIFIED-FIXED** (round-2 PARĪKṢAKA, 2026-07-30) | Y — current + forward, both charts, real transit sign/house/dignity (e.g. C1 Mercury MD own_sign; forward Saturn AD Aries debilitated) | PR #891 (code) + PR #940 (fix: same root cause as item 8) |
 | 29 | Chandrāṣṭama/horā/janma-resonance flags | W1 | **VERIFIED-FIXED** (round-2 PARĪKṢAKA, 2026-07-30) | Y — all populated both charts, 2 dates tested, panchāṅga single-date path confirmed healthy; C2 correctly fires a real `is_chandrashtama:true` positive | PR #892 (code) + PR #940 (fix: `panchang.py` wrong kwarg name causing an uncaught 500 on the single-date path only) |
 | 30 | Mudda daśā join | W1 | **VERIFIED-FIXED** (round-2 PARĪKṢAKA, 2026-07-30) | Y — muntha now real both charts (C1 Libra/7th/Venus, C2 Virgo/6th/Mercury), cross-checked against a repo FORENSIC fixture; prose leak gone | PR #924 (code) + PR #940 (fix: reader expected nonexistent flat columns instead of `muntha_position_jsonb`) |
@@ -860,18 +1325,18 @@ illegal.
 | 36 | Contender lattice + adjudication engine | W3 | **SUBSTRATE VERIFIED-FIXED** (`bg_muhurta_lattice` global tables built: Agnivāsa, combination-yogas, kālam periods, ghaṭī-muhūrtas, ~91,477 rows); the query-time lattice-annotation/adjudication ENGINE itself (`lib/kala_lattice_query.ts`) is still W3's job | Y (global asset) | PR #930, Opus citation-review round-2 APPROVE (every citation independently re-derived against live corpus + `panchang_engine` source, not trusted from self-report) |
 | 37 | Ritual-resonance + paddhati profile | W3/W4 | NOT-STARTED | — | — |
 | 38 | ELECT ritual-pairing + grading unification | W1 facade/W3/W4 | **W1-facade VERIFIED-FIXED** (grading-engine facade + frontier v0 on `kala_elect_get`); ritual-pairing half is W4's job | Y (code-level) | PR #926, documented placeholder tier thresholds not corpus-calibrated |
-| 39 | Living-LEL incremental calibration plane | W2 | NOT-STARTED | — | — |
+| 39 | Living-LEL incremental calibration plane | W2 | **BUILT — NOT VERIFIED** (W2 lane landed; no PARĪKṢAKA live acceptance yet, and the field is empty pending the N_e blocker, so no live evidence can exist until Gate W2's integration runs. Working state, deliberately NOT a disposition.) | — | PR #947 (Lane E) |
 | 40 | kala_ritual_get registration + planner wiring | W0 stub/W4/W5 | **W0-stub VERIFIED-FIXED** (Modes 1-2 honest not_in_corpus; Mode-3 wrong_view redirect real & tested) | Y | PR #882 |
 | 41 | Muhūrta Factor Census + corpus extraction | W3 | **VERIFIED-FIXED** (50-row census, 38 computed / 5 not_computed / 7 not_in_corpus, every row cross-checked with a real detector — `test_census_has_no_dangling_lattice_pointers` — not just claimed) | Y (global asset) | PR #930, round-1 Opus REJECT (5 real defects: a citation-contradicting Wednesday/abhijit bug, two wrong evidence numbers, one false "not found" corpus claim, dangling census pointers) → builder fixed all 5 with live re-verification → round-2 independent Opus APPROVE, every number re-derived |
 | 42 | Unified Intervention Ledger | W4 | NOT-STARTED | — | — |
 | 43 | Tri-plane traversability contract | W0–W1 | **VERIFIED-FIXED** (real-data wiring confirmed on all six view facades — items 8/10/28/29/30/32 now genuinely reflected, not just honest `no_lever` placeholders where a real signal exists) | Y | PRs #877/#880-884/#926, `no_lever`-honest pointers on every merged facade, new cross-facade real-wiring test |
 | 44 | Single-temporal-authority (`authority_basis`) | W0 seed/W2/W6 gate | **W0 seed VERIFIED-FIXED**; population is W2's job | — | CI skeleton census seed, PR #881 |
-| E1 | Point-process formalization + skill score | W2 | **DESIGN-COMPLETE, build not started** | — | PR #886: closed-form hazard, skill-score/GOF formulas specified precisely |
-| E2 | Insight synthesis stage | W2 | **DESIGN-COMPLETE, build not started** | — | PR #886: all 8 insight types + trigger predicates specified |
+| E1 | Point-process formalization + skill score | W2 | **BUILT — NOT VERIFIED** (W2 lane landed; no PARĪKṢAKA live acceptance yet, and the field is empty pending the N_e blocker, so no live evidence can exist until Gate W2's integration runs. Working state, deliberately NOT a disposition.) | — | PR #947 (Lane E) — `mi_bhara` skill-score/GOF harness; tables `kala_field_skill` + `kala_field_gof` live (migration 497). Design PR #886. |
+| E2 | Insight synthesis stage | W2 | **BUILT — NOT VERIFIED** (W2 lane landed; no PARĪKṢAKA live acceptance yet, and the field is empty pending the N_e blocker, so no live evidence can exist until Gate W2's integration runs. Working state, deliberately NOT a disposition.) | — | PR #946 (Lane D) — stage 6.5 insight synthesis. Design PR #886. |
 | E3 | Argument-shaped reading + specificity gate | W0/W2 | **W0-skeleton VERIFIED-FIXED**; hard-gate flip is W2's job | Y | PRs #877, #881 |
 | E4 | question_frame compiler | W0 | **VERIFIED-FIXED** | Y | PR #877, `kala_envelope.ts` |
 | E5 | field_snapshot_id | W0/W2 | **W0-stub VERIFIED-FIXED**; real hash is W2's job | Y | PR #877, marked with explicit TODO(W2) upgrade point |
-| E6 | Per-view elevations | W1–W3 | NOT-STARTED | — | — |
+| E6 | Per-view elevations | W1–W3 | **E6-lite VERIFIED-FIXED**; the full per-view deepenings remain W3 (row reconciled Night 3 — had read NOT-STARTED while the W1 gate record already counted E6-lite among its 12/12) | Y | PR #934 (items 2 + E6-lite); **re-verified live Night 3** on rev `amjis-mcp-00526-4p7`: `weakest_link` served both charts, naming the honest gap in place of a fabricated gate verdict (`stage: TRIGGER, status: gate_data_fetched`, reason states the instrument does not convert to sidereal / cross-check the classical vedha) |
 | E7 | Substrate (census CI, freshness, cohort, composer lib, skill-score CI) | W0/W2 | **PARTIAL**: composer lib + census CI seeded (W0), cohort + matched-sub-cohort MD-lord chain built (W2-prep, PRs #887/#932); skill-score CI not yet | Y (cohort, global) | PRs #877, #881, #887, #932 |
 | E8 | Non-elevations register | standing | NOT-STARTED | — | — |
 
@@ -1011,6 +1476,67 @@ design-correction lane (`shad-darshana/w2-lane-d-design-fix`, dispatched same se
 reconcile §6.3 with reality before Lane D itself is dispatched; W2 Lanes A/B/C/E have no
 dependency on this and are not blocked by it. Full ruling text preserved in this session's
 agent transcript; summarized here per the ledger's evidence-link convention.
+
+**[SUPERSEDED same day — Night-3 resumed session, 2026-08-01.] The block below records the
+cancelled first attempt and is retained as evidence trail. A fresh ANTARYĀMIN (Opus/max) was
+dispatched by the resumed session with the identical docket plus the Kota citation-tier item,
+and RULED ALL EIGHT: ADJUDICATION-2 (N_e priors source — demographic structural priors,
+Tranche-1 mandatory, classical + cohort sources affirmatively foreclosed) · -3 (N1 W2G naming)
+· -4 (N2 rollout tiers) · -5 (N3 1900 backfill) · -6 (N4 evidence-gated dual-serve) · -7 (W3K
+three-way seating; corrects the "KP exists nowhere" premise — L1 natal KP substrate already
+live) · -8 (Agnivāsa: practice pinned hard, convention = labelled corpus default, second slot
+declared-not-computed) · -9 (Kota ring table → versioned `bg_kota_chakra_rings` L0 row; item
+16 VERIFIED-FIXED path, not parked). Full verbatim text (with per-ruling rationale,
+reversibility, and DB evidence): `SHAD_DARSHANA_ADJUDICATIONS_NIGHT3_v1_0.md` (same
+directory). The N-block table above now carries N1–N4. Native morning review may overrule any
+of the eight; every ruling is reversible per its own note.**
+
+**ADJUDICATION-2 through -5 — NOT ISSUED (Night 3, 2026-08-01). ANTARYĀMIN was dispatched
+and then cancelled mid-session before ruling on anything.** This entry exists so the docket
+is not silently lost between nights; none of the four is a ruling, and no lane may proceed as
+if one were made.
+
+The adjudicator was launched at Opus/max with a four-item docket, per the v1.3 §D protocol's
+"adjudications discharged UP FRONT" step (a step that exists precisely because the N-block sat
+empty through Nights 1–2). It was cancelled externally before returning. **No work was lost —
+it produced no artifact — but nothing on the docket was decided:**
+
+1. **The N_e priors-source ruling — tonight's designated critical path.** Where the hazard
+   formula's `fact_kind='lifetime_count_per_100y'` priors come from. Candidates it was briefed
+   to weigh: classical-text-derived counts with citations · documented demographic base rates
+   entered as `structural_prior` · cohort-derived where genuinely non-circular · or PARK. It
+   was explicitly forbidden from reading `brahma_event_ontology.base_rate_by_age` as N_e
+   (§5.1 C-1 forecloses exactly that, and doing so would be the §N.7-item-6 fabrication
+   defect). **Consequence: no seeding lane could be dispatched; `ka_kshetra` still writes zero
+   field rows; Gate W2 cannot close.**
+2. **N1–N4** (wave naming · multi-chart rollout order · pre-1984 backfill · cutover posture).
+   **Consequence: W2G remains unstartable for a third consecutive night.**
+3. **W3K layer seating** (`bg_*` vs `ga_*`/`ka_*` split for the KP sub-lord engine, item 18).
+   The `w3k-inventory` lane still produces a recommendation, but **nothing can ratify it**.
+4. **Paddhati-profile defaults** where the corpus is silent — specifically the Agnivāsa
+   favorable-residence convention, to be pinned to the native's own stated lineage practice
+   (yajña when Agnivāsa is favorable) with the corpus default served alongside, clearly
+   labelled.
+
+**A fifth item was routed to the docket mid-session and is also unruled — NEW, and it blocks a
+gate-close rather than a wave start.** The `ka_kota_chakra` writer (item 16, PR #999)
+disclosed — honestly and unprompted — that its **fort-chakra ring table is a tier-(iii)
+secondary-source transcription that is NOT in this repo's ingested corpus.** Its mitigation:
+every served row carries `ring_table_citation` + `uncited_extension=true`, so nothing claims
+primary-corpus authority. The open question, which generalizes well beyond item 16: **does a
+cited secondary source with an explicit `uncited_extension` flag satisfy the DATA-HONESTY RAIL
+(NIGHT_RUN v1.3 §D — "every value cited, versioned, structural_prior-labeled; a number without
+a source is a build error"), or does the rail demand primary-corpus ingestion?** Options
+tabled for the ruling: (a) accept on the disclosure flags; (b) accept but require the ring
+table seeded as a versioned `bg_*` L0 reference table with its citation rather than inline in
+writer code; (c) require corpus ingestion first, parking item 16; (d) serve behind a
+disclosure tier. **Conductor's interim disposition, recorded as reversible:** PR #999 lands on
+`shad-darshana/integration` (not `main`, not production) under strangler discipline — build
+beside, cut over classified — and **the Kota citation tier is registered as a BLOCKING
+precondition on the W3 gate-close PR to `main`.** Landing on an integration branch is
+reversible; shipping an uncited classical table to production is not. That the question is
+adjudicable at all is a credit to the builder's disclosure — a lane that had quietly inlined
+the table would have shipped a silent B.3 violation.
 
 ## MORNING REPORT — Night 1 close (2026-07-29 → 2026-07-30)
 

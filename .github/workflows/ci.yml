@@ -19,7 +19,15 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
+    # shad-darshana/integration (added 2026-08-01, resume-rebase): the campaign's lane
+    # PRs target this branch, not main (SHAD_DARSHANA_NIGHT_RUN_v1_0.md §B.1, v1.1) --
+    # deliberately pull_request-only, NOT also added to push.branches above, precisely
+    # to avoid recreating the double-fire bug this file's own DUPLICATE-TRIGGER FIX
+    # (above) just proved and eliminated for 'feature/**': the final gate-close PR's
+    # HEAD branch is shad-darshana/integration itself, so if that branch were also in
+    # push.branches, a push landing on it while that PR is open would fire both a push
+    # run and a pull_request(synchronize) run for the same commit.
+    branches: [main, 'shad-darshana/integration']
   # MERGE-QUEUE PRECONDITION (CI efficiency audit, 2026-07-31). This is the ONLY change in
   # the PR that adds it, deliberately, because getting it wrong hangs every queued PR.
   #
@@ -34,6 +42,10 @@ on:
   # check (verified 2026-07-31 against branch protection). The advisory workflows are
   # deliberately left off the queue — they would double queue latency for checks that
   # cannot block a merge anyway.
+  #
+  # shad-darshana/integration is NOT on the merge queue (the ruleset that defines it
+  # targets refs/heads/main only, per repos/.../rulesets/20141220 -- verified 2026-08-01)
+  # so this stays [main] only; do not add the integration branch here.
   #
   # Shape copied from this repo's own prior art: the (now-deleted) chat-v2-smoke.yml
   # declared `merge_group: branches: [main]`. Recovered from cec28c1c^.
@@ -744,10 +756,18 @@ jobs:
     # Mechanically verifies the §N.6 density/layering discipline on the two surfaces that
     # implement it (judgment_query, ganita_yogas_get) — offline, no live MCP connector or DB
     # needed (see platform/scripts/audit/density_harness/run.ts's module doc-comment for the
-    # BEHAVIORAL vs CENSUS assertion split). Scoped to two known-good test files rather than
+    # BEHAVIORAL vs CENSUS assertion split). Scoped to known-good test files rather than
     # platform-mcp's full `npm test` — that suite currently carries pre-existing unrelated
     # failures (tracked separately; not a B-7 regression) and wiring the whole suite into CI
-    # is a follow-on hygiene item, not this lane's job.
+    # is a follow-on hygiene item, not this lane's job. This job has become the de facto
+    # narrow-allowlist gate for platform-mcp overall (not §N.6-specific), so it also now
+    # carries PR #995's two coverage-honesty regressions (kala_elect_get / kala_now_get) —
+    # both files are 100% green (10/10, 26/26), added here rather than left CI-unguarded.
+    # PR #999 (ṢAḌ-DARŚANA W3 items 16/17, Kota-Chakra + Sudarshana-Chakra year-wheel) adds
+    # its own kala_now_get serving test the same way — 6/6 green, no pre-existing failures.
+    # Lane w3-moorti-vedha (ṢAḌ-DARŚANA W3 items 4/5, Moorti-nirṇaya + Vedha/Sarvatobhadra —
+    # closes R-19) adds its own kala_now_get serving test the same way — 10/10 green, no
+    # pre-existing failures.
     name: Density Census (§N.6)
     runs-on: ubuntu-latest
     defaults:
@@ -778,6 +798,18 @@ jobs:
       - name: envelope codegen parity test (platform-mcp) — GT-9
         working-directory: platform-mcp
         run: npx vitest run src/__tests__/r5_codegen_parity.test.ts
+      - name: kala_elect_get hora_ladder coverage-honesty regression (platform-mcp)
+        working-directory: platform-mcp
+        run: npx vitest run src/tools/kala_views/elect.test.ts
+      - name: kala_now_get kala_darshana_confluence coverage-honesty regression (platform-mcp)
+        working-directory: platform-mcp
+        run: npx vitest run src/__tests__/kala_now_get.test.ts
+      - name: kala_now_get kota_chakra + sudarshana_varsha serving regression (platform-mcp) — ṢAḌ-DARŚANA W3 items 16/17
+        working-directory: platform-mcp
+        run: npx vitest run src/__tests__/kala_now_get_kota_sudarshana_w3.test.ts
+      - name: kala_now_get moorti_nirnaya + vedha_gochara serving regression (platform-mcp) — ṢAḌ-DARŚANA W3 items 4/5 (closes R-19)
+        working-directory: platform-mcp
+        run: npx vitest run src/__tests__/kala_now_get_moorti_vedha_w3.test.ts
       - name: vidhi registry codegen drift check (platform) — GT-56
         run: npm run codegen:vidhi:check
       - name: vidhi registry codegen parity test (platform-mcp) — GT-56

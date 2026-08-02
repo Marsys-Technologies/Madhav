@@ -239,6 +239,13 @@ jobs:
           run_gate "item 1 — specificity_gate_v0 (PLAN)"        specificity_gate_v0.ts
           run_gate "item 3 — tri_plane_no_dead_end_gate (PLAN)" tri_plane_no_dead_end_gate.ts
           run_gate "item 6 — mode3_single_route_gate (PLAN)"    mode3_single_route_gate.ts
+          # ṢAḌ-DARŚANA W4 gate G6 (Lane R). Unlike the three W0.6 gates above, this one
+          # is NOT advisory: its PLAN-mode detectors (D-ONE-ENGINE, D-MORTALITY-SOURCE,
+          # D-MORTALITY-NONVACUOUS, FIXTURE-SHAPE) run entirely on source text and a
+          # committed fixture, so a FAIL here is a real, reproducible finding with no
+          # live dependency. Its live detectors self-report SKIPPED (never PASS) without
+          # MCP_SERVER_URL — see the live-gates job below.
+          run_gate "W4 item 40 — yajna_mode2_fixture_gate (PLAN)" yajna_mode2_fixture_gate.ts
           if [ -n "$failed" ]; then
             printf 'W0.6 retired PLAN-mode gates reported FAILED:%b\n' "$failed" >&2
             exit 1
@@ -274,3 +281,8 @@ jobs:
           npx tsx scripts/census/shad_darshana_gates/specificity_gate_v0.ts
           npx tsx scripts/census/shad_darshana_gates/tri_plane_no_dead_end_gate.ts
           npx tsx scripts/census/shad_darshana_gates/mode3_single_route_gate.ts
+          # W4 G6 — the canned Mode-2 fixture, both charts, plus the live §5.4 mortality
+          # refusal probes (G16 parts a and c). Requires the extended bg_muhurta_lattice
+          # to be BUILT in production: an unbuilt lattice makes the fixture honestly fail
+          # on missing atoms, which is correct behaviour but is NOT a discharge.
+          npx tsx scripts/census/shad_darshana_gates/yajna_mode2_fixture_gate.ts

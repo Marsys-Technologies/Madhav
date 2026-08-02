@@ -278,15 +278,20 @@ export async function callPlatformTrace(
 
 /**
  * Call /api/mcp/writes/{action} for write operations (log_prediction, record_outcome,
- * flag_disagreement). Used by the write MCP tools (MCP-4-S1).
+ * flag_disagreement, prospective_ledger_file). Used by the write MCP tools (MCP-4-S1).
  *
- * @param action    One of: log_prediction, record_outcome, flag_disagreement.
+ * `prospective_ledger_file` added by ṢAḌ-DARŚANA W4 Lane S (KALA_W4_UPAYA_DESIGN_v1_0.md
+ * §4.4) — the route already implements this action (platform/src/app/api/mcp/writes/
+ * [action]/route.ts); this was purely a TS union gap. `lib/intervention_filing.ts`'s
+ * `fileInterventionFalsifier` is the sole in-repo caller.
+ *
+ * @param action    One of: log_prediction, record_outcome, flag_disagreement, prospective_ledger_file.
  * @param params    Action-specific parameters (entry body).
  * @param principal The resolved principal.
  * @returns         The HTTP status code and parsed McpEnvelope.
  */
 export async function callPlatformWrites(
-  action: 'log_prediction' | 'record_outcome' | 'flag_disagreement',
+  action: 'log_prediction' | 'record_outcome' | 'flag_disagreement' | 'prospective_ledger_file',
   params: Record<string, unknown>,
   principal: Principal
 ): Promise<PlatformCallResult> {

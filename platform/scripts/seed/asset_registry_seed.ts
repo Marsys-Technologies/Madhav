@@ -508,6 +508,59 @@ export const ASSETS: AssetDef[] = [
     scope: 'global', is_active: true, estimated_seconds: null,
     asset_kind: 'data',
   },
+  {
+    // ṢAḌ-DARŚANA W2 · lane `l0-ne-priors`. Governing ruling:
+    // 00_ARCHITECTURE/llm_consumption_audit/briefs/kala_elevation/
+    // SHAD_DARSHANA_ADJUDICATIONS_NIGHT3_v1_0.md § ADJUDICATION-2 item 5.
+    // Mirrors migration 522's asset_registry INSERT exactly — a clean reseed must
+    // not silently drop this asset (the ga_vichara / bo_pratijna defect class).
+    // Global L0, `depends_on: []`, super-admin-triggered only (brief §2.5.2).
+    //
+    // `count_sql` counts the ROWS AT THE RESERVED COORDINATE, not the whole table:
+    // brahma_class_priors also holds 164 signal-salience priors from
+    // bg_class_priors, and a bare COUNT(*) would report this asset as "164 rows
+    // built" the moment migration 522 lands and BEFORE a single N_e row exists —
+    // a cockpit-truth violation (§N.4) and an §N.8 signal that cannot read false.
+    //
+    // `target_floor: 0` is deliberate, not a placeholder. §N.4: floors are
+    // aspirational and set to the ACHIEVED count after a build. On this asset
+    // specifically, a non-zero floor would be pressure to fabricate exactly the
+    // rows ADJUDICATION-2's hard stop forbids ("honest-empty beats fabricated-full").
+    asset_id: 'bg_class_lifetime_counts',
+    layer: 'brahmagyan', sort_order: 21,
+    catalog_status: 'CURRENT',
+    sanskrit_name: 'Jīvana-Ghaṭanā-Saṅkhyā',
+    english_name: 'Event-Class Lifetime Counts',
+    english_description:
+      'ṢAḌ-DARŚANA W2 (ADJUDICATION-2): N_e — the expected lifetime count of each ' +
+      'brahma_event_ontology event class over a 100-year modelled timeline from ' +
+      'birth, assuming survival. The chart-INDEPENDENT structural baseline λ⁰_e of ' +
+      'the Kāla Kṣetra hazard field. Every value is Tier N-i: a published ' +
+      'demographic / actuarial / epidemiological statistic carrying publisher, ' +
+      'edition, year, indicator id, geography+cohort and a retrievable URL/DOI, ' +
+      'together with the arithmetic converting it to a per-100-year count — or ' +
+      'Tier N-ii, a stated arithmetic identity over such a value. Classical-text ' +
+      'counts are FORECLOSED (chart-conditional; already carried by P_e) and ' +
+      'cohort/LEL-derived counts are FORECLOSED by the circularity guard. A class ' +
+      'with no defensible source is NOT seeded and is honestly skipped by ' +
+      'ka_kshetra with no_class_prior_row — honest-empty per class, never a ' +
+      'fabricated baseline.',
+    storage_type: 'postgres_table',
+    target_table: 'brahma_class_priors',
+    count_sql: "SELECT COUNT(*) FROM brahma_class_priors WHERE fact_kind='lifetime_count_per_100y'",
+    size_sql: null,
+    target_floor: 0,
+    expected_volume_formula: null,
+    expected_volume_inputs: null,
+    volume_explanation:
+      'One row per event class for which a Tier N-i (or Tier N-ii derived-identity) ' +
+      'source could actually be obtained and cited. Set to the ACHIEVED count after ' +
+      'the first build (§N.4). Unseeded classes are an honest per-class coverage gap ' +
+      'registered by name in the ledger, never a reason to invent a row.',
+    depends_on: [],
+    scope: 'global', is_active: true, estimated_seconds: null,
+    asset_kind: 'data',
+  },
 
   // ── BRAHMAGYAN continued — assets built-and-seeded 2026-06-17 (P2-C fix) ──
   {
@@ -732,6 +785,40 @@ export const ASSETS: AssetDef[] = [
     expected_volume_formula: null,
     expected_volume_inputs: null,
     volume_explanation: 'Live-verified 2026-07-30: 60 parihara-graph condition rows (queried directly against REAL production brahma_dosha_catalog: 26 doshas carry a real, non-placeholder citation, flattening to 60 individual cancellation-condition rows) + 329 activity-rule rows (exact — sum of tithi/nakshatra/vara entries across panchang_engine\'s 8 EVENT_TABLES) + 50 census rows (exact — len(CENSUS_ROWS), updated from 37 by the Opus corpus-citation review\'s dangling-pointer fix) = 439.',
+    depends_on: [],
+    scope: 'global', is_active: true, estimated_seconds: null,
+    asset_kind: 'data',
+  },
+  {
+    // ṢAḌ-DARŚANA W3 Lane w3-kota-rings, ADJUDICATION-9 (migration 523,
+    // SHAD_DARSHANA_ADJUDICATIONS_NIGHT3_v1_0.md, ANTARYĀMIN, 2026-08-01).
+    // The Kota-Chakra ring partition (stambha/durgantara/prakara/bahya, from
+    // janma nakshatra), previously an inline dict in
+    // services/ka_kota_chakra/logic.py, moved to this versioned L0 table —
+    // the DATA-HONESTY RAIL's "cited, versioned L0 row" conjuncts. NO SERVED
+    // VALUE CHANGES: transcribed exactly (see brahmagyan/l0_kota_chakra_rings.py
+    // + the byte-identity fixture test, tests/l3/test_ka_kota_chakra.py).
+    // Row count is 27 (not the ruling's own "~28" estimate) — matches the
+    // 27-nakshatra mod-27 arithmetic ka_kota_chakra's writer uses; disclosed
+    // in the migration header, not silently reconciled. Tier-(iii)
+    // secondary-source transcription; corpus_status='not_in_corpus' on every
+    // row. Ingestion work item filed (not attempted): muhurta_chintamani
+    // (ingested but untranslated OCR — ADJUDICATION-8) and a
+    // Nārada-Saṃhitā-class text not yet held.
+    asset_id: 'bg_kota_chakra_rings',
+    layer: 'brahmagyan', sort_order: 72,
+    catalog_status: 'CURRENT',
+    sanskrit_name: 'Koṭa-Cakra Valaya-Sāraṇī',
+    english_name: 'Kota-Chakra Ring Table',
+    english_description: 'ADJUDICATION-9: the Kota-Chakra fort-chakra ring partition (stambha/durgantara/prakara/bahya, 1-indexed distance from janma nakshatra), moved from an inline writer-code dict to a versioned L0 global reference table. Tier-(iii) secondary-source transcription; corpus_status=\'not_in_corpus\' on every row; ingestion work item filed for the primary source, not attempted here. Consumed by ka_kota_chakra.',
+    storage_type: 'postgres_table',
+    target_table: 'bg_kota_chakra_rings',
+    count_sql: 'SELECT COUNT(*) FROM bg_kota_chakra_rings',
+    size_sql: "SELECT pg_total_relation_size('bg_kota_chakra_rings')",
+    target_floor: 27,
+    expected_volume_formula: null,
+    expected_volume_inputs: null,
+    volume_explanation: '27 rows: the 1..27 ring_position partition (Stambha 4 + Durgantara 8 + Prakara 8 + Bahya 7 = 27), one row per nakshatra-count-from-janma. Not 28 — see migration 523 header for the disclosed count discrepancy against the ruling\'s own "~28" estimate.',
     depends_on: [],
     scope: 'global', is_active: true, estimated_seconds: null,
     asset_kind: 'data',
@@ -1697,6 +1784,147 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     depends_on: ['ka_avadhi', 'bo_pratijna', 'ka_sangam', 'ga_dashas', 'bg_ghatana'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
+  {
+    // ṢAḌ-DARŚANA W3 Lane w3-kota-sudarshana, registry item 16 (migration 520).
+    // Kota-Chakra: transiting grahas mapped to the fort's stambha/durgantara/
+    // prakara/bahya rings relative to the janma nakshatra, with entry/exit
+    // windows + an attack/defence reading. Ring table lives in the versioned
+    // L0 asset bg_kota_chakra_rings (ADJUDICATION-9, migration 523 — moved
+    // off an inline services/ka_kota_chakra/logic.py dict; no served value
+    // changed). Single canonical ayanamsha (lahiri_chitrapaksha) — matches
+    // the L3 convention (ka_avadhi et al.).
+    asset_id: 'ka_kota_chakra',
+    layer: 'kala', sort_order: 120,
+    catalog_status: 'CURRENT',
+    sanskrit_name: 'Koṭa-Cakra',
+    english_name: 'Fort Chart (Transit Fortress)',
+    english_description: 'Transiting grahas mapped to the kota\'s stambha/durgantara/prakara/bahya rings relative to the janma nakshatra, with entry/exit windows and an attack/defence reading. Reads natal Moon longitude from chart_facts (ga_positions), transiting positions from ephemeris_daily (bg_ephemeris), and the ring partition from bg_kota_chakra_rings (L0, ADJUDICATION-9).',
+    storage_type: 'postgres_table',
+    target_table: 'kala_kota_chakra',
+    count_sql: 'SELECT COUNT(*) FROM kala_kota_chakra WHERE chart_id=$1',
+    size_sql: "SELECT pg_total_relation_size('kala_kota_chakra')",
+    target_floor: 0,
+    expected_volume_formula: null,
+    expected_volume_inputs: null,
+    volume_explanation: 'One row per (graha, contiguous same-nakshatra ring-run) over a ~460-day scanned horizon (60 days back, 400 forward) around build time — typically 15-40 rows/chart across the 9 grahas. Floors are aspirational per §N.4; seeded 0, set to the achieved count after the first real build.',
+    depends_on: ['ga_positions', 'bg_ephemeris', 'bg_kota_chakra_rings'],
+    scope: 'per_chart', is_active: true, estimated_seconds: null,
+    asset_kind: 'data',
+  },
+  {
+    // ṢAḌ-DARŚANA W3 Lane w3-kota-sudarshana, registry item 17 (migration 521).
+    // Sudarśana-Chakra year-wheel triple-lagna progression. BINDING NAMING
+    // RULING: named ka_sudarshana_varsha, never bare `sudarshana` — confirmed
+    // namesake-only collision against the unrelated L2 bo_sudarshana static
+    // tri-frame signal writer (see services/ka_sudarshana_varsha/logic.py for
+    // the full distinction). Year-wheel progression ONLY (not the fuller
+    // Sudarshana Chakra Dasha sub-period structure — disclosed scope).
+    asset_id: 'ka_sudarshana_varsha',
+    layer: 'kala', sort_order: 121,
+    catalog_status: 'CURRENT',
+    sanskrit_name: 'Sudarśana-Cakra Varṣa',
+    english_name: 'Sudarśana-Chakra Year-Wheel',
+    english_description: 'The rotating annual house-per-year progression of the tri-lagna framework (Janma/Chandra/Sūrya Lagna), full 120-year lifespan. Pure arithmetic over natal chart_facts (ga_positions) — no ephemeris calls.',
+    storage_type: 'postgres_table',
+    target_table: 'kala_sudarshana_varsha',
+    count_sql: 'SELECT COUNT(*) FROM kala_sudarshana_varsha WHERE chart_id=$1',
+    size_sql: "SELECT pg_total_relation_size('kala_sudarshana_varsha')",
+    target_floor: 0,
+    expected_volume_formula: '120',
+    expected_volume_inputs: null,
+    volume_explanation: 'Exactly 120 rows/chart (varsha years 1..120, full-life horizon) once a real build runs — pure arithmetic, no partial-coverage failure mode. Seeded 0 per §N.4 until the first real build confirms it.',
+    depends_on: ['ga_positions'],
+    scope: 'per_chart', is_active: true, estimated_seconds: null,
+    asset_kind: 'data',
+  },
+  {
+    // ṢAḌ-DARŚANA W3 Lane w3-tithi-pravesha, registry item 13 (migration 531;
+    // renumbered from 530 -> 531 after a cross-branch collision with
+    // shad-darshana/w4-lane-r-yajna-setu's 530_bg_muhurta_lattice_panchangika_families.sql,
+    // an independent unmerged lane — migration-collision rail. sort_order 124
+    // (122/123 already taken by ka_moorti_nirnaya/ka_vedha_gochara below).
+    // Tithi-Praveśa: the lunar-return counterpart to Tājika Vārṣaphala
+    // (ga_tajaka, L1 solar-return). Annual chart cast for the instant the
+    // Moon returns to its exact natal sidereal longitude nearest each
+    // solar-birthday anniversary — real Swiss-Ephemeris root-find
+    // (pyjhora_adapter, same engine ga_tajaka uses), full 120-year lifespan.
+    // Return-instant + chart-cast only; the Tājika-specific Muntha/Vārṣeśa/
+    // yoga apparatus is Vārṣaphala-only and out of scope (disclosed choice,
+    // see services/ka_tithi_pravesha/logic.py docstring).
+    asset_id: 'ka_tithi_pravesha',
+    layer: 'kala', sort_order: 124,
+    catalog_status: 'CURRENT',
+    sanskrit_name: 'Tithi-Praveśa',
+    english_name: 'Tithi-Praveśa (Lunar-Return Annual Chart)',
+    english_description: 'The lunar-return counterpart to Tājika Vārṣaphala (ga_tajaka): the annual chart cast for the instant the transiting Moon returns to its exact natal sidereal longitude nearest each solar-birthday anniversary, full 120-year lifespan. Real ephemeris root-find (pyjhora_adapter) + full annual-chart cast (Praveśa Lagna + graha positions). Natal Moon longitude read verbatim from chart_facts (ga_positions), never re-derived.',
+    storage_type: 'postgres_table',
+    target_table: 'kala_tithi_pravesha',
+    count_sql: 'SELECT COUNT(*) FROM kala_tithi_pravesha WHERE chart_id=$1',
+    size_sql: "SELECT pg_total_relation_size('kala_tithi_pravesha')",
+    target_floor: 0,
+    expected_volume_formula: '120',
+    expected_volume_inputs: null,
+    volume_explanation: 'Exactly 120 rows/chart (pravesha years 1..120, full-life horizon) once a real build runs — benchmarked ~3.4ms/row (root-find + annual-chart cast) during design, no partial-coverage failure mode expected. Seeded 0 per §N.4 until the first real build confirms it.',
+    depends_on: ['ga_positions'],
+    scope: 'per_chart', is_active: true, estimated_seconds: null,
+    asset_kind: 'data',
+  },
+  {
+    // ṢAḌ-DARŚANA W3 Lane w3-moorti-vedha, registry item 4 (migration 525).
+    // Moorti-nirṇaya: the classical gold/silver/copper/iron quality of a
+    // transiting graha's stay in a sign, determined by the Moon's nakshatra
+    // at the moment of ingress, offset from the janma nakshatra. Resolved
+    // against the REAL, cited bg_transit_moorti table (Phaladeepika Ch.26;
+    // BPHS Ch.28) — never re-derived. Scoped to the 8 grahas other than the
+    // Moon (see services/ka_moorti_nirnaya/logic.py for the disclosed
+    // scope rationale).
+    asset_id: 'ka_moorti_nirnaya',
+    layer: 'kala', sort_order: 122,
+    catalog_status: 'CURRENT',
+    sanskrit_name: 'Mūrti-Nirṇaya',
+    english_name: 'Moorti-Nirṇaya (Transit Quality)',
+    english_description: 'The classical gold/silver/copper/iron quality of a transiting graha\'s stay in a sign, determined by the Moon\'s nakshatra at the moment of ingress, offset from the janma nakshatra. Reads natal Moon longitude from chart_facts (ga_positions), transiting positions from ephemeris_daily (bg_ephemeris), and the moorti quality table verbatim from bg_transit_moorti (bg_transit_rules, real cited reference data).',
+    storage_type: 'postgres_table',
+    target_table: 'kala_moorti_nirnaya',
+    count_sql: 'SELECT COUNT(*) FROM kala_moorti_nirnaya WHERE chart_id=$1',
+    size_sql: "SELECT pg_total_relation_size('kala_moorti_nirnaya')",
+    target_floor: 0,
+    expected_volume_formula: null,
+    expected_volume_inputs: null,
+    volume_explanation: 'One row per (graha, contiguous same-sign occupancy window) over a ~460-day scanned horizon (60 days back, 400 forward) around build time, across the 8 grahas other than the Moon — typically 15-60 rows/chart. Floors are aspirational per §N.4; seeded 0, set to the achieved count after the first real build.',
+    depends_on: ['ga_positions', 'bg_ephemeris', 'bg_transit_rules'],
+    scope: 'per_chart', is_active: true, estimated_seconds: null,
+    asset_kind: 'data',
+  },
+  {
+    // ṢAḌ-DARŚANA W3 Lane w3-moorti-vedha, registry item 5 (migration 526,
+    // closes defect R-19). Vedha application: two distinct classical
+    // obstruction mechanisms, distinguished by vedha_kind — house_vedha
+    // (REAL, cited: BPHS Ch.29/Phaladeepika Ch.26, from bg_transit_rules)
+    // and sarvatobhadra (nakshatra-level; an honestly disclosed algorithmic
+    // approximation — the primary-cited 9x9 grid tables
+    // l1_sarvatobhadra_positions/l1_sarvatobhadra_vedha remain unpopulated;
+    // see services/ka_vedha_gochara/logic.py for the full R-19 disclosure —
+    // no responsibly-transcribable source was found this session, honest
+    // gap over fabrication per LAW ZERO).
+    asset_id: 'ka_vedha_gochara',
+    layer: 'kala', sort_order: 123,
+    catalog_status: 'CURRENT',
+    sanskrit_name: 'Vedha-Gocara',
+    english_name: 'Vedha Application (Transit Obstruction)',
+    english_description: 'Two classical vedha (obstruction) mechanisms applied to a chart\'s currently-active and forward transits — house_vedha (BPHS Ch.29/Phaladeepika Ch.26, from bg_transit_rules, REAL cited data) and sarvatobhadra (nakshatra-level, an honestly disclosed algorithmic approximation pending corpus ingestion — closes defect R-19 partially; see services/ka_vedha_gochara/logic.py). Reads natal Moon longitude from chart_facts (ga_positions) and transiting positions from ephemeris_daily (bg_ephemeris).',
+    storage_type: 'postgres_table',
+    target_table: 'kala_vedha_gochara',
+    count_sql: 'SELECT COUNT(*) FROM kala_vedha_gochara WHERE chart_id=$1',
+    size_sql: "SELECT pg_total_relation_size('kala_vedha_gochara')",
+    target_floor: 0,
+    expected_volume_formula: null,
+    expected_volume_inputs: null,
+    volume_explanation: 'One row per vedha-checkable house transit (house_vedha) or per sarvatobhadra-vedha-nakshatra dwelling window, over the same ~460-day scanned horizon — small, gated by rule/nakshatra match, typically a handful per chart. Floors are aspirational per §N.4; seeded 0, set to the achieved count after the first real build.',
+    depends_on: ['ga_positions', 'bg_ephemeris', 'bg_transit_rules'],
+    scope: 'per_chart', is_active: true, estimated_seconds: null,
+    asset_kind: 'data',
+  },
 
   // ── PHALA (8) ────────────────────────────────────────────────────────────────────────────
   // Updated 2026-06-22 (L4 Phala SETUP-7 / CS1): depends_on + descriptions corrected per
@@ -2121,6 +2349,20 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     // depends_on to `[]`; closing that gap requires adding TS rows for
     // `ka_gochara_sweep`/`ka_gochara_resonance` too, which is legacy-asset cleanup out of
     // scope for this PR and is left as an open follow-up, not silently absorbed here.
+    //
+    // NINTH EDGE, added by migration 522 (ṢAḌ-DARŚANA W2 lane `l0-ne-priors`,
+    // ADJUDICATION-2 item 6): `bg_class_lifetime_counts` — the L0 asset carrying N_e,
+    // the field's chart-independent structural baseline λ⁰_e. It is deliberately NOT
+    // added to the array below, because that would mean this file's `depends_on`
+    // claimed ONE of ka_kshetra's nine real edges and silently dropped the other
+    // eight — strictly worse than the honest `[]` the paragraph above establishes.
+    // The edge lives in migration 522's guarded `UPDATE ... SET depends_on = depends_on
+    // || ARRAY['bg_class_lifetime_counts']`, which is EXACTLY the `bg_cohort` precedent:
+    // `bg_cohort` likewise has a seed row in this file, is likewise an L0 global, and
+    // likewise enters ka_kshetra's dependency set only through a migration's
+    // depends_on array (494's), never through this one. Both are per-chart-BLOCKING
+    // L0 prerequisites: §2.5.2's "L0 dependency not built" state is correct behaviour,
+    // and the L0 asset must be built in production before the first ka_kshetra build.
     asset_id: 'ka_kshetra',
     layer: 'kala', sort_order: 110,
     sanskrit_name: 'Kāla Kṣetra',
@@ -2186,6 +2428,48 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
       'One skill row per scored event class plus one chart-level aggregate; grows only as the ' +
       'LEL grows. A chart with no LEL correctly produces the structural-prior state with ' +
       'skill_state = underpowered — an honest zero, not an error.',
+    depends_on: ['ka_kshetra'],
+    scope: 'per_chart', is_active: true, estimated_seconds: null,
+  },
+
+  // ══ ṢAḌ-DARŚANA W4 Lane S — the Unified Intervention Ledger (item 42) ═══════
+  // Spec: KALA_W4_UPAYA_DESIGN_v1_0.md §4.2 (table), §8.2 (this row, verbatim
+  // shape). Mirrors migration NNN_mimamsa_intervention_ledger.sql's own
+  // `INSERT INTO asset_registry ... ON CONFLICT (asset_id) DO UPDATE` — same
+  // discipline as `ka_kshetra` (migration 494) / `mi_bhara` (migration 497)
+  // above: the catalog-reconciliation check builds its id set purely from THIS
+  // file, so the row lands here in the SAME PR as the `mi_sankalpa` writer
+  // (§2.5.1 Nirmāṇa contract).
+  //
+  // `depends_on: ['ka_kshetra']`, per brief §2.5.3 and KALA_W2_FIELD_DESIGN
+  // §9.1 verbatim. `ka_kshetra` never lists `mi_sankalpa` back (§2.5.4
+  // acyclicity rule) — the ledger flows forward only, same shape as the
+  // ka_kshetra/mi_bhara pair immediately above.
+  {
+    asset_id: 'mi_sankalpa',
+    layer: 'mimamsa', sort_order: 14,
+    sanskrit_name: 'Saṅkalpa',
+    english_name: 'Intervention Ledger',
+    english_description:
+      'Unified intervention ledger — every elected act (upāya · yajña · elected activity) ' +
+      'with its adjudication record (the JudgmentLedger, frozen verbatim at election time), ' +
+      'predicted differential, native performance attestation and LEL outcome linkage; the ' +
+      'three-armed study of election itself (elected_pending / acted_with_election / ' +
+      'elected_not_acted / acted_without_election). Prediction spine is ' +
+      'brahma_prospective_ledger by FK (ruling S-1) — this writer never inserts into it ' +
+      'directly; filing happens at serve time through platform-mcp\'s ' +
+      '`fileInterventionFalsifier` (intervention_filing.ts). ṢAḌ-DARŚANA W4 item 42.',
+    storage_type: 'postgres_table',
+    target_table: 'mimamsa_intervention_ledger',
+    count_sql: 'SELECT count(*) FROM mimamsa_intervention_ledger WHERE chart_id = $1',
+    size_sql: "SELECT pg_total_relation_size('mimamsa_intervention_ledger')",
+    target_floor: null,
+    expected_volume_formula: null,
+    expected_volume_inputs: null,
+    volume_explanation:
+      'Accumulates as interventions are elected and attested — not a deterministic target ' +
+      '(§N.4: floors are aspirational, set to the ACHIEVED count after first build, never ' +
+      'fabricated).',
     depends_on: ['ka_kshetra'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },

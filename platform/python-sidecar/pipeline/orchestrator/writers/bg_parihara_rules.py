@@ -30,8 +30,25 @@ THREE TABLES
    assumed). Honest scope disclosure: this content is NATAL dosha-bhanga
    (Manglik/Kāla-Sarpa/Kemadruma/Bāla-ariṣṭa/etc conditions) — the corpus has
    NO muhūrta-specific dosha-cancellation content ("Abhijit cancels most
-   doshas", dāna-parihāras) at chapter/verse grain. That gap is recorded
-   honestly in `bg_muhurta_factor_census`, never fabricated here.
+   doshas", dāna-parihāras) at chapter/verse grain, WITH ONE NAMED EXCEPTION:
+   ṢAḌ-DARŚANA ADJUDICATION-10 Part 1 (SHAD_DARSHANA_ADJUDICATIONS_NIGHT3_v1_0.md)
+   ruled that one genuinely muhūrta-scope, universal-cancellation rule DOES
+   exist in the ingested corpus — `bphs_jaimini` (Jaimini Sutras, trans. B.
+   Suryanarain Rao 1949) PG213, chunk `bphs_jaimini_pg0213_c01`: "...the time
+   goes under the special name of Abhijin Moohurta, and Abhijit Sarva
+   Doshaghnam or that noon time which cuts and cures all evil influences."
+   Verified read-only against production `classical_text_chunks` before this
+   row was added (see PR body). See `MUHURTA_PARIHARA_ROWS` below — ONE
+   hand-curated row (the writer's existing CENSUS_ROWS pattern for
+   verified-but-not-SQL-derivable content), honestly labelled
+   `extraction_context='translator_gloss_in_narrative'` per the ruling: this
+   is B. Suryanarain Rao's own translator's doctrinal gloss embedded in
+   narrative prose (an autobiographical aside at PG213), NOT a mūla-sūtra
+   verse — seeding it unmarked as a sūtra citation would be citation
+   inflation. Every OTHER muhūrta-scope cancellation (Guru-Puṣya,
+   Sarvārtha-Siddhi strong-lagna overrides, dāna-parihāras) remains
+   genuinely not_in_corpus and is registered by name in the factor census,
+   never invented to match this one exception.
 
 2. bg_muhurta_activity_rules — per-activity (vivāha/gṛha-praveśa/vyāpāra/yātrā/
    property-purchase/mantra-dīkṣā/upāya-ritual/sādhanā-initiation) muhūrta
@@ -172,8 +189,73 @@ def fetch_parihara_rows(conn: Any, build_id: str) -> list[dict[str, Any]]:
                     "source_text_id": text_id,
                     "source_chapter": chapter,
                     "source_citation": citation,
+                    # Honest null (§N.7 item 6): whether each of these 79
+                    # brahma_dosha_catalog-derived conditions is itself a
+                    # mūla-sūtra verse or a translator/commentary gloss was
+                    # not individually re-verified when this column was
+                    # added (migration 524) — classifying all of them now
+                    # would be an invented judgment, not a migration's job.
+                    "extraction_context": None,
                     "build_id": build_id,
                 })
+    return rows
+
+
+# ── Table 1b: the ONE hand-curated muhūrta-scope row (ADJUDICATION-10) ───────
+# ṢAḌ-DARŚANA ADJUDICATION-10 Part 1 ruled this clause MET by extracting the
+# one muhūrta-scope, universal-cancellation rule genuinely present in the
+# ingested corpus, rather than amending the W3 gate criterion or reaching for
+# a NATAL bhaṅga rule (which would be a §N.5 authority inversion — a natal
+# cancellation applied to a muhūrta doṣa is a fabricated cancellation).
+#
+# `dosha_canonical_id='rahu_kalam'`: the source text states the cancellation
+# UNQUALIFIED ("Abhijit Sarva Doshaghnam... cuts and cures all evil
+# influences" — no doṣa-class restriction anywhere in the passage). But
+# `bg_parihara_rules.dosha_canonical_id` is a single NOT NULL matching key
+# (no wildcard/all-doṣa convention exists anywhere in this schema or in the
+# `kala_lattice_query.ts` engine's `matchingPariharas` join, which matches a
+# lattice doṣa's `factor_key` against this column by case-insensitive
+# equality) — the schema FORCES a per-doṣa row. `rahu_kalam` is chosen as
+# the one concrete, real, cited (`corpus_status=computed_cited`), commonly
+# co-occurring inauspicious `kalam` factor_key to demonstrate the rescue
+# mechanism against (see `bg_muhurta_lattice.py`'s `KALAM_CITATIONS`). This
+# NARROWS the row's practical reach to one doṣa key without narrowing what
+# `cancellation_condition_text` actually asserts — the text below transcribes
+# the source's unqualified claim verbatim; the narrowing is a schema/engine
+# limitation, disclosed here and in the PR body, not a doctrinal qualification
+# invented into the passage (ADJUDICATION-10 Part 1 forbids inventing weekday
+# exceptions or doṣa-class qualifications — none are added).
+MUHURTA_PARIHARA_ROWS: list[dict[str, Any]] = [
+    {
+        "dosha_canonical_id": "rahu_kalam",
+        "dosha_name_en": "Rahu Kalam",
+        "dosha_category": "muhurta_kalam",
+        "cancellation_index": 1,
+        "cancellation_condition_text": (
+            "...the time goes under the special name of Abhijin Moohurta, and "
+            "Abhijit Sarva Doshaghnam or that noon time which cuts and cures "
+            "all evil influences."
+        ),
+        "net_standing": "cancelled",
+        "scope": "muhurta",
+        "source_text_id": "bphs_jaimini",
+        "source_chapter": 213,  # PG213 — a page number in this text's chunking convention, not a verse chapter.
+        "source_citation": (
+            "Jaimini Sutras (bphs_jaimini), trans. B. Suryanarain Rao, 1949, "
+            "PG213 [chunk bphs_jaimini_pg0213_c01]"
+        ),
+        "extraction_context": "translator_gloss_in_narrative",
+    },
+]
+
+
+def build_muhurta_parihara_rows(build_id: str) -> list[dict[str, Any]]:
+    """The one ADJUDICATION-10 Part 1 hand-curated muhūrta-scope row, stamped
+    with this build's build_id. Pure function, no DB access — mirrors
+    build_census_rows' pattern for verified-but-not-SQL-derivable content."""
+    rows: list[dict[str, Any]] = []
+    for row in MUHURTA_PARIHARA_ROWS:
+        rows.append({**row, "build_id": build_id})
     return rows
 
 
@@ -230,21 +312,83 @@ def build_activity_rule_rows(build_id: str) -> list[dict[str, Any]]:
 # evidence_pointer, school_tag)
 CENSUS_ROWS: list[tuple[str, str, str, str, str, str | None]] = [
     # ── Pāñcāṅgika ──
+    # W4 ruling R-1 (2026-08-02): the three rows below were `computed` with an
+    # evidence_pointer naming a panchang_engine FUNCTION rather than a lattice
+    # atom. KALA_W4_UPAYA_DESIGN §3.1 found that this made three of the canned
+    # Mode-2 fixture's six constraints unsearchable — the disposition was true
+    # ("the codebase computes this") but the pointer did not resolve to anything
+    # a Mode-2 search could scan. Migration 530 + bg_muhurta_lattice.py's new
+    # emitters materialize them as real lattice families; the pointers below now
+    # resolve where the design says they must.
     ("panchangika", "tithi", "computed",
      "panchang_engine.angas.compute_tithi (real bisection search over Sun/Moon "
-     "sidereal longitude). Source: Muhurta Chintamani §1; Brihat Samhita §2.",
-     "panchang_engine/angas.py:compute_tithi", None),
+     "sidereal longitude). Source: Muhurta Chintamani §1; Brihat Samhita §2. "
+     "MATERIALIZED as a lattice family by W4 ruling R-1 (migration 530): "
+     "detail.factor_id carries compute_tithi(...).id (1..30), the same id space "
+     "bg_muhurta_activity_rules.factor_id (factor_type='tithi') uses — that "
+     "shared provenance is what makes the item-6 join deterministic rather than "
+     "hand-mapped (B.10).",
+     "bg_muhurta_lattice (factor_family=tithi; detail.factor_id from panchang_engine/angas.py:compute_tithi)", None),
     ("panchangika", "vara", "computed",
-     "panchang_engine.angas.compute_vara. Source: Vishnu Smriti; Muhurta Chintamani §1.",
-     "panchang_engine/angas.py:compute_vara", None),
+     "panchang_engine.angas.compute_vara. Source: Vishnu Smriti; Muhurta Chintamani §1. "
+     "MATERIALIZED as a lattice family by W4 ruling R-1 (migration 530): "
+     "detail.factor_id carries compute_vara(...).id (1..7, the shastra_tables §7 "
+     "VARA_NAMES key), the same id space bg_muhurta_activity_rules.factor_id "
+     "(factor_type='vara') uses. This is the atom the canned W4 Mode-2 fixture's "
+     "`panchanga {vara: guru-vara}` constraint searches over; before R-1 no vara "
+     "family existed and vara appeared only inside combination_yoga detail.",
+     "bg_muhurta_lattice (factor_family=vara; detail.factor_id from panchang_engine/angas.py:compute_vara)", None),
     ("panchangika", "nakshatra", "computed",
-     "panchang_engine.angas.compute_nakshatra. Source: Muhurta Chintamani §4; Brihat Samhita §2.",
-     "panchang_engine/angas.py:compute_nakshatra", None),
+     "panchang_engine.angas.compute_nakshatra. Source: Muhurta Chintamani §4; Brihat Samhita §2. "
+     "MATERIALIZED as a lattice family by W4 ruling R-1 (migration 530): "
+     "detail.factor_id carries compute_nakshatra(...).id (1..27), the same id "
+     "space bg_muhurta_activity_rules.factor_id (factor_type='nakshatra') uses.",
+     "bg_muhurta_lattice (factor_family=nakshatra; detail.factor_id from panchang_engine/angas.py:compute_nakshatra)", None),
     ("panchangika", "nakshatra_tara_bala", "not_computed",
      "Chart-personal by construction (needs the native's own janma-nakshatra) — "
      "out of THIS global lane's scope per brief §2. Computed per-chart via "
-     "panchang_engine.tara_bala.compute_tara_bala_score; not duplicated here.",
-     "panchang_engine/tara_bala.py (chart-bound; see also w1-flags PR #892)", None),
+     "panchang_engine.tara_bala.compute_tara_bala_score; not duplicated here. "
+     "RE-AFFIRMED at W4 (KALA_W4_UPAYA_DESIGN §3.1, verbatim: 'that disposition "
+     "is correct and must not be fixed'). W4's Mode-2 searcher evaluates "
+     "tara-bala as a CHART-RELATIVE post-filter over lattice atoms, reading the "
+     "chart's own janma-nakshatra by fact_id from chart_facts and citing that "
+     "fact_id in the response — and reports it in its own coverage block as "
+     "'computed (chart-relative, at query time)'. Two dispositions, two scopes, "
+     "both honest: this GLOBAL census row stays not_computed because a global "
+     "table cannot hold a chart-personal value, and a session that conflates the "
+     "two has broken §N.5.",
+     "panchang_engine/tara_bala.py (chart-bound; see also w1-flags PR #892); "
+     "query-time evaluation in platform-mcp/src/lib/kala_sky_pattern.ts (chart_relative constraint kind)", None),
+
+    # ── W4 ruling R-1: the two lattice families deliberately NOT materialized ──
+    # The ruling's own text: "Optional-but-recommended … If Lane R defers them,
+    # the census must say so by name and the Mode-2 coverage block must list them
+    # as `not_computed (lattice family not materialized)`. Deferring them does not
+    # block the fixture; pretending they are covered does." These are those rows.
+    ("panchangika", "nityayoga_lattice_family", "not_computed",
+     "lattice family not materialized. The 27-fold nitya-yoga IS computed "
+     "(panchang_engine.angas.compute_yoga — see the sibling 'nityayoga' row, "
+     "disposition computed) but was NOT emitted as its own bg_muhurta_lattice "
+     "factor_family at W4. Named deferral per KALA_W4_UPAYA_DESIGN §3.1's own "
+     "clause. Consequence, stated plainly: a Mode-2 sky_pattern_spec constraint "
+     "naming nitya-yoga has no atom to search over and triggers the "
+     "drop-and-report precedence rule (design §6.2), never a silent skip. No W4 "
+     "fixture constraint names it. Work item: add a `nityayoga` emitter to "
+     "bg_muhurta_lattice.py (same generator loop as vara/nakshatra/tithi) and "
+     "widen the factor_family CHECK.",
+     "panchang_engine/angas.py:compute_yoga (computed, not emitted to bg_muhurta_lattice)", None),
+    ("panchangika", "karana_lattice_family", "not_computed",
+     "lattice family not materialized. The karana pair IS computed "
+     "(panchang_engine.angas.compute_karana_pair) and the ONE karana the W4 "
+     "fixture cares about — Vishti/Bhadra — is ALREADY a searchable lattice atom "
+     "under factor_family=combination_yoga, factor_key='bhadra' (see the "
+     "'karana_bhadra_vishti' row). The remaining ten karanas were not emitted as "
+     "their own family at W4. Named deferral per KALA_W4_UPAYA_DESIGN §3.1. The "
+     "fixture's `panchanga_not {karana: [vishti]}` clause resolves against the "
+     "bhadra span and is NOT affected by this deferral. Work item: add a "
+     "`karana` emitter for the full 11-karana set.",
+     "panchang_engine/angas.py:compute_karana_pair (computed; only the vishti/bhadra "
+     "member is emitted, as bg_muhurta_lattice factor_family=combination_yoga factor_key=bhadra)", None),
     ("panchangika", "nityayoga", "computed",
      "panchang_engine.angas.compute_yoga (27-fold nitya-yoga). Source: Muhurta Chintamani §4; Brihat Samhita §2.",
      "panchang_engine/angas.py:compute_yoga", None),
@@ -357,8 +501,15 @@ CENSUS_ROWS: list[tuple[str, str, str, str, str, str | None]] = [
 
     # ── Day-part ──
     ("day_part", "hora_lord", "computed",
-     "panchang_engine.timings.compute_hora. Source: Vishnu Smriti; Hora Sara (Prithuyashas).",
-     "panchang_engine/timings.py:compute_hora", None),
+     "panchang_engine.timings.compute_hora. Source: Vishnu Smriti; Hora Sara (Prithuyashas). "
+     "MATERIALIZED as a lattice family by W4 ruling R-1 (migration 530): 24 rows "
+     "per sunrise→next-sunrise cycle, factor_key='hora_<planet>', detail.lord = "
+     "the Chaldean-sequence hora lord read from panchang_engine's own "
+     "HORA_CYCLE/VARA_HORA_START tables. Before R-1 this row was `computed` with "
+     "an evidence_pointer naming the FUNCTION, not the table — true, but the "
+     "canned W4 Mode-2 fixture's `planet_state {body: Guru, in: {hora_lord}}` "
+     "constraint had nothing to search over (KALA_W4_UPAYA_DESIGN §3.1).",
+     "bg_muhurta_lattice (factor_family=hora; from panchang_engine/timings.py:compute_hora)", None),
     ("day_part", "abhijit", "computed",
      "Muhurta Chintamani §5 (excluded Wednesdays).",
      "bg_muhurta_lattice (factor_family=kalam, factor_key=abhijit)", None),
@@ -442,6 +593,118 @@ CENSUS_ROWS: list[tuple[str, str, str, str, str, str | None]] = [
      "in shastra_tables.py — disclosed honestly as an uncited convention, not "
      "upgraded to a specific citation.",
      "panchang_engine/shastra_tables.py:DISHA_SHUL_TABLE (uncited in source)", None),
+
+    # ── Muhūrta-lagna (registry item 7, ṢAḌ-DARŚANA W4 Lane R) ────────────────
+    ("muhurta_lagna", "rising_sign_span", "computed",
+     "Registry item 7's substrate. The 12 rising-sign spans per day at the fixed "
+     "reference location, found by REAL BISECTION (1-second tolerance) over "
+     "panchang_engine.lagna.compute_lagna's ascendant_sign_id — not by assuming a "
+     "2-hour sign length, which is false away from the equator. Each row carries "
+     "detail.sign_id, detail.lord (shastra_tables §8 SIGN_LORDS; Source, inline: "
+     "Brihat Samhita §1; Brihat Parasara Hora Sastra), detail.lord_sign_id, "
+     "detail.lord_retrograde and detail.graha_sign_ids (all nine grahas' sidereal "
+     "sign at span start). compute_lagna itself carries NO inline classical "
+     "citation (it is a swisseph Placidus-cusp computation) — the SPAN is an "
+     "astronomical quantity, so the lattice row is stored "
+     "corpus_status='computed_uncited_convention', not upgraded to a verse "
+     "citation this codebase does not hold.",
+     "bg_muhurta_lattice (factor_family=lagna; from panchang_engine/lagna.py:compute_lagna)", None),
+    ("muhurta_lagna", "lagna_lord_strength", "computed",
+     "Registry item 7's strength half, evaluated AT QUERY TIME, not stored. The "
+     "lattice row carries only FACTS (sign ids, lord name, graha sign ids); the "
+     "dignity verdict is resolved against bg_dignity_reference "
+     "(exaltation/debilitation/moolatrikona/own_signs, BPHS-cited, 9 rows, "
+     "migration 250) and the drishti verdict against BPHS Ch.26 "
+     "(brahma_constants special_aspect_mars/jupiter/saturn = 4,8 / 5,9 / 3,10 "
+     "plus the universal 7th). Storing a verdict on the lattice row would be a "
+     "SECOND COPY of those two authorities and could drift from either — §N.5 "
+     "forbids it, so detail.strength_verdict is deliberately NULL with a note "
+     "saying why (§N.7 item 6: an honest null beats an invented judgment).",
+     "bg_dignity_reference (dignity authority) + brahma_constants special_aspect_* (BPHS Ch.26); "
+     "query-time join in platform-mcp/src/lib/kala_ritual_resonance.ts", None),
+    ("muhurta_lagna", "lagna_shuddhi_rules", "not_in_corpus",
+     "The classical muhurta-lagna DOCTRINE — which lagna suits which rite, "
+     "lagna-suddhi (ascendant-purification) rules, the lagna-tyajya degrees — is "
+     "NOT held in this codebase at verse grain. Corpus-verified 2026-08-02 "
+     "against the live classical_text_chunks table: the primary source is "
+     "Muhurta Chintamani (text_id='muhurta_chintamani', 274 chunks) whose "
+     "content_en is byte-identical to content_sa on all 274 rows (untranslated "
+     "Devanagari OCR copied into the English column — the same finding the "
+     "dagdha_yoga row records) and whose cleaned_translation_text is NULL "
+     "throughout. Brihat Samhita Adh. C (chunks brihat_samhita_pg0769..0771) "
+     "carries real, translated ELECTION rules that mention the rising sign "
+     "(e.g. sl.7-8, marriage: 'when Mithuna, Kanya or Tula is rising') but no "
+     "systematic lagna-suddhi table. Ingestion work item: OCR-translate Muhurta "
+     "Chintamani's lagna chapters. NOTHING is asserted here in the meantime.",
+     "classical_text_chunks (text_id='muhurta_chintamani', untranslated: content_en=content_sa "
+     "on 274/274 rows, cleaned_translation_text NULL on 274/274) — live-verified 2026-08-02", None),
+
+    # ── Rite-specific activity rules (registry item 6, ṢAḌ-DARŚANA W4 Lane R) ──
+    ("rite_specific", "activity_rule_id_join", "computed",
+     "Registry item 6. bg_muhurta_activity_rules (329 rows, 8 activity classes x "
+     "factor_type in {tithi,nakshatra,vara} x integer factor_id) was EXCLUDED "
+     "from the item-36 lattice engine's rite_specific_resonance Pareto axis "
+     "because lattice candidates carried limb NAMES while the rule table keys on "
+     "integer factor_id, and a hand-written name->id map was correctly refused as "
+     "invented data (ADJUDICATION-10, accepting the exclusion on condition it "
+     "stay explicit). W4 ruling R-1 makes the map REAL rather than invented: the "
+     "new vara/nakshatra/tithi lattice families carry detail.factor_id read "
+     "directly from panchang_engine (compute_vara/compute_nakshatra/compute_tithi "
+     ".id), which is the SAME source bg_muhurta_activity_rules.factor_id was "
+     "populated from (shastra_tables.EVENT_TABLES, materialized verbatim by this "
+     "writer's build_activity_rule_rows). The join therefore rests on ONE "
+     "deterministic source. RAIL (design §3.3, binding): if any future edit makes "
+     "these ids anything other than a direct read from panchang_engine, this row "
+     "reverts to not_computed and the axis must be re-excluded — enabling it on a "
+     "hand-mapped correspondence is a B.10 violation and a gate failure.",
+     "bg_muhurta_activity_rules.factor_id <-> bg_muhurta_lattice.detail->>'factor_id' "
+     "(both from panchang_engine's own numbered tables); consumed by "
+     "platform-mcp/src/lib/kala_ritual_resonance.ts", None),
+    ("rite_specific", "activity_rule_pareto_axis_in_frozen_engine", "not_computed",
+     "HONEST PARTIAL, disclosed rather than claimed. The DATA-LAYER join above is "
+     "live and deterministic, so Mode 1's rite-specific resonance factor is real. "
+     "The item-36 engine's own rite_specific_resonance PARETO AXIS is still "
+     "listed in kala_lattice_query.ts's EXCLUDED_AXES, because that file is "
+     "FROZEN for W4 (KALA_W4_UPAYA_DESIGN §0.2, a RAIL not a convenience) and "
+     "exposes no injection point for enabling an excluded axis — EXCLUDED_AXES is "
+     "a module-private `const`, not a parameter. Lane R therefore STOPPED and "
+     "reported rather than editing a frozen file, per its own instruction. The "
+     "axis's disclosed exclusion reason in that file still reads "
+     "'wiring the id path is item 6/7 W3 work' — now stale: the id path IS wired, "
+     "at the data layer. Work item for the Conductor: one-line unfreeze PR "
+     "removing rite_specific_resonance from EXCLUDED_AXES and adding the axis to "
+     "AxisVector, once the freeze lifts.",
+     "platform-mcp/src/lib/kala_lattice_query.ts:EXCLUDED_AXES (FROZEN for W4; "
+     "module-private const, no injection mechanism)", None),
+
+    # ── Parihāra scope (muhūrta-scope cancellation corpus findings) ────────────
+    ("parihara_scope", "vishti_conditional_undertaking_exception", "not_computed",
+     "A REAL, translated, in-corpus muhurta-scope Vishti/Bhadra exception was "
+     "found and verified live 2026-08-02, and is deliberately NOT encoded as a "
+     "bg_parihara_rules row. Source, transcribed verbatim from chunk "
+     "brihat_samhita_pg0768_c01 (Brihat Samhita, Adh. C 'On the Qualities of the "
+     "Karanas', Slokas 3-4, trans. V. Subrahmanya Sastri 1946): 'Nothing done in "
+     "Vishti leads to beneficial results, but attacking enemies; administering "
+     "poison and such other things do succeed.' This is a genuine, cited, "
+     "muhurta-scope narrowing of the Bhadra/Vishti dosa — but it is CONDITIONAL "
+     "ON THE UNDERTAKING CLASS, and bg_parihara_rules has no undertaking-class "
+     "qualifier column, while kala_lattice_query.ts's matchingPariharas() cancels "
+     "unconditionally on a dosha_canonical_id match. Encoding it as a row would "
+     "therefore make the engine report Bhadra 'fully_cancelled' for a WEDDING — a "
+     "cancellation the source explicitly does not license, and a §N.5 authority "
+     "inversion. Same discipline as ADJUDICATION-10 Part 1's refusal to invent a "
+     "wildcard match the schema does not support, applied in the other direction: "
+     "the finding is recorded with its exact chunk_id and verbatim text, not "
+     "forced into a schema that would misrepresent it. Work item: add an "
+     "`applies_to_activity_classes TEXT[]` qualifier to bg_parihara_rules and an "
+     "undertaking-aware branch to matchingPariharas(), then seed this row. "
+     "extraction_context if/when seeded: mula_sutra_citation (numbered-sloka "
+     "translation of Varahamihira's verse, not a translator's narrative aside — "
+     "unlike the ADJUDICATION-10 Abhijit row, which is "
+     "translator_gloss_in_narrative).",
+     "classical_text_chunks (chunk_id='brihat_samhita_pg0768_c01', Adh. C sl.3-4, "
+     "translated, low_confidence_flag=false) — live-verified 2026-08-02; "
+     "schema gap: bg_parihara_rules has no activity-class qualifier column", "vedic:parashari"),
 
     # ── Degree-sensitive ──
     ("degree_sensitive", "mrityu_bhaga", "not_in_corpus",
@@ -569,7 +832,7 @@ class BgPariharaRulesWriter(WriterBase):
         rows_written = 0
 
         try:
-            parihara_rows = fetch_parihara_rows(conn, ctx.build_id)
+            parihara_rows = fetch_parihara_rows(conn, ctx.build_id) + build_muhurta_parihara_rows(ctx.build_id)
             activity_rows = build_activity_rule_rows(ctx.build_id)
             census_rows = build_census_rows(ctx.build_id)
         except Exception as exc:
@@ -619,19 +882,23 @@ class BgPariharaRulesWriter(WriterBase):
               (dosha_canonical_id, dosha_name_en, dosha_category,
                cancellation_index, cancellation_condition_text, net_standing,
                scope, source_text_id, source_chapter, source_citation,
-               build_id, computed_at)
+               extraction_context, build_id, computed_at)
             VALUES
               (%(dosha_canonical_id)s, %(dosha_name_en)s, %(dosha_category)s,
                %(cancellation_index)s, %(cancellation_condition_text)s,
                %(net_standing)s, %(scope)s, %(source_text_id)s,
-               %(source_chapter)s, %(source_citation)s, %(build_id)s, NOW())
+               %(source_chapter)s, %(source_citation)s,
+               %(extraction_context)s, %(build_id)s, NOW())
             ON CONFLICT (dosha_canonical_id, cancellation_index) DO UPDATE SET
               dosha_name_en = EXCLUDED.dosha_name_en,
               dosha_category = EXCLUDED.dosha_category,
               cancellation_condition_text = EXCLUDED.cancellation_condition_text,
+              net_standing = EXCLUDED.net_standing,
+              scope = EXCLUDED.scope,
               source_text_id = EXCLUDED.source_text_id,
               source_chapter = EXCLUDED.source_chapter,
               source_citation = EXCLUDED.source_citation,
+              extraction_context = EXCLUDED.extraction_context,
               build_id = EXCLUDED.build_id,
               computed_at = NOW()
             """,

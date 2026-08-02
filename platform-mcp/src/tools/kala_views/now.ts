@@ -376,6 +376,261 @@ async function computeGocharaDualReference(
   return { rows, transitReachable, transitFailure, rowsWithTransitData }
 }
 
+// ── W3 item 16 (Kota-Chakra) + item 17 (Sudarśana-Chakra year-wheel) —
+// SHAD_DARSHANA_BRIEF_v2_0.md §3 W3, Lane w3-kota-sudarshana. Both are [N]-kind NEW
+// COMPUTATIONS with their own per-chart writers (ka_kota_chakra / ka_sudarshana_varsha,
+// migrations 520/521) and asset_registry rows — unlike the [J]-kind joins above, this facade
+// only READS already-computed rows from those writers' tables via the registry capabilities
+// query_kota_chakra / query_sudarshana_varsha; it never recomputes the ring/progression math
+// here (§N.5). Only the CURRENT row(s) are served on NOW — the forward horizon (upcoming
+// ring changes / future varsha years) is kala_ahead_get's job, a documented follow-on the
+// same query capabilities already support (paging the non-current rows) but which is not
+// wired into ahead.ts in this PR.
+
+export interface KotaChakraRow {
+  graha: string
+  nakshatra_name: string
+  count_from_janma: number
+  kota_ring: string
+  is_natural_malefic: boolean
+  posture: string
+  severity: string
+  window_start: string
+  window_end: string
+  start_truncated: boolean
+  end_truncated: boolean
+  ring_table_citation: string
+  uncited_extension: boolean
+}
+
+/** item 16: current Kota-Chakra ring occupancy per graha (one row per graha whose current
+ *  ring-run contains `asOfDate`). Honest-empty (not a masked failure) when the writer has
+ *  not yet built this chart, or the scanned horizon does not cover `asOfDate`. */
+async function fetchKotaChakraNow(
+  chartId: string,
+  asOfDate: string,
+  principal: Principal,
+): Promise<{ reachable: boolean; rows: KotaChakraRow[] }> {
+  const resp = await callRegistryCapability(
+    'marsys://tool/L3/query_kota_chakra',
+    { chart_id: chartId, as_of: asOfDate },
+    principal,
+  )
+  if (!resp.ok || !resp.content) return { reachable: false, rows: [] }
+  const rawRows = (resp.content['rows'] as Array<Record<string, unknown>> | undefined) ?? []
+  const rows: KotaChakraRow[] = rawRows
+    .filter((r) => r['is_current'] === true)
+    .map((r) => ({
+      graha: String(r['graha']),
+      nakshatra_name: String(r['nakshatra_name']),
+      count_from_janma: Number(r['count_from_janma']),
+      kota_ring: String(r['kota_ring']),
+      is_natural_malefic: Boolean(r['is_natural_malefic']),
+      posture: String(r['posture']),
+      severity: String(r['severity']),
+      window_start: String(r['window_start']),
+      window_end: String(r['window_end']),
+      start_truncated: Boolean(r['start_truncated']),
+      end_truncated: Boolean(r['end_truncated']),
+      ring_table_citation: String(r['ring_table_citation']),
+      uncited_extension: Boolean(r['uncited_extension']),
+    }))
+  return { reachable: true, rows }
+}
+
+export interface SudarshanaVarshaYearNow {
+  varsha_year: number
+  window_start: string
+  window_end: string
+  jl_active_sign_name: string
+  cl_active_sign_name: string
+  sl_active_sign_name: string
+  tri_lagna_convergence: boolean
+}
+
+/** item 17: the CURRENT varsha year's tri-lagna progressed signs. `current: null` (with
+ *  `reachable: true`) is a genuine honest-empty — e.g. asOfDate predates birth, or exceeds
+ *  the 120-year built horizon — never fabricated. */
+async function fetchSudarshanaVarshaNow(
+  chartId: string,
+  asOfDate: string,
+  principal: Principal,
+): Promise<{ reachable: boolean; current: SudarshanaVarshaYearNow | null }> {
+  const resp = await callRegistryCapability(
+    'marsys://tool/L3/query_sudarshana_varsha',
+    { chart_id: chartId, as_of: asOfDate },
+    principal,
+  )
+  if (!resp.ok || !resp.content) return { reachable: false, current: null }
+  const rawRows = (resp.content['rows'] as Array<Record<string, unknown>> | undefined) ?? []
+  const currentRaw = rawRows.find((r) => r['is_current'] === true)
+  if (!currentRaw) return { reachable: true, current: null }
+  return {
+    reachable: true,
+    current: {
+      varsha_year: Number(currentRaw['varsha_year']),
+      window_start: String(currentRaw['window_start']),
+      window_end: String(currentRaw['window_end']),
+      jl_active_sign_name: String(currentRaw['jl_active_sign_name']),
+      cl_active_sign_name: String(currentRaw['cl_active_sign_name']),
+      sl_active_sign_name: String(currentRaw['sl_active_sign_name']),
+      tri_lagna_convergence: Boolean(currentRaw['tri_lagna_convergence']),
+    },
+  }
+}
+
+// ── W3 item 4 (Moorti-nirṇaya) + item 5 (Vedha application + Sarvatobhadra —
+// closes R-19) — SHAD_DARSHANA_BRIEF_v2_0.md §3 W3, Lane w3-moorti-vedha. Both are new
+// per-chart writers (ka_moorti_nirnaya / ka_vedha_gochara, migrations 525/526) served
+// read-only here via query_moorti_nirnaya / query_vedha_gochara (§N.5 — this facade never
+// recomputes the moorti/vedha arithmetic). Only the CURRENT row(s) are served on NOW; the
+// forward horizon is kala_ahead_get's job (a documented follow-on, not wired in this PR,
+// matching kota_chakra/sudarshana_varsha's own precedent).
+
+export interface MoortiNirnayaRow {
+  graha: string
+  target_sign_name: string
+  window_start: string
+  window_end: string
+  moorti_computed: boolean
+  moorti_name: string | null
+  quality_tier: number | null
+  phala_brief: string | null
+  moorti_classical_citation: string | null
+}
+
+/** item 4: current Moorti-nirṇaya row per graha (one row per graha whose current
+ *  sign-occupancy window contains `asOfDate`). Honest-empty (not a masked failure) when the
+ *  writer has not yet built this chart, or the scanned horizon does not cover `asOfDate`.
+ *  `moorti_computed=false` rows (an unverified/truncated ingress — see writer docstring)
+ *  carry null moorti fields verbatim, never backfilled. */
+async function fetchMoortiNirnayaNow(
+  chartId: string,
+  asOfDate: string,
+  principal: Principal,
+): Promise<{ reachable: boolean; rows: MoortiNirnayaRow[] }> {
+  const resp = await callRegistryCapability(
+    'marsys://tool/L3/query_moorti_nirnaya',
+    { chart_id: chartId, as_of: asOfDate },
+    principal,
+  )
+  if (!resp.ok || !resp.content) return { reachable: false, rows: [] }
+  const rawRows = (resp.content['rows'] as Array<Record<string, unknown>> | undefined) ?? []
+  const rows: MoortiNirnayaRow[] = rawRows
+    .filter((r) => r['is_current'] === true)
+    .map((r) => ({
+      graha: String(r['graha']),
+      target_sign_name: String(r['target_sign_name']),
+      window_start: String(r['window_start']),
+      window_end: String(r['window_end']),
+      moorti_computed: Boolean(r['moorti_computed']),
+      moorti_name: r['moorti_name'] != null ? String(r['moorti_name']) : null,
+      quality_tier: r['quality_tier'] != null ? Number(r['quality_tier']) : null,
+      phala_brief: r['phala_brief'] != null ? String(r['phala_brief']) : null,
+      moorti_classical_citation: r['moorti_classical_citation'] != null ? String(r['moorti_classical_citation']) : null,
+    }))
+  return { reachable: true, rows }
+}
+
+export interface VedhaGocharaRow {
+  vedha_kind: 'house_vedha' | 'sarvatobhadra' | 'latta'
+  graha: string
+  window_start: string
+  window_end: string
+  classical_citation: string
+  uncited_extension: boolean
+  /** ADJUDICATION-11 Part 3: populated only on vedha_kind='sarvatobhadra' rows
+   *  ('db_sourced_grid' | 'algorithmic_approximation'); null on house_vedha/latta. */
+  grid_basis: string | null
+  /** ADJUDICATION-11 Part 3: the bg_sarvatobhadra_grid school_tag that supplied this row's
+   *  pairing, when grid_basis='db_sourced_grid' via that table specifically; null otherwise
+   *  (including every row as of this writing, since that table is registered empty). */
+  grid_school_tag: string | null
+  detail: Record<string, unknown>
+}
+
+/** item 5 (closes R-19, CLOSED-PARTIAL-BY-DESIGN per ADJUDICATION-11): current vedha rows
+ *  (house_vedha, sarvatobhadra, and latta kinds, never conflated — §N.6) whose window
+ *  contains `asOfDate`. Honest-empty when the writer has not yet built this chart, or no
+ *  vedha-checkable transit / sarvatobhadra-dwelling / latta-affliction is currently active —
+ *  an empty result here is the classically NORMAL case (most days carry no active vedha),
+ *  not a failure. */
+async function fetchVedhaGocharaNow(
+  chartId: string,
+  asOfDate: string,
+  principal: Principal,
+): Promise<{ reachable: boolean; rows: VedhaGocharaRow[] }> {
+  const resp = await callRegistryCapability(
+    'marsys://tool/L3/query_vedha_gochara',
+    { chart_id: chartId, as_of: asOfDate },
+    principal,
+  )
+  if (!resp.ok || !resp.content) return { reachable: false, rows: [] }
+  const rawRows = (resp.content['rows'] as Array<Record<string, unknown>> | undefined) ?? []
+  const rows: VedhaGocharaRow[] = rawRows
+    .filter((r) => r['is_current'] === true)
+    .map((r) => ({
+      vedha_kind: String(r['vedha_kind']) as 'house_vedha' | 'sarvatobhadra' | 'latta',
+      graha: String(r['graha']),
+      window_start: String(r['window_start']),
+      window_end: String(r['window_end']),
+      classical_citation: String(r['classical_citation']),
+      uncited_extension: Boolean(r['uncited_extension']),
+      grid_basis: r['grid_basis'] != null ? String(r['grid_basis']) : null,
+      grid_school_tag: r['grid_school_tag'] != null ? String(r['grid_school_tag']) : null,
+      detail: (r['detail'] as Record<string, unknown> | undefined) ?? {},
+    }))
+  return { reachable: true, rows }
+}
+
+// ── W3 item 13 (Tithi-Praveśa, lunar-return annual chart) — SHAD_DARSHANA_BRIEF_v2_0.md
+// §3 W3, Lane w3-tithi-pravesha. New per-chart writer (ka_tithi_pravesha, migration 531)
+// served read-only here via query_tithi_pravesha (§N.5 — this facade never recomputes the
+// lunar-return root-find). Only the CURRENT praveśa-year row is served on NOW; the forward
+// horizon is kala_ahead_get's job (a documented follow-on, not wired in this PR, matching
+// kota_chakra/sudarshana_varsha's own precedent).
+
+export interface TithiPraveshaYearNow {
+  pravesha_year: number
+  window_start: string
+  window_end: string
+  pravesha_lagna_sign_name: string | null
+  pravesha_lagna_degree: number | null
+  verification_pass_status: string
+  classical_source_citation: string
+}
+
+/** item 13: the CURRENT praveśa year's lunar-return annual chart summary. `current: null`
+ *  (with `reachable: true`) is a genuine honest-empty — e.g. asOfDate predates birth, or
+ *  exceeds the 120-year built horizon — never fabricated. */
+async function fetchTithiPraveshaNow(
+  chartId: string,
+  asOfDate: string,
+  principal: Principal,
+): Promise<{ reachable: boolean; current: TithiPraveshaYearNow | null }> {
+  const resp = await callRegistryCapability(
+    'marsys://tool/L3/query_tithi_pravesha',
+    { chart_id: chartId, as_of: asOfDate },
+    principal,
+  )
+  if (!resp.ok || !resp.content) return { reachable: false, current: null }
+  const rawRows = (resp.content['rows'] as Array<Record<string, unknown>> | undefined) ?? []
+  const currentRaw = rawRows.find((r) => r['is_current'] === true)
+  if (!currentRaw) return { reachable: true, current: null }
+  return {
+    reachable: true,
+    current: {
+      pravesha_year: Number(currentRaw['pravesha_year']),
+      window_start: String(currentRaw['window_start']),
+      window_end: String(currentRaw['window_end']),
+      pravesha_lagna_sign_name: currentRaw['pravesha_lagna_sign_name'] != null ? String(currentRaw['pravesha_lagna_sign_name']) : null,
+      pravesha_lagna_degree: currentRaw['pravesha_lagna_degree'] != null ? Number(currentRaw['pravesha_lagna_degree']) : null,
+      verification_pass_status: String(currentRaw['verification_pass_status']),
+      classical_source_citation: String(currentRaw['classical_source_citation']),
+    },
+  }
+}
+
 interface DignityReferenceRow {
   graha: string
   exaltation_sign: string | null
@@ -1067,6 +1322,16 @@ export interface KalaNowResult {
   sukshma_boundary_uncertainty: SukshmaBoundaryInterval[]
   // Item 1-lite (wave W1): bands around the currently-active MD/AD period boundaries.
   dasha_sandhi: DashaSandhiResult | null
+  // Item 16 (wave W3): current Kota-Chakra ring occupancy per graha.
+  kota_chakra: KotaChakraRow[]
+  // Item 17 (wave W3): current Sudarśana-Chakra varsha year (tri-lagna progressed signs).
+  sudarshana_varsha: SudarshanaVarshaYearNow | null
+  // Item 4 (wave W3): current Moorti-nirṇaya per graha (transit quality).
+  moorti_nirnaya: MoortiNirnayaRow[]
+  // Item 5 (wave W3, closes R-19): current vedha rows (house_vedha + sarvatobhadra).
+  vedha_gochara: VedhaGocharaRow[]
+  // Item 13 (wave W3): current Tithi-Praveśa (lunar-return annual chart) praveśa year.
+  tithi_pravesha: TithiPraveshaYearNow | null
   drill_pointers: DrillPointerLike[]
   provenance_envelope: {
     source: string
@@ -1090,6 +1355,11 @@ export interface KalaNowResult {
     dasha_lord_transit_condition_rows_with_transit_data: number
     sukshma_boundary_uncertainty_reachable: boolean
     dasha_sandhi_reachable: boolean
+    kota_chakra_reachable: boolean
+    sudarshana_varsha_reachable: boolean
+    moorti_nirnaya_reachable: boolean
+    vedha_gochara_reachable: boolean
+    tithi_pravesha_reachable: boolean
   }
 }
 
@@ -1106,7 +1376,7 @@ export async function computeKalaNow(
   const ayanamshaId = normalizeAyanamsha(args.ayanamsha_id)
   const asOfDate = args.as_of ?? new Date().toISOString().slice(0, 10)
 
-  const [windowsResp, darshanaResp, natalRefSigns, panchangaResp, natalPanchangaResp] = await Promise.all([
+  const [windowsResp, darshanaResp, natalRefSigns, panchangaResp, natalPanchangaResp, kotaChakraNow, sudarshanaVarshaNow, moortiNirnayaNow, vedhaGocharaNow, tithiPraveshaNow] = await Promise.all([
     callRegistryCapability(
       'marsys://tool/L3/query_temporal_activation',
       { chart_id: chartId, ayanamsha_id: ayanamshaId, as_of: asOfDate, top_k: 20 },
@@ -1133,6 +1403,16 @@ export async function computeKalaNow(
       { chart_id: chartId, categories: ['panchanga_tithi', 'panchanga_vara', 'panchanga_nakshatra_moon'] },
       principal,
     ),
+    // item 16 (W3): current Kota-Chakra ring occupancy per graha.
+    fetchKotaChakraNow(chartId, asOfDate, principal),
+    // item 17 (W3): current Sudarśana-Chakra varsha year.
+    fetchSudarshanaVarshaNow(chartId, asOfDate, principal),
+    // item 4 (W3): current Moorti-nirṇaya per graha.
+    fetchMoortiNirnayaNow(chartId, asOfDate, principal),
+    // item 5 (W3, closes R-19): current vedha rows (house_vedha + sarvatobhadra).
+    fetchVedhaGocharaNow(chartId, asOfDate, principal),
+    // item 13 (W3): current Tithi-Praveśa (lunar-return annual chart) year.
+    fetchTithiPraveshaNow(chartId, asOfDate, principal),
   ])
 
   const windowsOk = windowsResp.ok
@@ -1328,9 +1608,24 @@ export async function computeKalaNow(
     windowsOk
       ? computedCoverage('temporal_activation_windows')
       : honestEmptyCoverage('temporal_activation_windows', 'L3 Kāla registry unreachable this call.'),
-    darshanaOk
+    // Honesty-inversion fix (defect 2, PARĪKṢAKA live-production pass, pre-existing since
+    // commit 2cba21c5 / PR #940): `darshanaOk` only meant "the registry call succeeded" —
+    // it said nothing about whether a row actually came back, so a reachable-but-zero-rows
+    // response (chart 1c826d5a) claimed `computed` while `darshana` was null. Matches the
+    // established convention immediately below (`dashaSandhi.result ? computed :
+    // honest_empty(...)`) and story.ts's `lel_pinning_per_chapter` (fetch-succeeded-zero-rows
+    // gets its own honest_empty reason, distinct from unreachable) — same fetch-succeeded-
+    // but-empty shape, same vocabulary, not a third pattern. The prose disclosure at
+    // `darshanaOk && !darshana` (buildNowReading, above) already narrates this honestly and
+    // is unchanged — only this machine-readable coverage state was wrong.
+    darshanaOk && darshana
       ? computedCoverage('kala_darshana_confluence')
-      : honestEmptyCoverage('kala_darshana_confluence', 'L3 Kāla registry unreachable this call.'),
+      : honestEmptyCoverage(
+          'kala_darshana_confluence',
+          !darshanaOk
+            ? 'L3 Kāla registry unreachable this call.'
+            : 'The L3 Kāla darshana registry fetch succeeded but returned zero rows for this chart/date — no darshana confluence window is active today.',
+        ),
     dashaSandhi.result
       ? computedCoverage('dasha_sandhi')
       : honestEmptyCoverage(
@@ -1414,6 +1709,59 @@ export async function computeKalaNow(
             ? 'L1 dasha registry (get_dashas) unreachable this call.'
             : 'No Sūkṣma-level (level_n=4) daśā row resolved for this chart/date — this chart may not be built to Sūkṣma depth, or as_of_date falls outside the built range.',
         ),
+    // Item 16 (wave W3): Kota-Chakra fort chart.
+    kotaChakraNow.reachable && kotaChakraNow.rows.length > 0
+      ? computedCoverage('kota_chakra')
+      : honestEmptyCoverage(
+          'kota_chakra',
+          !kotaChakraNow.reachable
+            ? 'L3 registry (query_kota_chakra) could not be dispatched this call.'
+            : `ka_kota_chakra has not built this chart, or its scanned horizon does not cover ${asOfDate} — honest empty, not fabricated.`,
+        ),
+    // Item 17 (wave W3): Sudarśana-Chakra year-wheel.
+    sudarshanaVarshaNow.reachable && sudarshanaVarshaNow.current != null
+      ? computedCoverage('sudarshana_varsha')
+      : honestEmptyCoverage(
+          'sudarshana_varsha',
+          !sudarshanaVarshaNow.reachable
+            ? 'L3 registry (query_sudarshana_varsha) could not be dispatched this call.'
+            : `ka_sudarshana_varsha has not built this chart, or ${asOfDate} falls outside the birth..birth+120y built horizon — honest empty, not fabricated.`,
+        ),
+    // Item 4 (wave W3): Moorti-nirṇaya per graha.
+    moortiNirnayaNow.reachable && moortiNirnayaNow.rows.length > 0
+      ? computedCoverage('moorti_nirnaya')
+      : honestEmptyCoverage(
+          'moorti_nirnaya',
+          !moortiNirnayaNow.reachable
+            ? 'L3 registry (query_moorti_nirnaya) could not be dispatched this call.'
+            : `ka_moorti_nirnaya has not built this chart, or its scanned horizon does not cover ${asOfDate} — honest empty, not fabricated.`,
+        ),
+    // Item 5 (wave W3, closes R-19): vedha application (house_vedha + sarvatobhadra). An
+    // empty result is the classically NORMAL state on most days (no vedha-checkable transit
+    // or sarvatobhadra-vedha dwelling currently active) — this coverage entry cannot
+    // distinguish that from "chart not yet built", matching the same honest ambiguity
+    // kota_chakra/sudarshana_varsha already carry (see their own coverage messages above).
+    vedhaGocharaNow.reachable && vedhaGocharaNow.rows.length > 0
+      ? computedCoverage('vedha_gochara')
+      : honestEmptyCoverage(
+          'vedha_gochara',
+          !vedhaGocharaNow.reachable
+            ? 'L3 registry (query_vedha_gochara) could not be dispatched this call.'
+            : `ka_vedha_gochara has not built this chart, or no vedha-checkable transit / `
+              + `sarvatobhadra-vedha dwelling is currently active for ${asOfDate} — honest `
+              + 'empty (the classically normal state on most days), not fabricated.',
+        ),
+    // Item 13 (wave W3): Tithi-Praveśa (lunar-return annual chart). `current: null` is
+    // honest-empty — e.g. asOfDate predates birth, or exceeds the 120-year built horizon.
+    tithiPraveshaNow.reachable && tithiPraveshaNow.current != null
+      ? computedCoverage('tithi_pravesha')
+      : honestEmptyCoverage(
+          'tithi_pravesha',
+          !tithiPraveshaNow.reachable
+            ? 'L3 registry (query_tithi_pravesha) could not be dispatched this call.'
+            : `ka_tithi_pravesha has not built this chart, or ${asOfDate} falls outside the `
+              + 'built 120-year praveśa-year horizon — honest empty, not fabricated.',
+        ),
   ]
 
   const drillPointers: DrillPointerLike[] = [
@@ -1449,6 +1797,11 @@ export async function computeKalaNow(
     dasha_lord_transit_condition: dashaLordCondition.rows,
     sukshma_boundary_uncertainty: sukshmaBoundaryUncertainty.intervals,
     dasha_sandhi: dashaSandhi.result,
+    kota_chakra: kotaChakraNow.rows,
+    sudarshana_varsha: sudarshanaVarshaNow.current,
+    moorti_nirnaya: moortiNirnayaNow.rows,
+    vedha_gochara: vedhaGocharaNow.rows,
+    tithi_pravesha: tithiPraveshaNow.current,
     drill_pointers: drillPointers,
     provenance_envelope: {
       source: 'kala_now_get',
@@ -1457,6 +1810,9 @@ export async function computeKalaNow(
         'call_panchanga_service (panchang.py, engine-direct)', 'get_panchanga (L1 chart_facts, natal panchāṅga)',
         'get_dignity (graha_sign_attributes)', 'query_planet_transit (L0 ephemeris)',
         'query_active_dashas (L3, EL-33)', 'bg_dignity_reference (L0)', 'get_dashas (chart_dashas, level_n=4)',
+        'kala_kota_chakra (ka_kota_chakra, item 16)', 'kala_sudarshana_varsha (ka_sudarshana_varsha, item 17)',
+        'kala_moorti_nirnaya (ka_moorti_nirnaya, item 4)', 'kala_vedha_gochara (ka_vedha_gochara, item 5, closes R-19)',
+        'kala_tithi_pravesha (ka_tithi_pravesha, item 13)',
       ],
       chart_id: chartId,
       as_of_date: asOfDate,
@@ -1476,6 +1832,11 @@ export async function computeKalaNow(
       dasha_lord_transit_condition_rows_with_transit_data: dashaLordCondition.rowsWithTransitData,
       sukshma_boundary_uncertainty_reachable: sukshmaBoundaryUncertainty.reachable,
       dasha_sandhi_reachable: dashaSandhi.chainReachable,
+      kota_chakra_reachable: kotaChakraNow.reachable,
+      sudarshana_varsha_reachable: sudarshanaVarshaNow.reachable,
+      moorti_nirnaya_reachable: moortiNirnayaNow.reachable,
+      vedha_gochara_reachable: vedhaGocharaNow.reachable,
+      tithi_pravesha_reachable: tithiPraveshaNow.reachable,
     },
   }
 }
@@ -1543,11 +1904,33 @@ period's own start/end boundary instants, each served with an honest ± interval
 documented lite-v0 convention, NOT the full birth-time/ayanāṁśa error-propagation model — \
 see kala_uncertainty.ts).
 
+W3 adds two NEW COMPUTATIONS (own per-chart writers, read-only from this facade — §N.5): \
+kota_chakra (item 16 — every graha's CURRENT Kota-Chakra ring, i.e. its nakshatra-count-from- \
+janma classified into stambha/durgantara/prakara/bahya, with entry/exit window and an \
+attack/defence reading) and sudarshana_varsha (item 17 — the CURRENT varsha year's tri-lagna \
+progressed signs, i.e. where Janma/Chandra/Sūrya Lagna each stand this year of life, plus \
+whether all three currently coincide).
+
+W3 (Lane w3-moorti-vedha) adds two more: moorti_nirnaya (item 4 — the CURRENT classical gold/ \
+silver/copper/iron transit quality per graha, resolved from the Moon's nakshatra at the \
+ingress moment against the REAL, cited bg_transit_moorti table) and vedha_gochara (item 5, \
+closes defect R-19 — CURRENT vedha/obstruction rows, both house_vedha, REAL cited BPHS/ \
+Phaladeepika house-level rule, and sarvatobhadra, an honestly disclosed algorithmic \
+approximation pending corpus ingestion — never conflated, see vedha_kind/uncited_extension \
+on every row).
+
+W3 (Lane w3-tithi-pravesha) adds one more: tithi_pravesha (item 13 — the CURRENT praveśa \
+year's Tithi-Praveśa lunar-return annual chart, the Moon-anchored counterpart to Tājika \
+Vārṣaphala: the instant the transiting Moon returns to its exact natal sidereal longitude \
+nearest this year's solar-birthday anniversary, plus the resulting Praveśa Lagna).
+
 Output includes: reading (structured argument) + reading_prose (composed text) + windows + \
 darshana + disha_shula + gulika_kalam_now + chandrashtama + hora_now + janma_resonance + \
 gochara_dual_reference + dasha_lord_transit_condition + sukshma_boundary_uncertainty + \
-dasha_sandhi + tri_plane (→ kala_ahead_get for what's coming, → kala_elect_get for when to \
-act) + coverage + drill_pointers.
+dasha_sandhi + kota_chakra + sudarshana_varsha + moorti_nirnaya + vedha_gochara + \
+tithi_pravesha + tri_plane \
+(→ kala_ahead_get for what's coming, → kala_elect_get for when to act) + coverage + \
+drill_pointers.
 
 Requires: chart_id (UUID). Successor to kala_windows_get for "what is my state now" queries \
 — kala_windows_get remains live (not retired).`

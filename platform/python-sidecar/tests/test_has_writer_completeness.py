@@ -80,6 +80,14 @@ KNOWN_HAS_WRITER_TRUE: frozenset[str] = frozenset({
     "bg_muhurta_lattice",
     # ── L0 Brahmagyan — migration 485 (ṢAḌ-DARŚANA item 36-substrate/41, parihāra rules) ──
     "bg_parihara_rules",
+    # ── L0 Brahmagyan — migration 522 (ṢAḌ-DARŚANA W2 / ADJUDICATION-2, N_e priors) ──
+    # Step 1 (migration setting has_writer=true) is migration 522's asset_registry
+    # INSERT, which carries `has_writer` true / `has_substeps` false: this writer
+    # implements run(ctx), not plan_substeps.
+    "bg_class_lifetime_counts",
+    # ── L0 Brahmagyan — migration 523 (ṢAḌ-DARŚANA W3 Lane w3-kota-rings,
+    # ADJUDICATION-9 — Kota-Chakra ring table moved to a versioned L0 asset) ──
+    "bg_kota_chakra_rings",
     # ── L1 Gaṇita — migration 342 ────────────────────────────────────────────
     "ga_condition",
     "ga_dashas",
@@ -152,6 +160,22 @@ KNOWN_HAS_WRITER_TRUE: frozenset[str] = frozenset({
     "ka_gochara_sweep",
     # ── L3 Kāla — migration 480 (ṢAḌ-DARŚANA W2 Lane C, the temporal field) ──
     "ka_kshetra",
+    # ── L3 Kāla — migrations 520/521 (ṢAḌ-DARŚANA W3 Lane w3-kota-sudarshana,
+    # registry items 16/17) ──────────────────────────────────────────────────
+    "ka_kota_chakra",
+    "ka_sudarshana_varsha",
+    # ── L3 Kāla — migrations 525/526 (ṢAḌ-DARŚANA W3 Lane w3-moorti-vedha,
+    # registry items 4/5) ─────────────────────────────────────────────────────
+    "ka_moorti_nirnaya",
+    "ka_vedha_gochara",
+    # ── L3 Kāla — migration 531 (ṢAḌ-DARŚANA W3 Lane w3-tithi-pravesha,
+    # registry item 13, Tithi-Praveśa lunar-return annual chart) ─────────────
+    "ka_tithi_pravesha",
+    # ── Brahmagyan — migration 528 (ADJUDICATION-11 Part 4, mandatory cited
+    # vedha rows for R-19 closure; bg_sarvatobhadra_grid, migration 529, has
+    # NO writer — deliberately empty, migration-seeded only) ─────────────────
+    "bg_vedha_malefic_scale",
+    "bg_phaladeepika_latta",
     # ── L4 Phala — migration 342 ─────────────────────────────────────────────
     "ph_muhurta",
     "ph_nimitta",
@@ -182,6 +206,14 @@ KNOWN_HAS_WRITER_TRUE: frozenset[str] = frozenset({
     # §7.5: that edge would form an L3↔L5 cycle and topoSort would reject every
     # build plan containing either asset).
     "mi_bhara",
+    # ── L5 Mīmāṃsā — migration 531 (ṢAḌ-DARŚANA W4 Lane S, item 42) ──────────
+    # Unified Intervention Ledger: falsifier resolution against the LEL, study-arm
+    # reclassification, and arm-4 (acted_without_election) origination. Filing
+    # itself happens live, at serve time, through the sanctioned HTTP action
+    # (platform-mcp/src/lib/intervention_filing.ts) — never inserted by this
+    # writer. depends_on = ['ka_kshetra'] ONLY (KALA_W2_FIELD_DESIGN §7.5
+    # acyclicity rule, mirrored from mi_bhara above).
+    "mi_sankalpa",
 })
 
 # Sub-registrations that share a writer with their parent.

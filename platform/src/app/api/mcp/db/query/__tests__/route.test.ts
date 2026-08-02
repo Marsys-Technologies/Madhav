@@ -80,3 +80,33 @@ describe('POST /api/mcp/db/query — bg_dignity_reference whitelist (PARISHODHAN
     expect(res.status).toBe(200)
   })
 })
+
+describe('POST /api/mcp/db/query — kala_gochara_authority whitelist (ADJUDICATION-6, migration 527)', () => {
+  beforeEach(() => {
+    mockQuery.mockReset()
+    process.env.MCP_INTERNAL_TOKEN = 'test-token'
+  })
+
+  it('register_gochara_windows.ts\'s AUTHORITATIVE_GENERATION_FILTER correlated subquery is now accepted', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [] })
+    const res = await POST(makeReq({
+      sql: `SELECT id, chart_id, event_class FROM kala_gochara_windows
+             WHERE chart_id = $1 AND window_start <= $2 AND window_end >= $2
+               AND kala_gochara_windows.generation = COALESCE(
+                 (SELECT authoritative_generation FROM kala_gochara_authority WHERE chart_id = kala_gochara_windows.chart_id),
+                 'v1')`,
+      params: ['482012f1-710e-4a25-994a-93821f5871aa', '2026-08-01'],
+    }))
+    expect(res.status).toBe(200)
+    expect(mockQuery).toHaveBeenCalledTimes(1)
+  })
+
+  it('a bare SELECT against kala_gochara_authority alone is accepted (whitelist entry exists standalone too)', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [{ authoritative_generation: 'v1' }] })
+    const res = await POST(makeReq({
+      sql: `SELECT authoritative_generation FROM kala_gochara_authority WHERE chart_id = $1`,
+      params: ['482012f1-710e-4a25-994a-93821f5871aa'],
+    }))
+    expect(res.status).toBe(200)
+  })
+})

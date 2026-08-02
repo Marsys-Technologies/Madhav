@@ -155,6 +155,16 @@ export const TOOL_NAME_TO_URI: Record<string, CapabilityUri> = {
   // separately for its own schema drift.
   query_calibration: 'marsys://tool/L5/query_calibration',
 
+  // ── ṢAḌ-DARŚANA W3 items 36/41 — the muhūrta election substrate read path ────
+  // Two L0 Brahmagyan readers over the global tables PR #930 landed
+  // (bg_muhurta_lattice; bg_parihara_rules + bg_muhurta_activity_rules +
+  // bg_muhurta_factor_census). They are pure readers: the lattice-annotation /
+  // parihāra-adjudication / Pareto / gap-report ENGINE over them is single-sourced
+  // in platform-mcp `lib/kala_lattice_query.ts` (ONE-ENGINE RULE — ELECT and
+  // YAJÑA-SETU share it, neither owns a second copy).
+  query_muhurta_lattice: 'marsys://tool/L0/query_muhurta_lattice',
+  query_parihara_graph:  'marsys://tool/L0/query_parihara_graph',
+
   // ── WP-1.7 (LCA-1 / LCA-13) — local-bench whitelist resolution ──────────────
   // These 5 retrieval-tool names were whitelisted for MCP surgical dispatch but
   // had NO TOOL_NAME_TO_URI entry → getToolByName() returned undefined → the local
@@ -484,6 +494,9 @@ export const SURGICAL_TOOLS = [
   'query_rm_resonances',
   // SARVA-SIDDHI W-4 / CR-24: bodha_mechanisms first-class serving face.
   'query_mechanisms',
+  // ṢAḌ-DARŚANA W3 items 36/41: muhūrta election substrate readers (L0, global).
+  'query_muhurta_lattice',
+  'query_parihara_graph',
 ] as const
 
 export type SurgicalToolName = (typeof SURGICAL_TOOLS)[number]
@@ -574,6 +587,11 @@ export const MCP_TO_RETRIEVAL_TOOL: Record<string, SurgicalToolName> = {
   bodha_rm_resonances_get:     'query_rm_resonances',       // F-0161,0165,0174
   // SARVA-SIDDHI W-4 / CR-24: MCP-facing name for the bodha_mechanisms serving face.
   bodha_mechanisms_get:        'query_mechanisms',          // CR-24 bodha_mechanisms
+  // ṢAḌ-DARŚANA W3 items 36/41: MCP-facing names for the muhūrta election substrate.
+  // Consumed by platform-mcp's `lib/kala_lattice_query.ts` (the contender-lattice engine
+  // behind kala_elect_get); global scope, so no chart authorization applies.
+  query_muhurta_lattice:       'query_muhurta_lattice',     // item 36 lattice rows
+  query_parihara_graph:        'query_parihara_graph',      // items 36/41 parihāra + census
 }
 
 /**

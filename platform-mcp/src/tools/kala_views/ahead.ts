@@ -115,6 +115,12 @@ import {
 } from '../../lib/kala_envelope.js'
 import { composeArgument } from '../../lib/argument_composer.js'
 import { autoDetectTrimmableSections, finalizeMcpBudget } from '../../lib/response_budget.js'
+// ṢAḌ-DARŚANA W4 (Lane R, Elevation §6 D4): Mode-1 ritual-opportunity rows join the
+// 90-day digest. `fetchLatticeSubstrate` is the FROZEN engine's own fetcher and
+// `scoreMode1Opportunities` terminates at that same engine — the ONE-ENGINE RULE holds
+// through this path too; nothing here re-implements adjudication or grading.
+import { fetchLatticeSubstrate } from '../../lib/kala_lattice_query.js'
+import { scoreMode1Opportunities } from '../../lib/kala_ritual_resonance.js'
 
 // ── Infrastructure (self-contained proxy helper — see now.ts's identical header note on
 // why this is duplicated rather than shared: avoids coupling this lane's facade to files
@@ -379,6 +385,12 @@ interface ActiveDashaChainEntry {
   level_name: string
   lord_graha: string
   lord_sign: string | null
+  // Item 31 (period-echo mining) needs the CURRENT period's own exact bounds — query_active_
+  // dashas already returns these (its own DashaRow.start_date/end_date) — read verbatim, never
+  // re-derived (§N.5). Optional (may be absent on a malformed row) rather than defaulted to a
+  // fabricated date.
+  start_date: string | null
+  end_date: string | null
 }
 
 /** "Which daśā am I running TODAY?" via the EXISTING L3 convenience face
@@ -407,6 +419,8 @@ async function fetchActiveVimshottariChain(
       level_name: typeof c['level_name'] === 'string' ? (c['level_name'] as string) : `L${c['level_n']}`,
       lord_graha: String(c['lord_graha'] ?? ''),
       lord_sign: typeof c['lord_sign'] === 'string' ? (c['lord_sign'] as string) : null,
+      start_date: typeof c['start_date'] === 'string' ? (c['start_date'] as string) : null,
+      end_date: typeof c['end_date'] === 'string' ? (c['end_date'] as string) : null,
     })),
   }
 }
@@ -430,10 +444,17 @@ async function computeDashaLordForwardTransitCondition(
   /** Earned-signal detector (CLAUDE.md §N.8): how many served rows actually carry a transit
    *  sign. `coverage`/`*_reachable` derive from THIS, not from "the dispatch returned 200". */
   rowsWithTransitData: number
+  /** The raw active-chain entries this call already fetched (level_n/lord_graha/start_date/
+   *  end_date) — exposed so item 31 (period-echo mining, below) can reuse the SAME dispatch
+   *  rather than re-querying query_active_dashas a second time for the same date. */
+  chain: ActiveDashaChainEntry[]
 }> {
   const chain = await fetchActiveVimshottariChain(chartId, ayanamshaId, identifyAsOfDate, principal)
   if (!chain.ok || chain.entries.length === 0) {
-    return { rows: [], chainReachable: chain.ok, transitReachable: true, transitFailure: null, rowsWithTransitData: 0 }
+    return {
+      rows: [], chainReachable: chain.ok, transitReachable: true, transitFailure: null,
+      rowsWithTransitData: 0, chain: chain.entries,
+    }
   }
   const uniqueGrahas = Array.from(new Set(chain.entries.map((e) => e.lord_graha).filter(Boolean)))
   const [snapshots, dignities] = await Promise.all([
@@ -469,7 +490,7 @@ async function computeDashaLordForwardTransitCondition(
     }
   })
   const rowsWithTransitData = rows.filter((r) => r.transit_sign_number != null).length
-  return { rows, chainReachable: chain.ok, transitReachable, transitFailure, rowsWithTransitData }
+  return { rows, chainReachable: chain.ok, transitReachable, transitFailure, rowsWithTransitData, chain: chain.entries }
 }
 
 // ── W1 item 30 (Mudda daśā joined to the varsha plane) — SHAD_DARSHANA_BRIEF_v2_0.md §3 W1.
@@ -696,6 +717,372 @@ async function computeMuddaDashaVarsha(
   }
 }
 
+// ── W3 item 31 (period-echo mining, hypothesis-framed) — SHAD_DARSHANA_BRIEF_v2_0.md §3 W3,
+// v2 §I.31 / KALA_SIX_VIEWS_DESIGN_v2_0.md §E ("AHEAD — add: ... period-echo mining — 'the
+// last time a Saturn sub-period ran (2001–2004), the log shows X' — LEL-verified resonance of
+// same-lord sub-periods, served as narrative hypothesis with falsifier, never as law
+// (statistically tiny n, honestly labeled — but it is exactly how a great jyotiṣī actually
+// reasons)").
+//
+// FIELD-INDEPENDENCE FINDING (pre-build investigation; both canonical charts checked LIVE
+// against the production DB before writing any code — SHAD_DARSHANA_STATE.md's own W3
+// next-action lists item 31 among the lanes to dispatch NOW, separately from items 33/34 which
+// it explicitly marks "field-dependent, wait for the field"). This item does NOT require the
+// W2 kala_field (still empty in production — Gate W2 is blocked on the N_e priors ruling, so
+// ka_kshetra writes zero field rows; see SHAD_DARSHANA_STATE.md's "Gate W2" ledger row). It
+// joins two substrates that already exist per-chart, both pre-dating W2:
+//   (a) chart_dashas (marsys://tool/L1/get_dashas, lord_graha + level facets) — same-lord
+//       recurrence of Vimśottarī Mahādaśā/Antardaśā periods across the chart's full built span
+//       (verified live: both canonical charts carry ~11-13 Antardaśā occurrences per lord,
+//       i.e. the built table spans more than one 120-year Vimśottarī cycle);
+//   (b) life_events (marsys://tool/L5/lel_query — the SAME capability STORY's item-10
+//       per-chapter LEL pinning already reads), joined by date-range overlap — exactly
+//       STORY's `pinLelEventsToChapter` pattern, no new computation about the events
+//       themselves (§N.5/B.10).
+// LEL is native-only (verified live: `life_events` carries 63 rows for chart 482012f1 and
+// ZERO for chart_id=1c826d5a) — so on the second canonical chart this facade correctly reports
+// the STRUCTURAL echo (same-lord recurrence) with `lel_event_count: 0` on every candidate,
+// never a fabricated biographical corroboration.
+//
+// PRE-BIRTH EXCLUSION. `chart_dashas` genuinely carries rows from BEFORE the native's birth
+// (the balance-of-daśā Mahādaśā active at birth starts before the birth date, and the built
+// table extends the classical 120-year cycle in both directions — verified live: chart
+// 482012f1 carries Saturn Antardaśā rows from 1953 and 1962, 22-31 years before the 1984 birth
+// date). Citing one of those as a period "the native lived through" would itself be a
+// fabrication, so every candidate is floored at the native's own birth year — read from the
+// SAME birth-anchored first chapter (parva_index=1) STORY's file-header doc-comment already
+// establishes as the birth-anchored chapter (marsys://tool/L3/query_life_arc, top_k=1), never
+// a second birth-date source.
+//
+// HYPOTHESIS DISCIPLINE (LAW ZERO). Every entry is served under `hypothesis` +
+// `confidence_basis` + `falsifier` — never as a verdict or prediction. A level with zero
+// qualifying prior same-lord occurrences reports `insufficient_data` honestly. This is the
+// STRUCTURALLY EXPECTED, not exceptional, outcome at the Mahādaśā level: Vimśottarī's 120-year
+// cycle gives each lord exactly one Mahādaśā per cycle, so a lived MD lord essentially never
+// repeats within a human lifetime — verified live on both canonical charts (every MD-level
+// lord_graha carries at most 1-2 built rows, and the second occurrence, when present, falls
+// 100+ years in the future). Antardaśā-level repeats are the astrologically live case (up to 9
+// occurrences of a given lord per 120-year cycle, one per Mahādaśā).
+
+interface DashaEchoRow {
+  lord_graha: string
+  level_n: number
+  start_date: string
+  end_date: string
+}
+
+const PERIOD_ECHO_LEVEL_NAME: Record<number, string> = { 1: 'Mahadasha', 2: 'Antardasha' }
+const PERIOD_ECHO_WINDOW_START = '1900-01-01'
+const PERIOD_ECHO_WINDOW_END = '2100-12-31'
+
+/** Every past occurrence of `lordGraha` at `levelN` (Vimśottarī) across the chart's full built
+ *  span, via the SAME `marsys://tool/L1/get_dashas` capability `query_dasha_periods`/
+ *  `ganita_dasha_periods_get` already serve — no new computation, no new migration. */
+async function fetchDashaPeriodsByLordLevel(
+  chartId: string,
+  ayanamshaId: string,
+  lordGraha: string,
+  levelN: number,
+  principal: Principal,
+): Promise<{ rows: DashaEchoRow[]; ok: boolean }> {
+  const resp = await callRegistryCapability(
+    'marsys://tool/L1/get_dashas',
+    {
+      chart_id: chartId,
+      ayanamsha_id: ayanamshaId,
+      system: 'vimshottari',
+      level: levelN,
+      lord_graha: lordGraha,
+      window_start: PERIOD_ECHO_WINDOW_START,
+      window_end: PERIOD_ECHO_WINDOW_END,
+      fields: 'compact',
+      limit: 50,
+    },
+    principal,
+  )
+  if (!resp.ok || !resp.content) return { rows: [], ok: false }
+  const rawRows = (resp.content['rows'] as Array<Record<string, unknown>> | undefined) ?? []
+  const rows: DashaEchoRow[] = rawRows
+    .filter((r) => typeof r['start_date'] === 'string' && typeof r['end_date'] === 'string')
+    .map((r) => ({
+      lord_graha: typeof r['lord_graha'] === 'string' ? (r['lord_graha'] as string) : lordGraha,
+      level_n: typeof r['level_n'] === 'number' ? (r['level_n'] as number) : levelN,
+      start_date: r['start_date'] as string,
+      end_date: r['end_date'] as string,
+    }))
+  return { rows, ok: true }
+}
+
+/** Birth-year floor — see the pre-birth-exclusion doc-comment above. Reads the birth-anchored
+ *  first chapter (`parva_index=1`, lowest ordinal, per `ORDER BY parva_index`) via the SAME
+ *  `marsys://tool/L3/query_life_arc` capability STORY already calls; `top_k: 1` so this is a
+ *  single bounded row, not the full life-arc fetch. */
+async function fetchBirthYearFloor(chartId: string, principal: Principal): Promise<number | null> {
+  const resp = await callRegistryCapability(
+    'marsys://tool/L3/query_life_arc',
+    { chart_id: chartId, include_lel_events: false, top_k: 1, offset: 0 },
+    principal,
+  )
+  if (!resp.ok || !resp.content) return null
+  const parvas = (resp.content['parvas'] as Array<Record<string, unknown>> | undefined) ?? []
+  const first = parvas[0]
+  return typeof first?.['start_year'] === 'number' ? (first['start_year'] as number) : null
+}
+
+/** Minimal local LEL row shape for period-echo purposes — a DELIBERATE local duplicate of
+ *  story.ts's `RawLelEvent` (this lane's established anti-coupling convention: see this
+ *  file's header note on why `callRegistryCapability` itself is duplicated rather than
+ *  shared — platform-mcp facades do not reach into a sibling lane's private module). */
+interface RawLelEventEcho {
+  event_id: string
+  event_date: string
+  category: string
+  domain: string
+  event_type: string
+  description: string
+  source_citation: string
+  shape?: 'point' | 'interval' | 'chain'
+  interval_start?: string | null
+  interval_end?: string | null
+}
+
+const LEL_ECHO_PAGE_LIMIT = 50
+const LEL_ECHO_MAX_PAGES = 10
+
+/** Fetches the WHOLE LEL corpus for a chart via `marsys://tool/L5/lel_query`, paginated to
+ *  exhaustion — a local duplicate of story.ts's `fetchAllChartLelEvents` (item 10), same
+ *  capability, same pagination discipline, same never-throws contract: an LEL outage must not
+ *  take this view down, and is reported honestly via `fetchError`, never silently swallowed
+ *  (B.10). CIRCULARITY GUARD (brief §7 rail): this is a serving-layer read that terminates at
+ *  THIS response — nothing here is written to any table or consumed by any other writer,
+ *  exactly the boundary story.ts's own CIRCULARITY GUARD note documents for its LEL read. */
+async function fetchAllChartLelEventsForEcho(
+  chartId: string,
+  principal: Principal,
+): Promise<{ events: RawLelEventEcho[]; fetchError: string | null }> {
+  const events: RawLelEventEcho[] = []
+  let offset = 0
+  try {
+    for (let page = 0; page < LEL_ECHO_MAX_PAGES; page++) {
+      const resp = await callRegistryCapability(
+        'marsys://tool/L5/lel_query',
+        { chart_id: chartId, limit: LEL_ECHO_PAGE_LIMIT, offset },
+        principal,
+      )
+      // NOTE: this file's local `callRegistryCapability` (unlike shared.ts's
+      // `callKalaRegistryCap` story.ts uses) swallows a dispatch failure into
+      // `{ ok: false, content: null }` rather than throwing — so a failed dispatch must be
+      // detected HERE, not assumed to surface via the catch block below. Treating `!resp.ok`
+      // the same as "zero events" would make a genuine outage indistinguishable from a
+      // genuinely-empty LEL corpus (B.10).
+      if (!resp.ok || !resp.content) {
+        return {
+          events,
+          fetchError: `marsys://tool/L5/lel_query dispatch failed (page offset=${offset})`,
+        }
+      }
+      const pageEvents = (resp.content['events'] as RawLelEventEcho[] | undefined) ?? []
+      events.push(...pageEvents)
+      const hasMore = resp.content['has_more'] === true
+      if (pageEvents.length === 0 || !hasMore) break
+      offset += pageEvents.length
+    }
+    return { events, fetchError: null }
+  } catch (err) {
+    return { events, fetchError: String(err) }
+  }
+}
+
+/** An LEL event's effective date span — mirrors story.ts's `lelEventSpan` exactly (interval
+ *  events use their real bounds; every other shape collapses to a single-day span, never a
+ *  fabricated wider bound for a point event). */
+function lelEventSpanEcho(event: RawLelEventEcho): { start: string; end: string } {
+  if (event.shape === 'interval' && event.interval_start && event.interval_end) {
+    return { start: event.interval_start, end: event.interval_end }
+  }
+  return { start: event.event_date, end: event.event_date }
+}
+
+function truncateEchoDescription(s: string): string {
+  return s.length > 200 ? `${s.slice(0, 197)}...` : s
+}
+
+export interface PeriodEchoLelEvent {
+  event_id: string
+  event_date: string
+  category: string
+  domain: string
+  description: string
+  source_citation: string
+}
+
+export interface PeriodEchoCandidate {
+  start_date: string
+  end_date: string
+  lel_event_count: number
+  lel_events_sample: PeriodEchoLelEvent[]
+}
+
+export interface PeriodEchoEntry {
+  level_n: number
+  level_name: string
+  lord_graha: string
+  current_period: { start_date: string; end_date: string }
+  same_lord_past_occurrence_count: number
+  lel_corroborated_occurrence_count: number
+  candidates: PeriodEchoCandidate[]
+  /** Explicit hypothesis prose, or `null` when `status: 'insufficient_data'` — NEVER a
+   *  prediction/verdict (LAW ZERO). */
+  hypothesis: string | null
+  confidence_basis: string
+  falsifier: string
+  status: 'hypothesis_served' | 'insufficient_data'
+  insufficient_data_reason: string | null
+}
+
+/** Item 31's core: for ONE currently-active chain entry (Mahādaśā or Antardaśā), finds every
+ *  COMPLETED prior occurrence of the SAME lord at the SAME level in the native's own lived
+ *  timeline (birth-floored, ends before the current period started), joins each to the LEL
+ *  corpus by date-range overlap, and composes an explicit, falsifiable hypothesis — never a
+ *  prediction. Template-composed prose only (campaign rail: "the argument composer is
+ *  template-over-computed-data; no generative call in any serving path"). */
+async function computePeriodEchoForLevel(
+  chartId: string,
+  ayanamshaId: string,
+  levelN: number,
+  currentLordGraha: string,
+  currentStart: string,
+  currentEnd: string,
+  birthYearFloor: number | null,
+  lelEvents: RawLelEventEcho[],
+  lelFetchError: string | null,
+  principal: Principal,
+): Promise<PeriodEchoEntry> {
+  const levelName = PERIOD_ECHO_LEVEL_NAME[levelN] ?? `L${levelN}`
+  const currentPeriod = { start_date: currentStart, end_date: currentEnd }
+  const { rows, ok } = await fetchDashaPeriodsByLordLevel(chartId, ayanamshaId, currentLordGraha, levelN, principal)
+
+  if (!ok) {
+    return {
+      level_n: levelN, level_name: levelName, lord_graha: currentLordGraha, current_period: currentPeriod,
+      same_lord_past_occurrence_count: 0, lel_corroborated_occurrence_count: 0, candidates: [], hypothesis: null,
+      confidence_basis: 'N=0 comparisons — L1 dasha registry (get_dashas) unreachable this call.',
+      falsifier: 'not applicable — no hypothesis served',
+      status: 'insufficient_data',
+      insufficient_data_reason: 'L1 dasha registry (marsys://tool/L1/get_dashas) unreachable this call.',
+    }
+  }
+
+  // Birth-floor unresolved: withhold ENTIRELY rather than risk citing a pre-birth row as a
+  // "lived" past occurrence — this must gate BEFORE filtering, not only the zero-rows branch,
+  // otherwise a genuinely pre-birth row could slip through un-excluded whenever the floor call
+  // fails but the lord-level query still returns rows (verified live: chart_dashas DOES carry
+  // pre-birth rows for both canonical charts — see the item-31 doc-comment above).
+  if (birthYearFloor == null) {
+    return {
+      level_n: levelN, level_name: levelName, lord_graha: currentLordGraha, current_period: currentPeriod,
+      same_lord_past_occurrence_count: 0, lel_corroborated_occurrence_count: 0, candidates: [], hypothesis: null,
+      confidence_basis: 'N=0 comparisons — birth-year floor unresolved.',
+      falsifier: 'not applicable — no hypothesis served',
+      status: 'insufficient_data',
+      insufficient_data_reason:
+        `No prior ${currentLordGraha} ${levelName} occurrence could be safely checked: the birth-year ` +
+        'floor could not be resolved (marsys://tool/L3/query_life_arc unreachable), and citing a row ' +
+        'without confirming it postdates the native\'s birth risks citing a pre-birth period — served ' +
+        'insufficient_data rather than take that risk.',
+    }
+  }
+
+  const birthFloorDate = `${birthYearFloor}-01-01`
+  const pastRows = rows.filter((r) => {
+    if (r.end_date >= currentStart) return false // only genuinely COMPLETED prior occurrences
+    if (r.start_date < birthFloorDate) return false // never cite a pre-birth row
+    return true
+  })
+
+  if (pastRows.length === 0) {
+    const reason =
+      `No prior ${currentLordGraha} ${levelName} occurrence in the native's own lived timeline ` +
+      `(since ${birthYearFloor}) precedes the current period. ` +
+      (levelName === 'Mahadasha'
+        ? "Expected: Vimśottarī's 120-year cycle gives each lord exactly one Mahādaśā per cycle, so a " +
+          'repeat within a human lifetime is structurally rare.'
+        : "This is the first time this lord has run this period at this level in the native's life.")
+    return {
+      level_n: levelN, level_name: levelName, lord_graha: currentLordGraha, current_period: currentPeriod,
+      same_lord_past_occurrence_count: 0, lel_corroborated_occurrence_count: 0, candidates: [], hypothesis: null,
+      confidence_basis: 'N=0 same-lord prior occurrences found in the native\'s lived timeline.',
+      falsifier: 'not applicable — no hypothesis served',
+      status: 'insufficient_data',
+      insufficient_data_reason: reason,
+    }
+  }
+
+  const candidates: PeriodEchoCandidate[] = pastRows
+    .map((r) => {
+      const pinned = lelFetchError
+        ? []
+        : lelEvents.filter((ev) => {
+            const span = lelEventSpanEcho(ev)
+            return span.start <= r.end_date && span.end >= r.start_date
+          })
+      return {
+        start_date: r.start_date,
+        end_date: r.end_date,
+        lel_event_count: pinned.length,
+        lel_events_sample: pinned.slice(0, 3).map((ev) => ({
+          event_id: ev.event_id,
+          event_date: ev.event_date,
+          category: ev.category,
+          domain: ev.domain,
+          description: truncateEchoDescription(ev.description),
+          source_citation: ev.source_citation,
+        })),
+      }
+    })
+    .sort((a, b) => b.lel_event_count - a.lel_event_count || b.start_date.localeCompare(a.start_date))
+
+  const lelCorroboratedCount = candidates.filter((c) => c.lel_event_count > 0).length
+  const topCandidates = candidates.slice(0, 3)
+  const hypothesisParts = topCandidates.map((c) =>
+    c.lel_event_count > 0
+      ? `${c.start_date} to ${c.end_date} (${c.lel_event_count} logged life event(s): ${c.lel_events_sample.map((e) => e.domain).join('; ')})`
+      : `${c.start_date} to ${c.end_date} (no logged life events on file)`,
+  )
+
+  const hypothesis =
+    `Hypothesis: the current ${currentLordGraha} ${levelName} (${currentStart} to ${currentEnd}) may echo ` +
+    `${currentLordGraha}'s prior ${levelName}${topCandidates.length > 1 ? ' periods' : ' period'} — ` +
+    `${hypothesisParts.join('; ')} — because both share the same daśā lord at the same level. This is a ` +
+    'structural resonance hypothesis, not a prediction: the sample size is small and no cohort-normalized ' +
+    "calibration backs it yet (that is W2's mi_bhara job, per SHAD_DARSHANA_BRIEF_v2_0.md §3 W2 stage 9)."
+
+  const lelNote = lelFetchError
+    ? ` LEL fetch failed (${lelFetchError}) — every lel_event_count above is UNAVAILABLE, not a confirmed zero.`
+    : ''
+
+  return {
+    level_n: levelN,
+    level_name: levelName,
+    lord_graha: currentLordGraha,
+    current_period: currentPeriod,
+    same_lord_past_occurrence_count: pastRows.length,
+    lel_corroborated_occurrence_count: lelCorroboratedCount,
+    candidates,
+    hypothesis,
+    confidence_basis:
+      `N=${pastRows.length} same-lord prior ${levelName} occurrence(s) found in the native's lived timeline; ` +
+      `${lelCorroboratedCount} of ${pastRows.length} carry ≥ 1 logged LEL life event within their span.` +
+      lelNote,
+    falsifier:
+      `If the native's actual experience during ${currentStart}–${currentEnd} does NOT resemble the ` +
+      'domains/themes logged for the cited prior occurrence(s), this hypothesis is falsified — record the ' +
+      'divergence via mimamsa_outcome_record.',
+    status: 'hypothesis_served',
+    insufficient_data_reason: null,
+  }
+}
+
 function dualOutput(data: unknown, toolName = 'kala_ahead_get') {
   let finalData: unknown = data
   if (data && typeof data === 'object' && !Array.isArray(data)) {
@@ -900,11 +1287,24 @@ function computeRecurrenceLadder(
 // computation, template-composed prose only (B.10). ─────────────────────────────────────
 
 export interface AheadDigestItem {
-  kind: 'temporal_window' | 'probabilistic_projection' | 'gulika_kalam' | 'recurrence_ladder_point' | 'mudda_dasha_varsha'
+  // 'ritual_opportunity' added at ṢAḌ-DARŚANA W4 (Lane R, the Elevation §6 D4 clause):
+  // Mode-1 (window, rite) pairs join the digest now that Mode 1 exists. The digest stays a
+  // SELECTION over already-computed rows — Mode 1 is computed by the ritual path and joined
+  // here, never recomputed inside ahead.ts.
+  kind: 'temporal_window' | 'probabilistic_projection' | 'gulika_kalam' | 'recurrence_ladder_point' | 'mudda_dasha_varsha' | 'ritual_opportunity'
   label: string
   window_or_date: string
   detail: string
   fact_ids: string[]
+}
+
+/** One already-computed Mode-1 opportunity, in the minimal shape this digest needs.
+ *  Structurally identical to the fields `RitualOpportunity` exposes — declared locally so
+ *  `ahead.ts` takes no import-graph dependency on Lane R's scorer for a SELECTION step. */
+export interface AheadRitualOpportunityInput {
+  window: { start_utc: string; end_utc: string }
+  rite: { rite_class: string | null; planet: string | null; citation: string | null }
+  score_vector: { composite: number | null; factors_present: string[]; factors_absent: string[] }
 }
 
 export interface AheadDigest90d {
@@ -930,10 +1330,34 @@ function overlapsDigestWindow(
   return end >= asOf && start <= to
 }
 
-const RITUAL_OPPORTUNITIES_NOTE =
-  'Ritual-opportunity rows (kala_ritual_get Mode 1) are not included in this digest — that ' +
-  'computation lands at wave W4 (SHAD_DARSHANA_BRIEF_v2_0.md §3 W4); per the campaign\'s own ' +
-  'Gate W1 note, a ritual-free digest is the correct W1 state, not an omission.'
+/**
+ * ṢAḌ-DARŚANA W4 (Lane R, the Elevation §6 D4 clause) REPLACED THIS NOTE'S SEMANTICS.
+ *
+ * At W1 it was a standing placeholder naming W4 as future work. Post-W4 its survival
+ * UNCHANGED would itself be the gate failure (design §9 G8: "the W1 placeholder note
+ * surviving unchanged — its presence post-W4 is itself the FAIL"). It is now either the
+ * EMPTY STRING (rows are present, so no note is needed) or an honest-empty statement
+ * NAMING THE HORIZON ACTUALLY SEARCHED — dates, not "the horizon".
+ */
+function ritualOpportunitiesNote(
+  rows: AheadRitualOpportunityInput[] | null,
+  asOfDate: string,
+  digestToDate: string,
+): string {
+  if (rows !== null && rows.length > 0) return ''
+  if (rows === null) {
+    return (
+      `No ritual-opportunity rows were joined into this digest: the Mode-1 opportunity scan was ` +
+      `not supplied to this call, so the horizon ${asOfDate} .. ${digestToDate} was NOT searched ` +
+      `for them. This is an unsearched horizon, not an empty one — the two are different claims.`
+    )
+  }
+  return (
+    `No ritual opportunity was found in ${asOfDate} .. ${digestToDate} — the horizon WAS searched ` +
+    `(kala_ritual_get Mode 1, over the muhūrta lattice's auspicious combination-yoga spans) and ` +
+    `returned nothing for this chart. An honest empty over a named, searched horizon.`
+  )
+}
 
 /**
  * E6-lite: builds the fixed 90-day-forward digest by SELECTING (never computing) from the
@@ -952,8 +1376,12 @@ function buildAheadDigest90d(params: {
   gulikaKalamAhead: GulikaKalamAheadWindow[]
   recurrenceLadder: RecurrenceLadderEntry[]
   muddaDashaVarsha: MuddaDashaVarshaJoin | null
+  /** W4 D4: already-computed Mode-1 rows to SELECT from. `null` means the scan was not
+   *  supplied to this call — distinct from `[]`, which means it ran and found nothing. */
+  ritualOpportunities?: AheadRitualOpportunityInput[] | null
 }): AheadDigest90d {
   const { asOfDate, digestToDate, windowFamilies, projectionFamilies, gulikaKalamAhead, recurrenceLadder, muddaDashaVarsha } = params
+  const ritualOpportunities = params.ritualOpportunities ?? null
   const items: AheadDigestItem[] = []
 
   for (const w of windowFamilies) {
@@ -1044,6 +1472,23 @@ function buildAheadDigest90d(params: {
     })
   }
 
+  // ── W4 D4: ritual-opportunity rows, SELECTED (never computed here) ──────────────────
+  for (const o of ritualOpportunities ?? []) {
+    if (!overlapsDigestWindow(o.window.start_utc, o.window.end_utc, asOfDate, digestToDate)) continue
+    const present = o.score_vector.factors_present
+    items.push({
+      kind: 'ritual_opportunity',
+      label: `${o.rite.rite_class ?? 'rite'}${o.rite.planet ? ` (${o.rite.planet})` : ''}`,
+      window_or_date: `${o.window.start_utc.slice(0, 10)} .. ${o.window.end_utc.slice(0, 10)}`,
+      detail:
+        `composite ${o.score_vector.composite ?? 'not scored'} over ${present.length} present ` +
+        `factor(s) [${present.join(', ') || 'none'}]; ${o.score_vector.factors_absent.length} absent ` +
+        `and dropped from the product, never imputed. ` +
+        (o.rite.citation ?? 'no resolvable citation — this row is NOT offered as a prescription'),
+      fact_ids: [],
+    })
+  }
+
   items.sort((a, b) => a.window_or_date.localeCompare(b.window_or_date))
 
   return {
@@ -1052,7 +1497,7 @@ function buildAheadDigest90d(params: {
     horizon_days: 90,
     items,
     item_count: items.length,
-    ritual_opportunities_note: RITUAL_OPPORTUNITIES_NOTE,
+    ritual_opportunities_note: ritualOpportunitiesNote(ritualOpportunities, asOfDate, digestToDate),
   }
 }
 
@@ -1165,6 +1610,10 @@ export interface KalaAheadResult {
   // E6-lite (wave W1): the 90-day forward digest preset — a curated selection over the
   // fields above, bounded to today..+90d. Ritual-free by design (Mode 1 lands at W4).
   digest_90d: AheadDigest90d
+  // Item 31 (wave W3): period-echo mining, hypothesis-framed — same-lord Mahādaśā/Antardaśā
+  // recurrence in the native's own lived timeline, LEL-corroborated where the log has data,
+  // never served as a prediction. One entry per active chain level (Mahadasha, Antardasha).
+  period_echo: PeriodEchoEntry[]
   drill_pointers: DrillPointerLike[]
   provenance_envelope: {
     source: string
@@ -1187,6 +1636,9 @@ export interface KalaAheadResult {
      *  mudda chain and the Muntha genuinely failed independently of each other. */
     muntha_varsha_position_reachable: boolean
     recurrence_ladder_reachable: boolean
+    // Item 31: whether ≥1 period-echo entry actually served a hypothesis (not merely that the
+    // active-chain dispatch returned 200) — §N.8 earned-signal discipline.
+    period_echo_reachable: boolean
   }
 }
 
@@ -1284,8 +1736,78 @@ export async function computeKalaAhead(
   // Item 2 — recurrence-ladder serving, collapsed per signal, forward points only.
   const { entries: recurrenceLadder, anyLadderPresent } = computeRecurrenceLadder(rawActivations, dateFrom, maxItems)
 
+  // Item 31 — period-echo mining (hypothesis-framed), over the SAME active chain item 28
+  // already fetched (dashaLordForward.chain — no second query_active_dashas dispatch).
+  // Genuinely field-independent (see the item-31 doc-comment above `dualOutput` for the full
+  // pre-build investigation this build decision rests on).
+  const [birthYearFloor, lelForEcho] = await Promise.all([
+    fetchBirthYearFloor(chartId, principal),
+    fetchAllChartLelEventsForEcho(chartId, principal),
+  ])
+  const periodEcho: PeriodEchoEntry[] = await Promise.all(
+    dashaLordForward.chain
+      .filter((e) => (e.level_n === 1 || e.level_n === 2) && e.lord_graha && e.start_date != null && e.end_date != null)
+      .map((e) =>
+        computePeriodEchoForLevel(
+          chartId, ayanamshaId, e.level_n, e.lord_graha, e.start_date as string, e.end_date as string,
+          birthYearFloor, lelForEcho.events, lelForEcho.fetchError, principal,
+        ),
+      ),
+  )
+
   // E6-lite — the fixed 90-day forward digest, a pure selection over the fields above.
   const digestToDate = new Date(today.getTime() + 90 * 86400000).toISOString().slice(0, 10)
+
+  // ── W4 D4 (Elevation §6): Mode-1 ritual-opportunity rows join the digest. ────────────
+  // COMPUTED BY THE RITUAL PATH, JOINED HERE — the digest's own discipline is "SELECTING,
+  // never computing", so this calls Lane R's Mode-1 scorer (which itself terminates at the
+  // FROZEN lattice engine) and then SELECTS from its output. `null` on any failure means
+  // "not searched", which the note distinguishes from "searched and empty" — two different
+  // claims that a single empty array would have collapsed into one.
+  let ritualOpportunities: AheadRitualOpportunityInput[] | null = null
+  try {
+    const ritualSubstrate = await fetchLatticeSubstrate(
+      {
+        start_utc: new Date(`${dateFrom}T00:00:00Z`).toISOString(),
+        end_utc: new Date(`${digestToDate}T23:59:59Z`).toISOString(),
+      },
+      principal,
+    )
+    if (ritualSubstrate.lattice_available) {
+      const windows = ritualSubstrate.lattice_rows
+        .filter((r) => r.factor_family === 'combination_yoga')
+        .filter((r) => String((r.detail as { strength?: unknown } | null)?.strength ?? '') === 'auspicious')
+        .map((r) => ({
+          start_utc: r.start_utc,
+          end_utc: r.end_utc,
+          authority_basis: [`${r.factor_family}/${r.factor_key}@${r.start_utc}`],
+          binding_families: [r.factor_family],
+        }))
+      const scan = await scoreMode1Opportunities(
+        {
+          chartId,
+          activityClass: 'upaya_ritual',
+          windows,
+          substrate: ritualSubstrate,
+          subjectLabel: 'ritual opportunity (AHEAD 90-day digest, Mode 1)',
+          limit: 5,
+        },
+        principal,
+      )
+      ritualOpportunities = scan.opportunities.map((o) => ({
+        window: o.window,
+        rite: { rite_class: o.rite.rite_class, planet: o.rite.planet, citation: o.rite.citation },
+        score_vector: {
+          composite: o.score_vector.composite,
+          factors_present: o.score_vector.factors_present,
+          factors_absent: o.score_vector.factors_absent,
+        },
+      }))
+    }
+  } catch {
+    ritualOpportunities = null
+  }
+
   const digest90d = buildAheadDigest90d({
     asOfDate: dateFrom,
     digestToDate,
@@ -1294,6 +1816,7 @@ export async function computeKalaAhead(
     gulikaKalamAhead,
     recurrenceLadder,
     muddaDashaVarsha: muddaDashaVarsha.result,
+    ritualOpportunities,
   })
 
   const reading = buildAheadReading({ horizonLabel, windowFamilies, projectionFamilies, windowsOk, projectionsOk })
@@ -1415,6 +1938,24 @@ export async function computeKalaAhead(
           'No item from any already-computed AHEAD surface (windows/projections/gulika-kālam/recurrence-ladder/mudda-varsha) ' +
             'falls inside the next 90 days for this chart.',
         ),
+    // Item 31: `computed` requires ≥1 entry to actually serve a hypothesis (status ===
+    // 'hypothesis_served') — not merely that the active-chain dispatch returned rows. Every
+    // level honestly reporting insufficient_data (the structurally-expected Mahādaśā case) is
+    // itself a valid, non-fabricated outcome, so it is disclosed via `honestEmptyCoverage`
+    // rather than silently upgraded to `computed`.
+    periodEcho.length > 0
+      ? periodEcho.some((e) => e.status === 'hypothesis_served')
+        ? computedCoverage('period_echo_mining')
+        : honestEmptyCoverage(
+            'period_echo_mining',
+            periodEcho.map((e) => `${e.level_name}: ${e.insufficient_data_reason}`).join(' | '),
+          )
+      : honestEmptyCoverage(
+          'period_echo_mining',
+          dashaLordForward.chainReachable
+            ? 'No active Vimśottarī MD/AD chain resolved for this chart as of today — no lord to mine an echo for.'
+            : 'L3 active-dasha registry (query_active_dashas) unreachable this call.',
+        ),
   ]
 
   const drillPointers: DrillPointerLike[] = [triPlane.interpretation_ref, triPlane.intervention_ref].filter(
@@ -1450,6 +1991,7 @@ export async function computeKalaAhead(
     mudda_dasha_varsha: muddaDashaVarsha.result,
     recurrence_ladder: recurrenceLadder,
     digest_90d: digest90d,
+    period_echo: periodEcho,
     drill_pointers: drillPointers,
     provenance_envelope: {
       source: 'kala_ahead_get',
@@ -1460,6 +2002,9 @@ export async function computeKalaAhead(
         'get_dignity (graha_sign_attributes)', 'query_planet_transit (L0 ephemeris)',
         'query_active_dashas (L3, EL-33)', 'bg_dignity_reference (L0)',
         'get_tajik (L1, l1_tajik_varsha_year_lords)',
+        'get_dashas (L1, chart_dashas, lord_graha+level facets — item 31 period-echo)',
+        'query_life_arc (L3, kala_jivana_parva — item 31 birth-year floor)',
+        'lel_query (L5, life_events — item 31 LEL corroboration, native-only)',
       ],
       chart_id: chartId,
       horizon_years: horizonYears,
@@ -1477,6 +2022,7 @@ export async function computeKalaAhead(
       mudda_dasha_varsha_reachable: muddaDashaVarsha.tajikReachable && muddaDashaVarsha.muddaReachable,
       muntha_varsha_position_reachable: muddaDashaVarsha.result?.muntha_sign != null,
       recurrence_ladder_reachable: windowsOk,
+      period_echo_reachable: periodEcho.some((e) => e.status === 'hypothesis_served'),
     },
   }
 }
@@ -1551,12 +2097,23 @@ identical column name is confirmed genuinely NULL in production and is never the
 digest_90d (E6-lite): a curated, fixed 90-day-forward digest — a selection over windows / \
 projections / gulika_kalam_ahead / recurrence_ladder / mudda_dasha_varsha bounded to \
 today..+90d, never new computation. Ritual-opportunity rows are intentionally absent \
-(kala_ritual_get Mode 1 lands at wave W4) — see the digest's own ritual_opportunities_note.
+(kala_ritual_get Mode 1) — see the digest's own ritual_opportunities_note, which names the exact horizon searched when no row is present.
+
+period_echo (item 31, hypothesis-framed): for the currently-running Mahādaśā and Antardaśā, \
+finds every COMPLETED prior occurrence of the SAME lord at the SAME level in the native's own \
+lived timeline (birth-year floored — pre-birth dasha rows are never cited) and joins each to \
+the native's LEL life-event log by date-range overlap. Served ONLY as an explicit, falsifiable \
+hypothesis (never a prediction or verdict) — "the current X period may echo X's prior period \
+at <dates> because <N> similar comparisons were found, M of which carry logged life events." \
+Honestly insufficient_data when no prior same-lord occurrence exists (the structurally-expected \
+outcome at Mahādaśā level — Vimśottarī's 120-year cycle gives each lord one Mahādaśā per \
+cycle). LEL is native-only: on charts with no logged life events, candidates are still served \
+(structural same-lord recurrence) with lel_event_count: 0 on every row, never fabricated.
 
 Output includes: reading (structured argument) + reading_prose (composed text) + windows + \
 projections + gulika_kalam_ahead + dasha_lord_transit_condition_forward + mudda_dasha_varsha \
-+ recurrence_ladder + digest_90d + tri_plane (→ kala_explain_get for why, → kala_elect_get \
-for when to act) + coverage + drill_pointers.
++ recurrence_ladder + digest_90d + period_echo + tri_plane (→ kala_explain_get for why, → \
+kala_elect_get for when to act) + coverage + drill_pointers.
 
 Requires: chart_id (UUID). Successor to kala_projections_get for "what is coming" queries \
 per SHAD_DARSHANA_BRIEF_v2_0.md §7 rail ("AHEAD supersedes ka_bhavishya... by REPLACEMENT") \

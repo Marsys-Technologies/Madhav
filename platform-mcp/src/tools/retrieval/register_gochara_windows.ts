@@ -61,9 +61,24 @@
  * registering these AS CapabilityDescriptors in the shared registry is the
  * same out-of-scope wiring step named above, deferred alongside it.
  *
- * SATYA-ŚEṢA W2/W3 (2026-07-25 — S4-05 fix, UAT-DARPANA worst veto): this
- * sweep has NO health event class (only career_advancement/marriage/major_gain
- * are populated for the canonical chart today). Before this change, a
+ * ṢAḌ-DARŚANA item 9 (2026-08-02 — DP-4, the DATA root of the same veto):
+ * the sweep grammar now DOES have health classes. `illness_acute`,
+ * `chronic_onset` and `surgery` (the `brahma_event_ontology` health domain in
+ * full) were added to the single shared sweep scope,
+ * `services/gochara_grammar/event_class_scope.py::SWEEP_EVENT_CLASSES`, so
+ * `gochara_resonance_map` gains health targets and `ka_gochara_sweep` gains a
+ * health substep column. `computeGocharaCoverage` was hardened in the same
+ * change: a class counts as covered only when it has BOTH resonance targets
+ * AND at least one committed sweep substep for that chart — otherwise the
+ * freshly-extended grammar would drop 'health' out of `domains_not_covered`
+ * on charts whose health sweep has not run yet, which is the S4-05 shape
+ * again one build cycle later. See `event_classes_targeted_not_swept` below
+ * and `src/__tests__/s4_05_health_coverage.test.ts`.
+ *
+ * SATYA-ŚEṢA W2/W3 (2026-07-25 — S4-05 fix, UAT-DARPANA worst veto): at that
+ * time this sweep had NO health event class (only career_advancement/marriage/
+ * major_gain were populated for the canonical chart — the gap item 9 above
+ * later closed at the data root). Before that change, a
  * health-filtered/health-adjacent query against these three tools got a bare
  * "clean" empty that read identically to a genuinely-swept, genuinely-clear
  * result — "I didn't look" served as "there is nothing" (the exact failure
@@ -248,6 +263,22 @@ const ROW_COLUMNS = `
   computed_at, continuity_state
 `
 
+// ADJUDICATION-6 (SHAD_DARSHANA_ADJUDICATIONS_NIGHT3_v1_0.md, migration 527):
+// GOCHARA-2.0 writes generation-stamped rows BESIDE v1, never over it — so
+// every read that SERVES rows to a caller must resolve which generation is
+// currently authoritative for this chart and filter to exactly that one, or
+// a 2.0 row and its v1 counterpart for the same (chart_id, event_class,
+// window) would both appear in one response. An ABSENT `kala_gochara_authority`
+// row means 'v1' authoritative BY DEFINITION (never requires a seeded row —
+// see migration 527's COMMENT ON TABLE). Today this is a no-op: every row is
+// generation='v1' and the authority table is empty everywhere, so this filter
+// is byte-identical to its absence — it only becomes load-bearing once a 2.0
+// writer lands a second generation's rows for the same chart.
+const AUTHORITATIVE_GENERATION_FILTER =
+  " AND kala_gochara_windows.generation = COALESCE(" +
+  '(SELECT authoritative_generation FROM kala_gochara_authority ' +
+  "WHERE chart_id = kala_gochara_windows.chart_id), 'v1')"
+
 async function queryRows(
   sql: string,
   params: unknown[],
@@ -278,6 +309,11 @@ async function queryRows(
 
 export interface GocharaCoverage {
   event_classes_covered: string[]
+  /** Classes G-1 built resonance targets for whose sweep has committed ZERO substeps for this
+   *  chart — the grammar can see them, this chart's data cannot yet. Reported separately and
+   *  EXCLUDED from `event_classes_covered`, so their domains stay in `domains_not_covered`
+   *  (ṢAḌ-DARŚANA item 9: closing DP-4 must not open a second door to the same false all-clear). */
+  event_classes_targeted_not_swept: string[]
   domains_not_covered: string[]
   universe_source: string
   sweep_completeness: {
@@ -297,9 +333,12 @@ const COVERAGE_UNIVERSE_SOURCE =
   'record of which event classes the D-5 sweep populated targets for, and therefore substepped over — ' +
   'the writer\'s docstring: "one substep per populated gochara_resonance_map event_class x decade" — ' +
   'more precise than kala_gochara_windows itself, which can under-report a class that was swept but ' +
-  'produced zero rows), resolved to brahma_event_ontology.domain; domains_not_covered = DISTINCT ' +
-  'brahma_event_ontology.domain minus that covered set. Mechanically derived fresh every call from ' +
-  'live table state — never hand-maintained.'
+  'produced zero rows) INTERSECTED with the classes whose sweep has actually committed at least one ' +
+  'substep for this chart (build_substep_progress.substep_key is "{event_class}:year:{n}"); a class ' +
+  'with targets but zero committed substeps is reported in event_classes_targeted_not_swept and is ' +
+  'NOT counted as covered. Covered classes are resolved to brahma_event_ontology.domain; ' +
+  'domains_not_covered = DISTINCT brahma_event_ontology.domain minus that covered set. Mechanically ' +
+  'derived fresh every call from live table state — never hand-maintained.'
 
 /** Chart-scoped: which event classes did THIS chart's sweep actually look at, which domains does
  *  that leave structurally dark, and how much of the sweep's own execution has committed. Never
@@ -327,17 +366,41 @@ export async function computeGocharaCoverage(
       principal
     ).then((r) => ({ rows: r.rows, ok: true as const })).catch((err) => ({ rows: [] as Record<string, unknown>[], ok: false as const, error: String(err) })),
     platformQuery(
-      `SELECT COUNT(*)::int AS substeps_committed FROM build_substep_progress WHERE chart_id = $1 AND asset_id = 'ka_gochara_sweep'`,
+      `SELECT COUNT(*)::int AS substeps_committed,
+              COALESCE(
+                ARRAY_AGG(DISTINCT split_part(substep_key, ':year:', 1))
+                  FILTER (WHERE substep_key LIKE '%:year:%'),
+                ARRAY[]::text[]
+              ) AS swept_event_classes
+         FROM build_substep_progress
+        WHERE chart_id = $1 AND asset_id = 'ka_gochara_sweep'`,
       [chartId],
       principal
     ).then((r) => ({ rows: r.rows, ok: true as const })).catch((err) => ({ rows: [] as Record<string, unknown>[], ok: false as const, error: String(err) })),
   ])
 
-  const eventClasses = [...new Set(classesResp.rows.map((r) => r['event_class']).filter((v): v is string => typeof v === 'string'))].sort()
-  const coveredDomains = new Set(classesResp.rows.map((r) => r['domain']).filter((d): d is string => typeof d === 'string'))
+  const targetedClasses = [...new Set(classesResp.rows.map((r) => r['event_class']).filter((v): v is string => typeof v === 'string'))].sort()
+  const substepsCommitted = Number(substepResp.rows[0]?.['substeps_committed'] ?? 0)
+  const sweptClasses = new Set(
+    (Array.isArray(substepResp.rows[0]?.['swept_event_classes']) ? (substepResp.rows[0]?.['swept_event_classes'] as unknown[]) : [])
+      .filter((v): v is string => typeof v === 'string')
+  )
+
+  // A class only counts as COVERED when both axes hold for THIS chart: G-1 built its resonance
+  // targets AND the sweep has committed at least one substep for it. Targets alone would let a
+  // freshly-extended grammar (item 9's health classes, before any chart has been re-swept) drop
+  // 'health' out of domains_not_covered while kala_gochara_windows still holds nothing for it —
+  // reinstating the exact S4-05 shape the coverage attestation exists to prevent.
+  const eventClasses = targetedClasses.filter((ec) => sweptClasses.has(ec))
+  const targetedNotSwept = targetedClasses.filter((ec) => !sweptClasses.has(ec))
+  const coveredDomains = new Set(
+    classesResp.rows
+      .filter((r) => typeof r['event_class'] === 'string' && sweptClasses.has(r['event_class'] as string))
+      .map((r) => r['domain'])
+      .filter((d): d is string => typeof d === 'string')
+  )
   const universeDomains = universeResp.rows.map((r) => r['domain']).filter((d): d is string => typeof d === 'string').sort()
   const domainsNotCovered = universeDomains.filter((d) => !coveredDomains.has(d))
-  const substepsCommitted = Number(substepResp.rows[0]?.['substeps_committed'] ?? 0)
 
   const ok = classesResp.ok && universeResp.ok && substepResp.ok
 
@@ -345,6 +408,7 @@ export async function computeGocharaCoverage(
     ok,
     coverage: {
       event_classes_covered: eventClasses,
+      event_classes_targeted_not_swept: targetedNotSwept,
       domains_not_covered: domainsNotCovered,
       universe_source: COVERAGE_UNIVERSE_SOURCE,
       sweep_completeness: {
@@ -373,16 +437,25 @@ const KALA_WINDOWS_CROSS_POINTER_INSTRUMENT = 'kala_windows_get'
 function notCoveredFor(domain: string | undefined, coverage: GocharaCoverage): GocharaNotCovered | null {
   if (!domain) return null
   if (!coverage.domains_not_covered.includes(domain)) return null
+  // Two distinct honest reasons, never collapsed into one: the grammar has no class for this
+  // domain at all, vs. the grammar has one but THIS chart's sweep has not committed a substep for
+  // it yet. Both are refusals; conflating them would misreport a build gap as a doctrine gap.
+  const pending = coverage.event_classes_targeted_not_swept.length > 0
   return {
     domain,
     cross_pointer: {
       instrument: KALA_WINDOWS_CROSS_POINTER_INSTRUMENT,
       hint:
         `${KALA_WINDOWS_CROSS_POINTER_INSTRUMENT}(chart_id, domain="${domain}") serves L3 Kāla ` +
-        'temporal-activation windows for this domain — the gochara sweep\'s event-class universe ' +
-        '(see coverage.event_classes_covered) does not include it for this chart. This response is ' +
-        'a refusal, not a completed scan of that domain: do not read the empty `windows` array below ' +
-        'as "no adverse window found" for it.',
+        'temporal-activation windows for this domain — the gochara sweep\'s covered event-class set ' +
+        '(see coverage.event_classes_covered) does not include it for this chart' +
+        (pending
+          ? `, though ${coverage.event_classes_targeted_not_swept.join(', ')} ` +
+            'have resonance targets awaiting a sweep run (coverage.event_classes_targeted_not_swept) ' +
+            '— a build gap for this chart, not an absence of grammar'
+          : '') +
+        '. This response is a refusal, not a completed scan of that domain: do not read the empty ' +
+        '`windows` array below as "no adverse window found" for it.',
     },
   }
 }
@@ -529,7 +602,8 @@ export async function computeGocharaActivation(
 
   const params: unknown[] = [chartId, asOfDate]
   let sql = `SELECT ${ROW_COLUMNS} FROM kala_gochara_windows
-             WHERE chart_id = $1 AND window_start <= $2 AND window_end >= $2`
+             WHERE chart_id = $1 AND window_start <= $2 AND window_end >= $2` +
+    AUTHORITATIVE_GENERATION_FILTER
   if (eventClass) {
     params.push(eventClass)
     sql += ` AND event_class = $${params.length}`
@@ -672,7 +746,8 @@ export async function computeGocharaForecast(
 
   const params: unknown[] = [chartId, dateRange.end, dateRange.start]
   let sql = `SELECT ${ROW_COLUMNS} FROM kala_gochara_windows
-             WHERE chart_id = $1 AND window_start <= $2 AND window_end >= $3`
+             WHERE chart_id = $1 AND window_start <= $2 AND window_end >= $3` +
+    AUTHORITATIVE_GENERATION_FILTER
   if (eventClass) {
     params.push(eventClass)
     sql += ` AND event_class = $${params.length}`
@@ -873,7 +948,8 @@ export async function computeGocharaElectionAvoidance(
 
   const params: unknown[] = [chartId, dateRange.end, dateRange.start]
   let sql = `SELECT ${ROW_COLUMNS} FROM kala_gochara_windows
-             WHERE chart_id = $1 AND is_adverse = true AND window_start <= $2 AND window_end >= $3`
+             WHERE chart_id = $1 AND is_adverse = true AND window_start <= $2 AND window_end >= $3` +
+    AUTHORITATIVE_GENERATION_FILTER
   if (eventClass) {
     params.push(eventClass)
     sql += ` AND event_class = $${params.length}`

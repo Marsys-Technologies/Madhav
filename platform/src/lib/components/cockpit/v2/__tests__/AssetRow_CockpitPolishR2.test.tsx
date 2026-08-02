@@ -334,7 +334,7 @@ describe('CF.L3.8 — StatusDot: DRAFT catalog_status does not override healthy 
 
 // ── Seed governance: Kāla layer count after hard-removal of ka_transit_almanac ──
 describe('Asset seed governance — Kāla layer', () => {
-  it('has exactly 15 kala assets in the seed (ka_transit_almanac removed; ka_avadhi + ka_taranga + ka_kshetra registered)', () => {
+  it('has exactly 20 kala assets in the seed (ka_transit_almanac removed; ka_avadhi + ka_taranga + ka_kshetra registered; ka_kota_chakra + ka_sudarshana_varsha + ka_moorti_nirnaya + ka_vedha_gochara + ka_tithi_pravesha added (SHAD-DARSHANA W3 items 16/17/4/5/13))', () => {
     const { readFileSync } = require('fs')
     const { resolve } = require('path')
     const seedContent: string = readFileSync(resolve(process.cwd(), 'scripts/seed/asset_registry_seed.ts'), 'utf8')
@@ -355,7 +355,21 @@ describe('Asset seed governance — Kāla layer', () => {
     // ka_gochara_sweep/resonance (which nothing in this file depends on),
     // `ka_kshetra` must have a row here too. Restored (14 → 15); same defect
     // class as the historical ga_vichara/bo_pratijna gaps.
-    expect(kalaMatches).toHaveLength(15)
+    //
+    // ṢAḌ-DARŚANA W3 (2026-08-01, Lane w3-kota-sudarshana): two brand-new Kāla
+    // writers landed with their own Nirmāṇa asset_registry seed rows —
+    // `ka_kota_chakra` (item 16, migration 520) and `ka_sudarshana_varsha`
+    // (item 17, migration 521). 15 → 17.
+    //
+    // ṢAḌ-DARŚANA W3 (2026-08-01, Lane w3-moorti-vedha): two more brand-new
+    // Kāla writers landed with their own Nirmāṇa asset_registry seed rows —
+    // `ka_moorti_nirnaya` (item 4, migration 525) and `ka_vedha_gochara`
+    // (item 5, migration 526, closes defect R-19). 17 → 19.
+    //
+    // ṢAḌ-DARŚANA W3 (Lane w3-tithi-pravesha): one more brand-new Kāla writer
+    // landed with its own Nirmāṇa asset_registry seed row — `ka_tithi_pravesha`
+    // (item 13, migration 531, lunar-return annual chart). 19 → 20.
+    expect(kalaMatches).toHaveLength(20)
   })
 
   it('contains no ka_transit_almanac entry in the seed', () => {
