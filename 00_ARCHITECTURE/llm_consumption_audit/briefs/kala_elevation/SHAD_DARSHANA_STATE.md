@@ -167,6 +167,35 @@ LIVE in production for the first time.
    path (the live transit-rules data these writers would have replaced is exactly what the
    resonance build just consumed successfully).
 
+**NIGHT-5 MERGE TRAIN (running record):**
+- **PR #1030 MERGED** (integration) — `l0-parihara-dictrow-fix`: dict_row crash fixed by
+  explicit `row_factory` pin + name indexing (plus a second latent defect found by the lane:
+  `dict(zip(cols, raw))` under dict_row silently corrupts); both `run()` except branches now
+  re-raise per §N.8; `bg_reference` tuple_row boundary pin with finally-restore. TDD red
+  (6 failed, exact production error shapes) → green (9 passed) — **independently re-run by
+  the Conductor from the merged integration tree: 9 passed.** The lane also enumerated
+  sibling writers sharing the §N.8 swallow pattern (bg_muhurta_lattice ~905/~925,
+  bg_sky_calendar ~581/~602, bg_cohort ~524, bg_ephemeris ~153, plus
+  `brahmagyan/l0_reference.py:1418/:1600` numeric indexing) — recorded as follow-ups in the
+  PR body, deliberately not fixed in this lane.
+- **PR #1031 OPENED → merge queue** (hotfix-to-main of #1030, same discipline as Night-4's
+  #1026): the production pipeline image builds from `main`, so the parihāra L0 rebuild —
+  which Gate-W3's judgment-ledger clause and the W4 Mode-2 fixture both need — cannot run
+  until this deploys. L0 re-trigger owed post-deploy. Its one failing check (`Boot-time
+  pointer validation SC-17/18/19`) verified PRE-EXISTING on main's last several commits
+  (the TAP-6 campaign's own open item, not this PR's, not ruleset-required).
+- **PR #1032 MERGED** (integration) — `w2-specificity-hard`: registration detector now
+  resolves `server.tool(TOOL_NAME, …)` const-identifier registration (8/8 kala views
+  detected, was 4/8); criterion upgraded byte-identity → structural S1–S3 (+S4 WARN) with
+  an embedded non-vacuity fixture the gate re-verifies on EVERY invocation; PLAN-mode "exit
+  0 always" escape removed (registration census + self-checks FAIL-capable without a
+  server); re-armed on the PR path (items 3/6 stay retired — their PLAN modes still cannot
+  fail; honest). Full-cohort 10k statistical gating explicitly DEFERRED in the gate's own
+  output with the named unblocker (synthetic cohort charts are not built/served charts).
+  **Independently re-verified by the Conductor from the merged tree: vitest 20/20; PLAN run
+  PASS=12 FAIL=0 SKIPPED=2 (both skips honest-named).** The specificity gate's LIVE
+  pairwise leg runs at gate-close against production.
+
 **STAGE 1.2 — sweep telemetry (first measurement, ~08:14 UTC):** both charts committing
 substeps under the new 606-substep plan (A: 5, B: 4 in the first ~28 min) → **measured
 ~330s/substep ⇒ ~55h/chart projected** (vs ~22h for the old 303 plan). This confirms the
