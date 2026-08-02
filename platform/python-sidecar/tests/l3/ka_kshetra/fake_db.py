@@ -43,7 +43,14 @@ class FakeCursor:
         if s.startswith('DELETE FROM'):
             table = re.match(r'DELETE FROM (\w+)', s).group(1)
             self._conn.deletes.append(table)
-            t[table] = []
+            # The lel_derived carve-out is emulated, not ignored: `kala_insights`
+            # is SHARED with Lane E's biographical-join refresh, and a fake that
+            # cleared the whole table would let a blanket per-chart delete pass a
+            # test the real database would fail Lane E on.
+            if 'lel_derived = FALSE' in s:
+                t[table] = [r for r in t.get(table, []) if r.get('lel_derived') is not False]
+            else:
+                t[table] = []
             self._rows = []
             return
 
@@ -76,9 +83,33 @@ class FakeCursor:
         if 'FROM public.charts' in s:
             self._rows = [dict(r) for r in t.get('charts', [])]
             return
-        if 'FROM bg_synthetic_cohort' in s:
+        if 'MAX(build_id' in s and 'FROM bg_synthetic_cohort' in s:
             rows = t.get('bg_synthetic_cohort', [])
             self._rows = [{'b': max((r['build_id'] for r in rows), default=None)}]
+            return
+        if 'FROM bg_synthetic_cohort_md' in s:
+            rows = t.get('bg_synthetic_cohort_md', [])
+            versions = {r.get('chain_version') for r in rows}
+            self._rows = [{'md_rows': len(rows),
+                           'chain_version': min(versions) if versions else None,
+                           'n_chain_versions': len(versions)}]
+            return
+        if 'FROM bg_synthetic_cohort' in s:
+            # The §6.3 content-fingerprint aggregate. The fixture cohort is
+            # DELIBERATELY tiny, so `cohort_base_rate` takes its own designed
+            # `cohort_below_minimum` path and returns p=None. That is the honest
+            # branch the salience vector must handle (Informativeness NULL,
+            # renormalized out) — fabricating a 10,000-row cohort here would
+            # test a population that does not exist.
+            rows = t.get('bg_synthetic_cohort', [])
+            methods = {r.get('sampling_method') for r in rows if r.get('sampling_method')}
+            self._rows = [{
+                'n_total': len(rows),
+                'n_sampling_methods': len(methods),
+                'sampling_method': min(methods) if methods else None,
+                'ayanamsha_key': 'lahiri',
+                'positions_digest': None,
+            }]
             return
         if 'DISTINCT event_class FROM kala_field_routes' in s:
             self._rows = [{'event_class': ec} for ec in sorted(
@@ -96,9 +127,21 @@ class FakeCursor:
                           if r.get('event_class_id') == params[0]]
             return
         if 'FROM brahma_class_priors' in s:
-            self._rows = [dict(r) for r in t.get('brahma_class_priors', [])
-                          if r.get('signal_type_class') == params[0]
-                          and r.get('fact_kind') == 'lifetime_count_per_100y']
+            # The RESERVED COORDINATE is four predicates, not two — see
+            # `stage4_field.load_class_lifetime_count`. Emulating only the first
+            # two here would let a narrower-coordinate row satisfy a query that
+            # in production excludes it, which is exactly the class of drift
+            # this fake exists to make impossible.
+            rows = [dict(r) for r in t.get('brahma_class_priors', [])
+                    if r.get('signal_type_class') == params[0]
+                    and r.get('fact_kind') == 'lifetime_count_per_100y']
+            if "source_subsystem = '*'" in s:
+                rows = [r for r in rows if r.get('source_subsystem') == '*']
+            if "signal_tradition = '*'" in s:
+                rows = [r for r in rows if r.get('signal_tradition') == '*']
+            self._rows = sorted(rows, key=lambda r: (
+                tuple(-ord(c) for c in str(r.get('prior_version', ''))),
+                str(r.get('source_subsystem', '')), str(r.get('signal_tradition', ''))))
             return
         if 'FROM kala_field_clocks' in s:
             self._rows = [dict(r) for r in t.get('kala_field_clocks', [])]
@@ -107,6 +150,14 @@ class FakeCursor:
             vals = [r['sigma_t_days'] for r in t.get('kala_field_boundaries', [])
                     if r.get('sigma_t_days') is not None]
             self._rows = [{'s': min(vals) if vals else None}]
+            return
+        if 'FROM kala_field_boundaries' in s and 'level = ANY' in s:
+            # The stage-8 read deliberately does NOT filter precision_state: the
+            # spec builder needs the unsupported rows in order to COUNT them in
+            # its coverage. Emulating a filter here would hide that.
+            levels = set(params[1])
+            self._rows = [dict(r) for r in t.get('kala_field_boundaries', [])
+                          if r.get('level') in levels]
             return
         if 'FROM kala_field_boundaries' in s:
             self._rows = [dict(r) for r in t.get('kala_field_boundaries', [])
@@ -127,10 +178,27 @@ class FakeCursor:
             self._rows = [dict(r) for r in t.get('kala_gochara_windows', [])
                           if r.get('event_class') == params[1]]
             return
+        if 'FROM chart_facts' in s and "fact_category = 'lagna'" in s:
+            self._rows = [dict(r) for r in t.get('chart_facts', [])
+                          if r.get('fact_category') == 'lagna'
+                          and r.get('fact_key') == 'longitude']
+            return
         if 'FROM chart_facts' in s:
             wanted = set(params[1])
             self._rows = [{'n': len({r['fact_id'] for r in t.get('chart_facts', [])
                                      if r['fact_id'] in wanted})}]
+            return
+        if 'FROM kala_field_salience' in s:
+            self._rows = [dict(r) for r in t.get('kala_field_salience', [])]
+            return
+        if 'FROM kala_timeline_spec' in s:
+            self._rows = [dict(r) for r in t.get('kala_timeline_spec', [])]
+            return
+        if 'FROM kala_insights' in s:
+            rows = [dict(r) for r in t.get('kala_insights', [])]
+            if 'lel_derived = FALSE' in s:
+                rows = [r for r in rows if r.get('lel_derived') is False]
+            self._rows = rows
             return
         if 'COUNT(*) AS n FROM kala_field' in s:
             self._rows = [{'n': sum(1 for r in t.get('kala_field', [])
@@ -176,6 +244,9 @@ class FakeConn:
                                   'target_id', 'term_key'),
         'kala_field_null': ('chart_id', 'event_class', 'bucket_days', 'field_snapshot_id'),
         'kala_field_snapshots': ('chart_id', 'field_snapshot_id'),
+        'kala_field_salience': ('chart_id', 'window_id'),
+        'kala_insights': ('chart_id', 'insight_id'),
+        'kala_timeline_spec': ('chart_id', 'generated_for', 'field_snapshot_id'),
         'build_substep_progress': ('chart_id', 'asset_id', 'substep_key'),
     }
 
@@ -185,7 +256,9 @@ class FakeConn:
         self.inserts: dict[str, list[tuple]] = {}
         self.deletes: list[str] = []
 
-    def cursor(self) -> FakeCursor:
+    # `cursor_factory` / `row_factory` are accepted and ignored: this fake always
+    # yields dict rows, which is what every real call site asks for anyway.
+    def cursor(self, *args, **kwargs) -> FakeCursor:
         return FakeCursor(self)
 
     # The FROZEN contract forbids the writer touching any of these. Each raises

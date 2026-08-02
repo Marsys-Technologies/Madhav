@@ -359,3 +359,147 @@ class TestHonestSkip:
 
     def test_a_usable_prior_passes_through_unchanged(self):
         assert S4.require_baseline(2.5, 'career_change') == 2.5
+
+
+# ── N_e selection determinism (§5.1 C-1's RESERVED COORDINATE) ───────────────
+
+class _RecordingCursor:
+    """Records the SQL + params, and replays a caller-supplied row table through
+    a deliberately literal interpretation of the WHERE clause.
+
+    It is not a SQL engine: it understands exactly the four predicates the
+    reserved coordinate is made of, plus the ORDER BY. That is the point — a
+    predicate the production SQL does NOT issue simply never filters here, so a
+    missing predicate shows up as the wrong row being returned rather than as a
+    silently-passing test.
+    """
+
+    def __init__(self, rows: list[dict], log: list[tuple[str, tuple]]):
+        self._all = rows
+        self._log = log
+        self._rows: list[dict] = []
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+    def execute(self, sql: str, params: tuple = ()) -> None:
+        s = ' '.join(sql.split())
+        self._log.append((s, params))
+        rows = [r for r in self._all
+                if r['fact_kind'] == 'lifetime_count_per_100y'
+                and r['signal_type_class'] == params[0]]
+        if "source_subsystem = '*'" in s:
+            rows = [r for r in rows if r['source_subsystem'] == '*']
+        if "signal_tradition = '*'" in s:
+            rows = [r for r in rows if r['signal_tradition'] == '*']
+        # Mirror Postgres's ORDER BY exactly as written, so a non-total ordering
+        # here produces the same tie the database would produce.
+        if 'ORDER BY prior_version DESC, source_subsystem, signal_tradition' in s:
+            rows = sorted(rows, key=lambda r: (
+                tuple(-ord(c) for c in r['prior_version']),
+                r['source_subsystem'], r['signal_tradition']))
+        elif 'ORDER BY prior_version DESC' in s:
+            # A non-total ordering: Postgres is free to return ties in ANY order.
+            # The adversarial replay returns them in INSERT order, which is the
+            # order a real heap scan most often produces.
+            rows = sorted(rows, key=lambda r: tuple(-ord(c) for c in r['prior_version']))
+        self._rows = rows[:1] if 'LIMIT 1' in s else rows
+
+    def fetchall(self) -> list[dict]:
+        return self._rows
+
+    def fetchone(self):
+        return self._rows[0] if self._rows else None
+
+
+class _RecordingConn:
+    def __init__(self, rows: list[dict]):
+        self.rows = rows
+        self.log: list[tuple[str, tuple]] = []
+
+    def cursor(self) -> _RecordingCursor:
+        return _RecordingCursor(self.rows, self.log)
+
+
+def _prior_row(*, subsystem: str, tradition: str, value: float,
+               prior_version: str = 'ne_v01') -> dict:
+    return {'prior_version': prior_version,
+            'signal_type_class': 'marriage',
+            'fact_kind': 'lifetime_count_per_100y',
+            'source_subsystem': subsystem,
+            'signal_tradition': tradition,
+            'class_prior': value}
+
+
+class TestClassLifetimeCountSelection:
+    """§5.1 C-1 + §N.7 item 2: N_e is read from ONE reserved coordinate, and the
+    selection that reduces the table to one row must be TOTAL.
+
+    This stopped being latent the moment `bg_class_lifetime_counts` seeded six
+    real classes at `ne_v01` (migration 522 / `brahmagyan/l0_class_lifetime_
+    counts.py`): every one of those rows sits at ('*','*'), so any row a sibling
+    lane later writes at a NARROWER coordinate becomes a live candidate for the
+    same `LIMIT 1`.
+    """
+
+    def test_the_reserved_coordinate_is_pinned_in_the_sql(self):
+        conn = _RecordingConn([_prior_row(subsystem='*', tradition='*', value=1.1)])
+        S4.load_class_lifetime_count(conn, 'marriage')
+        sql, _ = conn.log[0]
+        assert "source_subsystem = '*'" in sql
+        assert "signal_tradition = '*'" in sql
+
+    def test_a_narrower_coordinate_never_wins_the_limit_1(self):
+        # Two rows, SAME class and SAME prior_version, differing only in the two
+        # coordinate columns. Only the ('*','*') row is the reserved coordinate;
+        # the other is some other lane's subsystem-specific prior and must not
+        # be able to become this class's chart-independent baseline.
+        conn = _RecordingConn([
+            _prior_row(subsystem='jaimini', tradition='parashari', value=9.9),
+            _prior_row(subsystem='*', tradition='*', value=1.1),
+        ])
+        value, source = S4.load_class_lifetime_count(conn, 'marriage')
+        assert value == 1.1
+        assert source is not None and source[0] == 'brahma_class_priors'
+
+    def test_selection_is_order_independent(self):
+        # The same two rows in the opposite physical order must give the same
+        # answer. A non-total ORDER BY would let the heap-scan order decide N_e,
+        # which would make λ⁰ — and therefore the whole field hash — depend on
+        # something no version pin covers.
+        seen = set()
+        for rows in (
+            [_prior_row(subsystem='*', tradition='*', value=1.1),
+             _prior_row(subsystem='jaimini', tradition='*', value=9.9)],
+            [_prior_row(subsystem='jaimini', tradition='*', value=9.9),
+             _prior_row(subsystem='*', tradition='*', value=1.1)],
+        ):
+            value, _ = S4.load_class_lifetime_count(_RecordingConn(rows), 'marriage')
+            seen.add(value)
+        assert seen == {1.1}
+
+    def test_the_order_by_is_total(self):
+        conn = _RecordingConn([_prior_row(subsystem='*', tradition='*', value=1.1)])
+        S4.load_class_lifetime_count(conn, 'marriage')
+        sql, _ = conn.log[0]
+        assert 'ORDER BY prior_version DESC, source_subsystem, signal_tradition' in sql
+
+    def test_the_newest_prior_version_still_wins(self):
+        conn = _RecordingConn([
+            _prior_row(subsystem='*', tradition='*', value=1.1, prior_version='ne_v01'),
+            _prior_row(subsystem='*', tradition='*', value=2.2, prior_version='ne_v02'),
+        ])
+        value, source = S4.load_class_lifetime_count(conn, 'marriage')
+        assert value == 2.2
+        assert source[1].startswith('ne_v02|')
+
+    def test_no_row_at_the_reserved_coordinate_is_an_honest_none(self):
+        # A class seeded ONLY at a narrower coordinate has no chart-independent
+        # baseline. §5.1 C-1 skips it; it never inherits the narrower row.
+        conn = _RecordingConn([_prior_row(subsystem='jaimini', tradition='parashari',
+                                          value=9.9)])
+        value, source = S4.load_class_lifetime_count(conn, 'marriage')
+        assert value is None and source is None
