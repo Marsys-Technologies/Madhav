@@ -2,8 +2,10 @@
 pipeline.orchestrator.writers.ga_nakshatra — L1 per-chart parallel nakshatra chart.
 
 Heavy WriterBase: plan_substeps (5 ayanamshas + cross-ayanamsha) + run_substep.
-Writes 14 fact_categories into chart_facts.
+Writes 16 fact_categories into chart_facts.
 bg_nakshatra is AUTHORITY for static attrs (JOIN, cite, never restate).
+bg_kp_sublord_division is AUTHORITY for KP sub-lord boundaries — the KP
+significator emitter READS it (§N.5) and never re-derives the geometry.
 """
 from __future__ import annotations
 import hashlib
@@ -22,6 +24,10 @@ from ga_writers.ga_nakshatra_emitters import (
     PLANET_TO_SUBJECT,
 )
 from ga_writers.ga_nakshatra_compute import compute_cross_ayanamsha_agreement
+from ga_writers.ga_kp_significators import (
+    emit_kp_significators, HOUSE_SIGNIFICATORS_CATEGORY, PLANET_SIGNIFICATIONS_CATEGORY,
+)
+from brahmagyan.l0_kp_sublord_division import load_divisions as load_kp_divisions
 from pyjhora_adapter.compute import compute_chart
 from pyjhora_adapter.version import ENGINE_VERSION
 
@@ -41,6 +47,9 @@ GA_NAKSHATRA_FACT_CATEGORIES = [
     "nakshatra_dispositor", "nakshatra_exchange", "nakshatra_conjunction",
     "nakshatra_cogravity", "graha_tara_bala", "nakshatra_statistics",
     "nakshatra_cross_ayanamsha",
+    # ṢAḌ-DARŚANA W3K Lane 1 (ADJUDICATION-7 Part 2): the 4-limbed KP significator
+    # ladder, additive on this standing asset — never a second natal-KP writer.
+    HOUSE_SIGNIFICATORS_CATEGORY, PLANET_SIGNIFICATIONS_CATEGORY,
 ]
 
 NAK_LORD_STR_TO_BODY: dict[str, str] = {
@@ -176,7 +185,12 @@ def _enrich_rows(
             chum = f"{subject} {key} [{category}]"
 
         claim = _ATTRIBUTION_ROWS.get((category, key))
-        status = (
+        # An emitter that ran its OWN detector may set the status on the row itself
+        # (W3K's KP significator emitter cross-checks the L0 boundary authority
+        # against the live subdivision path and carries the real verdict). Rows that
+        # set nothing keep the honest UNVERIFIED_DEFAULT — a status is never invented
+        # here, only relayed (§N.8).
+        status = r.get("verification_pass_status") or (
             verdicts.get(subject, {}).get(claim, UNVERIFIED_DEFAULT)
             if claim else UNVERIFIED_DEFAULT
         )
@@ -217,6 +231,24 @@ def _fetch_bg_nakshatra(conn: Any) -> tuple[dict[int, dict], dict[tuple, dict]]:
         pada_rows = {(r["nakshatra_id"], r["pada_number"]): dict(r) for r in cur.fetchall()}
 
     return nak_rows, pada_rows
+
+
+def _fetch_sign_lords(conn: Any) -> dict[int, str]:
+    """{sign_id: lord} from the L0 authority `reference_signs`.
+
+    Never inlined: the L1-bypass guard (`tests/test_l1_bypass_guard.py`) exists
+    because writers used to hard-code L0-owned classical facts.
+    """
+    import psycopg.rows as _rows
+    with conn.cursor(row_factory=_rows.tuple_row) as cur:
+        cur.execute("SELECT sign_id, lord FROM reference_signs ORDER BY sign_id")
+        lords = {int(r[0]): str(r[1]).capitalize() for r in cur.fetchall()}
+    if len(lords) < 12:
+        raise RuntimeError(
+            f"HALT: reference_signs has {len(lords)} < 12 rows — the L0 sign-lord "
+            "authority must be built before KP significators can be derived."
+        )
+    return lords
 
 
 def _check_bg_nakshatra_present(conn: Any) -> bool:
@@ -262,6 +294,8 @@ def _run_ayanamsha_pass(
     ctx: ContextSpec, canonical_id: str, adapter_id: str,
     nak_rows: dict, pada_rows: dict,
     chart_id: str, birth_params: dict,
+    kp_divisions: list[dict] | None = None,
+    sign_lords: dict[int, str] | None = None,
 ) -> WriterResult:
     t0 = time.time()
     chart_output = compute_chart(inputs=birth_params, ayanamsha_id=adapter_id)
@@ -285,6 +319,13 @@ def _run_ayanamsha_pass(
     all_rows += emit_dispositor_graph(chart_id, canonical_id, build_id, chart_output, body_nak_lord)
     all_rows += emit_tara_bala(chart_id, canonical_id, build_id, chart_output)
     all_rows += emit_statistics(chart_id, canonical_id, build_id, chart_output, nak_rows)
+    # ṢAḌ-DARŚANA W3K Lane 1 / gap G-1: the 4-limbed KP significator ladder, per-house
+    # AND per-planet, referencing the L0 boundary authority bg_kp_sublord_division
+    # (ADJUDICATION-7 Parts 1+2). Additive: nothing above changes.
+    if kp_divisions and sign_lords:
+        all_rows += emit_kp_significators(
+            chart_id, canonical_id, build_id, chart_output, kp_divisions, sign_lords,
+        )
 
     # §N.8 real detector: independent second derivation of every body's nakshatra/pada
     # from its sidereal longitude, run BEFORE enrichment so attribution rows can inherit
@@ -365,9 +406,15 @@ class NakshatraWriter(WriterBase):
         if step.key.startswith("ayanamsha:"):
             canonical_id = step.key[len("ayanamsha:"):]
             adapter_id   = CANONICAL_AYANAMSHAS[canonical_id]
+            # W3K: the L0 KP boundary authority is READ, never re-derived here (§N.5).
+            # load_divisions raises if bg_kp_sublord_division is unbuilt — the DAG edge
+            # ga_nakshatra → bg_kp_sublord_division guarantees ordering.
+            kp_divisions = load_kp_divisions(ctx.db_conn)
+            sign_lords = _fetch_sign_lords(ctx.db_conn)
             return _run_ayanamsha_pass(
                 ctx, canonical_id, adapter_id,
                 nak_rows, pada_rows, chart_id, birth_params,
+                kp_divisions=kp_divisions, sign_lords=sign_lords,
             )
 
         if step.key == "cross_ayanamsha":

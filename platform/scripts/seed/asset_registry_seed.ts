@@ -823,6 +823,29 @@ export const ASSETS: AssetDef[] = [
     scope: 'global', is_active: true, estimated_seconds: null,
     asset_kind: 'data',
   },
+  {
+    // ṢAḌ-DARŚANA W3K Lane 1 · ANTARYĀMIN ADJUDICATION-7 Part 1 · migration 535.
+    // Stored in SIDEREAL longitude with NO ayanamsha key, by binding sub-ruling:
+    // the division of the sidereal circle is ayanāṃśa-invariant, so stamping an
+    // ayanāṃśa would fabricate a dependency and 5× the rows for no information.
+    asset_id: 'bg_kp_sublord_division',
+    layer: 'brahmagyan', sort_order: 76,
+    catalog_status: 'CURRENT',
+    sanskrit_name: 'Kṛṣṇamūrti Upa-Svāmī Vibhāga',
+    english_name: 'KP Sub-Lord Division (249-fold)',
+    english_description: 'ADJUDICATION-7 Part 1: the canonical 249-fold Krishnamurti Paddhati sub-lord division of the sidereal zodiac. 243 Vimshottari-proportional sub segments (sub arc = lord_years/9 degrees, sequence starting from the nakshatra lord) cut at the 12 rashi boundaries; 6 boundaries fall strictly inside a sub and split it, so 243 + 6 = 249 — derived by exact rational arithmetic, not hard-coded. AUTHORITY for every KP sub-lord boundary: ga_nakshatra REFERENCES it (§N.5) rather than re-deriving. Verified 9/9 star lord + 9/9 sub lord against the committed FORENSIC §4.2 fixture in 05_TEMPORAL_ENGINES/kp/CROSSCHECK_v1_0.md §2. Sub-sub/prana grain deliberately NOT tabulated (see migration 535 SCOPE DISCLOSURE); pada carried as an attribute, not a further cut.',
+    storage_type: 'postgres_table',
+    target_table: 'bg_kp_sublord_division',
+    count_sql: 'SELECT COUNT(*) FROM bg_kp_sublord_division',
+    size_sql: "SELECT pg_total_relation_size('bg_kp_sublord_division')",
+    target_floor: 249,
+    expected_volume_formula: 'NAKSHATRAS * VIMSHOTTARI_LORDS + RASHI_BOUNDARY_SPLITS',
+    expected_volume_inputs: null,
+    volume_explanation: '27 nakshatras × 9 Vimshottari subs = 243 sub segments; 6 of the 12 rashi boundaries fall strictly inside a sub segment and split it (the other 6 coincide with a nakshatra start or exactly with a sub boundary) → 243 + 6 = 249.',
+    depends_on: [],
+    scope: 'global', is_active: true, estimated_seconds: null,
+    asset_kind: 'data',
+  },
 
   // ── GANITA (8) ────────────────────────────────────────────────────────────
   {
@@ -834,9 +857,17 @@ export const ASSETS: AssetDef[] = [
     english_description: 'Natal graha positions per ayanamsha (sidereal/tropical longitude, sign, nakshatra)',
     storage_type: 'postgres_table',
     target_table: 'chart_facts',
-    count_sql: "SELECT count(*) FROM chart_facts WHERE chart_id = $1 AND fact_category IN ('graha_position', 'graha_sign_attributes')",
+    // W3K gap G-3 (migration 535): `bhava_cusps` — 12 houses × {sripati,placidus} ×
+    // {start,madhya,end}, emitted right here by ga_positions_writer.py:450 — was counted
+    // by NO asset's count_sql. (The W3K inventory attributed it to ga_sensitive; the live
+    // emitter is ga_positions.) DISCLOSED ADJACENT GAP, deliberately left open because it
+    // is outside the Lane-1 scope statement: `house_chalit` and `sandhi_flag`, from the
+    // same pass, are still uncounted.
+    count_sql: "SELECT count(*) FROM chart_facts WHERE chart_id = $1 AND fact_category IN ('graha_position', 'graha_sign_attributes', 'bhava_cusps')",
     size_sql: "SELECT pg_total_relation_size('chart_facts')",
     // Floor = achieved canonical count for chart 482012f1 (D2 deprecation: ganita_positions dual-write removed, count_sql now queries chart_facts).
+    // Floor NOT raised for the newly-counted bhava_cusps rows: floors are aspirational and
+    // are set from a measured build, never from an estimate (§N.4).
     target_floor: 50,
     expected_volume_formula: 'GRAHAS * AYANAMSHAS * FACT_KEYS',
     expected_volume_inputs: null,
@@ -1100,16 +1131,19 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     catalog_status: 'CURRENT',
     sanskrit_name: 'Nakṣatra-Paṭala',
     english_name: 'Nakshatra Parallel Chart',
-    english_description: 'Per-chart parallel nakshatra chart: placement+attribute JOIN from bg_nakshatra, KP sub-lords (star/sub/sub-sub/prana) per body and house cusp, nakshatra dispositor graph, gaṇḍānta severity flags, tara bala, per-chart statistics. Into chart_facts. Authoritative L1 nakshatra grain.',
+    english_description: 'Per-chart parallel nakshatra chart: placement+attribute JOIN from bg_nakshatra, KP sub-lords (star/sub/sub-sub/prana) per body and house cusp, the 4-limbed KP significator ladder per house AND per planet (W3K, referencing bg_kp_sublord_division as boundary authority), nakshatra dispositor graph, gaṇḍānta severity flags, tara bala, per-chart statistics. Into chart_facts. Authoritative L1 nakshatra grain.',
     storage_type: 'postgres_table',
     target_table: 'chart_facts',
-    count_sql: `SELECT count(*) FROM chart_facts WHERE chart_id = $1 AND fact_category IN ('graha_nakshatra_join','graha_pada_join','nakshatra_lord_placement','graha_kp_lords','cusp_kp_lords','graha_gandanta','graha_degree_flags','nakshatra_dispositor','nakshatra_exchange','nakshatra_conjunction','nakshatra_cogravity','graha_tara_bala','nakshatra_statistics','nakshatra_cross_ayanamsha')`,
+    // W3K (migration 535): +kp_house_significators, +kp_planet_significations — the
+    // 4-limbed KP significator ladder, ADDITIVE on this standing asset per
+    // ADJUDICATION-7 Part 2 ("NO NEW ASSET … W3K EXTENDS it").
+    count_sql: `SELECT count(*) FROM chart_facts WHERE chart_id = $1 AND fact_category IN ('graha_nakshatra_join','graha_pada_join','nakshatra_lord_placement','graha_kp_lords','cusp_kp_lords','graha_gandanta','graha_degree_flags','nakshatra_dispositor','nakshatra_exchange','nakshatra_conjunction','nakshatra_cogravity','graha_tara_bala','nakshatra_statistics','nakshatra_cross_ayanamsha','kp_house_significators','kp_planet_significations')`,
     size_sql: "SELECT pg_total_relation_size('chart_facts')",
     target_floor: 1802,  // set after first prod build 2026-06-17 (§N.4)
     expected_volume_formula: 'BODIES * AYANAMSHAS * FACT_CATEGORIES + CROSS_AYANAMSHA',
     expected_volume_inputs: null,
-    volume_explanation: '357 rows per ayanamsha × 5 ayanamshas + 17 cross-ayanamsha consistency rows = 1802 total (native chart 482012f1).',
-    depends_on: ['bg_nakshatra', 'ga_positions'],
+    volume_explanation: '357 rows per ayanamsha × 5 ayanamshas + 17 cross-ayanamsha consistency rows = 1802 total (native chart 482012f1). W3K adds 108 house-significator + ~100 planet-signification rows per ayanamsha; target_floor stays at the last MEASURED build until the next prod build re-measures it (§N.4 — floors are never set from an estimate).',
+    depends_on: ['bg_nakshatra', 'ga_positions', 'bg_kp_sublord_division'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
 
