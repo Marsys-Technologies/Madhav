@@ -328,6 +328,36 @@ activity rules · 58 factor-census rows LIVE in production** (verified by direct
 not fabricated-green, not blocking any gate clause tonight. Nirmāṇa verification: DB-true
 counts confirmed for every directive-named asset + catalog reconciliation 6/6 green.
 
+**LIVE PRODUCTION VERIFICATION SLICE (Conductor, ~14:00–14:45 UTC, direct authenticated
+MCP calls, both canonical charts) — found a REAL serving defect PARĪKṢAKA-style
+verification exists to catch:**
+- **What works live:** `kala_elect_get` serves 5 real graded candidates per chart with
+  scores, horā ladder, citations, an honest 3-state coverage list, and honest-empty
+  reasons (tāra-bala/target-graha correctly `honest_empty` with actionable reasons).
+  Candidate sets differ across charts. The judgment-ledger structure is present and its
+  refusal prose is exemplary ("residual standing is deliberately left uncomputed rather
+  than assumed clean").
+- **The defect:** every candidate's ledger reads `net_standing='not_adjudicated'` —
+  "query_parihara_graph returned no parihara_rules/factor_census section" — DESPITE the
+  tables now being populated and the capability's SQL verified clean by direct DB
+  replication. Root cause pinned by code-trace: the `/api/mcp/primitives/<tool>` route
+  serves `envelope.result` as the legacy **ToolBundle** (`capabilityResultToToolBundle` →
+  `results[0].content` = JSON-STRINGIFIED handler content), while
+  `kala_lattice_query.ts`'s `fetchLatticeSubstrate` reads `result.<key>` directly —
+  always undefined in production. Consequence: the LATTICE section also silently serves
+  zero rows with `lattice_available=true` asserted unconditionally on HTTP 200 (an §N.8
+  earned-signal violation), so ELECT's candidates are actually served by the legacy
+  `ph_muhurta` path (corroborated by the live `field_snapshot_id:
+  "stub:ph_muhurta_queried_at=…"`). **The one-engine lattice path has never actually
+  served in production** — unit/PLAN tests all pass because they never pin the wire
+  shape. Same defect class as PR #823's ToolResult-wrapper fix. **Fix lane dispatched**
+  (`shad-darshana/w3-lattice-unwrap-fix`: mirror the #823 unwrap idiom, make the
+  available-flags real detectors, audit every `callPlatformPrimitive` consumer, add
+  wire-shape regression fixtures).
+- Also live-confirmed as expected: `field_snapshot_id` still serves the W0 stub
+  (integration's #1033 not yet deployed — correct between gates), and the paddhati seed
+  is not yet applied (migration 534 rides the next deploy).
+
 **STAGE 1.2 — sweep telemetry (first measurement, ~08:14 UTC):** both charts committing
 substeps under the new 606-substep plan (A: 5, B: 4 in the first ~28 min) → **measured
 ~330s/substep ⇒ ~55h/chart projected** (vs ~22h for the old 303 plan). This confirms the
