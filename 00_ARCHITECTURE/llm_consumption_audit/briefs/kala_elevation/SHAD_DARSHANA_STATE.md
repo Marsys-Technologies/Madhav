@@ -13,6 +13,47 @@ governing: SHAD_DARSHANA_NIGHT_RUN_v1_0.md (orchestration) + SHAD_DARSHANA_BRIEF
 
 ## NEXT-ACTION
 
+**NIGHT 5 CLOSED (2026-08-02, ~12:57–~20:30 IST) — see "MORNING REPORT — NIGHT 5" below.**
+Headline: Stage 1's every dischargeable leg discharged and verified — L0 substrate fully
+built in production for the first time (N_e, 164k-row lattice, 10k cohort + 100k MD-chain,
+sky calendar, parihāra corpus 61/329/58 after a same-night production hotfix #1031), the
+ENTIRE W2 field-integration code leg landed on integration (#1030/#1032/#1033/#1034/#1035,
+each independently verified), ADJ-14/-15 ruled, and a live production verification slice
+that caught a REAL serving defect (the lattice/parihāra ToolBundle unwrap — ELECT has been
+silently serving the legacy path; fix lane dispatched). Gates W2/W3 PARK HONEST behind the
+sweep rebuild (~330s/substep × 606 × 2 — multi-day compute physics, in flight under
+automation, ~62/59 of 606 at close). Stage 2 partially triggered per the recorded
+assessment: W4 seed landed (#1036 + #1037), W3K K.1 lane in flight at close; W2G + W5 prep
+parked with recorded reasons.
+
+**SINGLE NEXT ACTION (next session, in order):**
+1. **Resume the sweep relay FIRST** (the babysitter dies with the session; the last
+   dispatched runs — chart A `e733299f`, chart B `42e062e3`, both started ~14:25 UTC with
+   6h writer budgets — evict ~20:25 UTC 2026-08-02): re-dispatch via the recorded pattern
+   (`dispatch_night5_gochara.py <chart_id> <tag>` + `gcloud run jobs execute … --args=--run-id,<id>`),
+   one at a time per chart, ≥40-substeps-gained continuation gate, resume-don't-restart.
+   Trust the SUBSTEP LEDGER, not `build_runs.state` (two false-kill specimens now recorded:
+   `807f3aa3` tonight, `e5cde4dc` Night-3 — the watchdog follow-up lane is still owed).
+2. **Land the two in-flight lanes if not merged by then**: `shad-darshana/w3k-sublord-substrate`
+   (W3K K.1, Opus) and `shad-darshana/w3-lattice-unwrap-fix` (the production ELECT serving
+   defect — verify with a LIVE lattice-backed adjudication check post-deploy, not just unit
+   tests).
+3. **When BOTH charts hit 606/606**: ka_gochara_resonance is already re-run; go straight to
+   the W2 field-integration OPERATIONAL leg — ka_kshetra build both charts (all its L0/code
+   prerequisites are now live) → hash-replay determinism double-run → LEL-invariance CI →
+   skill score + GOF published both charts (FIRST published score = permanent CI baseline —
+   this is why it must wait for complete sweep data) → S4-05 data-real re-test (item 9's
+   gate clause) → THEN the gate-close deploy (ONE integration→main PR via merge queue,
+   which also ships migration 534's paddhati seed + the field snapshot serving + specificity
+   HARD + everything above) → PARĪKṢAKA live acceptance both charts → evaluate Gates W2 AND
+   W3 clause-by-clause per brief §3.
+4. **Then Stage 2 continuation**: W2G writer lane (ADJ-14/-15 are ready; its v1
+   equivalence ground truth exists again once sweeps complete) · W3K Lane 2 (behind Lane
+   1's significators) · W4 live fixture discharge + Gate W4 evaluation (post-deploy, seed
+   applied) · W5 prep.
+
+---
+
 ## NIGHT 5 — SESSION OPEN (2026-08-02, ~12:57 IST, in progress)
 
 **NATIVE DIRECTIVE — recorded verbatim at session open as the native's standing order for
@@ -371,6 +412,93 @@ for the duration; nothing is fabricated. S4-05 DATA-real verification and every
 sweep-dependent gate clause are therefore SCHEDULED BEHIND the sweeps, not closeable
 tonight — parked honest per the directive's own Stage-2 rule, with the babysitter as the
 carry mechanism.
+
+---
+
+## MORNING REPORT — NIGHT 5 (2026-08-02, ~12:57–~20:30 IST)
+
+**Gates closed:** none VERIFIED-CLOSED (by compute physics, not by unfinished work — see
+parks). **But Stage 1's entire dischargeable surface is discharged, verified, and
+recorded**, and the production data substrate the campaign has been building toward is now
+REAL for the first time.
+
+**Done and verified tonight:**
+- **Session-open protocol**: integration rebased (== main at open); ledger-reconciliation
+  sweep found the TRUE stale-L0 set was ~3× larger than Night-4's record (cohort, sky
+  calendar, parihāra, MD-chain all at 0 rows — corrected append-only with evidence);
+  directive recorded verbatim; ADJUDICATION-14/-15 discharged at open by ANTARYĀMIN (W2G's
+  V4 three-tier materialization re-scope grounded in live measurement — Tier A holds the
+  original 10k–100k band; V1 `phase_profile` instrumentation with no FROZEN-contract
+  change) — full text `SHAD_DARSHANA_ADJUDICATIONS_NIGHT5_v1_0.md`.
+- **Stage 1.1 — L0 substrate LIVE**: two super-admin global builds (runs `6fd72ed9`,
+  `a22bc93c`). Final: 36 ok / 3 deferred-by-design / 3 recorded follow-ups. In production
+  for the first time: N_e priors (6 @ ne_v01) · widened muhūrta lattice (164,575 rows,
+  2026–2031) · synthetic cohort (10,000) + MD-chain (100,000) · sky calendar (31,059
+  events) · parihāra corpus (61 rules / 329 activity rules / 58 census rows) · Kota rings
+  (27). Catalog reconciliation 6/6 green.
+- **Stage 1.3 code leg — COMPLETE on integration**, 8 PRs, each independently re-verified
+  by the Conductor (not trusted from lane self-reports): #1030 (parihāra dict_row + §N.8
+  re-raise) · #1031 (its hotfix-to-main — merged through the merge queue, DEPLOYED,
+  pipeline image verified re-pointed) · #1032 (specificity gate HARD: 8/8 detector,
+  S1–S3 structural criterion, PLAN-mode fail-capable, non-vacuity self-fixture) · #1033
+  (E5 real field-snapshot resolver, three honest states; item-44 census real numbers) ·
+  #1034 (db-proxy whitelist) · #1035 (Opus: stages 6/6.5/8 wired into the ka_kshetra
+  writer, N_e determinism fix closed BEFORE it could ever fire, hash-inclusion decision
+  documented, 224/224) · #1036 (migration 534: paddhati native-confirmed seed, in-place
+  v01 flip with RAISE verification) · #1037 (census statement derives from profile state).
+- **Item-44 scoreboard reported** (the W2 obligation): 29 paths · 4 emitting (all
+  `locally_constructed`) · `field_window_id=0` — the honest number W6 gates on.
+- **Live production verification slice** (direct authenticated MCP calls, both charts):
+  lattice-era ELECT serving verified live — and it caught a REAL defect (next section).
+
+**Defects found + fixed tonight (all real, all production-relevant):**
+1. **`bg_parihara_rules` dict_row crash swallowed into a success-shaped WriterResult** —
+   the asset LIT while all three tables were empty (live §N.8 specimen). Fixed (#1030),
+   hotfixed to main (#1031), deployed, rebuilt, verified populated same night.
+2. **The lattice/parihāra ToolBundle unwrap defect** — found by tonight's live calls:
+   `/api/mcp/primitives/*` serves the legacy ToolBundle wire shape
+  (`results[0].content` JSON-string), while `fetchLatticeSubstrate` reads top-level keys →
+  both sections silently empty in production, `lattice_available=true` asserted with no
+  detector, ELECT actually serving the legacy `ph_muhurta` path (its own
+  `field_snapshot_id` stub names it). The one-engine lattice path has NEVER truly served
+  in production; every unit/PLAN test passed because none pinned the wire shape. Same
+  class as #823. Fix lane in flight at close (`w3-lattice-unwrap-fix`).
+3. **A second watchdog false-kill specimen** (`807f3aa3` marked failed at ~54/606 while
+   its container demonstrably kept committing; the lock-collision abort of the redispatch
+   proved the container alive). Babysitter v1 (which trusted run-state) replaced by v2
+   (substep-progress liveness, lock-aware backoff). Watchdog root-cause lane still owed.
+4. Two lane-caught cross-cutting hazards fixed inside #1035: the `kala_insights`
+   LEL-derived-row deletion scoping, and the legacy-table guard substring false positive.
+
+**Rulings:** ADJUDICATION-14, ADJUDICATION-15 (both reversible, native may overrule).
+
+**Parks + reasons (the load-bearing part):**
+- **Gates W2/W3 PARK HONEST**: their remaining clauses are all downstream of the gochara
+  re-grammar rebuild — measured ~330s/substep × 606/chart ⇒ ~55h/chart; at close A=62/606,
+  B=59/606, both advancing on redispatched runs. Publishing the first skill score (the
+  permanent CI baseline) against a half-rebuilt substrate would be a fabricated baseline;
+  correctly refused. S4-05 stays code-closed/data-pending — the sweep rebuild IS the fix
+  landing.
+- **W2G writer lane parked** — its rulings are ready, but its v1 equivalence ground truth
+  (`kala_gochara_windows`) is mid-rebuild by design; dispatching against it would verify
+  nothing. Re-enters when both charts hit 606/606.
+- **W5 prep not started** — conductor-capacity scoping choice, recorded, no blocker.
+- **W3K K.1 lane + lattice-unwrap fix lane in flight at close** — branches/worktrees
+  isolated; if unmerged by morning they are clean parks (open PRs), not half-merged state.
+- Production serving note: gochara-window surfaces serve honest-empty/partial during the
+  rebuild (designed replace semantics, disclosed; nothing fabricated).
+
+**Deploy state at close:** `main` @ `f97fc78d` == production (hotfix deploy verified: run
+`30740577620` success; pipeline image re-pointed and verified by describe; smoke green).
+`shad-darshana/integration` ahead of main by tonight's 8 lane PRs + ledger commits — the
+normal between-gates state (§B.2). No gate-close deploy tonight (no gate closed — honest).
+
+**Swarm health:** 3 builder-lane transient stalls (600s watchdog class), all resumed with
+zero work loss via SendMessage; 1 mid-session account-level pause (native reset it —
+sweeps and deploys continued unattended; state fully reconstructed from ledgers on resume).
+
+*Truth over completion. The sweep relay is the single thing the next session must touch
+first.*
 
 ---
 
