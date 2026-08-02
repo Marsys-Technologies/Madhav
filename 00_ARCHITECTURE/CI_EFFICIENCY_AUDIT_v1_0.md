@@ -930,13 +930,15 @@ enumerated in the prior pass):
 
 | Table | `two_pass_verified` rows | Standing |
 |---|---|---|
-| `chart_dashas` | 1,358,993 | **earned** by `_verify_*`, minus the non-native vimshottari caveat |
+| `chart_dashas` | 1,358,993 | ~~earned by `_verify_*`~~ — **RETRACTED by §6.18.** Not earned: every verifier examines `level_n == 1` only and the verdict is broadcast to all levels |
 | `chart_facts` | 352,485 | 97.9% traced to the four unearned writers |
 | `bodha_msr_signals` | 121,060 | L2, out of this lane's scope |
 | `chart_divisionals` | 39,516 | `ga_vargas` policy lookup — unearned |
 | `bodha_cgm_edges` / `l1_tajik_varsha_year_lords` / `bodha_cgm_nodes` | 1,080 / 780 / 44 | out of scope |
 
-**The corrected figure the demotion decision should be made against is ~392,001 L1 rows**
+**~~The corrected figure … is ~392,001 L1 rows~~ — SUPERSEDED by §6.18: the figure is ~1,749,805.** The line below was written before the second-pass ruling and before anyone counted how many rows a verifier actually reads. Original text kept for the audit trail:
+
+> The corrected figure the demotion decision should be made against is ~392,001 L1 rows
 (`chart_facts` 352,485 + `chart_divisionals` 39,516) — **not** the 1.7M implied by adding
 `chart_dashas`.
 
@@ -961,6 +963,134 @@ remains necessary but is **no longer sufficient**. Arming now also requires this
 and a clean re-census. Arming a detector with a known blind spot manufactures precisely the false
 confidence this campaign exists to remove. Earliest date is unchanged (2026-08-08); the added
 condition is coverage, not time.
+
+## §6.18 — The second-pass ruling, and what counting the examined rows did to the number (2026-08-02)
+
+**The rule (native ruling, 2026-08-02).** A check earns `two_pass_verified` only if it **could have
+failed for a reason other than a bug in itself** — it must discriminate over the **producer's actual
+output space**, not the space of all possible values.
+
+**The operational test.** Mutate the producer's output to a *plausible wrong* value, never an
+impossible one — a wrong lord bearing a valid name; a correct lord with wrong period boundaries. If
+the only mutations a check catches are ones its own producer could never emit, it is a tautology
+over its own input and earns nothing.
+
+**Verdict: a set-membership check is not a second pass.** `row['lord_graha'] not in <known set>`
+cannot fail for any sequence the compute function can generate, because the compute function draws
+its lords from that same constant.
+
+**Exception, which keeps the rule honest.** Membership DOES earn credit where the value crosses a
+**trust boundary** — a third-party ephemeris return, a deserialisation seam — because plausible
+garbage can arrive there. Same test, different input space.
+
+**Third instance of one class.** `pillars_meet_reachability_pass` (a tautology over its own input)
+and `lel_zero_leak_pass` (a proxy asserting a scan that never runs) are the same defect: machinery
+that reports a verdict it never computed. This is the third.
+
+### What the ruling cost, and the count nobody had run
+
+Applying the rule to `ga_dashas_writer` retires the "chart_dashas is earned" verdict I recorded in
+§6.17. But the ruling was not the biggest correction — **counting how many rows a verifier actually
+reads was.**
+
+Every `_verify_*` in `ga_dashas_writer.py` opens with
+`l1_rows = [r for r in rows if r["level_n"] == 1]`. It examines level 1 and nothing else. Then
+`ga_dashas_writer.py:3047-3048` does `for row in rows: row["verification_pass_status"] = verification`,
+broadcasting that one function-level verdict to **every** row of the system.
+
+| level_n | `two_pass_verified` rows | examined by any verifier |
+|---|---|---|
+| 1 | 2,505 | yes |
+| 2 | 24,796 | **no — inherited** |
+| 3 | 191,797 | **no — inherited** |
+| 4 | 1,139,895 | **no — inherited** |
+
+**0.18% of chart_dashas' two-pass rows were ever looked at.** There is no per-row verification in
+this table at all — there is a per-system verdict stamped onto 1.36M rows.
+
+Of the 2,505 examined rows, applying the operational test per system:
+
+| System | L1 examined | What can fail | Earned? |
+|---|---|---|---|
+| `mudda` | 780 | first lord re-derived from Moon's nakshatra **and** a 9-cycle identity across the sequence | **yes** |
+| `narayana` | 345 | period non-overlap + monotonicity — catches "correct lord, wrong boundaries", the ruling's own example | **yes** |
+| `vimshottari` (native) | 64 | FORENSIC birth-period lord vs. a constant | **yes**, for the anchor |
+| `vimshottari` (non-native) | 135 | nothing — Pass 2 gated `if chart_id == CANONICAL_CHART_ID`; Pass 1's tolerance loop ends in a bare `pass` | no |
+| `chara_karaka` / `yogini` / `ashtottari` / `naisargika` | 1,181 | membership only | no |
+| `vimshottari_kp` | **0** | the verifier's input filter is `level_n <= 4 and kp_sublevel is None`, so KP rows are excluded from it entirely — 17,910 rows stamped by a check that never saw them | no |
+
+**Earned: 1,189 rows. Unearned: 1,357,804.**
+
+### Corrected exposure
+
+| Population | Rows |
+|---|---|
+| `chart_facts` unearned | 352,485 |
+| `chart_divisionals` (ga_vargas policy lookup) | 39,516 |
+| `chart_dashas` less the 1,189 genuinely examined-and-discriminating | 1,357,804 |
+| **Total** | **~1,749,805** |
+
+The ruling's own estimate was ~1,366,641; it assumed `mudda` and native `vimshottari` earned their
+full row counts (384,353) rather than their L1 counts (844). The gap is the broadcast.
+
+### `divergent_flagged` is proven live
+
+Zero rows estate-wide against 1,873,958 claimed verifications is a signature worth suspecting — but
+the path works. Injecting a *plausible wrong* nakshatra id into `ga_nakshatra`'s live
+`_nakshatra_pada_verdicts` produced `divergent_flagged`, logged the divergence WARNING, and left the
+`pada` claim at `two_pass_verified` — it discriminates per claim, not per row. Reachability was
+confirmed first (rule 4): the function does call `two_pass_verdict`. **The zero is real agreement in
+ga_nakshatra's scope, not dead machinery.** Serve-layer handling when it appears: `isVerifiedPassStatus`
+→ false (correct); both CHECK constraints already permit it; `bo_pramana_mapa` counts only
+`two_pass_verified` and `documented_approximation`, so a divergent row is counted in neither bucket
+and its percentages silently stop summing to 100 — a named residual, not fixed here.
+
+### Vocabulary: no new member is needed
+
+Two homeless concepts were alleged. Both already have homes, and the seventh-definition test (#996)
+says use them:
+
+- **"computed once, deterministically, from canonical inputs, never independently re-derived"** →
+  **`single`**, whose meaning already reads *"Single-pass computation. No second derivation ran, so
+  nothing could have contradicted the value."* That is the concept exactly. **The problem was never
+  the vocabulary — it is the serve layer's wording**, which renders every non-verified row as
+  *"single-pass candidates, not confirmations."* "Candidate" is editorial, it lives in
+  `envelope.ts:929-930`, and a deterministic ephemeris position is not a candidate. Fix the sentence,
+  not the vocabulary.
+- **"structurally validated (shape/membership) but not independently derived"** — the tier this
+  ruling creates → **`classical_match`**, whose meaning already reads *"matched against a canonical
+  classical reference table. A real check, but a relay-fidelity check rather than an independent
+  re-derivation — held out of the verified set."* A lord-sequence membership check is precisely a
+  match against a canonical classical table.
+
+Both are already `verified=False`, both sort before `two_pass_verified` under `en_US.UTF8` so
+MV `209:144`'s `MIN()` "all verified" property survives, and — decisively — **both are already
+permitted by the `chart_dashas` and `chart_divisionals` CHECK constraints**, so the demotion needs
+**no CHECK migration at all**. See `platform/python-sidecar/brahmagyan/verification_vocab.py`.
+
+### Scoped plan for a real Vimshottari second pass (not built here)
+
+What Pass 2 compares today: the `lord_graha` of the single L1 period containing 1984-02-05, against
+the constant `FORENSIC_VIMSHOTTARI_STARTING_LORD`. One row, one field, one chart.
+
+A real second pass would recompute the sequence independently of `compute_vimshottari` — from Moon's
+sidereal longitude, derive the starting lord and the elapsed fraction of its mahādaśā, then unroll
+the 120-year cycle — and compare **per row, on lords AND both period boundaries**, at every level,
+emitting `two_pass_verdict()` per row instead of one broadcast verdict. Effort is roughly one
+focused day: the unroll is ~60 lines, the comparison harness ~40, and the real work is deciding the
+boundary tolerance (dates are computed in JD and rounded, so exact equality will produce false
+divergences). It would catch drift in the dasha engine, ayanāṃśa mix-ups reaching the Moon
+longitude, and boundary arithmetic errors — none of which anything catches today. **Removing the
+native gate costs nothing but runtime**: Pass 2's FORENSIC anchor is native-specific by construction,
+so the generalised version must re-derive each chart's own expected starting lord rather than compare
+to a constant — which the recomputation above already produces.
+
+### Arming
+
+`b627114e`'s TAP-6 run was **green**. The two runs after it (`f19969c5`, `d0f9cb1c`) are **red — but
+not on TAP-6**: the `two_pass_verified_literal` law is QUARANTINED and its job succeeded; the
+workflow fails on `SC-pointer:query_muhurta_lattice`, an unrelated pointer-validation gate. The
+consecutive-green-days condition is written against the workflow, so it has reset regardless of cause.
 
 ## §7 — Verification standard applied
 

@@ -74,7 +74,16 @@ VERIFICATION_PASS_STATUS_VOCAB: Final[tuple[VocabEntry, ...]] = (
         "two_pass_verified",
         True,
         "The value was confirmed by a second, independently-implemented derivation "
-        "that could have disagreed. The ONLY status that counts as grounding.",
+        "that could have disagreed. The ONLY status that counts as grounding. "
+        "EARNEDNESS TEST (native ruling 2026-08-02, CI_EFFICIENCY_AUDIT_v1_0.md §6.18): a check "
+        "qualifies only if it could have failed for a reason other than a bug in itself — it must "
+        "discriminate over the PRODUCER'S actual output space, not the space of all possible "
+        "values. Mutate the producer's output to a PLAUSIBLE wrong value and see whether the check "
+        "fires. A set-membership check over a constant the producer itself draws from is a "
+        "tautology and earns nothing; membership DOES earn credit across a trust boundary "
+        "(third-party ephemeris, deserialisation seam) where plausible garbage can arrive. "
+        "A verdict computed over a subset and broadcast to other rows earns it only for the rows "
+        "actually examined.",
     ),
     VocabEntry(
         "classical_match",
