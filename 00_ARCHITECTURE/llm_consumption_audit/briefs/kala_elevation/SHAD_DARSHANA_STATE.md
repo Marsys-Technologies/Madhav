@@ -214,6 +214,30 @@ LIVE in production for the first time.
   explicit per-path reason — the eight kala facades are hand-audited; the honest
   `field_window_id=0` is the number W6 gates on and the field-serving cutover moves).
 
+- **PR #1034 MERGED** (integration) — micro-lane `w2-dbquery-allow-snapshots`:
+  `kala_field_snapshots` whitelisted in the mcp db/query proxy (the one-line gap #1033
+  disclosed), campaign-tagged provenance comment per file convention, route test 6/6.
+- **PR #1035 MERGED** (integration) — `w2-field-writer-wiring` (Opus): N_e determinism
+  defect fixed (both `'*'` coordinates pinned + total ORDER BY — closed BEFORE a second
+  prior set can ever land, per the precheck's own sequencing warning); stages 6/6.5/8 wired
+  into the ka_kshetra writer (substeps stage6/stage65/6× stage8:view between stage5finalize
+  and snapshot; `_OWNED_TABLES`/`_HASHED_TABLES` extended; hash decision documented: new
+  tables JOIN the §7.4 content hash, made determinism-safe by pinning `now_marker`=t_zero
+  and natural-key boundary ids); mi_bhara migration-number doc drift fixed (483→497); the
+  timeline golden-render test verified already collected by ci.yml (no CI change needed).
+  Two real cross-lane hazards caught by the lane: a blanket per-chart delete would have
+  wiped Lane E's `lel_derived=TRUE` insight rows on every rebuild (now per-table-predicated,
+  scoped `lel_derived=FALSE`), and the legacy-table guard matched `kala_timeline` as a
+  substring of `kala_timeline_spec` (now word-boundary tokenized, with its own regression
+  test). Honest-null parks recorded in-code (factor_informativeness NULL below 10k cohort
+  minimum · factor_actionability NULL until §11 tri-plane · contrast insights absent ·
+  bands[] empty · six views share one declared row set). Mutation-checked 3/3 — including a
+  self-caught vacuous first version of the delete-scoping test. **Independently re-verified
+  by the Conductor: 224/224 in tests/l3/ka_kshetra from the merged tree; diff scope 7 files
+  python-sidecar only.**
+- **PR #1031 MERGED to `main`** (~08:55 UTC, merge queue) → deploy of `f97fc78d` watched;
+  on success the parihāra L0 re-trigger runs.
+
 **STAGE 1.2 — sweep telemetry (first measurement, ~08:14 UTC):** both charts committing
 substeps under the new 606-substep plan (A: 5, B: 4 in the first ~28 min) → **measured
 ~330s/substep ⇒ ~55h/chart projected** (vs ~22h for the old 303 plan). This confirms the
