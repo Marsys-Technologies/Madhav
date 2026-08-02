@@ -13,6 +13,19 @@ governing: SHAD_DARSHANA_NIGHT_RUN_v1_0.md (orchestration) + SHAD_DARSHANA_BRIEF
 
 ## NEXT-ACTION
 
+**NIGHT 4 CLOSED (2026-08-02, ~01:22–~11:45 IST) — see "MORNING REPORT — NIGHT 4" below
+(after the Night-4 session narrative) for the authoritative close-out.** Headline: Wave 1 (8
+PRs — items 9/13/31/6/7, W4 Lanes U/R/S) built, merged, and **actually deployed to
+production** for the first time since Night 2 — `main == production`, verified directly
+against all three services. One real deploy-blocking bug found and fixed (migration 529 NOT
+NULL violation). **The one gap that matters most: item 9's S4-05 fix is code-live but
+DATA-empty** — the gochara sweep has not been re-run with the new grammar. **Single next
+action**: L0 super-admin rebuilds (N_e, widened lattice, Kota rings) → gochara sweep/resonance
+re-run both charts → the real W2 field-integration sequence → PARĪKṢAKA live acceptance. Full
+detail, parks, and evidence in the Night-4 MORNING REPORT.
+
+---
+
 **ALL THREE NATIVE DECISIONS FROM THE NIGHT-3 DOCKET ARE RULED (2026-08-02, morning review —
 full record: `SHAD_DARSHANA_ADJUDICATIONS_NIGHT3_v1_0.md` §NATIVE CONFIRMATIONS):**
 1. **Agnivāsa CONFIRMED: Pṛthvī-favourable, corpus default correct** (the elevation-session
@@ -136,6 +149,117 @@ on green like every other lane, not force-pushed through.
 
 **Next**: land PR #1024 on green CI, then run the gate-close sequence — this is now the
 critical path, not a further build wave (see below for the Wave-2 decision).
+
+---
+
+## MORNING REPORT — NIGHT 4 (2026-08-02, ~01:22–~11:45 IST)
+
+**Gates closed:** none formally VERIFIED-CLOSED in the brief's strict sense (that requires
+PARĪKṢAKA live acceptance, not reached this session — see parks below). **But this is the
+first night since Night 2 that campaign work actually reached production**, and it's a large
+jump: `main == production` now carries all of Night 2's W2 build lanes, all of Night 3's N_e
+priors + W3 items 4/5/16/17 + W2G validations + W4 design v1.1 + the watchdog fix, AND
+tonight's full Wave 1. Concretely, the wave that landed live:
+
+**Items dispositioned tonight (code-built + merged + deployed to production; live-data
+verification honestly still pending, see parks):**
+- **Item 9 — health/adverse event class, S4-05 re-test.** The highest-stakes item in the wave:
+  closes a documented historical trust-breaking veto (silence from the sweep read as an
+  all-clear on a health question). Red-then-green proof against the real UAT_DARPANA scenario
+  text. **Code is live in production; the sweep DATA is not yet** (see parks — this is the one
+  gap that matters most and is flagged loudly, not buried).
+- **Item 13 — Tithi-Praveśa** (new `ka_tithi_pravesha` L3 writer, lunar-return annual chart).
+- **Item 31 — period-echo mining**, hypothesis-framed, on `kala_ahead_get`.
+- **Items 6+7** — muhūrta-lagna substrate + activity-rule lattice atoms (R-1 widening, +71k
+  lattice rows). Item 6's Pareto axis blocked on a frozen file — data-layer closed,
+  engine-axis open, honestly disclosed, not silently claimed done.
+- **W4 Lane U — UPĀYA-SETU full (item 26) + E6 efficacy**, mortality-exclusion rail (G16)
+  proven non-vacuous.
+- **W4 Lane R — YAJÑA-SETU** (items 37-partial/38/40), Mode-2 fixture built (PASS=4/FAIL=0 in
+  PLAN mode; live detectors correctly SKIPPED, not forced green, pending a populated lattice).
+- **W4 Lane S — Intervention Ledger** (`mi_sankalpa`), status-preserving idempotency
+  live-proven against a real throwaway Postgres.
+
+**Rulings made:** none new via ANTARYĀMIN tonight (the docket was already fully discharged as
+of Night 3 + the native's morning-review PR #1015). One Conductor-authority migration
+renumber (531→533, a real cross-lane collision caught by CI, fixed directly rather than
+re-dispatching a lane).
+
+**Defects found and fixed tonight (real, not cosmetic):**
+1. A cross-lane migration-number collision (`531_kala_paddhati_profile.sql` vs the
+   already-merged `531_kala_tithi_pravesha.sql`) — caught by CI, Conductor-fixed, renumbered
+   533, guard re-verified PASS before pushing.
+2. **A real, production-discovered deploy-blocking bug** (same class as Night 1's bash-quote
+   bug): migration `529_bg_sarvatobhadra_grid.sql`'s `asset_registry` seed row passed
+   `writer_timeout_seconds = NULL` against a NOT NULL column, halting `migrate.ts` mid-run and
+   silently preventing migrations 530–533 (tonight's OWN new tables) from ever being attempted.
+   Root-caused via `_migrations_applied` (confirmed 529 never applied, rolled back atomically —
+   safe to edit), fixed to `600` matching every sibling row's live convention, PR #1026, landed
+   and **verified**: all five migrations (529–533) now show `applied_at` timestamps in
+   production.
+3. Multiple builder-caught bugs recorded in their own PR bodies (see the Wave-1 merge-train
+   record above) — a false-negative Pareto-axis assumption, a stale test payload, several
+   correctly-declined-rather-than-fabricated citations.
+
+**Parks and reasons — the honest, load-bearing part of this report:**
+- **Item 9's live data is NOT yet real.** `ka_gochara_sweep` + `ka_gochara_resonance` have not
+  been re-run against production for either canonical chart since tonight's grammar widening
+  (303→606 substeps/chart). **S4-05 is code-closed, not data-closed** — a live query today
+  would still return honest-empty for health windows, which is correct behavior (not
+  fabricated), but is not yet the actual fix landing for the native. This is the single
+  highest-priority carry-forward item.
+- **The L0 super-admin rebuild/refresh triggers were NOT run tonight** for
+  `bg_class_lifetime_counts` (N_e, migration 522, live in schema since Night 3 but never
+  triggered), the widened `bg_muhurta_lattice` (migration 530, schema live, 0 rows — the
+  Mode-2 fixture's own honest-empty state depends on this), `bg_kota_chakra_rings` (523), and
+  `bg_sarvatobhadra_grid` (529, deliberately empty by design, no trigger needed). **Nirmāṇa
+  §2.5.2 requires these built in production BEFORE the first per-chart build that needs
+  them** — this is the direct blocker for the real W2 field-integration run.
+- **The real W2 field-integration run (hash-replay determinism, weights-v0 seed, skill-score/
+  GOF publish both charts, specificity-gate HARD flip, item-44 census population) was
+  correctly never attempted tonight** — it was assessed early in the session as needing the
+  L0 rebuilds above as a hard precondition (a per-chart field build against production data
+  that doesn't have its L0 dependencies yet would either fail or silently produce an
+  under-populated field), and as substantial standalone work in its own right, consistent
+  with the same assessment Night 2/3 both made independently.
+- **`ka_kshetra` was not rebuilt on either canonical chart in production tonight** — same
+  precondition chain as above.
+- **PARĪKṢAKA live acceptance did not run this session.** Per the brief's own rule ("an item
+  without Verifier PASS does not exist"), none of tonight's items should be treated as
+  VERIFIED-CLOSED yet, regardless of how solid the build/deploy evidence looks. This is a
+  deliberate, disclosed gap, not an oversight — closing it needs a dedicated acceptance pass
+  once the L0/field/sweep prerequisites above are actually live with real data to check
+  against; running it against still-empty data tonight would only produce a shallow pass.
+- **W2G writer lane was never dispatched** (the V4 measured-vs-design contact-event band
+  re-scope — 779,595 events vs. a 10k-100k design assumption, even excluding the Moon — is a
+  genuine Opus design decision, correctly not rushed into tonight's already-large wave).
+- **Item 14** (janma-anchored election rules) remains NOT-STARTED, as instructed.
+
+**Deploy verification, done for real (not trusted from a green checkmark):** confirmed via
+direct log reads, not summaries — MCP's post-deploy smoke passed three real probes (no-auth
+rejected 401, bearer-auth 200, URL-token wiring), 100% traffic on `amjis-mcp-00527-f47`
+(confirmed via `gcloud run services describe`, revision creation timestamp cross-checked
+against the deploy run that built it); Web's smoke passed for real (auth-enforced 401,
+sidecar-reachable), 100% traffic on `amjis-web-01351-n2d`; Sidecar deployed clean. `main` @
+`d0f9cb1c` == production across all three services, confirmed directly.
+
+**Housekeeping done at close:** all six of tonight's builder worktrees removed (each verified
+merged before removal); the standing `shad-darshana-conductor` worktree kept, synced to
+`main` tip. `shad-darshana/integration` and `main` are now identical (integration was fully
+absorbed by gate-close PR #1025 + hotfix #1026) — the next session should treat `main` as the
+frontier for a fresh `git worktree add` rather than assuming integration has independent
+unmerged content.
+
+**Single next action for the next session:** run the L0 super-admin rebuild/refresh triggers
+for `bg_class_lifetime_counts`, the widened `bg_muhurta_lattice`, and `bg_kota_chakra_rings` in
+production; re-run `ka_gochara_sweep` + `ka_gochara_resonance` on both canonical charts
+(doubled substep count from item 9); THEN the real W2 field-integration sequence
+(`ka_kshetra` rebuild both charts → hash-replay → weights-v0 → skill-score/GOF publish →
+specificity-gate HARD → item-44 census); THEN PARĪKṢAKA live acceptance covering everything
+from Night 4 plus whatever lands from that sequence — this is realistically a full session's
+own work, not a quick follow-up.
+
+*Truth over completion. PARKED-HONEST with evidence, not a false close.*
 
 ---
 
