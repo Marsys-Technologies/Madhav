@@ -369,11 +369,16 @@ describe('kala_now_get — envelope contract (E3/E4/E5, item 43, §7 Living-LEL)
     })
   })
 
-  it('field_snapshot_id is a stable stub, non-empty', async () => {
+  it('field_snapshot_id is non-empty and honest (W2: real read or an explicit marker, never a stub)', async () => {
     vi.stubGlobal('fetch', mockRegistryFetch({ reachable: true }))
     const result = await computeKalaNow(TEST_CHART_ID, { as_of: AS_OF }, TEST_PRINCIPAL)
     expect(typeof result.field_snapshot_id).toBe('string')
     expect(result.field_snapshot_id.length).toBeGreaterThan(0)
+    expect(result.field_snapshot_id).not.toContain('stub:')
+    expect(['served', 'field_not_yet_built', 'field_snapshot_unreachable']).toContain(result.field_snapshot_state)
+    if (result.field_snapshot_state !== 'served') {
+      expect(result.field_snapshot_reason).toBeTruthy()
+    }
   })
 
   it('reading_prose is composed via the shared argument_composer (non-empty, includes thesis)', async () => {

@@ -70,7 +70,7 @@ import {
   makeKalaEnvelope,
   noLelCalibrationMaturity,
   buildKalaFreshness,
-  buildFieldSnapshotIdStub,
+  resolveFieldSnapshot,
   pointerTo,
   isNoLever,
   computedCoverage,
@@ -83,6 +83,7 @@ import {
   type TriPlanePointers,
   type DrillPointerLike,
   type KalaCoverageEntry,
+  type FieldSnapshotState,
 } from '../../lib/kala_envelope.js'
 import { composeArgument } from '../../lib/argument_composer.js'
 import { autoDetectTrimmableSections, finalizeMcpBudget } from '../../lib/response_budget.js'
@@ -1302,6 +1303,8 @@ export interface KalaNowResult {
   reading_prose: string
   question_frame: QuestionFrame | null
   field_snapshot_id: string
+  field_snapshot_state: FieldSnapshotState
+  field_snapshot_reason: string | null
   tri_plane: TriPlanePointers
   coverage: KalaCoverageEntry[]
   freshness: ReturnType<typeof buildKalaFreshness>
@@ -1770,13 +1773,16 @@ export async function computeKalaNow(
     triPlane.intervention_ref,
   ].filter((p): p is DrillPointerLike => p != null && !isNoLever(p))
 
+  // W2 (E5): the real field snapshot read — served id, or an honest marker; never a stub.
+  const fieldSnapshot = await resolveFieldSnapshot(chartId, principal)
+
   const envelope = makeKalaEnvelope({
     reading,
     questionFrame: args.question_frame ?? null,
-    fieldSnapshotId: buildFieldSnapshotIdStub({ chart_id: chartId, ayanamsha_id: ayanamshaId, as_of: asOfDate }),
+    fieldSnapshot,
     triPlane,
     coverage,
-    freshness: buildKalaFreshness({ ephemerisVersion: null, sweepBuildDate: null, fieldHash: null }),
+    freshness: buildKalaFreshness({ ephemerisVersion: null, sweepBuildDate: null, fieldHash: fieldSnapshot.field_content_hash }),
     calibrationMaturity: noLelCalibrationMaturity(),
   })
 
