@@ -176,6 +176,10 @@ KNOWN_HAS_WRITER_TRUE: frozenset[str] = frozenset({
     # NO writer — deliberately empty, migration-seeded only) ─────────────────
     "bg_vedha_malefic_scale",
     "bg_phaladeepika_latta",
+    # ── Brahmagyan — migration 535 (ṢAḌ-DARŚANA W3K Lane 1, ADJUDICATION-7
+    # Part 1: the canonical 249-fold KP sub-lord division of the sidereal
+    # zodiac; has_writer=true set by that migration's asset_registry seed) ───
+    "bg_kp_sublord_division",
     # ── L4 Phala — migration 342 ─────────────────────────────────────────────
     "ph_muhurta",
     "ph_nimitta",
