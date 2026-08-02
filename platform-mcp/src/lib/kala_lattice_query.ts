@@ -77,6 +77,7 @@
  */
 
 import { callPlatformPrimitive } from '../client.js'
+import { unwrapPrimitiveResult, unwrapFailureReason } from './primitive_unwrap.js'
 import type { Principal } from '../types.js'
 
 // ── Substrate row shapes (mirror migrations 484/485 exactly) ─────────────────
@@ -667,9 +668,24 @@ export async function fetchLatticeSubstrate(
       principal,
     )
     if (status === 200 && envelope.ok) {
-      const result = envelope.result as { rows?: unknown } | null
-      lattice_rows = Array.isArray(result?.rows) ? (result.rows as LatticeFactorRow[]) : []
-      lattice_available = true
+      // The primitives route serves a legacy ToolBundle — the capability payload
+      // lives at result.results[0].content as a JSON string, never at
+      // result.<key> (see primitive_unwrap.ts). `lattice_available` is a REAL
+      // detector on the parsed payload (§N.8): true only when the payload
+      // actually carried a `rows` array. An empty `rows` array IS available
+      // (an honestly-empty horizon) — distinct from wrapper-parse failure and
+      // from a payload with no rows section.
+      const { payload, failure } = unwrapPrimitiveResult(envelope.result)
+      if (failure !== null) {
+        reasons.push(unwrapFailureReason('query_muhurta_lattice', failure))
+      } else if (!payload || !('rows' in payload)) {
+        reasons.push('query_muhurta_lattice payload carried no rows section')
+      } else if (!Array.isArray(payload['rows'])) {
+        reasons.push('query_muhurta_lattice rows section is not an array')
+      } else {
+        lattice_rows = payload['rows'] as LatticeFactorRow[]
+        lattice_available = true
+      }
     } else {
       reasons.push(`query_muhurta_lattice returned status ${status}`)
     }
@@ -684,13 +700,23 @@ export async function fetchLatticeSubstrate(
   try {
     const { status, envelope } = await callPlatformPrimitive('query_parihara_graph', {}, principal)
     if (status === 200 && envelope.ok) {
-      const result = envelope.result as Record<string, unknown> | null
-      parihara_rules = asRows<PariharaRuleRow>(result?.['parihara_rules'])
-      census_rows = asRows<FactorCensusRow>(result?.['factor_census'])
-      parihara_available = result?.['parihara_rules'] !== undefined
-      census_available = result?.['factor_census'] !== undefined
-      if (!parihara_available) reasons.push('query_parihara_graph returned no parihara_rules section')
-      if (!census_available) reasons.push('query_parihara_graph returned no factor_census section')
+      // Same ToolBundle unwrap as above. `parihara_available` / `census_available`
+      // are REAL detectors on the parsed payload: true only when the payload
+      // actually carried that section (each section's rows may honestly be empty).
+      // A wrapper-parse failure fails BOTH flags with the distinct unwrap reason —
+      // never the misleading "returned no <x> section" that a live-populated
+      // production DB would make a lie.
+      const { payload, failure } = unwrapPrimitiveResult(envelope.result)
+      if (failure !== null) {
+        reasons.push(unwrapFailureReason('query_parihara_graph', failure))
+      } else {
+        parihara_rules = asRows<PariharaRuleRow>(payload?.['parihara_rules'])
+        census_rows = asRows<FactorCensusRow>(payload?.['factor_census'])
+        parihara_available = payload?.['parihara_rules'] !== undefined
+        census_available = payload?.['factor_census'] !== undefined
+        if (!parihara_available) reasons.push('query_parihara_graph payload carried no parihara_rules section')
+        if (!census_available) reasons.push('query_parihara_graph payload carried no factor_census section')
+      }
     } else {
       reasons.push(`query_parihara_graph returned status ${status}`)
     }

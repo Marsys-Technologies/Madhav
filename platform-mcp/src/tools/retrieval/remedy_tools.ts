@@ -19,6 +19,36 @@ import { z } from 'zod'
 import { callPlatformPrimitive } from '../../client.js'
 import type { Principal, McpEnvelopeError } from '../../types.js'
 import { budgetMcpContent } from '../../lib/response_budget.js'
+import { unwrapPrimitiveResult, unwrapFailureReason } from '../../lib/primitive_unwrap.js'
+
+// ── ToolBundle unwrap (ṢAḌ-DARŚANA W3 unwrap fix) ─────────────────────────────
+//
+// The primitives route returns a legacy ToolBundle: the capability payload is a
+// JSON string at envelope.result.results[0].content, never at envelope.result
+// itself. The previous `envelope.result as Record<string, unknown>[]` cast here
+// served the raw bundle under each tool's key with `count: undefined`. Each site
+// below unwraps first and reads the capability's real array key; a wrapper-parse
+// failure is served as an honest error, never as a plausible empty list.
+
+function unwrapRows(
+  envelopeResult: unknown,
+  tool: string,
+  arrayKey: string,
+): { rows: Record<string, unknown>[]; error: string | null } {
+  const { payload, failure } = unwrapPrimitiveResult(envelopeResult)
+  if (failure !== null) {
+    return { rows: [], error: unwrapFailureReason(tool, failure) }
+  }
+  const value = payload?.[arrayKey]
+  if (!Array.isArray(value)) {
+    return { rows: [], error: `${tool} payload carried no ${arrayKey} array` }
+  }
+  return { rows: value as Record<string, unknown>[], error: null }
+}
+
+function unwrapErrorOutput(tool: string, error: string): { content: { type: 'text'; text: string }[]; isError: true } {
+  return { content: [{ type: 'text' as const, text: JSON.stringify({ error, tool }) }], isError: true }
+}
 
 // ── Registration helper ────────────────────────────────────────────────────────
 
@@ -44,7 +74,8 @@ export function registerRemedyTools(server: McpServer, getPrincipal: () => Princ
       if (status !== 200 || !envelope.ok) {
         return { content: [{ type: 'text' as const, text: JSON.stringify({ error: (envelope as McpEnvelopeError).error?.message ?? status, tool: 'query_remedies' }) }], isError: true }
       }
-      const rows = envelope.result as Record<string, unknown>[]
+      const { rows, error } = unwrapRows(envelope.result, 'query_remedies', 'rows')
+      if (error !== null) return unwrapErrorOutput('query_remedies', error)
       return {
         content: [{ type: 'text' as const, text: JSON.stringify(budgetMcpContent({ query_remedies: rows, count: rows.length }, 'query_remedies')) }],
       }
@@ -69,7 +100,8 @@ export function registerRemedyTools(server: McpServer, getPrincipal: () => Princ
       if (status !== 200 || !envelope.ok) {
         return { content: [{ type: 'text' as const, text: JSON.stringify({ error: (envelope as McpEnvelopeError).error?.message ?? status, tool: 'query_remedies_for_chart' }) }], isError: true }
       }
-      const rows = envelope.result as Record<string, unknown>[]
+      const { rows, error } = unwrapRows(envelope.result, 'query_remedies_for_chart', 'remedies')
+      if (error !== null) return unwrapErrorOutput('query_remedies_for_chart', error)
       return {
         content: [{ type: 'text' as const, text: JSON.stringify(budgetMcpContent({ query_remedies_for_chart: rows, affliction, count: rows.length }, 'query_remedies_for_chart')) }],
       }
@@ -96,7 +128,8 @@ export function registerRemedyTools(server: McpServer, getPrincipal: () => Princ
       if (status !== 200 || !envelope.ok) {
         return { content: [{ type: 'text' as const, text: JSON.stringify({ error: (envelope as McpEnvelopeError).error?.message ?? status, tool: 'list_remedies_by_category' }) }], isError: true }
       }
-      const rows = envelope.result as Record<string, unknown>[]
+      const { rows, error } = unwrapRows(envelope.result, 'list_remedies_by_category', 'remedies')
+      if (error !== null) return unwrapErrorOutput('list_remedies_by_category', error)
       return {
         content: [{ type: 'text' as const, text: JSON.stringify(budgetMcpContent({ list_remedies_by_category: rows, category, count: rows.length }, 'list_remedies_by_category')) }],
       }
@@ -120,9 +153,13 @@ export function registerRemedyTools(server: McpServer, getPrincipal: () => Princ
       if (status !== 200 || !envelope.ok) {
         return { content: [{ type: 'text' as const, text: JSON.stringify({ error: (envelope as McpEnvelopeError).error?.message ?? status, tool: 'read_remedy' }) }], isError: true }
       }
-      const row = envelope.result as Record<string, unknown> | null
+      const { payload, failure } = unwrapPrimitiveResult(envelope.result)
+      if (failure !== null) return unwrapErrorOutput('read_remedy', unwrapFailureReason('read_remedy', failure))
+      // Capability content shape: { remedy_id, remedy: row | null, found: boolean }.
+      const row = (payload?.['remedy'] as Record<string, unknown> | null | undefined) ?? null
+      const found = payload?.['found'] === true && row !== null
       return {
-        content: [{ type: 'text' as const, text: JSON.stringify(budgetMcpContent({ read_remedy: row ?? null, found: row !== null }, 'read_remedy')) }],
+        content: [{ type: 'text' as const, text: JSON.stringify(budgetMcpContent({ read_remedy: row, found }, 'read_remedy')) }],
       }
     },
   )
@@ -145,7 +182,8 @@ export function registerRemedyTools(server: McpServer, getPrincipal: () => Princ
       if (status !== 200 || !envelope.ok) {
         return { content: [{ type: 'text' as const, text: JSON.stringify({ error: (envelope as McpEnvelopeError).error?.message ?? status, tool: 'query_tantric_remedies' }) }], isError: true }
       }
-      const rows = envelope.result as Record<string, unknown>[]
+      const { rows, error } = unwrapRows(envelope.result, 'query_tantric_remedies', 'remedies')
+      if (error !== null) return unwrapErrorOutput('query_tantric_remedies', error)
       return {
         content: [{ type: 'text' as const, text: JSON.stringify(budgetMcpContent({ query_tantric_remedies: rows, count: rows.length }, 'query_tantric_remedies')) }],
       }
@@ -170,7 +208,8 @@ export function registerRemedyTools(server: McpServer, getPrincipal: () => Princ
       if (status !== 200 || !envelope.ok) {
         return { content: [{ type: 'text' as const, text: JSON.stringify({ error: (envelope as McpEnvelopeError).error?.message ?? status, tool: 'query_remedies_by_planet' }) }], isError: true }
       }
-      const rows = envelope.result as Record<string, unknown>[]
+      const { rows, error } = unwrapRows(envelope.result, 'query_remedies_by_planet', 'remedies')
+      if (error !== null) return unwrapErrorOutput('query_remedies_by_planet', error)
       return {
         content: [{ type: 'text' as const, text: JSON.stringify(budgetMcpContent({ query_remedies_by_planet: rows, planet, count: rows.length }, 'query_remedies_by_planet')) }],
       }
@@ -194,7 +233,8 @@ export function registerRemedyTools(server: McpServer, getPrincipal: () => Princ
       if (status !== 200 || !envelope.ok) {
         return { content: [{ type: 'text' as const, text: JSON.stringify({ error: (envelope as McpEnvelopeError).error?.message ?? status, tool: 'query_mantras' }) }], isError: true }
       }
-      const rows = envelope.result as Record<string, unknown>[]
+      const { rows, error } = unwrapRows(envelope.result, 'query_mantras', 'mantras')
+      if (error !== null) return unwrapErrorOutput('query_mantras', error)
       return {
         content: [{ type: 'text' as const, text: JSON.stringify(budgetMcpContent({ query_mantras: rows, planet: planet ?? 'all', count: rows.length }, 'query_mantras')) }],
       }

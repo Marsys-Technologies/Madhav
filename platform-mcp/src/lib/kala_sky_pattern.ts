@@ -49,6 +49,7 @@
  */
 
 import { callPlatformPrimitive } from '../client.js'
+import { unwrapPrimitiveResult, unwrapFailureReason } from './primitive_unwrap.js'
 import type { Principal } from '../types.js'
 import {
   adjudicateCandidates,
@@ -609,9 +610,17 @@ export async function fetchPaddhatiProfile(
       principal,
     )
     if (status === 200 && envelope.ok) {
-      const result = envelope.result as { rows?: unknown } | null
-      rows = Array.isArray(result?.rows) ? (result.rows as PaddhatiConventionRow[]) : []
-      available = true
+      // ToolBundle unwrap (primitive_unwrap.ts) + real availability detector on the
+      // parsed payload (§N.8) — never `available = true` on bare HTTP 200.
+      const { payload, failure } = unwrapPrimitiveResult(envelope.result)
+      if (failure !== null) {
+        unavailable_reason = unwrapFailureReason('query_kala_paddhati_profile', failure)
+      } else if (!Array.isArray(payload?.['rows'])) {
+        unavailable_reason = 'query_kala_paddhati_profile payload carried no rows section'
+      } else {
+        rows = payload['rows'] as PaddhatiConventionRow[]
+        available = true
+      }
     } else {
       unavailable_reason = `query_kala_paddhati_profile returned status ${status}`
     }
@@ -692,8 +701,18 @@ export async function fetchChartRelativeSubstrate(
         unavailable_reason: `query_chart_facts returned status ${status}`,
       }
     }
-    const result = envelope.result as { rows?: unknown } | null
-    const rows = (Array.isArray(result?.rows) ? result.rows : []) as {
+    // ToolBundle unwrap (primitive_unwrap.ts): the chart_facts payload's `rows`
+    // live inside results[0].content, never at envelope.result.rows.
+    const { payload, failure } = unwrapPrimitiveResult(envelope.result)
+    if (failure !== null) {
+      return {
+        janma_nakshatra: null,
+        janma_nakshatra_fact_id: null,
+        available: false,
+        unavailable_reason: unwrapFailureReason('query_chart_facts', failure),
+      }
+    }
+    const rows = (Array.isArray(payload?.['rows']) ? payload['rows'] : []) as {
       fact_id?: string
       fact_key?: string
       fact_subject?: string
@@ -818,7 +837,13 @@ export async function resolveGrahaName(
     if (status !== 200 || !envelope.ok) {
       return { canonical: null, reason: `resolve_entity returned status ${status}` }
     }
-    const r = envelope.result as { canonical_name_en?: string; entity?: { canonical_name_en?: string } } | null
+    // ToolBundle unwrap (primitive_unwrap.ts): the resolve_entity capability returns
+    // the entity row as its content — read it off the parsed payload, not envelope.result.
+    const { payload, failure } = unwrapPrimitiveResult(envelope.result)
+    if (failure !== null) {
+      return { canonical: null, reason: unwrapFailureReason('resolve_entity', failure) }
+    }
+    const r = payload as { canonical_name_en?: string; entity?: { canonical_name_en?: string } } | null
     const canonical = r?.canonical_name_en ?? r?.entity?.canonical_name_en ?? null
     return canonical
       ? { canonical, reason: null }
