@@ -1,5 +1,14 @@
 -- Migration 529: bg_sarvatobhadra_grid — school-tagged SBC grid, versioned L0 (ADJUDICATION-11)
 -- =============================================================================
+-- HOTFIX (2026-08-02, Conductor, Night 4 gate-close deploy of main@f19969c5): the original
+-- INSERT passed `writer_timeout_seconds = NULL`, but that column is NOT NULL (default 600).
+-- This migration NEVER successfully applied — it errored and rolled back atomically on first
+-- attempt (`_migrations_applied` confirms no row for 529), halting the runner before 530-533
+-- could even attempt. Safe to edit per CLAUDE.md §N.4 (the ban is on editing migrations that
+-- HAVE applied). Fixed to `600`, matching every other has_writer=false row's convention
+-- (verified live: bg_panchanga/lel_events/bg_transit_engine/bg_ephemeris_engine/
+-- bg_nakshatra_medical all carry 600). No other content changed.
+-- =============================================================================
 -- ṢAḌ-DARŚANA campaign · ANTARYĀMIN supplemental ruling ADJUDICATION-11
 -- (00_ARCHITECTURE/llm_consumption_audit/briefs/kala_elevation/
 --  SHAD_DARSHANA_ADJUDICATIONS_NIGHT3_v1_0.md), issued after the w3-moorti-vedha
@@ -121,7 +130,7 @@ INSERT INTO asset_registry (
     'SELECT COUNT(*) FROM bg_sarvatobhadra_grid',
     'SELECT pg_total_relation_size(''bg_sarvatobhadra_grid'')',
     0, 'global', true, false, false,
-    NULL,
+    600,
     'Brahmagyan', 'L0', 'CURRENT', 'data',
     ARRAY[]::text[]
 ) ON CONFLICT (asset_id) DO UPDATE SET
