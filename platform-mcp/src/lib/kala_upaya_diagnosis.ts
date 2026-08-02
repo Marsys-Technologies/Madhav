@@ -35,6 +35,7 @@
 
 import type { Principal } from '../types.js'
 import { callPlatformPrimitive } from '../client.js'
+import { unwrapPrimitiveResult, unwrapFailureReason } from './primitive_unwrap.js'
 import { callKalaRegistryCap, unwrapKalaPayload } from '../tools/kala_views/shared.js'
 
 // ══════════════════════════════════════════════════════════════════════════════════════════
@@ -497,46 +498,69 @@ export async function fetchRemedyRows(
   const errors: string[] = []
   const interventions: UpayaIntervention[] = []
 
+  // MCP-facing primitive names: 'mitigation_map' (whitelist key → query_remedy_program
+  // capability) and 'bodha_rm_prescriptions_get' (→ query_rm_prescriptions capability).
+  // The bare capability names previously used here are NOT whitelist keys — every call
+  // 400'd. Error strings keep the capability names for greppability.
   const [mitigationSettled, prescriptionSettled, corpusSettled] = await Promise.allSettled([
-    callPlatformPrimitive('query_remedy_program', { chart_id: params.chart_id, limit: 50 }, principal),
-    callPlatformPrimitive('query_rm_prescriptions', { chart_id: params.chart_id, limit: 50 }, principal),
+    callPlatformPrimitive('mitigation_map', { chart_id: params.chart_id, limit: 50 }, principal),
+    callPlatformPrimitive('bodha_rm_prescriptions_get', { chart_id: params.chart_id, limit: 50 }, principal),
     params.targetedGraha
       ? callPlatformPrimitive('query_remedies_for_chart', { chart_id: params.chart_id, affliction: params.targetedGraha, top_k: 20 }, principal)
       : Promise.resolve(null),
   ])
 
+  // Every branch below unwraps the primitives route's ToolBundle first
+  // (primitive_unwrap.ts) — the capability payload is a JSON string at
+  // envelope.result.results[0].content, never at envelope.result.<key>. A
+  // wrapper-parse failure is named in `errors` (§N.8), never read as zero remedies.
   if (mitigationSettled.status === 'fulfilled' && mitigationSettled.value) {
     const { status, envelope } = mitigationSettled.value
     if (status === 200 && envelope.ok) {
-      const rows = (envelope.result as { remedies?: PhalaMitigationRow[] } | null)?.remedies ?? []
-      for (const row of rows) interventions.push(phalaMitigationToIntervention(row, params.failingLink))
+      const { payload, failure } = unwrapPrimitiveResult(envelope.result)
+      if (failure !== null) {
+        errors.push(`query_remedy_program (mitigation_map): ${unwrapFailureReason('mitigation_map', failure)}`)
+      } else {
+        const rows = Array.isArray(payload?.['remedies']) ? (payload['remedies'] as PhalaMitigationRow[]) : []
+        for (const row of rows) interventions.push(phalaMitigationToIntervention(row, params.failingLink))
+      }
     } else {
-      errors.push(`query_remedy_program returned status ${status}`)
+      errors.push(`query_remedy_program (mitigation_map) returned status ${status}`)
     }
   } else if (mitigationSettled.status === 'rejected') {
-    errors.push(`query_remedy_program threw: ${String(mitigationSettled.reason)}`)
+    errors.push(`query_remedy_program (mitigation_map) threw: ${String(mitigationSettled.reason)}`)
   }
 
   if (prescriptionSettled.status === 'fulfilled' && prescriptionSettled.value) {
     const { status, envelope } = prescriptionSettled.value
     if (status === 200 && envelope.ok) {
-      const rows = (envelope.result as { rows?: BodhaRmPrescriptionRow[] } | null)?.rows ?? []
-      const targetFiltered = params.targetedGraha
-        ? rows.filter((r) => !r.target_graha || r.target_graha === params.targetedGraha)
-        : rows
-      for (const row of targetFiltered) interventions.push(bodhaRmPrescriptionToIntervention(row, params.failingLink))
+      const { payload, failure } = unwrapPrimitiveResult(envelope.result)
+      if (failure !== null) {
+        errors.push(`query_rm_prescriptions (bodha_rm_prescriptions_get): ${unwrapFailureReason('bodha_rm_prescriptions_get', failure)}`)
+      } else {
+        const rows = Array.isArray(payload?.['rows']) ? (payload['rows'] as BodhaRmPrescriptionRow[]) : []
+        const targetFiltered = params.targetedGraha
+          ? rows.filter((r) => !r.target_graha || r.target_graha === params.targetedGraha)
+          : rows
+        for (const row of targetFiltered) interventions.push(bodhaRmPrescriptionToIntervention(row, params.failingLink))
+      }
     } else {
-      errors.push(`query_rm_prescriptions returned status ${status}`)
+      errors.push(`query_rm_prescriptions (bodha_rm_prescriptions_get) returned status ${status}`)
     }
   } else if (prescriptionSettled.status === 'rejected') {
-    errors.push(`query_rm_prescriptions threw: ${String(prescriptionSettled.reason)}`)
+    errors.push(`query_rm_prescriptions (bodha_rm_prescriptions_get) threw: ${String(prescriptionSettled.reason)}`)
   }
 
   if (corpusSettled.status === 'fulfilled' && corpusSettled.value) {
     const { status, envelope } = corpusSettled.value
     if (status === 200 && envelope.ok) {
-      const rows = (envelope.result as { remedies?: RemedyCorpusRow[] } | null)?.remedies ?? []
-      for (const row of rows) interventions.push(remedyCorpusRowToIntervention(row, params.failingLink))
+      const { payload, failure } = unwrapPrimitiveResult(envelope.result)
+      if (failure !== null) {
+        errors.push(`query_remedies_for_chart: ${unwrapFailureReason('query_remedies_for_chart', failure)}`)
+      } else {
+        const rows = Array.isArray(payload?.['remedies']) ? (payload['remedies'] as RemedyCorpusRow[]) : []
+        for (const row of rows) interventions.push(remedyCorpusRowToIntervention(row, params.failingLink))
+      }
     } else {
       errors.push(`query_remedies_for_chart returned status ${status}`)
     }
