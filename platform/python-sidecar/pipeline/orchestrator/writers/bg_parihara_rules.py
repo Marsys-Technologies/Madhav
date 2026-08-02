@@ -97,6 +97,8 @@ import logging
 import time
 from typing import Any
 
+import psycopg.rows
+
 from pipeline.orchestrator.writers import (
     ContextSpec,
     WriterBase,
@@ -163,18 +165,23 @@ def fetch_parihara_rows(conn: Any, build_id: str) -> list[dict[str, Any]]:
     flatten into one row per (dosha, cancellation condition). Read-only query
     on ctx.db_conn (no commit/close — caller owns the connection).
     """
+    # The orchestrator connection's default row_factory is dict_row
+    # (pipeline/orchestrator/db.py:26) — rows MUST be indexed by column name,
+    # never numerically (see bo_pramana_mapa.py's note on this exact trap).
+    # Numeric indexing here (`row[0]`/`row[1]`) is the KeyError: 1 that crashed
+    # the 2026-08-02 L0 global build (run 6fd72ed9). row_factory is pinned
+    # explicitly (neighboring-writer convention, e.g. mi_adhilepa/ph_muhurta)
+    # so the function is also correct on a tuple-row test connection.
     text_titles: dict[str, str] = {}
-    with conn.cursor() as cur:
+    with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
         cur.execute(_TEXT_TITLES_QUERY)
         for row in cur.fetchall():
-            text_titles[row[0]] = row[1]
+            text_titles[row["text_id"]] = row["title_en"]
 
     rows: list[dict[str, Any]] = []
-    with conn.cursor() as cur:
+    with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
         cur.execute(_DOSHA_QUERY)
-        cols = [d[0] for d in cur.description]
-        for raw in cur.fetchall():
-            rec = dict(zip(cols, raw))
+        for rec in cur.fetchall():
             conditions = _extract_conditions(rec["cancellation_conditions"])
             citation, text_id, chapter = _build_citation(rec["classical_citations"], text_titles)
             for idx, condition_text in enumerate(conditions, start=1):
@@ -835,26 +842,31 @@ class BgPariharaRulesWriter(WriterBase):
             parihara_rows = fetch_parihara_rows(conn, ctx.build_id) + build_muhurta_parihara_rows(ctx.build_id)
             activity_rows = build_activity_rule_rows(ctx.build_id)
             census_rows = build_census_rows(ctx.build_id)
-        except Exception as exc:
-            logger.error("[bg_parihara_rules] computation failed: %s", exc)
-            return WriterResult(
-                asset_id=self.asset_id, rows_inserted=0, notes=f"failed: {exc}",
-                duration_seconds=round(time.time() - t0, 2),
-            )
+        except Exception:
+            # §N.8 Earned-Signal: returning a success-shaped
+            # WriterResult(rows_inserted=0, notes="failed: ...") here is the
+            # documented no-op-completion defect class — the orchestrator
+            # treats any non-raising run() as OK and lights the asset while
+            # all three tables sit empty (exactly what production run
+            # 6fd72ed9 did on 2026-08-02). Log for context, then re-raise so
+            # the runner's savepoint rollback + error-state path fires.
+            logger.exception("[bg_parihara_rules] computation failed")
+            raise
 
         try:
             with conn.cursor() as cur:
                 rows_written += self._upsert_parihara(cur, parihara_rows)
                 rows_written += self._upsert_activity_rules(cur, activity_rows)
                 rows_written += self._upsert_census(cur, census_rows)
-        except Exception as exc:
-            logger.error(
-                "[bg_parihara_rules] insert failed after %d rows: %s", rows_written, exc,
+        except Exception:
+            # §N.8: same re-raise discipline as the computation branch — a
+            # partial insert must surface as an error state (the orchestrator's
+            # savepoint rolls the partial write back), never as a
+            # success-shaped "partial" WriterResult that lights the asset.
+            logger.exception(
+                "[bg_parihara_rules] insert failed after %d rows", rows_written,
             )
-            return WriterResult(
-                asset_id=self.asset_id, rows_inserted=rows_written,
-                notes=f"partial: {exc}", duration_seconds=round(time.time() - t0, 2),
-            )
+            raise
 
         elapsed = round(time.time() - t0, 2)
         logger.info(
