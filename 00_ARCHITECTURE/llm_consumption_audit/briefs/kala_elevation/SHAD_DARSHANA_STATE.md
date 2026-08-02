@@ -132,6 +132,55 @@ this session (it refines, never overrides, the v1.3 standing contract):**
    (#1028), which per deploy path-detection does not owe a service deploy. No deploy owed at
    open; the next deploy is Stage 1.5's gate-close.
 
+**STAGE 1.1 — L0 SUPER-ADMIN BUILD COMPLETE (2026-08-02 07:57 UTC, run `6fd72ed9`, execution
+`k622x`): 35 ok · 3 deferred (honest: `bg_panchanga`/`bg_ephemeris_engine` have no writers;
+`bg_sarvatobhadra_grid` empty-by-design) · 4 FAILED.** DB-true counts verified directly
+post-build: N_e priors = 6 (`ne_v01`, all six classes) · `bg_muhurta_lattice` = **164,575**
+(widened R-1 lattice, years 2026–2031, per-year row counts logged) · `bg_synthetic_cohort` =
+10,000 · `bg_synthetic_cohort_md` = 100,000 (0 honest-null skipped) · `bg_sky_events` =
+31,059 · `bg_kota_chakra_rings` = 27. The Mode-2 fixture's lattice prerequisite and
+`ka_kshetra`'s two L0 `depends_on` edges (`bg_cohort`, `bg_class_lifetime_counts`) are now
+LIVE in production for the first time.
+
+**Defects found by the L0 walk (real, production-discovered):**
+1. **`bg_parihara_rules` — a LIVE §N.8 no-op-completion defect + a dict_row crash.** The
+   writer's `fetch_parihara_rows` indexes rows numerically (`row[0]/row[1]`) against the
+   orchestrator connection's `dict_row` factory (`db.py:26`) → `KeyError: 1`; its `run()`
+   then swallows the failure into a success-shaped `WriterResult(rows_inserted=0,
+   notes="failed: 1")` — the global runner logged OK and LIT the asset while all three
+   parihāra tables sit at 0 rows. Textbook §N.8 (swallowed failure wearing success). This
+   blocks Gate-W3's judgment-ledger clause + the W4 Mode-2 parihāra adjudication until
+   fixed+rebuilt. **Fix lane dispatched** (`shad-darshana/l0-parihara-dictrow-fix`: tuple-row
+   cursor, re-raise on failure both branches, same audit+fix for `bg_reference`, dict_row
+   regression tests). L0 re-trigger owed after it merges.
+2. `bg_reference` — `KeyError: 0`, same dict_row class (properly raised → error state; live
+   data unchanged). In the same fix lane.
+3. `bg_ghatana` — `NotNullViolation` on `brahma_event_ontology.temporal_shape`: the writer's
+   seed rows predate item 9's ontology column. Savepoint rolled back; the live 27-class
+   ontology (including the health/adverse classes) is INTACT — the writer is stale, the data
+   is not. Recorded follow-up, NOT tonight's path.
+4. `bg_transit_rules`/`bg_transit_engine` — `ForeignKeyViolation`: the freshly-rebuilt
+   `gochara_resonance_map` rows FK-reference `bg_transit_rules.id`, so the L0
+   delete-then-replace cannot proceed while any chart's resonance map exists. Rolled back,
+   data intact. A real L0-upsert-vs-L3-FK structural circularity needing its own design
+   decision (ON DELETE strategy or id-stable upsert) — recorded follow-up, NOT tonight's
+   path (the live transit-rules data these writers would have replaced is exactly what the
+   resonance build just consumed successfully).
+
+**STAGE 1.2 — sweep telemetry (first measurement, ~08:14 UTC):** both charts committing
+substeps under the new 606-substep plan (A: 5, B: 4 in the first ~28 min) → **measured
+~330s/substep ⇒ ~55h/chart projected** (vs ~22h for the old 303 plan). This confirms the
+full-replan semantics (fingerprint includes the event-class list) and makes the sweeps a
+MULTI-DAY rebuild: the babysitter automation (redispatch-on-eviction, ≥40-substeps-gained
+continuation gate, max 6 redispatches, one-at-a-time per chart) carries them through and
+past this session. **Operational consequence, disclosed:** each chart's
+`kala_gochara_windows` rows were deleted by the replan (designed delete-then-insert) and
+are rebuilding progressively — gochara-window-reading surfaces serve honest-empty/partial
+for the duration; nothing is fabricated. S4-05 DATA-real verification and every
+sweep-dependent gate clause are therefore SCHEDULED BEHIND the sweeps, not closeable
+tonight — parked honest per the directive's own Stage-2 rule, with the babysitter as the
+carry mechanism.
+
 ---
 
 **NIGHT 4 CLOSED (2026-08-02, ~01:22–~11:45 IST) — see "MORNING REPORT — NIGHT 4" below
