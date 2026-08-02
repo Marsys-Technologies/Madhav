@@ -493,6 +493,11 @@ export interface PaddhatiConventionRow {
   native_confirmed: boolean
   awaiting_native_confirmation: boolean
   version: string
+  /** Set iff native_confirmed=TRUE (migration 534): where the native's
+   *  confirmation is recorded, so this reader cites a document section rather
+   *  than a chat transcript. Optional on the wire — a primitive predating 534
+   *  may not serve the column. */
+  confirmation_provenance?: string | null
 }
 
 export interface PaddhatiResolution {
@@ -509,7 +514,11 @@ export interface PaddhatiResolution {
     state: 'none_computed' | 'diverges' | 'agrees'
     reason: string
   }
-  /** ADJUDICATION-8 rail 1 — served verbatim. */
+  /** ADJUDICATION-8 rail 1 — DERIVED from the fetched profile rows by
+   *  `paddhatiCensusStatement`, never a wrapper-local constant (§N.7 item 3):
+   *  migration 534 flips `native_confirmed` TRUE with a
+   *  `confirmation_provenance`, and a static "not on record" claim would
+   *  silently shadow that data. */
   census_statement: string
   available: boolean
   unavailable_reason: string | null
@@ -517,11 +526,74 @@ export interface PaddhatiResolution {
 
 export const PADDHATI_DIVERGENCE_STATES = ['none_computed', 'diverges', 'agrees'] as const
 
-/** ADJUDICATION-8 rail 1's coverage statement, verbatim. Exported so the gate
- *  asserts the exact string rather than re-spelling it. */
-export const PADDHATI_CENSUS_STATEMENT =
-  'agnivāsa convention = corpus default (tithi-element, pṛthvī-favourable); the native\'s ' +
-  'lineage convention is not on record.'
+/** The convention-content clause every census statement opens with. The
+ *  CONTENT did not change in migration 534 — only its attestation did — so
+ *  this clause is common to all three states below. */
+export const PADDHATI_CENSUS_BASE =
+  'agnivāsa convention = corpus default (tithi-element, pṛthvī-favourable); '
+
+/** ADJUDICATION-8 rail 1's original coverage statement — the honest text
+ *  WHILE no native confirmation row exists. Exported (as the old
+ *  PADDHATI_CENSUS_STATEMENT was) so a gate/test asserts the exact string
+ *  rather than re-spelling it. */
+export const PADDHATI_CENSUS_UNCONFIRMED =
+  PADDHATI_CENSUS_BASE + 'the native\'s lineage convention is not on record.'
+
+/**
+ * ADJUDICATION-8 rail 1's coverage statement, DERIVED from the fetched profile
+ * rows rather than pinned as a static claim. Migration 534 (PR #1036) seeds
+ * `native_confirmed=TRUE` with a `confirmation_provenance` for the Agnivāsa
+ * convention on both canonical charts — a hardcoded "not on record" becomes
+ * FALSE the moment that migration applies (§N.7 item 3: no wrapper-local
+ * constant may shadow cited data; §N.8: a claim needs a detector — here, the
+ * detector is reading the row the claim is about).
+ *
+ * Three states, each honest:
+ *   confirmed   — an operative agnivāsa row carries native_confirmed=TRUE:
+ *                 the statement cites the row's own confirmation_provenance.
+ *   unconfirmed — the profile was read and carries no confirmed agnivāsa row:
+ *                 the original "not on record" text (verbatim), plus an
+ *                 awaiting-confirmation note when the row says so itself.
+ *   unreachable — the profile could NOT be read: reported as unreachable with
+ *                 the fetch-failure reason. An unreadable record is never
+ *                 restated as "not on record" — absence of evidence vs.
+ *                 evidence of absence.
+ */
+export function paddhatiCensusStatement(
+  profile: Pick<PaddhatiResolution, 'available' | 'unavailable_reason' | 'operative'>,
+): string {
+  if (!profile.available) {
+    return (
+      PADDHATI_CENSUS_BASE +
+      'whether the native\'s lineage convention is on record could NOT be determined for this ' +
+      'call (' +
+      (profile.unavailable_reason ?? 'kala_paddhati_profile unreachable') +
+      ') — an unreachable profile is reported as unreachable, never restated as "not on record".'
+    )
+  }
+  const confirmed = profile.operative.find(
+    (r) => r.factor_family === 'agnivasa' && r.native_confirmed === true,
+  )
+  if (confirmed) {
+    return (
+      PADDHATI_CENSUS_BASE +
+      `natively CONFIRMED as the native's lineage convention (${confirmed.convention_id}` +
+      (confirmed.school_tag ? `, ${confirmed.school_tag}` : '') +
+      '); ' +
+      (confirmed.confirmation_provenance && confirmed.confirmation_provenance.trim()
+        ? `confirmation recorded: ${confirmed.confirmation_provenance.trim()}`
+        : 'the row carries native_confirmed=TRUE but no confirmation_provenance — a data gap ' +
+          'to raise upstream (migration 534 prescribes the column be set iff confirmed)') +
+      '.'
+    )
+  }
+  const awaiting = profile.operative.some(
+    (r) => r.factor_family === 'agnivasa' && r.awaiting_native_confirmation === true,
+  )
+  return awaiting
+    ? PADDHATI_CENSUS_UNCONFIRMED + ' (awaiting native confirmation.)'
+    : PADDHATI_CENSUS_UNCONFIRMED
+}
 
 export async function fetchPaddhatiProfile(
   chartId: string,
@@ -568,7 +640,7 @@ export async function fetchPaddhatiProfile(
         'one convention computable; agnivasa_muhurta_chintamani_arithmetic is ' +
         'declared_not_computed pending muhurta_chintamani translation',
     },
-    census_statement: PADDHATI_CENSUS_STATEMENT,
+    census_statement: paddhatiCensusStatement({ available, unavailable_reason, operative }),
     available,
     unavailable_reason,
   }
@@ -1296,7 +1368,7 @@ async function compileConstraint(args: CompileArgs): Promise<CompiledConstraint>
               (paddhati.available
                 ? 'the chart\'s paddhati profile carries no computed agnivāsa convention'
                 : 'kala_paddhati_profile could not be read for this call') +
-              '. ' + PADDHATI_CENSUS_STATEMENT,
+              '. ' + paddhati.census_statement,
           dropped_from_conjunction: false,
           matched_atom_count: matched.length,
         },
