@@ -483,8 +483,25 @@ REAL for the first time.
   (`kala_gochara_windows`) is mid-rebuild by design; dispatching against it would verify
   nothing. Re-enters when both charts hit 606/606.
 - **W5 prep not started** — conductor-capacity scoping choice, recorded, no blocker.
-- **W3K K.1 lane + lattice-unwrap fix lane in flight at close** — branches/worktrees
-  isolated; if unmerged by morning they are clean parks (open PRs), not half-merged state.
+- ~~W3K K.1 lane + lattice-unwrap fix lane in flight at close~~ **BOTH LANDED before final
+  close — see the #1038 record above and this #1039 record:**
+- **PR #1039 MERGED** (integration) — W3K K.1 (Opus): `bg_kp_sublord_division` (the
+  ADJUDICATION-7-ruled name — the lane corrected the Conductor's brief on reading the
+  ruling), 249 divisions DERIVED not asserted (27×9=243 sub segments + exactly 6 rāśi-split
+  boundaries, proven in rationals with the three exact-coincidence boundaries asserted —
+  a wrong derivation yields 252, not a quiet pass); `brahma_dasha_systems` `kp` row
+  carrying the §4 constraint (judgment-method independence, NOT a fifth timing generator);
+  G-1 4-limbed significators additive on `ga_nakshatra` (star lords REFERENCED from L0,
+  writer HALTs rather than re-derives — §N.5); G-3 count_sql fix landed on `ga_positions`
+  (the inventory's `ga_sensitive` attribution was wrong — corrected against the live
+  emitter); G-6 CROSSCHECK v1.1; conservative no-reinstatement of retired kp tool names
+  (unruled — noted). Worked example (10th cusp, chart 482012f1): Mercury ranked strongest
+  10th-house significator WITHOUT being in the 10th — a KP-distinctive verdict, divergence
+  served as data. Verification: 9/9 star + 9/9 sub vs FORENSIC fixture; 35,967 swept
+  samples, 0 disagreements; cuspal 12/12 both charts; migration 535 guard-checked.
+  **Conductor verification: 36/36 KP tests + catalog reconciliation 6/6 from the merged
+  tree.** W3K Lane 2 (G-4 clock seam, G-5 served dissent voice) is the recorded
+  continuation.
 - Production serving note: gochara-window surfaces serve honest-empty/partial during the
   rebuild (designed replace semantics, disclosed; nothing fabricated).
 
