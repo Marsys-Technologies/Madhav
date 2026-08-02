@@ -691,22 +691,32 @@ def load_class_lifetime_count(conn, event_class: str) -> tuple[Optional[float], 
         signal_type_class = <event_class>
         source_subsystem = '*'  ·  signal_tradition = '*'
 
-    ⚠ HONEST GAP, DISCLOSED RATHER THAN PAPERED OVER. As of this lane's build,
-    `brahma_class_priors` (migration 387) contains ONLY signal-salience priors
-    keyed by `signal_type_class` ∈ {configuration, yoga, relationship, position,
-    …} — there is NO per-event-class lifetime-count row anywhere in the corpus,
-    and `brahma_event_ontology.base_rate_by_age` is a DISTRIBUTION OVER AGE BANDS
-    (its five values sum to ≈1 for a class that happens at most once), NOT an
-    expected count over a century. Reading it as N_e would be exactly the
-    "plausible-sounding default standing in for I-don't-know" that CLAUDE.md
-    §N.7 item 6 forbids, and §5.1 C-1 forecloses it explicitly: "never given a
-    made-up baseline."
+    ── COVERAGE, AS OF THE `bg_class_lifetime_counts` LANE ──────────────────
+    The gap this docstring used to describe ("returns None for every class until
+    an L0 lane seeds the rows") is CLOSED. `brahmagyan/l0_class_lifetime_counts.py`
+    + migration 522 seed SIX classes at `prior_version = 'ne_v01'`, every one of
+    them written at the reserved ('*','*') coordinate: childbirth, marriage,
+    separation, relocation, foreign_settlement, surgery. Every OTHER event class
+    still has no row and is still honestly SKIPPED with `no_class_prior_row`
+    recorded on the snapshot — that remains the shippable default (the L0
+    module's own Tier N-iii), not a defect. `brahma_class_priors` (migration 387)
+    additionally holds signal-salience priors under a DIFFERENT `fact_kind`,
+    which is why `fact_kind` is pinned below and not merely assumed.
 
-    So this returns None for every class until an L0 lane seeds the rows, and
-    every class is then honestly SKIPPED with `no_class_prior_row` recorded on
-    the snapshot. That is a CROSS-LANE PREREQUISITE of the same shape as §6.3's
-    `bg_synthetic_cohort_md` — flagged for the Conductor, not silently invented
-    here.
+    ⚠ WHY ALL FOUR PREDICATES ARE PINNED, AND WHY THE ORDER IS TOTAL (§N.7
+    item 2). The table's uniqueness is over the FIVE columns
+    (prior_version, signal_type_class, fact_kind, source_subsystem,
+    signal_tradition). Filtering on only the first three leaves the last two free,
+    so any row a sibling lane writes at a NARROWER coordinate — a subsystem- or
+    tradition-specific prior — becomes a live candidate for the same `LIMIT 1`,
+    and `ORDER BY prior_version DESC` alone does not break the tie: Postgres may
+    return either. N_e is λ⁰_e, the CHART-INDEPENDENT baseline of the whole hazard
+    field, so a heap-scan-order-dependent N_e would make the field — and the §7.4
+    field hash built on it — non-deterministic in a way no version pin covers.
+    Hence: both coordinate columns are pinned to '*' (a narrower row is NOT a
+    fallback — a class with no ('*','*') row has no chart-independent baseline and
+    is skipped), and the ordering is completed with the two coordinate columns so
+    it is total even if the pin is ever relaxed.
     """
     with conn.cursor() as cur:
         cur.execute(
@@ -714,7 +724,9 @@ def load_class_lifetime_count(conn, event_class: str) -> tuple[Optional[float], 
                  FROM brahma_class_priors
                 WHERE fact_kind = 'lifetime_count_per_100y'
                   AND signal_type_class = %s
-                ORDER BY prior_version DESC
+                  AND source_subsystem = '*'
+                  AND signal_tradition = '*'
+                ORDER BY prior_version DESC, source_subsystem, signal_tradition
                 LIMIT 1""",
             (event_class,),
         )
