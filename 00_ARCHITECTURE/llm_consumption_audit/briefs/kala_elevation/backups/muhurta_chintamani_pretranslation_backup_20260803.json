@@ -1,0 +1,1379 @@
+{
+  "snapshot_taken_at": "2026-08-03T00:00:00Z",
+  "text_id": "muhurta_chintamani",
+  "table": "classical_text_chunks",
+  "row_count": 274,
+  "note": "Lightweight revert manifest, not a full content dump. content_sa (the immutable Devanagari source, never modified by this task per brief §4) is the authoritative pre-translation content_en value for every row here — content_en was byte-identical to content_sa for all 274 rows at snapshot time (verified: SELECT count(*) FILTER (WHERE content_en=content_sa) = 274). Revert path for a touched chunk_id: UPDATE classical_text_chunks SET content_en=content_sa, content_sha256=<content_sha256 below, verbatim>, translation_status=NULL, translation_provenance=NULL, cleaned_devanagari_text=NULL, ocr_cleanup_pass_version=NULL, low_confidence_flag=false, ocr_review_note=NULL, ocr_confidence_score=NULL WHERE chunk_id=<chunk_id>; embedding is a pure deterministic function of (model, text) per platform/src/lib/embeddings/embedText.ts — re-embedding content_sa through that same pipeline reproduces the original vector exactly, so it is not separately stored here.",
+  "rows": [
+    {
+      "chunk_id": "muhurta_chintamani_pg0001_c01",
+      "content_sha256": "1f41ef14c21903f02ecca271b57ad9412f17932c2e51490b712276bf0f4ededd",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0003_c01",
+      "content_sha256": "0da02bf561d68e2117bc777974423cdd284be0d25ef4d636b056055116baf613",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0004_c01",
+      "content_sha256": "627927121667aa4c93f45a51fcf50b59b4a08617d9651bd3a8ec3da15c57a700",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0005_c01",
+      "content_sha256": "0b330e328e3333bc392a54502d47ee550fc20e8da15d04db41967803195b9c8a",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0005_c02",
+      "content_sha256": "c51cd0efbc58c30d8ace2ce8562c6eb8e6b99b26b1634086f8fcc8d40909a9c0",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0006_c01",
+      "content_sha256": "4bd392c30f20ef1a248d604e610de092787306258e60a9fa57803b227f6c1520",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0006_c02",
+      "content_sha256": "3f80c36a0f6b274aae850d3f15b5c7c0e86aae57662befcc2f57d8cd47bd25cc",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0007_c01",
+      "content_sha256": "4dcf324c9edb2e63ea728e029a71b82e797239a97019a9ebac1ca37721cede58",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0007_c02",
+      "content_sha256": "3eeef621d1685ba38119ca9451a6e885ebd51915608f517cc7be865041c3bdd6",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0008_c01",
+      "content_sha256": "aab37d9c003e16350f0d3d3a8348ca4e68b6c33522d7899d186ca49c70c40d0a",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0008_c02",
+      "content_sha256": "e906776a4b3f4b67ac687069372b766202dde3aac327d13e5f99094216671341",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0009_c01",
+      "content_sha256": "32b4324a0bfbfc92b659914360a429087f587b6f9af3247bb6ef9ec9eb2b6fa8",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0009_c02",
+      "content_sha256": "64bab453255d803910e42170715b2bccc4067e65be7c29f5f3097d96ab09bba6",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0010_c01",
+      "content_sha256": "7b3c9973a4266e7ae878828d43010857b5644f8a8a5f8ed2e46bb4da0eb06e66",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0010_c02",
+      "content_sha256": "9890b99c4693408bd3fc9e98c242420847ef94e26949b762f1bce2a023b319e7",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0011_c01",
+      "content_sha256": "dc54a26e1ec106dab03c98956026c95b3712b62dbe4445597cf9cf012d5339ea",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0012_c01",
+      "content_sha256": "63c95ed75f4b1fe0fd379f9ed9fdabafa9d824280cab380929fe941dfb96eb16",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0013_c01",
+      "content_sha256": "2a47a5aca4b69e8a3b5c2249b5ad318d349e7ce1705be2c2cf7e89afbfa08c4a",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0013_c02",
+      "content_sha256": "7aa18550fda1fb219a6b6fe12791d1c496d8fc85425d4be1d1d2a8c413ca9a77",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0014_c01",
+      "content_sha256": "9fa2ee7d5debd60e4556709cb73bb027ac20f538b2dae1b97f696199d8842dd4",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0014_c02",
+      "content_sha256": "df4c74e1bba1a5882934389bc39691277dd25bf37a9096e7e9e7e0aa3c595c9c",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0015_c01",
+      "content_sha256": "752f6a6e51e72a6b627a5f1c1ebf969775ad799d707e0075263b10a1c470b195",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0015_c02",
+      "content_sha256": "a57661b6971abddda3080656d6e3d6a0262e77a0122bac8f6482cbf62f5b6f76",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0016_c01",
+      "content_sha256": "ded36b9187556ab0d063f6d6bf5210ab92687fdc53e45897777c9693c0930f8e",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0017_c01",
+      "content_sha256": "4173108d127344a3b12492ea42212dc78abf5e6adffdbb3f54639c546fee2419",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0017_c02",
+      "content_sha256": "d5773f30c0253d534073817fdca3dd777b1e24f74662d4ac8e08add7036032d1",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0018_c01",
+      "content_sha256": "2be480b02cbd9d124ecdd9f34aeb5d453bbddd4e3457a51ee76e7d3f98643cbe",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0019_c01",
+      "content_sha256": "76095fcc0d42a89eb61702973d2b28e9a8388f44572ac826ce5b48d1f8839b3a",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0019_c02",
+      "content_sha256": "aa49f42b747be1c1f8d4d69c4fbde57cd47fdb4b5a8f932b3afd636576c2fe42",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0020_c01",
+      "content_sha256": "cb12bded54e25a7e12f7ee1ef76077713c699e31ccea740f44d2175a439d3338",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0020_c02",
+      "content_sha256": "bbc34c3e3c474ba25dfeaf2aedd8aebac5e6b53569e96e1ef7cc31468df05f78",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0021_c01",
+      "content_sha256": "d33fba97ccb7c86ac837d9e396bfc5c712ddb023d32bb05b0f2dd09b839bbfbe",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0022_c01",
+      "content_sha256": "e93829e12750b3bc45c92c6fce06a6eba6031be3788eaa20dd5fd785a27ef578",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0023_c01",
+      "content_sha256": "655ef1a80aaa12c5861e1c133c0661e5fc9c72fa6c3a2a427f9c67b6532c689f",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0023_c02",
+      "content_sha256": "86e95463b9cd2fabfdf7974d1a9a4f1814160da101f879403766b4fe64fa379c",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0024_c01",
+      "content_sha256": "b9f820f97c4ff25da206e355a54395953fe965fbfd03b7f7c63da6cdcf990332",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0025_c01",
+      "content_sha256": "b8cf7d4dadf6703df49c30677c086b9f76b14fe6d9d839f2d0e5376826bc97e9",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0025_c02",
+      "content_sha256": "1e32ad295f861871e912ab1b30e4aa62a46502a965c9023761c4b09cab1709d5",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0026_c01",
+      "content_sha256": "19d3871abfd705c580bc9267cce8d18e88935442c37c8e354887cf2c6446df69",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0026_c02",
+      "content_sha256": "37c736725a0f1783272109e0ff4fa5d5091fad3e5608c6f49a9e549bb99236ff",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0027_c01",
+      "content_sha256": "ac9b06a3faa0de6dbac116c728257f0f8d9c73b8ea237c16ef515e81ee0dafa9",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0028_c01",
+      "content_sha256": "6080b036ebfe9f18cda170122746d11e91091f0fd9a3a82929192151791a595e",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0028_c02",
+      "content_sha256": "cf757e2ac46a3ef0216af1b64827f46ce2d2b2616652f24939936e94352b5427",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0029_c01",
+      "content_sha256": "1a4549e3257398a4f2e5efabffced4fd4d8d5b1edb784197ee10d3c7ae2a9d4d",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0029_c02",
+      "content_sha256": "8631037975d3af45d317ab66e4ac2b8c39efe8076035deae5ac2d1f3abeaada3",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0030_c01",
+      "content_sha256": "94af79959fb026d25a5ff0310c31f3dfdedf60c87815d248134dc473cd74d60d",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0030_c02",
+      "content_sha256": "68a940fd66ac9ff2ed8b7f091339485278699efbcf79021c372f49294d2b1d6d",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0031_c01",
+      "content_sha256": "b5f3794d79df8fc1b3f3b169644bad5e64462045d13f6e461096784d5822d8ac",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0031_c02",
+      "content_sha256": "50cc1fbc6e50c8d085224966a2787f4cb70320ea4f849b8911853c196173733b",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0032_c01",
+      "content_sha256": "1b15858931a0354c87d713cbec615d1f4936c5e6895161b89beb467ff5c355f2",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0033_c01",
+      "content_sha256": "239964aa6bf63ad1249820b01cabe246a0f0abbeadbd031204212ded4ad30e53",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0033_c02",
+      "content_sha256": "7a3deb8f076a71a52e6ec0cf6a11ee6b8184d1038d620bfa5bd99accab6a7f0b",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0034_c01",
+      "content_sha256": "941753c35a8686083463e75ecd6d15f598ab3fc81555eb8c4f771e2740b4ea48",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0034_c02",
+      "content_sha256": "b4add55fe45425bfef6f7eece4cac996572e471a3171910fc7ba287bb0a98136",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0035_c01",
+      "content_sha256": "518c99c00e26d12f9ea7b6244b4cfe76b8b984657544cf37cb31a2f92bde163c",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0035_c02",
+      "content_sha256": "0115e55ab3ca78f3e78c1c958ef7849d54fa7e05784f480fe4305f67405fbb0c",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0036_c01",
+      "content_sha256": "1725ef10ecef67e2580abed6fa0cf968bd42df77d57bb8ae9e99541d464289a8",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0036_c02",
+      "content_sha256": "de0838ec2e4abcd978fed9a2bb147c2f7994534374b7cd2c3173093322a140bf",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0037_c01",
+      "content_sha256": "45538a7bab6ed052c7288aec5bf48db0e14b55a70ce0053872a5d941028d3945",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0037_c02",
+      "content_sha256": "87b17bc35a5ae1355426ea198872c365bdb1c2f0beeac6c672f61a4cccce579a",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0038_c01",
+      "content_sha256": "7a77767d69a69192afbe2ca4cf2bcb6460c14b17eaa07a430766144b163c2e03",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0038_c02",
+      "content_sha256": "f548dee66dd6c76200cfb116c3a1b66d4188f465d54beb79c2fda04eaf5336e2",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0039_c01",
+      "content_sha256": "adbfbb65f874e812132894f8123b605f2e865e9380de54844d2de9dec2f687d3",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0039_c02",
+      "content_sha256": "748a8f7a776c966fe5cfe5f6b06170b6e8707204abb4f0ff9efae9b8b5aa23a3",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0040_c01",
+      "content_sha256": "611e478b4a50cf6cd7d9bdcd006713633dadaf8f4066192890bf65826944ec5a",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0040_c02",
+      "content_sha256": "1ef2fda52d0f4eca003d207394405c82b8e93a12249f5d83fc9aa13b29f57d7b",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0041_c01",
+      "content_sha256": "24885c509be24cb6d7191ca31db3317843802a6c45be46da8a39d5a3f8a06b84",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0041_c02",
+      "content_sha256": "bb755462cf9f5aec7a281d62bbaa30562ebfbf7b54685f893404968ba508d83f",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0042_c01",
+      "content_sha256": "a582a6f35f57919775b602ea2b28063956811b2d7e55bcf7f73be7920e67109e",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0042_c02",
+      "content_sha256": "109098d0483aebfcb463ffb9e4a541dcc3d3714f887d5d745f32e90bcc5b8621",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0043_c01",
+      "content_sha256": "a0020280aa661c76a9822eeedbd784142f2977e8f6a959b213ac5a6c62fad04f",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0043_c02",
+      "content_sha256": "ddec20820b7bc00cadcc48b2b039837232bb58a5bef40cbc4af84ac432ff10ad",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0044_c01",
+      "content_sha256": "7820566e1353059289ff65ff39d213e9afb926f3a251cbc16c6882753b336351",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0044_c02",
+      "content_sha256": "9a22087aadb7e6aa73c0b8d38ff0c8597a824c274b1ab993dbc8decac1d5aa62",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0045_c01",
+      "content_sha256": "2a72a4564240333fcc2399eddc03bb5e01b3f7bd18b5789a950a50605546972c",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0046_c01",
+      "content_sha256": "2133f480853332a37eb1eb3eb389be4f1ff63292fee5e82011bb53e6a363b3df",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0047_c01",
+      "content_sha256": "e14070c9d25e490d0e97c13aa5294955d35a94bfe600fd64494c4438bb207bd0",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0047_c02",
+      "content_sha256": "3d3dcd34bc5d1101a9c00b2a45c2a7e5d632dbde758da9bb4289ae3f2c2f555a",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0048_c01",
+      "content_sha256": "2f7eeab3f86a19068ec78cbc5ae0d9987fec7c977eaa622cd94d836a6b87c544",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0049_c01",
+      "content_sha256": "124408629d3db6a7e0d3fb4f5e09f088edc2f9414233dd9aea8a422d64178d0b",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0050_c01",
+      "content_sha256": "068f97600e8148b1439598b701afda67e7c20daecbaece824811d6662e588fdb",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0050_c02",
+      "content_sha256": "af71d20d08283583dd6d79f14fb22e94c7858cd680e7cc9fc6faa1bb79f98232",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0051_c01",
+      "content_sha256": "5144a21c91c05d1c6e9b662a5da8494502ecba6af76639c19f6778b73162bdc5",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0051_c02",
+      "content_sha256": "e36c55aa7ea40190331875f166019685a68c13addcc1255168de81011287c66c",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0052_c01",
+      "content_sha256": "114b8793914727a736e531881fd984644740d039b8fa391bb61deb6ebd912db7",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0052_c02",
+      "content_sha256": "f92df54d9909e8cc20432ef88a829dc4959e21e52c6b8dcd8c6e5bad72e24dbc",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0053_c01",
+      "content_sha256": "623009f16f9434dca11ebade6c3c08c22b437f7babcaeb95e1d6cf4483bb1c49",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0053_c02",
+      "content_sha256": "96f42eae85035c38774108171e82e94876f2fb70516366b99e8645c4bf96a291",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0054_c01",
+      "content_sha256": "48c5ee0a9e9d5ce860209b4e192666481712456826f99547d1ebb3e254546cb5",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0054_c02",
+      "content_sha256": "f8b0f78e4421e011054d6228a6f54a51610805a06568ea8b684a969f55aa709f",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0055_c01",
+      "content_sha256": "12cfa31ee2be32c68777c0d8abac04f3700bb72a3d96a6cc2a4cdedd9d4f97e9",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0056_c01",
+      "content_sha256": "82c65d01aec8cce67d8f33a869ce4d3e424281dd0a03a7508ad8442029e592fb",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0056_c02",
+      "content_sha256": "0181f1ec9b17af6bd8237dc0fdf95076b1a4aeae216fa7efcea4e35cbf5b0ba9",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0057_c01",
+      "content_sha256": "f814e768b38f89e75c6c3323fb55d80e4cfd93992e3cb315fb74934504db4c4a",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0057_c02",
+      "content_sha256": "24cea77df8ae71315d2318d20c2f6ed8fef80e04aa03fe5b1efa3453d6635660",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0058_c01",
+      "content_sha256": "2381566a88beed22f3fc1fc38a23fb000379abd550183ce4294b1dabd97aa0cb",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0058_c02",
+      "content_sha256": "9b3379f91cafb3e29427ba2031908873c35d221e88d8de14689ad71de77a8e9f",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0059_c01",
+      "content_sha256": "4f3f7775fa8dd090e280485e877fb5df4b9b8877f61d13706009122c8c437a76",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0060_c01",
+      "content_sha256": "bfc30d6b24cc714552cbaae43c124436eb69be38a00495f49f2c75ba6edbe16f",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0061_c01",
+      "content_sha256": "3ac02776617e56a5d99ff33cc359c21255d1f2ebadf297395f09a7e05acfb453",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0062_c01",
+      "content_sha256": "6b52a81e1c27b9d00aa446cbd678db33ff69d899398e27d4240cce49afb453d0",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0062_c02",
+      "content_sha256": "21a060b5cfb53a44ab7f399a61eac6601db35457b47e0ed0c5d07198b1eaaf68",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0063_c01",
+      "content_sha256": "02d50efa1b5552f656ac2f8d97f60e475c8f82d9ef6e630417af5fc0a6ae95a1",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0063_c02",
+      "content_sha256": "213c5529dbdcd185cc3a7283683262873d294f847b6774e7e5b1756a76973642",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0064_c01",
+      "content_sha256": "bdc3263109af1b83f3b8bb6cf79920c39178fd287e7714a719a0808e096aaed8",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0064_c02",
+      "content_sha256": "907173163e488ebb57ba7574c4df0a34af27c774aa957fc76d9541e2c7bada96",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0065_c01",
+      "content_sha256": "88cfd27530dd4de79dce3cb65bc72c6be4b0b715b267e84312851e837036f647",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0066_c01",
+      "content_sha256": "637b2ceb1e7eec2963197fe39b8466acc4cba34ca05a2daf42686c64fee23417",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0066_c02",
+      "content_sha256": "ede7589684c1e03adfbf2dd00789a3e11493e0d5922bf9a632fb2acd63a8422b",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0067_c01",
+      "content_sha256": "1f9648d2d6d83e2515a5420bf56a4fb9a3e709393546f80bf77c9f4ab14807f9",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0067_c02",
+      "content_sha256": "821f447808d249924b7fe6402b2bcd4d29de27fff37ec51fc09a12d49204cff6",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0068_c01",
+      "content_sha256": "49798337ea5e2e59ada4d9bddab68028a147d30ebad9be56567e758cb8386902",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0069_c01",
+      "content_sha256": "742b019c8fef79f3daa1a26631c5db35f4bb75441862ecbd1d9110a7aaf50cb7",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0070_c01",
+      "content_sha256": "f2aac779eedaf4d038de983c7e8ff026bcb3dadcc582f99a4848c481530c3bf4",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0071_c01",
+      "content_sha256": "e7455160ff41df191220ee3af888c1c4c5f3ef3ed587475f1422f16402c5febe",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0072_c01",
+      "content_sha256": "85a9927fadf058a38f6fe6110302e3a45f87d3a5f75d746bbfd694b4e7d8923c",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0072_c02",
+      "content_sha256": "08df79b8962c7fec6248dbdb2310f568cf5a2b7d977e99870221f8a35c87e49a",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0073_c01",
+      "content_sha256": "06a7640bbaf2835ef9b7abd0abd405a2c0fb557453756511f3c7f20ff0f49c84",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0073_c02",
+      "content_sha256": "8e16e70015f9644435ca509c1b5e2e3753b6abcb25ce7c38db858ba9200a1982",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0074_c01",
+      "content_sha256": "91bcd0863655b0864b79228a6be03dc747f6af5bfc238965c9f54836e4e05a12",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0074_c02",
+      "content_sha256": "70607a436912915b18840843d3b90409cbf4e7cc1fd6482bab26092a35458660",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0075_c01",
+      "content_sha256": "8072fd3bf35756ab1ef4cf85d6b9eb2c916dbc2c15d7d4146e8f429dec379823",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0076_c01",
+      "content_sha256": "d7955942304c171489e7a0ee1cf8d2729e6871525992319b2d7e46f885cbef13",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0076_c02",
+      "content_sha256": "d762706a5891d2f380827d75a15486b49b04f5aeca52b4c42d5a66db14934a98",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0077_c01",
+      "content_sha256": "7966786b621d6d06b0246d359a56f7c727afb15ae2b792d26a1e02fd0961d62d",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0077_c02",
+      "content_sha256": "1c83bf83d32b0477ff624dabbf12d2b000b6cc6957c8a9c553856b45c8325828",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0078_c01",
+      "content_sha256": "9049de4bf83e09023e75a5af38622b25e5a284f8d55de2bf40054d42f1323aad",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0078_c02",
+      "content_sha256": "5745543f1a26d3772eaaecccb022de6801a1a93f7b6389f969b31ead1649ee62",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0079_c01",
+      "content_sha256": "052b02566561d495cd716629e3c98d4caf3bcc9736572a505f511f7fd5ada18a",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0080_c01",
+      "content_sha256": "01a22d6fd75ae146711beb8fe1fee15b79e647599aaf629d4cfa137c8e18dd94",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0080_c02",
+      "content_sha256": "a26ee61689a13324f4ea23cd6c307d66eeb8bfe4d0eb8b2b643fb9f1d1d240c8",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0081_c01",
+      "content_sha256": "ee734a2e53b3d57b912cfc9d842cee4327a33f7080fa14d0ad1c606fd7060711",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0081_c02",
+      "content_sha256": "e1228893684f00fcabca1fc3437bfbbd91478561d36e29a24c577a2be6e20fd3",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0082_c01",
+      "content_sha256": "54079077036c56683b2882dec8dd1476ab745cc726cf71fde4741f772ff5fb4b",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0082_c02",
+      "content_sha256": "9eb3a7fe6386b2e9d64144f203ee086b16f6e67ec514e2fd5dde1b3eb90da63d",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0083_c01",
+      "content_sha256": "51233b548b3957eda6bc0b40de7ed30c7f0c1c0e8d1aa5c02bc3aafbdb8ec7a7",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0084_c01",
+      "content_sha256": "3d0aed87591d11951641f66ec9b25c7585558885883a54f79f609479e8feca4e",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0084_c02",
+      "content_sha256": "f41fc7679be061e5c51fb003f4d7bfe7b82541bac56125dd24bc47e604381c38",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0085_c01",
+      "content_sha256": "a158615715e92489b6f6974143e0fa659428e75d491670946c6b54e20e7b4be5",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0086_c01",
+      "content_sha256": "05dd1e3db62e9bb4061c492cbc9c97abbc80d0953853a6c0884089b826ed358a",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0087_c01",
+      "content_sha256": "a1e213999c2b04671b89c959c827605a80fa91f147698f02501fe0133d282dc0",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0087_c02",
+      "content_sha256": "e73511caf2b8cb38651db425e279b4038112f77af29efaaf4501e18d092a9aa3",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0088_c01",
+      "content_sha256": "b851cea0d53ddc4142738fc3b9d7f6943cae544ab5ffec1e6103f798b2a7ec5a",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0088_c02",
+      "content_sha256": "3fbf77b236597e6b75e6be13a8fd16e6e39d0fc7f8fe639c63aff391162dbc49",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0089_c01",
+      "content_sha256": "6ec649ced7fda17355c0b247100ab786c383fe763249a82b68860c5eef7d95c8",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0089_c02",
+      "content_sha256": "3c39103a8e9f40c912a403946179b4c9235d6868c6dd0b3504ee4c26a4d0768e",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0090_c01",
+      "content_sha256": "ec45a55faad8d7508bfdfa807a076069c9c37595900529c1c01ec1be0a4ae746",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0090_c02",
+      "content_sha256": "fd7b965b10805c687f472ee6389741c84ba485c27c070e73f28561ba709612be",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0091_c01",
+      "content_sha256": "5b73868e37e2a85019ca3f2ab78ef7776d363e5cdad0ed0986fe9099f493d97a",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0091_c02",
+      "content_sha256": "32d88a71484c8339bfc433782350b9852d47312cb830b9e0d5dc135aae416e44",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0092_c01",
+      "content_sha256": "32e80047f398bcaf85c77aa8050ebc82a3671eb2b45337d6ba2c75c76923773d",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0092_c02",
+      "content_sha256": "51c867562615860f11d87d78018204ad387a0f2a2f92c80ec7bd5b92170dec6e",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0093_c01",
+      "content_sha256": "491f6b22bcf04884c6b86d9cacc2f3cb0f9844591cd50ee4b4e49eca35d958a9",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0093_c02",
+      "content_sha256": "5917a28d972104d9b9e92fc05e3c59a2f9fae47951d3352e9251aa6613c36f8d",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0094_c01",
+      "content_sha256": "571fffe3360299a71c0f94987f31891e810603153ce90ba365ff33c7b1ee9a2a",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0094_c02",
+      "content_sha256": "64f9f86e2d9eb2e49b05bcf215a507ccbdfb2188a7707d716e46c73ee7bc3fcf",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0095_c01",
+      "content_sha256": "73665b5fab3face94dc2cfeb1accde1aca6bc953f0d82762f8362e77a7aa042e",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0096_c01",
+      "content_sha256": "a2593a67a24462cd1c97b073ef8b10cdd71bd1b8b0f89923c412ad90250ecd7f",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0096_c02",
+      "content_sha256": "e0171eb2d8a8ffd6b002e74d3e13232bdb934d79ae3afac1a6f2a8e17c737150",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0097_c01",
+      "content_sha256": "4f1398cb9aead25f9190f5155efcc850f8323877a36455c7ef09bbf22e96b52c",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0099_c01",
+      "content_sha256": "922063acb4bb60d49c85e7834c02fde437791059c15c1f1d97752549f217bb61",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0100_c01",
+      "content_sha256": "2b149b3fa1c4a3a77a81e2692d4376707eb859985fd3c8c785a507f855884b65",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0100_c02",
+      "content_sha256": "c9787c04455255f370a286f203715173e298ee126436c003a1665483b399d631",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0101_c01",
+      "content_sha256": "c99990d75c8296002a9359dcc69d92b77e085f74df946dcbafc198a4f33b65fd",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0101_c02",
+      "content_sha256": "229c3692438b9495628f4cb7872ca631067d54b703f6e2c5c2551f9901d3ad2b",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0102_c01",
+      "content_sha256": "2d58628e0770d41513af5405e77bdf493dc42e4aa9dcba42f077a73f687ab59b",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0102_c02",
+      "content_sha256": "9e8429eb96ed7b121c267cbc39ca2a3ac9e00de7514a7057d8d5031e4feb9f25",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0103_c01",
+      "content_sha256": "4d2a846ad66adc776e6045aba66bc156db2e67e07b86a1317d8fbaf32de5867b",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0103_c02",
+      "content_sha256": "5a92231fce55bba4d24b55dcb3e32e3a897a1d50a268c07eb8600577bb583391",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0104_c01",
+      "content_sha256": "4267585fae42d183e28d3e2a01c381c30f21d2fe38b88aa6d2a8e45450486cff",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0105_c01",
+      "content_sha256": "8a51d62c5247f54b6e3a6cad85989b99a349cc5ef3e0791a0d0935e65fc7edf0",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0105_c02",
+      "content_sha256": "31ac9f7d0ac397966ec98f785a26d09e727f5953f6e121a21f0c06f822f35261",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0106_c01",
+      "content_sha256": "faee7ae90cc56ef64d031197e3db3e770a049b24546946df5a8ba858ada5e4b0",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0107_c01",
+      "content_sha256": "196989dfe1b630e9891c0d73e06fda5a824a339a618ec0b30f43c4f7265eab4a",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0107_c02",
+      "content_sha256": "c2f23d625404c08003784f50f92f9cb797c80dda913195e4d704fb099eb40aed",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0108_c01",
+      "content_sha256": "87afe89f580a12693e0ceb8d3ad9c6c76a0f44d96d78e388c8342ffed6cbd4e5",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0109_c01",
+      "content_sha256": "19d045b8244ac4851e14344ba9beed9fd690c313fbe47cbd802d1a6932aa2677",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0110_c01",
+      "content_sha256": "705ebd731ae0d45c21ce976d6dedb4e34fd4c41eaf8fbf8787fd57b0b139faa1",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0111_c01",
+      "content_sha256": "a648dee4d7b5007428a2a67b7557c3214eb0fdaf4bffc0deee2605594601ffff",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0111_c02",
+      "content_sha256": "9d74abc4b8455adfc609d684f02bc636d2fc6243db4818b10e70f9ed5959580b",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0112_c01",
+      "content_sha256": "9de8148dff3048060c0b73a0b93b68363507ffe217d6f61331a37a63a17efd27",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0113_c01",
+      "content_sha256": "5c1e8051484bd5bf6cf07c84c7d1c488c05a76bad81e41147359a00314aa7dec",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0113_c02",
+      "content_sha256": "4c03d9aa1991a53aa0f02067b8004265d07dbc49a0e575cf7740dff7bf2b8ee2",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0114_c01",
+      "content_sha256": "24fc6d2156eec43a6f41afe1a838d115bc08b1e83359d6fa2f7d73effd0d9d7e",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0114_c02",
+      "content_sha256": "973f6eb222e35b6ae1901ad4fa6194407e43428bac6245035bf8f591d19eee59",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0115_c01",
+      "content_sha256": "0e74e6aa91a268e69149e3b4b15ac31eb840261e3fa8bf199608e374a409b404",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0115_c02",
+      "content_sha256": "1c8932d2d45e0ff7f7629dda180689562f2503160dac1ad0025ee555e5488adc",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0116_c01",
+      "content_sha256": "158f4f25596412174e6f2c0924e553ae8716b3d861ddb10e9dd0d5b60cd44aaa",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0116_c02",
+      "content_sha256": "671c8345ce73338b108b77460552e898cb0da6a20b076ff57a442d8b188f810b",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0117_c01",
+      "content_sha256": "6b6b255bfe73429b8f424ba30564aff6072fa03f530cd84077b5868640013f88",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0117_c02",
+      "content_sha256": "bf36c3a841b239854cc8c0b565040aea7be898ef697f6812d6fa4abbb0590d59",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0118_c01",
+      "content_sha256": "929e2d9bbe5ed3992c3de39e5b59a9d21a84448a054b420470b456d660810081",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0119_c01",
+      "content_sha256": "6d8c9bd9898e02bdbb79a8a82563c78033022f4540e8424737602cf39a5a3e0b",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0119_c02",
+      "content_sha256": "d537ba52a3e5dd1fcb408c6557b304c2c6faaee37f12074d18b761da3ecc4a33",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0120_c01",
+      "content_sha256": "a0508c8b066224433f43b9da18b21fb3faf12c32491383c9c14310e1b34acacc",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0120_c02",
+      "content_sha256": "bdf5f9f1c5ccfee1bc4bd711ce90bc8b6766f57ff5db76ecfa51aef712f152c9",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0121_c01",
+      "content_sha256": "37a379efae4076243ea7fadfbbc03f1a9dab8c264d19cb762a38d3319589d218",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0121_c02",
+      "content_sha256": "49ca7a614878123cb95209fcc665ec16eb84743fbca738efc7fd75a9117f6610",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0122_c01",
+      "content_sha256": "9f6cafe4e3c18e0106bf92de8b62692f7b6b83719b2d8206763b2feb438d6372",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0123_c01",
+      "content_sha256": "a4668bad967e363a31635df51717971e46b2f4fa29cfa45acc55347caa009e2a",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0123_c02",
+      "content_sha256": "e56247f2eb7e28d3e3bb363e332631a3e365198be2de4a22a6823030406a1bc7",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0124_c01",
+      "content_sha256": "22b17bc2bc6791d8fde0172c4ddf23903ffbd025eb2819c6cc225f7f38006dae",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0125_c01",
+      "content_sha256": "f6bb65ff9f3c594f5ff908abdcfcc01dba70cfc7ad095c60cd35bd0c5cdae48f",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0125_c02",
+      "content_sha256": "acc9a21060e2809927fd37129bdeb55b1de33a1d6a50dd8febd861f0924241a9",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0126_c01",
+      "content_sha256": "7742a3655e3a539062a6b96a03a8d9819792b813e7c3c3eb549e2beb9ea2305c",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0127_c01",
+      "content_sha256": "e68358768385e705fda087d1db5f6e9f0300eedd8ccff4cfe9b473480f881206",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0127_c02",
+      "content_sha256": "059a0678a34e5c9fba38c1ff0cda5732a10edf715b438409ae3db6b2bfc634a7",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0128_c01",
+      "content_sha256": "fe4d30cc342f400c9985d996efa77b74049312bbd9f5fe5baade548a6cdbd17f",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0129_c01",
+      "content_sha256": "ca3471e7e2b7f6008ed584db5215d123755a24f4ed319bdaa6337f963aa3943e",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0129_c02",
+      "content_sha256": "8efc1af125c52a557a0e1ce1cd4b37c0b37e59d8fc1feb6f40e8cab2f2e1ed73",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0130_c01",
+      "content_sha256": "19f920c2c1172d9d11ceaac2544ef000a6c21650a1699472dbc397f3f9ed52da",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0130_c02",
+      "content_sha256": "7ce8d1f5ea31ff513ea9dc7e08406005f2bd31aaff744fad498fcef2d988c184",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0131_c01",
+      "content_sha256": "1cee86743e9da6f2c9cd7aa9420e689d4385b83d66c60dcb245ebb15fd868311",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0131_c02",
+      "content_sha256": "25da850225d021dcc8d6d9163b0db1b268a7fcc56757f04be35f4a459b536240",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0132_c01",
+      "content_sha256": "d1ec74c234c8685eb642a8ff76caf8c620b64494604a5d337766bf50d0786577",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0133_c01",
+      "content_sha256": "548ad321cb717ca4f9b2bc33d6ca81bbe066bbccc0ce2ecc893ee7c60629d025",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0133_c02",
+      "content_sha256": "f37f5ad3afd4c5a56506d12e5720fac81f8aa0ec1ba3a94c9bbf62a2d78e1978",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0134_c01",
+      "content_sha256": "221f8b9a29a2a823d9e27f813aa09fbce3d5bcdd6c6aa678031aef964beb40a5",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0134_c02",
+      "content_sha256": "d3e691fe1f2a59becdc20c28440dc6695e51c1bcd8cd65e0c36c3b46b30e82df",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0135_c01",
+      "content_sha256": "a6084efcfb4f8355863deb1f39e71f6e028261abd568612ff0d5b4950be4daa8",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0136_c01",
+      "content_sha256": "f40a63442e9ad790d64f021163ffd80101e32aed6926aea233eec14d0fec92c8",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0137_c01",
+      "content_sha256": "dfece03876e0d7d2f70122fd56bb54ed585cc5ab86473cd2ea3a6c5dafec7a9d",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0138_c01",
+      "content_sha256": "c079e048df0b129ba4d322954e078ab4274157dacb721d43d5d6f62274fe18ff",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0138_c02",
+      "content_sha256": "436d2675dd8ce6cb97e52ee28e9ea24404e8e221ea719fcdd05024031c71ac34",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0139_c01",
+      "content_sha256": "64d0a17a8a09b6a5eb2903b1c9924e7dbe17d0c0581c0b31d9e81413f32f0e88",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0139_c02",
+      "content_sha256": "beefcb0933169a2a568e10efc6ca2c0ba6c2beb081660c0911631f3821e0e901",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0140_c01",
+      "content_sha256": "491e922e893fe0d69fc84e8d6f4ff645041a40d617100772a737b6f9b10d87ea",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0140_c02",
+      "content_sha256": "1ab296cf3a04e15d14427394418bf5603b4c99e8db9d7b294263f5488dbf6938",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0141_c01",
+      "content_sha256": "19daf5e03a040dd4faa4af3ebc16175e5db33b6a2adae96ea9f8ea4202c26fd2",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0141_c02",
+      "content_sha256": "5b48014b050b7030372e8b8253a291f211cba4658a4049ac13f03b354c8d83bd",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0142_c01",
+      "content_sha256": "6f3886cf422419c84af59877224adbea1d2126d04779dea4b8afae381acf92fe",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0143_c01",
+      "content_sha256": "8c4a74bde03770a76d376986f05066fba6227e6370deb7d17525e986f2e09bcf",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0144_c01",
+      "content_sha256": "106d08f58770dba7dcc889ae845b9fc3fc920b40731eeb873f925defc18294b7",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0145_c01",
+      "content_sha256": "b859396119ca129fb9eaad6598dfb2dce323965ec8e764544109a188aafdaf50",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0145_c02",
+      "content_sha256": "8710f52f66cbe4627715b3eb9bb06dd3db5d7428da54525cc275d6e4fac15bb2",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0146_c01",
+      "content_sha256": "9924a30bbfd862cfe289f801f58784cf0de674e9101713b51e3950bd88e9c02f",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0147_c01",
+      "content_sha256": "9cf8f8c4ba0dc395c31af845b4d8ffb6d3ca9d21e141ee06594964d7951c4ab9",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0147_c02",
+      "content_sha256": "ec8a9fd123dc514cef11b2efc5f4275540d9f707b2b4179f5920b15e4ba9c9f0",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0148_c01",
+      "content_sha256": "41a386cfbf0447cc985ec713a962269a89ac1a56bb042900a968c293539cc9b8",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0148_c02",
+      "content_sha256": "cb648325bef33b2dd062e33c0b6f30f623e94cf52f7d366ca922567c61662bb8",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0149_c01",
+      "content_sha256": "29eeda68092245ccd016be501d588d8cdf1e4b1fad59437bd7b456677c71e403",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0149_c02",
+      "content_sha256": "41e1c5ab9e7b0354ae13f71fbaab7243e44e6add4e043db6b37d5fa8d7c8b1eb",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0150_c01",
+      "content_sha256": "2f531a0b29cc3b4f2674165afc955218d4828951ecb62e454597a0df7f581682",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0150_c02",
+      "content_sha256": "9e20f0bdda408863cef675f951f25f7ba54f0014cdb577deb7201e038e7b5342",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0151_c01",
+      "content_sha256": "41998e5eb1bbd26f4c7a6c653456c0596019a4bd48498cb689ada662490f318d",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0151_c02",
+      "content_sha256": "26016514e7f8bbd0a1c70057c2e40346785064f20e1a7fe29a493a0f8a0bef64",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0152_c01",
+      "content_sha256": "ce1df66822a3ff78c5800eaa8563e595aa8923a5be42994e2242cae5584f1f73",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0152_c02",
+      "content_sha256": "018bc84118fd13ce4148eb8cd4e15a356133047ebc6e73688c45ea765c41fc52",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0153_c01",
+      "content_sha256": "6256b6540bdfd0ec2ba83829c9d8bd62b6f2f4069c5aed6b8b8c9c7952505b50",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0153_c02",
+      "content_sha256": "3e78b92720c0defd2b8562364b45b145b7b43c5ffaf86e10904f215a78ee54e9",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0154_c01",
+      "content_sha256": "64e716d4d99b83af6ca1227001f8d2139aee52a1ad4b0de71d1413a345d7d811",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0154_c02",
+      "content_sha256": "50f41a6fa358d5555ed4b219bdee0c51472b53a1c9379e8d3fb05f093eafecb4",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0155_c01",
+      "content_sha256": "55a233de88b6d75411e9f7d6d5eadd4ae03eb57e9c859c98a836f9d272d6f453",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0155_c02",
+      "content_sha256": "0f04fd725b127dd1a6d72e382cdf0ff58c9584705cb92a2d5dbcf2041ba72a68",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0156_c01",
+      "content_sha256": "65bff4808ac4028d604971a0e76c65cb43587e8a459bda7c8c1d0c6f86ae0ad0",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0156_c02",
+      "content_sha256": "ca25ae72464856c5728a5f987e240952932ecb9eae744e086720b008efed09f5",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0157_c01",
+      "content_sha256": "7de8884ba40fefa08695b9a2d0ce079bd85d3b849071d32f753914832671086c",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0158_c01",
+      "content_sha256": "e552e4badc9472c4f0e6d1031d32b8afe36801633508d39a8ba27cd2059ff7a4",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0158_c02",
+      "content_sha256": "617d04ff774a95704b81448c3d8d8717f4b7fc81a68a1f7b538c5982adaaa226",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0159_c01",
+      "content_sha256": "6d09c927cee64bfd6f09fe0259f1b7e127aa601e0b40815358a5b6d853349021",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0159_c02",
+      "content_sha256": "82c371ab1be399fdfb5a861cc547bed320f2c1f2b7d57ed08bb0d3e4fa3bdc7d",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0160_c01",
+      "content_sha256": "7cefd43cbcada2a856c912337d81aea83816b5527d7a4719a0030bb467dd41d9",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0161_c01",
+      "content_sha256": "0db7bd0a24f4ebf5697aa0f7902a36cdd86e7bbb1c6dadd761193516297a28cc",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0161_c02",
+      "content_sha256": "e34ff69a9bec5ecee236e9ea4408b19e3575b69a0687c2e9fc1925e379e679ab",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0162_c01",
+      "content_sha256": "c7898ce8ddb1e9a0b34aab4f56282e65bac416b901c44de108f03fda107182dd",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0163_c01",
+      "content_sha256": "0ba8619426483964006bb4cda4105ee7d6c1d7d30014857d01dd02ce5673cf9d",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0164_c01",
+      "content_sha256": "cf21c8209481d17476acd4a34cbfd18e94266d1ef0eef704fd23f9999e2423ce",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0164_c02",
+      "content_sha256": "469319b2a10f3e55409bfc04d76886d0158fa59aa0e0b25e8d71bdd8324d9b1d",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0165_c01",
+      "content_sha256": "525be56b789fac49b60e25da805511fafc3574e0457c7464fad08a25d9edab31",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0166_c01",
+      "content_sha256": "be6f4241423cbea274eace7164b46e7502ba7e446819476710cb65b2d6a734af",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0167_c01",
+      "content_sha256": "e1c31cc0c9a0f0a374771628522066a3aa17ccfa3ddef89a20e15df4fd296d61",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0168_c01",
+      "content_sha256": "87f079a1ccdb5d90a9cd58ed712d82817c146f90fdb229eef57357350b2ce8a9",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0170_c01",
+      "content_sha256": "abd35c38fbcf338219222f6b5909c2c125e7050e6b4564447eabfa5d8dbb2a76",
+      "has_embedding": true
+    },
+    {
+      "chunk_id": "muhurta_chintamani_pg0172_c01",
+      "content_sha256": "20f83a78e0b93bb8e0a22ef0de90b76d94ed71b97fa7c95390d16ee461407223",
+      "has_embedding": true
+    }
+  ]
+}
