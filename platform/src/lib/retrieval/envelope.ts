@@ -922,12 +922,25 @@ export function buildReadingContract(params: BuildReadingContractParams): string
   }
 
   // 3. Verification sentence — only when a fraction was computed.
+  //
+  // §6.18 (2026-08-02). The low branch used to read "most are single-pass candidates, not
+  // confirmations." "Candidate" was editorial and, for most of this estate, false: a
+  // single-pass row is usually a DETERMINISTIC computation from canonical inputs that simply
+  // never had a second, independent derivation run against it. The vocabulary says so itself —
+  // `single` means "Single-pass computation. No second derivation ran, so nothing could have
+  // contradicted the value" (brahmagyan/verification_vocab.py). An ephemeris-derived longitude
+  // is not a guess awaiting confirmation. Calling it one traded an overclaim for an underclaim.
+  //
+  // The wording below reports what the tier actually means and leaves the caller to judge.
+  // No new EpistemicGrade is introduced — the ladder is unchanged; only the prose is honest.
   if (params.verifiedFraction != null) {
     const pct = Math.round(params.verifiedFraction * 100)
     s.push(
       pct >= 50
         ? `${pct}% of the rows here are cross-verified (two-pass) — the majority layer is confirmed.`
-        : `Only ${pct}% of the rows here are cross-verified — most are single-pass candidates, not confirmations.`,
+        : pct > 0
+          ? `${pct}% of the rows here are cross-verified by an independent second derivation; the rest were computed once and never independently re-derived — nothing has contradicted them, and nothing has confirmed them either.`
+          : 'No row here was cross-verified by an independent second derivation. These are single-pass computations: nothing has contradicted them, and nothing has confirmed them either. Treat them as deterministic output awaiting a second pass, not as candidates and not as confirmations.',
     )
   }
 

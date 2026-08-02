@@ -1092,6 +1092,112 @@ not on TAP-6**: the `two_pass_verified_literal` law is QUARANTINED and its job s
 workflow fails on `SC-pointer:query_muhurta_lattice`, an unrelated pointer-validation gate. The
 consecutive-green-days condition is written against the workflow, so it has reset regardless of cause.
 
+**CORRECTED in §6.19:** that condition was misspecified — by me. It should measure the ONE detector
+being armed, not the workflow that happens to carry it. Restated: **≥7 consecutive green days on the
+`TAP-6 — Method audit grep set` job specifically.** At 2026-08-02 that job is green on all four most
+recent `main` runs (`93a6ad17`, `d0f9cb1c`, `f19969c5`, `b627114e`) while the workflow is red on an
+unrelated gate.
+
+## §6.19 — M-22 close-out: the fix, the backfill, and the watchdog that should have existed (2026-08-02)
+
+Four campaigns each declared M-22 complete and each was followed by a deeper layer. This section
+does not declare completion; it states what changed and leaves the standing invariant (below) to
+report the state from now on.
+
+### Phase 1 — the atomic fix
+
+**1a. The serve layer stopped calling deterministic facts "candidates."** Before:
+
+> `Only 0% of the rows here are cross-verified — most are single-pass candidates, not confirmations.`
+
+After:
+
+> `No row here was cross-verified by an independent second derivation. These are single-pass
+> computations: nothing has contradicted them, and nothing has confirmed them either. Treat them as
+> deterministic output awaiting a second pass, not as candidates and not as confirmations.`
+
+Plus a middle form for a partially-verified page. The wording is taken from `single`'s own vocabulary
+meaning, which is the source of truth. **No new `EpistemicGrade`** — the ladder is untouched; only the
+prose changed. Codegen mirror regenerated; `codegen:check` passes.
+
+**1b. The broadcast is dead.** `ga_dashas_writer.py`'s `for row in rows: row[...] = verification` now
+applies a verdict only to rows the verifier read (`level_n == 1 AND kp_sublevel IS NULL`), and logs
+the examined/unexamined split every run. Unexamined rows carry `single`.
+
+**1c. The `vimshottari_kp` filter mismatch is fixed by STOPPING THE STAMPING, not by widening the
+filter.** 17,910 KP sub-period rows were stamped by `_verify_vimshottari`, which is handed
+`kp_sublevel is None` rows only. Widening the filter would have made the check *appear* to cover
+them; the KP decomposition is a different derivation, and a verdict about the Vimshottari sequence is
+not evidence about it. They now carry `single`.
+
+**The membership-only verifiers now return `classical_match`.** `_verify_yogini`,
+`_verify_ashtottari`, `_verify_chara`, `_verify_naisargika` — per §6.18, relay fidelity is not
+re-derivation. `_verify_kalachakra` already returned `single` by its own honest choice and was left
+alone. `_verify_vimshottari` returns `two_pass_verified` only when its native gate actually ran.
+No new vocabulary member, no CHECK migration: `single` and `classical_match` are both existing
+members already permitted by `chart_dashas`' constraint.
+
+### Phase 2 — the backfill, and what the dry run caught
+
+`platform/scripts/backfill/backfill_unexamined_dasha_tiers.py`, dry-run by default, scoped by
+`--chart`. Tested read-only against the native chart:
+
+| before → after | rows |
+|---|---|
+| `two_pass_verified` → `single` (unexamined) | 448,327 |
+| `two_pass_verified` → `classical_match` (examined, membership-only) | 386 |
+| `two_pass_verified` → unchanged (examined + discriminating) | 409 |
+| `single` → unchanged | 35,265 |
+
+409 is exactly mudda 240 + narayana 105 + vimshottari 64 — the independent §6.18 count, reproduced
+by a different method.
+
+**The first dry run caught a defect in my own rule.** It would have moved 45 rows `single` →
+`classical_match` — a *promotion*, because I had swept `kalachakra` into the membership list when its
+verifier had already honestly demoted itself. A backfill correcting an overclaim must never
+manufacture a new one. Fixed with an explicit never-promote guard
+(`verification_pass_status = 'two_pass_verified'` in the predicate) and by removing `kalachakra`.
+Re-run: zero promotions.
+
+**The user-visible delta, as text.** For a representative served page — the native's 518 vimshottari
+antardaśā rows — `grounding_score` moves **1.000 → 0.000**, the grade falls `ganita_fact` →
+`single_pass_signal`, and the warranty sentence changes from *"100% of the rows here are
+cross-verified (two-pass) — the majority layer is confirmed"* to the new single-pass sentence above.
+**That page never had 100% cross-verified rows.** The old number was the broadcast talking.
+
+**The production invocation was not run.** Handed to the native, as with #1016's drain.
+
+### Phase 3 — the standing invariant
+
+`platform/scripts/audit/verification_invariant.py`, scheduled daily + dispatch
+(`.github/workflows/verification-invariant.yml`). **Deliberately not a required PR check** — it
+measures the DATA, which a PR does not change.
+
+| Check | What it watches | Which past defect it would have caught |
+|---|---|---|
+| **claim-vs-evidence** | rows claiming a `verified=True` tier vs. rows a declared predicate says a verifier examined; tolerance **0**; an *undeclared* table is a FAIL, not an exemption | **the broadcast** — this is the query nobody had written, which is precisely why it survived four campaigns |
+| **vocabulary conformance** | any stored value outside `ALL_STATUSES`, any prohibited spelling, any deprecated alias, with counts | **`PASS` × 10,591 and `single_pass` × 45,132** — the writers were fixed twice; nothing ever watched the rows |
+| **detector liveness** | that `two_pass_verdict` AND the live `ga_nakshatra` path still return `divergent_flagged` for a *plausible* wrong value | a verifier that quietly loses its ability to disagree — which looks exactly like a clean table |
+
+Plus a per-run tier report, so drift is visible as a **trend** and not only as a threshold breach.
+
+**All three are mutation-proven** (rule 4 — each probe was confirmed to reach the code under test):
+breaking the live `ga_nakshatra` path → FAIL; breaking `two_pass_verdict` → FAIL; a table where
+claimed > examined → FAIL; an undeclared table holding verified rows → FAIL; prohibited, unknown and
+deprecated values → three separate FAILs, with `single` correctly *not* flagged. A control case with
+claimed == examined PASSes, so the check is not simply always-red. A watchdog that cannot fail would
+have been the fifth layer.
+
+### Corrections to my own prior claims, cumulative
+
+1. §6.17: I read the serve layer from a stale local worktree and reported three consumers wrongly.
+2. §6.17: I credited `chart_dashas` as earned without checking how many rows a verifier read.
+3. The TAP-6 description claimed `ga_tajaka_writer.py:574` was "baselined by hand"; it has no
+   baseline entry and cannot have one.
+4. **The arming condition itself was misspecified by me** — written against the *workflow*, so an
+   unrelated gate (`SC-pointer:query_muhurta_lattice`) reset a streak that was meant to measure one
+   detector. It is now specified against the `two_pass_verified_literal` **job/law**.
+
 ## §7 — Verification standard applied
 
 No change was made on reasoning alone. Every claim was measured, and every gate
