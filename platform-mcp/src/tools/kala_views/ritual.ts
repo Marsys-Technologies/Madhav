@@ -80,7 +80,7 @@ import {
   makeKalaEnvelope,
   noLelCalibrationMaturity,
   buildKalaFreshness,
-  buildFieldSnapshotIdStub,
+  resolveFieldSnapshot,
   computedCoverage,
   honestEmptyCoverage,
   notInCorpusCoverage,
@@ -558,15 +558,17 @@ export async function handleKalaRitualGet(
   }
 
   const composed = composeArgument(reading)
+
+  // W2 (E5): the real field snapshot read — served id, or an honest marker; never a stub.
+  const fieldSnapshot = await resolveFieldSnapshot(params.chart_id, principal)
+
   const envelope = makeKalaEnvelope({
     reading,
     questionFrame: params.question_frame ?? null,
-    fieldSnapshotId: buildFieldSnapshotIdStub({
-      paddhati_version: patternSearch?.paddhati?.version ?? null,
-    }),
+    fieldSnapshot,
     triPlane: commonTriPlane(),
     coverage,
-    freshness: buildKalaFreshness({ ephemerisVersion: null, sweepBuildDate: null, fieldHash: null }),
+    freshness: buildKalaFreshness({ ephemerisVersion: null, sweepBuildDate: null, fieldHash: fieldSnapshot.field_content_hash }),
     calibrationMaturity: noLelCalibrationMaturity(),
   })
 
