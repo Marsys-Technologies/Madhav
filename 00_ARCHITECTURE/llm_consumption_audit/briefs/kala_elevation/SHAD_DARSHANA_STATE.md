@@ -238,6 +238,68 @@ LIVE in production for the first time.
 - **PR #1031 MERGED to `main`** (~08:55 UTC, merge queue) → deploy of `f97fc78d` watched;
   on success the parihāra L0 re-trigger runs.
 
+**MID-SESSION STAGE-1/STAGE-2 ASSESSMENT (Conductor, ~09:15 UTC — made early because the
+determining facts are settled and cannot change before mid-session):**
+
+*Stage 1 state, clause-honest:* Step 1 (L0 rebuilds) — DONE+VERIFIED except the parihāra
+rebuild, which is one deploy + one re-trigger away (fix merged to main, deploy in flight).
+Step 2 (sweeps) — RUNNING under automation; measured ~330s/substep × 606 × 2 charts ⇒
+**mathematically cannot complete tonight** (~55h/chart); this is compute physics, not a
+blockable defect. Step 3 (W2 field-integration) — the ENTIRE code leg is now landed on
+integration and independently verified (#1030 #1032 #1033 #1034 #1035); the operational leg
+(production ka_kshetra build → hash-replay → skill/GOF publish) **deliberately waits for
+sweep completion**: building the field on a half-rebuilt gochara substrate and publishing
+THAT as the first skill score (which becomes the permanent CI baseline) would be exactly
+the fabricated-baseline defect the campaign's rails exist to prevent. Steps 4–5 (S4-05
+data-real, gate-close/PARĪKṢAKA) — sequenced behind the sweeps by the directive's own
+dependency order. **Gates W2 and W3 therefore PARK HONEST tonight**: every dischargeable
+clause discharged and verified; every parked clause parked on long-running compute that is
+launched, monitored, and automated — not on missing work, not on an undischarged defect.
+
+*Stage 2 decision, per the directive's own conditional ("parked honest with reasons that do
+not undermine the frontier"):*
+- **W2G writer lane — STAYS PARKED.** Its equivalence corpus uses v1 sweep rows as ground
+  truth, and those rows are mid-rebuild (deleted by the replan, rebuilding). The Stage-1
+  park reason DIRECTLY undermines this lane's foundation. Rulings (ADJ-14/-15) are ready;
+  the lane dispatches the session after both charts' sweeps complete. Recorded next action.
+- **W3K continuation — CLEARED to dispatch.** Its foundations (L1 KP cusps substrate,
+  completed inventory #1003, layer-seating ruling from the Night-3 docket, W2 clock code
+  merged) are all COMPLETE and none is touched by the sweep rebuild. Lane 1 (K.1 reference
+  substrate + significators, Opus per §B.3) dispatches now; Lane 2 sequences behind Lane
+  1's step 3 per the inventory's own §6.
+- **W4 — PARTIALLY CLEARED.** The lattice prerequisite is LIVE (164,575 rows); the
+  parihāra prerequisite lands post-deploy tonight; the paddhati-profile seed
+  (native-confirmed Agnivāsa Pṛthvī) is buildable now as a migration. The canned Mode-2
+  fixture's LIVE discharge requires the seed migration DEPLOYED, which only happens at the
+  next gate-close deploy — so tonight builds the seed + runs the PLAN-mode fixture legs and
+  parks the LIVE discharge honest. Gate W4 evaluation stays next-session.
+- **W5 prep — NOT started tonight** (a deliberate scoping choice, not a block): conductor
+  capacity is committed to verifying the above; W5's own hard gate cannot run until the
+  tool surface is final regardless. Recorded next action.
+
+**HOTFIX DEPLOYED + L0 RE-TRIGGER (2026-08-02 ~13:30 UTC):** deploy run `30740577620`
+completed success on `f97fc78d`; pipeline job image verified re-pointed to
+`brahma-pipeline:f97fc78d…` (checked directly via `gcloud run jobs describe`, not assumed).
+L0 global build re-triggered (`a22bc93c`, execution `6sbsb`) to rebuild the parihāra corpus
+tables with the fixed writer.
+
+**NEW WATCHDOG FALSE-KILL SPECIMEN (real, disclosed, needs the watchdog follow-up lane):**
+chart B's sweep run `807f3aa3` was marked `build_runs.state='failed'` at ~54/606 substeps
+while its Cloud Run execution (`x948j`) was — and remains — RUNNING and committing substeps
+(54→57+ observed after the failed mark; `build_run_assets.state='building'`). Proof
+independent of the DB row: the babysitter's automatic redispatch (`a73aa9ab`, execution
+`jz4dd`) hit the chart advisory lock and its assets went `aborted` — the lock is held,
+therefore the original container is alive. This is the same false-kill class Night-3's
+NOW()-fix addressed, recurring via some remaining path — the substep ledger is the truth
+(campaign doctrine since `e5cde4dc`). **Responses:** (1) babysitter v1 (which trusted
+`build_runs.state` as liveness) replaced by v2 — liveness = substep-progress within 25 min;
+redispatch only on real stall; a lock-aborted redispatch counts as proof-of-life and backs
+off rather than consuming a dispatch attempt; ≥40-gain continuation gate kept. (2) The
+false-failed row `807f3aa3` and inert `a73aa9ab` (state='planned', assets aborted) are left
+untouched — run-state rows are orchestrator-owned; recorded here instead. (3) Watchdog
+clause diagnosis = recorded follow-up work item for a future lane (needs the specimen's
+timing against the watchdog's clauses; not rushed mid-night).
+
 **STAGE 1.2 — sweep telemetry (first measurement, ~08:14 UTC):** both charts committing
 substeps under the new 606-substep plan (A: 5, B: 4 in the first ~28 min) → **measured
 ~330s/substep ⇒ ~55h/chart projected** (vs ~22h for the old 303 plan). This confirms the
