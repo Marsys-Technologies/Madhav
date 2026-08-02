@@ -4,7 +4,7 @@ pipeline. L5 Mīmāṃsā-seated.
 
 Spec: `KALA_W2_FIELD_DESIGN_v1_0.md` §7.2 (fitting harness), §7.3 (skill + GOF), §7.5 (weights
 versioning + acyclicity), §7.6 (the Living-LEL plane). Registry items 21, 39; E1's D3 fit.
-Seed row + migration: `platform/supabase/migrations/483_kala_field_skill_gof.sql`.
+Seed row + migration: `platform/supabase/migrations/497_kala_field_skill_gof.sql`.
 
 ── THE FROZEN ORCHESTRATOR CONTRACT (CLAUDE.md §N.2) ──────────────────────────────────────
 `@register('mi_bhara')` → `WriterBase` subclass implementing `run(ctx)` (the LIGHT-writer
@@ -195,7 +195,7 @@ class MiBharaWriter(WriterBase):
                 asset_id=ASSET_ID,
                 rows_inserted=0,
                 duration_seconds=time.time() - started,
-                notes=f"{NOTE_SKILL_TABLES_ABSENT}: migration 483 has not been applied.",
+                notes=f"{NOTE_SKILL_TABLES_ABSENT}: migration 497 has not been applied.",
             )
 
         rows_written = self._fit_and_publish(
