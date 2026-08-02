@@ -110,3 +110,25 @@ describe('POST /api/mcp/db/query — kala_gochara_authority whitelist (ADJUDICAT
     expect(res.status).toBe(200)
   })
 })
+
+describe('POST /api/mcp/db/query — kala_field_snapshots whitelist (ṢAḌ-DARŚANA W2, E5 follow-up to PR #1033)', () => {
+  beforeEach(() => {
+    mockQuery.mockReset()
+    process.env.MCP_INTERNAL_TOKEN = 'test-token'
+  })
+
+  it('resolveFieldSnapshot\'s newest-row query (kala_envelope.ts) is now accepted (was 400 → field_snapshot_unreachable)', async () => {
+    mockQuery.mockResolvedValueOnce({
+      rows: [{ field_snapshot_id: 'kfs_0123456789abcdef0123456789abcdef', field_content_hash: 'kfh_0123456789abcdef0123456789abcdef' }],
+    })
+    const res = await POST(makeReq({
+      sql: `SELECT field_snapshot_id, field_content_hash FROM kala_field_snapshots WHERE chart_id = $1 ORDER BY built_at DESC, field_snapshot_id DESC LIMIT 1`,
+      params: ['482012f1-710e-4a25-994a-93821f5871aa'],
+    }))
+    expect(res.status).toBe(200)
+    const body = await res.json() as { rows: Array<{ field_snapshot_id: string }> }
+    expect(body.rows).toHaveLength(1)
+    expect(body.rows[0].field_snapshot_id).toMatch(/^kfs_/)
+    expect(mockQuery).toHaveBeenCalledTimes(1)
+  })
+})
