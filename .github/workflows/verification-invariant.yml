@@ -1,0 +1,55 @@
+name: Verification Invariant (standing watchdog)
+
+# Deliberately NOT a required PR check and NOT pull_request-triggered.
+#
+# It measures the DATA, which a PR does not change. Wiring it to PRs would add ~1 min to every
+# PR to re-measure something no PR moved — the exact "gate that runs where it cannot learn
+# anything" pattern this CI campaign spent its length removing.
+#
+# It exists because four M-22 layers were each DISCOVERED by an audit rather than REPORTED by
+# anything watching. See platform/scripts/audit/verification_invariant.py for what each check
+# watches and which past defect it would have caught.
+
+on:
+  schedule:
+    - cron: '17 4 * * *'   # 04:17 UTC daily — off the hour, away from the deploy windows
+  workflow_dispatch:
+
+concurrency:
+  group: verification-invariant
+  cancel-in-progress: false
+
+jobs:
+  invariant:
+    name: verification_pass_status — claim-vs-evidence, vocabulary, detector liveness
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: pip
+
+      - name: Install the minimum needed to import the vocabulary + talk to the DB
+        run: pip install --quiet psycopg[binary]
+
+      # Detector liveness needs no database, so it runs even when the DB is unreachable —
+      # a watchdog that goes quiet when one input is missing is not a watchdog.
+      - name: Run the invariant
+        env:
+          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+        run: |
+          set +e
+          python platform/scripts/audit/verification_invariant.py
+          code=$?
+          set -e
+          if [ "$code" = "3" ]; then
+            echo "::warning::DATABASE_URL unavailable — data checks QUARANTINED; liveness still ran."
+            exit 0
+          fi
+          exit $code

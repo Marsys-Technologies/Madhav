@@ -37,6 +37,11 @@ from contextlib import contextmanager
 from datetime import date, datetime, timedelta, timezone
 from typing import Any, Generator
 
+from brahmagyan.verification_vocab import (
+    CLASSICAL_MATCH,
+    TWO_PASS_VERIFIED,
+    UNVERIFIED_DEFAULT,
+)
 from ga_writers._idempotency import replace_prior_chart_dashas
 from ga_writers._telemetry import update_asset_throughput
 from ga_writers.ga_condition_writer import _DIVISIONAL_DIGNITY_NORMALIZE
@@ -658,6 +663,12 @@ def _verify_vimshottari(rows: list[dict], moon_sid: float,
                 f"Moon nakshatra must be Purva Bhadrapada (lord=Jupiter)."
             )
 
+    # §6.18 EARNEDNESS RULING (2026-08-02): Pass 2 above is the ONLY check here that can fail
+    # for a reason other than a bug in itself, and it runs for the native chart only. Pass 1
+    # below cannot fail at all — its tolerance comparison ends in a bare `pass`. So a non-native
+    # chart reaching this point has had NOTHING contradicted, and must not claim otherwise.
+    verdict = TWO_PASS_VERIFIED if chart_id == CANONICAL_CHART_ID else UNVERIFIED_DEFAULT
+
     # Pass 1: algebraic — each L1 period should have correct duration
     for row in l1_rows:
         lord = row["lord_graha"]
@@ -672,7 +683,7 @@ def _verify_vimshottari(rows: list[dict], moon_sid: float,
             # Only fail on interior (non-partial) periods
             pass  # Partial periods are expected at boundaries
 
-    return "two_pass_verified"
+    return verdict
 
 
 def _verify_yogini(rows: list[dict]) -> str:
@@ -688,7 +699,7 @@ def _verify_yogini(rows: list[dict]) -> str:
         if row["lord_graha"] not in known_lords:
             raise ValueError(f"Yogini: unknown lord {row['lord_graha']!r}")
 
-    return "two_pass_verified"
+    return CLASSICAL_MATCH  # membership check only — relay fidelity, not re-derivation (§6.18 ruling)
 
 
 def _verify_ashtottari(rows: list[dict]) -> str:
@@ -704,7 +715,7 @@ def _verify_ashtottari(rows: list[dict]) -> str:
         if row["lord_graha"] not in known:
             raise ValueError(f"Ashtottari: unknown lord {row['lord_graha']!r}")
 
-    return "two_pass_verified"
+    return CLASSICAL_MATCH  # membership check only — relay fidelity, not re-derivation (§6.18 ruling)
 
 
 def _verify_chara(rows: list[dict]) -> str:
@@ -723,7 +734,7 @@ def _verify_chara(rows: list[dict]) -> str:
         if row["lord_graha"] not in sign_names:
             raise ValueError(f"Chara: invalid sign {row['lord_graha']!r}")
 
-    return "two_pass_verified"
+    return CLASSICAL_MATCH  # membership check only — relay fidelity, not re-derivation (§6.18 ruling)
 
 
 def _verify_naisargika(rows: list[dict]) -> str:
@@ -735,7 +746,7 @@ def _verify_naisargika(rows: list[dict]) -> str:
     for row in l1_rows:
         if row["lord_graha"] not in known:
             raise ValueError(f"Naisargika: unknown lord {row['lord_graha']!r}")
-    return "two_pass_verified"
+    return CLASSICAL_MATCH  # membership check only — relay fidelity, not re-derivation (§6.18 ruling)
 
 
 # Two independent classical correspondence tables PyJHora's Varsha-Vimshottari
@@ -801,7 +812,7 @@ def _verify_mudda(rows: list[dict], moon_nak_idx0: int | None = None) -> str:
                 f"cyclic at varsha index {i} ({l1_rows[i]['lord_graha']!r} vs "
                 f"{l1_rows[i + 9]['lord_graha']!r})"
             )
-    return "two_pass_verified"
+    return TWO_PASS_VERIFIED
 
 
 def _verify_kalachakra(rows: list[dict]) -> str:
@@ -2022,7 +2033,7 @@ def _verify_narayana(rows: list[dict]) -> str:
             raise ValueError(
                 f"Narayana: overlapping MD periods {a['lord_graha']!r}->{b['lord_graha']!r}"
             )
-    return "two_pass_verified"
+    return TWO_PASS_VERIFIED
 
 
 def compute_narayana_system(
@@ -3043,9 +3054,39 @@ def build_system(
     # Post-pass: sandhi
     compute_sandhi_post_pass(rows)
 
-    # Update verification status on all rows
+    # ── Verification status: ONLY on rows a verifier actually read ────────────────
+    # §6.18 (2026-08-02). This loop used to read `for row in rows: row[...] = verification`,
+    # broadcasting one function-level verdict onto every row at every level. Measured against
+    # production before this fix: 2,505 of 1,358,993 `two_pass_verified` chart_dashas rows
+    # (0.18%) had ever been examined — every `_verify_*` filters `level_n == 1` and looks at
+    # nothing else. Levels 2-4 inherited a verdict computed over their parents.
+    #
+    # Two distinct bugs are fixed here, per §6.18:
+    #   (b) the BROADCAST — an unexamined row now carries UNVERIFIED_DEFAULT, not an inherited
+    #       tier. `single` is honest for it: no second derivation ran over THIS row.
+    #   (c) the vimshottari_kp FILTER MISMATCH — `_verify_vimshottari` is handed
+    #       `kp_sublevel is None` rows only, so the 17,910 KP sub-period rows were stamped by a
+    #       check that never saw them. Fixed by STOPPING THE STAMPING (not by widening the
+    #       filter): the KP sub-period decomposition is a different derivation from the
+    #       Vimshottari sequence, and a verdict about one is not evidence about the other.
+    #       Widening the filter would have manufactured exactly the false confidence this
+    #       campaign exists to remove.
+    #
+    # `examined` must mirror each verifier's own input filter. Every `_verify_*` in this module
+    # selects `level_n == 1`; `_verify_vimshottari` is additionally pre-filtered on
+    # `kp_sublevel is None` at its call site. If a verifier's filter ever changes, this
+    # predicate must change with it — the standing invariant (Phase 3) compares claimed-verified
+    # rows against examined rows per table and fails loudly if the two drift apart.
+    examined_count = 0
     for row in rows:
-        row["verification_pass_status"] = verification
+        examined = row["level_n"] == 1 and row.get("kp_sublevel") is None
+        row["verification_pass_status"] = verification if examined else UNVERIFIED_DEFAULT
+        examined_count += 1 if examined else 0
+
+    logger.info(
+        "[ga_dashas] %s: verdict=%s applied to %d examined row(s); %d unexamined row(s) -> %s",
+        system_id, verification, examined_count, len(rows) - examined_count, UNVERIFIED_DEFAULT,
+    )
 
     # DB write
     rows_written = 0

@@ -274,6 +274,13 @@ def assert_legal(status: Any, *, table: str | None = None) -> str:
 TWO_PASS_VERIFIED: Final[str] = "two_pass_verified"
 DIVERGENT_FLAGGED: Final[str] = "divergent_flagged"
 
+#: Named constant for the EXISTING vocabulary member `classical_match` (entry 2 above) — this
+#: adds no member, it only gives writers a symbol so the ruling's "relay fidelity, not
+#: re-derivation" tier stops being spelled as a literal. Per the 2026-08-02 earnedness ruling,
+#: this is the honest tier for a check that validates shape or membership against a canonical
+#: table the producer itself draws from: real, but a tautology over its own input space.
+CLASSICAL_MATCH: Final[str] = "classical_match"
+
 
 def two_pass_verdict(engine_value: Any, derived_value: Any) -> str:
     """The ONLY sanctioned producer of `two_pass_verified` (M-22 / CLAUDE.md §N.8).
