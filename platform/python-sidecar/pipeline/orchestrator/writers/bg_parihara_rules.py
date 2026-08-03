@@ -66,6 +66,23 @@ THREE TABLES
    substrate — not invented. See CENSUS_ROWS below for the full register and
    the evidence behind every disposition.
 
+   PARIHĀRA-GRAPH ENRICHMENT (2026-08-04): MUHURTA_CHINTAMANI_TRANSLATION_
+   REPORT_v1_0.md (2026-08-03) translated 66 doṣa-parihāra-topic
+   muhurta_chintamani chunks (previously content_en=content_sa, untranslated
+   Devanagari). This pass read all 66 directly against their live content_en
+   (not the report's summary) and added 9 new `parihara_scope` CENSUS_ROWS
+   entries citing real chunk_ids + verbatim excerpts, plus corrected/confirmed
+   the pre-existing `jvalamukhi_yoga` row on the now-translated evidence.
+   Every finding was activity-class-, region-, sub-window-, or wildcard-
+   conditional (never a clean unconditional cancellation matching an existing
+   dosha_canonical_id/lattice factor_key), so — per the exact discipline the
+   pre-existing `vishti_conditional_undertaking_exception` row below already
+   established — NONE were added to MUHURTA_PARIHARA_ROWS (Table 1b stays
+   exactly the ADJUDICATION-10 Part 1 single row; see its own test,
+   `test_muhurta_parihara_rows_is_exactly_one_row`). See the `parihara_scope`
+   rows below for the full findings, and the task's own final report for the
+   chunk-by-chunk usable/skipped accounting.
+
 CORPUS GAPS FOUND AND HONESTLY DISCLOSED (not fabricated — see census for full
 detail): mṛtyu-yoga, dagdha-yoga (day-quality), hutāśana-yoga, jvālāmukhī-yoga
 (the four brief-named combination-yogas panchang_engine does NOT implement;
@@ -471,24 +488,28 @@ CENSUS_ROWS: list[tuple[str, str, str, str, str, str | None]] = [
      "cleanup pass.",
      "classical_text_chunks (text_id='muhurta_chintamani', ch.17-18, untranslated)", None),
     ("combination_yoga", "jvalamukhi_yoga", "not_in_corpus",
-     "CORRECTED (Opus corpus-citation review, 2026-07-30): the earlier claim "
-     "'no corpus evidence found even in untranslated form' was WRONG -- a "
-     "direct query found exactly 1 muhurta_chintamani chunk "
-     "(chunk_id='muhurta_chintamani_pg0033_c01', ch.33, verse 1) whose "
-     "content_sa contains the Devanagari string 'ज्वालामुखी'. Inspecting the "
-     "surrounding untranslated text: it occurs in a Makara-Guru "
-     "dosha-exception passage listing GEOGRAPHIC/pilgrimage place names "
-     "(alongside Delhi/Agra/Mathura) -- i.e. it reads as the place name "
-     "Jvalamukhi (Himachal Pradesh), not clearly the Jvalamukhi-yoga "
-     "muhurta doctrine itself. Because the term is untranslated and "
-     "homographic with the place name, doctrinal content cannot be ruled "
-     "out from this one hit alone, and no OTHER chunk in the corpus was "
-     "found naming this yoga. Disposition remains not_in_corpus (no usable "
-     "STRUCTURED rule exists either way) but the note is corrected to state "
-     "the real, ambiguous finding rather than a false zero. Ingestion work "
-     "item: OCR-translate ch.33 and re-scan the full text once translated "
-     "to confirm whether the yoga doctrine appears anywhere.",
-     "classical_text_chunks (text_id='muhurta_chintamani', chunk_id=muhurta_chintamani_pg0033_c01, ch.33, untranslated, ambiguous place-name-vs-yoga hit)", None),
+     "CONFIRMED (parihāra-graph enrichment pass, 2026-08-04): chunk "
+     "muhurta_chintamani_pg0033_c01 was translated in the 2026-08-03 "
+     "Muhūrta-Cintāmaṇi translation pass (MUHURTA_CHINTAMANI_TRANSLATION_"
+     "REPORT_v1_0.md) and re-read directly against the live "
+     "classical_text_chunks.content_en for this row. The earlier ambiguous "
+     "Devanagari-only hit is now RESOLVED: the chunk is the twofold Guru-"
+     "Makara (Jupiter-in-debilitation) regional-exemption passage (verse 52 "
+     "ṭīkā), whose river-bounded geography lists 'Delhi (Indraprastha), "
+     "Agra, Mathurā, Nadīnātha, Jvālāmukhī and so on up to the northern "
+     "Himālaya' as places where the doṣa does NOT hold. This confirms the "
+     "prior finding: 'Jvālāmukhī' here is the place name (Himachal Pradesh, "
+     "on the Śoṇa river's northern-exemption side), not the Jvālāmukhī-yoga "
+     "muhūrta doctrine — no yoga content is present in this chunk. No other "
+     "of the 66 newly-translated parihāra-topic chunks names this yoga "
+     "either (checked directly against their content_en, not re-derived from "
+     "the report's summary alone). Disposition remains not_in_corpus (no "
+     "usable STRUCTURED rule exists either way) — now on a fully translated, "
+     "no-longer-ambiguous evidentiary basis rather than a homographic OCR "
+     "guess. See also the 'jupiter_simha_makara_marriage_regional_dosha' "
+     "parihara_scope row below, which extracts the genuine parihāra content "
+     "this same chunk cluster (pg0031_c02..pg0034_c01) DOES carry.",
+     "classical_text_chunks (text_id='muhurta_chintamani', chunk_id=muhurta_chintamani_pg0033_c01, ch.33 [pg0033, marriage/Vivaha section v.52], translated 2026-08-03, content_en re-read live 2026-08-04, confirmed place-name not yoga-doctrine)", None),
 
     # ── Rite-specific residences ──
     ("rite_residence", "agnivasa", "computed",
@@ -712,6 +733,305 @@ CENSUS_ROWS: list[tuple[str, str, str, str, str, str | None]] = [
      "classical_text_chunks (chunk_id='brihat_samhita_pg0768_c01', Adh. C sl.3-4, "
      "translated, low_confidence_flag=false) — live-verified 2026-08-02; "
      "schema gap: bg_parihara_rules has no activity-class qualifier column", "vedic:parashari"),
+
+    # ── Parihāra-graph enrichment (2026-08-04): the 66 doṣa-parihāra-topic
+    # muhurta_chintamani chunks translated by MUHURTA_CHINTAMANI_TRANSLATION_
+    # REPORT_v1_0.md (2026-08-03), read directly against live content_en (not
+    # paraphrased from the report's summary). Every row below traces to a real
+    # chunk_id whose translated text was read in full. Same discipline as the
+    # vishti_conditional_undertaking_exception row above: genuine, cited,
+    # muhūrta-scope parihāra content that is NOT encoded as an unconditional
+    # bg_parihara_rules row, because (per the exact reasoning that row already
+    # established) kala_lattice_query.ts's matchingPariharas() cancels
+    # unconditionally on a dosha_canonical_id match, and every finding below
+    # carries a condition — an undertaking class, a region, a sub-window of an
+    # existing doṣa span, or a doctrinal 'destroys ALL doṣas' claim the schema
+    # has no wildcard for — that bg_parihara_rules cannot yet represent without
+    # over-cancelling. Most of the 66 chunks were reviewed and are NOT
+    # represented here at all: many are too fragmentary/OCR-corrupt to support
+    # a citable rule (see each chunk's own low_confidence_flag/ocr_review_note),
+    # and a large share of the "doṣa-parihāra" topic tag turned out to be
+    # procedural muhūrta election material (dohada food lists, journey
+    # conveyance-by-direction, gemstone/dakṣiṇā tables, avasthā-reckoning
+    # method) rather than doṣa-cancellation content proper — skipped rather
+    # than smoothed into a shape that doesn't fit (B.10).
+    ("parihara_scope", "mrityu_krakaca_dagdha_hutasana_yoga_apavada", "not_computed",
+     "A real, translated, threefold apavāda (exception) to the Mṛtyu, Krakaca, "
+     "Dagdha (Vāradagdha) and Hutāśana yogas, verbatim from chunk "
+     "muhurta_chintamani_pg0028_c02 (v.41): 'When the Moon is well-disposed, "
+     "[the authorities] have declared the Mṛtyu, Krakaca, Dagdha and similar "
+     "[yogas] to be auspicious. Some [hold that the doṣa ceases] after the "
+     "first yāma; and others [hold that] they are censured only in yātrā (a "
+     "journey).' The ṭīkā (chunk muhurta_chintamani_pg0029_c01, on v.42) "
+     "confirms and extends this to Viṣa-yoga: 'the said malefic yogas carry no "
+     "doṣa (affliction) after the first prahara... the said yogas are shunned "
+     "in yātrā (a journey) only, and not in [other] undertakings.' This is "
+     "activity-class-conditional (yātrā only, per one opinion) and further "
+     "conditioned on Moon-disposition or time-elapsed-since-sunrise — none of "
+     "which bg_parihara_rules or matchingPariharas() can evaluate. It does NOT "
+     "resolve the pre-existing 'dagdha_yoga'/'mrityu_yoga'/'hutasana_yoga' "
+     "not_in_corpus rows above (those cite a DIFFERENT, still-untranslated "
+     "ch.17-18 tithi×vāra detection table for the yogas themselves — this "
+     "finding is their apavāda clause, not their detector, and the two must "
+     "not be conflated). Work item: same as vishti — an "
+     "applies_to_activity_classes qualifier plus a time-elapsed/Moon-"
+     "disposition condition mechanism, neither of which exists yet.",
+     "classical_text_chunks (chunk_id='muhurta_chintamani_pg0028_c02', v.41, "
+     "low_confidence_flag=false; chunk_id='muhurta_chintamani_pg0029_c01', "
+     "v.42 ṭīkā, low_confidence_flag=true) — translated 2026-08-03, read live "
+     "2026-08-04; schema gap: no activity-class qualifier, no Moon-disposition/"
+     "elapsed-time condition mechanism", None),
+    ("parihara_scope", "dagdha_tithi_saura_madhyadesha_restriction", "not_computed",
+     "A complete, self-contained dagdha-tithi (burnt lunar-day) rule, keyed to "
+     "the Sun's zodiac sign, found translated at chunk "
+     "muhurta_chintamani_pg0109_c01 (v.66, Chapter 6/Vivāha section): 'When "
+     "[the Sun] stands in Cāpa (Dhanus) or the last sign (Mīna), in Go (Vṛṣa) "
+     "or Ghaṭa (Kumbha), in Karka or Aja (Meṣa), in Strī (Kanyā) or Mithuna, "
+     "in Siṃha or Ali (Vṛścika), in Nakra (Makara) or Tulā — the even tithis "
+     "(lunar days) beginning with the second are dagdha (burnt).' The ṭīkā "
+     "gives the mapping explicitly (2nd/4th/6th/8th/10th/12th tithi per solar "
+     "sign-pair) and states the built-in regional parihāra verbatim: 'These "
+     "māsa-dagdha tithis are prohibited in Madhyadeśa alone [and not "
+     "elsewhere].' No dagdha-tithi table of ANY kind exists in panchang_engine "
+     "(grep-verified: zero matches for 'dagdha' across panchang_engine/*.py) "
+     "— disposed not_computed (the doctrine IS now in-corpus and translated; "
+     "no detector has been built), not not_in_corpus, mirroring the "
+     "'gandanta'/degree_sensitive row's own computed/not_computed distinction "
+     "above. This is a DIFFERENT dagdha-tithi formulation (solar-ingress-"
+     "keyed) from the tithi×vāra table the pre-existing 'dagdha_yoga' row "
+     "cites at ch.17-18 (still untranslated) — the two are not the same table "
+     "and this finding does not resolve that row's gap. Even if implemented, "
+     "the regional (Madhyadeśa-only) restriction is a schema gap "
+     "bg_parihara_rules cannot represent (no region qualifier).",
+     "classical_text_chunks (chunk_id='muhurta_chintamani_pg0109_c01', v.66 "
+     "mula+ṭīkā, low_confidence_flag=true but the ṭīkā's dagdha-tithi table "
+     "and regional restriction are the review note's UNFLAGGED portion) — "
+     "translated 2026-08-03, read live 2026-08-04; "
+     "panchang_engine/shastra_tables.py + panchang_engine/timings.py "
+     "(grep-verified: no dagdha table anywhere)", None),
+    ("parihara_scope", "bhadra_mukha_puccha_subwindow", "not_computed",
+     "The classical mukha (mouth)/puccha (tail) subdivision of Bhadrā "
+     "(Viṣṭi karaṇa) — a genuine sub-window parihāra bg_muhurta_lattice's "
+     "existing 'bhadra' factor (factor_family=combination_yoga) does not "
+     "implement, since that emitter materializes the WHOLE Bhadrā span "
+     "undifferentiated. Verbatim, chunk muhurta_chintamani_pg0029_c02 (v.44): "
+     "'in the yāmas the last three ghaṭīs are the tail (puccha), which is "
+     "auspicious. Likewise, by day the Viṣṭi born in the latter half of a "
+     "tithi (lunar day) is auspicious, while by night it is the one born in "
+     "the former half [that is auspicious].' The ṭīkā (chunk "
+     "muhurta_chintamani_pg0030_c01) confirms: 'This puccha-Bhadrā is not "
+     "malefic — that is, it is acceptable for auspicious work... a Bhadrā "
+     "belonging to the latter half of a tithi is auspicious by day, and one "
+     "belonging to the former half of a tithi is auspicious by night.' A "
+     "further world-bound parihāra follows at v.45 (chunk "
+     "muhurta_chintamani_pg0030_c02): Bhadrā's fruit occurs only in whichever "
+     "world (mortal/heaven/nether, keyed to the Moon's sign) she dwells that "
+     "day — 'there alone does she give her fruit, and not in another world — "
+     "and this too is precisely a parihāra.' NOT encoded as a bg_parihara_rules "
+     "row: the engine's blunt dosha_canonical_id match would, if seeded "
+     "against 'bhadra', report the doṣa-bearing MUKHA portion as cancelled "
+     "too — the exact over-cancellation failure mode the vishti row already "
+     "refused. Ingestion work item: split the bg_muhurta_lattice bhadra "
+     "emitter into mukha (doṣa) / puccha (non-doṣa) sub-spans using this "
+     "verse's own ghaṭī arithmetic, before any parihāra row can safely cite "
+     "it.",
+     "classical_text_chunks (chunk_id='muhurta_chintamani_pg0029_c02', v.44, "
+     "low_confidence_flag=true; chunk_id='muhurta_chintamani_pg0030_c01', "
+     "v.44 ṭīkā-continued + v.45, low_confidence_flag=true; chunk_id="
+     "'muhurta_chintamani_pg0030_c02', v.45 ṭīkā-concluded, "
+     "low_confidence_flag=true) — translated 2026-08-03, read live "
+     "2026-08-04; bg_muhurta_lattice.py's 'bhadra' factor_key (combination_"
+     "yoga) does not sub-divide the span", None),
+    ("parihara_scope", "jupiter_simha_makara_marriage_regional_dosha", "not_computed",
+     "A rich, multiply-conditional pair of regional/degree/activity-class "
+     "exemptions for Jupiter-in-Siṃha and Jupiter-in-Makara (his sign of "
+     "debilitation), found translated across chunks "
+     "muhurta_chintamani_pg0031_c02 through pg0034_c01 (v.48-53, Chapter 5/"
+     "Vivāha section). Verbatim, v.49 (chunk pg0032_c01): 'When Jupiter is in "
+     "Siṃha and in the Siṃha [navāṃśa], marriage is inauspicious; and [the "
+     "doṣa holds] north of the Godāvarī and on the southern bank of the "
+     "Bhāgīrathī — [it is] a doṣa there alone, not in another country, nor "
+     "even when the Sun is in Meṣa.' The ṭīkā narrows further: applies to "
+     "marriage only (by another opinion also upanayana), only the Siṃha "
+     "navāṃśa of Siṃha (13°20′-16°40′, not the whole sign-transit), and not "
+     "at all when the Sun is in Meṣa. v.52 (chunk pg0033_c01) states the "
+     "mirror-image Makara rule: 'East of the Revā, west of the Gaṇḍakī, and "
+     "north and south of the Śoṇa, Jupiter in his debilitation is not to be "
+     "shunned; but in Koṅkaṇa, in Magadha, in Gauḍa and in Sindhu he is to be "
+     "shunned in auspicious [undertakings]' — geographically INVERTED from "
+     "the Siṃha rule (doṣa in named tracts, not doṣa across most of the named "
+     "river-defined heartland), with a further Makara-navāṃśa-only narrowing "
+     "and a 60-day exception for countries outside both named divisions. v.53 "
+     "(chunk pg0034_c01) adds the separate lupta-saṃvatsara (lost-year) "
+     "exception, itself region-bound to the Revā-Gaṅgā tract only. Every "
+     "layer here (activity-class, navāṃśa-degree range, named-river "
+     "geography, specific solar-sign exclusion) is a condition "
+     "bg_parihara_rules' single free-text cancellation_condition_text field "
+     "could HOLD but the engine cannot EVALUATE — encoding any one row here "
+     "would misrepresent a five-way-conditional doctrine as a flat "
+     "dosha_canonical_id match. See also the 'jvalamukhi_yoga' combination_"
+     "yoga row above, whose CONFIRMED place-name (not yoga) finding comes "
+     "from this same chunk cluster (pg0033_c01's geography list).",
+     "classical_text_chunks (chunk_id='muhurta_chintamani_pg0031_c02' through "
+     "'muhurta_chintamani_pg0034_c01', v.48-53 mula+ṭīkā, all "
+     "low_confidence_flag=true) — translated 2026-08-03, read live "
+     "2026-08-04; schema gap: no navāṃśa-degree, region, or solar-sign "
+     "qualifier columns", None),
+    ("parihara_scope", "ravi_yoga_and_godhuli_sarva_dosha_nasha", "not_computed",
+     "Two independent 'destroys/needs-no-consideration-of ALL doṣas' claims, "
+     "the same wildcard-schema-gap ADJUDICATION-10 Part 1 already named for "
+     "the Abhijit row (bg_parihara_rules has no all-doṣa/wildcard "
+     "dosha_canonical_id convention — narrowing either of these to one "
+     "representative doṣa, the way ADJUDICATION-10 narrowed Abhijit to "
+     "rahu_kalam, is a deliberate campaign-level adjudication call this data "
+     "pass does not have standing to make unilaterally). (1) Ravi-yoga, "
+     "chunk muhurta_chintamani_pg0023_c01 (v.27): 'When, counted from the "
+     "Sun's nakṣatra, the Moon['s nakṣatra] falls at [a distance] measured by "
+     "4, [9], [6], 10 (dik), 13 (viśva) or 20 (nakha), the Ravi-yogas arise, "
+     "and they destroy all doṣas (afflictions).' The ṭīkā: 'It is auspicious "
+     "for every undertaking, and it destroys the whole mass of the doṣas "
+     "stated above.' No 'ravi_yoga' factor_family/factor_key exists anywhere "
+     "in bg_muhurta_lattice — genuinely not_computed, not merely un-encoded. "
+     "(2) Godhūli, chunk muhurta_chintamani_pg0119_c01 (v.100-101): 'In it "
+     "there is no nakṣatra..., no tithi..., no consideration of the lagna at "
+     "all, nor vāra, ... nor any discussion of the muhūrta; nor yoga, nor the "
+     "house of death (the eighth), nor yāmitra-doṣa at all. That godhūli has "
+     "been declared by the sages to be commended for one's every "
+     "undertaking,' with a three-season definition (Sun's disc congealed in "
+     "Hemanta / half-set in the hot season / fully set in the rains). UNLIKE "
+     "Ravi-yoga, 'godhuli' already IS a materialized bg_muhurta_lattice kalam "
+     "factor_key (see the 'godhuli' day_part row above) — but its "
+     "implementation (panchang_engine/timings.py: a fixed 24-minute window "
+     "before/after sunset, year-round) does NOT reproduce this verse's "
+     "three-season method, and carries no citation for either the window "
+     "definition or the 'no doṣa whatsoever' claim. Left as "
+     "computed_uncited_convention on the existing row rather than upgraded, "
+     "because citing this verse there would overclaim: the verse's specific "
+     "seasonal method is not what the current emitter computes (§N.7 — a "
+     "citation must match what is actually computed, not merely be "
+     "topically related).",
+     "classical_text_chunks (chunk_id='muhurta_chintamani_pg0023_c01', v.27 "
+     "mula+ṭīkā, low_confidence_flag=true; chunk_id="
+     "'muhurta_chintamani_pg0119_c01', v.100-101, low_confidence_flag=false) "
+     "— translated 2026-08-03, read live 2026-08-04; panchang_engine/"
+     "timings.py:compute_extended_auspicious (godhuli: fixed sunset±24min, "
+     "no seasonal method, uncited)", None),
+    ("parihara_scope", "regional_dosha_cluster_madhyadesha_gauda_malava_hunabanga", "not_computed",
+     "A cluster of muhūrta doṣas this text itself discloses as regionally "
+     "self-cancelling outside three named tracts, found translated at chunk "
+     "muhurta_chintamani_pg0020_c01 (v.18-19): 'those tithis that are "
+     "month-void, and likewise those lagnas that are declared void — they "
+     "are to be shunned in Madhyadeśa [alone]; among other [peoples/regions] "
+     "they do not vitiate... The lame (paṅgu), blind (andha) and one-eyed "
+     "(kāṇa) lagnas, and the month-void rāśis (signs), are to be avoided in "
+     "Gauḍa and Mālava; in another country they are not censured' — TWO "
+     "separate regional carve-outs in one chunk (māsa-śūnya tithi/lagna → "
+     "Madhyadeśa only; paṅgu/andha/kāṇa lagnas + māsa-śūnya rāśi → Gauḍa/"
+     "Mālava only). Chunk muhurta_chintamani_pg0025_c01 (v.31 ṭīkā) adds a "
+     "third tract for the compound tithi×vāra / tithi×nakṣatra / vāra×"
+     "nakṣatra / triple-combination doṣas (the Hasta-Arka example among "
+     "them): 'to be shunned in the Hūṇa country (Baṅga), in Bengal, and in "
+     "Uttarakhaṇḍa (Khāndeś); in other countries they are not prohibited.' "
+     "The underlying māsa-śūnya nakṣatra TABLE itself is illegible in this "
+     "corpus's scan (chunk pg0020_c01's own note: 'the printed table of "
+     "month-wise śūnya nakṣatras is broken up and illegible — not "
+     "rendered') — so even the base doṣa this regional parihāra would cancel "
+     "cannot itself be computed from this corpus; only the meta-rule (which "
+     "regions the whole doṣa-family binds in) is legible. Region is not a "
+     "qualifier bg_parihara_rules' schema carries.",
+     "classical_text_chunks (chunk_id='muhurta_chintamani_pg0020_c01', v.17-"
+     "19 mula+ṭīkā, low_confidence_flag=true; chunk_id="
+     "'muhurta_chintamani_pg0025_c01', v.31 ṭīkā-completing, "
+     "low_confidence_flag=true) — translated 2026-08-03, read live "
+     "2026-08-04; base māsa-śūnya-nakṣatra table illegible in the scan "
+     "(pg0020_c01), so not_computed rather than not_in_corpus is honest for "
+     "the meta-rule only, not for the underlying doṣa", None),
+    ("parihara_scope", "holashtaka_regional_marriage_dosha", "not_computed",
+     "Holāṣṭaka (the 8 days preceding the Holikā/Phālguna-full-moon "
+     "festival) — a well-defined, self-contained doṣa with a built-in "
+     "regional parihāra, found translated at chunk "
+     "muhurta_chintamani_pg0028_c01 (v.40): '[On the banks of the Vipāśā and "
+     "the Irāvatī, on the bank of the Śatadru] and in Tripuṣkara, the eight "
+     "days preceding the Holikā [festival] are never [fit] for marriage and "
+     "other auspicious [acts].' The ṭīkā confirms the region-bound scope "
+     "explicitly: 'In other countries these carry no doṣa.' Unlike most "
+     "findings in this cluster, this ONE is close to self-contained (no "
+     "activity-class narrowing beyond 'marriage and other auspicious acts', "
+     "no degree-range) — the sole schema gap is the region qualifier itself. "
+     "Flagged not_computed rather than encoded as a bg_parihara_rules row: "
+     "region is not representable, and (per the vishti/mrityu-krakaca-dagdha "
+     "precedent above) a row with no region qualifier would read as "
+     "unconditionally cancelled everywhere the underlying Holāṣṭaka doṣa is "
+     "detected — which the source explicitly does not license.",
+     "classical_text_chunks (chunk_id='muhurta_chintamani_pg0028_c01', v.40 "
+     "mula+ṭīkā, low_confidence_flag=true — the parihāra passage itself is "
+     "the review note's explicitly-clean portion) — translated 2026-08-03, "
+     "read live 2026-08-04; schema gap: no region qualifier column", None),
+    ("parihara_scope", "pratishukra_venus_facing_apavada", "not_computed",
+     "A cluster of activity-class and lineage (gotra) exceptions to the "
+     "pratiśukra (Venus-facing/adverse-Venus) doṣa for dvirāgamana (a bride's "
+     "formal second homecoming), found translated at chunks "
+     "muhurta_chintamani_pg0123_c01, pg0123_c02 and pg0124_c01 (v.2-4, "
+     "Chapter 8). Verbatim, v.3 (chunk pg0123_c01): 'On entering a city; in a "
+     "calamity such as [invasion of] the territory; at a marriage (\"the "
+     "seizing of the hand\"); on a pilgrimage to the gods or to a tīrtha; on "
+     "[?]; and at the entry of a newly-wed bride — Bhārgava confronting does "
+     "not become a producer of doṣa at all.' v.4 (chunk pg0124_c01) adds a "
+     "puberty-timing exception and a full gotra exemption: 'If, while still "
+     "in her father's house, the flowering of the breasts has occurred in "
+     "women, there is no doṣa arising from the pratiśukra; likewise in the "
+     "lineage of Bhṛgu, Aṅgiras, Vatsa, Vasiṣṭha, Kaśyapa, Atri and the sage "
+     "Bharadvāja.' A named-undertaking-class list (city-entry, calamity, "
+     "marriage, pilgrimage, bride's-entry) plus a gotra qualifier is exactly "
+     "the shape bg_parihara_rules cannot hold — an activity-class list, not a "
+     "single class, and a lineage condition with no analogue anywhere in the "
+     "schema.",
+     "classical_text_chunks (chunk_id='muhurta_chintamani_pg0123_c01', v.2-3 "
+     "mula+ṭīkā, low_confidence_flag=true; chunk_id="
+     "'muhurta_chintamani_pg0123_c02', v.3 ṭīkā-continued, "
+     "low_confidence_flag=true; chunk_id='muhurta_chintamani_pg0124_c01', "
+     "v.4 mula+ṭīkā, low_confidence_flag=true) — translated 2026-08-03, read "
+     "live 2026-08-04; schema gap: no activity-class-list or lineage/gotra "
+     "qualifier", None),
+    ("parihara_scope", "vivaha_synastry_kuta_dosha_bhanga_scope_gap", "not_computed",
+     "A genuinely THIRD category of parihāra content — synastry/compatibility "
+     "doṣa-cancellation between a groom's and bride's charts (bhakūṭa, "
+     "nāḍī-kūṭa, gaṇa-kūṭa, graha-maitrī, aṣṭama-rāśi/lagna) — that fits "
+     "neither of bg_parihara_rules.scope's two CHECK-constrained values: not "
+     "'natal' (a single chart's own dosha-bhaṅga, e.g. Maṅglik/Kāla-Sarpa) "
+     "and not 'muhurta' (a chart-independent timing-window doṣa, e.g. Rāhu "
+     "Kālam/Bhadrā) — it is a two-chart RELATIONAL doṣa, computed at "
+     "matchmaking time from both nativities together. Rich, well-translated "
+     "content exists: e.g. chunk muhurta_chintamani_pg0096_c01 (v.32, on the "
+     "evil bhakūṭa): 'if one and the same planet lords the signs of groom "
+     "and bride... the marriage is auspicious. It is likewise auspicious "
+     "when the rāśi-lords are friends, provided there is nāḍī-śuddhi... and "
+     "if the lords of the aṃśas... are mutually friendly and are also "
+     "strong... then the doṣa (affliction) of enmity between the planets "
+     "does not arise' — five distinct named cancellation mechanisms "
+     "(ekādhipatya, rāśi-lord friendship, aṃśa-lord friendship, tārā-"
+     "śuddhi, rāśi-vaśyatā), each independently sufficient. Chunk "
+     "muhurta_chintamani_pg0116_c01/c02 (v.89-91) adds a general-purpose "
+     "doṣa-quenching rule keyed to Mercury/Jupiter/Venus strength in kendra/"
+     "koṇa. None of this is encodable in bg_parihara_rules without either "
+     "misusing scope='natal' (wrong — this is not a single-chart condition) "
+     "or scope='muhurta' (wrong — this is not a timing-window condition, and "
+     "the doṣas named — bhakūṭa/nāḍī/gaṇa — are not bg_muhurta_lattice "
+     "factor_keys and never will be, being relational, not temporal). "
+     "Flagged here as a genuine schema-scope gap for the campaign to decide "
+     "whether a third scope value or a wholly separate synastry-parihāra "
+     "table is the right shape — a bigger design decision than a data-"
+     "enrichment pass has standing to make.",
+     "classical_text_chunks (chunk_id='muhurta_chintamani_pg0096_c01', v.31-"
+     "33, low_confidence_flag=true; chunk_id='muhurta_chintamani_pg0096_c02', "
+     "v.33-34, low_confidence_flag=true; chunk_id="
+     "'muhurta_chintamani_pg0097_c01', v.34, low_confidence_flag=true; "
+     "chunk_id='muhurta_chintamani_pg0116_c01', v.89-91, "
+     "low_confidence_flag=true; chunk_id='muhurta_chintamani_pg0116_c02', "
+     "v.91 ṭīkā-continued, low_confidence_flag=true) — translated 2026-08-03, "
+     "read live 2026-08-04; schema gap: bg_parihara_rules.scope CHECK allows "
+     "only ('natal','muhurta'), neither of which fits a two-chart relational "
+     "doṣa", None),
 
     # ── Degree-sensitive ──
     ("degree_sensitive", "mrityu_bhaga", "not_in_corpus",
