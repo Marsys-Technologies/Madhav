@@ -109,6 +109,22 @@ expiry, ready-to-fire fallback kept current in this file if the session dies.
   checked out) — not the main repo directory**, which is on an unrelated branch and should not
   hold a loose copy of this file at all.
 
+**CI-health finding (not caused by this session, not fixed by this session — recorded per
+no-silent-gaps discipline).** After the rebase above, PR #1043 (docs-only, one new file) showed
+`Naming Governance Gate` and `Earned-Signal Gate` both red. Traced before assuming either was a
+regression: `Naming Governance Gate` fails identically on `main`'s own HEAD (`f65680ab`, PR
+#1042 — a `GCP_PROJECT` env-var naming violation in
+`platform/scripts/corpus/apply_muhurta_chintamani_translations.ts`, pre-existing, not introduced
+by this session's rebase, just inherited by it) — dozens of other unrelated
+long-lived files (`platform/src/lib/storage/gcs.ts`, `observability/trace.ts`, etc.) also fail
+the same "baseline-aware repo scan," suggesting the baseline/allowlist itself may be stale or
+misconfigured, not that this many files all regressed at once. `Earned-Signal Gate` was already
+red on `shad-darshana/integration` before tonight (confirmed via PR #1039's own checks). Neither
+blocks merges — this branch is unprotected (§B.2a) — so PR #1043 merged despite both. Not
+investigated further tonight (out of scope for the relay/ledger work); flagging for whichever
+session next touches CI health, since a genuinely broken baseline-aware gate quietly stops
+catching real new violations.
+
 ---
 
 ## NIGHT 5 — SESSION OPEN (2026-08-02, ~12:57 IST, in progress)
