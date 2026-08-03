@@ -52,6 +52,63 @@ parked with recorded reasons.
    1's significators) · W4 live fixture discharge + Gate W4 evaluation (post-deploy, seed
    applied) · W5 prep.
 
+**ADJUDICATION-16 issued (2026-08-04, ~21:30 UTC).** ANTARYĀMIN resumed ADJUDICATION-8's parked
+Convention (B) slot now that the Muhūrta-Cintāmaṇi translation has landed
+(`MUHURTA_CHINTAMANI_TRANSLATION_REPORT_v1_0.md`, 2026-08-03): the text's single Agnivāsa verse
+(MC 1.36, `chunk_id=muhurta_chintamani_pg0048_c01`) does specify a real, verified, computable
+arithmetic — `(tithi_id + 1 + vara_id) mod 4`, remainder {0,3}→Pṛthvī(favourable), 1→Ākāśa,
+2→Pātāla — genuinely distinct from Convention (A)'s tithi-only four-element table, confirming
+rather than contradicting ADJUDICATION-8's "lineage variation" framing. Ruling recommends (for a
+future builder session; not executed by this docs-only ruling) flipping
+`agnivasa_muhurta_chintamani_arithmetic`'s `convention_status` from `declared_not_computed` to
+`computed` in `kala_paddhati_profile` — Convention (A) stays the native-confirmed, graded
+lineage convention, unchanged. Note: the task proposing this ruling suggested slug "14", which
+collides with the existing ADJUDICATION-14 (V4 §2.3 design-band re-scope, Night-5); this ruling
+took the next free number, 16, instead. Full text:
+`SHAD_DARSHANA_ADJUDICATION_16_AGNIVASA_CONVENTION_B_v1_0.md` (this directory).
+
+**INT-929 SESSION — sweep relay, two dispatch generations (2026-08-03 ~10:24–21:14 UTC).**
+Executing Night 5's own step 1 ("resume the sweep relay first"). Both charts' Night-5 dispatch
+(`e733299f`/`42e062e3`, Cloud Run executions `-zjwvn`/`-gbnsd`, started ~14:23 UTC 2026-08-02)
+had completed its 6h container budget cleanly (`Completed/True`, confirmed via
+`gcloud run jobs executions describe`) at ~20:24 UTC 2026-08-02 as Night 5 itself predicted —
+**not** a crash — and then sat idle ~14h with no redispatch queued. A native directive this
+session initially claimed emergency failure/eviction and asked for an emergency autonomous
+swarm; live verification (gcloud + `build_substep_progress` filtered to
+`asset_id='ka_gochara_sweep'`) found the completion was clean and the counts (117/606 482012f1,
+155/606 1c826d5a at pickup) accurate once an unrelated week-old `ka_sangam` contamination was
+excluded — same idle-not-crashed pattern as PR #1011. Native then explicitly LIFTED tonight's
+initial descope (full night-run/merge/deploy authority granted, with Cloud Scheduler and the
+482012f1/1c826d5a chart-lock both explicitly held in place) after the Conductor cross-checked
+the directive against the then-current descope note and confirmed directly. Continuity ruling
+recorded: "no human until morning" = decision-autonomy (ANTARYĀMIN rules in the native's
+place), not daemon-persistence; relay mechanism = scheduled wakeups armed ahead of each ~6h
+expiry, ready-to-fire fallback kept current in this file if the session dies.
+- **Generation 1**: `dispatch_int929_gochara_resume_{482012f1,1c826d5a}.py` →
+  `build_run acf4a632…`/`083e5a04…` → executions `-z2wtc`/`-xb8dc`, started
+  10:23:43/45 UTC. Ran its full budget, `Completed/True` at 16:24:01/10 UTC. Substeps at
+  handoff: 482012f1 129→215, 1c826d5a 155→211 (over gen-1's window; some of this gain predates
+  gen-1's own start and reflects polling gaps, not gen-1's own throughput alone).
+- **Idle gap**: ~4h49m uncaught (mid-conversation, not polling continuously) — the exact
+  continuity-boundary risk the ruling above exists to close going forward.
+- **Generation 2**: same script pattern → `build_run 5b5f6a98…`/`6c830543…` → executions
+  `-h7n6x`/`-bsvhw`, both started 21:13:05.89 UTC. Collision-checked clean before dispatch;
+  verified new substeps landing both charts (482012f1 215→216, 1c826d5a 211→212) within ~2 min.
+  **Next expiry ~2026-08-04T03:13:05Z.** Scheduled wakeup armed ahead of it.
+- Ledger-reconciliation sweep also run this session (PR #934/item-2, PR #1006/#1013/W2G V1–V6,
+  migration 527 — all independently verified live against real PRs/DB, not assumed): **no new
+  corrections needed** — this file's own more current sections (Night 3 resumed §946ff, Night 4,
+  Night 5 NEXT-ACTION above) already carry the accurate, up-to-date picture. An earlier pass this
+  session mistakenly edited a STALE, superseded historical snapshot (the old "Wave status" /
+  "N1–N5 ratification block" / "Registry item status" tables further down this file, dated
+  content from early Night 3) via a stray untracked copy of this file that had been sitting in
+  the main repo checkout rather than this worktree — those edits were never committed/pushed and
+  are retracted here rather than carried forward, to avoid contradicting this file's own later,
+  correct sections. Process note for future sessions: **always edit this file inside
+  `.worktrees/shad-darshana-conductor` (or wherever `shad-darshana/integration` is actually
+  checked out) — not the main repo directory**, which is on an unrelated branch and should not
+  hold a loose copy of this file at all.
+
 ---
 
 ## NIGHT 5 — SESSION OPEN (2026-08-02, ~12:57 IST, in progress)
