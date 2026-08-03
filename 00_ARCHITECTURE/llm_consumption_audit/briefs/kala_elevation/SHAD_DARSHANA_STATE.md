@@ -125,6 +125,22 @@ investigated further tonight (out of scope for the relay/ledger work); flagging 
 session next touches CI health, since a genuinely broken baseline-aware gate quietly stops
 catching real new violations.
 
+**Parihāra graph enrichment landed (PR #1044, 2026-08-04 ~22:40 UTC).** All 66 translated
+`parihara`-topic `muhurta_chintamani` chunks read directly against live `content_en` (~25
+usable/cited, rest skipped as too OCR-fragmentary or procedural non-doṣa material — not
+smoothed over). Every genuine finding was conditional (activity-class, region, sub-window, or a
+"cancels all doṣas" wildcard), so per the `vishti_conditional_undertaking_exception` row's own
+precedent, none forced into `MUHURTA_PARIHARA_ROWS` (stays its single ADJUDICATION-10 row,
+its own test unchanged) — instead 9 new cited, honestly `not_computed` `parihara_scope` census
+rows, plus the pre-existing `jvalamukhi_yoga` ambiguous-OCR row now CONFIRMED (place name, not
+yoga doctrine) on the translated evidence. No schema change. Independently re-run by the
+Conductor before merge (38 passed/6 skipped, matches the builder's own report). No production
+rebuild triggered — separate decision.
+
+**Relay status at this point (2026-08-03 22:21 UTC check-in):** both charts healthy and
+advancing on generation-2 (482012f1 216→229, 1c826d5a 212→222 substeps since the 21:13 dispatch);
+not near the ~2026-08-04T03:13:05Z expiry. Wakeup re-armed (chained ~1h, per the 3600s cap).
+
 ---
 
 ## NIGHT 5 — SESSION OPEN (2026-08-02, ~12:57 IST, in progress)
