@@ -24,6 +24,7 @@ import pytest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import ga_writers.ga_structural_writer as sut
+from brahmagyan.verification_vocab import DIVERGENT_FLAGGED, UNVERIFIED_DEFAULT  # noqa: E402
 
 
 # ── Shared test fixtures ──────────────────────────────────────────────────────
@@ -281,13 +282,24 @@ class TestAspectRows:
         for r in conj:
             assert r["verification_pass_status"] == "single"
 
-    def test_aspect_parashari_verif_two_pass(self):
+    def test_aspect_parashari_verif_is_unverified_default(self):
+        """RENAMED + FLIPPED (Stage 2 honest-tiers, M-22 overnight, Opus Gate
+        Reviewer ruling): this test used to assert 'two_pass_verified', but
+        aspect_parashari_given had no second independently-implemented
+        derivation behind it — it was one of the ~76 sites where
+        `_base_row(..., verif="two_pass_verified", ...)` was an unearned literal
+        (no comparison ever ran). It is one of the mechanical, non-special-cased
+        sites in the ruling (not one of the 4 named edge-case categories), so it
+        converts to `UNVERIFIED_DEFAULT` ('single') like the rest. This is not a
+        silent flip: aspect_parashari_given genuinely is single-pass in this
+        writer today, and the test now asserts that honestly."""
         rows = sut._build_aspect_rows(
             MOCK_CHART_OUTPUT, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER
         )
         parashari = [r for r in rows if r["fact_category"] == "aspect_parashari_given"]
+        assert parashari, "aspect_parashari_given rows must be produced"
         for r in parashari:
-            assert r["verification_pass_status"] == "two_pass_verified"
+            assert r["verification_pass_status"] == UNVERIFIED_DEFAULT
 
 
 # ── §4: Group B — Shadbala extensions ────────────────────────────────────────
@@ -917,9 +929,24 @@ class TestGA3OverlapPrevention:
         sut._linter_check_rows(all_rows)
 
 
-# ── §16: Two-pass invariants ──────────────────────────────────────────────────
+# ── §16: Row-builder pure-function stability ───────────────────────────────────
+# RENAMED (Stage 2 honest-tiers, M-22 overnight, Opus Gate Reviewer ruling). This
+# class used to be named `TestTwoPassInvariants`, which claimed more than it
+# tested: every test here calls the SAME pure row-builder function TWICE,
+# in-process, against the SAME fixed `MOCK_CHART_OUTPUT` and the SAME `build_id`,
+# and asserts the two calls produce identical output. That proves the builder is
+# a deterministic pure function of its inputs — a real and worth-keeping property
+# — but it is not a "two-pass verification invariant" in the
+# brahmagyan.verification_vocab.py sense (CLAUDE.md §N.8 earned-signal test): no
+# DB round-trip happens, no `build_id` varies, and no independently-implemented
+# SECOND algorithm runs to compare against a first. A bug that makes the builder
+# wrong in exactly the same way on every call would still pass every test in this
+# class. Building a real DB-backed double-build test (varying build_id, hitting
+# actual two_pass_verified/DIVERGENT_FLAGGED production paths) is out of scope
+# for this changeset per the Gate Reviewer's ruling — deferred, not solved here.
+# This rename is the in-scope honesty fix: the class now says what it proves.
 
-class TestTwoPassInvariants:
+class TestRowBuilderPureFunctionStability:
     def test_functional_class_deterministic(self):
         rows1 = sut._build_functional_class_rows(
             MOCK_CHART_OUTPUT, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER

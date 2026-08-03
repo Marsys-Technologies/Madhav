@@ -55,6 +55,7 @@ import re
 from datetime import datetime, timezone, timedelta
 from typing import Any
 
+from brahmagyan.verification_vocab import TWO_PASS_VERIFIED, UNVERIFIED_DEFAULT, assert_legal
 from ga_writers._idempotency import replace_prior_chart_facts
 from ga_writers._telemetry import update_asset_throughput
 
@@ -802,7 +803,7 @@ def _make_row(
     value_jsonb: Any,
     citation_human: str,
     unit: str | None = None,
-    verification: str = "two_pass_verified",
+    verification: str = UNVERIFIED_DEFAULT,
     computed_at: str | None = None,
 ) -> dict[str, Any]:
     if computed_at is None:
@@ -856,7 +857,7 @@ def _emit_cycle_rows(
 
     def R(category, subject, key, value_text=None, value_num=None,
           value_jsonb=None, citation_human="", unit=None,
-          verification="two_pass_verified"):
+          verification=UNVERIFIED_DEFAULT):
         return _make_row(
             chart_id, ayanamsha_id, build_id,
             category, subject, key,
@@ -865,23 +866,34 @@ def _emit_cycle_rows(
         )
 
     # ── 1. sade_sati_cycle (1 row per key) ────────────────────────────────────
+    # cycle_start_iso/cycle_end_iso/duration_days/duration_years are the ONLY
+    # sade_sati_cycle keys genuinely backed by a check: two_pass_verify_cycles()
+    # (called by build_ga_sade_sati, halts the build on failure) examines exactly
+    # these values — the ~7.5y-±600d duration invariant and the vis<jan<anu<end
+    # ordering. Everything else in this category (moon_sign_for_cycle, cycle_type,
+    # the compound_with_* stubs) has no check behind it and falls to the R()
+    # default (UNVERIFIED_DEFAULT).
     cat = "sade_sati_cycle"
     dur_yrs = cycle["duration_days"] / 365.25
     rows += [
         R(cat, cy_id, "cycle_start_iso",
           value_text=vis_dt.isoformat(),
-          citation_human=f"Sade Sati {cy_id} starts {vis_dt.date()} (Saturn enters {cycle['vis_sign']}, 12H from natal Moon in {moon_sign}, {ayanamsha_id})."),
+          citation_human=f"Sade Sati {cy_id} starts {vis_dt.date()} (Saturn enters {cycle['vis_sign']}, 12H from natal Moon in {moon_sign}, {ayanamsha_id}).",
+          verification=TWO_PASS_VERIFIED),
         R(cat, cy_id, "cycle_end_iso",
           value_text=end_dt.isoformat(),
-          citation_human=f"Sade Sati {cy_id} ends {end_dt.date()} (Saturn exits {cycle['anu_sign']}, {ayanamsha_id})."),
+          citation_human=f"Sade Sati {cy_id} ends {end_dt.date()} (Saturn exits {cycle['anu_sign']}, {ayanamsha_id}).",
+          verification=TWO_PASS_VERIFIED),
         R(cat, cy_id, "duration_days",
           value_num=round(cycle["duration_days"], 2),
           citation_human=f"Sade Sati {cy_id} duration: {cycle['duration_days']:.1f} days ({ayanamsha_id}).",
-          unit="days"),
+          unit="days",
+          verification=TWO_PASS_VERIFIED),
         R(cat, cy_id, "duration_years",
           value_num=round(dur_yrs, 4),
           citation_human=f"Sade Sati {cy_id} duration: {dur_yrs:.2f} years ({ayanamsha_id}).",
-          unit="years"),
+          unit="years",
+          verification=TWO_PASS_VERIFIED),
         R(cat, cy_id, "moon_sign_for_cycle",
           value_text=moon_sign,
           citation_human=f"Sade Sati {cy_id} natal Moon sign: {moon_sign} ({ayanamsha_id})."),
@@ -923,21 +935,29 @@ def _emit_cycle_rows(
         cancel_active = cancel_result["cancellation_active"]
 
         cat_ph = "sade_sati_phase"
+        # phase_start_iso/phase_end_iso/duration_days/duration_years are the phase-
+        # level counterparts of the same 4 genuine cycle keys above (ph_start/ph_end
+        # are vis_dt/jan_dt/anu_dt/end_dt, the exact values two_pass_verify_cycles()
+        # examines) — same rationale, same explicit TWO_PASS_VERIFIED.
         rows += [
             R(cat_ph, subj, "phase_start_iso",
               value_text=ph_start.isoformat(),
-              citation_human=f"Sade Sati {cy_id} {phase_name} phase starts {ph_start.date()} ({ayanamsha_id})."),
+              citation_human=f"Sade Sati {cy_id} {phase_name} phase starts {ph_start.date()} ({ayanamsha_id}).",
+              verification=TWO_PASS_VERIFIED),
             R(cat_ph, subj, "phase_end_iso",
               value_text=ph_end.isoformat(),
-              citation_human=f"Sade Sati {cy_id} {phase_name} phase ends {ph_end.date()} ({ayanamsha_id})."),
+              citation_human=f"Sade Sati {cy_id} {phase_name} phase ends {ph_end.date()} ({ayanamsha_id}).",
+              verification=TWO_PASS_VERIFIED),
             R(cat_ph, subj, "duration_days",
               value_num=round(ph_dur_days, 2),
               unit="days",
-              citation_human=f"Sade Sati {cy_id} {phase_name} phase duration: {ph_dur_days:.1f} days ({ayanamsha_id})."),
+              citation_human=f"Sade Sati {cy_id} {phase_name} phase duration: {ph_dur_days:.1f} days ({ayanamsha_id}).",
+              verification=TWO_PASS_VERIFIED),
             R(cat_ph, subj, "duration_years",
               value_num=round(ph_dur_yrs, 4),
               unit="years",
-              citation_human=f"Sade Sati {cy_id} {phase_name} phase duration: {ph_dur_yrs:.2f} years ({ayanamsha_id})."),
+              citation_human=f"Sade Sati {cy_id} {phase_name} phase duration: {ph_dur_yrs:.2f} years ({ayanamsha_id}).",
+              verification=TWO_PASS_VERIFIED),
             # Saturn state (atomic keys)
             R(cat_ph, subj, "saturn_sign",
               value_text=ph_sign,
@@ -1088,24 +1108,35 @@ def _emit_cycle_rows(
         )
 
         # ── 2b. sade_sati_modifier_overlay (per phase) ────────────────────────
-        # Separate category for concurrent transit modifier summary per phase
+        # Separate category for concurrent transit modifier summary per phase.
+        # BUG FIX (Stage 2 honest-tiers): these 5 rows restate the exact same
+        # mars_asp/jup_asp/sat_rahu/eclipse/sat_return values their sibling
+        # sade_sati_phase row (above) carries, but previously fell through to the
+        # unconditional R() default instead of applying _verif_for_maybe_none like
+        # the sibling does — a cross-row tier inconsistency for identical values.
+        # Apply the same function to the same source variable here.
         cat_mo = "sade_sati_modifier_overlay"
         rows += [
             R(cat_mo, subj, "mars_aspect_to_saturn_during_period_flag",
               value_text=str(mars_asp).lower(),
-              citation_human=f"Modifier overlay: Mars aspect during {cy_id} {phase_name}: {mars_asp} ({ayanamsha_id})."),
+              citation_human=f"Modifier overlay: Mars aspect during {cy_id} {phase_name}: {mars_asp} ({ayanamsha_id}).",
+              verification=_verif_for_maybe_none(mars_asp)),
             R(cat_mo, subj, "jupiter_aspect_to_saturn_during_period_flag",
               value_text=str(jup_asp).lower(),
-              citation_human=f"Modifier overlay: Jupiter aspect during {cy_id} {phase_name}: {jup_asp} ({ayanamsha_id})."),
+              citation_human=f"Modifier overlay: Jupiter aspect during {cy_id} {phase_name}: {jup_asp} ({ayanamsha_id}).",
+              verification=_verif_for_maybe_none(jup_asp)),
             R(cat_mo, subj, "saturn_rahu_axis_during_period_flag",
               value_text=str(sat_rahu).lower(),
-              citation_human=f"Modifier overlay: Saturn-Rahu axis during {cy_id} {phase_name}: {sat_rahu} ({ayanamsha_id})."),
+              citation_human=f"Modifier overlay: Saturn-Rahu axis during {cy_id} {phase_name}: {sat_rahu} ({ayanamsha_id}).",
+              verification=_verif_for_maybe_none(sat_rahu)),
             R(cat_mo, subj, "eclipse_during_period_flag",
               value_text=str(eclipse).lower(),
-              citation_human=f"Modifier overlay: Eclipse during {cy_id} {phase_name}: {eclipse} ({ayanamsha_id})."),
+              citation_human=f"Modifier overlay: Eclipse during {cy_id} {phase_name}: {eclipse} ({ayanamsha_id}).",
+              verification=_verif_for_maybe_none(eclipse)),
             R(cat_mo, subj, "concurrent_saturn_return_flag",
               value_text=str(sat_return).lower(),
-              citation_human=f"Modifier overlay: Saturn return concurrent during {cy_id} {phase_name}: {sat_return} ({ayanamsha_id})."),
+              citation_human=f"Modifier overlay: Saturn return concurrent during {cy_id} {phase_name}: {sat_return} ({ayanamsha_id}).",
+              verification=_verif_for_maybe_none(sat_return)),
         ]
 
         # ── 3. sade_sati_phase_quarter (Q1-Q4) ────────────────────────────────
@@ -1129,17 +1160,25 @@ def _emit_cycle_rows(
             rationale_list = intensity_result["rationale"]
 
             cat_q = "sade_sati_phase_quarter"
+            # quarter_start_iso/quarter_end_iso/duration_days are a LINEAR 4-way
+            # split of the (real, two-pass-verified) phase duration — not an
+            # independently observed transit event the way vishakha/janma/anumukha
+            # entries are. Honest tier: documented_approximation, named explicitly
+            # (the approximation method — even quartering — is the citation).
             rows += [
                 R(cat_q, q_subj, "quarter_start_iso",
                   value_text=q_start.isoformat(),
-                  citation_human=f"Sade Sati {q_subj} starts {q_start.date()} ({ayanamsha_id})."),
+                  citation_human=f"Sade Sati {q_subj} starts {q_start.date()} ({ayanamsha_id}).",
+                  verification="documented_approximation"),
                 R(cat_q, q_subj, "quarter_end_iso",
                   value_text=q_end.isoformat(),
-                  citation_human=f"Sade Sati {q_subj} ends {q_end.date()} ({ayanamsha_id})."),
+                  citation_human=f"Sade Sati {q_subj} ends {q_end.date()} ({ayanamsha_id}).",
+                  verification="documented_approximation"),
                 R(cat_q, q_subj, "duration_days",
                   value_num=round(q_dur_days, 2),
                   unit="days",
-                  citation_human=f"Sade Sati {q_subj} duration: {q_dur_days:.1f} days ({ayanamsha_id})."),
+                  citation_human=f"Sade Sati {q_subj} duration: {q_dur_days:.1f} days ({ayanamsha_id}).",
+                  verification="documented_approximation"),
                 # Atomic intensity key
                 R(cat_q, q_subj, "intensity_level",
                   value_text=intensity,
@@ -1292,11 +1331,16 @@ def _emit_dhaiya_rows(
 
     def R(category, subject, key, value_text=None, value_num=None,
           value_jsonb=None, citation_human="", unit=None):
+        # Dhaiya (4H/8H Ardha-Sade-Sati) period boundaries are sign-change
+        # detections from the SAME _detect_saturn_sign_changes() engine as Sade
+        # Sati cycles, but unlike sade_sati_cycle/sade_sati_phase they are never
+        # run through two_pass_verify_cycles() (or any other comparison) — no
+        # second independent derivation checks them. Honest default applies.
         return _make_row(
             chart_id, ayanamsha_id, build_id,
             category, subject, key,
             value_text, value_num, value_jsonb,
-            citation_human, unit, "two_pass_verified", computed_at,
+            citation_human, unit, UNVERIFIED_DEFAULT, computed_at,
         )
 
     # Group sign_changes into transit windows for H4 and H8
@@ -1735,26 +1779,32 @@ def _build_static_natal_facts(
 
 def _verif_for_text(value: Any) -> str:
     """
-    M-22 fix: this function previously returned 'two_pass_verified'
-    unconditionally for any non-placeholder value — a literal top-tier
-    stamp with no verifier ever running a second independent pass on these
-    rows (a single upstream DB join is one pass, not two). Rows built from
-    a real upstream join now get 'single_pass' (formulas.py
-    VERIFICATION_RESCALE 0.85 vs 1.00) — honest for a single, real
-    computation with no cross-check. Rows still carrying a PENDING_*
-    fallback (upstream lookup returned nothing) keep the existing 'single'
-    tier (resolves to the documented_approximation default in
-    VERIFICATION_RESCALE.get), so a placeholder is never stamped as
-    verified.
+    Stage 2 honest-tiers fix: this function previously returned
+    'two_pass_verified' unconditionally for any non-placeholder value — a
+    literal top-tier stamp with no verifier ever running a second
+    independent pass on these rows (a single upstream DB join is one pass,
+    not two). A subsequent M-22 pass corrected the top-tier claim but
+    still returned the DEPRECATED alias 'single_pass' for the non-
+    placeholder branch (`verification_vocab.VocabEntry('single_pass', ...,
+    deprecated_alias_of='single')`) — new code must emit the canonical
+    spelling. Both branches (real upstream join, and a PENDING_* fallback
+    where the upstream lookup returned nothing) now resolve to the same
+    honest tier: no second derivation ran on either, so neither counts as
+    verified. UNVERIFIED_DEFAULT ('single') is the expressible form of
+    "no verification ran" — see verification_vocab.py's module docstring.
     """
-    if isinstance(value, str) and value.startswith("PENDING_"):
-        return "single"
-    return "single_pass"
+    return UNVERIFIED_DEFAULT
 
 
 def _verif_for_maybe_none(value: Any) -> str:
-    """Same as _verif_for_text but for facts that are honestly None (not text)."""
-    return "single" if value is None else "single_pass"
+    """Same as _verif_for_text but for facts that are honestly None (not text).
+
+    Both the None branch and the real-value branch return UNVERIFIED_DEFAULT
+    for the same reason as _verif_for_text: a single upstream read (or its
+    honest None when no source exists) is one pass, not two — neither
+    branch has a second independent derivation backing it.
+    """
+    return UNVERIFIED_DEFAULT
 
 
 # ── INSERT chart_facts rows ───────────────────────────────────────────────────
@@ -1766,6 +1816,12 @@ def _insert_rows(conn: Any, rows: list[dict]) -> int:
     replace_prior_chart_facts(conn, rows)
     written = 0
     for r in rows:
+        # chart_facts carries NO CHECK constraint on verification_pass_status
+        # (confirmed live via pg_constraint), but assert_legal still rejects
+        # PROHIBITED spellings ('pass'/'PASS') and anything outside the settled
+        # vocabulary before the row reaches the INSERT — catching a writer bug
+        # here rather than as a silently-stored bad string.
+        assert_legal(r["verification_pass_status"], table="chart_facts")
         conn.execute(
             """
             INSERT INTO chart_facts
