@@ -332,6 +332,70 @@ def test_vishti_conditional_exception_finding_is_recorded_but_not_encoded():
     ), "the conditional Viṣṭi exception must NOT be encoded as an unconditional parihāra row"
 
 
+# ── Parihāra-graph enrichment (2026-08-04): 9 new parihara_scope census
+# rows drawn from the 66 doṣa-parihāra-topic muhurta_chintamani chunks
+# translated by MUHURTA_CHINTAMANI_TRANSLATION_REPORT_v1_0.md (2026-08-03).
+# Same discipline the vishti test above already enforces: every finding must
+# be present in the census (cited, verbatim-quoted) and absent from
+# MUHURTA_PARIHARA_ROWS (never quietly encoded as an unconditional rule).
+
+_PARIHARA_SCOPE_ENRICHMENT_NAMES = [
+    "mrityu_krakaca_dagdha_hutasana_yoga_apavada",
+    "dagdha_tithi_saura_madhyadesha_restriction",
+    "bhadra_mukha_puccha_subwindow",
+    "jupiter_simha_makara_marriage_regional_dosha",
+    "ravi_yoga_and_godhuli_sarva_dosha_nasha",
+    "regional_dosha_cluster_madhyadesha_gauda_malava_hunabanga",
+    "holashtaka_regional_marriage_dosha",
+    "pratishukra_venus_facing_apavada",
+    "vivaha_synastry_kuta_dosha_bhanga_scope_gap",
+]
+
+
+def test_parihara_scope_enrichment_rows_present_and_not_computed():
+    by_name = {(fam, name): disp for fam, name, disp, *_ in CENSUS_ROWS}
+    for name in _PARIHARA_SCOPE_ENRICHMENT_NAMES:
+        key = ("parihara_scope", name)
+        assert key in by_name, f"expected new parihara_scope census row {name!r}"
+        assert by_name[key] == "not_computed", f"{name!r} must be not_computed, got {by_name[key]!r}"
+
+
+def test_parihara_scope_enrichment_rows_cite_real_chunk_ids():
+    """Every row must name at least one real muhurta_chintamani chunk_id from
+    the translated 66-chunk parihāra set — not a paraphrase of the report."""
+    by_name = {(fam, name): (note, ptr) for fam, name, _disp, note, ptr, _tag in CENSUS_ROWS}
+    for name in _PARIHARA_SCOPE_ENRICHMENT_NAMES:
+        note, pointer = by_name[("parihara_scope", name)]
+        assert "muhurta_chintamani_pg" in pointer, f"{name!r}: evidence_pointer must cite a real chunk_id"
+        assert "muhurta_chintamani_pg" in note, f"{name!r}: note must cite a real chunk_id inline, not just the pointer"
+
+
+def test_parihara_scope_enrichment_rows_not_seeded_as_unconditional_rules():
+    """None of the enrichment findings' underlying doṣa concepts may appear as
+    a MUHURTA_PARIHARA_ROWS dosha_canonical_id — every one of them is
+    conditional (activity-class, region, sub-window, or a wildcard 'all-doṣa'
+    claim) and none has the standing of a formal adjudication narrowing it to
+    an unconditional rule the way ADJUDICATION-10 narrowed Abhijit."""
+    seeded_ids = {r["dosha_canonical_id"] for r in MUHURTA_PARIHARA_ROWS}
+    # The enrichment pass deliberately never chose a dosha_canonical_id that
+    # collides with a real bg_muhurta_lattice factor_key (kalam/combination_yoga)
+    # or a real brahma_dosha_catalog canonical_id — this test only re-confirms
+    # the narrower, always-true invariant that nothing here was accidentally
+    # seeded into the one-row-only rules list.
+    assert seeded_ids == {"rahu_kalam"}, (
+        "MUHURTA_PARIHARA_ROWS must remain exactly the ADJUDICATION-10 row; "
+        "parihara-graph enrichment findings belong in the census, not here"
+    )
+
+
+def test_jvalamukhi_yoga_confirmation_still_not_in_corpus_and_cites_translation():
+    by_name = {(fam, name): (disp, note) for fam, name, disp, note, _ptr, _tag in CENSUS_ROWS}
+    disposition, note = by_name[("combination_yoga", "jvalamukhi_yoga")]
+    assert disposition == "not_in_corpus"
+    assert "CONFIRMED" in note
+    assert "muhurta_chintamani_pg0033_c01" in note
+
+
 # ── Offline tests: MUHURTA_PARIHARA_ROWS / build_muhurta_parihara_rows ───────
 # ṢAḌ-DARŚANA ADJUDICATION-10 Part 1: the one hand-curated muhūrta-scope row
 # (Abhijit sarva-doṣaghna, bphs_jaimini PG213 chunk bphs_jaimini_pg0213_c01).
