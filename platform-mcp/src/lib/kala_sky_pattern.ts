@@ -596,6 +596,50 @@ export function paddhatiCensusStatement(
     : PADDHATI_CENSUS_UNCONFIRMED
 }
 
+/**
+ * ADJUDICATION-17: a REAL divergence detector (§N.8 — replaces the previous hardcoded
+ * `'none_computed'` literal). This is a CHART-LEVEL signal (`fetchPaddhatiProfile` has no date
+ * parameter), so it cannot report a specific date's agree/diverge verdict — that real,
+ * per-date comparison is `computeAgnivasaConventionBVoice` (`agnivasa_convention_b_voice.ts`),
+ * called from the `residence` branch where a date IS available.
+ *
+ * What this CAN honestly say at chart level: whether the two conventions are even STRUCTURALLY
+ * comparable (`'none_computed'` when Convention B isn't `computed`), and — when both are
+ * computed — that they provably diverge on at least some real (tithi_id, vara_id) pairs. This
+ * is not asserted from vibes: Convention A partitions by tithi_id alone (1-7=Prithvi favourable,
+ * 8-30=other); Convention B is `(tithi_id + 1 + vara_id) mod 4`. A concrete, checkable
+ * counter-example: tithi_id=1, vara_id=3 (Tuesday) — Convention A reads Prithvi (favourable,
+ * tithi 1-7 band); Convention B reads `(1+1+3) mod 4 = 1` → Ākāśa (unfavourable). Both
+ * `tithi_id=1` and `vara_id=3` are valid, real panchāṅga values — this is a genuine structural
+ * divergence, not a hypothetical.
+ */
+function computePaddhatiDivergence(
+  operative: PaddhatiConventionRow[],
+): PaddhatiResolution['divergence'] {
+  const conventionBOperative = operative.some(
+    (r) => r.factor_family === 'agnivasa' && r.convention_id === 'agnivasa_muhurta_chintamani_arithmetic',
+  )
+  if (!conventionBOperative) {
+    return {
+      state: 'none_computed',
+      reason:
+        'one convention computable; agnivasa_muhurta_chintamani_arithmetic is ' +
+        'declared_not_computed pending muhurta_chintamani translation',
+    }
+  }
+  return {
+    state: 'diverges',
+    reason:
+      'both agnivāsa conventions are computed. Structural divergence (not a per-instant claim ' +
+      '— this call carries no date): Convention (A) partitions by tithi_id alone (1-7=Prithvi ' +
+      'favourable); Convention (B) is (tithi_id+1+vara_id) mod 4. Checkable counter-example: ' +
+      'tithi_id=1, vara_id=3 (Tuesday) — (A) reads Prithvi/favourable, (B) reads ' +
+      '(1+1+3) mod 4=1 -> Akasha/unfavourable. For a SPECIFIC candidate date\'s comparison, ' +
+      'see the muhurta_chintamani school voice on that date\'s residence disposition, not this ' +
+      'chart-level field.',
+  }
+}
+
 export async function fetchPaddhatiProfile(
   chartId: string,
   principal: Principal,
@@ -643,12 +687,7 @@ export async function fetchPaddhatiProfile(
     version,
     operative,
     declared_not_computed: declared,
-    divergence: {
-      state: 'none_computed',
-      reason:
-        'one convention computable; agnivasa_muhurta_chintamani_arithmetic is ' +
-        'declared_not_computed pending muhurta_chintamani translation',
-    },
+    divergence: computePaddhatiDivergence(operative),
     census_statement: paddhatiCensusStatement({ available, unavailable_reason, operative }),
     available,
     unavailable_reason,
