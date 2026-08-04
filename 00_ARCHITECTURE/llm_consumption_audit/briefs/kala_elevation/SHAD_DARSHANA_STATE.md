@@ -333,6 +333,23 @@ packet written and handed to a fresh builder dispatch (narrow mandate, per the n
 agents on this lane and on lane (d) both died in the archaeology phase, payload/infra, not task;
 worktrees confirmed clean both times, nothing lost).
 
+**ADJUDICATION-17 — Agnivāsa multi-convention grading, RULED (ANTARYĀMIN/Conductor, foreground,
+2026-08-04 ~07:35 UTC, lane (d) part 1).** Traced `compileConstraint`'s `residence` branch
+(`kala_sky_pattern.ts:1351-1403`) directly: `usingProfile` is computed but never actually
+consulted by the match filter — `favourableElements = ['prithvi']` is hardcoded and `matched`
+always runs against `bg_muhurta_lattice` atoms baked from convention-A's arithmetic alone at L0
+build time. Convention-B's classification (mod-4 tithi+vara) isn't even the same kind of value
+as the lattice atoms carry — there is no way to blend it into that filter. **Ruling: convention-B
+never enters the hard-gate matching path at all; it becomes a second, separately-served
+concurrence/dissent voice** (same shape as W3K's `kp_school_voice.ts`, PR #1046), computed live
+per candidate date, informational only, never overriding convention-A. This also gives
+`PaddhatiResolution.divergence` a real, comparable pair for the first time (A's resolved element
+vs. B's live mod-4 result for the SAME date) — genuinely `'agrees'`/`'diverges'`, not permanently
+`'none_computed'`. Full text:
+`SHAD_DARSHANA_ADJUDICATION_17_AGNIVASA_MULTI_CONVENTION_GRADING_v1_0.md`. Mechanical
+implementation (paddhati_v02 migration + the new served voice + the divergence detector)
+dispatched as a short, narrowly-scoped background task per the native's lane-(d) split.
+
 ---
 
 ## NIGHT 5 — SESSION OPEN (2026-08-02, ~12:57 IST, in progress)
