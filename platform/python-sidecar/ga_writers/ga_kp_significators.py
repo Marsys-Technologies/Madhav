@@ -202,7 +202,7 @@ def emit_kp_significators(
     star_lord: dict[str, str] = {}
     kp_house: dict[str, int] = {}
     ws_house: dict[str, int] = {}
-    star_verdict: dict[str, str] = {}
+    two_pass_result: dict[str, str] = {}
     division_ref: dict[str, int] = {}
     sub_lord: dict[str, str] = {}
 
@@ -225,7 +225,7 @@ def emit_kp_significators(
             (div["star_lord"], div["sub_lord"]),
             (live["star_lord"], live["sub_lord"]),
         )
-        star_verdict[name] = verdict
+        two_pass_result[name] = verdict
         if verdict != "two_pass_verified":
             logger.warning(
                 "[ga_nakshatra:kp_significators] DIVERGENCE for %s at %.6f°: "
@@ -322,10 +322,10 @@ def emit_kp_significators(
         rows.extend([
             _row(chart_id, ayanamsha_id, build_id, PLANET_SIGNIFICATIONS_CATEGORY, subj,
                  "star_lord", value_text=star_lord[name], source=src,
-                 verification_pass_status=star_verdict[name]),
+                 verification_pass_status=two_pass_result[name]),
             _row(chart_id, ayanamsha_id, build_id, PLANET_SIGNIFICATIONS_CATEGORY, subj,
                  "sub_lord", value_text=sub_lord[name], source=src,
-                 verification_pass_status=star_verdict[name]),
+                 verification_pass_status=two_pass_result[name]),
             _row(chart_id, ayanamsha_id, build_id, PLANET_SIGNIFICATIONS_CATEGORY, subj,
                  "kp_cuspal_house",
                  value_num=float(kp_h) if kp_h is not None else None, source=src),
