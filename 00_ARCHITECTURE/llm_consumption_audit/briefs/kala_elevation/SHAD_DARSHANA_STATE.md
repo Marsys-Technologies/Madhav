@@ -118,6 +118,41 @@ JSON files that require active upkeep as new code lands, and haven't kept pace.
   or something else is at play; not re-investigated further (diagnose-only scope, and these 5
   aren't this campaign's own writers).
 
+**Lane (b) — W2G ledger design amendments (ANTARYĀMIN record, 2026-08-04 ~05:20 UTC).** Three
+amendments to how W2G is specified, ahead of its writer lane (c) starting. Reversible — these
+are gate-criteria/design-doc changes, not code; none touch a FROZEN contract or rail.
+
+1. **W2G reframed as the PRODUCTION-SCALABILITY KEYSTONE, with a product SLO as a gate
+   criterion.** The architectural fact this rests on (consistent with how `ka_gochara_sweep`
+   itself is structured — event_class × year, verify independently once lane (a)'s optimizer
+   work confirms or corrects this): the century-long transit CONTACT STREAM is chart-INDEPENDENT
+   (pure ephemeris — when a transiting body reaches a given degree does not depend on any
+   native's birth data); what's chart-DEPENDENT is the join against natal points and the
+   scoring. So the expensive part (the contact stream) is computable ONCE and shared across every
+   chart that ever onboards, and per-chart cost should reduce to "join + score" — a fundamentally
+   different cost shape than "recompute a century of transits per chart." **New gate criterion
+   for W2G:** a new chart's full-century temporal build completes in **≤15 minutes** on Nirmāṇa
+   Build (the onboarding path), measured end-to-end, both canonical charts as the first
+   real-world proof points once the sweep architecture reflects this shared-stream design.
+   **Caveat, stated plainly:** this SLO is a DESIGN TARGET recorded now, not yet verified against
+   real numbers — lane (a)'s live optimizer work is the actual measurement; if its findings
+   contradict the "chart-independent stream" premise above, that supersedes this entry and this
+   amendment should be corrected, not defended.
+2. **Delta-aware invalidation, new W2G design requirement.** Per-class, per-grammar-version
+   fingerprints on the contact stream, so that adding or changing ONE event_class's grammar (the
+   exact shape of item 9's real, already-happened one-class addition) invalidates and recomputes
+   only that class's contribution — never forces a full century-stream replan for every other
+   already-computed class. This is a requirement ON the writer lane (c) is about to build, not
+   yet implemented by this entry.
+3. **Nirmāṇa onboarding posture: progressive horizon.** A newly onboarded chart's temporal build
+   should NOT be required to backfill the full multi-century horizon synchronously before the
+   chart is usable. Posture: build ±3 years from "now" first (fast, meets the ≤15min SLO above),
+   serve the chart with an HONEST horizon attestation (the served surface must disclose "this
+   chart's temporal coverage is currently ±3y, full-century backfill in progress" — never silently
+   present a partial horizon as complete, per this campaign's own honest-empty discipline), and
+   run the remaining century backfill as a background job. This is a posture/requirement record,
+   not an implementation — item for whichever session builds W2G's onboarding path.
+
 ---
 
 **NIGHT 5 CLOSED (2026-08-02, ~12:57–~20:30 IST) — see "MORNING REPORT — NIGHT 5" below.**
