@@ -16,10 +16,18 @@
  * `marsys://tool/L-PACT/pact_query` — the same capability `pact_query` calls — and re-serves
  * it through the elevated `kala_envelope.ts` shape.
  *
+ * W3K Lane 2 (G-5) ADDED the Law-2 school voice: KP now reads the SAME window the PACT
+ * chain reads and either concurs with it or dissents from it, tagged `school: 'kp'` and
+ * carried on the envelope's existing `reading.dissent` / `reading.evidence` shapes (the
+ * `ArgumentDissent.source` field was already documented with 'KP sub-lord clock' as its
+ * worked example). The verdict logic is `lib/kp_school_voice.ts`; this file only fetches
+ * and wires. When the KP substrate is absent for a chart the coverage entry stays
+ * `honest_empty` with the specific missing fact_category named — never a silent
+ * "no dissent found", which would be a green light with no detector behind it (§N.8).
+ *
  * NOT YET BUILT (honestly flagged via coverage, never silently omitted per B.10):
  * the classical-citation join (item 11, chain link → śāstra passage, EXPLAIN's "pedagogy
- * mode"), the school-ledger / multi-system dissent object (Law 2, needs W3K's KP voice),
- * and the counterfactual mode (E6, "without the vedha this grades one tier higher").
+ * mode") and the counterfactual mode (E6, "without the vedha this grades one tier higher").
  */
 
 import { z } from 'zod'
@@ -41,8 +49,16 @@ import {
   type TriPlanePointers,
   type KalaDensityContract,
   type QuestionFrame,
+  type ArgumentDissent,
 } from '../../lib/kala_envelope.js'
 import { composeArgument } from '../../lib/argument_composer.js'
+import {
+  buildKpSchoolVoice,
+  parseKpHouseLadder,
+  KP_SCHOOL_LABEL,
+  type KpSchoolVoice,
+  type KpRunningPeriod,
+} from '../../lib/kp_school_voice.js'
 import { callKalaRegistryCap, unwrapKalaPayload, kalaBudgetedDualOutput, kalaErrorOutput } from './shared.js'
 
 const AYANAMSHA_ALIAS: Record<string, string> = {
@@ -53,6 +69,20 @@ function resolveAyanamsha(id?: string): string { return id ? (AYANAMSHA_ALIAS[id
 
 const TOOL_NAME = 'kala_explain_get'
 const CAPABILITY_URI = 'marsys://tool/L-PACT/pact_query'
+
+// ── W3K G-5: the KP school voice's two substrate reads ──────────────────────────────
+// Both are EXISTING registered capabilities called with existing facets — no new
+// computation, no new capability, no second implementation of either read.
+const CHART_FACTS_URI = 'marsys://tool/L1/chart_facts_query'
+const DASHAS_URI = 'marsys://tool/L1/get_dashas'
+
+/** KP is canonically read in the Krishnamurti ayanāṃśa — the same convention
+ *  `get_kp_cusps.ts` already defaults to (school_conventions.ts §3). The PACT chain is read
+ *  in the caller's ayanāṃśa. Both are reported on the voice; neither overwrites the other
+ *  (brief §W3K: the divergence is served as data, never silently reconciled). */
+const KP_AYANAMSHA_ID = 'krishnamurti'
+const KP_HOUSE_SIGNIFICATORS_CATEGORY = 'kp_house_significators'
+const KP_DASHA_SYSTEM_ID = 'vimshottari_kp'
 
 const QuestionFrameSchema = z.object({
   domain: z.string().optional(),
@@ -145,6 +175,130 @@ function buildReading(params: {
   }
 }
 
+// ── W3K G-5: fetch + build the KP school voice ──────────────────────────────────────
+
+function asRows(payload: Record<string, unknown>): Array<Record<string, unknown>> {
+  const rows = payload['rows']
+  return Array.isArray(rows) ? (rows as Array<Record<string, unknown>>) : []
+}
+
+export function toKpPeriods(rows: Array<Record<string, unknown>>): KpRunningPeriod[] {
+  return rows.map((r) => ({
+    level_n: Number(r['level_n'] ?? 0),
+    lord_graha: typeof r['lord_graha'] === 'string' ? r['lord_graha'] : null,
+    kp_sub_lord: typeof r['kp_sub_lord'] === 'string' ? r['kp_sub_lord'] : null,
+    kp_sub_sub_lord: typeof r['kp_sub_sub_lord'] === 'string' ? r['kp_sub_sub_lord'] : null,
+    start_date: typeof r['start_date'] === 'string' ? r['start_date'] : null,
+    end_date: typeof r['end_date'] === 'string' ? r['end_date'] : null,
+  })).filter((p) => Number.isFinite(p.level_n) && p.level_n > 0)
+}
+
+/**
+ * Reads the KP significator ladder for `bhava` and the running `vimshottari_kp` stack at
+ * `asOfDate`, then hands both to the pure verdict builder.
+ *
+ * A failed/empty substrate read is carried into `empty_reason` verbatim rather than thrown:
+ * EXPLAIN's primary answer is the PACT chain, and a KP outage must degrade the KP voice
+ * only — never take the whole reading down, and never be mistaken for "KP agrees".
+ */
+export async function fetchKpSchoolVoice(params: {
+  chartId: string
+  bhava: number
+  asOfDate: string | undefined
+  chainAyanamshaId: string
+  pactStatus: string
+  principal: Principal
+}): Promise<KpSchoolVoice> {
+  const { chartId, bhava, asOfDate, chainAyanamshaId, pactStatus, principal } = params
+  const subject = `HOUSE_${String(bhava).padStart(2, '0')}`
+
+  let ladderRows: Array<Record<string, unknown>> = []
+  let periodRows: Array<Record<string, unknown>> = []
+  let substrateNote: string | null = null
+
+  try {
+    const [factsRaw, dashaRaw] = await Promise.all([
+      callKalaRegistryCap(CHART_FACTS_URI, {
+        chart_id: chartId,
+        ayanamsha_id: KP_AYANAMSHA_ID,
+        category: KP_HOUSE_SIGNIFICATORS_CATEGORY,
+        fact_subject: subject,
+        shape: 'rows',
+        limit: 50,
+      }, principal),
+      callKalaRegistryCap(DASHAS_URI, {
+        chart_id: chartId,
+        ayanamsha_id: chainAyanamshaId,
+        system_id: KP_DASHA_SYSTEM_ID,
+        all_levels: true,
+        fields: 'all',
+        ...(asOfDate ? { as_of_date: asOfDate } : {}),
+      }, principal),
+    ])
+    ladderRows = asRows(unwrapKalaPayload(factsRaw))
+    periodRows = asRows(unwrapKalaPayload(dashaRaw))
+  } catch (err) {
+    substrateNote =
+      'KP substrate read failed this call (' +
+      (err instanceof Error ? err.message : String(err)).slice(0, 200) +
+      ') — an infrastructure gap, NOT an astrological finding. No KP verdict is served.'
+  }
+
+  return buildKpSchoolVoice({
+    bhava,
+    ladder: substrateNote ? null : parseKpHouseLadder(ladderRows, bhava),
+    periods: toKpPeriods(periodRows),
+    pactStatus,
+    kpAyanamshaId: KP_AYANAMSHA_ID,
+    chainAyanamshaId,
+    substrateNote,
+  })
+}
+
+/** The KP voice's coverage entry — `computed` only when a real verdict was reached, and
+ *  otherwise `honest_empty` carrying the voice's own specific reason. Never `computed`
+ *  with an empty verdict behind it (§N.8). */
+export function kpCoverageEntry(voice: KpSchoolVoice | null): KalaCoverageEntry {
+  if (voice === null) {
+    return honestEmptyCoverage(
+      'dissent_multi_system_concurrence',
+      'the KP school voice needs a bhava to judge; this call resolved neither `bhava` nor a ' +
+      'domain the shastra map maps to one.',
+    )
+  }
+  return voice.state === 'computed'
+    ? computedCoverage('dissent_multi_system_concurrence')
+    : honestEmptyCoverage('dissent_multi_system_concurrence', voice.empty_reason ?? 'unknown')
+}
+
+/** Folds the KP voice into the argument reading: a dissent becomes an `ArgumentDissent`
+ *  (school-tagged via `source`), a concurrence becomes an `ArgumentEvidence` row. An
+ *  `honest_empty` or `not_comparable` voice adds NOTHING to either list — its state is
+ *  reported through coverage instead, so a gap can never read as corroboration. */
+export function applyKpVoiceToReading(reading: ArgumentReading, voice: KpSchoolVoice | null): ArgumentReading {
+  if (voice === null || voice.state !== 'computed') return reading
+  if (voice.agreement === 'dissents') {
+    const dissent: ArgumentDissent = {
+      claim: voice.claim,
+      // B.3 / §N.5: the ledger is the actual `chart_facts.fact_id`s of the ladder rows the
+      // verdict consumed — scoped to those rows, not to the whole fetched page.
+      fact_ids: voice.ladder?.fact_ids ?? [],
+      source: KP_SCHOOL_LABEL,
+    }
+    return { ...reading, dissent: [...reading.dissent, dissent] }
+  }
+  if (voice.agreement === 'concurs') {
+    return {
+      ...reading,
+      evidence: [
+        ...reading.evidence,
+        { claim: `${KP_SCHOOL_LABEL} CONCURS: ${voice.claim}`, fact_ids: voice.ladder?.fact_ids ?? [] },
+      ],
+    }
+  }
+  return reading
+}
+
 export function registerKalaExplainTool(server: McpServer, principal: Principal): void {
   server.tool(
     TOOL_NAME,
@@ -209,7 +363,25 @@ export function registerKalaExplainTool(server: McpServer, principal: Principal)
         const factIdRefs = Array.isArray(payload['fact_id_refs']) ? (payload['fact_id_refs'] as string[]) : []
         const pactDrillPointers = Array.isArray(payload['drill_pointers']) ? payload['drill_pointers'] : []
 
-        const reading = buildReading({ stages, pactStatus, aboutLabel, asOfDate: resolvedAsOfDate })
+        let reading = buildReading({ stages, pactStatus, aboutLabel, asOfDate: resolvedAsOfDate })
+
+        // W3K G-5. The house to judge comes from pact_query's OWN resolved `about.bhava`
+        // (so a `domain` call and a `bhava` call judge the same house the chain judged),
+        // falling back to the caller's literal `bhava`. No second shastra-map copy here.
+        const resolvedBhava =
+          typeof about?.['bhava'] === 'number' ? (about['bhava'] as number)
+          : typeof bhava === 'number' ? bhava
+          : null
+
+        const kpVoice = resolvedBhava === null ? null : await fetchKpSchoolVoice({
+          chartId: chart_id,
+          bhava: resolvedBhava,
+          asOfDate: (payload['as_of_date'] as string | undefined) ?? (as_of_date as string | undefined),
+          chainAyanamshaId: resolvedAyanamsha,
+          pactStatus: String(pactStatus),
+          principal,
+        })
+        reading = applyKpVoiceToReading(reading, kpVoice)
 
         const weakestLink = stages.length > 0
           ? (() => {
@@ -245,11 +417,7 @@ export function registerKalaExplainTool(server: McpServer, principal: Principal)
 
         const coverage: KalaCoverageEntry[] = [
           computedCoverage('pact_chain_promise_confirmation_activation_trigger'),
-          honestEmptyCoverage(
-            'dissent_multi_system_concurrence',
-            'Law-2 concurrence/dissent across systems (e.g. the KP sub-lord voice) is not yet ' +
-            'computed for this chain — lands W3K (item 18).',
-          ),
+          kpCoverageEntry(kpVoice),
           notInCorpusCoverage(
             'classical_citation_join',
             'field-write provenance edges + rule→classical-chunk citation join (item 11) are not ' +
@@ -294,6 +462,9 @@ export function registerKalaExplainTool(server: McpServer, principal: Principal)
           about: about ?? null,
           pact_status: pactStatus,
           weakest_link: weakestLink,
+          // W3K G-5: the school-tagged Law-2 voice, served in full so the verdict is
+          // auditable in place (which limb, which running lord, which ayanāṃśa).
+          school_voices: kpVoice ? [kpVoice] : [],
           chain: stages,
           fact_id_refs: factIdRefs,
           pact_drill_pointers: pactDrillPointers,
