@@ -845,6 +845,121 @@ export const VIDHI_PRIMITIVES: readonly VidhiPrimitive[] = [
     mandatory_tags: [],
     cr27_prevents: [],
   },
+
+  // ── ṢAḌ-DARŚANA W5 primitives (SHAD_DARSHANA_BRIEF_v2_0.md §3 W5 / KALA_SIX_VIEWS_DESIGN
+  // _v1_0.md §8) — the eight kala_* view/capability facades, live+registered since Gate W0
+  // (registry_bridge.ts / kala_views/register_all.ts), given their own primitive rows so the
+  // planner can compile them the same way it compiles every L1/L2 atom. Every `tool_args`
+  // carries `question_frame: '{question_frame}'` — E4 threading (compiler.ts's `compileContract`
+  // optional `questionFrame` param substitutes it exactly as `{chart_id}` is substituted, never
+  // resolved at registry-authoring time). `category: 'remedy'` on upaya_read/ritual_read is
+  // deliberate: it is the SAME §-filter `compileFloorItems` already applies to every remedy-
+  // category primitive — `intervention: false` strips them, matching Six Views Design's own
+  // "a remedy read is never useful without an intervention ask" rule for these two capabilities.
+  {
+    primitive_id: 'now_read',
+    version: 1,
+    definition:
+      'VIEW 1 — NOW ("what is my temporal state right now?"): active temporal-activation windows + the current Kāla-Darshana confluence, composed into an argument-shaped reading on the elevated kala_* envelope. Machine-band default: compiled into every domain deepdive alongside ahead_read + priority_read (Six Views Design §8 — "timing is never optional in a deepdive").',
+    category: 'temporal',
+    live_tool: 'kala_now_get',
+    tool_args: { chart_id: '{chart_id}', question_frame: '{question_frame}' },
+    fallback_face: 'kala_windows_get',
+    known_gap: null,
+    mandatory_tags: [],
+    cr27_prevents: [],
+  },
+  {
+    primitive_id: 'ahead_read',
+    version: 1,
+    definition:
+      'VIEW 2 — AHEAD ("what is coming?"): dated, shaped forward-looking temporal windows + probabilistic projections, composed into an argument-shaped reading (thesis → evidence → verdict → falsifier). Machine-band default: compiled into every domain deepdive alongside now_read + priority_read.',
+    category: 'temporal',
+    live_tool: 'kala_ahead_get',
+    tool_args: { chart_id: '{chart_id}', domain: '{domain}', question_frame: '{question_frame}' },
+    fallback_face: 'kala_bundle_get',
+    known_gap: null,
+    mandatory_tags: [],
+    cr27_prevents: [],
+  },
+  {
+    primitive_id: 'elect_read',
+    version: 1,
+    definition:
+      'VIEW 3 — ELECT ("when should I…?"): Mode-3 (ACTIVITY ELECTION) act-time slate for a named undertaking, ranked and graded, paired with its preparatory rite and the rite\'s own best time served as ONE answer (the Mode-3 routing rule, Elevation §8 — ELECT is the sole server of Mode 3). Routing default: an undertaking-shaped question compiles the `undertaking_election` floor headed by this primitive.',
+    category: 'temporal',
+    live_tool: 'kala_elect_get',
+    tool_args: { chart_id: '{chart_id}', undertaking: '{undertaking}', question_frame: '{question_frame}' },
+    fallback_face: 'kala_muhurta_get',
+    known_gap: null,
+    mandatory_tags: [],
+    cr27_prevents: [],
+  },
+  {
+    primitive_id: 'story_read',
+    version: 1,
+    definition:
+      'VIEW 4 — STORY ("what has my life been?"): the daśā-chaptered life-arc (parva quality, theme keywords, high-convergence chapters) deduped by span+level, composed into a developmental narrative. Routing default: a biography/life-narrative-shaped question compiles the `biography_narrative` floor headed by this primitive.',
+    category: 'temporal',
+    live_tool: 'kala_story_get',
+    tool_args: { chart_id: '{chart_id}', question_frame: '{question_frame}' },
+    fallback_face: 'kala_life_arc_get',
+    known_gap: null,
+    mandatory_tags: [],
+    cr27_prevents: [],
+  },
+  {
+    primitive_id: 'priority_read',
+    version: 1,
+    definition:
+      'VIEW 5 — PRIORITIZE ("what matters most right now?"): the salience-ranked signal ledger (computed_salience, domains_affected, trigger_type) — the attention-budget surface. Machine-band default: compiled into every domain deepdive alongside now_read + ahead_read.',
+    category: 'temporal',
+    live_tool: 'kala_priority_get',
+    tool_args: { chart_id: '{chart_id}', question_frame: '{question_frame}' },
+    fallback_face: 'kala_priority_ranking_get',
+    known_gap: null,
+    mandatory_tags: [],
+    cr27_prevents: [],
+  },
+  {
+    primitive_id: 'explain_read',
+    version: 1,
+    definition:
+      'VIEW 6 — EXPLAIN ("why do you say that?"): the PACT-protocol causal chain (promise in the rāśi → confirmation in the varga → activation in the daśā → trigger in the transit) naming its weakest link, composed into an argument-shaped reading. Universally pre-authorized: every compiled floor item, in every floor, carries one EXPLAIN hop (the `explain_on_request` Anusaraṇa rule — Six Views Design §8 "every served row id pre-authorizes one EXPLAIN hop").',
+    category: 'temporal',
+    live_tool: 'kala_explain_get',
+    tool_args: { chart_id: '{chart_id}', domain: '{domain}', question_frame: '{question_frame}' },
+    fallback_face: 'pact_query',
+    known_gap: null,
+    mandatory_tags: [],
+    cr27_prevents: [],
+  },
+  {
+    primitive_id: 'upaya_read',
+    version: 1,
+    definition:
+      'CAPABILITY — UPĀYA-SETU: PACT-link intervention diagnosis (weak-promise/weak-confirmation/weak-activation) + alternate-routing search + efficacy-tiered remedy candidates, composed into an argument-shaped reading. `category: remedy` — stripped when `intervention: false` (a remedy read is never useful without an intervention ask, matching every other remedy-category primitive).',
+    category: 'remedy',
+    live_tool: 'kala_upaya_get',
+    tool_args: { chart_id: '{chart_id}', domain: '{domain}', question_frame: '{question_frame}' },
+    fallback_face: 'bodha_remedies_get',
+    known_gap: null,
+    mandatory_tags: [],
+    cr27_prevents: [],
+  },
+  {
+    primitive_id: 'ritual_read',
+    version: 1,
+    definition:
+      'CAPABILITY — YAJÑA-SETU (Modes 1–2 ONLY; Mode 3 lives in elect_read — the Mode-3 routing rule, Elevation §8): Mode 1 (OPPORTUNITY SCAN — ranked (window, rite) pairs over a horizon) and Mode 2 (PATTERN SEARCH — a declared sky-pattern spec graded against the lattice). A Mode-3-shaped call (naming an `undertaking`) is honestly redirected (`wrong_view` + the elect_read pointer), never passed through. Routing default: a ritual/yajña/vrata-shaped question compiles the `ritual_yajna` floor headed by this primitive.',
+    category: 'remedy',
+    live_tool: 'kala_ritual_get',
+    tool_args: { chart_id: '{chart_id}', horizon: '{horizon}', question_frame: '{question_frame}' },
+    fallback_face: 'kala_muhurta_get',
+    known_gap: null,
+    mandatory_tags: [],
+    cr27_prevents: [],
+  },
 ] as const;
 
 // ─────────────────────────────────────────────────────────────────────────────────────
@@ -887,6 +1002,13 @@ function elevationTail(domain: string, from: number): FloorItem[] {
     { primitive_id: 'tail_divergence_read', order: from + 7, band: 'machine_band', args_override: { domain }, hard_floor: true },
     { primitive_id: 'mechanism_read', order: from + 8, band: 'machine_band', hard_floor: true },
     { primitive_id: 'statistical_context', order: from + 9, band: 'machine_band', hard_floor: true },
+    // ── ṢAḌ-DARŚANA W5 machine-band default (brief §3 W5 / Six Views Design §8): "every
+    // domain deepdive compiles NOW + AHEAD + PRIORITIZE for its domain (timing is never
+    // optional in a deepdive)". hard_floor:true — a temporal state read is exactly the kind
+    // of dense, actionable row §N.6 protects first, not the kind a budget trim sacrifices.
+    { primitive_id: 'now_read', order: from + 10, band: 'machine_band', hard_floor: true },
+    { primitive_id: 'ahead_read', order: from + 11, band: 'machine_band', args_override: { domain }, hard_floor: true },
+    { primitive_id: 'priority_read', order: from + 12, band: 'machine_band', hard_floor: true },
   ];
 }
 
@@ -1204,6 +1326,42 @@ export const FOUNDATION_BAND_ITEMS: readonly FloorItem[] = [
  *  never less). Aliased (not re-listed) so the two never drift. */
 const GENERAL_SYNTHESIS_ITEMS: readonly FloorItem[] = FOUNDATION_BAND_ITEMS;
 
+// ─────────────────────────────────────────────────────────────────────────────────────
+// ṢAḌ-DARŚANA W5 — the three kala-routing floors (SHAD_DARSHANA_BRIEF_v2_0.md §3 W5 / Six
+// Views Design §8: "undertaking/timing intents compile ELECT; biography/life intents compile
+// STORY"; Elevation §8's Mode-3 routing rule adds ritual/yajña→RITUAL). Each is headlined
+// (hard_floor, order 1) by its named view primitive, backed by the SAME Pūrṇa-Ādhāra
+// structural minimum every other floor gets (`FOUNDATION_BAND_ITEMS`, order-shifted so the
+// headline item never collides with a foundation order) — a routed question is never a bare
+// single-tool answer. `elect_read`'s headline call in `undertaking_election` deliberately
+// carries no `args_override.undertaking` — the caller's question_frame.entity /
+// scope_resolver-extracted undertaking string resolves it at execution, not compile time
+// (mirrors every other free-text placeholder in this registry, e.g. `{house}`/`{karaka}`
+// resolved by args_override only where the FLOOR itself pins a concrete value).
+// ─────────────────────────────────────────────────────────────────────────────────────
+
+/** Shifts every FOUNDATION_BAND_ITEMS order by `+offset` so a headline item can safely own
+ *  the low order numbers (1..offset) without a collision — a pure, DRY re-derivation rather
+ *  than a second hand-maintained copy of the foundation band's order sequence. */
+function foundationBandShifted(offset: number): FloorItem[] {
+  return FOUNDATION_BAND_ITEMS.map((item) => ({ ...item, order: item.order + offset }));
+}
+
+const UNDERTAKING_ELECTION_ITEMS: readonly FloorItem[] = [
+  { primitive_id: 'elect_read', order: 1, band: 'acharya_floor', hard_floor: true },
+  ...foundationBandShifted(1),
+];
+
+const BIOGRAPHY_NARRATIVE_ITEMS: readonly FloorItem[] = [
+  { primitive_id: 'story_read', order: 1, band: 'acharya_floor', hard_floor: true },
+  ...foundationBandShifted(1),
+];
+
+const RITUAL_YAJNA_ITEMS: readonly FloorItem[] = [
+  { primitive_id: 'ritual_read', order: 1, band: 'acharya_floor', hard_floor: true },
+  ...foundationBandShifted(1),
+];
+
 // ── VIDHI-PŪRṆATĀ P-2 (F1 taxonomy completeness, 2026-07-23) — three new life-domain floors ──
 // Every item below resolves to a live tool (per P-0's data-support ledger, chart 482012f1) OR
 // carries a truthful primitive-level known_gap surfaced in the completeness receipt's `dark`
@@ -1386,5 +1544,34 @@ export const VIDHI_INTENT_FLOORS: readonly IntentFloor[] = [
     version: 1,
     floor_items: GENERAL_SYNTHESIS_ITEMS,
     cr27_coverage: ['CR-27a'],
+  },
+  {
+    intent: 'undertaking_election',
+    version: 1,
+    floor_items: UNDERTAKING_ELECTION_ITEMS,
+    cr27_coverage: [],
+    notes:
+      'ṢAḌ-DARŚANA W5 — "when should I…?" routing floor. Headlined by elect_read (Mode-3 ' +
+      'ACTIVITY ELECTION: act-time slate + paired preparatory rite, served as one answer per ' +
+      'the Mode-3 routing rule, Elevation §8) over the Pūrṇa-Ādhāra structural minimum.',
+  },
+  {
+    intent: 'biography_narrative',
+    version: 1,
+    floor_items: BIOGRAPHY_NARRATIVE_ITEMS,
+    cr27_coverage: [],
+    notes:
+      'ṢAḌ-DARŚANA W5 — "what has my life been?" routing floor. Headlined by story_read (the ' +
+      'daśā-chaptered developmental narrative) over the Pūrṇa-Ādhāra structural minimum.',
+  },
+  {
+    intent: 'ritual_yajna',
+    version: 1,
+    floor_items: RITUAL_YAJNA_ITEMS,
+    cr27_coverage: [],
+    notes:
+      'ṢAḌ-DARŚANA W5 — ritual/yajña/vrata routing floor. Headlined by ritual_read (YAJÑA-SETU ' +
+      'Modes 1–2 ONLY — Mode 3 redirects to elect_read, never passes through, per the Mode-3 ' +
+      'routing rule) over the Pūrṇa-Ādhāra structural minimum.',
   },
 ];

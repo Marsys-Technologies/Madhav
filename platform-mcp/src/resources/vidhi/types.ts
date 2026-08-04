@@ -108,7 +108,16 @@ export type IntentClass =
   | 'structure_read'
   | 'panoramic_breadth'
   | 'retrieval_only'
-  | 'general_synthesis';
+  | 'general_synthesis'
+  // ṢAḌ-DARŚANA W5 (SHAD_DARSHANA_BRIEF_v2_0.md §3 W5): three routing intents, orthogonal to
+  // the domain deepdives above, that resolve to a HEADLINE kala_* view rather than an L1/L2
+  // fact floor. "machine-band defaults: … undertaking→ELECT; biography→STORY; ritual/yajña
+  // intents→RITUAL". Each carries its own registered floor (registry_data.ts) headed by its
+  // named primitive (elect_read / story_read / ritual_read) plus the FOUNDATION_BAND_ITEMS
+  // structural minimum, so a routed question is never a bare single-tool answer.
+  | 'undertaking_election'
+  | 'biography_narrative'
+  | 'ritual_yajna';
 
 export interface IntentFloor {
   readonly intent: IntentClass;
@@ -138,6 +147,25 @@ export interface ScopeTuple {
   readonly horizon: ScopeHorizon;
   readonly intervention: boolean;
   readonly entitlement: ScopeEntitlement;
+}
+
+/**
+ * ṢAḌ-DARŚANA W5 (SHAD_DARSHANA_BRIEF_v2_0.md §3 W5) — the E4 question_frame shape, mirrored
+ * verbatim from `platform-mcp/src/lib/kala_envelope.ts`'s `QuestionFrame` (the eight kala_*
+ * views' own optional per-question param: domain/entity/horizon/intent_verb/stakes/
+ * comparison_target). Duplicated here rather than cross-imported — platform and platform-mcp
+ * are separate packages/process boundaries (see kala_views/*.ts's own per-facade
+ * QuestionFrameSchema copies for the established precedent). The chart is always implicit
+ * (chart_id); this is the only per-question input the compiler threads onto a compiled
+ * kala-primitive's tool_args (`compileContract`'s optional `questionFrame` parameter).
+ */
+export interface QuestionFrame {
+  readonly domain?: string;
+  readonly entity?: string;
+  readonly horizon?: string;
+  readonly intent_verb?: string;
+  readonly stakes?: string;
+  readonly comparison_target?: string;
 }
 
 export interface CompiledFloorItem {
@@ -174,7 +202,14 @@ export interface CompletenessReceiptTemplate {
  * the compiler never RESOLVES it (that would require chart data). Hard-capped at ONE hop
  * (`hop: 1`, no transitive closure) so §N.6 budgets survive.
  */
-export type AnusaranaRule = 'bhavesha_dispositor_hop' | 'karaka_dispositor_hop' | 'response_flag_drill';
+export type AnusaranaRule =
+  | 'bhavesha_dispositor_hop'
+  | 'karaka_dispositor_hop'
+  | 'response_flag_drill'
+  // ṢAḌ-DARŚANA W5: "every served row id pre-authorizes one EXPLAIN hop" (brief §3 W5 / Six
+  // Views Design §8). One per compiled floor item (excluding explain_read itself, so it never
+  // authorizes an EXPLAIN-of-EXPLAIN self-loop) — see compiler.ts's `computeAdaptiveExpansions`.
+  | 'explain_on_request';
 
 export interface AdaptiveExpansion {
   readonly rule: AnusaranaRule;
