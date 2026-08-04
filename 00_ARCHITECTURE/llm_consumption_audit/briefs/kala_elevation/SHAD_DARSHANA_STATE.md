@@ -42,6 +42,13 @@ session never dispatched, stopped, or edited a sweep entry).
    independent — confirm the exact dispatch shape before firing anything, per this
    session's own parked caution; do NOT trigger a broad `scope=global` L0 sweep by
    accident). Per-chart KP significator materialization stays behind the locks.
+   **UPDATE (T3-W3K-COMPLETION session, 2026-08-05, append-only — see the dedicated ledger
+   section below for full evidence): the `scope='asset_set'` dispatch shape is verified
+   correct and safe, but NOT fired — migration 535 (`bg_kp_sublord_division`'s table +
+   asset_registry row + writer) has never been deployed to production (confirmed live via
+   read-only query: table absent, registry row absent, migration 535 missing from
+   `_migrations_applied`). Genuinely blocked on the next `shad-darshana/integration → main`
+   deploy, not a caution to re-confirm — fire it once that deploy lands.**
 5. **Cleanup**: `star_verdict` in `ga_kp_significators.py` — a real, small, uncontroversial
    §N.8 violation this session's own W3K Lane 1 introduced. Fold into whichever lane next
    touches that file; not urgent enough to justify its own lane.
@@ -214,6 +221,112 @@ happens once ever, not once per chart. This is now a concrete, measured number s
 W2G's keystone case, not just an architectural intuition — the ≤15min onboarding SLO's
 plausibility rests partly on this per-call cost actually going away under W2G, not just on
 the stream being "computed once" in the abstract.
+
+---
+
+## T3-W3K-COMPLETION TRACK SESSION (2026-08-05, single-track builder, NEXT-ACTION item 4 / lane (f))
+
+Scoped session dispatched into a fresh worktree (`.worktrees/shad-darshana-t3-w3k`, branch
+`shad-darshana/t3-w3k-completion`) off `origin/shad-darshana/integration` @ `bd424191`
+(SESSION-B-BUILD's own close commit) to discharge W3K lane (f): K.3/K.4 code+tests, then the
+single-asset L0 trigger for `bg_kp_sublord_division`.
+
+**Part A (K.3/K.4) — RE-VERIFIED COMPLETE, no new code needed.** PR #1046 (W3K Lane 2) is
+already merged to `shad-darshana/integration` (commit `be8caf0d`, confirmed present via
+`git merge-base --is-ancestor be8caf0d origin/shad-darshana/integration`) and fully discharges
+both: **K.3** — the KP window stream as an independent Law-1 clock (`stage3_clocks.py` gains a
+`vimshottari_kp` `SYSTEM_META` entry plus the measured `kp_window_redundancy` detector, so KP
+enters `S_pred(e)` only when genuinely distinct from Vimśottarī, not by assumption); **K.4** —
+school-tagged serving (`platform-mcp/src/lib/kp_school_voice.ts` + `kala_views/explain.ts`
+wiring, using the existing `ArgumentDissent.source` envelope shape with 'KP sub-lord clock' as
+its tag). Independently re-ran the full test surface in this worktree (not trusting the PR's
+own report blindly): **106/106 Python** (`tests/l3/ka_kshetra/test_hazard.py` +
+`tests/test_ka_kshetra_stage3_clocks.py`), **43/43 TypeScript**
+(`platform-mcp/src/lib/kp_school_voice.test.ts` + `kala_views/explain_kp_voice.test.ts`, after
+`npm ci` in this fresh worktree). All green — no further Part-A work needed.
+
+**Cleanup item discharged**: NEXT-ACTION item 5's `star_verdict` §N.8 Earned-Signal violation
+(flagged as introduced by this campaign's own W3K Lane 1, PR #1039) — renamed the LOCAL
+intermediate dict `star_verdict` → `two_pass_result` in
+`platform/python-sidecar/ga_writers/ga_kp_significators.py` (4 sites, semantics unchanged).
+Root cause confirmed by reading `check_earned_signal.py`'s AST walker directly: the checker
+flags a signal-suffixed name's *initial* edit-time-constant binding (`= {}`) and does not
+recognize a later dynamic-subscript-key mutation (`d[name] = ...` where `name` is a variable,
+not a literal) as a rebind — a genuine static-analysis false positive on an intermediate
+variable, not a fabricated-signal bug. The field actually SERVED downstream
+(`verification_pass_status`, populated from `two_pass_verdict()`'s real two-independent-
+computations cross-check) was never itself flagged — the checker correctly recognized that
+call site as non-constant. `check_earned_signal.py` re-run clean on this file (zero
+`ga_kp_significators.py` hits); the 53 naming-governance + ~6 other earned-signal baseline
+violations elsewhere are unchanged and out of this track's scope, matching this campaign's own
+prior diagnosis (NEXT-ACTION Lane (g) above).
+
+**Part B (L0 global-tables trigger) — VERIFIED SAFE IN DESIGN, BLOCKED ON A REAL DEPLOY GAP.
+Did NOT fire.** Read `platform/src/lib/build/plan.ts` and
+`platform/src/app/api/cockpit/runs/route.ts` directly (not trusting the ruling's summary
+blindly, per instruction) and confirm the ruling's understanding is correct:
+- `scope='asset_set'` + `scope_target='bg_kp_sublord_division'` resolves to exactly
+  `['bg_kp_sublord_division']` — `assetsInScope` (plan.ts:96-101) filters by registry-membership
+  only, no transitive closure expansion; `bg_kp_sublord_division.depends_on=ARRAY[]::text[]`
+  (migration 535 line 242), so `preflight`/`computeWaves` add nothing else to the plan.
+  `scope='asset'` on a global-scope asset IS explicitly 403'd for everyone including
+  super_admin (route.ts:81-93 — "Global assets must be built at scope=global, not scope=asset"),
+  confirming the ruling's warning; `scope='asset_set'` carries no such gate and is the correct,
+  narrow path — verified, not assumed.
+- **Additional finding, not in the ruling's own summary, worth recording for whoever fires
+  this next:** every orchestrator run, of any scope, acquires a PER-CHART advisory lock keyed
+  on the run's own `chart_id` before doing anything (`runner.py:854`,
+  `acquire_chart_lock`/`locks.py`, `pg_try_advisory_lock(hashtext(chart_id))`) — even though a
+  `scope='global'` asset is internally dispatched with a forced `chart_id=None`
+  (`runner.py:466-467`'s `eff()` helper: "Global assets are chart-independent singletons...
+  Passing a non-None chart_id... creates a spurious chart-scoped row"). Firing this trigger
+  under `chart_id=482012f1` or `1c826d5a` (the two chart_ids the sweep session holds locked)
+  would not corrupt anything — `pg_try_advisory_lock` is non-blocking, the run just exits code 3
+  ("chart locked by another running job — deferring") — but it WOULD fail to build. **Any
+  chart_id not currently swept works identically for a global asset's build_run bookkeeping.**
+  Recorded here so the eventual firer doesn't default to a canonical chart_id out of habit and
+  get a spurious no-op.
+
+**The actual blocker, found by direct read-only verification against the LIVE production
+database (`amjis`, via the `postgres` MCP — not assumed, not inferred from the branch):**
+- `SELECT to_regclass('public.bg_kp_sublord_division')` → **NULL. The table does not exist in
+  production.**
+- `SELECT asset_id FROM asset_registry WHERE asset_id='bg_kp_sublord_division'` → **zero rows.**
+- `SELECT * FROM _migrations_applied WHERE filename LIKE '534%' OR '535%' OR '536%'` → only
+  `536_muhurta_chintamani_translation_provenance.sql` (applied 2026-08-02T19:40) — an unrelated
+  migration from a different campaign (the `corpus/muhurta-chintamani-translation` worktree)
+  that happens to have adjacent numbering. **Migration 535
+  (`535_bg_kp_sublord_division.sql`, W3K Lane 1, PR #1039) has never been applied to
+  production.** It exists only on `shad-darshana/integration`, which per NIGHT_RUN §B.2 is
+  expected to run ahead of `main`/production between gates — no W3K gate-close deploy has
+  happened yet.
+- Consequence, verified by reading the writer registration, not by inference: even if the
+  table/registry row existed, the currently-deployed Cloud Run Job container
+  (`brahma-build-pipeline-job`, built from `main`) would not contain
+  `KpSublordDivisionWriter` (`platform/python-sidecar/pipeline/orchestrator/writers/
+  bg_kp_sublord_division.py`) — confirmed `@register('bg_kp_sublord_division')`'d and
+  `WriterBase`-conformant on `shad-darshana/integration`, but that code has never shipped to
+  the image `main` deploys from either. Two independent blockers, same root cause (no gate
+  deploy yet), both would have to clear before this trigger can succeed.
+- **Per the task's own instruction — "if you have any doubt about safety after verifying the
+  code, STOP and report the blocker instead of firing it; do not guess" — this session did
+  NOT fire anything against production.** No `build_runs` row inserted, no Cloud Run Job
+  invoked, no schema touched, no data cleared. The trigger mechanism itself is verified sound
+  and ready to use exactly as the ruling specified; firing it is a one-shot action available
+  the moment the next `shad-darshana/integration → main` deploy lands migration 535 (naturally
+  the W3K gate-close deploy, or any earlier incidental deploy that happens to include it):
+  `scope='asset_set'`, `scope_target='bg_kp_sublord_division'`, `action='build'`, any
+  non-swept `chart_id`, no `clear_before`.
+
+**Per-chart KP projections** (`kp_house_significators`/`kp_planet_significations`, emitted via
+`ga_nakshatra`) were not touched, per instruction — they stay queued behind the chart locks
+owned by the sweep session, unaffected by anything in this track. The found KP dissent
+(chart 482012f1, bhāva 7 — Mars+Saturn ladder, `denied_at_promise` vs Parāśarī's concurring
+bhāva 10 control case, per PR #1046) remains verified-in-code but not yet servable in
+production, exactly as PR #1046 itself already stated honestly.
+
+**PR opened**: `shad-darshana/t3-w3k-completion` → `shad-darshana/integration` (this session's
+own two commits: the `star_verdict` rename, and this ledger update). No other files touched.
 
 ---
 
@@ -2403,7 +2516,7 @@ collision pattern is better understood from the first lane.
 | W2 | **BUILT, NOT CLOSED — PARKED-HONEST (Night 3)** | Design PR #886 + PR #918 + PR #932; all 5 build lanes merged (#944/#945/#946/#947/#949); **migrations 488–497 APPLIED IN PRODUCTION Night 3** (deploy runs `30678888444` + `30679075712`, all 18 `kala_field*`/`kala_timeline_spec` tables verified live) | **The gate did NOT close and could not.** Two independent reasons, both recorded honestly: (1) the **N_e lifetime-count-priors blocker is still unruled** — ANTARYĀMIN was cancelled mid-session before issuing the priors-source ruling, so no seeding lane could be dispatched and `ka_kshetra` still writes ZERO field rows (correctly refusing to fabricate, per §5.1 C-1 / B.10); (2) the **`w2-integration` lane was cancelled mid-session** — it owned field integration, hash-replay determinism, the real `field_snapshot_id` (E5), weights-v0 seed, the item-44 census, and the specificity-gate flip to HARD. Neither cancellation lost work (both lanes had zero commits). Gate W2's §3 criteria — skill score + GOF published both charts, null exceedance per window, salience visible in PRIORITIZE, insight rows leading readings — ALL require a non-empty field, hence all require N_e first. |
 | W2G | NOT-STARTED | — | GOCHARA-2.0 sub-day. **STILL BLOCKED on N1–N5 ratification — now for the THIRD consecutive night.** ANTARYĀMIN was dispatched Night 3 with N1–N4 + N5's pre-ruled conservative default as its up-front docket (per the v1.3 §D protocol, which exists precisely because this block sat empty through Nights 1–2), but was cancelled before ruling. The N-block below remains empty. |
 | W3 | **IN PROGRESS (first items landed Night 3)** | PR #999 (items 16 Kota-Chakra + 17 `ka_sudarshana_varsha`); `w3-moorti-vedha` lane (items 4+5, closes R-19) in flight at session end | New computations. Items 16/17 land as new L3 per-chart writers with Nirmāṇa seed rows + chart-scoped `count_sql` in the same PR. **Item 36's remaining half (the query-time lattice engine) was dispatched and CANCELLED mid-session — so W4's Phase-5a trigger (36+41) is still NOT met.** |
-| W3K | **INVENTORY IN FLIGHT** | `w3k-inventory` lane (item 18 substrate inventory + layer-seating recommendation) running at session end | KP sub-lord engine. Per §C, W3K correctly begins with existing-substrate inventory before any build. Note the layer-seating question was on ANTARYĀMIN's docket and is now **unruled** — the lane produces a recommendation, but nothing can ratify it this session. |
+| W3K | **INVENTORY IN FLIGHT** — STALE, superseded, corrected append-only (T3-W3K-COMPLETION session, 2026-08-05): **K.1 (substrate, PR #1039) and K.3/K.4 (Law-1 clock integration + school-tagged serving, PR #1046) are MERGED to `shad-darshana/integration`, tests green (149 total re-run this session, 0 failures)**. Gate NOT closed — blocked on a real production deploy gap, see the dedicated T3-W3K-COMPLETION section above for full evidence. | `w3k-inventory` lane (item 18 substrate inventory + layer-seating recommendation) running at session end | KP sub-lord engine. Per §C, W3K correctly begins with existing-substrate inventory before any build. Note the layer-seating question was on ANTARYĀMIN's docket and is now **unruled** — the lane produces a recommendation, but nothing can ratify it this session. |
 | W4 | NOT-STARTED | — | Intervention flagship (UPĀYA/YAJÑA). Opus design mandatory. |
 | W5 | NOT-STARTED | — | Planner integration; native's hard gate (real MCP calls). |
 | W6 | NOT-STARTED | — | Cutover + retirement. |
@@ -2443,7 +2556,7 @@ illegal.
 | 15 | Rarity axis | W2 | **BUILT — NOT VERIFIED** (W2 lane landed; no PARĪKṢAKA live acceptance yet, and the field is empty pending the N_e blocker, so no live evidence can exist until Gate W2's integration runs. Working state, deliberately NOT a disposition.) | — | PR #946 (Lane D) — stage 6 rarity via cohort (22) + matched sub-cohort |
 | 16 | Kota-Chakra | W3 | NOT-STARTED | — | — |
 | 17 | Sudarśana-Chakra | W3 | NOT-STARTED (naming ruled) | — | Conductor ruling: writer named `ka_sudarshana_varsha` — confirmed namesake-only collision vs `bo_sudarshana.py` (different layer/computation), not built yet |
-| 18 | KP sub-lord clock (CR-75) | W3K | NOT-STARTED | — | — |
+| 18 | KP sub-lord clock (CR-75) | W3K | NOT-STARTED — STALE, corrected append-only (T3-W3K-COMPLETION session, 2026-08-05): K.1–K.4 are code-complete and merged (PR #1039, #1046); disposition is **BUILT — NOT VERIFIED-CLOSED** (no PARĪKṢAKA live acceptance yet — cannot exist until the writer is deployed to production, see T3-W3K-COMPLETION section above) | — | PR #1039 (K.1 substrate), PR #1046 (K.3/K.4 Law-1 clock + school-tagged serving) |
 | 19 | GOCHARA-2.0 sub-day | W2G | NOT-STARTED | — | — (blocked on N1–N5) |
 | 20 | Auto-filed prospective ledger entries | W2 | **BUILT — NOT VERIFIED** (W2 lane landed; no PARĪKṢAKA live acceptance yet, and the field is empty pending the N_e blocker, so no live evidence can exist until Gate W2's integration runs. Working state, deliberately NOT a disposition.) | — | PR #947 (Lane E) — Living-LEL plane |
 | 21 | Per-tradition calibration weights | W2 (ongoing) | **BUILT — NOT VERIFIED** (W2 lane landed; no PARĪKṢAKA live acceptance yet, and the field is empty pending the N_e blocker, so no live evidence can exist until Gate W2's integration runs. Working state, deliberately NOT a disposition.) | — | PR #947 (Lane E); tables `kala_field_weights` (29 seed rows) + `kala_field_weight_versions` (1: `v0_classical`) live |
