@@ -186,11 +186,168 @@ class TestEvaluateApplicability:
 
 
 class TestApplicableSystems:
-    def test_returns_all_seven_systems_sorted(self):
+    def test_returns_every_registered_system_sorted(self):
         conn = _FakeConn().when("SELECT COUNT(*)", [{"n": 0}])
         results = SC.applicable_systems(CHART_ID, conn)
         assert [r.system_id for r in results] == sorted(SC.SYSTEM_META.keys())
-        assert len(results) == 7
+        # 7 classical systems + vimshottari_kp (W3K G-4)
+        assert len(results) == 8
+        assert SC.KP_SYSTEM_ID in {r.system_id for r in results}
+
+
+# ── W3K G-4: vimshottari_kp ─────────────────────────────────────────────────
+#
+# `_FakeConn` dispatches on SQL substrings, so the KP redundancy probe is keyed
+# on "AS has_twin" and the L0 boundary read on "bg_kp_sublord_division".
+
+BIRTH_DT = datetime(1984, 2, 5, 5, 13, tzinfo=timezone.utc)  # 10:43 IST
+
+
+def _kp_conn(*, twin_rows, boundaries=None, moon_lon=None, ayanamsha_lons=None, count=5760):
+    conn = _FakeConn().when("SELECT COUNT(*)", [{"n": count}]).when("AS has_twin", twin_rows)
+    if boundaries is not None:
+        conn.when("bg_kp_sublord_division", [{"start_longitude_deg": b} for b in boundaries])
+    if ayanamsha_lons is not None:
+        conn.when("ayanamsha_id = ANY", [
+            {"ayanamsha_id": a, "fact_value_num": v} for a, v in ayanamsha_lons.items()
+        ])
+    if moon_lon is not None:
+        conn.when("longitude_sidereal", [{"fact_value_num": moon_lon}])
+    return conn
+
+
+class TestKpWindowRedundancy:
+    def test_all_rows_twinned_is_redundant(self):
+        rows = [{"level_n": 2, "has_twin": True}] * 3 + [{"level_n": 3, "has_twin": True}] * 5
+        r = SC.kp_window_redundancy(CHART_ID, _kp_conn(twin_rows=rows), birth_dt=BIRTH_DT)
+        assert r.rows_in_horizon == 8
+        assert r.twinned_rows == 8
+        assert r.untwinned_rows == 0
+        assert r.is_redundant is True
+        assert r.levels_compared == (2, 3)
+        assert "twinned=8/8" in r.basis()
+
+    def test_one_untwinned_row_defeats_redundancy(self):
+        """The detector can genuinely come back False (§N.8) — a single instant at
+        which the two ladders' lords differ is enough for KP to carry information."""
+        rows = [{"level_n": 2, "has_twin": True}] * 7 + [{"level_n": 2, "has_twin": False}]
+        r = SC.kp_window_redundancy(CHART_ID, _kp_conn(twin_rows=rows), birth_dt=BIRTH_DT)
+        assert r.untwinned_rows == 1
+        assert r.is_redundant is False
+
+    def test_zero_in_horizon_rows_is_absence_not_redundancy(self):
+        r = SC.kp_window_redundancy(CHART_ID, _kp_conn(twin_rows=[]), birth_dt=BIRTH_DT)
+        assert r.rows_in_horizon == 0
+        assert r.is_redundant is False
+
+    def test_horizon_is_36525_days_from_birth(self):
+        r = SC.kp_window_redundancy(CHART_ID, _kp_conn(twin_rows=[]), birth_dt=BIRTH_DT)
+        assert r.horizon_start == BIRTH_DT
+        assert (r.horizon_end - r.horizon_start).days == 36525
+
+    def test_query_is_scoped_to_the_horizon_and_the_parent_system(self):
+        conn = _kp_conn(twin_rows=[])
+        SC.kp_window_redundancy(CHART_ID, conn, birth_dt=BIRTH_DT)
+        sql, params = conn.calls[0]
+        assert "bg_kp_sublord" not in sql
+        assert params[0] == SC.KP_PARENT_SYSTEM_ID
+        assert params[3] == CHART_ID
+        assert params[5] == SC.KP_SYSTEM_ID
+        assert params[6] == BIRTH_DT
+
+
+class TestKpJurisdiction:
+    def test_redundant_kp_is_excluded_by_condition(self):
+        rows = [{"level_n": 2, "has_twin": True}] * 4
+        result = SC.evaluate_applicability(
+            CHART_ID, SC.KP_SYSTEM_ID, _kp_conn(twin_rows=rows), birth_dt=BIRTH_DT,
+        )
+        assert result.applicability_state == "excluded_by_condition"
+        assert result.quality is None
+        assert "boundary-identical to vimshottari" in result.exclusion_reason
+        assert "twinned=4/4" in result.exclusion_reason
+
+    def test_missing_birth_dt_is_not_computed_never_applicable(self):
+        """§N.8: no detector ran, so there is no verdict — and the honest state is
+        `not_computed`, not a silent admission to S_pred(e)."""
+        result = SC.evaluate_applicability(
+            CHART_ID, SC.KP_SYSTEM_ID, _kp_conn(twin_rows=[{"level_n": 2, "has_twin": True}]),
+        )
+        assert result.applicability_state == "not_computed"
+        assert "undecidable without the chart's birth instant" in result.exclusion_reason
+
+    def test_shares_vimshottaris_competence_class(self):
+        """One clock, one voice — writer.py's §6.4 type-1 insight counts DISTINCT
+        competence_classes, so a new class here would have manufactured a second
+        voice out of the same clock."""
+        assert (SC.SYSTEM_META[SC.KP_SYSTEM_ID].competence_class
+                == SC.SYSTEM_META["vimshottari"].competence_class == "fruition")
+
+    def test_the_seven_classical_systems_keep_unconditional_jurisdiction(self):
+        for sid in ("vimshottari", "yogini", "ashtottari", "chara_karaka",
+                    "kalachakra", "mudda", "naisargika"):
+            assert SC._evaluate_jurisdiction(sid) == ("applicable", None)
+
+
+class TestKpSubQuality:
+    BOUNDARIES = [0.0, 0.7777777777777778, 1.5555555555555556, 3.7777777777777777]
+
+    def test_margin_beyond_the_ayanamsha_band_is_full_quality(self):
+        d_sub, q = SC.kp_sub_quality(2.6666, self.BOUNDARIES, sigma_a_deg=0.05)
+        assert d_sub == pytest.approx(1.1110, abs=1e-3)   # nearest boundary 1.5556
+        assert q == 1.0
+
+    def test_margin_inside_the_ayanamsha_band_is_partial(self):
+        # 0.049deg from the 1.5556 boundary; band = 1.96 * 0.05 = 0.098deg
+        d_sub, q = SC.kp_sub_quality(1.5556 - 0.049, self.BOUNDARIES, sigma_a_deg=0.05)
+        assert d_sub == pytest.approx(0.049, abs=1e-4)
+        assert q == pytest.approx(0.049 / (1.96 * 0.05), rel=1e-3)
+        assert 0.0 < q < 1.0
+
+    def test_on_a_boundary_is_zero_quality(self):
+        _, q = SC.kp_sub_quality(1.5555555555555556, self.BOUNDARIES, sigma_a_deg=0.05)
+        assert q == pytest.approx(0.0, abs=1e-9)
+
+    def test_wraps_across_zero(self):
+        d_sub, _ = SC.kp_sub_quality(359.9, self.BOUNDARIES, sigma_a_deg=0.05)
+        assert d_sub == pytest.approx(0.1, abs=1e-9)
+
+    def test_refuses_to_invent_a_value_without_the_l0_authority(self):
+        with pytest.raises(ValueError):
+            SC.kp_sub_quality(10.0, [], sigma_a_deg=0.05)
+
+    def test_refuses_a_nonpositive_sigma_a(self):
+        with pytest.raises(ValueError):
+            SC.kp_sub_quality(10.0, self.BOUNDARIES, sigma_a_deg=0.0)
+
+    def test_absent_l0_table_renders_as_not_computed_never_a_rederivation(self):
+        """No `bg_kp_sublord_division` rows => the quality is unknown, and unknown
+        is reported (§N.5: never fall back to re-deriving the L0 authority)."""
+        conn = _kp_conn(twin_rows=[{"level_n": 2, "has_twin": False}], boundaries=None)
+        result = SC.evaluate_applicability(
+            CHART_ID, SC.KP_SYSTEM_ID, conn, birth_dt=BIRTH_DT,
+        )
+        assert result.applicability_state == "not_computed"
+        assert result.exclusion_reason == "no quality rule defined"
+        assert result.quality is None
+
+    def test_non_redundant_kp_is_applicable_with_a_real_kp_quality(self):
+        conn = _kp_conn(
+            twin_rows=[{"level_n": 2, "has_twin": False}],
+            boundaries=self.BOUNDARIES,
+            ayanamsha_lons={"lahiri_chitrapaksha": 2.60, "krishnamurti": 2.70,
+                            "raman": 2.65, "surya_siddhanta_classical": 2.62,
+                            "true_chitra": 2.68},
+            moon_lon=2.6666,
+        )
+        result = SC.evaluate_applicability(
+            CHART_ID, SC.KP_SYSTEM_ID, conn, birth_dt=BIRTH_DT,
+        )
+        assert result.applicability_state == "applicable"
+        assert result.quality is not None and 0.0 <= result.quality <= 1.0
+        assert "kp_sub_margin=" in result.quality_basis
+        assert "sigma_a=" in result.quality_basis
+        assert result.is_predictive is True
 
 
 class TestWriteClockRows:

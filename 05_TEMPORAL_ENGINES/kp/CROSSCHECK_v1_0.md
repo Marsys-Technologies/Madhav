@@ -1,15 +1,25 @@
 ---
 artifact: CROSSCHECK_v1_0.md
 domain: kp_sublords
-version: 1.1
+version: 1.2
 status: WITHIN_TOLERANCE_GAP_09_BOUND
 produced_during: M3-W3-C2-KP-VARSHAPHALA
 produced_on: 2026-05-01
-extended_during: SHAD-DARSHANA W3K Lane 1 (w3k-sublord-substrate)
-extended_on: 2026-08-02
+extended_during: SHAD-DARSHANA W3K Lane 2 (w3k-lane2-field-integration)
+extended_on: 2026-08-04
 authoritative_side: claude
 chart_id: abhisek_mohanty_primary
 changelog:
+  - version: 1.2
+    date: 2026-08-04
+    note: >
+      §§9–10 added by ṢAḌ-DARŚANA W3K Lane 2, covering the two computed surfaces
+      Lane 1's §8 item 4 named as explicitly NOT verified by it: the
+      `chart_dashas.system_id='vimshottari_kp'` window stream's Law-1
+      applicability (gap G-4) and the KP concurrence/dissent serving voice (gap
+      G-5). §9 records the window-redundancy MEASUREMENT that decides KP's
+      participation in `S_pred(e)`; §10 records the one real dissent case Gate
+      W3K requires, found not manufactured. §§0–8 are UNCHANGED.
   - version: 1.1
     date: 2026-08-02
     note: >
@@ -344,3 +354,226 @@ Saturn, ranked = `Saturn` (count 1). An empty limb is reported as empty
 ruling: `00_ARCHITECTURE/llm_consumption_audit/briefs/kala_elevation/SHAD_DARSHANA_ADJUDICATIONS_NIGHT3_v1_0.md`
 ADJUDICATION-7 ·
 inventory: `00_ARCHITECTURE/llm_consumption_audit/briefs/kala_elevation/W3K_SUBSTRATE_INVENTORY_v1_0.md`
+
+---
+
+## §9 — W3K Lane 2 (G-4): the `vimshottari_kp` window stream, two-pass verified
+
+Lane 1's §8 item 4 named this stream as NOT covered. It is covered here, by the same
+methodology §1 established: an independently-implemented second pass over the same
+production rows, with a verdict that is allowed to come back either way.
+
+### 9.1 The question this surface answers
+
+`KALA_W2_FIELD_DESIGN_v1_0.md` §11.4 designates the seam: *"S_pred(e) is open by
+construction — W3K's KP clock joins by adding a `bg_dasha_systems` row and a `q_s`
+rule (§4.1 step 4), with no change to §5.1."* Joining `S_pred(e)` means multiplying
+one more factor `a_{s,e}(t)^{w_s}` into the hazard's clock term. That is only sound
+if KP's `a_{s,e}(t)` can differ from Vimśottarī's. `hazard.relevance` reads exactly
+one thing — the `(level, lord)` pairs `lord_stack_at` pulls from
+`chart_dashas.lord_graha`. So the admissibility question is precise and decidable:
+
+> Inside the field horizon, does `vimshottari_kp`'s per-level lord sequence ever
+> differ from `vimshottari`'s?
+
+### 9.2 The measurement (read-only, production, 2026-08-03)
+
+Detector: `services/ka_kshetra/stage3_clocks.kp_window_redundancy`. A KP row is
+*twinned* iff a `vimshottari` row exists at the same `level_n`, with the same
+`lord_graha`, and with BOTH boundaries within 2 s. Horizon = `[birth, birth +
+36525 d]`, the design's own H (§5.2).
+
+Chart `482012f1` (Abhisek Mohanty), ayanāṃśa `lahiri_chitrapaksha`:
+
+| Scope | level | KP rows | twinned | untwinned |
+|---|---|---:|---:|---:|
+| Inside horizon | 2 (KP sub) | 69 | **69** | **0** |
+| Inside horizon | 3 (KP sub-sub) | 630 | **630** | **0** |
+| Whole stored range (1950–2100) | 2 | 117 | 99 | 18 |
+| Whole stored range (1950–2100) | 3 | 1053 | 891 | 162 |
+
+Every untwinned row lies OUTSIDE the horizon — the pre-birth back-extrapolation to
+the 1950 build floor and the post-2084 tail. Both are outside the field entirely, so
+neither can double-count anything.
+
+The 2 s tolerance is a rounding band, not a similarity threshold. Inspected
+directly: the differing pairs are of the form KP `1992-02-08T21:15:21Z` vs
+Vimśottarī `1992-02-08T21:15:22Z` — one second, from `ga_dashas_writer`'s classical
+and KP branches rounding the same computed instant independently. Nothing in the
+sample differs by more than a second while remaining in-horizon; a genuinely
+different KP window would differ by months.
+
+Two further exact checks over the same rows, both threshold-free:
+
+- `count(*) WHERE level_n = 2 AND lord_graha IS DISTINCT FROM kp_sub_lord` → **0**
+- `count(*) WHERE level_n = 3 AND lord_graha IS DISTINCT FROM kp_sub_sub_lord` → **0**
+
+i.e. the KP-native lord columns restate the row's own `lord_graha` at every level.
+
+### 9.3 Verdict, and what it does NOT say
+
+**`vimshottari_kp` is `excluded_by_condition` for these charts** — reported with the
+measurement above as its verbatim reason, and dropped from `S_pred(e)` by
+`hazard.predictive_systems`' pre-existing `applicability_state != 'applicable'`
+clause. `hazard.py` is untouched: literally "no change to §5.1", as §11.4 requires.
+
+This is the same doctrinal position `gochara_intensity/permission.py` already holds
+one layer down for DR-14's plurality sum, and which
+`W3K_SUBSTRATE_INVENTORY_v1_0.md` §4 ruled on. Lane 2 did not assume it — it
+measured it, on the actual quantity the hazard consumes.
+
+**It does not say KP has nothing to contribute.** It says KP has no independent
+*clock* to contribute. KP's independence is a judgment-method independence, and it
+is spent at §10.
+
+**It is a measurement, not a permanent rule** (§N.8). The detector returns
+`is_redundant = False` for any chart with one in-horizon untwinned row, and that
+chart's KP clock then takes the `applicable` path, receives a real `q_s`, and enters
+`S_pred(e)` — again with no change to `hazard.py`. Both branches are asserted:
+`tests/l3/ka_kshetra/test_hazard.py::TestClockTerm::
+test_redundant_kp_clock_is_excluded_from_S_pred_by_its_stage3_verdict` and
+`::test_a_genuinely_distinct_kp_clock_does_enter_S_pred`.
+
+### 9.4 The `q_s` rule, and its one constant
+
+`stage3_clocks.kp_sub_quality`: `q = clamp01(d_sub / (z · σ_A))`, where `d_sub` is
+the Moon's angular distance to the nearest boundary of the 249-fold division and
+`σ_A` is the ayanāṃśa spread across the five pinned ayanāṃśas at this chart's own
+epoch.
+
+The shape continues §4.1 step 4's own progression — Vimśottarī measures the Moon's
+margin against its determining grid (nakṣatra, 13°20′), Kālachakra against a finer
+one (pāda, 3°20′), KP against the finest (the sub, 40′–2°13′). The tolerance is the
+one place a builder could have invented a number, and it is not invented: `z = 1.96`
+and `σ_A` are both already defined by §4.2. It is also the empirically right band
+for *this* grid — §0 of this very document records that the sub-sub-lord's only
+non-exact comparisons against the FORENSIC fixture were boundary flips attributed to
+the standing ayanāṃśa-precision band (GAP.09). A sub whose margin exceeds that band
+is determinable; one inside it is the case §4.2 actually observed flipping.
+
+Boundaries are REFERENCED from `bg_kp_sublord_division` (§N.5); an absent or unbuilt
+L0 table yields `not_computed`, never a serve-time re-derivation.
+
+---
+
+## §10 — W3K Lane 2 (G-5): the served dissent, FOUND not manufactured
+
+Gate W3K requires "at least one served dissent" — a real case where KP's
+significator verdict for a running window disagrees with the Parāśarī reading of
+that same window. Here it is, on the native's own chart.
+
+### 10.1 The case
+
+**Chart `482012f1` (Abhisek Mohanty) · bhāva 7 (marriage/partnership) · 2026-08-04.**
+
+Three independent production reads, all read-only:
+
+1. **The KP ladder** — `ga_writers/ga_kp_significators.emit_kp_significators` run
+   over production `chart_facts` (ayanāṃśa `krishnamurti`): real graha longitudes,
+   real Placidus `bhava_cusps`, real `graha_kp_lords` star lords, real
+   `reference_signs` lords. Cusp 7 spans [192.528°, 222.517°) → Libra → owner
+   **Venus**.
+
+   | Limb | Members |
+   |---|---|
+   | A — tenant the star of an occupant | *none* |
+   | B — occupants of the 7th cuspal arc | **Mars** (198.616°), **Saturn** (202.529°) |
+   | C — tenant the star of the owner | Venus |
+   | D — the owner | Venus |
+   | **Ranked** | **Mars, Saturn, Venus** |
+
+2. **The running window** — live `chart_dashas`, `system_id='vimshottari_kp'`,
+   covering 2026-08-04: level 2 lord **Saturn** / `kp_sub_lord` **Saturn**
+   (2024-12-08 → 2027-08-18); level 3 lord Moon / `kp_sub_lord` Saturn /
+   `kp_sub_sub_lord` Moon (2026-06-27 → 2026-09-17).
+
+3. **The Parāśarī verdict** — `kala_explain_get(bhava=7, as_of_date=2026-08-04)`
+   returns `pact_status = denied_at_promise`, `verdict_grade = contested`,
+   `composite_score = −3.5`: *"The rashi checklist does not promise this matter
+   (contested composite: hostile occupants/aspects and/or a weak, poorly-disposed
+   bhāveśa outweigh supportive factors)."* The chain HALTS at PROMISE — activation
+   is never even evaluated.
+
+### 10.2 The disagreement
+
+Saturn is running at both the antardaśā and the KP sub level, and Saturn is a
+**limb-B significator of the 7th** — it occupies the 7th cuspal arc. KP therefore
+reads this window as actively delivering 7th-house matters. Parāśarī reads the same
+window as not promised at all.
+
+**The cause is methodological, and it is the whole reason KP is a fourth voice.**
+Mars and Saturn both occupy the 7th. To the Parāśarī checklist, two malefics in the
+7th *are* the affliction that denies the promise. To KP, a house's occupants are its
+own delivering agents irrespective of natural benefic/malefic nature — so the very
+two grahas Parāśarī counts against the 7th are the two KP ranks first for it. One
+running lord stack, two opposite verdicts, neither wrong on its own terms.
+
+### 10.3 Robustness, and the control case
+
+**Not an ayanāṃśa artefact.** Re-run in `lahiri_chitrapaksha` (cusp 7 =
+[192.431°, 222.420°), Mars 198.519°, Saturn 202.432°) the ladder is byte-identical —
+owner Venus, B = Mars/Saturn, ranked Mars/Saturn/Venus — and the KP sub-lord at
+2026-08-04 is still Saturn. The dissent holds in both ayanāṃśas. Both are served
+side by side on the voice (`kp_ayanamsha_id`, `chain_ayanamsha_id`,
+`ayanamsha_divergence`); neither overwrites the other.
+
+**The control: a concurrence from the same stack, same instant.** Bhāva 10 on the
+same chart at the same date — ranked significators **Mercury, Sun, Saturn** (§7's
+worked example); running Mercury (MD) and Saturn (AD/SD) are both significators;
+`pact_status = chain_complete`. KP **concurs**.
+
+That pairing is the proof the voice is real rather than a relabelled clock: the
+*identical* running lord stack yields `dissents` for the 7th and `concurs` for the
+10th. A voice that merely restated Vimśottarī could not produce both.
+
+### 10.4 Where it is served, and what is still open
+
+Served by `platform-mcp/src/lib/kp_school_voice.ts` through `kala_explain_get`'s
+existing envelope: a dissent becomes an `ArgumentDissent` with
+`source = "KP sub-lord clock (Krishnamurti Paddhati significator ladder)"`, a
+concurrence an `ArgumentEvidence` row, and the `dissent_multi_system_concurrence`
+coverage entry flips from `honest_empty` to `computed` only when a real verdict was
+reached. Every claim in the dissent/concurrence carries the `chart_facts.fact_id`
+ledger of the ladder rows it consumed (B.3), scoped to those rows and not to the
+whole fetched page. Asserted at `platform-mcp/src/lib/kp_school_voice.test.ts`
+(30 tests, the fixtures above verbatim) and
+`src/tools/kala_views/explain_kp_voice.test.ts` (13).
+
+**OPEN, and stated plainly rather than claimed.** The ladder this dissent rests on
+is **not yet in production `chart_facts`**: verified read-only 2026-08-03,
+`kp_house_significators` returns 0 rows for both canonical charts, and
+`bg_kp_sublord_division` does not exist as a table in the production DB. Lane 1
+(PR #1039) landed the writers; **no chart has been rebuilt since.** So today the
+served path returns `state: 'honest_empty'` naming that exact gap, and does NOT
+serve the dissent — by design, since re-deriving significators at serve time would
+invert the L1 authority (§N.5) and reporting "no dissent" from missing data would be
+a green light with no detector behind it (§N.8).
+
+The dissent is therefore **found and verified, not yet served in production.** What
+remains is one operational step, not a design step: **rebuild `ga_nakshatra` (and
+`bg_kp_sublord_division`) for charts `482012f1` and `1c826d5a`.** The instant those
+rows exist, `kala_explain_get(bhava=7, as_of_date=2026-08-04)` emits the dissent
+above with no further code change — the fixtures in
+`kp_school_voice.test.ts` ARE that expected output.
+
+### 10.5 Not covered by this extension
+
+Named so it is not mistaken for verified: **G-2 (query-moment ruling planets for
+horary/muhūrta)** is OUT OF SCOPE for both W3K lanes. The inventory's §5.4
+recommends parking it — *"defer it entirely out of W3K's first build lane since
+neither K.1–K.4 nor Gate W3K's acceptance criteria name it explicitly"* — and §6's
+build plan gives it to neither lane. Lane 2 left it untouched. `kp_ruling_planets_natal`
+remains fixed-at-birth, as §1.3 of the inventory describes.
+
+**§§9–10 files referenced:**
+`platform/python-sidecar/services/ka_kshetra/stage3_clocks.py` ·
+`platform/python-sidecar/services/ka_kshetra/hazard.py` (READ ONLY — unchanged) ·
+`platform/python-sidecar/tests/test_ka_kshetra_stage3_clocks.py` ·
+`platform/python-sidecar/tests/l3/ka_kshetra/test_hazard.py` ·
+`platform-mcp/src/lib/kp_school_voice.ts` + `.test.ts` ·
+`platform-mcp/src/tools/kala_views/explain.ts` +
+`platform-mcp/src/tools/kala_views/explain_kp_voice.test.ts` ·
+design seam: `00_ARCHITECTURE/llm_consumption_audit/briefs/kala_elevation/KALA_W2_FIELD_DESIGN_v1_0.md`
+§4.1 step 4, §11.4 ·
+inventory: `00_ARCHITECTURE/llm_consumption_audit/briefs/kala_elevation/W3K_SUBSTRATE_INVENTORY_v1_0.md`
+§2 G-4/G-5, §4, §6 Lane 2.
