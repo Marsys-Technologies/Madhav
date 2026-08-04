@@ -90,6 +90,34 @@ per the directive's own "per-chart KP projections queue behind the locks" clause
 clauses are honored as written; the second is authoritative where they could be read as in
 tension.
 
+**Lane (g) — red-gates triage, DIAGNOSED not fixed, per instruction (2026-08-04 ~05:05 UTC).**
+Both gates share a root-cause CLASS, not a single bug: manually-maintained allowlist/baseline
+JSON files that require active upkeep as new code lands, and haven't kept pace.
+
+- **Naming Governance Gate** — `platform/scripts/governance/naming_baseline.json`, a snapshot
+  allowlist keyed `rule|file|identifier`, last touched commit `3aa5f7cf` (PB-1 DHĀRĀ era). 53
+  live violations (36 `google_env_prefix` + 17 `marsys_flags`) across dozens of long-lived files
+  (`platform/src/lib/storage/gcs.ts`, `observability/trace.ts`, `providers/google/*.ts`, etc.) —
+  none in this baseline. This reads as gradual drift across many unrelated PRs, not one incident.
+  Owner: whoever owns `naming_lint.py`/CI governance broadly — outside this campaign's scope to
+  triage 53 individual identifiers tonight.
+- **Earned-Signal Gate** — `platform/scripts/governance/earned_signal_allowlist.json`, a
+  frozen-budget allowlist (`max_occurrences` per file+field group; by the checker's OWN documented
+  design, hit N+1 in a covered group correctly fails as NEW debt, not a bug). Traced
+  `check_earned_signal.py`'s `_matches_entry`/`partition_allowlisted` directly — the matching
+  logic itself looks sound (file+field, line-independent when `line`/`pattern` are both null).
+  Of the 6 fields failing on recent PRs: **`star_verdict` in
+  `platform/python-sidecar/ga_writers/ga_kp_significators.py` has ZERO allowlist entries —
+  a genuinely new, untriaged violation, very likely introduced by THIS campaign's own W3K Lane 1
+  (PR #1039, which itself shows Earned-Signal: fail in its own checks)** — this one IS this
+  campaign's territory, flagged for whoever next touches KP significators to give it a real
+  detector or set it `None`. The other 5 (`fallback_used` ×2, `transit_gate`,
+  `contamination_count`, `divergence_count` ×2) DO have matching file+field allowlist entries at
+  HEAD with unspent budget, yet were reported failing in the specific historical CI runs checked
+  (PR #1039's, dated 2026-08-02) — unresolved whether that run predates those allowlist entries
+  or something else is at play; not re-investigated further (diagnose-only scope, and these 5
+  aren't this campaign's own writers).
+
 ---
 
 **NIGHT 5 CLOSED (2026-08-02, ~12:57–~20:30 IST) — see "MORNING REPORT — NIGHT 5" below.**
