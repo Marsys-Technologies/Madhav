@@ -61,6 +61,10 @@ import {
   type LatticeGapReport,
   type LatticeSubstrate,
 } from './kala_lattice_query.js'
+import {
+  computeAgnivasaConventionBVoice,
+  type AgnivasaConventionBVoice,
+} from './agnivasa_convention_b_voice.js'
 
 // ══════════════════════════════════════════════════════════════════════════════
 // §5.4 — INDIVIDUALIZED-MORTALITY-WINDOW HARD EXCLUSION (ADJUDICATION-13)
@@ -338,6 +342,16 @@ export interface SkyPatternConstraintDisposition {
    *  `0` with `state: 'computed'` is a legal, meaningful answer (the family is
    *  materialized; nothing in this horizon satisfies the constraint). */
   matched_atom_count: number
+  /** ADJUDICATION-17: set ONLY on `kind: 'residence'` (agnivāsa) dispositions —
+   *  one Convention (B) voice per matched atom (same shape as `kp_school_voice.ts`'s
+   *  concurrence/dissent precedent), reporting what the `agnivasa_muhurta_chintamani_
+   *  arithmetic` convention would say about the SAME date Convention (A) already
+   *  resolved. Informational only — this array is NEVER consulted by the match logic
+   *  above (`favourableElements`), which stays hardcoded to Convention (A) by design.
+   *  `undefined` on every other constraint kind; `[]` when Convention (B) is not yet
+   *  `convention_status='computed'` for this chart (an honest absence, not a gap in
+   *  this array). */
+  agnivasa_convention_b_voices?: AgnivasaConventionBVoice[]
 }
 
 export type PrecisionRegime = 'intra_day' | 'day_grade'
@@ -638,6 +652,31 @@ function computePaddhatiDivergence(
       'see the muhurta_chintamani school voice on that date\'s residence disposition, not this ' +
       'chart-level field.',
   }
+}
+
+/**
+ * ADJUDICATION-17, the per-date half of the ruling this file's `residence` branch
+ * implements: for the EXACT atoms Convention (A) already matched (`matched`, computed by
+ * the hardcoded `favourableElements` filter below — this function receives that result, it
+ * never recomputes or influences it), build Convention (B)'s live voice from the SAME
+ * atom's `detail`. Purely additive and read-only — no atom is dropped, reordered, or
+ * reclassified by this function; it only ever APPENDS a second opinion alongside the one
+ * Convention (A) already reached.
+ *
+ * Returns `[]` (not one `honest_empty` entry per atom) when Convention (B) itself is not
+ * `convention_status='computed'` for this chart — the chart-level gap is already carried by
+ * `PaddhatiResolution.divergence` (`computePaddhatiDivergence` above); repeating it once per
+ * matched atom here would be noise, not honesty.
+ */
+export function buildAgnivasaConventionBVoices(
+  matchedRows: Pick<LatticeFactorRow, 'detail'>[],
+  paddhatiOperative: PaddhatiConventionRow[],
+): AgnivasaConventionBVoice[] {
+  const conventionBOperative = paddhatiOperative.some(
+    (r) => r.factor_family === 'agnivasa' && r.convention_id === 'agnivasa_muhurta_chintamani_arithmetic',
+  )
+  if (!conventionBOperative) return []
+  return matchedRows.map((r) => computeAgnivasaConventionBVoice(r.detail, true))
 }
 
 export async function fetchPaddhatiProfile(
@@ -1419,6 +1458,13 @@ async function compileConstraint(args: CompileArgs): Promise<CompiledConstraint>
         return wantFavourable ? isFav : !isFav
       })
 
+      // ADJUDICATION-17: Convention (B) served as a SECOND, INFORMATIONAL voice for the
+      // SAME atoms `matched` above already resolved for Convention (A) — computed from
+      // `matched`, never fed back into it. `favourableElements` above is Convention (A)'s
+      // hard gate and stays hardcoded by design; this array cannot change which atoms
+      // matched or how `mode: 'require'` below is honoured.
+      const agnivasa_convention_b_voices = buildAgnivasaConventionBVoices(matched, paddhati.operative)
+
       return {
         disposition: {
           kind,
@@ -1435,6 +1481,7 @@ async function compileConstraint(args: CompileArgs): Promise<CompiledConstraint>
               '. ' + paddhati.census_statement,
           dropped_from_conjunction: false,
           matched_atom_count: matched.length,
+          agnivasa_convention_b_voices,
         },
         intervals: matched.map(rowInterval).filter((i): i is Interval => i !== null),
         mode: 'require',
