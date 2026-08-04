@@ -38,6 +38,29 @@ jobs:
       - name: Install the minimum needed to import the vocabulary + talk to the DB
         run: pip install --quiet psycopg[binary]
 
+      # ── DB reachability (same pattern as #990 / tap-ci.yml's tap-db-gates job) ──────────
+      # amjis-postgres has a public IP but ZERO authorized networks, so a runner cannot reach
+      # it directly. deploy.yml (~lines 278-295) already solves this: authenticate via WIF,
+      # then run the Cloud SQL Auth Proxy on 127.0.0.1:5432. PROD_DATABASE_URL is a
+      # loopback-form connection string that only resolves once this proxy is listening —
+      # without it the job fails with "connection ... 127.0.0.1:5432 ... Connection refused"
+      # (confirmed by the one historical run of this workflow). Replicating the exact,
+      # already-proven pair here, same as #990 did for S-13/TAP-7.
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: projects/938361928218/locations/global/workloadIdentityPools/github/providers/github-actions
+          service_account: github-actions@madhav-astrology.iam.gserviceaccount.com
+
+      - name: Start Cloud SQL Auth Proxy
+        run: |
+          curl -fsSL \
+            "https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.10.1/cloud-sql-proxy.linux.amd64" \
+            -o cloud-sql-proxy && chmod +x cloud-sql-proxy
+          ./cloud-sql-proxy --address 127.0.0.1 --port 5432 \
+            madhav-astrology:asia-south1:amjis-postgres &
+          sleep 5
+
       # Detector liveness needs no database, so it runs even when the DB is unreachable —
       # a watchdog that goes quiet when one input is missing is not a watchdog.
       - name: Run the invariant
