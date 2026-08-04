@@ -60,9 +60,22 @@ CRITICAL RECONCILIATION (GA3 overlap avoidance):
       bhava_bala_aspectual, bhava_bala_occupant, bhava_bala_lord,
       bhava_bala_total_extended (C — extended bhava bala decomposition)
 
-Two-pass requirement per §3:
-  Every category (except conjunction_within_orb) verified with secondary algorithm.
-  divergent_flagged → halt build, write CONDUCTOR_HALT_LOG.
+Two-pass requirement per §3 (original spec aspiration — see STAGE-2 HONEST-TIERS
+note below for what the code actually enforces as of the M-22 overnight fix):
+  Every category was originally intended to carry a verified secondary algorithm.
+  CORRECTION (Stage 2 honest-tiers, M-22, Opus Gate Reviewer ruling): the line that
+  used to read "divergent_flagged → halt build, write CONDUCTOR_HALT_LOG" was FALSE
+  — no code path in this file halts the build on a row carrying
+  verification_pass_status='divergent_flagged'. `_write_halt_log()` is called only
+  on ARGALA_COUNT_WRONG / VIRODHA_COUNT_WRONG (144-row count assertions),
+  UPSTREAM_ABSENT, and TWO_PASS_STRUCTURAL (duplicate fact_id / GA3-overlap /
+  citation-completeness / no-narration-linter checks — none inspect
+  verification_pass_status). `bhava_chalit_rasi_divergence` legitimately emits
+  divergent_flagged by design (genuine rasi-vs-chalit house disagreement) and does
+  NOT halt the build. Most categories in this file are honestly single-pass;
+  verification_pass_status reflects that per brahmagyan/verification_vocab.py
+  (UNVERIFIED_DEFAULT for "no detector ran", two_pass_verified reserved for the
+  rare case with a real independent second derivation).
 
 Step 0 dependency check:
   Verifies GA3–GA7 rows for chart_id 482012f1 before computing anything.
@@ -86,6 +99,7 @@ from typing import Any, Callable
 import psycopg.rows
 from pyjhora_adapter.compute import compute_chart
 from pyjhora_adapter.version import ENGINE_VERSION
+from brahmagyan.verification_vocab import DIVERGENT_FLAGGED, UNVERIFIED_DEFAULT, assert_legal
 from ga_writers._idempotency import replace_prior_chart_facts
 from ga_writers._telemetry import update_asset_throughput
 from pipeline.orchestrator.birth_params import resolve_birth_params
@@ -766,7 +780,7 @@ def _base_row(category: str, subject: str, key: str,
               value_text: str | None = None,
               value_jsonb: Any = None,
               unit: str | None = None,
-              verif: str = "two_pass_verified",
+              verif: str = UNVERIFIED_DEFAULT,
               source: str = "pyjhora_adapter.structural",
               citation_human: str = "",
               constituent_facts_array: list[str] | None = None) -> dict[str, Any]:
@@ -1135,7 +1149,7 @@ def _build_aspect_rows(
                 chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
                 value_num=strength,
                 unit="strength",
-                verif="two_pass_verified",
+                verif=UNVERIFIED_DEFAULT,
                 source=f"pyjhora_adapter.aspect_parashari/{eng_ver}",
                 citation_human=(
                     f"{g_name} {offset}th aspect on house {target_house} ({target_sign}) "
@@ -1149,7 +1163,7 @@ def _build_aspect_rows(
                 chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
                 value_num=strength,
                 unit="strength",
-                verif="two_pass_verified",
+                verif=UNVERIFIED_DEFAULT,
                 source=f"pyjhora_adapter.aspect_parashari/{eng_ver}",
                 citation_human=(
                     f"House {target_house} receives {g_name} {offset}th aspect "
@@ -1185,7 +1199,7 @@ def _build_aspect_rows(
                     chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
                     value_num=1.0,
                     unit="rasi_drishti",
-                    verif="two_pass_verified",
+                    verif=UNVERIFIED_DEFAULT,
                     source=f"pyjhora_adapter.jaimini_rasi_drishti/{eng_ver}",
                     citation_human=(
                         f"{s1} ({s1_type}) Jaimini rasi drishti on {s2} ({ayanamsha_id})."
@@ -1229,7 +1243,7 @@ def _build_aspect_rows(
             "aspect_matrix_summary", house_key, "aspects_received_count",
             chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
             value_num=float(aspect_count),
-            verif="two_pass_verified",
+            verif=UNVERIFIED_DEFAULT,
             source=f"pyjhora_adapter.aspect_summary/{eng_ver}",
             citation_human=f"House {h} receives {aspect_count} Parashari aspects ({ayanamsha_id}).",
         ))
@@ -1337,7 +1351,7 @@ def _build_aspect_rows(
                     "salience": salience,
                     "house_diff": ((g2_house - g1_house) % 12) + 1,
                 },
-                verif="two_pass_verified",
+                verif=UNVERIFIED_DEFAULT,
                 source=f"ga_structural.tajik_aspects/{eng_ver}",
                 citation_human=(
                     f"Tajik {taj_type} between {g1_name} and {g2_name} "
@@ -1398,7 +1412,7 @@ def _build_shadbala_extension_rows(
             "graha_vargottama_amplification_factor", subject, "amplification_factor",
             chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
             value_num=amp_factor,
-            verif="two_pass_verified",
+            verif=UNVERIFIED_DEFAULT,
             source=f"pyjhora_adapter.vargottama/{eng_ver}",
             citation_human=(
                 f"{g_name} vargottama amplification factor: {amp_factor:.2f} "
@@ -1423,7 +1437,7 @@ def _build_shadbala_extension_rows(
                 "constituent_fact_ids": constituent_ids,
                 "note": f"chart_divisionals rows for {subject} across saptavarga set ({ayanamsha_id})",
             },
-            verif="two_pass_verified",
+            verif=UNVERIFIED_DEFAULT,
             source=f"pyjhora_adapter.ga6_reference/{eng_ver}",
             citation_human=(
                 f"{g_name} saptavargaja bala component: see chart_divisionals "
@@ -1495,9 +1509,14 @@ def _build_bhava_bala_extended_rows(
 
         total_ext = (positional + directional + temporal + aspectual + occupant_strength + lord_str) / 6.0
 
-        # Pass 2 verification: sum check
+        # STAGE-2 HONEST-TIERS CORRECTION (M-22 overnight, Opus Gate Reviewer
+        # ruling): `sub_sum` below is computed but never actually COMPARED against
+        # anything — there is no second independently-implemented derivation of
+        # total_ext to check it against. The old comment ("Algebraic invariant
+        # holds") asserted a check that does not exist in this code. Honest
+        # single-pass default.
         sub_sum = positional + directional + temporal + aspectual + occupant_strength + lord_str
-        verif_status = "two_pass_verified"  # Algebraic invariant holds
+        verif_status = UNVERIFIED_DEFAULT
 
         for (cat, key, val) in [
             ("bhava_bala_positional", "strength", positional),
@@ -1603,7 +1622,7 @@ def _build_anubindu_rows(
                 chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
                 value_num=float(anubindu_val),
                 unit="bindu",
-                verif="two_pass_verified",
+                verif=UNVERIFIED_DEFAULT,
                 source=f"pyjhora_adapter.anubindu/{eng_ver}",
                 citation_human=(
                     f"{planet_name} anubindu house {house_num}: {anubindu_val} bindu "
@@ -1644,7 +1663,7 @@ def _build_vimsopaka_ext_rows(
                 "constituent_fact_ids": constituent_ids,
                 "note": f"chart_divisionals rows for {subject} across shodasavarga set ({ayanamsha_id})",
             },
-            verif="two_pass_verified",
+            verif=UNVERIFIED_DEFAULT,
             source=f"pyjhora_adapter.ga6_vimsopaka_ref/{eng_ver}",
             citation_human=(
                 f"{g_name} vimsopaka bala (shodasavarga): see chart_divisionals "
@@ -2072,7 +2091,7 @@ def _build_yoga_rows(
                     "mahapurusha_strength_bonus": mahapurusha_bonus,
                     "fire_reason": entry.get("reason", ""),
                 },
-                verif="two_pass_verified",
+                verif=UNVERIFIED_DEFAULT,
                 source=f"pyjhora_adapter.yoga_fires/{eng_ver}",
                 citation_human=(
                     f"Yoga {yoga_name} fires for chart {str(chart_id)[:8]}"
@@ -2949,7 +2968,7 @@ def _build_dosha_rows(
                     "cancelled_by_yoga_name": cancelled_by,
                     "fire_reason": reason,
                 },
-                verif="two_pass_verified",
+                verif=UNVERIFIED_DEFAULT,
                 source=f"pyjhora_adapter.dosha_fires/{eng_ver}",
                 citation_human=(
                     f"Dosha {name} fires"
@@ -3284,7 +3303,7 @@ def _build_avastha_rows(
             "graha_avastha_baladi", subject, "baladi_state",
             chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
             value_text=baladi_state,
-            verif="two_pass_verified",
+            verif=UNVERIFIED_DEFAULT,
             source=f"pyjhora_adapter.avastha_baladi/{eng_ver}",
             citation_human=f"{g_name} baladi avastha: {baladi_state} ({degree_in_sign:.1f}° in {sign}) ({ayanamsha_id}).",
         ))
@@ -3301,7 +3320,7 @@ def _build_avastha_rows(
             "graha_avastha_jagrad", subject, "jagrad_state",
             chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
             value_text=jagrad_state,
-            verif="two_pass_verified",
+            verif=UNVERIFIED_DEFAULT,
             source=f"pyjhora_adapter.avastha_jagrad/{eng_ver}",
             citation_human=f"{g_name} consciousness avastha: {jagrad_state} (dignity: {dignity}) ({ayanamsha_id}).",
         ))
@@ -3326,7 +3345,7 @@ def _build_avastha_rows(
             "graha_avastha_deepta", subject, "deepta_state",
             chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
             value_text=deepta_state,
-            verif="two_pass_verified",
+            verif=UNVERIFIED_DEFAULT,
             source=f"pyjhora_adapter.avastha_deepta/{eng_ver}",
             citation_human=f"{g_name} deepta avastha: {deepta_state} ({ayanamsha_id}).",
         ))
@@ -3356,7 +3375,7 @@ def _build_avastha_rows(
                 "current_jagrad": jagrad_state,
                 "current_deepta": deepta_state,
             },
-            verif="two_pass_verified",
+            verif=UNVERIFIED_DEFAULT,
             source=f"pyjhora_adapter.avastha_lifetime_ref/{eng_ver}",
             citation_human=f"{g_name} dominant avastha: {baladi_state} (natal baseline; full timeline via GA7) ({ayanamsha_id}).",
         ))
@@ -3538,18 +3557,35 @@ def _build_composite_strength_rows(
             # demoted all three emitted rows here to documented_approximation
             # pending this lane's fix. Now real graha_shadbala_total and
             # house_bhava_bala_total (post lane-1a's real shadbala) feed both
-            # passes via constituent_facts_array, so the cross-check is a
-            # genuine classical shadbala + bhava bala comparison. Ring-2
-            # independently hand-derived shadbala_ratio=0.7222/
-            # bhava_ratio=0.7468 from real chart_facts and got an exact digit
-            # match (R6_RUN_LEDGER "Lane 1e-structcond" Ring-2 verdict,
-            # 2026-07-10) — verif/source restored to reflect the real
-            # ga_structural computation.
+            # passes via constituent_facts_array.
+            #
+            # STAGE-2 HONEST-TIERS CORRECTION (M-22 overnight, Opus Gate Reviewer
+            # ruling): the Ring-2 "genuine classical shadbala + bhava bala
+            # comparison" verdict this comment used to cite was WRONG and is
+            # corrected here rather than left to mislead a future agent into
+            # re-promoting these rows. bphs_score and simple_score are NOT two
+            # independently-implemented derivations of the same target quantity —
+            # bphs_score = simple_score × shadbala_ratio × aspect_modifier is a
+            # strict algebraic rescaling of simple_score by factors already known
+            # before either is computed. A rescaling cannot fail to "agree" in the
+            # earned-signal sense (CLAUDE.md §N.8): live production data confirms
+            # the two never even coincide (cross_formula_divergence observed range
+            # 0.2112–0.7729, never zero), which is the mathematical signature of a
+            # deterministic rescaling, not evidence of independent verification.
+            # bphs_weighted / simple_multiplication are therefore UNVERIFIED_DEFAULT
+            # (single-pass computations, each honestly reported). divergent_flagged
+            # is explicitly NOT used for cross_formula_divergence — divergence here
+            # is a structural certainty of the formula relationship, not a
+            # meaningful anomaly signal, and divergent_flagged is reserved (see
+            # bhava_chalit_rasi_divergence below) for cases where two rows genuinely
+            # COULD have agreed and didn't. cross_formula_divergence is instead
+            # computed_extension: an honestly-labeled value derived by extension
+            # from bphs_score/simple_score, not independently checked.
             rows.append(_base_row(
                 "graha_in_house_composite_strength", comp_subject, "bphs_weighted",
                 chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
                 value_num=bphs_score,
-                verif="two_pass_verified",
+                verif=UNVERIFIED_DEFAULT,
                 source=f"ga_structural.composite_strength_bphs/{eng_ver}",
                 citation_human=(
                     f"{g_name} in house {h}: BPHS composite strength {bphs_score:.4f} "
@@ -3561,7 +3597,7 @@ def _build_composite_strength_rows(
                 "graha_in_house_composite_strength", comp_subject, "simple_multiplication",
                 chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
                 value_num=simple_score,
-                verif="two_pass_verified",
+                verif=UNVERIFIED_DEFAULT,
                 source=f"ga_structural.composite_strength_simple/{eng_ver}",
                 citation_human=(
                     f"{g_name} in house {h}: simple composite strength {simple_score:.4f} "
@@ -3573,7 +3609,12 @@ def _build_composite_strength_rows(
                 "graha_in_house_composite_strength", comp_subject, "cross_formula_divergence",
                 chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
                 value_num=round(divergence, 4),
-                verif="two_pass_verified",
+                # "computed_extension" per verification_vocab.py — no COMPUTED_EXTENSION
+                # constant exists there (confirmed; only TWO_PASS_VERIFIED,
+                # DIVERGENT_FLAGGED, CLASSICAL_MATCH are named), so this uses the
+                # literal string, matching the existing convention in
+                # ga_condition_writer.py / ga_strength_writer.py / ga_yoga_writer.py.
+                verif="computed_extension",
                 source=f"ga_structural.composite_strength_div/{eng_ver}",
                 citation_human=f"{g_name} in house {h}: formula divergence {divergence:.4f} ({ayanamsha_id}).",
                 constituent_facts_array=constituent_ids or None,
@@ -3602,7 +3643,16 @@ def _build_functional_class_rows(
         # Derived dynamically from actual Lagna (Aries uses verified table; others use rule-based)
         bphs_class = _get_functional_class_dynamic(g_name, lagna_sign)
         raman_class = _get_functional_class_dynamic(g_name, lagna_sign)
-        fc_verif = "two_pass_verified" if lagna_sign == "Aries" else "documented_approximation"
+        # STAGE-2 HONEST-TIERS CORRECTION (M-22 overnight, Opus Gate Reviewer
+        # ruling): the Aries branch previously asserted two_pass_verified, but
+        # bphs_class and raman_class above are computed by the SAME call
+        # (`_get_functional_class_dynamic(g_name, lagna_sign)`) with the SAME
+        # arguments twice — not two independently-implemented derivations that
+        # could have disagreed, so it earns nothing under the earnedness test
+        # (CLAUDE.md §N.8). Only the Aries branch changes; the non-Aries
+        # documented_approximation branch is a real, already-correctly-tiered
+        # methodological approximation and is untouched.
+        fc_verif = UNVERIFIED_DEFAULT if lagna_sign == "Aries" else "documented_approximation"
 
         rows.append(_base_row(
             "graha_functional_class_per_ascendant", subject, "bphs_canonical",
@@ -3634,7 +3684,7 @@ def _build_functional_class_rows(
             "graha_yoga_karaka_flag", subject, "is_yoga_karaka",
             chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
             value_text="true" if is_yoga_karaka else "false",
-            verif="two_pass_verified",
+            verif=UNVERIFIED_DEFAULT,
             source=f"pyjhora_adapter.yoga_karaka/{eng_ver}",
             citation_human=(
                 f"{g_name} yoga karaka flag (lord of 9H+10H simultaneously): "
@@ -3677,7 +3727,7 @@ def _build_karakatva_rows(
             "karakatva_strength_per_significance", signif, "composite_strength",
             chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
             value_num=composite,
-            verif="two_pass_verified",
+            verif=UNVERIFIED_DEFAULT,
             source=f"pyjhora_adapter.karakatva/{eng_ver}",
             citation_human=(
                 f"Karakatva {signif}: natural karaka {natural_karaka}, "
@@ -3688,7 +3738,7 @@ def _build_karakatva_rows(
             "karakatva_strength_per_significance", signif, "natural_karaka",
             chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
             value_text=natural_karaka,
-            verif="two_pass_verified",
+            verif=UNVERIFIED_DEFAULT,
             source=f"pyjhora_adapter.karakatva/{eng_ver}",
             citation_human=(
                 f"Karakatva {signif}: natural karaka is {natural_karaka} ({ayanamsha_id})."
@@ -3710,7 +3760,7 @@ def _build_karakatva_rows(
                 "karaka_house_lord_overlap_flag", signif, "is_overlap",
                 chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
                 value_text="true" if is_overlap else "false",
-                verif="two_pass_verified",
+                verif=UNVERIFIED_DEFAULT,
                 source=f"pyjhora_adapter.karaka_overlap/{eng_ver}",
                 citation_human=(
                     f"Karakatva {signif}: natural karaka {natural_karaka} "
@@ -3784,7 +3834,7 @@ def _build_structural_relationship_rows(
             "graha_dispositor_chain", subject, "chain_jsonb_atomic",
             chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
             value_jsonb=chain_jsonb,
-            verif="two_pass_verified",
+            verif=UNVERIFIED_DEFAULT,
             source=f"pyjhora_adapter.dispositor_chain/{eng_ver}",
             citation_human=(
                 f"{g_name} dispositor chain: {' → '.join(chain)}"
@@ -3816,7 +3866,7 @@ def _build_structural_relationship_rows(
             "composite_dispositor_strength", subject, "terminal_strength",
             chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
             value_num=composite_strength,
-            verif="two_pass_verified",
+            verif=UNVERIFIED_DEFAULT,
             source=f"ga_structural.dispositor_chain_mean_dignity_strength_v2/{eng_ver}",
             citation_human=(
                 f"{g_name} dispositor-chain composite strength (mean of "
@@ -3863,7 +3913,7 @@ def _build_structural_relationship_rows(
                     "parivartana_pairs", pair_subj, "parivartana_type",
                     chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
                     value_text=pariv_type,
-                    verif="two_pass_verified",
+                    verif=UNVERIFIED_DEFAULT,
                     source=f"pyjhora_adapter.parivartana/{eng_ver}",
                     citation_human=(
                         f"{n1}-{n2} {pariv_type} parivartana: {n1} in {s1} ({lord_s1}), "
@@ -4045,7 +4095,7 @@ def _build_special_state_rows(
             "graha_special_state_rollup", subject, "is_combust",
             chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
             value_text="true" if is_combust else "false",
-            verif="two_pass_verified",
+            verif=UNVERIFIED_DEFAULT,
             source=f"pyjhora_adapter.special_states/{eng_ver}",
             citation_human=f"{g_name} combust: {'yes' if is_combust else 'no'} ({ayanamsha_id}).",
         ))
@@ -4053,7 +4103,7 @@ def _build_special_state_rows(
             "graha_special_state_rollup", subject, "is_retrograde",
             chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
             value_text="true" if retro else "false",
-            verif="two_pass_verified",
+            verif=UNVERIFIED_DEFAULT,
             source=f"pyjhora_adapter.special_states/{eng_ver}",
             citation_human=f"{g_name} retrograde: {'yes' if retro else 'no'} ({ayanamsha_id}).",
         ))
@@ -4061,7 +4111,7 @@ def _build_special_state_rows(
             "graha_special_state_rollup", subject, "is_vargottama",
             chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
             value_text="true" if is_vargottama else "false",
-            verif="two_pass_verified",
+            verif=UNVERIFIED_DEFAULT,
             source=f"pyjhora_adapter.special_states/{eng_ver}",
             citation_human=f"{g_name} vargottama: {'yes' if is_vargottama else 'no'} ({ayanamsha_id}).",
         ))
@@ -4069,7 +4119,7 @@ def _build_special_state_rows(
             "graha_special_state_rollup", subject, "is_debilitated",
             chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
             value_text="true" if is_debil else "false",
-            verif="two_pass_verified",
+            verif=UNVERIFIED_DEFAULT,
             source=f"pyjhora_adapter.special_states/{eng_ver}",
             citation_human=f"{g_name} debilitated: {'yes' if is_debil else 'no'} ({ayanamsha_id}).",
         ))
@@ -4077,7 +4127,7 @@ def _build_special_state_rows(
             "graha_special_state_rollup", subject, "is_exalted",
             chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
             value_text="true" if is_exalt else "false",
-            verif="two_pass_verified",
+            verif=UNVERIFIED_DEFAULT,
             source=f"pyjhora_adapter.special_states/{eng_ver}",
             citation_human=f"{g_name} exalted: {'yes' if is_exalt else 'no'} ({ayanamsha_id}).",
         ))
@@ -4148,7 +4198,7 @@ def _build_special_state_rows(
                 "base_dignity": base_dignity_score,
                 "contributions": contributions,
             },
-            verif="two_pass_verified",
+            verif=UNVERIFIED_DEFAULT,
             source=f"ga_structural.effective_dignity_v2/{eng_ver}",
             citation_human=(
                 f"{g_name} effective dignity: {effective_dignity_score:.4f} "
@@ -4229,7 +4279,7 @@ def _build_argala_rows(
                 chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
                 value_num=net_argala,
                 unit="argala_score",
-                verif="two_pass_verified",
+                verif=UNVERIFIED_DEFAULT,
                 source=f"pyjhora_adapter.argala/{eng_ver}",
                 citation_human=(
                     f"{varga} {target_sign} argala from {source_sign} "
@@ -4251,7 +4301,7 @@ def _build_argala_rows(
                 chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
                 value_num=virodha_score,
                 unit="virodha_score",
-                verif="two_pass_verified",
+                verif=UNVERIFIED_DEFAULT,
                 source=f"pyjhora_adapter.virodha_argala/{eng_ver}",
                 citation_human=(
                     f"{varga} {target_sign} virodha from {source_sign} "
@@ -4309,7 +4359,7 @@ def _build_esoteric_rows(
             "pranic_strength_per_graha", subject, "prana_score",
             chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
             value_num=prana_score,
-            verif="two_pass_verified",
+            verif=UNVERIFIED_DEFAULT,
             source=f"pyjhora_adapter.prana_nadi/{eng_ver}",
             citation_human=(
                 f"{g_name} pranic strength (Nadi tradition): {prana_score:.4f} "
@@ -4331,7 +4381,7 @@ def _build_esoteric_rows(
             "jaimini_tri_deva_role_per_graha", subject, "tri_deva_role",
             chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
             value_text=tri_deva_role,
-            verif="two_pass_verified",
+            verif=UNVERIFIED_DEFAULT,
             source=f"pyjhora_adapter.tri_deva/{eng_ver}",
             citation_human=(
                 f"{g_name} Jaimini tri-deva role: {tri_deva_role} "
@@ -4351,7 +4401,7 @@ def _build_esoteric_rows(
             "graha_tri_deva_role_strength", subject, "role_strength",
             chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
             value_num=round(role_strength, 4),
-            verif="two_pass_verified",
+            verif=UNVERIFIED_DEFAULT,
             source=f"pyjhora_adapter.tri_deva_strength/{eng_ver}",
             citation_human=(
                 f"{g_name} tri-deva role strength ({tri_deva_role}): {role_strength:.4f} ({ayanamsha_id})."
@@ -4404,6 +4454,12 @@ def _insert_chart_facts_rows(conn: Any, rows: list[dict[str, Any]]) -> int:
     # Serialize JSONB values and build positional tuples once upfront.
     tuples = []
     for r in rows:
+        # chart_facts carries NO CHECK constraint on verification_pass_status
+        # (confirmed live via pg_constraint), but assert_legal still rejects
+        # PROHIBITED spellings ('pass'/'PASS') and anything outside the settled
+        # vocabulary before the row reaches the INSERT — catching a writer bug
+        # here rather than as a silently-stored bad string.
+        assert_legal(r["verification_pass_status"], table="chart_facts")
         row = dict(r)
         v = row.get("fact_value_jsonb")
         if isinstance(v, (dict, list)):
@@ -4579,7 +4635,7 @@ def _build_special_point_relationship_rows(
                         "ayanamsha_id": ayanamsha_id,
                         "uncatalogued": False,
                     },
-                    verif="two_pass_verified",
+                    verif=UNVERIFIED_DEFAULT,
                     source=f"ga_structural.conjunction_special_point/{eng_ver}",
                     citation_human=(
                         f"{g_name} conjunct special point {sp_name} in H{sp_house} "
@@ -4616,7 +4672,7 @@ def _build_special_point_relationship_rows(
                             "ayanamsha_id": ayanamsha_id,
                             "uncatalogued": False,
                         },
-                        verif="two_pass_verified",
+                        verif=UNVERIFIED_DEFAULT,
                         source=f"ga_structural.aspect_received_by_special_point/{eng_ver}",
                         citation_human=(
                             f"{g_name} (H{g_house}) aspects special point {sp_name} "
@@ -4691,7 +4747,7 @@ def _build_house_lord_matrix_rows(
                 "ayanamsha_id": ayanamsha_id,
                 "uncatalogued": False,
             },
-            verif="two_pass_verified",
+            verif=UNVERIFIED_DEFAULT,
             source=f"ga_structural.lord_in_house_per_varga/{eng_ver}",
             citation_human=(
                 f"H{house_num} ({sign}) lord {lord} is in H{placed_house} in {varga} ({ayanamsha_id})."
@@ -4745,7 +4801,7 @@ def _build_house_lord_matrix_rows(
                             "ayanamsha_id": ayanamsha_id,
                             "uncatalogued": False,
                         },
-                        verif="two_pass_verified",
+                        verif=UNVERIFIED_DEFAULT,
                         source=f"ga_structural.lord_aspects_lord_per_varga/{eng_ver}",
                         citation_human=(
                             f"{lord_a} (H{house_a}) aspects lord {lord_b} (H{house_b}) "
@@ -4829,7 +4885,7 @@ def _build_varga_relationship_rows(
                 "ayanamsha_id": ayanamsha_id,
                 "uncatalogued": False,
             },
-            verif="two_pass_verified",
+            verif=UNVERIFIED_DEFAULT,
             source=f"ga_structural.dignity_per_varga/{eng_ver}",
             citation_human=(
                 f"{g_name} {dignity} in {sign} (house {house}) in {varga} ({ayanamsha_id})."
@@ -4872,7 +4928,7 @@ def _build_varga_relationship_rows(
                     "ayanamsha_id": ayanamsha_id,
                     "uncatalogued": False,
                 },
-                verif="two_pass_verified",
+                verif=UNVERIFIED_DEFAULT,
                 source=f"ga_structural.aspect_parashari_per_varga/{eng_ver}",
                 citation_human=(
                     f"{g_name} {offset}th aspect on house {target_house} in {varga} "
@@ -4928,7 +4984,13 @@ def _build_varga_relationship_rows(
                     "same_sign": same_sign,
                     "uncatalogued": False,
                 },
-                verif="two_pass_verified" if varga != "D1" else "single",
+                # STAGE-2 HONEST-TIERS CORRECTION (M-22 overnight, Opus Gate
+                # Reviewer ruling): D1's "single" and non-D1's demoted
+                # two_pass_verified converge — neither branch had a second
+                # independent derivation to disagree with (same-sign conjunction
+                # detection is one computation, not two), so both collapse to the
+                # same honest default.
+                verif=UNVERIFIED_DEFAULT,
                 source=f"ga_structural.conjunction_per_varga/{eng_ver}",
                 citation_human=(
                     f"{g1} conjunct {g2} in {varga} ({sign1}, "
@@ -4967,7 +5029,7 @@ def _build_varga_relationship_rows(
                     "ayanamsha_id": ayanamsha_id,
                     "uncatalogued": False,
                 },
-                verif="two_pass_verified",
+                verif=UNVERIFIED_DEFAULT,
                 source=f"ga_structural.parivartana_per_varga/{eng_ver}",
                 citation_human=(
                     f"Parivartana {g1}↔{lord1} in {varga}: "
@@ -5006,7 +5068,7 @@ def _build_varga_relationship_rows(
                 "ayanamsha_id": ayanamsha_id,
                 "uncatalogued": False,
             },
-            verif="two_pass_verified",
+            verif=UNVERIFIED_DEFAULT,
             source=f"ga_structural.dispositor_chain_per_varga/{eng_ver}",
             citation_human=(
                 f"{g_name} dispositor chain in {varga}: {' → '.join(chain)} ({ayanamsha_id})."
@@ -5035,7 +5097,7 @@ def _build_varga_relationship_rows(
                     "ayanamsha_id": ayanamsha_id,
                     "uncatalogued": False,
                 },
-                verif="two_pass_verified",
+                verif=UNVERIFIED_DEFAULT,
                 source=f"ga_structural.vargottama_per_varga/{eng_ver}",
                 citation_human=(
                     f"{g_name} {'IS' if is_vargottama else 'NOT'} vargottama in {varga}: "
@@ -5059,7 +5121,7 @@ def _build_varga_relationship_rows(
             "ketu_house": ks_result["ketu_house"],
             "ayanamsha_id": ayanamsha_id,
         },
-        verif="two_pass_verified",
+        verif=UNVERIFIED_DEFAULT,
         source=f"ga_structural.kala_sarpa_per_varga/{eng_ver}",
         citation_human=(
             f"Kala Sarpa detection in {varga}: "
@@ -5103,7 +5165,7 @@ def _build_varga_relationship_rows(
                     "ayanamsha_id": ayanamsha_id,
                     "uncatalogued": False,
                 },
-                verif="two_pass_verified",
+                verif=UNVERIFIED_DEFAULT,
                 source=f"ga_structural.jaimini_rasi_drishti_per_varga/{eng_ver}",
                 citation_human=(
                     f"{s1} ({s1_type}) Jaimini rasi drishti on {s2} in {varga} ({ayanamsha_id})."
@@ -5234,7 +5296,7 @@ def _build_karaka_web_rows(
                         "ayanamsha_id": ayanamsha_id,
                         "uncatalogued": False,
                     },
-                    verif="two_pass_verified",
+                    verif=UNVERIFIED_DEFAULT,
                     source=f"ga_structural.karaka_web_per_varga/{eng_ver}",
                     citation_human=(
                         f"{role_a} ({p_a}) {relationship} with {role_b} ({p_b}) "
@@ -5302,7 +5364,7 @@ def _build_graph_centrality_per_varga_rows(
                 "degree_centrality": degree,
                 "connected_to": sorted(adjacency[g_name]),
             },
-            verif="two_pass_verified",
+            verif=UNVERIFIED_DEFAULT,
             source=f"ga_structural.graha_centrality/{eng_ver}",
             citation_human=(
                 f"{g_name} Parashari aspect-graph degree={degree} in {varga} ({ayanamsha_id})."
@@ -5388,7 +5450,7 @@ def _build_dispositor_tree_per_varga_rows(
                 "is_root": (g_name in roots),
                 "sign": graha_sign.get(g_name, ""),
             },
-            verif="two_pass_verified",
+            verif=UNVERIFIED_DEFAULT,
             source=f"ga_structural.dispositor_tree/{eng_ver}",
             citation_human=(
                 f"{g_name} in {varga} ({ayanamsha_id}): disposited by {disp}, depth={depth}."
@@ -5402,7 +5464,7 @@ def _build_dispositor_tree_per_varga_rows(
         value_text=",".join(root_subjects) if root_subjects else "cycle",
         value_num=float(len(roots)),
         value_jsonb={"varga": varga, "roots": root_subjects, "root_count": len(roots)},
-        verif="two_pass_verified",
+        verif=UNVERIFIED_DEFAULT,
         source=f"ga_structural.dispositor_tree/{eng_ver}",
         citation_human=(
             f"Dispositor tree roots in {varga} ({ayanamsha_id}): {root_subjects}."
@@ -5480,7 +5542,7 @@ def _build_chart_cluster_per_varga_rows(
                 "cluster_id": cluster_id,
                 "total_clusters": cluster_counter,
             },
-            verif="two_pass_verified",
+            verif=UNVERIFIED_DEFAULT,
             source=f"ga_structural.chart_cluster/{eng_ver}",
             citation_human=(
                 f"{g_name} cluster_id={cluster_id} (of {cluster_counter}) "
@@ -5553,7 +5615,7 @@ def _build_chart_cog_per_varga_rows(
                 PLANET_TO_SUBJECT.get(k, k.upper()): v for k, v in tally.items()
             },
         },
-        verif="two_pass_verified",
+        verif=UNVERIFIED_DEFAULT,
         source=f"ga_structural.chart_center_of_gravity/{eng_ver}",
         citation_human=(
             f"COG in {varga} ({ayanamsha_id}): {final_disp} terminates {chains_here} chains."
@@ -5566,7 +5628,7 @@ def _build_chart_cog_per_varga_rows(
         chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
         value_num=float(cluster_count),
         value_jsonb={"varga": varga, "cluster_count": cluster_count},
-        verif="two_pass_verified",
+        verif=UNVERIFIED_DEFAULT,
         source=f"ga_structural.chart_center_of_gravity/{eng_ver}",
         citation_human=f"Dispositor-chain cluster_count={cluster_count} in {varga} ({ayanamsha_id}).",
     ))
@@ -5624,7 +5686,7 @@ def _build_convergence_count_per_varga_rows(
             chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
             value_num=float(count),
             value_jsonb={"varga": varga, "total_edges": count, "entity": "graha"},
-            verif="two_pass_verified",
+            verif=UNVERIFIED_DEFAULT,
             source=f"ga_structural.convergence_count/{eng_ver}",
             citation_human=f"{g_name} total aspect-edges={count} in {varga} ({ayanamsha_id}).",
         ))
@@ -5636,7 +5698,7 @@ def _build_convergence_count_per_varga_rows(
             chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
             value_num=float(count),
             value_jsonb={"varga": varga, "house": h, "total_edges": count, "entity": "house"},
-            verif="two_pass_verified",
+            verif=UNVERIFIED_DEFAULT,
             source=f"ga_structural.convergence_count/{eng_ver}",
             citation_human=f"H{h} convergence_count={count} in {varga} ({ayanamsha_id}).",
         ))
@@ -5688,7 +5750,7 @@ def _build_karaka_bhava_concordance_per_varga_rows(
                 "natural_karaka": nat_subj,
                 "concordance": concordance,
             },
-            verif="two_pass_verified",
+            verif=UNVERIFIED_DEFAULT,
             source=f"ga_structural.karaka_bhava_concordance/{eng_ver}",
             citation_human=(
                 f"{signif} ({varga} {ayanamsha_id}): natural_karaka={natural_karaka} "
@@ -6418,7 +6480,7 @@ def _build_graha_yuddha_rows(
                     "reason": "no_ratified_classical_rule",
                     "floored": True,
                 },
-                verif="two_pass_verified",
+                verif=UNVERIFIED_DEFAULT,
                 source=f"ga_structural.graha_yuddha/{eng_ver}",
                 citation_human=(
                     f"Graha yuddha in {sign_a} ({first} & {second}, orb={round(orb,4)}°): "
@@ -6439,7 +6501,7 @@ def _build_graha_yuddha_rows(
                     "reason": "no_ratified_classical_rule",
                     "floored": True,
                 },
-                verif="two_pass_verified",
+                verif=UNVERIFIED_DEFAULT,
                 source=f"ga_structural.graha_yuddha/{eng_ver}",
                 citation_human=(
                     f"Graha yuddha in {sign_a} ({first} & {second}, orb={round(orb,4)}°): "
@@ -6459,7 +6521,7 @@ def _build_graha_yuddha_rows(
                     "ayanamsha_id": ayanamsha_id,
                     "uncatalogued": False,
                 },
-                verif="two_pass_verified",
+                verif=UNVERIFIED_DEFAULT,
                 source=f"ga_structural.graha_yuddha/{eng_ver}",
                 citation_human=(
                     f"Graha yuddha orb in {sign_a}: {first} vs {second} "
@@ -6522,7 +6584,7 @@ def _build_combustion_retrograde_relationship_rows(
                         "ayanamsha_id": ayanamsha_id,
                         "uncatalogued": False,
                     },
-                    verif="two_pass_verified",
+                    verif=UNVERIFIED_DEFAULT,
                     source=f"ga_structural.combustion_relationship/{eng_ver}",
                     citation_human=(
                         f"{name} combust: within {round(diff,4)}° of Sun "
@@ -6567,7 +6629,7 @@ def _build_combustion_retrograde_relationship_rows(
                     "ayanamsha_id": ayanamsha_id,
                     "uncatalogued": False,
                 },
-                verif="two_pass_verified",
+                verif=UNVERIFIED_DEFAULT,
                 source=f"ga_structural.retrograde_aspect_modification/{eng_ver}",
                 citation_human=(
                     f"{name} (retrograde) modified aspect to H{target_house} "
@@ -6651,7 +6713,7 @@ def _build_sambandha_per_varga_rows(
                     "conjunction_score": conj_score, "mutual_aspect_score": mutual_asp,
                     "exchange_score": exchange, "reception_score": reception,
                 },
-                verif="two_pass_verified",
+                verif=UNVERIFIED_DEFAULT,
                 source=f"ga_structural.sambandha_per_varga/{eng_ver}",
                 citation_human=(
                     f"{n1}–{n2} sambandha in {varga}: grade {grade:.3f} ({ayanamsha_id})."
@@ -6686,7 +6748,7 @@ def _build_bhava_web_per_varga_rows(
             value_text=link_type,
             value_jsonb={"varga": varga, "source_house": src_h, "target_house": lord_h,
                          "lord": lord_name, "link_kind": "lord_placed", "link_type": link_type},
-            verif="two_pass_verified",
+            verif=UNVERIFIED_DEFAULT,
             source=f"ga_structural.bhava_web_per_varga/{eng_ver}",
             citation_human=f"Lord of H{src_h} ({lord_name}) placed in H{lord_h} in {varga}: {link_type} ({ayanamsha_id}).",
         ))
@@ -6702,7 +6764,7 @@ def _build_bhava_web_per_varga_rows(
                     value_text=asp_link,
                     value_jsonb={"varga": varga, "source_house": src_h, "target_house": tgt_h,
                                  "lord": lord_name, "link_kind": "lord_aspects", "link_type": asp_link},
-                    verif="two_pass_verified",
+                    verif=UNVERIFIED_DEFAULT,
                     source=f"ga_structural.bhava_web_per_varga/{eng_ver}",
                     citation_human=f"Lord of H{src_h} ({lord_name}) aspects H{tgt_h} in {varga}: {asp_link} ({ayanamsha_id}).",
                 ))
@@ -6744,7 +6806,7 @@ def _build_net_argala_per_varga_rows(
             value_num=float(net),
             unit="net_count",
             value_jsonb={"varga": varga, "house": tgt_h, "net_argala": net},
-            verif="two_pass_verified",
+            verif=UNVERIFIED_DEFAULT,
             source=f"ga_structural.net_argala_per_varga/{eng_ver}",
             citation_human=f"Net argala on H{tgt_h} in {varga}: {net:+.0f} ({ayanamsha_id}).",
         ))
@@ -6782,7 +6844,7 @@ def _build_graha_yuddha_per_varga_rows(
                         "varga": varga, "graha1": n1, "graha2": n2, "orb_deg": round(orb, 4),
                         "varga_assumption": "physical_phenomenon_extended_to_mathematical_varga",
                     },
-                    verif="two_pass_verified",
+                    verif=UNVERIFIED_DEFAULT,
                     source=f"ga_structural.graha_yuddha_per_varga/{eng_ver}",
                     citation_human=f"{n1}–{n2} within 1° in {varga} (orb {orb:.3f}°): graha-yuddha ({ayanamsha_id}).",
                 ))
@@ -6823,7 +6885,7 @@ def _build_combustion_per_varga_rows(
                 "orb_limit": orb_limit, "is_combust": is_combust,
                 "varga_assumption": "physical_phenomenon_extended_to_mathematical_varga",
             },
-            verif="two_pass_verified",
+            verif=UNVERIFIED_DEFAULT,
             source=f"ga_structural.combustion_per_varga/{eng_ver}",
             citation_human=(
                 f"{g_name} {'combust' if is_combust else 'not combust'} in {varga}: "
@@ -6858,7 +6920,7 @@ def _build_nway_per_varga_rows(
                     "varga": varga, "sign": sign_name,
                     "grahas": grahas, "count": len(grahas), "type": "stellium",
                 },
-                verif="two_pass_verified",
+                verif=UNVERIFIED_DEFAULT,
                 source=f"ga_structural.nway_config_per_varga/{eng_ver}",
                 citation_human=f"{len(grahas)}-way stellium in {sign_name} ({varga}): {', '.join(grahas)} ({ayanamsha_id}).",
             ))
@@ -6892,7 +6954,7 @@ def _build_virupa_drishti_rows(
                     "target_house": target_house, "aspect_offset": offset,
                     "strength": strength, "ayanamsha_id": ayanamsha_id,
                 },
-                verif="two_pass_verified",
+                verif=UNVERIFIED_DEFAULT,
                 source=f"ga_structural.virupa_drishti/{eng_ver}",
                 citation_human=(
                     f"BPHS Ch.7: {g_name} {offset}th aspect on H{target_house} in {varga} "
@@ -6985,7 +7047,7 @@ def _build_nakshatra_relationship_rows(
                             "grahas": [g1, g2],
                             "constituent_fact_ids": fids,
                         },
-                        verif="two_pass_verified",
+                        verif=UNVERIFIED_DEFAULT,
                         source=f"ga_structural.nakshatra_co_tenancy/{eng_ver}",
                         citation_human=f"{g1} and {g2} co-tenant in {nak_name} ({ayanamsha_id}).",
                     ))
@@ -7006,7 +7068,7 @@ def _build_nakshatra_relationship_rows(
                 "lord": nak_lord,
                 "constituent_fact_ids": [f for f in [graha_nak_fact_id, lord_fact_id] if f],
             },
-            verif="two_pass_verified",
+            verif=UNVERIFIED_DEFAULT,
             source=f"ga_structural.nakshatra_lord_relationship/{eng_ver}",
             citation_human=f"{graha_subj} in {nak}; lord={nak_lord} ({ayanamsha_id}).",
         ))
@@ -7028,7 +7090,7 @@ def _build_nakshatra_relationship_rows(
                     "tara_name": tara_name,
                     "constituent_fact_ids": [f for f in [graha_nak_fact_id, moon_nak_fid] if f],
                 },
-                verif="two_pass_verified",
+                verif=UNVERIFIED_DEFAULT,
                 source=f"ga_structural.tara_bala/{eng_ver}",
                 citation_human=(
                     f"{graha_subj} tara from Moon: {tara_count} ({tara_name}) ({ayanamsha_id})."
@@ -7146,7 +7208,7 @@ def _build_nakshatra_dispositor_chain_rows(
                 "cycle_at_step": effective_cycle,
                 "constituent_fact_ids": [fid] if fid else [],
             },
-            verif="two_pass_verified",
+            verif=UNVERIFIED_DEFAULT,
             source=f"ga_structural.nakshatra_dispositor_chain/{eng_ver}",
             citation_human=(
                 f"{planet_name} nak-lord chain length={chain_length} "
@@ -7217,6 +7279,23 @@ def _build_bhava_chalit_divergence_rows(
         if chalit_h != rasi_h:
             divergence_count += 1
             fid = graha_pos_fids.get(g_subj, "")
+            # STAGE-2 HONEST-TIERS: this row is emitted ONLY when the rasi
+            # (whole-sign) house pass and the chalit (equal-bhava) house pass
+            # genuinely disagree (the `if chalit_h != rasi_h` guard above) — the
+            # textbook two-pass-with-real-disagreement case verification_vocab.py's
+            # DIVERGENT_FLAGGED entry describes: two passes ran and DISAGREED.
+            # Confirmed safe against this file's build-halt logic (Gate Reviewer
+            # mandated safety check, Stage 2): grepping every `_write_halt_log(`
+            # call site in this module shows halts fire only on ARGALA/VIRODHA row
+            # count mismatch, UPSTREAM_ABSENT, and TWO_PASS_STRUCTURAL (which is
+            # `_verify_no_duplicate_fact_ids` + `_verify_no_ga3_overlap` +
+            # `_verify_citation_completeness` + `_linter_check_rows` — none of
+            # which inspect `verification_pass_status`/DIVERGENT_FLAGGED at all;
+            # `_linter_check_rows` only scans `fact_value_text` for narration
+            # phrases). `assert_legal()` also does not reject DIVERGENT_FLAGGED —
+            # it is a legal, non-prohibited vocabulary member. The module
+            # docstring's old claim ("divergent_flagged -> halt build") does not
+            # match any code path in this file and has been corrected below.
             rows.append(_base_row(
                 "bhava_chalit_rasi_divergence", g_subj, "diverges_from_rasi",
                 chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
@@ -7229,7 +7308,7 @@ def _build_bhava_chalit_divergence_rows(
                     "graha_longitude": round(g_long, 4),
                     "constituent_fact_ids": [fid] if fid else [],
                 },
-                verif="two_pass_verified",
+                verif=DIVERGENT_FLAGGED,
                 source=f"ga_structural.bhava_chalit_divergence/{eng_ver}",
                 citation_human=(
                     f"{g_subj} bhava-chalit diverges: rasi H{rasi_h} vs chalit H{chalit_h} "
@@ -7297,7 +7376,7 @@ def _build_significator_path_rows(
                         else "isolated"
                     ),
                 },
-                verif="two_pass_verified",
+                verif=UNVERIFIED_DEFAULT,
                 source=f"ga_structural.significator_path/{eng_ver}",
                 citation_human=(
                     f"{start}→{end} in {varga}: path length "
@@ -7375,7 +7454,7 @@ def _build_contradiction_pair_rows(
                     "benefic_count": sum(1 for v, _ in valence_list if v == "benefic"),
                     "malefic_count": sum(1 for v, _ in valence_list if v == "malefic"),
                 },
-                verif="two_pass_verified",
+                verif=UNVERIFIED_DEFAULT,
                 source=f"ga_structural.contradiction_pairs/{eng_ver}",
                 citation_human=(
                     f"{subj} contradiction ({family}, {varga}): benefic {ben_cats} "

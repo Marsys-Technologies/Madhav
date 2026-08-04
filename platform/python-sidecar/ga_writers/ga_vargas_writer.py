@@ -61,6 +61,12 @@ from typing import Any
 
 import psycopg.rows
 
+from brahmagyan.verification_vocab import (
+    CLASSICAL_MATCH,
+    TWO_PASS_VERIFIED,
+    UNVERIFIED_DEFAULT,
+    assert_legal,
+)
 from pyjhora_adapter.compute import compute_chart
 from pyjhora_adapter.version import ENGINE_VERSION
 from pyjhora_adapter._names import SIGN_NAMES, SIGN_LORDS
@@ -337,12 +343,24 @@ def _citation_human(category: str, varga: str, body: str, key: str,
 
 
 def _verification_status(category: str, varga_n: int) -> str:
-    """Return verification pass status for a given category + varga."""
+    """Return verification pass status for a given category + varga.
+
+    Stage 2 honest-tiers fix: the fallback used to return the literal
+    "two_pass_verified" unconditionally for any varga_n in
+    TWO_PASS_VARGA_POSITIONS (D60/D108/D150/D2700) — the exact same "single
+    for X, else two_pass_verified" shape the deity-attribution ternary had,
+    and with the identical defect: TWO_PASS_VARGA_POSITIONS is a static
+    membership set, not a real second-pass comparison that could disagree.
+    The recon pass that ruled this writer's fix confirmed genuine=EMPTY (no
+    site in this writer runs an actual two-pass check), so this fallback
+    gets the same UNVERIFIED_DEFAULT treatment as every other unconditional
+    two_pass_verified emission here.
+    """
     if category == "varga_position" and varga_n not in TWO_PASS_VARGA_POSITIONS:
         return "single"
     if category in SINGLE_PASS_CATEGORIES and varga_n not in TWO_PASS_VARGA_POSITIONS:
         return "single"
-    return "two_pass_verified"
+    return UNVERIFIED_DEFAULT
 
 
 def _compute_divisional_sign(longitude_deg: float, divisor: int) -> int:
@@ -1043,7 +1061,7 @@ def _build_dignity_rows(
             "fact_value_num": None,
             "fact_subject": f"{vid}.{subject}",
             "build_id_uuid": build_id,
-            "verification_pass_status": "two_pass_verified",
+            "verification_pass_status": UNVERIFIED_DEFAULT,
             "engine_version": ENGINE_VERSION,
             "citation_ref": _citation_ref("varga_dignity", vid, body, "dignity",
                                            chart_id, ayanamsha_id, ENGINE_VERSION),
@@ -1097,7 +1115,7 @@ def _build_vargottama_rows(
             "fact_value_num": 1.0 if is_vargottama else 0.0,
             "fact_subject": f"{vid}.{subject}",
             "build_id_uuid": build_id,
-            "verification_pass_status": "two_pass_verified",
+            "verification_pass_status": UNVERIFIED_DEFAULT,
             "engine_version": ENGINE_VERSION,
             "citation_ref": _citation_ref("varga_vargottama_flag", vid, body, "vargottama",
                                            chart_id, ayanamsha_id, ENGINE_VERSION),
@@ -1309,23 +1327,30 @@ def _build_deity_rows(
             "fact_category": "varga_deity_attribution",
             "fact_subject": f"{vid}.{subject}",
             "build_id_uuid": build_id,
-            # M-22 fix (M-17 evidence): D60's quality lookup above is a
-            # repeating [Malefic,Neutral,Benefic]×20 pattern — the real
-            # canonical 60-deity list is irregular (~half mislabeled by
-            # this proxy), and D60 carries the HIGHEST vimshopaka weight in
-            # serving. Demote D60 rows only; other vargas' deity
-            # attribution in this shared builder are unaffected. Fixing the
-            # canonical D60 table itself is M-17's scope, not this lane's.
-            # "single" (not "documented_approximation") because
-            # chart_divisionals' verification_pass_status CHECK constraint
-            # (migration 206, same as chart_dashas) only allows
-            # {'two_pass_verified','classical_match','divergent_flagged',
-            # 'single'} — caught live by this lane's own Ring-1 rebuild
-            # attempt. "single" resolves to the same low-confidence
-            # VERIFICATION_RESCALE default (0.60) via the .get() fallback.
-            "verification_pass_status": (
-                "single" if varga_n == 60 else "two_pass_verified"
-            ),
+            # M-22 fix (M-17 evidence), extended Stage 2 (honest-tiers, TAP-6
+            # M-22 remediation): D60's quality lookup above is a repeating
+            # [Malefic,Neutral,Benefic]×20 pattern — the real canonical
+            # 60-deity list is irregular (~half mislabeled by this proxy),
+            # and D60 carries the HIGHEST vimshopaka weight in serving. The
+            # original M-22 fix demoted D60 rows only, leaving every other
+            # varga's deity/quality attribution asserting "two_pass_verified"
+            # unconditionally — but the recon pass that ruled this writer's
+            # Stage 2 fix found genuine=EMPTY: no varga's deity/quality
+            # lookup in this shared builder runs a real second-pass
+            # comparison (they're all static per-varga table/formula lookups
+            # keyed on sign_idx). So the ternary collapses to unconditional
+            # UNVERIFIED_DEFAULT for every varga, D60 included — D60's value
+            # doesn't change, only its assertion goes from an unexamined
+            # exception to the same honest default every other varga now
+            # gets. UNVERIFIED_DEFAULT resolves to "single" (not
+            # "documented_approximation") because chart_divisionals'
+            # verification_pass_status CHECK constraint (migration 206, same
+            # as chart_dashas) only allows {'two_pass_verified',
+            # 'classical_match','divergent_flagged','single'} — caught live
+            # by this lane's own Ring-1 rebuild attempt. "single" resolves to
+            # the same low-confidence VERIFICATION_RESCALE default (0.60)
+            # via the .get() fallback.
+            "verification_pass_status": UNVERIFIED_DEFAULT,
             "engine_version": ENGINE_VERSION,
             "source_calculation": (
                 f"bg_shashtiamsha_deities_join/{ENGINE_VERSION}"
@@ -1421,7 +1446,7 @@ def _build_formula_variant_rows(
                 "fact_value_num": float(sign_idx + 1),
                 "fact_subject": f"{vid}.{subject}.{formula_id}",
                 "build_id_uuid": build_id,
-                "verification_pass_status": "two_pass_verified",
+                "verification_pass_status": UNVERIFIED_DEFAULT,
                 "engine_version": ENGINE_VERSION,
                 "citation_ref": _citation_ref("varga_formula_variant_position", vid, body,
                                                f"sign_{formula_id}", chart_id, ayanamsha_id,
@@ -1473,7 +1498,7 @@ def _build_d30_lord_per_amsa_rows(
                 "fact_value_num": start_deg,
                 "fact_subject": f"D30.S{sign_idx+1}",
                 "build_id_uuid": build_id,
-                "verification_pass_status": "two_pass_verified",
+                "verification_pass_status": UNVERIFIED_DEFAULT,
                 "engine_version": ENGINE_VERSION,
                 "citation_ref": (f"varga_d30_lord_per_amsa.D30.S{sign_idx+1}.{lord}"
                                  f"@chart={chart_id}:ay={ayanamsha_id}:eng={ENGINE_VERSION}"),
@@ -1539,7 +1564,7 @@ def _build_vimsopaka_rows(
             "fact_value_num": round(contribution, 4),
             "fact_subject": f"{vid}.{subject}",
             "build_id_uuid": build_id,
-            "verification_pass_status": "two_pass_verified",
+            "verification_pass_status": UNVERIFIED_DEFAULT,
             "engine_version": ENGINE_VERSION,
             "citation_ref": _citation_ref("varga_vimsopaka_contribution", vid, body, "contribution",
                                            chart_id, ayanamsha_id, ENGINE_VERSION),
@@ -1616,7 +1641,7 @@ def _build_ashtakavarga_rows(
                 "fact_value_num": float(bindu_val),
                 "fact_subject": f"{vid}.{subject}.S{sign_idx + 1}",
                 "build_id_uuid": build_id,
-                "verification_pass_status": "two_pass_verified",
+                "verification_pass_status": UNVERIFIED_DEFAULT,
                 "engine_version": ENGINE_VERSION,
                 "citation_ref": _citation_ref("varga_ashtakavarga", vid, f"{graha_label}.S{sign_idx + 1}",
                                                "bindus", chart_id, ayanamsha_id, ENGINE_VERSION),
@@ -1810,7 +1835,7 @@ def _build_karaka_rows(
             "fact_value_num": None,
             "fact_subject": f"{vid}.{k_name}",
             "build_id_uuid": build_id,
-            "verification_pass_status": "two_pass_verified",
+            "verification_pass_status": UNVERIFIED_DEFAULT,
             "engine_version": ENGINE_VERSION,
             "citation_ref": _citation_ref("karaka_per_varga", vid, k_name, "assigned_graha",
                                            chart_id, ayanamsha_id, ENGINE_VERSION),
@@ -1922,7 +1947,7 @@ def _build_rollup_rows(
             "fact_value_num": vnum,
             "fact_subject": f"{vid}.rollup",
             "build_id_uuid": build_id,
-            "verification_pass_status": "two_pass_verified",
+            "verification_pass_status": UNVERIFIED_DEFAULT,
             "engine_version": ENGINE_VERSION,
             "citation_ref": f"varga_rollup.{vid}.{key}@chart={chart_id}:ay={ayanamsha_id}",
             "citation_human": f"{vid} rollup {key}: {vnum} ({ayanamsha_id}).",
@@ -1983,7 +2008,7 @@ def _build_d9_lagna_special_rows(
             "fact_value_num": vnum,
             "fact_subject": "D9.LAGNA",
             "build_id_uuid": build_id,
-            "verification_pass_status": "two_pass_verified",
+            "verification_pass_status": UNVERIFIED_DEFAULT,
             "engine_version": ENGINE_VERSION,
             "citation_ref": f"varga_d9_lagna_special.D9.LAGNA.{key}@chart={chart_id}:ay={ayanamsha_id}",
             "citation_human": f"D9 Lagna {key}: {vtxt} ({ayanamsha_id}).",
@@ -2048,7 +2073,7 @@ def _build_pushkara_rows(
                 "fact_value_num": 1.0 if is_pushkara_nav else 0.0,
                 "fact_subject": f"D9.{subject}",
                 "build_id_uuid": build_id,
-                "verification_pass_status": "two_pass_verified",
+                "verification_pass_status": UNVERIFIED_DEFAULT,
                 "engine_version": ENGINE_VERSION,
                 "citation_ref": f"varga_pushkara_navamsa_flag.D9.{body}.pushkara_navamsa@chart={chart_id}:ay={ayanamsha_id}",
                 "citation_human": f"{body} Pushkara navamsa flag: {is_pushkara_nav} ({ayanamsha_id}).",
@@ -2086,7 +2111,7 @@ def _build_pushkara_rows(
             "fact_value_num": 1.0 if is_pushkara_bhaga else 0.0,
             "fact_subject": f"{vid}.{subject}",
             "build_id_uuid": build_id,
-            "verification_pass_status": "two_pass_verified",
+            "verification_pass_status": UNVERIFIED_DEFAULT,
             "engine_version": ENGINE_VERSION,
             "citation_ref": f"varga_pushkara_bhaga_flag.{vid}.{body}.pushkara_bhaga@chart={chart_id}:ay={ayanamsha_id}",
             "citation_human": f"{body} Pushkara bhaga at {vid}: {is_pushkara_bhaga} ({ayanamsha_id}).",
@@ -2142,7 +2167,7 @@ def _build_karya_bhava_rows(
         "fact_value_num": float(karya_house_num),
         "fact_subject": f"{vid}.karya",
         "build_id_uuid": build_id,
-        "verification_pass_status": "two_pass_verified",
+        "verification_pass_status": UNVERIFIED_DEFAULT,
         "engine_version": ENGINE_VERSION,
         "citation_ref": f"varga_karya_bhava_per_varga.{vid}.karya@chart={chart_id}:ay={ayanamsha_id}",
         "citation_human": f"{vid} karya-bhava: {karya} (house {karya_house_num}, {ayanamsha_id}).",
@@ -2204,7 +2229,7 @@ def _build_lal_kitab_rows(
             "fact_value_num": float(pakka_ghar),
             "fact_subject": f"{vid}.{subject}",
             "build_id_uuid": build_id,
-            "verification_pass_status": "two_pass_verified",
+            "verification_pass_status": UNVERIFIED_DEFAULT,
             "engine_version": ENGINE_VERSION,
             "citation_ref": f"varga_lal_kitab_special.{vid}.{body}.{key}@chart={chart_id}:ay={ayanamsha_id}",
             "citation_human": f"{body} Lal Kitab Pakka Ghar {vid}: house {body_house} (Pakka={pakka_ghar}, match={is_pakka}, {ayanamsha_id}).",
@@ -2314,7 +2339,7 @@ def _build_d108_karma_rows(
             "fact_value_num": None,
             "fact_subject": f"D108.{subject}",
             "build_id_uuid": build_id,
-            "verification_pass_status": "two_pass_verified",
+            "verification_pass_status": UNVERIFIED_DEFAULT,
             "engine_version": ENGINE_VERSION,
             "citation_ref": f"varga_d108_karma_attribution.D108.{body}.karma_type@chart={chart_id}:ay={ayanamsha_id}",
             "citation_human": f"{body} D108 karma type: {karma_type} ({ayanamsha_id}).",
@@ -2372,7 +2397,7 @@ def _build_d150_rishi_rows(
             "fact_value_num": None,
             "fact_subject": f"{vid}.{subject}",
             "build_id_uuid": build_id,
-            "verification_pass_status": "two_pass_verified",
+            "verification_pass_status": UNVERIFIED_DEFAULT,
             "engine_version": ENGINE_VERSION,
             "citation_ref": f"{cat}.{vid}.{body}.rishi@chart={chart_id}:ay={ayanamsha_id}",
             "citation_human": f"{body}'s {vid} rishi: {rishi} ({ayanamsha_id}).",
@@ -2453,7 +2478,7 @@ def _build_cross_varga_harmonic_rows(
                 "fact_value_num": vnum,
                 "fact_subject": f"CROSS.{subject}",
                 "build_id_uuid": build_id,
-                "verification_pass_status": "two_pass_verified",
+                "verification_pass_status": UNVERIFIED_DEFAULT,
                 "engine_version": ENGINE_VERSION,
                 "citation_ref": f"{category}.CROSS.{body}.{key}@chart={chart_id}:ay={ayanamsha_id}",
                 "citation_human": f"{body} cross-varga {key}: {vtxt or vnum} ({ayanamsha_id}).",
@@ -2566,6 +2591,16 @@ def _write_rows_batch(conn, rows: list[dict]) -> int:
     replace_prior_chart_divisionals(conn, rows)
     if not rows:
         return 0
+    # chart_divisionals carries a REAL CHECK constraint on
+    # verification_pass_status (migration 206/210: only 'two_pass_verified',
+    # 'classical_match', 'divergent_flagged', 'single' are legal) — unlike
+    # chart_facts, an illegal value here raises psycopg.errors.CheckViolation
+    # at the executemany below. Assert every row's status is legal for this
+    # table BEFORE the batch attempt, so a writer bug surfaces as a clear
+    # ValueError here rather than a CheckViolation the batch/per-row fallback
+    # logic could otherwise swallow and silently drop the row.
+    for r in rows:
+        assert_legal(r["verification_pass_status"], table="chart_divisionals")
     # Batched happy path (perf-pre-D3): same SQL/values as the prior per-row loop,
     # just one round trip instead of N. A SAVEPOINT wraps the batch attempt —
     # without it, a mid-batch failure leaves the ambient transaction aborted and
@@ -2920,7 +2955,7 @@ def build_ga_vargas(
                     "fact_value_num": None,
                     "fact_subject": "D81_SAPTATISAMSA",
                     "build_id_uuid": build_id,
-                    "verification_pass_status": "two_pass_verified",
+                    "verification_pass_status": UNVERIFIED_DEFAULT,
                     "engine_version": ENGINE_VERSION,
                     "citation_ref": "GA6_BRIEF_LOCKED_DECISION_J",
                     "citation_human": "D81 (saptatisamsa) not computed — skipped per GA6 brief §2 locked decision J",
@@ -2966,7 +3001,7 @@ def build_ga_vargas(
                         "fact_value_num": None,
                         "fact_subject": floored_body.upper(),
                         "build_id_uuid": build_id,
-                        "verification_pass_status": "two_pass_verified",
+                        "verification_pass_status": UNVERIFIED_DEFAULT,
                         "engine_version": ENGINE_VERSION,
                         "citation_ref": "GA6_BRIEF_FLOORED_BODIES",
                         "citation_human": (

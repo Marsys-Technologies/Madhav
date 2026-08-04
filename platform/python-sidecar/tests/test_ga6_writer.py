@@ -52,12 +52,17 @@ Tests cover:
  48.  D9 lagna pushkara_lagna_flag: sign 1 (Taurus) is pushkara
  49.  varga_saptavargaja: own-sign=30, Moolatrikona=45 (D1-only), compound
       naisargika+tatkalika relation ladder cross-checked vs PyJHora (M-18)
- 50.  Two-pass verification: D60 position is two_pass_verified; D1 is single
+ 50.  Verification tiers (Stage 2 honest-tiers, TAP-6 M-22 remediation): D1
+      and D60 varga_position rows are both UNVERIFIED_DEFAULT ('single') —
+      genuine=EMPTY for this writer, no varga's position/dignity/deity/etc.
+      lookup runs an independent second-pass check to earn 'two_pass_verified'
 """
 from __future__ import annotations
 
 import pytest
 from unittest.mock import patch, MagicMock
+
+from brahmagyan.verification_vocab import RESTRICTED_TABLE_VOCAB, UNVERIFIED_DEFAULT
 
 
 # ── Import module under test ──────────────────────────────────────────────────
@@ -418,15 +423,28 @@ class TestPositionRows:
             assert r["verification_pass_status"] == "single", \
                 f"D1 position should be 'single', got '{r['verification_pass_status']}'"
 
-    def test_d60_verification_two_pass(self):
-        """D60 varga_position rows are two_pass_verified."""
+    def test_d60_verification_single(self):
+        """Stage 2 honest-tiers rewrite (was: test_d60_verification_two_pass,
+        asserting D60 varga_position rows are 'two_pass_verified'). REWRITTEN,
+        not silently flipped: D60/D108/D150/D2700 fell through
+        _verification_status()'s unconditional fallback return, which claimed
+        'two_pass_verified' for these four vargas' varga_position rows purely
+        from TWO_PASS_VARGA_POSITIONS set-membership — no independent second
+        derivation ever ran to back that claim (the recon pass that ruled this
+        writer's Stage 2 fix confirmed genuine=EMPTY for the whole writer).
+        D60 now gets the same honest UNVERIFIED_DEFAULT every other varga's
+        position rows already carried. Anchored to the vocab's canonical
+        constant, not to the writer's own literal, so this isn't a tautology
+        over the code under test.
+        """
         m = _mod()
         rows = m._build_position_rows(
             MOCK_CHART_ID, MOCK_AYAN, MOCK_BUILD_ID, 60, "D60",
             MOCK_VARGA_DATA, MOCK_VARGA_DATA)
         for r in rows:
-            assert r["verification_pass_status"] == "two_pass_verified", \
-                f"D60 position should be 'two_pass_verified'"
+            assert r["verification_pass_status"] == UNVERIFIED_DEFAULT, \
+                f"D60 position should be UNVERIFIED_DEFAULT ({UNVERIFIED_DEFAULT!r}), " \
+                f"got {r['verification_pass_status']!r}"
 
     def test_all_rows_have_citations(self):
         m = _mod()
@@ -454,12 +472,24 @@ class TestDignityRows:
             assert r["fact_value_text"] in valid, \
                 f"Invalid dignity: {r['fact_value_text']}"
 
-    def test_dignity_two_pass_verified(self):
+    def test_dignity_verification_single(self):
+        """Stage 2 honest-tiers rewrite (was: test_dignity_two_pass_verified,
+        asserting varga_dignity rows are 'two_pass_verified'). REWRITTEN, not
+        silently flipped: dignity is read off a single static classical
+        dignity table lookup (_compute_dignity) — one pass, no independent
+        second derivation to disagree with it. The literal
+        'verification_pass_status': 'two_pass_verified' this row used to
+        emit was unconditional (not gated by any real comparison), which the
+        recon pass that ruled this writer's Stage 2 fix confirmed for the
+        whole writer (genuine=EMPTY). Now UNVERIFIED_DEFAULT. Anchored to the
+        vocab's canonical constant, not to the writer's own literal, so this
+        isn't a tautology over the code under test.
+        """
         m = _mod()
         rows = m._build_dignity_rows(
             MOCK_CHART_ID, MOCK_AYAN, MOCK_BUILD_ID, 9, "D9", MOCK_VARGA_DATA)
         for r in rows:
-            assert r["verification_pass_status"] == "two_pass_verified"
+            assert r["verification_pass_status"] == UNVERIFIED_DEFAULT
 
 
 class TestVargottamaRows:
@@ -688,12 +718,22 @@ class TestD30LordPerAmsa:
             assert r["fact_value_text"] in valid_lords, \
                 f"D30 lord={r['fact_value_text']} not in {valid_lords}"
 
-    def test_verification_two_pass(self):
+    def test_verification_single(self):
+        """Stage 2 honest-tiers rewrite (was: test_verification_two_pass,
+        asserting varga_d30_lord_per_amsa rows are 'two_pass_verified').
+        REWRITTEN, not silently flipped: the D30 khavedamsa lord-per-amsa
+        table is a single static lookup, with no independent second
+        derivation behind the emitted 'two_pass_verified' literal — the
+        recon pass that ruled this writer's Stage 2 fix confirmed
+        genuine=EMPTY for the whole writer. Now UNVERIFIED_DEFAULT. Anchored
+        to the vocab's canonical constant, not to the writer's own literal,
+        so this isn't a tautology over the code under test.
+        """
         m = _mod()
         rows = m._build_d30_lord_per_amsa_rows(
             MOCK_CHART_ID, MOCK_AYAN, MOCK_BUILD_ID, MOCK_BUILD_ID)
         for r in rows:
-            assert r["verification_pass_status"] == "two_pass_verified"
+            assert r["verification_pass_status"] == UNVERIFIED_DEFAULT
 
 
 class TestVimsopakaRows:
@@ -1084,8 +1124,17 @@ class TestAtomicGrain:
             assert r.get("citation_human"), f"Missing citation_human: {r.get('fact_key')}"
 
     def test_all_rows_valid_verification_status(self):
+        """Correctness fix independent of the Stage 2 demotion: this test used
+        to hardcode its own copy of the restricted-table vocabulary set
+        instead of importing it from brahmagyan.verification_vocab (the
+        settled single source of truth per that module's docstring, defect
+        #5 in its own changelog). The hand-maintained copy happened to agree
+        member-for-member with RESTRICTED_TABLE_VOCAB today, but a future
+        change to one would silently desync from the other. Import from
+        source instead.
+        """
         m = _mod()
-        valid = {"single", "two_pass_verified", "classical_match", "divergent_flagged"}
+        valid = RESTRICTED_TABLE_VOCAB
         for r in self._all_rows():
             status = r.get("verification_pass_status")
             assert status in valid, f"Invalid status={status} for {r.get('fact_key')}"

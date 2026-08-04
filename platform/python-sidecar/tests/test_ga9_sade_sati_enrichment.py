@@ -23,6 +23,7 @@ from typing import Any, Callable
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent))
 
+from brahmagyan.verification_vocab import UNVERIFIED_DEFAULT  # noqa: E402
 from ga_writers.ga_sade_sati_writer import (  # noqa: E402
     YOGA_KARAKA_BY_LAGNA,
     PLANET_OWN_SIGNS,
@@ -307,18 +308,29 @@ def test_planet_own_signs_and_exaltation_tables_are_classical():
 # ── _verif_for_text / _verif_for_maybe_none ──────────────────────────────────
 
 def test_verif_for_text_flags_pending_fallback_as_single():
-    # M-22 fix (R6-1f): non-placeholder values previously claimed the top
-    # "two_pass_verified" tier despite this being a single upstream DB join
-    # with no independent second-pass cross-check — demoted to
-    # "single_pass" (formulas.py VERIFICATION_RESCALE 0.85 vs 1.00).
-    assert _verif_for_text("PENDING_GA7_LOOKUP") == "single"
-    assert _verif_for_text("JUP") == "single_pass"
+    # Stage 2 honest-tiers rewrite (was: test_verif_for_text_flags_pending_fallback_as_single
+    # asserting "single_pass" for the non-placeholder branch). REWRITTEN, not silently
+    # flipped: an earlier M-22 pass correctly demoted the non-placeholder branch off the
+    # top "two_pass_verified" tier, but landed on 'single_pass' — a DEPRECATED spelling
+    # (verification_vocab.VocabEntry('single_pass', ..., deprecated_alias_of='single')),
+    # not a distinct tier. The premise that a real-upstream-join value should be
+    # DISTINGUISHABLE from a PENDING_* placeholder was never true either: neither branch
+    # has a second independent derivation behind it (one upstream DB read is one pass,
+    # not two), so both are honestly "no verification ran" — UNVERIFIED_DEFAULT ('single')
+    # in both cases. Anchored to the vocab's canonical constant, not to the writer's own
+    # literal, so this isn't a tautology over the code under test.
+    assert _verif_for_text("PENDING_GA7_LOOKUP") == UNVERIFIED_DEFAULT
+    assert _verif_for_text("JUP") == UNVERIFIED_DEFAULT
 
 
 def test_verif_for_maybe_none_flags_none_as_single():
-    assert _verif_for_maybe_none(None) == "single"
-    assert _verif_for_maybe_none(False) == "single_pass"
-    assert _verif_for_maybe_none(True) == "single_pass"
+    # Stage 2 honest-tiers rewrite (was asserting "single_pass" for non-None values) —
+    # same rationale as test_verif_for_text_flags_pending_fallback_as_single above: a
+    # present-but-unchecked value and an honestly-absent one are both single-pass-or-less,
+    # neither backed by a second derivation, so both resolve to UNVERIFIED_DEFAULT.
+    assert _verif_for_maybe_none(None) == UNVERIFIED_DEFAULT
+    assert _verif_for_maybe_none(False) == UNVERIFIED_DEFAULT
+    assert _verif_for_maybe_none(True) == UNVERIFIED_DEFAULT
 
 
 # ── _make_row: value_jsonb must tolerate Decimal (BA-P3 rebuild regression) ──
