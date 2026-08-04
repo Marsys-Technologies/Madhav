@@ -84,15 +84,24 @@ THREE TABLES
    chunk-by-chunk usable/skipped accounting.
 
 CORPUS GAPS FOUND AND HONESTLY DISCLOSED (not fabricated — see census for full
-detail): mṛtyu-yoga, dagdha-yoga (day-quality), hutāśana-yoga, jvālāmukhī-yoga
-(the four brief-named combination-yogas panchang_engine does NOT implement;
-Muhurta Chintamani ch.17-18 contains untranslated Devanagari OCR content for
-two of the four — a real, verified, but currently unusable corpus fragment,
-disclosed as such, not claimed as a working citation); Śiva-vāsa (no rite-
-specific vāsa sibling beyond Agni/Chandra/Rāhu/Diśā/Nakṣatra/Bhadra exists);
-mṛtyu-bhāga; puṣkara-navāṃśa/bhāga; global gaṇḍānta-span factor (the natal
-APPLICABILITY concept exists in brahma_dosha_catalog; the chart-independent
-TIMING-SPAN factor does not).
+detail): mṛtyu-yoga, dagdha-yoga (day-quality), hutāśana-yoga, viṣa-yoga,
+yamaghaṇṭa-yoga, utpāta-yoga, kāṇa-yoga — panchang_engine does NOT implement
+any of these seven combination-yogas, but (COMBINATION-YOGA ENRICHMENT,
+ṢAḌ-DARŚANA T4, 2026-08-05) real, structured, citable Muhūrta Chintāmaṇi ch.1
+tables now exist for all seven in the translated `classical_text_chunks`
+corpus (MUHURTA_CHINTAMANI_TRANSLATION_REPORT_v1_0.md §3(c), 21 chunks) — each
+disposed `not_computed`, not `not_in_corpus`, with the exact verse/chunk_id
+cited (see census rows below). jvālāmukhī-yoga alone was re-investigated on
+this same translated evidence and CONFIRMED to remain `not_in_corpus` (the
+chunk names a place, not the yoga doctrine). The Amṛta-siddhi row's own
+tithi-level exception layer (vv.20-22) and the Ānandādi 28-yoga system's
+operational starting-nakṣatra chart (vv.23-25, illegible in this scan) are
+two further, distinct findings from the same enrichment pass — see the
+`amrit_siddhi_tithi_exceptions` and `ananda_yoga_28fold` census rows. Śiva-
+vāsa (no rite-specific vāsa sibling beyond Agni/Chandra/Rāhu/Diśā/Nakṣatra/
+Bhadra exists); mṛtyu-bhāga; puṣkara-navāṃśa/bhāga; global gaṇḍānta-span
+factor (the natal APPLICABILITY concept exists in brahma_dosha_catalog; the
+chart-independent TIMING-SPAN factor does not).
 
 Conforms to FROZEN WriterBase contract (ORCHESTRATOR_CONVERGENCE_CLOSE_v1_0.md
 §2): uses ctx.db_conn exclusively, returns WriterResult, honours ctx.dry_run.
@@ -452,41 +461,187 @@ CENSUS_ROWS: list[tuple[str, str, str, str, str, str | None]] = [
     ("combination_yoga", "panchaka", "computed",
      "Brihat Samhita §3; Drik Panchang 'Panchaka' dedicated page.",
      "bg_muhurta_lattice (factor_family=combination_yoga)", "drik_panchang"),
-    ("combination_yoga", "mrityu_yoga", "not_in_corpus",
-     "No standalone Mrityu-yoga day-quality detector/table found anywhere in "
-     "the codebase (grep-verified: 'mrityu'/'mrutyu' + 'yoga' across "
-     "panchang_engine and brahma_* modules). Amrit-Siddhi's own docstring "
-     "mentions a 'death-yoga override (MC 5.17)' that can BLOCK Amrit Siddhi, "
-     "but that is a blocking condition, not an implemented Mrityu-yoga "
-     "detector in its own right. Ingestion work item: OCR-translate + "
-     "structurally table Muhurta Chintamani ch.17-18 (untranslated Devanagari "
-     "content confirmed present — see dagdha_yoga row) and implement MC "
-     "5.17's blocking rule.",
-     "classical_text_chunks (text_id='muhurta_chintamani', untranslated)", None),
-    ("combination_yoga", "dagdha_yoga", "not_in_corpus",
-     "classical_text_chunks (text_id='muhurta_chintamani') ch.17-18 contains "
-     "untranslated Devanagari Dagdha-yoga tithi x vara tables (confirmed via "
-     "direct corpus query: chunks matching Devanagari dagdha/hutasana tokens "
-     "in that chapter range). CORRECTED (Opus corpus-citation review, "
-     "2026-07-30): 'content_en NULL on all 274 chunks' was WRONG -- "
-     "content_en is NOT NULL on any of the 274 rows; it is byte-IDENTICAL to "
-     "content_sa (the raw Devanagari was copied into the English column, "
-     "never actually translated) -- live-verified: 0/274 NULL on content_en, "
-     "274/274 equal to content_sa. Only cleaned_translation_text is genuinely "
-     "NULL on all 274 rows. Net effect is the same (no usable English "
-     "translation exists, so this table is not queryable/citable at verse "
-     "grain), but the evidence must be stated accurately: content_en holds "
-     "untranslated Devanagari, not NULL. Distinct from the L1 CHART-BOUND "
-     "'Dagdha Rashi' concept in ga_sensitive_writer.py (a different, "
-     "sign-based, per-chart computation) — do not conflate the two. "
-     "Ingestion work item: OCR-cleanup pass + structured table extraction "
-     "for Muhurta Chintamani ch.17-18.",
-     "classical_text_chunks (text_id='muhurta_chintamani', ch.17-18, content_en=content_sa untranslated)", None),
-    ("combination_yoga", "hutasana_yoga", "not_in_corpus",
-     "Same untranslated-corpus evidence as dagdha_yoga (co-located in Muhurta "
-     "Chintamani ch.17-18's Devanagari OCR). Ingestion work item: same OCR-"
-     "cleanup pass.",
-     "classical_text_chunks (text_id='muhurta_chintamani', ch.17-18, untranslated)", None),
+    # ── Combination-yoga enrichment (ṢAḌ-DARŚANA T4, 2026-08-05): the three
+    # rows immediately below (mrityu_yoga, dagdha_yoga, hutasana_yoga) were
+    # `not_in_corpus` on "untranslated Devanagari" evidence gathered
+    # 2026-07-30. MUHURTA_CHINTAMANI_TRANSLATION_REPORT_v1_0.md §3(c)
+    # (2026-08-03) translated the 21 combination_yoga-topic chunks that
+    # evidence pointed at; this pass re-read all 21 directly against their
+    # live content_en (platform/scripts/corpus/data/
+    # muhurta_chintamani_translations.json, priority_topic='combination_yoga')
+    # rather than trusting the report's own summary. FALSIFIED: real,
+    # structured, citable vāra×tithi and vāra×nakṣatra tables exist for all
+    # three, plus FOUR genuinely new combination-yogas sharing the same two
+    # source verses (Viṣa, Yamaghaṇṭa, and the Utpāta/Kāṇa members of the
+    # Utpāta-Mṛtyu-Kāṇa-Siddhi tetrad — "Siddhi" here is the tetrad's own 4th
+    # member, a DIFFERENT classical concept from the already-computed
+    # `siddha_yoga` row above; not registered as its own row to avoid a false
+    # merge with that unrelated name). Disposition moves to `not_computed`
+    # (not `computed`): the corpus tables now exist and are cited, but no
+    # panchang_engine detector implements the vāra×tithi/vāra×nakṣatra lookup
+    # — an ingestion/implementation work item, not yet materialized in
+    # bg_muhurta_lattice.
+    ("combination_yoga", "mrityu_yoga", "not_computed",
+     "Muhurta Chintamani ch.1 v.30 (ṭīkā), chunk muhurta_chintamani_pg0024_c01 "
+     "(translated 2026-08-03, re-read live 2026-08-05): 'On Sunday, the four "
+     "nakshatras reckoned from Vishakha are in order the Utpata, Mrityu, Kana "
+     "and Siddhi yogas... In the same way the said four yogas arise on Monday "
+     "from Purvashadha, on Tuesday from Dhanishtha, on Wednesday from Revati, "
+     "on Thursday from Rohini, on Friday from Pushya, and on Saturday from "
+     "Uttaraphalguni.' Mrityu is the 2nd of each weekday's four-nakshatra run "
+     "(e.g. Sunday: Vishakha=Utpata, Anuradha=Mrityu, Jyeshtha=Kana, "
+     "Mula=Siddhi). DISTINCT from Amrit-Siddhi's own separately-cited "
+     "'death-yoga override (MC 5.17)' blocking condition (see "
+     "amrit_siddhi_tithi_exceptions row below) — that blocks a different "
+     "yoga's formation; this IS a standalone day-quality yoga in its own "
+     "right, not a blocking rule. Verse 31's taxonomy (same chunk, fully "
+     "legible per its own OCR note) classifies this as a nakshatra x vara "
+     "combination-dosha. Work item: implement the 7-weekday x 4-nakshatra "
+     "lookup as a bg_muhurta_lattice combination_yoga emitter.",
+     "classical_text_chunks (text_id='muhurta_chintamani', chunk_id=muhurta_chintamani_pg0024_c01, "
+     "ch.1 v.30, translated 2026-08-03, content_en re-read live 2026-08-05, structured table confirmed)", None),
+    ("combination_yoga", "dagdha_yoga", "not_computed",
+     "Muhurta Chintamani ch.1 v.8 (mula + tika), chunks muhurta_chintamani_pg0017_c02 + "
+     "pg0018_c01 (translated 2026-08-03, re-read live 2026-08-05): 'The twelfth on "
+     "Sunday, the eleventh on Monday, the fifth on Tuesday, the third on "
+     "Wednesday, the sixth on Thursday, the eighth on Friday, the ninth on "
+     "Saturday — these form the Dagdha yoga.' A complete 7-weekday x 1-tithi "
+     "table, verse-numeral-confirmed against the tika's own day-by-day "
+     "enumeration (OCR conf 0.85). CORRECTS the prior 'content_en=content_sa "
+     "untranslated' finding (2026-07-30) — that was accurate THEN; the "
+     "2026-08-03 pass translated exactly this chunk range. Distinct from the "
+     "L1 CHART-BOUND 'Dagdha Rashi' concept in ga_sensitive_writer.py (a "
+     "different, sign-based, per-chart computation) — do not conflate the "
+     "two. Parihara noted in the same tika (region-conditional per some "
+     "authorities, benefic-in-kendra/trikona cancels per others, day-only per "
+     "Vasishtha) — conditional, so per the vishti_conditional_undertaking_"
+     "exception precedent this is NOT encoded as an unconditional "
+     "bg_parihara_rules row. Work item: implement the 7-weekday x 1-tithi "
+     "lookup as a bg_muhurta_lattice combination_yoga emitter.",
+     "classical_text_chunks (text_id='muhurta_chintamani', chunk_id=muhurta_chintamani_pg0017_c02, "
+     "ch.1 v.8, translated 2026-08-03, content_en re-read live 2026-08-05, structured table confirmed)", None),
+    ("combination_yoga", "hutasana_yoga", "not_computed",
+     "Muhurta Chintamani ch.1 v.8 (mula + tika), chunks muhurta_chintamani_pg0017_c02 + "
+     "pg0018_c01 (translated 2026-08-03, re-read live 2026-08-05): 'The sixth "
+     "on Monday, the seventh on Tuesday, the eighth on Wednesday, the ninth "
+     "on Thursday, the tenth on Friday, the eleventh on Saturday — these form "
+     "the Hutashana yoga' (Sunday's own entry — the twelfth — is given in the "
+     "verse itself, pg0017_c02). Co-located with dagdha_yoga/visha_yoga in "
+     "the same two chunks, same verse 8. CORRECTS the prior 'content_en="
+     "content_sa untranslated' finding (2026-07-30) on the same evidence as "
+     "dagdha_yoga. Work item: same lookup emitter as dagdha_yoga/visha_yoga.",
+     "classical_text_chunks (text_id='muhurta_chintamani', chunk_id=muhurta_chintamani_pg0018_c01, "
+     "ch.1 v.8, translated 2026-08-03, content_en re-read live 2026-08-05, structured table confirmed)", None),
+    ("combination_yoga", "visha_yoga", "not_computed",
+     "Muhurta Chintamani ch.1 v.8 (mula + tika), chunk muhurta_chintamani_pg0017_c02 "
+     "(translated 2026-08-03, re-read live 2026-08-05): 'The fourth on "
+     "Sunday, the sixth on Monday, the seventh on Tuesday, the second on "
+     "Wednesday, the eighth on Thursday, the ninth on Friday, the seventh on "
+     "Saturday — these form the Visha yoga.' Full 7-weekday x 1-tithi table, "
+     "same verse as dagdha_yoga/hutasana_yoga (co-registered there was never "
+     "possible before this pass — this is a GENUINELY NEW census row, not a "
+     "correction). Distinct from the already-computed `day_part/visha_ghati` "
+     "row (a ghati-grained kalam window, a different classical concept "
+     "sharing only the 'visha' name) — do not conflate the two. Work item: "
+     "same lookup emitter as dagdha_yoga/hutasana_yoga.",
+     "classical_text_chunks (text_id='muhurta_chintamani', chunk_id=muhurta_chintamani_pg0017_c02, "
+     "ch.1 v.8, translated 2026-08-03, content_en re-read live 2026-08-05, structured table confirmed)", None),
+    ("combination_yoga", "yamaghanta_yoga", "not_computed",
+     "Muhurta Chintamani ch.1 v.9 (mula + tika), chunk muhurta_chintamani_pg0018_c01 "
+     "(translated 2026-08-03, re-read live 2026-08-05, OCR conf 0.4 overall "
+     "chunk but this specific tika enumeration is the SECURE reading per its "
+     "own OCR note): 'Magha on Sunday, Vishakha on Monday, Ardra on Tuesday, "
+     "Mula on Wednesday, Krittika on Thursday, Rohini on Friday, Hasta on "
+     "Saturday — these form the Yamaghanta yoga.' Full 7-weekday x "
+     "1-nakshatra table. The same tika states this and dagdha/visha/hutasana "
+     "'are to be shunned in auspicious work, and must without fail be "
+     "avoided for setting out on a journey' — parihara conditions given "
+     "(region-conditional, benefic-in-kendra/trikona, day-only per "
+     "Vasishtha) are conditional, so NOT encoded as an unconditional "
+     "bg_parihara_rules row (same discipline as dagdha_yoga). Work item: "
+     "implement the 7-weekday x 1-nakshatra lookup as a bg_muhurta_lattice "
+     "combination_yoga emitter.",
+     "classical_text_chunks (text_id='muhurta_chintamani', chunk_id=muhurta_chintamani_pg0018_c01, "
+     "ch.1 v.9, translated 2026-08-03, content_en re-read live 2026-08-05, structured table confirmed)", None),
+    ("combination_yoga", "utpata_yoga", "not_computed",
+     "Muhurta Chintamani ch.1 v.30 (mula + tika), chunk muhurta_chintamani_pg0024_c01 "
+     "(translated 2026-08-03, re-read live 2026-08-05): the SAME "
+     "Utpata-Mrityu-Kana-Siddhi tetrad table as the mrityu_yoga row above — "
+     "Utpata is the 1st of each weekday's four-nakshatra run (e.g. Sunday: "
+     "Vishakha=Utpata). See mrityu_yoga for the full 7-weekday starting-point "
+     "table and the citation of verse 31's fully-legible tithi x vara / "
+     "tithi x nakshatra / nakshatra x vara / all-three taxonomy. Work item: "
+     "same lookup emitter as mrityu_yoga/kana_yoga (one table, four named "
+     "results).",
+     "classical_text_chunks (text_id='muhurta_chintamani', chunk_id=muhurta_chintamani_pg0024_c01, "
+     "ch.1 v.30, translated 2026-08-03, content_en re-read live 2026-08-05, structured table confirmed)", None),
+    ("combination_yoga", "kana_yoga", "not_computed",
+     "Muhurta Chintamani ch.1 v.30 (mula + tika), chunk muhurta_chintamani_pg0024_c01 "
+     "(translated 2026-08-03, re-read live 2026-08-05): the SAME "
+     "Utpata-Mrityu-Kana-Siddhi tetrad table as the mrityu_yoga/utpata_yoga "
+     "rows — Kana is the 3rd of each weekday's four-nakshatra run (e.g. "
+     "Sunday: Jyeshtha=Kana). See mrityu_yoga for the full table. The "
+     "tetrad's 4th member ('Siddhi') is DELIBERATELY not given its own "
+     "combination_yoga row here — it is a different classical concept from "
+     "the already-computed `siddha_yoga` row above and registering a "
+     "same-named row risks a false merge; this note is the disclosure "
+     "instead. Work item: same lookup emitter as mrityu_yoga/utpata_yoga.",
+     "classical_text_chunks (text_id='muhurta_chintamani', chunk_id=muhurta_chintamani_pg0024_c01, "
+     "ch.1 v.30, translated 2026-08-03, content_en re-read live 2026-08-05, structured table confirmed)", None),
+    ("combination_yoga", "amrit_siddhi_tithi_exceptions", "not_computed",
+     "Muhurta Chintamani ch.1 vv.20-22 (mula + tika), chunk "
+     "muhurta_chintamani_pg0021_c01 (translated 2026-08-03, re-read live "
+     "2026-08-05, OCR conf 1.0 — the cleanest chunk in the whole "
+     "combination_yoga set): 'The Amritasiddhi yogas that arise from the "
+     "vara and nakshatra combination become inauspicious through their "
+     "conjunction with certain tithis. Thus Hasta on a Sunday is a siddhi "
+     "combination, but if it falls on the fifth tithi it is contrary.' Four "
+     "more tithi-keyed exceptions follow (Asvini-Tuesday/7th, "
+     "Mrigashira-Monday/6th, Anuradha-Wednesday/8th, Revati-Friday/10th, "
+     "Pushya-Thursday/9th, Rohini-Saturday/11th), PLUS three activity-class "
+     "rejections (v.22: Bhauma-Ashvini rejected for griha-pravesha, "
+     "Shani-Rohini for yatra, Guru-Pushya for marriage, despite all three "
+     "being Amrita-siddhi combinations generally). This is a REAL ACCURACY "
+     "GAP on the ALREADY-`computed` amrit_siddhi row above: panchang_engine."
+     "special_yogas.detect_all_special_yogas implements only the base "
+     "vara x nakshatra Amrita-siddhi table (Muhurta Chintamani MC 5.17's "
+     "already-known death-yoga override, per the pre-existing mrityu_yoga "
+     "row's note) with NO tithi-level exception layer and NO activity-class "
+     "rejection layer. amrit_siddhi itself is NOT re-disposed here (§N.5: "
+     "the writer's existing computed claim for the base table is correct and "
+     "unchanged) — this row discloses, separately and honestly, that the "
+     "computed claim does not cover the corpus's own exception layer. Work "
+     "item: extend the Amrita-siddhi detector with the tithi-exception and "
+     "activity-class-rejection tables above.",
+     "classical_text_chunks (text_id='muhurta_chintamani', chunk_id=muhurta_chintamani_pg0021_c01, "
+     "ch.1 vv.20-22, translated 2026-08-03, content_en re-read live 2026-08-05, structured table confirmed)", None),
+    ("combination_yoga", "ananda_yoga_28fold", "not_in_corpus",
+     "GENUINE NEGATIVE FINDING (mirrors the jvalamukhi_yoga/Kota-Chakra "
+     "precedent): Muhurta Chintamani ch.1 vv.23-24, chunk "
+     "muhurta_chintamani_pg0021_c01 (OCR conf 1.0), gives the full 28 "
+     "Ananda-adi yoga NAMES with their numbers (Ananda 1 ... Vardhamana 28) — "
+     "citable and translated. But the starting-nakshatra correlation chart "
+     "actually needed to COMPUTE which of the 28 falls on a given "
+     "weekday+nakshatra pair is explicitly illegible in this scan: chunk "
+     "muhurta_chintamani_pg0022_c01 (v.25, conf 0.4) states outright 'The "
+     "printed chart correlating the 28 yogas with vara and nakshatra is "
+     "wholly illegible in the scan; no row could be reconstructed', and only "
+     "gives 6 of 7 weekdays' starting points before breaking off mid-line; "
+     "chunk muhurta_chintamani_pg0024_c01 separately confirms 'The printed "
+     "table of the Cara, Dagdha, Mrtyu, Siddhi, Utpata and Amritasiddhi "
+     "yogas is fragmented and illegible in the scan'. A different partial "
+     "vara x nakshatra listing DOES appear at pg0023_c02 (conf 1.0, 'success "
+     "in every object' / sarvartha-siddhi combinations) but is NOT "
+     "self-identified as the Ananda-adi chart and cannot be safely mapped "
+     "onto the 28 names without guessing — not attempted (B.10). Disposition "
+     "stays not_in_corpus for the OPERATIONAL rule, on a fully translated, "
+     "no-longer-ambiguous evidentiary basis. Ingestion work item: source a "
+     "second edition/manuscript of Muhurta Chintamani ch.1 with a legible "
+     "Ananda-adi chart, or a secondary published compilation, if the "
+     "operational rule is ever wanted.",
+     "classical_text_chunks (text_id='muhurta_chintamani', chunk_id=muhurta_chintamani_pg0021_c01, "
+     "ch.1 vv.23-25 + pg0022_c01 + pg0024_c01, translated 2026-08-03, content_en re-read live "
+     "2026-08-05, names citable / correlation chart illegible in source)", None),
     ("combination_yoga", "jvalamukhi_yoga", "not_in_corpus",
      "CONFIRMED (parihāra-graph enrichment pass, 2026-08-04): chunk "
      "muhurta_chintamani_pg0033_c01 was translated in the 2026-08-03 "
