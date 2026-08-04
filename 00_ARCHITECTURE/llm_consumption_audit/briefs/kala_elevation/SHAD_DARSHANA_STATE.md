@@ -141,6 +141,25 @@ rebuild triggered — separate decision.
 advancing on generation-2 (482012f1 216→229, 1c826d5a 212→222 substeps since the 21:13 dispatch);
 not near the ~2026-08-04T03:13:05Z expiry. Wakeup re-armed (chained ~1h, per the 3600s cap).
 
+**W3K Lane 2 landed (PR #1046, 2026-08-04 ~00:05 UTC), Opus per NIGHT_RUN §B.3.** G-4:
+`vimshottari_kp` wired into Law-1 applicability (`stage3_clocks.py`), additive, no
+FROZEN-contract change; new `q_s` rule referencing `bg_kp_sublord_division` (§N.5, `not_computed`
+if absent). Double-count risk MEASURED not assumed — `kp_window_redundancy` detector, verified
+read-only against production 482012f1: 69/69 L2 + 630/630 L3 in-horizon rows are exact
+Vimśottarī twins → `excluded_by_condition` via `hazard.py`'s pre-existing clause, zero change to
+§5.1. G-5: KP school voice (`kp_school_voice.ts` + `explain.ts` wiring), existing envelope
+shapes/capabilities only. **Dissent found and verified on real production `chart_facts`, not
+fabricated**: 482012f1 bhāva 7, 2026-08-04 — KP's occupant-based ladder (Mars+Saturn on the 7th
+cusp) reads as delivering while Parāśarī grades the same occupants as affliction
+(`denied_at_promise`/contested); control case bhāva 10 (same instant, same running lords)
+concurs, proving independence. **Not yet actually served** — `kp_house_significators` has 0
+production rows and `bg_kp_sublord_division` doesn't exist as a table (Lane 1 landed the
+writers, no chart rebuilt since); today's served path is `honest_empty` naming that gap exactly.
+Disclosed in `CROSSCHECK_v1_0.md` §10.4 (now v1.2), not hidden. G-2 confirmed out of scope per
+inventory §5.4, untouched. Independently re-verified by the Conductor before merge (106 pytest +
+43 vitest passing, clean `tsc --noEmit`) in addition to the builder's own broader run (full
+pytest 5058/24 skip, vitest +43/0 new failures vs stashed baseline).
+
 ---
 
 ## NIGHT 5 — SESSION OPEN (2026-08-02, ~12:57 IST, in progress)
