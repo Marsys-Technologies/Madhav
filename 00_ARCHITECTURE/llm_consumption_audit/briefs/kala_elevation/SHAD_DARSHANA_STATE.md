@@ -350,6 +350,17 @@ vs. B's live mod-4 result for the SAME date) — genuinely `'agrees'`/`'diverges
 implementation (paddhati_v02 migration + the new served voice + the divergence detector)
 dispatched as a short, narrowly-scoped background task per the native's lane-(d) split.
 
+**Lane (d) part 2 landed (PR #1049, 2026-08-04 ~22:05 UTC) — taken foreground after that
+background attempt also stalled (infra, same pattern as lane (a)).** Migration 537
+(`paddhati_v02`), `agnivasa_convention_b_voice.ts` (MC 1.36 arithmetic, informational voice,
+10 new tests passing, `tsc --noEmit` clean), and `computePaddhatiDivergence` replacing the
+hardcoded `'none_computed'` literal with a real, provable structural-divergence detector
+(concrete counter-example: tithi_id=1, vara_id=3 — (A)=Prithvi/favourable,
+(B)=(1+1+3) mod 4=1→Ākāśa/unfavourable). **One piece deliberately left undone, flagged not
+forced**: wiring the new voice into the actual served `SkyPatternConstraintDisposition` on a
+live candidate date needs to touch that widely-used interface's shape — out of this pass's
+mechanical scope.
+
 ---
 
 ## NIGHT 5 — SESSION OPEN (2026-08-02, ~12:57 IST, in progress)
