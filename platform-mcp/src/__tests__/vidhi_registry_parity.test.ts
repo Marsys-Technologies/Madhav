@@ -36,12 +36,14 @@ describe('vidhi registry parity — served mirror equals V-1 canonical', () => {
     expect(MIRROR_PRIMITIVES.length).toBeGreaterThanOrEqual(30);
   });
 
-  it('VIDHI_INTENT_FLOORS deep-equal (all 11 intents)', () => {
+  it('VIDHI_INTENT_FLOORS deep-equal (all 14 intents)', () => {
     // VIDHI-PŪRṆATĀ P-2 (F1): 8 → 11 intent floors (added spirituality_deepdive [MANDATORY],
-    // education_deepdive, progeny_deepdive [CANDIDATE]). The deep-equal below still enforces
-    // mirror↔canonical parity; only the count literal advances with the taxonomy.
+    // education_deepdive, progeny_deepdive [CANDIDATE]). ṢAḌ-DARŚANA W5 (SHAD_DARSHANA_BRIEF
+    // _v2_0.md §3 W5): 11 → 14 (added undertaking_election, biography_narrative, ritual_yajna
+    // — the three kala-routing floors). The deep-equal below still enforces mirror↔canonical
+    // parity; only the count literal advances with the taxonomy.
     expect(MIRROR_FLOORS).toEqual(CANON_FLOORS);
-    expect(MIRROR_FLOORS.length).toBe(11);
+    expect(MIRROR_FLOORS.length).toBe(14);
   });
 
   it('compiler produces byte-identical contracts for the same tuple', () => {

@@ -30,7 +30,7 @@ import {
   VIDHI_CAPABILITY_VERSION,
   notifyIfCapabilityStale,
 } from '../resources/vidhi/capability_version.js';
-import { VIDHI_PRIMITIVES } from '../resources/vidhi/index.js';
+import { VIDHI_PRIMITIVES, VIDHI_INTENT_FLOORS } from '../resources/vidhi/index.js';
 import type { Principal } from '../types.js';
 
 // V-0's REAL validator (read-only, outside this lane's glob) — producer/consumer parity.
@@ -101,8 +101,10 @@ describe('row 14 — vidhi registry as an MCP resource', () => {
     expect((payload.primitives as unknown[]).length).toBe(VIDHI_PRIMITIVES.length);
     // VIDHI-PŪRṆATĀ P-2 (F1 taxonomy completeness, 2026-07-23): the registry grew from the
     // original 8 intent floors to 11 with spirituality_deepdive [MANDATORY] + education_deepdive /
-    // progeny_deepdive [CANDIDATE]. Assert against the live registry length, not a stale literal.
-    expect((payload.intent_floors as unknown[]).length).toBe(11);
+    // progeny_deepdive [CANDIDATE]. ṢAḌ-DARŚANA W5 (SHAD_DARSHANA_BRIEF_v2_0.md §3 W5) grew it
+    // 11 → 14 (undertaking_election, biography_narrative, ritual_yajna). Assert against the live
+    // registry length, not a stale literal — the exact fix this comment already prescribed.
+    expect((payload.intent_floors as unknown[]).length).toBe(VIDHI_INTENT_FLOORS.length);
     expect(payload.capability_version).toBe(VIDHI_CAPABILITY_VERSION);
   });
 });
