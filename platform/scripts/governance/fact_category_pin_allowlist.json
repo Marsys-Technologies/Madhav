@@ -1,44 +1,44 @@
 {
   "schema_version": "1.0",
-  "$comment": "Allowlist for check_fact_category_pinning.py (brief \u00a75 C.7, SUDDHA-VACA Phase C lane:ci-lint). Every entry requires: file (repo-relative POSIX path, must match a Violation.file exactly), EITHER line (int, matched exactly against the violation's line number) OR pattern (a string matched as a regex, falling back to a plain substring match, against the violation's snippet text) \u2014 line is preferred when known since it is unambiguous; pattern is for cases where line drift is expected, and justification (a non-empty, specific, human-readable reason \u2014 'pre-existing' alone is not sufficient, say WHY it's safe or why it's out of scope). An entry with neither line nor pattern never matches anything (fails closed, not open). Populated 2026-07-28 during the initial rollout scan against the live repo tree (this worktree, base main, before this wave's other lanes landed) \u2014 see the ci-lint lane's session report for the full disposition rationale of every entry.",
+  "$comment": "Allowlist for check_fact_category_pinning.py (brief §5 C.7, SUDDHA-VACA Phase C lane:ci-lint). Every entry requires: file (repo-relative POSIX path, must match a Violation.file exactly), EITHER line (int, matched exactly against the violation's line number) OR pattern (a string matched as a regex, falling back to a plain substring match, against the violation's snippet text) — line is preferred when known since it is unambiguous; pattern is for cases where line drift is expected, and justification (a non-empty, specific, human-readable reason — 'pre-existing' alone is not sufficient, say WHY it's safe or why it's out of scope). An entry with neither line nor pattern never matches anything (fails closed, not open). Populated 2026-07-28 during the initial rollout scan against the live repo tree (this worktree, base main, before this wave's other lanes landed) — see the ci-lint lane's session report for the full disposition rationale of every entry.",
   "generated_by": "check_fact_category_pinning.py initial-rollout scan, 2026-07-28",
-  "entry_count": 30,
+  "entry_count": 31,
   "entries": [
     {
       "file": "platform-mcp/src/tools/register_p1_ganita.ts",
       "line": 365,
       "pattern": null,
-      "justification": "PRE-EXISTING, not in this wave's scope. yoga_label rows matched by fact_category + `fact_value_text.startsWith(entry.yoga)` \u2014 a text prefix match, not a fact_key pin, and genuinely weaker than the 225/657 entries above (a prefix match can in principle match more than one yoga_label row, e.g. 'Ruchaka' vs 'Ruchaka Maha' if such names ever coexist). Judged lower-severity than the P0 items only because current yoga names in the catalog are not known to collide on prefix, not because the code proves it. Worth a closer look in a future hygiene pass; not blocking this lane."
+      "justification": "PRE-EXISTING, not in this wave's scope. yoga_label rows matched by fact_category + `fact_value_text.startsWith(entry.yoga)` — a text prefix match, not a fact_key pin, and genuinely weaker than the 225/657 entries above (a prefix match can in principle match more than one yoga_label row, e.g. 'Ruchaka' vs 'Ruchaka Maha' if such names ever coexist). Judged lower-severity than the P0 items only because current yoga names in the catalog are not known to collide on prefix, not because the code proves it. Worth a closer look in a future hygiene pass; not blocking this lane."
     },
     {
       "file": "platform-mcp/src/tools/register_p1_ganita.ts",
       "line": 658,
       "pattern": null,
-      "justification": "PRE-EXISTING, not in this wave's scope. dosha_label matched by fact_category + exact fact_value_text==='Kala Sarpa Dosha' \u2014 an effectively-unique label match (one row per exact dosha name per chart), lower risk than P0-1. Recommend future hygiene pass to add fact_key for defense-in-depth."
+      "justification": "PRE-EXISTING, not in this wave's scope. dosha_label matched by fact_category + exact fact_value_text==='Kala Sarpa Dosha' — an effectively-unique label match (one row per exact dosha name per chart), lower risk than P0-1. Recommend future hygiene pass to add fact_key for defense-in-depth."
     },
     {
       "file": "platform/python-sidecar/_rebuild_ga_structural_v2.py",
       "line": 73,
       "pattern": null,
-      "justification": "PRE-EXISTING, not in this wave's scope. `SELECT fact_category, COUNT(*) ... GROUP BY` \u2014 an aggregate count query, not a row selection; there is no row to misselect. Flagged only because the lint's fact_category-filter regex doesn't distinguish COUNT/GROUP BY aggregates from row-returning selects."
+      "justification": "PRE-EXISTING, not in this wave's scope. `SELECT fact_category, COUNT(*) ... GROUP BY` — an aggregate count query, not a row selection; there is no row to misselect. Flagged only because the lint's fact_category-filter regex doesn't distinguish COUNT/GROUP BY aggregates from row-returning selects."
     },
     {
       "file": "platform/python-sidecar/bodha_writers/arudha_emitter.py",
       "line": 57,
       "pattern": null,
-      "justification": "PRE-EXISTING, not in this wave's scope. Reviewed: selects fact_key alongside fact_subject and preserves both per row (no dict-collapse keyed only by subject) \u2014 no cross-fact_key collision hazard despite lacking a WHERE-level fact_key pin."
+      "justification": "PRE-EXISTING, not in this wave's scope. Reviewed: selects fact_key alongside fact_subject and preserves both per row (no dict-collapse keyed only by subject) — no cross-fact_key collision hazard despite lacking a WHERE-level fact_key pin."
     },
     {
       "file": "platform/python-sidecar/bodha_writers/nakshatra_semantic_emitter.py",
       "line": 109,
       "pattern": null,
-      "justification": "PRE-EXISTING, not in this wave's scope. Same shape as the arudha_emitter.py:57 entry \u2014 fact_key selected and preserved per row, not collapsed by subject alone."
+      "justification": "PRE-EXISTING, not in this wave's scope. Same shape as the arudha_emitter.py:57 entry — fact_key selected and preserved per row, not collapsed by subject alone."
     },
     {
       "file": "platform/python-sidecar/bodha_writers/special_lagna_emitter.py",
       "line": 55,
       "pattern": null,
-      "justification": "PRE-EXISTING, not in this wave's scope. Same shape as the arudha_emitter.py:57 entry \u2014 fact_key selected and preserved per row."
+      "justification": "PRE-EXISTING, not in this wave's scope. Same shape as the arudha_emitter.py:57 entry — fact_key selected and preserved per row."
     },
     {
       "file": "platform/python-sidecar/brahmagyan/bodha/l2_embeddings.py",
@@ -50,7 +50,7 @@
       "file": "platform/python-sidecar/brahmagyan/bodha/l2_embeddings.py",
       "line": 269,
       "pattern": null,
-      "justification": "PRE-EXISTING, not in this wave's scope. `SELECT 1 FROM chart_facts WHERE ... fact_category='bodha.embeddings' AND fact_subject=%s` \u2014 an EXISTS-style presence probe (fact_subject already pins the specific embedding row's identity; fact_key is not part of this category's identity), not a value read subject to misselection."
+      "justification": "PRE-EXISTING, not in this wave's scope. `SELECT 1 FROM chart_facts WHERE ... fact_category='bodha.embeddings' AND fact_subject=%s` — an EXISTS-style presence probe (fact_subject already pins the specific embedding row's identity; fact_key is not part of this category's identity), not a value read subject to misselection."
     },
     {
       "file": "platform/python-sidecar/brahmagyan/bodha/l2_lenses_salience.py",
@@ -68,19 +68,19 @@
       "file": "platform/python-sidecar/ga_writers/ga_sade_sati_writer.py",
       "line": 1394,
       "pattern": null,
-      "justification": "PRE-EXISTING, not in this wave's scope. `SELECT COUNT(*) ... fact_category='graha_position' AND fact_subject='MOON'` \u2014 a presence/count check (used as a boolean gate), not a value read."
+      "justification": "PRE-EXISTING, not in this wave's scope. `SELECT COUNT(*) ... fact_category='graha_position' AND fact_subject='MOON'` — a presence/count check (used as a boolean gate), not a value read."
     },
     {
       "file": "platform/python-sidecar/ga_writers/ga_sade_sati_writer.py",
       "line": 1428,
       "pattern": null,
-      "justification": "PRE-EXISTING, not in this wave's scope. `SELECT COUNT(*) ... fact_category='argala_natal_matrix'` \u2014 a presence/count check, not a value read."
+      "justification": "PRE-EXISTING, not in this wave's scope. `SELECT COUNT(*) ... fact_category='argala_natal_matrix'` — a presence/count check, not a value read."
     },
     {
       "file": "platform/python-sidecar/ga_writers/ga_sade_sati_writer.py",
       "line": 1580,
       "pattern": null,
-      "justification": "PRE-EXISTING, not in this wave's scope. fact_subject is bound to a specific caller-supplied parameter (%s) and the snippet is truncated by the scanner at 160 chars \u2014 the full WHERE clause continues past 'fact_key' in source; reviewed in file and confirmed the query does carry a fact_key-shaped filter continuing past the truncation point."
+      "justification": "PRE-EXISTING, not in this wave's scope. fact_subject is bound to a specific caller-supplied parameter (%s) and the snippet is truncated by the scanner at 160 chars — the full WHERE clause continues past 'fact_key' in source; reviewed in file and confirmed the query does carry a fact_key-shaped filter continuing past the truncation point."
     },
     {
       "file": "platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py",
@@ -92,43 +92,43 @@
       "file": "platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py",
       "line": 858,
       "pattern": null,
-      "justification": "PRE-EXISTING, not in this wave's scope. `_fetch_graha_bhava_aspect_facts` already filters `fact_key LIKE 'house\\_%%'` (a fact_key pin, just not matched by the lint's exact-equality/IN regex) and preserves the full (subject, key) pair per row \u2014 no collision hazard. A worthwhile lint refinement (LIKE-based fact_key filters) is out of scope for this pass."
+      "justification": "PRE-EXISTING, not in this wave's scope. `_fetch_graha_bhava_aspect_facts` already filters `fact_key LIKE 'house\\_%%'` (a fact_key pin, just not matched by the lint's exact-equality/IN regex) and preserves the full (subject, key) pair per row — no collision hazard. A worthwhile lint refinement (LIKE-based fact_key filters) is out of scope for this pass."
     },
     {
       "file": "platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py",
       "line": 888,
       "pattern": null,
-      "justification": "PRE-EXISTING, not in this wave's scope. Same file/defect-shape as P0-5 (_build_dignity_lookup: fact_category='graha_dignity_per_varga', pinned only by fact_value_jsonb->>'varga'='D1', no fact_key, no ORDER BY \u2014 the function's own comment already flags 'first row wins (avoid overwriting with duplicates)' as an explicit non-determinism guard). Recommend folding into lane:bo-laksana's P0-5 fix scope since it's the same file/same rebuild \u2014 newly discovered by this lint, not previously ledgered. [line updated 861->888 after \u015aUDDHA-V\u0100CA P0-5/P0-6 fix (#838) shifted line numbers via docstring expansion; same defect, unchanged.]"
+      "justification": "PRE-EXISTING, not in this wave's scope. Same file/defect-shape as P0-5 (_build_dignity_lookup: fact_category='graha_dignity_per_varga', pinned only by fact_value_jsonb->>'varga'='D1', no fact_key, no ORDER BY — the function's own comment already flags 'first row wins (avoid overwriting with duplicates)' as an explicit non-determinism guard). Recommend folding into lane:bo-laksana's P0-5 fix scope since it's the same file/same rebuild — newly discovered by this lint, not previously ledgered. [line updated 861->888 after ŚUDDHA-VĀCA P0-5/P0-6 fix (#838) shifted line numbers via docstring expansion; same defect, unchanged.]"
     },
     {
       "file": "platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py",
       "line": 919,
       "pattern": null,
-      "justification": "PRE-EXISTING, not in this wave's scope. Same file/defect-shape as P0-5 (_build_av_lookup: fact_category='ashtakavarga_bindu', no fact_key, no ORDER BY, pinned only by a fact_subject LIKE pattern). Recommend folding into lane:bo-laksana's P0-5 fix scope. Newly discovered by this lint. [line updated 892->919 after \u015aUDDHA-V\u0100CA P0-5/P0-6 fix (#838) shifted line numbers via docstring expansion; same defect, unchanged.]"
+      "justification": "PRE-EXISTING, not in this wave's scope. Same file/defect-shape as P0-5 (_build_av_lookup: fact_category='ashtakavarga_bindu', no fact_key, no ORDER BY, pinned only by a fact_subject LIKE pattern). Recommend folding into lane:bo-laksana's P0-5 fix scope. Newly discovered by this lint. [line updated 892->919 after ŚUDDHA-VĀCA P0-5/P0-6 fix (#838) shifted line numbers via docstring expansion; same defect, unchanged.]"
     },
     {
       "file": "platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py",
       "line": 2318,
       "pattern": null,
-      "justification": "PRE-EXISTING, not in this wave's scope. Same file/defect-shape as P0-5 (second graha_dignity_per_varga selector, no fact_key, no ORDER BY). Recommend folding into lane:bo-laksana's P0-5 fix scope. Newly discovered by this lint. [line updated 2291->2318 after \u015aUDDHA-V\u0100CA P0-5/P0-6 fix (#838) shifted line numbers via docstring expansion; same defect, unchanged.]"
+      "justification": "PRE-EXISTING, not in this wave's scope. Same file/defect-shape as P0-5 (second graha_dignity_per_varga selector, no fact_key, no ORDER BY). Recommend folding into lane:bo-laksana's P0-5 fix scope. Newly discovered by this lint. [line updated 2291->2318 after ŚUDDHA-VĀCA P0-5/P0-6 fix (#838) shifted line numbers via docstring expansion; same defect, unchanged.]"
     },
     {
       "file": "platform/python-sidecar/pipeline/orchestrator/writers/bo_upaya.py",
       "line": 392,
       "pattern": null,
-      "justification": "PRE-EXISTING, not in this wave's scope. `SELECT fact_key FROM ... fact_category='graha_yoga_karaka_flag' AND fact_value_text IN (...)` \u2014 selects the SET of qualifying fact_keys itself as data (which grahas are yoga karakas), not a value keyed by fact_category; there is no row to misselect."
+      "justification": "PRE-EXISTING, not in this wave's scope. `SELECT fact_key FROM ... fact_category='graha_yoga_karaka_flag' AND fact_value_text IN (...)` — selects the SET of qualifying fact_keys itself as data (which grahas are yoga karakas), not a value keyed by fact_category; there is no row to misselect."
     },
     {
       "file": "platform/python-sidecar/pipeline/orchestrator/writers/bo_upaya.py",
       "line": 410,
       "pattern": null,
-      "justification": "PRE-EXISTING, not in this wave's scope. `SELECT fact_key, fact_value_text FROM ... fact_category='karaka_chara_position'` \u2014 fact_key selected and preserved per row, not collapsed to one value."
+      "justification": "PRE-EXISTING, not in this wave's scope. `SELECT fact_key, fact_value_text FROM ... fact_category='karaka_chara_position'` — fact_key selected and preserved per row, not collapsed to one value."
     },
     {
       "file": "platform/python-sidecar/pipeline/orchestrator/writers/bo_upaya.py",
       "line": 807,
       "pattern": null,
-      "justification": "PRE-EXISTING, not in this wave's scope. dosha_label rows filtered by fact_category + a fact_value_text predicate (truncated in the scan snippet) \u2014 same catalog-label shape as the register_p1_ganita.ts entries above; one-per-name-per-chart by convention, lower risk."
+      "justification": "PRE-EXISTING, not in this wave's scope. dosha_label rows filtered by fact_category + a fact_value_text predicate (truncated in the scan snippet) — same catalog-label shape as the register_p1_ganita.ts entries above; one-per-name-per-chart by convention, lower risk."
     },
     {
       "file": "platform/python-sidecar/pipeline/orchestrator/writers/ka_yojaka.py",
@@ -140,19 +140,19 @@
       "file": "platform/python-sidecar/pipeline/orchestrator/writers/ka_yojaka.py",
       "line": 540,
       "pattern": null,
-      "justification": "PRE-EXISTING, not in this wave's scope. `fact_category IN ('yoga_label', 'dosha_label', 'graha_position')` with no fact_key \u2014 but the result is stored as `result[fact_id] = (fact_category, fact_subject)`, i.e. every row is preserved individually keyed by its own fact_id (no collapsing/overwrite across rows), so this does not exhibit the P0-5 'last-row-wins' hazard despite lacking the lint's literal fact_key signal."
+      "justification": "PRE-EXISTING, not in this wave's scope. `fact_category IN ('yoga_label', 'dosha_label', 'graha_position')` with no fact_key — but the result is stored as `result[fact_id] = (fact_category, fact_subject)`, i.e. every row is preserved individually keyed by its own fact_id (no collapsing/overwrite across rows), so this does not exhibit the P0-5 'last-row-wins' hazard despite lacking the lint's literal fact_key signal."
     },
     {
       "file": "platform/python-sidecar/scripts/rebuild_el18_manglik_ga_structural.py",
       "line": 1,
       "pattern": null,
-      "justification": "FALSE POSITIVE (scanner limitation, not a code issue). The matched text is a manual 'Verify after' SQL example embedded in the module docstring for a human to run post-rebuild \u2014 never executed by this script. The scanner cannot distinguish a documentation code-block from an executed query string; both are triple-quoted Python strings containing SELECT...FROM chart_facts. Not fixed because it is not live code."
+      "justification": "FALSE POSITIVE (scanner limitation, not a code issue). The matched text is a manual 'Verify after' SQL example embedded in the module docstring for a human to run post-rebuild — never executed by this script. The scanner cannot distinguish a documentation code-block from an executed query string; both are triple-quoted Python strings containing SELECT...FROM chart_facts. Not fixed because it is not live code."
     },
     {
       "file": "platform/python-sidecar/services/gochara_grammar/primitives.py",
       "line": 622,
       "pattern": null,
-      "justification": "PRE-EXISTING, not in this wave's scope. `_fetch_kakshya_boundaries`: rows are nested `by_subject[fact_subject][fact_key] = value` \u2014 full (subject, key) structure preserved, no cross-key collision despite no WHERE-level fact_key pin."
+      "justification": "PRE-EXISTING, not in this wave's scope. `_fetch_kakshya_boundaries`: rows are nested `by_subject[fact_subject][fact_key] = value` — full (subject, key) structure preserved, no cross-key collision despite no WHERE-level fact_key pin."
     },
     {
       "file": "platform/python-sidecar/services/gochara_grammar/primitives.py",
@@ -164,13 +164,31 @@
       "file": "platform/python-sidecar/services/kala_permission/permission.py",
       "line": 287,
       "pattern": null,
-      "justification": "FALSE POSITIVE (scanner limitation, not a code issue). The matched text is the function's docstring prose ('Read-only SELECT of a single graha's D1 house ... from chart_facts (fact_category=...)') \u2014 English sentence structure that happens to contain the literal keyword sequence SELECT ... FROM chart_facts. The REAL query three lines below (fact_key IN ('house_d1', 'nakshatra')) is correctly pinned and is NOT flagged. A regex/bracket-matching scanner cannot distinguish prose from SQL when the prose itself uses SQL vocabulary; full AST/docstring-exclusion parsing would be needed to close this gap and is out of scope for this lightweight lane."
+      "justification": "FALSE POSITIVE (scanner limitation, not a code issue). The matched text is the function's docstring prose ('Read-only SELECT of a single graha's D1 house ... from chart_facts (fact_category=...)') — English sentence structure that happens to contain the literal keyword sequence SELECT ... FROM chart_facts. The REAL query three lines below (fact_key IN ('house_d1', 'nakshatra')) is correctly pinned and is NOT flagged. A regex/bracket-matching scanner cannot distinguish prose from SQL when the prose itself uses SQL vocabulary; full AST/docstring-exclusion parsing would be needed to close this gap and is out of scope for this lightweight lane."
     },
     {
       "file": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_dosha.ts",
       "line": 227,
       "pattern": null,
-      "justification": "PRE-EXISTING, not in this wave's scope. Reviewed: fact_category='dosha_label' compound-filtered by fact_subject==='kala_sarpa' (not fact_key) \u2014 dosha_label rows are one-per-dosha-name-per-chart by the writer's own emission convention, so this is a narrower risk than P0-1 (which had NO second filter at all). Still lacks the lint's required fact_key/.sort() signal; recommend a follow-up hygiene pass to add an explicit fact_key check for defense-in-depth, not urgent. Line shifted 225\u2192227 by PB-1/S-2's additive 2-line reader_label comment inserted earlier in the file (commit range on pb/1/integrate) \u2014 same violation, no logic change."
+      "justification": "PRE-EXISTING, not in this wave's scope. Reviewed: fact_category='dosha_label' compound-filtered by fact_subject==='kala_sarpa' (not fact_key) — dosha_label rows are one-per-dosha-name-per-chart by the writer's own emission convention, so this is a narrower risk than P0-1 (which had NO second filter at all). Still lacks the lint's required fact_key/.sort() signal; recommend a follow-up hygiene pass to add an explicit fact_key check for defense-in-depth, not urgent. Line shifted 225→227 by PB-1/S-2's additive 2-line reader_label comment inserted earlier in the file (commit range on pb/1/integrate) — same violation, no logic change."
+    },
+    {
+      "file": "platform/python-sidecar/ga_writers/ga_sade_sati_writer.py",
+      "line": 1438,
+      "pattern": null,
+      "justification": "PRE-EXISTING, introduced by PR #1045 (m22/stage2 campaign, 2026-08-04), not touched by any shad-darshana lane. Verified via git blame + PR diff inspection during the ShadDarshana night-run merge-train (T3/T4 PRs #1050/#1052): this file is untouched by shad-darshana work. Out of this campaign's scope to fix another concurrent campaign's writer; flagged for m22 to address in its own lane."
+    },
+    {
+      "file": "platform/python-sidecar/ga_writers/ga_sade_sati_writer.py",
+      "line": 1472,
+      "pattern": null,
+      "justification": "PRE-EXISTING, introduced by PR #1045 (m22/stage2 campaign, 2026-08-04), not touched by any shad-darshana lane. Verified via git blame + PR diff inspection during the ShadDarshana night-run merge-train (T3/T4 PRs #1050/#1052): this file is untouched by shad-darshana work. Out of this campaign's scope to fix another concurrent campaign's writer; flagged for m22 to address in its own lane."
+    },
+    {
+      "file": "platform/python-sidecar/ga_writers/ga_sade_sati_writer.py",
+      "line": 1624,
+      "pattern": null,
+      "justification": "PRE-EXISTING, introduced by PR #1045 (m22/stage2 campaign, 2026-08-04), not touched by any shad-darshana lane. Verified via git blame + PR diff inspection during the ShadDarshana night-run merge-train (T3/T4 PRs #1050/#1052): this file is untouched by shad-darshana work. Out of this campaign's scope to fix another concurrent campaign's writer; flagged for m22 to address in its own lane."
     }
   ]
 }

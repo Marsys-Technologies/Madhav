@@ -1,8 +1,8 @@
 {
   "schema_version": "1.0",
-  "$comment": "Allowlist for check_earned_signal.py (CLAUDE.md \u00a7N.8 Earned-Signal Principle; SAM\u0100PTI v2.0 \u00a77.5, lane B-N8-LINT). Same shape as fact_category_pin_allowlist.json (#840) with ONE addition: `max_occurrences`. An entry requires `file` (repo-relative POSIX, exact match) and `field` (the signal name, exact match), plus EITHER `line` (exact) OR `pattern` (regex, falling back to substring, against the snippet) OR neither \u2014 a file+field entry with neither is a deliberate group disposition, and MUST then carry `max_occurrences`, which freezes the group at its rollout size. Occurrence N+1 in a frozen group is reported as NEW and fails the build, so this backlog can be paid down but never grown. An entry with no `field` never matches anything (fails closed, not open). HONESTY NOTE, required by the lane's own charter: the entries below are CATEGORICAL dispositions from a sampled review, not 81 individual code reviews. Each says which category it is in and whether it was individually examined. `sample_lines`/`sample_snippet` are locators recorded at rollout, not match keys \u2014 they may drift and are not used for matching.",
+  "$comment": "Allowlist for check_earned_signal.py (CLAUDE.md §N.8 Earned-Signal Principle; SAMĀPTI v2.0 §7.5, lane B-N8-LINT). Same shape as fact_category_pin_allowlist.json (#840) with ONE addition: `max_occurrences`. An entry requires `file` (repo-relative POSIX, exact match) and `field` (the signal name, exact match), plus EITHER `line` (exact) OR `pattern` (regex, falling back to substring, against the snippet) OR neither — a file+field entry with neither is a deliberate group disposition, and MUST then carry `max_occurrences`, which freezes the group at its rollout size. Occurrence N+1 in a frozen group is reported as NEW and fails the build, so this backlog can be paid down but never grown. An entry with no `field` never matches anything (fails closed, not open). HONESTY NOTE, required by the lane's own charter: the entries below are CATEGORICAL dispositions from a sampled review, not 81 individual code reviews. Each says which category it is in and whether it was individually examined. `sample_lines`/`sample_snippet` are locators recorded at rollout, not match keys — they may drift and are not used for matching.",
   "generated_by": "check_earned_signal.py initial-rollout scan, 2026-07-31, base a7dfefcb",
-  "entry_count": 81,
+  "entry_count": 82,
   "violation_count_at_rollout": 169,
   "entries": [
     {
@@ -17,7 +17,7 @@
         196
       ],
       "sample_snippet": "synthesis_gate: 'BLOCKED',",
-      "justification": "CATEGORY D \u2014 rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the \u00a7N.8-honest disposition \u2014 a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
+      "justification": "CATEGORY D — rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the §N.8-honest disposition — a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
     },
     {
       "file": "platform-mcp/src/tools/bo_2-8.ts",
@@ -29,7 +29,7 @@
         196
       ],
       "sample_snippet": "b11_floor_passed: false,",
-      "justification": "CATEGORY D \u2014 rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the \u00a7N.8-honest disposition \u2014 a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
+      "justification": "CATEGORY D — rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the §N.8-honest disposition — a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
     },
     {
       "file": "platform-mcp/src/tools/dossier.ts",
@@ -41,7 +41,7 @@
         616
       ],
       "sample_snippet": "synthesis_gate: 'BLOCKED', gate_basis: 'completeness_receipt',",
-      "justification": "CATEGORY A/B \u2014 CONFIRMED FINDING F-19 in SAMAPTI_N8_EARNED_SIGNAL_REGISTER_v1_0; owned by lane unassigned (register \u00a76.1 Q5). FIXED by PR #909 (assessOrientationPayload) — the single unconditional literal became two legitimately-distinct earned-false branches (an assessment.ok===false result, and a caught-exception path); both are contextually earned (a failed assessment or a caught exception both genuinely mean orientation did not succeed), not a hardcoded stub. max_occurrences bumped 1->2 to match."
+      "justification": "CATEGORY A/B — CONFIRMED FINDING F-19 in SAMAPTI_N8_EARNED_SIGNAL_REGISTER_v1_0; owned by lane unassigned (register §6.1 Q5). FIXED by PR #909 (assessOrientationPayload) — the single unconditional literal became two legitimately-distinct earned-false branches (an assessment.ok===false result, and a caught-exception path); both are contextually earned (a failed assessment or a caught exception both genuinely mean orientation did not succeed), not a hardcoded stub. max_occurrences bumped 1->2 to match."
     },
     {
       "file": "platform-mcp/src/tools/mimamsa_lel_intake.ts",
@@ -55,7 +55,7 @@
         307
       ],
       "sample_snippet": "b3_compliant: true,",
-      "justification": "CATEGORY D \u2014 rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the \u00a7N.8-honest disposition \u2014 a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
+      "justification": "CATEGORY D — rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the §N.8-honest disposition — a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
     },
     {
       "file": "platform-mcp/src/tools/registry_bridge.ts",
@@ -67,7 +67,7 @@
         342
       ],
       "sample_snippet": "assess_health: 40,",
-      "justification": "CATEGORY D \u2014 rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the \u00a7N.8-honest disposition \u2014 a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
+      "justification": "CATEGORY D — rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the §N.8-honest disposition — a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
     },
     {
       "file": "platform-mcp/src/tools/registry_bridge.ts",
@@ -79,7 +79,7 @@
         1875
       ],
       "sample_snippet": "orientation_ok: false,",
-      "justification": "CATEGORY A/B \u2014 CONFIRMED FINDING F-22 in SAMAPTI_N8_EARNED_SIGNAL_REGISTER_v1_0; owned by lane unassigned (register \u00a76.1 Q5). Allowlisted only so this lint can merge ahead of / independently of the fix lane. Independently rediscovered by this lint at rollout, which is the lint's ground-truth check against the register."
+      "justification": "CATEGORY A/B — CONFIRMED FINDING F-22 in SAMAPTI_N8_EARNED_SIGNAL_REGISTER_v1_0; owned by lane unassigned (register §6.1 Q5). Allowlisted only so this lint can merge ahead of / independently of the fix lane. Independently rediscovered by this lint at rollout, which is the lint's ground-truth check against the register."
     },
     {
       "file": "platform-mcp/src/tools/retrieval/holistic_bundle.ts",
@@ -92,7 +92,7 @@
         254
       ],
       "sample_snippet": "b11_floor_passed: false,",
-      "justification": "CATEGORY D \u2014 rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the \u00a7N.8-honest disposition \u2014 a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
+      "justification": "CATEGORY D — rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the §N.8-honest disposition — a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
     },
     {
       "file": "platform-mcp/src/tools/retrieval/holistic_bundle.ts",
@@ -105,7 +105,7 @@
         253
       ],
       "sample_snippet": "grounding_status: 'SCAFFOLD',",
-      "justification": "CATEGORY D \u2014 rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the \u00a7N.8-honest disposition \u2014 a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
+      "justification": "CATEGORY D — rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the §N.8-honest disposition — a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
     },
     {
       "file": "platform/python-sidecar/bodha_writers/arudha_emitter.py",
@@ -118,7 +118,7 @@
         199
       ],
       "sample_snippet": "verification_pass_status=\"documented_approximation\",",
-      "justification": "CATEGORY C \u2014 `verification_pass_status` stamped as a literal provenance tier across the L1/L2 writer fleet. This is F-11's shape at fleet scale: the lint sees a constant, and CANNOT tell an honest self-declared tier ('documented_approximation', 'single_pass' \u2014 a truthful disclosure of how the value was obtained) from an unearned green ('PASS', 'two_pass_verified' \u2014 a verification claim with no verification behind it). Distinguishing them is the F-11 + F-25 joint disposition named in SAMAPTI_N8_EARNED_SIGNAL_REGISTER_v1_0 \u00a72.3, which the register requires be done as ONE work item because fixing either side alone moves rows across the grounded/ungrounded boundary in the wrong direction. NOT individually reviewed by this lane. Frozen at the rollout count so the fleet cannot grow more of them."
+      "justification": "CATEGORY C — `verification_pass_status` stamped as a literal provenance tier across the L1/L2 writer fleet. This is F-11's shape at fleet scale: the lint sees a constant, and CANNOT tell an honest self-declared tier ('documented_approximation', 'single_pass' — a truthful disclosure of how the value was obtained) from an unearned green ('PASS', 'two_pass_verified' — a verification claim with no verification behind it). Distinguishing them is the F-11 + F-25 joint disposition named in SAMAPTI_N8_EARNED_SIGNAL_REGISTER_v1_0 §2.3, which the register requires be done as ONE work item because fixing either side alone moves rows across the grounded/ungrounded boundary in the wrong direction. NOT individually reviewed by this lane. Frozen at the rollout count so the fleet cannot grow more of them."
     },
     {
       "file": "platform/python-sidecar/bodha_writers/bhavat_bhavam_amplifier.py",
@@ -130,7 +130,7 @@
         381
       ],
       "sample_snippet": "\"verification_pass_status\": \"documented_approximation\",",
-      "justification": "CATEGORY C \u2014 `verification_pass_status` stamped as a literal provenance tier across the L1/L2 writer fleet. This is F-11's shape at fleet scale: the lint sees a constant, and CANNOT tell an honest self-declared tier ('documented_approximation', 'single_pass' \u2014 a truthful disclosure of how the value was obtained) from an unearned green ('PASS', 'two_pass_verified' \u2014 a verification claim with no verification behind it). Distinguishing them is the F-11 + F-25 joint disposition named in SAMAPTI_N8_EARNED_SIGNAL_REGISTER_v1_0 \u00a72.3, which the register requires be done as ONE work item because fixing either side alone moves rows across the grounded/ungrounded boundary in the wrong direction. NOT individually reviewed by this lane. Frozen at the rollout count so the fleet cannot grow more of them."
+      "justification": "CATEGORY C — `verification_pass_status` stamped as a literal provenance tier across the L1/L2 writer fleet. This is F-11's shape at fleet scale: the lint sees a constant, and CANNOT tell an honest self-declared tier ('documented_approximation', 'single_pass' — a truthful disclosure of how the value was obtained) from an unearned green ('PASS', 'two_pass_verified' — a verification claim with no verification behind it). Distinguishing them is the F-11 + F-25 joint disposition named in SAMAPTI_N8_EARNED_SIGNAL_REGISTER_v1_0 §2.3, which the register requires be done as ONE work item because fixing either side alone moves rows across the grounded/ungrounded boundary in the wrong direction. NOT individually reviewed by this lane. Frozen at the rollout count so the fleet cannot grow more of them."
     },
     {
       "file": "platform/python-sidecar/bodha_writers/formulas.py",
@@ -142,7 +142,7 @@
         520
       ],
       "sample_snippet": "verification_pass_status: str = \"documented_approximation\"",
-      "justification": "CATEGORY C \u2014 `verification_pass_status` stamped as a literal provenance tier across the L1/L2 writer fleet. This is F-11's shape at fleet scale: the lint sees a constant, and CANNOT tell an honest self-declared tier ('documented_approximation', 'single_pass' \u2014 a truthful disclosure of how the value was obtained) from an unearned green ('PASS', 'two_pass_verified' \u2014 a verification claim with no verification behind it). Distinguishing them is the F-11 + F-25 joint disposition named in SAMAPTI_N8_EARNED_SIGNAL_REGISTER_v1_0 \u00a72.3, which the register requires be done as ONE work item because fixing either side alone moves rows across the grounded/ungrounded boundary in the wrong direction. NOT individually reviewed by this lane. Frozen at the rollout count so the fleet cannot grow more of them."
+      "justification": "CATEGORY C — `verification_pass_status` stamped as a literal provenance tier across the L1/L2 writer fleet. This is F-11's shape at fleet scale: the lint sees a constant, and CANNOT tell an honest self-declared tier ('documented_approximation', 'single_pass' — a truthful disclosure of how the value was obtained) from an unearned green ('PASS', 'two_pass_verified' — a verification claim with no verification behind it). Distinguishing them is the F-11 + F-25 joint disposition named in SAMAPTI_N8_EARNED_SIGNAL_REGISTER_v1_0 §2.3, which the register requires be done as ONE work item because fixing either side alone moves rows across the grounded/ungrounded boundary in the wrong direction. NOT individually reviewed by this lane. Frozen at the rollout count so the fleet cannot grow more of them."
     },
     {
       "file": "platform/python-sidecar/bodha_writers/nakshatra_semantic_emitter.py",
@@ -155,7 +155,7 @@
         345
       ],
       "sample_snippet": "verification_pass_status=\"documented_approximation\",",
-      "justification": "CATEGORY C \u2014 `verification_pass_status` stamped as a literal provenance tier across the L1/L2 writer fleet. This is F-11's shape at fleet scale: the lint sees a constant, and CANNOT tell an honest self-declared tier ('documented_approximation', 'single_pass' \u2014 a truthful disclosure of how the value was obtained) from an unearned green ('PASS', 'two_pass_verified' \u2014 a verification claim with no verification behind it). Distinguishing them is the F-11 + F-25 joint disposition named in SAMAPTI_N8_EARNED_SIGNAL_REGISTER_v1_0 \u00a72.3, which the register requires be done as ONE work item because fixing either side alone moves rows across the grounded/ungrounded boundary in the wrong direction. NOT individually reviewed by this lane. Frozen at the rollout count so the fleet cannot grow more of them."
+      "justification": "CATEGORY C — `verification_pass_status` stamped as a literal provenance tier across the L1/L2 writer fleet. This is F-11's shape at fleet scale: the lint sees a constant, and CANNOT tell an honest self-declared tier ('documented_approximation', 'single_pass' — a truthful disclosure of how the value was obtained) from an unearned green ('PASS', 'two_pass_verified' — a verification claim with no verification behind it). Distinguishing them is the F-11 + F-25 joint disposition named in SAMAPTI_N8_EARNED_SIGNAL_REGISTER_v1_0 §2.3, which the register requires be done as ONE work item because fixing either side alone moves rows across the grounded/ungrounded boundary in the wrong direction. NOT individually reviewed by this lane. Frozen at the rollout count so the fleet cannot grow more of them."
     },
     {
       "file": "platform/python-sidecar/bodha_writers/special_lagna_emitter.py",
@@ -168,7 +168,7 @@
         219
       ],
       "sample_snippet": "verification_pass_status=\"documented_approximation\",",
-      "justification": "CATEGORY C \u2014 `verification_pass_status` stamped as a literal provenance tier across the L1/L2 writer fleet. This is F-11's shape at fleet scale: the lint sees a constant, and CANNOT tell an honest self-declared tier ('documented_approximation', 'single_pass' \u2014 a truthful disclosure of how the value was obtained) from an unearned green ('PASS', 'two_pass_verified' \u2014 a verification claim with no verification behind it). Distinguishing them is the F-11 + F-25 joint disposition named in SAMAPTI_N8_EARNED_SIGNAL_REGISTER_v1_0 \u00a72.3, which the register requires be done as ONE work item because fixing either side alone moves rows across the grounded/ungrounded boundary in the wrong direction. NOT individually reviewed by this lane. Frozen at the rollout count so the fleet cannot grow more of them."
+      "justification": "CATEGORY C — `verification_pass_status` stamped as a literal provenance tier across the L1/L2 writer fleet. This is F-11's shape at fleet scale: the lint sees a constant, and CANNOT tell an honest self-declared tier ('documented_approximation', 'single_pass' — a truthful disclosure of how the value was obtained) from an unearned green ('PASS', 'two_pass_verified' — a verification claim with no verification behind it). Distinguishing them is the F-11 + F-25 joint disposition named in SAMAPTI_N8_EARNED_SIGNAL_REGISTER_v1_0 §2.3, which the register requires be done as ONE work item because fixing either side alone moves rows across the grounded/ungrounded boundary in the wrong direction. NOT individually reviewed by this lane. Frozen at the rollout count so the fleet cannot grow more of them."
     },
     {
       "file": "platform/python-sidecar/bodha_writers/sudarshana_emitter.py",
@@ -180,8 +180,8 @@
         245,
         366
       ],
-      "sample_snippet": "verification_pass_status=\"documented_approximation\", # M-22: status is earned by a verifier pass, never a literal at the emit site \u2014 determi",
-      "justification": "CATEGORY C \u2014 `verification_pass_status` stamped as a literal provenance tier across the L1/L2 writer fleet. This is F-11's shape at fleet scale: the lint sees a constant, and CANNOT tell an honest self-declared tier ('documented_approximation', 'single_pass' \u2014 a truthful disclosure of how the value was obtained) from an unearned green ('PASS', 'two_pass_verified' \u2014 a verification claim with no verification behind it). Distinguishing them is the F-11 + F-25 joint disposition named in SAMAPTI_N8_EARNED_SIGNAL_REGISTER_v1_0 \u00a72.3, which the register requires be done as ONE work item because fixing either side alone moves rows across the grounded/ungrounded boundary in the wrong direction. NOT individually reviewed by this lane. Frozen at the rollout count so the fleet cannot grow more of them."
+      "sample_snippet": "verification_pass_status=\"documented_approximation\", # M-22: status is earned by a verifier pass, never a literal at the emit site — determi",
+      "justification": "CATEGORY C — `verification_pass_status` stamped as a literal provenance tier across the L1/L2 writer fleet. This is F-11's shape at fleet scale: the lint sees a constant, and CANNOT tell an honest self-declared tier ('documented_approximation', 'single_pass' — a truthful disclosure of how the value was obtained) from an unearned green ('PASS', 'two_pass_verified' — a verification claim with no verification behind it). Distinguishing them is the F-11 + F-25 joint disposition named in SAMAPTI_N8_EARNED_SIGNAL_REGISTER_v1_0 §2.3, which the register requires be done as ONE work item because fixing either side alone moves rows across the grounded/ungrounded boundary in the wrong direction. NOT individually reviewed by this lane. Frozen at the rollout count so the fleet cannot grow more of them."
     },
     {
       "file": "platform/python-sidecar/bodha_writers/vargottama_dhana_emitter.py",
@@ -194,7 +194,7 @@
         224
       ],
       "sample_snippet": "verification_pass_status=\"documented_approximation\",",
-      "justification": "CATEGORY C \u2014 `verification_pass_status` stamped as a literal provenance tier across the L1/L2 writer fleet. This is F-11's shape at fleet scale: the lint sees a constant, and CANNOT tell an honest self-declared tier ('documented_approximation', 'single_pass' \u2014 a truthful disclosure of how the value was obtained) from an unearned green ('PASS', 'two_pass_verified' \u2014 a verification claim with no verification behind it). Distinguishing them is the F-11 + F-25 joint disposition named in SAMAPTI_N8_EARNED_SIGNAL_REGISTER_v1_0 \u00a72.3, which the register requires be done as ONE work item because fixing either side alone moves rows across the grounded/ungrounded boundary in the wrong direction. NOT individually reviewed by this lane. Frozen at the rollout count so the fleet cannot grow more of them."
+      "justification": "CATEGORY C — `verification_pass_status` stamped as a literal provenance tier across the L1/L2 writer fleet. This is F-11's shape at fleet scale: the lint sees a constant, and CANNOT tell an honest self-declared tier ('documented_approximation', 'single_pass' — a truthful disclosure of how the value was obtained) from an unearned green ('PASS', 'two_pass_verified' — a verification claim with no verification behind it). Distinguishing them is the F-11 + F-25 joint disposition named in SAMAPTI_N8_EARNED_SIGNAL_REGISTER_v1_0 §2.3, which the register requires be done as ONE work item because fixing either side alone moves rows across the grounded/ungrounded boundary in the wrong direction. NOT individually reviewed by this lane. Frozen at the rollout count so the fleet cannot grow more of them."
     },
     {
       "file": "platform/python-sidecar/brahmagyan/bodha/bo_2-5.py",
@@ -206,7 +206,7 @@
         374
       ],
       "sample_snippet": "\"passed\": True,",
-      "justification": "CATEGORY D \u2014 rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the \u00a7N.8-honest disposition \u2014 a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
+      "justification": "CATEGORY D — rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the §N.8-honest disposition — a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
     },
     {
       "file": "platform/python-sidecar/brahmagyan/bodha/bo_2-8.py",
@@ -218,7 +218,7 @@
         199
       ],
       "sample_snippet": "subsystems_ok: list[str] = []",
-      "justification": "CATEGORY D \u2014 rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the \u00a7N.8-honest disposition \u2014 a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
+      "justification": "CATEGORY D — rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the §N.8-honest disposition — a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
     },
     {
       "file": "platform/python-sidecar/brahmagyan/bodha/l2_domain_links.py",
@@ -231,7 +231,7 @@
         278
       ],
       "sample_snippet": "\"grounding_status\": \"UNGROUNDED\",",
-      "justification": "CATEGORY D \u2014 rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the \u00a7N.8-honest disposition \u2014 a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
+      "justification": "CATEGORY D — rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the §N.8-honest disposition — a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
     },
     {
       "file": "platform/python-sidecar/brahmagyan/bodha/l2_embeddings.py",
@@ -244,7 +244,7 @@
         424
       ],
       "sample_snippet": "\"grounding_status\": \"UNGROUNDED\",",
-      "justification": "CATEGORY D \u2014 rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the \u00a7N.8-honest disposition \u2014 a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
+      "justification": "CATEGORY D — rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the §N.8-honest disposition — a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
     },
     {
       "file": "platform/python-sidecar/brahmagyan/bodha/l2_graph.py",
@@ -257,7 +257,7 @@
         451
       ],
       "sample_snippet": "\"grounding_status\": \"UNGROUNDED\",",
-      "justification": "CATEGORY D \u2014 rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the \u00a7N.8-honest disposition \u2014 a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
+      "justification": "CATEGORY D — rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the §N.8-honest disposition — a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
     },
     {
       "file": "platform/python-sidecar/brahmagyan/bodha/l2_lenses_salience.py",
@@ -273,7 +273,7 @@
         582
       ],
       "sample_snippet": "return {\"seeded\": rows, \"build_id\": build_id, \"grounding_status\": \"UNGROUNDED\"}",
-      "justification": "CATEGORY D \u2014 rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the \u00a7N.8-honest disposition \u2014 a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
+      "justification": "CATEGORY D — rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the §N.8-honest disposition — a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
     },
     {
       "file": "platform/python-sidecar/brahmagyan/bodha/l2_resonance.py",
@@ -286,7 +286,7 @@
         306
       ],
       "sample_snippet": "\"grounding_status\": \"UNGROUNDED\",",
-      "justification": "CATEGORY D \u2014 rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the \u00a7N.8-honest disposition \u2014 a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
+      "justification": "CATEGORY D — rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the §N.8-honest disposition — a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
     },
     {
       "file": "platform/python-sidecar/brahmagyan/bodha/l2_signals_scaffold.py",
@@ -299,7 +299,7 @@
         396
       ],
       "sample_snippet": "\"grounding_status\": \"UNGROUNDED\",",
-      "justification": "CATEGORY D \u2014 rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the \u00a7N.8-honest disposition \u2014 a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
+      "justification": "CATEGORY D — rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the §N.8-honest disposition — a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
     },
     {
       "file": "platform/python-sidecar/brahmagyan/ganita/l1_engine_check.py",
@@ -313,7 +313,7 @@
         107
       ],
       "sample_snippet": "checks.append({\"id\": \"E1\", \"desc\": \"pyswisseph importable\", \"passed\": True, \"value\": \"ok\"})",
-      "justification": "CATEGORY D \u2014 rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the \u00a7N.8-honest disposition \u2014 a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
+      "justification": "CATEGORY D — rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the §N.8-honest disposition — a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
     },
     {
       "file": "platform/python-sidecar/brahmagyan/kala/temporal.py",
@@ -325,7 +325,7 @@
         685
       ],
       "sample_snippet": "checks.append({\"id\": \"AC1\", \"desc\": \"temporal() executes without error\", \"passed\": True})",
-      "justification": "CATEGORY D \u2014 rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the \u00a7N.8-honest disposition \u2014 a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
+      "justification": "CATEGORY D — rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the §N.8-honest disposition — a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
     },
     {
       "file": "platform/python-sidecar/brahmagyan/l0_prashna.py",
@@ -337,7 +337,7 @@
         255
       ],
       "sample_snippet": "\"moon_has_passed\": \"lord_1st_or_lord_matter_house\",",
-      "justification": "CATEGORY D \u2014 rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the \u00a7N.8-honest disposition \u2014 a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
+      "justification": "CATEGORY D — rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the §N.8-honest disposition — a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
     },
     {
       "file": "platform/python-sidecar/brahmagyan/l0_upapada_maitri_rules.py",
@@ -352,7 +352,7 @@
         93
       ],
       "sample_snippet": "\"verdict\": \"auspicious_marriage_indication\",",
-      "justification": "CATEGORY D \u2014 rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the \u00a7N.8-honest disposition \u2014 a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
+      "justification": "CATEGORY D — rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the §N.8-honest disposition — a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
     },
     {
       "file": "platform/python-sidecar/brahmagyan/mimamsa/export_to_bigquery.py",
@@ -365,7 +365,7 @@
         614
       ],
       "sample_snippet": "\"passed\": True,",
-      "justification": "CATEGORY D \u2014 rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the \u00a7N.8-honest disposition \u2014 a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
+      "justification": "CATEGORY D — rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the §N.8-honest disposition — a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
     },
     {
       "file": "platform/python-sidecar/brahmagyan/mimamsa/l5_calibration_substrate.py",
@@ -376,8 +376,8 @@
       "sample_lines": [
         172
       ],
-      "sample_snippet": "\"grounding_status\": \"UNGROUNDED scaffold \u2014 awaiting WS-3 rule_base completion\",",
-      "justification": "CATEGORY D \u2014 rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the \u00a7N.8-honest disposition \u2014 a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
+      "sample_snippet": "\"grounding_status\": \"UNGROUNDED scaffold — awaiting WS-3 rule_base completion\",",
+      "justification": "CATEGORY D — rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the §N.8-honest disposition — a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
     },
     {
       "file": "platform/python-sidecar/brahmagyan/mimamsa/l5_lel_intake.py",
@@ -389,7 +389,7 @@
         244
       ],
       "sample_snippet": "\"lel_isolation_verified\": True,",
-      "justification": "CATEGORY D \u2014 rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the \u00a7N.8-honest disposition \u2014 a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
+      "justification": "CATEGORY D — rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the §N.8-honest disposition — a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
     },
     {
       "file": "platform/python-sidecar/brahmagyan/mimamsa/lel_intake.py",
@@ -401,7 +401,7 @@
         1608
       ],
       "sample_snippet": "\"b3_compliant\": True,",
-      "justification": "CATEGORY D \u2014 rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the \u00a7N.8-honest disposition \u2014 a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
+      "justification": "CATEGORY D — rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the §N.8-honest disposition — a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
     },
     {
       "file": "platform/python-sidecar/brahmagyan/mimamsa/multiplier.py",
@@ -414,7 +414,7 @@
         456
       ],
       "sample_snippet": "\"b3_citation_compliant\": True,",
-      "justification": "CATEGORY D \u2014 rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the \u00a7N.8-honest disposition \u2014 a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
+      "justification": "CATEGORY D — rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the §N.8-honest disposition — a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
     },
     {
       "file": "platform/python-sidecar/brahmagyan/mimamsa/outcome.py",
@@ -426,7 +426,7 @@
         489
       ],
       "sample_snippet": "\"b3_citation_compliant\": True,",
-      "justification": "CATEGORY D \u2014 rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the \u00a7N.8-honest disposition \u2014 a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
+      "justification": "CATEGORY D — rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the §N.8-honest disposition — a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
     },
     {
       "file": "platform/python-sidecar/brahmagyan/mimamsa/outcome.py",
@@ -438,7 +438,7 @@
         490
       ],
       "sample_snippet": "\"leakage_guard_passed\": True,",
-      "justification": "CATEGORY D \u2014 rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the \u00a7N.8-honest disposition \u2014 a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
+      "justification": "CATEGORY D — rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the §N.8-honest disposition — a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
     },
     {
       "file": "platform/python-sidecar/brahmagyan/phala/l4_muhurta.py",
@@ -450,7 +450,7 @@
         671
       ],
       "sample_snippet": "\"b3_citation_compliant\": True,",
-      "justification": "CATEGORY D \u2014 rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the \u00a7N.8-honest disposition \u2014 a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
+      "justification": "CATEGORY D — rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the §N.8-honest disposition — a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
     },
     {
       "file": "platform/python-sidecar/brahmagyan/phala/l4_rectification.py",
@@ -462,7 +462,7 @@
         948
       ],
       "sample_snippet": "\"b10_compliant\": True,",
-      "justification": "CATEGORY D \u2014 rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the \u00a7N.8-honest disposition \u2014 a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
+      "justification": "CATEGORY D — rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the §N.8-honest disposition — a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
     },
     {
       "file": "platform/python-sidecar/brahmagyan/phala/l4_rectification.py",
@@ -474,7 +474,7 @@
         877
       ],
       "sample_snippet": "\"preliminary_lagna_verdict\": \"Aries (confidence 0.72)\",",
-      "justification": "CATEGORY D \u2014 rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the \u00a7N.8-honest disposition \u2014 a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
+      "justification": "CATEGORY D — rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the §N.8-honest disposition — a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
     },
     {
       "file": "platform/python-sidecar/brahmagyan/phala/muhurta.py",
@@ -486,7 +486,7 @@
         1270
       ],
       "sample_snippet": "\"passed\": False,",
-      "justification": "CATEGORY D \u2014 rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the \u00a7N.8-honest disposition \u2014 a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
+      "justification": "CATEGORY D — rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the §N.8-honest disposition — a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
     },
     {
       "file": "platform/python-sidecar/brahmagyan/phala/outlook.py",
@@ -498,7 +498,7 @@
         513
       ],
       "sample_snippet": "\"passed\": True,",
-      "justification": "CATEGORY D \u2014 rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the \u00a7N.8-honest disposition \u2014 a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
+      "justification": "CATEGORY D — rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the §N.8-honest disposition — a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
     },
     {
       "file": "platform/python-sidecar/ga_writers/ga_condition_writer.py",
@@ -511,7 +511,7 @@
         1348
       ],
       "sample_snippet": "\"verification_pass_status\":\"floored\",",
-      "justification": "CATEGORY C \u2014 `verification_pass_status` stamped as a literal provenance tier across the L1/L2 writer fleet. This is F-11's shape at fleet scale: the lint sees a constant, and CANNOT tell an honest self-declared tier ('documented_approximation', 'single_pass' \u2014 a truthful disclosure of how the value was obtained) from an unearned green ('PASS', 'two_pass_verified' \u2014 a verification claim with no verification behind it). Distinguishing them is the F-11 + F-25 joint disposition named in SAMAPTI_N8_EARNED_SIGNAL_REGISTER_v1_0 \u00a72.3, which the register requires be done as ONE work item because fixing either side alone moves rows across the grounded/ungrounded boundary in the wrong direction. NOT individually reviewed by this lane. Frozen at the rollout count so the fleet cannot grow more of them."
+      "justification": "CATEGORY C — `verification_pass_status` stamped as a literal provenance tier across the L1/L2 writer fleet. This is F-11's shape at fleet scale: the lint sees a constant, and CANNOT tell an honest self-declared tier ('documented_approximation', 'single_pass' — a truthful disclosure of how the value was obtained) from an unearned green ('PASS', 'two_pass_verified' — a verification claim with no verification behind it). Distinguishing them is the F-11 + F-25 joint disposition named in SAMAPTI_N8_EARNED_SIGNAL_REGISTER_v1_0 §2.3, which the register requires be done as ONE work item because fixing either side alone moves rows across the grounded/ungrounded boundary in the wrong direction. NOT individually reviewed by this lane. Frozen at the rollout count so the fleet cannot grow more of them."
     },
     {
       "file": "platform/python-sidecar/ga_writers/ga_panchanga_writer.py",
@@ -523,7 +523,7 @@
         1384
       ],
       "sample_snippet": "summary[\"forensic_pass\"] = True",
-      "justification": "CATEGORY D \u2014 rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the \u00a7N.8-honest disposition \u2014 a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
+      "justification": "CATEGORY D — rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the §N.8-honest disposition — a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
     },
     {
       "file": "platform/python-sidecar/ga_writers/ga_positions_writer.py",
@@ -535,7 +535,7 @@
         631
       ],
       "sample_snippet": "summary[\"forensic_pass\"] = True",
-      "justification": "CATEGORY D \u2014 rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the \u00a7N.8-honest disposition \u2014 a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
+      "justification": "CATEGORY D — rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the §N.8-honest disposition — a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
     },
     {
       "file": "platform/python-sidecar/ga_writers/ga_positions_writer.py",
@@ -548,7 +548,7 @@
         420
       ],
       "sample_snippet": "\"verification_pass_status\": \"single\",",
-      "justification": "CATEGORY C \u2014 `verification_pass_status` stamped as a literal provenance tier across the L1/L2 writer fleet. This is F-11's shape at fleet scale: the lint sees a constant, and CANNOT tell an honest self-declared tier ('documented_approximation', 'single_pass' \u2014 a truthful disclosure of how the value was obtained) from an unearned green ('PASS', 'two_pass_verified' \u2014 a verification claim with no verification behind it). Distinguishing them is the F-11 + F-25 joint disposition named in SAMAPTI_N8_EARNED_SIGNAL_REGISTER_v1_0 \u00a72.3, which the register requires be done as ONE work item because fixing either side alone moves rows across the grounded/ungrounded boundary in the wrong direction. NOT individually reviewed by this lane. Frozen at the rollout count so the fleet cannot grow more of them."
+      "justification": "CATEGORY C — `verification_pass_status` stamped as a literal provenance tier across the L1/L2 writer fleet. This is F-11's shape at fleet scale: the lint sees a constant, and CANNOT tell an honest self-declared tier ('documented_approximation', 'single_pass' — a truthful disclosure of how the value was obtained) from an unearned green ('PASS', 'two_pass_verified' — a verification claim with no verification behind it). Distinguishing them is the F-11 + F-25 joint disposition named in SAMAPTI_N8_EARNED_SIGNAL_REGISTER_v1_0 §2.3, which the register requires be done as ONE work item because fixing either side alone moves rows across the grounded/ungrounded boundary in the wrong direction. NOT individually reviewed by this lane. Frozen at the rollout count so the fleet cannot grow more of them."
     },
     {
       "file": "platform/python-sidecar/ga_writers/ga_sensitive_writer.py",
@@ -560,7 +560,7 @@
         3020
       ],
       "sample_snippet": "summary[\"forensic_pass\"] = True",
-      "justification": "CATEGORY D \u2014 rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the \u00a7N.8-honest disposition \u2014 a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
+      "justification": "CATEGORY D — rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the §N.8-honest disposition — a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
     },
     {
       "file": "platform/python-sidecar/ga_writers/ga_sensitive_writer.py",
@@ -576,7 +576,7 @@
         2515
       ],
       "sample_snippet": "verification_pass_status=\"floored\",",
-      "justification": "CATEGORY C \u2014 `verification_pass_status` stamped as a literal provenance tier across the L1/L2 writer fleet. This is F-11's shape at fleet scale: the lint sees a constant, and CANNOT tell an honest self-declared tier ('documented_approximation', 'single_pass' \u2014 a truthful disclosure of how the value was obtained) from an unearned green ('PASS', 'two_pass_verified' \u2014 a verification claim with no verification behind it). Distinguishing them is the F-11 + F-25 joint disposition named in SAMAPTI_N8_EARNED_SIGNAL_REGISTER_v1_0 \u00a72.3, which the register requires be done as ONE work item because fixing either side alone moves rows across the grounded/ungrounded boundary in the wrong direction. NOT individually reviewed by this lane. Frozen at the rollout count so the fleet cannot grow more of them."
+      "justification": "CATEGORY C — `verification_pass_status` stamped as a literal provenance tier across the L1/L2 writer fleet. This is F-11's shape at fleet scale: the lint sees a constant, and CANNOT tell an honest self-declared tier ('documented_approximation', 'single_pass' — a truthful disclosure of how the value was obtained) from an unearned green ('PASS', 'two_pass_verified' — a verification claim with no verification behind it). Distinguishing them is the F-11 + F-25 joint disposition named in SAMAPTI_N8_EARNED_SIGNAL_REGISTER_v1_0 §2.3, which the register requires be done as ONE work item because fixing either side alone moves rows across the grounded/ungrounded boundary in the wrong direction. NOT individually reviewed by this lane. Frozen at the rollout count so the fleet cannot grow more of them."
     },
     {
       "file": "platform/python-sidecar/ga_writers/ga_strength_writer.py",
@@ -588,7 +588,7 @@
         1701
       ],
       "sample_snippet": "summary[\"forensic_pass\"] = True",
-      "justification": "CATEGORY D \u2014 rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the \u00a7N.8-honest disposition \u2014 a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
+      "justification": "CATEGORY D — rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the §N.8-honest disposition — a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
     },
     {
       "file": "platform/python-sidecar/ga_writers/ga_strength_writer.py",
@@ -602,7 +602,7 @@
         1595
       ],
       "sample_snippet": "\"verification_pass_status\": \"classical_match\",",
-      "justification": "CATEGORY C \u2014 `verification_pass_status` stamped as a literal provenance tier across the L1/L2 writer fleet. This is F-11's shape at fleet scale: the lint sees a constant, and CANNOT tell an honest self-declared tier ('documented_approximation', 'single_pass' \u2014 a truthful disclosure of how the value was obtained) from an unearned green ('PASS', 'two_pass_verified' \u2014 a verification claim with no verification behind it). Distinguishing them is the F-11 + F-25 joint disposition named in SAMAPTI_N8_EARNED_SIGNAL_REGISTER_v1_0 \u00a72.3, which the register requires be done as ONE work item because fixing either side alone moves rows across the grounded/ungrounded boundary in the wrong direction. NOT individually reviewed by this lane. Frozen at the rollout count so the fleet cannot grow more of them."
+      "justification": "CATEGORY C — `verification_pass_status` stamped as a literal provenance tier across the L1/L2 writer fleet. This is F-11's shape at fleet scale: the lint sees a constant, and CANNOT tell an honest self-declared tier ('documented_approximation', 'single_pass' — a truthful disclosure of how the value was obtained) from an unearned green ('PASS', 'two_pass_verified' — a verification claim with no verification behind it). Distinguishing them is the F-11 + F-25 joint disposition named in SAMAPTI_N8_EARNED_SIGNAL_REGISTER_v1_0 §2.3, which the register requires be done as ONE work item because fixing either side alone moves rows across the grounded/ungrounded boundary in the wrong direction. NOT individually reviewed by this lane. Frozen at the rollout count so the fleet cannot grow more of them."
     },
     {
       "file": "platform/python-sidecar/ga_writers/ga_structural_writer.py",
@@ -614,7 +614,7 @@
         6251
       ],
       "sample_snippet": "summary[\"forensic_pass\"] = True",
-      "justification": "CATEGORY D \u2014 rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the \u00a7N.8-honest disposition \u2014 a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
+      "justification": "CATEGORY D — rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the §N.8-honest disposition — a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
     },
     {
       "file": "platform/python-sidecar/ga_writers/ga_structural_writer.py",
@@ -626,7 +626,7 @@
         6294
       ],
       "sample_snippet": "summary[\"two_pass_verified\"] = True",
-      "justification": "CATEGORY D \u2014 rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the \u00a7N.8-honest disposition \u2014 a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
+      "justification": "CATEGORY D — rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the §N.8-honest disposition — a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
     },
     {
       "file": "platform/python-sidecar/ga_writers/ga_vargas_writer.py",
@@ -642,7 +642,7 @@
         1196
       ],
       "sample_snippet": "\"verification_pass_status\": \"classical_match\",",
-      "justification": "CATEGORY C \u2014 `verification_pass_status` stamped as a literal provenance tier across the L1/L2 writer fleet. This is F-11's shape at fleet scale: the lint sees a constant, and CANNOT tell an honest self-declared tier ('documented_approximation', 'single_pass' \u2014 a truthful disclosure of how the value was obtained) from an unearned green ('PASS', 'two_pass_verified' \u2014 a verification claim with no verification behind it). Distinguishing them is the F-11 + F-25 joint disposition named in SAMAPTI_N8_EARNED_SIGNAL_REGISTER_v1_0 \u00a72.3, which the register requires be done as ONE work item because fixing either side alone moves rows across the grounded/ungrounded boundary in the wrong direction. NOT individually reviewed by this lane. Frozen at the rollout count so the fleet cannot grow more of them."
+      "justification": "CATEGORY C — `verification_pass_status` stamped as a literal provenance tier across the L1/L2 writer fleet. This is F-11's shape at fleet scale: the lint sees a constant, and CANNOT tell an honest self-declared tier ('documented_approximation', 'single_pass' — a truthful disclosure of how the value was obtained) from an unearned green ('PASS', 'two_pass_verified' — a verification claim with no verification behind it). Distinguishing them is the F-11 + F-25 joint disposition named in SAMAPTI_N8_EARNED_SIGNAL_REGISTER_v1_0 §2.3, which the register requires be done as ONE work item because fixing either side alone moves rows across the grounded/ungrounded boundary in the wrong direction. NOT individually reviewed by this lane. Frozen at the rollout count so the fleet cannot grow more of them."
     },
     {
       "file": "platform/python-sidecar/pipeline/orchestrator/service_probes.py",
@@ -655,7 +655,7 @@
         124
       ],
       "sample_snippet": "checks.append({\"check\": \"single_engine_importable\", \"passed\": True})",
-      "justification": "CATEGORY D \u2014 rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the \u00a7N.8-honest disposition \u2014 a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
+      "justification": "CATEGORY D — rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the §N.8-honest disposition — a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
     },
     {
       "file": "platform/python-sidecar/pipeline/orchestrator/writers/bo_bimba.py",
@@ -669,7 +669,7 @@
         393
       ],
       "sample_snippet": "\"verification_pass_status\": \"single_pass\",",
-      "justification": "CATEGORY C \u2014 `verification_pass_status` stamped as a literal provenance tier across the L1/L2 writer fleet. This is F-11's shape at fleet scale: the lint sees a constant, and CANNOT tell an honest self-declared tier ('documented_approximation', 'single_pass' \u2014 a truthful disclosure of how the value was obtained) from an unearned green ('PASS', 'two_pass_verified' \u2014 a verification claim with no verification behind it). Distinguishing them is the F-11 + F-25 joint disposition named in SAMAPTI_N8_EARNED_SIGNAL_REGISTER_v1_0 \u00a72.3, which the register requires be done as ONE work item because fixing either side alone moves rows across the grounded/ungrounded boundary in the wrong direction. NOT individually reviewed by this lane. Frozen at the rollout count so the fleet cannot grow more of them."
+      "justification": "CATEGORY C — `verification_pass_status` stamped as a literal provenance tier across the L1/L2 writer fleet. This is F-11's shape at fleet scale: the lint sees a constant, and CANNOT tell an honest self-declared tier ('documented_approximation', 'single_pass' — a truthful disclosure of how the value was obtained) from an unearned green ('PASS', 'two_pass_verified' — a verification claim with no verification behind it). Distinguishing them is the F-11 + F-25 joint disposition named in SAMAPTI_N8_EARNED_SIGNAL_REGISTER_v1_0 §2.3, which the register requires be done as ONE work item because fixing either side alone moves rows across the grounded/ungrounded boundary in the wrong direction. NOT individually reviewed by this lane. Frozen at the rollout count so the fleet cannot grow more of them."
     },
     {
       "file": "platform/python-sidecar/pipeline/orchestrator/writers/bo_cdlm_summary.py",
@@ -683,7 +683,7 @@
         365
       ],
       "sample_snippet": "\"verification_pass_status\": \"pass\",",
-      "justification": "CATEGORY C \u2014 `verification_pass_status` stamped as a literal provenance tier across the L1/L2 writer fleet. This is F-11's shape at fleet scale: the lint sees a constant, and CANNOT tell an honest self-declared tier ('documented_approximation', 'single_pass' \u2014 a truthful disclosure of how the value was obtained) from an unearned green ('PASS', 'two_pass_verified' \u2014 a verification claim with no verification behind it). Distinguishing them is the F-11 + F-25 joint disposition named in SAMAPTI_N8_EARNED_SIGNAL_REGISTER_v1_0 \u00a72.3, which the register requires be done as ONE work item because fixing either side alone moves rows across the grounded/ungrounded boundary in the wrong direction. NOT individually reviewed by this lane. Frozen at the rollout count so the fleet cannot grow more of them."
+      "justification": "CATEGORY C — `verification_pass_status` stamped as a literal provenance tier across the L1/L2 writer fleet. This is F-11's shape at fleet scale: the lint sees a constant, and CANNOT tell an honest self-declared tier ('documented_approximation', 'single_pass' — a truthful disclosure of how the value was obtained) from an unearned green ('PASS', 'two_pass_verified' — a verification claim with no verification behind it). Distinguishing them is the F-11 + F-25 joint disposition named in SAMAPTI_N8_EARNED_SIGNAL_REGISTER_v1_0 §2.3, which the register requires be done as ONE work item because fixing either side alone moves rows across the grounded/ungrounded boundary in the wrong direction. NOT individually reviewed by this lane. Frozen at the rollout count so the fleet cannot grow more of them."
     },
     {
       "file": "platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_motifs.py",
@@ -697,7 +697,7 @@
         801
       ],
       "sample_snippet": "\"verification_pass_status\": \"pass\",",
-      "justification": "CATEGORY C \u2014 `verification_pass_status` stamped as a literal provenance tier across the L1/L2 writer fleet. This is F-11's shape at fleet scale: the lint sees a constant, and CANNOT tell an honest self-declared tier ('documented_approximation', 'single_pass' \u2014 a truthful disclosure of how the value was obtained) from an unearned green ('PASS', 'two_pass_verified' \u2014 a verification claim with no verification behind it). Distinguishing them is the F-11 + F-25 joint disposition named in SAMAPTI_N8_EARNED_SIGNAL_REGISTER_v1_0 \u00a72.3, which the register requires be done as ONE work item because fixing either side alone moves rows across the grounded/ungrounded boundary in the wrong direction. NOT individually reviewed by this lane. Frozen at the rollout count so the fleet cannot grow more of them."
+      "justification": "CATEGORY C — `verification_pass_status` stamped as a literal provenance tier across the L1/L2 writer fleet. This is F-11's shape at fleet scale: the lint sees a constant, and CANNOT tell an honest self-declared tier ('documented_approximation', 'single_pass' — a truthful disclosure of how the value was obtained) from an unearned green ('PASS', 'two_pass_verified' — a verification claim with no verification behind it). Distinguishing them is the F-11 + F-25 joint disposition named in SAMAPTI_N8_EARNED_SIGNAL_REGISTER_v1_0 §2.3, which the register requires be done as ONE work item because fixing either side alone moves rows across the grounded/ungrounded boundary in the wrong direction. NOT individually reviewed by this lane. Frozen at the rollout count so the fleet cannot grow more of them."
     },
     {
       "file": "platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_paths.py",
@@ -709,7 +709,7 @@
         336
       ],
       "sample_snippet": "\"verification_pass_status\": \"pass\",",
-      "justification": "CATEGORY C \u2014 `verification_pass_status` stamped as a literal provenance tier across the L1/L2 writer fleet. This is F-11's shape at fleet scale: the lint sees a constant, and CANNOT tell an honest self-declared tier ('documented_approximation', 'single_pass' \u2014 a truthful disclosure of how the value was obtained) from an unearned green ('PASS', 'two_pass_verified' \u2014 a verification claim with no verification behind it). Distinguishing them is the F-11 + F-25 joint disposition named in SAMAPTI_N8_EARNED_SIGNAL_REGISTER_v1_0 \u00a72.3, which the register requires be done as ONE work item because fixing either side alone moves rows across the grounded/ungrounded boundary in the wrong direction. NOT individually reviewed by this lane. Frozen at the rollout count so the fleet cannot grow more of them."
+      "justification": "CATEGORY C — `verification_pass_status` stamped as a literal provenance tier across the L1/L2 writer fleet. This is F-11's shape at fleet scale: the lint sees a constant, and CANNOT tell an honest self-declared tier ('documented_approximation', 'single_pass' — a truthful disclosure of how the value was obtained) from an unearned green ('PASS', 'two_pass_verified' — a verification claim with no verification behind it). Distinguishing them is the F-11 + F-25 joint disposition named in SAMAPTI_N8_EARNED_SIGNAL_REGISTER_v1_0 §2.3, which the register requires be done as ONE work item because fixing either side alone moves rows across the grounded/ungrounded boundary in the wrong direction. NOT individually reviewed by this lane. Frozen at the rollout count so the fleet cannot grow more of them."
     },
     {
       "file": "platform/python-sidecar/pipeline/orchestrator/writers/bo_drishti.py",
@@ -721,7 +721,7 @@
         245
       ],
       "sample_snippet": "\"verification_pass_status\": \"documented_approximation\",",
-      "justification": "CATEGORY C \u2014 `verification_pass_status` stamped as a literal provenance tier across the L1/L2 writer fleet. This is F-11's shape at fleet scale: the lint sees a constant, and CANNOT tell an honest self-declared tier ('documented_approximation', 'single_pass' \u2014 a truthful disclosure of how the value was obtained) from an unearned green ('PASS', 'two_pass_verified' \u2014 a verification claim with no verification behind it). Distinguishing them is the F-11 + F-25 joint disposition named in SAMAPTI_N8_EARNED_SIGNAL_REGISTER_v1_0 \u00a72.3, which the register requires be done as ONE work item because fixing either side alone moves rows across the grounded/ungrounded boundary in the wrong direction. NOT individually reviewed by this lane. Frozen at the rollout count so the fleet cannot grow more of them."
+      "justification": "CATEGORY C — `verification_pass_status` stamped as a literal provenance tier across the L1/L2 writer fleet. This is F-11's shape at fleet scale: the lint sees a constant, and CANNOT tell an honest self-declared tier ('documented_approximation', 'single_pass' — a truthful disclosure of how the value was obtained) from an unearned green ('PASS', 'two_pass_verified' — a verification claim with no verification behind it). Distinguishing them is the F-11 + F-25 joint disposition named in SAMAPTI_N8_EARNED_SIGNAL_REGISTER_v1_0 §2.3, which the register requires be done as ONE work item because fixing either side alone moves rows across the grounded/ungrounded boundary in the wrong direction. NOT individually reviewed by this lane. Frozen at the rollout count so the fleet cannot grow more of them."
     },
     {
       "file": "platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py",
@@ -737,7 +737,7 @@
         1338
       ],
       "sample_snippet": "\"verification_pass_status\": \"documented_approximation\",",
-      "justification": "CATEGORY C \u2014 `verification_pass_status` stamped as a literal provenance tier across the L1/L2 writer fleet. This is F-11's shape at fleet scale: the lint sees a constant, and CANNOT tell an honest self-declared tier ('documented_approximation', 'single_pass' \u2014 a truthful disclosure of how the value was obtained) from an unearned green ('PASS', 'two_pass_verified' \u2014 a verification claim with no verification behind it). Distinguishing them is the F-11 + F-25 joint disposition named in SAMAPTI_N8_EARNED_SIGNAL_REGISTER_v1_0 \u00a72.3, which the register requires be done as ONE work item because fixing either side alone moves rows across the grounded/ungrounded boundary in the wrong direction. NOT individually reviewed by this lane. Frozen at the rollout count so the fleet cannot grow more of them."
+      "justification": "CATEGORY C — `verification_pass_status` stamped as a literal provenance tier across the L1/L2 writer fleet. This is F-11's shape at fleet scale: the lint sees a constant, and CANNOT tell an honest self-declared tier ('documented_approximation', 'single_pass' — a truthful disclosure of how the value was obtained) from an unearned green ('PASS', 'two_pass_verified' — a verification claim with no verification behind it). Distinguishing them is the F-11 + F-25 joint disposition named in SAMAPTI_N8_EARNED_SIGNAL_REGISTER_v1_0 §2.3, which the register requires be done as ONE work item because fixing either side alone moves rows across the grounded/ungrounded boundary in the wrong direction. NOT individually reviewed by this lane. Frozen at the rollout count so the fleet cannot grow more of them."
     },
     {
       "file": "platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py",
@@ -750,7 +750,7 @@
         2703
       ],
       "sample_snippet": "\"verification_pass_status\": \"documented_approximation\",",
-      "justification": "CATEGORY C \u2014 `verification_pass_status` stamped as a literal provenance tier across the L1/L2 writer fleet. This is F-11's shape at fleet scale: the lint sees a constant, and CANNOT tell an honest self-declared tier ('documented_approximation', 'single_pass' \u2014 a truthful disclosure of how the value was obtained) from an unearned green ('PASS', 'two_pass_verified' \u2014 a verification claim with no verification behind it). Distinguishing them is the F-11 + F-25 joint disposition named in SAMAPTI_N8_EARNED_SIGNAL_REGISTER_v1_0 \u00a72.3, which the register requires be done as ONE work item because fixing either side alone moves rows across the grounded/ungrounded boundary in the wrong direction. NOT individually reviewed by this lane. Frozen at the rollout count so the fleet cannot grow more of them."
+      "justification": "CATEGORY C — `verification_pass_status` stamped as a literal provenance tier across the L1/L2 writer fleet. This is F-11's shape at fleet scale: the lint sees a constant, and CANNOT tell an honest self-declared tier ('documented_approximation', 'single_pass' — a truthful disclosure of how the value was obtained) from an unearned green ('PASS', 'two_pass_verified' — a verification claim with no verification behind it). Distinguishing them is the F-11 + F-25 joint disposition named in SAMAPTI_N8_EARNED_SIGNAL_REGISTER_v1_0 §2.3, which the register requires be done as ONE work item because fixing either side alone moves rows across the grounded/ungrounded boundary in the wrong direction. NOT individually reviewed by this lane. Frozen at the rollout count so the fleet cannot grow more of them."
     },
     {
       "file": "platform/python-sidecar/pipeline/orchestrator/writers/bo_pramana_mapa.py",
@@ -762,7 +762,7 @@
         262
       ],
       "sample_snippet": "\"divergent_flagged_count\": 0,",
-      "justification": "CATEGORY A/B \u2014 CONFIRMED FINDING F-10 in SAMAPTI_N8_EARNED_SIGNAL_REGISTER_v1_0; owned by lane B-N8-FIX. Allowlisted only so this lint can merge ahead of / independently of the fix lane. Independently rediscovered by this lint at rollout, which is the lint's ground-truth check against the register."
+      "justification": "CATEGORY A/B — CONFIRMED FINDING F-10 in SAMAPTI_N8_EARNED_SIGNAL_REGISTER_v1_0; owned by lane B-N8-FIX. Allowlisted only so this lint can merge ahead of / independently of the fix lane. Independently rediscovered by this lint at rollout, which is the lint's ground-truth check against the register."
     },
     {
       "file": "platform/python-sidecar/pipeline/orchestrator/writers/bo_pramana_mapa.py",
@@ -774,7 +774,7 @@
         278
       ],
       "sample_snippet": "\"trap2_narration_leak_count\": 0,",
-      "justification": "CATEGORY A/B \u2014 CONFIRMED FINDING F-09 in SAMAPTI_N8_EARNED_SIGNAL_REGISTER_v1_0; owned by lane B-N8-FIX. Allowlisted only so this lint can merge ahead of / independently of the fix lane. Independently rediscovered by this lint at rollout, which is the lint's ground-truth check against the register."
+      "justification": "CATEGORY A/B — CONFIRMED FINDING F-09 in SAMAPTI_N8_EARNED_SIGNAL_REGISTER_v1_0; owned by lane B-N8-FIX. Allowlisted only so this lint can merge ahead of / independently of the fix lane. Independently rediscovered by this lint at rollout, which is the lint's ground-truth check against the register."
     },
     {
       "file": "platform/python-sidecar/pipeline/orchestrator/writers/bo_sangati.py",
@@ -787,7 +787,7 @@
         377
       ],
       "sample_snippet": "\"verification_pass_status\": \"documented_approximation\",",
-      "justification": "CATEGORY C \u2014 `verification_pass_status` stamped as a literal provenance tier across the L1/L2 writer fleet. This is F-11's shape at fleet scale: the lint sees a constant, and CANNOT tell an honest self-declared tier ('documented_approximation', 'single_pass' \u2014 a truthful disclosure of how the value was obtained) from an unearned green ('PASS', 'two_pass_verified' \u2014 a verification claim with no verification behind it). Distinguishing them is the F-11 + F-25 joint disposition named in SAMAPTI_N8_EARNED_SIGNAL_REGISTER_v1_0 \u00a72.3, which the register requires be done as ONE work item because fixing either side alone moves rows across the grounded/ungrounded boundary in the wrong direction. NOT individually reviewed by this lane. Frozen at the rollout count so the fleet cannot grow more of them."
+      "justification": "CATEGORY C — `verification_pass_status` stamped as a literal provenance tier across the L1/L2 writer fleet. This is F-11's shape at fleet scale: the lint sees a constant, and CANNOT tell an honest self-declared tier ('documented_approximation', 'single_pass' — a truthful disclosure of how the value was obtained) from an unearned green ('PASS', 'two_pass_verified' — a verification claim with no verification behind it). Distinguishing them is the F-11 + F-25 joint disposition named in SAMAPTI_N8_EARNED_SIGNAL_REGISTER_v1_0 §2.3, which the register requires be done as ONE work item because fixing either side alone moves rows across the grounded/ungrounded boundary in the wrong direction. NOT individually reviewed by this lane. Frozen at the rollout count so the fleet cannot grow more of them."
     },
     {
       "file": "platform/python-sidecar/pipeline/orchestrator/writers/bo_upaya.py",
@@ -803,7 +803,7 @@
         1519
       ],
       "sample_snippet": "\"verification_pass_status\": \"documented_approximation\",",
-      "justification": "CATEGORY C \u2014 `verification_pass_status` stamped as a literal provenance tier across the L1/L2 writer fleet. This is F-11's shape at fleet scale: the lint sees a constant, and CANNOT tell an honest self-declared tier ('documented_approximation', 'single_pass' \u2014 a truthful disclosure of how the value was obtained) from an unearned green ('PASS', 'two_pass_verified' \u2014 a verification claim with no verification behind it). Distinguishing them is the F-11 + F-25 joint disposition named in SAMAPTI_N8_EARNED_SIGNAL_REGISTER_v1_0 \u00a72.3, which the register requires be done as ONE work item because fixing either side alone moves rows across the grounded/ungrounded boundary in the wrong direction. NOT individually reviewed by this lane. Frozen at the rollout count so the fleet cannot grow more of them."
+      "justification": "CATEGORY C — `verification_pass_status` stamped as a literal provenance tier across the L1/L2 writer fleet. This is F-11's shape at fleet scale: the lint sees a constant, and CANNOT tell an honest self-declared tier ('documented_approximation', 'single_pass' — a truthful disclosure of how the value was obtained) from an unearned green ('PASS', 'two_pass_verified' — a verification claim with no verification behind it). Distinguishing them is the F-11 + F-25 joint disposition named in SAMAPTI_N8_EARNED_SIGNAL_REGISTER_v1_0 §2.3, which the register requires be done as ONE work item because fixing either side alone moves rows across the grounded/ungrounded boundary in the wrong direction. NOT individually reviewed by this lane. Frozen at the rollout count so the fleet cannot grow more of them."
     },
     {
       "file": "platform/python-sidecar/pipeline/orchestrator/writers/bo_yantra_mechanism.py",
@@ -815,7 +815,7 @@
         188
       ],
       "sample_snippet": "\"verification_pass_status\": \"pass\",",
-      "justification": "CATEGORY C \u2014 `verification_pass_status` stamped as a literal provenance tier across the L1/L2 writer fleet. This is F-11's shape at fleet scale: the lint sees a constant, and CANNOT tell an honest self-declared tier ('documented_approximation', 'single_pass' \u2014 a truthful disclosure of how the value was obtained) from an unearned green ('PASS', 'two_pass_verified' \u2014 a verification claim with no verification behind it). Distinguishing them is the F-11 + F-25 joint disposition named in SAMAPTI_N8_EARNED_SIGNAL_REGISTER_v1_0 \u00a72.3, which the register requires be done as ONE work item because fixing either side alone moves rows across the grounded/ungrounded boundary in the wrong direction. NOT individually reviewed by this lane. Frozen at the rollout count so the fleet cannot grow more of them."
+      "justification": "CATEGORY C — `verification_pass_status` stamped as a literal provenance tier across the L1/L2 writer fleet. This is F-11's shape at fleet scale: the lint sees a constant, and CANNOT tell an honest self-declared tier ('documented_approximation', 'single_pass' — a truthful disclosure of how the value was obtained) from an unearned green ('PASS', 'two_pass_verified' — a verification claim with no verification behind it). Distinguishing them is the F-11 + F-25 joint disposition named in SAMAPTI_N8_EARNED_SIGNAL_REGISTER_v1_0 §2.3, which the register requires be done as ONE work item because fixing either side alone moves rows across the grounded/ungrounded boundary in the wrong direction. NOT individually reviewed by this lane. Frozen at the rollout count so the fleet cannot grow more of them."
     },
     {
       "file": "platform/python-sidecar/pipeline/orchestrator/writers/ga_nakshatra.py",
@@ -827,7 +827,7 @@
         87
       ],
       "sample_snippet": "\"verification_pass_status\": \"PASS\",",
-      "justification": "CATEGORY A/B \u2014 CONFIRMED FINDING F-11 in SAMAPTI_N8_EARNED_SIGNAL_REGISTER_v1_0; owned by lane B-N8-FIX. Allowlisted only so this lint can merge ahead of / independently of the fix lane. Independently rediscovered by this lint at rollout, which is the lint's ground-truth check against the register."
+      "justification": "CATEGORY A/B — CONFIRMED FINDING F-11 in SAMAPTI_N8_EARNED_SIGNAL_REGISTER_v1_0; owned by lane B-N8-FIX. Allowlisted only so this lint can merge ahead of / independently of the fix lane. Independently rediscovered by this lint at rollout, which is the lint's ground-truth check against the register."
     },
     {
       "file": "platform/python-sidecar/pipeline/orchestrator/writers/ka_graha_sancara.py",
@@ -839,7 +839,7 @@
         113
       ],
       "sample_snippet": "checks.append({\"check\": \"ephemeris_computes\", \"passed\": True})",
-      "justification": "CATEGORY D \u2014 rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the \u00a7N.8-honest disposition \u2014 a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
+      "justification": "CATEGORY D — rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the §N.8-honest disposition — a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
     },
     {
       "file": "platform/python-sidecar/services/ph_nimitta/engine.py",
@@ -851,7 +851,7 @@
         370
       ],
       "sample_snippet": "pratijna_grade: float = 5.0 # bodha_pratijna grade [0..10]",
-      "justification": "CATEGORY D \u2014 rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the \u00a7N.8-honest disposition \u2014 a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
+      "justification": "CATEGORY D — rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the §N.8-honest disposition — a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
     },
     {
       "file": "platform/src/app/api/chat/consult/route.ts",
@@ -863,7 +863,7 @@
         713
       ],
       "sample_snippet": "fallback_used: false,",
-      "justification": "CATEGORY A/B \u2014 CONFIRMED FINDING F-23 in SAMAPTI_N8_EARNED_SIGNAL_REGISTER_v1_0; owned by lane unassigned (register \u00a76.1 Q5). Allowlisted only so this lint can merge ahead of / independently of the fix lane. Independently rediscovered by this lint at rollout, which is the lint's ground-truth check against the register."
+      "justification": "CATEGORY A/B — CONFIRMED FINDING F-23 in SAMAPTI_N8_EARNED_SIGNAL_REGISTER_v1_0; owned by lane unassigned (register §6.1 Q5). Allowlisted only so this lint can merge ahead of / independently of the fix lane. Independently rediscovered by this lint at rollout, which is the lint's ground-truth check against the register."
     },
     {
       "file": "platform/src/app/api/chat/consult/route.ts",
@@ -875,7 +875,7 @@
         711
       ],
       "sample_snippet": "parsing_success: true,",
-      "justification": "CATEGORY A/B \u2014 CONFIRMED FINDING F-23 in SAMAPTI_N8_EARNED_SIGNAL_REGISTER_v1_0; owned by lane unassigned (register \u00a76.1 Q5). Allowlisted only so this lint can merge ahead of / independently of the fix lane. Independently rediscovered by this lint at rollout, which is the lint's ground-truth check against the register."
+      "justification": "CATEGORY A/B — CONFIRMED FINDING F-23 in SAMAPTI_N8_EARNED_SIGNAL_REGISTER_v1_0; owned by lane unassigned (register §6.1 Q5). Allowlisted only so this lint can merge ahead of / independently of the fix lane. Independently rediscovered by this lint at rollout, which is the lint's ground-truth check against the register."
     },
     {
       "file": "platform/src/app/api/chat/consult/route.ts",
@@ -887,7 +887,7 @@
         736
       ],
       "sample_snippet": "planning_confidence: 1.0,",
-      "justification": "CATEGORY A/B \u2014 CONFIRMED FINDING F-23 in SAMAPTI_N8_EARNED_SIGNAL_REGISTER_v1_0; owned by lane unassigned (register \u00a76.1 Q5). Allowlisted only so this lint can merge ahead of / independently of the fix lane. Independently rediscovered by this lint at rollout, which is the lint's ground-truth check against the register."
+      "justification": "CATEGORY A/B — CONFIRMED FINDING F-23 in SAMAPTI_N8_EARNED_SIGNAL_REGISTER_v1_0; owned by lane unassigned (register §6.1 Q5). Allowlisted only so this lint can merge ahead of / independently of the fix lane. Independently rediscovered by this lint at rollout, which is the lint's ground-truth check against the register."
     },
     {
       "file": "platform/src/lib/admin/trace_assembler.ts",
@@ -899,7 +899,7 @@
         303
       ],
       "sample_snippet": "validator_verdict: 'UNKNOWN',",
-      "justification": "CATEGORY D \u2014 rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the \u00a7N.8-honest disposition \u2014 a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
+      "justification": "CATEGORY D — rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the §N.8-honest disposition — a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
     },
     {
       "file": "platform/src/lib/checkpoints/checkpoint_4_5.ts",
@@ -913,7 +913,7 @@
         132
       ],
       "sample_snippet": "verdict: 'pass',",
-      "justification": "CATEGORY D \u2014 rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the \u00a7N.8-honest disposition \u2014 a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
+      "justification": "CATEGORY D — rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the §N.8-honest disposition — a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
     },
     {
       "file": "platform/src/lib/checkpoints/checkpoint_5_5.ts",
@@ -927,7 +927,7 @@
         155
       ],
       "sample_snippet": "verdict: 'pass',",
-      "justification": "CATEGORY D \u2014 rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the \u00a7N.8-honest disposition \u2014 a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
+      "justification": "CATEGORY D — rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the §N.8-honest disposition — a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
     },
     {
       "file": "platform/src/lib/checkpoints/checkpoint_8_5.ts",
@@ -941,7 +941,7 @@
         159
       ],
       "sample_snippet": "verdict: 'pass',",
-      "justification": "CATEGORY D \u2014 rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the \u00a7N.8-honest disposition \u2014 a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
+      "justification": "CATEGORY D — rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the §N.8-honest disposition — a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
     },
     {
       "file": "platform/src/lib/checkpoints/types.ts",
@@ -953,7 +953,7 @@
         178
       ],
       "sample_snippet": "verdict: 'pass',",
-      "justification": "CATEGORY D \u2014 rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the \u00a7N.8-honest disposition \u2014 a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
+      "justification": "CATEGORY D — rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the §N.8-honest disposition — a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
     },
     {
       "file": "platform/src/lib/conversations/title.ts",
@@ -965,7 +965,7 @@
         72
       ],
       "sample_snippet": "fallback_used: false,",
-      "justification": "CATEGORY D \u2014 rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the \u00a7N.8-honest disposition \u2014 a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
+      "justification": "CATEGORY D — rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the §N.8-honest disposition — a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
     },
     {
       "file": "platform/src/lib/pariprashna/citations/register_leak_lint.ts",
@@ -977,7 +977,7 @@
         151
       ],
       "sample_snippet": "leakCount: 0,",
-      "justification": "CATEGORY D \u2014 rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the \u00a7N.8-honest disposition \u2014 a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
+      "justification": "CATEGORY D — rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the §N.8-honest disposition — a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
     },
     {
       "file": "platform/src/lib/pariprashna/citations/register_leak_lint.ts",
@@ -993,7 +993,7 @@
         234
       ],
       "sample_snippet": "verdict: 'telemetry',",
-      "justification": "CATEGORY D \u2014 rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the \u00a7N.8-honest disposition \u2014 a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
+      "justification": "CATEGORY D — rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the §N.8-honest disposition — a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
     },
     {
       "file": "platform/src/lib/pipeline/planner_context_builder.ts",
@@ -1005,7 +1005,7 @@
         110
       ],
       "sample_snippet": "fallback_used: false,",
-      "justification": "CATEGORY D \u2014 rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the \u00a7N.8-honest disposition \u2014 a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
+      "justification": "CATEGORY D — rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the §N.8-honest disposition — a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
     },
     {
       "file": "platform/src/lib/retrieval/envelope.ts",
@@ -1017,7 +1017,7 @@
         612
       ],
       "sample_snippet": "transit_gate: 'Next step: check current/upcoming transits gating an already-activated promise.',",
-      "justification": "CATEGORY D \u2014 rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the \u00a7N.8-honest disposition \u2014 a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
+      "justification": "CATEGORY D — rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the §N.8-honest disposition — a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
     },
     {
       "file": "platform/src/lib/retrieval/eval/harness.ts",
@@ -1029,7 +1029,7 @@
         630
       ],
       "sample_snippet": "lines.push(' Hard gates: chart_agnostic=PASS, contamination_count=0, chart_isolation=PASS, lel_firewall=PASS')",
-      "justification": "CATEGORY D \u2014 rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the \u00a7N.8-honest disposition \u2014 a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
+      "justification": "CATEGORY D — rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the §N.8-honest disposition — a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
     },
     {
       "file": "platform/src/lib/synthesis/panel/adjudicator.ts",
@@ -1042,7 +1042,15 @@
         156
       ],
       "sample_snippet": "divergence_count: 0,",
-      "justification": "CATEGORY D \u2014 rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the \u00a7N.8-honest disposition \u2014 a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
+      "justification": "CATEGORY D — rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the §N.8-honest disposition — a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
+    },
+    {
+      "file": "platform/python-sidecar/ga_writers/_vimshottari_independent_verifier.py",
+      "field": "two_pass_verified",
+      "line": 1125,
+      "pattern": null,
+      "max_occurrences": null,
+      "justification": "PRE-EXISTING, introduced by PR #1047 (m22/stage3 campaign, 2026-08-04, build-only/write-deferred verifier), not touched by any shad-darshana lane. Verified via git blame + PR diff inspection during the ShadDarshana night-run merge-train (T4 PR #1052): this file is untouched by shad-darshana work. Out of this campaign's scope to fix another concurrent campaign's writer; flagged for m22 to address in its own lane."
     }
   ]
 }
