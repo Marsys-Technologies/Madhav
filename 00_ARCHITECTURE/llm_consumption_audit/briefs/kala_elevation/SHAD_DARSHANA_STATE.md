@@ -13,6 +13,54 @@ governing: SHAD_DARSHANA_NIGHT_RUN_v1_0.md (orchestration) + SHAD_DARSHANA_BRIEF
 
 ## NEXT-ACTION
 
+**SESSION-B-BUILD CLOSED (2026-08-04 ~10:35 UTC open → ~22:40 UTC close) — see "MORNING
+REPORT — SESSION-B-BUILD" below for the full account.** Headline: six PRs landed and merged
+to `shad-darshana/integration` (#1043 §N.8 gap surfaced, #1044 parihāra enrichment, #1046
+W3K Lane 2, #1049 ADJUDICATION-17 implementation, plus two ledger-only lanes), three
+adjudications ruled (16 follow-up, 17, 18), one real process mistake self-caught and fixed
+(mis-filed ledger edits, early session), and lane (a)'s original optimization premise
+FALSIFIED by clean measurement rather than shipped unverified — PARKED-HONEST, no
+`OPTIMIZER-PASS` written, Session-A's relay untouched throughout (as instructed — this
+session never dispatched, stopped, or edited a sweep entry).
+
+**SINGLE NEXT ACTION (next build session, in order):**
+1. **Do NOT wait on the sweep** — same standing instruction as this session. Per Session-A's
+   own tracking, SWEEPS-COMPLETE is expected in ~10-13h from this close (verified read-only
+   at close: 482012f1 495/606, 1c826d5a 463/606, ~19:12 UTC pace). The gate chain (S4-05
+   re-test → field build both charts → hash-replay → weights v0 → first skill score
+   published → GOF → one integration→main PR → deploy → PARĪKṢAKA both charts → Gates W2/W3
+   evaluation) fires ONLY on Session-A's own `SWEEPS-COMPLETE` ledger signal, exactly as
+   recorded in the standing contract — do not start it early, do not poll Session-A's rows.
+2. **W2G writer lane (c)** — the V1–V6 work list, 779k-event scale, generation
+   discriminator/migration 527 already in tree. Per-chart materialization queues behind the
+   chart locks like everything else until SWEEPS-COMPLETE.
+3. **W5/W4 prep (e)** — eight primitives + question_frame threading + three-copy codegen
+   parity (W5); canned Mode-2 fixture + weak-promise UPĀYA test + Intervention Ledger filing
+   test (W4). Neither's live discharge needs the sweep — both can start immediately.
+4. **W3K (f)** — K.3/K.4 CODE is already done (PR #1046, this session). What remains: the
+   single-asset L0 super-admin trigger for `bg_kp_sublord_division` (global, chart-
+   independent — confirm the exact dispatch shape before firing anything, per this
+   session's own parked caution; do NOT trigger a broad `scope=global` L0 sweep by
+   accident). Per-chart KP significator materialization stays behind the locks.
+5. **Cleanup**: `star_verdict` in `ga_kp_significators.py` — a real, small, uncontroversial
+   §N.8 violation this session's own W3K Lane 1 introduced. Fold into whichever lane next
+   touches that file; not urgent enough to justify its own lane.
+6. **Lane (a)'s re-scoped successor** — target is now the ~110-120ms/primitive-call
+   overhead (`configuration_activity.py`'s own documented finding, confirmed by this
+   session's clean A/B — NOT the kinematics/ephemeris layer, which is already cheap and
+   well-cached). Root-cause investigation was cut off by the local `cloud-sql-proxy` dying
+   mid-session; **the native has since restarted a fresh proxy on 5433** — first move for
+   whoever picks this up is simply confirming the proxy is live before resuming the
+   isolated-`cProfile` investigation this session had queued (candidates worth checking
+   first: `find_aspect_events`'s search-loop structure in `pipeline/transit_search.py`,
+   `ConfigurationSentence` object-construction cost, or something proxy/connection-adjacent
+   a direct Cloud SQL connection would rule in or out immediately). W2G's global-tables
+   architecture is the eventual destination regardless (per this session's own lane (b)
+   design amendment) — this per-call-chatter finding is now a concrete, measured design
+   input for that keystone case, not just an architectural intuition.
+
+---
+
 **SESSION-B-BUILD — NATIVE DIRECTIVE (2026-08-04, recorded verbatim, this session's own
 copy is the Conductor for build/frontier work only):**
 
@@ -152,6 +200,105 @@ are gate-criteria/design-doc changes, not code; none touch a FROZEN contract or 
    present a partial horizon as complete, per this campaign's own honest-empty discipline), and
    run the remaining century backfill as a background job. This is a posture/requirement record,
    not an implementation — item for whichever session builds W2G's onboarding path.
+
+**Design-input tie-out, added at session close (2026-08-04, from lane (a)'s falsification —
+see NEXT-ACTION and the ADJUDICATION-18 entry below for the full measurement).** The
+sweep-optimizer investigation MEASURED, not assumed, that `ka_gochara_sweep`'s real cost is
+per-primitive-call overhead (~110-120ms/call, `configuration_activity.py`'s own pre-existing
+finding, now confirmed live: 30 days × ~23-36 targets × 9 primitives × ~0.11s reproduces the
+measured 550-650s almost exactly) — NOT ephemeris/kinematics redundancy, which is already
+cheap and well-cached. This is precisely the architectural smell W2G's global-tables design
+(item 1 above) exists to eliminate BY CONSTRUCTION: a century-long, chart-independent contact
+stream computed ONCE means the ~9-primitives-per-target-per-day chatter this session measured
+happens once ever, not once per chart. This is now a concrete, measured number strengthening
+W2G's keystone case, not just an architectural intuition — the ≤15min onboarding SLO's
+plausibility rests partly on this per-call cost actually going away under W2G, not just on
+the stream being "computed once" in the abstract.
+
+---
+
+## MORNING REPORT — SESSION-B-BUILD (int-929, 2026-08-04 ~10:35 UTC → 2026-08-04/05 ~22:40 UTC)
+
+**Gates closed:** none — none were in scope. This session's own standing constraint (native
+directive, recorded verbatim above): never dispatch, stop, or edit a sweep entry; the gate
+chain fires only on Session-A's own `SWEEPS-COMPLETE` signal, which did not land this
+session. **Six PRs landed and merged, three adjudications ruled, one real mistake self-caught
+and fixed, one optimization premise honestly falsified rather than shipped unverified.**
+
+**Done and verified this session:**
+- **Session-open**: integration rebased onto main twice (clean both times, no conflicts);
+  the native's SESSION-B-BUILD directive recorded verbatim, splitting sweep ownership
+  (Session-A, untouched all session) from everything else (this session).
+- **PR #1043** (earlier same session, before the SESSION-B-BUILD split) — ADJUDICATION-16
+  follow-up: found the Agnivāsa convention-B multi-convention grading question was genuinely
+  undesigned and correctly stopped rather than guessed; also surfaced a real §N.8 gap
+  (`PaddhatiResolution.divergence` was a hardcoded literal).
+- **PR #1044** — parihāra graph enrichment: 66 translated chunks read directly (not from a
+  report summary), ~25 usable, 9 new cited `parihara_scope` census rows, one prior ambiguous
+  row confirmed.
+- **PR #1046** (Opus) — W3K Lane 2: KP wired into Law-1 applicability with a MEASURED (not
+  assumed) double-count detector; a real dissent found and verified on production data
+  (chart 482012f1, 7th house) but correctly not yet served (underlying tables empty).
+- **ADJUDICATION-17** (ruled foreground, ANTARYĀMIN/Conductor, no builder agent needed) —
+  traced `compileConstraint`'s `residence` branch directly, found `favourableElements`
+  hardcoded and the match path structurally bound to Convention A's lattice atoms:
+  Convention B becomes a second, informational, never-gating voice. **PR #1049** implements
+  it: migration 537, `agnivasa_convention_b_voice.ts`, a real divergence detector replacing
+  the old hardcoded literal (grounded in a checkable counter-example, not asserted).
+- **ADJUDICATION-18** (native ruling, relayed and recorded verbatim) — the D-5 §7
+  must_not_touch boundary's rule-as-machinery expired with D-5's close; the durable
+  "output provably unchanged" principle survives and authorizes a narrow, additive
+  kinematics-cache parameter on `gochara_intensity.engine`'s two functions.
+- **Lane (b)** — W2G reframed as the production-scalability keystone with a ≤15min onboarding
+  SLO (a design target, explicitly flagged as unverified until measured), delta-aware
+  invalidation, progressive-horizon onboarding — all docs, no code.
+- **Lane (g)** — red-gates triage: both CI gates traced to stale allowlist files, not a lint
+  bug; found one real, small, uncontroversial violation that's ours (`star_verdict`, from
+  this session's own earlier W3K Lane 1 — folded into the cleanup queue, not fixed blind).
+- **Lane (a)** — see the dedicated falsification writeup below; this is the session's
+  headline finding, not a footnote.
+- **Relay hygiene** (before the SESSION-B-BUILD split): resumed Session-A-equivalent duty
+  briefly at session open per the standing v1.3 contract, then handed exclusive sweep
+  ownership to Session-A per this session's own directive and never touched it again.
+
+**The falsification (lane (a), first-class finding):** the directive's original premise —
+"the sweep re-derives transit kinematics ~11x redundantly across event_classes, hoist and
+share it" — was investigated, not assumed, and DISPROVEN by a clean A/B: `marriage` run
+immediately after `career_advancement` (ephemeris cache warm) was NOT faster than `marriage`
+run from a cleared cache, and had MORE distinct cache misses, not fewer. Different
+event_classes resonate against different natal targets, so cross-class ephemeris reuse is
+minimal in practice — the ephemeris layer was never the real cost (every run showed a ~90:1
+cache hit:miss ratio). The REAL cost, confirmed by direct measurement tying out almost
+exactly to `configuration_activity.py`'s own pre-existing documented finding
+(~110-120ms/contact-primitive-call): 30 days × ~23-36 targets × 9 primitives × ~0.11s
+reproduces the measured 550-650s per test run. Root-causing THAT number was cut off by the
+local `cloud-sql-proxy` dying mid-investigation (a known-flaky dependency this codebase's own
+hygiene notes already warn never to depend on) — the native has since restarted a fresh proxy
+on 5433 for the next session. **No `OPTIMIZER-PASS` was written. Session-A's relay was never
+touched, never at risk.** This finding is now recorded as a concrete design input to W2G's
+keystone case (lane (b), design-input tie-out note) — not discarded as a dead end.
+
+**One real process mistake, self-caught (earlier in the session, before the directive
+split):** ledger edits were made against a stale, wrong-checkout copy of this file. Caught,
+retracted, ported correctly into the real ledger — no data lost, documented in place so it
+doesn't repeat.
+
+**Rulings:** ADJUDICATION-16 (follow-up), ADJUDICATION-17, ADJUDICATION-18 — all reversible,
+all native-overridable, full text in their own files as cited above and in NEXT-ACTION.
+
+**Parks + reasons:**
+- **Lane (a) — PARKED-HONEST.** Real findings banked (see falsification above); root cause
+  of the actual bottleneck genuinely unknown, blocked by infra (proxy death) not by a dead
+  end. Re-scoped successor target recorded in NEXT-ACTION.
+- **Lanes (c) W2G writer, (e) W5/W4 prep, (f) W3K single-asset L0 trigger — not started**,
+  by explicit native instruction at this clean boundary, not by exhaustion or blocker. All
+  three have their prerequisites already met and can start immediately next session.
+
+**Worktrees:** all lane worktrees removed (`shad-darshana-w2g-agnivasa-b`,
+`shad-darshana-parihara-enrichment`, `shad-darshana-w3k-lane2`, `shad-darshana-
+antaryamin-docket`, `shad-darshana-sweep-optimizer`). `shad-darshana-conductor` retained
+(the Conductor's own persistent worktree, per every prior night's own practice).
+`origin/shad-darshana/integration` verified pushed and current as of this report.
 
 ---
 
