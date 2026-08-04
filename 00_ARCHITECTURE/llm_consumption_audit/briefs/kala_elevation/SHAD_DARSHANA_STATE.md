@@ -13,6 +13,85 @@ governing: SHAD_DARSHANA_NIGHT_RUN_v1_0.md (orchestration) + SHAD_DARSHANA_BRIEF
 
 ## NEXT-ACTION
 
+**SESSION-B-BUILD — NATIVE DIRECTIVE (2026-08-04, recorded verbatim, this session's own
+copy is the Conductor for build/frontier work only):**
+
+> NATIVE DIRECTIVE — BUILD SESSION (record verbatim in the ledger, attributed
+> SESSION-B-BUILD): YOU ARE NOT WAITING ON THE SWEEP. The sweep, its relay, its safety net,
+> and all sweep dispatch/stop actions belong exclusively to SESSION-A-SWEEP — never dispatch
+> or stop a sweep run, never touch the safety net, never edit A's ledger entries. Your
+> coordination with A runs through exactly two ledger signals: you write OPTIMIZER-PASS
+> (lane a below); A writes SWEEPS-COMPLETE (your gate-chain trigger). Everything else in the
+> campaign is yours, under the standing v1.3 contract (NIGHT_RUN §A roster incl. PARĪKṢAKA +
+> ANTARYĀMIN, §B mechanics, integration-branch lane PRs, §B.2a merge queue, §7 rails, ~7.5h
+> land-or-park + MORNING REPORT). Session-open protocol as always: rebase integration onto
+> main · ledger-reconciliation sweep · ANTARYĀMIN discharges the docket up front.
+> HARD CONSTRAINT: the sweeps hold the build locks on both canonical charts — NO per-chart
+> production materialization on 482012f1/1c826d5a until A writes SWEEPS-COMPLETE. Code,
+> tests, design, and GLOBAL (bg_*) L0 builds are unrestricted.
+>
+> THE FRONTIER, in priority order — dispatch every lane whose prerequisites are met,
+> concurrently:
+> a. SWEEP-OPTIMIZER LANE (Opus, top priority — it changes this week's physics). Measured
+>    basis: the sweep plan is event_class × year (~11 × ~55 = 606 substeps @ ~5.2 min); the
+>    year's transit kinematics are recomputed once PER CLASS (~11x redundancy) and the inner
+>    loop day-steps with per-step DB round-trips (~100x over the physics). Build: (1) hoist
+>    kinematics — compute each year's contact stream ONCE, run all class grammars over it;
+>    (2) vectorize contact-finding over cached ephemeris splines + batch writes. Constraints:
+>    writer-internal ONLY (plan_substeps is writer-owned — keep substeps checkpoint-friendly);
+>    zero semantic change, same grammar version; no schema/orchestrator-contract edits.
+>    ACCEPTANCE: byte-equivalence against the ~600 already-completed class-year substeps —
+>    define the comparison once (natural key + all semantic columns of kala_gochara_windows,
+>    normalized order, excluding ONLY run ids/timestamps, exclusions listed in the test);
+>    throwaway local Postgres seeded with upstream inputs (bg_cohort lane's house pattern);
+>    sample = all completed years of ≥2 classes + random 10% of the rest, BOTH charts. 100%
+>    match = PASS; ANY divergence is classified (v1-bug vs optimizer-bug) and ruled by
+>    ANTARYĀMIN before proceeding — a v1 bug never ships silently as an "improvement". On
+>    PASS: write OPTIMIZER-PASS to the ledger with exact switch instructions for SESSION-A —
+>    you do NOT dispatch the switch yourself.
+> b. LEDGER DESIGN AMENDMENTS (docs, ANTARYĀMIN records): (1) W2G gains the product SLO as a
+>    gate criterion — "a new chart's full-century temporal build ≤15 minutes on Nirmāṇa
+>    Build" — and is reframed in the ledger as the PRODUCTION-SCALABILITY KEYSTONE (the
+>    century contact stream is chart-independent: computed once, shared by every chart;
+>    per-chart = join + scoring); (2) W2G design requirement: delta-aware invalidation
+>    (per-class, per-grammar-version fingerprints — item 9's one-class addition must never
+>    again force a full replan); (3) Nirmāṇa onboarding posture: progressive horizon (±3
+>    years first, honest horizon attestation, century backfills in background).
+> c. W2G WRITER LANE vs the enumerated V1–V6 work list (779k-event scale, generation
+>    discriminator/migration 527) — Opus numerics; code + local tests; its per-chart
+>    materialization queues behind the locks like everything else.
+> d. ANTARYĀMIN DOCKET, from your own #1043: (1) design the multi-convention grading
+>    decision so Agnivāsa convention-B can flip live (it correctly stopped undesigned);
+>    (2) close the §N.8 gap — PaddhatiResolution.divergence hardcoded literal → a real
+>    detector.
+> e. W5 PREP (eight primitives, question_frame threading, three-copy codegen parity — the
+>    live-MCP hard gate itself waits for the next deploy) ∥ W4 GATE-PREP harnesses (canned
+>    Mode-2 fixture, weak-promise UPĀYA test, Intervention Ledger filing test — live
+>    discharge waits for the gate-close deploy).
+> f. W3K: land K.3/K.4 code; build the GLOBAL (bg-class) KP tables in production via
+>    super-admin L0 trigger so your found-dissent (482012f1 7th house) can go live;
+>    per-chart KP projections queue behind the locks.
+> g. RED-GATES TRIAGE (diagnose-only): Naming Governance + Earned-Signal red on main from
+>    before tonight — root cause + owner filed in the ledger; do NOT fix blind, §N.8 lint
+>    is another campaign's territory.
+>
+> WHEN THE LEDGER SHOWS SWEEPS-COMPLETE (from SESSION-A): run the gate chain exactly as
+> recorded — S4-05 re-test on real data → field build both charts → hash-replay → weights v0
+> → FIRST skill score published (permanent CI baseline) → GOF → one integration→main PR
+> (merge queue; queued-green 5–60 min is normal) → deploy → PARĪKṢAKA both charts → Gates
+> W2/W3 full-criteria evaluation. Truth over completion — PARKED-HONEST with evidence beats
+> a false close. Begin.
+
+**Note on lane (f)'s phrasing:** "so your found-dissent can go live" is aspirational, not an
+authorization to cross the chart-lock. Building `bg_kp_sublord_division` (global, chart-
+independent) does NOT by itself serve the dissent — `kp_house_significators`/
+`kp_planet_significations` are per-chart `ga_nakshatra` emissions, which stay locked exactly
+per the directive's own "per-chart KP projections queue behind the locks" clause. Both
+clauses are honored as written; the second is authoritative where they could be read as in
+tension.
+
+---
+
 **NIGHT 5 CLOSED (2026-08-02, ~12:57–~20:30 IST) — see "MORNING REPORT — NIGHT 5" below.**
 Headline: Stage 1's every dischargeable leg discharged and verified — L0 substrate fully
 built in production for the first time (N_e, 164k-row lattice, 10k cohort + 100k MD-chain,
