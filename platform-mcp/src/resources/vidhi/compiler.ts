@@ -44,6 +44,7 @@ import type {
   FloorItem,
   IntentClass,
   IntentFloor,
+  QuestionFrame,
   ScopeDepth,
   ScopeTuple,
   VidhiPrimitive,
@@ -124,20 +125,33 @@ function mergeArgs(
   base: Readonly<Record<string, unknown>>,
   override: Readonly<Record<string, unknown>> | undefined,
   chartId: string,
+  questionFrame: QuestionFrame | null,
 ): Record<string, unknown> {
   const merged: Record<string, unknown> = { ...base, ...(override ?? {}) };
   for (const [k, v] of Object.entries(merged)) {
     if (v === '{chart_id}') merged[k] = chartId;
+    // ṢAḌ-DARŚANA W5 (brief §3 W5) — E4 question_frame threading: the SAME substitution
+    // mechanism `{chart_id}` already uses, extended to the one other placeholder token a
+    // primitive's tool_args may carry. `questionFrame` is per-QUESTION (not per-chart, not
+    // known at registry-authoring time), so an omitted/null caller value leaves the literal
+    // placeholder in place — exactly how `{house}`/`{karaka}` stay literal until a floor item
+    // supplies a concrete `args_override` (never silently defaulted to a fabricated value).
+    else if (v === '{question_frame}') merged[k] = questionFrame ?? null;
   }
   return merged;
 }
 
-function compileItem(item: FloorItem, primitive: VidhiPrimitive, chartId: string): CompiledFloorItem {
+function compileItem(
+  item: FloorItem,
+  primitive: VidhiPrimitive,
+  chartId: string,
+  questionFrame: QuestionFrame | null,
+): CompiledFloorItem {
   return {
     primitive_id: primitive.primitive_id,
     band: item.band,
     live_tool: primitive.live_tool,
-    tool_args: mergeArgs(primitive.tool_args, item.args_override, chartId),
+    tool_args: mergeArgs(primitive.tool_args, item.args_override, chartId, questionFrame),
     fallback_face: primitive.fallback_face,
     known_gap: primitive.known_gap,
     // §N.6 density signal (VIDHI-PŪRṆATĀ P-3b): propagate the floor item's hard_floor flag
@@ -256,6 +270,23 @@ function computeAdaptiveExpansions(
         note: 'E-3 anusaraṇa one-hop response-flag drill. Pre-authorized in the plan; the executor follows the response\'s own drill pointer. One hop, no transitive closure.',
       });
     }
+
+    // (d) ṢAḌ-DARŚANA W5 (brief §3 W5 / Six Views Design §8): "every served row id
+    // pre-authorizes one EXPLAIN hop". Emitted for every compiled item EXCEPT explain_read
+    // itself (never authorize an EXPLAIN-of-EXPLAIN self-loop) — universal, not restricted to
+    // the kala routing floors, because explain_read (kala_explain_get / the PACT chain) can
+    // explain any served claim's causal grounding, not only a temporal-view row.
+    if (item.primitive_id !== 'explain_read' && primitives.has('explain_read')) {
+      expansions.push({
+        rule: 'explain_on_request',
+        source_primitive_id: item.primitive_id,
+        follow: `If the caller (or the reading's own dissent/verdict) questions WHY ${item.primitive_id}'s claim holds, drill it with explain_read (VIEW 6 — the PACT causal chain: promise → confirmation → activation → trigger, naming its weakest link).`,
+        add_primitive_id: 'explain_read',
+        trigger: 'on_request (materialize only when the caller/downstream reading asks "why" of this row; never pre-fetched)',
+        hop: 1,
+        note: 'ṢAḌ-DARŚANA W5 one-hop EXPLAIN pre-authorization. Pre-authorized in the plan, chart-agnostic (no chart data consulted); the executor materializes it only on an actual "why" ask. One hop, no transitive closure.',
+      });
+    }
   }
 
   return expansions;
@@ -308,6 +339,7 @@ function compileFloorItems(
   tuple: ScopeTuple,
   registry: VidhiRegistry,
   chartId: string,
+  questionFrame: QuestionFrame | null = null,
 ): CompiledContract {
   const primitives = primitiveIndex(registry);
   const bands = bandsForDepth(tuple.depth);
@@ -325,9 +357,9 @@ function compileFloorItems(
     }
     if (item.band === 'acharya_floor' && bands.includeAcharyaFloor) {
       if (bands.structuralOnly && primitive.category !== 'structural') continue;
-      acharyaItems.push(compileItem(item, primitive, chartId));
+      acharyaItems.push(compileItem(item, primitive, chartId, questionFrame));
     } else if (item.band === 'machine_band' && bands.includeMachineBand) {
-      machineItems.push(compileItem(item, primitive, chartId));
+      machineItems.push(compileItem(item, primitive, chartId, questionFrame));
     }
   }
 
@@ -369,12 +401,17 @@ function compileFloorItems(
  * unregistered primitive_id — both are registry-completeness bugs, not runtime data
  * gaps, and must fail loudly rather than silently compile a partial contract.
  */
-export function compileContract(tuple: ScopeTuple, registry: VidhiRegistry, chartId = '{chart_id}'): CompiledContract {
+export function compileContract(
+  tuple: ScopeTuple,
+  registry: VidhiRegistry,
+  chartId = '{chart_id}',
+  questionFrame: QuestionFrame | null = null,
+): CompiledContract {
   const floorDef = registry.floors.find((f) => f.intent === tuple.intent);
   if (!floorDef) {
     throw new Error(`vidhi compiler: no floor registered for intent "${tuple.intent}"`);
   }
-  return compileFloorItems(floorDef.floor_items, tuple, registry, chartId);
+  return compileFloorItems(floorDef.floor_items, tuple, registry, chartId, questionFrame);
 }
 
 /**
@@ -441,13 +478,14 @@ export function compileMultiDomainContract(
   tuple: ScopeTuple,
   registry: VidhiRegistry,
   chartId = '{chart_id}',
+  questionFrame: QuestionFrame | null = null,
 ): CompiledContract {
   const intents = resolveUnionIntents(tuple);
   if (intents.length <= 1) {
-    return compileContract(tuple, registry, chartId);
+    return compileContract(tuple, registry, chartId, questionFrame);
   }
   const items = unionFloorItems(intents, registry);
-  return compileFloorItems(items, tuple, registry, chartId);
+  return compileFloorItems(items, tuple, registry, chartId, questionFrame);
 }
 
 /** Convenience: build a `VidhiRegistry` from the module's own canonical data (registry_data.ts). */

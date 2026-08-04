@@ -38,6 +38,12 @@ const LIVE_TOOLS = new Set<string>([
   'gochara_activation_get', 'gochara_forecast_get', 'gochara_election_avoidance_get',
   'judgment_query', 'kala_life_arc_get', 'kala_muhurta_get', 'kala_priority_ranking_get',
   'kala_projections_get', 'kala_bundle_get', 'kala_windows_get', 'kala_yoga_activation_get',
+  // ṢAḌ-DARŚANA W5 (SHAD_DARSHANA_BRIEF_v2_0.md §3 W5): the eight kala_* view/capability
+  // tools, live+registered since Gate W0 (registry_bridge.ts / kala_views/register_all.ts).
+  // now_read/ahead_read/elect_read/story_read/priority_read/explain_read/upaya_read/
+  // ritual_read route to these.
+  'kala_now_get', 'kala_ahead_get', 'kala_elect_get', 'kala_story_get', 'kala_priority_get',
+  'kala_explain_get', 'kala_upaya_get', 'kala_ritual_get',
   'lel_query', 'list_assets', 'list_entities', 'catalog_charts_list', 'session_list',
   'list_remedies_by_category', 'mimamsa_calibration_get', 'mimamsa_insight_get',
   'mimamsa_lel_query', 'mimamsa_outcome_record', 'mitigation_map', 'muhurta_finder',

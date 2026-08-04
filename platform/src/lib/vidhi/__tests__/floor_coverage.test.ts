@@ -16,6 +16,10 @@ const ALL_INTENT_CLASSES: readonly IntentClass[] = [
   'panoramic_breadth',
   'retrieval_only',
   'general_synthesis',
+  // ṢAḌ-DARŚANA W5 (SHAD_DARSHANA_BRIEF_v2_0.md §3 W5) — the three kala-routing intents.
+  'undertaking_election',
+  'biography_narrative',
+  'ritual_yajna',
 ];
 
 // CR-27 register row (POST_REMEDIATION_CONSUMPTION_REGISTER_v1_0.md §A) describes four

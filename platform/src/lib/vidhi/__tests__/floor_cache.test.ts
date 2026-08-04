@@ -177,12 +177,14 @@ describe('vidhi floor_cache — capability_version invalidation', () => {
 });
 
 describe('vidhi floor_cache — eager warming', () => {
-  it('the cache is fully warm (66 cores) after an explicit warmFloorCache()', () => {
+  it('the cache is fully warm (84 cores) after an explicit warmFloorCache()', () => {
     resetFloorCache();
     const warmed = warmFloorCache();
-    // VIDHI-PŪRṆATĀ P-2 grew the taxonomy 8 → 11 intents: 11 intents × 3 depths × 2 intervention = 66.
-    expect(warmed).toBe(66);
-    expect(floorCacheSize()).toBe(66);
+    // VIDHI-PŪRṆATĀ P-2 grew the taxonomy 8 → 11 intents. ṢAḌ-DARŚANA W5 (SHAD_DARSHANA_BRIEF
+    // _v2_0.md §3 W5) grew it 11 → 14 (undertaking_election, biography_narrative, ritual_yajna):
+    // 14 intents × 3 depths × 2 intervention = 84.
+    expect(warmed).toBe(84);
+    expect(floorCacheSize()).toBe(84);
   });
 
   it('every combo is a HIT immediately after warming — zero misses on first real use', () => {
@@ -203,7 +205,7 @@ describe('vidhi floor_cache — eager warming', () => {
     }
     const after = floorCacheStats();
     expect(after.misses).toBe(before.misses); // no misses — the warm cache absorbed every call
-    expect(after.hits).toBe(before.hits + 66); // 11 intents × 3 depths × 2 intervention
+    expect(after.hits).toBe(before.hits + 84); // 14 intents × 3 depths × 2 intervention
   });
 
   it('warming is idempotent — a second warm adds no new cores', () => {
