@@ -160,6 +160,16 @@ inventory §5.4, untouched. Independently re-verified by the Conductor before me
 43 vitest passing, clean `tsc --noEmit`) in addition to the builder's own broader run (full
 pytest 5058/24 skip, vitest +43/0 new failures vs stashed baseline).
 
+**Relay — generation 3 (2026-08-04 03:39:36 UTC dispatch).** Generation 2 (`-h7n6x`/`-bsvhw`)
+completed cleanly at its exact 6h budget (03:13:25/27Z) — zero running at collision-check, no
+double-dispatch risk. Substeps at handoff: 482012f1 301/606, 1c826d5a 284/606 (past halfway on
+the first chart). Note: `dispatch_int929_gochara_resume_{482012f1,1c826d5a}.py` are NOT
+committed anywhere (one-off operational scripts, live only in the main repo checkout's
+`platform/scripts/`, untracked there too) — run from that path, not this worktree, which
+doesn't have them. `build_run 746b1fa2…`/`eea7ebe2…` → executions `-xrjfs`/`-6zjct`, both
+started `2026-08-04T03:39:36.31Z`. Verified landing both charts (482012f1 301→312, 1c826d5a
+284→292) by 04:14 UTC. **Next expiry ~2026-08-04T09:39:36Z (~15:09 IST).** Wakeup armed.
+
 ---
 
 ## NIGHT 5 — SESSION OPEN (2026-08-02, ~12:57 IST, in progress)
