@@ -131,6 +131,42 @@ class TestClockTerm:
         )
         assert hazard.predictive_systems([c]) == []
 
+    # ── W3K G-4: the KP voice reaches S_pred(e) through the EXISTING clauses ──
+    #
+    # KALA_W2_FIELD_DESIGN_v1_0.md §11.4: "S_pred(e) is open by construction —
+    # W3K's KP clock joins by adding a bg_dasha_systems row and a q_s rule (§4.1
+    # step 4), WITH NO CHANGE TO §5.1." These two tests are that promise's proof:
+    # `predictive_systems` is untouched by W3K, and both KP outcomes route
+    # through clauses it already had.
+
+    def test_redundant_kp_clock_is_excluded_from_S_pred_by_its_stage3_verdict(self):
+        """When stage3's window-redundancy detector rules `vimshottari_kp`
+        `excluded_by_condition`, S_pred drops it via its pre-existing
+        applicability clause — so Vimśottarī's exponent is w_vim, never
+        w_vim + w_kp on the identical lord stack."""
+        clocks = [
+            _clock('vimshottari', 0.9),
+            ClockApplicability(
+                system_id='vimshottari_kp', applicability_state='excluded_by_condition',
+                competence_class='fruition', seniority_rank=8, is_predictive=True,
+                quality=None,
+                exclusion_reason="vimshottari_kp's period ladder is boundary-identical...",
+            ),
+        ]
+        assert [c.system_id for c in hazard.predictive_systems(clocks)] == ['vimshottari']
+
+    def test_a_genuinely_distinct_kp_clock_does_enter_S_pred(self):
+        """The exclusion is a MEASUREMENT, not a permanent rule (§N.8): a chart
+        whose KP ladder genuinely diverges yields `applicable` + a real q_s, and
+        S_pred admits it with no code change here either."""
+        clocks = [
+            _clock('vimshottari', 0.9),
+            _clock('vimshottari_kp', 0.42),
+        ]
+        assert [c.system_id for c in hazard.predictive_systems(clocks)] == [
+            'vimshottari', 'vimshottari_kp',
+        ]
+
 
 class TestRelevance:
     def _routes(self):

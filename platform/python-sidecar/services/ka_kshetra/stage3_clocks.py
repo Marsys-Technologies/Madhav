@@ -100,6 +100,58 @@ read-only, and only writes `kala_field_clocks` / `kala_field_boundaries`
    `evaluate_applicability`'s `reference_dt` parameter -- the same
    representative-instant reading this builder gives every other static
    per-system value on this table.
+
+10. `vimshottari_kp` (SHAD-DARSANA W3K Lane 2, gap G-4 of
+   `W3K_SUBSTRATE_INVENTORY_v1_0.md` §2; the extension seam
+   `KALA_W2_FIELD_DESIGN_v1_0.md` §11.4 designates: "W3K's KP clock joins
+   by adding a bg_dasha_systems row and a `q_s` rule (§4.1 step 4), with no
+   change to §5.1"). Two things had to be true for KP to join honestly, and
+   only one of them is:
+
+   (a) The `q_s` rule EXISTS and is KP-specific -- `_kp_sub_quality` below,
+       the Moon's margin to the nearest boundary of the 249-fold KP sub
+       division, measured against the chart's OWN ayanamsha spread. The
+       boundaries are REFERENCED from the L0 authority table
+       `bg_kp_sublord_division` (W3K Lane 1, PR #1039), never re-derived
+       here -- §N.5. No L0 table => `not_computed`, never a silent
+       re-derivation and never an invented quality.
+
+   (b) KP must be a genuinely DIFFERENT voice in `S_pred(e)`, not the same
+       clock counted twice. `hazard.relevance` consumes ONLY the (level,
+       lord) pairs `lord_stack_at` reads out of `chart_dashas.lord_graha`.
+       So if `vimshottari_kp`'s per-level lord sequence is identical to
+       `vimshottari`'s over the field horizon, then r_kp(t) == r_vim(t) for
+       every t, and admitting KP to S_pred(e) would raise the SAME clock's
+       exponent from w_vim to w_vim + w_kp -- the exact double-count
+       `gochara_intensity/permission.py` already refuses one layer down for
+       DR-14's plurality sum, and which `W3K_SUBSTRATE_INVENTORY_v1_0.md`
+       §4 rules on directly ("KP's sub/sub-sub periods subdivide the SAME
+       Vimsottari windows... it is not an independent generator").
+
+   (b) is therefore MEASURED, not assumed: `kp_window_redundancy` below is a
+   real detector over this chart's own `chart_dashas` rows, and its verdict
+   can genuinely come back either way (§N.8). On the two canonical charts it
+   currently comes back REDUNDANT -- verified read-only 2026-08-03 against
+   production for chart 482012f1 (lahiri_chitrapaksha): inside the field
+   horizon [birth, birth+36525d], 69/69 level-2 and 630/630 level-3
+   `vimshottari_kp` rows have an exact `vimshottari` twin (same level, same
+   `lord_graha`, both boundaries within 2s; the sub-2s spread is the two
+   writers' independent rounding, not a different window). Every untwinned
+   row lies OUTSIDE that horizon (pre-birth back-extrapolation to the 1950
+   build floor, and the post-2084 tail) and so is outside the field entirely
+   (design §5.2's H = 36525 days FROM BIRTH). KP is consequently reported
+   `excluded_by_condition` with that measurement as its verbatim reason, and
+   `hazard.predictive_systems` drops it from S_pred(e) through its ALREADY
+   EXISTING `applicability_state != 'applicable'` clause -- literally "no
+   change to §5.1", as §11.4 requires.
+
+   What KP's exclusion here does NOT say: it does not say KP has nothing to
+   contribute. It says KP has no independent CLOCK to contribute. KP's
+   independence is a judgment-method independence (does the running lord
+   signify this house, by the KP significator ladder?), and that voice is
+   served at the serving layer from `kp_house_significators` /
+   `kp_planet_significations`, not multiplied into lambda as a fourth
+   proportional-hazards factor. See `platform-mcp/src/lib/kp_school_voice.ts`.
 """
 from __future__ import annotations
 
@@ -163,6 +215,30 @@ GRAHA_TO_FACT_SUBJECT: dict[str, str] = {
 
 DEFAULT_AYANAMSHA_ID = "lahiri_chitrapaksha"
 
+#: W3K G-4. The KP-variant Vimsottari sub-period system_id already live in
+#: `chart_dashas` (`ga_dashas_writer.KP_SYSTEM_ID`), and the classical system
+#: whose windows it subdivides.
+KP_SYSTEM_ID = "vimshottari_kp"
+KP_PARENT_SYSTEM_ID = "vimshottari"
+
+#: The field's own horizon (design §5.2: "H = 36525 days from birth"). The KP
+#: window-redundancy detector is scoped to exactly this interval because that is
+#: the only interval the field evaluates -- a pre-birth or post-horizon row
+#: cannot double-count anything, so counting it either way would be measuring
+#: something the question does not ask about.
+FIELD_HORIZON_DAYS = 36525.0
+
+#: Boundary tolerance for the KP/Vimsottari window-twin comparison. The two
+#: ladders are written by two independent code paths (`ga_dashas_writer`'s
+#: classical branch and its KP branch) whose datetime rounding differs by up to
+#: one second on the same computed instant; 2s is that rounding band and nothing
+#: more. It is NOT a similarity threshold: a genuinely different KP window
+#: differs by days-to-years, never by a second.
+KP_TWIN_TOLERANCE_SECONDS = 2.0
+
+#: z for the 95% band, matching §4.2's own `z = 1.96`.
+Z_95 = 1.96
+
 #: Systems whose sigma_t is driven purely by birth-time uncertainty
 #: (§4.2's naisargika/mudda exception, extended to chara_karaka per module
 #: docstring #6).
@@ -175,7 +251,18 @@ FRACTIONAL_ARC_SPAN_DEG: dict[str, float] = {
     "yogini": U.NAK_SPAN_DEG,
     "ashtottari": U.NAK_SPAN_DEG,
     "kalachakra": U.PADA_SPAN_DEG,
+    # vimshottari_kp rides the SAME rigid grid as vimshottari — same Moon-nakṣatra
+    # determination, same birth balance, sub-periods that are exact rational
+    # fractions of the same parents (§4.2's rigid-grid-translation property). Its
+    # σ_t is therefore Vimśottarī's, inherited rather than recomputed.
+    KP_SYSTEM_ID: U.NAK_SPAN_DEG,
 }
+
+#: Systems with no level-1 (MD) rows of their own, whose birth-balance scale
+#: factor is inherited from the parent system whose ladder they subdivide.
+#: `vimshottari_kp` is written from level 2 down (`ga_dashas_writer`), so its
+#: T_MD^birth is Vimśottarī's own — read from the parent, never re-derived.
+PARENT_LADDER_SYSTEM: dict[str, str] = {KP_SYSTEM_ID: KP_PARENT_SYSTEM_ID}
 
 
 @dataclass(frozen=True)
@@ -198,6 +285,16 @@ SYSTEM_META: dict[str, SystemMeta] = {
     "chara_karaka": SystemMeta(competence_class="arena", seniority_rank=5, is_predictive=True),
     "mudda":        SystemMeta(competence_class="annual", seniority_rank=6, is_predictive=True),
     "naisargika":   SystemMeta(competence_class="life_stage", seniority_rank=7, is_predictive=False),
+    # W3K G-4. competence_class='fruition' is not a filler pick: KP's sub-periods
+    # ARE Vimsottari's, so KP shares Vimsottari's class by construction -- and
+    # `writer.py`'s §6.4-type-1 insight counts DISTINCT competence_classes
+    # precisely so that "two systems sharing a class are one voice". Declaring KP
+    # a NEW class would have manufactured a second voice out of one clock in that
+    # counter too. is_predictive stays True here because C-4's structural
+    # exclusion is about `life_stage` context bands and KP is not one; KP's
+    # actual non-participation is decided by the MEASURED redundancy verdict at
+    # jurisdiction (module docstring #10), not by a hardcoded flag.
+    KP_SYSTEM_ID:   SystemMeta(competence_class="fruition", seniority_rank=8, is_predictive=True),
 }
 
 
@@ -347,13 +444,229 @@ def _chart_dashas_level1_rows(chart_id: str, system_id: str, conn: Any) -> list[
 # any call site.
 
 
-def _evaluate_jurisdiction(system_id: str) -> tuple[bool, str | None]:
-    """Step 1 (§4.1). See module docstring #4: no system this builder
-    covers has a real, machine-evaluable entry_condition sourced anywhere
-    in this corpus, so jurisdiction passes unconditionally for all of
-    them. Returns (passes, exclusion_reason_if_not)."""
-    del system_id  # unused today; kept for signature stability
-    return True, None
+# ── W3K G-4: the KP window-redundancy detector (module docstring #10) ───────
+
+@dataclass(frozen=True)
+class KpWindowRedundancy:
+    """The measured answer to "is `vimshottari_kp` a second clock, or the same
+    clock relabelled?" — for ONE chart, inside the field's own horizon.
+
+    `is_redundant` is True iff EVERY in-horizon KP row has a `vimshottari` twin
+    at the same level with the same `lord_graha` and both boundaries within
+    `tolerance_seconds`. One untwinned row is enough to make it False: that row
+    is an instant at which the two systems' lord stacks genuinely differ, which
+    is all it takes for KP to carry information Vimsottari does not.
+    """
+    rows_in_horizon: int
+    twinned_rows: int
+    is_redundant: bool
+    tolerance_seconds: float
+    horizon_start: datetime
+    horizon_end: datetime
+    levels_compared: tuple[int, ...]
+
+    @property
+    def untwinned_rows(self) -> int:
+        return self.rows_in_horizon - self.twinned_rows
+
+    def basis(self) -> str:
+        levels = "/".join(f"L{n}" for n in self.levels_compared) or "none"
+        return (
+            f"kp_window_twin_check[{levels}] "
+            f"twinned={self.twinned_rows}/{self.rows_in_horizon} "
+            f"tol={self.tolerance_seconds:g}s "
+            f"horizon={self.horizon_start.date().isoformat()}..{self.horizon_end.date().isoformat()}"
+        )
+
+
+def kp_window_redundancy(
+    chart_id: str,
+    conn: Any,
+    *,
+    birth_dt: datetime,
+    ayanamsha_id: str = DEFAULT_AYANAMSHA_ID,
+    tolerance_seconds: float = KP_TWIN_TOLERANCE_SECONDS,
+) -> KpWindowRedundancy:
+    """Measure whether `vimshottari_kp` adds a distinct lord stack over
+    `vimshottari` for this chart, inside the field horizon.
+
+    Read-only over `chart_dashas` alone. Compares exactly the quantity
+    `hazard.relevance` consumes — (level, `lord_graha`) at an instant — so a
+    "redundant" verdict here means, precisely and only, that r_kp(t) can never
+    differ from r_vim(t) inside the horizon.
+    """
+    if birth_dt.tzinfo is None:
+        birth_dt = birth_dt.replace(tzinfo=timezone.utc)
+    horizon_end = birth_dt + timedelta(days=FIELD_HORIZON_DAYS)
+
+    rows = conn.execute(
+        """
+        SELECT kp.level_n AS level_n,
+               (EXISTS (
+                   SELECT 1 FROM chart_dashas v
+                    WHERE v.chart_id = kp.chart_id
+                      AND v.ayanamsha_id = kp.ayanamsha_id
+                      AND v.system_id = %s
+                      AND v.level_n = kp.level_n
+                      AND v.lord_graha IS NOT DISTINCT FROM kp.lord_graha
+                      AND abs(extract(epoch FROM (v.start_iso - kp.start_iso))) <= %s
+                      AND abs(extract(epoch FROM (v.end_iso   - kp.end_iso)))   <= %s
+               )) AS has_twin
+          FROM chart_dashas kp
+         WHERE kp.chart_id = %s
+           AND kp.ayanamsha_id = %s
+           AND kp.system_id = %s
+           AND kp.start_iso >= %s
+           AND kp.end_iso   <= %s
+        """,
+        [
+            KP_PARENT_SYSTEM_ID, tolerance_seconds, tolerance_seconds,
+            chart_id, ayanamsha_id, KP_SYSTEM_ID, birth_dt, horizon_end,
+        ],
+    ).fetchall()
+    dict_rows = _rows_as_dicts(rows, ["level_n", "has_twin"])
+
+    total = len(dict_rows)
+    twinned = sum(1 for r in dict_rows if bool(r["has_twin"]))
+    levels = tuple(sorted({int(r["level_n"]) for r in dict_rows}))
+
+    return KpWindowRedundancy(
+        rows_in_horizon=total,
+        twinned_rows=twinned,
+        # Zero in-horizon rows is NOT redundancy — it is absence, and §4.1 step 2
+        # is explicit that absent is never treated as excluded. The presence check
+        # in `evaluate_applicability` handles that case on its own terms.
+        is_redundant=total > 0 and twinned == total,
+        tolerance_seconds=tolerance_seconds,
+        horizon_start=birth_dt,
+        horizon_end=horizon_end,
+        levels_compared=levels,
+    )
+
+
+def _evaluate_jurisdiction(
+    system_id: str,
+    chart_id: str | None = None,
+    conn: Any = None,
+    *,
+    birth_dt: datetime | None = None,
+    ayanamsha_id: str = DEFAULT_AYANAMSHA_ID,
+) -> tuple[str, str | None]:
+    """Step 1 (§4.1), returning `(applicability_state, reason)`.
+
+    For the seven systems this builder originally covered: see module docstring
+    #4 — none has a real, machine-evaluable `entry_condition` sourced anywhere in
+    this corpus, so all seven pass jurisdiction unconditionally, exactly as
+    before (`('applicable', None)`).
+
+    `vimshottari_kp` is the first system with a real, machine-evaluable
+    condition, and it is evaluated here rather than bypassing this step (module
+    docstring #4's own instruction: "A future system with a real, citable,
+    machine-evaluable condition should extend `_evaluate_jurisdiction`, never
+    bypass this module's honesty discipline"). The condition is the
+    window-redundancy measurement of docstring #10.
+    """
+    if system_id != KP_SYSTEM_ID:
+        return "applicable", None
+
+    if birth_dt is None or conn is None or chart_id is None:
+        # §N.8: no detector ran, so there is no verdict. Reporting `applicable`
+        # here would admit KP to S_pred(e) on an unmeasured assumption — the
+        # precise failure mode this module refuses. `not_computed` is the honest
+        # state, and it is NOT 'excluded_by_condition' either: nothing was
+        # decided against KP, the question was simply never put.
+        return "not_computed", (
+            "KP window-redundancy vs Vimsottari is undecidable without the chart's "
+            "birth instant (the field horizon's own anchor, design §5.2) — reported "
+            "not_computed rather than admitted to S_pred(e) unmeasured"
+        )
+
+    verdict = kp_window_redundancy(chart_id, conn, birth_dt=birth_dt, ayanamsha_id=ayanamsha_id)
+    if verdict.rows_in_horizon == 0:
+        # Fall through to the presence check, which owns the absence vocabulary.
+        return "applicable", None
+    if not verdict.is_redundant:
+        return "applicable", None
+
+    return "excluded_by_condition", (
+        "vimshottari_kp's period ladder is boundary-identical to vimshottari's inside "
+        f"the field horizon ({verdict.basis()}): every in-horizon KP row has a "
+        "vimshottari twin at the same level with the same lord, so its running lord "
+        "stack — the only input hazard.relevance reads — can never differ. Admitting it "
+        "to S_pred(e) would multiply one clock's factor twice (w_vim + w_kp on the same "
+        "exponent), the same double-count gochara_intensity/permission.py refuses for "
+        "DR-14's plurality sum. KP's independence is a JUDGMENT-method independence "
+        "(W3K_SUBSTRATE_INVENTORY_v1_0.md §4) and is served as a school voice, not as a "
+        "hazard factor."
+    )
+
+
+# ── W3K G-4: the KP q_s rule (§4.1 step 4, per design §11.4's seam) ─────────
+
+def _fetch_kp_sub_boundaries(conn: Any) -> list[float]:
+    """The 249-fold KP sub-division boundaries, REFERENCED from the L0 authority
+    `bg_kp_sublord_division` (§N.5) — never re-derived here.
+
+    Deliberately reads the table through this module's own `conn.execute` idiom
+    rather than calling `brahmagyan.l0_kp_sublord_division.load_divisions`, which
+    speaks the psycopg `conn.cursor(row_factory=...)` protocol this module does
+    not use anywhere else. Same table, same authority, same values — only the
+    cursor idiom differs. Returns [] when the table is absent or unbuilt; the
+    caller renders that as `not_computed`, never as a fallback re-derivation.
+    """
+    try:
+        rows = conn.execute(
+            """
+            SELECT start_longitude_deg
+              FROM bg_kp_sublord_division
+             ORDER BY division_index
+            """,
+        ).fetchall()
+    except Exception:  # noqa: BLE001 — table absent (pre-Lane-1 chart/db) is a data
+        # state, not a crash: reported honestly as "no boundaries" by the caller.
+        return []
+    dict_rows = _rows_as_dicts(rows, ["start_longitude_deg"])
+    return [float(r["start_longitude_deg"]) % 360.0 for r in dict_rows
+            if r["start_longitude_deg"] is not None]
+
+
+def kp_sub_quality(
+    moon_longitude_deg: float, boundaries: list[float], sigma_a_deg: float,
+) -> tuple[float, float]:
+    """`vimshottari_kp`'s q_s: the KP sub-lord determination's robustness.
+
+    Returns `(d_sub, q)` where `d_sub` is the Moon's angular distance to the
+    nearest KP sub boundary and `q = clamp01(d_sub / (z · σ_A))`.
+
+    Why this shape, and why it is not an invented constant. §4.1 step 4 defines
+    q_s as "the system's own determination-robustness"; vimshottari's rule is the
+    Moon's margin to its determining grid (nakṣatra), kalachakra's is the same
+    against a finer grid (pāda). KP's determining grid is finer again — the 249
+    sub division — so the same rule against KP's own grid is the direct
+    continuation, and §11.4 explicitly authorises adding it ("W3K's KP clock
+    joins by adding ... a `q_s` rule (§4.1 step 4)").
+
+    The tolerance is the one place a builder could have invented a number, so it
+    is not invented: it is `z · σ_A`, both terms already defined by §4.2 (`z =
+    1.96`; σ_A the ayanāṃśa spread across the five pinned ayanāṃśas at this
+    chart's own epoch). That is also the empirically right band for THIS grid —
+    `05_TEMPORAL_ENGINES/kp/CROSSCHECK_v1_0.md` §2 records that the KP sub-lord
+    engine's only non-exact comparisons against the FORENSIC fixture were
+    boundary flips attributed to exactly the standing ayanāṃśa-precision band
+    (GAP.09). A KP sub whose margin exceeds that band is determinable; one inside
+    it is the case the crosscheck actually observed flipping.
+    """
+    if not boundaries:
+        raise ValueError("kp_sub_quality requires the L0 KP sub-division boundaries; got none")
+    if not (sigma_a_deg > 0.0):
+        raise ValueError(f"kp_sub_quality requires sigma_a_deg > 0; got {sigma_a_deg!r}")
+
+    lon = moon_longitude_deg % 360.0
+    d_sub = min(
+        min(abs(lon - b), 360.0 - abs(lon - b))
+        for b in boundaries
+    )
+    return d_sub, _clamp01(d_sub / (Z_95 * sigma_a_deg))
 
 
 def _evaluate_quality(
@@ -390,6 +703,22 @@ def _evaluate_quality(
         basis = f"mudda_varsha_coverage_at={reference_dt.isoformat()}"
         return (1.0 if covers else 0.0), basis
 
+    if system_id == KP_SYSTEM_ID:
+        # Only reachable when the redundancy detector found KP to be a genuinely
+        # distinct clock for this chart (jurisdiction passed) — see docstring #10.
+        boundaries = _fetch_kp_sub_boundaries(conn)
+        if not boundaries:
+            return None, None  # rendered as not_computed by the caller
+        sigma_a = U.fetch_sigma_a_degrees(chart_id, conn).sigma_a_deg
+        if not (sigma_a > 0.0):
+            return None, None
+        moon_lon = fetch_moon_longitude_deg(chart_id, conn, ayanamsha_id)
+        d_sub, q = kp_sub_quality(moon_lon, boundaries, sigma_a)
+        return q, (
+            f"kp_sub_margin={d_sub:.4f}deg;sigma_a={sigma_a:.4f}deg;z={Z_95};"
+            f"n_divisions={len(boundaries)}"
+        )
+
     # ashtottari, and any future/unknown system: no quality rule defined
     # (module docstring #3) -- honest not_computed, never invented.
     return None, None
@@ -402,21 +731,30 @@ def evaluate_applicability(
     *,
     ayanamsha_id: str = DEFAULT_AYANAMSHA_ID,
     reference_dt: datetime | None = None,
+    birth_dt: datetime | None = None,
 ) -> ClockApplicability:
     """The full §4.1 algorithm for one (chart, system). `reference_dt`
     defaults to now (UTC) -- see module docstring #9 for why mudda's
-    "evaluated t" is read as a representative build-time instant."""
+    "evaluated t" is read as a representative build-time instant.
+
+    `birth_dt` anchors the field horizon (design §5.2's H = 36525 days FROM
+    BIRTH) and is read by exactly one system's jurisdiction step today,
+    `vimshottari_kp`'s (module docstring #10). Omitting it leaves that system
+    `not_computed` — never silently `applicable` — and changes nothing for the
+    other seven."""
     meta = SYSTEM_META.get(system_id)
     if meta is None:
         raise ValueError(f"unknown system_id for Law-1 applicability: {system_id!r}")
 
     ref_dt = reference_dt or datetime.now(timezone.utc)
 
-    passes, exclusion_reason = _evaluate_jurisdiction(system_id)
-    if not passes:
+    jurisdiction_state, exclusion_reason = _evaluate_jurisdiction(
+        system_id, chart_id, conn, birth_dt=birth_dt, ayanamsha_id=ayanamsha_id,
+    )
+    if jurisdiction_state != "applicable":
         return ClockApplicability(
             system_id=system_id,
-            applicability_state="excluded_by_condition",
+            applicability_state=jurisdiction_state,
             exclusion_reason=exclusion_reason,
             competence_class=meta.competence_class,
             seniority_rank=meta.seniority_rank,
@@ -471,13 +809,20 @@ def applicable_systems(
     *,
     ayanamsha_id: str = DEFAULT_AYANAMSHA_ID,
     reference_dt: datetime | None = None,
+    birth_dt: datetime | None = None,
 ) -> list[ClockApplicability]:
     """PUBLISHED FUNCTION (Lane B -> Lane C). Evaluates Law-1 applicability
     for every daśā system this product computes into `chart_dashas`, in a
-    stable (sorted by system_id) order."""
+    stable (sorted by system_id) order.
+
+    `birth_dt` (optional) anchors the field horizon for `vimshottari_kp`'s
+    jurisdiction step — see `evaluate_applicability`."""
     ref_dt = reference_dt or datetime.now(timezone.utc)
     return [
-        evaluate_applicability(chart_id, sid, conn, ayanamsha_id=ayanamsha_id, reference_dt=ref_dt)
+        evaluate_applicability(
+            chart_id, sid, conn,
+            ayanamsha_id=ayanamsha_id, reference_dt=ref_dt, birth_dt=birth_dt,
+        )
         for sid in sorted(SYSTEM_META.keys())
     ]
 
@@ -617,13 +962,17 @@ def _system_sigma_t(
     v_moon = moon_velocity_dps_at_birth(birth_params)
     sigma_a = U.fetch_sigma_a_degrees(chart_id, conn).sigma_a_deg
 
-    rows = _chart_dashas_level1_rows(chart_id, system_id, conn)
+    # A subdividing system (vimshottari_kp) has no level-1 rows of its own; its
+    # birth-balance scale factor is the parent ladder's, inherited not recomputed.
+    ladder_system = PARENT_LADDER_SYSTEM.get(system_id, system_id)
+    rows = _chart_dashas_level1_rows(chart_id, ladder_system, conn)
     if not rows:
         raise RuntimeError(
-            f"no level-1 chart_dashas rows for chart {chart_id!r} system {system_id!r}"
+            f"no level-1 chart_dashas rows for chart {chart_id!r} system {ladder_system!r}"
+            + (f" (the parent ladder of {system_id!r})" if ladder_system != system_id else "")
         )
     birth_lord = rows[0].get("lord_graha") or rows[0].get("lord_sign")
-    t_balance_days, _ = full_lord_period_days(chart_id, system_id, birth_lord, conn)
+    t_balance_days, _ = full_lord_period_days(chart_id, ladder_system, birth_lord, conn)
 
     result = U.propagate_fractional_arc_sigma_t(
         v_moon_dps=v_moon,
