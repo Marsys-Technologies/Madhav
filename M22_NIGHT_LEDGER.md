@@ -1242,3 +1242,346 @@ verifier" task.
   `kp_sublevel IS NULL`) per the brief's explicit scope — `vimshottari_kp` sub-periods (a
   different derivation per register V-12) and the other 6 dasha systems (yogini, ashtottari,
   chara_karaka, narayana, naisargika, mudda, kalachakra) remain untouched, as scoped.
+
+## GATE R3 (Opus Skeptic, adversarial) — VERDICT: **HALT** (scoped) on re-promotion; **FAIL TO REFUTE** on the verifier's core
+
+Reviewer read `_vimshottari_independent_verifier.py` (808 lines) and `ga_dashas_writer.py`
+(`compute_vimshottari` 954-1162, `_find_cycle_start_for_window` 364-427, `_build_row` 850-925,
+`_jd_to_iso_utc` 264-283) line by line, ran the test file, and ran an independent adversarial
+harness that corrupts the pipeline at the DATA level (the thing the Executor's probes never do).
+
+### What held up under attack — FAIL TO REFUTE
+
+**1. Independence is real, and the constants were NOT copy-imported.** AST audit of every import
+(including the four function-local `import psycopg.rows` and one `from zoneinfo`): stdlib +
+`psycopg` + `brahmagyan.verification_vocab` only. Textual scan for `ga_dashas_writer` / `pyjhora` /
+`swisseph` / `swe` / `birth_params` finds 28+1+3+4+3 occurrences — **every single one inside a
+docstring or comment; zero in executable code**. `CLASSICAL_9_LORDS`, `LORD_YEARS`,
+`NAKSHATRA_LORDS_27` are module-level literals (the last one *structurally derived* as
+`CLASSICAL_9_LORDS[i % 9] for i in range(27)`, not transcribed). Reviewer independently ran
+`cross_check_nakshatra_lord_table()` against live `reference_nakshatras`: **0 mismatches**, and
+separately confirmed the three constants equal the engine's `VIMSHOTTARI_SEQUENCE` /
+`VIMSHOTTARI_YEARS` / `_NAKSHATRA_LORDS_1BASED` — that equality is the *cross-check result*, not
+the source. The JD math is a genuinely separate Meeus/Fliegel implementation, self-tested at
+import against J2000 and the Unix epoch. **Independence claim: upheld.**
+*Scoped blind spot (name it, don't fix it):* three things ARE deliberately copied from the engine —
+the 1950-2100 window, the round-to-nearest-second convention, and the same-civil-date collapse
+predicate. Copying them is correct (a verifier using textbook conventions would diverge on every
+row for non-defect reasons), but it means this verifier **cannot by construction detect a defect in
+any of those three conventions**. That must travel with the promotion record.
+
+**2. The 0-divergent smoke result is CREDIBLE, and it is a measurement, not a tautology.**
+Reviewer reproduced it and, crucially, recorded the RAW diffs the Executor's report only summarised
+as verdicts: **all 18,410 boundary comparisons (9,205 rows × start+end) differ by EXACTLY 0.000
+seconds.** Zero lord mismatches. Zero one-second rounding flips. Reviewer then proved the pipeline
+is *not* structurally pinned to zero by perturbing its most sensitive input:
+
+| Δ(Moon sidereal longitude) | verified | divergent | max boundary diff |
+|---|---|---|---|
+| 1e-9° | 9205 | 0 | 1.000 s |
+| 1e-7° | 9205 | 0 | 4.000 s |
+| **1e-6°** | **0** | **9205** | 38 s |
+| 1e-5° | 0 | 9205 | 2,629,422 s |
+
+A 1e-9° Moon shift already moves ~700 boundaries by a rounded second. Observing **zero** flips at
+the true Moon value means the two implementations agree to far better than the float-accumulation
+bound — consistent with two correct IEEE-754 implementations of the same 365.25 proportional
+recursion on a bit-identical Moon input. **Not suspicious. Earned.**
+
+**3. The pipeline discriminates — reviewer proved it where the probes didn't.** Every Executor probe
+(a)(b)(c) mutates arguments *at the `compare_row` call site*; none feeds corrupted data through
+`verify_chart_vimshottari`. So the probes prove the COMPARATOR discriminates, not the PIPELINE.
+Reviewer closed that gap with five data-level attacks through the live comparison path:
+
+| attack | verified | divergent |
+|---|---|---|
+| engine=canonical vs derived from chart `1c826d5a` | 0 | 9205 (100%) |
+| engine=canonical vs derived from chart `cb73cd3d` | 0 | 9205 (100%) |
+| lord list rotated by 1 | 1 | 9204 |
+| uniform +6 s shift on every boundary | 0 | 9205 |
+| drop MIDDLE row of each level | 4601 | 4600 (cascade) |
+
+9/9 tests pass locally (reviewer ran them; the "98/98" was the wider suite). **Discrimination claim:
+upheld, and now proved one layer deeper than the Executor proved it.**
+
+**4. The collapse-quirk replication is the RIGHT call.** The verifier replicates the *predicate*
+(recompute clipped dates from its OWN JDs, apply `>=`), not the engine's output — so a defect that
+shifted a boundary changes the verifier's own drop decision and desynchronises the lists, which the
+drop-MIDDLE attack confirms is caught loudly. Masking risk is measure-zero. **But see H3 below for
+what it fails to REPORT.**
+
+### What broke — HALT
+
+**H1 — TAIL-TRUNCATION BLIND SPOT. This is the flaw, and it produces exactly the report's headline
+number.** `verify_chart_vimshottari` pairs engine and derived rows POSITIONALLY. If the engine holds
+fewer rows than derived and the missing ones are at the TAIL, every surviving engine row still
+matches its counterpart and the surplus derived rows are **never examined at all**. Reviewer's
+attack — drop the last row of each level:
+
+```
+drop TAIL row per level      verified=9201  divergent=0  levels_with_count_mismatch=4
+```
+
+**Zero divergent. The exact metric the Stage 3 report leads with.** The only signal is
+`LevelSummary.count_mismatch`, which (a) is not folded into `total_divergent`, (b) has no aggregate
+property on `ChartVerificationResult`, and (c) is asserted only inside the pytest smoke test — the
+library API a promotion driver would call has no guard. A driver written against the natural
+contract `result.total_divergent == 0` would promote a truncated chart wholesale. Tail truncation is
+not hypothetical for this engine: `compute_vimshottari` has two `break`-on-`md_jd >= max_jd` exits
+(1156-1160) and a `for cycle in range(5)` cap, all at the window's far edge. **This is the same
+shape as the bug this campaign exists to kill — a check that looks rigorous and reports clean
+against a real defect class.** MUST be closed before any write: `ChartVerificationResult` needs a
+`total_count_mismatch` that a gate cannot ignore, and surplus derived rows must be counted as
+divergent, not dropped.
+
+**H2 — COLUMN-LEVEL BROADCAST.** `fetch_engine_rows` selects **3 of `chart_dashas`' 42 columns**
+(`lord_graha, start_iso, end_iso`). Re-promotion writes `verification_pass_status='two_pass_verified'`
+— a ROW-level claim, and per `envelope.ts` the only status serve counts as grounding — onto rows
+whose `start_date`, `end_date`, `duration_days`, `sandhi_flag`, `parent_row_id`,
+`is_truncated_at_window_start/end`, `lord_natal_*`, `next_dasha_start_iso`,
+`convergence_count_at_start` received no second pass at all. This is M-22's own broadcast pattern
+rotated 90°: instead of broadcasting a level-1 verdict across levels 2-4, it broadcasts a 3-column
+verdict across 42 columns. `duration_days` is derived from the DATE-truncated columns and is
+therefore a genuinely independent value the verifier could check for free. Either extend coverage to
+the cheap deterministic columns (start_date/end_date/duration_days/parent lineage) **or** the
+promotion must be recorded as explicitly column-scoped, not row-scoped.
+
+**H3 — THE REPLICATED QUIRK'S COST IS ABSORBED, NOT REPORTED.** Reviewer measured it by
+neutralising `_collapses_to_same_civil_date` and re-running the tree: the engine silently never
+persists **132 / 188 / 142 level-4 Sukshma periods** (charts 482012f1 / 1c826d5a / cb73cd3d,
+lahiri) — **1.41% / 1.85% / 1.53% of each chart's entire Vimshottari tree**. The verifier absorbs
+this into "100% agreement" and emits no counter. A promotion run would stamp `two_pass_verified` on
+a table that is provably ~1.5% incomplete at level 4 with nothing in the result object saying so.
+REQUIRED: `ChartVerificationResult` must carry `collapse_dropped_periods_per_level` so the
+incompleteness travels with the verdict.
+
+**H4 — SCOPE ARITHMETIC.** This verifier covers `system_id='vimshottari' AND kp_sublevel IS NULL` =
+**141,731 rows of 1,461,165 (9.7%)**. It cannot "re-promote ~1.36M rows"; any language to that
+effect must be corrected before the gate.
+
+### Tolerance — the number survives, the justification does not
+
+Reviewer redid the arithmetic independently. At JD ~2.45e6, 1 ulp = 4.66e-10 d = **4.0e-5 s**;
+~200 chained ops → **~8 ms**. The Executor's ~9.6 ms bound is right. The 5 s choice is defensible on
+the "too tight" axis (500× the pessimistic bound; no legitimate false positives) and survives the
+"too loose" astrological test (5 s is 0.021% of the 6.574 h minimum Sukshma; no wrong-lord,
+wrong-proportion, wrong-DAYS_PER_YEAR or off-by-one-cycle defect lands in the 0-5 s band).
+**But three things in the written justification are wrong and it is the gate's document of record:**
+
+- **Factual inversion.** "*still ~20x below even the pessimistic 9.6ms worst-case bound*" — 5 s is
+  ~520× **ABOVE** 9.6 ms. The comparison is backwards.
+- **Arithmetic slip.** Minimum Sukshma = 6·0.05³ y = 0.00075 y = **23,668 s (6.574 h)**, not
+  "~23,652 seconds"; the intermediate "`= 0.99e-1...`" is garbled.
+- **The dominant sensitivity is missing entirely.** The justification analyses only rounding noise
+  and float accumulation. It never mentions the **Moon-longitude input**, which the table above shows
+  is the load-bearing term: 5 s of tolerance implicitly requires the verifier's Moon (read from
+  `chart_facts`, written by `ga_positions_writer`) to agree with the engine's Moon (recomputed via
+  `pyjhora_adapter`) to **~1.3e-7°**. It does — both trace to the same Swiss-Ephemeris call — but
+  that is an UNSTATED load-bearing assumption. Any future divergence in those two Moon paths turns
+  this verifier into a 100%-divergent false-alarm generator. (It already has: see the ayanamsha
+  defect below, where the 100%-divergent verdict is *correct*.)
+
+**Recommendation (not a HALT condition):** the observed noise floor is **0.000 s**, so 5 s is
+~250,000× the measured noise. A uniform +3 s engine bias passes 9205/9205 with zero divergences
+(reviewer confirmed). Tighten to 1 s and additionally report max/mean diff per level, so a
+systematic sub-tolerance bias is *visible* rather than absorbed. Relatedly, probe (c)'s 2.5 s
+"legitimate noise" scenario never occurs in reality — it asserts the comparator's `<=` works, not
+that false positives are a real risk.
+
+### Doctrine nit
+
+`compare_row` calls `two_pass_verdict(all_agree, True)` — a pre-decided boolean against a literal.
+`verification_vocab.two_pass_verdict`'s own docstring: *"Callers must present BOTH the engine value
+and an INDEPENDENTLY derived value; the comparison happens here, so the verdict cannot be asserted
+without evidence."* Here the comparison happens at the call site and the sanctioned producer is
+handed a decision — functionally correct (the boolean IS independently computed) but at the call
+site indistinguishable from `two_pass_verdict(True, True)`, which defeats the guardrail. Should pass
+the compared tuples.
+
+### The ayanamsha defect — INDEPENDENTLY CONFIRMED, and materially WORSE than reported
+
+Reviewer confirmed by md5 signature over `(level_n, lord_graha, start_iso, end_iso, start_date,
+end_date)` — not by trusting the Executor: `krishnamurti` ≡ `surya_siddhanta_classical` ≡
+`lahiri_chitrapaksha` for Vimshottari on **all 3 charts** (identical hashes, identical counts).
+Root cause re-read and confirmed at `pyjhora_adapter/_ayanamsha.py`: `AYANAMSHA_MAP` keys are
+`{lahiri, true_chitra, kp, raman, surya_siddhanta}`; `resolve_mode` does
+`.get(key, AYANAMSHA_MAP[DEFAULT_AYANAMSHA])`. Three of five canonical ids miss the map —
+`lahiri_chitrapaksha` lands on Lahiri by luck, `krishnamurti` and `surya_siddhanta_classical` land
+on Lahiri **wrongly**. Beyond the Executor's report:
+
+- **Not confined to Vimshottari.** Distinct signatures per chart across the 5 ayanamshas:
+  `vimshottari` 3, `vimshottari_kp` 3, `kalachakra` 3, `mudda` 3 — the 3 being
+  {lahiri≡kp≡surya}, raman, true_chitra: the exact fallback fingerprint.
+  **584,607 of 1,461,165 `chart_dashas` rows (40.0%)** carry a `krishnamurti` /
+  `surya_siddhanta_classical` label.
+- **Blast radius is NOT universal — reviewer tested rather than assumed.** `chart_divisionals` shows
+  6 distinct signatures per chart (5 real + INVARIANT) with krishnamurti/surya/lahiri all
+  **different**; `chart_facts` `graha_position` shows 5 distinct per chart. `ga_positions_writer`
+  carries its own correct `CANONICAL_AYANAMSHAS` translation map (line 45) — which is *why*
+  `chart_facts` is right. The defect is confined to call sites passing the CANONICAL id raw into
+  `resolve_mode`; `ga_dashas_writer._get_moon_position` (line 314) is the confirmed one.
+  `ga_vargas_writer` (769, 2724) also calls `resolve_mode` and should be re-checked despite its
+  output table looking clean.
+- **It is a genuine intra-L1 contradiction under CLAUDE.md §N.5.** For chart 482012f1 /
+  `surya_siddhanta_classical`, `chart_facts` says Moon = **330.017263°** while the entire
+  `chart_dashas` tree for that same (chart, ayanamsha) was built from **327.055230°** — a 2.96°
+  difference, ≈3.5 YEARS of Mahadasha balance. L1's own two writers disagree about the same fact.
+- **SEPARATE, POSSIBLY WORSE DEFECT surfaced by the same query — flagged, not investigated.**
+  `ashtottari`, `naisargika` and `yogini` show only **ONE** distinct signature per chart: all five
+  ayanamshas byte-identical, *including* raman and true_chitra which resolve correctly. For
+  `naisargika` that is expected (age-based, chart-independent per its own docstring). For `yogini`
+  and `ashtottari` — both Moon-nakshatra-driven, both taking `moon_sid` as their first parameter —
+  it is not, and points at a second, independent defect. `chara_karaka` / `narayana` show 2/2/1.
+- **IS IT SERVED? YES — currently, by default.** `get_dashas.ts` issues
+  `SELECT * FROM chart_dashas WHERE chart_id = $1` and applies **no ayanamsha filter unless the
+  caller supplies one** (its own header: *"ayanamsha_id is NOT defaulted server-side... omitting it
+  returns one row per ayanamsha (5 rows)"*). So the default response hands a caller five
+  ayanamsha-labelled dasha answers of which **three are the same numbers wearing different labels**.
+  `ganita_kp_cusps_get` documents `krishnamurti` as its DEFAULT ayanamsha, establishing krishnamurti
+  as a first-class user-facing choice. **Severity: HIGH, live, not a footnote.**
+
+### RULING
+
+**HALT on re-promotion / any write.** Three specific, closable flaws gate it: **H1** (tail-truncation
+blind spot — reproduces the report's own "0 divergent" headline against a real defect class), **H2**
+(3-of-42-column verdict broadcast to the row), **H3** (the ~1.5% collapse-dropped Sukshma periods are
+absorbed into "100% agreement" and never counted). Plus **H4**: the covered scope is 141,731 rows
+(9.7%), not 1.36M.
+
+**FAIL TO REFUTE on the verifier's core.** Independence, the tolerance's adequacy, the discrimination
+claim and the 0-divergent measurement all survived every attack constructed against them — including
+five data-level corruptions the Executor's probes never ran. This is a real second pass, not another
+check that doesn't bite. Reviewer tried to break it on independence (AST + textual scan), on input
+sensitivity (7-point Moon perturbation sweep), on cross-subject confusion (2 charts), on systematic
+bias (3 uniform shifts), on ordering (lord rotation), and on row-set integrity (mid + tail drops).
+Only the tail drop got through.
+
+**Authorized to proceed WITHOUT any write:** the sample cross-check and the full **read-only** run
+are authorized and encouraged — the instrument is trustworthy as a *diagnostic*, and the ayanamsha
+finding is evidence it earns its keep on first contact with real data. **No `UPDATE` to
+`verification_pass_status` is authorized until H1-H3 are closed and independently re-reviewed.**
+
+**Escalated to native / morning report as its own item, not a byproduct:** the `resolve_mode` key
+mismatch is a live, currently-served L1 correctness defect affecting 40% of `chart_dashas` and
+contradicting `chart_facts` for the same (chart, ayanamsha). It outranks the Stage 3 verifier work
+in importance. Do not fix it inside this autonomous run — same-night patch-and-run on a path every
+GA writer touches is exactly the shape this campaign exists to stop.
+
+## Stage 3 — H1/H2/H3 remediation (Executor, this session, same branch, no writes)
+
+Scope: close the three specific, closable flaws GATE R3 gated on. Ayanamsha `resolve_mode` defect
+(escalated separately to native) explicitly OUT of scope — not touched, not `pyjhora_adapter`, not
+any production writer. Read-only against the live DB throughout; zero `UPDATE`/`INSERT` issued.
+
+**H1 — tail-truncation blind spot — FIXED.** The per-level pairing loop was rewritten as a standalone,
+DB-free function `compare_level()` (which `verify_chart_vimshottari()` now calls per level) that
+walks `range(max(len(engine_rows), len(derived_rows)))` **symmetrically** instead of only iterating
+`engine_rows`. A leftover row on EITHER side — engine longer than derived, or derived longer than
+engine — is now a hard divergence: `LevelSummary.divergent_flagged` is incremented and a new
+`count_mismatch_divergences` field tracks the subset caused purely by the mismatch (already included
+in `divergent_flagged`/`total_divergent`, not layered on top). `count_mismatch` is no longer a
+side-channel-only pytest assertion — it drives the primary verdict path directly.
+Reproduced the Skeptic's exact attack as a permanent regression test
+(`test_h1_row_count_mismatch_surfaces_as_divergence_in_main_verdict_path`): build a perfect-agreement
+synthetic engine-row set from the real independently-computed level-1 tree, drop the last row, feed
+both through `compare_level()` — now `count_mismatch=True` and `divergent_flagged>=1`, where before
+the fix an equivalent scenario reported `divergent=0`. A second test
+(`test_h1_row_count_mismatch_also_fires_when_derived_side_is_longer`) covers the OPPOSITE direction
+(DB has fewer rows than the independent computation), which the old code's engine-only loop could
+never have detected even in principle.
+
+**H2 — column coverage — FIXED, 20 of 42 (up from 3).** Read the live `chart_dashas` schema (`\d
+chart_dashas`, confirmed 42 columns) and `ga_dashas_writer.py`'s row-construction code
+(`_build_row`, `_get_karakas_active`, `_planet_relationship`, `compute_sandhi_post_pass`, the 4
+`compute_vimshottari` `_build_row()` call sites) to classify every column into one of three honest,
+disjoint buckets — asserted to sum to 42 by a module-import-time self-test
+(`_self_test_column_coverage_partition`), same discipline as the existing `_self_test_jd_roundtrip`:
+- **`INDEPENDENTLY_VERIFIED_COLUMNS` (20)** — `lord_graha`/`start_iso`/`end_iso` (pre-existing) plus
+  17 new: `start_date`/`end_date` (floor-JD civil date, NOT the rounded datetime's `.date()` — those
+  can differ by a day near a midnight rounding boundary, per `ga_dashas_writer._jd_to_iso_utc`'s own
+  V-9 comment), `duration_days` (`(end_date - start_date).days`), `sandhi_flag`
+  (`duration_days < 20`, confirmed formula), `karaka_role_at_period` + `karakas_active_during_period`
+  (transcribed `_JAIMINI_KARAKAS` table, function of lord/parent_lord), `lord_to_parent_relationship`
+  (transcribed `_FRIEND`/`_ENEMY` tables), `applies_to_this_chart_flag` /
+  `period_deity_or_marker` / `varsha_year_lord` / `anchored_solar_return_iso` / `kp_sub_lord` /
+  `kp_sub_sub_lord` (all constant for classical Vimshottari — confirmed by reading every
+  `_build_row()` call site in `compute_vimshottari`, none pass these kwargs),
+  `sandhi_with_next_dasha_lord` / `next_dasha_start_iso` (level_n==1 only, derived from this
+  module's own next-sibling lookup), `is_truncated_at_window_start/end` (already computed by this
+  module — see quirk below).
+- **`QUERY_GUARANTEED_COLUMNS` (5)** — `chart_id`, `ayanamsha_id`, `system_id`, `level_n`,
+  `kp_sublevel`: tautologically correct by `fetch_engine_rows()`'s own WHERE clause; checking them
+  would be circular, so they're reported separately, NOT counted as independently verified.
+- **`NOT_INDEPENDENTLY_CHECKABLE_COLUMNS` (17, each with a documented reason)** — `dasha_row_id`,
+  `build_id`, `parent_row_id` (provenance/identity, arbitrary); `lord_sign`, `lord_natal_house_d1`,
+  `lord_natal_sign`, `lord_natal_nakshatra`, `lord_natal_dignity_d1`, `lord_natal_shadbala_total`
+  (require the dasha LORD's own natal placement/dignity/shadbala — an entirely separate,
+  substantial computation domain this module deliberately does not touch); `verification_pass_status`,
+  `verification_method`, `citation_ref`, `citation_human`, `computed_at`, `engine_version`
+  (provenance/metadata, or circular); `concurrent_system_lords_jsonb`, `convergence_count_at_start`
+  (require computing OTHER dasha systems — out of Vimshottari-only scope).
+`ChartVerificationResult.column_coverage_report()` returns the honest "N of 42" breakdown plus
+per-column agree/mismatch counts — no caller can infer full-row verification from the fact that the
+function merely ran.
+**Confirmed engine quirk found while doing this (replicated, not corrected, same discipline as H3):**
+`is_truncated_at_window_start/end` is only ever wired at level_n 1-2 in `compute_vimshottari` — the
+level_n 3 (PD) and 4 (Sukshma) `_build_row()` calls never pass `is_trunc_start`/`is_trunc_end` at
+all, so those columns silently default to `False` for every PD/Sukshma row regardless of true
+clipping state. `derive_extended_columns()` expects `False` at levels 3-4 rather than flagging a
+false divergence. Also preserved verbatim: `_ENEMY['Moon'] = {'None'}` (the STRING `'None'`, not the
+object) — an apparent engine typo meaning Moon-lord rows can never be classified `'enemy'`, only
+`'friend'`/`'neutral'`; replicated rather than "fixed" per the same rationale. Neither is flagged as
+a HALT-worthy defect here — both are disclosed, out-of-scope observations for the native, same
+treatment as the ayanamsha finding.
+
+**H3 — silent quirk absorption — FIXED.** `compute_independent_vimshottari_tree()` now returns an
+`IndependentTreeResult` (`rows` + `excluded_by_level: dict[int, int]`, incremented at each of the 4
+`_collapses_to_same_civil_date` sites) instead of a bare list. `LevelSummary`/
+`ChartVerificationResult` carry `excluded_known_quirk` as a THIRD, explicitly-reported bucket
+alongside `two_pass_verified`/`divergent_flagged` — the tri-state (verified / divergent /
+excluded-known-quirk) is now visible, not folded into "verified". On the canonical chart,
+`excluded_by_level[4] == 132` — an EXACT match to one of the Reviewer's three independently-measured
+numbers (132/188/142 across the 3 test charts), which is strong evidence the H3 implementation itself
+is correct, not just present.
+
+**Test suite: 18/18 pass (17 new + 1 pre-existing smoke test), full `ga_writers/__tests__/` suite:
+107/107 pass, zero regressions.** New tests: `test_h1_row_count_mismatch_surfaces_as_divergence_in_main_verdict_path`,
+`test_h1_row_count_mismatch_also_fires_when_derived_side_is_longer`,
+`test_h2_column_coverage_partitions_all_42_columns_honestly`,
+`test_h2_karaka_role_and_relationship_match_transcribed_classical_tables`,
+`test_h2_extended_column_mismatch_is_flagged_divergent`,
+`test_h2_compare_row_backward_compatible_without_extended_args`,
+`test_h3_collapsed_periods_are_tracked_as_a_distinct_excluded_count`,
+`test_h3_excluded_count_surfaces_separately_not_folded_into_verified`,
+`test_h3_chart_verification_result_reports_total_excluded_known_quirk`. `test_probe_d`'s code-path
+assertion was updated (not weakened) to reflect the H1 extraction:
+`verify_chart_vimshottari -> compare_level -> compare_row` is now a two-hop chain, both hops asserted
+by source-grep. `compare_row()`'s original 6-positional-arg contract is untouched — the 4 pre-existing
+discrimination probes (probes a-d) pass unmodified, and a new test
+(`test_h2_compare_row_backward_compatible_without_extended_args`) pins that contract explicitly.
+
+**Re-run smoke test, canonical chart, `lahiri_chitrapaksha`, post-fix, full honest breakdown:**
+
+```
+level 1: engine=13   derived=13   verified=13   divergent=0  excluded_known_quirk=0
+level 2: engine=104  derived=104  verified=104  divergent=0  excluded_known_quirk=0
+level 3: engine=923  derived=923  verified=923  divergent=0  excluded_known_quirk=0
+level 4: engine=8165 derived=8165 verified=8165 divergent=0  excluded_known_quirk=132
+TOTALS:  examined=9205 verified=9205 divergent=0 (count_mismatch_divergences=0) excluded_known_quirk=132
+```
+
+20 of 42 `chart_dashas` columns independently verified (up from 3), zero mismatches on any of them
+(`per_column_mismatch_count == {}`), zero row-count-mismatch divergences, 132 known-quirk exclusions
+at level 4 disclosed rather than absorbed. **The result did not change the module's underlying
+soundness assessment — full agreement holds, now measured honestly across 6.7x more columns with the
+tail-truncation blind spot closed and the quirk's cost disclosed.** No reason to stop and report a
+change of understanding; proceeding to hand off for re-review.
+
+**Not done (explicitly out of scope per task brief):** ayanamsha `AYANAMSHA_MAP` defect untouched;
+`pyjhora_adapter` and all production writers untouched; no DB write of any kind issued; no
+re-promotion decision made — this remains gated on independent re-review of H1-H3 before any
+`UPDATE` to `verification_pass_status` is authorized.
+
+Files changed: `platform/python-sidecar/ga_writers/_vimshottari_independent_verifier.py`,
+`platform/python-sidecar/ga_writers/__tests__/test_vimshottari_independent_verifier.py`. Committed
+on `m22-night/stage3-vimshottari-verifier`.

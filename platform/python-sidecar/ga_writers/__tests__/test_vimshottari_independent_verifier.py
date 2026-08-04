@@ -35,8 +35,13 @@ _MOON_SID_DEG = 327.055230133129  # lahiri_chitrapaksha, chart 482012f1 (live va
 _BIRTH_JD_UT = sut._gregorian_to_jd(1984, 2, 5, 5, 13, 0)  # 1984-02-05 10:43 IST = 05:13 UT
 
 
-def _reference_tree():
+def _reference_tree_result():
+    """Full `IndependentTreeResult` (rows + H3 excluded_by_level counts)."""
     return sut.compute_independent_vimshottari_tree(_MOON_SID_DEG, _BIRTH_JD_UT)
+
+
+def _reference_tree():
+    return _reference_tree_result().rows
 
 
 def test_jd_self_test_already_ran_at_import():
@@ -143,14 +148,24 @@ def test_probe_c_boundary_within_tolerance_is_not_flagged():
 def test_probe_d_probes_exercise_the_real_verify_chart_code_path():
     import inspect
 
-    # `verify_chart_vimshottari` must call `sut.compare_row` — grep its source
-    # rather than asserting a private implementation detail some other way,
-    # so this test breaks (loudly) if a future refactor ever forks the logic.
+    # H1 FIX NOTE: the per-level pairing loop that used to live inline in
+    # `verify_chart_vimshottari` was extracted into `compare_level()`
+    # specifically so the H1 fix (symmetric row-count-mismatch pairing)
+    # could be unit-tested without a live DB connection (see
+    # `test_h1_row_count_mismatch_surfaces_as_divergence_in_main_verdict_path`
+    # below). So the chain this test now verifies is TWO hops:
+    # verify_chart_vimshottari -> compare_level -> compare_row.
     driver_src = inspect.getsource(sut.verify_chart_vimshottari)
-    assert "compare_row(" in driver_src, (
-        "verify_chart_vimshottari() no longer calls compare_row() — the "
-        "discrimination probes in this file would no longer be testing the "
-        "code path that runs against live data"
+    assert "compare_level(" in driver_src, (
+        "verify_chart_vimshottari() no longer calls compare_level() — the "
+        "H1 row-pairing fix would no longer be exercised by the code path "
+        "that runs against live data"
+    )
+    level_src = inspect.getsource(sut.compare_level)
+    assert "compare_row(" in level_src, (
+        "compare_level() no longer calls compare_row() — the discrimination "
+        "probes in this file would no longer be testing the code path that "
+        "runs against live data"
     )
 
     # And re-run probe (a)'s exact scenario through a literal call to the
@@ -159,6 +174,7 @@ def test_probe_d_probes_exercise_the_real_verify_chart_code_path():
     # this file (guards against a local shadow/monkeypatch anywhere in the
     # test session bleeding into this assertion).
     assert sut.verify_chart_vimshottari.__module__ == sut.__name__
+    assert sut.compare_level.__module__ == sut.__name__
     assert sut.compare_row.__module__ == sut.__name__
 
 
@@ -183,6 +199,231 @@ def test_probe_d_full_row_comparison_pipeline_end_to_end_no_db():
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# H1 — tail-truncation blind spot. Proves the Skeptic's exact reproduction
+# (dropping the last row of a level and getting a clean "0 divergent" back)
+# is fixed: a row-count mismatch now surfaces as divergent_flagged in
+# `compare_level()` — the SAME object `verify_chart_vimshottari()` builds
+# and any real promotion driver would read — not only via a pytest-only
+# `count_mismatch` assertion.
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _synthetic_engine_rows(level_rows: list, *, level_n: int):
+    """Build a perfect-agreement synthetic 'engine' row set (dicts, matching
+    `fetch_engine_rows()`'s shape) from a derived-row list — the same
+    self-comparison pattern probe (d) uses, extended to carry the H2
+    extended columns too."""
+    out = []
+    for i, r in enumerate(level_rows):
+        next_r = level_rows[i + 1] if (level_n == 1 and i + 1 < len(level_rows)) else None
+        extended = sut.derive_extended_columns(r, next_r)
+        out.append({"lord_graha": r.lord, "start_iso": r.start_dt, "end_iso": r.end_dt, **extended})
+    return out
+
+
+def test_h1_row_count_mismatch_surfaces_as_divergence_in_main_verdict_path():
+    tree = _reference_tree_result()
+    l1 = [r for r in tree.rows if r.level_n == 1]
+    assert len(l1) >= 3, "need at least 3 level-1 rows for a meaningful truncation probe"
+
+    full_engine_rows = _synthetic_engine_rows(l1, level_n=1)
+
+    # Sanity baseline: full (untruncated) pairing must be clean — proves any
+    # divergence below is caused by the truncation, not a defect in the
+    # comparison logic itself.
+    full_summary = sut.compare_level(1, full_engine_rows, l1, tolerance_seconds=sut.TOLERANCE_SECONDS_DEFAULT)
+    assert full_summary.count_mismatch is False
+    assert full_summary.divergent_flagged == 0
+    assert full_summary.two_pass_verified == len(l1)
+
+    # The Skeptic's exact reproduction: drop the last row of the level (as
+    # if the DB were missing a tail row the independent tree still has).
+    truncated_engine_rows = full_engine_rows[:-1]
+    summary = sut.compare_level(1, truncated_engine_rows, l1, tolerance_seconds=sut.TOLERANCE_SECONDS_DEFAULT)
+
+    assert summary.count_mismatch is True
+    assert summary.divergent_flagged >= 1, (
+        "H1 REGRESSION: a row-count mismatch (dropped last DB row, the "
+        "Skeptic's exact reproduction) did not surface as a divergence in "
+        "compare_level()'s output — this is the tail-truncation blind spot "
+        "that let a real run report 'verified=9201, divergent=0' with 4 "
+        "rows silently unexamined."
+    )
+    assert summary.count_mismatch_divergences >= 1
+    # The mismatch must be visible in divergent_flagged/total, not siphoned
+    # into a side channel — divergent_flagged already INCLUDES it.
+    assert summary.two_pass_verified == len(truncated_engine_rows), (
+        "every row that DID have a counterpart should still verify cleanly "
+        "— only the missing tail row should be flagged"
+    )
+
+
+def test_h1_row_count_mismatch_also_fires_when_derived_side_is_longer():
+    """The inverse of the Skeptic's reproduction: the DB has FEWER rows than
+    the independent computation (e.g. the engine silently failed to persist
+    a period the classical math says should exist). The OLD code's loop only
+    ever iterated `engine_rows`, so this direction was invisible by
+    construction, not just by accident — must be fixed too."""
+    tree = _reference_tree_result()
+    l2 = [r for r in tree.rows if r.level_n == 2]
+    assert len(l2) >= 3
+
+    full_engine_rows = _synthetic_engine_rows(l2, level_n=2)
+    # Drop a row from the middle of the ENGINE side (derived stays full).
+    engine_rows_missing_one = full_engine_rows[:1] + full_engine_rows[2:]
+
+    summary = sut.compare_level(2, engine_rows_missing_one, l2, tolerance_seconds=sut.TOLERANCE_SECONDS_DEFAULT)
+    assert summary.count_mismatch is True
+    assert summary.divergent_flagged >= 1, (
+        "H1 REGRESSION: derived-longer-than-engine mismatch was not flagged"
+    )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# H2 — column coverage. Proves the 42-column classification is internally
+# consistent, the transcribed classical tables match known values, and —
+# critically — that an extended-column mismatch (not just lord/boundaries)
+# now flips a row's verdict to divergent, so a 'two_pass_verified' row can
+# no longer silently overclaim full-row earnedness.
+# ─────────────────────────────────────────────────────────────────────────────
+
+def test_h2_column_coverage_partitions_all_42_columns_honestly():
+    assert sut.TOTAL_CHART_DASHAS_COLUMNS == 42
+    buckets = [
+        set(sut.INDEPENDENTLY_VERIFIED_COLUMNS),
+        set(sut.QUERY_GUARANTEED_COLUMNS),
+        set(sut.NOT_INDEPENDENTLY_CHECKABLE_COLUMNS),
+    ]
+    assert sum(len(b) for b in buckets) == 42
+    union = buckets[0] | buckets[1] | buckets[2]
+    assert len(union) == 42, "a column is double-counted across buckets"
+    # H2 must have added REAL coverage beyond the pre-fix 3
+    # (lord_graha/start_iso/end_iso) — otherwise this is coverage in name only.
+    assert len(sut.INDEPENDENTLY_VERIFIED_COLUMNS) > 3
+    assert set(sut.PRIMARY_VERIFIED_COLUMNS) == {"lord_graha", "start_iso", "end_iso"}
+    assert set(sut.PRIMARY_VERIFIED_COLUMNS).issubset(set(sut.INDEPENDENTLY_VERIFIED_COLUMNS))
+
+
+def test_h2_karaka_role_and_relationship_match_transcribed_classical_tables():
+    # Sun's Jaimini karaka role is Atmakaraka (AK) — a fixed classical
+    # constant, independent of any chart.
+    assert sut._derive_karaka_role("Sun") == "AK"
+    assert sut._derive_karaka_role("Rahu") is None  # not in the 7-graha Jaimini karaka table
+
+    # Sun/Moon are classical Parashari friends; Sun/Saturn are enemies.
+    assert sut._derive_planet_relationship("Sun", "Moon") == "friend"
+    assert sut._derive_planet_relationship("Sun", "Saturn") == "enemy"
+    assert sut._derive_planet_relationship("Sun", None) is None  # level 1: no parent
+
+    assert sut._derive_karakas_active("Sun", "Mars") == ["Sun:AK", "Mars:AmK"]
+    assert sut._derive_karakas_active("Rahu", "Ketu") is None  # neither is a Jaimini karaka
+
+
+def test_h2_extended_column_mismatch_is_flagged_divergent():
+    rows = _reference_tree()
+    row = next(r for r in rows if r.level_n == 1)
+    derived_extended = sut.derive_extended_columns(row, None)
+
+    # Perfect agreement first — establishes the baseline is clean.
+    clean_cmp = sut.compare_row(
+        row.lord, row.start_dt, row.end_dt, row.lord, row.start_dt, row.end_dt,
+        engine_extended=dict(derived_extended), derived_extended=derived_extended,
+    )
+    assert clean_cmp.verdict == sut.TWO_PASS_VERIFIED
+    assert clean_cmp.extended_mismatches == {}
+    assert set(clean_cmp.extended_checked) == set(sut.EXTENDED_VERIFIED_COLUMNS)
+
+    # Now corrupt ONE extended column (duration_days) while lord+boundaries
+    # still agree exactly.
+    corrupted_extended = dict(derived_extended)
+    corrupted_extended["duration_days"] = (derived_extended["duration_days"] or 0) + 999
+
+    cmp_ = sut.compare_row(
+        row.lord, row.start_dt, row.end_dt, row.lord, row.start_dt, row.end_dt,
+        engine_extended=corrupted_extended, derived_extended=derived_extended,
+    )
+    assert "duration_days" in cmp_.extended_mismatches
+    assert cmp_.verdict == sut.DIVERGENT_FLAGGED, (
+        "H2 REGRESSION: an extended-column mismatch (duration_days) with "
+        "agreeing lord+boundaries did not flip the row verdict to divergent "
+        "— a full-row 'two_pass_verified' promotion would silently overclaim "
+        "earnedness on a column that actually disagrees."
+    )
+
+
+def test_h2_compare_row_backward_compatible_without_extended_args():
+    """The 4 pre-existing discrimination probes above call compare_row with
+    ONLY the 6 positional args — H2 must not have changed that contract."""
+    cmp_ = sut.compare_row("Jupiter", datetime(2000, 1, 1, tzinfo=timezone.utc),
+                            datetime(2001, 1, 1, tzinfo=timezone.utc),
+                            "Jupiter", datetime(2000, 1, 1, tzinfo=timezone.utc),
+                            datetime(2001, 1, 1, tzinfo=timezone.utc))
+    assert cmp_.verdict == sut.TWO_PASS_VERIFIED
+    assert cmp_.extended_checked == ()
+    assert cmp_.extended_mismatches == {}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# H3 — the collapsed-civil-date engine quirk's cost must be a distinct,
+# reported category, not silently folded into "verified".
+# ─────────────────────────────────────────────────────────────────────────────
+
+def test_h3_collapsed_periods_are_tracked_as_a_distinct_excluded_count():
+    result = _reference_tree_result()
+    assert isinstance(result, sut.IndependentTreeResult)
+    assert set(result.excluded_by_level.keys()) == {1, 2, 3, 4}
+    # Empirically (per the Skeptic's smoke-test measurement of 132/188/142
+    # level-4 periods per chart) the canonical chart's level-4 (Sukshma)
+    # population over the full 1950-2100 window has a nonzero collapsed
+    # count. If this regresses to 0, either the window shrank or
+    # `_collapses_to_same_civil_date` stopped firing — re-check against the
+    # Skeptic's measurement before trusting a "0 excluded" result.
+    assert result.excluded_by_level[4] > 0, (
+        f"expected a nonzero level-4 collapsed-period count, got "
+        f"{result.excluded_by_level[4]} — see docstring for what this would mean"
+    )
+
+
+def test_h3_excluded_count_surfaces_separately_not_folded_into_verified():
+    tree = _reference_tree_result()
+    l4 = [r for r in tree.rows if r.level_n == 4]
+    engine_rows = _synthetic_engine_rows(l4, level_n=4)
+
+    summary = sut.compare_level(
+        4, engine_rows, l4,
+        excluded_known_quirk=tree.excluded_by_level[4],
+    )
+    # The excluded count is carried on the summary VERBATIM (a third,
+    # independent field) — not derived from, and not entangled with,
+    # two_pass_verified/divergent_flagged arithmetic.
+    assert summary.excluded_known_quirk == tree.excluded_by_level[4]
+    assert summary.excluded_known_quirk > 0
+    assert summary.divergent_flagged == 0
+    assert summary.two_pass_verified == len(l4)
+    # Population accounting: every row that DOES exist on both sides (after
+    # exclusion already happened inside compute_independent_vimshottari_tree)
+    # is verified — excluded rows were never part of this count at all,
+    # which is exactly the honesty gap H3 closes (they used to be invisible,
+    # silently absent from both "verified" and "divergent").
+    assert summary.two_pass_verified + summary.divergent_flagged == len(l4)
+
+
+def test_h3_chart_verification_result_reports_total_excluded_known_quirk():
+    """Pure-logic check that the ChartVerificationResult-level rollup exists
+    and sums correctly, without needing a live DB."""
+    lvl1 = sut.LevelSummary(level_n=1, engine_row_count=1, derived_row_count=1,
+                             count_mismatch=False, two_pass_verified=1, excluded_known_quirk=3)
+    lvl2 = sut.LevelSummary(level_n=2, engine_row_count=1, derived_row_count=1,
+                             count_mismatch=False, two_pass_verified=1, excluded_known_quirk=5)
+    result = sut.ChartVerificationResult(
+        chart_id="x", ayanamsha_id="y", moon_sid_deg=0.0, birth_jd_ut=0.0,
+        tolerance_seconds=5.0, per_level=[lvl1, lvl2],
+    )
+    assert result.total_excluded_known_quirk == 8
+    assert result.total_two_pass_verified == 2
+    assert result.total_divergent == 0
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Live-DB smoke test (read-only; no writes). Skipped when DATABASE_URL is not
 # set (e.g. no Cloud SQL proxy running) rather than failing the suite — this
 # mirrors how other ga_writers tests in this repo treat DB availability.
@@ -202,9 +443,14 @@ def _live_conn():
 def test_smoke_canonical_chart_lahiri_full_agreement():
     """The canonical native chart, lahiri_chitrapaksha (the pipeline default
     ayanamsha), levels 1-4, classical Vimshottari only (kp_sublevel IS NULL).
-    This is the smoke-test sample the Stage 3 task brief calls for. As of
-    this writing it is a clean 9205/9205 agreement (0 divergent) — see the
-    Stage 3 report for the full per-level breakdown and for a SEPARATE
+    This is the smoke-test sample the Stage 3 task brief calls for.
+
+    Post-H1/H2/H3-fix, the honest breakdown is a THREE-way population
+    (verified / divergent / excluded-known-quirk) across 20-of-42 covered
+    columns — printed below for the record, not just asserted — rather than
+    the pre-fix single "9205/9205, 0 divergent" number that couldn't
+    distinguish "genuinely compared and agreed" from "silently excluded" and
+    only ever checked 3 of 42 columns. See the Stage 3 report for a SEPARATE
     genuine-defect finding (ayanamsha_id key mismatch causing the
     'krishnamurti' and 'surya_siddhanta_classical' ayanamshas' Vimshottari
     builds to silently fall back to Lahiri) that this same verifier caught
@@ -217,6 +463,25 @@ def test_smoke_canonical_chart_lahiri_full_agreement():
             conn, "482012f1-710e-4a25-994a-93821f5871aa", "lahiri_chitrapaksha",
         )
         assert result.total_examined > 0
+
+        print("\n=== M-22 Stage 3 post-fix smoke test: canonical chart, lahiri_chitrapaksha ===")
+        for lvl in result.per_level:
+            print(
+                f"level {lvl.level_n}: engine={lvl.engine_row_count} derived={lvl.derived_row_count} "
+                f"verified={lvl.two_pass_verified} divergent={lvl.divergent_flagged} "
+                f"(count_mismatch_divergences={lvl.count_mismatch_divergences}) "
+                f"excluded_known_quirk={lvl.excluded_known_quirk}"
+            )
+        print(
+            f"TOTALS: examined={result.total_examined} verified={result.total_two_pass_verified} "
+            f"divergent={result.total_divergent} (count_mismatch_divergences="
+            f"{result.total_count_mismatch_divergences}) excluded_known_quirk="
+            f"{result.total_excluded_known_quirk}"
+        )
+        coverage = result.column_coverage_report()
+        print(coverage["honest_summary"])
+        print(f"per_column_mismatch_count: {coverage['per_column_mismatch_count']}")
+
         for lvl in result.per_level:
             assert not lvl.count_mismatch, (
                 f"level {lvl.level_n}: engine={lvl.engine_row_count} "
@@ -226,6 +491,10 @@ def test_smoke_canonical_chart_lahiri_full_agreement():
                 f"level {lvl.level_n} has {lvl.divergent_flagged} divergent row(s): "
                 f"{lvl.divergences[:3]}"
             )
+        assert result.total_count_mismatch_divergences == 0
+        # H3: the collapsed-quirk population is expected and non-alarming —
+        # NOT asserted to be zero — but must be visible.
+        assert result.total_excluded_known_quirk >= 0
     finally:
         conn.close()
 
