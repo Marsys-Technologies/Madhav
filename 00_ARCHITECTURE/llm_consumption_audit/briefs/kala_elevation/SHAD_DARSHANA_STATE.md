@@ -333,6 +333,40 @@ packet written and handed to a fresh builder dispatch (narrow mandate, per the n
 agents on this lane and on lane (d) both died in the archaeology phase, payload/infra, not task;
 worktrees confirmed clean both times, nothing lost).
 
+**Lane (a) PARKED-HONEST (Conductor, foreground, 2026-08-04 ~22:35 UTC) — real findings banked,
+NO `OPTIMIZER-PASS` written, SESSION-A takes no action from this lane tonight.** After
+ADJUDICATION-18's ruling, a fresh packet-based builder ALSO stalled on infra. Took it foreground
+per the native's escalation clause. Three real, read-only measurements against production data
+(never written to; each via a fresh, isolated connection):
+1. `career_advancement`, 2010, one year: 1453.7s, 25,482 ephemeris cache misses, 3,536,714 hits
+   — establishes real per-substep magnitude, independent of the question below.
+2. Clean A/B, 30-day window, BOTH classes confirmed to have real `gochara_resonance_map`
+   targets (not the empty-target artifact of measurement 1's follow-on classes): `marriage`
+   run immediately after `career_advancement` (cache warm) took 633.9s with 5,648 NEW cache
+   misses; `marriage` run again from a cleared cache (cold control) took 555.5s with 3,997
+   misses. **The "warm" run was not faster and had MORE misses than cold** — different
+   event_classes resonate against different natal targets, so cross-class ephemeris cache
+   reuse is minimal in practice. **This falsifies the original phase-1 premise** (hoist
+   kinematics once per year, share across classes) — the ephemeris layer is already cheap
+   (~90:1 hit:miss ratio in every run) and was never the real cost.
+3. The real cost, consistent with `configuration_activity.py`'s own pre-existing documented
+   finding (~110-120ms per contact-primitive call "regardless of whether it touches the DB"):
+   30 days × ~23-36 targets × 9 primitives × ~0.11s reproduces the measured 550-650s almost
+   exactly. **The dominant cost is per-primitive-call overhead — ADJUDICATION-18's phase 2,
+   not phase 1 — and its root cause is still unknown.** An isolated `cProfile` run to find it
+   was blocked immediately by the local `cloud-sql-proxy` dying mid-session (`connection
+   refused`, 127.0.0.1:5433) — a known-flaky component this codebase's own hygiene notes
+   already warn never to depend on for rebuilds; not chased further tonight rather than sink
+   more time into proxy infrastructure.
+
+**Net: OPTIMIZER-PASS not written. SESSION-A's relay is unaffected — no switch was ever
+proposed.** For whichever session picks lane (a) back up: skip re-litigating phase 1 (falsified
+above, real evidence); go straight to root-causing the ~110ms/primitive-call cost (likely
+candidates worth checking first: `find_aspect_events`'s search-loop structure in
+`pipeline/transit_search.py`, Python-level object construction cost in `ConfigurationSentence`
+assembly, or something proxy/connection-adjacent that a direct Cloud SQL connection — not the
+local proxy — would rule in or out immediately).
+
 **ADJUDICATION-17 — Agnivāsa multi-convention grading, RULED (ANTARYĀMIN/Conductor, foreground,
 2026-08-04 ~07:35 UTC, lane (d) part 1).** Traced `compileConstraint`'s `residence` branch
 (`kala_sky_pattern.ts:1351-1403`) directly: `usingProfile` is computed but never actually
