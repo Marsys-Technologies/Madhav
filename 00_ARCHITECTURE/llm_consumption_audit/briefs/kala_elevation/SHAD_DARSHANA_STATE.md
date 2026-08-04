@@ -312,6 +312,27 @@ doesn't have them. `build_run 746b1fa2…`/`eea7ebe2…` → executions `-xrjfs`
 started `2026-08-04T03:39:36.31Z`. Verified landing both charts (482012f1 301→312, 1c826d5a
 284→292) by 04:14 UTC. **Next expiry ~2026-08-04T09:39:36Z (~15:09 IST).** Wakeup armed.
 
+**ADJUDICATION-18 — sweep-optimizer engine boundary, RULED (native, 2026-08-04 ~07:10 UTC).**
+Lane (a)'s background builder stalled repeatedly (infra, not task — see below); foregrounded the
+investigation per the native's own inversion ruling and traced the real hot loop to
+`gochara_intensity/engine.py`'s per-day `compute_lambda_e_series` loop, two-three layers below
+`ka_gochara_sweep` itself, inside code `BRIEF_D5.md §7`'s must_not_touch clause named ("G-lanes
+consume, never modify"). Ruling: that clause's RULE-AS-MACHINERY expired with D-5's close (no
+Binder exists to report to); the SURVIVING durable principle — a downstream consumer must never
+change an upstream engine's semantics/authority, tested by "is the output provably unchanged,"
+not "which file" — permits a narrow, additive, backward-compatible optional
+precomputed-kinematics-cache parameter on `compute_lambda_e_series`/`compute_lambda_e`, default
+absent = current behavior for every other caller, chart/class-independent kinematics only, zero
+formula changes. Two mandatory guards in order: (1) internal A/B, cache vs no-cache, identical
+outputs on sampled slices both charts; (2) the standing byte-equivalence acceptance against the
+~600 completed substeps. DB-round-trip batching (documented ~110-120ms/primitive-call finding in
+`configuration_activity.py`'s own docstring) follows as an independently-guarded phase 2. Full
+text: `SHAD_DARSHANA_ADJUDICATION_18_SWEEP_OPTIMIZER_ENGINE_BOUNDARY_v1_0.md`. Compact lane
+packet written and handed to a fresh builder dispatch (narrow mandate, per the native's
+"foreground investigation, background only the build" inversion — the two prior background
+agents on this lane and on lane (d) both died in the archaeology phase, payload/infra, not task;
+worktrees confirmed clean both times, nothing lost).
+
 ---
 
 ## NIGHT 5 — SESSION OPEN (2026-08-02, ~12:57 IST, in progress)
