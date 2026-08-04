@@ -846,6 +846,39 @@ export const ASSETS: AssetDef[] = [
     scope: 'global', is_active: true, estimated_seconds: null,
     asset_kind: 'data',
   },
+  {
+    // ṢAḌ-DARŚANA W2G (GOCHARA-2.0, item 19) · migration 538. The
+    // CHART-INDEPENDENT half of the 2.0 transit engine, and the reason W2G is
+    // the campaign's production-scalability keystone: when Saturn reaches
+    // 123.45° does not depend on anyone's birth data, so a century of transit
+    // geometry is decomposed ONCE here and every chart that ever onboards
+    // joins the same rows. Per-chart cost reduces to "join + score".
+    //
+    // Global L0, super-admin-triggered ONLY — never auto-pulled into a
+    // per-chart build (brief §2.5.2). depends_on: [] deliberately — the
+    // ephemeris rows it reads belong to bg_ephemeris, but this asset is not a
+    // build-order dependent of it in the Nirmāṇa sense any more than any other
+    // L0 reader is; the edge is added only if the DAG needs it at W2G cutover,
+    // and adding it speculatively would make a super-admin trigger drag an
+    // 825k-row rebuild behind it.
+    asset_id: 'bg_gochara_arcs',
+    layer: 'brahmagyan', sort_order: 77,
+    catalog_status: 'CURRENT',
+    sanskrit_name: 'Gocara Cāpa-Vibhāga',
+    english_name: 'Transit Monotone-Arc Substrate',
+    english_description: "Chart-independent decomposition of every graha's ecliptic-longitude history over the stored 1900–2150 ephemeris epoch into MONOTONE ARCS: maximal intervals on which longitude is strictly monotone in time and confined to a single 360° band, cut at real stations (sign-change-confirmed roots of the interpolated velocity) and at 360° wrap boundaries. Turns 'when does body B reach degree L' from a day-stepping ephemeris scan into a range predicate (lon_lo_deg <= L <= lon_hi_deg) plus one bracketed bisection — which is what removes the ~110–120ms-per-contact-primitive-call cost measured in the v1 sweep. Carries a per-body arc_fingerprint so an invalidation is exactly as wide as the change that caused it (W2G delta-aware-invalidation requirement). Geometry only: no grammar, no orbs, no astrology — those stay frozen at v1 per GOCHARA_SWEEP_2_0_DESIGN §5.",
+    storage_type: 'postgres_table',
+    target_table: 'bg_gochara_arcs',
+    count_sql: 'SELECT COUNT(*) FROM bg_gochara_arcs',
+    size_sql: "SELECT pg_total_relation_size('bg_gochara_arcs')",
+    target_floor: 34553,
+    expected_volume_formula: null,
+    expected_volume_inputs: null,
+    volume_explanation: "34,553 arcs across the nine DAILY_BODIES over 1900-01-01 → 2150-12-31 (91,676 knots each, ayanamsha_id='tropical'). Per body: Saturn 503 · Jupiter 494 · Rahu 13,544 · Ketu 13,553 · Mars 376 · Sun 252 · Mercury 1,894 · Venus 580 · Moon 3,357. PROVENANCE, stated exactly: this is a REAL derivation run by the arc builder against production ephemeris_daily read-only on 2026-08-05 (whole-epoch build measured twice, 36.8s and 48.0s wall clock), NOT a post-INSERT DB count and NOT an estimate — the writer had not yet run in production when this row landed. Re-verify with count_sql after the first super-admin L0 build. The two node bodies dominate because ephemeris_daily stores the TRUE node (l0_ephemeris swe_id=11 = SE_TRUE_NODE, despite that line's '# Mean North Node' comment), which genuinely oscillates — measured retrograde stretches of median 0.71° over ~9.9 days interleaved with direct excursions of median 0.043°. Splitting there is required for monotonicity; whether such an excursion carries classical significance is a grammar question, frozen at v1.",
+    depends_on: [],
+    scope: 'global', is_active: true, estimated_seconds: null,
+    asset_kind: 'data',
+  },
 
   // ── GANITA (8) ────────────────────────────────────────────────────────────
   {
