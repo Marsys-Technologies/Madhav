@@ -102,6 +102,8 @@ import logging
 from fractions import Fraction
 from typing import Any
 
+from brahmagyan.verification_vocab import DIVERGENT_FLAGGED, TWO_PASS_VERIFIED
+
 logger = logging.getLogger(__name__)
 
 TABLE_VERSION = "kp_sublord_division_v01"
@@ -386,7 +388,7 @@ def verify_star_lords_against_reference(conn: Any) -> dict[str, Any]:
     return {
         "checked": checked,
         "mismatches": mismatches,
-        "status": "divergent_flagged" if mismatches else "two_pass_verified",
+        "status": DIVERGENT_FLAGGED if mismatches else TWO_PASS_VERIFIED,
     }
 
 

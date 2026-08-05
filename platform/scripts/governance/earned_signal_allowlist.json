@@ -1047,8 +1047,8 @@
     {
       "file": "platform/python-sidecar/ga_writers/_vimshottari_independent_verifier.py",
       "field": "two_pass_verified",
-      "line": 1125,
-      "pattern": null,
+      "line": null,
+      "pattern": "two_pass_verified:\\s*int\\s*=\\s*0",
       "max_occurrences": null,
       "justification": "PRE-EXISTING, introduced by PR #1047 (m22/stage3 campaign, 2026-08-04, build-only/write-deferred verifier), not touched by any shad-darshana lane. Verified via git blame + PR diff inspection during the ShadDarshana night-run merge-train (T4 PR #1052): this file is untouched by shad-darshana work. Out of this campaign's scope to fix another concurrent campaign's writer; flagged for m22 to address in its own lane."
     }

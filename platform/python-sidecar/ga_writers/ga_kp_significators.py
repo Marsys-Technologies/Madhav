@@ -77,7 +77,7 @@ import logging
 from typing import Any
 
 from brahmagyan.l0_kp_sublord_division import lookup_division
-from brahmagyan.verification_vocab import assert_legal, two_pass_verdict
+from brahmagyan.verification_vocab import TWO_PASS_VERIFIED, assert_legal, two_pass_verdict
 from ga_writers.ga_nakshatra_compute import compute_kp_lords
 from ga_writers.ga_nakshatra_emitters import PLANET_TO_SUBJECT
 
@@ -226,7 +226,7 @@ def emit_kp_significators(
             (live["star_lord"], live["sub_lord"]),
         )
         two_pass_result[name] = verdict
-        if verdict != "two_pass_verified":
+        if verdict != TWO_PASS_VERIFIED:
             logger.warning(
                 "[ga_nakshatra:kp_significators] DIVERGENCE for %s at %.6f°: "
                 "bg_kp_sublord_division says %s/%s, compute_kp_lords says %s/%s — "

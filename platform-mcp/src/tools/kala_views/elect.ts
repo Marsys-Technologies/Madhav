@@ -761,7 +761,11 @@ export async function handleKalaElectGet(
           remaining -= take
         }
       },
-      recover: { instrument: 'query_muhurta_lattice', hint: 'read the lattice directly for the full convention-row set' },
+      // No dedicated lattice-query tool is registered yet (bg_muhurta_lattice serving is
+      // deliberately deferred — SHAD_DARSHANA_STATE.md, "needs real citation-backed content,
+      // a more careful individual session"). Point recovery at this response's own real
+      // source instead of a phantom instrument a caller could never resolve.
+      recover: { instrument: 'kala_elect_get', hint: 'call again with a narrower date_range or smaller limit for the full convention-row set per candidate' },
     },
     {
       path: 'candidates',
