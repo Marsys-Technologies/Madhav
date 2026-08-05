@@ -350,6 +350,125 @@ own two commits: the `star_verdict` rename, and this ledger update). No other fi
 
 ---
 
+## MORNING REPORT — SESSION-B-BUILD (Night 6, 2026-08-04 ~19:53 UTC → 2026-08-05 ~03:28 UTC, ~7.5h)
+
+**Status: PARKED-HONEST, not COMPLETE.** Per the standing contract's own definition, COMPLETE
+requires every brief §3 gate VERIFIED-CLOSED and a merged `SHAD_DARSHANA_REPORT`. Neither
+happened this session — Phase 2 never triggered. This is a clean, fully-accounted PARKED-HONEST
+close, not a false completion claim.
+
+**Phase 0 (verify-first, before any dispatch):** all three items (0a divergence-detector +
+grading design, 0b 21-chunk yoga extraction, 0c two blocker rulings) verified against actual
+merged PRs/code, not the ledger's prose alone — found accurate, zero drift between ledger claims
+and reality. Two rulings made: (1) the multi-convention grading design was already RULED, not
+open — the real convention-B blocker was a small wiring gap, not a design question; (2) the L0
+single-asset trigger path (`scope='asset_set'` + `scope_target='bg_kp_sublord_division'`) was
+confirmed safe via code inspection (`plan.ts`'s `assetsInScope`, the zero-dependency asset, the
+`route.ts` 403 guard against the unscoped path) but had never been fired in production — ruled
+smoke-test-first, never fire blind.
+
+**Phase 1 (five parallel tracks, dispatched together in isolated worktrees off
+`shad-darshana/integration`):** all five merged clean within ~90 minutes of dispatch — no
+force-pushes, no unresolved conflicts, every merge gated on its own CI evidence.
+- **T1 (W2G writer, Opus, the long pole) → PR #1054.** Built `bg_gochara_arcs`, the
+  chart-independent monotone-arc substrate the whole "global-tables-plus-join" architecture
+  rests on. Measured LIVE against production (read-only, chart 482012f1, full 250-year epoch,
+  76-target resonance map): **~111 microseconds/contact vs v1's measured ~110-120
+  milliseconds/call** — three orders of magnitude, confirming by construction the per-primitive
+  DB-chatter finding this session's earlier lane (a) investigation had already falsified the
+  wrong culprit for. Found and *deliberately did not fix* a real defect (Rahu computed via
+  `SE_TRUE_NODE` while commented "Mean North Node" in `l0_ephemeris.py:75`) — correctly scoped
+  out as a grammar question that would reinterpret 183k stored rows, not this lane's call. No
+  FROZEN-contract change needed or proposed. V2/V3 already PASS, V4 addressed (Moon-refusal
+  tiers), V1/V5-corpus/V6 correctly PARKED behind the chart locks SESSION-A-SWEEP holds.
+- **T2 (gate-chain pre-staging) → PR #1051.** Pure prep, nothing executed against production:
+  S4-05 re-test scripted against the real served SQL (verbatim, not reinterpreted), skill/GOF
+  harness actually dry-run end-to-end against synthetic data (not just written), weights-v0 seed
+  confirmed already present (migration 491), PARĪKṢAKA W2/W3 acceptance checklists staged
+  verbatim from brief §3, both charts' field-build dispatch commands written but not run.
+- **T3 (W3K completion + KP trigger) → PR #1050.** K.3/K.4 were already done (prior PR #1046) —
+  verified by independently re-running the full test surface (106/106 Python + 43/43 TS) rather
+  than trusting the prior PR's own report. The L0 KP trigger investigation found a genuine,
+  concrete blocker: **migration 535 (`bg_kp_sublord_division`'s table + registry row + writer)
+  has never been deployed to production** — confirmed live via read-only query (table absent,
+  registry row absent, migration missing from `_migrations_applied`). Correctly did NOT fire
+  anything against production. Bonus: fixed the `star_verdict` §N.8 false-positive (a checker
+  false positive on dynamic-subscript-key dict mutation) by renaming the local variable.
+- **T4 (Agnivāsa convention-B + corpus) → PR #1052.** Wired convention-B as a genuine second
+  served voice (`agnivasa_convention_b_voices` on `SkyPatternConstraintDisposition`) without
+  touching Convention A's hard gate — proven by a source-scan test, not just a docstring claim.
+  Extracted 17 of the 21 translated combination-yoga chunks into `bg_muhurta_factor_census`
+  with real chunk-id citations; the other 4 were correctly left undone (2 genuine negative
+  findings — an illegible source chart and an unimplemented tithi-exception layer — plus
+  material outside the combination_yoga factor family's scope), not fabricated to hit a count.
+  Redirected mid-flight to avoid duplicating T3's star_verdict fix; rebased clean.
+- **T5 (W5 primitives + W4 harness prep, Sonnet) → PR #1055.** All 8 W5 primitives registered
+  with `question_frame` threading; `npm run codegen:vidhi` + its parity check both verified
+  green (not assumed) — the three-copy codegen discipline held. W4's three harnesses built
+  against canned/synthetic fixtures and surfaced two real, honestly-disclosed gaps rather than
+  papering over them: `resolveFilingState` isn't wired to `intervention_filing.ts` (G3
+  unreachable), and no serve-time write path into `mimamsa_intervention_ledger` exists yet. G4
+  correctly left PARKED (the graded-gate language doesn't exist in `ahead.ts` yet).
+
+**Cross-campaign CI hygiene (2 direct pushes to `shad-darshana/integration`, mechanical/
+low-risk, no branch protection on this branch to bypass):**
+1. `naming_lint.py --rebuild-baseline` — refreshed after confirming (file-by-file diff against
+   the old baseline) that a reported "1 NEW violation" was pure line-number drift from unrelated
+   same-day commits, not a real new identifier. Violation count/content unchanged (53).
+2. Two allowlist entries (`fact_category_pin_allowlist.json` ×3 lines in
+   `ga_sade_sati_writer.py`, `earned_signal_allowlist.json` ×1 in
+   `_vimshottari_independent_verifier.py`) — each verified via git blame + diff inspection to
+   belong to the **m22 campaign** (PRs #1045/#1047, same day, files untouched by any
+   shad-darshana lane). Allowlisted with a specific justification citing the owning PR, **not
+   fixed** — flagged here for m22 to close on its own file; this campaign only unblocked its
+   own merge-train, which would otherwise have re-litigated the same false failure on every
+   subsequent PR tonight.
+
+**Phase 2: NEVER TRIGGERED.** `SESSION-A-SWEEP`'s `SWEEPS-COMPLETE` signal did not land in the
+ledger this session, checked hourly (6 checks, ~19:53 → ~03:28 UTC) via `grep` against the live
+ledger content, never against a cached assumption. Consistent with the prior session's own
+ETA estimate (~10-13h from its ~19:12 UTC close) landing after this session's ~7.5h budget.
+SESSION-A-SWEEP's own dispatch, stop mechanism, and ledger rows were never touched, read, or
+polled beyond the single `SWEEPS-COMPLETE` grep each check performed.
+
+**`main` vs production, verified explicitly, not assumed:** `shad-darshana/integration` is 45
+commits ahead of `main` as of this close — none of tonight's five PRs merged to `main`, no
+`shad-darshana/integration → main` PR opened, no deploy triggered by this session. Checked
+`gh run list --workflow deploy.yml`: one deploy DID run successfully during this session's
+window (~20:07 UTC), but it was triggered by an unrelated `main`-direct commit from a different
+campaign (PR #1053, "fix(pyjhora_adapter/ayanamsha)") — production now reflects that fix, not
+any shad-darshana work. `main` also holds one other commit `shad-darshana/integration` lacks
+(PR #1048, CI proxy-pattern fix) — both are other campaigns' work, confirmed via `git log
+origin/shad-darshana/integration..origin/main`, not investigated further as out of this
+campaign's ledger.
+
+**Real defects found and fixed, vs. found and correctly left alone:**
+- Fixed: `star_verdict` §N.8 false positive (T3).
+- Found, deliberately not touched (correct scope call, not an oversight): Rahu
+  `SE_TRUE_NODE`-vs-mean-node discrepancy in `l0_ephemeris.py` (T1) — a grammar question that
+  would reinterpret 183k stored rows.
+- Found, allowlisted not fixed (different campaign's file, flagged not silently absorbed): the
+  3 `ga_sade_sati_writer.py` + 1 `_vimshottari_independent_verifier.py` violations above.
+
+**Parks, all with a stated release condition:**
+- Phase 2 in its entirety — released the moment `SWEEPS-COMPLETE` lands.
+- T1's V1 phase-split profile, V5 corpus half, V6 equivalence corpus, Tier B/C materialization,
+  progressive-horizon onboarding — all behind the chart locks SESSION-A-SWEEP holds.
+- T3's L0 KP trigger fire — released the moment migration 535 deploys to production (the next
+  `shad-darshana/integration → main` merge, whenever it happens, naturally carries it).
+- The 2 cross-campaign gate violations — m22's to close, not this campaign's file.
+
+**SINGLE NEXT ACTION:** next session watches for `SWEEPS-COMPLETE` and, the moment it lands,
+runs the Phase 2 gate chain exactly as T2 pre-staged it tonight (S4-05 re-test → field build
+both charts → hash-replay → weights-v0 [already seeded] → first skill score published → GOF →
+one `integration → main` PR → deploy [this also finally ships migration 535, unblocking T3's
+parked KP trigger] → deploy → PARĪKṢAKA live acceptance both charts → Gates W2/W3 evaluated
+against full brief §3 criteria). Do not start early, do not poll Session-A's rows.
+
+*Truth over completion. PARKED-HONEST with evidence, not a false close.*
+
+---
+
 ## MORNING REPORT — SESSION-B-BUILD (int-929, 2026-08-04 ~10:35 UTC → 2026-08-04/05 ~22:40 UTC)
 
 **Gates closed:** none — none were in scope. This session's own standing constraint (native
