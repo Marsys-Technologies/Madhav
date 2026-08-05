@@ -39,6 +39,7 @@ from typing import Any
 
 from pyjhora_adapter.compute import compute_chart
 from pyjhora_adapter.version import ENGINE_VERSION
+from brahmagyan.verification_vocab import TWO_PASS_VERIFIED, UNVERIFIED_DEFAULT
 from ga_writers._idempotency import replace_prior_chart_facts
 from ga_writers._telemetry import update_asset_throughput
 from ga_writers.ga_positions_writer import (
@@ -368,7 +369,7 @@ def _make_row(
     *,
     formula_id: str = "",
     source_calculation: str | None = None,
-    verification_pass_status: str = "two_pass_verified",
+    verification_pass_status: str = TWO_PASS_VERIFIED,
     tolerance_arcsec: float = 0.0,
     near_sign_boundary_flag: bool = False,
     near_nakshatra_boundary_flag: bool = False,
@@ -3012,9 +3013,15 @@ def build_ga_sensitive_for_ayanamsha(
     divergent = [r for r in rows if r.get("verification_pass_status") == "divergent_flagged"]
     if divergent:
         raise ValueError(f"GA5: {len(divergent)} divergent_flagged rows in {ayanamsha_id}")
-    single = [r for r in rows if r.get("verification_pass_status") == "single"]
+    single = [r for r in rows if r.get("verification_pass_status") == UNVERIFIED_DEFAULT]
     if single:
-        raise ValueError(f"GA5: {len(single)} single-pass rows in {ayanamsha_id}")
+        # Owner ruling (post-salvage close-out, 2026-08-06): `single` is a permitted tier for
+        # ga_sensitive (CLAUDE.md §N.2) — it is the honest "no second derivation ran" state, not
+        # a defect. Store it rather than crashing the whole ayanamsha's build over it.
+        logger.warning(
+            "[ga_sensitive] %d single-pass row(s) in %s (no second derivation ran; stored honestly).",
+            len(single), ayanamsha_id,
+        )
     return _insert_rows(conn, rows, commit=False)
 
 
@@ -3139,14 +3146,17 @@ def build_ga_sensitive(
         summary["divergent_rows"] = len(divergent)
         return summary
 
-    single = [r for r in all_rows if r.get("verification_pass_status") == "single"]
+    single = [r for r in all_rows if r.get("verification_pass_status") == UNVERIFIED_DEFAULT]
     if single:
-        msg = f"GA5 HALT: {len(single)} single-pass rows detected (zero allowed)"
-        logger.error("[ga_sensitive] %s", msg)
-        _write_halt_log("SINGLE_PASS_VIOLATION", msg)
-        summary["status"] = "HALT"
+        # Owner ruling (post-salvage close-out, 2026-08-06): `single` is a permitted tier for
+        # ga_sensitive (CLAUDE.md §N.2) — the honest "no second derivation ran" state, not a
+        # defect. Record it on the summary for visibility and continue to persistence rather
+        # than halting the whole build over rows that were never claimed to be verified.
+        logger.warning(
+            "[ga_sensitive] %d single-pass row(s) detected across all ayanamshas (permitted).",
+            len(single),
+        )
         summary["single_pass_rows"] = len(single)
-        return summary
 
     summary["total_rows"] = len(all_rows)
     logger.info("[ga_sensitive] Total rows computed: %d", len(all_rows))
