@@ -150,7 +150,7 @@ export async function POST(req: NextRequest) {
     ),
     // SHAD-DARSHANA sweep-protection Phase 1a, Layer 1/2 — the REAL build-dispatch guard
     // (not merely a preview: this route inserts build_runs and invokes the Cloud Run job).
-    // asset_ids protected for THIS chart_id (build_protected_assets, migration 539).
+    // asset_ids protected for THIS chart_id (build_protected_assets, migration 540).
     query<{ asset_id: string }>(
       'SELECT asset_id FROM build_protected_assets WHERE chart_id=$1',
       [chart_id]

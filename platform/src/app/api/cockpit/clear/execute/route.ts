@@ -74,7 +74,7 @@ export async function POST(req: NextRequest) {
     // input AND the actual DELETE loop below — a protected pair is never merely hidden
     // from the preview while still being cleared here, and the hash still matches a
     // preview computed the same way. kala_gochara_windows additionally carries a
-    // DB-level trigger guard (migration 539) as defense-in-depth; this exclusion is
+    // DB-level trigger guard (migration 540) as defense-in-depth; this exclusion is
     // the ONLY guard for any other asset a native later adds to build_protected_assets.
     query<{ asset_id: string }>(
       'SELECT asset_id FROM build_protected_assets WHERE chart_id=$1',

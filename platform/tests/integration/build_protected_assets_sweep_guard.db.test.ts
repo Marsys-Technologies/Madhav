@@ -2,7 +2,7 @@
 /**
  * SHAD-DARSHANA sweep-protection Phase 1a, Layers 3+4 — LIVE-DB test.
  *
- * Executes the REAL migration file (539_build_protected_assets.sql) against a
+ * Executes the REAL migration file (540_build_protected_assets.sql) against a
  * REAL throwaway Postgres, so the trigger pair is proven end-to-end against
  * its own on-disk SQL rather than a hand-copied re-implementation that could
  * silently drift from what actually ships (CLAUDE.md §N.8 — a detector must
@@ -37,7 +37,7 @@ const ASSET_ID = 'ka_gochara_sweep'
 
 const MIGRATION_PATH = path.resolve(
   __dirname,
-  '../../supabase/migrations/539_build_protected_assets.sql'
+  '../../supabase/migrations/540_build_protected_assets.sql'
 )
 
 let pool: Pool

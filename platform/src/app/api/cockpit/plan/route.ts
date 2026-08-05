@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
         [chart_id]
       ),
       // SHAD-DARSHANA sweep-protection Phase 1a, Layer 1/2 — the planner guard.
-      // asset_ids protected for THIS chart_id (build_protected_assets, migration 539).
+      // asset_ids protected for THIS chart_id (build_protected_assets, migration 540).
       // resolveBuildPlan withholds any of these from plan_waves and surfaces them via
       // BuildPlan.protected_assets instead of silently including them in a build/rebuild/
       // update/cascade plan.

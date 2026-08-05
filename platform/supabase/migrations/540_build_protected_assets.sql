@@ -1,5 +1,14 @@
--- Migration 539: build_protected_assets — sweep-protection Layers 3+4
+-- Migration 540: build_protected_assets — sweep-protection Layers 3+4
 -- Created: 2026-08-06
+-- Renumbered 539->540 2026-08-06: this file was authored as 539 (see the
+-- MIGRATION NUMBER note below for the collision this section already
+-- anticipated), but a DIFFERENT 539_chart_facts_verification_pass_status_check.sql
+-- (main PR #1060) landed on shad-darshana/integration in the interim and made
+-- the 539 filename a real collision on this branch's own merge target,
+-- not just a same-number-different-branch coincidence. 540 was free on both
+-- `main` and `shad-darshana/integration` at rename time (re-verified
+-- immediately before finalizing). Content below is otherwise unchanged from
+-- the original 539 authoring.
 -- =============================================================================
 -- Tonight's directive Phase 1a (SHAD-DARSHANA sweep-protection). ka_gochara_sweep
 -- already carries a binding native protection ruling at the application layer
@@ -17,20 +26,26 @@
 -- deliberately loud, per-session, non-default override a native decision must
 -- authorize. INSERTs are never restricted (a rebuild's normal write path).
 --
--- MIGRATION NUMBER: checked via `npm run migration:next` against this branch's
--- own tree (cut from origin/shad-darshana/integration) immediately before
--- authoring — platform/migrations max = 474, platform/supabase/migrations max
--- = 538 (538_bg_gochara_arcs.sql). 539 is free in both directories on this
--- branch. NOTE (disclosed, not silently assumed away): a DIFFERENT
+-- MIGRATION NUMBER (original 539 authoring note, kept for audit trail):
+-- checked via `npm run migration:next` against this branch's own tree (cut
+-- from origin/shad-darshana/integration) immediately before authoring —
+-- platform/migrations max = 474, platform/supabase/migrations max = 538
+-- (538_bg_gochara_arcs.sql). 539 was free in both directories on this branch
+-- at that time. NOTE (disclosed, not silently assumed away): a DIFFERENT
 -- 539_chart_facts_verification_pass_status_check.sql already landed on `main`
--- (PR #1060, unrelated DEFECT SALVAGE S8 campaign) but has not yet reached
--- `shad-darshana/integration` as of this write — the two files are unrelated
+-- (PR #1060, unrelated DEFECT SALVAGE S8 campaign) but had not yet reached
+-- `shad-darshana/integration` as of that write — the two files were unrelated
 -- content sharing a number by the same "two campaigns, two branches" class
--- MIGRATION_AND_MERGE_PROTOCOL_v1_0.md §1 describes. This is a lane-branch
--- authoring concern only (this PR targets shad-darshana/integration, not
--- main); the renumber-on-collision protocol (§3, §7 R6) applies again at
--- whatever future point the two histories are reconciled — not this lane's
--- job to pre-resolve.
+-- MIGRATION_AND_MERGE_PROTOCOL_v1_0.md §1 describes.
+--
+-- RESOLVED 2026-08-06: 539_chart_facts_verification_pass_status_check.sql
+-- (the real, unrelated migration) subsequently merged to both `main` and
+-- `shad-darshana/integration`, turning the anticipated same-number-different-
+-- branch coincidence into an actual collision against this PR's own merge
+-- target. Applying the renumber-on-collision protocol (§3, §7 R6) this file
+-- was renumbered 539->540 in place; the chart_facts migration keeps its
+-- original 539 number unchanged (it landed first and is unrelated to this
+-- one).
 --
 -- LAYER 3: build_protected_assets registry --------------------------------
 -- (asset_id, chart_id) pairs a native has designated protected. No FK to

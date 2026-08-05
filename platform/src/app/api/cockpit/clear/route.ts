@@ -93,7 +93,7 @@ export async function POST(req: NextRequest) {
        FROM asset_registry ORDER BY layer, sort_order`
     ),
     // SHAD-DARSHANA sweep-protection Phase 1a, Layer 1/2 — the clear-preview guard.
-    // asset_ids protected for THIS chart_id (build_protected_assets, migration 539).
+    // asset_ids protected for THIS chart_id (build_protected_assets, migration 540).
     query<{ asset_id: string }>(
       'SELECT asset_id FROM build_protected_assets WHERE chart_id=$1',
       [chart_id]
