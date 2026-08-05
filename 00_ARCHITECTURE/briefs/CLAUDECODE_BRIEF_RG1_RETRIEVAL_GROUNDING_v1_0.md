@@ -3,9 +3,9 @@ artifact: BRIEF_RG-1
 canonical_id: RG1_RETRIEVAL_GROUNDING_BRIEF
 type: WAVE BRIEF (two-part: FROZEN + BIND-AT-OPEN) — READ-ONLY RE-GROUNDING WAVE
 wave: RG-1 — Retrieval / MCP / Data-Plane Re-Grounding
-version: 1.0
+version: 1.1
 status: FROZEN — awaiting native kickoff
-authored_by: Claude (Cowork) 2026-07-24
+authored_by: Claude (Cowork) 2026-07-24, updated 2026-07-27
 governing: >
   00_ARCHITECTURE/llm_consumption_audit/briefs/doctrine_waves/CONDUCTOR_PROTOCOL.md (v1.4)
   + ESCALATION_POLICY_v1_0.md (v1.1) + ADJUDICATOR_CHARGE_v1_0.md (v1.1)
@@ -61,6 +61,53 @@ against, the campaign's own sealed records:
 
 **A finding that contradicts a sealed campaign record without citing it is a
 lane REJECT.** The point is reconciliation, not a fresh audit from zero.
+
+### §0.2b The surface is a moving target — grounded 2026-07-27 update
+
+**Between v1.0 of this brief (07-24) and now (07-27), the codebase moved
+again.** A further arc closed — **SARVA-SIDDHI → Elevation Campaign v2.1 →
+SATYA-ŚEṢA → PŪRṆA-VIRĀMA**, then **SHODHANA → SAMĀPANA → PARIŚODHANA** — landing
+**13 more MCP tools** and pushing the live surface to **88 on `/health` /
+~111 on `tools/list`** (was 79 at RC-14). **Two Cowork grounding sweeps in one
+day were each stale within the hour.**
+
+**This is itself the finding that most shapes RG-1: a point-in-time tool
+inventory is the wrong instrument for a surface changing this fast.** RG-1's
+durable value is the **`shape_delta` register** (how shipped things differ from
+designed things) and the **live census at BIND** (§B-4) — NOT a frozen tool
+list that will be stale before implementation starts. Every lane treats the
+count as "as-of the BIND probe," never as a fixed number.
+
+**Three findings from the 07-27 sweep, to be verified not trusted (they seed
+lane E-7):**
+
+1. **`standing_predictions_read` partially resolves OT-11.** It reads
+   `brahma_prospective_ledger` (migration 458) via `marsys://tool/L4/
+   query_prospective_ledger` — **not** `mimamsa_predictions`, **not**
+   `mcp_predictions`. It was *mis-wired* to `phala_predictive_anchors_get`
+   (a B-2 readiness FAIL) and repointed by SARVA-SIDDHI W-2 P-1. So for
+   **standing/prospective predictions the ledger is resolved in code**; the
+   Mīmāṃsā **calibration** ledger (`brahma_mimamsa_prediction_ledger`) is a
+   distinct thing. OT-11 is narrower than the architecture doc frames it.
+2. **The classical-texts corpus is NOT RAG.** `classical_text_chunks`
+   (`ws2_l0_texts.sql`) has `topics TEXT[]` + GIN + full-text, **no vector/
+   embedding column**. The 5 tools' descriptions say "semantic/embedding
+   search"; the backing table cannot do that. **A `shape_delta`: the corpus is
+   topic/keyword-backed, and any Paripraśna design assuming embedding RAG over
+   the śāstra is building on a claim the schema does not support.**
+3. **`dossier` is the composition-gate, and its defeat is live.** It withholds
+   verdicts until 100% coverage is accounted (EL-29). But a naive agent
+   defaults to `assess_wealth`/`assess_career` instead of `dossier`, scoring
+   **15–33% on the depth mandate** even after those were routed through it.
+   **This is the standing risk for every Paripraśna consumer** — the mechanism
+   works; tool-choice defaults defeat it. §6 must reckon with it.
+
+Also: **`CURRENT_STATE_v1_0.md` §2 is itself stale** — it records the arc
+through PŪRṆA-VIRĀMA as closed but does not record SHODHANA/SAMĀPANA/
+PARIŚODHANA, which are at git HEAD. **The live campaign at HEAD is PARIŚODHANA**
+(`briefs/parishodhana/PARISHODHANA_BRIEF_v1_0.md`), a verify-first docs-audit
+reconciliation sweep — not a feature-build wave. RG-1 must reconcile against
+git HEAD, not against CURRENT_STATE's changelog (PC-11).
 
 ### §0.3 A caution the wave must hold
 
@@ -140,6 +187,9 @@ Opus verification floor absolute.
 | **PC-8** | A campaign record is itself wrong about the code | **Trust the code, cite the record, flag the discrepancy.** Sealed records can be stale too — that is the entire premise of this audit chain. |
 | **PC-9** | The reconciliation is larger than expected | **Park lanes rather than rush.** A partial-but-grounded v0.11 beats a complete-but-guessed one. Never lower the Opus floor. |
 | **PC-10** | A delta is embarrassing to the architecture (a design that shipped differently than proposed) | **Report plainly.** The value is in surprises surfaced now, not at implementation time. |
+| **PC-11** | `CURRENT_STATE_v1_0.md` §2 disagrees with git HEAD | **git HEAD wins.** CURRENT_STATE's changelog lags the tree (confirmed 07-27: it omits SHODHANA/SAMĀPANA/PARIŚODHANA). Ground against the deployed code and HEAD; note the CURRENT_STATE lag as a finding. |
+| **PC-12** | A tool's description overstates what its backing table/primitive can do (e.g. classical-texts "semantic search" over a non-vector table) | **The `shape_delta` is the gap between the description and the backing store.** Record it — a Paripraśna design that trusts the description over the schema is building on sand. |
+| **PC-13** | The live tool count differs from any number in this brief | **Expected.** The surface is moving (§0.2b). Census live at BIND; treat every count as as-of-probe. Do not treat a brief number as ground truth. |
 
 ---
 
@@ -300,6 +350,60 @@ may_touch:
 
 ---
 
+### Lane E-7 — The newest surface (07-24→07-27 arc) ⭐ *added v1.1*
+
+**13 tools landed after v1.0 of this brief.** They are serving-faces of existing
+primitives (B.10 — no new computation), but several carry `shape_delta`s that
+bear on Paripraśna. Ground each; the three seeded findings (§0.2b) are
+hypotheses to verify, not facts to copy.
+
+**Charge:**
+
+1. **Classical-texts family** (`list_classical_texts`, `read_classical_text`,
+   `read_chapter`, `find_verses_about`, `search_classical_texts`): confirm the
+   backing `classical_text_chunks` schema has **no vector/embedding column**
+   (`ws2_l0_texts.sql`); confirm the tool descriptions claim "semantic/
+   embedding" search; **state the `shape_delta` plainly** — this is
+   topic-array + full-text, not RAG. Recommend how Paripraśna should describe
+   śāstra retrieval honestly. Note migration `465_classical_text_chunks_ocr_cleanup`.
+2. **`standing_predictions_read`**: confirm it reads `brahma_prospective_ledger`
+   via the L4 prospective primitive, is read-only (never files/calibrates),
+   and was repointed from the mis-wired `phala_predictive_anchors_get`.
+   **Reconcile against OT-11**: standing predictions = prospective ledger;
+   calibration = the distinct Mīmāṃsā ledger. Update the OT-11 framing (E-6
+   owns the ledger census; E-7 owns this tool's disposition).
+3. **`dossier`**: confirm it is the completeness-gated composition tool
+   (withholds interpretive surfaces until 100% coverage) and confirm the
+   **live tool-choice-defeat risk** (naive agents pick `assess_*` over
+   `dossier`; depth-mandate 15–33%). **This is the single most important E-7
+   finding for Paripraśna** — the engine's planner must route to `dossier`, not
+   leave the choice to the model. Feed to §6/§9.
+4. **`bodha_mechanisms_get`**: confirm it surfaces the L2 Yantra/mechanism
+   objects (D-4b); confirm CR-24 closed the dark-asset gap.
+5. **`ganita_kp_cusps_get`**: confirm the KP cuspal serving-face; note it as a
+   new L1 capability the architecture doc's data plane does not list.
+6. **Introspection tools — the threat-model check:** `mcp_server_info`
+   (global, no-entitlement, pre-profile-gate — confirm it leaks only server
+   metadata, no chart/DB data) and **`ganita_database_schema_get`** (enumerates
+   every `fact_category × fact_subject` in `chart_facts`). **Confirm the
+   registry-capability authz path enforces entitlement on unentitled callers**
+   — it passes `principal`, but this is the most schema-revealing surface and
+   the one to audit for the Paripraśna threat model (§14A.1 injection/exfil).
+7. **`ganita_concept_locate` / `ganita_planet_get`**: confirm as
+   discovery/entity-assembly faces over existing L1 capabilities.
+
+**Deliverable:** a `shape_delta` entry per tool, the OT-11 narrowing, the
+`dossier` routing risk written up for §6/§9, and the introspection authz
+verdict for §14A.
+
+```
+may_touch:
+  - "00_ARCHITECTURE/rg1_ground/deliverables/**"
+  - "00_ARCHITECTURE/rg1_ground/state/RG1_LANE_E-7.md"
+```
+
+---
+
 ### Lane Z-4 — Synthesis → v0.11
 
 **Deliverables:**
@@ -335,13 +439,17 @@ may_touch:
 ### §F1.9 — DAG
 
 ```
-   E-1   E-2   E-3   E-4   E-5   E-6      (parallel — independent questions)
-    └─────┴─────┴─────┴─────┴─────┘
+   E-1   E-2   E-3   E-4   E-5   E-6   E-7      (parallel — independent questions)
+    └─────┴─────┴─────┴─────┴─────┴─────┘
                     │
                    Z-4  (synthesis → v0.11)
                     │
                   §G gate
 ```
+
+E-7 (the 07-24→07-27 surface) is parallel to the rest; it feeds the `dossier`
+routing risk to E-3 (planner) and the OT-11 narrowing to E-6 (ledgers) at
+synthesis, but does not block them.
 
 ---
 
@@ -380,7 +488,8 @@ web consult path (that is PF-1's fenced write, not RG-1's).
 | **B-1** | Base pin from `origin/main`, fetched | Not local `main`. |
 | **B-2** | Worktree isolation verified | `git worktree list`, hard gate. |
 | **B-3** | Campaign seal status | Is `retrieval_impl/FINAL_REPORT.md` still `AWAITING_NATIVE_REVIEW`? Record — it frames PC-1. |
-| **B-4** | Live surface probe | `/health` count + one `tools/list` per profile at BIND, recorded. The E-2 reconciliation baseline. |
+| **B-4** | Live surface probe | `/health` count + one `tools/list` per profile at BIND, recorded **with the probe timestamp**. The E-2 reconciliation baseline. Expected ≈88 `/health` / ≈111 `tools/list` as of 07-27, **but census live — the surface is moving (§0.2b) and the number will have changed.** Also run `mcp_server_info` and record its `catalog_version`/`tools_changed_at`. |
+| **B-4b** | git HEAD vs CURRENT_STATE | Record HEAD SHA and the latest campaign at HEAD (PARIŚODHANA as of 07-27). Confirm whether `CURRENT_STATE §2` has caught up; if not, note the lag (PC-11). |
 | **B-5** | `prashna_ask` reachability | One live `prashna_ask`→`prashna_status` round-trip on the canonical chart. If it fails, E-1 grounds from code alone and records the runtime failure. |
 | **B-6** | Doc fingerprints | sha256 of `PARIPRASHNA_TARGET_ARCHITECTURE` v0.10 + the MCP handoff — Z-4's edits target these exact versions. |
 
