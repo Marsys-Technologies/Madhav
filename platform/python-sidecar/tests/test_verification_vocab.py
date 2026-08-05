@@ -76,6 +76,43 @@ def test_restricted_table_vocab_is_a_subset_of_the_settled_vocabulary():
     assert RESTRICTED_TABLE_VOCAB <= ALL_STATUSES
 
 
+def test_chart_facts_check_constraint_matches_all_statuses_exactly():
+    """DEFECT SALVAGE S8: chart_facts's CHECK (migration 539) must carry the FULL
+    settled vocabulary, not the narrower RESTRICTED_TABLE_VOCAB chart_dashas/
+    chart_divisionals enforce — chart_facts legitimately stores all 13 members.
+
+    This is a text-level parity check against the migration file itself (mirroring
+    the TypeScript-vs-Python parity tests above), not a live DB query — the point is
+    to fail CI the moment someone adds a 14th vocabulary member without updating the
+    migration, or edits the migration's value list without updating the vocabulary,
+    before either drifts silently. Migrations that have already applied must never be
+    edited (CLAUDE.md §N.4/Ongoing Hygiene); a future vocabulary change requires a NEW
+    corrective migration, at which point this test's `_MIGRATION` pointer should be
+    updated to the new file.
+    """
+    migration = _REPO / "platform" / "supabase" / "migrations" / (
+        "539_chart_facts_verification_pass_status_check.sql"
+    )
+    assert migration.is_file(), f"expected migration file not found: {migration}"
+    sql = migration.read_text()
+
+    match = re.search(
+        r"verification_pass_status\s+IN\s*\((.*?)\)\)\s*\n\s*NOT VALID",
+        sql,
+        re.DOTALL,
+    )
+    assert match, "could not locate the CHECK (... IN (...)) NOT VALID clause in 539's SQL"
+    in_list = {m.group(1) for m in re.finditer(r"'([a-z_0-9]+)'", match.group(1))}
+
+    assert in_list == ALL_STATUSES, (
+        f"chart_facts CHECK vs ALL_STATUSES drift: only in migration "
+        f"{sorted(in_list - ALL_STATUSES)}, only in vocabulary {sorted(ALL_STATUSES - in_list)}"
+    )
+    # The restricted-table subset must also be representable here — chart_facts is a
+    # strict superset of what chart_dashas/chart_divisionals may hold, never a stranger.
+    assert RESTRICTED_TABLE_VOCAB <= in_list
+
+
 def test_restricted_tables_reject_out_of_constraint_statuses_before_insert():
     assert_legal("single", table="chart_dashas")
     with pytest.raises(ValueError, match="CHECK constraint"):
