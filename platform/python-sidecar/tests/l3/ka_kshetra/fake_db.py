@@ -111,9 +111,11 @@ class FakeCursor:
                 'positions_digest': None,
             }]
             return
-        if 'DISTINCT event_class FROM kala_field_routes' in s:
-            self._rows = [{'event_class': ec} for ec in sorted(
-                {r['event_class'] for r in t.get('kala_field_routes', [])})]
+        if 'DISTINCT event_class_id FROM bodha_pratijna' in s:
+            self._rows = [{'event_class_id': ec} for ec in sorted({
+                r['event_class_id'] for r in t.get('bodha_pratijna', [])
+                if r.get('status') in ('promised', 'conditional')
+            })]
             return
         if 'FROM kala_field_routes' in s:
             self._rows = [dict(r) for r in t.get('kala_field_routes', [])
