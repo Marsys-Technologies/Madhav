@@ -13,6 +13,23 @@ governing: SHAD_DARSHANA_NIGHT_RUN_v1_0.md (orchestration) + SHAD_DARSHANA_BRIEF
 
 ## NEXT-ACTION
 
+**SWEEPS-COMPLETE — recorded by SESSION-B-BUILD (Gate-Chain session), 2026-08-05 ~06:45 UTC,
+since SESSION-A-SWEEP had not written it yet (verified: fetched origin/shad-darshana/integration
+immediately before writing this, no new commits since Night 6's close).** Verified directly
+against `build_substep_progress`, filtered by `asset_id='ka_gochara_sweep'` AND each chart's
+current `build_fingerprint` (never unfiltered) — both charts at exactly **606/606**:
+- `482012f1-710e-4a25-994a-93821f5871aa`: 606/606, fingerprint `bfa61e85…9ac00`, last substep
+  completed 2026-08-05 04:30:18 UTC.
+- `1c826d5a-41cb-4450-b4dc-59d440e5f75a`: 606/606, fingerprint `7c0e05a7…6ff87`, last substep
+  completed 2026-08-05 06:31:55 UTC.
+
+`kala_gochara_windows` row-delta sanity, both charts (non-zero, full-century span, no action
+taken on this table — read-only per the untouchables list): 482012f1 → 16,297 rows, 1984-01-01
+to 2085-01-01; 1c826d5a → 19,323 rows, 1985-01-01 to 2085-12-25. Both healthy. Chart locks are
+now free — Phase 2 (gate chain) begins below.
+
+---
+
 **SESSION-B-BUILD (Night 6, 2026-08-04 ~19:53 UTC open) — PHASE 1 COMPLETE, awaiting
 SWEEPS-COMPLETE for Phase 2.** Five parallel tracks (T1–T5) dispatched per the night's
 native directive, all five merged clean to `shad-darshana/integration` within ~90 minutes:
