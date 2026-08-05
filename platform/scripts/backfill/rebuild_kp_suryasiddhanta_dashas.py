@@ -11,16 +11,25 @@ Confirmed by direct query: exactly 3 charts have `chart_dashas` rows for these t
 (584,607 rows total). Verified by direct recomputation (2026-08-06) that the stored `krishnamurti`
 row for chart 482012f1 is BYTE-IDENTICAL to its `lahiri_chitrapaksha` counterpart (moon_sid, lord,
 start/end all match) and that the now-fixed engine computes a genuinely different moon_sid / lord
-sequence for both `krishnamurti` and `surya_siddhanta_classical` (see PR description for the
-before/after values).
+sequence for both `krishnamurti` and `surya_siddhanta_classical`.
 
-This script re-runs `ga_dashas_writer.build_ga_dashas()` scoped to exactly the 2 broken ayanamshas
-(the 3 unaffected ayanamshas — lahiri_chitrapaksha, true_chitra, raman — are never touched).
-`replace_prior_chart_dashas()` (ga_writers/_idempotency.py) scopes its DELETE to
-`(chart_id, system_id, ayanamsha_id)` present in the freshly computed rows, so this is a precise
-per-chart, per-ayanamsha replacement, not a whole-chart rebuild. Because the verifier is wired in
-(#1056), rebuilt rows earn their `verification_pass_status` tier honestly at write time — this
-script never hand-sets a tier.
+CALL PATTERN — matches the real orchestrator adapter, not the standalone `build_ga_dashas()`
+------------------------------------------------------------------------------------------------
+`build_ga_dashas()`/its CLI `main()` call `build_system(..., birth_params=None)` with no way to
+supply birth params outside the orchestrator — `resolve_birth_params()` unconditionally raises on
+a falsy `birth_params` (by design: B1 elimination, no hardcoded fallback). The REAL production path
+(`pipeline/orchestrator/writers/ga_dashas.py`'s `GaDashasWriter.run_substep`) fetches birth_params
+once via `fetch_birth_params()` and passes it into each `build_system(..., birth_params=...)` call.
+This script mirrors that — the only way to run this writer outside the orchestrator.
+
+`write_dasha_scope_cap_sentinels()` (the Prana Dasha / KP-beyond-sub_sub sentinel rows, system_id=
+'scope_cap', ayanamsha_id='INVARIANT') is deliberately NOT called here: those rows are chart-level
+and ayanamsha-INDEPENDENT (already present from the chart's original build) and this rebuild's
+`replace_prior_chart_dashas()` delete is scoped to `(chart_id, system_id, ayanamsha_id)` present in
+THIS script's own computed rows — since this script never emits `ayanamsha_id='INVARIANT'` rows,
+the existing sentinels are never touched. (Separately: `build_ga_dashas()`'s own call to that
+function is independently broken — it violates the `cd_level_n_max4` CHECK constraint on a fresh
+chart with zero existing sentinels — a latent, unrelated defect, out of scope here.)
 
 USAGE
 -----
@@ -86,15 +95,30 @@ def main() -> int:
         )
         return 3
 
-    from ga_writers.ga_dashas_writer import build_ga_dashas
+    from ga_writers.ga_dashas_writer import SYSTEMS, build_system
+    from pipeline.orchestrator.birth_params import fetch_birth_params
 
-    summary = build_ga_dashas(args.chart, ayanamshas=AYANAMSHAS)
-    print(f"build status: {summary['status']}")
-    if summary["status"] != "PASS":
-        print(f"HALT: build did not PASS: {summary.get('failed_systems')}", file=sys.stderr)
+    with psycopg.connect(dsn) as conn:
+        birth_params = fetch_birth_params(conn, args.chart)
+
+    build_id = None
+    computed_total = 0
+    failed: list[str] = []
+    for aya in AYANAMSHAS:
+        for system in SYSTEMS:
+            try:
+                res = build_system(system, aya, args.chart, build_id, birth_params=birth_params)
+                build_id = build_id or res.get("build_id")
+                computed_total += res.get("rows_computed", 0)
+                print(f"  [{system}:{aya}] status={res.get('status')} "
+                      f"rows_computed={res.get('rows_computed')}")
+            except Exception as exc:
+                failed.append(f"{system}:{aya}")
+                print(f"  [{system}:{aya}] FAIL: {exc}", file=sys.stderr)
+
+    if failed:
+        print(f"HALT: build did not fully PASS: {failed}", file=sys.stderr)
         return 1
-
-    computed_total = summary["total_rows"]
 
     with psycopg.connect(dsn) as conn, conn.cursor() as cur:
         after = _counts(cur, args.chart)
