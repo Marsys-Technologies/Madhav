@@ -37,6 +37,7 @@ import type { Principal } from '../types.js'
 import { callPlatformPrimitive } from '../client.js'
 import { unwrapPrimitiveResult, unwrapFailureReason } from './primitive_unwrap.js'
 import { callKalaRegistryCap, unwrapKalaPayload } from '../tools/kala_views/shared.js'
+import { fileInterventionFalsifier } from './intervention_filing.js'
 
 // ══════════════════════════════════════════════════════════════════════════════════════════
 // §5.4 — THE INDIVIDUALIZED-MORTALITY-WINDOW HARD EXCLUSION (ADJUDICATION-13, gate G16)
@@ -807,12 +808,23 @@ export type FilingState =
   | 'filing_withheld_pending_native_signoff'
   | 'filing_failed'
 
-/** ADJUDICATION-12: all four fields required together, or the call is a plain read. */
+/** ADJUDICATION-12: all four core fields required together, or the call is a plain read.
+ *  `claim` and `window` are the two additional inputs a real filing needs (the sanctioned
+ *  route requires a claim text and an interval window for an interval-shaped claim) —
+ *  optional at the type level because gates 1–3 resolve without them, but a native-directed
+ *  filing without a `window` reports `filing_failed` honestly rather than inventing bounds
+ *  (B.10: never fabricate a window). */
 export interface AdoptInterventionInput {
   intervention_id: string
   confidence: number
   falsifier: string
   adoption_basis?: string | null
+  /** The native's own claim text for the filed prospective entry. Absent ⇒ the engine
+   *  composes a template claim from the diagnosis statement (B.10 template rule). */
+  claim?: string | null
+  /** The elected/adoption window the falsifier is evaluated against. REQUIRED for an
+   *  actual filing (claim_shape='interval'); its absence is an honest filing_failed. */
+  window?: { start: string; end: string } | null
 }
 
 export interface FilingReadyPayload {
@@ -826,24 +838,44 @@ export interface FilingResolution {
   filing_ready_payload: FilingReadyPayload | null
   filed_prediction_id: string | null
   adoption_basis: 'native_directed' | 'session_inferred' | null
+  /** The verbatim error whenever `state === 'filing_failed'` (design §2.6: "`filing_failed`
+   *  (+ the verbatim error)"); null in every other state. */
+  filing_detail: string | null
 }
+
+/** The engine-composed claim (B.10 template rule): the adopter's own claim text when given,
+ *  else a template over the diagnosis statement — never a generative sentence. */
+function composeFilingClaim(adopt: AdoptInterventionInput, diagnosisStatement: string | null): string {
+  const explicit = typeof adopt.claim === 'string' ? adopt.claim.trim() : ''
+  if (explicit.length > 0) return explicit
+  return diagnosisStatement ?? `Adopted intervention ${adopt.intervention_id}`
+}
+
+const UPAYA_FILING_MODEL = 'kala_upaya_get/upaya-setu-w4'
+const UPAYA_FILING_FORMULA_VERSION = 'upaya_setu_v1'
 
 function buildFilingEntry(params: {
   chart_id: string
   event_class: string | null
   adopt: AdoptInterventionInput
   diagnosisStatement: string | null
+  sourceCitation?: string | null
 }): Record<string, unknown> {
   return {
     chart_id: params.chart_id,
     intervention_class: 'upaya',
     event_class: params.event_class,
-    claim: params.diagnosisStatement ?? `Adopted intervention ${params.adopt.intervention_id}`,
+    claim: composeFilingClaim(params.adopt, params.diagnosisStatement),
     falsifier: params.adopt.falsifier,
     confidence: params.adopt.confidence,
-    source_citation: 'kala_upaya_get diagnosis + intervention row citation (see interventions[].citation)',
-    model: 'kala_upaya_get/upaya-setu-w4',
-    formula_version: 'upaya_setu_v1',
+    ...(params.adopt.window
+      ? { claim_shape: 'interval', window_start: params.adopt.window.start, window_end: params.adopt.window.end }
+      : {}),
+    source_citation:
+      params.sourceCitation ??
+      'kala_upaya_get diagnosis + intervention row citation (see interventions[].citation)',
+    model: UPAYA_FILING_MODEL,
+    formula_version: UPAYA_FILING_FORMULA_VERSION,
   }
 }
 
@@ -856,25 +888,29 @@ function buildFilingEntry(params: {
  *   3. `adoption_basis !== 'native_directed'` (explicit equality test, per ADJUDICATION-12's own
  *      instruction — "never as a `!== 'session_inferred'` negation" — so an absent, null, typo'd,
  *      or future third value all fail CLOSED) → `awaiting_native_confirmation`.
- *   4. otherwise (native_directed, not an adverse class) → `filing_path_not_yet_available`, NOT
- *      `filed` — `platform-mcp/src/lib/intervention_filing.ts` (Lane S's spine PR) does not exist
- *      in this build tier (design §0.3 sequencing note: "Until that spine PR merges, Lanes U and
- *      R... serve `filing_state: 'filing_path_not_yet_available'`... never a fabricated
- *      `filed: true`"). This is the ONE branch that changes once Lane S's spine lands: swap this
- *      return for an awaited call to `fileInterventionFalsifier`.
+ *   4. otherwise (native_directed, not an adverse class) → `filing_path_not_yet_available` from
+ *      THIS pure, synchronous resolver. The wired, async path is `resolveAndFileFilingState`
+ *      below (the W4 gate-discharge-prep lane closed the PR-#1055-disclosed gap): it runs this
+ *      same state machine and, on reaching Step 4, actually calls
+ *      `intervention_filing.ts`'s `fileInterventionFalsifier` — so Step 4 resolves to
+ *      `filed` / `filing_failed` for real. `upaya.ts` calls the wired variant; this sync
+ *      function remains the single source of gates 1–3 and of the filing-ready payload.
  * In every branch except `not_requested`, `filing_ready_payload` carries EXACTLY the body a
- * real filing call would send — so a native-directed follow-up call, once the spine exists, is
- * one hop and byte-identical to what was shown (design §4.4/§5.3: "the claim the native
- * confirms is byte-identical to the claim the native read").
+ * real filing call would send — so a native-directed follow-up call is one hop and
+ * byte-identical to what was shown (design §4.4/§5.3: "the claim the native confirms is
+ * byte-identical to the claim the native read").
  */
 export function resolveFilingState(params: {
   chart_id: string
   event_class: string | null
   diagnosisStatement: string | null
   adopt?: AdoptInterventionInput | null
+  /** The adopted intervention row's own citation, when the caller resolved one (§N.5 —
+   *  inherit the row's citation, never restate). */
+  sourceCitation?: string | null
 }): FilingResolution {
   if (!params.adopt) {
-    return { state: 'not_requested', filing_ready_payload: null, filed_prediction_id: null, adoption_basis: null }
+    return { state: 'not_requested', filing_ready_payload: null, filed_prediction_id: null, adoption_basis: null, filing_detail: null }
   }
 
   const entry = buildFilingEntry({
@@ -882,6 +918,7 @@ export function resolveFilingState(params: {
     event_class: params.event_class,
     adopt: params.adopt,
     diagnosisStatement: params.diagnosisStatement,
+    sourceCitation: params.sourceCitation,
   })
 
   // Step 2: §5.3 withhold predicate — stronger than any tool-supplied basis.
@@ -900,6 +937,7 @@ export function resolveFilingState(params: {
       },
       filed_prediction_id: null,
       adoption_basis: null,
+      filing_detail: null,
     }
   }
 
@@ -919,23 +957,139 @@ export function resolveFilingState(params: {
       },
       filed_prediction_id: null,
       adoption_basis: 'session_inferred',
+      filing_detail: null,
     }
   }
 
-  // Step 4: native_directed, not adverse — but the filing spine (Lane S, item 42) is not yet
-  // available in this build tier. Never fabricate `filed: true`.
+  // Step 4: native_directed, not adverse — every gate passed. THIS sync resolver cannot
+  // itself perform the (async, network) filing; it reports the gates-passed state honestly
+  // and `resolveAndFileFilingState` (the wired variant, below) is the path that files.
   return {
     state: 'filing_path_not_yet_available',
     filing_ready_payload: {
       action: 'prospective_ledger_file',
       entry,
       withheld_reason:
-        'The sanctioned filing route (platform-mcp/src/lib/intervention_filing.ts, Lane S item 42 ' +
-        'spine PR) has not landed in this build — an honest, named degradation ' +
-        '(KALA_W4_UPAYA_DESIGN_v1_0.md §0.3 sequencing note), never a fabricated filed:true.',
+        'All filing gates passed (native_directed, non-adverse) — this synchronous resolver ' +
+        'does not itself perform the network filing. The wired path is ' +
+        'resolveAndFileFilingState → intervention_filing.ts fileInterventionFalsifier; a ' +
+        'response still carrying this state came through a caller that has not adopted the ' +
+        'wired path. Never a fabricated filed:true.',
     },
     filed_prediction_id: null,
     adoption_basis: 'native_directed',
+    filing_detail: null,
+  }
+}
+
+/**
+ * The WIRED filing-state resolution (closes the PR-#1055-disclosed gap: "resolveFilingState's
+ * Step 4 has never been wired to the existing intervention_filing.ts spine").
+ *
+ * Runs the same pure state machine (`resolveFilingState` — single source of gates 1–3), and
+ * ONLY when every gate passes (Step 4) calls Lane S's published spine,
+ * `fileInterventionFalsifier`, mapping its result into the `FilingResolution` shape:
+ *   - `filed`          → `state: 'filed'` + the resolvable `filed_prediction_id`.
+ *   - `filing_failed`  → `state: 'filing_failed'` + the VERBATIM server/spine error in
+ *                        `filing_detail`, with the filing-ready payload retained so a retry
+ *                        is one hop (nothing recomposed).
+ *   - the spine's own withhold/awaiting states (defence in depth; unreachable when this
+ *     file's gates agree with the spine's) → passed through unchanged.
+ *
+ * A native-directed adoption WITHOUT a `window` is reported `filing_failed` with the reason
+ * named — the sanctioned route seals interval-shaped claims against an explicit window, and
+ * composing one here would be a fabricated window bound (B.10). No spine call is made.
+ */
+export async function resolveAndFileFilingState(
+  params: {
+    chart_id: string
+    event_class: string | null
+    diagnosisStatement: string | null
+    adopt?: AdoptInterventionInput | null
+    sourceCitation?: string | null
+  },
+  principal: Principal,
+): Promise<FilingResolution> {
+  const resolution = resolveFilingState(params)
+  if (resolution.state !== 'filing_path_not_yet_available') return resolution
+
+  // Step 4 wired. All gates passed; params.adopt is present by construction here.
+  const adopt = params.adopt as AdoptInterventionInput
+  const entry = resolution.filing_ready_payload?.entry ?? buildFilingEntry({
+    chart_id: params.chart_id,
+    event_class: params.event_class,
+    adopt,
+    diagnosisStatement: params.diagnosisStatement,
+    sourceCitation: params.sourceCitation,
+  })
+
+  if (!adopt.window || !adopt.window.start || !adopt.window.end) {
+    return {
+      state: 'filing_failed',
+      filing_ready_payload: {
+        action: 'prospective_ledger_file',
+        entry,
+        withheld_reason:
+          'adopt_intervention.window { start, end } is required to file an interval-shaped ' +
+          'prospective entry — the engine will not compose a window bound on your behalf ' +
+          '(B.10: a fabricated window is a fabricated computation). Re-call with the window ' +
+          'the falsifier should be evaluated against.',
+      },
+      filed_prediction_id: null,
+      adoption_basis: 'native_directed',
+      filing_detail: 'adopt_intervention.window absent — nothing was filed',
+    }
+  }
+
+  const spine = await fileInterventionFalsifier(
+    {
+      chart_id: params.chart_id,
+      intervention_class: 'upaya',
+      // event_class '' (when the caller supplied none) is deliberately passed through so the
+      // sanctioned route's own validation answers verbatim (§4.4: "adds no validation of its
+      // own — every other rule is already enforced server-side").
+      event_class: params.event_class ?? '',
+      claim: composeFilingClaim(adopt, params.diagnosisStatement),
+      falsifier: adopt.falsifier,
+      confidence: adopt.confidence,
+      window: adopt.window,
+      source_citation:
+        params.sourceCitation ??
+        'kala_upaya_get diagnosis + intervention row citation (see interventions[].citation)',
+      model: UPAYA_FILING_MODEL,
+      formula_version: UPAYA_FILING_FORMULA_VERSION,
+      adoption_basis: 'native_directed',
+    },
+    principal,
+  )
+
+  if (spine.state === 'filed') {
+    return {
+      state: 'filed',
+      filing_ready_payload: null,
+      filed_prediction_id: spine.prediction_id,
+      adoption_basis: 'native_directed',
+      filing_detail: null,
+    }
+  }
+  if (spine.state === 'filing_failed') {
+    return {
+      state: 'filing_failed',
+      filing_ready_payload: { action: 'prospective_ledger_file', entry, withheld_reason: `filing failed — the verbatim error: ${spine.detail ?? 'unknown'}` },
+      filed_prediction_id: null,
+      adoption_basis: 'native_directed',
+      filing_detail: spine.detail,
+    }
+  }
+  // Defence-in-depth divergence: the spine's own gates disagreed with this file's (should be
+  // unreachable while the two withhold sets stay identical). Pass the spine's state through
+  // honestly rather than overriding it.
+  return {
+    state: spine.state,
+    filing_ready_payload: spine.filing_ready_payload,
+    filed_prediction_id: spine.prediction_id,
+    adoption_basis: spine.state === 'awaiting_native_confirmation' ? 'session_inferred' : null,
+    filing_detail: spine.detail,
   }
 }
 
