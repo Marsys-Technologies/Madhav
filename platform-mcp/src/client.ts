@@ -285,13 +285,18 @@ export async function callPlatformTrace(
  * [action]/route.ts); this was purely a TS union gap. `lib/intervention_filing.ts`'s
  * `fileInterventionFalsifier` is the sole in-repo caller.
  *
- * @param action    One of: log_prediction, record_outcome, flag_disagreement, prospective_ledger_file.
+ * `intervention_ledger_record` added by the W4 gate-discharge-prep lane (the serve-time
+ * write path into `mimamsa_intervention_ledger`, closing the gap PR #1055 disclosed) —
+ * `lib/intervention_filing.ts`'s `recordInterventionLedgerEntry` is the sole in-repo caller.
+ *
+ * @param action    One of: log_prediction, record_outcome, flag_disagreement,
+ *                  prospective_ledger_file, intervention_ledger_record.
  * @param params    Action-specific parameters (entry body).
  * @param principal The resolved principal.
  * @returns         The HTTP status code and parsed McpEnvelope.
  */
 export async function callPlatformWrites(
-  action: 'log_prediction' | 'record_outcome' | 'flag_disagreement' | 'prospective_ledger_file',
+  action: 'log_prediction' | 'record_outcome' | 'flag_disagreement' | 'prospective_ledger_file' | 'intervention_ledger_record',
   params: Record<string, unknown>,
   principal: Principal
 ): Promise<PlatformCallResult> {

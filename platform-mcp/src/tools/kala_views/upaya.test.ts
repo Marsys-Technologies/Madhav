@@ -14,9 +14,14 @@ import { isNoLever } from '../../lib/kala_envelope.js'
 import { MORTALITY_FORBIDDEN_IDENTIFIER_PATTERN } from '../../lib/kala_upaya_diagnosis.js'
 
 const mockCallPlatformPrimitive = vi.fn()
+const mockCallPlatformWrites = vi.fn()
 vi.mock('../../client.js', async () => {
   const actual = await vi.importActual<typeof import('../../client.js')>('../../client.js')
-  return { ...actual, callPlatformPrimitive: (...args: unknown[]) => mockCallPlatformPrimitive(...args) }
+  return {
+    ...actual,
+    callPlatformPrimitive: (...args: unknown[]) => mockCallPlatformPrimitive(...args),
+    callPlatformWrites: (...args: unknown[]) => mockCallPlatformWrites(...args),
+  }
 })
 
 const mockCallKalaRegistryCap = vi.fn()
@@ -148,6 +153,7 @@ describe('buildKalaUpayaResult — honest degradation (no live platform reachabl
     mockCallPlatformPrimitive.mockRejectedValue(new Error('unreachable in unit test'))
     mockCallKalaRegistryCap.mockReset()
     mockCallKalaRegistryCap.mockRejectedValue(new Error('unreachable in unit test'))
+    mockCallPlatformWrites.mockReset()
   })
 
   it('tags the tool name and threads chart_id/event_class through', async () => {
@@ -194,15 +200,50 @@ describe('buildKalaUpayaResult — honest degradation (no live platform reachabl
     expect(response.filed_prediction_id).toBeNull()
   })
 
-  it('filing_state degrades to filing_path_not_yet_available on native_directed adoption ' +
-    '(Lane S spine not yet available) — NEVER filed', async () => {
+  it('filing_state is an honest filing_failed on native_directed adoption WITHOUT a window ' +
+    '(wired Step 4; B.10 — the engine never composes a window bound) — NEVER filed, no write call', async () => {
     const result = await buildKalaUpayaResult({
       chart_id: CHART_ID, domain: 'career', event_class: 'career_promotion',
       adopt_intervention: { intervention_id: 'x', confidence: 0.5, falsifier: 'f', adoption_basis: 'native_directed' },
     }, PRINCIPAL)
     const response = result as KalaUpayaResponse
-    expect(response.filing_state).toBe('filing_path_not_yet_available')
+    expect(response.filing_state).toBe('filing_failed')
+    expect(response.filing_detail).toContain('window')
     expect(response.filed_prediction_id).toBeNull()
+    expect(response.intervention_ledger).toBeNull()
+    expect(mockCallPlatformWrites).not.toHaveBeenCalled()
+  })
+
+  it('filing_state is filed on native_directed adoption WITH a window (wired Step 4 → spine → ' +
+    'ledger recording); an unmatched intervention_id yields an HONEST unrecorded ledger block, never fabricated values', async () => {
+    mockCallPlatformWrites.mockImplementation(async (action: string) => ({
+      status: 200,
+      envelope: {
+        ok: true, trace_id: 't', epistemics: {},
+        result: action === 'prospective_ledger_file'
+          ? { prediction: { prediction_id: 'pred-1' } }
+          : { intervention_id: 'iv-1', created: true },
+        citations: [], plan: null, predictions_logged: [],
+      },
+    }))
+    const result = await buildKalaUpayaResult({
+      chart_id: CHART_ID, domain: 'career', event_class: 'career_promotion',
+      adopt_intervention: {
+        intervention_id: 'x', confidence: 0.5, falsifier: 'f', adoption_basis: 'native_directed',
+        window: { start: '2026-09-01', end: '2027-01-01' },
+      },
+    }, PRINCIPAL)
+    const response = result as KalaUpayaResponse
+    expect(response.filing_state).toBe('filed')
+    expect(response.filed_prediction_id).toBe('pred-1')
+    // This suite's substrate is unreachable → zero served interventions → the adopted id 'x'
+    // matches no served row → the ledger recording is refused HONESTLY (its efficacy_tier and
+    // citation must be inherited from a served row, never invented), stated with the reason.
+    expect(response.intervention_ledger).not.toBeNull()
+    expect(response.intervention_ledger?.recorded).toBe(false)
+    expect(response.intervention_ledger?.detail).toContain('did not match any served')
+    // Only the prospective filing hit the write route — no ledger write was attempted.
+    expect(mockCallPlatformWrites.mock.calls.map((c) => c[0])).toEqual(['prospective_ledger_file'])
   })
 
   it('filing_state withholds on an adverse event_class regardless of adoption_basis', async () => {

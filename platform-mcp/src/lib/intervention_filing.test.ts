@@ -12,10 +12,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { Principal } from '../types.js'
 import {
   fileInterventionFalsifier,
+  recordInterventionLedgerEntry,
   WITHHOLD_EVENT_CLASSES,
   WITHHOLD_PREDICATE_SQL,
   resolveWithholdEventClassesLive,
   type FileInterventionFalsifierInput,
+  type RecordInterventionLedgerInput,
 } from './intervention_filing.js'
 
 const TEST_PRINCIPAL: Principal = { user_uid: 'test-uid', key_id: 'test-key', role: 'guest' }
@@ -273,6 +275,120 @@ describe('fileInterventionFalsifier — the sanctioned network call', () => {
     const result = await fileInterventionFalsifier(baseInput(), TEST_PRINCIPAL)
 
     expect(result.state).toBe('filing_failed')
+    expect(result.detail).toMatch(/network unreachable/)
+  })
+})
+
+// ── recordInterventionLedgerEntry — the serve-time mimamsa_intervention_ledger write path ──
+
+describe('recordInterventionLedgerEntry — the sanctioned intervention_ledger_record call (item 42 / gate G7)', () => {
+  function baseLedgerInput(overrides: Partial<RecordInterventionLedgerInput> = {}): RecordInterventionLedgerInput {
+    return {
+      chart_id: CHART_ID,
+      intent: 'Adopt the Shani propitiation targeting the confirmation block.',
+      intervention_class: 'upaya',
+      rite_or_activity_class: 'phala_mitigation:pm-1',
+      event_class: 'career_promotion',
+      window: { start: '2026-09-01T00:00:00Z', end: '2027-01-01T00:00:00Z' },
+      precision_regime: 'day_grade',
+      precision_basis: 'caller-stated adoption window',
+      adjudication_record: { kind: 'upaya_adoption', failing_link: 'confirmation' },
+      score_vector: { factors_present: [] },
+      efficacy_tier: 'classically_attested',
+      source_citation: 'BPHS 27.4',
+      paddhati_version: 'none_applied_upaya_adoption',
+      predicted_differential: 'adopted upāya window vs no-intervention baseline',
+      prediction_id: 'pred-abc',
+      adoption_basis: 'native_directed',
+      authority_basis: 'pact_query:denied_at_confirmation',
+      engine_version: 'upaya_setu_v1',
+      ...overrides,
+    }
+  }
+
+  it('sends action=intervention_ledger_record with chart_id + flattened window, filed_by NOT included client-side', async () => {
+    let capturedBody: Record<string, unknown> | null = null
+    const fetchSpy = vi.fn(async (_url: string, init?: RequestInit) => {
+      capturedBody = JSON.parse(String(init?.body ?? '{}'))
+      return {
+        ok: true, status: 200,
+        json: async () => ({ ok: true, trace_id: 't1', result: { intervention_id: 'iv-abc', created: true } }),
+        text: async () => '',
+      }
+    })
+    vi.stubGlobal('fetch', fetchSpy)
+
+    const result = await recordInterventionLedgerEntry(baseLedgerInput(), TEST_PRINCIPAL)
+
+    expect(result.recorded).toBe(true)
+    expect(result.intervention_id).toBe('iv-abc')
+    expect(result.created).toBe(true)
+    expect(String(fetchSpy.mock.calls[0]?.[0])).toContain('/api/mcp/writes/intervention_ledger_record')
+    const body = capturedBody as unknown as { chart_id: string; entry: Record<string, unknown> }
+    expect(body.chart_id).toBe(CHART_ID)
+    expect(body.entry['window_start']).toBe('2026-09-01T00:00:00Z')
+    expect(body.entry['window_end']).toBe('2027-01-01T00:00:00Z')
+    expect(body.entry['prediction_id']).toBe('pred-abc')
+    expect(body.entry['adoption_basis']).toBe('native_directed')
+    expect('filed_by' in body.entry).toBe(false)
+    expect('window' in body.entry).toBe(false)
+  })
+
+  it('idempotent re-record: created:false with the existing row id is reported, never an error', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({
+      ok: true, status: 200,
+      json: async () => ({ ok: true, trace_id: 't1', result: { intervention_id: 'iv-existing', created: false } }),
+      text: async () => '',
+    })))
+    const result = await recordInterventionLedgerEntry(baseLedgerInput(), TEST_PRINCIPAL)
+    expect(result.recorded).toBe(true)
+    expect(result.created).toBe(false)
+    expect(result.intervention_id).toBe('iv-existing')
+  })
+
+  it('§5.4 defence in depth: a mortality-shaped intent/event_class/differential is refused with NO network call', async () => {
+    const fetchSpy = vi.fn()
+    vi.stubGlobal('fetch', fetchSpy)
+    for (const overrides of [
+      { event_class: 'ayurdaya_window' },
+      { intent: 'time the maraka dasha' },
+      { predicted_differential: 'longevity improvement vs baseline' },
+    ] as Partial<RecordInterventionLedgerInput>[]) {
+      const result = await recordInterventionLedgerEntry(baseLedgerInput(overrides), TEST_PRINCIPAL)
+      expect(result.recorded).toBe(false)
+      expect(result.detail).toMatch(/mortality/i)
+    }
+    expect(fetchSpy).not.toHaveBeenCalled()
+  })
+
+  it('a server-side rejection surfaces the VERBATIM error (e.g. a CHECK/FK violation), never a fabricated recorded:true', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({
+      ok: true, status: 400,
+      json: async () => ({ ok: false, trace_id: 't1', error: { class: 'validation', message: 'violates check constraint "mimamsa_intervention_ledger_inferred_never_sealed"' } }),
+      text: async () => '',
+    })))
+    const result = await recordInterventionLedgerEntry(baseLedgerInput(), TEST_PRINCIPAL)
+    expect(result.recorded).toBe(false)
+    expect(result.detail).toMatch(/inferred_never_sealed/)
+  })
+
+  it('ok=true with no resolvable intervention_id is an honest failure (§N.8: no detector, no green)', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({
+      ok: true, status: 200,
+      json: async () => ({ ok: true, trace_id: 't1', result: {} }),
+      text: async () => '',
+    })))
+    const result = await recordInterventionLedgerEntry(baseLedgerInput(), TEST_PRINCIPAL)
+    expect(result.recorded).toBe(false)
+    expect(result.detail).toMatch(/no resolvable intervention_id/)
+  })
+
+  it('a network error is caught and reported, never thrown to the caller', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => {
+      throw new Error('network unreachable')
+    }))
+    const result = await recordInterventionLedgerEntry(baseLedgerInput(), TEST_PRINCIPAL)
+    expect(result.recorded).toBe(false)
     expect(result.detail).toMatch(/network unreachable/)
   })
 })
