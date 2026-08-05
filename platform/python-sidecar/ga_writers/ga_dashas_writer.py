@@ -39,11 +39,16 @@ from typing import Any, Generator
 
 from brahmagyan.verification_vocab import (
     CLASSICAL_MATCH,
+    DIVERGENT_FLAGGED,
     TWO_PASS_VERIFIED,
     UNVERIFIED_DEFAULT,
 )
 from ga_writers._idempotency import replace_prior_chart_dashas
 from ga_writers._telemetry import update_asset_throughput
+from ga_writers._vimshottari_independent_verifier import (
+    compare_row as _iv_compare_row,
+    compute_independent_vimshottari_tree as _iv_compute_independent_tree,
+)
 from ga_writers.ga_condition_writer import _DIVISIONAL_DIGNITY_NORMALIZE
 from pipeline.orchestrator.birth_params import CANONICAL_CHART_ID as _BP_CANONICAL_CHART_ID, resolve_birth_params
 
@@ -684,6 +689,121 @@ def _verify_vimshottari(rows: list[dict], moon_sid: float,
             pass  # Partial periods are expected at boundaries
 
     return verdict
+
+
+def _apply_vimshottari_independent_verification(
+    rows: list[dict],
+    moon_sid: float,
+    birth_jd: float,
+) -> int:
+    """A3 fix (M-22 Stage 3 wiring gap): stamp EVERY level_n 1-4, non-KP
+    Vimshottari row with ITS OWN `verification_pass_status`, earned by
+    genuinely comparing it against an independently-computed dasha tree —
+    replacing the old broadcast pattern where `_verify_vimshottari()`
+    examined only the L1 rows and produced ONE string, which the caller then
+    (a) applied to every L1 row regardless of which one it actually checked
+    and (b) defaulted every L2-4 row to `UNVERIFIED_DEFAULT` without ever
+    trying to check them. `_vimshottari_independent_verifier.py` (PR #1047)
+    was built and discrimination-tested for exactly this job but was never
+    actually called from this write path until now — it was importable by
+    nothing but its own test file.
+
+    Uses `_vimshottari_independent_verifier.compute_independent_vimshottari_tree`
+    (an independently re-implemented, from-first-principles re-derivation of
+    the same classical M/A/P/Sukshma recursion — see that module's docstring
+    for the full independence audit) and `.compare_row` (the sanctioned
+    per-row verdict producer, already discrimination-tested against
+    wrong-lord and out-of-tolerance-boundary inputs in
+    `test_vimshottari_independent_verifier.py`) — this function does not
+    reimplement any comparison logic of its own; it only pairs rows and
+    calls the real functions.
+
+    INDEPENDENCE SCOPE (read before assuming this is identical to the
+    standalone diagnostic): this call site feeds the independent tree
+    builder the SAME `moon_sid`/`birth_jd` values `compute_vimshottari()`
+    itself was called with (computed once, by `build_system()`, above) —
+    NOT a separately-DB-fetched Moon longitude the way the standalone
+    diagnostic `verify_chart_vimshottari()` does (which reads the
+    `chart_facts` MOON longitude_sidereal fact written by a *different* L1
+    writer, `ga_positions_writer`, via `fetch_moon_sidereal_longitude`).
+    That fuller input-source independence remains a property of the
+    standalone diagnostic entry point only. Requiring a live DB read for
+    inputs at THIS call site would make per-row verification silently
+    unavailable whenever `build_system()` runs with `skip_db=True` (a real,
+    exercised unit-test path — see `test_ga7_writer.py`) or without an open
+    connection at this point in the call. What this DOES independently
+    verify, on every real build: whether the two SEPARATELY-CODED
+    implementations of the classical Vimshottari recursion (this file's
+    `compute_vimshottari` vs. the Stage 3 module's
+    `compute_independent_vimshottari_tree`) agree lord-by-lord and
+    boundary-by-boundary — exactly the class of defect (wrong lord
+    sequence, wrong proportion formula, wrong day conversion, off-by-one
+    cycle, boundary/window-clipping bug) a second, independently written
+    implementation is positioned to catch.
+
+    PERFORMANCE: `compute_independent_vimshottari_tree()` — a full
+    first-principles re-derivation of the whole 150-year window — is the
+    expensive part of this check. It is called EXACTLY ONCE here, regardless
+    of how many rows `rows` contains. Per-row cost after that is a single
+    O(1) `compare_row()` call; grouping engine rows by level and sorting
+    each level is O(n log n). This function is O(n log n) overall, not
+    O(n^2) — it does not recompute the independent tree inside the per-row
+    loop.
+
+    Mutates `rows` in place (sets `verification_pass_status` on every
+    level_n 1-4, `kp_sublevel is None` row). KP sub-periods and any row
+    outside level_n 1-4 are untouched here — the caller's existing
+    broadcast-fallback loop still stamps those `UNVERIFIED_DEFAULT`,
+    matching this module's own documented scope (it never examines KP
+    sub-periods — a different derivation, see register V-12).
+
+    Returns the count of rows stamped (diagnostic/logging only).
+    """
+    tree_result = _iv_compute_independent_tree(moon_sid, birth_jd)
+    derived_by_level: dict[int, list] = {1: [], 2: [], 3: [], 4: []}
+    for r in tree_result.rows:
+        derived_by_level[r.level_n].append(r)
+    for lvl in derived_by_level:
+        derived_by_level[lvl].sort(key=lambda r: r.start_dt)
+
+    engine_by_level: dict[int, list[dict]] = {1: [], 2: [], 3: [], 4: []}
+    for row in rows:
+        lvl = row["level_n"]
+        if lvl in engine_by_level and row.get("kp_sublevel") is None:
+            engine_by_level[lvl].append(row)
+    for lvl in engine_by_level:
+        engine_by_level[lvl].sort(key=lambda r: r["start_iso"])
+
+    stamped = 0
+    for level_n in (1, 2, 3, 4):
+        engine_rows = engine_by_level[level_n]
+        derived_rows = derived_by_level[level_n]
+        n = max(len(engine_rows), len(derived_rows))
+        for i in range(n):
+            eng = engine_rows[i] if i < len(engine_rows) else None
+            der = derived_rows[i] if i < len(derived_rows) else None
+            if eng is None:
+                # A derived-only period (no engine counterpart at this
+                # index) has no engine row here to carry a verdict — this
+                # signals a real derivation gap, but there is nothing on the
+                # engine side to stamp.
+                continue
+            if der is None:
+                # An engine row with no independent counterpart at all — a
+                # genuine row-count mismatch (the H1 case, in the standalone
+                # module's terms). Never left silently unstamped.
+                eng["verification_pass_status"] = DIVERGENT_FLAGGED
+                stamped += 1
+                continue
+            eng_start = datetime.fromisoformat(eng["start_iso"])
+            eng_end = datetime.fromisoformat(eng["end_iso"])
+            cmp_ = _iv_compare_row(
+                eng["lord_graha"], eng_start, eng_end,
+                der.lord, der.start_dt, der.end_dt,
+            )
+            eng["verification_pass_status"] = cmp_.verdict
+            stamped += 1
+    return stamped
 
 
 def _verify_yogini(rows: list[dict]) -> str:
@@ -3010,7 +3130,16 @@ def build_system(
         # KP sub-periods (CRITICAL OVERRIDE 2)
         kp_rows = compute_kp_subperiods(rows, chart_id, build_id, ayanamsha_id)
         rows.extend(kp_rows)
+        # _verify_vimshottari still runs its native-anchored FORENSIC
+        # starting-lord halt-check (and can raise) and its Pass-1 algebraic
+        # no-op; its returned `verification` string is kept only for the
+        # summary/log below — it is NO LONGER broadcast onto rows (A3 fix).
         verification = _verify_vimshottari([r for r in rows if r["level_n"] <= 4 and r.get("kp_sublevel") is None], moon_sid, chart_id)
+        # A3 fix (M-22 Stage 3 wiring gap): every L1-4, non-KP row earns its
+        # OWN verdict here via genuine per-row comparison against an
+        # independently-computed dasha tree — see
+        # `_apply_vimshottari_independent_verification`'s docstring.
+        _apply_vimshottari_independent_verification(rows, moon_sid, birth_jd)
 
     elif system_id == "yogini":
         rows = compute_yogini_system(moon_sid, birth_jd, ayanamsha_id, chart_id, build_id)
@@ -3077,8 +3206,19 @@ def build_system(
     # `kp_sublevel is None` at its call site. If a verifier's filter ever changes, this
     # predicate must change with it — the standing invariant (Phase 3) compares claimed-verified
     # rows against examined rows per table and fails loudly if the two drift apart.
+    #
+    # A3 fix (M-22 Stage 3 wiring gap): for system_id == "vimshottari", every level_n 1-4,
+    # non-KP row was ALREADY stamped above by `_apply_vimshottari_independent_verification`
+    # with a verdict it earned individually (two_pass_verified or divergent_flagged, per row —
+    # not one string broadcast chart-wide). This loop must not clobber that with the single
+    # `verification` string; those rows are skipped here and only counted. KP sub-periods and
+    # any row outside level_n 1-4 still fall through to the UNVERIFIED_DEFAULT branch below,
+    # unchanged from before this fix.
     examined_count = 0
     for row in rows:
+        if system_id == "vimshottari" and row["level_n"] in (1, 2, 3, 4) and row.get("kp_sublevel") is None:
+            examined_count += 1
+            continue
         examined = row["level_n"] == 1 and row.get("kp_sublevel") is None
         row["verification_pass_status"] = verification if examined else UNVERIFIED_DEFAULT
         examined_count += 1 if examined else 0

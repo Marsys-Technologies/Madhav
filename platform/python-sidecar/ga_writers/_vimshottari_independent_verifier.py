@@ -919,37 +919,70 @@ def derive_extended_columns(
     }
 
 
-def _values_agree(engine_val: Any, derived_val: Any, *, tolerance_seconds: float) -> bool:
+# R3C-4 (M22_NIGHT_LEDGER.md finding): `_values_agree` tri-state return.
+# `_values_agree(None, None)` used to fall through every isinstance branch
+# to the final `return engine_val == derived_val`, i.e. `None == None ->
+# True` — silently counted as a real "agreement" alongside genuinely
+# independently-confirmed values, inflating the coverage-report's "N of 42
+# columns verified" claim for columns that are ALWAYS None on both sides
+# (e.g. kp_sub_lord, period_deity_or_marker — see
+# `derive_extended_columns()`'s docstring: several EXTENDED_VERIFIED_COLUMNS
+# are unconditionally None because no `compute_vimshottari()` call site ever
+# populates them). A both-None comparison never actually discriminated
+# anything — no derivation ran, so nothing could have disagreed — so it must
+# not be reported as "agree". It is also not a "disagree": neither side
+# claims a value the other contradicts. It is a THIRD, honest state:
+# VACUOUS — tracked separately (`columns_checked_vacuous`, distinct from
+# `columns_checked_agree`), per the ledger's own recommendation.
+_AGREE = "agree"
+_DISAGREE = "disagree"
+_VACUOUS = "vacuous"
+
+
+def _values_agree(engine_val: Any, derived_val: Any, *, tolerance_seconds: float) -> str:
     """Column-agnostic value comparison for the H2 extended-column checks.
     Handles every type `chart_dashas`' EXTENDED_VERIFIED_COLUMNS actually
     uses: TIMESTAMPTZ (datetime, tolerance-based — same discipline as the
     primary boundary check), DATE (exact), NUMERIC (Decimal, compared as
     float), text[] (list, exact), and everything else (bool/str/None) by
     plain equality.
+
+    Returns one of `_AGREE` / `_DISAGREE` / `_VACUOUS` (R3C-4 fix — this used
+    to return a bare bool, which could not distinguish a real agreement from
+    a both-None non-comparison; see the module-level comment above). A
+    both-None pair is caught FIRST, before any type-dispatch branch, because
+    none of those branches can ever fire for a genuinely both-None pair
+    anyway (`isinstance(None, <anything but NoneType>)` is always False) —
+    this is a change in what gets REPORTED, not a change to any branch's
+    existing agree/disagree behavior for every other case (including the
+    one-sided-None cases each branch already handled, which remain real
+    disagreements, not vacuous).
     """
+    if engine_val is None and derived_val is None:
+        return _VACUOUS
     # bool is a subclass of int in Python — check it FIRST so a boolean
     # column (e.g. applies_to_this_chart_flag) never falls into the numeric
     # float-cast branch below by accident.
     if isinstance(engine_val, bool) or isinstance(derived_val, bool):
-        return engine_val == derived_val
+        return _AGREE if engine_val == derived_val else _DISAGREE
     if isinstance(engine_val, datetime) or isinstance(derived_val, datetime):
         if engine_val is None or derived_val is None:
-            return engine_val == derived_val
+            return _AGREE if engine_val == derived_val else _DISAGREE
         if not isinstance(engine_val, datetime) or not isinstance(derived_val, datetime):
-            return False
-        return abs((engine_val - derived_val).total_seconds()) <= tolerance_seconds
+            return _DISAGREE
+        return _AGREE if abs((engine_val - derived_val).total_seconds()) <= tolerance_seconds else _DISAGREE
     if isinstance(engine_val, date) or isinstance(derived_val, date):
-        return engine_val == derived_val
+        return _AGREE if engine_val == derived_val else _DISAGREE
     if isinstance(engine_val, Decimal) or isinstance(derived_val, (int, float, Decimal)):
         if engine_val is None or derived_val is None:
-            return engine_val == derived_val
+            return _AGREE if engine_val == derived_val else _DISAGREE
         try:
-            return float(engine_val) == float(derived_val)
+            return _AGREE if float(engine_val) == float(derived_val) else _DISAGREE
         except (TypeError, ValueError):
-            return engine_val == derived_val
+            return _AGREE if engine_val == derived_val else _DISAGREE
     if isinstance(engine_val, list) or isinstance(derived_val, list):
-        return list(engine_val or []) == list(derived_val or [])
-    return engine_val == derived_val
+        return _AGREE if list(engine_val or []) == list(derived_val or []) else _DISAGREE
+    return _AGREE if engine_val == derived_val else _DISAGREE
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1051,6 +1084,14 @@ class RowComparison:
     # completely unaffected.
     extended_checked: tuple[str, ...] = ()
     extended_mismatches: dict[str, tuple[Any, Any]] = field(default_factory=dict)
+    # R3C-4: subset of `extended_checked` where BOTH sides were None — no
+    # detector ran (nothing to compare), so this is neither an agreement nor
+    # a disagreement. Never included in `extended_mismatches` (a vacuous
+    # comparison must not flip the row's verdict — see the module-level
+    # `_values_agree` comment) but tracked here so `compare_level()` can
+    # report it as a distinct `columns_checked_vacuous` bucket instead of
+    # silently folding it into "agree".
+    extended_vacuous: tuple[str, ...] = ()
 
 
 def compare_row(engine_lord: str, engine_start: datetime, engine_end: datetime,
@@ -1082,15 +1123,24 @@ def compare_row(engine_lord: str, engine_start: datetime, engine_end: datetime,
 
     extended_checked: tuple[str, ...] = ()
     extended_mismatches: dict[str, tuple[Any, Any]] = {}
+    extended_vacuous: tuple[str, ...] = ()
     if derived_extended is not None:
         engine_extended = engine_extended or {}
         checked: list[str] = []
+        vacuous: list[str] = []
         for col, der_val in derived_extended.items():
             checked.append(col)
             eng_val = engine_extended.get(col)
-            if not _values_agree(eng_val, der_val, tolerance_seconds=tolerance_seconds):
+            agreement = _values_agree(eng_val, der_val, tolerance_seconds=tolerance_seconds)
+            if agreement == _VACUOUS:
+                # R3C-4: no detector ran for this column on this row (both
+                # sides None) — not a mismatch (nothing to disagree about),
+                # NOT folded into "agree" either. See `_values_agree`.
+                vacuous.append(col)
+            elif agreement == _DISAGREE:
                 extended_mismatches[col] = (eng_val, der_val)
         extended_checked = tuple(checked)
+        extended_vacuous = tuple(vacuous)
 
     all_agree = lord_agree and start_agree and end_agree and not extended_mismatches
 
@@ -1109,6 +1159,7 @@ def compare_row(engine_lord: str, engine_start: datetime, engine_end: datetime,
         derived_end=derived_end,
         extended_checked=extended_checked,
         extended_mismatches=extended_mismatches,
+        extended_vacuous=extended_vacuous,
     )
 
 
@@ -1140,6 +1191,12 @@ class LevelSummary:
     # level actually compared (keys are EXTENDED_VERIFIED_COLUMNS names).
     columns_checked_agree: dict[str, int] = field(default_factory=dict)
     columns_checked_mismatch: dict[str, int] = field(default_factory=dict)
+    # R3C-4: per-extended-column VACUOUS tally (both engine+derived None for
+    # that row/column — no detector ran). Distinct from columns_checked_agree
+    # so a caller reading "N columns verified" cannot over-read a column that
+    # is unconditionally None (e.g. kp_sub_lord) as having been genuinely
+    # cross-checked on every row it was "checked" against.
+    columns_checked_vacuous: dict[str, int] = field(default_factory=dict)
     divergences: list[dict] = field(default_factory=list)
 
 
@@ -1178,11 +1235,15 @@ class ChartVerificationResult:
         from the fact that `verify_chart_vimshottari` merely ran."""
         agree: dict[str, int] = {}
         mismatch: dict[str, int] = {}
+        vacuous: dict[str, int] = {}
         for lvl in self.per_level:
             for col, n in lvl.columns_checked_agree.items():
                 agree[col] = agree.get(col, 0) + n
             for col, n in lvl.columns_checked_mismatch.items():
                 mismatch[col] = mismatch.get(col, 0) + n
+            for col, n in lvl.columns_checked_vacuous.items():
+                vacuous[col] = vacuous.get(col, 0) + n
+        total_vacuous = sum(vacuous.values())
         return {
             "total_chart_dashas_columns": TOTAL_CHART_DASHAS_COLUMNS,
             "independently_verified_columns": list(INDEPENDENTLY_VERIFIED_COLUMNS),
@@ -1193,6 +1254,13 @@ class ChartVerificationResult:
             "not_independently_checkable_count": len(NOT_INDEPENDENTLY_CHECKABLE_COLUMNS),
             "per_column_agree_count": agree,
             "per_column_mismatch_count": mismatch,
+            # R3C-4: both-None comparisons (no detector ran — nothing to
+            # discriminate), reported SEPARATELY from per_column_agree_count
+            # so "N columns agree" cannot be over-read as "N columns were
+            # genuinely cross-checked and agreed" for a column (e.g.
+            # kp_sub_lord) that is unconditionally None on both sides.
+            "per_column_vacuous_count": vacuous,
+            "total_vacuous_comparisons": total_vacuous,
             "honest_summary": (
                 f"{len(INDEPENDENTLY_VERIFIED_COLUMNS)} of {TOTAL_CHART_DASHAS_COLUMNS} "
                 f"chart_dashas columns are independently verified by this module "
@@ -1204,7 +1272,11 @@ class ChartVerificationResult:
                 f"not_independently_checkable_columns for the specific reason per column. "
                 f"A 'two_pass_verified' row earns full-row status ONLY across the "
                 f"independently-verified set; it does not and cannot speak to the "
-                f"not-independently-checkable columns."
+                f"not-independently-checkable columns. Of the per-row extended-column "
+                f"comparisons actually made, {total_vacuous} were VACUOUS (both engine "
+                f"and derived value None — no detector ran, per R3C-4) and are excluded "
+                f"from per_column_agree_count so 'N columns agree' cannot be over-read "
+                f"as 'N columns were genuinely cross-checked and agreed'."
             ),
         }
 
@@ -1347,7 +1419,11 @@ def compare_level(
                 })
 
         for col in cmp_.extended_checked:
-            if col in cmp_.extended_mismatches:
+            if col in cmp_.extended_vacuous:
+                # R3C-4: both sides None for this row/column — no detector
+                # ran, so this is neither an agreement nor a disagreement.
+                summary.columns_checked_vacuous[col] = summary.columns_checked_vacuous.get(col, 0) + 1
+            elif col in cmp_.extended_mismatches:
                 summary.columns_checked_mismatch[col] = summary.columns_checked_mismatch.get(col, 0) + 1
             else:
                 summary.columns_checked_agree[col] = summary.columns_checked_agree.get(col, 0) + 1

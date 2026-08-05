@@ -363,6 +363,111 @@ def test_h2_compare_row_backward_compatible_without_extended_args():
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# R3C-4 (M22_NIGHT_LEDGER.md finding) — `_values_agree(None, None)` must not
+# be silently counted as a real agreement. Before this fix it fell through
+# every isinstance branch to the bare `engine_val == derived_val` fallback,
+# where `None == None -> True`, inflating "N columns verified" for columns
+# that are unconditionally None on both sides (e.g. kp_sub_lord,
+# period_deity_or_marker — see `derive_extended_columns()`) and were never
+# actually discriminated by anything.
+# ─────────────────────────────────────────────────────────────────────────────
+
+def test_r3c4_values_agree_both_none_is_vacuous_not_a_plain_agreement():
+    """Required probe: calls the REAL `_values_agree` directly (not a
+    reimplementation) — same direct-call-proof spirit as Probe D above."""
+    result = sut._values_agree(None, None, tolerance_seconds=sut.TOLERANCE_SECONDS_DEFAULT)
+    assert result != sut._AGREE, (
+        "_values_agree(None, None) was counted as a plain agreement — this "
+        "is the exact R3C-4 bug: None == None -> True falling through every "
+        "isinstance branch to the bare-equality fallback, silently inflating "
+        "the coverage report's 'N columns verified' claim for a column that "
+        "was never actually discriminated"
+    )
+    assert result == sut._VACUOUS
+
+    # Not a trivial always-vacuous stub: a genuine one-sided-None case must
+    # still resolve to a real disagreement, and a genuine two-sided-equal
+    # case must still resolve to a real agreement.
+    assert sut._values_agree(None, "Jupiter", tolerance_seconds=sut.TOLERANCE_SECONDS_DEFAULT) == sut._DISAGREE
+    assert sut._values_agree("Jupiter", None, tolerance_seconds=sut.TOLERANCE_SECONDS_DEFAULT) == sut._DISAGREE
+    assert sut._values_agree("Jupiter", "Jupiter", tolerance_seconds=sut.TOLERANCE_SECONDS_DEFAULT) == sut._AGREE
+    assert sut._values_agree("Jupiter", "Saturn", tolerance_seconds=sut.TOLERANCE_SECONDS_DEFAULT) == sut._DISAGREE
+
+
+def test_r3c4_compare_row_reports_both_none_columns_as_vacuous_not_agree():
+    """`compare_row` (the sanctioned per-row comparison, same function H2's
+    tests exercise) must route a both-None extended column into
+    `extended_vacuous`, NOT `extended_mismatches` (it must not flip the
+    row's verdict) and NOT silently absorbed as an agreement either."""
+    row = next(r for r in _reference_tree() if r.level_n == 1)
+    derived_extended = sut.derive_extended_columns(row, None)
+    # period_deity_or_marker / varsha_year_lord / anchored_solar_return_iso /
+    # kp_sub_lord / kp_sub_sub_lord are unconditionally None for classical
+    # Vimshottari rows (see derive_extended_columns's docstring) — a perfect
+    # engine mirror has them None on both sides, exercising the vacuous path
+    # for real, not via a contrived fixture.
+    always_none_cols = {
+        "period_deity_or_marker", "varsha_year_lord", "anchored_solar_return_iso",
+        "kp_sub_lord", "kp_sub_sub_lord",
+    }
+    assert all(derived_extended[c] is None for c in always_none_cols)
+
+    cmp_ = sut.compare_row(
+        row.lord, row.start_dt, row.end_dt, row.lord, row.start_dt, row.end_dt,
+        engine_extended=dict(derived_extended), derived_extended=derived_extended,
+    )
+    assert cmp_.verdict == sut.TWO_PASS_VERIFIED
+    assert cmp_.extended_mismatches == {}
+    assert always_none_cols.issubset(set(cmp_.extended_vacuous)), (
+        f"expected {always_none_cols} in extended_vacuous, got {cmp_.extended_vacuous!r}"
+    )
+
+
+def test_r3c4_compare_level_and_coverage_report_separate_vacuous_from_agree():
+    """End-to-end through `compare_level()` (the exact function
+    `verify_chart_vimshottari()` calls) and `ChartVerificationResult.
+    column_coverage_report()` (the "N of 42 columns" honesty surface): a
+    both-None extended column across a whole level must land in
+    `columns_checked_vacuous` / `per_column_vacuous_count`, and must NOT be
+    double-counted into `columns_checked_agree` / `per_column_agree_count`."""
+    derived_rows = [r for r in _reference_tree() if r.level_n == 1]
+    assert derived_rows
+    engine_rows = _synthetic_engine_rows(derived_rows, level_n=1)
+
+    summary = sut.compare_level(1, engine_rows, derived_rows)
+    assert summary.divergent_flagged == 0, (
+        "constructed a perfectly-agreeing synthetic engine mirror; any "
+        "divergence here is a test-setup bug, not a real one"
+    )
+
+    always_none_cols = {
+        "period_deity_or_marker", "varsha_year_lord", "anchored_solar_return_iso",
+        "kp_sub_lord", "kp_sub_sub_lord",
+    }
+    for col in always_none_cols:
+        assert summary.columns_checked_vacuous.get(col) == len(derived_rows), (
+            f"{col} expected vacuous on all {len(derived_rows)} rows, "
+            f"got {summary.columns_checked_vacuous.get(col)!r}"
+        )
+        assert col not in summary.columns_checked_agree, (
+            f"R3C-4 REGRESSION: {col} (unconditionally None both sides) was "
+            f"folded into columns_checked_agree — inflating the 'N columns "
+            f"verified' claim for a column nothing actually discriminated"
+        )
+
+    result = sut.ChartVerificationResult(
+        chart_id="test-chart", ayanamsha_id="lahiri", moon_sid_deg=_MOON_SID_DEG,
+        birth_jd_ut=_BIRTH_JD_UT, tolerance_seconds=sut.TOLERANCE_SECONDS_DEFAULT,
+        per_level=[summary],
+    )
+    report = result.column_coverage_report()
+    assert report["total_vacuous_comparisons"] > 0
+    for col in always_none_cols:
+        assert report["per_column_vacuous_count"].get(col) == len(derived_rows)
+        assert report["per_column_agree_count"].get(col, 0) == 0
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # H3 — the collapsed-civil-date engine quirk's cost must be a distinct,
 # reported category, not silently folded into "verified".
 # ─────────────────────────────────────────────────────────────────────────────
