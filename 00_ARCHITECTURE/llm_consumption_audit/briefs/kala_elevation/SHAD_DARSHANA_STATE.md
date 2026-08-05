@@ -30,6 +30,114 @@ now free — Phase 2 (gate chain) begins below.
 
 ---
 
+## MORNING REPORT — SESSION-B-BUILD (Gate-Chain session, 2026-08-05 ~05:33 UTC → ~12:00 UTC, ~6.5h)
+
+**Status: PARKED-HONEST, not COMPLETE.** Gates W2 and W3 do NOT close this session. What
+closed instead is something arguably more valuable: this was the first time either canonical
+chart's real field-build path (`ka_kshetra` → `mi_bhara`) has ever actually executed against
+real data in production, and it surfaced — precisely, with full evidence — every defect that
+had been silently making that path a no-op since Night 2. Five of those defects are now fixed
+and verified; two more are diagnosed to exact root cause and correctly left for a dedicated
+session rather than rushed under the weight of an irreversible gate.
+
+**Phase 2 sequence, in order:**
+1. **S4-05 re-test — PASSED, both charts**, against real post-sweep data (`health_domain_still_dark: false` for 482012f1 and 1c826d5a, verified via the real served `computeGocharaCoverage` SQL, not a reinterpretation).
+2. **Field build dispatched for 482012f1 — wrote ZERO rows** despite the orchestrator reporting `ka_kshetra`/`mi_bhara` "complete". Root-caused via live DB queries + Cloud Run Job logs: `KaKshetraWriter._discover_event_classes()` read `kala_field_routes`, a table nothing in the live call graph ever writes to (`stage2_promise.write_promise_graph`/`write_routes` are dead code; the real `promise_prior()` path computes in-memory and never persists) — so discovery always returned `[]`, for every chart, every build, since the writer was first built. **Fixed via TDD** (discover from `bodha_pratijna` instead, same source/filter `stage2_promise` itself already uses): PR #1058, merged to `shad-darshana/integration`.
+3. **Rebuilding `shad-darshana/integration → main` PR (#1059) surfaced three more real, pre-existing defects** — none introduced by this session, all invisible until this was the first shad-darshana PR ever to hit `main`'s full gate set (the integration-branch CI never runs TAP-6, SC-pointer boot validation, or several others):
+   - TAP-6 `two_pass_verified_literal`: two call sites (`l0_kp_sublord_division.py`, `ga_kp_significators.py`) wrote the bare string literal instead of the sanctioned `TWO_PASS_VERIFIED`/`DIVERGENT_FLAGGED` constants `verification_vocab.py` exports precisely for this. Both sites were genuinely earned (a real `two_pass_verdict()` call; a real reference-table comparison) — lexical hygiene, not fabrication. Fixed by importing the constants.
+   - SC-pointer boot validation: `elect.ts`'s `recover.instrument` pointed at `query_muhurta_lattice`, a tool that was never registered (`bg_muhurta_lattice` serving is deliberately deferred). Repointed at `kala_elect_get` — the real tool the response already comes from.
+   - Earned-Signal allowlist line-drift: an entry added earlier tonight was line-pinned; an unrelated same-day main commit shifted it. Switched to a pattern match.
+   - All five governance/audit gates verified passing locally before push; PR #1059 went fully green (31 checks) and merged via GitHub's real merge queue (not bypassed).
+4. **Deploy — real, verified, not assumed.** `workflow_run` auto-triggered on the `main` push; all four services (Sidecar, Pipeline Job Image, Web, MCP) built and deployed successfully; confirmed 100% traffic on the new revisions for all three Cloud Run services; **real authenticated MCP call** against the live server returned fresh catalog data with `tools_changed_at` matching the deploy timestamp. This deploy also shipped **migration 535** (`bg_kp_sublord_division`), which T3 had found blocked two sessions ago.
+5. **Re-ran field build, both charts, against the fixed+deployed code.** 482012f1: all 9 of its `bodha_pratijna`-discovered event classes honestly skipped (`no_class_prior_row`) — **none of them are among the only 6 event classes with real `brahma_class_priors` lifetime-count coverage** (childbirth, marriage, separation, relocation, foreign_settlement, surgery — `l0_class_lifetime_counts.py`, migration 522). Zero surviving tracks then crashed stage 8 with an unhandled `ValueError` instead of an honest empty result (`stage8_spec.py:221`) — a real robustness gap, **diagnosed, not fixed tonight**. 1c826d5a discovered 12 classes, 2 of which (marriage, separation) DO have real N_e coverage — hit a different, real bug: `stage2_promise._fetch_cgm_nodes` selected `constituent_fact_ids_array`, a column that exists only on `bodha_cgm_edges`, not `bodha_cgm_nodes` (confirmed via live schema; the column was never even read from a node row in the construction loop — dead SELECT, safe removal). **Fixed via TDD, verified against the real production schema** (`TestLiveDbIntegration`, DATABASE_URL-gated, not wired into CI — a process gap worth noting) — committed to `shad-darshana/integration` (not deployed tonight, see below).
+6. **Re-tested 1c826d5a locally against production** (bypassing a full deploy cycle for speed — same DB, same code, run via `python -m pipeline.orchestrator.main --run-id <id>` locally instead of the Cloud Run Job): **marriage's `stage5finalize` committed 4,225 real rows; separation added more (4,255 cumulative)** — genuine, non-fabricated field content, the first real `ka_kshetra` data either canonical chart has ever had. The run then hit a **third** distinct bug: `ZeroDivisionError` in `submodular.py:165`'s `marginal_gain()` (`contrib_by_atom[atom][wid] / max_contrib[atom]`, zero denominator for an atom with zero total contribution — plausible precisely because only 2 of 12 classes had real data). Full traceback captured from `asset_throughput.last_error`. **Diagnosed to the exact line, not fixed** — this is the third previously-unexercised bug found in one build attempt; the pattern itself (three cascading bugs, one build) is the honest signal that this code path needs a dedicated, unhurried session, not a fourth rushed fix under an irreversible-baseline gate.
+7. **Bonus, unplanned win**: migration 535 landing in step 4 unblocked T3's parked KP L0 trigger. Fired the verified-safe `scope='asset_set'` + `scope_target='bg_kp_sublord_division'` dispatch (found the real constraint along the way: `asset_throughput.chart_id` must be NULL for global-scope assets, `build_runs.chart_id` still NOT NULL/FK-required for attribution — corrected mid-dispatch, transaction rolled back cleanly first). **249 real, citation-carrying rows now live** in `bg_kp_sublord_division` — verified by direct query, not trusted from the "Done" message alone.
+
+**Operational incident**: the local orchestrator run for 1c826d5a hit a transient DB connection
+drop (`server closed the connection unexpectedly`) mid-run. Per the standing house pattern:
+checked the proxy (still listening, fresh connections worked fine — not a dead proxy, just a
+dropped long-lived session), resumed from the same `run_id` (the orchestrator's own substep-
+resume logic picked up cleanly), no work lost, no task falsely read as a code failure.
+
+**Real defects found and fixed, deployed, verified live:**
+1. `ka_kshetra` event-class discovery reading a dead table (PR #1058).
+2. TAP-6 `two_pass_verified_literal` × 2 call sites.
+3. SC-pointer dangling `query_muhurta_lattice` recovery instrument.
+4. Earned-signal allowlist line-drift.
+(All four in PR #1059, merged to `main`, deployed, live.)
+
+**Real defect found and fixed, verified against real schema, committed but NOT deployed
+tonight** (doesn't unlock a meaningful gate close on its own — see below; landing it without a
+justifying deploy would violate "one deploy per wave gate"):
+5. `stage2_promise._fetch_cgm_nodes` selecting a nonexistent column (`shad-darshana/integration` @ `7a7a1562`).
+
+**Real defects found, precisely diagnosed, deliberately NOT fixed tonight** (both are genuine
+design/robustness questions, not typos — rushing either under the first-skill-score-is-
+permanent stakes was judged the wrong trade):
+6. `stage8_spec.build_timeline_spec` raises unhandled on zero surviving tracks instead of an
+   honest-empty result (`stage8_spec.py:221`) — reachable now that discovery actually finds
+   classes, for any chart whose `bodha_pratijna` classes have zero overlap with the 6-class N_e
+   corpus (482012f1's exact situation).
+7. `submodular.select_submodular`'s `marginal_gain` divides by a per-atom max-contribution that
+   can be legitimately zero (`submodular.py:165`) — reachable once at least one but not all
+   classes survive to stage 6 (1c826d5a's exact situation).
+
+**Real, disclosed, out-of-scope-to-fabricate data gap:** `brahma_class_priors`'
+`lifetime_count_per_100y` coverage is exactly 6 event classes (childbirth, marriage,
+separation, relocation, foreign_settlement, surgery — migration 522). Neither canonical
+chart's own `bodha_pratijna`-promised event classes overlap with that set beyond 1c826d5a's 2
+(marriage, separation). This is not a bug — B.10/data-honesty forbids fabricating N_e priors —
+but it means a genuinely meaningful "first skill score, both charts" cannot be produced until
+either more classes are seeded (a real corpus-research task) or the gate's own scope is
+revisited with the native. **This alone would block Gate W2 tonight even with defects 6/7
+fixed.**
+
+---
+
+### Gate dispositions (evaluated against brief §3's own criteria, not paraphrased)
+
+**Gate W2 — PARKED-HONEST, NOT closed.** Criteria checked one by one:
+- Field deterministic (hash-replay): **not tested** — no build has completed far enough to replay.
+- LEL-invariance test green: **PASS** — the Circularity Guard workflow ran and passed on tonight's `main` push (real CI evidence, not assumed).
+- Skill score + GOF published, both charts, first-score-becomes-baseline: **NOT DONE.** Zero real field data exists for 482012f1 (total N_e-overlap gap); 1c826d5a produced real partial data (marriage/separation) but never reached `mi_bhara`. Correctly not forced — this is the one truly irreversible gate criterion in the whole wave.
+- LEL-absent scenario, cohort base rates, null exceedance, salience vector, insight rows, timeline spec render: **not reached** — all downstream of a completed field build.
+- Specificity gate HARD-green: not directly re-verified tonight.
+- Legacy writers untouched and still serving: true — nothing in tonight's diffs touches a legacy writer.
+
+**Gate W3 — PARKED-HONEST, NOT closed.** Depends on W2's field for most items (sandhi calendar, muhūrta-lagna, etc.); none of that can be honestly built without a real field.
+
+**Gate W3K — PARKED-HONEST, NOT closed, but materially advanced.** K.1–K.4 code was already
+complete (T3, PR #1046/#1050, independently re-verified by full test re-run). Tonight's addition:
+the K.1 substrate itself (`bg_kp_sublord_division`, the 249-fold division) is now **genuinely
+live in production** for the first time — 249 real, citation-carrying rows, verified by direct
+query. Per-chart cuspal sub-lords / significators / concurrence-or-dissent serving (K.2–K.4's
+per-chart half) still queued behind the chart locks and untested tonight — that's the real
+remaining distance to close.
+
+**Gate W4 — not reached.** T5's staged fixtures (canned Mode-2, weak-promise UPĀYA, Intervention
+Ledger filing) were never run this session; time went to the Gate W2 investigation instead. They
+remain exactly as T5 left them — ready to run, still discharging two honestly-disclosed gaps
+(`resolveFilingState` not wired to `intervention_filing.ts`; no serve-time write path into
+`mimamsa_intervention_ledger`).
+
+**`main` vs production, verified explicitly:** in sync. `main` was deployed directly this
+session (PR #1059's merge commit `df696ff5`), confirmed live via authenticated call. Since then,
+`shad-darshana/integration` has moved one commit further ahead (defect #5, `7a7a1562`, not
+deployed) — `main` does NOT yet have that fix; production is exactly what was verified live.
+
+**SINGLE NEXT ACTION:** a dedicated session (not squeezed into a gate-chain's remaining hour)
+to (a) fix defects #6 and #7 with the same TDD rigor as tonight's five, (b) rule with the native
+whether the N_e lifetime-count corpus should be widened before a meaningful first skill score
+can publish, or whether the gate's own "both charts" scope should be revisited given the
+classes each chart actually has real Bodha promises for, (c) once (a)+(b) land, re-run the field
+build for both charts for real, THEN attempt the skill-score/GOF/PARĪKṢAKA/Gate-W2-close
+sequence properly. Separately: (d) run T5's staged W4 harnesses (independent of the above,
+ready any time); (e) materialize per-chart KP significators now that the L0 substrate is live.
+
+*Truth over completion. PARKED-HONEST with evidence, not a false close.*
+
+---
+
 **SESSION-B-BUILD (Night 6, 2026-08-04 ~19:53 UTC open) — PHASE 1 COMPLETE, awaiting
 SWEEPS-COMPLETE for Phase 2.** Five parallel tracks (T1–T5) dispatched per the night's
 native directive, all five merged clean to `shad-darshana/integration` within ~90 minutes:
