@@ -187,15 +187,25 @@ def test_census_has_no_dangling_lattice_pointers():
 
 
 def test_census_includes_the_named_corpus_gaps_honestly():
-    """The brief explicitly names Agnivasa combination-yoga rules as the
-    expected 'genuinely lacks a rule' example — the four brief-named
-    combination-yogas panchang_engine does NOT implement must be present and
-    disposed not_in_corpus, never silently omitted or falsely marked computed."""
+    """UPDATED 2026-08-05 (ṢAḌ-DARŚANA T4 combination-yoga enrichment, this
+    session): this test originally asserted all four brief-named
+    combination-yogas (mrityu_yoga, dagdha_yoga, hutasana_yoga,
+    jvalamukhi_yoga) were not_in_corpus on 'untranslated Devanagari' evidence.
+    The 2026-08-03 translation pass (MUHURTA_CHINTAMANI_TRANSLATION_REPORT_
+    v1_0.md §3(c), 21 combination_yoga-topic chunks) FALSIFIED that premise
+    for three of the four — real, structured, citable vara×tithi/vara×nakṣatra
+    tables now exist in their live content_en. Those three are now
+    `not_computed` and owned by
+    test_combination_yoga_enrichment_rows_present_and_not_computed below.
+    jvalamukhi_yoga alone was re-investigated (parihāra-enrichment pass,
+    2026-08-04) and CONFIRMED to remain a genuine negative finding (a place
+    name, not yoga content) — this test keeps that one assertion; the fuller
+    check lives in test_jvalamukhi_yoga_confirmation_still_not_in_corpus_and_
+    cites_translation below."""
     by_name = {(fam, name): disposition for fam, name, disposition, *_ in CENSUS_ROWS}
-    for gap in ["mrityu_yoga", "dagdha_yoga", "hutasana_yoga", "jvalamukhi_yoga"]:
-        key = ("combination_yoga", gap)
-        assert key in by_name, f"expected census row for gap {gap!r}"
-        assert by_name[key] == "not_in_corpus", f"{gap!r} must be disposed not_in_corpus, got {by_name[key]!r}"
+    key = ("combination_yoga", "jvalamukhi_yoga")
+    assert key in by_name, "expected census row for gap jvalamukhi_yoga"
+    assert by_name[key] == "not_in_corpus", f"jvalamukhi_yoga must be disposed not_in_corpus, got {by_name[key]!r}"
 
 
 def test_census_includes_computed_combination_yogas_that_do_exist():
@@ -330,6 +340,163 @@ def test_vishti_conditional_exception_finding_is_recorded_but_not_encoded():
     assert not any(
         r["dosha_canonical_id"] == "bhadra" for r in MUHURTA_PARIHARA_ROWS
     ), "the conditional Viṣṭi exception must NOT be encoded as an unconditional parihāra row"
+
+
+# ── Parihāra-graph enrichment (2026-08-04): 9 new parihara_scope census
+# rows drawn from the 66 doṣa-parihāra-topic muhurta_chintamani chunks
+# translated by MUHURTA_CHINTAMANI_TRANSLATION_REPORT_v1_0.md (2026-08-03).
+# Same discipline the vishti test above already enforces: every finding must
+# be present in the census (cited, verbatim-quoted) and absent from
+# MUHURTA_PARIHARA_ROWS (never quietly encoded as an unconditional rule).
+
+_PARIHARA_SCOPE_ENRICHMENT_NAMES = [
+    "mrityu_krakaca_dagdha_hutasana_yoga_apavada",
+    "dagdha_tithi_saura_madhyadesha_restriction",
+    "bhadra_mukha_puccha_subwindow",
+    "jupiter_simha_makara_marriage_regional_dosha",
+    "ravi_yoga_and_godhuli_sarva_dosha_nasha",
+    "regional_dosha_cluster_madhyadesha_gauda_malava_hunabanga",
+    "holashtaka_regional_marriage_dosha",
+    "pratishukra_venus_facing_apavada",
+    "vivaha_synastry_kuta_dosha_bhanga_scope_gap",
+]
+
+
+def test_parihara_scope_enrichment_rows_present_and_not_computed():
+    by_name = {(fam, name): disp for fam, name, disp, *_ in CENSUS_ROWS}
+    for name in _PARIHARA_SCOPE_ENRICHMENT_NAMES:
+        key = ("parihara_scope", name)
+        assert key in by_name, f"expected new parihara_scope census row {name!r}"
+        assert by_name[key] == "not_computed", f"{name!r} must be not_computed, got {by_name[key]!r}"
+
+
+def test_parihara_scope_enrichment_rows_cite_real_chunk_ids():
+    """Every row must name at least one real muhurta_chintamani chunk_id from
+    the translated 66-chunk parihāra set — not a paraphrase of the report."""
+    by_name = {(fam, name): (note, ptr) for fam, name, _disp, note, ptr, _tag in CENSUS_ROWS}
+    for name in _PARIHARA_SCOPE_ENRICHMENT_NAMES:
+        note, pointer = by_name[("parihara_scope", name)]
+        assert "muhurta_chintamani_pg" in pointer, f"{name!r}: evidence_pointer must cite a real chunk_id"
+        assert "muhurta_chintamani_pg" in note, f"{name!r}: note must cite a real chunk_id inline, not just the pointer"
+
+
+def test_parihara_scope_enrichment_rows_not_seeded_as_unconditional_rules():
+    """None of the enrichment findings' underlying doṣa concepts may appear as
+    a MUHURTA_PARIHARA_ROWS dosha_canonical_id — every one of them is
+    conditional (activity-class, region, sub-window, or a wildcard 'all-doṣa'
+    claim) and none has the standing of a formal adjudication narrowing it to
+    an unconditional rule the way ADJUDICATION-10 narrowed Abhijit."""
+    seeded_ids = {r["dosha_canonical_id"] for r in MUHURTA_PARIHARA_ROWS}
+    # The enrichment pass deliberately never chose a dosha_canonical_id that
+    # collides with a real bg_muhurta_lattice factor_key (kalam/combination_yoga)
+    # or a real brahma_dosha_catalog canonical_id — this test only re-confirms
+    # the narrower, always-true invariant that nothing here was accidentally
+    # seeded into the one-row-only rules list.
+    assert seeded_ids == {"rahu_kalam"}, (
+        "MUHURTA_PARIHARA_ROWS must remain exactly the ADJUDICATION-10 row; "
+        "parihara-graph enrichment findings belong in the census, not here"
+    )
+
+
+def test_jvalamukhi_yoga_confirmation_still_not_in_corpus_and_cites_translation():
+    by_name = {(fam, name): (disp, note) for fam, name, disp, note, _ptr, _tag in CENSUS_ROWS}
+    disposition, note = by_name[("combination_yoga", "jvalamukhi_yoga")]
+    assert disposition == "not_in_corpus"
+    assert "CONFIRMED" in note
+    assert "muhurta_chintamani_pg0033_c01" in note
+
+
+# ── Combination-yoga enrichment (ṢAḌ-DARŚANA T4, this session, 2026-08-05):
+# the 21 combination_yoga-topic muhurta_chintamani chunks translated by
+# MUHURTA_CHINTAMANI_TRANSLATION_REPORT_v1_0.md §3(c) (2026-08-03), read
+# directly against their live content_en (platform/scripts/corpus/data/
+# muhurta_chintamani_translations.json, priority_topic='combination_yoga').
+# Same discipline the parihāra-enrichment block above already established:
+# every finding is present in the census (cited, verbatim-quoted where
+# possible) — never silently rolled into an existing computed row, never
+# fabricated where the source itself is illegible.
+
+_COMBINATION_YOGA_ENRICHMENT_NOT_COMPUTED_NAMES = [
+    # Three PRE-EXISTING gap rows corrected on now-translated evidence — see
+    # test_dagdha_hutasana_mrityu_no_longer_claim_untranslated below.
+    "mrityu_yoga", "dagdha_yoga", "hutasana_yoga",
+    # Four genuinely NEW combination-yoga rows — Viṣa/Yamaghaṇṭa/Utpāta/Kāṇa
+    # all share the SAME verse-8/9 vāra×tithi and vāra×nakṣatra tables as
+    # dagdha/hutasana/mrityu (MC ch.1, muhurta_chintamani_pg0017_c02/
+    # pg0018_c01/pg0024_c01) and were never previously registered at all.
+    "visha_yoga", "yamaghanta_yoga", "utpata_yoga", "kana_yoga",
+    # A real accuracy caveat on the ALREADY-computed amrit_siddhi row (see its
+    # own dedicated test below) — a fifth, structurally different finding
+    # sharing the same not_computed disposition.
+    "amrit_siddhi_tithi_exceptions",
+]
+
+
+def test_combination_yoga_enrichment_rows_present_and_not_computed():
+    by_name = {(fam, name): disp for fam, name, disp, *_ in CENSUS_ROWS}
+    for name in _COMBINATION_YOGA_ENRICHMENT_NOT_COMPUTED_NAMES:
+        key = ("combination_yoga", name)
+        assert key in by_name, f"expected combination_yoga census row {name!r}"
+        assert by_name[key] == "not_computed", f"{name!r} must be not_computed, got {by_name[key]!r}"
+
+
+def test_combination_yoga_enrichment_rows_cite_real_chunk_ids():
+    """Every row must name at least one real muhurta_chintamani chunk_id from
+    the translated 21-chunk combination_yoga set — not a paraphrase of the
+    translation report's own summary."""
+    by_name = {(fam, name): (note, ptr) for fam, name, _disp, note, ptr, _tag in CENSUS_ROWS}
+    for name in _COMBINATION_YOGA_ENRICHMENT_NOT_COMPUTED_NAMES:
+        note, pointer = by_name[("combination_yoga", name)]
+        assert "muhurta_chintamani_pg" in pointer, f"{name!r}: evidence_pointer must cite a real chunk_id"
+        assert "muhurta_chintamani_pg" in note, f"{name!r}: note must cite a real chunk_id inline, not just the pointer"
+
+
+def test_dagdha_hutasana_mrityu_no_longer_claim_untranslated_as_current_state():
+    """The exact falsification this session found: these three rows previously
+    asserted 'untranslated Devanagari' / content_en=content_sa AS THE CURRENT
+    STATE of the corpus. The 2026-08-03 translation pass made that current-
+    state claim false — this test proves each row now carries the POSITIVE
+    'translated + structured table confirmed' evidence (a prior-state mention
+    inside a correction narrative, e.g. 'CORRECTS the prior ... finding', is
+    fine and expected — B.8 favours an honest before/after account over
+    silently deleting the earlier claim)."""
+    by_name = {(fam, name): note for fam, name, _disp, note, *_ in CENSUS_ROWS}
+    for name in ("mrityu_yoga", "dagdha_yoga", "hutasana_yoga"):
+        note = by_name[("combination_yoga", name)]
+        assert "translated 2026-08-03" in note, f"{name!r} note must cite the translation pass"
+        assert not note.lower().endswith("untranslated"), (
+            f"{name!r} note must not still ASSERT untranslated as its own current-state finding"
+        )
+
+
+def test_ananda_yoga_28fold_is_a_genuine_negative_finding():
+    """Mirrors the jvalamukhi/Kota-Chakra precedent exactly: the 28 Ānandādi
+    yoga NAMES are now translated and citable (verses 23-24, conf 1.0 chunk
+    muhurta_chintamani_pg0021_c01), but the starting-nakṣatra correlation
+    chart needed to actually COMPUTE which of the 28 falls on a given day is
+    disclosed BY THE SOURCE ITSELF as illegible (both the dedicated chart —
+    pg0022_c01 — and the six-row summary table in pg0024_c01). A genuine
+    negative finding for the operational rule, reported honestly rather than
+    guessed at (B.10)."""
+    by_name = {(fam, name): (disp, note, ptr) for fam, name, disp, note, ptr, _tag in CENSUS_ROWS}
+    disposition, note, pointer = by_name[("combination_yoga", "ananda_yoga_28fold")]
+    assert disposition == "not_in_corpus"
+    assert "illegible" in note.lower()
+    assert "muhurta_chintamani_pg" in pointer
+
+
+def test_amrit_siddhi_tithi_exceptions_discloses_a_real_accuracy_gap_on_a_computed_row():
+    """amrit_siddhi ITSELF stays `computed`
+    (test_census_includes_computed_combination_yogas_that_do_exist) — this is
+    a SEPARATE row disclosing that panchang_engine's detector does not
+    implement the corpus's own tithi-level exception layer (verses 20-22,
+    conf 1.0 chunk muhurta_chintamani_pg0021_c01: e.g. Hasta-Sunday is siddhi
+    UNLESS it falls on the 5th tithi). Two rows, two honest claims, neither
+    silently rolled into the other."""
+    by_name = {(fam, name): (disp, note) for fam, name, disp, note, _ptr, _tag in CENSUS_ROWS}
+    disposition, note = by_name[("combination_yoga", "amrit_siddhi_tithi_exceptions")]
+    assert disposition == "not_computed"
+    assert "detect_all_special_yogas" in note or "panchang_engine" in note
 
 
 # ── Offline tests: MUHURTA_PARIHARA_ROWS / build_muhurta_parihara_rows ───────

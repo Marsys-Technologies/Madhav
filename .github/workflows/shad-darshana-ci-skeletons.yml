@@ -1,7 +1,7 @@
 name: ṢAḌ-DARŚANA — W0.6 CI Skeletons (Lane shad-darshana-ci-skeletons)
 
 # SHAD_DARSHANA_BRIEF_v2_0.md §0.6 / §3 W0.6's six CI skeletons:
-#   1. specificity_gate_v0.ts               — item 1  (E3 hard-gate precursor)
+#   1. specificity_gate_v0.ts               — item 1  (E3 HARD gate since 2026-08-02; filename keeps the historical _v0)
 #   2. shad_darshana_w0_prose_survival_battery.test.ts — item 2 (hardFloor prose survival)
 #   3. shad_darshana_w0_tri_plane_no_dead_end.test.ts (unit) +
 #      tri_plane_no_dead_end_gate.ts (live) — item 3 (item 43)
@@ -10,19 +10,31 @@ name: ṢAḌ-DARŚANA — W0.6 CI Skeletons (Lane shad-darshana-ci-skeletons)
 #   6. shad_darshana_w0_mode3_routing.test.ts (unit) +
 #      mode3_single_route_gate.ts (live)     — item 6  (Elevation §8 Mode-3 routing rule)
 #
-# STATUS AS OF 2026-07-31 — this replaces the original "always exits 0 pending sibling
-# lanes" note, which is no longer true and was misleading in two ways.
+# STATUS AS OF 2026-08-02 (lane w2-specificity-hard) — supersedes the 2026-07-31 note.
 #
-#   Items 1, 3 and 6 (specificity, tri-plane, mode3-route) are RETIRED to
-#   workflow_dispatch. Not because the sibling lanes are unmerged — they ARE merged, all
-#   eight kala_* tools are registered via registry_bridge.ts — but because these gates
-#   cannot fail by construction ("exit 0 always" without MCP_SERVER_URL, and no such
-#   secret exists) AND their registration census is a false negative on 4 of the 8 tools.
-#   The detector greps for a string literal beside server.tool(); four views register via
-#   `server.tool(TOOL_NAME, …)`, which the grep cannot resolve. §N.8: a gate that asserts
-#   more than it measures must not stay green. RE-ARMING REQUIRES FIXING THE DETECTOR
-#   FIRST — see the block comment above the `retired-plan-gates` job, and
-#   CI_EFFICIENCY_AUDIT_v1_0.md §4.8.
+#   Item 1 (specificity) is RE-ARMED on the PR/push path in PLAN mode — see the
+#   `specificity-gate-plan` job. The 2026-07-31 retirement named its re-arming
+#   precondition: "RE-ARMING REQUIRES FIXING THE DETECTOR FIRST". That precondition is
+#   now satisfied: _kala_tool_registration.ts resolves `server.tool(TOOL_NAME, …)`
+#   const-identifier registration (same-file const lookup), and a vitest battery
+#   (platform/scripts/census/shad_darshana_gates/__tests__/) proves all 8 kala_* views
+#   are detected. The gate itself was upgraded to the W2 HARD criterion
+#   (SHAD_DARSHANA_BRIEF_v2_0.md §3 W2 "specificity gate HARD-green"): PLAN mode is no
+#   longer "exit 0 always" — it FAILS on a registration-census regression and on any
+#   comparator non-vacuity self-check violation (a deliberately-generic fixture pair
+#   must be rejected on every run); LIVE mode applies a structural pairwise criterion
+#   (byte-identity, masked-template identity, identical-evidence sets) across ALL built
+#   charts, not mere byte-identity. Full-cohort statistical gating over the 10k
+#   bg_synthetic_cohort stays honestly deferred (those charts are not built/served) and
+#   the gate says so in its own output. §N.8 non-vacuity was verified by mutation on
+#   2026-08-02: pointing SHAD_DARSHANA_MCP_TOOLS_ROOT at an empty dir produces exit 1
+#   (also asserted permanently in the vitest battery).
+#
+#   Items 3 and 6 (tri-plane, mode3-route) REMAIN RETIRED to workflow_dispatch: their
+#   PLAN modes still cannot fail by construction. Their registration-census false
+#   negative is fixed as a side effect (shared detector), but "cannot fail" is the §N.8
+#   disqualifier and still holds for them — see the block comment above the
+#   `retired-plan-gates` job, and CI_EFFICIENCY_AUDIT_v1_0.md §4.8.
 #
 #   Items 4 and 5 (completeness / authority-basis census seeds) REMAIN on the PR path.
 #   They are real gates, and unlike the above that claim was verified by mutation on
@@ -56,12 +68,13 @@ name: ṢAḌ-DARŚANA — W0.6 CI Skeletons (Lane shad-darshana-ci-skeletons)
 # (verified 2026-07-31). A non-required check that stops firing simply does not appear;
 # it cannot leave a PR permanently pending. NEVER add a path filter to ci.yml.
 #
-# NOTE, unrelated to triggers but recorded where it will be seen: the three PLAN-mode
-# gates print "exit 0 always" and cannot fail without an MCP_SERVER_URL secret (none
-# exists), and their registration census reports 4 of the 8 kala_* tools as unregistered
-# when all 8 are in fact registered via registry_bridge.ts — the detector greps for a
-# string literal next to server.tool() and cannot see through
-# `server.tool(TOOL_NAME, …)`. See CI_EFFICIENCY_AUDIT_v1_0.md §4.8.
+# NOTE (updated 2026-08-02): the registration-census false negative described in
+# CI_EFFICIENCY_AUDIT_v1_0.md §4.8 (4 of 8 kala_* tools reported unregistered because
+# the detector could not see through `server.tool(TOOL_NAME, …)`) is FIXED — the
+# detector now resolves same-file const identifiers and is covered by a vitest battery.
+# Of the three formerly-retired PLAN gates, item 1 (specificity) additionally gained a
+# real PLAN-mode failure path and is re-armed below; items 3 and 6 remain
+# dispatch-only because their PLAN modes still cannot fail.
 #
 # To revert: delete the `paths:` block.
 # DUPLICATE-TRIGGER FIX (CI efficiency audit, 2026-07-31). The `push:` list used to
@@ -175,38 +188,55 @@ jobs:
           fi
           echo "Both W0.6 census seeds passed."
 
+  # W2 HARD specificity gate (item 1), PLAN mode — RE-ARMED on the PR/push path
+  # 2026-08-02 (lane w2-specificity-hard) per the retirement note's own re-arm
+  # condition: the registration detector is fixed (const-identifier resolution,
+  # vitest-proven on all 8 kala_* views) and the gate now has real PLAN-mode failure
+  # paths (registration-census regression; comparator non-vacuity self-check —
+  # a deliberately-generic reading pair must FAIL on every run). No secret needed.
+  # LIVE mode (real pairwise comparison across built charts) stays on
+  # workflow_dispatch via the live-gates job below, where MCP_SERVER_URL is available.
+  specificity-gate-plan:
+    name: W2 — specificity gate, HARD criterion (item 1, PLAN mode)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: platform
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: platform/package-lock.json
+      - run: npm ci
+      - name: item 1 — specificity_gate (PLAN mode; FAIL-capable)
+        run: npx tsx scripts/census/shad_darshana_gates/specificity_gate_v0.ts
+      - name: item 1 — detector + criterion vitest battery (registration census on all 8 views; non-vacuity incl. script-level exit-1 proof)
+        run: npx vitest run scripts/census/shad_darshana_gates/__tests__/
+
   # ─────────────────────────────────────────────────────────────────────────────
-  # RETIRED 2026-07-31 — items 1, 3 and 6 (PLAN mode). §N.8 earned-signal failure.
+  # RETIRED 2026-07-31 — items 3 and 6 (PLAN mode). §N.8 earned-signal failure.
+  # (Item 1, specificity, was originally retired with them; it was fixed and
+  # re-armed 2026-08-02 — see the `specificity-gate-plan` job above.)
   #
-  # These three ran on every PR and COULD NOT FAIL. Each prints, in its own report
+  # These ran on every PR and COULD NOT FAIL. Each prints, in its own report
   # line, "exit 0 always" when MCP_SERVER_URL is unset — and no such secret exists in
   # this repo. Corroborating: this workflow has 0 failures across 100 runs.
   #
-  # Worse than merely inert: their one substantive output, a static registration
-  # census, is WRONG for half its subjects. They report kala_now_get, kala_ahead_get,
-  # kala_priority_get and kala_explain_get as unregistered. All eight kala_* tools are
-  # in fact registered and called from platform-mcp/src/tools/registry_bridge.ts. The
-  # detector (_kala_tool_registration.ts) greps for a string literal adjacent to
-  # server.tool()/regAlias(); those four views register via
-  # `server.tool(TOOL_NAME, …)` with `const TOOL_NAME = 'kala_now_get'`, and the grep
-  # cannot resolve the constant. The correlation is exact — the four files declaring a
-  # TOOL_NAME constant are precisely the four reported missing. The gate then blames
-  # "sibling facade lane likely not merged yet", which is actively misleading: the
-  # lanes landed.
-  #
-  # NOT ARMED, deliberately. Arming a detector that is wrong half the time converts a
-  # meaningless pass into a WRONG pass — strictly worse. Fixing the census (resolve
-  # constant indirection, or import the registration table instead of grepping) is
-  # real work on the ṢAḌ-DARŚANA lane, not a CI-cleanup task, and belongs to whoever
-  # next picks that lane up.
-  #
-  # Nothing is deleted: the jobs and all three scripts remain, reachable via
-  # `gh workflow run`. RE-ARM = fix the detector FIRST, then delete the `if:` line
-  # below. Do not re-arm on the strength of the gate going green.
-  # Full evidence: CI_EFFICIENCY_AUDIT_v1_0.md §4.8.
+  # Their second disqualifier — the registration census reporting kala_now_get,
+  # kala_ahead_get, kala_priority_get and kala_explain_get as unregistered because
+  # the detector (_kala_tool_registration.ts) could not resolve
+  # `server.tool(TOOL_NAME, …)` const-identifier registration — is FIXED as of
+  # 2026-08-02 (shared detector, vitest-proven on all 8 views). What still holds for
+  # items 3 and 6 is the first disqualifier: their PLAN modes have no failure path.
+  # RE-ARM for them = give each a real PLAN-mode criterion first (the specificity
+  # gate's registration-census + fixture-self-check pattern is the worked precedent),
+  # then delete the `if:` line below. Do not re-arm on the strength of a gate going
+  # green. Full evidence: CI_EFFICIENCY_AUDIT_v1_0.md §4.8.
   # ─────────────────────────────────────────────────────────────────────────────
   retired-plan-gates:
-    name: W0.6 — RETIRED PLAN-mode gates (items 1, 3, 6) [dispatch-only]
+    name: W0.6 — RETIRED PLAN-mode gates (items 3, 6) [dispatch-only]
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     defaults:
@@ -220,11 +250,13 @@ jobs:
           cache: 'npm'
           cache-dependency-path: platform/package-lock.json
       - run: npm ci
-      - name: items 1/3/6 — PLAN-mode registration gates (RETIRED — cannot fail; census is a known false negative on 4/8 tools)
+      - name: items 3/6 — PLAN-mode registration gates (RETIRED — cannot fail)
         run: |
-          echo "NOTE: these gates exit 0 regardless of findings, and their registration"
-          echo "census is a known false negative for the four kala_* views that register"
-          echo "via a TOOL_NAME constant. Read the output as a report, NOT as a verdict."
+          echo "NOTE: these gates exit 0 regardless of findings when MCP_SERVER_URL is"
+          echo "unset. Their registration census is fixed (2026-08-02) but they still"
+          echo "have no PLAN-mode failure path. Read the output as a report, NOT as a"
+          echo "verdict. (Item 1, specificity, was re-armed on the PR path — see the"
+          echo "specificity-gate-plan job.)"
           failed=""
           run_gate() {
             echo "::group::$1"
@@ -236,7 +268,6 @@ jobs:
             fi
             echo "::endgroup::"
           }
-          run_gate "item 1 — specificity_gate_v0 (PLAN)"        specificity_gate_v0.ts
           run_gate "item 3 — tri_plane_no_dead_end_gate (PLAN)" tri_plane_no_dead_end_gate.ts
           run_gate "item 6 — mode3_single_route_gate (PLAN)"    mode3_single_route_gate.ts
           # ṢAḌ-DARŚANA W4 gate G6 (Lane R). Unlike the three W0.6 gates above, this one

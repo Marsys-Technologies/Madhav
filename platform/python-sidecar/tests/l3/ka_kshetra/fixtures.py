@@ -52,6 +52,19 @@ def build_tables(*, with_lifetime_prior: bool = True,
         ],
         'charts': [{'birth_date': __import__('datetime').date(1984, 2, 5)}],
         'bg_synthetic_cohort': [{'build_id': 'cohort-build-1'}],
+        # Discovery source (writer._discover_event_classes) — Lane A's LIVE promise
+        # register, not the never-written `kala_field_routes` cache table. A chart's
+        # buildable event-class set is whatever bo_pratijna has actually promised or
+        # conditionally promised; `denied` rows are real Bodha output too, just not
+        # ones this writer builds a field for.
+        'bodha_pratijna': [
+            {'chart_id': CHART_ID, 'event_class_id': EVENT_CLASS, 'status': 'promised'},
+            {'chart_id': CHART_ID, 'event_class_id': 'denied_class_never_built',
+             'status': 'denied'},
+        ],
+        # Still consulted directly by stage4_field's FALLBACK promise-prior path
+        # (used only when `stage2_promise` isn't importable — see `_small_build`'s
+        # monkeypatch above) — NOT the discovery source (see `bodha_pratijna` above).
         'kala_field_routes': [
             {'id': 11, 'chart_id': CHART_ID, 'event_class': EVENT_CLASS, 'route_rank': 1,
              'path_node_ids': ['graha:Ju', 'bhava:10', f'event_class:{EVENT_CLASS}'],
@@ -126,13 +139,32 @@ def build_tables(*, with_lifetime_prior: bool = True,
             {'chart_id': CHART_ID, 'fact_id': 'fact:kin:5001'},
             {'chart_id': CHART_ID, 'fact_id': 'fact:kin:5002'},
             {'chart_id': CHART_ID, 'fact_id': 'fact:vedha:5003'},
+            # The natal Lagna longitude the §6.3 rarity axis keys on. Aries
+            # (sign_id 1) — the native's real FORENSIC anchor, so the fixture's
+            # cohort feature is the chart's actual one rather than an arbitrary
+            # number. REFERENCED by the writer, never recomputed (§N.5).
+            {'chart_id': CHART_ID, 'fact_id': 'fact:lagna:longitude',
+             'fact_category': 'lagna', 'fact_key': 'longitude',
+             'ayanamsha_id': 'lahiri', 'fact_value_num': 12.75},
         ],
         # §5.1 C-5 / migration 456: temporal_shape is a property of the EVENT
         # CLASS, read from the ontology — never derived from how long a
-        # particular window happens to be.
+        # particular window happens to be. `domain` / `magnitude_floor` /
+        # `adjacency` are §6.1's Consequence inputs; without them Q would be an
+        # honest NULL and the salience vector would never exercise its
+        # renormalization over a PRESENT Q.
         'brahma_event_ontology': [
-            {'event_class_id': EVENT_CLASS, 'temporal_shape': 'interval'},
+            {'event_class_id': EVENT_CLASS, 'temporal_shape': 'interval',
+             'domain': 'career', 'magnitude_floor': 'significant',
+             'adjacency': ['relocation']},
+            {'event_class_id': 'relocation', 'temporal_shape': 'point',
+             'domain': 'place', 'magnitude_floor': 'moderate', 'adjacency': []},
         ],
+        # The synthetic cohort, DELIBERATELY far below §6.3 rule 4's 10,000-row
+        # minimum: `cohort_base_rate` then takes its own `cohort_below_minimum`
+        # path and returns p=None, which is the branch the salience vector's
+        # "Informativeness is NULL, never 0" rule exists for.
+        'bg_synthetic_cohort_md': [],
         'brahma_class_priors': [],
         'build_substep_progress': [],
         'kala_field': [],

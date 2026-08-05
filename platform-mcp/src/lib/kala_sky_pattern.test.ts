@@ -13,15 +13,19 @@ import { fileURLToPath } from 'node:url'
 import {
   MORTALITY_EXCLUSION_PATTERN,
   MORTALITY_FORBIDDEN_IDENTIFIERS,
+  PADDHATI_CENSUS_UNCONFIRMED,
   PADDHATI_DIVERGENCE_STATES,
   SKY_PATTERN_CONSTRAINT_KINDS,
   TARA_CYCLE,
+  buildAgnivasaConventionBVoices,
   buildMortalityExclusionRefusal,
   detectMortalityExclusion,
   intersectIntervals,
+  paddhatiCensusStatement,
   subtractIntervals,
   taraFor,
   type Interval,
+  type PaddhatiConventionRow,
 } from './kala_sky_pattern.js'
 
 const iv = (start: number, end: number, ...basis: string[]): Interval => ({ start, end, basis })
@@ -122,6 +126,213 @@ describe('sky_pattern_spec v1 — the frozen vocabulary', () => {
 
   it('the paddhati divergence closed set is exactly ADJUDICATION-8\'s three states', () => {
     expect([...PADDHATI_DIVERGENCE_STATES]).toEqual(['none_computed', 'diverges', 'agrees'])
+  })
+})
+
+describe('paddhati census statement — derived from the profile, never a static claim (§N.7/§N.8)', () => {
+  const row = (over: Partial<PaddhatiConventionRow> = {}): PaddhatiConventionRow => ({
+    factor_family: 'agnivasa',
+    convention_id: 'agnivasa_tithi_element_prithvi',
+    school_tag: 'corpus_default',
+    constraint_role: 'hard',
+    convention_status: 'computed',
+    provenance: 'L1 ga_panchanga / panchang_engine AGNI_VASA_TABLE (shipped)',
+    corpus_gap_ref: null,
+    native_confirmed: false,
+    awaiting_native_confirmation: true,
+    version: 'paddhati_v01',
+    ...over,
+  })
+
+  it('native_confirmed=TRUE (migration 534 applied) → cites the row\'s own confirmation_provenance', () => {
+    const s = paddhatiCensusStatement({
+      available: true,
+      unavailable_reason: null,
+      operative: [
+        row({
+          native_confirmed: true,
+          awaiting_native_confirmation: false,
+          confirmation_provenance:
+            'native statement 2026-08-02; recorded in SHAD_DARSHANA_ADJUDICATIONS_NIGHT3_v1_0.md §NATIVE CONFIRMATIONS',
+        }),
+      ],
+    })
+    expect(s).toContain('natively CONFIRMED')
+    expect(s).toContain('agnivasa_tithi_element_prithvi')
+    expect(s).toContain('§NATIVE CONFIRMATIONS')
+    // The superseded static claim must NOT survive into the confirmed state.
+    expect(s).not.toContain('not on record')
+  })
+
+  it('confirmed but the wire dropped confirmation_provenance → names the data gap instead of inventing a citation', () => {
+    const s = paddhatiCensusStatement({
+      available: true,
+      unavailable_reason: null,
+      operative: [row({ native_confirmed: true, awaiting_native_confirmation: false })],
+    })
+    expect(s).toContain('natively CONFIRMED')
+    expect(s).toContain('no confirmation_provenance')
+    expect(s).not.toContain('not on record')
+  })
+
+  it('profile read, no confirmed row → the original honest "not on record" text, with the awaiting note the row itself carries', () => {
+    const s = paddhatiCensusStatement({ available: true, unavailable_reason: null, operative: [row()] })
+    expect(s).toContain(PADDHATI_CENSUS_UNCONFIRMED)
+    expect(s).toContain('awaiting native confirmation')
+  })
+
+  it('profile read, empty profile → exactly the original ADJUDICATION-8 rail 1 statement', () => {
+    expect(paddhatiCensusStatement({ available: true, unavailable_reason: null, operative: [] })).toBe(
+      PADDHATI_CENSUS_UNCONFIRMED,
+    )
+  })
+
+  it('fetch FAILED → reported as unreachable with the reason, never restated as "not on record"', () => {
+    const s = paddhatiCensusStatement({
+      available: false,
+      unavailable_reason: 'query_kala_paddhati_profile returned status 404',
+      operative: [],
+    })
+    expect(s).toContain('could NOT be determined')
+    expect(s).toContain('status 404')
+    // A `declared_not_computed`-style honest absence and an unreachable record are
+    // DIFFERENT claims; the unreachable state must not assert absence.
+    expect(s.startsWith('agnivāsa convention = corpus default')).toBe(true)
+    expect(s.includes('lineage convention is not on record')).toBe(false)
+  })
+})
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ADJUDICATION-17 — Agnivāsa Convention (B), a SECOND served voice.
+//
+// The ruling (`SHAD_DARSHANA_ADJUDICATION_17_AGNIVASA_MULTI_CONVENTION_GRADING_v1_0.md`):
+// Convention B never enters `compileConstraint`'s `residence` hard-gate match (that stays
+// hardcoded to Convention A's `favourableElements = ['prithvi']`, deliberately, per the
+// ruling's own reversibility note). It becomes a second, informational, per-date voice —
+// `buildAgnivasaConventionBVoices` is the pure function the `residence` branch calls to
+// build that voice for exactly the atoms Convention A already matched, never changing what
+// Convention A matched.
+// ══════════════════════════════════════════════════════════════════════════════
+
+describe('ADJUDICATION-17 — buildAgnivasaConventionBVoices (second, non-gating voice)', () => {
+  const paddhatiRow = (over: Partial<PaddhatiConventionRow> = {}): PaddhatiConventionRow => ({
+    factor_family: 'agnivasa',
+    convention_id: 'agnivasa_tithi_element_prithvi',
+    school_tag: 'corpus_default',
+    constraint_role: 'hard',
+    convention_status: 'computed',
+    provenance: 'L1 ga_panchanga / panchang_engine AGNI_VASA_TABLE (shipped)',
+    corpus_gap_ref: null,
+    native_confirmed: false,
+    awaiting_native_confirmation: true,
+    version: 'paddhati_v02',
+    ...over,
+  })
+
+  const conventionBRow = (over: Partial<PaddhatiConventionRow> = {}): PaddhatiConventionRow =>
+    paddhatiRow({
+      convention_id: 'agnivasa_muhurta_chintamani_arithmetic',
+      school_tag: 'muhurta_chintamani',
+      native_confirmed: false,
+      awaiting_native_confirmation: false,
+      ...over,
+    })
+
+  const latticeRow = (detail: Record<string, unknown>) => ({
+    factor_family: 'agnivasa',
+    factor_key: 'agnivasa_prithvi',
+    start_utc: '2026-08-05T00:00:00.000Z',
+    end_utc: '2026-08-06T00:00:00.000Z',
+    detail,
+    source_citation: 'bg_muhurta_lattice',
+    corpus_status: 'computed_cited' as const,
+  })
+
+  it('Convention B NOT operative (only Convention A row present) → returns [] (honest, chart-level gap already carried elsewhere)', () => {
+    const voices = buildAgnivasaConventionBVoices(
+      [latticeRow({ tithi_id: 1, vara_id: 3, element: 'prithvi' })],
+      [paddhatiRow()],
+    )
+    expect(voices).toEqual([])
+  })
+
+  it('Convention B declared_not_computed never even reaches this function (rail 2) — fetchPaddhatiProfile\'s own `operative` filter excludes it upstream, so passing only the surviving rows still yields []', () => {
+    // `PaddhatiResolution.operative` is documented as "ONLY convention_status='computed'
+    // rows" (fetchPaddhatiProfile filters `scoped.filter((r) => r.convention_status ===
+    // 'computed')` before this function ever sees it) — a declared_not_computed Convention
+    // (B) row is structurally absent from `paddhatiOperative` by the time it gets here.
+    const voices = buildAgnivasaConventionBVoices(
+      [latticeRow({ tithi_id: 1, vara_id: 3, element: 'prithvi' })],
+      [paddhatiRow()], // Convention B's row was declared_not_computed and so never made it into `operative`
+    )
+    expect(voices).toEqual([])
+  })
+
+  it('no matched atoms → [] regardless of Convention B operative status (nothing to voice an opinion about)', () => {
+    expect(buildAgnivasaConventionBVoices([], [paddhatiRow(), conventionBRow()])).toEqual([])
+  })
+
+  it('Convention B operative, one matched atom → one voice, computed live from the SAME atom, never overriding Convention A', () => {
+    // ADJUDICATION-17's own checkable counter-example: tithi_id=1, vara_id=3 (Tuesday).
+    // Convention A: tithi 1-7 band = Pṛthvī/favourable. Convention B: (1+1+3) mod 4 = 1 = Ākāśa/unfavourable.
+    const voices = buildAgnivasaConventionBVoices(
+      [latticeRow({ tithi_id: 1, vara_id: 3, element: 'prithvi' })],
+      [paddhatiRow(), conventionBRow()],
+    )
+    expect(voices).toHaveLength(1)
+    expect(voices[0]!.state).toBe('computed')
+    expect(voices[0]!.tithi_id).toBe(1)
+    expect(voices[0]!.vara_id).toBe(3)
+    expect(voices[0]!.element).toBe('akasha')
+    expect(voices[0]!.favourable).toBe(false)
+    expect(voices[0]!.convention_a_element).toBe('prithvi')
+    expect(voices[0]!.convention_a_favourable).toBe(true)
+    // The decisive assertion: Convention B DIVERGES but this is disclosure, not override.
+    expect(voices[0]!.agreement).toBe('diverges')
+    expect(voices[0]!.claim).toContain('DIVERGING')
+    expect(voices[0]!.claim).toContain('Convention (A) remains the native-confirmed, operative reading')
+  })
+
+  it('Convention B operative, an agreeing atom → agreement: "agrees", disclosed the same way', () => {
+    // tithi_id=1, vara_id=2 (Monday): (1+1+2) mod 4 = 0 = Pṛthvī/favourable — agrees with A.
+    const voices = buildAgnivasaConventionBVoices(
+      [latticeRow({ tithi_id: 1, vara_id: 2, element: 'prithvi' })],
+      [paddhatiRow(), conventionBRow()],
+    )
+    expect(voices).toHaveLength(1)
+    expect(voices[0]!.agreement).toBe('agrees')
+    expect(voices[0]!.favourable).toBe(true)
+  })
+
+  it('multiple matched atoms → one voice PER atom, in the same order, each independently comparable', () => {
+    const voices = buildAgnivasaConventionBVoices(
+      [
+        latticeRow({ tithi_id: 1, vara_id: 3, element: 'prithvi' }), // diverges
+        latticeRow({ tithi_id: 1, vara_id: 2, element: 'prithvi' }), // agrees
+      ],
+      [paddhatiRow(), conventionBRow()],
+    )
+    expect(voices).toHaveLength(2)
+    expect(voices[0]!.agreement).toBe('diverges')
+    expect(voices[1]!.agreement).toBe('agrees')
+  })
+
+  it('a matched atom missing tithi_id/vara_id → honest_empty for THAT atom, never a fabricated verdict (B.10)', () => {
+    const voices = buildAgnivasaConventionBVoices(
+      [latticeRow({ element: 'prithvi' })],
+      [paddhatiRow(), conventionBRow()],
+    )
+    expect(voices).toHaveLength(1)
+    expect(voices[0]!.state).toBe('honest_empty')
+    expect(voices[0]!.empty_reason).toContain('tithi_id/vara_id')
+  })
+
+  it('the residence branch NEVER changes its own hard-gate hardcode — source-level proof this stays a second voice, not a replacement', () => {
+    const src = readFileSync(fileURLToPath(new URL('./kala_sky_pattern.ts', import.meta.url)), 'utf8')
+    // Convention A's hard-gate match is UNCHANGED — ADJUDICATION-17 forbids touching it.
+    expect(src).toMatch(/const favourableElements = \['prithvi'\]/)
+    // The new voice IS wired into the residence branch (this is the actual live-flip).
+    expect(src).toMatch(/buildAgnivasaConventionBVoices\(/)
   })
 })
 

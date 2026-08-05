@@ -93,6 +93,15 @@ const ALLOWED_TABLES = new Set([
   // for bg_transit_rules). Read-only L0 Brahmagyan reference table (migration 250); no
   // write path added.
   'bg_dignity_reference',
+  // ṢAḌ-DARŚANA W2 (E5 follow-up to PR #1033): resolveFieldSnapshot
+  // (platform-mcp/src/lib/kala_envelope.ts) reads the chart's newest field-snapshot row
+  // (`SELECT field_snapshot_id, field_content_hash ... ORDER BY built_at DESC, field_snapshot_id
+  // DESC LIMIT 1`) through this route for every kala_* facade's envelope — until this entry
+  // landed, the route 400'd the query and production served the honest
+  // `field_snapshot_unreachable` marker (the disclosed KNOWN HONEST GAP in that function's
+  // docstring). Chart-scoped, written only by the ka_kshetra sidecar writer; read-only here,
+  // no write path added.
+  'kala_field_snapshots',
 ])
 
 // Forbidden anywhere in the statement: write/DDL verbs and statement separators.

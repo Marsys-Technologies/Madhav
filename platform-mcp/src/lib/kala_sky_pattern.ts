@@ -49,6 +49,7 @@
  */
 
 import { callPlatformPrimitive } from '../client.js'
+import { unwrapPrimitiveResult, unwrapFailureReason } from './primitive_unwrap.js'
 import type { Principal } from '../types.js'
 import {
   adjudicateCandidates,
@@ -60,6 +61,10 @@ import {
   type LatticeGapReport,
   type LatticeSubstrate,
 } from './kala_lattice_query.js'
+import {
+  computeAgnivasaConventionBVoice,
+  type AgnivasaConventionBVoice,
+} from './agnivasa_convention_b_voice.js'
 
 // ══════════════════════════════════════════════════════════════════════════════
 // §5.4 — INDIVIDUALIZED-MORTALITY-WINDOW HARD EXCLUSION (ADJUDICATION-13)
@@ -337,6 +342,16 @@ export interface SkyPatternConstraintDisposition {
    *  `0` with `state: 'computed'` is a legal, meaningful answer (the family is
    *  materialized; nothing in this horizon satisfies the constraint). */
   matched_atom_count: number
+  /** ADJUDICATION-17: set ONLY on `kind: 'residence'` (agnivāsa) dispositions —
+   *  one Convention (B) voice per matched atom (same shape as `kp_school_voice.ts`'s
+   *  concurrence/dissent precedent), reporting what the `agnivasa_muhurta_chintamani_
+   *  arithmetic` convention would say about the SAME date Convention (A) already
+   *  resolved. Informational only — this array is NEVER consulted by the match logic
+   *  above (`favourableElements`), which stays hardcoded to Convention (A) by design.
+   *  `undefined` on every other constraint kind; `[]` when Convention (B) is not yet
+   *  `convention_status='computed'` for this chart (an honest absence, not a gap in
+   *  this array). */
+  agnivasa_convention_b_voices?: AgnivasaConventionBVoice[]
 }
 
 export type PrecisionRegime = 'intra_day' | 'day_grade'
@@ -493,6 +508,11 @@ export interface PaddhatiConventionRow {
   native_confirmed: boolean
   awaiting_native_confirmation: boolean
   version: string
+  /** Set iff native_confirmed=TRUE (migration 534): where the native's
+   *  confirmation is recorded, so this reader cites a document section rather
+   *  than a chat transcript. Optional on the wire — a primitive predating 534
+   *  may not serve the column. */
+  confirmation_provenance?: string | null
 }
 
 export interface PaddhatiResolution {
@@ -509,7 +529,11 @@ export interface PaddhatiResolution {
     state: 'none_computed' | 'diverges' | 'agrees'
     reason: string
   }
-  /** ADJUDICATION-8 rail 1 — served verbatim. */
+  /** ADJUDICATION-8 rail 1 — DERIVED from the fetched profile rows by
+   *  `paddhatiCensusStatement`, never a wrapper-local constant (§N.7 item 3):
+   *  migration 534 flips `native_confirmed` TRUE with a
+   *  `confirmation_provenance`, and a static "not on record" claim would
+   *  silently shadow that data. */
   census_statement: string
   available: boolean
   unavailable_reason: string | null
@@ -517,11 +541,143 @@ export interface PaddhatiResolution {
 
 export const PADDHATI_DIVERGENCE_STATES = ['none_computed', 'diverges', 'agrees'] as const
 
-/** ADJUDICATION-8 rail 1's coverage statement, verbatim. Exported so the gate
- *  asserts the exact string rather than re-spelling it. */
-export const PADDHATI_CENSUS_STATEMENT =
-  'agnivāsa convention = corpus default (tithi-element, pṛthvī-favourable); the native\'s ' +
-  'lineage convention is not on record.'
+/** The convention-content clause every census statement opens with. The
+ *  CONTENT did not change in migration 534 — only its attestation did — so
+ *  this clause is common to all three states below. */
+export const PADDHATI_CENSUS_BASE =
+  'agnivāsa convention = corpus default (tithi-element, pṛthvī-favourable); '
+
+/** ADJUDICATION-8 rail 1's original coverage statement — the honest text
+ *  WHILE no native confirmation row exists. Exported (as the old
+ *  PADDHATI_CENSUS_STATEMENT was) so a gate/test asserts the exact string
+ *  rather than re-spelling it. */
+export const PADDHATI_CENSUS_UNCONFIRMED =
+  PADDHATI_CENSUS_BASE + 'the native\'s lineage convention is not on record.'
+
+/**
+ * ADJUDICATION-8 rail 1's coverage statement, DERIVED from the fetched profile
+ * rows rather than pinned as a static claim. Migration 534 (PR #1036) seeds
+ * `native_confirmed=TRUE` with a `confirmation_provenance` for the Agnivāsa
+ * convention on both canonical charts — a hardcoded "not on record" becomes
+ * FALSE the moment that migration applies (§N.7 item 3: no wrapper-local
+ * constant may shadow cited data; §N.8: a claim needs a detector — here, the
+ * detector is reading the row the claim is about).
+ *
+ * Three states, each honest:
+ *   confirmed   — an operative agnivāsa row carries native_confirmed=TRUE:
+ *                 the statement cites the row's own confirmation_provenance.
+ *   unconfirmed — the profile was read and carries no confirmed agnivāsa row:
+ *                 the original "not on record" text (verbatim), plus an
+ *                 awaiting-confirmation note when the row says so itself.
+ *   unreachable — the profile could NOT be read: reported as unreachable with
+ *                 the fetch-failure reason. An unreadable record is never
+ *                 restated as "not on record" — absence of evidence vs.
+ *                 evidence of absence.
+ */
+export function paddhatiCensusStatement(
+  profile: Pick<PaddhatiResolution, 'available' | 'unavailable_reason' | 'operative'>,
+): string {
+  if (!profile.available) {
+    return (
+      PADDHATI_CENSUS_BASE +
+      'whether the native\'s lineage convention is on record could NOT be determined for this ' +
+      'call (' +
+      (profile.unavailable_reason ?? 'kala_paddhati_profile unreachable') +
+      ') — an unreachable profile is reported as unreachable, never restated as "not on record".'
+    )
+  }
+  const confirmed = profile.operative.find(
+    (r) => r.factor_family === 'agnivasa' && r.native_confirmed === true,
+  )
+  if (confirmed) {
+    return (
+      PADDHATI_CENSUS_BASE +
+      `natively CONFIRMED as the native's lineage convention (${confirmed.convention_id}` +
+      (confirmed.school_tag ? `, ${confirmed.school_tag}` : '') +
+      '); ' +
+      (confirmed.confirmation_provenance && confirmed.confirmation_provenance.trim()
+        ? `confirmation recorded: ${confirmed.confirmation_provenance.trim()}`
+        : 'the row carries native_confirmed=TRUE but no confirmation_provenance — a data gap ' +
+          'to raise upstream (migration 534 prescribes the column be set iff confirmed)') +
+      '.'
+    )
+  }
+  const awaiting = profile.operative.some(
+    (r) => r.factor_family === 'agnivasa' && r.awaiting_native_confirmation === true,
+  )
+  return awaiting
+    ? PADDHATI_CENSUS_UNCONFIRMED + ' (awaiting native confirmation.)'
+    : PADDHATI_CENSUS_UNCONFIRMED
+}
+
+/**
+ * ADJUDICATION-17: a REAL divergence detector (§N.8 — replaces the previous hardcoded
+ * `'none_computed'` literal). This is a CHART-LEVEL signal (`fetchPaddhatiProfile` has no date
+ * parameter), so it cannot report a specific date's agree/diverge verdict — that real,
+ * per-date comparison is `computeAgnivasaConventionBVoice` (`agnivasa_convention_b_voice.ts`),
+ * called from the `residence` branch where a date IS available.
+ *
+ * What this CAN honestly say at chart level: whether the two conventions are even STRUCTURALLY
+ * comparable (`'none_computed'` when Convention B isn't `computed`), and — when both are
+ * computed — that they provably diverge on at least some real (tithi_id, vara_id) pairs. This
+ * is not asserted from vibes: Convention A partitions by tithi_id alone (1-7=Prithvi favourable,
+ * 8-30=other); Convention B is `(tithi_id + 1 + vara_id) mod 4`. A concrete, checkable
+ * counter-example: tithi_id=1, vara_id=3 (Tuesday) — Convention A reads Prithvi (favourable,
+ * tithi 1-7 band); Convention B reads `(1+1+3) mod 4 = 1` → Ākāśa (unfavourable). Both
+ * `tithi_id=1` and `vara_id=3` are valid, real panchāṅga values — this is a genuine structural
+ * divergence, not a hypothetical.
+ */
+function computePaddhatiDivergence(
+  operative: PaddhatiConventionRow[],
+): PaddhatiResolution['divergence'] {
+  const conventionBOperative = operative.some(
+    (r) => r.factor_family === 'agnivasa' && r.convention_id === 'agnivasa_muhurta_chintamani_arithmetic',
+  )
+  if (!conventionBOperative) {
+    return {
+      state: 'none_computed',
+      reason:
+        'one convention computable; agnivasa_muhurta_chintamani_arithmetic is ' +
+        'declared_not_computed pending muhurta_chintamani translation',
+    }
+  }
+  return {
+    state: 'diverges',
+    reason:
+      'both agnivāsa conventions are computed. Structural divergence (not a per-instant claim ' +
+      '— this call carries no date): Convention (A) partitions by tithi_id alone (1-7=Prithvi ' +
+      'favourable); Convention (B) is (tithi_id+1+vara_id) mod 4. Checkable counter-example: ' +
+      'tithi_id=1, vara_id=3 (Tuesday) — (A) reads Prithvi/favourable, (B) reads ' +
+      '(1+1+3) mod 4=1 -> Akasha/unfavourable. For a SPECIFIC candidate date\'s comparison, ' +
+      'see the muhurta_chintamani school voice on that date\'s residence disposition, not this ' +
+      'chart-level field.',
+  }
+}
+
+/**
+ * ADJUDICATION-17, the per-date half of the ruling this file's `residence` branch
+ * implements: for the EXACT atoms Convention (A) already matched (`matched`, computed by
+ * the hardcoded `favourableElements` filter below — this function receives that result, it
+ * never recomputes or influences it), build Convention (B)'s live voice from the SAME
+ * atom's `detail`. Purely additive and read-only — no atom is dropped, reordered, or
+ * reclassified by this function; it only ever APPENDS a second opinion alongside the one
+ * Convention (A) already reached.
+ *
+ * Returns `[]` (not one `honest_empty` entry per atom) when Convention (B) itself is not
+ * `convention_status='computed'` for this chart — the chart-level gap is already carried by
+ * `PaddhatiResolution.divergence` (`computePaddhatiDivergence` above); repeating it once per
+ * matched atom here would be noise, not honesty.
+ */
+export function buildAgnivasaConventionBVoices(
+  matchedRows: Pick<LatticeFactorRow, 'detail'>[],
+  paddhatiOperative: PaddhatiConventionRow[],
+): AgnivasaConventionBVoice[] {
+  const conventionBOperative = paddhatiOperative.some(
+    (r) => r.factor_family === 'agnivasa' && r.convention_id === 'agnivasa_muhurta_chintamani_arithmetic',
+  )
+  if (!conventionBOperative) return []
+  return matchedRows.map((r) => computeAgnivasaConventionBVoice(r.detail, true))
+}
 
 export async function fetchPaddhatiProfile(
   chartId: string,
@@ -537,9 +693,17 @@ export async function fetchPaddhatiProfile(
       principal,
     )
     if (status === 200 && envelope.ok) {
-      const result = envelope.result as { rows?: unknown } | null
-      rows = Array.isArray(result?.rows) ? (result.rows as PaddhatiConventionRow[]) : []
-      available = true
+      // ToolBundle unwrap (primitive_unwrap.ts) + real availability detector on the
+      // parsed payload (§N.8) — never `available = true` on bare HTTP 200.
+      const { payload, failure } = unwrapPrimitiveResult(envelope.result)
+      if (failure !== null) {
+        unavailable_reason = unwrapFailureReason('query_kala_paddhati_profile', failure)
+      } else if (!Array.isArray(payload?.['rows'])) {
+        unavailable_reason = 'query_kala_paddhati_profile payload carried no rows section'
+      } else {
+        rows = payload['rows'] as PaddhatiConventionRow[]
+        available = true
+      }
     } else {
       unavailable_reason = `query_kala_paddhati_profile returned status ${status}`
     }
@@ -562,13 +726,8 @@ export async function fetchPaddhatiProfile(
     version,
     operative,
     declared_not_computed: declared,
-    divergence: {
-      state: 'none_computed',
-      reason:
-        'one convention computable; agnivasa_muhurta_chintamani_arithmetic is ' +
-        'declared_not_computed pending muhurta_chintamani translation',
-    },
-    census_statement: PADDHATI_CENSUS_STATEMENT,
+    divergence: computePaddhatiDivergence(operative),
+    census_statement: paddhatiCensusStatement({ available, unavailable_reason, operative }),
     available,
     unavailable_reason,
   }
@@ -620,8 +779,18 @@ export async function fetchChartRelativeSubstrate(
         unavailable_reason: `query_chart_facts returned status ${status}`,
       }
     }
-    const result = envelope.result as { rows?: unknown } | null
-    const rows = (Array.isArray(result?.rows) ? result.rows : []) as {
+    // ToolBundle unwrap (primitive_unwrap.ts): the chart_facts payload's `rows`
+    // live inside results[0].content, never at envelope.result.rows.
+    const { payload, failure } = unwrapPrimitiveResult(envelope.result)
+    if (failure !== null) {
+      return {
+        janma_nakshatra: null,
+        janma_nakshatra_fact_id: null,
+        available: false,
+        unavailable_reason: unwrapFailureReason('query_chart_facts', failure),
+      }
+    }
+    const rows = (Array.isArray(payload?.['rows']) ? payload['rows'] : []) as {
       fact_id?: string
       fact_key?: string
       fact_subject?: string
@@ -746,7 +915,13 @@ export async function resolveGrahaName(
     if (status !== 200 || !envelope.ok) {
       return { canonical: null, reason: `resolve_entity returned status ${status}` }
     }
-    const r = envelope.result as { canonical_name_en?: string; entity?: { canonical_name_en?: string } } | null
+    // ToolBundle unwrap (primitive_unwrap.ts): the resolve_entity capability returns
+    // the entity row as its content — read it off the parsed payload, not envelope.result.
+    const { payload, failure } = unwrapPrimitiveResult(envelope.result)
+    if (failure !== null) {
+      return { canonical: null, reason: unwrapFailureReason('resolve_entity', failure) }
+    }
+    const r = payload as { canonical_name_en?: string; entity?: { canonical_name_en?: string } } | null
     const canonical = r?.canonical_name_en ?? r?.entity?.canonical_name_en ?? null
     return canonical
       ? { canonical, reason: null }
@@ -1283,6 +1458,13 @@ async function compileConstraint(args: CompileArgs): Promise<CompiledConstraint>
         return wantFavourable ? isFav : !isFav
       })
 
+      // ADJUDICATION-17: Convention (B) served as a SECOND, INFORMATIONAL voice for the
+      // SAME atoms `matched` above already resolved for Convention (A) — computed from
+      // `matched`, never fed back into it. `favourableElements` above is Convention (A)'s
+      // hard gate and stays hardcoded by design; this array cannot change which atoms
+      // matched or how `mode: 'require'` below is honoured.
+      const agnivasa_convention_b_voices = buildAgnivasaConventionBVoices(matched, paddhati.operative)
+
       return {
         disposition: {
           kind,
@@ -1296,9 +1478,10 @@ async function compileConstraint(args: CompileArgs): Promise<CompiledConstraint>
               (paddhati.available
                 ? 'the chart\'s paddhati profile carries no computed agnivāsa convention'
                 : 'kala_paddhati_profile could not be read for this call') +
-              '. ' + PADDHATI_CENSUS_STATEMENT,
+              '. ' + paddhati.census_statement,
           dropped_from_conjunction: false,
           matched_atom_count: matched.length,
+          agnivasa_convention_b_voices,
         },
         intervals: matched.map(rowInterval).filter((i): i is Interval => i !== null),
         mode: 'require',

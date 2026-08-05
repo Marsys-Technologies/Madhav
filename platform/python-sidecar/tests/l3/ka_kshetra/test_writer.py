@@ -16,6 +16,8 @@ test_hazard.py / test_integrator.py / test_stage4_field.py / test_stage5_null.py
 """
 from __future__ import annotations
 
+import json
+import re
 import sys
 from pathlib import Path
 
@@ -93,10 +95,26 @@ class TestPlan:
         assert len(blocks) == S5.DEFAULT_REPLICATES // S5.DEFAULT_BLOCK_SIZE
 
     def test_no_event_classes_is_an_honest_empty_plan(self):
-        # Lane A has not produced a promise graph for this chart. Zero substeps
-        # and a log line — not a crash, and not a fabricated class list.
+        # Lane A (bo_pratijna) has not promised or conditionally-promised anything
+        # for this chart yet. Zero substeps and a log line — not a crash, and not
+        # a fabricated class list.
         tables = F.build_tables()
-        tables['kala_field_routes'] = []
+        tables['bodha_pratijna'] = []
+        conn = FakeConn(tables)
+        assert W.KaKshetraWriter().plan_substeps(FakeCtx(conn, F.CHART_ID)) == []
+
+    def test_denied_pratijna_rows_do_not_count_as_event_classes(self):
+        # A chart can have bo_pratijna rows that are all `denied` — real Bodha
+        # output, but nothing this writer should build a field for. Regression
+        # guard for the defect this test file's sibling test used to mask: the
+        # writer must discover classes from bo_pratijna's promised/conditional
+        # rows, never from the `kala_field_routes` cache table (nothing in the
+        # live call graph ever writes to it — see stage2_promise.promise_prior,
+        # which computes routes in-memory and never persists them).
+        tables = F.build_tables()
+        tables['bodha_pratijna'] = [
+            {'chart_id': F.CHART_ID, 'event_class_id': 'never_promised', 'status': 'denied'},
+        ]
         conn = FakeConn(tables)
         assert W.KaKshetraWriter().plan_substeps(FakeCtx(conn, F.CHART_ID)) == []
 
@@ -218,6 +236,19 @@ class TestLegacyUntouched:
         'kala_darshana', 'kala_jivana_parva', 'kala_timeline', 'kala_obstruction',
     )
 
+    @staticmethod
+    def _names_in(stmt: str) -> set[str]:
+        """Identifiers in `stmt`, tokenized on WORD BOUNDARIES.
+
+        Substring matching is wrong in both directions here and it bit this
+        assertion for real: `kala_timeline` is a strict prefix of the W2 table
+        `kala_timeline_spec`, so a plain `legacy in stmt` flagged a write to a
+        brand-new table as a legacy regression. The mirror-image failure is the
+        dangerous one — a legacy table whose name is a prefix of nothing would
+        pass a check that was only ever accidentally strict.
+        """
+        return set(re.findall(r'[A-Za-z_][A-Za-z0-9_]*', stmt))
+
     def test_zero_writes_to_any_legacy_table(self):
         # §1 rail 2 (strangler-fig) and §10's gate row "legacy writers UNTOUCHED
         # and still serving". W2 writes ZERO rows to any legacy table.
@@ -225,9 +256,16 @@ class TestLegacyUntouched:
         for stmt in conn.executed:
             head = ' '.join(stmt.split())[:40].upper()
             if head.startswith(('INSERT', 'UPDATE', 'DELETE')):
-                for legacy in self.LEGACY_TABLES:
-                    assert legacy not in stmt, (
-                        f'W2 wrote to legacy table {legacy}:\n{stmt[:200]}')
+                hit = self._names_in(stmt) & set(self.LEGACY_TABLES)
+                assert not hit, f'W2 wrote to legacy table(s) {sorted(hit)}:\n{stmt[:200]}'
+
+    def test_the_prefix_trap_this_guard_fell_into_stays_closed(self):
+        # A regression test for the GUARD itself: the two names differ, and the
+        # matcher must say so.
+        assert 'kala_timeline' not in self._names_in(
+            'INSERT INTO kala_timeline_spec (chart_id) VALUES (%s)')
+        assert 'kala_timeline' in self._names_in(
+            'INSERT INTO kala_timeline (chart_id) VALUES (%s)')
 
     def test_the_legacy_sweep_is_read_and_only_read(self):
         writer, conn = _run_full_build(F.build_tables())
@@ -361,3 +399,205 @@ class TestDeterminism:
             row['version_id'] = 'v1_fitted'
         w2, _ = _run_full_build(tables2)
         assert w1._snapshot_id != w2._snapshot_id
+
+
+# ── stages 6 / 6.5 / 8: the publication wiring ──────────────────────────────
+
+class TestStage6Salience:
+    def test_the_plan_reaches_stages_6_65_and_8_before_the_snapshot(self):
+        conn = FakeConn(F.build_tables())
+        steps = W.KaKshetraWriter().plan_substeps(FakeCtx(conn, F.CHART_ID))
+        keys = [s.key for s in steps]
+        kinds = [k.split(':', 1)[0] for k in keys]
+        # §2's pipeline order. The snapshot is last because the content hash is
+        # a digest OF every stage-0..8 row, so anything hashed must commit first.
+        assert kinds.index('stage5finalize') < kinds.index('stage6')
+        assert kinds.index('stage6') < kinds.index('stage65')
+        assert kinds.index('stage65') < kinds.index('stage8')
+        assert kinds[-1] == 'snapshot'
+        assert [k for k in keys if k.startswith('stage8:')] == [
+            f'stage8:{v}' for v in W.TIMELINE_VIEWS]
+
+    def test_one_salience_row_per_committed_window(self):
+        writer, conn = _run_full_build(F.build_tables())
+        windows = {w['window_id'] for w in conn.tables['kala_field_windows']}
+        salience = {r['window_id'] for r in conn.tables['kala_field_salience']}
+        assert windows and salience == windows
+
+    def test_a_not_computed_factor_is_null_and_absent_from_the_basis(self):
+        # §6.1: "never imputed". The fixture cohort is far below the 10,000-row
+        # minimum, so Informativeness is genuinely not computable; it must be
+        # NULL and must drop OUT of salience_basis rather than score 0.
+        writer, conn = _run_full_build(F.build_tables())
+        row = conn.tables['kala_field_salience'][0]
+        assert row['factor_informativeness'] is None
+        assert 'I' not in row['salience_basis']
+        # Actionability likewise: §11's tri-plane is not built at W2.
+        assert row['factor_actionability'] is None
+        assert 'A' not in row['salience_basis']
+        # ...but the factors that ARE computable are present and in the scalar.
+        assert row['factor_consequence'] is not None and 'Q' in row['salience_basis']
+        assert row['factor_reliability'] is not None and 'B' in row['salience_basis']
+        assert 0.0 <= row['salience'] <= 1.0
+
+    def test_the_reason_a_factor_is_null_is_recorded_not_swallowed(self):
+        # §N.8: a NULL that nothing explains is indistinguishable from a NULL
+        # nobody looked for.
+        writer, conn = _run_full_build(F.build_tables())
+        assert any(n.startswith('rarity:') for n in writer._coverage_notes)
+
+    def test_the_submodular_run_summary_is_denormalized_onto_every_row(self):
+        writer, conn = _run_full_build(F.build_tables())
+        rows = conn.tables['kala_field_salience']
+        assert len({r['coverage_fraction'] for r in rows}) == 1
+        selected = [r for r in rows if r['selected']]
+        assert all(r['selection_rank'] is not None for r in selected)
+        assert all(r['selection_rank'] is None for r in rows if not r['selected'])
+        assert len(selected) <= W.SUBMODULAR_ROW_BUDGET
+
+
+class TestStage65Insights:
+    def test_every_row_is_non_lel_derived(self):
+        # THE CIRCULARITY GUARD CARVE-OUT (§6.4 / §8.3 CG-1). Stage 6.5 writes
+        # the seven non-LEL types only; `biographical_echo` belongs to Lane E.
+        writer, conn = _run_full_build(F.build_tables())
+        rows = conn.tables['kala_insights']
+        assert rows, 'the fixture field must fire at least one insight predicate'
+        assert all(r['lel_derived'] is False for r in rows)
+        assert all(r['insight_type'] != 'biographical_echo' for r in rows)
+        assert all(r['field_snapshot_id'] == writer._snapshot_id for r in rows)
+
+    def test_a_lane_E_biographical_row_survives_a_field_rebuild(self):
+        # THE SHARED-TABLE HAZARD. `kala_insights` is written by two authors; a
+        # blanket per-chart delete on a field rebuild would silently destroy
+        # Lane E's LEL-derived rows, which are outside this writer's authorship
+        # AND outside the field hash by design.
+        tables = F.build_tables()
+        _, conn = _run_full_build(tables)
+        conn.tables['kala_insights'].append({
+            'chart_id': F.CHART_ID, 'insight_id': 'kin_laneE_biographical',
+            'insight_type': 'biographical_echo', 'lel_derived': True,
+            'field_snapshot_id': None, 'insight_score': 0.5,
+        })
+        # Force the FRESH/REPLAN branch. Without this the second build resumes
+        # off the completed ledger, takes no delete path at all, and the
+        # assertion below would pass while proving nothing — which is exactly
+        # what a mutation run caught this test doing.
+        conn.tables['build_substep_progress'] = []
+        writer = W.KaKshetraWriter()
+        ctx = FakeCtx(conn, F.CHART_ID)
+        steps = writer.plan_substeps(ctx)
+        assert 'kala_insights' in conn.deletes, 'the delete path must actually run'
+        for step in steps:
+            writer.run_substep(ctx, step)
+        ids = {r['insight_id'] for r in conn.tables['kala_insights']}
+        assert 'kin_laneE_biographical' in ids
+
+    def test_a_lel_derived_row_never_enters_the_content_hash(self):
+        # The other half of the carve-out: the insight is SERVED and the field
+        # does not move (§6.4's "what lets both things be true at once").
+        tables = F.build_tables()
+        writer, conn = _run_full_build(tables)
+        before = conn.tables['kala_field_snapshots'][0]['field_content_hash']
+        conn.tables['kala_insights'].append({
+            'chart_id': F.CHART_ID, 'insight_id': 'kin_laneE_biographical',
+            'insight_type': 'biographical_echo', 'lel_derived': True,
+            'field_snapshot_id': None, 'insight_score': 0.5,
+        })
+        after = writer._compute_content_hash(conn)
+        assert after == before
+
+    def test_statement_params_are_data_and_never_composed_prose(self):
+        # §6.4 / B.10: `statement_key` + `statement_params`, never a sentence.
+        writer, conn = _run_full_build(F.build_tables())
+        for r in conn.tables['kala_insights']:
+            assert r['statement_key'].startswith('insight_')
+            assert isinstance(json.loads(r['statement_params']), dict)
+
+    def test_insights_without_a_salience_layer_halt_rather_than_score_a_default(self):
+        tables = F.build_tables()
+        conn = FakeConn(tables)
+        ctx = FakeCtx(conn, F.CHART_ID)
+        writer = W.KaKshetraWriter()
+        steps = writer.plan_substeps(ctx)
+        for step in steps:
+            if step.key == 'stage65':
+                # Wipe the salience layer stage 6 just wrote: every insight_score
+                # is cohort_surprise x CARRIER_SALIENCE x reliability, so scoring
+                # without it would substitute a default for a computed value.
+                conn.tables['kala_field_salience'] = []
+                with pytest.raises(S4.UpstreamStageIncomplete):
+                    writer.run_substep(ctx, step)
+                return
+            writer.run_substep(ctx, step)
+        pytest.fail('the plan never reached stage65')
+
+
+class TestStage8TimelineSpec:
+    def test_one_spec_row_per_view(self):
+        writer, conn = _run_full_build(F.build_tables())
+        rows = conn.tables['kala_timeline_spec']
+        assert {r['generated_for'] for r in rows} == set(W.TIMELINE_VIEWS)
+        assert all(r['spec_version'] == 'kala_timeline_spec/1' for r in rows)
+
+    def test_every_interval_id_is_a_real_window_id(self):
+        # Item 44's SINGLE TEMPORAL AUTHORITY rail: the spec CITES field windows
+        # and never mints its own ids.
+        writer, conn = _run_full_build(F.build_tables())
+        windows = {w['window_id'] for w in conn.tables['kala_field_windows']}
+        spec = json.loads(conn.tables['kala_timeline_spec'][0]['spec'])
+        assert spec['intervals'], 'the fixture field must render at least one interval'
+        assert {i['id'] for i in spec['intervals']} <= windows
+
+    def test_the_earned_signal_check_holds_on_every_row(self):
+        # Migration 496's CHECK: (n_intervals + n_points + n_bands = 0) ==
+        # (empty_reason IS NOT NULL). An empty spec is served WITH a reason.
+        writer, conn = _run_full_build(F.build_tables())
+        for r in conn.tables['kala_timeline_spec']:
+            total = r['n_intervals'] + r['n_points'] + r['n_bands']
+            assert (total == 0) == (r['empty_reason'] is not None)
+
+    def test_now_marker_is_pinned_and_not_wall_clock(self):
+        # §7.4 hash-replay ("build twice, assert bit-identical") vs §2 ("stages
+        # 0-8 are pure functions of the pins"). A wall-clock marker would break
+        # both every midnight, which is why the spec joined the hash only once
+        # this was true.
+        writer, conn = _run_full_build(F.build_tables())
+        spec = json.loads(conn.tables['kala_timeline_spec'][0]['spec'])
+        assert spec['now_marker'] == spec['t_zero'][:10]
+
+    def test_point_ids_are_natural_key_derived_not_identity_derived(self):
+        # BIGINT identities are reassigned on every rebuild; hashing one into the
+        # spec would move the content hash on a rebuild that changed nothing.
+        a_writer, a = _run_full_build(F.build_tables())
+        b_writer, b = _run_full_build(F.build_tables())
+        pa = json.loads(a.tables['kala_timeline_spec'][0]['spec'])['points']
+        pb = json.loads(b.tables['kala_timeline_spec'][0]['spec'])['points']
+        assert pa and [p['id'] for p in pa] == [p['id'] for p in pb]
+        assert all(p['id'].startswith('kfb_') for p in pa)
+
+
+class TestHashCoverage:
+    def test_the_snapshot_declares_the_new_tables_it_covered(self):
+        # The hash's row-set CHANGED when stages 6/6.5/8 landed. That is only
+        # safe because every snapshot row states what its own hash covered — a
+        # hash-replay comparison across differing `hashed_tables` is comparing
+        # two different measurements.
+        writer, conn = _run_full_build(F.build_tables())
+        covered = conn.tables['kala_field_snapshots'][0]['hashed_tables']
+        for table in ('kala_field_salience', 'kala_insights', 'kala_timeline_spec'):
+            assert table in covered
+
+    def test_the_hash_moves_when_a_stage_6_row_moves(self):
+        # THE DETECTOR (§N.8): if perturbing a newly-hashed table left the hash
+        # unchanged, "these tables are covered" would be an unearned claim.
+        writer, conn = _run_full_build(F.build_tables())
+        before = writer._compute_content_hash(conn)
+        conn.tables['kala_field_salience'][0]['salience'] = 0.123456
+        assert writer._compute_content_hash(conn) != before
+
+    def test_the_hash_moves_when_a_stage_8_spec_moves(self):
+        writer, conn = _run_full_build(F.build_tables())
+        before = writer._compute_content_hash(conn)
+        conn.tables['kala_timeline_spec'][0]['n_intervals'] = 99
+        assert writer._compute_content_hash(conn) != before

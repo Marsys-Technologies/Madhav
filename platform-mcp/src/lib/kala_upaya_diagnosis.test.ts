@@ -527,28 +527,54 @@ describe('fetchRemedyRows', () => {
     expect(mockCallPlatformPrimitive).toHaveBeenCalledTimes(2)
   })
 
-  it('maps a successful query_remedy_program response through the mapper, tiered by citation', async () => {
-    function fakeEnvelope(result: unknown) {
-      return { status: 200, envelope: { ok: true, trace_id: 't', result } } as unknown as {
-        status: number
-        envelope: { ok: true; result: unknown }
-      }
+  it('maps a successful mitigation_map (query_remedy_program) response through the mapper, tiered by citation — ' +
+    'fixture is BYTE-FAITHFUL to the primitives route ToolBundle wire shape (results[0].content as JSON string), ' +
+    'the mock drift that let the original unwrap bug ship green', async () => {
+    // Byte-faithful wire: capability {content, is_error:false} → capabilityResultToToolBundle
+    // → toToolBundleResults branch 3 → results: [{ content: JSON.stringify(payload) }].
+    function wireEnvelope(payload: Record<string, unknown>) {
+      return {
+        status: 200,
+        envelope: {
+          ok: true,
+          trace_id: 't',
+          result: {
+            tool_bundle_id: 'tb-1',
+            tool_name: 'x',
+            results: [{ content: JSON.stringify(payload) }],
+            result_hash: 'sha256:x',
+          },
+        },
+      } as unknown as { status: number; envelope: { ok: true; result: unknown } }
     }
     mockCallPlatformPrimitive.mockImplementation(async (toolName: string) => {
-      if (toolName === 'query_remedy_program') {
-        return fakeEnvelope({
+      // Whitelisted MCP primitive name (the bare capability name 'query_remedy_program'
+      // is NOT a whitelist key and 400s on the route).
+      if (toolName === 'mitigation_map') {
+        return wireEnvelope({
           remedies: [{
             mitigation_id: 'mit-1', afflicting_graha: 'Saturn', obstruction_severity: 3,
             intensity_tier: 'moderate', proportionality_basis: 'x', classical_citation: 'BPHS 45.12',
           }],
         })
       }
-      return fakeEnvelope({ rows: [] })
+      return wireEnvelope({ rows: [] })
     })
     const result = await fetchRemedyRows({ chart_id: CHART_ID, targetedGraha: null, failingLink: 'promise' }, PRINCIPAL)
+    expect(result.errors).toEqual([])
     expect(result.interventions).toHaveLength(1)
     expect(result.interventions[0]?.source_surface).toBe('phala_mitigation')
     expect(result.interventions[0]?.efficacy_tier).toBe('classically_attested')
     expect(result.interventions[0]?.targets_link).toBe('promise')
+  })
+
+  it('a ToolBundle wrapper whose payload cannot be recovered is named in errors — never read as zero remedies', async () => {
+    mockCallPlatformPrimitive.mockResolvedValue({
+      status: 200,
+      envelope: { ok: true, trace_id: 't', result: { tool_bundle_id: 'tb-1', tool_name: 'x' } },
+    })
+    const result = await fetchRemedyRows({ chart_id: CHART_ID, targetedGraha: null, failingLink: null }, PRINCIPAL)
+    expect(result.interventions).toEqual([])
+    expect(result.errors.some((e) => e.includes('results_missing'))).toBe(true)
   })
 })
