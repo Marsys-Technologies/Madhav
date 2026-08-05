@@ -56,7 +56,16 @@ from brahmagyan.verification_vocab import (  # noqa: E402
 #: A table absent from this map is NOT exempt — it is reported as UNDECLARED, because "nobody
 #: wrote down what gets examined" is exactly the state that let the broadcast survive.
 EXAMINED_PREDICATE: dict[str, str] = {
-    "chart_dashas": "level_n = 1 AND kp_sublevel IS NULL",
+    # PR #1056 (2026-08-05) wired `_apply_vimshottari_independent_verification` into
+    # ga_dashas_writer.build_system()'s vimshottari branch: every level_n 1-4, non-KP vimshottari
+    # row now earns its OWN verdict via genuine per-row comparison against an independently
+    # re-implemented dasha tree (see that function's docstring — it is not a broadcast). Every
+    # OTHER system (yogini, ashtottari, chara_karaka, naisargika, mudda, kalachakra, narayana)
+    # still only examines level_n=1 (#1029's original scoping, unchanged). This predicate widened
+    # 2026-08-06 (post-salvage T4) — the KP/Surya-Siddhanta dasha rebuild was the first production
+    # write to exercise #1056's write path since it merged, and its own genuinely-examined level
+    # 2-4 rows tripped this check because the predicate had never been updated to match.
+    "chart_dashas": "kp_sublevel IS NULL AND (level_n = 1 OR (system_id = 'vimshottari' AND level_n <= 4))",
     # chart_facts / chart_divisionals: per-row verdicts (ga_nakshatra's two_pass_verdict, the
     # ga_vargas policy lookup). Every row that claims a verified tier is its own examined unit,
     # so the predicate is TRUE and the check degenerates to "no row claims more than it is".
