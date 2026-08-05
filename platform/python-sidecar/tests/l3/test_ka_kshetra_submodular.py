@@ -138,6 +138,59 @@ class TestFamilyDiversification:
             assert result.trace[1].marginal_gain == pytest.approx(0.0, abs=1e-9)
 
 
+class TestZeroMaxContribution:
+    """
+    Defect #7 (Gate-Chain MORNING REPORT, commit 5ff0791d): `max_contrib[atom]`
+    can be legitimately zero when every candidate carrying an atom has
+    log_contribution == 0.0 for that driver term -- e.g. chart 1c826d5a's
+    field build, where 2 of 12 discovered classes (marriage, separation)
+    have real N_e coverage and the rest carry zero-strength provenance
+    terms. This must not raise ZeroDivisionError; an atom with nothing to
+    normalize against contributes marginal gain 0 for that window, not an
+    error.
+    """
+
+    def test_single_candidate_zero_contribution_term_does_not_raise(self):
+        # Sole carrier of its atom, with log_contribution == 0.0 -> max_contrib
+        # for that atom is 0.0. cov(i, c) must resolve to 0 (nothing to
+        # normalize against), not divide by zero.
+        c = _cand("w1", "marriage", 0.8, ("Jupiter",), [("baseline", 0.0)])
+        result = select_submodular([c], k=5)
+        assert result.selected == ("w1",)
+        # No atom had anything to normalize against, so no gain accrues and
+        # F(S) == 0 -- honest zero, not a fabricated nonzero value.
+        assert result.trace[0].marginal_gain == 0.0
+        assert result.coverage_fraction == 0.0
+
+    def test_mixed_zero_and_nonzero_atoms_only_nonzero_contributes_gain(self):
+        # w1 carries two atoms: one with a real (nonzero) contribution, one
+        # with an all-zero contribution across its carriers. Only the real
+        # atom should contribute marginal gain; the zero-max atom must be
+        # inert, not crash the selection.
+        c = _cand(
+            "w1", "separation", 0.9, ("Saturn",),
+            [("real_term", 2.0), ("dead_term", 0.0)],
+        )
+        result = select_submodular([c], k=5)
+        assert result.selected == ("w1",)
+        # Only the real_term atom's u_c contributes: u_c = salience = 0.9,
+        # cov = 2.0/2.0 = 1.0 -> gain = 0.9. The dead_term atom contributes 0.
+        assert result.trace[0].marginal_gain == pytest.approx(0.9, abs=1e-9)
+
+    def test_multiple_candidates_sharing_a_zero_contribution_atom(self):
+        # Two candidates share the same (event_class, family, term) atom,
+        # both with log_contribution == 0.0 -- max_contrib is 0 across BOTH
+        # carriers, not just a single-candidate edge case.
+        cands = [
+            _cand("w1", "marriage", 0.7, ("Venus",), [("dead", 0.0)]),
+            _cand("w2", "marriage", 0.6, ("Venus",), [("dead", 0.0)]),
+        ]
+        result = select_submodular(cands, k=5)
+        assert set(result.selected) == {"w1", "w2"}
+        for entry in result.trace:
+            assert entry.marginal_gain == 0.0
+
+
 class TestLazyGreedyMatchesNaiveGreedy:
     """Lazy evaluation must be an EXACT optimization of the same greedy —
     it changes speed, not the result (§6.2)."""

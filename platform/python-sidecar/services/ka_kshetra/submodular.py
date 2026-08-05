@@ -162,7 +162,13 @@ def select_submodular(
         gain = 0.0
         newly_covered: list[Atom] = []
         for atom in atoms_by_window.get(wid, ()):
-            cov_i = contrib_by_atom[atom][wid] / max_contrib[atom]
+            # max_contrib[atom] is legitimately 0.0 when every carrier of
+            # this atom has log_contribution == 0.0 (no signal strength to
+            # normalize against) -- not an error condition. There is
+            # nothing to normalize, so this window's coverage of the atom
+            # is 0, not a fabricated nonzero value.
+            atom_max = max_contrib[atom]
+            cov_i = (contrib_by_atom[atom][wid] / atom_max) if atom_max else 0.0
             delta_cov = cov_i - cov_max[atom]
             if delta_cov > 0:
                 gain += u[atom] * delta_cov
