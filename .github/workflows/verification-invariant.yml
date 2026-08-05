@@ -36,7 +36,11 @@ jobs:
           cache: pip
 
       - name: Install the minimum needed to import the vocabulary + talk to the DB
-        run: pip install --quiet psycopg[binary]
+        # requirements-ci.txt (platform/python-sidecar) already pins PyJHora==4.8.6 and is the
+        # repo's verified minimal set for exactly this import surface — see that file's header.
+        # detector_liveness imports pipeline.orchestrator.writers.ga_nakshatra, which pulls in
+        # pyjhora_adapter (jhora); without this the job fails with "No module named 'jhora'".
+        run: pip install --quiet -r platform/python-sidecar/requirements-ci.txt
 
       # ── DB reachability (same pattern as #990 / tap-ci.yml's tap-db-gates job) ──────────
       # amjis-postgres has a public IP but ZERO authorized networks, so a runner cannot reach
