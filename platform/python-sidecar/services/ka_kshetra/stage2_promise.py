@@ -288,9 +288,15 @@ def _extract_primary_graha(config: Optional[dict]) -> Optional[str]:
 
 
 def _fetch_cgm_nodes(conn, chart_id: str, ayanamsha_id: str) -> list[dict]:
+    # NOTE: no `constituent_fact_ids_array` here — that column exists on
+    # bodha_cgm_edges only (see _fetch_cgm_edges below), not bodha_cgm_nodes.
+    # Selecting it against the nodes table raised UndefinedColumn in production
+    # (found 2026-08-05, first real ka_kshetra field-build attempt for either
+    # canonical chart); PromiseNode construction below never read it from a
+    # node row anyway (only edges resolve source_fact_id).
     rows = conn.execute(
         """SELECT node_id, node_type, node_subject, node_label_human,
-                  strength_score, constituent_fact_ids_array
+                  strength_score
            FROM bodha_cgm_nodes
            WHERE chart_id = %s AND ayanamsha_id = %s""",
         [chart_id, ayanamsha_id],
