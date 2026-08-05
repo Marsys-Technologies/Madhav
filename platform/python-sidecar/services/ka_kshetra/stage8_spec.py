@@ -212,13 +212,21 @@ def build_timeline_spec(
     an error rather than an invented track — the renderer lays out by row index, and a track
     conjured at render time would land wherever the renderer felt like.
 
+    Zero surviving tracks is NOT treated as an error. It is a real, reachable state: every
+    event class stage4 discovered for this chart can be skipped with `no_class_prior_row`
+    (no overlap with the `brahma_class_priors` N_e corpus), which leaves stage 8 with no
+    windows and no boundaries, hence no domain or clock tracks at all. Raising here would
+    take an honest upstream data gap and turn it into a build crash. Instead this falls
+    through to the same LAW ZERO / honest-empty path an all-empty-rows view already takes:
+    `tracks`, `intervals`, `points` and `bands` all come back `[]`, and `spec_counts()`
+    reports `EMPTY_NO_RENDERABLE_ROWS` — matching migration 496's CHECK constraint, which
+    keys off `n_intervals + n_points + n_bands`, not `n_tracks`.
+
     Ordering is total and deterministic (start date, then id) so two builds of the same
     snapshot are byte-identical, which is what the golden-render test and the field hash both
     depend on.
     """
     _validate_enum(generated_for, VIEWS, "generated_for")
-    if not tracks:
-        raise ValueError("a timeline spec needs at least one track to lay rows out on")
     declared = {t.track_id for t in tracks}
 
     def _require_track(row: Mapping[str, Any], kind: str) -> str:

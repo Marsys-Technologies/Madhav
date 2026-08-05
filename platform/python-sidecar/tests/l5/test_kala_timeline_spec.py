@@ -374,6 +374,37 @@ def test_an_unknown_view_or_enum_value_is_rejected():
         interval_from_window(bad, t_zero=ABHISEK_T_ZERO, track_id="domain:career")
 
 
+def test_zero_surviving_tracks_is_an_honest_empty_spec_not_a_crash():
+    """Real reachable regression (Gate-Chain MORNING REPORT defect #6, chart 482012f1):
+    ka_kshetra's field build can discover event classes that ALL get skipped with
+    `no_class_prior_row` (stage4's `ClassSkipped`) because none overlap the N_e
+    lifetime-count corpus in `brahma_class_priors`. When that happens, stage 8 receives
+    zero windows and zero boundaries, so `_timeline_tracks_and_windows` /
+    `_timeline_points` hand it zero tracks. That must be an honest-empty
+    `kala_timeline_spec` — LAW ZERO — never an unhandled `ValueError` that takes down the
+    whole build.
+    """
+    spec = build_timeline_spec(
+        chart_id=ABHISEK,
+        generated_for="ahead",
+        t_zero=ABHISEK_T_ZERO,
+        now_marker="2026-07-30",
+        field_snapshot_id="kfs_zero_surviving_tracks",
+        weights_version="v0_classical",
+        tracks=(),
+    )
+    assert spec["tracks"] == []
+    assert spec["intervals"] == []
+    assert spec["points"] == []
+    assert spec["bands"] == []
+    counts = spec_counts(spec)
+    assert counts["n_tracks"] == 0
+    assert counts["empty_reason"] == EMPTY_NO_RENDERABLE_ROWS, (
+        "an empty spec must carry LAW ZERO's machine-readable empty_reason, matching "
+        "migration 496's CHECK constraint (empty iff empty_reason is set)"
+    )
+
+
 def test_the_module_contains_no_composed_prose_or_generative_call():
     """brief §7's B.10 prose rule: the argument composer is template-over-computed-data and
     no generative call exists on any serving path."""
