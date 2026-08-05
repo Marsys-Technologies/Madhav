@@ -174,7 +174,7 @@ Canonical artifact versions and paths are defined in `00_ARCHITECTURE/CANONICAL_
 | ORCHESTRATOR_CONVERGENCE_CLOSE | `00_ARCHITECTURE/ORCHESTRATOR_CONVERGENCE_CLOSE_v1_0.md` | 1.0 | CURRENT |
 | L1_GANITA_CLOSURE | `00_ARCHITECTURE/L1_GANITA_CLOSURE_v2_0.md` (v1.0 SUPERSEDED — premature seal, floors stale, enrichment not folded) | 2.1 | CURRENT |
 | L2_BODHA_CAMPAIGN_HANDOFF | `00_ARCHITECTURE/L2_BODHA_CAMPAIGN_HANDOFF_v1_0.md` | 1.0 | CURRENT |
-| CLAUDE | `CLAUDE.md` | 7.1 | CURRENT |
+| CLAUDE | `CLAUDE.md` | 7.4 | CURRENT |
 
 Any path in this snapshot that conflicts with `CANONICAL_ARTIFACTS_v1_0.md §1` is wrong here, not there. `drift_detector.py` enforces this via the canonical-path cross-check (protocol §H.3).
 
@@ -286,6 +286,7 @@ The orchestrator was built once and is FROZEN at `ORCHESTRATOR_CONVERGENCE_CLOSE
 - **No JH-parity oracle** ([[feedback-no-jh-parity-anywhere]]): verification is internal-consistency + classical-rule re-derivation + FORENSIC grounding.
 - **Cockpit truth:** each asset needs a correct chart-scoped `count_sql` on `asset_registry` (stats route reads `count_sql`, NOT `asset_throughput` — the L1 trap).
 - **Surgical migrations, verified:** never RELY on the deploy-time bulk runner to apply your migration blindly — author it surgically, VERIFY it actually applied, and NEVER EDIT A MIGRATION FILE AFTER IT HAS BEEN APPLIED. The pipeline running `migrate.ts` on every deploy is fine and intended; blindly trusting it without verification is not ([[feedback-deploy-migrations-silent-noop]], re-scoped 2026-07-30 per DVA Ruling 58 — the original hazard was never "bulk migration is dangerous," it was "migrations silently doing nothing while the deploy reports success").
+- **`single` is a permitted tier for `ga_sensitive` (S7 ruling, native-authorized 2026-08-06):** `ga_sensitive_writer.py`'s build-fatal guard used to HALT the entire GA5 build the instant any row computed as `single` (no second derivation ran). That guard is relaxed: a `single` row is stored honestly (with a warning log) rather than crashing the whole ayanamsha's build over a row that was never claimed to be verified. This is the same "honest tier over a broadcast/fabricated claim" principle as the floors-aspirational rule above — never emit `two_pass_verified` for a row nothing double-checked, but a row a writer is honestly certain nothing could double-check should not be build-fatal either. Writers must still emit the tier via `brahmagyan/verification_vocab.py` named constants (`TWO_PASS_VERIFIED`, `UNVERIFIED_DEFAULT`, …), never a bare string literal.
 
 ### §N.5 — L1 is the authority over L2+ derivations ([[the MSR drift handoff]])
 
@@ -372,7 +373,15 @@ usually true" or "nothing has broken yet" is not a substitute for a real detecto
 
 ---
 
-*End of CLAUDE.md v7.3 (2026-08-01, close-verification pass) — an independent, read-only
+*End of CLAUDE.md v7.4 (2026-08-06, post-salvage close-out, T3/S7 ruling, native-authorized) — §N.4
+gains a new bullet: `single` is now a permitted tier for `ga_sensitive` (`ga_writers/ga_sensitive_writer.py`'s
+build-fatal guard, which used to HALT the entire GA5 build on any `single` row, now stores such rows
+honestly with a warning instead — see `demote_undeclared_predicate_tables.py`/T2 sibling PR for the
+same "honest tier, not a promotion" doctrine applied elsewhere this campaign). Writers must still
+emit tiers via `brahmagyan/verification_vocab.py` named constants, never a literal. §D's own CLAUDE
+self-row version corrected 7.1 → 7.4 (had drifted behind the footer's own v7.2/v7.3 bumps — a
+GA.1-class registry-disagreement, fixed in place, no content change beyond the number). Prior: v7.3
+(2026-08-01, close-verification pass) — an independent, read-only
 verification of the v7.2/PURNATA_CLOSE_REPORT close found two real discrepancies and fixed both,
 nothing else touched: backlog items 2 and 5 cited blockers (C4, PR #910) that had already cleared
 within this same arc — reworded to state the actual condition inline rather than an indirect
