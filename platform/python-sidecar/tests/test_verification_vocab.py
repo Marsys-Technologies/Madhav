@@ -101,7 +101,7 @@ def test_chart_facts_check_constraint_matches_all_statuses_exactly():
         sql,
         re.DOTALL,
     )
-    assert match, "could not locate the CHECK (... IN (...)) NOT VALID clause in 537's SQL"
+    assert match, "could not locate the CHECK (... IN (...)) NOT VALID clause in 539's SQL"
     in_list = {m.group(1) for m in re.finditer(r"'([a-z_0-9]+)'", match.group(1))}
 
     assert in_list == ALL_STATUSES, (

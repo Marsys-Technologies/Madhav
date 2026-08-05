@@ -26,9 +26,19 @@
 -- zero live chart_facts rows violate this constraint. S5's drain (59,282 rows) and S6's
 -- ga_structural backfill (310,128 rows across all 3 charts) are the reason that's true now — both
 -- ran earlier in the same campaign, specifically to make this migration safe to add.
+--
+-- lock_timeout: NOT VALID skips the validation scan, but the ALTER TABLE still needs a brief
+-- ACCESS EXCLUSIVE to write the constraint into the catalog. On a live table, if any other
+-- transaction holds a lock on chart_facts at that moment, this DDL queues for it — and Postgres's
+-- FIFO lock queue means every NEW query against chart_facts issued after that queues behind the
+-- pending DDL too, turning a cheap catalog update into a stall/pileup. lock_timeout aborts this
+-- transaction cleanly instead of queueing indefinitely; migration_number_guard-reviewed addition
+-- (migration-guard pass, DEFECT SALVAGE S8, WARN-2), scoped to this transaction only.
 -- =============================================================================
 
 BEGIN;
+
+SET LOCAL lock_timeout = '2s';
 
 DO $$
 BEGIN
