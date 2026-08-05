@@ -1,9 +1,17 @@
 ---
 artifact: PARIPRASHNA_TARGET_ARCHITECTURE_v0_1.md
 canonical_id: PARIPRASHNA_TARGET_ARCHITECTURE
-version: 0.9
-status: DRAFT — LIVING
-verified_against_tree: 2026-07-19 (full sweep, post-adversarial-review + PG-1 grounding-audit integration + PG-2 diagnostic-wave corrections — see §0.5, §16.7, §16.8, §20)
+version: 0.10
+status: DRAFT — LIVING · ⚠ SUPERSEDED-IN-PART for MCP/retrieval/data-plane (see banner)
+verified_against_tree: >
+  2026-07-19 for PG-1/PG-2 corrections. STALE for MCP/retrieval/data-plane as of
+  2026-07-27: the Retrieval Plane Elevation (W0–W6) + Residual Closure (RC-01–17)
+  campaigns, then a further arc (SARVA-SIDDHI → Elevation v2.1 → SATYA-ŚEṢA →
+  PŪRṆA-VIRĀMA → SHODHANA → SAMĀPANA → PARIŚODHANA), landed and deployed after
+  these registers froze. Several `[CORRECTED PG-1]` verdicts are now stale in the
+  OPPOSITE direction (say "unbuilt" of shipped things). Live MCP surface 79→88
+  /health (~111 tools/list). RG-1 (retrieval-grounding audit) re-baselines to
+  v0.11. Do not implement MCP/retrieval/data-plane from current registers.
 authored_by: Claude (Cowork) + Fable 5 sub-agents, in consultation with the native
 opened: 2026-07-19
 supersedes: none (new artifact)
@@ -26,6 +34,36 @@ governing_principle: >
 ---
 
 # Paripraśna — Target Architecture (Master Document)
+
+> ## ⚠ SUPERSEDED-IN-PART — 2026-07-27 (MCP / retrieval / data plane)
+>
+> These registers were **inputs** to a build campaign that then shipped much of
+> the target state and did not update them. **Several `[CORRECTED PG-1]`
+> verdicts in §1.1 are now stale in the opposite direction** — they say
+> "unbuilt" of things that deployed. To be verified by **RG-1** (the
+> retrieval-grounding audit, `briefs/CLAUDECODE_BRIEF_RG1_RETRIEVAL_GROUNDING_v1_0.md`),
+> **not trusted from this banner:**
+>
+> | Item | §1/§2 says | Landed reality (2026-07-27) |
+> |---|---|---|
+> | **A-03** projections | "UNBUILT" | **BUILT** — `full`/`compact`/`consult` profiles, single generator + CI parity gate. `marsys_drill` not the mechanism. |
+> | **A-07** `prashna_ask` | "zero source hits; one door" | **BUILT & DEPLOYED**, but a **single-pass plan→floor→one-synthesis job** (poll via `prashna_status`), **NOT** the extracted agentic loop. Register-lint/sentinel-rewrite gates **not** on the route. |
+> | **OT-2 / OT-10** | "open forks" | **RESOLVED in code** — job-handle polling; `full`/`compact`/`consult` scope-gating. |
+> | **A-19** NO-LEAKAGE | arm-1 "0%" | **arm-2 BUILT** (runtime filter, both doors, closed a real fail-open seam); **arm-1 (5 DB roles) still 0%** — the critical gap stands. |
+> | **OT-11** ledgers | three, unresolved | **`standing_predictions_read` reads `brahma_prospective_ledger`** — for *standing/prospective* predictions the ledger is resolved in code; the Mīmāṃsā *calibration* ledger is distinct. OT-11 is narrower than §18 frames it. |
+> | **Tool surface** | "~118/120/139" | **88 `/health`, ~111 `tools/list`** and moving. |
+> | **Classical-texts corpus** | not present | **NEW L0 surface (5 tools), NOT embedding-RAG** — `classical_text_chunks` has no vector column; topic-array + full-text. The tools' "semantic search" wording overstates the schema. |
+> | **`dossier`** | not present | **Completeness-gated composition tool** — withholds verdicts until 100% coverage. **Its defeat is live**: naive agents pick `assess_*` over it, scoring 15–33% on the depth mandate. **The planner must route to `dossier`.** |
+> | **Gochara/temporal + `bodha_mechanisms_get` + KP + introspection** | not present | **NEW live surfaces** (D-4a/D-5/D-4b + Elevation). Gochara operationally fragile (`DATABASE_URL not set`); `ganita_database_schema_get` is the surface to audit for the threat model. |
+>
+> **Meta-finding (outranks any single delta): the codebase is moving faster than
+> this document can track — two grounding sweeps in one day were each stale
+> within the hour, and this banner itself was overwritten once by a concurrent
+> session mid-edit.** A frozen tool inventory is the wrong instrument. RG-1's
+> durable output is the **`shape_delta` register** (how shipped ≠ designed) and a
+> **live census at BIND**. `CURRENT_STATE §2` also lags git HEAD — ground against
+> HEAD. **Do not implement §1.1, §2, §6.3–§6.5, §7.4, §8, §14A from the current
+> text until RG-1 produces v0.11.**
 
 > **How to use this document.** §1 and §2 are the live registers — settled
 > decisions and open forks. They are the first thing to read and the first
