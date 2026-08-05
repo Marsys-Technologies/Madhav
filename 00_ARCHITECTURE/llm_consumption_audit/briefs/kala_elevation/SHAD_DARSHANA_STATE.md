@@ -30,6 +30,123 @@ now free — Phase 2 (gate chain) begins below.
 
 ---
 
+## CONSOLIDATED UPDATE — DEFECT #6/#7 CLOSEOUT + SAFETY-NET TRIAGE (2026-08-06)
+
+Four items closed out tonight, each dispatched as its own worktree/lane per the standing house
+convention (fresh worktree cut from the latest `origin/shad-darshana/integration`, TDD:
+failing test first then fix, lane PR opened against `shad-darshana/integration`, merged
+autonomously once CI went green — no human gate on any of these four; only PR-merge-to-`main`,
+deploys, and traffic cutover remain human-gated). `main` and production were not touched by any
+of the four items below.
+
+### 1. Defect #6 — `ka_kshetra` stage-8 crash on zero surviving tracks
+
+Worktree cleaned up. Here's the summary.
+
+## Summary
+
+**Defect fixed:** Gate-Chain MORNING REPORT defect #6. `platform/python-sidecar/services/ka_kshetra/stage8_spec.py::build_timeline_spec` raised an unhandled `ValueError` ("a timeline spec needs at least one track to lay rows out on", at line 221) whenever zero tracks survived to stage 8. This is a real reachable path for chart `482012f1`: `ka_kshetra`'s field build discovers event classes via `bodha_pratijna`, every discovered class gets skipped `no_class_prior_row` (no overlap with the `brahma_class_priors` N_e lifetime-count corpus), leaving zero `kala_field_windows` and (when boundaries are also empty) zero tracks — so `_run_stage8` (writer.py) crashed the whole writer instead of writing an honest-empty row.
+
+**Fix:** Removed the `if not tracks: raise ValueError(...)` guard. `build_timeline_spec` now falls through to the same all-empty-rows path the module already had: `tracks`/`intervals`/`points`/`bands` all come back `[]`, and `spec_counts()` reports the existing `EMPTY_NO_RENDERABLE_ROWS` `empty_reason` — matching migration 496's CHECK constraint, which keys off `n_intervals + n_points + n_bands`, never `n_tracks`. No new empty-reason vocabulary invented (house style already present in this file, checked via grep first).
+
+**Files changed:**
+- `platform/python-sidecar/services/ka_kshetra/stage8_spec.py` — removed the crash guard, updated docstring
+- `platform/python-sidecar/tests/l5/test_kala_timeline_spec.py` — new unit test `test_zero_surviving_tracks_is_an_honest_empty_spec_not_a_crash`
+- `platform/python-sidecar/tests/l3/ka_kshetra/test_writer.py` — new full-writer integration test `test_zero_surviving_tracks_writes_an_honest_empty_row_instead_of_crashing` (reproduces the real defect end-to-end: `with_lifetime_prior=False` + empty `kala_field_boundaries`)
+
+**TDD evidence:** Both new tests confirmed failing against the pre-fix code (`ValueError: a timeline spec needs at least one track to lay rows out on`, at `stage8_spec.py:221`), then passing after the fix. Verified by reverting just the fix via `git apply -R`/`git checkout`, re-running, then reapplying.
+
+**Test results:**
+- `pytest tests/l3/ka_kshetra/ tests/l5/test_kala_timeline_spec.py -v` → 244 passed
+- Exact `ci.yml` command reproduced locally: `pytest tests/ bodha_writers/__tests__ --ignore=tests/test_pyjhora_adapter --ignore=tests/test_dasha_chain.py --ignore=tests/extractors/test_cgm_extractor.py --ignore=tests/test_l0_remedy_corpus.py -m "not integration" -q --tb=short --no-header` → **5099 passed, 24 skipped, 86 deselected, 0 failed**
+- Circularity guard tests (`test_ka_jivana_parva_circularity_guard.py`, `ka_kshetra/test_circularity_guard.py`) → all green
+
+**PR:** https://github.com/Marsys-Technologies/Madhav/pull/1064 — opened `defect/w2-stage8-zero-tracks` → `shad-darshana/integration`, all 14 CI checks passed (Unit Tests, Governance Gates, DB Integration Tests, TypeScript x2, Coverage Gate, Density Census, etc.; Census Battery legitimately self-skipped), merged autonomously via squash as commit `0ae9ead9` on `shad-darshana/integration`.
+
+**Commands run:** `git worktree add ... -b defect/w2-stage8-zero-tracks origin/shad-darshana/integration`; `pytest` (various scopes above); `git rebase origin/shad-darshana/integration` (picked up a concurrently-merged sibling fix, commit `c8c11769`, before push); `git push -u origin defect/w2-stage8-zero-tracks`; PR create/merge via GitHub MCP tools. No migration, no deploy, no production DB touched, `main` untouched.
+
+### 2. Defect #7 — `submodular.select_submodular` divide-by-zero on sparse per-atom contribution
+
+Confirmed on `origin/shad-darshana/integration` HEAD. Task complete.
+
+## Summary
+
+**Defect #7** (Gate-Chain MORNING REPORT, commit 5ff0791d): `marginal_gain` inside `select_submodular` (`platform/python-sidecar/services/ka_kshetra/submodular.py:165`) computed `contrib_by_atom[atom][wid] / max_contrib[atom]` unconditionally. `max_contrib[atom]` is legitimately `0.0` when every candidate carrying an atom has `log_contribution == 0.0` for that driver term — real and reachable via chart `1c826d5a`'s field build (2 of 12 discovered classes have real N_e coverage; the rest are exactly this sparse-contribution scenario), causing `ZeroDivisionError` in Python (`0.0/0.0` raises).
+
+**Fix**: guarded the division — `cov_i = (contrib_by_atom[atom][wid] / atom_max) if atom_max else 0.0`. When there's nothing to normalize against, that atom's coverage contribution is honestly 0 for the window, not a fabricated value. Nonzero-denominator behavior unchanged (verified by the full existing 16-test suite + a lazy-vs-naive-greedy cross-check + a brute-force approximation-bound check, all still passing).
+
+**TDD**: Read `platform/python-sidecar/tests/l3/test_ka_kshetra_submodular.py` first. Added `TestZeroMaxContribution` (3 cases — single-carrier zero atom, mixed zero/nonzero atoms on one candidate, atom shared by two candidates both zero) reproducing the exact `ZeroDivisionError`. Confirmed all 3 failed pre-fix (`ZeroDivisionError: float division by zero` at line 165). Applied the fix; confirmed all 19 tests in the file pass, and the full `tests/l3/` suite: 1094 passed, 32 skipped (unrelated DB-integration tests).
+
+**Files changed**:
+- `platform/python-sidecar/services/ka_kshetra/submodular.py` (+7/-1)
+- `platform/python-sidecar/tests/l3/test_ka_kshetra_submodular.py` (+53)
+
+**Commands run** (in a fresh worktree cut from `origin/shad-darshana/integration`, branch `defect/w2-submodular-zerodiv`):
+```
+git worktree add -b defect/w2-submodular-zerodiv <path> origin/shad-darshana/integration
+python3 -m pytest tests/l3/test_ka_kshetra_submodular.py -q      # baseline: 16 passed
+python3 -m pytest tests/l3/test_ka_kshetra_submodular.py -q -k TestZeroMaxContribution   # 3 failed (pre-fix, ZeroDivisionError)
+# applied fix
+python3 -m pytest tests/l3/test_ka_kshetra_submodular.py -v     # 19 passed
+python3 -m pytest tests/l3/ -q                                   # 1094 passed, 32 skipped
+git commit ...
+git push -u origin defect/w2-submodular-zerodiv
+gh pr create --base shad-darshana/integration ...
+gh run watch 31038352172 --repo Marsys-Technologies/Madhav --exit-status   # all checks green
+gh pr merge 1061 --repo Marsys-Technologies/Madhav --squash --delete-branch
+```
+
+**PR**: https://github.com/Marsys-Technologies/Madhav/pull/1061 — MERGED into `shad-darshana/integration` at `c8c11769a635114d01fd81f4d53e6cf027403dec`. All 14 CI checks passed (Coverage Gate, DB Integration Tests, Density Census, Earned-Signal Gate, Fact-Category Pinning Gate, Governance Gates, ICR PR Gate, Naming Governance Gate, Planner Regression Gate, Secret Scan, TypeScript ×2, Unit Tests; Census Battery correctly skipped as non-applicable to this diff). Branch `defect/w2-submodular-zerodiv` deleted post-merge per squash-merge flag. `origin/main` and production untouched; no migrations involved.
+
+### 3. Sweep-protection migration (corpus-protection layers 3–4)
+
+Standing by for the Monitor's final CI report before proceeding to merge PR #1066.
+
+### 4. Safety-net anomaly triage — premature sweep-relay failures around 2026-08-03
+
+## Triage: Premature sweep-relay failures around 2026-08-03 (`ka_gochara_sweep`)
+
+### Access/tooling used
+- `postgres` MCP (`mcp__postgres__query`) — read-only, live production DB: `build_runs`, `build_run_assets`, `asset_throughput`, `information_schema.tables` (checked for an in-DB scheduler/cron log table — **none exists**, confirmed empty result).
+- `git log`/`git show` on this checkout to find prior investigation records.
+- **No gcloud / Cloud Run / Cloud Scheduler log access in this sandbox** — confirmed by trying (no such MCP tool exposed) rather than assumed. Everything below sourced from the DB queries plus a **pre-existing, already-committed project ledger** (not fabricated by me).
+
+### What I found
+
+**1. The DB timeline (independently queried, ground truth):**
+`build_runs.triggered_by = 'int929-relay-safety-482012f1'` shows a build_run inserted **every 15 minutes from 2026-08-03T21:45:02Z through 2026-08-04T03:30:02Z** (21 consecutive rows). Every one of these has `started_at = NULL`, `state = 'failed'`, `last_error = 'orphan-watchdog: run never dispatched'`, and its child `build_run_assets` row is `state='aborted'`, `started_at/ended_at = NULL`. This is exactly the signature of the cockpit watchdog's reaper #3 (`platform/src/app/api/cockpit/watchdog/route.ts`, clause 3: a `build_runs` row stuck `state='planned'` with `started_at IS NULL` for >10 min gets force-failed) — i.e., a build_run row was inserted but the actual Cloud Run job dispatch never happened.
+
+Meanwhile the **real** relay run (Generation 2, `triggered_by='int-929-gochara-relay-resume-482012f1'`, `build_run 5b5f6a98…`) had been dispatched cleanly at **21:13:15Z** and ran undisturbed to its natural 6h container-budget end at **03:13:21Z** — confirming Gen 2 itself was never killed; the failures are a *second, parallel, spurious* dispatcher.
+
+**2. The safety net's own documented expiry window was ~2026-08-04T03:13:05Z** (6h after Gen 2's 21:13 start) — recorded explicitly in the ledger below as "**Next expiry ~2026-08-04T03:13:05Z. Scheduled wakeup armed ahead of it.**" So the failed attempts (starting 21:45Z, ~32 min after Gen 2's dispatch) began **~5.5 hours before** the safety net's own intended firing point — exactly the anomaly flagged.
+
+**3. A prior session already root-caused and fixed this**, with real GCP log access I don't have. Found at `00_ARCHITECTURE/llm_consumption_audit/briefs/kala_elevation/SHAD_DARSHANA_STATE.md` (present in this worktree; also landed on `origin/shad-darshana/integration` via commit `a64555b3`/`df696ff5`). Verbatim excerpt (their find, not mine):
+
+> **Root cause, confirmed via Cloud Run logs (not guessed):**
+> ```
+> google.api_core.exceptions.PermissionDenied: 403 Permission 'run.jobs.runWithOverrides'
+> denied on resource '.../jobs/brahma-build-pipeline-job'
+> ```
+> `roles/run.invoker` (granted at build time) covers running a job with its default config; dispatching WITH container overrides (`--run-id`, `MARSYS_RUN_ID`) needs the separate `run.jobs.runWithOverrides` permission. This session's original manual test (21:28 UTC) only ever exercised the idempotent no-op/"skip-active" branch... it never actually called `run_job()`, so the gap went undetected.
+
+Fix (already applied by that session, **not by me**): granted `roles/run.jobsExecutorWithOverrides` on `brahma-build-pipeline-job` to `int929-relay-safety@madhav-astrology.iam.gserviceaccount.com` at **2026-08-04 ~04:52 UTC**, proven working with "ONE OBSERVED CATCH" at **2026-08-04 ~14:16 UTC** (`int929-relay-safety-*` build_runs reaching `state='running'` with a real dispatch). The safety net is currently **PAUSED** (per a later, unrelated native ruling on 2026-08-05 — corpus-protection migration layers 3–4 aren't shipped yet, so it's deliberately not left auto-dispatching against `kala_gochara_windows`).
+
+The service itself (`int929-gochara-relay-safety`, Cloud Run + Cloud Scheduler `*/15 * * * *`) was **deployed from an uncommitted** local checkout at the time of that earlier session's fix — see that session's own record for the full detail; not re-verified independently tonight beyond the DB timeline above.
+
+### N_e corpus-widening — recorded verbatim, native-ratified tonight (NOT this session's work)
+
+> 482012f1's structural zero-N_e-overlap gap is recorded as a COMMISSIONED-WORK CANDIDATE
+> named "N_e corpus-widening (Tranche-2 re-sourcing)", explicitly NOT tonight's work,
+> requiring the same Tier N-i decision bar as ADJUDICATION-2 — pending native decision, not
+> pre-approved.
+>
+> Design lesson for that future widening work: Tranche-1's classes were chosen supply-side
+> (which published statistics exist) with no check against the canonical charts' actual LEL
+> class distributions; demand-side prioritization (which classes the real LELs are actually
+> dense in) must be the first input next time, so this exact gap cannot recur.
+
+---
+
 ## MORNING REPORT — SESSION-B-BUILD (Gate-Chain session, 2026-08-05 ~05:33 UTC → ~12:00 UTC, ~6.5h)
 
 **Status: PARKED-HONEST, not COMPLETE.** Gates W2 and W3 do NOT close this session. What
