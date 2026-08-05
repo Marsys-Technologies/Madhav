@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerUser } from '@/lib/firebase/server'
 import { query, getPool } from '@/lib/db/client'
-import { resolveBuildPlan, computeDownstreamClosure, type RegistryEntry, type ThroughputEntry, type BuildAction, type BuildScope } from '@/lib/build/plan'
+import { resolveBuildPlan, computeDownstreamClosure, PROTECTED_ASSET_MESSAGE, type RegistryEntry, type ThroughputEntry, type BuildAction, type BuildScope } from '@/lib/build/plan'
 import { invokeRunJob } from '@/lib/build/jobInvoker'
 import { getJobImageTag } from '@/lib/cloud_run/jobs'
 import { filterScopeAssets } from '@/lib/cockpit/clearScopeFilter'
@@ -132,7 +132,7 @@ export async function POST(req: NextRequest) {
   // Resolve the plan — filter registry by allowedScopes so non-super-admin plans
   // silently exclude all L0/global assets (mirrors clear's filterScopeAssets logic).
   // Also fetch target_table + count_sql for clear-before execution.
-  const [registryResult, throughputResult] = await Promise.all([
+  const [registryResult, throughputResult, protectedResult] = await Promise.all([
     query<RegistryEntryWithScope>(
       `SELECT asset_id, layer, COALESCE(depends_on, '{}') AS depends_on, estimated_seconds,
               scope, target_table, count_sql
@@ -148,7 +148,16 @@ export async function POST(req: NextRequest) {
         ORDER BY asset_id, (chart_id = $1) DESC NULLS LAST`,
       [chart_id]
     ),
+    // SHAD-DARSHANA sweep-protection Phase 1a, Layer 1/2 — the REAL build-dispatch guard
+    // (not merely a preview: this route inserts build_runs and invokes the Cloud Run job).
+    // asset_ids protected for THIS chart_id (build_protected_assets, migration 539).
+    query<{ asset_id: string }>(
+      'SELECT asset_id FROM build_protected_assets WHERE chart_id=$1',
+      [chart_id]
+    ),
   ])
+
+  const protectedAssetIds = new Set(protectedResult.rows.map(r => r.asset_id))
 
   // Filter registry to allowed scopes — non-super-admin silently excludes L0/global assets
   const allowedRegistry = registryResult.rows.filter(r => allowedScopes.includes(r.scope))
@@ -161,7 +170,7 @@ export async function POST(req: NextRequest) {
     : allowedRegistry
 
   const throughput = new Map(throughputResult.rows.map(r => [r.asset_id, r]))
-  const buildPlan = resolveBuildPlan({ scope, scope_target, action, registry: planRegistry, throughput })
+  const buildPlan = resolveBuildPlan({ scope, scope_target, action, registry: planRegistry, throughput, protectedAssetIds })
   const plan = buildPlan.plan_waves.flat()
 
   // Gate 4: Pre-flight gate (built into resolveBuildPlan).
@@ -171,10 +180,21 @@ export async function POST(req: NextRequest) {
       error: 'Build blocked: upstream assets must be rebuilt first',
       code: 'UPSTREAM_BLOCKED',
       blockers: buildPlan.blockers,
+      ...(buildPlan.protected_assets.length > 0 ? { protected_assets: buildPlan.protected_assets } : {}),
     }, { status: 422 })
   }
 
   if (plan.length === 0) {
+    // Distinguish an honest "everything withheld as protected" from the ordinary
+    // "already lit" no-op — the two have different remedies and must not read the same
+    // (a protected asset is never silently folded into "nothing to do").
+    if (buildPlan.protected_assets.length > 0) {
+      return NextResponse.json({
+        error: `Build blocked: every candidate in scope is protected (${PROTECTED_ASSET_MESSAGE})`,
+        code: 'PROTECTED',
+        protected_assets: buildPlan.protected_assets,
+      }, { status: 422 })
+    }
     return NextResponse.json({
       error: 'Nothing to build: all assets in scope are already built. Use action=rebuild to force a rebuild.',
       code: 'ALL_LIT',
@@ -229,12 +249,16 @@ export async function POST(req: NextRequest) {
   // we never clear data only to fail on a precondition check.
   if (clear_before) {
     // Compute clear scope from the full registry (all scopes, not just has_writer).
-    // Exclude brahmagyan unless force_l0 is explicitly set.
+    // Exclude brahmagyan unless force_l0 is explicitly set, AND exclude any asset
+    // protected for this chart_id — a protected asset is never cleared, whether or
+    // not it happens to also be part of the build plan above.
     const fullRegistry = registryResult.rows
     let clearAssets = filterScopeAssets(fullRegistry, scope, scope_target, allowedScopes) as RegistryEntryWithScope[]
     if (!force_l0) {
       clearAssets = clearAssets.filter(a => a.layer !== 'brahmagyan')
     }
+    const clearProtectedAssets = clearAssets.filter(a => protectedAssetIds.has(a.asset_id))
+    clearAssets = clearAssets.filter(a => !protectedAssetIds.has(a.asset_id))
     const clearAssetIds = clearAssets.map(a => a.asset_id)
 
     // Compute transitive downstream outside the clear scope → mark stale
@@ -386,7 +410,12 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({
-      data: { run_id: runId, plan, asset_count: plan.length, job_image_tag: jobImageTag, cleared_asset_count: clearAssetIds.length },
+      data: {
+        run_id: runId, plan, asset_count: plan.length, job_image_tag: jobImageTag, cleared_asset_count: clearAssetIds.length,
+        ...(buildPlan.protected_assets.length > 0 || clearProtectedAssets.length > 0
+          ? { protected_assets: buildPlan.protected_assets }
+          : {}),
+      },
     }, { status: 201 })
   }
 
@@ -437,7 +466,12 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  return NextResponse.json({ data: { run_id: runId, plan, asset_count: plan.length, job_image_tag: jobImageTag } }, { status: 201 })
+  return NextResponse.json({
+    data: {
+      run_id: runId, plan, asset_count: plan.length, job_image_tag: jobImageTag,
+      ...(buildPlan.protected_assets.length > 0 ? { protected_assets: buildPlan.protected_assets } : {}),
+    },
+  }, { status: 201 })
 }
 
 export async function GET(req: NextRequest) {

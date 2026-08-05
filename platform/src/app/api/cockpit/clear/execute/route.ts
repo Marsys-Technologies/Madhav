@@ -63,14 +63,31 @@ export async function POST(req: NextRequest) {
   }
 
   // Load registry
-  const { rows: registry } = await query<RegistryRow>(
-    `SELECT asset_id, layer, COALESCE(depends_on, '{}') AS depends_on, estimated_seconds,
-            scope, target_table, count_sql
-     FROM asset_registry ORDER BY layer, sort_order`
-  )
+  const [{ rows: registry }, { rows: protectedRows }] = await Promise.all([
+    query<RegistryRow>(
+      `SELECT asset_id, layer, COALESCE(depends_on, '{}') AS depends_on, estimated_seconds,
+              scope, target_table, count_sql
+       FROM asset_registry ORDER BY layer, sort_order`
+    ),
+    // SHAD-DARSHANA sweep-protection Phase 1a, Layer 1/2. Re-derived identically to
+    // clear/route.ts's preview so a protected asset is excluded from BOTH the hash
+    // input AND the actual DELETE loop below — a protected pair is never merely hidden
+    // from the preview while still being cleared here, and the hash still matches a
+    // preview computed the same way. kala_gochara_windows additionally carries a
+    // DB-level trigger guard (migration 539) as defense-in-depth; this exclusion is
+    // the ONLY guard for any other asset a native later adds to build_protected_assets.
+    query<{ asset_id: string }>(
+      'SELECT asset_id FROM build_protected_assets WHERE chart_id=$1',
+      [chart_id]
+    ),
+  ])
+  const protectedAssetIds = new Set(protectedRows.map(r => r.asset_id))
 
-  // Re-derive scope assets (same logic as preview)
-  const scopeAssets = filterScopeAssets(registry, scope, scope_target, allowedScopes) as RegistryRow[]
+  // Re-derive scope assets (same logic as preview), then withhold protected ones —
+  // must match clear/route.ts's exclusion exactly or the hash below never matches a
+  // genuine preview.
+  const rawScopeAssets = filterScopeAssets(registry, scope, scope_target, allowedScopes) as RegistryRow[]
+  const scopeAssets = rawScopeAssets.filter(a => !protectedAssetIds.has(a.asset_id))
 
   const affectedAssetIds = scopeAssets.map(r => r.asset_id)
 

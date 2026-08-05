@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const [registryResult, throughputResult] = await Promise.all([
+    const [registryResult, throughputResult, protectedResult] = await Promise.all([
       query<RegistryEntry>(
         `SELECT asset_id, layer, COALESCE(depends_on, '{}') AS depends_on, estimated_seconds
          FROM asset_registry WHERE has_writer = true ORDER BY layer, sort_order`
@@ -40,16 +40,26 @@ export async function POST(req: NextRequest) {
           ORDER BY asset_id, (chart_id = $1) DESC NULLS LAST`,
         [chart_id]
       ),
+      // SHAD-DARSHANA sweep-protection Phase 1a, Layer 1/2 — the planner guard.
+      // asset_ids protected for THIS chart_id (build_protected_assets, migration 539).
+      // resolveBuildPlan withholds any of these from plan_waves and surfaces them via
+      // BuildPlan.protected_assets instead of silently including them in a build/rebuild/
+      // update/cascade plan.
+      query<{ asset_id: string }>(
+        'SELECT asset_id FROM build_protected_assets WHERE chart_id=$1',
+        [chart_id]
+      ),
     ])
 
     const throughput = new Map(throughputResult.rows.map(r => [r.asset_id, r]))
-    const buildPlan = resolveBuildPlan({ scope, scope_target, action, registry: registryResult.rows, throughput })
+    const protectedAssetIds = new Set(protectedResult.rows.map(r => r.asset_id))
+    const buildPlan = resolveBuildPlan({ scope, scope_target, action, registry: registryResult.rows, throughput, protectedAssetIds })
     const flatPlan = buildPlan.plan_waves.flat()
 
     // L-12: Run the same bo_* precondition checks that runs/route.ts performs, so the plan preview
     // shows accurate `blocked`/`blockers` state rather than an optimistic plan that would fail at
     // dispatch time.  Only run when the plan would include Bodha (bo_*) assets.
-    let preconditionBlockers: string[] = []
+    const preconditionBlockers: string[] = []
     if (flatPlan.some((id: string) => id.startsWith('bo_'))) {
       const planBuildsL1 = flatPlan.includes('ga_positions') && flatPlan.includes('ga_structural')
       const [chartFactsRes, gaStructuralRes, remedyCorpusRes] = await Promise.all([

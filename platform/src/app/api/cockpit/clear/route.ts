@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerUser } from '@/lib/firebase/server'
 import { query } from '@/lib/db/client'
-import { computeDownstreamClosure, type RegistryEntry } from '@/lib/build/plan'
+import { computeDownstreamClosure, PROTECTED_ASSET_MESSAGE, type RegistryEntry } from '@/lib/build/plan'
 import { createHash } from 'crypto'
 import { filterScopeAssets } from '@/lib/cockpit/clearScopeFilter'
 import { deriveDeleteSqlFromCountSql, EXPLICIT_CLEAR_OPS } from '@/lib/cockpit/assetClearSpec'
@@ -86,11 +86,21 @@ export async function POST(req: NextRequest) {
   }
 
   // Load registry (including names + layer for E1/E2 structured display)
-  const { rows: registry } = await query<RegistryRow>(
-    `SELECT asset_id, layer, COALESCE(depends_on, '{}') AS depends_on, estimated_seconds,
-            scope, target_table, count_sql, english_name, sanskrit_name
-     FROM asset_registry ORDER BY layer, sort_order`
-  )
+  const [{ rows: registry }, { rows: protectedRows }] = await Promise.all([
+    query<RegistryRow>(
+      `SELECT asset_id, layer, COALESCE(depends_on, '{}') AS depends_on, estimated_seconds,
+              scope, target_table, count_sql, english_name, sanskrit_name
+       FROM asset_registry ORDER BY layer, sort_order`
+    ),
+    // SHAD-DARSHANA sweep-protection Phase 1a, Layer 1/2 — the clear-preview guard.
+    // asset_ids protected for THIS chart_id (build_protected_assets, migration 539).
+    query<{ asset_id: string }>(
+      'SELECT asset_id FROM build_protected_assets WHERE chart_id=$1',
+      [chart_id]
+    ),
+  ])
+  const protectedAssetIds = new Set(protectedRows.map(r => r.asset_id))
+
   // Build id→meta lookup for UI display (E1/E2)
   const assetMetaMap = new Map<string, { label: string; layer: string; sanskrit_name: string }>(
     registry.map(r => [r.asset_id, {
@@ -104,7 +114,14 @@ export async function POST(req: NextRequest) {
   )
 
   // Determine scope assets — respect role-based allowed scopes
-  const scopeAssets = filterScopeAssets(registry, scope, scope_target, allowedScopes) as RegistryRow[]
+  const rawScopeAssets = filterScopeAssets(registry, scope, scope_target, allowedScopes) as RegistryRow[]
+
+  // Withhold protected (asset_id, chart_id) pairs BEFORE any clear-spec resolution or
+  // counting — a protected asset is never counted, never marked clearable, and never
+  // appears in affected_assets. Surfaced instead via preview.protected_assets, exactly
+  // as the build planner (POST /api/cockpit/plan) withholds it from plan_waves.
+  const protectedScopeAssets = rawScopeAssets.filter(a => protectedAssetIds.has(a.asset_id))
+  const scopeAssets = rawScopeAssets.filter(a => !protectedAssetIds.has(a.asset_id))
 
   // Validate target_table names for SQL safety
   for (const asset of scopeAssets) {
@@ -236,6 +253,14 @@ export async function POST(req: NextRequest) {
     label: assetLabelMap.get(a.asset_id) ?? a.asset_id,
   }))
 
+  // SHAD-DARSHANA sweep-protection Phase 1a — protected assets, surfaced explicitly
+  // rather than silently included in (or silently dropped from) the clear preview.
+  const protectedAssetsList = protectedScopeAssets.map(a => ({
+    id: a.asset_id,
+    label: assetLabelMap.get(a.asset_id) ?? a.asset_id,
+    message: PROTECTED_ASSET_MESSAGE,
+  }))
+
   // Compute transitive downstream (assets outside scope that would become stale)
   const downstreamSet = computeDownstreamClosure(affectedAssetIds, registry)
   // Remove any that are already in scope
@@ -304,6 +329,10 @@ export async function POST(req: NextRequest) {
     total_rows: totalRows,
     affected_assets: affectedAssetIds,
     not_clearable_assets: notClearableAssetsList,        // assets with no resolvable clear spec
+    // SHAD-DARSHANA sweep-protection Phase 1a — always present, empty when nothing was
+    // withheld. A protected asset never appears in affected_assets/assets_clearable/
+    // assets_reset_only; it appears here instead (§N.6 honest-empty discipline).
+    protected_assets: protectedAssetsList,               // [{id, label, message}]
     downstream_stale_assets: downstreamAssets,           // kept as string[] for backward compat
     downstream_stale_assets_labeled: downstreamStaleAssets, // E2: [{id, label, layer, sanskrit_name}]
     // E1: reconciling asset breakdown (arithmetic: clearable + reset_only = affected_assets.length)
