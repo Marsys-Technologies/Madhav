@@ -52,6 +52,19 @@ def build_tables(*, with_lifetime_prior: bool = True,
         ],
         'charts': [{'birth_date': __import__('datetime').date(1984, 2, 5)}],
         'bg_synthetic_cohort': [{'build_id': 'cohort-build-1'}],
+        # Discovery source (writer._discover_event_classes) — Lane A's LIVE promise
+        # register, not the never-written `kala_field_routes` cache table. A chart's
+        # buildable event-class set is whatever bo_pratijna has actually promised or
+        # conditionally promised; `denied` rows are real Bodha output too, just not
+        # ones this writer builds a field for.
+        'bodha_pratijna': [
+            {'chart_id': CHART_ID, 'event_class_id': EVENT_CLASS, 'status': 'promised'},
+            {'chart_id': CHART_ID, 'event_class_id': 'denied_class_never_built',
+             'status': 'denied'},
+        ],
+        # Still consulted directly by stage4_field's FALLBACK promise-prior path
+        # (used only when `stage2_promise` isn't importable — see `_small_build`'s
+        # monkeypatch above) — NOT the discovery source (see `bodha_pratijna` above).
         'kala_field_routes': [
             {'id': 11, 'chart_id': CHART_ID, 'event_class': EVENT_CLASS, 'route_rank': 1,
              'path_node_ids': ['graha:Ju', 'bhava:10', f'event_class:{EVENT_CLASS}'],

@@ -95,10 +95,26 @@ class TestPlan:
         assert len(blocks) == S5.DEFAULT_REPLICATES // S5.DEFAULT_BLOCK_SIZE
 
     def test_no_event_classes_is_an_honest_empty_plan(self):
-        # Lane A has not produced a promise graph for this chart. Zero substeps
-        # and a log line — not a crash, and not a fabricated class list.
+        # Lane A (bo_pratijna) has not promised or conditionally-promised anything
+        # for this chart yet. Zero substeps and a log line — not a crash, and not
+        # a fabricated class list.
         tables = F.build_tables()
-        tables['kala_field_routes'] = []
+        tables['bodha_pratijna'] = []
+        conn = FakeConn(tables)
+        assert W.KaKshetraWriter().plan_substeps(FakeCtx(conn, F.CHART_ID)) == []
+
+    def test_denied_pratijna_rows_do_not_count_as_event_classes(self):
+        # A chart can have bo_pratijna rows that are all `denied` — real Bodha
+        # output, but nothing this writer should build a field for. Regression
+        # guard for the defect this test file's sibling test used to mask: the
+        # writer must discover classes from bo_pratijna's promised/conditional
+        # rows, never from the `kala_field_routes` cache table (nothing in the
+        # live call graph ever writes to it — see stage2_promise.promise_prior,
+        # which computes routes in-memory and never persists them).
+        tables = F.build_tables()
+        tables['bodha_pratijna'] = [
+            {'chart_id': F.CHART_ID, 'event_class_id': 'never_promised', 'status': 'denied'},
+        ]
         conn = FakeConn(tables)
         assert W.KaKshetraWriter().plan_substeps(FakeCtx(conn, F.CHART_ID)) == []
 
