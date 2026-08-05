@@ -22,10 +22,20 @@ decision is the native's and is still open.
 
 TARGETS AND CONSTRAINTS
 -----------------------
-No target table carries a CHECK constraint on this column. The only two constrained tables —
-`chart_dashas` and `chart_divisionals` — hold zero rows in any source value (verified against
-the live DB), and their CHECK permits 'single' anyway, so the drain cannot raise CheckViolation.
-The script re-verifies both facts at runtime rather than trusting this paragraph.
+Most target tables carry no CHECK constraint on this column at all; a handful do. Guard 1
+re-derives the full CHECK-constrained-table set from `pg_constraint` at runtime — this
+docstring deliberately does not name those tables or count them, so it cannot go stale again
+the next time a new CHECK-constrained table appears (as `kala_tithi_pravesha` did after this
+paragraph was first written, self-halting the run safely until the guard below was corrected
+to match).
+
+For each CHECK-constrained table found at runtime, the guard HALTs only if the CHECK permits
+at least one of the retired source spellings (`'PASS'`, `'pass'`, `'single_pass'`) while
+rejecting the target (`'single'`) — that is the only shape that could raise a live
+CheckViolation. A table whose CHECK permits none of the source values structurally cannot
+hold a drain-eligible row (nothing this drain would ever try to write there was legal to
+store in the first place), so the guard emits an informational NOTE instead of halting. A
+table whose CHECK already permits the target passes silently.
 
 USAGE
 -----
@@ -60,6 +70,43 @@ def target_for(value: str) -> str:
     """The canonical replacement for a retired spelling."""
     resolved = canonical(value)
     return UNVERIFIED_DEFAULT if resolved == value and value in PROHIBITED_STATUSES else resolved
+
+
+def guard1_verdict(tbl: str, defn: str) -> tuple[bool, list[str]]:
+    """Guard 1's per-table verdict for one CHECK constraint definition string.
+
+    Pure text check over `defn` (the constraint definition already fetched from
+    `pg_constraint`) — no DB access, so it is unit-testable with a fabricated `defn`.
+
+    Returns `(halt, messages)`. `halt` is True only when the CHECK permits at least one
+    of the retired SOURCE_VALUES while rejecting the target (UNVERIFIED_DEFAULT) — the
+    only shape that could raise a live CheckViolation on this drain's UPDATE. A table
+    whose CHECK permits none of the source values structurally cannot hold a
+    drain-eligible row, so that case is reported as an informational NOTE, never a HALT
+    (this is the `kala_tithi_pravesha` fix: its CHECK permits only
+    `two_pass_verified`/`divergent_flagged` — none of our sources — so rejecting the
+    target there is not a hazard). `messages` are pre-formatted lines, each prefixed
+    `HALT:` or `NOTE:`, for the caller to print (HALT lines to stderr, NOTE to stdout).
+    """
+    permits_target = f"'{UNVERIFIED_DEFAULT}'" in defn
+    permitted_sources = [v for v in SOURCE_VALUES if f"'{v}'" in defn]
+
+    if permitted_sources and not permits_target:
+        return True, [
+            f"HALT: {tbl}'s CHECK permits source value(s) {permitted_sources} "
+            f"but rejects {UNVERIFIED_DEFAULT!r}: {defn}"
+        ]
+
+    messages: list[str] = []
+    if not permits_target and not permitted_sources:
+        messages.append(
+            f"NOTE: {tbl}'s CHECK permits none of the source values "
+            f"{list(SOURCE_VALUES)} (nor the target {UNVERIFIED_DEFAULT!r}); "
+            f"structurally no row there can ever need this drain: {defn}"
+        )
+    if tbl not in RESTRICTED_TABLES:
+        messages.append(f"NOTE: {tbl} carries a CHECK the vocabulary module does not list.")
+    return False, messages
 
 
 def tables_with_column(cur) -> list[str]:
@@ -106,11 +153,11 @@ def main() -> int:
                 """
             )
             for tbl, defn in cur.fetchall():
-                if f"'{UNVERIFIED_DEFAULT}'" not in defn:
-                    print(f"HALT: {tbl}'s CHECK would reject {UNVERIFIED_DEFAULT!r}: {defn}", file=sys.stderr)
+                halt, messages = guard1_verdict(tbl, defn)
+                for msg in messages:
+                    print(msg, file=sys.stderr if halt else sys.stdout)
+                if halt:
                     return 1
-                if tbl not in RESTRICTED_TABLES:
-                    print(f"NOTE: {tbl} carries a CHECK the vocabulary module does not list.")
 
             for tbl in tables_with_column(cur):
                 cur.execute(
