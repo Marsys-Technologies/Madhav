@@ -3016,7 +3016,7 @@ def build_ga_sensitive_for_ayanamsha(
     single = [r for r in rows if r.get("verification_pass_status") == UNVERIFIED_DEFAULT]
     if single:
         # Owner ruling (post-salvage close-out, 2026-08-06): `single` is a permitted tier for
-        # ga_sensitive (CLAUDE.md §N.2) — it is the honest "no second derivation ran" state, not
+        # ga_sensitive (CLAUDE.md §N.4) — it is the honest "no second derivation ran" state, not
         # a defect. Store it rather than crashing the whole ayanamsha's build over it.
         logger.warning(
             "[ga_sensitive] %d single-pass row(s) in %s (no second derivation ran; stored honestly).",
@@ -3149,7 +3149,7 @@ def build_ga_sensitive(
     single = [r for r in all_rows if r.get("verification_pass_status") == UNVERIFIED_DEFAULT]
     if single:
         # Owner ruling (post-salvage close-out, 2026-08-06): `single` is a permitted tier for
-        # ga_sensitive (CLAUDE.md §N.2) — the honest "no second derivation ran" state, not a
+        # ga_sensitive (CLAUDE.md §N.4) — the honest "no second derivation ran" state, not a
         # defect. Record it on the summary for visibility and continue to persistence rather
         # than halting the whole build over rows that were never claimed to be verified.
         logger.warning(

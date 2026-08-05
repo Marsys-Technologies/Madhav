@@ -2,7 +2,7 @@
 """backfill_ga_sensitive_honest_tier.py — T3(d) of the post-salvage close-out (S7 ruling).
 
 `ga_sensitive_writer.py`'s build-fatal guard used to HALT the entire build the instant any row
-computed as `single` (no second derivation ran). Owner ruling (2026-08-06, CLAUDE.md §N.2 amended):
+computed as `single` (no second derivation ran). Owner ruling (2026-08-06, CLAUDE.md §N.4 amended):
 `single` is a permitted tier for `ga_sensitive` — the guard now logs and stores those rows honestly
 instead of crashing the build (see the two guard sites in `ga_sensitive_writer.py`).
 
