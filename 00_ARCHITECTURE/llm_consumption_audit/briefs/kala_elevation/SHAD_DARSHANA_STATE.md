@@ -9,6 +9,54 @@ governing: SHAD_DARSHANA_NIGHT_RUN_v1_0.md (orchestration) + SHAD_DARSHANA_BRIEF
   + KALA_SUPREME_ELEVATION_v1_0.md (v1.2, spec authority) + KALA_SIX_VIEWS_DESIGN_v2_0.md/v1_0.md
 ---
 
+## CONDUCTOR-HEARTBEAT — 2026-08-06T16:48:00Z (CONDUCTOR-OVERNIGHT-FINAL-ARC)
+
+Heartbeat #3. All 7 builder agents dispatched and running in background.
+
+## ALL 6 LANES + G-LAND DISPATCHED — 2026-08-06T16:48:00Z
+
+**7 builder subagents launched simultaneously (Sonnet model each). Pre-flight was green; dispatch proceeded immediately.**
+
+### Lane dispatch record
+
+| Lane | Agent ID | Branch | Worktree | Work order | Deadline |
+|------|----------|---------|---------|------------|----------|
+| W2-FIN | aa39162144b9e1bce | shad-darshana/lane-w2fin | /tmp/wt-w2fin | W2.4b(flag-name) + W2.5(cohort) + W2.7(salience-wire) + W2.8(ordering) + W2.10(live-spec) + item-44-census + W5-prep | +4h |
+| W3-CAL | afa9e34db638075a4 | shad-darshana/lane-w3cal | /tmp/wt-w3cal | Items 1(daśā-sandhi) / 3(sky-calendar) / 16(Kota-Chakra) | +6h |
+| W3-MUH | a90e046498c788434 | shad-darshana/lane-w3muh | /tmp/wt-w3muh | Items 4(moorti-nirṇaya) / 5(vedha+sarvatobhadra) / 14(janma-election) | +6h |
+| W3-ENG | aa99dde65b86b7bdb | shad-darshana/lane-w3eng | /tmp/wt-w3eng | Items 41(census) / 36(lattice+Pareto) from substrate ca6d1d4b; renumber 484→543, 485→544 | +8h |
+| W3-RIT | ad9df23591a5434eb | shad-darshana/lane-w3rit | /tmp/wt-w3rit | Items 17(sudarśana, collision-audit first!) / 37(ritual-resonance) | +6h |
+| W3-INT | a0e2bcabd127b2bfc | shad-darshana/lane-w3int | /tmp/wt-w3int | Items 33(absence-detector) / 34(contrastive-EXPLAIN) → W5-prep | +5h |
+| G-LAND | a59a3301e7157ca4c | shad-darshana/lane-gland | /tmp/wt-gland | Equivalence hardening (both charts) + 1128-row bucket investigation + SLO + mutation test | +12h |
+
+### Standing instructions for this run (all lanes)
+
+- TDD: failing test first, then implementation
+- PR → shad-darshana/integration only (never main)
+- Untouchables: kala_gochara_windows data · ka_gochara_sweep build_substep_progress · sealed harness · root CLAUDECODE_BRIEF.md
+- FROZEN orchestrator: STOP and report if any contract change needed
+- No self-merge · no ledger writes
+- Migration collisions: claim next available at PR-open (current integration max = 542)
+- Accuracy standard: ≥3 independently-known astronomical anchors for items 1/3/4/5
+
+### Conductor next actions
+
+1. Monitor agent completion notifications
+2. As each PR lands: dispatch PARĪKṢAKA (Opus, fresh context per verdict)
+3. Merge train: serial on CI-green + PARĪKṢAKA verdict in ledger before each merge
+4. After all W3 merges: cross-lane vocabulary consistency audit
+5. Gate W2 close (once W2-FIN + PARĪKṢAKA green)
+6. Gate W3 close (W2 closed + W3K voice + vocab audit)
+7. Gate W4 → mid-run deploy → Gate W5 (item 35 live MCP hard gate)
+8. R3 safety-net teardown (concurrent with W5)
+9. G-LAND W2G LANDED verdict
+10. W6 + close (R4 conditions)
+
+NEXT-ACTION: heartbeat refresh at ~16:58; monitor agent outputs.
+
+---
+
+
 ## CONDUCTOR-HEARTBEAT — 2026-08-06T16:35:00Z (CONDUCTOR-OVERNIGHT-FINAL-ARC)
 
 Heartbeat refresh #2. Run in progress. Pre-flight complete; dispatching all 6 lanes.
