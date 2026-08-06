@@ -11,6 +11,50 @@ governing: SHAD_DARSHANA_NIGHT_RUN_v1_0.md (orchestration) + SHAD_DARSHANA_BRIEF
 
 # ṢAḌ-DARŚANA STATE — the campaign ledger
 
+## RULING — Lane G / W2G write-target (2026-08-06, native, verbatim + Conductor's read)
+
+**Native ruling, recorded verbatim** (addendum to this session's routed disposition question):
+
+> The sweep-protection trigger's block of Lane G is RATIFIED as correct behavior, not a defect.
+> 1. Protection mechanism unchanged. The W2G writer must NEVER set
+>    `app.allow_protected_sweep_rewrite`, in any code path.
+> 2. W2G writes exclusively to its own surface (own asset_id + own tables per
+>    `GOCHARA_SWEEP_2_0_DESIGN_v1_0.md`). It does not delete, update, or insert into the
+>    protected (`ka_gochara_sweep` × canonical-chart) rows. §N.3 idempotency applies to W2G's
+>    own generation only.
+> 3. The protected corpus is W2G's frozen validation benchmark: W2G acceptance REQUIRES an
+>    equivalence report against it (per the design doc's criteria), verified by PARĪKṢAKA.
+>    Corpus disposition is deferred to a W6 native ruling.
+> 4. If (and only if) equivalence-testing reveals the design cannot proceed without writing
+>    the same pairs, PARK the lane again with the specific technical reason — do not improvise
+>    an override.
+
+**Conductor's read — this reclassifies, not dismisses, PARĪKṢAKA's Lane G finding.** The trigger
+behaving exactly as migration 540 designed it (fail-closed on any DELETE/UPDATE against a
+protected chart_id, no generation-awareness) is CORRECT; the defect was in the WRITER's design
+(targeting `kala_gochara_windows` at all during the validation phase), not the guard. This
+reconciles cleanly with `GOCHARA_SWEEP_2_0_DESIGN_v1_0.md` §4's own end-state description
+("table provenance-stamped per generation" at cutover) — that provenance-stamped-same-table state
+is the LATER, native-gated W6 cutover this ruling's point 3 explicitly defers, not the current
+validation-phase target. **The 27 rows Lane G already wrote into `kala_gochara_windows`
+(`generation='2.0'`, chart `482012f1`) are a genuine violation of point 2 as now ruled** — they
+were written under the prior (now-superseded) design, before this ruling existed, so this is not
+a violation the builder could have avoided, but they need disposal before Lane G can be considered
+compliant. Not yet actioned in this entry — will be handled as part of the Lane G rework dispatch,
+under an explicit, audited, one-time override citing this exact ruling as provenance (mirroring
+the discipline already used earlier this session for the Gate 3 proof and the prior session's
+hash-replay unblock) — not silently left in place, and not removed casually either.
+
+**Also carried per this ruling: confirm PR #1078 landed, fold into Stage-0-style floors before
+any new gate executes.** In progress — see the dated entry immediately below this one for the
+diagnosis and fix (a real GitHub ruleset quirk: a `workflow_dispatch`-triggered required-check
+run does not satisfy queue-admission eligibility the same way a genuine `pull_request`-context run
+does, even though the check-run is correctly associated with the same commit SHA). CI is currently
+running for real in `pull_request` context after a corrective push; not yet confirmed merged as of
+this entry.
+
+---
+
 ## MORNING REPORT — CONDUCTOR session close (2026-08-06, residual-completion campaign)
 
 **Attribution:** Conductor session (Opus), fully autonomous multi-agent swarm, no human gates
