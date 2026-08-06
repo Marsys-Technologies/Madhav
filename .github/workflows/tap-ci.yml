@@ -57,6 +57,15 @@ name: TAP CI — Total Audit Protocol Suite
 #
 # `push: [main]` is retained — post-merge runs on main are legitimate and gate deploy.
 # To revert: put 'feature/**' and 'r6/**' back in the push branches list.
+#
+# NOTE (2026-08-06, PR #1078): a workflow_dispatch-triggered TAP-6 run does NOT satisfy this
+# repo's required_status_checks ruleset the same way a pull_request-triggered one does, even
+# though the resulting check-run is genuinely associated with the same commit SHA — confirmed
+# empirically (run 31094827789 succeeded on the exact PR head SHA, mergeStateStatus stayed
+# BLOCKED regardless). Touching this file is a no-op edit specifically because it's already in
+# this workflow's own pull_request `paths:` allowlist below — it exists to make TAP-6 fire for
+# real in pull_request context on a docs-only PR that would otherwise never match any path
+# filter, which is exactly what's needed to unblock queue admission.
 on:
   push:
     branches: [main]
