@@ -62,9 +62,9 @@ const VALID_DISPOSITIONS: ReadonlySet<ItemDisposition> = new Set([
  * source of truth for the CI structural check.
  */
 export const SHAD_DARSHANA_ITEM_REGISTRY: CensusItem[] = [
-  { id: '1', title: 'Daśā-sandhi calendar, all levels, both directions', kind: 'N', wave: 'W3 (serve W1-lite from existing spans)', disposition: 'NOT-STARTED' },
+  { id: '1', title: 'Daśā-sandhi calendar, all levels, both directions', kind: 'N', wave: 'W3 (serve W1-lite from existing spans)', disposition: 'IN-PROGRESS' },
   { id: '2', title: 'Recurrence-ladder serving (activation_predicted_dates_jsonb)', kind: 'J', wave: 'W1', disposition: 'NOT-STARTED' },
-  { id: '3', title: 'Sky-event calendar: ingresses, stations, eclipse-to-natal, returns, Guru-Śani double-transit', kind: 'N', wave: 'W3', disposition: 'NOT-STARTED' },
+  { id: '3', title: 'Sky-event calendar: ingresses, stations, eclipse-to-natal, returns, Guru-Śani double-transit', kind: 'N', wave: 'W3', disposition: 'IN-PROGRESS' },
   { id: '4', title: 'Moorti-nirṇaya per ingress per chart', kind: 'N', wave: 'W3', disposition: 'NOT-STARTED' },
   { id: '5', title: 'Vedha application + REAL Sarvatobhadra grid (closes R-19)', kind: 'J+N', wave: 'W3', disposition: 'NOT-STARTED' },
   { id: '6', title: 'Activity-specific muhūrta rule tables (keyed to brahma_activity_ontology)', kind: 'N', wave: 'W3', disposition: 'NOT-STARTED' },
@@ -77,7 +77,7 @@ export const SHAD_DARSHANA_ITEM_REGISTRY: CensusItem[] = [
   { id: '13', title: 'Tithi-Praveśa (lunar-return annual)', kind: 'N', wave: 'W3', disposition: 'NOT-STARTED' },
   { id: '14', title: 'Janma-anchored election micro-rules', kind: 'N', wave: 'W3', disposition: 'NOT-STARTED' },
   { id: '15', title: 'Rarity axis from cohort', kind: 'J', wave: 'W2', disposition: 'NOT-STARTED' },
-  { id: '16', title: 'Kota-Chakra transit fortress', kind: 'N', wave: 'W3', disposition: 'NOT-STARTED' },
+  { id: '16', title: 'Kota-Chakra transit fortress', kind: 'N', wave: 'W3', disposition: 'IN-PROGRESS' },
   { id: '17', title: 'Sudarśana-Chakra year-wheel (bo_sudarshana.py collision check required before naming)', kind: 'N', wave: 'W3', disposition: 'NOT-STARTED' },
   { id: '18', title: 'KP sub-lord clock (CR-75) — FULL BUILD', kind: 'E', wave: 'W3K', disposition: 'NOT-STARTED' },
   { id: '19', title: 'GOCHARA-2.0 sub-day substrate — FULL BUILD (the D-6 wave)', kind: 'E', wave: 'W2G', disposition: 'NOT-STARTED' },
