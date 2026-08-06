@@ -40,6 +40,38 @@ PARĪKṢAKA dispatched fresh per lane as each PR lands. Merge train serial on C
 NEXT-ACTION: monitor lanes; heartbeat every 10 min; PARĪKṢAKA reviews as PRs land; gate chain after last W3 merge.
 
 ---
+
+## CONDUCTOR-HEARTBEAT #13 — 17:31Z
+
+**Status:** ACTIVE
+**Timestamp:** 2026-08-06T17:31Z
+**Phase:** W3-ENG/RIT/INT/CAL/MUH (W3 lanes) + W2-FIN (W2) + G-LAND — all PARĪKṢAKA complete
+
+**PR #1089 (G-LAND) PARĪKṢAKA VERDICT — ACCEPT-WITH-DEBT**
+- Agent: a6ceb203335f8660c — COMPLETE
+- Verdict: ACCEPT-WITH-DEBT
+- Mutation Standard: PASS
+- SLO Assessment: ACCEPT-MINOR (922s/912s, 1.3-2.5% over 15-min SLO, delta-aware invalidation mitigates)
+- Untouchables: CLEAN (v1 table + ka_gochara_sweep build state confirmed untouched in code and DB)
+- D1089-1 (code-smell, non-blocking): monkeypatch unreachable else-branch on lines 70/88 of test_ka_gochara_v2_mutation_guard.py
+- D1089-2 (evidence-gap, non-blocking): SLO figures not independently reproducible from available build logs
+
+**All 7 PARĪKṢAKA verdicts recorded:**
+- PR #1083 (W3-ENG): ACCEPT-WITH-DEBT
+- PR #1084 (W3-RIT): ACCEPT-WITH-DEBT
+- PR #1085 (W3-INT): ACCEPT-WITH-DEBT
+- PR #1086 (W3-CAL): ACCEPT-WITH-DEBT [blocking: D1086-3 endpoint bug pending patch]
+- PR #1087 (W3-MUH): ACCEPT-WITH-DEBT
+- PR #1088 (W2-FIN): ACCEPT-WITH-DEBT
+- PR #1089 (G-LAND): ACCEPT-WITH-DEBT ← just resolved
+
+**Blocking items before merge train:**
+1. PR #1086 D1086-3: dasha_sandhi.ts:70 uses /api/mcp/internal (non-existent) instead of /api/mcp/db/query — dispatching patch subagent now
+2. PR #1086 governance gate FAILED: sky_calendar accuracy anchor test timed out CI at 48% — rerun needed after CI infra recovery
+3. All PR CI runs: infra outage (queued) — monitoring for completion
+
+**Next action:** Dispatch W3-CAL endpoint patch subagent for dasha_sandhi.ts
+
 ---
 ## CONDUCTOR-YIELD
 timestamp: 2026-08-06T17:24:01Z
