@@ -286,6 +286,35 @@ def test_compute_day_factors_every_row_has_start_before_end():
         assert r.start_utc < r.end_utc, f"{r.factor_family}/{r.factor_key}: start must precede end"
 
 
+def test_lattice_tiling_invariant_no_overlap_within_factor_key():
+    """ACCURACY STANDARDS invariant (W3-ENG spec): rows from bg_muhurta_lattice
+    must not overlap within the same (factor_family, factor_key) for a given
+    calendar day.  Different factor families may share the same timestamp range
+    (rahu_kalam and abhijit can coexist), but the SAME factor should appear at
+    most once per day — any overlap within a key would double-count a doṣa or
+    auspicious span in the adjudication engine.
+    """
+    import itertools
+
+    rows = compute_day_factors(date(2026, 8, 15))
+    # Group by (family, key)
+    key_to_rows: dict[tuple[str, str], list] = {}
+    for r in rows:
+        k = (r.factor_family, r.factor_key)
+        key_to_rows.setdefault(k, []).append(r)
+
+    for (family, key), group in key_to_rows.items():
+        # Sort by start to make pairwise overlap check O(n log n) instead of O(n²)
+        sorted_rows = sorted(group, key=lambda r: r.start_utc)
+        for earlier, later in itertools.pairwise(sorted_rows):
+            # Half-open intervals [start, end): overlap iff earlier.end > later.start
+            assert earlier.end_utc <= later.start_utc, (
+                f"Tiling violation: {family}/{key} has overlapping spans "
+                f"[{earlier.start_utc}, {earlier.end_utc}) ∩ "
+                f"[{later.start_utc}, {later.end_utc})"
+            )
+
+
 def test_compute_day_factors_every_row_has_a_citation_and_valid_corpus_status():
     rows = compute_day_factors(date(2026, 8, 15))
     for r in rows:

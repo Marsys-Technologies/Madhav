@@ -535,3 +535,64 @@ describe('ONE-ENGINE RULE — the engine is rite-agnostic', () => {
     expect(elect.pareto.frontier_candidate_ids).toEqual(yajna.pareto.frontier_candidate_ids)
   })
 })
+
+// ── ACCURACY STANDARDS — DETERMINISM / REPLAY TEST ───────────────────────────
+//
+// W3-ENG spec accuracy requirement: "The adjudication engine's outputs must be
+// deterministic (same inputs → same outputs) — write a replay test."
+//
+// A non-deterministic engine would make it impossible to audit a historical
+// adjudication result: re-running on the same substrate could yield a different
+// Pareto frontier. This test catches any inadvertent statefulness or random
+// ordering in `adjudicateCandidates`.
+//
+// We run a moderately complex case (2 candidates, 3 lattice rows including one
+// doṣa, one support, one convention) twice with structurally identical
+// substrate objects and assert deep equality of the entire adjudication result.
+
+describe('ACCURACY STANDARDS — determinism replay test', () => {
+  const CAND_R1: CandidateInterval = {
+    id: 'replay_1', start: '2026-10-01T00:00:00Z', end: '2026-10-01T12:00:00Z',
+    score: 0.65, disqualified: false,
+  }
+  const CAND_R2: CandidateInterval = {
+    id: 'replay_2', start: '2026-10-02T00:00:00Z', end: '2026-10-02T12:00:00Z',
+    score: 0.45, disqualified: false,
+  }
+  const DOSA_ROW = latticeRow({
+    factor_key: 'rahu_kalam',
+    start_utc: '2026-10-01T02:00:00Z', end_utc: '2026-10-01T03:30:00Z',
+    detail: { category: 'inauspicious' }, corpus_status: 'computed_cited',
+  })
+  const SUPPORT_ROW = latticeRow({
+    factor_key: 'abhijit',
+    start_utc: '2026-10-01T05:00:00Z', end_utc: '2026-10-01T06:00:00Z',
+    detail: { category: 'auspicious' }, corpus_status: 'computed_cited',
+  })
+  const CONVENTION_ROW = latticeRow({
+    factor_key: 'visha_ghati',
+    start_utc: '2026-10-01T04:00:00Z', end_utc: '2026-10-01T04:24:00Z',
+    corpus_status: 'computed_uncited_convention',
+  })
+
+  it('produces byte-identical results on two sequential calls with the same inputs (replay gate)', () => {
+    const buildSubstrate = () => substrate({
+      lattice_rows: [DOSA_ROW, SUPPORT_ROW, CONVENTION_ROW],
+    })
+    const run1 = adjudicateCandidates([CAND_R1, CAND_R2], buildSubstrate())
+    const run2 = adjudicateCandidates([CAND_R1, CAND_R2], buildSubstrate())
+    // Deep-equal covers all nested arrays and objects.
+    expect(run1).toEqual(run2)
+  })
+
+  it('the coverage_state and pareto frontier are stable across replays', () => {
+    const buildSubstrate = () => substrate({
+      lattice_rows: [DOSA_ROW, SUPPORT_ROW, CONVENTION_ROW],
+    })
+    const run1 = adjudicateCandidates([CAND_R1, CAND_R2], buildSubstrate())
+    const run2 = adjudicateCandidates([CAND_R1, CAND_R2], buildSubstrate())
+    expect(run1.coverage_state).toBe(run2.coverage_state)
+    expect(run1.pareto.frontier_candidate_ids).toEqual(run2.pareto.frontier_candidate_ids)
+    expect(run1.pareto.dominated_candidate_ids).toEqual(run2.pareto.dominated_candidate_ids)
+  })
+})
