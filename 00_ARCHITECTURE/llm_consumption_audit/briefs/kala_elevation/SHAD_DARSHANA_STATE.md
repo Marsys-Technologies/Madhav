@@ -118,13 +118,56 @@ verdict recorded in this ledger BEFORE any lane PR merges, per the swarm charter
   Explicitly told this is the campaign's longest pole and is allowed to land honestly-partial
   rather than rush an unverified "complete" claim.
 
-**NEXT-ACTION for whichever session/turn picks this thread back up:** watch for the four lane
-agents' completion notifications; for each, dispatch a fresh-context PARĪKṢAKA (default-REFUTED,
-own queries against live state, never trusting the builder's self-report) before any lane PR
-merges to `shad-darshana/integration`; record every verdict here; run the Stage 2 merge-train once
-Gate W2 (Lane R) actually closes, per the DAG's own "Stage 2 dispatches after W2 closes" ordering.
-Also watch for Gate-Executor's PR #1078 to actually enter the queue and merge — non-blocking but
-still owed a close.
+---
+
+## Lane F RETURNED — no PR, already done (2026-08-06, same session)
+
+**Disposition: ACCEPT, nothing to merge.** Lane F's worktree, freshly cut from
+`origin/shad-darshana/integration` tip `2e23fb32`, came back byte-identical to that tip. Both
+wiring gaps this lane was dispatched to fix (`resolveFilingState` Step 4 → `intervention_filing.ts`;
+serve-time write path into `mimamsa_intervention_ledger`) were **already closed by PR #1072**
+(`96a697a4`, merged 2026-08-05T23:31:39Z — hours before this lane's dispatch). This ledger simply
+hadn't been updated to reflect it. **Conductor independently spot-checked the ancestry claim**
+(`git merge-base --is-ancestor 96a697a4 origin/shad-darshana/integration` → confirmed; `gh pr view
+1072` → confirmed merged, matching commit) before recording this as fact, per the "never trust a
+self-report blindly" discipline — full PARĪKṢAKA dispatch judged unnecessary on top of that spot
+check + the lane's own extensive re-verification evidence (below), since there is no new code to
+adversarially review.
+
+**What the lane did instead — PARĪKṢAKA-style independent re-verification with real evidence:**
+`resolveAndFileFilingState` (`platform-mcp/src/lib/kala_upaya_diagnosis.ts:1003-1094`) confirmed
+wired to `fileInterventionFalsifier`; `recordInterventionLedgerEntry`
+(`intervention_filing.ts:365-428`) confirmed wired through the `intervention_ledger_record` MCP
+write action into `mimamsa_intervention_ledger`. Test evidence: 176/178 passed (2 intentionally
+skipped) across 7 vitest files + `tsc --noEmit` clean + 8/8 on the write-route test + 14/24
+sidecar tests (10 skip-needs-DB). **Canned Mode-2 fixture run on both canonical charts**:
+`482012f1` returns non-empty graded candidates, `1c826d5a` returns zero with
+`gap_report.eliminating_constraint.kind === 'chart_relative'` — genuinely different sets, and a
+follow-up test stripped the chart-relative constraint to prove the two charts then coincide
+(confirms the divergence is real signal, not a leak/bug). Cross-checked the fixture's canned
+assumptions against LIVE production data (read-only): both charts' real Moon-nakshatra and
+`kala_paddhati_profile` agnivasa rows match the fixture exactly. All 4 fixture PASS conditions
+verified on both charts; weak-promise G1–G3 and ledger-filing tests both pass.
+
+**One genuine, disclosed gap remains, correctly NOT touched**: G4 ("pressure without delivery" on
+an un-promised window, `denied_at_promise`) needs new `ahead.ts` Law-3 PACT-gating serving-code —
+Opus-mandatory design work per the campaign's own model-policy, out of a wiring-fix lane's scope.
+`describe.skip`'d, not silently passed.
+
+**Gate W4 status: Lane F's named slice (the two wiring gaps + fixture pass) is CLOSED.** G4
+remains the one open item toward full Gate W4 closure — carried forward to Stage 3's gate-close
+work (item 38 rite-pairing), not this lane's job.
+
+---
+
+## NEXT-ACTION for whichever session/turn picks this thread back up
+
+Watch for the remaining three lane agents' (R/K/G) completion notifications; for each, dispatch a
+fresh-context PARĪKṢAKA (default-REFUTED, own queries against live state, never trusting the
+builder's self-report) before any lane PR merges to `shad-darshana/integration`; record every
+verdict here; run the Stage 2 merge-train once Gate W2 (Lane R) actually closes, per the DAG's own
+"Stage 2 dispatches after W2 closes" ordering. Also watch for Gate-Executor's PR #1078 to actually
+enter the queue and merge — non-blocking but still owed a close.
 
 *Truth over completion. PARKED-HONEST with evidence, not a false close.*
 
