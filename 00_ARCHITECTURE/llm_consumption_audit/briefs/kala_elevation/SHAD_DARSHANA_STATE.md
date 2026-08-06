@@ -42,6 +42,25 @@ NEXT-ACTION: monitor lanes; heartbeat every 10 min; PARĪKṢAKA reviews as PRs 
 ---
 ---
 type: CONDUCTOR-HEARTBEAT
+timestamp: 2026-08-06T17:24:30Z
+heartbeat_number: 11
+conductor: claude-opus-4-6
+status: ACTIVE
+prs_open: 6
+ci_active: true
+notes: |
+  HB #11 — CI monitoring cycle.
+  PR #1083: 3 infra failures (Service Unavailable), 10 pending — awaiting rerun eligibility.
+  PR #1084: 3 infra failures + 2 passes (DB Integration ✅, Density Census ✅), rest pending.
+  PR #1085: 2 passes (Coverage ✅, Planner ✅), rest pending.
+  PR #1086: 1 real failure (Governance Gates — pytest cancelled at 48%, sky_calendar timeout suspected), 2 passes. INVESTIGATING.
+  PR #1087: all pending (not started yet, runner shortage).
+  PR #1088: all pending (not started yet, runner shortage).
+  G-LAND: committing equivalence evidence (1c826d5a 912s); PR not yet opened.
+  All 6 CI runs still status=queued — cannot rerun yet.
+
+---
+type: CONDUCTOR-HEARTBEAT
 timestamp: 2026-08-06T17:20:00Z
 heartbeat_number: 10
 conductor: claude-opus-4-6
