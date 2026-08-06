@@ -2,6 +2,24 @@
 
 ---
 type: CONDUCTOR-NOTE
+timestamp: 2026-08-06T20:52:47Z
+heartbeat_number: 41
+event: CI blocked (Actions major_outage, outage ~5.5h); manual bridge HB before v2 loop takes over
+integration_tip: 22fc9a794
+actions_status: major_outage
+pr_1090_checks: 0_started
+
+## CONDUCTOR HEARTBEAT #41 — 2026-08-06T20:52:47Z
+
+**Lease renewed:** 2026-08-06T20:52:47Z (HB #40 was 20:44Z; gap within ≤10m window — v1→v2 monitor handoff)
+**Integration tip:** 22fc9a794
+**Actions status:** major_outage | **Outage:** ~5.5h since 2026-08-06T15:22Z
+
+Manual bridge HB written during v1→v2 monitor handoff. v2 loop (task blhyxvcye)
+takes over from HB #42. Post-deploy sequence documented in HB #28.
+
+---
+type: CONDUCTOR-NOTE
 timestamp: 2026-08-06T20:44:46Z
 heartbeat_number: 40
 event: CI blocked (Actions major_outage, outage ~5.4h); automated lease renewal
