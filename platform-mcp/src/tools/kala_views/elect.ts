@@ -100,6 +100,17 @@ import {
   type ActivityClass,
   type RitualOpportunity,
 } from '../../lib/kala_ritual_resonance.js'
+// ṢAḌ-DARŚANA W3 Lane w3-muh — Item 14: Janma-anchored election micro-rules.
+// Pure; no I/O; degrades gracefully to null when janma anchor is unavailable.
+import {
+  applyJanmaMicroRulesOrNull,
+  tithiNumFromName,
+  varaIndexFromLord,
+  type JanmaMicroRuleContext,
+  type JanmaMicroRules,
+  type JanmaMicroWindowInput,
+} from '../../lib/kala_janma_micro_rules.js'
+import { nakshatraNumber } from '../muhurta_finder.js'
 
 // ── Input schema ─────────────────────────────────────────────────────────────────────
 
@@ -184,6 +195,13 @@ export interface KalaElectCandidate {
   // class this campaign already caught once.
   paired_rite: RitualOpportunity | null
   paired_rite_reason: string | null
+  // ── Item 14 (ṢAḌ-DARŚANA W3 Lane w3-muh) — Janma-anchored election micro-rules ──────
+  // Per KALA_SIX_VIEWS_DESIGN_v1_0.md §3.2: "Personal star overlay: tārā-bala from
+  // janma-nakṣatra + janma-tithi/vara/nakṣatra returns as personally-potent days."
+  // Null when no janma anchor was available for this call (honest gap, never fabricated).
+  // When non-null, hard_veto=true means this candidate carries a Vadha-tārā veto from
+  // the native's personal star — the same veto class as muhurta_finder's tara_bala flag.
+  janma_micro_rules: JanmaMicroRules | null
 }
 
 export interface KalaElectResponse extends KalaEnvelope<ArgumentReading> {
@@ -276,6 +294,8 @@ function buildCoverage(
   result: MuhurtaFinderResult,
   adjudication: LatticeAdjudication | null,
   pairing: PairingOutcome | null,
+  janmaMicroApplied: boolean,
+  janmaMicroUnavailableReason: string | null,
 ): KalaCoverageEntry[] {
   const coverage: KalaCoverageEntry[] = [computedCoverage('panchanga_dasha_transit_muhurta_scoring')]
 
@@ -404,6 +424,22 @@ function buildCoverage(
       pairing.reason ??
       'the pairing pass ran and produced no rite for any candidate — an honest empty, not an ' +
       'unwired field. Each candidate carries its own paired_rite_reason.',
+    ))
+  }
+
+  // Item 14 (ṢAḌ-DARŚANA W3 Lane w3-muh) — Janma-anchored election micro-rules.
+  // Coverage is `computed` only when the janma anchor was actually available and applied
+  // to at least one candidate; `honest_empty` when no janma anchor was supplied.
+  // §N.8: this entry is conditioned on real application — never a false `computed`.
+  if (janmaMicroApplied) {
+    coverage.push(computedCoverage('janma_anchored_micro_rules'))
+  } else {
+    coverage.push(honestEmptyCoverage(
+      'janma_anchored_micro_rules',
+      janmaMicroUnavailableReason ??
+      'no janma nakshatra anchor was supplied for this call — tārā-bala micro-rules require the ' +
+      'native\'s birth nakshatra (supply native_janma_nakshatra, or use a chart that has the ' +
+      'janma nakshatra fact in L1). janma-tithi and janma-vara resonance likewise unavailable.',
     ))
   }
 
@@ -637,8 +673,56 @@ export async function handleKalaElectGet(
     pairing = null
   }
 
+  // ── Item 14 (ṢAḌ-DARŚANA W3 Lane w3-muh) — Janma-anchored election micro-rules ────
+  // Build the janma context from the native_janma_nakshatra input (same field muhurta_finder
+  // uses for tara_bala). The FORENSIC canonical anchor for native 482012f1:
+  //   janma nakshatra = Purva Bhadrapada (id=25)
+  //   janma tithi = Shukla Tritiya (num=3)
+  //   janma vara = Ravivara (index=0, Sunday)
+  // These are NOT hardcoded here — they come from the chart's L1 facts via input fields.
+  // For now: nakshatra from `native_janma_nakshatra` (string, same as muhurta_finder uses),
+  // tithi/vara from panchanga_details on the window's own factors. The context is null
+  // when native_janma_nakshatra is not supplied — an honest gap, never fabricated.
+  const janmaNakId = nakshatraNumber(input.native_janma_nakshatra)
+  // Janma tithi/vara: these come from the NATIVE's birth panchanga, not the window's.
+  // At this facade tier, they are not carried by the elect input yet — the FORENSIC
+  // anchors (tithi=3/Shukla Tritiya, vara=0/Sunday) are part of the native's L1 chart_facts
+  // and would need a separate L1 fact fetch, which is out of scope for this W3 lane.
+  // Honest gap: we set them null at the context level; the per-window tithi/vara data IS
+  // available from the window's own panchanga_details for the window's date (not the native's
+  // birth date), which the test checks. The context must carry the native's birth values, not
+  // the window's — so janma_tithi_num / janma_vara_index are null here until L1 fact wiring.
+  const janmaContext: JanmaMicroRuleContext | null = janmaNakId !== null
+    ? { janma_nakshatra_id: janmaNakId, janma_tithi_num: -1, janma_vara_index: -1 }
+    : null
+  // NOTE: janma_tithi_num=-1 and janma_vara_index=-1 are sentinel values indicating "unknown".
+  // The per-window comparison will produce null for tithi/vara resonance because the
+  // window's values will never equal -1 (tithis are 1..30, varas 0..6). This preserves
+  // honest null semantics for the resonance fields when the birth panchanga is unavailable.
+
+  // Per-window micro-rule application: builds JanmaMicroRules for each candidate window.
+  const perWindowMicroRules: (JanmaMicroRules | null)[] = windows.map((w) => {
+    const windowNakId = nakshatraNumber(w.factors?.panchanga_details?.moon_nakshatra)
+    const windowTithiNum = tithiNumFromName(w.factors?.panchanga_details?.tithi_name)
+    const windowVaraIndex = varaIndexFromLord(w.factors?.panchanga_details?.vara_lord)
+    const windowInput: JanmaMicroWindowInput = {
+      window_nakshatra_id: windowNakId,
+      window_tithi_num: windowTithiNum,
+      window_vara_index: windowVaraIndex,
+    }
+    return applyJanmaMicroRulesOrNull(janmaContext, windowInput)
+  })
+
+  // Was janma micro-rules actually applied? `computed` requires at least one non-null result.
+  const janmaMicroApplied = perWindowMicroRules.some((r) => r !== null)
+  const janmaMicroUnavailableReason = janmaContext === null
+    ? 'native_janma_nakshatra was not supplied for this call — janma-anchored micro-rules ' +
+      'require the native\'s birth nakshatra. Supply native_janma_nakshatra to enable tārā-bala ' +
+      'micro-rule computation, janma-nakshatra resonance, and the tārā-based veto check.'
+    : null
+
   const reading = buildArgumentReading(input.undertaking, result)
-  const coverage = buildCoverage(result, adjudication, pairing)
+  const coverage = buildCoverage(result, adjudication, pairing, janmaMicroApplied, janmaMicroUnavailableReason)
   const composed = composeArgument(reading)
 
   const questionFrame: QuestionFrame | null = input.question_frame ?? null
@@ -698,6 +782,9 @@ export async function handleKalaElectGet(
         (pairing === null
           ? 'the ritual-pairing pass did not run for this call — no rite is simulated.'
           : null),
+      // Item 14 (ṢAḌ-DARŚANA W3 Lane w3-muh): janma micro-rules for this candidate window.
+      // Null when native_janma_nakshatra was not supplied (honest gap, §N.8).
+      janma_micro_rules: perWindowMicroRules[i] ?? null,
     }
   })
 
