@@ -1,4 +1,18 @@
 ---
+
+---
+type: CONDUCTOR-NOTE
+timestamp: 2026-08-06T18:44:25Z
+heartbeat_number: 24
+event: Integration→main PR created
+pr: 1090
+title: ṢAḌ-DARŚANA mid-run gate-close (W2 closed + W3 computations + W2G + W3K G-5 voice)
+base: main
+head: shad-darshana/integration
+integration_tip: d4e3f1e90
+reviewer_condition: GitHub Actions outage must resolve + all required checks green before merge
+url: https://github.com/Marsys-Technologies/Madhav/pull/1090
+
 ## CONDUCTOR HEARTBEAT #24 — 2026-08-06T18:43Z
 
 **Lease renewed:** 18:43:08Z (HB #23 was 18:32Z; gap = 11m08s — slightly over ≤10m window; no competing conductor, lease valid)
