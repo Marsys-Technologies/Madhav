@@ -41,6 +41,29 @@ NEXT-ACTION: monitor lanes; heartbeat every 10 min; PARĪKṢAKA reviews as PRs 
 
 ---
 ---
+## CONDUCTOR-YIELD
+timestamp: 2026-08-06T17:24:01Z
+from_session: 330b42c1 (Claude Code VSCode context, resumed from compact)
+yielding_to: overnight autonomous conductor (last HEARTBEAT #10 at 17:20Z)
+reason: Context gap revealed active overnight conductor already at HB #10 with all 6 PRs cleared for merge. Dispatching duplicate agents would create PR conflicts. Aborting duplicate lane agents. W3-ENG agent added 2 missing invariant tests to existing PR #1083 (additive, not duplicative).
+
+### Disposition
+- W2-FIN duplicate: ABORTED (message sent)
+- W3-CAL duplicate: ABORTED (message sent)
+- W3-MUH duplicate: ABORTED-CONFIRMED
+- W3-ENG: ADDITIVE — 2 missing invariant/replay tests added to existing PR #1083 (lane-w3eng)
+- W3-RIT duplicate: ABORTED (message sent)
+- W3-INT duplicate: ABORTED (message sent)
+- G-LAND duplicate: ABORTED (message sent)
+
+Overnight conductor has clear lane. This session monitoring only.
+
+### Additive Findings (not in existing PRs — flag to PARĪKṢAKA)
+- **PR #1086 debt (W3-CAL, item 1):** `platform-mcp/src/tools/kala_views/dasha_sandhi.ts` uses `/api/mcp/internal` endpoint instead of project-standard `/api/retrieval/capability`. Tests mock fetch at URL level, so they pass; production calls may fail. Should be flagged to PARĪKṢAKA reviewing PR #1086.
+- **PR #1083 additions (W3-ENG):** 2 missing invariant tests added to existing branch `lane-w3eng` (lattice-tiling no-overlap + adjudication replay). Pushed at 79915f0a5. No new PR — same branch.
+---
+
+---
 type: CONDUCTOR-HEARTBEAT
 timestamp: 2026-08-06T17:24:30Z
 heartbeat_number: 11
