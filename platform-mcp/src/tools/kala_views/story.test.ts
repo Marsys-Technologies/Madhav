@@ -398,3 +398,198 @@ describe('handleKalaStoryGet', () => {
     expect(lelCoverage.state).not.toBe('computed')
   })
 })
+
+// ── W2.4b — no_lived_history_recorded flag ─────────────────────────────────────────
+
+describe('kala_story_get — W2.4b no_lived_history_recorded flag', () => {
+  beforeEach(() => {
+    vi.resetModules()
+  })
+
+  it('FAILING BEFORE FIX: coverage contains no_lived_history_recorded when LEL returns 0 events', async () => {
+    global.fetch = vi.fn(async (_url: unknown, opts: unknown) => {
+      const body = JSON.parse((opts as { body: string }).body) as { uri?: string }
+      if (body.uri === 'marsys://tool/L3/query_life_arc') {
+        return {
+          ok: true,
+          json: async () => ({
+            ok: true,
+            content: {
+              chart_id: '482012f1-710e-4a25-994a-93821f5871aa',
+              parvas: [
+                { id: 1, parva_index: 1, dasha_planet: 'Jupiter', start_year: 1984, end_year: 1991, parva_quality: 'building', theme_keywords: ['expansion'], high_convergence_count: 0, avg_effective_score: 0.4, narrative: {}, source_citation: 'ka_jivana_parva:v1.0', computed_at: '2026-07-01T00:00:00Z' },
+              ],
+            },
+          }),
+        }
+      }
+      // LEL query returns zero events
+      if (body.uri === 'marsys://tool/L5/lel_query') {
+        return {
+          ok: true,
+          json: async () => ({
+            ok: true,
+            content: {
+              chart_id: '482012f1-710e-4a25-994a-93821f5871aa',
+              events: [],
+              count: 0,
+              total_matching: 0,
+              has_more: false,
+              filters: {},
+              provenance: {},
+            },
+          }),
+        }
+      }
+      return { ok: true, json: async () => ({ rows: [] }) }
+    }) as unknown as typeof fetch
+
+    const { handleKalaStoryGet } = await import('./story.js')
+    const { response, error } = await handleKalaStoryGet(
+      { chart_id: '482012f1-710e-4a25-994a-93821f5871aa' },
+      { user_uid: 'u1', key_id: 'k1', role: 'guest' },
+    )
+
+    expect(error).toBeUndefined()
+    expect(response).toBeDefined()
+
+    // The existing lel_pinning_per_chapter concept should still be present (backwards compat)
+    const lelPinningCoverage = response!.coverage.find((c) => c.concept === 'lel_pinning_per_chapter')
+    expect(lelPinningCoverage).toBeDefined()
+    expect(lelPinningCoverage!.state).toBe('honest_empty')
+
+    // W2.4b FIX: no_lived_history_recorded must ALSO appear (the literal flag name the brief specifies)
+    const noHistoryCoverage = response!.coverage.find((c) => c.concept === 'no_lived_history_recorded')
+    expect(noHistoryCoverage, 'W2.4b fix: no_lived_history_recorded coverage entry must be present when LEL has 0 events').toBeDefined()
+    expect(noHistoryCoverage!.state).toBe('honest_empty')
+  })
+
+  it('no_lived_history_recorded is NOT emitted when LEL has events (only for the 0-event case)', async () => {
+    global.fetch = vi.fn(async (_url: unknown, opts: unknown) => {
+      const body = JSON.parse((opts as { body: string }).body) as { uri?: string }
+      if (body.uri === 'marsys://tool/L3/query_life_arc') {
+        return {
+          ok: true,
+          json: async () => ({
+            ok: true,
+            content: {
+              chart_id: '482012f1-710e-4a25-994a-93821f5871aa',
+              parvas: [
+                { id: 1, parva_index: 1, dasha_planet: 'Jupiter', start_year: 1984, end_year: 1991, parva_quality: 'building', theme_keywords: ['expansion'], high_convergence_count: 0, avg_effective_score: 0.4, narrative: {}, source_citation: 'ka_jivana_parva:v1.0', computed_at: '2026-07-01T00:00:00Z' },
+              ],
+            },
+          }),
+        }
+      }
+      // LEL has real events
+      if (body.uri === 'marsys://tool/L5/lel_query') {
+        return {
+          ok: true,
+          json: async () => ({
+            ok: true,
+            content: {
+              chart_id: '482012f1-710e-4a25-994a-93821f5871aa',
+              events: [
+                { event_id: 'lel-1', event_date: '1985-06-01', category: 'career', domain: 'career/x', description: 'Some event', significance: null, event_type: 'career', source_citation: 'LEL', source_section: null, outcome_observed: true, shape: 'point', interval_start: null, interval_end: null },
+              ],
+              count: 1,
+              total_matching: 1,
+              has_more: false,
+              filters: {},
+              provenance: {},
+            },
+          }),
+        }
+      }
+      return { ok: true, json: async () => ({ rows: [] }) }
+    }) as unknown as typeof fetch
+
+    const { handleKalaStoryGet } = await import('./story.js')
+    const { response } = await handleKalaStoryGet(
+      { chart_id: '482012f1-710e-4a25-994a-93821f5871aa' },
+      { user_uid: 'u1', key_id: 'k1', role: 'guest' },
+    )
+
+    // When there are real LEL events, no_lived_history_recorded should NOT appear
+    const noHistoryCoverage = response!.coverage.find((c) => c.concept === 'no_lived_history_recorded')
+    expect(noHistoryCoverage, 'no_lived_history_recorded should NOT appear when LEL has events').toBeUndefined()
+  })
+})
+
+// ── W2.8 — insight rows lead readings (kala_story_get) ───────────────────────
+// SHAD_DARSHANA_BRIEF_v2_0.md §3 W2: "insight rows lead readings · reading-leads-with-insight
+// enforced in composer." kala_story_get must export fetchTopInsight (reads kala_insights
+// ORDER BY insight_score DESC LIMIT 1) and include leading_insight in its response.
+
+describe('kala_story_get — W2.8 insight-leading reading', () => {
+  beforeEach(() => {
+    vi.resetModules()
+  })
+
+  it('FAILING BEFORE FIX: fetchTopInsight export must exist on story.js', async () => {
+    const mod = await import('./story.js') as Record<string, unknown>
+    const fetchTopInsight = mod['fetchTopInsight']
+    expect(fetchTopInsight, 'W2.8 fix must export fetchTopInsight from story.ts').toBeDefined()
+  })
+
+  it('fetchTopInsight returns highest-scoring insight row when kala_insights has rows', async () => {
+    global.fetch = vi.fn(async (_url: unknown, opts: unknown) => {
+      const body = JSON.parse((opts as { body: string }).body) as { sql?: string }
+      if (body.sql?.includes('kala_insights')) {
+        return {
+          ok: true,
+          json: async () => ({
+            rows: [
+              {
+                insight_id: 'kin_abc123',
+                insight_type: 'scarcity',
+                insight_score: '0.82',
+                statement_key: 'scarcity_pattern_v1',
+                statement_params: JSON.stringify({ value: 0.9 }),
+                fact_ids: ['fact:kin:1'],
+              },
+            ],
+          }),
+        }
+      }
+      return { ok: true, json: async () => ({ rows: [] }) }
+    }) as unknown as typeof fetch
+
+    const mod = await import('./story.js') as Record<string, unknown>
+    const fetchTopInsight = mod['fetchTopInsight'] as
+      ((chartId: string, principal: { user_uid: string; key_id: string }) => Promise<unknown>) | undefined
+    if (!fetchTopInsight) {
+      expect(fetchTopInsight).toBeDefined()
+      return
+    }
+
+    const result = await fetchTopInsight('1c826d5a-41cb-4450-b4dc-59d440e5f75a', { user_uid: 'u1', key_id: 'k1' }) as Record<string, unknown>
+    expect(result).toBeDefined()
+    expect(result['state']).toBe('computed')
+    expect(result['insight_id']).toBe('kin_abc123')
+    expect(result['insight_type']).toBe('scarcity')
+    expect(Number(result['insight_score'])).toBeCloseTo(0.82, 4)
+  })
+
+  it('fetchTopInsight returns honest_empty when kala_insights has 0 rows for chart', async () => {
+    global.fetch = vi.fn(async (_url: unknown, opts: unknown) => {
+      const body = JSON.parse((opts as { body: string }).body) as { sql?: string }
+      if (body.sql?.includes('kala_insights')) {
+        return { ok: true, json: async () => ({ rows: [] }) }
+      }
+      return { ok: true, json: async () => ({ rows: [] }) }
+    }) as unknown as typeof fetch
+
+    const mod = await import('./story.js') as Record<string, unknown>
+    const fetchTopInsight = mod['fetchTopInsight'] as
+      ((chartId: string, principal: { user_uid: string; key_id: string }) => Promise<unknown>) | undefined
+    if (!fetchTopInsight) {
+      expect(fetchTopInsight).toBeDefined()
+      return
+    }
+
+    const result = await fetchTopInsight('482012f1-710e-4a25-994a-93821f5871aa', { user_uid: 'u1', key_id: 'k1' }) as Record<string, unknown>
+    expect(result).toBeDefined()
+    expect(result['state']).toBe('honest_empty')
+  })
+})
