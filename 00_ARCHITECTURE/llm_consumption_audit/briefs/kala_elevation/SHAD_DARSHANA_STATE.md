@@ -1,5 +1,90 @@
 ---
 
+## CONDUCTOR-HEARTBEAT #20 — 2026-08-06T18:16:00Z
+
+**Lease:** Active. Last: HB #19 @ 18:13Z (3 min ago). Next: HB #21 @ ~18:28Z.
+
+**PROTOCOL CHANGE: HB HOLD-MODE during merge window.**
+After this HB, the CONDUCTOR will NOT write further HBs to the integration branch until
+all 7 campaign PRs have been merged. Reason: each integration HB creates a STATE file
+conflict with campaign branches. Instead, HBs will resume AFTER the merge train completes.
+The lease is considered "alive" — this HB establishes the hold.
+
+**MERGE TRAIN PRE-FLIGHT (18:16Z):**
+- SHAD_DARSHANA_STATE.md synced to ALL 7 campaign branches this HB cycle.
+- PRs #1083–#1089 all target `shad-darshana/integration` (NOT main — confirmed).
+- Merge order: #1083 → #1084 → #1085 → #1086 → #1087 → #1088, then #1089 independent.
+- All PARĪKṢAKA verdicts recorded: ACCEPT-WITH-DEBT on 7/7 PRs.
+- Merge blocked ONLY on CI (GitHub infra outage, confirmed major).
+
+**CI STATUS (18:16Z) — all queued, none in_progress:**
+- W3-CAL: 31125453077 (pull_request, 18:13Z) — newest, 3 min queued
+- W3-RIT: 31125420497 (workflow_dispatch, 18:13Z)
+- W3-ENG: 31125412036 (workflow_dispatch, 18:12Z)
+- W3-MUH: 31125464859 (workflow_dispatch, 18:14Z)
+- W3-INT: 31125100068 (workflow_dispatch, 18:06Z)
+- G-LAND: 31125097738 (workflow_dispatch, 18:06Z)
+- W2-FIN: 31125093149 (workflow_dispatch, 18:06Z)
+
+**CRITICAL DEADLINE:** W2-FIN = 19:00Z (44 min remaining). CI must start by ~18:20Z
+for W2-FIN to have any chance of completing before deadline.
+
+**HB HOLD:** HBs resume at HB #21 POST-MERGE, or if CI starts executing (whichever first).
+
+
+
+## CONDUCTOR-HEARTBEAT #19 — 2026-08-06T18:13:00Z
+
+**Lease:** Active. Last: HB #18 @ 18:02Z (11 min ago). Next: HB #20 @ ~18:23Z.
+
+**PRODUCTIVE INFRA-WAIT ACTIONS COMPLETED:**
+1. **SHAD_DARSHANA_STATE.md conflict pre-resolved** — all 7 campaign branches synced to
+   integration branch version (HB #18, 4706 lines). Commits pushed; merge-train conflict
+   eliminated. Dry-merge had confirmed a content conflict; now resolved.
+2. **CI workflow recovery actions** — triggered `ci.yml` (Ganga Quality Gate) on:
+   - W3-CAL: 31125401677 (18:12Z)
+   - W3-ENG: 31125412036 (18:12Z)
+   - W3-RIT: 31125420497 (18:13Z)
+   Also dispatched `tap-ci.yml` on W3-RIT (31125340679) and W3-ENG (31125351044).
+
+**CURRENT CI STATE (18:13Z):**
+
+| Run ID | Branch | Workflow | Created | Status |
+|--------|--------|----------|---------|--------|
+| 31125420497 | lane-w3rit | ci.yml | 18:13Z | queued (new) |
+| 31125412036 | lane-w3eng | ci.yml | 18:12Z | queued (new) |
+| 31125401677 | lane-w3cal | ci.yml | 18:12Z | queued (new) |
+| 31125351044 | lane-w3eng | tap-ci.yml | 18:11Z | queued |
+| 31125340679 | lane-w3rit | tap-ci.yml | 18:11Z | queued |
+| 31125100068 | lane-w3int | ci.yml | 18:06Z | queued |
+| 31125097738 | lane-gland | ci.yml | 18:06Z | queued |
+| 31125093149 | lane-w2fin | ci.yml | 18:06Z | queued |
+| 31124729525 | lane-w3int | ci.yml | 17:59Z | queued (old) |
+| 31123109346 | lane-gland | ci.yml | 17:26Z | queued (old) |
+| 31121774448 | lane-w2fin | ci.yml | 17:00Z | queued (old, 73 min) |
+| 31121707833 | lane-w3muh | ci.yml | 16:59Z | queued (old, 74 min) |
+
+**W3-MUH MISSING:** No new run for W3-MUH after the sync commit push. Will monitor;
+may need to dispatch manually.
+
+**GitHub infra status:** Partial System Outage (major) — unchanged.
+
+**DEADLINE STATUS (18:13Z):**
+- W2-FIN deadline (19:00Z): **47 min remaining** — marginal; requires CI to start executing
+  within the next 5-10 min to complete before deadline.
+- W3-INT deadline (19:30Z): 77 min
+- W3-CAL deadline (20:00Z): 107 min
+
+**MERGE TRAIN:** Blocked on CI green. Zero PRs have passed CI yet.
+Order when ready: #1083 (W3-ENG) → #1084 (W3-RIT) → #1085 (W3-INT) → #1086 (W3-CAL)
+→ #1087 (W3-MUH) → #1088 (W2-FIN). PR #1089 (G-LAND) independent.
+
+**Next action:** HB #20 at ~18:23Z. Monitor for any run transitioning to in_progress — first
+sign of infra recovery. If W2-FIN approaches 18:40Z with zero progress, W2 deadline miss
+is confirmed and gate-close will proceed with documented infrastructure-SLO note.
+
+
+
 ## CONDUCTOR-HEARTBEAT #18 — 2026-08-06T18:02:00Z
 
 **Lease:** Active. Last: HB #17 @ 17:57Z (5 min ago). Next: HB #19 @ ~18:12Z.
