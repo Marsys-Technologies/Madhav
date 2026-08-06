@@ -2,6 +2,24 @@
 
 ---
 type: CONDUCTOR-NOTE
+timestamp: 2026-08-06T21:56:26Z
+heartbeat_number: 48
+event: CI blocked (Actions major_outage, outage ~6.6h); automated lease renewal
+integration_tip: 970532da9
+actions_status: major_outage
+pr_1090_checks: 0_started
+
+## CONDUCTOR HEARTBEAT #48 — 2026-08-06T21:56:26Z
+
+**Lease renewed:** 2026-08-06T21:56:26Z (automated CONDUCTOR loop — ≤10m interval)
+**Integration tip:** 970532da9
+**Actions status:** major_outage | **Outage:** ~6.6h since 2026-08-06T15:22Z
+
+Post-deploy sequence documented in HB #28. Independent reviewer holds until PR #1090
+CI checks all SUCCESS (required: Ganga Quality Gate, TAP, Elevation Campaign lanes).
+
+---
+type: CONDUCTOR-NOTE
 timestamp: 2026-08-06T21:47:23Z
 heartbeat_number: 47
 event: CI blocked (Actions major_outage, outage ~6.4h); automated lease renewal
