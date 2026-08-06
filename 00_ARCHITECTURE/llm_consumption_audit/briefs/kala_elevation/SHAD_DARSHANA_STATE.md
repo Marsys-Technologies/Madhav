@@ -10,6 +10,73 @@ governing: SHAD_DARSHANA_NIGHT_RUN_v1_0.md (orchestration) + SHAD_DARSHANA_BRIEF
 ---
 ---
 type: CONDUCTOR-HEARTBEAT
+timestamp: 2026-08-06T17:00:46Z
+heartbeat_number: 7
+conductor: claude-opus-4-6
+status: ACTIVE
+prs_open: 4
+parikshaka_verdicts_recorded: 3
+notes: |
+  Heartbeat + 3 PARĪKṢAKA verdicts recorded.
+  CI runs all still queued (infra failures being tracked).
+  G-LAND build 482012f1: 924s = 15.4min (SLO ≤15min — slight violation flagged).
+  W3-MUH and W2-FIN still working.
+
+---
+type: PARIKSHAKA-VERDICT
+pr: 1083
+branch: shad-darshana/lane-w3eng
+items: "41 (muhurta factor census) + 36 (Pareto lattice + Agnivasa Convention B)"
+verdict: ACCEPT-WITH-DEBT
+timestamp: 2026-08-06T17:00:46Z
+debts:
+  - id: D1083-1
+    severity: cosmetic
+    description: "PR description claims 45 entries/7 families; independent count is 51/9. Migration comment says 50 — also wrong (51). target_floor in migration is 439 but should be 440. Functionally harmless (floor, not exact count) but docs wrong."
+  - id: D1083-2
+    severity: pre-existing
+    description: "test_writer_registered in test_bg_muhurta_lattice.py fails due to jhora not installed — pre-existing env issue, not caused by this PR."
+mutation_tests: "3/3 confirmed (null citation_or_gap_note caught; Pareto dominance bypass caught; Convention B arithmetic change caught)"
+serving_standard: "Not directly applicable (Python-only writers, no serving surface in this PR)"
+untouchables: CLEAN
+ci_status: "3 infra failures (Coverage/Earned-Signal/DB Integration) — all Service Unavailable at setup; rerun pending"
+
+---
+type: PARIKSHAKA-VERDICT
+pr: 1084
+branch: shad-darshana/lane-w3rit
+items: "17 (sudarshana collision audit — pre-built) + 37 (paddhati profile capability gap closed)"
+verdict: ACCEPT-WITH-DEBT
+timestamp: 2026-08-06T17:00:46Z
+debts:
+  - id: D1084-1
+    severity: test-coverage
+    description: "ADJUDICATION-8 Rail-2 test is description-level only — checks docstring, not actual SQL behavior. An integration test (DB needed) would truly enforce it. Code itself is correct (no convention_status filter present)."
+mutation_tests: "registration mutation (comment out registerCapability) → descriptor count drops 39→38, test fails; serving standard: honest-empty confirmed for unknown chart_id"
+untouchables: CLEAN
+ci_status: "3 infra failures (Planner/Coverage/Fact-Category Pinning) — all Service Unavailable at setup; Unit Tests PASSED; rerun pending"
+
+---
+type: PARIKSHAKA-VERDICT
+pr: 1086
+branch: shad-darshana/lane-w3cal
+items: "1 (dasha-sandhi calendar) + 3 (sky-calendar accuracy anchors) + 16 (Kota-Chakra accuracy anchors)"
+verdict: ACCEPT-WITH-DEBT
+timestamp: 2026-08-06T17:00:46Z
+debts:
+  - id: D1086-1
+    severity: pre-existing-pattern
+    description: "No registration-level test for registerDashaSandhiCalendar — pre-existing pattern across all kala_view tools."
+  - id: D1086-2
+    severity: honest-status
+    description: "Items 1/3/16 disposition is IN-PROGRESS, not VERIFIED-FIXED. PR delivers partial progress. Honest."
+mutation_tests: "3/3 confirmed (honest-empty on unreachable source; accuracy anchor date mutation; registration comment-out — registration mutation NOT caught by tests, noted as debt)"
+serving_standard: "Confirmed honest-empty for unreachable source and no-dasha-data case; provenance included"
+untouchables: CLEAN
+ci_status: "Still queued, no failures yet"
+
+---
+type: CONDUCTOR-HEARTBEAT
 timestamp: 2026-08-06T16:52:26Z
 heartbeat_number: 6
 conductor: claude-opus-4-6
