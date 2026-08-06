@@ -404,6 +404,126 @@ describe('stage 5 — gap report and 3-state coverage honesty', () => {
   })
 })
 
+// ── ADVERSARIAL DOMINATED-CONTENDER TEST (item 36 required gate) ────────────
+//
+// The Pareto filter must correctly eliminate a candidate that is dominated on
+// EVERY available axis by another candidate — even when a third "unrelated"
+// candidate is present. This is the adversarial test required by the W3-ENG
+// lane spec: "Create a fixture with 3 candidates where candidate B dominates
+// candidate A on all axes. Assert that after the Pareto filter, candidate A
+// does NOT appear in the output."
+//
+// Axis definitions (AXES_USED in the engine):
+//   panchangika_quality       — MAXIMIZE (the caller's auspiciousness score)
+//   residual_dosha_burden     — MINIMIZE (count of residual doṣas)
+//   cited_auspicious_support  — MAXIMIZE (count of cited auspicious factor spans)
+//
+// Fixture:
+//   CANDIDATE_DOM_A (score=0.40, 1 doṣa, 0 support)  ← dominated by DOM_B
+//   CANDIDATE_DOM_B (score=0.80, 0 doṣas, 1 support) ← dominates A on all axes
+//   CANDIDATE_DOM_C (score=0.60, 1 doṣa, 1 support)  ← Pareto-incomparable
+//
+// Dominance check (B over A):
+//   panchangika_quality: 0.80 ≥ 0.40 AND 0.80 > 0.40 ✓
+//   residual_dosha_burden: 0 ≤ 1 AND 0 < 1 ✓
+//   cited_auspicious_support: 1 ≥ 0 AND 1 > 0 ✓
+//   → B strictly dominates A on all three axes.
+//
+// C vs A: A.residual_dosha_burden==1, C.residual_dosha_burden==1 (tied),
+//         A.cited_auspicious_support==0 < C==1 so C is not at-least-as-good
+//         on all axes as A (A.panchangika_quality==0.40 < C==0.60 — A is worse
+//         on that axis). C does not dominate A (C is better on two axes,
+//         worse on none, but for dominance we need "at least as good on ALL"
+//         + "strictly better on at least one" — C.panchangika_quality=0.60
+//         vs A=0.40: C is strictly better; C.residual_dosha_burden=1 vs A=1:
+//         tied (satisfied); C.cited_auspicious_support=1 vs A=0: C strictly
+//         better → YES, C also dominates A).
+// Expected frontier: {DOM_B, DOM_C}. Expected dominated: {DOM_A}.
+
+describe('ADVERSARIAL dominated-contender test — item 36 required gate', () => {
+  // Fixed time windows (non-overlapping so no cross-contamination of lattice rows).
+  const CAND_DOM_A: CandidateInterval = {
+    id: 'dom_a', start: '2026-09-01T00:00:00Z', end: '2026-09-01T12:00:00Z',
+    score: 0.40, disqualified: false,
+  }
+  const CAND_DOM_B: CandidateInterval = {
+    id: 'dom_b', start: '2026-09-02T00:00:00Z', end: '2026-09-02T12:00:00Z',
+    score: 0.80, disqualified: false,
+  }
+  const CAND_DOM_C: CandidateInterval = {
+    id: 'dom_c', start: '2026-09-03T00:00:00Z', end: '2026-09-03T12:00:00Z',
+    score: 0.60, disqualified: false,
+  }
+
+  // Lattice rows: one doṣa overlapping DOM_A only; one support overlapping
+  // DOM_B AND DOM_C; nothing on DOM_A's support axis.
+  const DOSA_ON_A = latticeRow({
+    factor_key: 'rahu_kalam',
+    start_utc: '2026-09-01T02:00:00Z', end_utc: '2026-09-01T03:30:00Z',
+    detail: { category: 'inauspicious' },
+    corpus_status: 'computed_cited',
+  })
+  const SUPPORT_ON_B = latticeRow({
+    factor_key: 'abhijit',
+    start_utc: '2026-09-02T05:00:00Z', end_utc: '2026-09-02T06:00:00Z',
+    detail: { category: 'auspicious' },
+    corpus_status: 'computed_cited',
+  })
+  const DOSA_ON_C = latticeRow({
+    factor_key: 'yamaganda',
+    start_utc: '2026-09-03T01:00:00Z', end_utc: '2026-09-03T02:30:00Z',
+    detail: { category: 'inauspicious' },
+    corpus_status: 'computed_cited',
+  })
+  const SUPPORT_ON_C = latticeRow({
+    factor_key: 'abhijit',
+    start_utc: '2026-09-03T05:00:00Z', end_utc: '2026-09-03T06:00:00Z',
+    detail: { category: 'auspicious' },
+    corpus_status: 'computed_cited',
+  })
+
+  it('the dominated candidate (A) does NOT appear in the Pareto frontier', () => {
+    // Core gate criterion: candidate DOM_A — dominated on all axes by DOM_B —
+    // must be pruned from the frontier.
+    const s = substrate({
+      lattice_rows: [DOSA_ON_A, SUPPORT_ON_B, DOSA_ON_C, SUPPORT_ON_C],
+    })
+    const out = adjudicateCandidates([CAND_DOM_A, CAND_DOM_B, CAND_DOM_C], s)
+
+    // DOM_A is in the dominated set.
+    expect(out.pareto.dominated_candidate_ids).toContain('dom_a')
+    // DOM_A is NOT in the frontier.
+    expect(out.pareto.frontier_candidate_ids).not.toContain('dom_a')
+  })
+
+  it('DOM_B (the dominator) survives the frontier', () => {
+    const s = substrate({
+      lattice_rows: [DOSA_ON_A, SUPPORT_ON_B, DOSA_ON_C, SUPPORT_ON_C],
+    })
+    const out = adjudicateCandidates([CAND_DOM_A, CAND_DOM_B, CAND_DOM_C], s)
+    expect(out.pareto.frontier_candidate_ids).toContain('dom_b')
+  })
+
+  it('confirms DOM_B dominates DOM_A on all three axes (audit trace)', () => {
+    // Verify the fixture actually encodes the intended dominance by checking
+    // each candidate's ledger directly — the test is its own domain-logic proof.
+    const s = substrate({
+      lattice_rows: [DOSA_ON_A, SUPPORT_ON_B, DOSA_ON_C, SUPPORT_ON_C],
+    })
+    const out = adjudicateCandidates([CAND_DOM_A, CAND_DOM_B, CAND_DOM_C], s)
+
+    const ledgerA = out.ledgers.find((l) => l.candidate_id === 'dom_a')!
+    const ledgerB = out.ledgers.find((l) => l.candidate_id === 'dom_b')!
+
+    // panchangika_quality: B (0.80) > A (0.40)
+    expect(CAND_DOM_B.score).toBeGreaterThan(CAND_DOM_A.score)
+    // residual_dosha_burden: B (0) < A (≥1 because no muhurta-scope parihāra rescues it)
+    expect(ledgerB.residual_dosas.length).toBeLessThan(ledgerA.residual_dosas.length)
+    // cited_auspicious_support: B (1 abhijit span) > A (0)
+    expect(ledgerB.supporting_factors.length).toBeGreaterThan(ledgerA.supporting_factors.length)
+  })
+})
+
 // ── ONE-ENGINE RULE ─────────────────────────────────────────────────────────
 
 describe('ONE-ENGINE RULE — the engine is rite-agnostic', () => {
