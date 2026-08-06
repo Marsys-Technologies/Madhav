@@ -41,6 +41,40 @@ NEXT-ACTION: monitor lanes; heartbeat every 10 min; PARĪKṢAKA reviews as PRs 
 
 ---
 
+## CONDUCTOR-HEARTBEAT #15 — 17:47Z
+
+**Status:** ACTIVE
+**Timestamp:** 2026-08-06T17:47Z
+**Phase:** CI outage slowly clearing; W3K substrate audit complete
+
+**W3K SUBSTRATE AUDIT — COMPLETE (pre-emptive; no dispatch needed):**
+W3K is ALREADY BUILT from earlier sessions (PRs #1039 + #1059, merged to main):
+- K.1 (`bg_kp_sublord_division.py`): 249-fold sub-lord reference geometry on main ✓
+- K.2 (cuspal sub-lords, significators): `ga_kp_significators` on main ✓
+- K.4 (`lib/kp_school_voice.ts`): KP school voice on main ✓
+- K.4 serving (`explain.ts` G-5 wiring): in PR #1085 (W3-INT), waiting for CI ✓
+- Gate W3K "W3K voice" condition: SATISFIED — kp_school_voice.ts live on main
+The W3K dispatch item is CLOSED — no new build needed.
+
+**CI STATUS UPDATE:**
+- lane-w3rit (31120978923): queued=7, success=3, failed=3 (all infra at Set-up-job)
+- lane-w3int (31121055590): queued=11, success=2, failed=0
+- lane-w2fin (31121774448): queued=13, success=0, failed=0
+- lane-w3muh (31121707833): queued=13, success=0, failed=0
+- lane-w3eng (31123072544): queued=13, success=0, failed=0
+- lane-gland (31123109346): queued=13, success=0, failed=0
+- lane-w3cal (31124099237): NEW queued (17:46) — supersedes old cancelled run; includes D1086-3 fixes
+
+**D1086-3 fix status:** Both patches landed on lane-w3cal:
+- Endpoint fix: /api/mcp/internal → /api/retrieval/capability (15/15 tests pass)
+- CI timeout fix: Anchor 1 scan window 61d → 14d (11/11 tests pass in 0.04s)
+
+**Strategy:** Monitor for CI infra recovery. Once any run exits "queued" for failed jobs,
+attempt gh run rerun --failed to retry infra-only failures.
+
+**Next action:** HB #16 at ~17:57Z; continue CI monitoring
+
+
 ## CONDUCTOR-HEARTBEAT #14 — 17:40Z
 
 **Status:** ACTIVE
