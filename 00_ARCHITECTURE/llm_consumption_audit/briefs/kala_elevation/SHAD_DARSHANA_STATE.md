@@ -2,6 +2,67 @@
 
 ---
 type: CONDUCTOR-NOTE
+timestamp: 2026-08-06T19:05:00Z
+heartbeat_number: 28
+event: CI blocked (Actions outage ~3h42m, no incident ETA); full post-deploy sequence documented
+integration_tip: d47089d53
+actions_status: major_outage
+actions_incident_last_updated: 2026-08-06T18:46:37Z
+pr_1090_checks: 0_started
+next_hb_due: 19:15Z
+
+## CONDUCTOR HEARTBEAT #28 — 2026-08-06T19:05Z
+
+**Lease renewed:** 19:05:00Z (HB #27 was 19:00Z; gap = 5m00s — within ≤10m window)
+**Integration tip:** d47089d53 (unchanged)
+
+### CAMPAIGN STATE AT HB #28
+
+**CI MONITORING:** GitHub Actions incident `qcvjkzcs7j74` still "investigating" at 18:46Z
+(last update 19 minutes ago). Outage now ~3h42m. No ETA. PR #1090: 0 checks started.
+Reviewer hold remains: merge only after CI recovers + all required checks COMPLETED with SUCCESS.
+(Tolerated pre-existing: "Boot-time pointer check" verified on main before this PR.)
+
+**FULL POST-DEPLOY SEQUENCE (documented for independent reviewer):**
+
+**Stage 1 — CI RECOVERY + MERGE:**
+- Wait for Actions `operational` status → PR #1090 CI checks complete with SUCCESS
+- Independent reviewer verifies: PR contents match packet claims + all checks SUCCESS
+- Independent reviewer executes merge (integration→main)
+
+**Stage 2 — DEPLOY + MIGRATIONS:**
+- Merge triggers deploy; smoke gates must PASS (health, no-auth 401, bearer 200, url-token 200)
+- New migrations applied: 541 (kala_gochara_v2_build_state) · 542 (kala_gochara_windows_v2) ·
+  543 (bg_muhurta_lattice) · 544 (bg_parihara_rules) — all have DOWN paths ✓
+- DOWN paths verified: bg_muhurta_lattice DOWN = DROP TABLE + DELETE asset_registry;
+  bg_parihara_rules DOWN = same pattern; W2G tables also have rollback
+
+**Stage 3 — ORCHESTRATOR BUILDS:**
+- Trigger chart builds for both canonical charts: 482012f1 + 1c826d5a
+- New writers to run: ka_moorti_nirnaya · ka_vedha_gochara · ka_tithi_pravesha · ka_kota_chakra ·
+  ka_sudarshana_varsha · bg_sky_calendar · bg_muhurta_lattice · bg_parihara_rules · ka_sangam
+- Build SLO: each chart ≤15min (ka_kota_chakra noted: 922s = 15.37min, slight over — expected)
+
+**Stage 4 — GATE W3 PARĪKṢAKA WALK (live):**
+- Run `python3 scripts/s4_05_data_real_retest.py` (W3.0 — S4-05 re-test against live DB)
+- Walk all 19 W3.1 items on BOTH charts — pre-walk projected dispositions:
+  - VERIFIED-FIXED projected: items 4/5/6/7/9/13/14/16/17/31/34/36/37-part/38-full/41
+  - PARKED-HONEST projected: item 33 (absence-of-expected, TypeScript `notInCorpusCoverage`)
+  - PARKED-HONEST projected: item E6-full (per-view deepenings NOT built — all 5 sub-items)
+- Walk W3.2-W3.5: ELECT judgment ledgers, Abhijit rescue, gap report, factor census
+
+**Stage 5 — GATES W4/W5/W2G/R3/W6:**
+- Gate W4: item-38 ritual-pairing + Mode-2 fixture (ritual.ts W4 lane R)
+- Gate W5: planner wiring LIVE MCP calls (item 35/40 hard gate on real MCP invocations)
+- W2G: dispatch ka_gochara_v2_materialize writer → run equivalence V1-V6 validation → LANDED verdict
+- R3 teardown: Cloud Scheduler job → Cloud Run sidecar → service account (concurrent with W5)
+- W6 + campaign close: R4 condition-gated (item-44 hard gate + W2G landed + replacement paths)
+
+**BLOCKING factor:** GitHub Actions outage is the ONLY blocker. All code is staged and verified.
+**Next heartbeat due:** ~19:15Z
+
+---
+type: CONDUCTOR-NOTE
 timestamp: 2026-08-06T19:00:00Z
 heartbeat_number: 27
 event: CI blocked (GitHub Actions major_outage ~2h37m, incident updated 18:46Z — no ETA); E6-full pre-walk analysis complete
