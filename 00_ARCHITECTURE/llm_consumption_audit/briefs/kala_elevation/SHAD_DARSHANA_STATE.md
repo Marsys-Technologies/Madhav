@@ -40,6 +40,44 @@ PARĪKṢAKA dispatched fresh per lane as each PR lands. Merge train serial on C
 NEXT-ACTION: monitor lanes; heartbeat every 10 min; PARĪKṢAKA reviews as PRs land; gate chain after last W3 merge.
 
 ---
+---
+type: CONDUCTOR-HEARTBEAT
+timestamp: 2026-08-06T17:08:00Z
+heartbeat_number: 8
+conductor: claude-opus-4-6
+status: ACTIVE
+prs_open: 6
+parikshaka_verdicts_recorded: 4
+notes: |
+  HB #8 — All 6 campaign PRs now open (#1083–#1088).
+  PR #1085 PARĪKṢAKA complete: ACCEPT-WITH-DEBT (3 debts).
+  PR #1087 (W3-MUH) opened; PARĪKṢAKA dispatched (agent adb87fe898fe33b39).
+  PR #1088 (W2-FIN) opened; PARĪKṢAKA dispatched (agent afaee91c716f9fd36).
+  G-LAND/W2G builder still running 1c826d5a chart build.
+  CI runs #1083/#1084: still queued (infra failures, cannot rerun yet).
+  CI runs #1085–#1088: all pending (newly opened).
+
+---
+type: PARIKSHAKA-VERDICT
+pr: 1085
+branch: shad-darshana/lane-w3int
+items: "33 (absence-of-expected from pratijna) + 34 (contrastive field-diff EXPLAIN) + W5-prep primitives"
+verdict: ACCEPT-WITH-DEBT
+timestamp: 2026-08-06T17:08:00Z
+debts:
+  - id: D1085-1
+    severity: test-quality
+    description: "Monotonicity test (test_monotonicity_higher_grade_never_lower_salience) uses weak inequality <= instead of <. Cannot catch constant carrier_salience mutation. Should be < for distinct above-threshold grades."
+  - id: D1085-2
+    severity: informational
+    description: "Python/TypeScript behavioral divergence for zero-lambda current: Python emits weakened_window with delta_ln_lambda=-inf; TypeScript skips entirely (guards lambda_peak<=0). Both defensible; worth documenting if same consumer."
+  - id: D1085-3
+    severity: cosmetic
+    description: "Dead __post_init__ on FieldSnapshot dataclass: custom __init__ overrides it, making __post_init__ unreachable. Functionally harmless."
+mutation_tests: "Threshold boundary test (grade=0.59 → no fire, grade=0.60 → fires) mutation-sensitive. Anti-symmetry property verified in both languages."
+untouchables: CLEAN
+ci_status: "All 8 checks pending (run 31121055590)"
+
 
 ---
 artifact: SHAD_DARSHANA_STATE (Campaign Ledger)
