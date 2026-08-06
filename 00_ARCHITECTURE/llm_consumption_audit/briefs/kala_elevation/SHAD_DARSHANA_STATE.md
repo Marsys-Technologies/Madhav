@@ -11,6 +11,56 @@ governing: SHAD_DARSHANA_NIGHT_RUN_v1_0.md (orchestration) + SHAD_DARSHANA_BRIEF
 
 # ṢAḌ-DARŚANA STATE — the campaign ledger
 
+## CONDUCTOR session open + Stage 0 progress (2026-08-06, residual-completion campaign)
+
+**Attribution:** Conductor session (Opus), the ṢAḌ-DARŚANA residual-completion arc — fully
+autonomous multi-agent swarm, no human gates. Orientation done: CLAUDE.md §C, `git fetch origin
+main shad-darshana/integration`, this ledger read AT `origin/shad-darshana/integration` tip
+`c3e30128` (never a local copy — the prior local copy in this worktree was stale, behind by
+several commits, and was hard-reset to the fetched tip before this entry was written).
+
+**Stage 0a — CONFIRMED, no re-ejection.** PR #1077 (`tap-ci.yml` `merge_group` trigger fix)
+merged to `main` at `6731ab4215cc` (2026-08-06T10:19:06Z). Independently verified the fix's own
+proof condition, not just the merge: the `merge_group` CI run triggered for #1077
+(`databaseId=31092214633`, started 2026-08-06T10:11:03Z) shows job **"TAP-6 — Method audit grep
+set" = completed/success** — TAP-6 now genuinely reports on queue-context runs, which is the
+exact condition that was missing and caused #1076's earlier `checks_timed_out` ejection.
+
+**Stage 0b — IN PROGRESS.** PR #1076 (Gate-1 packet) timeline: `added_to_merge_queue`
+2026-08-06T08:39:44Z → `removed_from_merge_queue` 09:43:08Z (the pre-#1077-fix `checks_timed_out`
+ejection, already diagnosed by the prior session) → re-`added_to_merge_queue` 10:23:09Z (this
+session, via `gh pr merge 1076 --auto`, confirmed already-queued on first attempt — the fix
+appears to have self-healed the queue per its own design). `mergeStateStatus=CLEAN`,
+`mergeable=MERGEABLE` at requeue time. A persistent background Monitor (task `bi2umuq18`) is
+watching for `removed_from_merge_queue` events and the terminal `MERGED`/`CLOSED` state — per the
+rails, queued ≠ merged, watching explicitly for ejection, not just polling for success.
+
+**Stage 0e — DISPATCHED (background agent, not yet returned).** Per the DAG, Gate-Executor's
+first duty is amending `PRODUCTION_GATE_EXECUTION_POLICY_v1_0.md` to record that the independent-
+reviewer role now lives in-session as a fresh-context subagent (native process-change ruling,
+2026-08-06) rather than a separate chat session — same verification discipline, different dispatch
+mechanism. Dispatched as a general-purpose subagent in an isolated worktree with explicit
+instructions: bump to v1.1, preserve §2/§3 rigor unchanged, open its own small PR to `main`, and
+(as the one-time bootstrapping exception, since this PR is the act of establishing the new
+reviewer mechanism) execute its own merge once its own independent CI check confirms green. Not
+yet returned as of this entry.
+
+**Stages 0c/0d (deploy verification; protection-proof transaction) — NOT YET STARTED.** Both
+depend on #1076 actually landing on `main` first (0c needs the `deploy.yml` auto-fire on the
+merge commit; 0d's protection-proof transaction is independent of the merge but is sequenced
+after in the brief's Stage 0 ordering, and migration 540 — the subject of the proof — only
+matters once it's confirmed applied via 0c). Will pick up the instant the merge-queue Monitor
+reports `MERGED`.
+
+**Stage 1 lanes (R/K/F/G) — NOT YET DISPATCHED.** Correctly blocked on Stage 0 closing per the
+DAG; nothing dispatched prematurely.
+
+*Truth over completion. PARKED-HONEST with evidence, not a false close — this entry will be
+followed by a close-out update once Stage 0 finishes or this session's turn ends, whichever is
+first.*
+
+---
+
 ## MORNING REPORT — GATE-1 BUILDER session close (2026-08-06)
 
 **Attribution:** ṢAḌ-DARŚANA builder session, dispatched with three deliverables (ne_v01
