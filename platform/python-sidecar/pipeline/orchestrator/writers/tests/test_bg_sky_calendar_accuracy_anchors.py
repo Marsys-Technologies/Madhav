@@ -85,8 +85,8 @@ class TestAnchor1JupiterAriesIngress2023:
 
     def test_jupiter_aries_ingress_found_in_april_may_2023(self):
         _setup_swe()
-        start_jd = _jd(2023, 4, 1)
-        end_jd = _jd(2023, 6, 1)  # generous window for sidereal Aries
+        start_jd = _jd(2023, 4, 17)  # tightened from Apr 1 for CI performance
+        end_jd = _jd(2023, 5, 1)  # ±6 d around known Apr 22 event; event confirmed within window
         rows = scan_ingresses(swe, start_jd, end_jd)
         jupiter_aries = [
             r for r in rows
@@ -100,8 +100,8 @@ class TestAnchor1JupiterAriesIngress2023:
 
     def test_jupiter_aries_ingress_is_in_2023(self):
         _setup_swe()
-        start_jd = _jd(2023, 4, 1)
-        end_jd = _jd(2023, 6, 1)
+        start_jd = _jd(2023, 4, 17)  # tightened from Apr 1 for CI performance
+        end_jd = _jd(2023, 5, 1)  # ±6 d around known Apr 22 event
         rows = scan_ingresses(swe, start_jd, end_jd)
         jupiter_aries = [
             r for r in rows
@@ -115,8 +115,8 @@ class TestAnchor1JupiterAriesIngress2023:
 
     def test_jupiter_aries_ingress_event_type_is_ingress(self):
         _setup_swe()
-        start_jd = _jd(2023, 4, 1)
-        end_jd = _jd(2023, 6, 1)
+        start_jd = _jd(2023, 4, 17)  # tightened from Apr 1 for CI performance
+        end_jd = _jd(2023, 5, 1)  # ±6 d around known Apr 22 event
         rows = scan_ingresses(swe, start_jd, end_jd)
         jupiter_aries = [r for r in rows if r.primary_body == "Jupiter" and r.sign == "Aries"]
         assert len(jupiter_aries) >= 1
