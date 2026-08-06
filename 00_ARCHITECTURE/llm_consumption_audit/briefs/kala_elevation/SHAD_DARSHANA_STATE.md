@@ -52,8 +52,16 @@ PR (ruling point 4's re-park condition is about write TARGET, which is now fully
 is a candidate-SCOPE gap, a different and non-blocking question).
 
 **Verdict: ACCEPT-WITH-DEBT.** Conductor re-ran the two infra-failed CI checks (isolated,
-content-unrelated failure, confirmed via the job logs before re-running rather than assumed) and
-will merge once green.
+content-unrelated failure, confirmed via the job logs before re-running rather than assumed) —
+both passed clean on re-run, `mergeStateStatus` flipped to `CLEAN`. **PR #1082 MERGED** to
+`shad-darshana/integration` at `e2e6fe03a45af044bd2193e60d9f20fd70fbe35f`
+(2026-08-06T15:20:45Z), branch deleted. **Lane G is CLOSED for this session's scope**: the
+write-target defect the native's ruling addressed is fully resolved and independently re-verified
+twice (once by the builder, once adversarially by PARĪKṢAKA with a mutation test); the equivalence
+report exists and is honest about its own current limits (1128-row review bucket, disclosed and
+root-caused, inherited by a future W6 disposition ruling — not this session's to close further).
+All six of this session's agent-managed worktrees (Lanes F/K/R/G ×2 attempts) removed post-merge,
+consistent with the "worktrees removed at close" rail.
 
 ---
 
