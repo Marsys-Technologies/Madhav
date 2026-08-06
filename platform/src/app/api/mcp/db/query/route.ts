@@ -102,6 +102,16 @@ const ALLOWED_TABLES = new Set([
   // docstring). Chart-scoped, written only by the ka_kshetra sidecar writer; read-only here,
   // no write path added.
   'kala_field_snapshots',
+  // ṢAḌ-DARŚANA W2.7 (lane w2fin, 2026-08-06): kala_priority_get reads kala_field_salience
+  // to serve the real five-axis salience vector (item 25: Informativeness/Consequence/
+  // Relevance/Reliability/Actionability) when rows exist for the chart. The prior W0 facade
+  // reported this as not_in_corpus; this wiring promotes it to computed/honest_empty based
+  // on actual DB state. Chart-scoped (chart_id FK), written only by ka_kshetra stage 6;
+  // read-only here, no write path added.
+  // kala_insights added for W2.8 ordering verification (kala_ahead_get / kala_story_get
+  // must lead with the highest-scoring insight_score row). Same writer, same chart scope.
+  'kala_field_salience',
+  'kala_insights',
 ])
 
 // Forbidden anywhere in the statement: write/DDL verbs and statement separators.

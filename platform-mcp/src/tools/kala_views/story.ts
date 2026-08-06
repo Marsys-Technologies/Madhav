@@ -118,6 +118,81 @@ import { finalizeMcpBudget, type TrimmableSection } from '../../lib/response_bud
 // header for why this is the deliberately-kept-local pattern for this directory.
 import { callKalaRegistryCap, unwrapKalaPayload, round3 } from './shared.js'
 
+// ── W2.8 — fetchTopInsight (kala_insights leading the reading) ──────────────────────
+// SHAD_DARSHANA_BRIEF_v2_0.md §3 W2: "reading-leads-with-insight enforced in composer."
+// Queries kala_insights ORDER BY insight_score DESC LIMIT 1 to surface the highest-scored
+// insight for this chart (1c826d5a has 2 scarcity rows; 482012f1 has 0 rows → honest_empty).
+// Uses the same read-only DB proxy (/api/mcp/db/query) as resolveFieldSnapshot and the W2.7
+// salience vector fetch — never throws; honest_empty on 0 rows, unreachable on fetch error.
+
+const PLATFORM_URL_FOR_INSIGHTS = (process.env['PLATFORM_URL'] ?? 'http://localhost:3000').replace(/\/$/, '')
+const MCP_INTERNAL_TOKEN_FOR_INSIGHTS = process.env['MCP_INTERNAL_TOKEN'] ?? ''
+
+export interface TopInsightResult {
+  state: 'computed' | 'honest_empty' | 'unreachable'
+  insight_id?: string | null
+  insight_type?: string | null
+  insight_score?: number | null
+  statement_key?: string | null
+  statement_params?: unknown
+  fact_ids?: string[]
+  reason?: string
+}
+
+/** Fetches the highest-scoring row from kala_insights for a chart (ORDER BY insight_score DESC
+ *  LIMIT 1). Returns state='computed' with the row's fields when data exists, state='honest_empty'
+ *  when 0 rows, state='unreachable' when the DB proxy call fails. Never throws. */
+export async function fetchTopInsight(
+  chartId: string,
+  principal: { user_uid: string; key_id: string },
+): Promise<TopInsightResult> {
+  try {
+    const res = await fetch(`${PLATFORM_URL_FOR_INSIGHTS}/api/mcp/db/query`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-mcp-internal-token': MCP_INTERNAL_TOKEN_FOR_INSIGHTS,
+        'x-mcp-user': principal.user_uid,
+        'x-mcp-key-id': principal.key_id,
+      },
+      body: JSON.stringify({
+        sql:
+          'SELECT insight_id, insight_type, insight_score, statement_key, statement_params, fact_ids ' +
+          'FROM kala_insights WHERE chart_id = $1 AND lel_derived = FALSE ' +
+          'ORDER BY insight_score DESC LIMIT 1',
+        params: [chartId],
+      }),
+      signal: AbortSignal.timeout(10_000),
+    })
+    if (!res.ok) {
+      const text = await res.text().catch(() => '')
+      return {
+        state: 'unreachable',
+        reason: `kala_insights read failed (HTTP ${res.status}): ${text.slice(0, 200)}`,
+      }
+    }
+    const data = (await res.json()) as { rows?: Array<Record<string, unknown>> }
+    const row = data.rows?.[0]
+    if (!row) {
+      return { state: 'honest_empty' }
+    }
+    return {
+      state: 'computed',
+      insight_id: row['insight_id'] as string | null ?? null,
+      insight_type: row['insight_type'] as string | null ?? null,
+      insight_score: row['insight_score'] != null ? Number(row['insight_score']) : null,
+      statement_key: row['statement_key'] as string | null ?? null,
+      statement_params: row['statement_params'],
+      fact_ids: (row['fact_ids'] as string[] | null) ?? [],
+    }
+  } catch (err) {
+    return {
+      state: 'unreachable',
+      reason: `kala_insights fetch threw: ${err instanceof Error ? err.message : String(err)}`,
+    }
+  }
+}
+
 // ── Input schema ─────────────────────────────────────────────────────────────────────
 
 export const KalaStoryInputShape = {
@@ -561,6 +636,19 @@ function buildCoverage(
       'lel_pinning_per_chapter',
       'The LEL fetch succeeded but returned zero events for this chart — no life events are ' +
       'logged for this native/chart, so every chapter honestly pins zero events.',
+    ))
+    // W2.4b: the SHAD_DARSHANA_BRIEF_v2_0.md §3 W2 checklist specifies the literal flag name
+    // `no_lived_history_recorded` for the LEL-absent scenario. The PARĪKṢAKA disposition was
+    // PARKED-HONEST ("spirit satisfied, literal flag name absent"). This entry adds the literal
+    // name as an alias alongside lel_pinning_per_chapter (backward compat: both are emitted,
+    // the pre-existing name is kept so callers that already read lel_pinning_per_chapter are
+    // not broken). Only emitted when lelEventTotal === 0 (genuinely no LEL events for chart).
+    coverage.push(honestEmptyCoverage(
+      'no_lived_history_recorded',
+      'No life events are logged in the LEL for this chart/native — the per-chapter retrodiction ' +
+      'fit is an honest_empty (not a claim of a quiet period). This flag name is the literal ' +
+      'SHAD_DARSHANA_BRIEF_v2_0.md §3 W2 specification; lel_pinning_per_chapter is its alias ' +
+      '(retained for backward compatibility).',
     ))
   } else {
     coverage.push(computedCoverage('lel_pinning_per_chapter'))
