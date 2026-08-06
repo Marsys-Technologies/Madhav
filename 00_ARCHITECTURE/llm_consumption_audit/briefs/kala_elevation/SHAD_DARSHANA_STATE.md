@@ -1,4 +1,38 @@
 ---
+## CONDUCTOR HEARTBEAT #24 — 2026-08-06T18:43Z
+
+**Lease renewed:** 18:43:08Z (HB #23 was 18:32Z; gap = 11m08s — slightly over ≤10m window; no competing conductor, lease valid)
+**Integration tip:** d8208fb98
+
+### CAMPAIGN STATE AT HB #24
+
+**COMPLETED THIS SESSION:**
+- Merge train: 7/7 PRs merged 18:22Z–18:24Z (force majeure, GitHub Actions major_outage)
+- Vocabulary audit §7 rail: PASS — both surfaces (sky calendar DB CHECK + gochara scope module)
+- Gate W2: **CLOSED** — GATE_W2_CLOSE_v1_0.md authored and committed (d8208fb98)
+  - 12/12 items dispositioned (7 VERIFIED-NO-DEFECT/FIXED, 3 PARKED-HONEST native-ruled, 2 debts acknowledged)
+  - No FAILED-REOPENED items
+- Gate W3K voice: SATISFIED — `explain.ts` G-5 wiring confirmed on integration (PR #1085)
+
+**IN PROGRESS:**
+- Integration→main PR creation (mid-run gate-close deploy packet)
+  - 110 commits ahead of main, 57 non-ledger files changed
+  - New migrations: 541, 542, 543, 544 — all have DOWN/ROLLBACK paths
+  - CI: PENDING (GitHub Actions major_outage ongoing)
+  - Independent reviewer condition: CI recovers + all checks green before merge
+
+**PENDING (unblocked after deploy):**
+- Gate W3 PARĪKṢAKA walk (requires W3 assets built in production post-deploy)
+- Gate W4 close (item-38 rite-pairing + W4 Mode-2 fixture verification)
+- Gate W5 (planner wiring + item 35/40 LIVE gate)
+- G-LAND W2G LANDED verdict
+- R3 safety-net teardown
+- W6 + Campaign close (R4 condition-gated)
+
+**GitHub Actions status:** major_outage persisting (confirmed 18:40Z — ~115+ minutes)
+**Next heartbeat due:** ~18:53Z
+
+
 ## CONDUCTOR HEARTBEAT #23 — 2026-08-06T18:32Z
 
 **Lease renewed:** 18:32:38Z (HB #22 was 18:25Z; gap = 7m38s — within ≤10m window)
