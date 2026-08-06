@@ -11,6 +11,52 @@ governing: SHAD_DARSHANA_NIGHT_RUN_v1_0.md (orchestration) + SHAD_DARSHANA_BRIEF
 
 # ṢAḌ-DARŚANA STATE — the campaign ledger
 
+## Lane G rework PARĪKṢAKA verdict — ACCEPT-WITH-DEBT (2026-08-06, same session)
+
+**PR #1082** (`shad-darshana/lane-g-w2g-own-surface` → `shad-darshana/integration`) —
+supersedes #1081 (closed, not merged, pointer comment left). Full rework per the native ruling
+above: new table `kala_gochara_windows_v2` (migration 542, schema-mirrored from v1, zero
+protection triggers attached — independently confirmed via `pg_trigger`), writer renamed
+`ka_gochara_v2_materialize.py` writing ONLY to that table.
+
+**PARĪKṢAKA independently confirmed all four untouchables-rail claims, including a mutation
+test** (temporarily inserted `DELETE FROM kala_gochara_windows...` and the override-setting
+string into the writer, confirmed both of its own static-source guard tests correctly failed,
+then restored and confirmed they passed again — proving the guards are real detectors, not
+theater, directly answering §N.8's "does a real code path exist that could make this false"
+question). Live-write reverified: 29 rows in `kala_gochara_windows_v2` only; v1's `482012f1`
+count independently re-confirmed at 16,297 with zero non-`v1`-generation rows anywhere in that
+table — the Conductor's earlier cleanup held, nothing regressed. FROZEN orchestrator contract
+conformance confirmed. Migration provenance confirmed via SHA-256 hash match between the branch's
+migration files and `_migrations_applied`'s tracked rows (541 retroactively tracked, 542 tracked
+fresh — both via the real runner, not hand-applied). Candidate arithmetic (30, was wrongly 38)
+independently re-derived from `kala_gochara_v2_build_state` — confirmed correct and computed
+programmatically, not hand-typed.
+
+**The equivalence report was independently re-derived from raw SQL, not trusted from the PR's own
+numbers** — every figure matched exactly (1148 v1 rows in comparable scope, 9 matched within 1
+day, 9/9 agreement where compared, 20 v2-only rows split 5 Moon-driven / 2 near-miss / 13 grid
+artifact, closed-vocabulary classification guaranteeing zero unclassified divergences). The scope
+rule was checked for circularity and found honest — it does NOT exclude in-scope v1 rows 2.0
+simply missed, which is exactly why the raw match rate is a stark 0.78%, not a flattered number.
+
+**The debt, named explicitly, not swept under a green checkmark:** (1) two CI checks (TypeScript
+src-only, ICR PR Gate) failed from a GitHub Actions infra outage (`Failed to resolve action
+download info: Service Unavailable`) unrelated to the PR's content (it touches zero `.ts`/`.tsx`
+files) — re-run required before merge, not treated as a real fail; (2) the equivalence report's
+honest finding — 2.0's current candidate net only proposes `degree_contact` events, while v1's
+daily grid activates mostly via `drishti_contact`/`kakshya_cell_crossing`/`sign_ingress`, leaving
+1128 of 1148 comparable v1 rows in a "needs review" bucket, root-caused not hand-waved — is real,
+disclosed debt this campaign's future W6 disposition ruling inherits, not a defect blocking this
+PR (ruling point 4's re-park condition is about write TARGET, which is now fully resolved; this
+is a candidate-SCOPE gap, a different and non-blocking question).
+
+**Verdict: ACCEPT-WITH-DEBT.** Conductor re-ran the two infra-failed CI checks (isolated,
+content-unrelated failure, confirmed via the job logs before re-running rather than assumed) and
+will merge once green.
+
+---
+
 ## RULING — Lane G / W2G write-target (2026-08-06, native, verbatim + Conductor's read)
 
 **Native ruling, recorded verbatim** (addendum to this session's routed disposition question):
