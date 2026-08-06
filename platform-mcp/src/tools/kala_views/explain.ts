@@ -33,6 +33,115 @@
 import { z } from 'zod'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { Principal } from '../../types.js'
+
+// ── Item 34: Contrastive field-diff (serving layer) ──────────────────────────
+
+/**
+ * A minimal slice of a `kala_field_windows` row carrying the fields needed
+ * for a field-diff computation. Serves as input to `computeFieldDiff`.
+ * This is the TypeScript counterpart to stage65_insights.py's `InsightWindow`
+ * slice — only what the diff algorithm needs, no more.
+ */
+export interface FieldWindowSlice {
+  window_id: string
+  event_class: string
+  lambda_peak: number
+  fact_ids: string[]
+}
+
+/** A row in the `new_windows` or `closed_windows` lists. */
+export interface FieldDiffWindowRow {
+  window_id: string
+  event_class: string
+  fact_ids: string[]
+}
+
+/** A row in the `intensified_windows` or `weakened_windows` lists. */
+export interface FieldDiffChangedRow extends FieldDiffWindowRow {
+  delta_ln_lambda: number
+}
+
+export interface FieldDiffResult {
+  new_windows: FieldDiffWindowRow[]
+  closed_windows: FieldDiffWindowRow[]
+  intensified_windows: FieldDiffChangedRow[]
+  weakened_windows: FieldDiffChangedRow[]
+}
+
+const CONTRAST_MIN_DELTA_LN_LAMBDA = 0.5
+
+/**
+ * Item 34 (W3): compute the contrastive field diff between two window sets.
+ *
+ * `current` is the present set of field windows; `baseline` is the reference
+ * point (last month, last year, a pinned field_snapshot_id, another option).
+ * Both are lists of `FieldWindowSlice` — the caller resolves the baseline.
+ *
+ * Returns:
+ * - `new_windows`: present in current but absent from baseline (by window_id).
+ * - `closed_windows`: present in baseline but absent from current.
+ * - `intensified_windows`: present in both; Δln λ > threshold (lambda rose).
+ * - `weakened_windows`: present in both; Δln λ < −threshold (lambda fell).
+ *
+ * Anti-symmetry: computeFieldDiff(A, B).new_windows window_ids ===
+ *                computeFieldDiff(B, A).closed_windows window_ids.
+ */
+export function computeFieldDiff(
+  current: FieldWindowSlice[],
+  baseline: FieldWindowSlice[],
+  lambdaThreshold: number = CONTRAST_MIN_DELTA_LN_LAMBDA,
+): FieldDiffResult {
+  const currentById = new Map(current.map((w) => [w.window_id, w]))
+  const baselineById = new Map(baseline.map((w) => [w.window_id, w]))
+
+  const currentIds = new Set(currentById.keys())
+  const baselineIds = new Set(baselineById.keys())
+
+  const newWindows: FieldDiffWindowRow[] = [...currentIds]
+    .filter((id) => !baselineIds.has(id))
+    .sort()
+    .map((id) => {
+      const w = currentById.get(id)!
+      return { window_id: id, event_class: w.event_class, fact_ids: [...w.fact_ids] }
+    })
+
+  const closedWindows: FieldDiffWindowRow[] = [...baselineIds]
+    .filter((id) => !currentIds.has(id))
+    .sort()
+    .map((id) => {
+      const w = baselineById.get(id)!
+      return { window_id: id, event_class: w.event_class, fact_ids: [...w.fact_ids] }
+    })
+
+  const intensifiedWindows: FieldDiffChangedRow[] = []
+  const weakenedWindows: FieldDiffChangedRow[] = []
+
+  const sharedIds = [...currentIds].filter((id) => baselineIds.has(id)).sort()
+  for (const id of sharedIds) {
+    const wCur = currentById.get(id)!
+    const wBase = baselineById.get(id)!
+    if (wBase.lambda_peak <= 0 || wCur.lambda_peak <= 0) continue
+    const deltaLn = Math.log(wCur.lambda_peak / wBase.lambda_peak)
+    const row: FieldDiffChangedRow = {
+      window_id: id,
+      event_class: wCur.event_class,
+      fact_ids: [...wCur.fact_ids],
+      delta_ln_lambda: deltaLn,
+    }
+    if (deltaLn > lambdaThreshold) {
+      intensifiedWindows.push(row)
+    } else if (-deltaLn > lambdaThreshold) {
+      weakenedWindows.push(row)
+    }
+  }
+
+  return {
+    new_windows: newWindows,
+    closed_windows: closedWindows,
+    intensified_windows: intensifiedWindows,
+    weakened_windows: weakenedWindows,
+  }
+}
 import {
   makeKalaEnvelope,
   resolveFieldSnapshot,

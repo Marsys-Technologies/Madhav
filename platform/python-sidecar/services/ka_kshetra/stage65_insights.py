@@ -490,3 +490,180 @@ def select_leading_insight(rows: list[dict]) -> dict | None:
     if not rows:
         return None
     return min(rows, key=lambda r: (-r["insight_score"], r["insight_id"]))
+
+
+# ── Item 33: bodha_pratijna-aware absence detector (W3) ─────────────────────
+
+@dataclass(frozen=True)
+class PratijnaRow:
+    """A typed slice of a `bodha_pratijna` DB row.
+
+    `grade` is the classical promise score ∈ [0, 1] for the event class on
+    this chart (the normalised value stored in `bodha_pratijna.grade`).
+    `fact_ids` are the `chart_facts.fact_id`s that established the promise —
+    they ride the resulting InsightCandidate for B.3 provenance.
+    """
+    pratijna_id: str
+    event_class: str
+    grade: float
+    fact_ids: tuple[str, ...] = ()
+
+
+def detect_absence_from_pratijna(
+    event_class: str,
+    pratijna_rows: list[PratijnaRow],
+    windows_in_horizon: list[InsightWindow],
+    horizon_start: float,
+    horizon_end: float,
+    threshold: float = ABSENCE_MIN_PROMISE,
+) -> InsightCandidate | None:
+    """
+    Item 33 (W3): bodha_pratijna-aware absence-of-expected detector.
+
+    Fires when:
+    - At least one `PratijnaRow` for `event_class` exists (absence of
+      something *expected* — never of something never promised).
+    - The MAXIMUM grade across all rows is >= `threshold` (strong natal
+      promise).
+    - Zero windows exist for `event_class` in the queried horizon.
+
+    The resulting InsightCandidate carries the union of `fact_ids` from ALL
+    pratijna rows (B.3 — every consumer can trace back to the natal facts
+    that established the promise).
+
+    `carrier_salience` is proportional to `max_grade` so the monotonicity
+    property holds: a stronger promise (higher grade) yields a higher-scoring
+    absence insight, ceteris paribus (more windows → fewer open promises).
+    """
+    if not pratijna_rows:
+        return None
+    max_grade = max(r.grade for r in pratijna_rows)
+    if max_grade < threshold:
+        return None
+    matching_windows = [w for w in windows_in_horizon if w.event_class == event_class]
+    if matching_windows:
+        return None
+
+    all_fact_ids: tuple[str, ...] = tuple(sorted({
+        fid for row in pratijna_rows for fid in row.fact_ids
+    }))
+
+    return InsightCandidate(
+        insight_type="absence_of_expected",
+        event_class=event_class,
+        window_id=None,
+        t_start=horizon_start,
+        t_end=horizon_end,
+        statement_key="insight_absence_of_expected_v1",
+        statement_params={
+            "event_class": event_class,
+            "p_e": max_grade,
+            "horizon_start": horizon_start,
+            "horizon_end": horizon_end,
+        },
+        discriminator=f"{event_class}|{horizon_start}|{horizon_end}",
+        # carrier_salience = max_grade so a higher promise → higher score
+        # (monotonicity property, Item 33 brief spec).
+        carrier_salience=max_grade,
+        confidence_tier=None,
+        fact_ids=all_fact_ids,
+    )
+
+
+# ── Item 34: Contrastive field-diff (W3) ────────────────────────────────────
+
+@dataclass
+class FieldSnapshot:
+    """A lightweight representation of the set of `kala_field_windows` at a
+    past or alternative time-point, used as the baseline for `compute_field_diff`.
+
+    `windows_by_id` is keyed by `window_id` for O(1) lookup during diff.
+    Not frozen: the `windows_by_id` index is derived at construction time
+    and stored as a plain attribute for fast lookup.
+    """
+    snapshot_label: str
+    windows: list[InsightWindow]
+
+    def __post_init__(self):
+        self.windows_by_id: dict[str, InsightWindow] = {
+            w.window_id: w for w in self.windows
+        }
+
+    def __init__(self, snapshot_label: str, windows: list[InsightWindow]):
+        self.snapshot_label = snapshot_label
+        self.windows = windows
+        self.windows_by_id = {w.window_id: w for w in windows}
+
+
+def compute_field_diff(
+    current_windows: list[InsightWindow],
+    baseline: FieldSnapshot,
+    lambda_threshold: float = CONTRAST_MIN_DELTA_LN_LAMBDA,
+) -> dict:
+    """
+    Item 34 (W3): compute the contrastive field diff between the current set
+    of `kala_field_windows` and a `FieldSnapshot` baseline.
+
+    Returns a dict with four lists (always present, even if empty):
+    - `new_windows`:        present in current, absent from baseline.
+    - `closed_windows`:     present in baseline, absent from current.
+    - `intensified_windows`: present in both; ln(λ_current/λ_baseline) > threshold.
+    - `weakened_windows`:   present in both; ln(λ_baseline/λ_current) > threshold.
+
+    Each list entry is a dict carrying at minimum:
+        { "window_id", "event_class", "fact_ids", "delta_ln_lambda" (where applicable) }
+
+    This function is the PURE data-layer diff — no insight rows assembled here.
+    Callers (serving layer or synthesize_insights) wrap the diff into
+    InsightCandidates / kala_insights rows as needed.
+    """
+    current_by_id: dict[str, InsightWindow] = {w.window_id: w for w in current_windows}
+    baseline_by_id = baseline.windows_by_id
+
+    current_ids = set(current_by_id)
+    baseline_ids = set(baseline_by_id)
+
+    new_windows = [
+        {
+            "window_id": wid,
+            "event_class": current_by_id[wid].event_class,
+            "fact_ids": list(current_by_id[wid].fact_ids),
+        }
+        for wid in sorted(current_ids - baseline_ids)
+    ]
+
+    closed_windows = [
+        {
+            "window_id": wid,
+            "event_class": baseline_by_id[wid].event_class,
+            "fact_ids": list(baseline_by_id[wid].fact_ids),
+        }
+        for wid in sorted(baseline_ids - current_ids)
+    ]
+
+    intensified_windows: list[dict] = []
+    weakened_windows: list[dict] = []
+
+    for wid in sorted(current_ids & baseline_ids):
+        w_cur = current_by_id[wid]
+        w_base = baseline_by_id[wid]
+        if w_base.lambda_peak <= 0:
+            continue
+        delta_ln = log(w_cur.lambda_peak / w_base.lambda_peak) if w_cur.lambda_peak > 0 else float("-inf")
+        entry = {
+            "window_id": wid,
+            "event_class": w_cur.event_class,
+            "fact_ids": list(w_cur.fact_ids),
+            "delta_ln_lambda": delta_ln,
+        }
+        if delta_ln > lambda_threshold:
+            intensified_windows.append(entry)
+        elif -delta_ln > lambda_threshold:
+            weakened_windows.append(entry)
+
+    return {
+        "new_windows": new_windows,
+        "closed_windows": closed_windows,
+        "intensified_windows": intensified_windows,
+        "weakened_windows": weakened_windows,
+    }

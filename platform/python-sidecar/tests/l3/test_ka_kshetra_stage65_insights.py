@@ -442,3 +442,280 @@ class TestSynthesizeInsights:
             contrast_inputs=[(carrier, -2.0, -2.6, "last_month")],
         )
         assert any(r["insight_type"] == "contrast" for r in rows)
+
+
+# ── Item 33: Absence-of-expected with bodha_pratijna rows (W3 TDD additions) ─
+
+
+from services.ka_kshetra.stage65_insights import (
+    PratijnaRow,
+    detect_absence_from_pratijna,
+)
+
+
+class TestPratijnaRow:
+    """PratijnaRow is a typed container for a bodha_pratijna DB row slice
+    carrying `pratijna_id`, `event_class`, `grade`, and `fact_ids`."""
+
+    def test_pratijna_row_carries_fact_ids(self):
+        row = PratijnaRow(
+            pratijna_id="p1",
+            event_class="marriage",
+            grade=0.8,
+            fact_ids=("fact_a", "fact_b"),
+        )
+        assert row.fact_ids == ("fact_a", "fact_b")
+
+    def test_pratijna_row_defaults_fact_ids_empty(self):
+        row = PratijnaRow(pratijna_id="p1", event_class="marriage", grade=0.7)
+        assert row.fact_ids == ()
+
+
+class TestDetectAbsenceFromPratijna:
+    """
+    Item 33 TDD: detect_absence_from_pratijna(
+        event_class, pratijna_rows, windows_in_horizon, horizon_start, horizon_end
+    ) -> InsightCandidate | None
+
+    Semantics:
+    - Fires when the MAXIMUM grade across the pratijna_rows for `event_class`
+      exceeds ABSENCE_MIN_PROMISE (0.60) AND zero windows exist for that class
+      in the horizon.
+    - The resulting InsightCandidate.fact_ids are the union of all pratijna
+      row fact_ids (so the bodha_pratijna provenance rides the row).
+    - Does NOT fire when no pratijna rows exist (not expected => absence is not
+      "absence of expected").
+    - Does NOT fire when promise is below threshold.
+    - Does NOT fire when windows exist.
+    - Monotonicity property: ceteris paribus, a higher grade (still above
+      threshold) never produces a lower `carrier_salience` than a lower grade.
+    """
+
+    def _pratijna(self, grade: float, fact_ids=("f1",)):
+        return PratijnaRow(
+            pratijna_id="p1",
+            event_class="marriage",
+            grade=grade,
+            fact_ids=fact_ids,
+        )
+
+    def test_fires_when_strong_promise_no_windows(self):
+        rows = [self._pratijna(0.8)]
+        cand = detect_absence_from_pratijna("marriage", rows, [], 0.0, 36525.0)
+        assert cand is not None
+        assert cand.insight_type == "absence_of_expected"
+        assert cand.event_class == "marriage"
+        assert cand.window_id is None
+
+    def test_fact_ids_carried_from_pratijna_rows(self):
+        rows = [
+            PratijnaRow("p1", "marriage", 0.8, fact_ids=("fact_a",)),
+            PratijnaRow("p2", "marriage", 0.75, fact_ids=("fact_b", "fact_c")),
+        ]
+        cand = detect_absence_from_pratijna("marriage", rows, [], 0.0, 36525.0)
+        assert cand is not None
+        # All fact_ids from all rows must be present
+        assert "fact_a" in cand.fact_ids
+        assert "fact_b" in cand.fact_ids
+        assert "fact_c" in cand.fact_ids
+
+    def test_does_not_fire_when_no_pratijna_rows(self):
+        """No promise at all — absence of irrelevant thing, must not fire."""
+        cand = detect_absence_from_pratijna("marriage", [], [], 0.0, 36525.0)
+        assert cand is None
+
+    def test_does_not_fire_below_promise_threshold(self):
+        rows = [self._pratijna(0.4)]
+        assert detect_absence_from_pratijna("marriage", rows, [], 0.0, 36525.0) is None
+
+    def test_does_not_fire_when_windows_exist(self):
+        rows = [self._pratijna(0.9)]
+        w = _window(event_class="marriage")
+        assert detect_absence_from_pratijna("marriage", rows, [w], 0.0, 36525.0) is None
+
+    def test_uses_max_grade_across_multiple_rows(self):
+        """Even if one row is below threshold, if another is above, it fires."""
+        rows = [
+            self._pratijna(0.3),   # below threshold
+            self._pratijna(0.85),  # above threshold
+        ]
+        cand = detect_absence_from_pratijna("marriage", rows, [], 0.0, 36525.0)
+        assert cand is not None
+
+    def test_grade_exactly_at_threshold_fires(self):
+        """p_e == ABSENCE_MIN_PROMISE: just at boundary, must fire."""
+        rows = [self._pratijna(0.60)]
+        cand = detect_absence_from_pratijna("marriage", rows, [], 0.0, 36525.0)
+        assert cand is not None
+
+    def test_grade_just_below_threshold_does_not_fire(self):
+        rows = [self._pratijna(0.5999)]
+        assert detect_absence_from_pratijna("marriage", rows, [], 0.0, 36525.0) is None
+
+    def test_monotonicity_higher_grade_never_lower_salience(self):
+        """Property: for two above-threshold grades g1 < g2, salience(g1) <= salience(g2)."""
+        g1, g2 = 0.65, 0.95
+        cand1 = detect_absence_from_pratijna("marriage", [self._pratijna(g1)], [], 0.0, 36525.0)
+        cand2 = detect_absence_from_pratijna("marriage", [self._pratijna(g2)], [], 0.0, 36525.0)
+        assert cand1 is not None and cand2 is not None
+        assert cand1.carrier_salience <= cand2.carrier_salience
+
+    def test_statement_params_carry_max_grade(self):
+        rows = [self._pratijna(0.8)]
+        cand = detect_absence_from_pratijna("marriage", rows, [], 0.0, 36525.0)
+        assert cand is not None
+        assert abs(cand.statement_params["p_e"] - 0.8) < 1e-9
+
+
+# ── Item 34: Contrastive field-diff for kala_explain_get (W3 TDD additions) ──
+
+
+from services.ka_kshetra.stage65_insights import (
+    FieldSnapshot,
+    compute_field_diff,
+)
+
+
+class TestFieldSnapshot:
+    """FieldSnapshot is a lightweight container representing a set of field
+    windows at a given point in time — used as the baseline for contrast."""
+
+    def test_field_snapshot_stores_windows_by_id(self):
+        w1 = _window("wA", event_class="career_change")
+        snap = FieldSnapshot(snapshot_label="last_month", windows=[w1])
+        assert "wA" in snap.windows_by_id
+
+    def test_field_snapshot_empty_is_valid(self):
+        snap = FieldSnapshot(snapshot_label="baseline", windows=[])
+        assert snap.windows_by_id == {}
+
+
+class TestComputeFieldDiff:
+    """
+    Item 34 TDD: compute_field_diff(
+        current_windows, baseline_snapshot, lambda_threshold=0.5
+    ) -> dict with keys:
+      new_windows, closed_windows, intensified_windows, weakened_windows
+
+    Each value is a list of dicts carrying at minimum:
+      window_id, event_class, fact_ids, (and delta_ln_lambda where applicable)
+
+    Properties:
+    - new_windows: window_ids present in current but absent from baseline.
+    - closed_windows: window_ids present in baseline but absent from current.
+    - intensified_windows: window_ids present in both, with
+        current.lambda_peak / baseline.lambda_peak > exp(lambda_threshold).
+    - weakened_windows: window_ids present in both, with
+        baseline.lambda_peak / current.lambda_peak > exp(lambda_threshold).
+    - contrast(A, B).new_windows == contrast(B_as_snap_of(A), current=B).closed_windows
+      (anti-symmetry of new/closed).
+    """
+
+    def _snap(self, label, windows):
+        return FieldSnapshot(snapshot_label=label, windows=windows)
+
+    def test_new_window_detected(self):
+        current = [_window("w_new", event_class="career_change")]
+        baseline = self._snap("last_month", [])
+        diff = compute_field_diff(current, baseline)
+        ids = {r["window_id"] for r in diff["new_windows"]}
+        assert "w_new" in ids
+
+    def test_closed_window_detected(self):
+        w_old = _window("w_old", event_class="career_change")
+        current = []
+        baseline = self._snap("last_month", [w_old])
+        diff = compute_field_diff(current, baseline)
+        ids = {r["window_id"] for r in diff["closed_windows"]}
+        assert "w_old" in ids
+
+    def test_intensified_window_detected(self):
+        # current lambda_peak significantly higher than baseline
+        # We'll use a window with the same id but supply baseline separately.
+        # lambda_peak in _window is 0.05; override via direct InsightWindow.
+        from services.ka_kshetra.stage65_insights import InsightWindow
+        w_current = InsightWindow(
+            window_id="w1", event_class="career_change",
+            t_start=970.0, t_end=1030.0, t_peak=1000.0, lambda_peak=0.20,
+            salience=0.8, confidence_tier="concurrent",
+        )
+        w_baseline = InsightWindow(
+            window_id="w1", event_class="career_change",
+            t_start=970.0, t_end=1030.0, t_peak=1000.0, lambda_peak=0.05,
+            salience=0.5, confidence_tier="concurrent",
+        )
+        baseline = self._snap("last_month", [w_baseline])
+        diff = compute_field_diff([w_current], baseline)
+        ids = {r["window_id"] for r in diff["intensified_windows"]}
+        assert "w1" in ids
+        assert diff["new_windows"] == []
+        assert diff["closed_windows"] == []
+
+    def test_weakened_window_detected(self):
+        from services.ka_kshetra.stage65_insights import InsightWindow
+        w_current = InsightWindow(
+            window_id="w1", event_class="career_change",
+            t_start=970.0, t_end=1030.0, t_peak=1000.0, lambda_peak=0.02,
+            salience=0.3, confidence_tier="structural_prior",
+        )
+        w_baseline = InsightWindow(
+            window_id="w1", event_class="career_change",
+            t_start=970.0, t_end=1030.0, t_peak=1000.0, lambda_peak=0.15,
+            salience=0.7, confidence_tier="concurrent",
+        )
+        baseline = self._snap("last_month", [w_baseline])
+        diff = compute_field_diff([w_current], baseline)
+        ids = {r["window_id"] for r in diff["weakened_windows"]}
+        assert "w1" in ids
+
+    def test_no_change_window_not_in_any_diff_list(self):
+        """Window with same id and nearly identical lambda stays out of all lists."""
+        from services.ka_kshetra.stage65_insights import InsightWindow
+        w_same = InsightWindow(
+            window_id="w1", event_class="career_change",
+            t_start=970.0, t_end=1030.0, t_peak=1000.0, lambda_peak=0.05,
+            salience=0.5, confidence_tier="concurrent",
+        )
+        baseline = self._snap("last_month", [
+            InsightWindow(
+                window_id="w1", event_class="career_change",
+                t_start=970.0, t_end=1030.0, t_peak=1000.0, lambda_peak=0.05,
+                salience=0.5, confidence_tier="concurrent",
+            )
+        ])
+        diff = compute_field_diff([w_same], baseline)
+        assert diff["new_windows"] == []
+        assert diff["closed_windows"] == []
+        assert diff["intensified_windows"] == []
+        assert diff["weakened_windows"] == []
+
+    def test_diff_row_carries_fact_ids(self):
+        w_new = _window("w_new", event_class="marriage", fact_ids=("f1", "f2"))
+        baseline = self._snap("last_month", [])
+        diff = compute_field_diff([w_new], baseline)
+        row = next(r for r in diff["new_windows"] if r["window_id"] == "w_new")
+        assert "f1" in row["fact_ids"]
+        assert "f2" in row["fact_ids"]
+
+    def test_antisymmetry_new_closed(self):
+        """Anti-symmetry: new in A→B === closed in B→A (for the same windows)."""
+        from services.ka_kshetra.stage65_insights import InsightWindow
+        wA = InsightWindow(
+            window_id="wA", event_class="career_change",
+            t_start=970.0, t_end=1030.0, t_peak=1000.0, lambda_peak=0.05,
+            salience=0.5, confidence_tier="concurrent",
+        )
+        wB = InsightWindow(
+            window_id="wB", event_class="career_change",
+            t_start=970.0, t_end=1030.0, t_peak=1000.0, lambda_peak=0.05,
+            salience=0.5, confidence_tier="concurrent",
+        )
+        diff_AtoB = compute_field_diff([wB], self._snap("snap_a", [wA]))
+        diff_BtoA = compute_field_diff([wA], self._snap("snap_b", [wB]))
+        new_ids_AtoB = {r["window_id"] for r in diff_AtoB["new_windows"]}
+        closed_ids_BtoA = {r["window_id"] for r in diff_BtoA["closed_windows"]}
+        assert new_ids_AtoB == closed_ids_BtoA
+
+    def test_all_diff_keys_present_even_when_empty(self):
+        diff = compute_field_diff([], self._snap("empty", []))
+        assert set(diff.keys()) >= {"new_windows", "closed_windows", "intensified_windows", "weakened_windows"}
