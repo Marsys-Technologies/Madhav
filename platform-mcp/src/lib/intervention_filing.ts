@@ -308,3 +308,121 @@ export async function fileInterventionFalsifier(
 
   return { state: 'filed', prediction_id: predictionId, filing_ready_payload: null, detail: null }
 }
+
+// ── The serve-time Intervention Ledger write path (item 42, gate G7) ────────────────────
+//
+// KALA_W4_UPAYA_DESIGN §4.1 ruling S-1: `mi_sankalpa` (the Python writer) never ORIGINATES
+// a ledger row from an elected candidate — it only re-classifies/links already-filed rows.
+// Rows are "FILED live, at serve time, through the sanctioned HTTP action" (migration 532's
+// own comment). Until this function landed, no such action existed anywhere under
+// `platform-mcp/src` — the gap PR #1055's harness lane disclosed. This is that write path:
+// one function, calling the platform's `intervention_ledger_record` write action, which
+// inserts into `mimamsa_intervention_ledger` with `filed_by` stamped from the resolved
+// principal server-side (provenance, never trusted from this body — same rule as
+// `prospective_ledger_file`).
+//
+// §N.3 note: the natural key UNIQUE (chart_id, intervention_class, rite_or_activity_class,
+// elected_window) makes re-recording the same adoption idempotent — the route reports
+// `created: false` with the existing row's id rather than erroring or duplicating.
+
+export interface RecordInterventionLedgerInput {
+  chart_id: string
+  /** The native's own stated purpose for the intervention (NOT NULL, non-blank). */
+  intent: string
+  intervention_class: 'upaya' | 'yajna' | 'elected_activity'
+  rite_or_activity_class: string
+  event_class: string | null
+  window: { start: string; end: string }
+  precision_regime: 'intra_day' | 'day_grade'
+  precision_basis: string
+  /** Frozen snapshot of the judgment at election time (JudgmentLedger verbatim for an
+   *  elected act; the diagnosis snapshot for an upāya adoption). Never recomputed (§5.5). */
+  adjudication_record: Record<string, unknown>
+  /** The 4-factor vector + which factors were present; an honest empty for an upāya
+   *  adoption where no election score participated. */
+  score_vector: Record<string, unknown>
+  efficacy_tier: 'classically_attested' | 'traditional' | 'speculative_extension'
+  source_citation: string
+  paddhati_version: string
+  predicted_differential: string
+  /** The sealed brahma_prospective_ledger row this intervention references (ruling S-1) —
+   *  null iff no prospective entry was filed (the §4.2 CHECK makes session_inferred +
+   *  non-null prediction_id structurally impossible at the DB). */
+  prediction_id: string | null
+  adoption_basis: 'native_directed' | 'session_inferred'
+  authority_basis: string | null
+  engine_version: string
+}
+
+export interface RecordInterventionLedgerResult {
+  recorded: boolean
+  intervention_id: string | null
+  /** false when the natural key already existed (idempotent re-record). */
+  created: boolean
+  detail: string | null
+}
+
+export async function recordInterventionLedgerEntry(
+  input: RecordInterventionLedgerInput,
+  principal: Principal
+): Promise<RecordInterventionLedgerResult> {
+  // §5.4 defence in depth — identical shape to the filing gate above: a ledger row whose
+  // own text names a mortality/longevity subject is refused before any network call.
+  if (
+    MORTALITY_REQUEST_SHAPE_PATTERN.test(input.event_class ?? '') ||
+    MORTALITY_REQUEST_SHAPE_PATTERN.test(input.intent) ||
+    MORTALITY_REQUEST_SHAPE_PATTERN.test(input.predicted_differential)
+  ) {
+    return {
+      recorded: false,
+      intervention_id: null,
+      created: false,
+      detail:
+        'refused: individualized-mortality-window HARD EXCLUSION (MACRO_PLAN §3.5.C, ' +
+        'ADJUDICATION-13 §5.4) — no W4 surface may record a longevity/mortality-shaped ' +
+        'intervention, under any audience tier.',
+    }
+  }
+
+  const { chart_id, window, ...rest } = input
+  const entry: Record<string, unknown> = {
+    ...rest,
+    window_start: window.start,
+    window_end: window.end,
+    // filed_by intentionally OMITTED — stamped server-side from the resolved principal.
+  }
+
+  let callResult: { status: number; envelope: McpEnvelope }
+  try {
+    callResult = await callPlatformWrites('intervention_ledger_record', { chart_id, entry }, principal)
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    return { recorded: false, intervention_id: null, created: false, detail: message }
+  }
+
+  const { status, envelope } = callResult
+  if (status !== 200 || !envelope.ok) {
+    const message = !envelope.ok
+      ? (envelope.error?.message ?? 'intervention_ledger_record failed')
+      : `HTTP ${status} from intervention_ledger_record`
+    return { recorded: false, intervention_id: null, created: false, detail: message }
+  }
+
+  const result = envelope.result as { intervention_id?: unknown; created?: unknown } | undefined
+  const interventionId = result?.intervention_id
+  if (typeof interventionId !== 'string' || interventionId.length === 0) {
+    return {
+      recorded: false,
+      intervention_id: null,
+      created: false,
+      detail: 'intervention_ledger_record reported ok=true but returned no resolvable intervention_id',
+    }
+  }
+
+  return {
+    recorded: true,
+    intervention_id: interventionId,
+    created: result?.created === true,
+    detail: null,
+  }
+}

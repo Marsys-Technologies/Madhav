@@ -7,6 +7,12 @@
  *   - non-super-admin cannot build brahmagyan layer
  *   - client build global silently excludes L0/global assets (NO error message)
  *   - client build layer/ganita allowed; plan contains zero L0/global assets
+ *
+ * Also covers SHAD-DARSHANA sweep-protection Phase 1a, Layer 1/2 — the
+ * build_protected_assets planner guard (see "sweep-protection" describe block below).
+ * Every seed helper queues a THIRD query result (after asset_registry, asset_throughput)
+ * for the route's `SELECT asset_id FROM build_protected_assets WHERE chart_id=$1` call,
+ * added to the same Promise.all as the registry/throughput queries.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { NextRequest } from 'next/server'
@@ -68,6 +74,9 @@ const REGISTRY_GLOBAL_FULL = [
   { asset_id: 'bo_laksana',    layer: 'bodha',  scope: 'per_chart', depends_on: ['ga_structural'], estimated_seconds: 60 },
 ]
 
+// No protected assets for this chart — the common case every existing test exercises.
+const NO_PROTECTED_ASSETS = { rows: [], rowCount: 0 }
+
 function makeReq(body: object): NextRequest {
   return new NextRequest('http://localhost/api/cockpit/runs', {
     method: 'POST',
@@ -82,12 +91,16 @@ function seedRole(role: string) {
   mockQuery.mockResolvedValueOnce({ rows: [{ role }], rowCount: 1 }) // getUserRole
 }
 
-/** Seed: no active run, registry rows, empty throughput, successful insert */
+/**
+ * Seed: no active run, registry rows, empty throughput, no protected assets,
+ * successful insert.
+ */
 function seedSuccessfulBuild(registryRows: typeof REGISTRY_WITH_L0) {
   mockQuery
     .mockResolvedValueOnce({ rows: [], rowCount: 0 }) // 409 gate — no active run
     .mockResolvedValueOnce({ rows: registryRows, rowCount: registryRows.length }) // asset_registry
     .mockResolvedValueOnce({ rows: [], rowCount: 0 }) // asset_throughput (all dormant)
+    .mockResolvedValueOnce(NO_PROTECTED_ASSETS) // build_protected_assets — none
     .mockResolvedValue({ rows: [{ id: 'run-abc' }], rowCount: 1 }) // INSERT build_runs + assets
   mockInvokeRunJob.mockResolvedValue(undefined)
 }
@@ -239,9 +252,10 @@ describe('POST /api/cockpit/runs — client + scope=global (silent L0 drop)', ()
  *   2. 409 gate (no active run)
  *   3. asset_registry
  *   4. asset_throughput
- *   5-7. Promise.all: chart_facts count · ga_structural state · remedy_corpus count
- *   8. INSERT build_runs RETURNING id
- *   9+. INSERT build_run_assets (per asset)
+ *   5. build_protected_assets (sweep-protection guard — none, for these tests)
+ *   6-8. Promise.all: chart_facts count · ga_structural state · remedy_corpus count
+ *   9. INSERT build_runs RETURNING id
+ *   10+. INSERT build_run_assets (per asset)
  */
 
 describe('G4 — Bodha build precondition gate', () => {
@@ -257,6 +271,7 @@ describe('G4 — Bodha build precondition gate', () => {
       .mockResolvedValueOnce({ rows: [], rowCount: 0 })                                    // 409 gate
       .mockResolvedValueOnce({ rows: REGISTRY_BODHA, rowCount: REGISTRY_BODHA.length })   // asset_registry
       .mockResolvedValueOnce({ rows: throughput, rowCount: 0 })                            // asset_throughput
+      .mockResolvedValueOnce(NO_PROTECTED_ASSETS)                                          // build_protected_assets
       // Promise.all x3 preconditions (order matches Promise.all array in route.ts)
       .mockResolvedValueOnce({ rows: [{ count: String(chartFactsCount) }], rowCount: 1 }) // chart_facts count
       .mockResolvedValueOnce({ rows: gaStructuralState ? [{ state: gaStructuralState }] : [], rowCount: gaStructuralState ? 1 : 0 }) // ga_structural
@@ -336,6 +351,7 @@ describe('G4 — Bodha build precondition gate', () => {
       .mockResolvedValueOnce({ rows: [], rowCount: 0 })                                              // 409 gate
       .mockResolvedValueOnce({ rows: REGISTRY_GLOBAL_FULL, rowCount: REGISTRY_GLOBAL_FULL.length })  // asset_registry
       .mockResolvedValueOnce({ rows: [], rowCount: 0 })                                              // asset_throughput (all dormant)
+      .mockResolvedValueOnce(NO_PROTECTED_ASSETS)                                                    // build_protected_assets
       .mockResolvedValueOnce({ rows: [{ count: '0' }], rowCount: 1 })                                // chart_facts = 0 (empty)
       .mockResolvedValueOnce({ rows: [], rowCount: 0 })                                              // ga_structural not lit
       .mockResolvedValueOnce({ rows: [{ count: '500' }], rowCount: 1 })                              // remedy_corpus present
@@ -358,6 +374,7 @@ describe('G4 — Bodha build precondition gate', () => {
       .mockResolvedValueOnce({ rows: [], rowCount: 0 })                                              // 409 gate
       .mockResolvedValueOnce({ rows: REGISTRY_GLOBAL_FULL, rowCount: REGISTRY_GLOBAL_FULL.length })  // asset_registry
       .mockResolvedValueOnce({ rows: [], rowCount: 0 })                                              // asset_throughput
+      .mockResolvedValueOnce(NO_PROTECTED_ASSETS)                                                    // build_protected_assets
       .mockResolvedValueOnce({ rows: [{ count: '0' }], rowCount: 1 })                                // chart_facts = 0
       .mockResolvedValueOnce({ rows: [], rowCount: 0 })                                              // ga_structural not lit
       .mockResolvedValueOnce({ rows: [{ count: '0' }], rowCount: 1 })                                // remedy_corpus EMPTY
@@ -381,6 +398,7 @@ describe('G4 — Bodha build precondition gate', () => {
       .mockResolvedValueOnce({ rows: [], rowCount: 0 })                                       // 409 gate
       .mockResolvedValueOnce({ rows: REGISTRY_GANITA_ONLY, rowCount: REGISTRY_GANITA_ONLY.length }) // registry
       .mockResolvedValueOnce({ rows: [], rowCount: 0 })                                       // throughput
+      .mockResolvedValueOnce(NO_PROTECTED_ASSETS)                                              // build_protected_assets
       .mockResolvedValue({ rows: [{ id: 'run-ga-001' }], rowCount: 1 })                      // INSERT
     mockInvokeRunJob.mockResolvedValue(undefined)
 
@@ -493,6 +511,7 @@ describe('G1 — All-lit Build returns ALL_LIT code with Rebuild redirect', () =
       .mockResolvedValueOnce({ rows: [], rowCount: 0 })                                          // 409 gate
       .mockResolvedValueOnce({ rows: REGISTRY_GANITA_ONLY, rowCount: REGISTRY_GANITA_ONLY.length }) // registry
       .mockResolvedValueOnce({ rows: allLitThroughput, rowCount: allLitThroughput.length })     // throughput (all lit)
+      .mockResolvedValueOnce(NO_PROTECTED_ASSETS)                                                // build_protected_assets
 
     const { POST } = await import('../route')
     const res = await POST(makeReq({ chart_id: 'c1', scope: 'layer', scope_target: 'ganita', action: 'build' }))
@@ -511,6 +530,7 @@ describe('G1 — All-lit Build returns ALL_LIT code with Rebuild redirect', () =
       .mockResolvedValueOnce({ rows: [], rowCount: 0 })                                          // 409 gate
       .mockResolvedValueOnce({ rows: REGISTRY_GANITA_ONLY, rowCount: REGISTRY_GANITA_ONLY.length }) // registry
       .mockResolvedValueOnce({ rows: allLitThroughput, rowCount: allLitThroughput.length })     // throughput (all lit)
+      .mockResolvedValueOnce(NO_PROTECTED_ASSETS)                                                // build_protected_assets
       .mockResolvedValue({ rows: [{ id: 'run-rebuild-001' }], rowCount: 1 })
     mockInvokeRunJob.mockResolvedValue(undefined)
 
@@ -521,5 +541,85 @@ describe('G1 — All-lit Build returns ALL_LIT code with Rebuild redirect', () =
     // rebuild always includes all assets regardless of lit state
     expect(body.data.plan).toContain('ga_positions')
     expect(body.code).toBeUndefined()
+  })
+})
+
+// ─── SHAD-DARSHANA sweep-protection Phase 1a — build_protected_assets planner guard ──
+//
+// Query order for an asset-scope build against a chart with a protected pair:
+//   1. getUserRole
+//   2. (scope='asset' + non-global asset skips the global-asset lookup entirely)
+//   3. 409 gate
+//   4. asset_registry
+//   5. asset_throughput
+//   6. build_protected_assets  ← the guard under test
+//   7+. either the 422 short-circuit (no further queries) or the INSERT chain
+
+describe('SHAD-DARSHANA sweep-protection — build_protected_assets planner guard', () => {
+  const REGISTRY_SWEEP = [
+    { asset_id: 'ka_gochara_sweep', layer: 'kala', scope: 'per_chart', depends_on: [], estimated_seconds: 1800 },
+    { asset_id: 'ka_kshetra',       layer: 'kala', scope: 'per_chart', depends_on: [], estimated_seconds: 60 },
+  ]
+
+  it('a protected pair is blocked and surfaced — never silently dispatched (scope=asset, the only candidate)', async () => {
+    seedRole('client')
+    mockQuery
+      .mockResolvedValueOnce({ rows: [{ scope: 'per_chart' }], rowCount: 1 })              // scope=asset: global-asset lookup
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 })                                    // 409 gate
+      .mockResolvedValueOnce({ rows: REGISTRY_SWEEP, rowCount: REGISTRY_SWEEP.length })   // asset_registry
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 })                                    // asset_throughput (dormant)
+      .mockResolvedValueOnce({ rows: [{ asset_id: 'ka_gochara_sweep' }], rowCount: 1 })   // build_protected_assets — protected!
+
+    const { POST } = await import('../route')
+    const res = await POST(makeReq({ chart_id: 'c1', scope: 'asset', scope_target: 'ka_gochara_sweep', action: 'build' }))
+
+    expect(res.status).toBe(422)
+    const body = await res.json()
+    expect(body.code).toBe('PROTECTED')
+    expect(body.protected_assets).toEqual([
+      { asset_id: 'ka_gochara_sweep', message: 'protected — native override required' },
+    ])
+    // The job was never dispatched and no build_run was ever inserted.
+    expect(mockInvokeRunJob).not.toHaveBeenCalled()
+    expect(mockQuery.mock.calls.some(c => typeof c[0] === 'string' && c[0].includes('INSERT INTO build_runs'))).toBe(false)
+  })
+
+  it('a protected asset is withheld from a wider scope while non-protected assets in the same scope proceed normally', async () => {
+    seedRole('client')
+    mockQuery
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 })                                    // 409 gate
+      .mockResolvedValueOnce({ rows: REGISTRY_SWEEP, rowCount: REGISTRY_SWEEP.length })   // asset_registry
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 })                                    // asset_throughput (both dormant)
+      .mockResolvedValueOnce({ rows: [{ asset_id: 'ka_gochara_sweep' }], rowCount: 1 })   // build_protected_assets
+      .mockResolvedValue({ rows: [{ id: 'run-kala-001' }], rowCount: 1 })                 // INSERT build_runs + assets
+    mockInvokeRunJob.mockResolvedValue(undefined)
+
+    const { POST } = await import('../route')
+    const res = await POST(makeReq({ chart_id: 'c1', scope: 'layer', scope_target: 'kala', action: 'build' }))
+
+    expect(res.status).toBe(201)
+    const body = await res.json()
+    // The non-protected asset proceeds — it is in the dispatched plan.
+    expect(body.data.plan).toContain('ka_kshetra')
+    // The protected asset is withheld from the plan entirely.
+    expect(body.data.plan).not.toContain('ka_gochara_sweep')
+    // ...and surfaced explicitly rather than silently dropped.
+    expect(body.data.protected_assets).toEqual([
+      { asset_id: 'ka_gochara_sweep', message: 'protected — native override required' },
+    ])
+  })
+
+  it('a non-protected pair proceeds normally — no protected_assets key when nothing is protected', async () => {
+    seedRole('client')
+    seedSuccessfulBuild(REGISTRY_SWEEP) // NO_PROTECTED_ASSETS — nothing protected for this chart
+
+    const { POST } = await import('../route')
+    const res = await POST(makeReq({ chart_id: 'c1', scope: 'layer', scope_target: 'kala', action: 'build' }))
+
+    expect(res.status).toBe(201)
+    const body = await res.json()
+    expect(body.data.plan).toContain('ka_gochara_sweep')
+    expect(body.data.plan).toContain('ka_kshetra')
+    expect(body.data.protected_assets).toBeUndefined()
   })
 })

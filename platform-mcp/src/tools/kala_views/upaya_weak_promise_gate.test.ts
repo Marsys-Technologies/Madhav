@@ -21,28 +21,31 @@
  * scenario — see the PARKED-HONEST note at the bottom of this file for why G4 is not
  * discharged here).
  *
- * A REAL GAP THIS HARNESS SURFACES (read, not fixed — this is a harness-only lane, not a W4
- * build session): `resolveFilingState`'s own doc-comment (kala_upaya_diagnosis.ts, Step 4)
- * states plainly that the branch returning `filing_state: 'filed'` does not exist yet —
- * `upaya.ts` has NOT been wired to call the filing spine (`intervention_filing.ts`'s
- * `fileInterventionFalsifier`, Lane S's item-42 spine PR, which DOES already exist and is
- * fully built) even on a `native_directed` + non-adverse `adopt_intervention`. So G3's
- * literal "filed prospective entry" outcome is CURRENTLY UNREACHABLE through this tool —
- * every native-directed, non-adverse adoption today returns
- * `filing_state: 'filing_path_not_yet_available'`, honestly, never a fabricated `filed`. This
- * harness asserts that CURRENT honest behavior (so a future regression to a fabricated `filed`
- * without the real wire-up would be caught) and separately documents the wiring gap rather than
- * silently patching it — wiring `resolveFilingState`'s Step 4 to the spine is production
- * serving-code work, out of this harness-only lane's scope.
+ * THE GAP THE T5 VERSION OF THIS HARNESS SURFACED IS NOW CLOSED (W4 gate-discharge-prep
+ * lane): `resolveFilingState`'s Step 4 is wired via `resolveAndFileFilingState`
+ * (kala_upaya_diagnosis.ts) to the filing spine (`intervention_filing.ts`'s
+ * `fileInterventionFalsifier`), and a successful filing then records the serve-time
+ * Intervention Ledger row via `recordInterventionLedgerEntry` → the sanctioned
+ * `intervention_ledger_record` write action (item 42 / gate G7's write path). G3's literal
+ * "filed prospective entry" outcome is therefore REACHABLE through this tool: this harness
+ * now asserts the wired behavior — `filed` + a resolvable prediction_id + the ledger
+ * recording — against a mocked `callPlatformWrites` (the single sanctioned write lever),
+ * and separately asserts the spine's failure path still reports `filing_failed` with the
+ * verbatim error, never a fabricated `filed`.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { Principal } from '../../types.js'
 import { buildKalaUpayaResult, isMortalityRefusal } from './upaya.js'
 
 const mockCallPlatformPrimitive = vi.fn()
+const mockCallPlatformWrites = vi.fn()
 vi.mock('../../client.js', async () => {
   const actual = await vi.importActual<typeof import('../../client.js')>('../../client.js')
-  return { ...actual, callPlatformPrimitive: (...args: unknown[]) => mockCallPlatformPrimitive(...args) }
+  return {
+    ...actual,
+    callPlatformPrimitive: (...args: unknown[]) => mockCallPlatformPrimitive(...args),
+    callPlatformWrites: (...args: unknown[]) => mockCallPlatformWrites(...args),
+  }
 })
 
 const mockCallKalaRegistryCap = vi.fn()
@@ -115,9 +118,25 @@ function mockWeakPromiseSubstrate(): void {
   })
 }
 
+/** Canned sanctioned-write responses for the ONE write lever (`callPlatformWrites`):
+ *  `prospective_ledger_file` seals the prospective entry; `intervention_ledger_record`
+ *  records the serve-time ledger row. Shapes mirror the real route's envelopes. */
+function mockWriteRouteSuccess(): void {
+  mockCallPlatformWrites.mockImplementation(async (action: string) => {
+    if (action === 'prospective_ledger_file') {
+      return ok({ prediction: { prediction_id: 'pred-uuid-1' }, governance: {} })
+    }
+    if (action === 'intervention_ledger_record') {
+      return ok({ intervention_id: 'iv-uuid-1', created: true })
+    }
+    throw new Error(`upaya_weak_promise_gate harness: unmocked write action '${action}'`)
+  })
+}
+
 beforeEach(() => {
   mockCallPlatformPrimitive.mockReset()
   mockCallKalaRegistryCap.mockReset()
+  mockCallPlatformWrites.mockReset()
 })
 
 describe('weak-promise UPĀYA harness (T5 W4 prep, no live discharge) — Gate W4 / KALA_W4_UPAYA_DESIGN §9', () => {
@@ -188,8 +207,9 @@ describe('weak-promise UPĀYA harness (T5 W4 prep, no live discharge) — Gate W
     }
   })
 
-  it('G3 (current honest state) — a native-directed, non-adverse adoption does NOT fabricate `filed` (the spine wiring gap, documented not silently patched)', async () => {
+  it('G3 (WIRED) — a native-directed, non-adverse adoption with a window FILES: filed + prediction_id + the serve-time Intervention Ledger row recorded', async () => {
     mockWeakPromiseSubstrate()
+    mockWriteRouteSuccess()
     const result = await buildKalaUpayaResult(
       {
         chart_id: CHART_ID, domain: 'career',
@@ -202,14 +222,77 @@ describe('weak-promise UPĀYA harness (T5 W4 prep, no live discharge) — Gate W
       PRINCIPAL,
     )
     if (isMortalityRefusal(result)) throw new Error('unexpected mortality refusal')
-    // The HONEST current state — never 'filed' until resolveFilingState's Step 4 is wired to
-    // intervention_filing.ts's fileInterventionFalsifier (a real, tracked gap; see file header).
-    expect(result.filing_state).toBe('filing_path_not_yet_available')
-    expect(result.filed_prediction_id).toBeNull()
-    // The diagnosis + ledger are STILL served in full even though filing degraded — §3.5.B
-    // under-service amendment: a withheld/unavailable filing must never suppress the reading.
+    // The wired Step-4 path: gates 1–3 passed → the spine filed the prospective entry.
+    expect(result.filing_state).toBe('filed')
+    expect(result.filed_prediction_id).toBe('pred-uuid-1')
+    expect(result.adoption_basis).toBe('native_directed')
+    // Item 42 / gate G7: the filing then recorded the serve-time Intervention Ledger row,
+    // inheriting the adopted row's own citation/tier (§N.5 — never restated).
+    expect(result.intervention_ledger).not.toBeNull()
+    expect(result.intervention_ledger?.recorded).toBe(true)
+    expect(result.intervention_ledger?.intervention_id).toBe('iv-uuid-1')
+    // Both sanctioned write actions were called, in filing→ledger order, and the ledger row
+    // references the sealed prediction (ruling S-1 spine).
+    const actions = mockCallPlatformWrites.mock.calls.map((c) => c[0])
+    expect(actions).toEqual(['prospective_ledger_file', 'intervention_ledger_record'])
+    const ledgerParams = mockCallPlatformWrites.mock.calls[1]![1] as { chart_id: string; entry: Record<string, unknown> }
+    expect(ledgerParams.chart_id).toBe(CHART_ID)
+    expect(ledgerParams.entry['prediction_id']).toBe('pred-uuid-1')
+    expect(ledgerParams.entry['adoption_basis']).toBe('native_directed')
+    expect(ledgerParams.entry['intervention_class']).toBe('upaya')
+    // filed_by is NEVER supplied client-side — the route stamps it from the principal.
+    expect(ledgerParams.entry['filed_by']).toBeUndefined()
+    // The diagnosis + ledger are STILL served in full alongside the filing.
     expect(result.diagnosis.pact_status).not.toBeNull()
     expect(result.interventions.length).toBeGreaterThan(0)
+  })
+
+  it('G3 failure path — a spine/server error reports filing_failed with the VERBATIM error, never a fabricated filed', async () => {
+    mockWeakPromiseSubstrate()
+    mockCallPlatformWrites.mockImplementation(async () => {
+      throw new Error('ECONNREFUSED platform unreachable (harness)')
+    })
+    const result = await buildKalaUpayaResult(
+      {
+        chart_id: CHART_ID, domain: 'career',
+        adopt_intervention: {
+          intervention_id: 'phala_mitigation:pm-1', claim: 'c',
+          falsifier: 'f', confidence: 0.55,
+          window: { start: '2026-09-01', end: '2027-03-01' }, adoption_basis: 'native_directed',
+        },
+      },
+      PRINCIPAL,
+    )
+    if (isMortalityRefusal(result)) throw new Error('unexpected mortality refusal')
+    expect(result.filing_state).toBe('filing_failed')
+    expect(result.filed_prediction_id).toBeNull()
+    expect(result.filing_detail).toContain('ECONNREFUSED')
+    // No ledger row is ever recorded when the filing itself failed.
+    expect(result.intervention_ledger).toBeNull()
+    // §3.5.B: the reading is still served in full.
+    expect(result.diagnosis.pact_status).not.toBeNull()
+    expect(result.interventions.length).toBeGreaterThan(0)
+  })
+
+  it('G3 window guard — native-directed WITHOUT a window is an honest filing_failed (B.10: the engine never composes a window bound), no write call made', async () => {
+    mockWeakPromiseSubstrate()
+    mockWriteRouteSuccess()
+    const result = await buildKalaUpayaResult(
+      {
+        chart_id: CHART_ID, domain: 'career',
+        adopt_intervention: {
+          intervention_id: 'phala_mitigation:pm-1', claim: 'c',
+          falsifier: 'f', confidence: 0.55, adoption_basis: 'native_directed',
+        },
+      },
+      PRINCIPAL,
+    )
+    if (isMortalityRefusal(result)) throw new Error('unexpected mortality refusal')
+    expect(result.filing_state).toBe('filing_failed')
+    expect(result.filing_detail).toContain('window')
+    expect(result.filed_prediction_id).toBeNull()
+    expect(result.intervention_ledger).toBeNull()
+    expect(mockCallPlatformWrites).not.toHaveBeenCalled()
   })
 
   it('G3b — ADJUDICATION-12 fail-closed: session_inferred / absent / unrecognised bases all resolve awaiting_native_confirmation, never filed', async () => {

@@ -55,6 +55,7 @@ import {
   type LifecycleStatus,
 } from '@/lib/lel/prospective_ledger'
 import type { PredictionEntry, OutcomeEntry } from '@/lib/mcp/ppl_writer'
+import type { InterventionLedgerEntryInput } from '@/lib/mcp/intervention_ledger_writer'
 import type { DisagreementEntry } from '@/lib/mcp/disagreement_writer'
 import type { LelEvent } from '@/lib/mcp/lel_event_writer'
 import { validateServiceToken } from '@/lib/mcp/service_token'
@@ -70,6 +71,7 @@ const ALLOWED_ACTIONS = [
   'lel_event_record',
   'prospective_ledger_file',
   'prospective_ledger_list',
+  'intervention_ledger_record',
 ] as const
 type WriteAction = (typeof ALLOWED_ACTIONS)[number]
 
@@ -168,7 +170,8 @@ export async function POST(request: Request, { params }: RouteParams) {
       action === 'log_prediction' ||
       action === 'lel_event_record' ||
       action === 'prospective_ledger_file' ||
-      action === 'prospective_ledger_list')
+      action === 'prospective_ledger_list' ||
+      action === 'intervention_ledger_record')
   ) {
     const { authorizeChartAccess } = await import('@/lib/auth/authorizeChartAccess')
     const { resolveMcpPrincipalRole } = await import('@/lib/mcp/auth')
@@ -205,6 +208,17 @@ export async function POST(request: Request, { params }: RouteParams) {
         buildEntitlementDenialEnvelope({
           chart_id: chartId, permission_required: 'all',
           remediation: 'prospective_ledger_file requires write (all) permission for this chart.',
+        }),
+        { status: 401 }
+      )
+    }
+    // intervention_ledger_record is a filing (write) action into mimamsa_intervention_ledger
+    // (item 42 / gate G7) — same write-perm tier as prospective_ledger_file.
+    if (action === 'intervention_ledger_record' && perm !== 'all') {
+      return NextResponse.json(
+        buildEntitlementDenialEnvelope({
+          chart_id: chartId, permission_required: 'all',
+          remediation: 'intervention_ledger_record requires write (all) permission for this chart.',
         }),
         { status: 401 }
       )
@@ -631,6 +645,84 @@ export async function POST(request: Request, { params }: RouteParams) {
       return NextResponse.json(
         buildErrorEnvelope({ error_class: 'orchestrator_error', message: msg }),
         { status: 500 }
+      )
+    }
+  }
+
+  if (action === 'intervention_ledger_record') {
+    // ṢAḌ-DARŚANA W4 item 42 / gate G7: the serve-time write path into
+    // mimamsa_intervention_ledger (KALA_W4_UPAYA_DESIGN §4.1 ruling S-1; migration 532's
+    // "FILED live, at serve time, through the sanctioned HTTP action"). filed_by is stamped
+    // from the resolved principal (userUid), never trusted from the caller body — identical
+    // rule to prospective_ledger_file above. Beyond field-presence this route adds no
+    // validation of its own: the table's CHECKs/FKs (incl. the ADJUDICATION-12
+    // _inferred_never_sealed CHECK) are the authorities and their verbatim errors surface.
+    try {
+      if (!chartId) {
+        return NextResponse.json(
+          buildErrorEnvelope({ error_class: 'validation', message: 'chart_id is required for intervention_ledger_record' }),
+          { status: 400 }
+        )
+      }
+      const entry = body.entry as Partial<InterventionLedgerEntryInput> | undefined
+      const requiredFields = [
+        'intent', 'intervention_class', 'rite_or_activity_class', 'window_start', 'window_end',
+        'precision_regime', 'precision_basis', 'adjudication_record', 'score_vector',
+        'efficacy_tier', 'source_citation', 'paddhati_version', 'predicted_differential',
+        'adoption_basis', 'engine_version',
+      ] as const
+      const missing = !entry
+        ? [...requiredFields]
+        : requiredFields.filter((f) => entry[f] === undefined || entry[f] === null || entry[f] === '')
+      if (!entry || missing.length > 0) {
+        return NextResponse.json(
+          buildErrorEnvelope({
+            error_class: 'validation',
+            message:
+              'intervention_ledger_record requires body.entry with: ' + missing.join(', ') +
+              ' (event_class, prediction_id, authority_basis are nullable; filed_by is stamped server-side).',
+          }),
+          { status: 400 }
+        )
+      }
+
+      const { recordInterventionLedgerEntry } = await import('@/lib/mcp/intervention_ledger_writer')
+      const recorded = await recordInterventionLedgerEntry({
+        chart_id: chartId,
+        intent: entry.intent as string,
+        intervention_class: entry.intervention_class as InterventionLedgerEntryInput['intervention_class'],
+        rite_or_activity_class: entry.rite_or_activity_class as string,
+        event_class: typeof entry.event_class === 'string' && entry.event_class.length > 0 ? entry.event_class : null,
+        window_start: entry.window_start as string,
+        window_end: entry.window_end as string,
+        precision_regime: entry.precision_regime as InterventionLedgerEntryInput['precision_regime'],
+        precision_basis: entry.precision_basis as string,
+        adjudication_record: entry.adjudication_record as Record<string, unknown>,
+        score_vector: entry.score_vector as Record<string, unknown>,
+        efficacy_tier: entry.efficacy_tier as InterventionLedgerEntryInput['efficacy_tier'],
+        source_citation: entry.source_citation as string,
+        paddhati_version: entry.paddhati_version as string,
+        predicted_differential: entry.predicted_differential as string,
+        prediction_id: typeof entry.prediction_id === 'string' && entry.prediction_id.length > 0 ? entry.prediction_id : null,
+        adoption_basis: entry.adoption_basis as InterventionLedgerEntryInput['adoption_basis'],
+        authority_basis: typeof entry.authority_basis === 'string' && entry.authority_basis.length > 0 ? entry.authority_basis : null,
+        engine_version: entry.engine_version as string,
+        filed_by: userUid, // stamped from resolved principal — never the caller body
+      })
+      return NextResponse.json(
+        buildEnvelope({
+          trace_id: traceId,
+          audience_tier: audienceTier,
+          epistemics,
+          result: { intervention_id: recorded.intervention_id, created: recorded.created },
+        })
+      )
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      console.error('[mcp:writes] intervention_ledger_record error', msg)
+      return NextResponse.json(
+        buildErrorEnvelope({ error_class: 'validation', message: msg }),
+        { status: 400 }
       )
     }
   }

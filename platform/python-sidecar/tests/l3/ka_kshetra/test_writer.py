@@ -26,6 +26,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from services.ka_kshetra import stage4_field as S4, stage5_null as S5  # noqa: E402
+from services.ka_kshetra import stage8_spec as S8  # noqa: E402
 from services.ka_kshetra import writer as W  # noqa: E402
 from tests.l3.ka_kshetra.fake_db import FakeConn, FakeCtx  # noqa: E402
 from tests.l3.ka_kshetra import fixtures as F  # noqa: E402
@@ -575,6 +576,29 @@ class TestStage8TimelineSpec:
         pb = json.loads(b.tables['kala_timeline_spec'][0]['spec'])['points']
         assert pa and [p['id'] for p in pa] == [p['id'] for p in pb]
         assert all(p['id'].startswith('kfb_') for p in pa)
+
+    def test_zero_surviving_tracks_writes_an_honest_empty_row_instead_of_crashing(self):
+        # Real production defect (Gate-Chain MORNING REPORT #6, chart 482012f1): every
+        # event class stage4 discovers can be skipped `no_class_prior_row` (no
+        # brahma_class_priors overlap — see TestHonestSkip's sibling test), which leaves
+        # zero `kala_field_windows`. When zero `kala_field_boundaries` also survive to
+        # stage8 (no clock rows either), `_timeline_tracks_and_windows` +
+        # `_timeline_points` hand `build_timeline_spec` zero tracks. Before the fix this
+        # raised an unhandled ValueError and took the whole writer down; now it must
+        # write an honest-empty `kala_timeline_spec` row per view, same as any other
+        # LAW ZERO empty case.
+        tables = F.build_tables(with_lifetime_prior=False)
+        tables['kala_field_boundaries'] = []
+        writer, conn = _run_full_build(tables)
+
+        assert conn.tables['kala_field'] == [], 'no class survived stage4'
+        rows = conn.tables['kala_timeline_spec']
+        assert {r['generated_for'] for r in rows} == set(W.TIMELINE_VIEWS)
+        for r in rows:
+            spec = json.loads(r['spec'])
+            assert spec['tracks'] == spec['intervals'] == spec['points'] == spec['bands'] == []
+            assert r['n_tracks'] == r['n_intervals'] == r['n_points'] == r['n_bands'] == 0
+            assert r['empty_reason'] == S8.EMPTY_NO_RENDERABLE_ROWS
 
 
 class TestHashCoverage:

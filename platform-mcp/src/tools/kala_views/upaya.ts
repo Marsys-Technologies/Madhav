@@ -58,7 +58,7 @@ import {
   fetchAlternateRoutes,
   buildEligibilityPointer,
   buildEfficacyReport,
-  resolveFilingState,
+  resolveAndFileFilingState,
   resolveDisclosureTier,
   splitCitedUncited,
   type MortalityExclusionRefusal,
@@ -72,6 +72,7 @@ import {
   type DisclosureBlock,
   type AdoptInterventionInput,
 } from '../../lib/kala_upaya_diagnosis.js'
+import { recordInterventionLedgerEntry } from '../../lib/intervention_filing.js'
 
 // ── Input shape ──────────────────────────────────────────────────────────────────────
 
@@ -101,6 +102,18 @@ const AdoptInterventionShape = z.object({
     "'native_directed' (the native asked for this to be filed) or 'session_inferred' (the model concluded the " +
     "native would want it — this NEVER files). Absent/null/any other string fails CLOSED to " +
     'awaiting_native_confirmation (ADJUDICATION-12) — never defaults to native_directed.',
+  ),
+  claim: z.string().min(1).optional().describe(
+    'The claim text for the filed prospective entry. Absent ⇒ the engine composes a template ' +
+    'claim from the diagnosis statement (B.10 template rule, never generative).',
+  ),
+  window: z.object({
+    start: z.string().describe('ISO date/timestamp — window start.'),
+    end: z.string().describe('ISO date/timestamp — window end.'),
+  }).optional().describe(
+    'The window the falsifier is evaluated against. REQUIRED for an actual filing ' +
+    "(claim_shape='interval') — a native-directed adoption without it reports filing_failed " +
+    'honestly; the engine never composes a window bound on your behalf (B.10).',
   ),
 })
 
@@ -163,6 +176,17 @@ export interface KalaUpayaResponse extends KalaEnvelope {
   adoption_basis: 'native_directed' | 'session_inferred' | null
   filed_prediction_id: string | null
   filing_ready_payload: FilingReadyPayload | null
+  /** The verbatim error when filing_state === 'filing_failed' (design §2.6); else null. */
+  filing_detail: string | null
+  /** The serve-time `mimamsa_intervention_ledger` recording result — populated only when a
+   *  filing actually happened (`filing_state === 'filed'`, item 42 / gate G7); null on every
+   *  plain read and every withheld/failed filing. */
+  intervention_ledger: {
+    recorded: boolean
+    intervention_id: string | null
+    created: boolean
+    detail: string | null
+  } | null
   disclosure: DisclosureBlock
   composed_text: string
 }
@@ -258,12 +282,85 @@ export async function buildKalaUpayaResult(params: KalaUpayaParams, principal: P
   const eligibilityPointer = buildEligibilityPointer(failingLink)
   const efficacyReport = buildEfficacyReport()
 
-  const filingResolution = resolveFilingState({
-    chart_id: params.chart_id,
-    event_class: params.event_class ?? null,
-    diagnosisStatement: diagnosis?.statement ?? null,
-    adopt: params.adopt_intervention ?? null,
-  })
+  // The adopted row, when the adoption names one we actually served — its citation/tier are
+  // INHERITED (§N.5), never restated, by both the filing and the ledger recording below.
+  const adopt = params.adopt_intervention ?? null
+  const adoptedRow = adopt
+    ? [...cited, ...uncited].find((r) => r.id === adopt.intervention_id) ?? null
+    : null
+
+  const filingResolution = await resolveAndFileFilingState(
+    {
+      chart_id: params.chart_id,
+      event_class: params.event_class ?? null,
+      diagnosisStatement: diagnosis?.statement ?? null,
+      adopt,
+      sourceCitation: adoptedRow?.citation ?? null,
+    },
+    principal,
+  )
+
+  // Serve-time Intervention Ledger recording (item 42 / gate G7) — ONLY after a real filing,
+  // and only over data we actually served (a row we cannot resolve would force fabricated
+  // tier/citation values — refused honestly instead).
+  let interventionLedger: KalaUpayaResponse['intervention_ledger'] = null
+  if (filingResolution.state === 'filed' && adopt) {
+    if (!adoptedRow) {
+      interventionLedger = {
+        recorded: false,
+        intervention_id: null,
+        created: false,
+        detail:
+          `adopt_intervention.intervention_id '${adopt.intervention_id}' did not match any served ` +
+          'intervention row — the ledger row was not recorded (its efficacy_tier and ' +
+          'source_citation must be inherited from a served row, never fabricated).',
+      }
+    } else if (!adopt.window) {
+      // Unreachable while filing requires a window, kept as a structural guard.
+      interventionLedger = { recorded: false, intervention_id: null, created: false, detail: 'no adoption window — ledger row not recorded' }
+    } else {
+      const claimText =
+        (typeof adopt.claim === 'string' && adopt.claim.trim().length > 0)
+          ? adopt.claim.trim()
+          : (diagnosis?.statement ?? `Adopted intervention ${adopt.intervention_id}`)
+      interventionLedger = await recordInterventionLedgerEntry(
+        {
+          chart_id: params.chart_id,
+          intent: claimText,
+          intervention_class: 'upaya',
+          rite_or_activity_class: adopt.intervention_id,
+          event_class: params.event_class ?? null,
+          window: adopt.window,
+          // A caller-stated adoption window carries no lattice adjudication — day_grade is the
+          // honest (coarsest-correct) label, and the basis names exactly that.
+          precision_regime: 'day_grade',
+          precision_basis: 'caller-stated adoption window (upāya adoption; no lattice adjudication participated)',
+          adjudication_record: {
+            kind: 'upaya_adoption',
+            pact_status: diagnosis?.pact_status ?? null,
+            failing_link: failingLink,
+            statement: diagnosis?.statement ?? null,
+            authority_basis: diagnosis?.authority_basis ?? null,
+          },
+          score_vector: {
+            factors_present: [],
+            note: 'upāya adoption — the 4-factor election score does not apply; no factor was computed (honest empty, not zero-filled)',
+          },
+          efficacy_tier: adoptedRow.efficacy_tier,
+          source_citation:
+            adoptedRow.citation ??
+            'kala_upaya_get diagnosis + intervention row citation (uncited catalog row — see uncited_remedy_note)',
+          paddhati_version: 'none_applied_upaya_adoption',
+          predicted_differential: `adopted upāya window vs no-intervention baseline: ${claimText}`,
+          prediction_id: filingResolution.filed_prediction_id,
+          adoption_basis: 'native_directed',
+          authority_basis: diagnosis?.authority_basis ?? null,
+          engine_version: 'upaya_setu_v1',
+        },
+        principal,
+      )
+    }
+  }
 
   const constraintsApplied: string[] = []
   if (filingResolution.state === 'filing_withheld_pending_native_signoff') {
@@ -357,6 +454,8 @@ export async function buildKalaUpayaResult(params: KalaUpayaParams, principal: P
     adoption_basis: filingResolution.adoption_basis,
     filed_prediction_id: filingResolution.filed_prediction_id,
     filing_ready_payload: filingResolution.filing_ready_payload,
+    filing_detail: filingResolution.filing_detail,
+    intervention_ledger: interventionLedger,
     disclosure,
     composed_text: composed.full_text,
   }

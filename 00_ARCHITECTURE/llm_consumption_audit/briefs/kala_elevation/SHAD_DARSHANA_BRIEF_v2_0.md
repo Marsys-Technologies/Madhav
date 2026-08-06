@@ -631,7 +631,7 @@ Every session: first act read, last act update.
 
 ## §7 — Rails (standing + campaign; each traces to a paid incident)
 All v1.0 §3 rails carry forward VERBATIM: untouchables (`kala_gochara_windows` data,
-`build_substep_progress`, sealed harness) · PR+auto-merge only · deploy = merged-main → real
+`build_substep_progress` rows for `asset_id='ka_gochara_sweep'` [scoped 2026-08-06, native ruling — see ledger], sealed harness) · PR+auto-merge only · deploy = merged-main → real
 authenticated verify → canary → cutover → traffic tracks LATEST · real-SDK tests for
 registration gates · coverage-gates tested against their own coverage · duplicate-copy audit
 before every fix/retirement · never spawn a builder from inside a worktree · merge-state ≠
@@ -696,7 +696,7 @@ into a user's chart build; ka_kshetra never lists mi_bhara in depends_on (weight
 version pin, keeping the DAG acyclic); LEL-triggered recalibration runs as a tracked scoped
 build. PR + auto-merge only; deploy via
 merged-main → real authenticated verify → canary → cutover, traffic tracking LATEST.
-Untouchables: kala_gochara_windows data, build_substep_progress, the sealed evaluator
+Untouchables: kala_gochara_windows data, build_substep_progress rows for asset_id='ka_gochara_sweep' (scoped 2026-08-06, native ruling — see ledger), the sealed evaluator
 harness, root CLAUDECODE_BRIEF.md. Before the cap: land or park cleanly, update
 SHAD_DARSHANA_STATE.md (statuses, evidence, skill scoreboard, NEXT-ACTION), clean worktrees,
 confirm production == main. COMPLETE only when every §3 gate is VERIFIED-CLOSED and

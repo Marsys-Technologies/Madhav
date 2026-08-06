@@ -30,6 +30,15 @@ vi.mock('../tools/kala_views/shared.js', async () => {
   return { ...actual, callKalaRegistryCap: (...args: unknown[]) => mockCallKalaRegistryCap(...args) }
 })
 
+// The Lane-S spine is mocked at module boundary for `resolveAndFileFilingState` tests — the
+// spine's own gates/network behavior is covered by intervention_filing.test.ts; here we test
+// the WIRING (which inputs reach it, and how its result maps back into FilingResolution).
+const mockFileInterventionFalsifier = vi.fn()
+vi.mock('./intervention_filing.js', async () => {
+  const actual = await vi.importActual<typeof import('./intervention_filing.js')>('./intervention_filing.js')
+  return { ...actual, fileInterventionFalsifier: (...args: unknown[]) => mockFileInterventionFalsifier(...args) }
+})
+
 import {
   MORTALITY_FORBIDDEN_IDENTIFIER_PATTERN,
   isMortalityExcludedRequest,
@@ -50,6 +59,7 @@ import {
   isAdverseWithholdClass,
   withholdGroundFor,
   resolveFilingState,
+  resolveAndFileFilingState,
   resolveDisclosureTier,
   type PactStatus,
   type UpayaIntervention,
@@ -475,6 +485,100 @@ describe('resolveFilingState', () => {
     const r = resolveFilingState({ ...base, adopt })
     expect(r.filing_ready_payload?.entry.confidence).toBe(0.42)
     expect(r.filing_ready_payload?.entry.falsifier).toBe('clear falsifier')
+  })
+})
+
+// ══════════════════════════════════════════════════════════════════════════════════════════
+// resolveAndFileFilingState — the WIRED Step-4 path (closes the PR-#1055-disclosed gap)
+// ══════════════════════════════════════════════════════════════════════════════════════════
+
+describe('resolveAndFileFilingState (wired Step 4 → intervention_filing spine)', () => {
+  beforeEach(() => {
+    mockFileInterventionFalsifier.mockReset()
+  })
+
+  const WINDOW = { start: '2026-09-01T00:00:00Z', end: '2027-01-01T00:00:00Z' }
+
+  it('gates 1–3 short-circuit BEFORE the spine: adverse class never reaches fileInterventionFalsifier', async () => {
+    const r = await resolveAndFileFilingState({
+      chart_id: CHART_ID, event_class: 'illness_acute', diagnosisStatement: 'x',
+      adopt: { intervention_id: 'i1', confidence: 0.5, falsifier: 'f', adoption_basis: 'native_directed', window: WINDOW },
+    }, PRINCIPAL)
+    expect(r.state).toBe('filing_withheld_pending_native_signoff')
+    expect(mockFileInterventionFalsifier).not.toHaveBeenCalled()
+  })
+
+  it('gates 1–3 short-circuit BEFORE the spine: session_inferred fails closed, spine never called', async () => {
+    const r = await resolveAndFileFilingState({
+      chart_id: CHART_ID, event_class: 'career_promotion', diagnosisStatement: 'x',
+      adopt: { intervention_id: 'i1', confidence: 0.5, falsifier: 'f', adoption_basis: 'session_inferred', window: WINDOW },
+    }, PRINCIPAL)
+    expect(r.state).toBe('awaiting_native_confirmation')
+    expect(mockFileInterventionFalsifier).not.toHaveBeenCalled()
+  })
+
+  it('native_directed + window → calls the spine with the composed claim + inherited citation, maps filed', async () => {
+    mockFileInterventionFalsifier.mockResolvedValue({ state: 'filed', prediction_id: 'pred-99', filing_ready_payload: null, detail: null })
+    const r = await resolveAndFileFilingState({
+      chart_id: CHART_ID, event_class: 'career_promotion', diagnosisStatement: 'the diagnosis statement',
+      adopt: { intervention_id: 'i1', confidence: 0.5, falsifier: 'f', adoption_basis: 'native_directed', window: WINDOW },
+      sourceCitation: 'BPHS 27.4',
+    }, PRINCIPAL)
+    expect(r.state).toBe('filed')
+    expect(r.filed_prediction_id).toBe('pred-99')
+    expect(r.adoption_basis).toBe('native_directed')
+    expect(r.filing_detail).toBeNull()
+    expect(mockFileInterventionFalsifier).toHaveBeenCalledTimes(1)
+    const input = mockFileInterventionFalsifier.mock.calls[0]![0] as Record<string, unknown>
+    expect(input['chart_id']).toBe(CHART_ID)
+    expect(input['intervention_class']).toBe('upaya')
+    expect(input['claim']).toBe('the diagnosis statement') // engine-composed template, B.10
+    expect(input['source_citation']).toBe('BPHS 27.4')     // §N.5 inherited, never restated
+    expect(input['window']).toEqual(WINDOW)
+    expect(input['adoption_basis']).toBe('native_directed')
+  })
+
+  it('an explicit adopt.claim overrides the template (the claim the native confirms is the claim the native wrote)', async () => {
+    mockFileInterventionFalsifier.mockResolvedValue({ state: 'filed', prediction_id: 'p', filing_ready_payload: null, detail: null })
+    await resolveAndFileFilingState({
+      chart_id: CHART_ID, event_class: 'career_promotion', diagnosisStatement: 'the diagnosis statement',
+      adopt: { intervention_id: 'i1', confidence: 0.5, falsifier: 'f', adoption_basis: 'native_directed', window: WINDOW, claim: 'my own claim' },
+    }, PRINCIPAL)
+    const input = mockFileInterventionFalsifier.mock.calls[0]![0] as Record<string, unknown>
+    expect(input['claim']).toBe('my own claim')
+  })
+
+  it('spine filing_failed maps through with the VERBATIM error in filing_detail and the payload retained for a one-hop retry', async () => {
+    mockFileInterventionFalsifier.mockResolvedValue({
+      state: 'filing_failed', prediction_id: null, filing_ready_payload: null,
+      detail: 'claim_shape interval does not match temporal_shape point (trigger)',
+    })
+    const r = await resolveAndFileFilingState({
+      chart_id: CHART_ID, event_class: 'career_promotion', diagnosisStatement: 'x',
+      adopt: { intervention_id: 'i1', confidence: 0.5, falsifier: 'f', adoption_basis: 'native_directed', window: WINDOW },
+    }, PRINCIPAL)
+    expect(r.state).toBe('filing_failed')
+    expect(r.filing_detail).toBe('claim_shape interval does not match temporal_shape point (trigger)')
+    expect(r.filing_ready_payload).not.toBeNull()
+    expect(r.filed_prediction_id).toBeNull()
+  })
+
+  it('native_directed WITHOUT a window: honest filing_failed naming the absent window; spine NEVER called (B.10)', async () => {
+    const r = await resolveAndFileFilingState({
+      chart_id: CHART_ID, event_class: 'career_promotion', diagnosisStatement: 'x',
+      adopt: { intervention_id: 'i1', confidence: 0.5, falsifier: 'f', adoption_basis: 'native_directed' },
+    }, PRINCIPAL)
+    expect(r.state).toBe('filing_failed')
+    expect(r.filing_detail).toContain('window')
+    expect(mockFileInterventionFalsifier).not.toHaveBeenCalled()
+  })
+
+  it('a plain read (no adopt) stays not_requested with zero spine calls', async () => {
+    const r = await resolveAndFileFilingState({
+      chart_id: CHART_ID, event_class: 'career_promotion', diagnosisStatement: 'x',
+    }, PRINCIPAL)
+    expect(r.state).toBe('not_requested')
+    expect(mockFileInterventionFalsifier).not.toHaveBeenCalled()
   })
 })
 

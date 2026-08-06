@@ -327,7 +327,9 @@ authenticated verify → canary → cutover → confirm traffic tracks LATEST �
 acceptance → worktree cleanup → ledger. When polling checks anywhere, a check is done ONLY
 when status=COMPLETED — a null conclusion is pending, not passed. integration running ahead
 of production between gates is normal and expected. Untouchables: kala_gochara_windows data,
-build_substep_progress, the sealed evaluator harness, root CLAUDECODE_BRIEF.md.
+build_substep_progress rows for asset_id='ka_gochara_sweep' (scoped 2026-08-06, native ruling —
+see ledger; other assets' substep rows are ordinary rebuildable bookkeeping), the sealed
+evaluator harness, root CLAUDECODE_BRIEF.md.
 At ~7.5h: stop opening lanes, land-or-park everything cleanly (no half-merged state), final
 deploy if a gate closed, update the ledger (statuses, evidence, skill scoreboard,
 ADJUDICATION log, NEXT-ACTION), remove worktrees, verify main == production (or record the

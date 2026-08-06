@@ -3379,18 +3379,72 @@ def write_dasha_scope_cap_sentinels(chart_id: str, build_id: str, *, conn: Any =
 
     owns_conn = conn is None
     written = 0
-    with (_conn() if owns_conn else nullcontext(conn)) as sc_conn:
-        try:
-            written += _upsert_rows(sc_conn, [scope_cap_row], "scope_cap", "INVARIANT", commit=owns_conn)
-            logger.info("[ga_dashas] Prana Dasha scope-cap sentinel written")
-        except Exception as exc:
-            logger.warning("[ga_dashas] Scope-cap sentinel write failed (non-fatal): %s", exc)
 
+    def _write_one_sentinel(sc_conn: Any, row: dict, savepoint: str, label: str) -> int:
+        """Write ONE sentinel inside its OWN savepoint, so its failure is
+        genuinely non-fatal to the caller's transaction.
+
+        The savepoint is the whole point of this helper. `_upsert_rows` can
+        fail — and for the Prana row it ALWAYS fails, because `level_n = 5`
+        violates `chart_dashas`'s `cd_level_n_max4` CHECK (migration 211,
+        `level_n BETWEEN 1 AND 4`). In PostgreSQL a failed statement aborts the
+        ENTIRE transaction, not just itself; every later statement then raises
+        InFailedSqlTransaction until someone rolls back. Catching the Python
+        exception does NOT un-abort the transaction.
+
+        Before this savepoint existed, the two `except` blocks below logged
+        "(non-fatal)" and returned having silently destroyed the caller's
+        transaction. On the CLI path (`owns_conn=True`) that was invisible —
+        the connection is discarded immediately after. On the ORCHESTRATOR path
+        the connection is the caller-owned `ctx.db_conn` (FROZEN contract
+        §N.2), so the abort escaped into the orchestrator, which could then no
+        longer RELEASE its own savepoint, record the error, or commit. Net
+        effect: `ga_dashas` could never reach 'lit' on ANY chart, and all 13
+        downstream assets BLOCKED. Observed live 2026-08-06 on 482012f1,
+        1c826d5a and cb73cd3d.
+
+        NOT FIXED HERE, DELIBERATELY: the Prana sentinel still does not write.
+        `level_n = 5` still contradicts `cd_level_n_max4`, so production still
+        holds ZERO rows at `system_id='scope_cap'` for that row. This change
+        only stops that failure from destroying the run — it makes the existing
+        "(non-fatal)" claim true, nothing more. SD-DASHA-1 remains OPEN: making
+        the Prana row land is a SEMANTIC question (how to represent "5th level,
+        out of scope" inside a 1-4 domain) reserved for the native. Widening the
+        constraint would be wrong — a level_n=5 row contradicts the very cap it
+        exists to document.
+        """
+        with sc_conn.cursor() as _sp_cur:
+            _sp_cur.execute(f"SAVEPOINT {savepoint}")
         try:
-            written += _upsert_rows(sc_conn, [kp_cap_row], "scope_cap", "INVARIANT", commit=owns_conn)
-            logger.info("[ga_dashas] KP beyond-sub_sub scope-cap sentinel written")
+            # commit=False ALWAYS, on both paths: a COMMIT inside the savepoint
+            # would end the transaction and discard the savepoint, making the
+            # RELEASE/ROLLBACK below fail with "no such savepoint". The owned
+            # (CLI) path instead commits ONCE after both sentinels are done,
+            # below — same durable outcome, and now atomic across the pair.
+            n = _upsert_rows(sc_conn, [row], "scope_cap", "INVARIANT", commit=False)
+            with sc_conn.cursor() as _sp_cur:
+                _sp_cur.execute(f"RELEASE SAVEPOINT {savepoint}")
+            logger.info("[ga_dashas] %s scope-cap sentinel written", label)
+            return n
         except Exception as exc:
-            logger.warning("[ga_dashas] KP scope-cap sentinel write failed (non-fatal): %s", exc)
+            # Undo the aborted statement AND clear the transaction's error
+            # state, so the caller's connection comes back usable.
+            with sc_conn.cursor() as _sp_cur:
+                _sp_cur.execute(f"ROLLBACK TO SAVEPOINT {savepoint}")
+                _sp_cur.execute(f"RELEASE SAVEPOINT {savepoint}")
+            logger.warning(
+                "[ga_dashas] %s scope-cap sentinel write failed (non-fatal, "
+                "transaction preserved): %s", label, exc,
+            )
+            return 0
+
+    with (_conn() if owns_conn else nullcontext(conn)) as sc_conn:
+        written += _write_one_sentinel(sc_conn, scope_cap_row, "ga_dashas_scope_cap_prana",
+                                       "Prana Dasha")
+        written += _write_one_sentinel(sc_conn, kp_cap_row, "ga_dashas_scope_cap_kp",
+                                       "KP beyond-sub_sub")
+        if owns_conn:
+            sc_conn.commit()
 
     return written
 

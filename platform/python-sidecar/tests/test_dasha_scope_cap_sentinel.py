@@ -43,7 +43,32 @@ from pipeline.orchestrator.writers import (  # noqa: E402
 
 
 class _Sentinel:
-    """Stands in for ctx.db_conn — identity-checked, never used as a real conn."""
+    """Stands in for ctx.db_conn — identity-checked, never used as a real conn.
+
+    Accepts the SAVEPOINT / RELEASE / ROLLBACK TO SAVEPOINT statements that
+    `write_dasha_scope_cap_sentinels` now issues around each sentinel write
+    (see `test_dasha_sentinel_savepoint_isolation.py` for why they exist), but
+    models no failure behaviour — every test in THIS module stubs
+    `_upsert_rows` to always succeed, so nothing here ever aborts.
+    """
+
+    def __init__(self) -> None:
+        self.commits = 0
+
+    def cursor(self):
+        return self
+
+    def execute(self, sql, *args, **kwargs):
+        return self
+
+    def commit(self):
+        self.commits += 1
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
 
 
 def _ctx(conn):
@@ -56,7 +81,15 @@ def _ctx(conn):
 def test_write_dasha_scope_cap_sentinels_writes_both_rows(monkeypatch):
     """Both the Prana (level_n=5) and KP-beyond-sub_sub (level_n=4) rows are
     built under system_id='scope_cap' / ayanamsha_id='INVARIANT', for the
-    chart_id/build_id passed in — not hardcoded to any one chart."""
+    chart_id/build_id passed in — not hardcoded to any one chart.
+
+    SCOPE: this asserts ROW CONSTRUCTION under a stub where `_upsert_rows`
+    always succeeds. It is NOT a claim about production. In production the
+    Prana row's level_n=5 violates `chart_dashas`.`cd_level_n_max4` and never
+    lands — `written` is 1, not 2, and `system_id='scope_cap'` has held ZERO
+    rows for every chart since the feature was written. See
+    `test_dasha_sentinel_savepoint_isolation.py` for the real-semantics tests.
+    """
     calls = []
 
     def fake_upsert_rows(conn, rows, system_id, ayanamsha_id, *, commit=True):
@@ -102,28 +135,33 @@ def test_write_dasha_scope_cap_sentinels_injected_conn_does_not_commit(monkeypat
 
 
 def test_write_dasha_scope_cap_sentinels_owned_conn_commits(monkeypatch):
-    """Legacy CLI path (conn=None): opens its own connection and DOES commit
-    — preserves build_ga_dashas()'s pre-existing behavior exactly."""
+    """Legacy CLI path (conn=None): opens its own connection and DOES commit.
+
+    CHANGED with the savepoint fix, deliberately: the commit now happens ONCE
+    on the connection after both sentinels, instead of once per `_upsert_rows`
+    call. A COMMIT issued inside a savepoint would end the transaction and
+    discard the savepoint, so the RELEASE/ROLLBACK could not run — which is the
+    whole mechanism protecting the caller's transaction. The durable outcome is
+    unchanged (the CLI path still commits its own work) and is now atomic
+    across the sentinel pair rather than partially committed.
+    """
     commits_seen = []
 
     def fake_upsert_rows(conn, rows, system_id, ayanamsha_id, *, commit=True):
         commits_seen.append(commit)
         return len(rows)
 
-    class _FakeOwnedConn:
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *exc):
-            return False
-
+    owned = _Sentinel()
     monkeypatch.setattr(gdw, '_upsert_rows', fake_upsert_rows)
-    monkeypatch.setattr(gdw, '_conn', lambda: _FakeOwnedConn())
+    monkeypatch.setattr(gdw, '_conn', lambda: owned)
 
     written = gdw.write_dasha_scope_cap_sentinels('chart-XYZ', 'build-123')
 
     assert written == 2
-    assert commits_seen == [True, True]
+    # commit=False is now passed on BOTH paths (savepoint-compatible)...
+    assert commits_seen == [False, False]
+    # ...and the owned connection is committed exactly once, at the end.
+    assert owned.commits == 1
 
 
 # ── B. Orchestrator adapter threads the fix into the post-pass substep ─────────

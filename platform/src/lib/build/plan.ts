@@ -44,11 +44,26 @@ export interface BlockerEntry {
   guidance?: string         // non-empty for L0 dormant/error deps
 }
 
+// SHAD-DARSHANA sweep-protection Phase 1a, Layer 1/2 (planner guard). A candidate
+// asset_id withheld from plan_waves because build_protected_assets names it protected
+// for the chart_id this plan was resolved for. Surfaced explicitly rather than either
+// silently including it (the defect this guard exists to close) or silently dropping it
+// (§N.6 Serving Density discipline — an honest empty/withheld list, never an absent one).
+export interface ProtectedAssetBlocker {
+  asset_id: AssetId
+  message: string
+}
+
+export const PROTECTED_ASSET_MESSAGE = 'protected — native override required'
+
 export interface BuildPlan {
   status: 'ok' | 'blocked'
   plan_waves: AssetId[][]   // empty when blocked or when build no-ops a lit asset
   blockers: BlockerEntry[]  // empty when ok
   estimated_seconds: number | null  // always null when status is 'blocked'
+  // Always present — empty when nothing was withheld. A protected candidate never appears
+  // in plan_waves; it appears here instead, once per withheld asset_id.
+  protected_assets: ProtectedAssetBlocker[]
 }
 
 
@@ -58,6 +73,36 @@ export interface ResolveBuildPlanArgs {
   action: BuildAction
   registry: RegistryEntry[]
   throughput: Map<AssetId, ThroughputEntry>
+  // asset_ids protected (via build_protected_assets) for the chart_id this plan is being
+  // resolved for. Pre-filtered by the CALLER (a `WHERE chart_id = $1` query) — plan.ts
+  // itself never sees a chart_id or talks to the DB, staying a pure function. Defaults to
+  // an empty set (no protection) when omitted, so every existing caller keeps working
+  // unchanged until it is updated to pass this.
+  protectedAssetIds?: Set<AssetId>
+}
+
+const EMPTY_PROTECTED_SET: ReadonlySet<AssetId> = new Set()
+
+/**
+ * Splits `candidates` into the ones the plan may act on and the ones withheld because
+ * they are protected. Order-preserving on both output arrays. A candidate never appears
+ * in both.
+ */
+function withholdProtected(
+  candidates: AssetId[],
+  protectedAssetIds: ReadonlySet<AssetId>
+): { kept: AssetId[]; withheld: ProtectedAssetBlocker[] } {
+  if (protectedAssetIds.size === 0) return { kept: candidates, withheld: [] }
+  const kept: AssetId[] = []
+  const withheld: ProtectedAssetBlocker[] = []
+  for (const id of candidates) {
+    if (protectedAssetIds.has(id)) {
+      withheld.push({ asset_id: id, message: PROTECTED_ASSET_MESSAGE })
+    } else {
+      kept.push(id)
+    }
+  }
+  return { kept, withheld }
 }
 
 function topoSort(ids: AssetId[], registry: RegistryEntry[]): AssetId[] {
@@ -285,7 +330,10 @@ export function resolveBuildPlan({
   action,
   registry,
   throughput,
+  protectedAssetIds,
 }: ResolveBuildPlanArgs): BuildPlan {
+  const protectedSet: ReadonlySet<AssetId> = protectedAssetIds ?? EMPTY_PROTECTED_SET
+
   // asset_set: the scope_target list must resolve to at least one in-registry asset.
   // An empty/all-phantom list is a caller error, not a silent no-op.
   if (scope === 'asset_set' && assetsInScope('asset_set', scope_target, registry).length === 0) {
@@ -302,27 +350,37 @@ export function resolveBuildPlan({
     })
     const downstreamAll = transitiveDownstream(stale, registry)
     const downstreamFiltered = scope === 'asset' ? downstreamAll : downstreamAll.filter(id => scopeAssets.includes(id))
-    const candidates = Array.from(new Set([...stale, ...dormant, ...downstreamFiltered]))
+    const rawCandidates = Array.from(new Set([...stale, ...dormant, ...downstreamFiltered]))
+    const { kept: candidates, withheld } = withholdProtected(rawCandidates, protectedSet)
     const sorted = topoSort(candidates, registry)
     const waves = computeWaves(sorted, registry, scope, scope_target)
-    return { status: 'ok', plan_waves: waves, blockers: [], estimated_seconds: estimateSeconds(waves.flat(), registry) }
+    return {
+      status: 'ok', plan_waves: waves, blockers: [],
+      estimated_seconds: estimateSeconds(waves.flat(), registry),
+      protected_assets: withheld,
+    }
   }
 
   if (action === 'cascade') {
     const scopeAssets = assetsInScope(scope, scope_target, registry)
     const stale = registry.filter(r => throughput.get(r.asset_id)?.state === 'stale').map(r => r.asset_id)
-    const candidates = transitiveDownstream(stale, registry).filter(id => scopeAssets.includes(id))
+    const rawCandidates = transitiveDownstream(stale, registry).filter(id => scopeAssets.includes(id))
+    const { kept: candidates, withheld } = withholdProtected(rawCandidates, protectedSet)
     const sorted = topoSort(candidates, registry)
     const waves = computeWaves(sorted, registry, scope, scope_target)
-    return { status: 'ok', plan_waves: waves, blockers: [], estimated_seconds: estimateSeconds(waves.flat(), registry) }
+    return {
+      status: 'ok', plan_waves: waves, blockers: [],
+      estimated_seconds: estimateSeconds(waves.flat(), registry),
+      protected_assets: withheld,
+    }
   }
 
   // build and rebuild: scope-aware candidates + pre-flight gate
   const scopeAssets = assetsInScope(scope, scope_target, registry)
 
-  let candidates: AssetId[]
+  let rawCandidates: AssetId[]
   if (action === 'build') {
-    candidates = scopeAssets.filter(id => {
+    rawCandidates = scopeAssets.filter(id => {
       const t = throughput.get(id)
       // 'incomplete' (migration 474) means "ran, some data present, substep plan
       // work still remains" — it is by definition NOT finished, so `build` must
@@ -337,24 +395,29 @@ export function resolveBuildPlan({
     })
   } else {
     // rebuild: all assets in scope (no transitive downstream expansion)
-    candidates = [...scopeAssets]
+    rawCandidates = [...scopeAssets]
   }
 
-  // build no-op: asset is already lit, nothing to do
+  const { kept: candidates, withheld } = withholdProtected(rawCandidates, protectedSet)
+
+  // build no-op: nothing left to build once protected candidates are withheld too —
+  // this is the honest "already lit, nothing to do" case only when nothing was ALSO
+  // withheld; a build that consists ENTIRELY of protected candidates still reports
+  // them via protected_assets rather than reading identically to a true no-op.
   if (action === 'build' && candidates.length === 0) {
-    return { status: 'ok', plan_waves: [], blockers: [], estimated_seconds: null }
+    return { status: 'ok', plan_waves: [], blockers: [], estimated_seconds: null, protected_assets: withheld }
   }
 
   // pre-flight gate: only for non-global scope (global has all assets as candidates)
   if (scope !== 'global') {
     const blockers = preflight(candidates, scope, scope_target, registry, throughput)
     if (blockers.length > 0) {
-      return { status: 'blocked', plan_waves: [], blockers, estimated_seconds: null }
+      return { status: 'blocked', plan_waves: [], blockers, estimated_seconds: null, protected_assets: withheld }
     }
   }
 
   const waves = computeWaves(candidates, registry, scope, scope_target)
   const flat = waves.flat()
   const estimated = estimateSeconds(flat, registry)
-  return { status: 'ok', plan_waves: waves, blockers: [], estimated_seconds: estimated }
+  return { status: 'ok', plan_waves: waves, blockers: [], estimated_seconds: estimated, protected_assets: withheld }
 }
