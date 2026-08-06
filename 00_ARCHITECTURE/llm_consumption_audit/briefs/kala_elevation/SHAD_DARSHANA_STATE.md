@@ -50,6 +50,13 @@ deletion. The hash-replay run itself (rebuild ka_kshetra from scratch, compare
 `kala_field_snapshots` hashes) remains for the next build session — this ruling removes its
 blocker, not its work.
 
+**EXECUTED (same session, ~07:1x UTC):** single transaction, before/after audited.
+Before: ka_kshetra substeps 1c826d5a=47, 482012f1=9. `DELETE 56` (exact sum). After (pre-COMMIT,
+same txn): ka_kshetra remaining=0; sweep corpus verified untouched — `ka_gochara_sweep` 606/606
+both charts, `kala_gochara_windows` 16,297 (482012f1) / 19,323 (1c826d5a), byte-matching the
+SWEEPS-COMPLETE canon. Hash-replay is now genuinely unblocked: the next ka_kshetra build
+recomputes from scratch on both canonical charts.
+
 ---
 
 ## CONSOLIDATED UPDATE — DEFECT #6/#7 CLOSEOUT + SAFETY-NET TRIAGE (2026-08-06)
