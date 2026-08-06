@@ -9,6 +9,25 @@ governing: SHAD_DARSHANA_NIGHT_RUN_v1_0.md (orchestration) + SHAD_DARSHANA_BRIEF
   + KALA_SUPREME_ELEVATION_v1_0.md (v1.2, spec authority) + KALA_SIX_VIEWS_DESIGN_v2_0.md/v1_0.md
 ---
 
+## CONDUCTOR-HEARTBEAT — 2026-08-06T16:58:00Z (CONDUCTOR-OVERNIGHT-FINAL-ARC)
+
+Heartbeat #4. All 7 agents active. No PRs open yet — agents still building.
+
+**Status at 2026-08-06T16:58:00Z:**
+- W2-FIN: Active — exploring kala_field_salience ALLOWED_TABLES issue, investigating cohort rate NULL
+- W3-CAL: Active — found bg_sky_calendar.py already exists; verifying items 1/3/16 completion gaps
+- W3-MUH: Active — items 4/5 have existing code; adding property tests and verifying item 14
+- W3-ENG: Active — migrations renamed 543/544; working on Agnivāsa Convention B + Pareto adversarial test
+- W3-RIT: Active — DISCOVERY: items 17/37 appear largely pre-built by prior lanes; verifying gaps
+- W3-INT: Active — reading briefs and exploring items 33/34
+- G-LAND: Active — setting up equivalence builds for both charts
+
+No open PRs yet. PARĪKṢAKA dispatch pending first PR landing.
+NEXT-ACTION: monitor for PR notifications; refresh heartbeat at ~17:08.
+
+---
+
+
 ## CONDUCTOR-HEARTBEAT — 2026-08-06T16:48:00Z (CONDUCTOR-OVERNIGHT-FINAL-ARC)
 
 Heartbeat #3. All 7 builder agents dispatched and running in background.
