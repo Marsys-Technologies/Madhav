@@ -2,6 +2,54 @@
 
 ---
 type: CONDUCTOR-NOTE
+timestamp: 2026-08-06T19:09:00Z
+heartbeat_number: 29
+event: CI blocked (Actions outage ~3h47m, no ETA change); outage persists — holding position
+integration_tip: e35a2c322
+actions_status: major_outage
+actions_component_status: major_outage
+github_overall_status: Partial System Outage
+pr_1090_checks: 0_started
+next_hb_due: 19:19Z
+
+## CONDUCTOR HEARTBEAT #29 — 2026-08-06T19:09Z
+
+**Lease renewed:** 19:09:00Z (HB #28 was 19:05Z; gap = 4m00s — within ≤10m window)
+**Integration tip:** e35a2c322 (unchanged — outage blocking CI on PR #1090)
+
+### CAMPAIGN STATE AT HB #29
+
+**CI MONITORING:**
+- GitHub Actions component status: `major_outage` (confirmed via /api/v2/components.json)
+- GitHub platform overall: "Partial System Outage"
+- PR #1090: 0 checks started — UNKNOWN merge state
+- Reviewer hold remains: merge only after CI recovers + all required checks SUCCESS
+
+**OUTAGE TIMELINE:**
+- Outage started: ~2026-08-06T15:22Z
+- Last incident update: 2026-08-06T18:46:37Z (~23min prior to this HB)
+- Outage duration at HB #29: ~3h47m
+- No ETA communicated. Incident ID: qcvjkzcs7j74
+
+**PRODUCTIVE WORK COMPLETED DURING OUTAGE (final tally):**
+All productive pre-walk investigation tasks completed in prior HBs:
+- HB #25: Position held, state documented
+- HB #26: W3 pre-walk investigation complete (19 items reviewed vs integration branch)
+- HB #27: E6-full PARKED-HONEST projected (all 5 sub-items confirmed absent)
+- HB #28: Full post-deploy sequence (Stages 1–5) documented for independent reviewer
+- HB #29 (this): Pure holding — no new productive work; outage continues unresolved
+
+**NEXT ACTION (all gated on CI recovery):**
+When Actions returns to `operational`:
+1. Independent reviewer: verify PR #1090 checks SUCCESS → merge integration→main
+2. Deploy fires; smoke gates pass; orchestrator builds run on both canonical charts
+3. PARĪKṢAKA Gate W3 walk begins with live data (see HB #28 Stage 4 pre-walk notes)
+
+**BLOCKING factor:** GitHub Actions `major_outage` is the sole blocker.
+**Next heartbeat due:** ~19:19Z
+
+---
+type: CONDUCTOR-NOTE
 timestamp: 2026-08-06T19:05:00Z
 heartbeat_number: 28
 event: CI blocked (Actions outage ~3h42m, no incident ETA); full post-deploy sequence documented
