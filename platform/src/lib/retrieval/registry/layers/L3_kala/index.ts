@@ -39,6 +39,10 @@ import { queryActiveDashasCapability }        from './query_active_dashas'
 // ṢAḌ-DARŚANA W3 Lane w3-kota-sudarshana, registry items 16/17.
 import { queryKotaChakraCapability }          from './query_kota_chakra'
 import { querySudarshanaVarshaCapability }    from './query_sudarshana_varsha'
+// ṢAḌ-DARŚANA W3 lane-w3rit, registry item 37 — paddhati convention profile capability.
+// Closes the documented gap: kala_sky_pattern.ts called query_kala_paddhati_profile but
+// it was never registered (SHAD_DARSHANA_STATE.md Night-3 close, "Item 37 partial").
+import { queryKalaPaddhatiProfileCapability } from './query_kala_paddhati_profile'
 // ṢAḌ-DARŚANA W3 Lane w3-moorti-vedha, registry items 4/5 (item 5 closes R-19).
 import { queryMoortiNirnayaCapability }       from './query_moorti_nirnaya'
 import { queryVedhaGocharaCapability }        from './query_vedha_gochara'
@@ -63,6 +67,7 @@ registerCapability(queryActivationWaveformCapability)
 registerCapability(queryActiveDashasCapability)
 registerCapability(queryKotaChakraCapability)
 registerCapability(querySudarshanaVarshaCapability)
+registerCapability(queryKalaPaddhatiProfileCapability)
 registerCapability(queryMoortiNirnayaCapability)
 registerCapability(queryVedhaGocharaCapability)
 registerCapability(queryTithiPraveshaCapability)

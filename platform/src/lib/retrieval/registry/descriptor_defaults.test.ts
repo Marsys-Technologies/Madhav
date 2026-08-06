@@ -132,7 +132,9 @@ describe('R-1.1 descriptor migration — universal field coverage', () => {
     // `register.reader_label` too — see those two files' `register:` field.
     // 37 -> 38: ṢAḌ-DARŚANA W3 item 13 (query_tithi_pravesha.ts, Lane
     // w3-tithi-pravesha) hand-sets its own `register.reader_label` too.
-    expect(withRegister).toBe(38)
+    // 38 -> 39: ṢAḌ-DARŚANA W3 lane-w3rit item 37 (query_kala_paddhati_profile.ts)
+    // hand-sets its own `register.reader_label` — see that file's `register:` field.
+    expect(withRegister).toBe(39)
     expect(withFamilyOverrides).toBe(0)
   })
 
