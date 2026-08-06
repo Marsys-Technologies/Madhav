@@ -160,14 +160,86 @@ work (item 38 rite-pairing), not this lane's job.
 
 ---
 
+## Lane K PARĪKṢAKA verdict + merge (2026-08-06, same session)
+
+**Verdict: ACCEPT-WITH-DEBT.** Fresh-context PARĪKṢAKA independently re-verified all 7 major
+claims in Lane K's PR #1079 with its own queries (not the builder's report): the 249-row
+`bg_kp_sublord_division` substrate (span sums to exactly 360°, migration 535 applied), per-chart
+K.2 distinctness (self-join proved the two charts' significator/cusp rows are genuinely
+different, not copy-paste), the house-7-dissent/house-10-concurrence fixture match against
+`05_TEMPORAL_ENGINES/kp/CROSSCHECK_v1_0.md` §10 (ran the real unmodified serving code against
+production rows), the double-count defect (independently recomputed the exact 1,045-row
+over-count, confirmed the regression test genuinely fails-before/passes-after), the untouchables
+rail (2-file diff, no writer touched), and CI (13 pass, 0 fail). One correction flagged: the
+Conductor's own dispatch-prompt cited a wrong file path for CROSSCHECK (this ledger's error, not
+the builder's — the builder's live DB citations were correct throughout). **Debt**: the
+`count_sql` fix existed only in source, not yet applied to production `asset_registry`.
+
+**PR #1079 MERGED** to `shad-darshana/integration` at `eab186092cb4c5f4bcc5fb8d47864805db2285e9`
+(squash, branch deleted). **Debt discharged same session**: Conductor applied a targeted,
+transactional `UPDATE asset_registry SET count_sql = ... WHERE asset_id = 'ga_sensitive'`
+directly against production (single `BEGIN`/`UPDATE`/verify/`COMMIT`, exact SQL text taken
+verbatim from the merged diff — not the broader `asset_registry_seed.ts` full re-seed, to keep
+blast radius minimal). Verified: `482012f1`'s `ga_sensitive` count dropped from the old buggy
+9,610 to the corrected **8,565** — exactly matching PARĪKṢAKA's independently-computed
+9,610−1,045. **Gate W3K status: materially ready to close on everything in its own scope; the
+sole remaining open item (Law-1 applicability — `kala_field_clocks` has 0 rows in production) is
+a genuine Gate W2 dependency, not a W3K defect.**
+
+---
+
+## Lane R PARĪKṢAKA verdict + correction + merge (2026-08-06, same session)
+
+**Verdict: (a) PR #1080 ACCEPT-WITH-DEBT; (b) Gate W2 — independently agrees it stays
+PARKED-HONEST, and is marginally worse than the builder's own report, never better.**
+Fresh-context PARĪKṢAKA re-verified the hash-replay claim directly (`kala_field_snapshots`
+query confirmed both exact prior hashes reproduced; `git log -S` confirmed the prior hashes
+genuinely pre-dated this session's rebuild by ~32 minutes, ruling out a circular/self-fulfilling
+comparison), re-ran the full `tests/l3/ka_kshetra/ tests/l5/` suite itself (451 passed, 1
+skipped, matching the builder's number), and spot-checked 4 of the 12 checklist items against
+live state.
+
+**One real defect found in the checklist itself**: W2.8's cell claimed `kala_insights` = 0 rows
+on BOTH charts, but PARĪKṢAKA's own query found **2 real `scarcity`-type rows for `1c826d5a`**,
+pinned to this very session's own `field_snapshot_id` — produced by Lane R's own rebuild, not
+stale data the original check missed. The builder's 7-detector root-cause narrative was
+therefore wrong for `1c826d5a` (its `detect_scarcity` DID fire) though still correct for
+`482012f1` (genuinely 0 rows, all 7 classes skipped). **Conductor independently re-confirmed
+this exact finding with its own query before acting on it** (2 rows, same `insight_type`,
+`computed_at`, `field_snapshot_id`), then corrected the checklist file in place — struck-through
+original retained for audit trail, not silently edited — narrowing W2.8's disposition to two
+distinct per-chart reasons instead of one incorrect blanket claim, and pushed the correction to
+PR #1080's branch before merging. Also separately flagged (not yet acted on): W2.7's "real 5-axis
+rows" framing is overstated — the underlying `kala_field_salience` rows are 3-of-5-axis
+(`factor_informativeness`/`factor_actionability` NULL), which the checklist's own W2.5 cell
+already discloses but W2.7's cell doesn't cross-reference; left as-is since it doesn't change any
+disposition, flagged here for whoever next touches this checklist.
+
+**PR #1080 MERGED** (with the W2.8 correction aboard) to `shad-darshana/integration` at
+`e92c3a6477c5a3a0fa45772066cf426e127d2082` (squash, branch deleted).
+
+**Gate W2 status: confirmed NOT ready to close.** 5 of 12 items remain genuinely unmet, none
+FAILED-REOPENED. Per the DAG, **Stage 2 (the four parallel W3 lanes) does NOT dispatch yet** —
+it is explicitly gated on Gate W2 closing, which has not happened. The one bounded,
+code-level path to closing more of W2 (wiring W2.7's salience vector into `kala_priority_get`)
+is a genuine follow-up candidate but was correctly not attempted inside Lane R's own scope
+(judged a real feature-wiring task, not a drive-by patch, per the brief's own §5 model-policy
+guidance on deliberate design attention).
+
+---
+
 ## NEXT-ACTION for whichever session/turn picks this thread back up
 
-Watch for the remaining three lane agents' (R/K/G) completion notifications; for each, dispatch a
-fresh-context PARĪKṢAKA (default-REFUTED, own queries against live state, never trusting the
-builder's self-report) before any lane PR merges to `shad-darshana/integration`; record every
-verdict here; run the Stage 2 merge-train once Gate W2 (Lane R) actually closes, per the DAG's own
-"Stage 2 dispatches after W2 closes" ordering. Also watch for Gate-Executor's PR #1078 to actually
-enter the queue and merge — non-blocking but still owed a close.
+Watch for Lane G's completion notification; dispatch a fresh-context PARĪKṢAKA before its PR
+merges (same discipline as R/K above — own queries, default-REFUTED). Also watch for
+Gate-Executor's PR #1078 to actually enter the queue and merge — non-blocking but still owed a
+close. **Stage 2 (four parallel W3 lanes) remains correctly NOT dispatched** — Gate W2 has not
+closed (5/12 checklist items open, see above); do not dispatch Stage 2 until a future session
+either closes W2 for real (native-gated N_e/LEL data, mostly out of this campaign's autonomous
+scope) or the native explicitly rules on proceeding with W2 still open. A natural next
+scoped-and-bounded lane, if the campaign continues: wire W2.7's salience vector into
+`kala_priority_get` (the one item PARĪKṢAKA-confirmed as a genuine, non-data-gated, code-level
+fix).
 
 *Truth over completion. PARKED-HONEST with evidence, not a false close.*
 
