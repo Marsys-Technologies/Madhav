@@ -228,15 +228,85 @@ guidance on deliberate design attention).
 
 ---
 
+## Lane G PARĪKṢAKA verdict — PARKED-HONEST, real defect found, PR NOT merged (2026-08-06)
+
+**PR #1081 (`shad-darshana/lane-g-w2g-writer` → `shad-darshana/integration`) is NOT merged.**
+Verdict: **PARKED-HONEST.** This is the highest-risk lane this session (new writer + migration
+541 + live production writes adjacent to the campaign's single most protected asset), reviewed
+under an explicit maximally-skeptical PARĪKṢAKA brief. v1's own data is genuinely intact — three
+independent lines of evidence confirmed this (live `generation` group-by, `computed_at`
+timestamps, and an independent pre-existing ledger record of the 16,297 baseline) — but the
+review surfaced a **real, previously-undisclosed defect in how the new writer interacts with
+migration 540's protection trigger**, not caught by the builder's own live run because that run
+happened to hit the one code path where the defect is invisible.
+
+**The defect, precisely:** `ka_gochara_sweep_v2.py`'s §N.3 idempotency does a
+`DELETE ... WHERE chart_id=... AND event_class=... AND generation='2.0'` before each
+substep's insert. Migration 540's row-level guard trigger
+(`build_protected_assets_guard_row()`) fires on **any** DELETE/UPDATE against a protected
+`chart_id`'s rows in `kala_gochara_windows` — it was written before `generation` existed as a
+column and does not consult it. On this lane's FIRST run, the delete matched zero rows (nothing
+with `generation='2.0'` existed yet), so the trigger's `EXISTS` check never had a live row to
+block and the write proceeded as a pure INSERT (which the trigger doesn't gate). **On ANY future
+re-run with a changed fingerprint, that same DELETE will match the 27 rows this session wrote,
+and migration 540 will correctly-per-its-own-design RAISE `BUILD-PROTECTED`** — meaning the v2
+writer's own idempotency is currently non-functional on both protected charts, and the 27 rows
+already live in production are, right now, un-removable and un-rebuildable without a
+`app.allow_protected_sweep_rewrite='on'` override (a deliberately loud, native-gated action per
+migration 540's own design).
+
+**Why this stays PARKED rather than being fixed inline:** the fix space — either make the guard
+trigger `generation`-aware, or move 2.0 rows to a genuinely separate table — is a change to the
+untouchables rail's own enforcement mechanism (migration 540), which is explicitly outside this
+campaign's autonomous authority ("STOP if a writer seems to need a [FROZEN-adjacent] change";
+untouchables-rail changes are not ANTARYĀMIN's or any lane's to decide unilaterally). This is a
+genuine design question, not a bug with an obvious one-line fix — the review is right to park it
+rather than have a lane silently patch the campaign's own protection mechanism.
+
+**What IS confirmed clean, not in question:** FROZEN orchestrator-contract conformance (checked
+line-by-line against `ORCHESTRATOR_CONVERGENCE_CLOSE_v1_0.md` §2 — clean), migration 541 itself
+(additive-only, no ALTER on either protected table — though it was hand-applied rather than going
+through the tracked migration runner, `_migrations_applied` tops out at 540, a separate minor
+process debt), `build_substep_progress` for `ka_gochara_sweep` untouched (still 606/606,
+`completed_at` unchanged from 2026-08-05), natural-key-collision handling (2 real collisions
+against v1 rows correctly skipped, v1's data at that key verified untouched), and the N1-N5/lock
+re-verification (independently re-confirmed ruled/free, same conclusion as the builder). One
+smaller inaccuracy also found: the builder's "38 candidates" figure doesn't match its own
+per-class breakdown, which sums to 30 — a reporting arithmetic error, not a data-integrity issue.
+CI is green (13/13) but doesn't actually cover the new writer's test directory (disclosed gap).
+
+**Disposition needed before this lane can proceed (native-adjacent, not autonomously decidable):**
+(1) a ruling on where 2.0-generation rows should live relative to migration 540's guard —
+generation-aware trigger vs. separate table; (2) a concrete fix to the writer's idempotency delete
+path once that's ruled; (3) an explicit disposition for the 27 rows currently pinned in production
+(harmless as-is — additive, non-corrupting, small — but not nothing); (4) correct the
+migration-541 provenance record (tracked apply, not hand-apply) and the 38→30 arithmetic; (5)
+extend CI to actually cover `pipeline/orchestrator/writers/tests/`.
+
+**Everything else Lane G built is real, substantial, and independently verified**: the arc-join
+materialization layer, the WriterBase-conformant writer, a genuinely-measured (not fabricated)
+548.6s/±3y-horizon/single-chart timing that honestly misses the ≤15min/century SLO by a
+correctly-computed ~10x margin (before interval/chain shapes and Tier B/C bodies are even
+attempted) — this is real progress on the campaign's longest pole, just not yet safe to merge
+onto the protected-adjacent surface without the disposition above.
+
+---
+
 ## NEXT-ACTION for whichever session/turn picks this thread back up
 
-Watch for Lane G's completion notification; dispatch a fresh-context PARĪKṢAKA before its PR
-merges (same discipline as R/K above — own queries, default-REFUTED). Also watch for
-Gate-Executor's PR #1078 to actually enter the queue and merge — non-blocking but still owed a
-close. **Stage 2 (four parallel W3 lanes) remains correctly NOT dispatched** — Gate W2 has not
-closed (5/12 checklist items open, see above); do not dispatch Stage 2 until a future session
-either closes W2 for real (native-gated N_e/LEL data, mostly out of this campaign's autonomous
-scope) or the native explicitly rules on proceeding with W2 still open. A natural next
+**PR #1081 (Lane G) is OPEN, NOT merged, PARKED-HONEST** — do not merge it until the
+generation-vs-migration-540-guard disposition above is ruled. The 27 rows it already wrote to
+production for chart `482012f1` are inert (additive, non-corrupting) but should be named
+explicitly in any future gate-close packet touching W2G, not silently forgotten. Whoever picks
+this up next should route the disposition question to the native directly (it touches the
+untouchables rail's own enforcement mechanism — judged above this campaign's autonomous
+authority even for ANTARYĀMIN) rather than have a lane patch migration 540 unilaterally.
+
+Also watch for Gate-Executor's PR #1078 to actually enter the queue and merge — non-blocking but
+still owed a close. **Stage 2 (four parallel W3 lanes) remains correctly NOT dispatched** — Gate
+W2 has not closed (5/12 checklist items open, see above); do not dispatch Stage 2 until a future
+session either closes W2 for real (native-gated N_e/LEL data, mostly out of this campaign's
+autonomous scope) or the native explicitly rules on proceeding with W2 still open. A natural next
 scoped-and-bounded lane, if the campaign continues: wire W2.7's salience vector into
 `kala_priority_get` (the one item PARĪKṢAKA-confirmed as a genuine, non-data-gated, code-level
 fix).
