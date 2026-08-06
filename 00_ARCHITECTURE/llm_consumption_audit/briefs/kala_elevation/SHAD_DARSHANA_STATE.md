@@ -9,6 +9,27 @@ governing: SHAD_DARSHANA_NIGHT_RUN_v1_0.md (orchestration) + SHAD_DARSHANA_BRIEF
   + KALA_SUPREME_ELEVATION_v1_0.md (v1.2, spec authority) + KALA_SIX_VIEWS_DESIGN_v2_0.md/v1_0.md
 ---
 
+## CONDUCTOR-HEARTBEAT — 2026-08-06T16:21:50Z (CONDUCTOR-OVERNIGHT-FINAL-ARC)
+
+CONDUCTOR LEASE TAKEN. No prior HEARTBEAT found in ledger — lease is fresh.
+Session: overnight ṢAḌ-DARŚANA FINAL-ARC autonomous run. Conductor model: claude-opus-4-6.
+This heartbeat will be refreshed every ~10 minutes. Successor: if this entry is >15 min old with no newer HEARTBEAT, the lease is expired and available.
+
+**RUN-OPEN — 2026-08-06T16:21:50Z**
+- Prior session's MORNING REPORT verified: Stages 0+1 CLOSED, Lane G merged (PR #1082, e2e6fe03).
+- Native rulings R1–R4 ratified and binding on this run.
+- Integration tip at lease-open: dda0bab4c
+- Pre-flight in progress; full dispatch follows after pre-flight green.
+- W2 confirmed open at 5/12 items (not closeable without N_e/LEL corpus data accrual per prior session finding).
+- Equivalence bucket 1128-row: inherited per R2, every row must be explained-or-filed before W2G LANDED.
+- Safety-net teardown (R3): to be executed this run per ledger-documented order.
+- W6 cutover (R4): condition-gated, will execute only if item-44 hard gate green + W2G landed + replacement paths verified.
+
+NEXT-ACTION: complete Phase 0 pre-flight → dispatch 6 lanes simultaneously.
+
+---
+
+
 # ṢAḌ-DARŚANA STATE — the campaign ledger
 
 ## Lane G rework PARĪKṢAKA verdict — ACCEPT-WITH-DEBT (2026-08-06, same session)
