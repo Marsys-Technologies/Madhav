@@ -1,5 +1,38 @@
 ---
 
+## CONDUCTOR-HEARTBEAT #20 — 2026-08-06T18:16:00Z
+
+**Lease:** Active. Last: HB #19 @ 18:13Z (3 min ago). Next: HB #21 @ ~18:28Z.
+
+**PROTOCOL CHANGE: HB HOLD-MODE during merge window.**
+After this HB, the CONDUCTOR will NOT write further HBs to the integration branch until
+all 7 campaign PRs have been merged. Reason: each integration HB creates a STATE file
+conflict with campaign branches. Instead, HBs will resume AFTER the merge train completes.
+The lease is considered "alive" — this HB establishes the hold.
+
+**MERGE TRAIN PRE-FLIGHT (18:16Z):**
+- SHAD_DARSHANA_STATE.md synced to ALL 7 campaign branches this HB cycle.
+- PRs #1083–#1089 all target `shad-darshana/integration` (NOT main — confirmed).
+- Merge order: #1083 → #1084 → #1085 → #1086 → #1087 → #1088, then #1089 independent.
+- All PARĪKṢAKA verdicts recorded: ACCEPT-WITH-DEBT on 7/7 PRs.
+- Merge blocked ONLY on CI (GitHub infra outage, confirmed major).
+
+**CI STATUS (18:16Z) — all queued, none in_progress:**
+- W3-CAL: 31125453077 (pull_request, 18:13Z) — newest, 3 min queued
+- W3-RIT: 31125420497 (workflow_dispatch, 18:13Z)
+- W3-ENG: 31125412036 (workflow_dispatch, 18:12Z)
+- W3-MUH: 31125464859 (workflow_dispatch, 18:14Z)
+- W3-INT: 31125100068 (workflow_dispatch, 18:06Z)
+- G-LAND: 31125097738 (workflow_dispatch, 18:06Z)
+- W2-FIN: 31125093149 (workflow_dispatch, 18:06Z)
+
+**CRITICAL DEADLINE:** W2-FIN = 19:00Z (44 min remaining). CI must start by ~18:20Z
+for W2-FIN to have any chance of completing before deadline.
+
+**HB HOLD:** HBs resume at HB #21 POST-MERGE, or if CI starts executing (whichever first).
+
+
+
 ## CONDUCTOR-HEARTBEAT #19 — 2026-08-06T18:13:00Z
 
 **Lease:** Active. Last: HB #18 @ 18:02Z (11 min ago). Next: HB #20 @ ~18:23Z.
