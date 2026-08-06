@@ -2,6 +2,59 @@
 
 ---
 type: CONDUCTOR-NOTE
+timestamp: 2026-08-06T18:55:22Z
+heartbeat_number: 26
+event: CI still blocked (GitHub Actions major_outage ~2h22m); pre-walk investigation of W3 items complete
+integration_tip: b77113a7c
+actions_status: major_outage
+pr_1090_state: OPEN
+pr_1090_checks: none (outage)
+gate_w3_readiness: pre-walk analysis done; all writers confirmed on integration branch
+next_hb_due: 19:05Z
+
+## CONDUCTOR HEARTBEAT #26 — 2026-08-06T18:55Z
+
+**Lease renewed:** 18:55:22Z (HB #25 was 18:48Z; gap = 7m22s — within ≤10m window)
+**Integration tip:** b77113a7c (HB #25 commit; no new production commits)
+
+### CAMPAIGN STATE AT HB #26
+
+**CI MONITORING:** GitHub Actions major_outage persisting — last status update at 16:33Z (~2h22m ago at
+this HB). GitHub Pages also down. No CI runs have started on PR #1090. Reviewer hold remains.
+
+**PRODUCTIVE WORK COMPLETED WHILE WAITING:**
+
+Pre-walk verification of W3.1 items on the integration branch. All writers confirmed:
+- Item 4 (moorti-nirṇaya): `ka_moorti_nirnaya.py` + `services/ka_moorti_nirnaya/` ✓
+- Item 5 (vedha + Sarvatobhadra): `ka_vedha_gochara.py` + `services/ka_vedha_gochara/` ✓
+- Item 6/41 (activity tables + census): `bg_parihara_rules.py` (migration 544) ✓
+- Item 13 (Tithi-Praveśa): `ka_tithi_pravesha.py` + `services/ka_tithi_pravesha/` ✓
+- Item 14 (janma micro-rules): `kala_janma_micro_rules.ts` + test file confirmed; PARĪKṢAKA
+  mutation test "Vadha hard_veto=false" PASS ✓
+- Item 16 (Kota-Chakra): `ka_kota_chakra.py` ✓ (PR #1086)
+- Item 17 (Sudarśana): `ka_sudarshana_varsha.py` ✓ (PR #1084)
+- Item 31 (period-echo): `ahead.ts` lines 721+, `period_echo` key in response ✓
+- Item 34 (contrastive EXPLAIN): `computeFieldDiff` in `explain.ts` line 89, anti-symmetry verified ✓
+- Item 36 (contender lattice): `bg_muhurta_lattice.py` (migration 543) ✓
+- Item 33 (absence-of-expected): `notInCorpusCoverage` placeholder in `priority.ts` line 412 —
+  W3-INT lane accepted PARĪKṢAKA verdict (ACCEPT-WITH-DEBT, D1085-1/2/3); Python-side pratijna
+  linkage exists; TypeScript PRIORITIZE surface still declares `not_in_corpus` — honest
+  representation; Gate W3 walk disposition TBD (PARKED-HONEST likely for this item)
+- Item 9 (health class): `event_class_scope.py` has `illness_acute`, `chronic_onset`, `surgery`
+  in DOMAIN_MAP ✓; S4-05 script confirmed at `scripts/s4_05_data_real_retest.py` ✓
+- Item 14: resolved the checklist's NOT-STARTED flag — item WAS built in PR #1087 (W3-MUH) ✓
+
+**GATE W3 UNRESOLVED:**
+- Item E6-full: full per-view deepenings — need to verify against AHEAD/EXPLAIN/NOW/STORY/PRIORITIZE
+  content post-deploy
+- Item 37-part: paddhati profile schema — need to verify `ka_yojaka` or dedicated writer
+- Item 38-full: ELECT depth — need live production verification
+
+**BLOCKING:** GitHub Actions outage; PR #1090 CI checks: 0 started; merge gate = all checks green
+**Next heartbeat due:** ~19:05Z
+
+---
+type: CONDUCTOR-NOTE
 timestamp: 2026-08-06T18:48:30Z
 heartbeat_number: 25
 event: CI still blocked (GitHub Actions major_outage); holding position, PR #1090 open, no checks yet
