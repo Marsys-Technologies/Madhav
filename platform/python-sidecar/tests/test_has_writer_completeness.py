@@ -184,6 +184,13 @@ KNOWN_HAS_WRITER_TRUE: frozenset[str] = frozenset({
     # the chart-independent monotone-arc transit substrate; has_writer=true and
     # has_substeps=true set by that migration's asset_registry seed) ─────────
     "bg_gochara_arcs",
+    # ── Kāla — migration 541 (ṢAḌ-DARŚANA W2G / GOCHARA-2.0 item 19, lane G:
+    # the per-chart materialization writer -- joins bg_gochara_arcs against a
+    # chart's natal gochara_resonance_map targets, scores via v1's frozen
+    # gochara_intensity grammar, writes generation='2.0' rows BESIDE v1's
+    # kala_gochara_windows rows; has_writer=true and has_substeps=true set by
+    # that migration's asset_registry seed) ───────────────────────────────────
+    "ka_gochara_sweep_v2",
     # ── L4 Phala — migration 342 ─────────────────────────────────────────────
     "ph_muhurta",
     "ph_nimitta",
