@@ -1,5 +1,49 @@
 ---
 
+## CONDUCTOR-HEARTBEAT #18 — 2026-08-06T18:02:00Z
+
+**Lease:** Active. Last: HB #17 @ 17:57Z (5 min ago). Next: HB #19 @ ~18:12Z.
+
+**RECOVERY SIGNAL:** GitHub auto-cancelled then auto-resubmitted W3-RIT and W3-INT at 17:59–18:00Z.
+This is the first sign of active infrastructure recovery — GitHub is cycling stale queued jobs.
+
+**CURRENT CI RUN TABLE (7 queued):**
+
+| Run ID | Branch | Created | Queued (min) | Status |
+|--------|--------|---------|-------------|--------|
+| 31124758407 | lane-w3rit | 18:00Z | 2 | queued (fresh resubmit) |
+| 31124729525 | lane-w3int | 17:59Z | 3 | queued (fresh resubmit) |
+| 31124099237 | lane-w3cal | 17:46Z | 16 | queued |
+| 31123109346 | lane-gland | 17:26Z | 36 | queued |
+| 31123072544 | lane-w3eng | 17:25Z | 37 | queued |
+| 31121774448 | lane-w2fin | 17:00Z | 62 | queued (CRITICAL — deadline 19:00Z) |
+| 31121707833 | lane-w3muh | 16:59Z | 63 | queued |
+
+**GitHub infra status:** Major Partial Outage (confirmed via status.githubstatus.com). The cycling
+of W3-RIT/W3-INT suggests GitHub is actively working through the queue backlog.
+
+**DEADLINE STATUS:**
+- W2-FIN deadline (19:00Z): **58 min remaining** — marginal but achievable if CI recovers within ~20 min
+  (assuming ~30-40 min CI run time). If CI starts within 10 min, deadline is still meetable.
+- W3-INT deadline (19:30Z): 88 min remaining
+- W3-CAL deadline (20:00Z): 118 min remaining
+
+**MERGE TRAIN READINESS:** All 7 PRs are PARĪKṢAKA-cleared. Merge order when CI green:
+`#1083 (W3-ENG) → #1084 (W3-RIT) → #1085 (W3-INT) → #1086 (W3-CAL) → #1087 (W3-MUH) → #1088 (W2-FIN)`
+Note: PR #1089 (G-LAND) merges independently (no ordering dependency on W2/W3).
+
+**CONTINGENCY ASSESSMENT:** If W2-FIN CI does not complete by ~18:30Z, deadline miss is confirmed
+(30-40 min run time + merge time). In that case:
+- The PARKED-HONEST items are already documented and gate-close can still proceed.
+- W2 gate-close artifact can be drafted now and stamped at merge time.
+- No code failure exists — this is purely an infrastructure SLO issue.
+
+**Next action:** HB #19 at ~18:12Z. Monitor whether any run transitions from queued→in_progress,
+which would confirm infrastructure recovery. The moment any run goes in_progress, begin tracking
+its completion for merge queue entry.
+
+
+
 ## CONDUCTOR-HEARTBEAT #17 — 2026-08-06T17:57:00Z
 
 **Lease:** Active. Last: HB #16 @ 17:52Z (5 min ago). Next: HB #18 @ ~18:07Z.
