@@ -11,6 +11,101 @@ governing: SHAD_DARSHANA_NIGHT_RUN_v1_0.md (orchestration) + SHAD_DARSHANA_BRIEF
 
 # ṢAḌ-DARŚANA STATE — the campaign ledger
 
+## MORNING REPORT — CONDUCTOR session close (2026-08-06, residual-completion campaign)
+
+**Attribution:** Conductor session (Opus), fully autonomous multi-agent swarm, no human gates
+exercised. Full detail for everything summarized here is in the dated entries immediately below
+this one; this report is the compressed close-out per campaign convention.
+
+### Gains
+
+**Stage 0 — CLOSED, all four gates verified with independent evidence, not self-report.**
+- 0a: PR #1077 merged; TAP-6 independently confirmed reporting on the merge_group run, proving
+  the queue-outage fix actually works (not just that the fix PR merged).
+- 0b: Gate-1 PR #1076 merged clean to `main` (migration 540, ga_dashas savepoint fix, W2 defects
+  #6/#7, ne_v01 scoreboard) — watched explicitly for re-ejection; none occurred.
+- 0c: Full deploy verified — all 4 services, migration 540 applied (live DB query), one real
+  authenticated MCP call proved the deployed connector's catalog is genuinely fresh.
+- 0d: Gate 3 protection-proof executed LIVE against production in a single transaction (real
+  unauthorized-delete refusal, real authorized override, real rollback, real corpus-integrity
+  re-check after) — Gate 3 PASSES, migration 540 works exactly as designed.
+
+**Stage 1 — all four lanes dispatched and closed out, each independently reviewed:**
+- Lane F: found already-done (PR #1072, merged hours before dispatch) — ledger simply hadn't
+  caught up. Independently re-verified end-to-end rather than rubber-stamped. Gate W4's
+  wiring-gap slice CLOSED.
+- Lane K: PARĪKṢAKA ACCEPT-WITH-DEBT — every claim independently confirmed, including a real
+  found-and-fixed defect (`ga_sensitive` double-counting 1,045 rows). PR #1079 merged; the
+  production debt (seed-script re-application) discharged same session via a targeted,
+  transactional, minimal-blast-radius fix — verified before/after.
+- Lane R: PARĪKṢAKA ACCEPT-WITH-DEBT on the PR, and independently CONFIRMED Gate W2 is honestly
+  not ready to close (5/12 checklist items open) — the review also caught a real defect IN the
+  checklist itself (a false "0 rows" claim), which was independently re-confirmed and corrected
+  before merge rather than merged as-is. PR #1080 merged with the correction aboard.
+- Lane G: PARĪKṢAKA **PARKED-HONEST** — the highest-risk lane (new writer + migration + live
+  production writes adjacent to the campaign's most-protected asset) surfaced a real,
+  previously-undisclosed defect: migration 540's protection trigger isn't generation-aware, so
+  the new W2G writer's idempotency will fail on any re-run against the two protected charts. PR
+  #1081 correctly NOT merged. This is exactly what the review discipline exists to catch — a
+  plausible, well-tested, honestly-reported PR that still isn't safe to merge onto protected
+  surface without a design ruling.
+
+**Net: 3 of 4 Stage-1 lane PRs merged (#1079, #1080, plus Lane F's prior #1072 recognized),
+1 correctly held (#1081). One real production defect found and fixed live (Lane K's debt). One
+real defect found in review before it could ship (Lane R's checklist). One real defect found
+before it could cause future harm (Lane G's trigger interaction) — none of these three were
+caught by the builders' own otherwise-thorough self-testing; all three were caught specifically
+by the independent-reviewer discipline this campaign runs on.**
+
+### Verdicts (compressed; full evidence in the dated entries below)
+PR #1079 (Lane K) — ACCEPT-WITH-DEBT, MERGED, debt discharged. PR #1080 (Lane R) —
+ACCEPT-WITH-DEBT, MERGED with correction. PR #1081 (Lane G) — PARKED-HONEST, NOT merged. Lane F —
+ACCEPT (already done), nothing to merge. Gate 3 — PASSES. Gate W2 — confirmed NOT closeable
+today. Gate W3K — materially ready to close (one honest W2-dependency item remains). Gate W4 —
+Lane F's slice CLOSED, G4 remains for Stage 3.
+
+### Parks, with release conditions
+- **PR #1081 / Lane G's writer**: parked on a design ruling this campaign judged above even
+  ANTARYĀMIN's reversible-ruling authority (it touches the untouchables rail's own enforcement
+  mechanism, migration 540) — routed to the native directly rather than decided autonomously.
+  Release condition: native rules on generation-aware-trigger vs. separate-table for 2.0 data,
+  and on the 27 rows already pinned in production (currently inert/harmless, not urgent).
+- **Gate W2**: parked on native-gated N_e-corpus/LEL data accrual for most of its 5 open items;
+  one item (W2.7, salience-vector wiring) is a genuine bounded code fix a future lane could take
+  without a native ruling.
+- **Gate-Executor's own bootstrapping PR #1078**: parked mid-flight, non-blocking (docs/process
+  only) — its own dispatched agent is still working it (diagnosed: needs actual merge-queue entry,
+  not just auto-merge-flag enablement; TAP-6 will fire fine in merge_group despite not matching
+  PR-context path filters). Not merged as of this report.
+- **Stage 2** (four parallel W3 lanes): correctly NOT dispatched — hard-gated on Gate W2 closing,
+  which it has not.
+
+### Conductor's own errors this session (a report naming only others' defects is not honest)
+1. Two early background Monitor commands failed immediately (bad quoting in an inline Python
+   heredoc) — wasted two tool calls before switching to simpler jq-based polling. No consequence
+   beyond minor time cost.
+2. Trusted an Explore-agent research pass's conclusion that W2G was still blocked on unruled
+   N1-N4 adjudications without first verifying it myself — caught before dispatch by directly
+   re-reading the ledger's own "N1–N5 ratification block" table, which showed all five were
+   ruled back on 2026-08-01. The wrong conclusion never reached a builder uncorrected, but it
+   should have been caught by reading the primary source first, not after an agent's summary
+   raised the question.
+3. My own Lane K dispatch prompt cited a wrong path for `CROSSCHECK_v1_0.md` (pointed inside
+   `kala_elevation/`; the real file is under `05_TEMPORAL_ENGINES/kp/`) — Lane K's own live-DB
+   citations were correct throughout despite this, and PARĪKṢAKA flagged the error as mine, not
+   the builder's, when reviewing.
+
+### Single next action
+Watch for Gate-Executor's PR #1078 to land (non-blocking). For the next substantive session:
+route Lane G's disposition question to the native (do not let a future session patch migration
+540 unilaterally to unblock it), and — if the native wants forward progress on Gate W2 without
+waiting on N_e/LEL corpus growth — dispatch the one bounded, non-data-gated fix identified
+(W2.7's salience-vector wiring into `kala_priority_get`) as its own small TDD lane.
+
+*Truth over completion. PARKED-HONEST with evidence, not a false close.*
+
+---
+
 ## CONDUCTOR session open + Stage 0 progress (2026-08-06, residual-completion campaign)
 
 **Attribution:** Conductor session (Opus), the ṢAḌ-DARŚANA residual-completion arc — fully
