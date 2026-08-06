@@ -42,6 +42,60 @@ NEXT-ACTION: monitor lanes; heartbeat every 10 min; PARĪKṢAKA reviews as PRs 
 ---
 ---
 type: CONDUCTOR-HEARTBEAT
+timestamp: 2026-08-06T17:20:00Z
+heartbeat_number: 10
+conductor: claude-opus-4-6
+status: ACTIVE
+prs_open: 6
+parikshaka_verdicts_recorded: 6
+notes: |
+  HB #10 — PRs #1087 and #1088 PARĪKṢAKA complete; verdicts recorded.
+  All 6 PRs now have PARĪKṢAKA verdicts: #1083/#1084/#1085 ACCEPT-WITH-DEBT (HB#7/8);
+  #1086 ACCEPT-WITH-DEBT (HB#7); #1087/#1088 ACCEPT-WITH-DEBT (this HB).
+  CI: all 6 runs still queued (GitHub Actions infra outage — cannot rerun).
+  G-LAND: 1c826d5a build complete (912s), running equivalence report.
+  Next gate: wait for CI to complete + rerun infra failures; then merge train.
+
+---
+type: PARIKSHAKA-VERDICT
+pr: 1087
+branch: shad-darshana/lane-w3muh
+items: "4 (moorti-nirnaya property) + 5 (vedha/sarvatobhadra symmetry) + 14 (janma election micro-rules)"
+verdict: ACCEPT-WITH-DEBT
+timestamp: 2026-08-06T17:20:00Z
+debts:
+  - id: D1087-1
+    severity: false-alarm-cleared
+    description: "PARĪKṢAKA initially found SHAD_DARSHANA_STATE.md in local worktree git diff — artifact of comparing against stale local integration ref (pre-heartbeat). GitHub PR #1087 confirms only 5 files in the actual PR; no committed change to the ledger. CLEARED: untouchables rail is clean."
+  - id: D1087-2
+    severity: wording
+    description: "27x27 pairs claim for item 5: the vedha function is a 1-to-1 map, so 27x27 symmetry check covers 27 evaluations not 729 pair iterations. Test is correct and honest (asymmetry disclosed as R-19). Claim wording slightly overstated. Non-blocking."
+mutation_tests: "PASS (item 4: moorti exhaustive property caught mutation) | PASS (item 14: Vadha hard_veto=false caught by test)"
+serving_standard: "Not directly applicable (Python property tests + TS micro-rules, no HTTP surface)"
+untouchables: "CLEAN (SHAD_DARSHANA_STATE.md false alarm cleared — see D1087-1)"
+ci_status: "All 8 checks pending (run 31121707833)"
+
+---
+type: PARIKSHAKA-VERDICT
+pr: 1088
+branch: shad-darshana/lane-w2fin
+items: "W2.7 (salience vector) + W2.4b (no_lived_history_recorded) + W2.5 (NULL root cause PARKED) + W2.8 (insight-leading) + W2.10 (specificity gate) + item-44 (authority_basis_census_seed)"
+verdict: ACCEPT-WITH-DEBT
+timestamp: 2026-08-06T17:20:00Z
+debts:
+  - id: D1088-1
+    severity: wiring-gap
+    description: "fetchTopInsight() (W2.8) is defined and correct but never called from handleKalaStoryGet handler — dead code in production. Tests verify the function in isolation but not that it's wired into the response. The claim 'reading-leads-with-insight enforced in composer' is not substantiated. Function, DB whitelist entry, and tests are ready; missing: call from handler + inclusion in response."
+  - id: D1088-2
+    severity: claim-imprecision
+    description: "buildSalienceCoverage() described as '3-state' but returns 2 distinct coverage entry types (computed vs honest_empty). The SalienceVectorResult interface has 3 states; the function maps unreachable input to an honest_empty entry. Code is correct and honest; claim imprecise about which layer is 3-state."
+mutation_tests: "PASS (W2.7: honest_empty branch removed → test caught it) | PASS (W2.4b: no_lived_history_recorded removed → test caught it)"
+serving_standard: "28/28 tests pass; fetchTopInsight dead-code finding noted as D1088-1"
+untouchables: CLEAN
+ci_status: "All 8 checks pending (run 31121774448)"
+
+---
+type: CONDUCTOR-HEARTBEAT
 timestamp: 2026-08-06T17:14:30Z
 heartbeat_number: 9
 conductor: claude-opus-4-6
