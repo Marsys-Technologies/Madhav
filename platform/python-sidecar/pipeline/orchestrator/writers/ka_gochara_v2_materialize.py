@@ -1,73 +1,88 @@
-"""ka_gochara_sweep_v2 writer — W2G's per-chart materialization (GOCHARA-2.0).
+"""ka_gochara_v2_materialize writer — W2G's per-chart materialization (GOCHARA-2.0).
 
-ṢAḌ-DARŚANA wave W2G (item 19), lane G. Joins the chart-INDEPENDENT contact
-stream (`bg_gochara_arcs`, built ONCE by the `bg_gochara_arcs` writer) against
-ONE chart's natal `gochara_resonance_map` targets, scores every candidate
-instant through v1's own, UNMODIFIED `gochara_intensity.compute_lambda_e`
-grammar (`services/w2g/materialize.py` -- design §5: "2.0 changes HOW, never
-WHAT"), and writes generation='2.0'-stamped rows into `kala_gochara_windows`
-BESIDE v1's rows (ADJUDICATION-6). v1's `ka_gochara_sweep` is untouched by
-this writer and stays authoritative -- see PR body for the strangler-fig
-disposition; no authority flip is authorized here.
+ṢAḌ-DARŚANA wave W2G (item 19), lane G REWORK. Renamed from the superseded
+`ka_gochara_sweep_v2` (PR #1081, PARĪKṢAKA verdict PARKED-HONEST, real defect
+found) per the native ruling recorded in `SHAD_DARSHANA_STATE.md`
+("RULING — Lane G / W2G write-target", 2026-08-06):
+
+  1. Protection mechanism (migration 540) unchanged. This writer MUST NEVER
+     set `app.allow_protected_sweep_rewrite`, in any code path. (Grep-
+     verifiable: the string does not appear anywhere in this module or in
+     `services/w2g/materialize.py` — see
+     `test_writer_source_never_references_the_override_setting` in this
+     writer's test file.)
+  2. W2G writes exclusively to its own surface (own asset_id
+     `ka_gochara_v2_materialize` + own table `kala_gochara_windows_v2`, per
+     `GOCHARA_SWEEP_2_0_DESIGN_v1_0.md` and migration 542). It does not
+     DELETE, UPDATE, or INSERT into the protected (`ka_gochara_sweep` x
+     canonical-chart) rows in `kala_gochara_windows` — that table's name does
+     not appear in this module at all (see
+     `test_writer_source_never_references_the_protected_table`). §N.3
+     idempotency applies to this writer's own table only.
+  3. The protected v1 corpus (`kala_gochara_windows`) is this writer's frozen
+     validation benchmark, per `services/w2g/equivalence_report.py` — read
+     read-only there, never written to here. Corpus disposition (whether/when
+     2.0 data ever moves INTO `kala_gochara_windows`, per design §4's later
+     "table provenance-stamped per generation" cutover description) is a
+     DEFERRED W6 native ruling — not decided or pre-empted by this writer.
+  4. This is the reworked lane, not a park — see the PR body for the
+     equivalence-report result against v1's corpus.
+
+Joins the chart-INDEPENDENT contact stream (`bg_gochara_arcs`, built ONCE by
+the `bg_gochara_arcs` writer) against ONE chart's natal `gochara_resonance_map`
+targets, scores every candidate instant through v1's own, UNMODIFIED
+`gochara_intensity.compute_lambda_e` grammar (`services/w2g/materialize.py` --
+design §5: "2.0 changes HOW, never WHAT"), and writes generation='2.0'-stamped
+rows into `kala_gochara_windows_v2` -- its OWN table, structurally outside the
+blast radius of migration 540's protection triggers (those are bound to the
+`kala_gochara_windows` relation specifically; Postgres triggers never fire for
+statements against a different table). v1's `ka_gochara_sweep` /
+`kala_gochara_windows` are untouched by this writer.
 
 FROZEN ORCHESTRATOR CONTRACT (§N.2), conformed to, not extended:
-  * `@register('ka_gochara_sweep_v2')` on a `WriterBase` subclass;
+  * `@register('ka_gochara_v2_materialize')` on a `WriterBase` subclass;
   * HEAVY shape -- `plan_substeps` (one substep per populated event_class) +
     `run_substep`, so a crash resumes at the failed class rather than the
-    start (v1's own per-year sub-chunking is not needed here: 2.0 evaluates
-    a handful of arc-solved candidate instants per class, not a ~36,500-day
-    grid, so one class fits comfortably in one substep -- see the module's
-    real measured timing in the PR body);
+    start;
   * runs on `ctx.db_conn` and NEVER commits or closes it;
   * never writes `asset_throughput`;
   * no orchestrator change of any kind.
 
 IDEMPOTENCY (§N.3). Delete-then-INSERT scoped to
-(chart_id x event_class x generation='2.0') -- exactly the sub-step's own
-key plus the fixed 2.0 stamp, so a re-run never touches v1's rows (different
-`generation` value, never selected by this writer's own DELETE) and never
-strands a stale row from a previous 2.0 build of the SAME class.
+(chart_id x event_class x generation='2.0') against `kala_gochara_windows_v2`
+ONLY -- this table has no protection trigger, no shared natural-key gap with
+v1 (migration 542's unique index includes `generation` from creation), and no
+history of ever touching `kala_gochara_windows`.
 
-THE UNTOUCHABLE-DATA RAIL, defended THREE ways, not just asserted:
-  1. every DELETE/SELECT this writer issues against `kala_gochara_windows`
-     is generation-scoped to '2.0';
-  2. INSERTs never use `ON CONFLICT ... DO UPDATE` against the table's
-     existing natural-key index (`chart_id, event_class, window_start,
-     peak_date, COALESCE(milestone_id, '')`) -- that index predates the
-     `generation` column (migration 527) and does NOT include it, so a plain
-     upsert on that arbiter could silently overwrite a v1 row if a 2.0
-     candidate ever landed on the exact same natural key. Disclosed, real
-     schema gap (see PR body) -- NOT fixed in this lane (altering the shared
-     table's constraints is exactly the kind of change to the protected
-     surface this lane was told to avoid without a dedicated ruling);
-  3. each row is inserted inside its OWN `savepoint_scope` (the same
-     connection-hygiene helper v1's `gochara_intensity` package already
-     uses). A real unique-constraint collision against an existing v1 row
-     therefore ROLLS BACK ONLY THAT ONE ROW's savepoint and is counted +
-     logged as `collisions_skipped` -- never silently overwritten, never
-     poisoning the rest of the substep's own SAVEPOINT.
+THE UNTOUCHABLE-DATA RAIL, now satisfied by CONSTRUCTION, not just discipline:
+this writer's only DELETE/SELECT/INSERT target is `kala_gochara_windows_v2`
+(see `TABLE` below) -- there is no code path, error branch, or override that
+ever names `kala_gochara_windows` or sets
+`app.allow_protected_sweep_rewrite`. `kala_gochara_windows_v2`'s own unique
+index (`chart_id, event_class, window_start, peak_date,
+COALESCE(milestone_id, ''), generation`) INCLUDES generation, so unlike the
+prior design's disclosed schema gap, a plain `ON CONFLICT` upsert against it
+could never cross generations even if this writer used one (it still doesn't,
+for symmetry with v1's own INSERT discipline and to keep collision counting
+honest -- see the per-row savepoint below).
 
-DELTA-AWARE INVALIDATION (design amendment 2). Before touching anything,
-this writer recomputes `services.w2g.fingerprint.class_fingerprint` for
-(event_class, GRAMMAR_VERSION, this chart's target_refs, the eager-tier
-bodies, their CURRENT `bg_gochara_arcs` fingerprints) and compares it against
-`kala_gochara_v2_build_state`'s stored value (migration 541). An unchanged
-fingerprint is an honest no-op -- the exact incident
-`services/w2g/fingerprint.py`'s own docstring records (v1's single whole-
-build fingerprint forcing a ~606-substep replan for a one-class grammar
-edit) is structurally impossible here.
+DELTA-AWARE INVALIDATION (design amendment 2), REUSED from the prior lane
+unchanged. `kala_gochara_v2_build_state` (migration 541, kept + reused --
+generic (chart_id, event_class, generation) fingerprint bookkeeping, never
+coupled to any particular served table) still backs this. Before touching
+anything, this writer recomputes `services.w2g.fingerprint.class_fingerprint`
+and compares it against the stored value; an unchanged fingerprint is an
+honest no-op.
 
-PROGRESSIVE HORIZON (design amendment 3). `ctx.config['now_date']` (an
-injectable ISO date string, defaulting to the real `date.today()` in
-production -- injectable so a test/replay never depends on wall-clock time)
-anchors a ±3-year window (`services.w2g.materialize.progressive_horizon`).
-Every row this writer serves DISCLOSES that window via
-`kala_gochara_v2_build_state.horizon_status='progressive_partial'` -- the
-full-century backfill is a future lane's job, not silently claimed here.
+PROGRESSIVE HORIZON (design amendment 3), unchanged from the prior lane.
+`ctx.config['now_date']` anchors a +/-3-year window
+(`services.w2g.materialize.progressive_horizon`). Every row this writer serves
+DISCLOSES that window via `kala_gochara_v2_build_state.horizon_status=
+'progressive_partial'`.
 
-HONEST SCOPE OF THIS FIRST LANE (see `materialize.py`'s own docstring for
-the full account): Tier A (eager) bodies only; `temporal_shape == 'point'`
-event classes only.
+HONEST SCOPE OF THIS FIRST LANE (see `materialize.py`'s own docstring for the
+full account): Tier A (eager) bodies only; `temporal_shape == 'point'` event
+classes only.
 """
 from __future__ import annotations
 
@@ -98,7 +113,10 @@ from pipeline.orchestrator.writers.bg_gochara_arcs import SUBSTRATE_VERSION
 
 logger = logging.getLogger(__name__)
 
-TABLE = "kala_gochara_windows"
+# This writer's OWN surface (native ruling point 2) -- never the protected
+# v1 sweep table (migration 460/540). See the module docstring and this
+# writer's test file for the static, re-checkable proof of that absence.
+TABLE = "kala_gochara_windows_v2"
 BUILD_STATE_TABLE = "kala_gochara_v2_build_state"
 BODIES = eager_bodies()  # Tier A only, this lane -- see module docstring
 
@@ -140,9 +158,9 @@ def _dumps(v: Any) -> str:
     return _json.dumps(v, default=_json_default)
 
 
-@register('ka_gochara_sweep_v2')
-class GocharaSweepV2Writer(WriterBase):
-    asset_id = 'ka_gochara_sweep_v2'
+@register('ka_gochara_v2_materialize')
+class GocharaV2MaterializeWriter(WriterBase):
+    asset_id = 'ka_gochara_v2_materialize'
     has_substeps = True
 
     # ── FROZEN CONTRACT: plan_substeps + run_substep ─────────────────────────
@@ -157,12 +175,12 @@ class GocharaSweepV2Writer(WriterBase):
                 [chart_id],
             )
         except Exception as exc:
-            logger.warning("[ka_gochara_sweep_v2] could not discover event_classes for "
+            logger.warning("[ka_gochara_v2_materialize] could not discover event_classes for "
                             "chart %s: %s -- honest empty plan.", chart_id, exc)
             return []
         event_classes = [r["event_class"] for r in rows]
         if not event_classes:
-            logger.info("[ka_gochara_sweep_v2] no populated gochara_resonance_map event_classes "
+            logger.info("[ka_gochara_v2_materialize] no populated gochara_resonance_map event_classes "
                         "for chart %s -- honest empty plan, zero substeps.", chart_id)
         return [SubStep(key=ec, label=f"W2G materialize: {ec}") for ec in event_classes]
 
@@ -241,8 +259,10 @@ class GocharaSweepV2Writer(WriterBase):
                                  duration_seconds=time.time() - t0,
                                  notes=f"{event_class}: {result.skipped_reason}")
 
-        # §N.3 replace-not-accrete, scoped to (chart_id, event_class, '2.0') --
-        # NEVER touches a v1-generation row (see module docstring point 1).
+        # §N.3 replace-not-accrete, scoped to (chart_id, event_class, '2.0')
+        # against THIS WRITER'S OWN TABLE ONLY (native ruling point 2) --
+        # the protected v1 sweep table is never named in this statement or
+        # any other one this writer issues.
         with conn.cursor() as cur:
             cur.execute(
                 f"DELETE FROM {TABLE} WHERE chart_id = %s AND event_class = %s AND generation = %s",
@@ -277,11 +297,11 @@ class GocharaSweepV2Writer(WriterBase):
                 with savepoint_scope(conn, "w2g_v2_row_insert"):
                     conn.execute(INSERT_SQL, params)
                 inserted += 1
-            except Exception as exc:  # noqa: BLE001 -- see point 3, module docstring
+            except Exception as exc:  # noqa: BLE001 -- own-table natural-key collision (e.g. a re-run racing itself)
                 collisions += 1
                 logger.warning(
-                    "[ka_gochara_sweep_v2] row insert collision for chart=%s event_class=%s "
-                    "peak_date=%s -- skipped, v1 row (if any) left untouched: %s",
+                    "[ka_gochara_v2_materialize] row insert collision for chart=%s event_class=%s "
+                    "peak_date=%s (kala_gochara_windows_v2 only -- never touches v1): %s",
                     chart_id, event_class, row["peak_date"], exc,
                 )
 
@@ -366,4 +386,4 @@ class GocharaSweepV2Writer(WriterBase):
         )
 
 
-__all__ = ["BODIES", "GocharaSweepV2Writer"]
+__all__ = ["BODIES", "TABLE", "GocharaV2MaterializeWriter"]

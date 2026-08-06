@@ -1,4 +1,20 @@
-"""Tests for the ka_gochara_sweep_v2 writer (W2G lane G, item 19).
+"""Tests for the ka_gochara_v2_materialize writer (W2G lane G, item 19, REWORK).
+
+Renamed from `test_ka_gochara_sweep_v2.py` (PR #1081, PARKED-HONEST) in the
+lane G rework that followed the native ruling 2026-08-06
+(SHAD_DARSHANA_STATE.md, "RULING — Lane G / W2G write-target"). The ruling's
+four points map directly onto this file's test groups:
+
+  1. "must NEVER set app.allow_protected_sweep_rewrite" -> the
+     `test_writer_source_never_references_the_override_setting` static-source
+     test below.
+  2. "writes exclusively to its own surface ... does not delete, update, or
+     insert into the protected ... rows" -> the untouchable-data-rail group,
+     PLUS the new `test_writer_source_never_references_the_protected_table`
+     static-source test (the strongest form of this assertion: not just "no
+     statement in a recorded run touched it", but "the string does not exist
+     in the module at all", so no code path -- reachable or not -- could ever
+     construct one).
 
 Everything here runs offline against a recording fake connection — no
 database, no swisseph engine calls beyond real `import swisseph` (pure
@@ -6,40 +22,49 @@ ephemeris arithmetic, no I/O), no network. `materialize_event_class` (the
 join+score step, already thoroughly tested against synthetic arcs and fake
 grammar in `tests/test_w2g_materialize.py`) is monkeypatched here to a canned
 double, so THESE tests isolate what is genuinely this module's own job:
-FROZEN-contract conformance, generation-scoped idempotency, the
-untouchable-data-rail defenses (no ON CONFLICT DO UPDATE against the shared
-natural key; per-row savepoint so a collision never poisons the substep or
-overwrites a v1 row), delta-aware invalidation skip, and honest empty/skip
-reporting.
-
-WHAT IS ASSERTED, AND WHY EACH ONE MATTERS:
-  * heavy shape, one substep per populated event_class, no commit/rollback/
-    close, no `asset_throughput` write (§N.2);
-  * every DELETE/SELECT/INSERT this writer issues against
-    `kala_gochara_windows` is scoped to `generation = '2.0'` — v1's rows are
-    never in the blast radius of any statement this writer can issue;
-  * no INSERT ever carries `ON CONFLICT ... DO UPDATE` on the table's
-    existing (pre-generation) natural-key arbiter — the real schema gap this
-    writer works around rather than silently trusting;
-  * a per-row insert failure (simulated unique-violation) is caught,
-    counted, and does NOT abort the rest of the substep or touch any other
-    row;
-  * an unchanged `class_fingerprint` short-circuits the substep with zero
-    DELETE/INSERT activity against `kala_gochara_windows` — the delta-aware
-    invalidation claim, checked by absence of the DELETE, not by trusting a
-    docstring.
+FROZEN-contract conformance, generation-scoped idempotency against its OWN
+table, the untouchable-data-rail defenses, delta-aware invalidation skip, and
+honest empty/skip reporting.
 """
 from __future__ import annotations
 
+import inspect
+import re
 from dataclasses import dataclass
 from datetime import date
 
 import pytest
 
-import pipeline.orchestrator.writers.ka_gochara_sweep_v2 as mod
+import pipeline.orchestrator.writers.ka_gochara_v2_materialize as mod
+import services.w2g.materialize as materialize_mod
 from pipeline.orchestrator.writers import ContextSpec
-from pipeline.orchestrator.writers.ka_gochara_sweep_v2 import GocharaSweepV2Writer
+from pipeline.orchestrator.writers.ka_gochara_v2_materialize import GocharaV2MaterializeWriter
 from services.w2g.materialize import GENERATION_V2, HORIZON_STATUS_PROGRESSIVE, MaterializeResult
+
+# Word-boundary regex: matches the bare v1 table name but NOT as a prefix of
+# `kala_gochara_windows_v2` (there is no \b between "s" and "_", both \w).
+PROTECTED_TABLE_RE = re.compile(r"\bkala_gochara_windows\b")
+OVERRIDE_SETTING = "allow_protected_sweep_rewrite"
+
+
+def _source_excluding_module_docstring(module) -> str:
+    """The module's source with its OWN leading docstring removed.
+
+    The module docstring is documentation FOR HUMANS explaining the native
+    ruling this writer conforms to — it legitimately quotes both forbidden
+    strings verbatim (a docstring saying "this module must never reference
+    X" necessarily contains the text "X"). The invariant this test actually
+    needs to check is about CODE: no SQL statement, string constant used in
+    a query, or executable code path may reference either string. Stripping
+    exactly the module's own `__doc__` (not just "any comment", so a stray
+    inline comment quoting the forbidden string for explanatory reasons
+    elsewhere would still legitimately fail this check) keeps the test
+    honest without becoming self-contradicting."""
+    source = inspect.getsource(module)
+    doc = module.__doc__
+    if doc and doc in source:
+        return source.replace(doc, "", 1)
+    return source
 
 
 # ── Recording fakes (same shape as test_bg_gochara_arcs.py's) ────────────────
@@ -118,7 +143,7 @@ def _responder(*, event_classes=("marriage",), stored_fingerprint=None):
 
 def _ctx(conn, **config) -> ContextSpec:
     return ContextSpec(
-        asset_id="ka_gochara_sweep_v2",
+        asset_id="ka_gochara_v2_materialize",
         build_id="00000000-0000-0000-0000-0000000000v2",
         db_conn=conn,
         config={"chart_id": "c1", "now_date": "2026-08-06", **config},
@@ -153,26 +178,34 @@ def _served_row(peak_date=date(2026, 9, 1)):
 
 def test_writer_is_registered_under_its_asset_id():
     from pipeline.orchestrator.writers import get_writer
-    assert get_writer("ka_gochara_sweep_v2") is not None
+    assert get_writer("ka_gochara_v2_materialize") is not None
 
 
 def test_asset_id_matches_registration():
-    assert GocharaSweepV2Writer.asset_id == "ka_gochara_sweep_v2"
+    assert GocharaV2MaterializeWriter.asset_id == "ka_gochara_v2_materialize"
+
+
+def test_asset_id_is_not_the_superseded_name():
+    # The prior (PARKED-HONEST, PR #1081) design's asset_id -- must never be
+    # reused, since a stale asset_registry row for it still exists pending
+    # migration 542's cleanup DELETE, and reusing the id would risk a caller
+    # reading it and getting the wrong (deleted) row's stale expectations.
+    assert GocharaV2MaterializeWriter.asset_id != "ka_gochara_sweep_v2"
 
 
 def test_declares_itself_a_heavy_writer():
-    assert GocharaSweepV2Writer.has_substeps is True
+    assert GocharaV2MaterializeWriter.has_substeps is True
 
 
 def test_plans_one_substep_per_populated_event_class():
     conn = _FakeConn(_responder(event_classes=("marriage", "major_gain")))
-    steps = GocharaSweepV2Writer().plan_substeps(_ctx(conn))
+    steps = GocharaV2MaterializeWriter().plan_substeps(_ctx(conn))
     assert [s.key for s in steps] == ["marriage", "major_gain"]
 
 
 def test_honest_empty_plan_when_no_resonance_map_rows():
     conn = _FakeConn(_responder(event_classes=()))
-    steps = GocharaSweepV2Writer().plan_substeps(_ctx(conn))
+    steps = GocharaV2MaterializeWriter().plan_substeps(_ctx(conn))
     assert steps == []
 
 
@@ -182,8 +215,8 @@ def test_writer_never_touches_the_transaction(monkeypatch):
     monkeypatch.setattr(mod.RM, "fetch_resonance_targets", _fake_targets)
     conn = _FakeConn(_responder())
     ctx = _ctx(conn)
-    step = GocharaSweepV2Writer().plan_substeps(ctx)[0]
-    result = GocharaSweepV2Writer().run_substep(ctx, step)
+    step = GocharaV2MaterializeWriter().plan_substeps(ctx)[0]
+    result = GocharaV2MaterializeWriter().run_substep(ctx, step)
     assert result.rows_inserted == 1  # reaching here proves no commit/rollback/close fired
 
 
@@ -193,26 +226,92 @@ def test_writer_never_writes_asset_throughput(monkeypatch):
     monkeypatch.setattr(mod.RM, "fetch_resonance_targets", _fake_targets)
     conn = _FakeConn(_responder())
     ctx = _ctx(conn)
-    step = GocharaSweepV2Writer().plan_substeps(ctx)[0]
-    GocharaSweepV2Writer().run_substep(ctx, step)
+    step = GocharaV2MaterializeWriter().plan_substeps(ctx)[0]
+    GocharaV2MaterializeWriter().run_substep(ctx, step)
     for sql, _ in conn.statements:
         assert "asset_throughput" not in sql.lower()
 
 
-# ── The untouchable-data rail ─────────────────────────────────────────────────
+# ── The untouchable-data rail (native ruling points 1 + 2) ───────────────────
 
 
-def test_every_kala_gochara_windows_statement_is_generation_scoped(monkeypatch):
+def test_writer_source_never_references_the_protected_table():
+    """The strongest form of the "never touches kala_gochara_windows" claim:
+    not "no statement in one recorded run happened to touch it" but "the
+    string does not appear anywhere in this module's source", so no code
+    path -- reachable in a test or not -- could ever construct a statement
+    against it. `\\bkala_gochara_windows\\b` deliberately does NOT match
+    inside `kala_gochara_windows_v2` (no word boundary between "s" and "_",
+    both \\w characters) -- this asserts absence of the BARE v1 name, not
+    absence of this writer's own table. Scoped to CODE, not the module's own
+    explanatory docstring (see `_source_excluding_module_docstring`)."""
+    source = _source_excluding_module_docstring(mod)
+    matches = PROTECTED_TABLE_RE.findall(source)
+    assert matches == [], (
+        f"ka_gochara_v2_materialize.py must never reference the protected "
+        f"kala_gochara_windows table (found {len(matches)} occurrence(s)) — "
+        f"native ruling point 2"
+    )
+    # services/w2g/materialize.py issues no SQL at all (it is a pure
+    # join+score function taking an injected query fn / arc source; see its
+    # own module docstring) -- verified structurally, not by a source-text
+    # grep, since that module's docstring legitimately DESCRIBES the served
+    # row shape ("kala_gochara_windows-shaped rows") without ever executing a
+    # statement against any table.
+    assert "execute(" not in inspect.getsource(materialize_mod), (
+        "services/w2g/materialize.py must remain a pure function module -- "
+        "no direct SQL execution of any kind, against any table"
+    )
+
+
+def test_writer_source_never_references_the_override_setting():
+    """Native ruling point 1, verbatim: 'The W2G writer must NEVER set
+    app.allow_protected_sweep_rewrite, in any code path.' Checked by absence
+    of the setting name anywhere in the writer's CODE (see
+    `_source_excluding_module_docstring` — the module docstring itself
+    legitimately quotes the ruling verbatim) — not just absence from
+    statements issued in one test run."""
+    source = _source_excluding_module_docstring(mod)
+    assert OVERRIDE_SETTING not in source, (
+        f"ka_gochara_v2_materialize.py must never reference "
+        f"app.{OVERRIDE_SETTING} — native ruling point 1 is a hard rule, "
+        f"not a style preference"
+    )
+
+
+def test_table_constant_is_the_writers_own_surface():
+    assert mod.TABLE == "kala_gochara_windows_v2"
+    assert mod.TABLE != "kala_gochara_windows"
+
+
+def test_every_statement_this_writer_issues_targets_its_own_table_only(monkeypatch):
     monkeypatch.setattr(mod, "materialize_event_class",
                          lambda *a, **k: MaterializeResult(rows=[_served_row()], contacts_evaluated=1, targets_resolved=1))
     monkeypatch.setattr(mod.RM, "fetch_resonance_targets", _fake_targets)
     conn = _FakeConn(_responder())
     ctx = _ctx(conn)
-    step = GocharaSweepV2Writer().plan_substeps(ctx)[0]
-    GocharaSweepV2Writer().run_substep(ctx, step)
+    step = GocharaV2MaterializeWriter().plan_substeps(ctx)[0]
+    GocharaV2MaterializeWriter().run_substep(ctx, step)
 
-    windows_statements = [(s, p) for s, p in conn.statements if "kala_gochara_windows" in s.lower()]
-    assert windows_statements, "the writer must issue at least one kala_gochara_windows statement"
+    windows_v2_statements = [(s, p) for s, p in conn.statements if "kala_gochara_windows_v2" in s.lower()]
+    assert windows_v2_statements, "the writer must issue at least one kala_gochara_windows_v2 statement"
+    for sql, _params in conn.statements:
+        assert not PROTECTED_TABLE_RE.search(sql), (
+            f"statement referenced the protected v1 table: {sql!r}"
+        )
+
+
+def test_every_kala_gochara_windows_v2_statement_is_generation_scoped(monkeypatch):
+    monkeypatch.setattr(mod, "materialize_event_class",
+                         lambda *a, **k: MaterializeResult(rows=[_served_row()], contacts_evaluated=1, targets_resolved=1))
+    monkeypatch.setattr(mod.RM, "fetch_resonance_targets", _fake_targets)
+    conn = _FakeConn(_responder())
+    ctx = _ctx(conn)
+    step = GocharaV2MaterializeWriter().plan_substeps(ctx)[0]
+    GocharaV2MaterializeWriter().run_substep(ctx, step)
+
+    windows_statements = [(s, p) for s, p in conn.statements if "kala_gochara_windows_v2" in s.lower()]
+    assert windows_statements, "the writer must issue at least one kala_gochara_windows_v2 statement"
     for sql, params in windows_statements:
         upper = sql.strip().upper()
         if upper.startswith("DELETE"):
@@ -220,8 +319,8 @@ def test_every_kala_gochara_windows_statement_is_generation_scoped(monkeypatch):
             assert params[-1] == GENERATION_V2 or GENERATION_V2 in params
         elif upper.startswith("INSERT"):
             assert "ON CONFLICT" not in sql.upper(), (
-                "an ON CONFLICT DO UPDATE against the pre-generation natural key "
-                "could silently overwrite a v1 row -- this writer must never use one"
+                "this writer never uses ON CONFLICT DO UPDATE against its own "
+                "table either -- keeps collision counting honest"
             )
             assert params.get("generation") == GENERATION_V2
 
@@ -232,11 +331,11 @@ def test_delete_is_scoped_to_chart_event_class_and_generation(monkeypatch):
     monkeypatch.setattr(mod.RM, "fetch_resonance_targets", _fake_targets)
     conn = _FakeConn(_responder())
     ctx = _ctx(conn)
-    step = GocharaSweepV2Writer().plan_substeps(ctx)[0]
-    GocharaSweepV2Writer().run_substep(ctx, step)
+    step = GocharaV2MaterializeWriter().plan_substeps(ctx)[0]
+    GocharaV2MaterializeWriter().run_substep(ctx, step)
 
     deletes = [(s, p) for s, p in conn.statements
-               if s.strip().upper().startswith("DELETE") and "kala_gochara_windows" in s.lower()]
+               if s.strip().upper().startswith("DELETE") and "kala_gochara_windows_v2" in s.lower()]
     assert len(deletes) == 1
     sql, params = deletes[0]
     assert params == ["c1", "marriage", GENERATION_V2]
@@ -253,13 +352,13 @@ def test_a_row_collision_is_skipped_not_fatal_and_not_silently_overwritten(monke
     monkeypatch.setattr(mod.RM, "fetch_resonance_targets", _fake_targets)
 
     def fail_on(sql, params):
-        return sql.strip().upper().startswith("INSERT INTO KALA_GOCHARA_WINDOWS") \
+        return sql.strip().upper().startswith("INSERT INTO KALA_GOCHARA_WINDOWS_V2") \
             and params is not None and params.get("peak_date") == date(2026, 9, 2)
 
     conn = _FakeConn(_responder(), fail_on=fail_on)
     ctx = _ctx(conn)
-    step = GocharaSweepV2Writer().plan_substeps(ctx)[0]
-    result = GocharaSweepV2Writer().run_substep(ctx, step)
+    step = GocharaV2MaterializeWriter().plan_substeps(ctx)[0]
+    result = GocharaV2MaterializeWriter().run_substep(ctx, step)
 
     assert result.rows_inserted == 1, "the surviving row must still be counted"
     assert "1 collision" in result.notes or "collision" in result.notes
@@ -289,14 +388,14 @@ def test_unchanged_fingerprint_skip_with_real_targets(monkeypatch):
 
     conn = _FakeConn(_responder(stored_fingerprint=fp))
     ctx = _ctx(conn)
-    step = GocharaSweepV2Writer().plan_substeps(ctx)[0]
-    result = GocharaSweepV2Writer().run_substep(ctx, step)
+    step = GocharaV2MaterializeWriter().plan_substeps(ctx)[0]
+    result = GocharaV2MaterializeWriter().run_substep(ctx, step)
 
     assert materialize_called == [], "an unchanged fingerprint must short-circuit BEFORE materialize is even called"
     assert result.rows_inserted == 0
     assert "unchanged" in result.notes.lower()
     assert not [s for s, _ in conn.statements
-                if "kala_gochara_windows" in s.lower() and s.strip().upper().startswith(("DELETE", "INSERT"))]
+                if "kala_gochara_windows_v2" in s.lower() and s.strip().upper().startswith(("DELETE", "INSERT"))]
 
 
 def test_changed_fingerprint_does_rebuild(monkeypatch):
@@ -317,8 +416,8 @@ def test_changed_fingerprint_does_rebuild(monkeypatch):
     # stored_fingerprint deliberately WRONG -- forces a rebuild.
     conn = _FakeConn(_responder(stored_fingerprint="stale_fingerprint_value"))
     ctx = _ctx(conn)
-    step = GocharaSweepV2Writer().plan_substeps(ctx)[0]
-    result = GocharaSweepV2Writer().run_substep(ctx, step)
+    step = GocharaV2MaterializeWriter().plan_substeps(ctx)[0]
+    result = GocharaV2MaterializeWriter().run_substep(ctx, step)
 
     assert materialize_called == [1]
     assert result.rows_inserted == 1
@@ -331,8 +430,8 @@ def test_no_targets_for_event_class_is_honest_empty_not_fatal(monkeypatch):
     monkeypatch.setattr(mod.RM, "fetch_resonance_targets", lambda *a, **k: [])
     conn = _FakeConn(_responder())
     ctx = _ctx(conn)
-    step = GocharaSweepV2Writer().plan_substeps(ctx)[0]
-    result = GocharaSweepV2Writer().run_substep(ctx, step)
+    step = GocharaV2MaterializeWriter().plan_substeps(ctx)[0]
+    result = GocharaV2MaterializeWriter().run_substep(ctx, step)
     assert result.rows_inserted == 0
     assert "empty" in result.notes.lower()
 
@@ -350,11 +449,11 @@ def test_dry_run_writes_nothing(monkeypatch):
     conn = _FakeConn(_responder())
     ctx = _ctx(conn)
     ctx.dry_run = True
-    step = GocharaSweepV2Writer().plan_substeps(ctx)[0]
-    result = GocharaSweepV2Writer().run_substep(ctx, step)
+    step = GocharaV2MaterializeWriter().plan_substeps(ctx)[0]
+    result = GocharaV2MaterializeWriter().run_substep(ctx, step)
     assert result.rows_inserted == 0
     assert not [s for s, _ in conn.statements
-                if "kala_gochara_windows" in s.lower() and s.strip().upper().startswith(("DELETE", "INSERT"))]
+                if "kala_gochara_windows_v2" in s.lower() and s.strip().upper().startswith(("DELETE", "INSERT"))]
 
 
 def test_horizon_is_progressive_partial_by_default():

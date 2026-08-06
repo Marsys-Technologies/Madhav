@@ -1,6 +1,10 @@
 """W2G — per-chart materialization layer tests (ṢAḌ-DARŚANA lane G, item 19).
 
-TDD-first: written before `pipeline/orchestrator/writers/ka_gochara_sweep_v2.py`.
+TDD-first: written before `pipeline/orchestrator/writers/ka_gochara_v2_materialize.py`
+(named `ka_gochara_sweep_v2.py` in the original PR #1081 authoring; renamed in
+the lane G REWORK per the native ruling 2026-08-06 -- this module
+(`materialize.py`) itself is unchanged by the rework, since it never touches
+`kala_gochara_windows` or any table at all).
 Everything here is offline and deterministic -- synthetic arcs with
 analytically-known crossings (same technique as `test_w2g_arc_substrate.py`),
 fixture `ResonanceTarget` rows, and injected fakes for the v1 grammar calls
