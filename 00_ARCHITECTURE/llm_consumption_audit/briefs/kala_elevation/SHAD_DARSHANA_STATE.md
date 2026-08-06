@@ -53,6 +53,18 @@ does, even though the check-run is correctly associated with the same commit SHA
 running for real in `pull_request` context after a corrective push; not yet confirmed merged as of
 this entry.
 
+**Contamination cleanup EXECUTED (Conductor, same session, single audited transaction, real
+COMMIT — not a proof-then-rollback).** Pre-flight audit confirmed exactly 27 rows,
+`generation='2.0'`, all for chart `482012f1`, all `computed_at=2026-08-06T11:16:04.427Z` (matches
+Lane G's own reported run exactly). `SET LOCAL app.allow_protected_sweep_rewrite='on'` (one-time,
+this exact ruling as provenance, Conductor-executed not writer-executed — compliant with the
+ruling's point 1) then `DELETE FROM kala_gochara_windows WHERE generation='2.0' AND chart_id=
+'482012f1-...'` — scoped so tightly by the generation predicate that touching a v1 row was
+structurally impossible. **`DELETE 27`, exact match.** Post-delete, pre-commit audit: 0 rows
+remain at `generation='2.0'` anywhere in the table; v1's `482012f1` baseline independently
+re-confirmed unchanged at **16,297**. Transaction ended in `COMMIT`. The corpus is now clean —
+Lane G's rework starts from zero contamination, not from a state needing further cleanup.
+
 ---
 
 ## MORNING REPORT — CONDUCTOR session close (2026-08-06, residual-completion campaign)
