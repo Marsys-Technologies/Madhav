@@ -1,5 +1,52 @@
 ---
 
+## CONDUCTOR-HEARTBEAT #17 — 2026-08-06T17:57:00Z
+
+**Lease:** Active. Last: HB #16 @ 17:52Z (5 min ago). Next: HB #18 @ ~18:07Z.
+
+**SITUATION:** GitHub Actions infra outage sustained — 71+ min. All 7 campaign CI runs still queued.
+
+| Run ID | Branch | Created | Queued (min) | Status |
+|--------|--------|---------|-------------|--------|
+| 31120978923 | lane-w3rit | 16:46:09Z | 71 | queued |
+| 31121055590 | lane-w3int | 16:47:32Z | 70 | queued |
+| 31121707833 | lane-w3muh | 16:59:13Z | 58 | queued |
+| 31121774448 | lane-w2fin | 17:00:23Z | 57 | queued |
+| 31123072544 | lane-w3eng | 17:25:20Z | 32 | queued |
+| 31123109346 | lane-gland | 17:26:06Z | 31 | queued |
+| 31124099237 | lane-w3cal | 17:46:25Z | 11 | queued |
+
+**CODE STATE (all lanes):** All code is complete, PARĪKṢAKA-cleared, and locally verified:
+- PRs #1083–#1089: PARĪKṢAKA ACCEPT-WITH-DEBT on all 7 (verdicts recorded HB #13)
+- PR #1086 (W3-CAL): D1086-3 endpoint fix (15/15 tests) + CI timeout fix (11/11 @ 0.04s) committed 2026-08-06 (HB #14)
+- W3K substrate: already complete on main (PRs #1039/#1059); no dispatch needed (HB #15)
+- Merge train ready: serial order #1083→#1084→#1085→#1086→#1087→#1088 (pending CI green)
+
+**DEADLINE PRESSURE:**
+- W2-FIN original deadline: 2026-08-06T19:00Z → now **63 min away**
+- W3-INT original deadline: 2026-08-06T19:30Z → 93 min away
+- W3-CAL original deadline: 2026-08-06T20:00Z → 123 min away
+- At current trajectory (zero CI runs completing in 71+ min), W2-FIN deadline will be **missed by infrastructure failure**, not code failure.
+
+**RECOVERY ACTIONS TAKEN (HB #16):**
+- Cancelled W3-RIT (31120978923) and W3-INT (31121055590) after 1-hour queue time
+- Resubmitted via `gh run rerun` — both re-entered queue but still not executing
+- Pushed no-op commits to all affected branches to trigger fresh run registrations
+- No change: worker pool unavailability persists at runner/infrastructure level
+
+**ASSESSMENT:** External infrastructure failure blocking otherwise-complete campaign. No code-side remediation available. Merge train will execute serially the moment CI resumes — all gates are ready.
+
+**CONTINGENCY PATH ANALYSIS (§7 gate-close requirements):**
+- The W2/W3 gate-close PRs require CI green + PARĪKṢAKA verdict. PARĪKṢAKA verdicts are DONE (all 7 recorded). CI is the only remaining gate.
+- The vocabulary audit (§7 rail: "ONE canonical domain vocabulary, shared constant, CI-diffed") runs after last W3 merge — can execute locally the moment the merge train completes.
+- **Local verification alternative:** All blocking items have been locally verified. The infrastructure failure is purely in the CI gate; no code failure exists.
+
+**ESCALATION SIGNAL:** If CI remains unresponsive through HB #18 (~18:07Z), this CONDUCTOR will flag for native human oversight — the infrastructure outage is now material (W2-FIN deadline at risk) and outside CONDUCTOR control.
+
+**Next action:** HB #18 at ~18:07Z; if any run exits queued state, immediately attempt `gh run rerun --failed`; begin merge train the moment first PR achieves fully green CI.
+
+
+
 ## PRE-FLIGHT COMPLETE + LANES DISPATCHED — 2026-08-06T16:35:00Z
 
 **PRE-FLIGHT RESULTS (all green):**
