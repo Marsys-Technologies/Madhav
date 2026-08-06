@@ -10,6 +10,25 @@ governing: SHAD_DARSHANA_NIGHT_RUN_v1_0.md (orchestration) + SHAD_DARSHANA_BRIEF
 ---
 ---
 type: CONDUCTOR-HEARTBEAT
+timestamp: 2026-08-06T16:52:26Z
+heartbeat_number: 6
+conductor: claude-opus-4-6
+status: ACTIVE
+agents_active: 7
+prs_open: 4
+parikshaka_in_flight: 4
+ci_status: "PR #1083 3-running/10-queued/1-skip; PRs #1084/#1085/#1086 just triggered"
+notes: |
+  4 PRs open: #1083 W3-ENG (items 41/36), #1084 W3-RIT (items 17/37),
+  #1085 W3-INT (items 33/34), #1086 W3-CAL (items 1/3/16).
+  4 PARĪKṢAKA agents running (Opus, background, default-REFUTED).
+  G-LAND actively running DB equivalence build for 482012f1.
+  W2-FIN working: priority.ts salience wiring + story.ts + db query route (W2.7/8/5).
+  W3-MUH working: moorti/vedha property tests (181/250 lines) + janma micro rules.
+  All untouchables confirmed clean so far (per PARĪKṢAKA checks in progress).
+
+---
+type: CONDUCTOR-HEARTBEAT
 timestamp: 2026-08-06T16:46:04Z
 heartbeat_number: 5
 conductor: claude-opus-4-6
