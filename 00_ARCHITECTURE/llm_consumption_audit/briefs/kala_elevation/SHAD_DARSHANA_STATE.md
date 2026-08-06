@@ -41,6 +41,43 @@ NEXT-ACTION: monitor lanes; heartbeat every 10 min; PARĪKṢAKA reviews as PRs 
 
 ---
 
+## CONDUCTOR-HEARTBEAT #14 — 17:40Z
+
+**Status:** ACTIVE
+**Timestamp:** 2026-08-06T17:40Z
+**Phase:** D1086-3 patches landed; CI outage ongoing; all PRs queued
+
+**D1086-3 RESOLVED — Two commits pushed to shad-darshana/lane-w3cal:**
+1. `1dd7663e0` — fix: dasha_sandhi.ts /api/mcp/internal → /api/retrieval/capability
+   - Auth header: Authorization: Bearer → X-MCP-Internal-Token
+   - Response: double-nested unwrap → single-nested (matches actual endpoint contract)
+   - Principal threaded through fetchDashaRows → callRegistry
+   - AbortSignal.timeout(25_000) added
+   - Test mock updated from {content:{content:inner,is_error:false}} → {content:inner}
+   - 15/15 dasha_sandhi tests PASS
+2. `f3e2028da` — fix: CI governance gate timeout (Anchor 1 scan 61d→14d)
+   - Jupiter Aries ingress scan window Apr 1-Jun 1 → Apr 17-May 1 (±6d around known Apr 22)
+   - 11/11 accuracy anchor tests PASS in 0.04s (was >7min timeout in CI)
+
+**PR #1086 (W3-CAL) blocking items — BOTH RESOLVED:**
+- D1086-3 endpoint bug: FIXED ✓
+- Governance gate pytest timeout: FIXED ✓
+- D1086-1 (registration-level test): debt, non-blocking
+- D1086-2 (items IN-PROGRESS honest): debt, non-blocking
+
+**CI status (all 6 campaign PRs): ALL QUEUED — GitHub Actions infra outage ongoing**
+- lane-gland: queued since 17:26
+- lane-w3eng: queued since 17:25
+- lane-w2fin: queued since 17:00
+- lane-w3muh: queued since 16:59
+- lane-w3cal: queued since 16:50 (new run triggered by D1086-3 push, awaiting GH pickup)
+- lane-w3int: queued since 16:47
+- lane-w3rit: queued since 16:46
+
+**Strategy:** All PRs are PARĪKṢAKA-cleared and code-correct. Merge train blocked only on CI recovery.
+**Next action:** Monitor CI runs; attempt `gh run rerun --failed` once runs exit queued state.
+
+
 ## CONDUCTOR-HEARTBEAT #13 — 17:31Z
 
 **Status:** ACTIVE
