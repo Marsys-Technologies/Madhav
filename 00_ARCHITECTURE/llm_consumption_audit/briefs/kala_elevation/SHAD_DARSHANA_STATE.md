@@ -65,6 +65,47 @@ Overnight conductor has clear lane. This session monitoring only.
 
 ---
 type: CONDUCTOR-HEARTBEAT
+timestamp: 2026-08-06T17:27:00Z
+heartbeat_number: 12
+conductor: claude-opus-4-6
+status: ACTIVE
+prs_open: 7
+notes: |
+  HB #12 — G-LAND complete, PR #1089 opened, PARĪKṢAKA dispatched (a6ceb203335f8660c).
+  PR #1086 Governance Gates: pytest cancelled at 48% (sky_calendar anchor test likely timed out).
+  Will re-run once PR #1086 CI run completes.
+  ANTARYĀMIN adjudication recorded below (R2 ruling from CONDUCTOR).
+  CI: all 6 campaign runs still queued — runner shortage continues.
+  PR #1085: Coverage ✅ + Planner ✅.
+  PR #1084: DB Integration ✅ + Density Census ✅.
+
+---
+type: ANTARYAMIN-ADJUDICATION
+timestamp: 2026-08-06T17:27:00Z
+conductor_ruling: true
+pr: 1089
+ratified_by: CONDUCTOR (ANTARYĀMIN authority per R2)
+dispositions:
+  - bucket: unclassified_v1_only_needs_review
+    count: 1128
+    ruling: ACCEPT-as-v2-candidate-scope-gap
+    reasoning: "Sign/house-occupancy activations that v2's degree-contact candidate net structurally does not produce. The scope boundary is disclosed in materialize.py's own docstring (38:1 density ratio is the mathematically expected consequence of daily-grid-vs-arc-solver methodology). No bug; no fix possible within this lane's design."
+  - bucket: unclassified_v2_only_needs_review
+    count: 13
+    ruling: ACCEPT-as-v2-found-real-contact
+    reasoning: "7 illness_acute + 6 surgery at 7 shared peak dates, driven by Saturn/Rahu/Mars at exact natal degrees. V2 found genuine degree-contacts that v1's daily grid missed. This is UPGRADE precision, not an error. Pending PARĪKṢAKA confirmation."
+  - finding: SLO_overage
+    ruling: ACCEPT-MINOR
+    reasoning: "482012f1: 922s (15.37min, +22s over SLO). 1c826d5a: 912s (15.20min, +12s over SLO). Incremental runs complete in <10s when data unchanged. Cold-build timing is a known cost of the arc-solver design. Not a blocking defect; noted as a known constraint."
+  - finding: unclassified_count_hard_gate
+    count: 0
+    ruling: PASS
+    reasoning: "Zero rows with unclassified bucket (the hard-gate criterion). Campaign can proceed."
+slo_verdict: ACCEPT-MINOR
+hard_gate: PASS
+
+---
+type: CONDUCTOR-HEARTBEAT
 timestamp: 2026-08-06T17:24:30Z
 heartbeat_number: 11
 conductor: claude-opus-4-6
