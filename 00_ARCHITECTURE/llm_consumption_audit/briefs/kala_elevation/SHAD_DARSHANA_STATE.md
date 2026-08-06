@@ -41,6 +41,41 @@ NEXT-ACTION: monitor lanes; heartbeat every 10 min; PARĪKṢAKA reviews as PRs 
 
 ---
 
+## CONDUCTOR-HEARTBEAT #16 — 17:52Z
+
+**Status:** ACTIVE
+**Timestamp:** 2026-08-06T17:52Z
+**Phase:** CI infra outage; cancellation + rerun strategy applied; monitoring
+
+**CI RECOVERY ACTIONS TAKEN:**
+- Cancelled runs 31120978923 (W3-RIT) and 31121055590 (W3-INT) after 1+ hour in queue
+- Requeued both via gh run rerun
+- Pushed no-op ci-trigger commits to lane-w3rit and lane-w3int branches
+- Other 5 runs still in original queue since 17:00-17:46 UTC
+
+**CURRENT CI STATUS (17:52 UTC):**
+- lane-w3rit (31120978923): REQUEUED (rerun submitted)
+- lane-w3int (31121055590): REQUEUED (rerun submitted)
+- lane-w3muh (31121707833): queued since 16:59 UTC (~53 min)
+- lane-w2fin (31121774448): queued since 17:00 UTC (~52 min)
+- lane-w3eng (31123072544): queued since 17:25 UTC (~27 min)
+- lane-gland (31123109346): queued since 17:26 UTC (~26 min)
+- lane-w3cal (31124099237): queued since 17:46 UTC (~6 min, D1086-3 fixes included)
+
+**GH ACTIONS INFRA STATUS:** Sustained outage ~17:00 UTC. No runs completing.
+**Estimated outcome:** Infra recovery required; no estimated time. Monitoring continues.
+
+**W2 OPEN ITEMS SUMMARY (for Gate W2 close when PR #1088 merges):**
+- W2.4.b: PARKED-HONEST (flag naming — addressed in PR #1088)
+- W2.5.a: PARKED-HONEST (factor_informativeness=NULL — addressed in PR #1088)
+- W2.7.a: PARKED-HONEST (salience vector wiring — addressed in priority.ts in PR #1088)
+- W2.8.a: PARKED-HONEST (fetchTopInsight dead code — D1088-1 debt, story.ts)
+- W2.10.b: PARKED-HONEST (LIVE specificity gate — addressed in PR #1088)
+- W2.3/W2.12: PARKED-HONEST per native ruling (non-blocking)
+
+**Next action:** HB #17 at ~18:02Z; monitor CI; attempt rerun on each run as it completes.
+
+
 ## CONDUCTOR-HEARTBEAT #15 — 17:47Z
 
 **Status:** ACTIVE
