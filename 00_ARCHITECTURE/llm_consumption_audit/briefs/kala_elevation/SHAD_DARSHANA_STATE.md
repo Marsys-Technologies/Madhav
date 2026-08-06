@@ -2,6 +2,43 @@
 
 ---
 type: CONDUCTOR-NOTE
+timestamp: 2026-08-06T18:48:30Z
+heartbeat_number: 25
+event: CI still blocked (GitHub Actions major_outage); holding position, PR #1090 open, no checks yet
+integration_tip: 165d72c41
+actions_status: major_outage
+pr_1090_state: OPEN
+pr_1090_checks: none (outage)
+gate_w2: CLOSED
+gate_w3: blocked_pending_deploy
+next_hb_due: 18:58Z
+
+## CONDUCTOR HEARTBEAT #25 — 2026-08-06T18:48Z
+
+**Lease renewed:** 18:48:30Z (HB #24 was 18:43Z; gap = 5m22s — within ≤10m window)
+**Integration tip:** 165d72c41 (unchanged — no new commits needed; holding position)
+
+### CAMPAIGN STATE AT HB #25
+
+**COMPLETED:**
+- Merge train: 7/7 PRs merged (force majeure, Actions outage) ✓
+- §7 vocabulary audit: PASS (both surfaces) ✓
+- Gate W2: **CLOSED** — GATE_W2_CLOSE_v1_0.md committed (d8208fb98) ✓
+- Gate W3K G-5 voice: SATISFIED (explain.ts confirmed on integration) ✓
+- PR #1090 created (integration→main gate-close packet, 18:44Z) ✓
+
+**BLOCKED — awaiting GitHub Actions recovery:**
+- PR #1090 CI checks: 0 checks running (major_outage persisting)
+- Independent reviewer condition: CI must recover + all checks green before merge execution
+- Gate W3 walk: requires deploy → orchestrator builds W3 assets on both charts
+- Gate W4, W5, G-LAND W2G, R3 teardown, W6, campaign close: all post-deploy
+
+**GitHub Actions status:** major_outage (confirmed 18:48Z — outage started ~16:45Z, ~2h03m)
+**PR #1090 checks:** none (outage; expected checks: lint, typecheck, test, DB integration, coverage)
+**Next heartbeat due:** ~18:58Z
+
+---
+type: CONDUCTOR-NOTE
 timestamp: 2026-08-06T18:44:25Z
 heartbeat_number: 24
 event: Integration→main PR created
