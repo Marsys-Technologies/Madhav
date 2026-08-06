@@ -89,7 +89,7 @@ function mockRegistryFetch(opts: {
     }
     return {
       ok: true,
-      json: async () => ({ ok: true, content: { content: inner, is_error: false } }),
+      json: async () => ({ ok: true, content: inner }),
       text: async () => '',
     } as Response
   })

@@ -66,19 +66,26 @@ import {
 const PLATFORM_URL = (process.env['PLATFORM_URL'] ?? 'http://localhost:3000').replace(/\/$/, '')
 const MCP_INTERNAL_TOKEN = process.env['MCP_INTERNAL_TOKEN'] ?? ''
 
-async function callRegistry(uri: string, args: Record<string, unknown>): Promise<unknown> {
-  const resp = await fetch(`${PLATFORM_URL}/api/mcp/internal`, {
+async function callRegistry(
+  uri: string,
+  args: Record<string, unknown>,
+  principal: Principal,
+): Promise<unknown> {
+  const resp = await fetch(`${PLATFORM_URL}/api/retrieval/capability`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${MCP_INTERNAL_TOKEN}`,
+      'X-MCP-Internal-Token': MCP_INTERNAL_TOKEN,
+      'X-MCP-User': principal.user_uid,
+      'X-MCP-Key-Id': principal.key_id,
     },
     body: JSON.stringify({ uri, args }),
+    signal: AbortSignal.timeout(25_000),
   })
   if (!resp.ok) throw new Error(`registry ${uri} returned HTTP ${resp.status}`)
-  const payload = (await resp.json()) as { ok: boolean; content: { content: unknown; is_error: boolean } }
-  if (!payload.ok || payload.content.is_error) throw new Error(`registry ${uri} returned error`)
-  return payload.content.content
+  const payload = (await resp.json()) as { ok: boolean; content: unknown; error?: string }
+  if (!payload.ok) throw new Error(`registry ${uri} returned error: ${payload.error ?? 'unknown'}`)
+  return payload.content
 }
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -161,6 +168,7 @@ async function fetchDashaRows(
   chartId: string,
   windowStart: string,
   windowEnd: string,
+  principal: Principal,
 ): Promise<{ rows: Record<string, unknown>[]; reachable: boolean }> {
   try {
     const data = (await callRegistry(DASHA_SOURCE, {
@@ -174,7 +182,7 @@ async function fetchDashaRows(
       window_end: windowEnd,
       fields: 'compact',
       limit: 2000,  // sufficient for a ±5y window even at Sūkṣma level
-    })) as { rows: Record<string, unknown>[]; total: number }
+    }, principal)) as { rows: Record<string, unknown>[]; total: number }
     return { rows: Array.isArray(data.rows) ? data.rows : [], reachable: true }
   } catch {
     return { rows: [], reachable: false }
@@ -264,7 +272,7 @@ export async function computeDashaSandhiCalendar(
   const horizonStart = addYearsIso(asOf, -pastYears)
   const horizonEnd = addYearsIso(asOf, futureYears)
 
-  const { rows, reachable } = await fetchDashaRows(chartId, horizonStart, horizonEnd)
+  const { rows, reachable } = await fetchDashaRows(chartId, horizonStart, horizonEnd, _principal)
 
   if (!reachable) {
     return {
