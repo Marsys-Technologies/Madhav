@@ -9,6 +9,57 @@ governing: SHAD_DARSHANA_NIGHT_RUN_v1_0.md (orchestration) + SHAD_DARSHANA_BRIEF
   + KALA_SUPREME_ELEVATION_v1_0.md (v1.2, spec authority) + KALA_SIX_VIEWS_DESIGN_v2_0.md/v1_0.md
 ---
 
+## CONDUCTOR-HEARTBEAT — 2026-08-06T16:35:00Z (CONDUCTOR-OVERNIGHT-FINAL-ARC)
+
+Heartbeat refresh #2. Run in progress. Pre-flight complete; dispatching all 6 lanes.
+
+## PRE-FLIGHT COMPLETE — 2026-08-06T16:35:00Z
+
+**All checks green. Dispatching 6 lanes.**
+
+### Pre-flight verification results (Conductor, own queries — not self-report):
+
+1. **main==production** ✓ — `mcp_server_info` live call: `catalog_version=catalog-1+t152+r653c2a1a98c8`, `tools_changed_at=2026-08-06T10:39:46Z`. Matches prior session Stage 0c record exactly (171eb90ba deploy). Production is at origin/main tip; no newer deploy has fired.
+
+2. **Sweep corpus counts** ✓ —
+   - `build_substep_progress` for `ka_gochara_sweep`: 606/606 both canonical charts (482012f1, 1c826d5a). ✓
+   - `kala_gochara_windows` v1: 16,297 (482012f1), 19,323 (1c826d5a). ✓
+   - Zero `generation!='v1'` rows anywhere in `kala_gochara_windows`. ✓ (contamination cleanup held)
+   - `kala_gochara_windows_v2`: 29 rows (482012f1 only) from W2G writer. ✓
+
+3. **PR #1078 fully landed** ✓ — confirmed at 171eb90ba in origin/main, deploy at 2026-08-06T12:55:51Z (success).
+
+4. **Zero in-flight PRs** ✓ — `gh pr list --base shad-darshana/integration --state open` → empty array.
+
+5. **Integration tip**: `2b2c5de1f` (after Conductor heartbeat commit). All 5 lanes from prior session (Lane F/K/R/G×2) merged. ✓
+
+6. **W3 status confirmed**: items 6/7/9/13/31 DONE (merged); items 1/3/4/5/14/16/17/33/34/36/37/41 OPEN. ✓
+
+7. **W2 checklist read**: 12 items total; W2.1/W2.2/W2.4.a/W2.4.c/W2.6/W2.9/W2.11 VERIFIED-NO-DEFECT; W2.3/W2.12 native-ruled non-blocking; W2.4.b/W2.5/W2.7/W2.8/W2.10 PARKED-HONEST, addressable this run (W2.7 is bounded wiring fix; W2.5 needs investigation; W2.4.b is flag-naming; W2.8 needs ordering check; W2.10 needs live-mode exercise). ✓
+
+8. **Max migration number**: 542 (`542_kala_gochara_windows_v2.sql`). Substrate branch (ca6d1d4b) has migrations 484/485 which WILL collide — renumber to 543/544 at W3-ENG PR-open. ✓
+
+9. **Substrate branch**: `origin/shad-darshana/bg-muhurta-parihara-substrate` at ca6d1d4b — contains `bg_muhurta_lattice.py` + `bg_parihara_rules.py` writers + tests + migrations 484/485. Confirmed by `git diff` vs integration. ✓
+
+10. **No uncommitted files in main checkout**: ✓ (main at 5dacb5597, clean)
+
+### Lane dispatch table (all dispatching simultaneously):
+
+| Lane | Branch | Worktree | Items | Model | Deadline |
+|------|---------|---------|-------|-------|----------|
+| W2-FIN | shad-darshana/lane-w2fin | /tmp/wt-w2fin | W2.4b/W2.5/W2.7/W2.8/W2.10 + item-44-census + W5-prep | Sonnet | +4h |
+| W3-CAL | shad-darshana/lane-w3cal | /tmp/wt-w3cal | Items 1/3/16 | Sonnet | +6h |
+| W3-MUH | shad-darshana/lane-w3muh | /tmp/wt-w3muh | Items 4/5/14 | Sonnet | +6h |
+| W3-ENG | shad-darshana/lane-w3eng | /tmp/wt-w3eng | Items 41/36 (from substrate ca6d1d4b) | Sonnet | +8h |
+| W3-RIT | shad-darshana/lane-w3rit | /tmp/wt-w3rit | Items 17/37 | Sonnet | +6h |
+| W3-INT | shad-darshana/lane-w3int | /tmp/wt-w3int | Items 33/34 → W5-prep | Sonnet | +5h |
+| G-LAND | shad-darshana/lane-gland | /tmp/wt-gland | Equivalence hardening (2-chart parallel) | Sonnet | +12h |
+
+NEXT-ACTION: all 6 lanes now being dispatched. Will monitor and run PARĪKṢAKA as PRs land.
+
+---
+
+
 ## CONDUCTOR-HEARTBEAT — 2026-08-06T16:21:50Z (CONDUCTOR-OVERNIGHT-FINAL-ARC)
 
 CONDUCTOR LEASE TAKEN. No prior HEARTBEAT found in ledger — lease is fresh.
