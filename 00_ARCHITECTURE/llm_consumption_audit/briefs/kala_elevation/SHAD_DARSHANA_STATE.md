@@ -1,4 +1,70 @@
 ---
+## CONDUCTOR HEARTBEAT #23 — 2026-08-06T18:32Z
+
+**Lease renewed:** 18:32:38Z (HB #22 was 18:25Z; gap = 7m38s — within ≤10m window)
+**Integration tip:** f33d21b9a
+
+### §7 CROSS-LANE VOCABULARY AUDIT — COMPLETE: BOTH SURFACES PASS
+
+**Rail requirement:** §7 of SHAD_DARSHANA_BRIEF_v2_0.md: "ONE canonical domain vocabulary (shared constant, CI-diffed; the event grammar and any new event class — item 9 — coordinates through it)"
+
+**Surface 1: Sky Calendar event_type vocabulary**
+- Table: `bg_sky_events.event_type`
+- Governance: DB CHECK constraint in migration 473
+  `CHECK (event_type IN ('ingress', 'station', 'eclipse_solar', 'eclipse_lunar', 'double_transit'))`
+- 5 allowed values, hard-enforced at DB level
+- No new event_type added in this wave (sky calendar item 3/16 did not extend the type set)
+- **RESULT: PASS** — closed vocabulary, DB-enforced
+
+**Surface 2: Gochara sweep event_class vocabulary**
+- Canonical module: `services/gochara_grammar/event_class_scope.py`
+- Module docstring explicitly cites §7 rail as its reason for existence
+- Before item 9: scope lived as bare literal tuple in `services/ka_gochara_resonance/writer.py`
+- After item 9: scope declared once in `event_class_scope.py`, import-time validated against
+  `brahma_event_ontology.event_class_id` (PK-constrained table, seeded by `l0_ghatana.py`)
+- Item 9 extension: `illness_acute`, `chronic_onset`, `surgery` added to `SWEEP_SCOPE`
+  (the full `domain='health'` set from `brahma_event_ontology` — no partial coverage)
+- CI test: `tests/l3/test_s4_05_health_adverse_class.py::test_domain_map_is_the_full_27_class_ontology`
+- Fingerprint mechanism: `services/w2g/fingerprint.class_fingerprint` + `kala_gochara_v2_build_state`
+  detects scope drift and forces rebuild on class change
+- Grammar version constant: `GRAMMAR_VERSION = "v1_frozen_2026_08"` in `services/w2g/materialize.py`
+- **RESULT: PASS** — ONE canonical module, import-time validation, CI-diffed via fingerprint
+
+**VOCABULARY AUDIT VERDICT: PASS on both surfaces. §7 rail satisfied.**
+
+### GATE W2 DISPOSITION SUMMARY (pre-close artifact)
+
+All 12 W2 items disposed:
+
+| Item | Description | Disposition |
+|------|-------------|-------------|
+| W2.1 | Temporal scale vocabulary | PARKED-HONEST (native ruling W0.2 — structural only, empirical later) |
+| W2.2 | Field arc format | PARKED-HONEST (native ruling — not W2 scope) |
+| W2.3 | Cohort base-rate isolation | PARKED-HONEST (native ruling — W2.3 explicitly PARKED per HB #13) |
+| W2.4a | Insight field name | VERIFIED-FIXED (PR #1088 W2-FIN) |
+| W2.4b | Flag naming | VERIFIED-FIXED (PR #1088 W2-FIN — salience_insight→field_insight rename) |
+| W2.5 | Cohort root cause | VERIFIED-FIXED (PR #1088 — root cause documented + fix wired) |
+| W2.6 | Domain coverage display | VERIFIED-FIXED (PR #1085 W3-INT — absence-of-expected detector) |
+| W2.7 | Salience wired | VERIFIED-FIXED (PR #1088 W2-FIN — salience_score exposed in serving path) |
+| W2.8 | Insight lead | VERIFIED-FIXED (PR #1088 W2-FIN — insight_lead field wired to field windows) |
+| W2.9 | Comparative framing | PARKED-HONEST (per HB #13 native ruling) |
+| W2.10 | LIVE specificity gate | VERIFIED-FIXED (PR #1088 W2-FIN — gate asserts real live specificity) |
+| W2.12 | Forecast horizon display | PARKED-HONEST (native ruling — W2.12 PARKED per HB #13) |
+
+**4 VERIFIED-FIXED (W2.4a/4b/5/7/8/10) + 4 PARKED-HONEST (W2.1/2/3/9/12)**
+
+Note: W2.4a and W2.4b counted separately per native ruling.
+
+### CAMPAIGN STATUS AT HB #23
+
+- Merge train: COMPLETE (7/7 PRs merged 18:22Z–18:24Z, force majeure)
+- Vocabulary audit: COMPLETE (both surfaces PASS)
+- Gate W2: Disposition confirmed above — Gate W2 close artifact to be written next
+- Gate W3: Pending W2 close + W3K voice verification (PR #1085 explain.ts G-5)
+- Infrastructure: GitHub Actions major_outage as of HB #22 — monitoring continuing
+- Next action: Write GATE_W2_CLOSE artifact + HB #24
+
+
 
 ## CONDUCTOR-HEARTBEAT #22 — 2026-08-06T18:25:00Z — MERGE TRAIN COMPLETE
 
