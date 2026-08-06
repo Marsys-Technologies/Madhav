@@ -26,38 +26,107 @@ proof condition, not just the merge: the `merge_group` CI run triggered for #107
 set" = completed/success** — TAP-6 now genuinely reports on queue-context runs, which is the
 exact condition that was missing and caused #1076's earlier `checks_timed_out` ejection.
 
-**Stage 0b — IN PROGRESS.** PR #1076 (Gate-1 packet) timeline: `added_to_merge_queue`
+**Stage 0b — CLOSED.** PR #1076 (Gate-1 packet) timeline: `added_to_merge_queue`
 2026-08-06T08:39:44Z → `removed_from_merge_queue` 09:43:08Z (the pre-#1077-fix `checks_timed_out`
 ejection, already diagnosed by the prior session) → re-`added_to_merge_queue` 10:23:09Z (this
-session, via `gh pr merge 1076 --auto`, confirmed already-queued on first attempt — the fix
-appears to have self-healed the queue per its own design). `mergeStateStatus=CLEAN`,
-`mergeable=MERGEABLE` at requeue time. A persistent background Monitor (task `bi2umuq18`) is
-watching for `removed_from_merge_queue` events and the terminal `MERGED`/`CLOSED` state — per the
-rails, queued ≠ merged, watching explicitly for ejection, not just polling for success.
+session) → **`MERGED` 2026-08-06T10:31:29Z, merge commit `4715491b8a671a7adab470da36e64a9adb1376e4`,
+NO second ejection.** Watched via a background Monitor for the explicit `removed_from_merge_queue`
+event (not just polling for success) per the rails' "queued ≠ merged" discipline — none fired.
+`main` fast-forwarded to `4715491b` (on top of #1077's `6731ab42`).
 
-**Stage 0e — DISPATCHED (background agent, not yet returned).** Per the DAG, Gate-Executor's
-first duty is amending `PRODUCTION_GATE_EXECUTION_POLICY_v1_0.md` to record that the independent-
-reviewer role now lives in-session as a fresh-context subagent (native process-change ruling,
-2026-08-06) rather than a separate chat session — same verification discipline, different dispatch
-mechanism. Dispatched as a general-purpose subagent in an isolated worktree with explicit
-instructions: bump to v1.1, preserve §2/§3 rigor unchanged, open its own small PR to `main`, and
-(as the one-time bootstrapping exception, since this PR is the act of establishing the new
-reviewer mechanism) execute its own merge once its own independent CI check confirms green. Not
-yet returned as of this entry.
+**Stage 0c — CLOSED.** `deploy.yml` auto-fired on the merge commit (`databaseId=31094083939`,
+started 2026-08-06T10:38:55Z), triggered via `workflow_run`. All four services deployed:
+Build & Deploy MCP, Sidecar, Pipeline Job Image, Web — final run status
+`completed`/`conclusion=success`, confirmed via direct `gh run view` poll (not assumed from a
+mid-run screen render). **Migration 540 applied**: independently confirmed via a fresh read-only
+query against `_migrations_applied` — `540_build_protected_assets.sql`, `applied_at
+2026-08-06T10:41:51.476Z`. **One real authenticated MCP call against the deployed connector**:
+called `mcp_server_info` on the live `marsys-jis` MCP server — returned `tool_count: 124`,
+`catalog_version: "catalog-1+t152+r653c2a1a98c8"`, `tools_changed_at: 2026-08-06T10:39:46.000Z`
+(lines up exactly with the deploy window, proving the catalog is genuinely fresh off this deploy,
+not a cached/stale response). Gate 2 fully satisfied.
 
-**Stages 0c/0d (deploy verification; protection-proof transaction) — NOT YET STARTED.** Both
-depend on #1076 actually landing on `main` first (0c needs the `deploy.yml` auto-fire on the
-merge commit; 0d's protection-proof transaction is independent of the merge but is sequenced
-after in the brief's Stage 0 ordering, and migration 540 — the subject of the proof — only
-matters once it's confirmed applied via 0c). Will pick up the instant the merge-queue Monitor
-reports `MERGED`.
+**Stage 0d — CLOSED, Gate 3 PASSES.** Dispatched to a background agent (production DB access,
+transactional proof — the Conductor's own `postgres` MCP tool is read-only by design, so this
+needed a real psql session; the agent found and used the repo's own pre-provisioned Cloud SQL
+Auth Proxy on port 5433 + the checked-in dev `DATABASE_URL`, no new credentials created). Single
+psql session, `SAVEPOINT`-scoped: (1) unauthorized `DELETE` against a protected `chart_id`
+(`482012f1`, `asset_id='ka_gochara_sweep'`) **correctly raised** `BUILD-PROTECTED: ... DELETE is
+refused` from `build_protected_assets_guard_row()`; (2) `ROLLBACK TO SAVEPOINT`, row count
+unchanged (16297); (3) `SET LOCAL app.allow_protected_sweep_rewrite = 'on'` + identical delete →
+**`DELETE 1` succeeded** (in-transaction only); (4) whole transaction ended in **`ROLLBACK`**, not
+COMMIT. Independent post-rollback, out-of-transaction re-query confirmed full corpus integrity:
+`build_substep_progress` (`ka_gochara_sweep`) = 606/606 both charts; `kala_gochara_windows` =
+16,297 (482012f1) / 19,323 (1c826d5a) — byte-matching the SWEEPS-COMPLETE canon exactly. No defect
+found. Migration 540's protection layer works exactly as designed, live-proven in production.
 
-**Stage 1 lanes (R/K/F/G) — NOT YET DISPATCHED.** Correctly blocked on Stage 0 closing per the
-DAG; nothing dispatched prematurely.
+**Stage 0e — IN PROGRESS, not blocking.** Gate-Executor's bootstrapping PR (#1078, amending
+`PRODUCTION_GATE_EXECUTION_POLICY_v1_0.md` to v1.1 to record the in-session fresh-context-agent
+reviewer mechanism) has all PR-context required checks green, but never entered the merge queue
+(`autoMergeRequest` enabled at 10:39:36Z, yet zero `added_to_merge_queue` timeline events —
+`mergeStateStatus=BLOCKED`). Root-caused: `tap-ci.yml`'s `pull_request` trigger has a `paths:`
+filter this docs-only diff doesn't match, so **TAP-6 — a required check — never reports in
+PR-context**; per #1077's own fix, `paths:` filters don't apply to `merge_group` events, so TAP-6
+will fire fine once actually queued — the PR just needs to be added to the queue, not merged
+directly. Diagnostic handed to the Gate-Executor agent via SendMessage; it is now waiting on a
+manually-dispatched TAP-6 run to confirm queue-admission. This is a docs/process artifact, not a
+build dependency — it does NOT block Stage 1 lane work, so Stage 1 was dispatched without waiting
+for it.
 
-*Truth over completion. PARKED-HONEST with evidence, not a false close — this entry will be
-followed by a close-out update once Stage 0 finishes or this session's turn ends, whichever is
-first.*
+**STAGE 0 — CLOSED (0a/0b/0c/0d confirmed; 0e in flight, non-blocking).**
+
+---
+
+## Stage 1 lanes DISPATCHED (2026-08-06, same Conductor session)
+
+All four lanes dispatched in parallel as background builder subagents, each in its own isolated
+worktree cut from `origin/shad-darshana/integration` tip, each instructed: TDD discipline, PR
+against `shad-darshana/integration` (never `main`), never self-merge, never touch this ledger,
+untouchables rail (`kala_gochara_windows` data, `ka_gochara_sweep`-scoped `build_substep_progress`
+rows, sealed evaluator harness, root `CLAUDECODE_BRIEF.md`), FROZEN orchestrator contract (STOP
+and report rather than modify it), §N.3 per-chart delete-then-insert idempotency. None have
+returned as of this entry — PARĪKṢAKA review is dispatched per-lane once each builder's PR lands,
+verdict recorded in this ledger BEFORE any lane PR merges, per the swarm charter.
+
+- **Lane R** (hash-replay + W2 gate-close): rebuild `ka_kshetra` from scratch on both canonical
+  charts (substep rows were cleared this session — genuine from-zero recompute), compare
+  `kala_field_snapshots` hashes against the recorded `kfs_87484404…`/`kfs_b3bcf77a…` values, then
+  walk all 12 items of `PARIKSHAKA_W2_ACCEPTANCE_CHECKLIST_v1_0.md` with live evidence. Explicitly
+  instructed on the native ruling already in this ledger: the published three-state zero-score
+  `NE_V01_SCOREBOARD_v1_0.md` (both charts, both scopes, honest zero) IS the W2-complete state —
+  do not hold the gate open for a non-zero score.
+- **Lane K** (W3K close): confirmed for the builder that K.1/K.3/K.4 are already merged and
+  migration 535 is now live in production (`applied_at 2026-08-05T08:56:30Z`, independently
+  re-checked this session) — remaining work is K.2 real per-chart significator derivation +
+  cuspal sub-lord materialization on both charts now that sweep locks are free, then a full brief
+  §3 Gate W3K clause walk.
+- **Lane F** (W4 fixtures): instructed on the two real, already-disclosed wiring gaps from the
+  prior T5 session (`resolveFilingState` not wired to `intervention_filing.ts`; no serve-time
+  write path into `mimamsa_intervention_ledger`) — this lane must fix those TDD-first, not just
+  run the existing harness and report the known failure, then run the canned Mode-2 fixture on
+  both charts (must yield different candidate sets) plus the weak-promise UPĀYA and ledger-filing
+  tests.
+- **Lane G** (W2G start, item 19): a prior Explore-agent research pass this session INCORRECTLY
+  concluded W2G is blocked on unruled N1-N4 adjudications. Directly re-verified against this
+  ledger's own "N1–N5 ratification block" table before dispatch: **all five are ruled**
+  (N1-N4 via ADJUDICATION-3 through -6, 2026-08-01; N5 by the native directly, same day), and
+  the per-chart sweep-lock blocker is cleared (SWEEPS-COMPLETE, both charts). W2G IS startable —
+  the builder was instructed to independently re-verify this itself before proceeding, not trust
+  either this ledger note or the wrong research pass blindly. Scoped as progressive-horizon-first
+  (±3y before full century), building the per-chart join+score writer on top of the already-built,
+  already-measured `bg_gochara_arcs` chart-independent substrate (~111µs/contact, PR #1054).
+  Explicitly told this is the campaign's longest pole and is allowed to land honestly-partial
+  rather than rush an unverified "complete" claim.
+
+**NEXT-ACTION for whichever session/turn picks this thread back up:** watch for the four lane
+agents' completion notifications; for each, dispatch a fresh-context PARĪKṢAKA (default-REFUTED,
+own queries against live state, never trusting the builder's self-report) before any lane PR
+merges to `shad-darshana/integration`; record every verdict here; run the Stage 2 merge-train once
+Gate W2 (Lane R) actually closes, per the DAG's own "Stage 2 dispatches after W2 closes" ordering.
+Also watch for Gate-Executor's PR #1078 to actually enter the queue and merge — non-blocking but
+still owed a close.
+
+*Truth over completion. PARKED-HONEST with evidence, not a false close.*
 
 ---
 
