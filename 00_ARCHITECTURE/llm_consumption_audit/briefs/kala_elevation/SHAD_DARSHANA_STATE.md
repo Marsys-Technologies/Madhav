@@ -11,6 +11,89 @@ governing: SHAD_DARSHANA_NIGHT_RUN_v1_0.md (orchestration) + SHAD_DARSHANA_BRIEF
 
 # ṢAḌ-DARŚANA STATE — the campaign ledger
 
+## MORNING REPORT — GATE-1 BUILDER session close (2026-08-06)
+
+**Attribution:** ṢAḌ-DARŚANA builder session, dispatched with three deliverables (ne_v01
+scoreboard, this ledger entry, Gate-1 packet + PR). Opened on `origin/shad-darshana/integration`
+tip `39105d7c` (PR #1075, `ga_dashas` savepoint-isolation, already merged before this session
+started). This session builds and proves; it does not merge or deploy — that is the independent
+reviewer's role per `PRODUCTION_GATE_EXECUTION_POLICY_v1_0.md`.
+
+### 1. ne_v01 scoreboard published
+
+`gate_chain_prestage/NE_V01_SCOREBOARD_v1_0.md` (this directory), first publication. Full
+per-scope detail and evidence live there; summary: **both `kala_field_skill` and
+`kala_field_gof` are empty for both canonical charts — zero scores published, zero permanent
+baselines exist yet for any (chart × scope) pair.** 482012f1 is `empty-no-overlap` on every one
+of the 6 N_e-covered classes (0/6 promised non-denied, verified at both the field-snapshot skip
+log and the `bodha_pratijna` promise layer independently); 1c826d5a is `underpowered(n=0)` on
+its 2 overlapping classes (marriage, separation — real field built, `life_events`=0 rows for
+this chart so nothing to score) and `empty-no-overlap` on the other 4.
+
+**Honesty disclosure on the governing ruling:** the dispatch brief for this session cited this
+scoreboard as built "per ruling R1 (three-refinement ruling in the ledger)." A targeted search
+of this file (all 3,385 pre-existing lines), all 18 ADJUDICATION rulings, the five dedicated
+`SHAD_DARSHANA_ADJUDICATION_*` artifacts, both BRIEF/NIGHT_RUN docs, and
+`KALA_W2_FIELD_DESIGN_v1_0.md` found no artifact literally labeled "R1" and no prior ledger
+entry containing this exact three-state vocabulary or the "permanent baseline per (chart ×
+scope)" framing. The scoreboard was built to the dispatch brief's own specification (which is
+consistent with, and a refinement of, `KALA_W2_FIELD_DESIGN_v1_0.md` §7.3's ratified
+`skill_state`/`gof_state`/E7.5 design) rather than to an independently-locatable "R1" document.
+Since this scoreboard publishes zero actual scores, nothing here becomes an irreversible
+artifact today (`PRODUCTION_GATE_EXECUTION_POLICY_v1_0.md` §2's strictness clause is not
+triggered) — but the native/independent reviewer should confirm this refinement is the intended
+design before a future session's first real score publication relies on it as settled.
+
+### 2. cb73cd3d provenance (found in this session's sweep-table sweep, per dispatch item 2)
+
+`build_substep_progress`/`kala_gochara_windows` carry a third chart, `cb73cd3d-9eba-4220-9902-
+0de91566e980`, at 70/606 sweep substeps and 2,667 window rows (both figures live-verified this
+session). Queried `charts` directly: **`cb73cd3d` = Kiran Shenoy** (b. 1971-10-25, Mysuru,
+Karnataka; `role='native'`; row `created_at` 2026-06-07). This is not a mystery or an orphan —
+it is the **Tier-2 rollout chart named by ADJUDICATION-4 (N2, 2026-08-01)**: "Tier 2 =
+`cb73cd3d` Kiran Shenoy (only third chart with a v1 corpus, 1970→2027, scoped divergence
+report)." Its partial sweep (70/606) is expected and in-progress for a Tier-2 chart — Tier 1
+(both canonical charts together) is this campaign's actual W2G gate and is the only pair the
+sweep-completion/hash-replay/skill-score work above concerns; Tier 2/3 rollout is explicitly
+sequenced after Tier 1 per ADJUDICATION-4's own ordering. No action taken on this chart's rows
+(read-only query only, consistent with the untouchables rail).
+
+### 3. Quarantined-scripts note
+
+The corrected 16-asset field-build dispatch that unblocked this morning's orchestrator run (per
+this morning's earlier session record above) was executed via an ad hoc, deliberately
+**untracked** dispatch script, per this campaign's standing convention (also used for the
+`dispatch_shaddarshana_c2_*`/`dispatch_int929_gochara_resume_*` sweep-resume scripts): such
+operational one-shot dispatch scripts are never committed and live only transiently in a
+checkout for the duration of their use. Verified this session: the current worktree's `git
+status` is clean — no such script is present, tracked or untracked, in this checkout. Nothing
+was silently dropped from this PR; these scripts were never meant to be part of any PR diff.
+
+### 4. 16-asset dispatch closure evidence
+
+Live-queried `asset_throughput` for both canonical charts: **zero rows in `state='error'`**
+(query run this session, both `chart_id`s, unfiltered by asset). Every asset this morning's
+recovery session touched (`ga_condition`, `ka_dasha_kala`, `bo_bimba`, `bo_cgm_motifs`,
+`bo_karanajala`, `bo_pratijna`, `bo_sangati`, `bo_upaya`, `bo_laksana`, `ka_kshetra`, `mi_bhara`
+— 11 assets with a `last_built_at` after 2026-08-06T03:30 UTC, both charts) now reads `state IN
+('lit','dormant')`, none `error`. **Disclosed limit:** the dispatch script that ran the original
+16-asset set is gone (untracked, per item 3 above), so this session cannot independently
+re-enumerate the exact 16-item asset list from its source — the claim verified here is the
+observable *outcome* (zero residual errors across every asset that was actually rebuilt today),
+not a re-derivation of the dispatch's original target list. `mi_bhara` on both charts reads
+`state='dormant', rows_written=0` — consistent with the honest-empty/zero-outcomes scoring
+result in the scoreboard above, not a crash (no `last_error` populated).
+
+### 5. Gate-1 packet
+
+See the integration→main PR opened this session for the full pre-scored packet per
+`PRODUCTION_GATE_EXECUTION_POLICY_v1_0.md` §1–§2. This session proves; it does not execute the
+merge — the independent reviewer session does, per policy.
+
+*Truth over completion. PARKED-HONEST with evidence, not a false close.*
+
+---
+
 ## NEXT-ACTION
 
 **SWEEPS-COMPLETE — recorded by SESSION-B-BUILD (Gate-Chain session), 2026-08-05 ~06:45 UTC,
