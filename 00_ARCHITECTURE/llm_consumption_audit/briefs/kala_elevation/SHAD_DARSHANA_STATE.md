@@ -2,6 +2,28 @@
 
 ---
 type: CONDUCTOR-NOTE
+timestamp: 2026-08-06T20:26:40Z
+heartbeat_number: 38
+event: CI blocked (Actions major_outage, outage ~5.1h); automated lease renewal
+integration_tip: 3e2d8a889
+actions_status: major_outage
+pr_1090_checks: 0_started
+
+## CONDUCTOR HEARTBEAT #38 — 2026-08-06T20:26:40Z
+
+**Lease renewed:** 2026-08-06T20:26:40Z (automated CONDUCTOR loop — ≤10m interval maintained)
+**Integration tip:** 3e2d8a889 (unchanged — outage blocking CI on PR #1090)
+
+**Actions status:** major_outage
+**PR #1090:** 0 checks started — reviewer hold active
+**Outage duration:** ~5.1h since 2026-08-06T15:22Z
+
+All productive pre-walk work complete (HBs #25–#28). This is a pure lease-renewal HB.
+When Actions returns `operational`: independent reviewer → PR #1090 merge → Stage 1-5
+post-deploy sequence documented in HB #28.
+
+---
+type: CONDUCTOR-NOTE
 timestamp: 2026-08-06T20:17:37Z
 heartbeat_number: 37
 event: CI blocked (Actions major_outage, outage ~4.9h); automated lease renewal
