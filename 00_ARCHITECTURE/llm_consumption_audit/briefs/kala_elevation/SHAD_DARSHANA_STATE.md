@@ -2,6 +2,73 @@
 
 ---
 type: CONDUCTOR-NOTE
+timestamp: 2026-08-06T19:00:00Z
+heartbeat_number: 27
+event: CI blocked (GitHub Actions major_outage ~2h37m, incident updated 18:46Z — no ETA); E6-full pre-walk analysis complete
+integration_tip: 06eadcb12
+actions_incident_id: qcvjkzcs7j74
+actions_status: major_outage
+actions_incident_updated: 2026-08-06T18:46:37Z
+pr_1090_checks: 0_started
+gate_w3_e6_full_finding: PARKED-HONEST (not built — see below)
+next_hb_due: 19:10Z
+
+## CONDUCTOR HEARTBEAT #27 — 2026-08-06T19:00Z
+
+**Lease renewed:** 19:00:00Z (HB #26 was 18:55Z; gap = 5m00s — within ≤10m window)
+**Integration tip:** 06eadcb12 (unchanged)
+
+### CAMPAIGN STATE AT HB #27
+
+**CI MONITORING:**
+- GitHub Actions incident `qcvjkzcs7j74` ("Incident with Actions") — status: `investigating`
+- Last incident update: 2026-08-06T18:46:37Z ("Workflow runs are still failing, jobs may remain
+  queued for an extended period before starting or may time out")
+- Outage duration: ~3h37m (started ~15:22Z)
+- PR #1090 checks: 0 started — reviewer hold remains; no change to merge gate condition
+
+**E6-FULL PRE-WALK ANALYSIS COMPLETE — FINDING: PARKED-HONEST PROJECTED**
+
+Reviewed all five W3.1.E6 sub-items against the integration branch:
+- NOW `state_delta`: NOT FOUND in `now.ts` — no implementation
+- AHEAD `decision_value`: NOT FOUND in `ahead.ts` — E6-lite (90-day digest) at W1 only
+- STORY `developmental_thesis`: NOT FOUND in `story.ts` — no implementation
+- PRIORITIZE `attention_ledger`: NOT FOUND in `priority.ts` — salience_vector_five_axis is live
+  (W2 item), but the E6-full PRIORITIZE deepening is distinct and not built
+- EXPLAIN `pedagogy` + `counterfactual_mode`: explicitly `notInCorpusCoverage` in `explain.ts`
+  (lines 421-422, 537-538: "items 11 and E6, are NOT yet built — honestly flagged")
+
+**Projected Gate W3 disposition for W3.1.E6: PARKED-HONEST**
+Reason: E6-full per-view deepenings not built (all five sub-items missing); each view either
+has no implementation or explicitly declares notInCorpusCoverage. E6-lite (AHEAD 90-day digest +
+weakest_link) was VERIFIED-FIXED at W1 (PR #934). Release condition: W5+ wave.
+
+**W3.1.33 (absence-of-expected) — PARKED-HONEST PROJECTED:**
+TypeScript PRIORITIZE surface still has `notInCorpusCoverage('surprise_of_absence', '...')` in
+`priority.ts` line 412. Python-side pratijna linkage exists in `ka_yojaka.py`. PR #1085 (W3-INT)
+received ACCEPT-WITH-DEBT from PARĪKṢAKA. The serving surface is honest about current state.
+
+**POSITIVE FINDINGS (all VERIFIED-FIXED projected):**
+- Items 4/5/6/7/13/14/16/17/31/34/36/37-part/38-full/41: all writers confirmed on integration
+- Item 37-part: `kala_paddhati_profile` schema in migrations 533/534/537, retrieval tool in
+  `L3_kala/query_kala_paddhati_profile.ts` ✓
+- Item 38-full: `judgment_ledger`, `gap_report`, `lattice_adjudication` all in `elect.ts` W3
+  section; ONE-ENGINE RULE confirmed (shared with YAJÑA-SETU via `kala_lattice_query.ts`) ✓
+
+**UNRESOLVED (requires live production data):**
+- W3.0 (S4-05 re-test): script exists at `scripts/s4_05_data_real_retest.py`, but the live
+  production health-class data won't exist until orchestrator builds run post-deploy
+- W3.2 (ELECT judgment ledgers): need live `kala_elect_get` call against real production
+- W3.3 (Abhijit-override rescue): needs real ELECT call with Abhijit-window query
+- W3.4 (gap report): needs real ELECT call with no-ideal-candidate horizon
+- W3.5 (factor census served): needs live PRIORITIZE/census call
+
+**GitHub Actions outage prognosis:** "extended period" — no ETA. Independent reviewer hold
+remains: merge only after CI recovers AND all required checks show green.
+**Next heartbeat due:** ~19:10Z
+
+---
+type: CONDUCTOR-NOTE
 timestamp: 2026-08-06T18:55:22Z
 heartbeat_number: 26
 event: CI still blocked (GitHub Actions major_outage ~2h22m); pre-walk investigation of W3 items complete
