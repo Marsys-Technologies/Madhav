@@ -1,4 +1,47 @@
 ---
+
+## PRE-FLIGHT COMPLETE + LANES DISPATCHED — 2026-08-06T16:35:00Z
+
+**PRE-FLIGHT RESULTS (all green):**
+- main==production: MCP confirms `tools_changed_at: 2026-08-06T10:39:46Z`, `catalog_version: catalog-1+t152+r653c2a1a98c8`, `tool_count: 124` — matches prior Stage 0c record. ✅
+- sweep corpus: `build_substep_progress` ka_gochara_sweep = 606/606 (both canonical charts). `kala_gochara_windows` v1: 16,297 (482012f1) / 19,323 (1c826d5a). Zero generation=2.0 rows anywhere. ✅
+- `kala_gochara_windows_v2`: 29 rows (482012f1) — W2G's honest output under new design. ✅
+- PR #1078: fully landed in origin/main at 171eb90ba. ✅
+- Zero in-flight PRs targeting integration. ✅
+- Main checkout clean; integration worktree (/tmp/shad-integration) for conductor ledger management. ✅
+- Integration tip: 2b2c5de1f (after HEARTBEAT commit). ✅
+- Migration high-water: 542. Substrate branch ca6d1d4b migrations 484/485 will renumber to 543+ on rebase.
+
+**W2 OPEN ITEMS (from PARIKSHAKA_W2_ACCEPTANCE_CHECKLIST_v1_0.md, builder-walked 2026-08-06):**
+- W2.4.b: PARKED-HONEST — literal flag `no_lived_history_recorded` absent (actual: `lel_pinning_per_chapter`); naming reconciliation needed.
+- W2.5.a: PARKED-HONEST — cohort table has 10,000 rows but `factor_informativeness=NULL` on ALL served windows; not root-caused as defect vs. honest-empty.
+- W2.7.a: PARKED-HONEST — salience vector computed in `kala_field_salience`, not wired into `kala_priority_get` response. Bounded code fix.
+- W2.8.a: PARKED-HONEST — 1c826d5a has 2 real insight rows; "leads readings" ordering check never run. 482012f1 genuinely empty.
+- W2.10.b: PARKED-HONEST — LIVE specificity gate mode unexercised (no MCP credential pair invocation).
+- W2.3/W2.12: PARKED-HONEST per native ruling (zero-score honest terminal state / reported-not-gated). Non-blocking.
+
+**W3 OPEN ITEMS (items 6/7/9/13/31 done; remaining open):**
+Items 1/3/4/5/14/16/17/33/34/36/37/41
+
+**LANES DISPATCHED at 2026-08-06T16:35:00Z — ALL 6 SIMULTANEOUSLY:**
+
+| Lane | Items | Branch | Worktree | DEADLINE |
+|------|-------|--------|----------|----------|
+| W2-FIN | W2 gate-close (W2.4b/W2.5/W2.7/W2.8/W2.10) → item-44 census → W5-prep | shad-darshana/lane-w2-fin | /tmp/wt-w2-fin | 2026-08-06T19:00:00Z |
+| W3-CAL | 1/3/16 (daśā-sandhi, sky-event calendar, Kota-Chakra) | shad-darshana/lane-w3-cal | /tmp/wt-w3-cal | 2026-08-06T20:00:00Z |
+| W3-MUH | 4/5/14 (moorti-nirṇaya, vedha+Sarvatobhadra, election micro-rules) | shad-darshana/lane-w3-muh | /tmp/wt-w3-muh | 2026-08-06T20:00:00Z |
+| W3-ENG | 41/36 (from substrate ca6d1d4b; bg_muhurta_lattice+bg_parihara_rules → census → lattice engine) | shad-darshana/lane-w3-eng | /tmp/wt-w3-eng | 2026-08-06T21:00:00Z |
+| W3-RIT | 17/37 (Sudarśana year-wheel + ritual-resonance profile) | shad-darshana/lane-w3-rit | /tmp/wt-w3-rit | 2026-08-06T20:00:00Z |
+| W3-INT | 33/34 → W5-prep (absence detector, contrastive EXPLAIN, 8 primitives) | shad-darshana/lane-w3-int | /tmp/wt-w3-int | 2026-08-06T19:30:00Z |
+| G-LAND | Equivalence hardening both charts (parallel sub-dispatches), 1128-row bucket per R2, SLO evidence | shad-darshana/lane-g-land | /tmp/wt-g-land | 2026-08-07T02:00:00Z |
+
+PARĪKṢAKA dispatched fresh per lane as each PR lands. Merge train serial on CI-green + PARĪKṢAKA verdict.
+
+NEXT-ACTION: monitor lanes; heartbeat every 10 min; PARĪKṢAKA reviews as PRs land; gate chain after last W3 merge.
+
+---
+
+---
 artifact: SHAD_DARSHANA_STATE (Campaign Ledger)
 canonical_id: SHAD_DARSHANA_STATE
 version: rolling
