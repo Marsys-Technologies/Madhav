@@ -65,6 +65,24 @@ remain at `generation='2.0'` anywhere in the table; v1's `482012f1` baseline ind
 re-confirmed unchanged at **16,297**. Transaction ended in `COMMIT`. The corpus is now clean —
 Lane G's rework starts from zero contamination, not from a state needing further cleanup.
 
+**PR #1078 MERGED** to `main` at `171eb90ba419c6a406ae64485dec08eab02f1613`
+(2026-08-06T12:48:17Z), NO ejection this time. Root cause of the earlier stuck-BLOCKED state,
+confirmed empirically: a `workflow_dispatch`-triggered TAP-6 run is genuinely associated with the
+PR's head commit SHA (verified via the commit's own check-runs API) but does NOT satisfy this
+repo's `required_status_checks` ruleset the same way a `pull_request`-context run does —
+`mergeStateStatus` stayed `BLOCKED` despite the check-run existing and passing. Fix: a trivial,
+in-scope touch to `.github/workflows/tap-ci.yml` (already in that workflow's own `pull_request`
+`paths:` allowlist) forced a REAL `pull_request`-context TAP-CI run, which correctly satisfied
+the ruleset once complete — `mergeStateStatus` flipped `BLOCKED`→`CLEAN` the moment it finished,
+and the PR entered and cleared the merge queue normally on the next `gh pr merge --auto`. This is
+the second distinct merge-queue/required-check quirk this campaign has hit and fixed this week
+(after #1077's missing `merge_group` trigger) — both share the same root shape: a required
+check's workflow not firing in the exact event context GitHub's ruleset evaluation expects for a
+given diff shape (queue-context vs. PR-context vs. dispatch-context). Worth a standing note for
+any future required-check addition: verify it fires correctly in ALL three contexts
+(`pull_request`, `merge_group`, and ideally not depend on `workflow_dispatch` as a substitute for
+either), not just the one exercised by whatever PR happened to add it.
+
 ---
 
 ## MORNING REPORT — CONDUCTOR session close (2026-08-06, residual-completion campaign)
