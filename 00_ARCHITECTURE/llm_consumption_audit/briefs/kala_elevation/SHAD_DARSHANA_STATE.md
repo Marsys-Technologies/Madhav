@@ -30,6 +30,28 @@ now free — Phase 2 (gate chain) begins below.
 
 ---
 
+## RULING — UNTOUCHABLES RAIL SCOPED (2026-08-06, GATE-REVIEWER session, native decision)
+
+**Native ruling (AskUserQuestion, 2026-08-06): "Amend the rail first."** The untouchables
+rail's `build_substep_progress` entry is SCOPED from the whole table to
+**rows with `asset_id='ka_gochara_sweep'`** — the protected sweep corpus the rail was created
+for. Other assets' substep rows are ordinary rebuildable bookkeeping (per-chart
+delete-then-insert regenerates them). Amended in place: `SHAD_DARSHANA_BRIEF_v2_0.md` §7 (both
+occurrences) + `SHAD_DARSHANA_NIGHT_RUN_v1_0.md`. DB-level protection (migration 540) was
+verified ALREADY correctly scoped — its triggers guard `kala_gochara_windows` for
+`ka_gochara_sweep` protected pairs only — so this amendment brings the doc rail into line with
+the enforced one; no DB change needed.
+
+**Consequence — hash-replay park RELEASED:** deleting `ka_kshetra`'s own
+`build_substep_progress` rows for the two canonical charts is now rail-compliant without an
+exception record. The GATE-REVIEWER session executes the scoped deletion with before/after
+row-count audits + a sweep-corpus integrity check (606/606 both charts) recorded below the
+deletion. The hash-replay run itself (rebuild ka_kshetra from scratch, compare
+`kala_field_snapshots` hashes) remains for the next build session — this ruling removes its
+blocker, not its work.
+
+---
+
 ## CONSOLIDATED UPDATE — DEFECT #6/#7 CLOSEOUT + SAFETY-NET TRIAGE (2026-08-06)
 
 Four items closed out tonight, each dispatched as its own worktree/lane per the standing house
