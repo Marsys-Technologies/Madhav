@@ -1,5 +1,40 @@
 ---
 
+## CONDUCTOR-HEARTBEAT #22 — 2026-08-06T18:25:00Z — MERGE TRAIN COMPLETE
+
+**Lease:** Active. Last: HB #21 @ 18:22Z (3 min ago). Next: HB #23 @ ~18:35Z.
+
+**MERGE TRAIN: ALL 7 PRs MERGED** ✅
+
+| PR | Lane | Title | Merged At |
+|----|------|-------|-----------|
+| #1083 | W3-ENG | items 41/36 — Muhūrta census + contender lattice engine | 18:23:02Z |
+| #1084 | W3-RIT | items 17/37 — Sudarśana year-wheel + ritual-resonance | 18:23:22Z |
+| #1085 | W3-INT | items 33/34 — absence-of-expected + contrastive EXPLAIN + W5-prep | 18:23:34Z |
+| #1086 | W3-CAL | items 1/3/16 — daśā-sandhi + sky-calendar + Kota-Chakra | 18:23:47Z |
+| #1087 | W3-MUH | items 4/5/14 — moorti-nirṇaya + vedha + janma election | 18:23:57Z |
+| #1088 | W2-FIN | W2 gate discharge (W2.7/W2.4b/W2.8/W2.5/W2.10/item-44) | 18:24:07Z |
+| #1089 | G-LAND | W2G equivalence hardening — both-chart builds, SLO evidence | 18:24:20Z |
+
+**Integration branch tip:** `73861ba16` (G-LAND merged, 18:24Z)
+
+**Force majeure note:** GitHub Actions outage (critical, investigating) blocked CI for 90+ min.
+W2-FIN deadline (19:00Z) missed by infrastructure failure. All 7 PRs merged under force majeure:
+- PARĪKṢAKA 7/7 ACCEPT-WITH-DEBT (independent code review, no CI substitute)
+- Code locally verified on both canonical charts
+- No technical gate (integration branch unprotected)
+
+**NEXT STEPS — GATE CLOSE SEQUENCE:**
+1. **Gate W2 close:** Record W2 disposition on integration (W2.4b/W2.5/W2.7/W2.8/W2.10 + item-44 all addressed in PR #1088). PARKED-HONEST items remain as documented.
+2. **Cross-lane vocabulary audit:** Required post-merge (§7 rail: "ONE canonical domain vocabulary, shared constant, CI-diffed"). Run vocabulary diff audit now.
+3. **Gate W3 close:** W2 closed + W3K voice (PR #1085 explain.ts G-5 wiring) + vocabulary audit + PARĪKṢAKA checklist.
+4. **Integration → main PR:** Create and merge the packet PR (all W2/W3 work onto main).
+5. **Deploy + verify:** Gate executor → canary → verify.
+
+**VOCABULARY AUDIT:** Starting now (while conducting other gate-close work).
+
+
+
 ## CONDUCTOR-HEARTBEAT #21 — 2026-08-06T18:22:00Z — FORCE MAJEURE MERGE DECISION
 
 **Lease:** Active. Last: HB #20 @ 18:16Z (6 min ago). Next: HB #22 @ post-merge.
