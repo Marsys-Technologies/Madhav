@@ -996,6 +996,20 @@ export const ASSETS: AssetDef[] = [
     // points: sensitive_point_gulika_mandi, sun_derived_upagraha, special_lagna (new IN entries);
     // esoteric_point_sphuta_fertility + esoteric_point_yogi_system covered by esoteric_point_%.
     // nakshatra_pada_sensitive (80 rows) was previously missing from the IN list; added here.
+    // ṢAḌ-DARŚANA Lane K / Gate W3K close (2026-08-06): the old `LIKE 'kp_%'` wildcard
+    // was written when ga_sensitive_writer.py's only two `kp_*` fact_categories were
+    // `kp_ruling_planets_natal` and `kp_cuspal_significators` (verified against the
+    // writer's own fact_category literals). W3K Lane 1 (PR #1039) landed
+    // `kp_house_significators`/`kp_planet_significations` on `ga_nakshatra` — a
+    // DIFFERENT asset — and the wildcard silently started double-counting them too
+    // (any `kp_`-prefixed category collides, regardless of which writer emits it).
+    // Verified live: this over-counted chart 482012f1 by 1,045 rows (540 + 505) that
+    // ga_sensitive never wrote. Narrowed to an explicit IN-list entry — §N.4 cockpit
+    // truth, §N.7 item 3 ("no wrapper-local [pattern] may shadow" another asset's own
+    // named ownership) — and guarded by
+    // `scripts/__tests__/catalog_reconciliation.test.ts`'s new cross-asset
+    // wildcard-collision test so a future `kp_*` category addition fails CI instead of
+    // silently re-introducing this defect.
     count_sql: `
   SELECT count(*) AS count FROM chart_facts
   WHERE chart_id = $1
@@ -1006,10 +1020,9 @@ export const ASSETS: AssetDef[] = [
         'arudha_pada', 'midpoint', 'aprakasha_position',
         'lal_kitab_special_point', 'maharsi_specific_point', 'bhrigu_nadi_point',
         'sensitive_point_gulika_mandi', 'sun_derived_upagraha', 'special_lagna',
-        'nakshatra_pada_sensitive'
+        'nakshatra_pada_sensitive', 'kp_ruling_planets_natal', 'kp_cuspal_significators'
       )
       OR fact_category LIKE 'esoteric_point_%'
-      OR fact_category LIKE 'kp_%'
       OR fact_category LIKE 'tajik_%'
     )
 `,
