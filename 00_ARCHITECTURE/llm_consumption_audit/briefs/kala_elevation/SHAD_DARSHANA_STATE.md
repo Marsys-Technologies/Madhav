@@ -86,9 +86,14 @@ result in the scoreboard above, not a crash (no `last_error` populated).
 
 ### 5. Gate-1 packet
 
-See the integration→main PR opened this session for the full pre-scored packet per
-`PRODUCTION_GATE_EXECUTION_POLICY_v1_0.md` §1–§2. This session proves; it does not execute the
-merge — the independent reviewer session does, per policy.
+**PR #1076** (`shad-darshana/integration` @ `be07cbb0` → `main`,
+https://github.com/Marsys-Technologies/Madhav/pull/1076) — full pre-scored packet per
+`PRODUCTION_GATE_EXECUTION_POLICY_v1_0.md` §1–§2 in the PR body: migration 540 diff+DOWN path
+(PASS), zero residual `asset_throughput` errors (PASS), scoreboard-vs-ruling disclosed gap (see
+item 1 above), rollback paths (PASS), CI states (PENDING at packet-authoring time — this branch
+does not run CI on direct push, only against a PR targeting `main`; the independent reviewer
+must re-poll before executing). This session proves; it does not execute the merge — the
+independent reviewer session does, per policy.
 
 *Truth over completion. PARKED-HONEST with evidence, not a false close.*
 
