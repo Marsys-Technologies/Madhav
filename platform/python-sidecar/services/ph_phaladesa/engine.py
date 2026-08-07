@@ -21,6 +21,8 @@ from dataclasses import dataclass, field
 from datetime import date
 from typing import Optional
 
+from brahmagyan.domain_vocabulary import CANONICAL_DOMAINS_SORTED
+
 __all__ = [
     'PERMITTED_NARRATION_MODELS',
     'BANNED_MODEL_PREFIXES',
@@ -50,7 +52,11 @@ BANNED_MODEL_PREFIXES: tuple[str, ...] = (
     'claude-', 'anthropic/', 'claude3', 'claude2',
 )
 
-_ALL_DOMAINS = ('career', 'wealth', 'health', 'relationship', 'spirituality', 'character', 'transition')
+# SHABDA-SHUDDHI Lane L5 (Fix 5): _ALL_DOMAINS now covers all 13 canonical domains
+# (imported from brahmagyan.domain_vocabulary). Before this fix, 6 canonical domains
+# (progeny, education, family, residence, travel, general) were missing — those domains
+# never received a phala_phaladesa row on any chart build.
+_ALL_DOMAINS = CANONICAL_DOMAINS_SORTED  # all 13 canonical domains, deterministically sorted
 
 
 class NarrationModelError(ValueError):

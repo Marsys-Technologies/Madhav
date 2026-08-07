@@ -615,13 +615,15 @@ def _extract_primary_graha(signal_dict: dict) -> str | None:
     return None
 
 
+# SHABDA-SHUDDHI Lane L5 (Fix 2): keys updated to canonical domain vocabulary
+# (brahmagyan.domain_vocabulary). 'finance' → 'wealth', 'spiritual' → 'spirituality'.
 _SIGNAL_DOMAIN_KEYWORDS: dict[str, list[str]] = {
-    'career':       ['raja', 'karma', 'tenth', 'arudha', 'amatyakaraka', 'profession'],
-    'relationship': ['kalatra', 'seventh', 'navamsha', 'spouse', 'venus', 'upapada'],
-    'finance':      ['dhana', 'second', 'eleventh', 'wealth', 'lakshmi', 'artha'],
-    'health':       ['ayur', 'sixth', 'eighth', 'maraka', 'vitality', 'disease'],
-    'spiritual':    ['dharma', 'ninth', 'twelfth', 'moksha', 'guru', 'liberation'],
-    'education':    ['vidya', 'fourth', 'fifth', 'mercury', 'saraswati', 'learning'],
+    'career':        ['raja', 'karma', 'tenth', 'arudha', 'amatyakaraka', 'profession'],
+    'relationship':  ['kalatra', 'seventh', 'navamsha', 'spouse', 'venus', 'upapada'],
+    'wealth':        ['dhana', 'second', 'eleventh', 'wealth', 'lakshmi', 'artha'],
+    'health':        ['ayur', 'sixth', 'eighth', 'maraka', 'vitality', 'disease'],
+    'spirituality':  ['dharma', 'ninth', 'twelfth', 'moksha', 'guru', 'liberation'],
+    'education':     ['vidya', 'fourth', 'fifth', 'mercury', 'saraswati', 'learning'],
 }
 
 

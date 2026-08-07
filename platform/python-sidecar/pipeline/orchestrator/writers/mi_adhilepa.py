@@ -153,7 +153,11 @@ def _overlay_row(chart_id: str, origin_layer: str, origin_asset_id: str,
     applied = float(mult["applied_multiplier"])
     raw = float(mult["raw_multiplier"])
     bound = min(applied, _MULTIPLIER_BOUND_MAX)
-    leakage = "clean"
+    # SHABDA-SHUDDHI Lane L5 (Fix 7b): leakage=None until a real detector exists.
+    # Per §N.7-4: a verification flag must have a real detector behind it, or be null.
+    # Hardcoding "clean" with no code path that could produce a different value
+    # is an unimplemented check wearing a clean result's clothes.
+    leakage = None
     applies = mult.get("kill_switch_state", "active") == "active"
     return (
         chart_id,
