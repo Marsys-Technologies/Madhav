@@ -299,3 +299,5 @@ jobs:
 # disclosure does not match paths filter; pattern established in PR #1078 — see NOTE above)
 # no-op: touch to trigger TAP-6 on docs/shad-darshana-session-close-2026-08-07 (SESSION_LOG
 # governance repair does not match paths filter; same pattern — see NOTE above; PR #1094)
+# no-op: touch to trigger TAP-6 on docs/shad-darshana-closing-run-sc-2026-08-07 (CURRENT_STATE
+# v6.53 + SESSION_LOG CLOSING-RUN does not match paths filter; same pattern; PR #1096)
