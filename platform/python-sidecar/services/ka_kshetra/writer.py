@@ -1663,27 +1663,23 @@ class KaKshetraWriter(WriterBase):
     def _discover_event_classes(conn, chart_id) -> list[str]:
         """LIVE discovery from Lane A's promise register — never a hardcoded list.
 
-        Reads `bodha_pratijna` (bo_pratijna), the same source and the same
-        `status IN ('promised', 'conditional')` filter as
-        `stage2_promise._fetch_pratijna` uses for its own live promise-graph
-        computation — NOT `kala_field_routes`. That table is a persistence
-        target `stage2_promise.write_promise_graph`/`write_routes` define but
-        that nothing in the live call graph ever calls (`promise_prior()`
-        computes routes in-memory and returns them; it does not persist them),
-        so it is permanently empty in production. Discovering event classes
-        from it made this writer's plan empty for every chart, always — found
-        2026-08-05 during the first real gate-close field build either
-        canonical chart ever attempted (SHAD_DARSHANA_STATE.md, Gate-Chain
-        session). As Lane A's coverage grows for a chart, this writer's plan
-        grows with it on the next build, with no code change (the
-        `ka_gochara_sweep` pattern) — that design intent was correct; only the
-        table it read from was wrong.
+        SHABDA-SHUDDHI R6: promise is a modifier, never a gate. ALL event
+        classes with a bodha_pratijna row are discovered, regardless of status.
+        The status/grade flow downstream as scaling modifiers via the Adṛṣṭa
+        floor (stage4_field ClassSkipped path for classes without N_e priors;
+        stage2_promise PromisePrior for classes with priors). Excluding
+        'denied' or 'no_evidence' classes here was the root cause of 11 of 27
+        event classes being structurally un-computable for every chart.
+
+        Reads `bodha_pratijna` (bo_pratijna) — NOT `kala_field_routes`. That
+        table is a persistence target that nothing in the live call graph ever
+        calls, so it is permanently empty in production. Found 2026-08-05.
         """
         try:
             with conn.cursor() as cur:
                 cur.execute(
                     'SELECT DISTINCT event_class_id FROM bodha_pratijna '
-                    "WHERE chart_id = %s AND status IN ('promised', 'conditional') "
+                    'WHERE chart_id = %s '
                     'ORDER BY event_class_id', (chart_id,))
                 return [r['event_class_id'] for r in S4._rows(cur)]
         except Exception as exc:

@@ -48,7 +48,12 @@ COMPRESSION_MIN_WINDOWS = 3
 COMPRESSION_SPAN_DAYS = 45.0
 SCARCITY_MIN_YEARS = 5.0
 CONTRAST_MIN_DELTA_LN_LAMBDA = 0.5
-ABSENCE_MIN_PROMISE = 0.60
+# SHABDA-SHUDDHI L3: grade units fix. bodha_pratijna.grade is on [0, 10]
+# (top-5 support mean − 0.5 × top-5 contra mean; promise threshold = 6.0,
+# deny threshold = 2.0). The previous value 0.60 assumed [0, 1] normalization
+# which never existed — the threshold was so low it fired on every non-denied
+# class, defeating its purpose as a "strong natal promise" filter.
+ABSENCE_MIN_PROMISE = 6.0
 
 
 # ── Input shapes (mirror the frozen §5.1-§5.3 boundary Lane D reads) ───────
@@ -498,8 +503,8 @@ def select_leading_insight(rows: list[dict]) -> dict | None:
 class PratijnaRow:
     """A typed slice of a `bodha_pratijna` DB row.
 
-    `grade` is the classical promise score ∈ [0, 1] for the event class on
-    this chart (the normalised value stored in `bodha_pratijna.grade`).
+    `grade` is the classical promise score ∈ [0, 10] for the event class on
+    this chart (stored in `bodha_pratijna.grade`; promise threshold = 6.0).
     `fact_ids` are the `chart_facts.fact_id`s that established the promise —
     they ride the resulting InsightCandidate for B.3 provenance.
     """

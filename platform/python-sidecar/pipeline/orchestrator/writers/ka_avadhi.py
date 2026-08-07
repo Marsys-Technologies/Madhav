@@ -94,12 +94,16 @@ WHERE d.chart_id = %s AND d.level_n = 2 AND d.system_id = ANY(%s)
 ORDER BY d.system_id, d.start_date
 """
 
+# SHABDA-SHUDDHI R6: promise is a modifier, never a gate. All pratijna rows
+# flow through; status/grade are used as scaling modifiers downstream, not as
+# exclusion filters. Removing the status IN ('promised','conditional') gate
+# lets denied/no_evidence classes reach the activation dossier with honest labels.
 _FETCH_PRATIJNA_SQL = """
 SELECT bp.pratijna_id, bp.event_class_id, bp.status, bp.grade,
        beo.domain
 FROM bodha_pratijna bp
 JOIN brahma_event_ontology beo USING (event_class_id)
-WHERE bp.chart_id = %s AND bp.status IN ('promised', 'conditional')
+WHERE bp.chart_id = %s
   AND bp.ayanamsha_id = 'lahiri_chitrapaksha'
 ORDER BY bp.grade DESC
 """
