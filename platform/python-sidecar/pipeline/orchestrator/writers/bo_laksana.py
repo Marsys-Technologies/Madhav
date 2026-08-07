@@ -49,6 +49,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 
+from brahmagyan.domain_vocabulary import CANONICAL_DOMAINS
 from . import WriterBase, ContextSpec, WriterResult, SubStep, register
 from bodha_writers.formulas import (
     salience_formula_v2,
@@ -461,12 +462,17 @@ def _infer_tradition(fact_category: str, source_calculation: str) -> str:
 
 # ── Domain assignment ─────────────────────────────────────────────────────────
 
+# SHABDA-SHUDDHI R7: expanded to 13-domain vocabulary. Categories that carry
+# progeny/education/family/residence/travel significations are annotated with
+# classical citations per B.3 derivation-ledger discipline.
 _DOMAIN_MAP: dict[str, list[str]] = {
-    "yoga_label":                           ["career", "wealth", "health", "relationship", "spirituality"],
-    "yoga_fires":                           ["career", "wealth", "health", "relationship", "spirituality"],
-    "dosha_label":                          ["health", "relationship", "career"],
-    "dosha_fires":                          ["health", "relationship"],
-    "kala_sarpa_per_varga":                 ["character", "career", "wealth"],
+    # Yogas can signify across all major domains — BPHS ch.34-39
+    "yoga_label":                           ["career", "wealth", "health", "relationship", "spirituality", "progeny", "education"],
+    "yoga_fires":                           ["career", "wealth", "health", "relationship", "spirituality", "progeny", "education"],
+    # Doshas affect health + relationship + transition — BPHS ch.47 (Manglik), PD ch.7
+    "dosha_label":                          ["health", "relationship", "career", "transition"],
+    "dosha_fires":                          ["health", "relationship", "transition"],
+    "kala_sarpa_per_varga":                 ["character", "career", "wealth", "transition"],
     "graha_composite_state_classification": ["character", "career", "wealth"],
     "graha_special_state_rollup":           ["character", "career"],
     "graha_yoga_karaka_flag":               ["career", "wealth"],
@@ -483,15 +489,18 @@ _DOMAIN_MAP: dict[str, list[str]] = {
     "aspect_parashari_per_varga":          ["career", "relationship", "wealth"],
     "aspect_jaimini_per_varga":            ["career", "relationship", "spirituality"],
     "kp_cuspal_significators":             ["career", "relationship", "wealth", "spirituality"],
-    "karaka_chara_position":               ["career", "relationship", "character"],
-    "karakamsa_position":                  ["career", "spirituality"],
+    # Chara karakas: putrakaraka→progeny, matrikaraka→family — BPHS ch.32
+    "karaka_chara_position":               ["career", "relationship", "character", "progeny", "family"],
+    "karakamsa_position":                  ["career", "spirituality", "education"],
     "swamsa_position":                     ["spirituality", "career"],
-    "arudha_pada":                         ["career", "wealth", "relationship"],
+    # Arudha padas: A4→residence, A5→progeny, A9→travel — BPHS ch.30
+    "arudha_pada":                         ["career", "wealth", "relationship", "residence", "progeny", "travel"],
     "graha_tri_deva_role_strength":        ["spirituality", "character"],
     "jaimini_tri_deva_role_per_graha":     ["spirituality", "character"],
-    "sade_sati_cycle":                     ["career", "health", "relationship"],
-    "sade_sati_phase":                     ["career", "health", "relationship"],
-    "sade_sati_phase_quarter":             ["career", "health", "relationship"],
+    # Sade Sati: career + health + relationships + transition — BJ ch.4
+    "sade_sati_cycle":                     ["career", "health", "relationship", "transition"],
+    "sade_sati_phase":                     ["career", "health", "relationship", "transition"],
+    "sade_sati_phase_quarter":             ["career", "health", "relationship", "transition"],
     "panchanga_yoga":                      ["character", "spirituality"],
     "panchanga_tithi":                     ["character", "spirituality"],
     "panchanga_vara":                      ["character"],
@@ -505,24 +514,27 @@ _DOMAIN_MAP: dict[str, list[str]] = {
     "graha_dignity_per_varga":             ["character", "career"],
     "nakshatra_dispositor":                ["character", "relationship"],
     "nakshatra_dispositor_chain":          ["character", "relationship"],
-    "lord_in_house_per_varga":             ["career", "wealth", "relationship"],
-    "bhava_significance_link":             ["career", "relationship", "wealth"],
+    # Lord-in-house: domains depend on both house and varga — BPHS ch.24
+    "lord_in_house_per_varga":             ["career", "wealth", "relationship", "progeny", "education", "family"],
+    # Bhava significance links: the bhava's own karyatva — BPHS ch.11
+    "bhava_significance_link":             ["career", "relationship", "wealth", "progeny", "education", "family", "residence", "travel"],
     "combustion_per_varga":                ["health", "career"],
     "sambandha_grade":                     ["career", "relationship"],
     "convergence_count":                   ["career", "character"],
 }
 
+# SHABDA-SHUDDHI R7: defaults expanded to 13-domain vocabulary.
 _CATEGORY_DEFAULT_DOMAINS: dict[str, list[str]] = {
-    "structural":          ["character", "career"],
-    "nakshatra":           ["character", "relationship"],
+    "structural":            ["character", "career", "family"],
+    "nakshatra":             ["character", "relationship", "spirituality"],
     "strength_ashtakavarga": ["career", "wealth"],
-    "sade_sati":           ["career", "health", "relationship"],
-    "panchanga":           ["character", "spirituality"],
-    "yoga":                ["career", "wealth", "spirituality"],
-    "medical":             ["health"],
-    "vastu":               ["health", "wealth"],
-    "tajaka":              ["career", "wealth"],
-    "varga":               ["career", "character"],
+    "sade_sati":             ["career", "health", "relationship", "transition"],
+    "panchanga":             ["character", "spirituality"],
+    "yoga":                  ["career", "wealth", "spirituality", "progeny", "relationship"],
+    "medical":               ["health"],
+    "vastu":                 ["health", "residence"],
+    "tajaka":                ["career", "wealth"],
+    "varga":                 ["career", "character"],
 }
 
 
@@ -535,21 +547,36 @@ _CATEGORY_DEFAULT_DOMAINS: dict[str, list[str]] = {
 # inherit that bhava's canonical domains — the significator's karyatva follows
 # the house it rules.
 #
-# Bhava → domain map keyed to the 6 canonical domains
-# (career, wealth, health, relationship, spirituality, character).
+# Bhava → domain map keyed to the full canonical 13-domain vocabulary
+# (SHABDA-SHUDDHI R7). Each row carries a classical citation per B.3.
+#
+# Citations: BPHS = Brihat Parasara Hora Shastra; BJ = Brihat Jataka (Varahamihira);
+# PD = Phaladeepika (Mantreswara); JP = Jataka Parijata.
 _BHAVA_DOMAINS: dict[int, list[str]] = {
+    # 1st (Tanu): self, body, temperament — BPHS ch.11 v.1-2
     1:  ["character", "health"],
-    2:  ["wealth", "character"],
+    # 2nd (Dhana): wealth, family, speech, food — BPHS ch.11 v.3-4; PD ch.2 v.5
+    2:  ["wealth", "family", "character"],
+    # 3rd (Sahaja): siblings, courage, short travel — BPHS ch.11 v.5-6
     3:  ["career", "character"],
-    4:  ["character", "wealth"],
-    5:  ["character", "spirituality"],
+    # 4th (Sukha): mother, property/residence, education, happiness — BPHS ch.11 v.7-8; PD ch.2 v.8
+    4:  ["residence", "education", "family", "character"],
+    # 5th (Putra): progeny, intelligence, past merit, romance — BPHS ch.11 v.9-10; BJ ch.17
+    5:  ["progeny", "education", "character", "spirituality"],
+    # 6th (Ari): enemies, disease, service, debts — BPHS ch.11 v.11-12
     6:  ["health", "career"],
+    # 7th (Kalatra): spouse, partnerships, marriage — BPHS ch.11 v.13-14
     7:  ["relationship"],
-    8:  ["health", "spirituality"],
-    9:  ["spirituality", "career"],
+    # 8th (Randhra): longevity, transformation, occult — BPHS ch.11 v.15-16
+    8:  ["health", "spirituality", "transition"],
+    # 9th (Dharma): father, fortune, long journeys, higher learning — BPHS ch.11 v.17-18; PD ch.2 v.13
+    9:  ["spirituality", "career", "travel", "education"],
+    # 10th (Karma): career, profession, status — BPHS ch.11 v.19-20
     10: ["career"],
+    # 11th (Labha): gains, income, elder siblings — BPHS ch.11 v.21-22
     11: ["wealth", "career"],
-    12: ["spirituality", "health"],
+    # 12th (Vyaya): losses, foreign travel/settlement, liberation — BPHS ch.11 v.23-24; JP ch.7
+    12: ["spirituality", "travel", "health"],
 }
 
 _KP_HOUSE_CATS = frozenset({
@@ -584,7 +611,7 @@ def _assign_kp_domains(fact_subject: str | None, fvj: dict | None) -> list[str] 
     """Domains inherited from the KP cusp's bhava, or None if house not parseable."""
     house = _parse_house_number(fact_subject, fvj)
     if house is not None:
-        return list(_BHAVA_DOMAINS.get(house, ["career", "character"]))
+        return list(_BHAVA_DOMAINS.get(house, ["general"]))
     return None
 
 
@@ -600,19 +627,35 @@ def _assign_kp_domains(fact_subject: str | None, fvj: dict | None) -> list[str] 
 # None); 'career' is dropped unless varga_id is one of CR-62's career vargas
 # (or varga-agnostic). Every OTHER domain (health/relationship/spirituality/
 # character) is untouched — CR-62 only names the wealth/career lenses.
+# SHABDA-SHUDDHI R7: varga-domain affinity gates extended per classical vargas.
+# D7 (Saptamsha) → progeny (BPHS ch.6 v.11: "D7 for progeny assessment").
+# D4 (Chaturthamsha) → residence (BPHS ch.6 v.7: "D4 for fortune and property").
+# D24 (Chaturvimshamsha) → education (BPHS ch.6 v.25: "D24 for learning/vidya").
 CR62_WEALTH_VARGAS = frozenset({"D1", "D2", "D9", "D11"})
 CR62_CAREER_VARGAS = frozenset({"D1", "D9", "D10"})
+CR62_PROGENY_VARGAS = frozenset({"D1", "D7", "D9"})
+CR62_RESIDENCE_VARGAS = frozenset({"D1", "D4"})
+CR62_EDUCATION_VARGAS = frozenset({"D1", "D24", "D9"})
+CR62_TRAVEL_VARGAS = frozenset({"D1", "D9", "D12"})
 
 
 def _apply_cr62_multi_varga_gate(domains: list[str], varga_id: str | None) -> list[str]:
     if not varga_id:
         return domains  # varga-agnostic signal — CR-62 does not apply
     varga = varga_id.upper()
+    # SHABDA-SHUDDHI R7: extended to new domain-varga affinities.
+    _VARGA_GATES: dict[str, frozenset[str]] = {
+        "wealth": CR62_WEALTH_VARGAS,
+        "career": CR62_CAREER_VARGAS,
+        "progeny": CR62_PROGENY_VARGAS,
+        "residence": CR62_RESIDENCE_VARGAS,
+        "education": CR62_EDUCATION_VARGAS,
+        "travel": CR62_TRAVEL_VARGAS,
+    }
     out = []
     for d in domains:
-        if d == "wealth" and varga not in CR62_WEALTH_VARGAS:
-            continue
-        if d == "career" and varga not in CR62_CAREER_VARGAS:
+        gate = _VARGA_GATES.get(d)
+        if gate is not None and varga not in gate:
             continue
         out.append(d)
     # Never return an empty list from a gate — B.10 (no silent drop): if the
@@ -633,7 +676,7 @@ def _assign_domains(fact_category: str, source_subsystem: str,
             return _apply_cr62_multi_varga_gate(kp, varga_id)
     if fact_category in _DOMAIN_MAP:
         return _apply_cr62_multi_varga_gate(_DOMAIN_MAP[fact_category], varga_id)
-    base = _CATEGORY_DEFAULT_DOMAINS.get(source_subsystem, ["career", "character"])
+    base = _CATEGORY_DEFAULT_DOMAINS.get(source_subsystem, ["general"])
     return _apply_cr62_multi_varga_gate(base, varga_id)
 
 
