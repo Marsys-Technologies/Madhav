@@ -35,7 +35,10 @@ module for code to import. This module fills that gap.
 """
 from __future__ import annotations
 
-from typing import Optional
+import logging
+from typing import Any, Optional
+
+logger = logging.getLogger(__name__)
 
 
 # ── The canonical 13-domain vocabulary ────────────────────────────────────────
@@ -175,3 +178,58 @@ def assert_canonical(domain: str, *, context: str = '') -> str:
         f"domain {domain!r}{ctx} is not in the canonical vocabulary "
         f"{CANONICAL_DOMAINS_SORTED}"
     )
+
+
+# ── Junction hit-rate telemetry ────────────────────────────────────────────────
+#
+# Sentinel distinguishes a genuine None default from a cache miss — so the
+# helper works correctly when the caller's intended default is None itself.
+
+_SENTINEL = object()
+
+
+def domain_lookup(
+    mapping: dict,
+    key: str,
+    default: Any,
+    *,
+    context: str = '',
+) -> Any:
+    """Dict.get() with junction-miss telemetry for domain vocabulary lookups.
+
+    When the key is found in *mapping*, returns its value silently.
+    When the key is absent (a vocabulary junction miss), emits a
+    ``logger.warning`` tagged ``domain_junction_miss`` so production logs
+    surface vocabulary gaps, then returns *default*.
+
+    This is intentionally lightweight — not a framework.  Use it wherever a
+    writer or service does a domain-vocabulary ``.get()`` that should be
+    observable in production:
+
+        domain_label = domain_lookup(
+            _DOMAIN_LABEL, row_domain, row_domain,
+            context='ph_phaladesa:build_narration',
+        )
+
+    Args:
+        mapping: The domain vocabulary dict to look up.
+        key:     The lookup key (domain string from the data row).
+        default: Value to return on a miss (any type, including None).
+        context: Free-form caller tag included in the warning for triage.
+                 Convention: ``'<writer_or_module>:<function_or_site>'``.
+
+    Returns:
+        The mapped value on a hit, or *default* on a miss.
+
+    Pattern source: bo_laksana.py junction hit-rate telemetry (line 3221) —
+    extended here into a reusable shared utility per SHABDA-SHUDDHI Lane L8.
+    """
+    result = mapping.get(key, _SENTINEL)
+    if result is _SENTINEL:
+        logger.warning(
+            "domain_junction_miss: key=%r context=%s",
+            key,
+            context or '<unset>',
+        )
+        return default
+    return result
