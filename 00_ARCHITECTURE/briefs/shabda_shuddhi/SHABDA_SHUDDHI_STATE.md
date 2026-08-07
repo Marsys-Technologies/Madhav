@@ -204,20 +204,30 @@ DISPOSITION: Stage R, S, and CLOSE are PARKED-HONEST — blocked on:
 The code fixes are complete and tested. The rebuild + scoring are the next
 session's work, gated on deployment.
 
-## OPEN DEBTS
+## L2 UPDATE — bo_pratijna v2.0 ENGINE landed (builder late completion)
+
+The L2 builder's 4th commit (753a6e857) delivered the full engine rewrite:
+- _partition_signal(): maps real valence values (benefic/malefic/mixed/neutral)
+  instead of checking for 'positive'/'negative' that never occur
+- mixed signals: 0.5 weight to both supporting+contradicting (R7: weighted, not discarded)
+- neutral signals: 0.2 supporting as context (R7: not discarded)
+- _grade_to_status(): no_evidence when domain_overlapping_count=0
+- grade=NULL for no_evidence rows (not fabricated 0.000)
+- ENGINE_VERSION=bo_pratijna_v2.0, FORMULA_VERSION=v2.0
+Cherry-picked: 582d49c42 on integration. 20 passed, 2 skipped (live DB).
+
+## OPEN DEBTS (updated)
 
 1. L5 items 3/4/6 (prashna_undertaking, query_domain_reading, bo_upaya/mi_adhilepa)
    — deferred, non-blocking for rebuild
 2. L6 (LEL→event_class resolver) — requires native LEL review; PARKED per declared defaults
 3. L7 (serving guards: query_pratijna, mi_darshana, synth brief) — requires L2 merge verification
 4. L8 partial (empty-evidence lint) — CI guard skeleton landed, full lint deferred
-5. bo_pratijna v2 ENGINE rewrite (class-level significator routing) — the L2 builder landed the
-   migration and gate removal but NOT the full engine rewrite; that requires a separate dedicated
-   session with the bo_pratijna writer opened fully
 
 ---
 
 RUN-TERMINAL: PARKED-FINAL — code fixes complete (5/5 gates, 13-domain vocabulary,
-numeric fixes); rebuild + scoring blocked on deploy. Resume with production access.
+bo_pratijna v2.0 engine, numeric fixes); rebuild + scoring blocked on deploy.
+Resume with production access.
 
 ---
