@@ -2,6 +2,12 @@
 
 ---
 
+## HB #78 — 2026-08-07T02:18:18Z
+
+**ALERT** — Post-merge Deploy to Cloud Run FAILED (run 31140238243, 02:07:41Z→02:17:52Z). Investigating failure. Lease gap: HB#77 at 02:07:36Z, lease expired at 02:17:36Z, HB#78 at 2026-08-07T02:18:18Z — 16-second gap (deploy failure concurrent with expiry). Next HB due before 2026-08-07T02:28:18Z.
+
+---
+
 ## HB #77 — 2026-08-07T02:07:36Z
 
 **Heartbeat** — post-merge: Ganga Quality Gate on main in_progress (started 01:59:55Z, ~6 min). Deploy to Cloud Run pending (triggers on Ganga completion). Awaiting post-merge deploy then PARĪKṢAKA W3 gate. Next HB due before 2026-08-07T02:17:36Z.
