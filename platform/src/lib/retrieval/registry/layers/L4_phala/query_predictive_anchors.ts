@@ -204,6 +204,14 @@ export const queryPredictiveAnchorsCapability: CapabilityDescriptor = {
             // lookup could also legitimately resolve to 0.20) — labeled as such, never
             // asserted as a confirmed fact about which path this specific row took.
             base_rate_matches_uniform_fallback_value: typeof liftVector['base_rate'] === 'number' ? liftVector['base_rate'] === 0.2 : null,
+            // L7-SERVING (ŚABDA-ŚUDDHI): honest disclosure of promise_lift provenance.
+            // promise_lift = bodha_pratijna.grade for this anchor's event_class, mapped
+            // to a multiplicative lift: grade>5 amplifies, grade<5 dampens, grade=NULL
+            // from no_evidence → lift=1.0 (neutral — the anchor's posterior is not
+            // amplified or dampened by promise data in that case, and stands on its
+            // other factors: base_rate, activation_lift, trigger_lift alone).
+            promise_lift_source: "bodha_pratijna.grade for this anchor's event_class, mapped to a multiplicative lift (grade>5 amplifies, grade<5 dampens, grade=NULL from no_evidence → lift=1.0 neutral). A no_evidence promise_lift of 1.0 means the anchor's posterior was not amplified or dampened by promise data — the prediction stands on its other factors (base_rate, activation_lift, trigger_lift) alone.",
+            promise_lift_value: liftVector['promise_lift'] ?? null,
           },
         }
       })
