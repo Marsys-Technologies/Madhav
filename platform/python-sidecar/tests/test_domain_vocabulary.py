@@ -204,3 +204,79 @@ def test_migration_386_check_constraint_includes_all_canonical_domains():
         f"migration 386 CHECK has terms that are neither canonical nor known synonyms: "
         f"{sorted(unknown)}"
     )
+
+
+# ── 4. domain_lookup junction hit-rate telemetry ──────────────────────────────
+# (SHABDA-SHUDDHI Lane L8 — written FAILING first; passes after domain_vocabulary.py
+#  gains the domain_lookup() function)
+
+from unittest.mock import patch
+
+
+def test_domain_lookup_hit_returns_value():
+    """A key that is present in the mapping returns its value with no warning."""
+    from brahmagyan.domain_vocabulary import domain_lookup
+    mapping = {'career': 'profession', 'wealth': 'finances'}
+    assert domain_lookup(mapping, 'career', None) == 'profession'
+    assert domain_lookup(mapping, 'wealth', None) == 'finances'
+
+
+def test_domain_lookup_miss_returns_default():
+    """A key that is absent returns the supplied default."""
+    from brahmagyan.domain_vocabulary import domain_lookup
+    mapping = {'career': 'profession'}
+    assert domain_lookup(mapping, 'health', 'FALLBACK') == 'FALLBACK'
+    assert domain_lookup(mapping, 'wealth', None) is None
+
+
+def test_domain_lookup_miss_emits_warning():
+    """A vocabulary miss fires a logger.warning with 'domain_junction_miss' in the msg."""
+    from brahmagyan.domain_vocabulary import domain_lookup
+    mapping = {'career': 'profession'}
+    with patch('brahmagyan.domain_vocabulary.logger') as mock_log:
+        domain_lookup(mapping, 'health', 'fallback', context='test_site')
+        assert mock_log.warning.called, "expected logger.warning on a miss"
+        call_args = str(mock_log.warning.call_args)
+        assert 'domain_junction_miss' in call_args, (
+            f"warning message should contain 'domain_junction_miss', got: {call_args}"
+        )
+        assert 'health' in call_args, "warning should include the missed key"
+
+
+def test_domain_lookup_hit_does_not_emit_warning():
+    """A successful lookup must NOT fire a warning — no log noise on the happy path."""
+    from brahmagyan.domain_vocabulary import domain_lookup
+    mapping = {'career': 'profession'}
+    with patch('brahmagyan.domain_vocabulary.logger') as mock_log:
+        result = domain_lookup(mapping, 'career', 'fallback')
+        assert result == 'profession'
+        assert not mock_log.warning.called, "no warning expected on a hit"
+
+
+def test_domain_lookup_context_appears_in_warning():
+    """The context kwarg propagates into the warning message."""
+    from brahmagyan.domain_vocabulary import domain_lookup
+    mapping = {}
+    with patch('brahmagyan.domain_vocabulary.logger') as mock_log:
+        domain_lookup(mapping, 'finance', None, context='ka_bhavishya_lekha:domain_row')
+        call_args = str(mock_log.warning.call_args)
+        assert 'ka_bhavishya_lekha:domain_row' in call_args
+
+
+def test_domain_lookup_context_defaults_to_empty():
+    """context kwarg is optional; omitting it still fires a warning."""
+    from brahmagyan.domain_vocabulary import domain_lookup
+    mapping = {}
+    with patch('brahmagyan.domain_vocabulary.logger') as mock_log:
+        domain_lookup(mapping, 'spiritual', 'spirituality')
+        assert mock_log.warning.called
+
+
+def test_domain_lookup_works_with_none_default():
+    """None is a valid default; miss should still return None and warn."""
+    from brahmagyan.domain_vocabulary import domain_lookup
+    mapping = {'career': 'profession'}
+    with patch('brahmagyan.domain_vocabulary.logger') as mock_log:
+        result = domain_lookup(mapping, 'bogus', None)
+        assert result is None
+        assert mock_log.warning.called
