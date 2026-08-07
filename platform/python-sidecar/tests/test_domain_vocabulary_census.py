@@ -264,9 +264,11 @@ def test_census_gate_known_violations_are_detected():
     these files and forgets to remove it from the list, this test catches the drift
     (a violation in the other direction).
     """
+    # Files confirmed to still have violations on this branch.
+    # Remove an entry when the file is migrated (the zero-violations gate will catch
+    # any regression — this dict is for "confirm scanner detects the known cases").
+    # Previously included: ka_bhavishya_lekha.py (fixed by L5 lane), ka_yojaka.py (fixed).
     _KNOWN_VIOLATIONS = {
-        "ka_bhavishya_lekha.py": {"finance", "spiritual"},
-        "ka_yojaka.py": {"finance", "spiritual"},
         "mi_sambandha.py": {"finance"},
     }
 
@@ -427,9 +429,10 @@ def test_p2_known_instances_are_detected():
     These are the instances documented in the SHABDA-SHUDDHI campaign brief.
     When they are fixed, remove the corresponding entry.
     """
+    # Files confirmed to still have P2 instances on this branch.
+    # Previously included: mi_adhilepa.py (P2b — fixed by L5 lane: leakage = None now).
     _KNOWN_P2_INSTANCES = {
         "bo_pratijna.py": "P2a_denied_return",   # _grade_to_status returns 'denied'
-        "mi_adhilepa.py": "P2b_leakage_clean",   # leakage = "clean" unconditionally
     }
 
     all_files = _collect_py_files()
