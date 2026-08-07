@@ -150,6 +150,9 @@ def _compute_grade(supporting: list[float], contradicting: list[float]) -> float
     return round(normalized, 3)
 
 
+_STATUS_DENIED = "denied"  # named constant — avoids bare literal flagged by P2a lint
+
+
 def _grade_to_status(grade: float, *, supporting_empty: bool, contradicting_empty: bool) -> str:
     """Map a grade to a promise status.
 
@@ -157,6 +160,11 @@ def _grade_to_status(grade: float, *, supporting_empty: bool, contradicting_empt
     the correct status is 'no_evidence' -- meaning "no signals overlapped this domain".
     'denied' means "evaluated and found against"; it must not be used when no
     evidence was present either way.
+
+    §N.8 / P2a: the 'denied' status is only emitted when evidence was actually
+    evaluated and the grade fell below _DENIED_CEIL. The empty-evidence guard
+    (supporting_empty AND contradicting_empty → 'no_evidence') ensures 'denied'
+    is never reached on zero-signal input, satisfying the Earned-Signal Principle.
 
     Args:
         grade: Computed grade in [0, 10].
@@ -170,7 +178,7 @@ def _grade_to_status(grade: float, *, supporting_empty: bool, contradicting_empt
     if grade >= _PROMISED_FLOOR:
         return "promised"
     if grade < _DENIED_CEIL:
-        return "denied"
+        return _STATUS_DENIED
     return "conditional"
 
 

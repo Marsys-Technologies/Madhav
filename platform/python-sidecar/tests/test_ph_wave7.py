@@ -3,7 +3,7 @@ test_ph_wave7.py — Wave 7: ph_phaladesa (B.11 + DETERMINISTIC-FIRST + model po
 
 Covers:
   validate_narration_model: allowlist enforcement; Anthropic BANNED
-  derive_phaladesa_record: all 7 domains produced; B.11 bodha_consulted flag
+  derive_phaladesa_record: all 13 domains produced; B.11 bodha_consulted flag
   narration_status always 'pending' from engine (writer never calls LLM)
   narration_model always None from engine
   PERMITTED_NARRATION_MODELS: no Anthropic prefix
@@ -164,10 +164,10 @@ class TestDerivePhaladeskRecord:
 # ══════════════════════════════════════════════════════════════════════════════
 
 class TestDerivePhaladeskForChart:
-    def test_produces_7_records(self):
+    def test_produces_13_records(self):
         ctx = _ctx()
         recs = derive_phaladesa_for_chart(ctx)
-        assert len(recs) == 7
+        assert len(recs) == 13
 
     def test_all_domains_present(self):
         ctx = _ctx()
@@ -187,10 +187,10 @@ class TestDerivePhaladeskForChart:
         for r in recs:
             assert r.narration_model is None
 
-    def test_empty_domain_summaries_still_7_records(self):
+    def test_empty_domain_summaries_still_13_records(self):
         ctx = PhaladesakContext(chart_id='cid')
         recs = derive_phaladesa_for_chart(ctx)
-        assert len(recs) == 7
+        assert len(recs) == 13
 
     def test_b11_miss_logged_in_summary(self):
         ctx = PhaladesakContext(
