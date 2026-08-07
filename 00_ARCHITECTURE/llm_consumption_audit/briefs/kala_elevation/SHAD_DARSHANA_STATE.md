@@ -1,5 +1,12 @@
 ---
 
+<!-- CONDUCTOR-NOTE HB #70 2026-08-07T01:07:16Z -->
+> **CONDUCTOR HEARTBEAT #70** — 2026-08-07T01:07:16Z
+> Actions status: **operational**
+> PR #1090: lease-maintenance HB (conflict resolution in progress)
+> Lease: active · Next HB due in ≤9m
+<!-- END CONDUCTOR-NOTE #70 -->
+
 <!-- CONDUCTOR-NOTE HB #69 2026-08-07T00:58:02Z -->
 > **CONDUCTOR HEARTBEAT #69** — 2026-08-07T00:58:02Z
 > CI PROGRESS: 5 TypeScript errors fixed (4 commits: archetype+tool_role+null+admin+bg_parihara_rules dict_row+§N.8+test_assertion)
