@@ -73,12 +73,12 @@ describe('queryKalaPaddhatiProfileCapability — registration contract', () => {
 
 describe('queryKalaPaddhatiProfileCapability.handler — missing chart_id returns is_error:true', () => {
   it('returns is_error:true when chart_id is blank', async () => {
-    const result = await queryKalaPaddhatiProfileCapability.handler({ chart_id: '' }, null)
+    const result = await queryKalaPaddhatiProfileCapability.handler({ chart_id: '' }, undefined)
     expect(result.is_error).toBe(true)
   })
 
   it('returns is_error:true when chart_id is absent', async () => {
-    const result = await queryKalaPaddhatiProfileCapability.handler({}, null)
+    const result = await queryKalaPaddhatiProfileCapability.handler({}, undefined)
     expect(result.is_error).toBe(true)
   })
 })
@@ -90,14 +90,14 @@ describe('queryKalaPaddhatiProfileCapability.handler — output contract shape',
   // structural properties that are invariant under both outcomes.
   it('returns an object with an is_error field (always present)', async () => {
     const result = await queryKalaPaddhatiProfileCapability.handler(
-      { chart_id: '482012f1-710e-4a25-994a-93821f5871aa' }, null,
+      { chart_id: '482012f1-710e-4a25-994a-93821f5871aa' }, undefined,
     ).catch(() => ({ is_error: true as const, content: { error: 'db not available in unit CI' } }))
     expect(result).toHaveProperty('is_error')
   })
 
   it('when is_error:false, the content has a rows array (never null — rail 2: declared rows must be present)', async () => {
     const result = await queryKalaPaddhatiProfileCapability.handler(
-      { chart_id: '482012f1-710e-4a25-994a-93821f5871aa' }, null,
+      { chart_id: '482012f1-710e-4a25-994a-93821f5871aa' }, undefined,
     ).catch(() => null)
     if (result === null || result.is_error) return // DB not available; skip body assertion
     expect(Array.isArray((result.content as Record<string, unknown>)['rows'])).toBe(true)
@@ -105,7 +105,7 @@ describe('queryKalaPaddhatiProfileCapability.handler — output contract shape',
 
   it('when is_error:false, the content carries chart_id echoed back (for caller routing)', async () => {
     const chartId = '482012f1-710e-4a25-994a-93821f5871aa'
-    const result = await queryKalaPaddhatiProfileCapability.handler({ chart_id: chartId }, null)
+    const result = await queryKalaPaddhatiProfileCapability.handler({ chart_id: chartId }, undefined)
       .catch(() => null)
     if (result === null || result.is_error) return
     expect((result.content as Record<string, unknown>)['chart_id']).toBe(chartId)
@@ -166,8 +166,8 @@ describe('queryKalaPaddhatiProfileCapability — determinism property (item 37 b
   it('is a pure function of (chart_id, factor_family, version) — no random state, no side-effects', async () => {
     const args = { chart_id: '482012f1-710e-4a25-994a-93821f5871aa' }
     const [r1, r2] = await Promise.all([
-      queryKalaPaddhatiProfileCapability.handler(args, null).catch((e: unknown) => ({ is_error: true as const, content: { error: String(e) } })),
-      queryKalaPaddhatiProfileCapability.handler(args, null).catch((e: unknown) => ({ is_error: true as const, content: { error: String(e) } })),
+      queryKalaPaddhatiProfileCapability.handler(args, undefined).catch((e: unknown) => ({ is_error: true as const, content: { error: String(e) } })),
+      queryKalaPaddhatiProfileCapability.handler(args, undefined).catch((e: unknown) => ({ is_error: true as const, content: { error: String(e) } })),
     ])
     // Both calls must agree on whether there was an error.
     expect(r1.is_error).toBe(r2.is_error)

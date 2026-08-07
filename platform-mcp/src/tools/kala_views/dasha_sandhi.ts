@@ -358,7 +358,7 @@ export function registerDashaSandhiCalendar(server: McpServer): void {
     async (args) => {
       // Tool context does not provide a Principal in the MCP SDK handler signature;
       // we pass a minimal placeholder matching the pattern used across this codebase.
-      const principal: Principal = { user_uid: 'system', key_id: 'system', role: 'admin' }
+      const principal: Principal = { user_uid: 'system', key_id: 'system', role: 'super_admin' }
       try {
         const result = await computeDashaSandhiCalendar(
           args.chart_id as string,
