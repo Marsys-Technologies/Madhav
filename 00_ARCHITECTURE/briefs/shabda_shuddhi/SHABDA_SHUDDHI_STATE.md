@@ -151,12 +151,14 @@ Commit: be86f6c28 on integration.
 - Fix 3: taranga_service missing-valence benefic default → honest None
 Commits: 998ddd440, 74aa99a32, 7f1fd2fd6 on integration.
 
-## L5 PARTIAL — 2026-08-07T10:50:00Z (BUILDER→CONDUCTOR consolidated)
+## L5 COMPLETE — 2026-08-07T11:00:00Z (BUILDER→CONDUCTOR, all 7/7)
 
-Landed (4/7): ka_bhavishya_lekha domains, ka_yojaka classifier,
-ph_phaladesa 13 domains, false clean-bill fixes.
-Deferred (3/7): prashna_undertaking, query_domain_reading, bo_upaya/mi_adhilepa.
-Commits: 41511d1a4, a7e85e179 on integration.
+Python (4): ka_bhavishya_lekha domains, ka_yojaka classifier,
+ph_phaladesa 13 domains, bo_upaya/mi_adhilepa false clean-bills.
+TypeScript (3): prashna_undertaking domain map (dead keys + sadhana + fallback),
+query_domain_reading gate (expanded to 13 canonical), registry_bridge
+false clean-bill → not_adjudicated.
+Commits: 41511d1a4, a7e85e179, f53a2f680, 5e92b23b8 on integration.
 
 ## STAGE 1 STATUS — 2026-08-07T10:52:00Z
 
@@ -167,7 +169,7 @@ Commits: 41511d1a4, a7e85e179 on integration.
 | L2 | COMPLETE | gate 3/5 (stage2_promise) |
 | L3 | COMPLETE | gates 4,5/5 (ka_kshetra, ka_avadhi) |
 | L4 | COMPLETE | gate 1/5 (ka_yojaka:143) + gate 2/5 (ka_yojaka:157 via L5) |
-| L5 | PARTIAL | 4/7 junction fixes |
+| L5 | COMPLETE | 7/7 junction fixes (Py+TS) |
 | L6 | DEFERRED | requires production DB + native LEL review |
 | L7 | PENDING | serving guards |
 | L8 | PARTIAL | domain_lookup + CI census landed |
@@ -216,13 +218,11 @@ The L2 builder's 4th commit (753a6e857) delivered the full engine rewrite:
 - ENGINE_VERSION=bo_pratijna_v2.0, FORMULA_VERSION=v2.0
 Cherry-picked: 582d49c42 on integration. 20 passed, 2 skipped (live DB).
 
-## OPEN DEBTS (updated)
+## OPEN DEBTS (updated — L5 now 7/7 COMPLETE)
 
-1. L5 items 3/4/6 (prashna_undertaking, query_domain_reading, bo_upaya/mi_adhilepa)
-   — deferred, non-blocking for rebuild
-2. L6 (LEL→event_class resolver) — requires native LEL review; PARKED per declared defaults
-3. L7 (serving guards: query_pratijna, mi_darshana, synth brief) — requires L2 merge verification
-4. L8 partial (empty-evidence lint) — CI guard skeleton landed, full lint deferred
+1. L6 (LEL→event_class resolver) — requires native LEL review; PARKED per declared defaults
+2. L7 (serving guards: query_pratijna, mi_darshana, synth brief) — requires L2 merge verification
+3. L8 partial (empty-evidence lint) — CI guard skeleton landed, full lint deferred
 
 ---
 
