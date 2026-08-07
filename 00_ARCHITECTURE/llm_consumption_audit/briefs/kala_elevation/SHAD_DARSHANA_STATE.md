@@ -1,5 +1,12 @@
 ---
 
+<!-- CONDUCTOR-NOTE HB #67 2026-08-07T00:39:21Z -->
+> **CONDUCTOR HEARTBEAT #67** — 2026-08-07T00:39:21Z
+> Actions status: **operational**
+> PR #1090: lease-maintenance HB (conflict resolution in progress)
+> Lease: active · Next HB due in ≤9m
+<!-- END CONDUCTOR-NOTE #67 -->
+
 <!-- CONDUCTOR-NOTE HB #66 2026-08-07T00:25:15Z -->
 > **CONDUCTOR HEARTBEAT #66** — 2026-08-07T00:25:15Z
 > **MILESTONE: PR #1090 DIRTY CONFLICT RESOLVED**
