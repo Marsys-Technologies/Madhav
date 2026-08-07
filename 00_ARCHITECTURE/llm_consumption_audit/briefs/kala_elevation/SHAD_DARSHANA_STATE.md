@@ -2,6 +2,12 @@
 
 ---
 
+## HB #86 — 2026-08-07T03:00:00Z
+
+**MERGE QUEUE ACTIVE** — PR #1091 in gh-readonly-queue. TAP-6 merge_group run COMPLETED/SUCCESS. Ganga Quality Gate merge_group IN_PROGRESS. Merge imminent on success. G-LAND finding noted: kala_field has 0 rows for 482012f1 (ka_kshetra shows lit — gap being investigated, W2 concern not W3 blocker). W3 verification score: W3.0 PASS, W3.2 VERIFIED, W3.3 VERIFIED (source+serve), W3.4 VERIFIED, W3.5 VERIFIED. W3.1 muhurta substrate all confirmed populated (both charts). Next HB due before 2026-08-07T03:10:00Z.
+
+---
+
 ## HB #85 — 2026-08-07T02:54:20Z
 
 **W3 gate verification complete (DB queries via postgres MCP):**
