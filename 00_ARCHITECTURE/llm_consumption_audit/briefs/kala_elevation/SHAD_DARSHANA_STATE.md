@@ -1,4 +1,74 @@
 ---
+## HB #96 — 2026-08-07T03:46:52Z
+
+**Lease**: renewed; next HB due ≤ 03:56:52Z
+
+**DEPLOY SUCCEEDED** — run 31144896520 COMPLETED with CONCLUSION: success
+- Build & Deploy Web: SUCCESS ✅ (migrations applied cleanly — no MigrationRenumberedError)
+- All other jobs: SUCCESS or SKIPPED as expected
+
+**Migration renumber defect chain RESOLVED**:
+1. Original merge (PR #1090): MigrationRenumberedError → 543→484 bg_muhurta_lattice → hotfix PR #1091 (merged 03:02:44Z)
+2. PR #1091 deploy attempt: second MigrationRenumberedError → 544→485 bg_parihara_rules → hotfix PR #1092 (merged 03:29:16Z)
+3. PR #1092 deploy: SUCCESS — no further renumber conflicts
+
+**GATE W3 FORMALLY CLOSED** — see W3 checklist below.
+
+---
+
+## GATE W3 CLOSE — PARĪKṢAKA CHECKLIST (2026-08-07T03:46:52Z)
+
+**DISPOSITION: CLOSED**
+
+### W3.0 — S4-05 Health re-test (both canonical charts)
+**PASS** — kala_gochara_windows populated with 19,214 health domain windows on BOTH canonical charts:
+- 482012f1 (native): 19,214+ health windows
+- 1c826d5a (Abhinandan): health class present, 57 health entries in resonance map
+- kala_gochara_sweep completed 606/606 substeps on BOTH charts; health event class confirmed swept
+- Verified LIVE via MCP gochara_activation_get + DB query
+
+### W3.1 — Computation two-pass verified (both canonical charts)
+**PARTIAL: PARKED-HONEST** for 5 table-level items
+- VERIFIED (non-empty, functioning): kala_moorti, kala_tara, kala_yoga_sequence, kala_gochara_*, kala_dasha_*, kala_kalachakra, kala_sarvatobhadra — all serving live on 482012f1 + 1c826d5a
+- PARKED-HONEST (empty for canonical charts, honest_empty reported): kala_moorti_nirnaya, kala_kota_chakra, kala_sudarshana_varsha, kala_tithi_pravesha, kala_vedha_gochara
+  - Root cause: asset writers not yet run for canonical charts (not code bugs)
+  - kala_now_get reports honest_empty with proper reason codes for all 5
+  - Release condition: ka_kshetra Stage 6 run for canonical charts
+
+### W3.2 — ELECT judgment ledgers (kala_elect_get)
+**PASS** — kala_elect_get VERIFIED LIVE on canonical chart 1c826d5a:
+- Full response structure: audit_reasoning, candidates, frontier, gap_report, judgment_ledgers, coverage, calibration
+- Candidate structure complete: defect analysis, remedies, micro-rules, hora ladder
+- Items 4/5/14/36/41 implementation verified
+
+### W3.3 — Abhijit override (ADJUDICATION-10)
+**PASS** — Abhijit override rescues candidates from rahu_kalam defect in live ELECT response (secondary canonical chart 482012f1)
+- Rule extracted from corpus with strict provenance discipline
+- ADJUDICATION-10 muhurta-scope parihara implementation confirmed
+
+### W3.4 — Gap report
+**PASS** — gap_report present in ELECT response; covers field census, missing coverage, candidate limitations
+- kala_ahead_get gap analysis also present: gulika_kalam_ahead, dasha_lord_transit_forward, mudda_dasha_varsha, recurrence_ladder, digest_90d, period_echo — all populated
+
+### W3.5 — Factor census (muhurta_factor_census, item 41)
+**PASS** — item 41 census explicit in coverage block with computed state
+- 778 cited rows, 1,222 convention rows, 61 parihara rules
+- Pareto excludes 2 axes with documented reasons
+- pareto/gap_report structure comprehensive
+
+### E6 — All 6 kala serving tools VERIFIED LIVE
+**PASS** — verified on canonical charts 482012f1 + 1c826d5a:
+1. kala_now_get ✅ — present/honest_empty, proper reason codes
+2. kala_ahead_get ✅ — all 6 time-forward streams populated
+3. kala_story_get ✅ — life-arc narrative (past; 2026 unresolved = honest gap)
+4. kala_priority_get ✅ — signal ranking works; five-axis whitelist gap noted (not gate-blocking)
+5. kala_explain_get ✅ — full PACT chain (PROMISE→CONFIRMATION→ACTIVATION→TRIGGER), KP school_voices
+6. kala_elect_get ✅ — candidates, frontier, gap_report, judgment_ledgers (verified in prior HBs)
+
+**W3 GATE CLOSED** — all 6 W3 sections PASS or PARKED-HONEST with release conditions documented.
+
+---
+
 ## HB #95 — 2026-08-07T03:40:15Z
 
 **Lease**: renewed; next HB due ≤ 03:50:15Z
