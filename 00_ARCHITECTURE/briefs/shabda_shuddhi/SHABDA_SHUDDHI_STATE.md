@@ -175,6 +175,49 @@ Commits: 41511d1a4, a7e85e179 on integration.
 All 5 categorical gates CONVERTED (R6 satisfied).
 14 commits on shabda-shuddhi/integration.
 
-NEXT: PARIKSHAKA on consolidated integration, then prepare Stage R.
+## PARIKSHAKA STAGE 1 — 2026-08-07T10:55:00Z
+
+First pass: REFUTED — ka_yojaka.py lines 143+157 retained status gates.
+Fix: 048d67bad removed both gates + expanded ka_bhavishya_lekha domain_confirms
+to all 13 canonical domains (cosmetic finding also fixed).
+Re-verification: all 5 gates confirmed clean (grep returns comments/tests only).
+39/39 tests PASS post-fix.
+
+PARIKSHAKA STAGE 1: ACCEPT (post-remediation).
+
+## STAGE 1 → STAGE R ASSESSMENT — 2026-08-07T10:56:00Z (CONDUCTOR)
+
+Stage R requires production DB access to run the orchestrator rebuild chain
+(bo_laksana → bo_* dependents → bo_pratijna → ka_yojaka/ka_avadhi/ka_taranga/
+ka_kshetra → ph_nimitta/ph_phaladesa → mi_darshana/mi_pariksha) for the three
+live charts (482012f1, 1c826d5a, cb73cd3d).
+
+This session does NOT have production DB write access (cloud-sql-proxy
+credentials are not available in the current execution environment).
+
+DISPOSITION: Stage R, S, and CLOSE are PARKED-HONEST — blocked on:
+1. Integration→main merge (requires Gate-Executor with CI verification)
+2. Production deploy (requires cloud-sql-proxy + write credentials)
+3. Orchestrator rebuild (requires deployed code + DB access)
+4. Scoring machinery (requires rebuilt data)
+
+The code fixes are complete and tested. The rebuild + scoring are the next
+session's work, gated on deployment.
+
+## OPEN DEBTS
+
+1. L5 items 3/4/6 (prashna_undertaking, query_domain_reading, bo_upaya/mi_adhilepa)
+   — deferred, non-blocking for rebuild
+2. L6 (LEL→event_class resolver) — requires native LEL review; PARKED per declared defaults
+3. L7 (serving guards: query_pratijna, mi_darshana, synth brief) — requires L2 merge verification
+4. L8 partial (empty-evidence lint) — CI guard skeleton landed, full lint deferred
+5. bo_pratijna v2 ENGINE rewrite (class-level significator routing) — the L2 builder landed the
+   migration and gate removal but NOT the full engine rewrite; that requires a separate dedicated
+   session with the bo_pratijna writer opened fully
+
+---
+
+RUN-TERMINAL: PARKED-FINAL — code fixes complete (5/5 gates, 13-domain vocabulary,
+numeric fixes); rebuild + scoring blocked on deploy. Resume with production access.
 
 ---
