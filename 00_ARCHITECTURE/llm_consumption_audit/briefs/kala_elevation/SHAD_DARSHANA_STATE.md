@@ -6293,9 +6293,9 @@ illegal.
 
 | # | Item | Wave | Status | Both-charts | Evidence |
 |---|---|---|---|---|---|
-| 1 | Daśā-sandhi calendar | W3 (lite@W1) | **W1-lite VERIFIED-FIXED** (band convention documented, not fabricated); full two-period calendar is W3 | Y (code-level) | PR #924, `dasha_sandhi` on `kala_now_get` |
+| 1 | Daśā-sandhi calendar | W3 (lite@W1) | **W1-lite VERIFIED-FIXED** + **W3 BUILT** — full bilateral daśā-sandhi calendar | Y (code-level) | PR #924 (W1-lite); PR #1086 merged 18:23:47Z — `kala_dasha_sandhi_get` MCP tool (`dasha_sandhi.ts`), §N.5 JOIN contract, all daśā levels both directions; 15 tests, 3 accuracy anchors (Ju MD 2019-02-07, Ju/Ve AD 2026-10-02, Ra PAD 2026-08-12) |
 | 2 | Recurrence-ladder serving | W1 | **VERIFIED-FIXED** (row reconciled Night 3 — had read IN-PROGRESS against a PR merged 2026-07-30, while the W1 wave row already claimed 12/12 VERIFIED-CLOSED; drift closed append-only, not overwritten) | Y | PR #934 MERGED 2026-07-30T07:07:19Z (`w1-recurrence-digest`, items 2 + E6-lite); W1 round-2 PARĪKṢAKA record; **re-verified live Night 3** on rev `amjis-mcp-00526-4p7`: C2 10 ladders served (20 pre-trim, budget trimmer fired with `recover_via`), C1 2 ladders × 7 points, `point_kind` period_start/peak/end + graha, `source_citation: ka_kalasutra:v1.0:signal=…` — chart-differentiated |
-| 3 | Sky-event calendar | W3 | **VERIFIED-FIXED (bg_sky_calendar built; per-chart contact joins deferred to ka_kshetra per spec)** | Y (global asset) | PR #888, live-verified against throwaway Postgres |
+| 3 | Sky-event calendar | W3 | **VERIFIED-FIXED** + **W3 accuracy anchors ADDED** | Y (global asset) | PR #888 (build); PR #1086 merged 18:23:47Z — 11 accuracy-anchor tests against real pyswisseph/SIDM_LAHIRI (Jupiter→Aries 2023, Jupiter-Saturn conjunction 2020, annular eclipse 2023, Mercury retro station 2023) |
 | 4 | Moorti-nirṇaya | W3 | NOT-STARTED | — | — |
 | 5 | Vedha + Sarvatobhadra grid | W3 | NOT-STARTED | — | — |
 | 6 | Activity-specific muhūrta tables | W3 | NOT-STARTED | — | — |
@@ -6308,7 +6308,7 @@ illegal.
 | 13 | Tithi-Praveśa | W3 | NOT-STARTED | — | — |
 | 14 | Janma-anchored election rules | W3 | NOT-STARTED | — | — |
 | 15 | Rarity axis | W2 | **BUILT — NOT VERIFIED** (W2 lane landed; no PARĪKṢAKA live acceptance yet, and the field is empty pending the N_e blocker, so no live evidence can exist until Gate W2's integration runs. Working state, deliberately NOT a disposition.) | — | PR #946 (Lane D) — stage 6 rarity via cohort (22) + matched sub-cohort |
-| 16 | Kota-Chakra | W3 | NOT-STARTED | — | — |
+| 16 | Kota-Chakra | W3 | BUILT — accuracy anchors | PR #1086 merged 18:23:47Z | 21 accuracy-anchor tests: 4 classical-rule positions (Stambha/Durgantara/Prakara/Bahya) + FORENSIC native-chart spot-checks (Moon=PurvaBhadrapada idx 24 → correct zone assignment for all 4 nakshatras in radius) |
 | 17 | Sudarśana-Chakra | W3 | BUILT — collision audit PASS | PR #1084 merged 18:23:22Z | `ka_sudarshana_varsha.py` pre-built by w3-kota-sudarshana lane (migration 521, writer, capability); W3-RIT confirmed namesake-only collision vs `bo_sudarshana.py` (different layer/computation) — no duplicate work; 20 logic tests passing |
 | 18 | KP sub-lord clock (CR-75) | W3K | NOT-STARTED — STALE, corrected append-only (T3-W3K-COMPLETION session, 2026-08-05): K.1–K.4 are code-complete and merged (PR #1039, #1046); disposition is **BUILT — NOT VERIFIED-CLOSED** (no PARĪKṢAKA live acceptance yet — cannot exist until the writer is deployed to production, see T3-W3K-COMPLETION section above) | — | PR #1039 (K.1 substrate), PR #1046 (K.3/K.4 Law-1 clock + school-tagged serving) |
 | 19 | GOCHARA-2.0 sub-day | W2G | **BUILT + EQUIVALENCE-HARDENED — G-LAND LANDED** (HB #110) | Y (both canonical charts built: 482012f1 + 1c826d5a) | PR #1089 (G-LAND merged integration 18:24Z 2026-08-07); N1-N5 ratified 2026-08-01; ANTARYAMIN hard-gate PASS; 1128-row (v1-scope-gap) + 13-row (v2-upgrade) buckets accepted; SLO ACCEPT-MINOR; PARĪKṢAKA ACCEPT-WITH-DEBT (D1089-1/D1089-2 non-blocking) |
