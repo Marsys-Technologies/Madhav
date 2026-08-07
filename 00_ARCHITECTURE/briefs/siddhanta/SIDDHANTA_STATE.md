@@ -3,7 +3,7 @@
 **Campaign:** SIDDHANTA ("the established conclusion")
 **Integration branch:** siddhanta/integration (cut from main 2026-08-08)
 **Conductor:** Opus 4.6
-**Status:** ACTIVE — Phase 1+2 dispatched
+**Status:** ACTIVE — Phase 1+2 MERGED (49/49 tests pass), Phase 3 NEXT
 
 ---
 
@@ -40,38 +40,30 @@ Total: 7 event-class pairings across 6 events. DB3 RESOLVED by R15.
 
 ---
 
-## Phase 1 — Promise Engine v3: DISPATCHED
+## Phase 1 — Promise Engine v3: MERGED
 
-### Lane P1: bo_pratijna v3.0 build
-- Builder: Sonnet worktree
-- Branch: siddhanta/lane-p1-pratijna-v3
-- Migration: 546 (occurrence_grade + condition_grade columns)
-- New file: bo_pratijna_karyatva.py (karyatva map data)
-- Modified: bo_pratijna.py (v3 algorithm)
-- Deadline: builder poll
-- Status: DISPATCHED
-
-### Lane P2: Tests (TDD)
-- Combined with P1 (tests written first per TDD)
-- Property tests: marriage != separation, childbirth independence, R12 two-judgment, R13 audit
-- Must FAIL against v2.0 logic, PASS against v3.0
-- Status: DISPATCHED (combined with P1)
+### Lane P1+P2: bo_pratijna v3.0 build + tests — MERGED (cb5da546b)
+- Migration 546: occurrence_grade + condition_grade columns on bodha_pratijna
+- New: bo_pratijna_karyatva.py — 27 event class karyatva maps (22 classical + 5 DR-13 provisional)
+- Modified: bo_pratijna.py — ENGINE_VERSION v3.0, per-class karyatva routing, domain fallback
+- Tests: 35 passed (15 v3 property + 20 v2 regression), 2 skipped (DB-only)
+- Property tests verified: marriage != separation, childbirth independence, R12, R13, registry
 
 ---
 
-## Phase 2 — mi_adhilepa Repair: DISPATCHED
+## Phase 2 — mi_adhilepa Repair: MERGED
 
-- Builder: Sonnet worktree
-- Branch: siddhanta/lane-p2-adhilepa-fix
-- Migration: 547 (leakage_status 'not_assessed' for 4 overlay tables)
-- Three-part fix: (a) migration, (b) writer, (c) consumer
-- Consumer: mi_gunanaka.py filter must handle 'not_assessed' explicitly
-- Deadline: builder poll
-- Status: DISPATCHED
+- Commit: 62b322f8a (three-part fix)
+- Migration 547: leakage_status DEFAULT 'not_assessed' for 4 overlay tables (backfill + NOT NULL restored)
+- Writer: mi_adhilepa._overlay_row emits "not_assessed" (not None, not "clean")
+- Consumer: mi_gunanaka excludes only 'leaked'; admits 'clean' + 'not_assessed'
+- Tests: 14 passed (overlay row, source text, consumer filter, defect documentation)
 
 ---
 
-## Phase 3 — Full Rebuild: BLOCKED on Phase 1+2 merge
+## Phase 3 — Full Rebuild: NEXT
+
+**NEXT-ACTION:** Create PR siddhanta/integration -> main, merge, deploy, rebuild all three charts.
 
 ## Phase 4 — Re-score: BLOCKED on Phase 3
 
@@ -85,8 +77,8 @@ Total: 7 event-class pairings across 6 events. DB3 RESOLVED by R15.
 |---|---|---|
 | DB1 | L6 resolver (LEL event -> event_class automated mapping) | DEFERRED (native ruling) |
 | DB3 | 2019-05-15 relocation/foreign_settlement ambiguity | RESOLVED by R15 |
-| DB4 | Phase B2 build: bo_pratijna v3.0 | Phase 1 (in progress) |
-| DB5 | mi_adhilepa NotNullViolation: leakage_status schema-writer drift | Phase 2 (in progress) |
+| DB4 | Phase B2 build: bo_pratijna v3.0 | CLOSED (Phase 1 merged) |
+| DB5 | mi_adhilepa NotNullViolation: leakage_status schema-writer drift | CLOSED (Phase 2 merged) |
 
 ---
 
