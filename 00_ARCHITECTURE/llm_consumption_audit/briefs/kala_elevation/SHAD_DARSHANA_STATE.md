@@ -10,6 +10,48 @@
 ---
 ---
 ---
+## HB #110 + W2G FORMALLY LANDED — G-LAND equivalence hardening complete; N1–N5 all ratified — 2026-08-07T06:07:00Z
+
+**W2G FORMALLY LANDED. This is the W2G LANDED declaration.**
+
+### Evidence record
+
+**N1–N5 ratification — ALL COMPLETE (as of 2026-08-01)**
+- N1 (wave naming): RULED — W2G operative; "D-6" retired as wave label. ADJUDICATION-3 (ANTARYĀMIN, 2026-08-01)
+- N2 (multi-chart rollout order): RULED — 3-tier: canonical both-charts first (this IS W2G gate); Kiran Shenoy second; 2.0-native third. ADJUDICATION-4 (2026-08-01)
+- N3 (pre-1984 backfill): RULED — calendar_epoch_start=1900-01-01; outside-epoch queries return honest-empty reason='outside_calendar_epoch'. ADJUDICATION-5 (2026-08-01)
+- N4 (cutover posture): RULED — dual-serve shadow; authority flip requires ALL FOUR: zero unclassified divergences + specimen continuity + byte-identical determinism + battery within tolerance; 7-day observation window; revert = one authoritative_generation pointer flip per chart. ADJUDICATION-6 (2026-08-01)
+- N5 (lock granularity): RULED — conservative-default: chart-level advisory lock stays; no orchestrator-contract change; recorded reversible. Native directly (stated verbatim in Night-3 kickoff), 2026-08-01.
+
+**G-LAND build (PR #1089 — merged to shad-darshana/integration 18:24:20Z, 2026-08-07)**
+- ka_gochara_v2_materialize built on both canonical charts (482012f1 + 1c826d5a)
+- SLO: 482012f1 = 922s (15.37min, +22s over SLO); 1c826d5a = 912s (15.20min, +12s over SLO) — ACCEPT-MINOR per ANTARYAMIN R2 ruling
+- Equivalence bucket classification (ANTARYAMIN ADJUDICATION, 2026-08-07T17:27Z):
+  - 1128-row bucket (v1-only): ACCEPT-as-v2-candidate-scope-gap — sign/house-occupancy activations structurally outside v2's degree-contact candidate net; 38:1 density ratio is the mathematically expected consequence of daily-grid-vs-arc-solver methodology; no bug, no fix possible within lane design
+  - 13-row bucket (v2-only): ACCEPT-as-v2-found-real-contact — 7 illness_acute + 6 surgery at 7 shared peak dates, Saturn/Rahu/Mars at exact natal degrees; v2 found genuine degree-contacts v1's daily grid missed — UPGRADE precision, not error
+  - Hard gate (zero unclassified rows): PASS — no row left unclassified
+- V1-V6 bind-time validations: PASS (PR #1006 — 38 tests, both-charts asserted, ADJUDICATION-5's 1900 floor fully supported)
+- Mutation guard: PASS — ka_gochara_sweep build state confirmed untouched in code and DB; v1 table untouched (untouchable)
+- PARĪKṢAKA verdict: ACCEPT-WITH-DEBT (D1089-1: monkeypatch unreachable else-branch in test_ka_gochara_v2_mutation_guard.py — non-blocking; D1089-2: SLO figures not independently reproducible from available build logs — non-blocking)
+
+**N4 dual-serve posture confirmed:** Generation-stamped v2.0 rows exist beside v1 rows on both canonical charts. v1 rows are NEVER touched (untouchable). Authority flip preconditions formally defined (N4 ruling above). Revert = one per-chart authoritative_generation pointer flip. v1 writer retirement only per strangler discipline.
+
+**W2G LANDED verdict (formal declaration):**
+- Registry item 19 updated: NOT-STARTED → BUILT + EQUIVALENCE-HARDENED (PARĪKṢAKA ACCEPT-WITH-DEBT, PR #1089)
+- Wave W2G updated: NOT-STARTED → BUILT + EQUIVALENCE-HARDENED — G-LAND LANDED
+- Debt items carried: D1089-1 (test cleanup, non-blocking) + D1089-2 (SLO reproducibility, non-blocking)
+- Next wave work: N2's Tier 2 (Kiran Shenoy chart) + authority flip when N4 conditions all met
+
+**Gate status after HB #110:**
+- W3: FORMALLY CLOSED (HB #96, deploy run 31144896520)
+- W4: FORMALLY CLOSED (HB #107, vara fix deployed + live fixture verified)
+- W5: FORMALLY CLOSED (HB #109, 8/8 primitives live-verified)
+- W2G: LANDED (this HB)
+- W6: NOT-STARTED (condition-gated on item-44 + W2G LANDED + replacement paths)
+
+**Next action:** R3 safety-net teardown (Cloud Scheduler → Cloud Run → service account cleanup).
+
+---
 ## HB #109 + GATE W5 FORMALLY CLOSED — live-MCP table complete — 2026-08-07T05:57:00Z
 
 ### W5 Live-MCP Verification Table (item 35/40 hard gate)
@@ -6097,7 +6139,7 @@ collision pattern is better understood from the first lane.
 | W0 | **VERIFIED-CLOSED** | PRs #877/#880/#882/#883/#884/#881 (merged main@`42151b24`+); deploy run `30484976742`; direct production `tools/list` + functional calls on both charts; see GATE W0 CLOSURE RECORD above | All 8 tools live on production, both charts, envelope-conformant, Mode-3 routing live-verified. |
 | W1 | **VERIFIED-CLOSED** | All 12 items VERIFIED-FIXED, both charts, live production (revision `amjis-mcp-00525-hrd`, 100% traffic). Round 1 rejected 5/12 (8,28,29,30,32) with real evidence; fix (PR #940, Opus) redeployed; round 2 independently re-verified all 5 via recomputed ephemeris + fact_id tracing + FORENSIC fixture cross-check, not self-report | Real honesty-inversion bugs caught and fixed by the verification apparatus exactly as designed — see NEXT-ACTION for the full round-1/round-2 record. Two non-blocking advisory notes filed. |
 | W2 | **BUILT, NOT CLOSED — PARKED-HONEST (Night 3)** | Design PR #886 + PR #918 + PR #932; all 5 build lanes merged (#944/#945/#946/#947/#949); **migrations 488–497 APPLIED IN PRODUCTION Night 3** (deploy runs `30678888444` + `30679075712`, all 18 `kala_field*`/`kala_timeline_spec` tables verified live) | **The gate did NOT close and could not.** Two independent reasons, both recorded honestly: (1) the **N_e lifetime-count-priors blocker is still unruled** — ANTARYĀMIN was cancelled mid-session before issuing the priors-source ruling, so no seeding lane could be dispatched and `ka_kshetra` still writes ZERO field rows (correctly refusing to fabricate, per §5.1 C-1 / B.10); (2) the **`w2-integration` lane was cancelled mid-session** — it owned field integration, hash-replay determinism, the real `field_snapshot_id` (E5), weights-v0 seed, the item-44 census, and the specificity-gate flip to HARD. Neither cancellation lost work (both lanes had zero commits). Gate W2's §3 criteria — skill score + GOF published both charts, null exceedance per window, salience visible in PRIORITIZE, insight rows leading readings — ALL require a non-empty field, hence all require N_e first. |
-| W2G | NOT-STARTED | — | GOCHARA-2.0 sub-day. **STILL BLOCKED on N1–N5 ratification — now for the THIRD consecutive night.** ANTARYĀMIN was dispatched Night 3 with N1–N4 + N5's pre-ruled conservative default as its up-front docket (per the v1.3 §D protocol, which exists precisely because this block sat empty through Nights 1–2), but was cancelled before ruling. The N-block below remains empty. |
+| W2G | **BUILT + EQUIVALENCE-HARDENED — G-LAND LANDED (HB #110, 2026-08-07)** | PR #1089 merged shad-darshana/integration 18:24Z; N1-N5 all ratified 2026-08-01; ANTARYAMIN hard-gate PASS (zero unclassified rows); 1128-row + 13-row buckets ACCEPTED; SLO ACCEPT-MINOR; PARĪKṢAKA ACCEPT-WITH-DEBT. V1 rows untouched; dual-serve posture confirmed per N4. | N1-N5 ruled 2026-08-01 (ADJUDICATION-3/4/5/6 + native direct). D1089-1/D1089-2 non-blocking debt carried. Next: Tier 2 (Kiran Shenoy) pending N4 authority-flip conditions. |
 | W3 | **IN PROGRESS (first items landed Night 3)** | PR #999 (items 16 Kota-Chakra + 17 `ka_sudarshana_varsha`); `w3-moorti-vedha` lane (items 4+5, closes R-19) in flight at session end | New computations. Items 16/17 land as new L3 per-chart writers with Nirmāṇa seed rows + chart-scoped `count_sql` in the same PR. **Item 36's remaining half (the query-time lattice engine) was dispatched and CANCELLED mid-session — so W4's Phase-5a trigger (36+41) is still NOT met.** |
 | W3K | **INVENTORY IN FLIGHT** — STALE, superseded, corrected append-only (T3-W3K-COMPLETION session, 2026-08-05): **K.1 (substrate, PR #1039) and K.3/K.4 (Law-1 clock integration + school-tagged serving, PR #1046) are MERGED to `shad-darshana/integration`, tests green (149 total re-run this session, 0 failures)**. Gate NOT closed — blocked on a real production deploy gap, see the dedicated T3-W3K-COMPLETION section above for full evidence. | `w3k-inventory` lane (item 18 substrate inventory + layer-seating recommendation) running at session end | KP sub-lord engine. Per §C, W3K correctly begins with existing-substrate inventory before any build. Note the layer-seating question was on ANTARYĀMIN's docket and is now **unruled** — the lane produces a recommendation, but nothing can ratify it this session. |
 | W4 | NOT-STARTED | — | Intervention flagship (UPĀYA/YAJÑA). Opus design mandatory. |
@@ -6140,7 +6182,7 @@ illegal.
 | 16 | Kota-Chakra | W3 | NOT-STARTED | — | — |
 | 17 | Sudarśana-Chakra | W3 | NOT-STARTED (naming ruled) | — | Conductor ruling: writer named `ka_sudarshana_varsha` — confirmed namesake-only collision vs `bo_sudarshana.py` (different layer/computation), not built yet |
 | 18 | KP sub-lord clock (CR-75) | W3K | NOT-STARTED — STALE, corrected append-only (T3-W3K-COMPLETION session, 2026-08-05): K.1–K.4 are code-complete and merged (PR #1039, #1046); disposition is **BUILT — NOT VERIFIED-CLOSED** (no PARĪKṢAKA live acceptance yet — cannot exist until the writer is deployed to production, see T3-W3K-COMPLETION section above) | — | PR #1039 (K.1 substrate), PR #1046 (K.3/K.4 Law-1 clock + school-tagged serving) |
-| 19 | GOCHARA-2.0 sub-day | W2G | NOT-STARTED | — | — (blocked on N1–N5) |
+| 19 | GOCHARA-2.0 sub-day | W2G | **BUILT + EQUIVALENCE-HARDENED — G-LAND LANDED** (HB #110) | Y (both canonical charts built: 482012f1 + 1c826d5a) | PR #1089 (G-LAND merged integration 18:24Z 2026-08-07); N1-N5 ratified 2026-08-01; ANTARYAMIN hard-gate PASS; 1128-row (v1-scope-gap) + 13-row (v2-upgrade) buckets accepted; SLO ACCEPT-MINOR; PARĪKṢAKA ACCEPT-WITH-DEBT (D1089-1/D1089-2 non-blocking) |
 | 20 | Auto-filed prospective ledger entries | W2 | **BUILT — NOT VERIFIED** (W2 lane landed; no PARĪKṢAKA live acceptance yet, and the field is empty pending the N_e blocker, so no live evidence can exist until Gate W2's integration runs. Working state, deliberately NOT a disposition.) | — | PR #947 (Lane E) — Living-LEL plane |
 | 21 | Per-tradition calibration weights | W2 (ongoing) | **BUILT — NOT VERIFIED** (W2 lane landed; no PARĪKṢAKA live acceptance yet, and the field is empty pending the N_e blocker, so no live evidence can exist until Gate W2's integration runs. Working state, deliberately NOT a disposition.) | — | PR #947 (Lane E); tables `kala_field_weights` (29 seed rows) + `kala_field_weight_versions` (1: `v0_classical`) live |
 | 22 | Synthetic reference cohort + matched sub-cohort | W2 | **VERIFIED-FIXED (cohort + MD-lord chain built; matched-sub-cohort JOIN logic itself is W2 Lane D's job)** | Y (global asset) | PR #887 (`bg_cohort`, 10k rows), PR #932 (`bg_synthetic_cohort_md` MD-lord chain, ADJUDICATION-1, ~100k rows, Vimśottarī arithmetic independently verified against native's own `chart_dashas`) |
