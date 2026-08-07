@@ -57,6 +57,15 @@ name: TAP CI — Total Audit Protocol Suite
 #
 # `push: [main]` is retained — post-merge runs on main are legitimate and gate deploy.
 # To revert: put 'feature/**' and 'r6/**' back in the push branches list.
+#
+# NOTE (2026-08-06, PR #1078): a workflow_dispatch-triggered TAP-6 run does NOT satisfy this
+# repo's required_status_checks ruleset the same way a pull_request-triggered one does, even
+# though the resulting check-run is genuinely associated with the same commit SHA — confirmed
+# empirically (run 31094827789 succeeded on the exact PR head SHA, mergeStateStatus stayed
+# BLOCKED regardless). Touching this file is a no-op edit specifically because it's already in
+# this workflow's own pull_request `paths:` allowlist below — it exists to make TAP-6 fire for
+# real in pull_request context on a docs-only PR that would otherwise never match any path
+# filter, which is exactly what's needed to unblock queue admission.
 on:
   push:
     branches: [main]
@@ -79,6 +88,17 @@ on:
   # trigger". Every comparable workflow here (ci.yml, elev-serving-gates.yml, deploy.yml, ...)
   # already declares it. A guard is only honest if the event it names can actually fire.
   workflow_dispatch:
+  # BUG FIX (2026-08-06). "TAP-6 — Method audit grep set" was added to the main
+  # ruleset's REQUIRED checks on 2026-08-05 ~22:02 UTC without this trigger. The
+  # merge queue runs required checks on a merge-group ref via `merge_group`
+  # events; with no such trigger here, TAP-6 could never report on a queue run,
+  # so EVERY queue entry timed out (`checks_timed_out`) — the main branch was
+  # silently unmergeable. First casualty: Gate-1 PR #1076 (ejected after 63
+  # minutes). A required check's workflow MUST subscribe to merge_group.
+  # Note: `paths:` filters are not applied to merge_group events — the two
+  # non-required jobs below carry explicit `if:` guards instead, so the queue
+  # runs exactly the check it requires.
+  merge_group:
 
 # CI efficiency audit (2026-07-31): no workflow in this repo had a concurrency
 # group, so every push to a PR branch stacked a full new set of runs while the
@@ -102,6 +122,10 @@ jobs:
 
   sc-pointer-validation:
     name: Boot-time pointer validation (SC-17/18/19)
+    # Not a ruleset-required check; skipped on merge-group runs so the queue
+    # runs only what it requires (this gate is also intentionally red on main
+    # while the SC-pointer baseline holds at zero — see CI_EFFICIENCY_AUDIT §6.18).
+    if: github.event_name != 'merge_group'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -165,6 +189,8 @@ jobs:
 
   tap-db-gates:
     name: TAP-5 / TAP-7 / S-13 — DB-backed conservation + distribution gates
+    # Not a ruleset-required check; skipped on merge-group runs (see above).
+    if: github.event_name != 'merge_group'
     runs-on: ubuntu-latest
     # id-token needed for the WIF auth used by the dispatch-only Cloud SQL proxy below.
     permissions:
