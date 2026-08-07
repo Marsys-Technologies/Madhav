@@ -2,6 +2,21 @@
 
 ---
 
+## HB #76 — 2026-08-07T02:02:19Z [MERGE RECORD]
+
+**PR #1090 MERGED** ✅ at 2026-08-07T01:59:53Z — merge commit `e81fc295895ebb01189b8a7208bc22d5b25eb951`.
+
+**Gate-close packet landed on main.** All required checks passed (25/25 non-skipped checks COMPLETED/SUCCESS). Reviewer subagent (PRODUCTION_GATE_EXECUTION_POLICY §1.2) independently verified conditions and submitted to merge queue. Merge queue CI (TAP CI + Ganga Quality Gate on gh-readonly-queue ref) completed with SUCCESS.
+
+**Post-merge sequence initiated:**
+- Ganga Quality Gate on main: in_progress (01:59:55Z)
+- Deploy to Cloud Run: pending (triggers on Ganga completion)
+- Next: PARĪKṢAKA W3 close checklist
+
+**Lease gap note:** Governance exception — branch locked in merge queue from 01:52:45Z (HB#74 lease expiry) to 01:59:53Z (merge). Physical impossibility of HB push while in queue; documented here. HB #75 written locally (01:52:33Z) but rejected by queue lock.
+
+---
+
 ## HB #75 — 2026-08-07T01:52:33Z
 
 **Heartbeat** — Ganga Quality Gate SUCCESS ✅ (01:49:00Z) + Deploy SUCCESS ✅ (01:50:19Z) on HB#74 commit (00c17e81a). PR #1090 still OPEN — reviewer subagent in progress, awaiting merge execution. Next HB due before 2026-08-07T02:02:33Z.
