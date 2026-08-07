@@ -10,6 +10,40 @@
 ---
 ---
 ---
+## HB #113 — SESSION CLOSE + LEASE RELEASE — PR #1094 created; CI pending — 2026-08-07T06:37:00Z
+
+**This is the final CONDUCTOR heartbeat for this session. The HB lease is being released.**
+
+### Session-close record
+
+Session-close skill executed. SESSION_LOG appended. CURRENT_STATE v6.52. Governance PR #1094 created (docs/shad-darshana-session-close-2026-08-07 → main, docs-only, 2 files: CURRENT_STATE + SESSION_LOG).
+
+**PR #1094 CI:** 14 checks PENDING (docs-only, all expected to pass). Merge queue eligible on CI green.
+
+### CONDUCTOR HB LEASE — RELEASED
+
+This session's CONDUCTOR HB lease is formally released as of this commit. No competing session should wait on this lease. The next session opening against this campaign will:
+1. Open a fresh HB lease
+2. Start with: re-dispatch ANTARYĀMIN for ADJUDICATION-2 (N_e priors source ruling)
+
+### Final campaign state summary (as of session close)
+
+| Gate | Final status |
+|---|---|
+| W0 | VERIFIED-CLOSED |
+| W1 | VERIFIED-CLOSED |
+| W2 | CLOSED (GATE_W2_CLOSE_v1_0.md) |
+| W2G | **LANDED** (HB #110) |
+| W3 | **FORMALLY CLOSED** (HB #96) |
+| W3K | BUILT — NOT CLOSED (production deploy gap) |
+| W4 | **FORMALLY CLOSED** (HB #107) |
+| W5 | **FORMALLY CLOSED** (HB #109) |
+| W6 | PARKED-HONEST (item-44 field_window_id=0 → N_e priors ruling required) |
+| R3 | **COMPLETE** (HB #111) |
+
+*Truth over completion. Session CLOSED-PARTIAL with full honest evidence.*
+
+---
 ## HB #112 + W6 ASSESSMENT + MORNING REPORT — W6 BLOCKED (item-44 hard gate not green) — 2026-08-07T06:27:00Z
 
 ### W6 ASSESSMENT — BLOCKED (R4 conditions NOT met)
