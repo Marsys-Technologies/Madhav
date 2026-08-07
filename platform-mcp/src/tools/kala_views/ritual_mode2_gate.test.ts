@@ -142,7 +142,7 @@ function cannedLatticeRows() {
     // 1. planet_state: hora_lord=Guru (resolved to 'Jupiter' by the mocked resolve_entity).
     latticeRow('hora', 'jupiter_hora', TARGET_DAY_START, TARGET_DAY_END, { lord: 'Jupiter' }),
     // 2. panchanga: vara = guru-vara.
-    latticeRow('vara', 'guru_vara', TARGET_DAY_START, TARGET_DAY_END, { name: 'Guru-vara' }),
+    latticeRow('vara', 'guruvara', TARGET_DAY_START, TARGET_DAY_END, { name_sanskrit: 'Guruvara', name_english: 'Thursday' }),
     // 3. residence: agnivasa favourable (prithvi element).
     latticeRow('agnivasa', 'prithvi', TARGET_DAY_START, TARGET_DAY_END, { element: 'prithvi' }),
     // 4. panchanga_not: karana != vishti. The 'combination_yoga' family also carries karana

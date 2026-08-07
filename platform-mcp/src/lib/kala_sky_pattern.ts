@@ -1364,7 +1364,7 @@ async function compileConstraint(args: CompileArgs): Promise<CompiledConstraint>
       const key = `${kind}:${limb}`
       const wantedRaw = b[limb]
       const wanted = (Array.isArray(wantedRaw) ? wantedRaw : [wantedRaw]).map((v) =>
-        String(v).trim().toLowerCase().replace(/[\s-]+/g, '_'),
+        String(v).trim().toLowerCase().replace(/[\s-]+/g, ''),
       )
 
       // The fixture's `karana NOT IN [vishti]` resolves against the ALREADY
