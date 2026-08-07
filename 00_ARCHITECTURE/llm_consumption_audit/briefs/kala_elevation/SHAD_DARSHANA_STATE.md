@@ -2,6 +2,12 @@
 
 ---
 
+## HB #89 — 2026-08-07T03:12:00Z
+
+**SECOND MigrationRenumberedError** — Deploy run 31143327280 FAILED with: `Migration "544_bg_parihara_rules.sql" looks new but SQL content already applied as "485_bg_parihara_rules.sql"`. Same defect class as 543→484 (PR #1091 fixed bg_muhurta_lattice). Now bg_parihara_rules has same issue: renamed from 485→544 during campaign. Investigating sql_identity for `544_bg_parihara_rules.sql` to file second disclosure entry. Opening hotfix branch #2. W3 gate HOLD pending deploy PASS. Next HB due before 2026-08-07T03:22:00Z.
+
+---
+
 ## HB #88 — 2026-08-07T03:08:00Z
 
 **DEPLOY IN PROGRESS** — post-#1091 merge Deploy to Cloud Run started 03:06Z (triggered by Ganga PASS 03:03Z). E6 MCP verification COMPLETE: kala_now_get(1c826d5a) PASS, kala_ahead_get(482012f1) PASS (gulika+dasha_forward+mudda+recurrence+period_echo), kala_story_get(482012f1) PASS (chapter hierarchy+LEL pinning), kala_priority_get(482012f1) PASS (5 ranked signals; salience_five_axis honest_empty — kala_field_salience whitelist gap noted, not gate-blocking), kala_explain_get(482012f1, career) PASS (PACT chain complete: PROMISE→CONFIRMATION→ACTIVATION→TRIGGER; KP concurs; weakest_link honestly disclosed). ALL 6 kala serving tools VERIFIED on canonical charts. Deployment ETA ~03:12-03:16Z. Next HB due before 2026-08-07T03:18:00Z.
