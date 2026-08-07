@@ -1,5 +1,14 @@
 ---
 
+<!-- CONDUCTOR-NOTE HB #69 2026-08-07T00:58:02Z -->
+> **CONDUCTOR HEARTBEAT #69** — 2026-08-07T00:58:02Z
+> CI PROGRESS: 5 TypeScript errors fixed (4 commits: archetype+tool_role+null+admin+bg_parihara_rules dict_row+§N.8+test_assertion)
+> Current CI set (00:54:52Z): TAP✅ K1✅ W0.6✅ | Deploy/Paripraśna/GangaQG in_progress
+> Note: HB push may cancel and restart in-progress CI (concurrency group) — expected
+> Next CI set after this push should complete before HB #70 (due ~01:07:30Z)
+> Lease: renewed · Monitor restarting with next_hb=70
+<!-- END CONDUCTOR-NOTE #69 -->
+
 <!-- CONDUCTOR-NOTE HB #68 2026-08-07T00:48:24Z -->
 > **CONDUCTOR HEARTBEAT #68** — 2026-08-07T00:48:24Z
 > Actions status: **operational**
