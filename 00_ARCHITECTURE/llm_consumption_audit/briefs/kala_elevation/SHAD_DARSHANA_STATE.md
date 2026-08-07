@@ -1,4 +1,21 @@
 ---
+---
+## HB #99 — PR #1093 (vara norm fix) open; CI running — 2026-08-07T04:17:00Z
+
+**PR #1093** `fix/shad-darshana-vara-norm` → main  
+Fix: `kala_sky_pattern.ts` panchanga vara normalization — strip separators entirely  
+(`guru-vara` → `guruvara`) instead of underscore-replace (`guru_vara`).  
+5/5 ritual_mode2_gate tests pass locally.
+
+**CI status:** IN_PROGRESS — TypeScript, Unit Tests, Governance Gates, Ganga all running.  
+SKIPPED: Build deploys (expected on non-deploy path).
+
+**Next:** Wait for CI → add to merge queue → then re-run live Mode-2 fixture against
+primary chart 482012f1 to confirm W4-GATE-BUG-1 resolved.
+
+**Lease extended.** Next HB due ≤ 04:27:00Z.
+
+
 ## HB #97 — 2026-08-07T03:52:00Z
 
 **Lease**: renewed; next HB due ≤ 04:02:00Z
