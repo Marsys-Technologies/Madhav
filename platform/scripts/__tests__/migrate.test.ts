@@ -738,10 +738,21 @@ describe('loadRenumberDisclosures', () => {
     }
   })
 
-  it('the checked-in allowlist parses and is empty by design', () => {
+  it('the checked-in allowlist parses; one known disclosure: 484→543 bg_muhurta_lattice (2026-08-07)', () => {
+    // This test intentionally fails when entries are added without updating it — the canary
+    // forces documentation of each real renumber event. Current disclosed set: exactly 1.
+    // Entry: 484_bg_muhurta_lattice.sql applied to prod, then renumbered to 543 during ṢAḌ-DARŚANA.
+    // Disclosed 2026-08-07 (post-merge MigrationRenumberedError on deploy run 31140238243).
     const real = path.resolve(__dirname, '../ci/migration_renumber_disclosed.json')
     expect(fs.existsSync(real)).toBe(true)
-    expect(loadRenumberDisclosures(real).size).toBe(0)
+    const map = loadRenumberDisclosures(real)
+    expect(map.size).toBe(1)
+    const entry = map.get('543_bg_muhurta_lattice.sql')
+    expect(entry).toBeDefined()
+    expect(entry!.applied_filename).toBe('484_bg_muhurta_lattice.sql')
+    expect(entry!.sql_identity).toBe('6ea6bf88d66b4616ea0972b53bceb7f3b4e7922e3b3201d9537f377e75144553')
+    expect(entry!.disposition).toBe('already-applied-under-old-name')
+    expect(entry!.disclosed_on).toBe('2026-08-07')
   })
 })
 
