@@ -2,6 +2,18 @@
 
 ---
 
+## HB #85 — 2026-08-07T02:54:20Z
+
+**W3 gate verification complete (DB queries via postgres MCP):**
+- W3.0 S4-05 PASS: all 3 health classes (illness_acute/chronic_onset/surgery) TARGETED (resonance_map) AND SWEPT (606/606 substeps) for BOTH charts. Windows populated: 482012f1=(4,266+28+3,658), 1c826d5a=(6,300+26+4,936). S4-05 TRUST-BREAKING VETO CLOSED.
+- W3.2 VERIFIED: ELECT judgment ledgers with dosas_present×12, pariharas_applied×2, net_standing — both charts.
+- W3.3 VERIFIED: Abhijit sarva-doshaghna parihara fires for rahu_kalam (citation: Jaimini Sutras / BPHS), net_standing=cancelled.
+- W3.4 VERIFIED: gap_report present, Pareto frontier 3/5 survivors, axes_excluded honest.
+- W3.5 VERIFIED: muhurta_factor_census=computed in coverage block, density block cited/convention-only split.
+- PR #1091 CI: 22 COMPLETED, 2 IN_PROGRESS (Build Check, Governance Gates). TAP-6 PASSED. Awaiting final checks before merge queue admission. Next HB due before 2026-08-07T03:04:20Z.
+
+---
+
 ## HB #84 — 2026-08-07T02:50:20Z
 
 **PR #1091 CI: 21 SUCCESS/SKIPPED, 3 IN_PROGRESS, 0 FAILURE** — TAP-6 PASSED. Merge queue admission pending remaining 3 checks. W3 gate verification progressing in parallel: W3.2 ELECT judgment ledgers verified (dosas_present×12, pariharas_applied×2, net_standing, paired_rite with BPHS citation) for Abhinandan; W3.4 gap_report present (3/5 Pareto survivors, axes_excluded honest-gap disclosure for ka_kshetra); W3.5 factor census (density block: 778 cited rows, 1222 convention-only). Next HB due before 2026-08-07T03:00:20Z.
