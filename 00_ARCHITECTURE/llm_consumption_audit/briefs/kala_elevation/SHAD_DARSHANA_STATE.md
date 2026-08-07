@@ -2,6 +2,12 @@
 
 ---
 
+## HB #84 — 2026-08-07T02:50:20Z
+
+**PR #1091 CI: 21 SUCCESS/SKIPPED, 3 IN_PROGRESS, 0 FAILURE** — TAP-6 PASSED. Merge queue admission pending remaining 3 checks. W3 gate verification progressing in parallel: W3.2 ELECT judgment ledgers verified (dosas_present×12, pariharas_applied×2, net_standing, paired_rite with BPHS citation) for Abhinandan; W3.4 gap_report present (3/5 Pareto survivors, axes_excluded honest-gap disclosure for ka_kshetra); W3.5 factor census (density block: 778 cited rows, 1222 convention-only). Next HB due before 2026-08-07T03:00:20Z.
+
+---
+
 ## HB #83 — 2026-08-07T02:44:00Z
 
 **CONTEXT RESUMED** — Context compaction triggered; session resumed at 02:43Z. PR #1091 (hotfix/migration-renumber-543→main): 14 SUCCESS + 6 SKIPPED, 0 FAILURE, all checks COMPLETED. Auto-merge enabled at 02:41:52Z by independent reviewer agent. State=BLOCKED because repo enforces merge queue ruleset "main protection (org migration, merge queue)". Adding PR to merge queue now to complete reviewer's authorized action. W3 gate pre-verification already complete for both canonical charts (482012f1, 1c826d5a). Next HB due before 2026-08-07T02:54:00Z.
