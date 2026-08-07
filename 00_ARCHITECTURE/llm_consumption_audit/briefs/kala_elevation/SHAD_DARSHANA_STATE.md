@@ -1,4 +1,20 @@
 ---
+## HB #94 — 2026-08-07T03:34:42Z
+
+**Lease**: renewed; next HB due ≤ 03:44:42Z
+
+**Post-merge CI** (merge of PR #1092, 03:29:16Z):
+- TAP CI: SUCCESS ✅ (03:29:18Z)
+- ṢAḌ-DARŚANA CI Skeletons: SUCCESS ✅
+- Elevation Campaign Serving Gates: SUCCESS ✅
+- Ganga Quality Gate: IN_PROGRESS (5.5 min elapsed, typically 8-12 min)
+- Deploy to Cloud Run: NOT YET TRIGGERED (waits for Ganga)
+
+**Status**: Waiting for Ganga gate (~3-6 min more). On Ganga pass → Deploy triggers.
+Expected deploy start: ~03:37-03:41Z.
+
+---
+
 ## HB #93 — 2026-08-07T03:30:02Z
 
 **Lease**: renewed; next HB due ≤ 03:40:02Z
