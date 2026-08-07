@@ -1,4 +1,30 @@
 ---
+## HB #93 — 2026-08-07T03:30:02Z
+
+**Lease**: renewed; next HB due ≤ 03:40:02Z
+
+**PR #1092 MERGED** at 2026-08-07T03:29:16Z:
+- Merge commit: 93cd417bf816f6a1b362c504ba9c7a1a47bd13e2
+- Branch: hotfix/migration-renumber-544
+- Content: 544→485 bg_parihara_rules renumber disclosure (migration_renumber_disclosed.json entry 2)
+- Gate-executor verified all 24/24 CI checks before merge queue; sql_identity MATCH confirmed
+
+**Post-merge main CI** (started 03:29:18Z, in-progress):
+- TAP CI: in_progress
+- Elevation Campaign Serving Gates: in_progress
+- ṢAḌ-DARŚANA CI Skeletons: in_progress
+- Ganga Quality Gate: in_progress
+- Deploy to Cloud Run: NOT YET STARTED (triggers after CI passes)
+
+**Both migration renumber hotfixes complete**:
+- PR #1091 (543→484 bg_muhurta_lattice): merged 03:29:16Z *of prior run — actually 03:02:44Z*
+- PR #1092 (544→485 bg_parihara_rules): merged 03:29:16Z
+
+**Next**: Deploy to Cloud Run must pass (no further MigrationRenumberedErrors expected).
+On deploy PASS: Gate W3 formally CLOSED.
+
+---
+
 ## HB #92 — 2026-08-07T03:25:11Z
 
 **Lease**: renewed; next HB due ≤ 03:35:11Z
