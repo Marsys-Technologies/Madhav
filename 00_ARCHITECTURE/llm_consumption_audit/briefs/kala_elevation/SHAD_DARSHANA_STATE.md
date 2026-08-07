@@ -29,6 +29,24 @@ unexplained empty; but expected non-empty for 482012f1 and chart_relative for 1c
 **Gate W4 Mode-2**: PARKED-HONEST on this bug. Fix is clear and minimal; filing as
 W4-GATE-BUG-1 for immediate follow-up PR.
 
+
+---
+## HB #98 — Vara norm fix applied locally; branching + PR in progress — 2026-08-07T04:07:00Z
+
+**Status:** Compaction recovered. Vara normalization fix committed to two files locally on
+hotfix/migration-renumber-544 (already-merged branch). Now creating new branch
+`fix/shad-darshana-vara-norm` off latest main to carry the fix through CI.
+
+**Fix summary (W4-GATE-BUG-1):**
+- `platform-mcp/src/lib/kala_sky_pattern.ts`: `.replace(/[\s-]+/g, '')` (strip separators)
+  instead of `'_'` — so `guru-vara` → `guruvara` (DB key), not `guru_vara` (mismatch)
+- `platform-mcp/src/tools/kala_views/ritual_mode2_gate.test.ts`: mock key updated to
+  `guruvara`, detail schema updated to `name_sanskrit`/`name_english` (DB convention)
+
+**Next:** push branch, open PR, run CI, re-verify Mode-2 fixture live.
+
+**Lease extended.** Next HB due ≤ 04:17:00Z.
+
 ---
 
 ## HB #96 — 2026-08-07T03:46:52Z
