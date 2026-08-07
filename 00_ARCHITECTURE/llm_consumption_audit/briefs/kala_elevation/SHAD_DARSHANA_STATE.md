@@ -1,4 +1,36 @@
 ---
+## HB #97 — 2026-08-07T03:52:00Z
+
+**Lease**: renewed; next HB due ≤ 04:02:00Z
+
+**Gate W4 Mode-2 Live Fixture Discharge — REAL BUG FOUND**
+
+Canned fixture (yajna_mode2_gate.json) called live on both canonical charts.
+Result: BOTH charts return honestly-empty with eliminating_constraint = panchanga:vara (0 atoms matched).
+
+**Root cause identified**: kala_sky_pattern.ts panchanga handler normalizes input
+ →  (replaces hyphens with underscores, line 1367).
+But bg_muhurta_lattice stores  (no separator).
+Comparison  → false. Constraint finds 0 atoms despite 103 guruvara
+rows existing within the 24-month scan window.
+
+**Fix identified** (minimal, 1-line + 1-test-mock):
+- : change  → 
+  (strip separators entirely, matching DB convention)
+- : update mock lattice key from  → 
+
+**Paddhati_profile secondary finding**:  returns status 400 for
+both canonical charts — not seeded (L0 rebuild not yet run). Coverage reports ,
+not a fabrication.
+
+**Pass condition 1 status**: PARTIAL PASS (honestly-empty with gap_report present → not
+unexplained empty; but expected non-empty for 482012f1 and chart_relative for 1c826d5a).
+
+**Gate W4 Mode-2**: PARKED-HONEST on this bug. Fix is clear and minimal; filing as
+W4-GATE-BUG-1 for immediate follow-up PR.
+
+---
+
 ## HB #96 — 2026-08-07T03:46:52Z
 
 **Lease**: renewed; next HB due ≤ 03:56:52Z
