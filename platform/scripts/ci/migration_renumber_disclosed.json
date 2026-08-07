@@ -25,5 +25,15 @@
     "Two historical instances of this hazard are recorded (as history, not as entries) in",
     "00_ARCHITECTURE/MIGRATION_AND_MERGE_PROTOCOL_v1_0.md: 467->474 and 456->457."
   ],
-  "entries": []
+  "entries": [
+    {
+      "new_filename": "543_bg_muhurta_lattice.sql",
+      "applied_filename": "484_bg_muhurta_lattice.sql",
+      "sql_identity": "6ea6bf88d66b4616ea0972b53bceb7f3b4e7922e3b3201d9537f377e75144553",
+      "disposition": "already-applied-under-old-name",
+      "reason": "bg_muhurta_lattice was initially filed as 484_bg_muhurta_lattice.sql and applied to production in the pre-ṢAḌ-DARŚANA build phase. During the ṢAḌ-DARŚANA campaign it was renumbered to 543 to reflect its actual dependency order relative to migrations 485–542. The SQL content is identical (only the -- Migration NNN: header comment differs, which is stripped by sqlIdentityOf). Production already has this table; the runner should record 543 as applied without re-executing.",
+      "disclosed_via": "ṢAḌ-DARŚANA campaign post-merge deploy failure 2026-08-07 — MigrationRenumberedError blocked deploy run 31140238243; DVA RULING 73 disclosure discipline (same pattern as migration_hash_disclosed_residuals.json)",
+      "disclosed_on": "2026-08-07"
+    }
+  ]
 }
