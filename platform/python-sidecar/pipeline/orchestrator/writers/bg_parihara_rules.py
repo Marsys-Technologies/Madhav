@@ -150,7 +150,7 @@ def fetch_parihara_rows(conn: Any, build_id: str) -> list[dict[str, Any]]:
     with conn.cursor() as cur:
         cur.execute(_TEXT_TITLES_QUERY)
         for row in cur.fetchall():
-            text_titles[row[0]] = row[1]
+            text_titles[row["text_id"]] = row["title_en"]
 
     rows: list[dict[str, Any]] = []
     with conn.cursor() as cur:
@@ -586,10 +586,7 @@ class BgPariharaRulesWriter(WriterBase):
             census_rows = build_census_rows(ctx.build_id)
         except Exception as exc:
             logger.error("[bg_parihara_rules] computation failed: %s", exc)
-            return WriterResult(
-                asset_id=self.asset_id, rows_inserted=0, notes=f"failed: {exc}",
-                duration_seconds=round(time.time() - t0, 2),
-            )
+            raise RuntimeError(str(exc)) from exc
 
         try:
             with conn.cursor() as cur:
@@ -600,10 +597,7 @@ class BgPariharaRulesWriter(WriterBase):
             logger.error(
                 "[bg_parihara_rules] insert failed after %d rows: %s", rows_written, exc,
             )
-            return WriterResult(
-                asset_id=self.asset_id, rows_inserted=rows_written,
-                notes=f"partial: {exc}", duration_seconds=round(time.time() - t0, 2),
-            )
+            raise RuntimeError(str(exc)) from exc
 
         elapsed = round(time.time() - t0, 2)
         logger.info(

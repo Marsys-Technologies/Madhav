@@ -83,10 +83,11 @@ def test_run_completes_end_to_end_under_dict_row():
     """The whole computation phase (all three tables) under production config."""
     writer = BgPariharaRulesWriter()
     result = writer.run(_ctx(_conn()))
-    # 2 corpus parihara rows + 1 hand-curated ADJUDICATION-10 row, plus the
-    # 329-ish activity rows and the census register — all upserted.
-    assert result.rows_inserted > 3
-    assert "parihara_rules=3" in result.notes
+    # 2 corpus parihara rows (ADJUDICATION-10 hand-curated muhūrta-scope row
+    # removed by PR #1083 — that gap is now recorded in bg_muhurta_factor_census
+    # instead, not as a parihara rule). Plus 329+ activity rows and census rows.
+    assert result.rows_inserted > 3  # activity_rows alone is 329+ so holds with 2 parihara rows
+    assert "parihara_rules=2" in result.notes
     assert "failed" not in result.notes
 
 
