@@ -316,11 +316,21 @@ def _fetch_cgm_edges(conn, chart_id: str, ayanamsha_id: str) -> list[dict]:
 
 
 def _fetch_pratijna(conn, chart_id: str, ayanamsha_id: str) -> list[dict]:
+    # R6 (PROMISE IS A MODIFIER, NEVER A GATE): all statuses flow through.
+    # The old filter `AND status IN ('promised', 'conditional')` was a categorical
+    # gate that discarded 'denied' and 'no_evidence' rows entirely -- causing
+    # marriage, childbirth, surgery, and relocation to vanish from the native's
+    # promise graph even when those domains had signal evidence.
+    # Downstream consumers (load_promise_graph, conductance scaling) treat status
+    # and grade as MODIFIERS (scaling factors on conductance), never as binary gates.
+    # 'no_evidence' rows (grade=NULL) produce no class_signification edges because
+    # their supporting_signal_ids are NULL -- correctly so, since there are no graha
+    # seed nodes to connect. 'denied' rows produce low-conductance edges that inhibit
+    # routes rather than eliminating them from the graph.
     rows = conn.execute(
         """SELECT event_class_id, status, grade, supporting_signal_ids
            FROM bodha_pratijna
-           WHERE chart_id = %s AND ayanamsha_id = %s
-             AND status IN ('promised', 'conditional')""",
+           WHERE chart_id = %s AND ayanamsha_id = %s""",
         [chart_id, ayanamsha_id],
     ).fetchall()
     return [dict(r) if not isinstance(r, dict) else r for r in rows]
