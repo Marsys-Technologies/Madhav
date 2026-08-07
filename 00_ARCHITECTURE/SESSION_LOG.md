@@ -35395,7 +35395,21 @@ mechanism fix) remain in the consolidated backlog with resume conditions, not dr
 
 ---
 
-## Session: SHAD-DARSHANA-FINAL-ARC-2026-08-07
+## SHAD-DARSHANA-FINAL-ARC-2026-08-07 — ṢAḌ-DARŚANA FINAL-ARC: Gates W3/W4/W5 closed; W2G LANDED; R3 retired; W6 PARKED-HONEST
+
+```yaml
+session_open:
+  session_id: SHAD-DARSHANA-FINAL-ARC-2026-08-07
+  campaign: "ṢAḌ-DARŚANA FINAL-ARC continuation — resumed from HB #109 (Gate W5 just closed).
+    Objectives: W2G LANDED formal verdict, R3 safety-net teardown (Cloud Scheduler + Cloud Run +
+    SA), W6 gate assessment, CURRENT_STATE update to v6.52, SESSION_LOG close."
+  may_touch: "00_ARCHITECTURE/CURRENT_STATE_v1_0.md; 00_ARCHITECTURE/SESSION_LOG.md;
+    platform/scripts/ci/migration_renumber_disclosed.json; platform-mcp/src/lib/kala_sky_pattern.ts;
+    platform-mcp/src/tools/kala_views/ritual_mode2_gate.test.ts;
+    /private/tmp/shad-integration/00_ARCHITECTURE/llm_consumption_audit/briefs/kala_elevation/SHAD_DARSHANA_STATE.md (via worktree)"
+  must_not_touch: "platform/migrations/* (no new migrations this session); any credential rotation;
+    no bypass of any CI gate; native chart data (no raw SQL writes to prediction ledger)"
+```
 
 **Campaign:** ṢAḌ-DARŚANA — FINAL-ARC continuation (resumed after compaction)
 **Date:** 2026-08-07
