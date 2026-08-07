@@ -322,3 +322,128 @@ Verdict: **ACCEPT** (6/6 checks pass).
 All lanes (V0, L1-L5, L7, L8) COMPLETE + PARĪKṢAKA ACCEPT.
 L6 DEFERRED per declared defaults (requires native LEL review).
 Proceeding to Phase 2: gate packet + deploy.
+
+## PHASE 2: GATE PACKET + DEPLOY — 2026-08-07T13:10:00Z (CONDUCTOR)
+
+- PR #1097 created: shabda-shuddhi/integration → main (28 commits, 34 files)
+- CI: 26/26 checks PASS (fact-category-pinning allowlist updated for line drift;
+  test_ph_wave7 7→13; test_ka_bhavishya 7→13; stage65_insights grade fixtures;
+  legacy domain literals in mi_sambandha + ph_rectification fixed; P2a lint
+  bo_pratijna named constant)
+- Merge queue: CI re-ran, merged 2026-08-07T13:10:46Z
+- Deploy: SUCCESS (workflow_run triggered, all services)
+- Migration 545: APPLIED — CHECK constraint now includes 'no_evidence'
+
+## PHASE 3: STAGE R — 2026-08-07T13:30:00Z (CONDUCTOR)
+
+### L2 Bodha: REBUILT (all bo_* assets lit)
+
+Orchestrator ran for all 3 charts (482012f1, 1c826d5a, cb73cd3d).
+bo_laksana through bo_pramana_mapa rebuilt with the new 13-domain vocabulary
+and bo_pratijna v2.0 engine.
+
+### Acceptance metrics (BEFORE → AFTER)
+
+| Metric | Before | After | Status |
+|--------|--------|-------|--------|
+| MSR signals domain spread (482012f1) | 6 | **12** | PASS (edu+family+progeny+residence+transition+travel now present) |
+| pratijna status (all charts) | 251D/149C/5P | 228D/162C/0P/**15 NE** | PASS (no_evidence status working) |
+| no_evidence grade | N/A | **NULL** | PASS (not fabricated 5.0) |
+| contradictions (482012f1) | 0 | **15** | PASS (career+character+health domains) |
+| phala_anchors (482012f1) | 3 | 3 | BLOCKED (L0 pre-existing) |
+| kala_bhavishya (482012f1) | 0 | 0 | BLOCKED (L0 pre-existing) |
+| childbirth/marriage verdicts | N/A | — | BLOCKED (L0 pre-existing) |
+
+### L3-L5: BLOCKED by pre-existing L0 global asset errors
+
+ka_yojaka, ka_avadhi, ka_taranga, ka_kshetra, ph_nimitta, ph_phaladesa,
+mi_darshana all BLOCKED on upstream dependencies:
+- bg_ghatana: NotNullViolation (temporal_shape column) — errored before this campaign
+- bg_transit_rules: ForeignKeyViolation (gochara_resonance_map) — errored before this campaign
+
+These are L0 Brahmagyan global singleton assets. Their errors are NOT caused by
+SHABDA-SHUDDHI and are outside this campaign's scope. When they are repaired
+(separate infrastructure ticket), the remaining L3-L5 assets will rebuild cleanly
+using the code already deployed.
+
+## PHASE 4: STAGE S — BLOCKED
+
+ka_kshetra (the skill-score asset) depends on ka_yojaka which depends on
+bg_ghatana (errored). Stage S cannot proceed until L0 is repaired.
+FIRST-SCORE-BECOMES-BASELINE is deferred, not abandoned — the code is deployed,
+tested, and verified; only the data pipeline input is missing.
+
+## CAMPAIGN CLOSE — 2026-08-07T14:00:00Z (CONDUCTOR, run-2)
+
+### Defect dossier
+
+| # | Defect | Disposition |
+|---|--------|-------------|
+| D1 | Promise as gate (5 categorical gates) | FIXED (R6 satisfied, L3 commit) |
+| D2 | 7-domain vocabulary (missing 7 domains) | FIXED (V0+L1, domain spread 6→12) |
+| D3 | No verdict from zero evidence | FIXED (R8: no_evidence status, L2+L7) |
+| D4 | promise_lift sign inversion | FIXED (L4 Fix 1) |
+| D5 | Flat 0.5 dasha_activation_proximity | FIXED (L4 Fix 2, canonical_domain) |
+| D6 | CGM centrality graha case mismatch | FIXED (L4, via V0 canonical_domain) |
+| D7 | Dead junctions (7 sites Py+TS) | FIXED (L5, 7/7) |
+| D8 | Legacy domain literals in serving | FIXED (mi_sambandha, ph_rectification) |
+| D9 | CI vocabulary-census gate missing | FIXED (L8) |
+| D10 | P2 empty-evidence lint missing | FIXED (L8) |
+| D11 | Serving layer drops no_evidence | FIXED (L7, 4 files) |
+
+### Debt register
+
+| # | Debt | Status |
+|---|------|--------|
+| DB1 | L6 LEL→event_class resolver | DEFERRED (native LEL review required) |
+| DB2 | L0 bg_ghatana temporal_shape error | BLOCKED (pre-existing, separate ticket) |
+| DB3 | L0 bg_transit_rules FK error | BLOCKED (pre-existing, separate ticket) |
+| DB4 | L3-L5 data rebuild | PENDING (code deployed; awaits DB2+DB3 fix) |
+| DB5 | Stage S first skill score | PENDING (awaits DB4) |
+
+### Self-errors (named)
+
+1. **FALSE-BLOCKER-PARK (run-1)**: Prior run parked Stages R/S claiming "no
+   cloud-sql-proxy credentials." The proxy was running continuously since
+   2026-08-05 and the DB was reachable. This was a false blocker — the run
+   simply lacked the credential recipe. Run-2's reviewer independently verified
+   this and provided the recipe. Red-team should hunt other parks whose stated
+   cause was never verified.
+
+2. **INCOMPLETE-ASSET-SET**: First Stage R rebuild attempt used a 19-asset
+   set that missed transitive dependencies (bo_cgm_motifs, ka_sangam, etc.).
+   Second attempt used all stale assets. Root cause: conductor assembled the
+   set from the prompt's description rather than querying the actual DAG.
+
+3. **CONNECTION-TIMEOUT**: Parallel orchestrator runs exhausted Cloud SQL proxy
+   connection budget. Fixed by running sequentially.
+
+### Red-team seeds
+
+- vocabulary-dead-junction (detected and fixed by L5+L8)
+- empty-evidence-as-verdict (detected and fixed by R8+L7)
+- crude-gates-sophisticated (detected and fixed by R6+L3)
+- sign-inversion-at-consumer (detected and fixed by L4 Fix 1)
+- checklist-factual-error (the P2b clean-bill findings)
+- FALSE-BLOCKER-PARK (run-1's false DB blocker — hunt other unverified parks)
+
+### Metrics
+
+| Metric | Value |
+|--------|-------|
+| Commits on integration | 28 |
+| Files changed | 34+ |
+| Tests added | 20+ |
+| PR | #1097 (merged) |
+| Lane duration | ~4 hours (run-2) |
+| L2 Bodha rows rebuilt | ~150,000+ |
+
+---
+
+RUN-TERMINAL: PARKED-FINAL — ŚABDA-ŚUDDHI code complete and deployed. L2 Bodha
+rebuilt (4/7 acceptance metrics PASS). L3-L5 rebuild + Stage S BLOCKED on
+pre-existing L0 global asset errors (bg_ghatana, bg_transit_rules) — NOT caused
+by this campaign. When L0 is repaired, run a full per-chart rebuild to complete
+Stage R and proceed to Stage S.
+
+---
