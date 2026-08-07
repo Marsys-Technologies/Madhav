@@ -8,6 +8,22 @@
 ---
 ---
 ---
+---
+## HB #108 — Gate W4 CLOSED; starting W5 live-MCP verification table — 2026-08-07T05:47:00Z
+
+**Gates closed this session:**
+- Gate W3: CLOSED (HB #96, deploy run 31144896520)
+- Gate W4: CLOSED (HB #107, vara fix deployed + live fixture discharged)
+
+**Now executing: Gate W5 — live-MCP verification table for all 8 primitives.**
+
+Running systematic live calls: kala_now_get, kala_ahead_get, kala_elect_get,
+kala_story_get, kala_priority_get, kala_explain_get, kala_upaya_get, kala_ritual_get
+(already done) + intent_classify routing tests.
+
+**Lease extended.** Next HB due ≤ 05:57:00Z.
+
+
 ## HB #107 — GATE W4 FORMALLY CLOSED + W4-GATE-BUG-1 discharged — 2026-08-07T05:37:00Z
 
 **W4-GATE-BUG-1 — DISCHARGED (vara normalization fix verified live)**
