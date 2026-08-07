@@ -69,10 +69,39 @@ tables regenerate; Maha-Brief verdict content re-derives.
 ### Execution DAG position
 
 STAGE 0 (PRE-FLIGHT): COMPLETE
-STAGE V0 (VOCABULARY MODULE): DISPATCHING
-STAGE 1 (FAN-OUT L1-L8): PENDING (blocked on V0)
+STAGE V0 (VOCABULARY MODULE): COMPLETE (PARIKSHAKA ACCEPT 8/8, 18/18 tests)
+STAGE 1 (FAN-OUT L1-L8): DISPATCHING
 STAGE R (REBUILD): PENDING (blocked on L1-L5 merged)
 STAGE S (FIRST SKILL SCORE): PENDING (blocked on R)
 CLOSE: PENDING
+
+---
+
+## V0 COMPLETE — 2026-08-07T10:35:00Z (CONDUCTOR)
+
+Deliverables:
+- brahmagyan/domain_vocabulary.py: CANONICAL_DOMAINS (13), DOMAIN_SYNONYMS (19),
+  canonical_domain(), is_canonical(), assert_canonical()
+- platform/src/lib/domain_vocabulary.ts: TS mirror (exact parity)
+- tests/test_domain_vocabulary.py: 18 tests (vocabulary, parity, migration 386)
+
+PARIKSHAKA verdict: ACCEPT (8/8 items PASS)
+Commit: c3ef13e3a on shabda-shuddhi/integration
+
+---
+
+## STAGE 1 DISPATCH — 2026-08-07T10:36:00Z (CONDUCTOR)
+
+Round 1 (independent of each other, all depend on V0 only):
+- L1 bo_laksana remap: 3 maps -> 13 domains, citation-backed
+- L2 bo_pratijna v2: class-level routing, 'no_evidence' status + migration
+- L4 numeric fixes: _promise_lift inversion, ka_yojaka, taranga_service
+- L5 dead junctions: ka_bhavishya_lekha, prashna, ph_phaladesa, registry_bridge, etc.
+- L6 LEL->event_class resolver
+- L8 detectors: junction hit-rate, CI vocabulary-census, empty-evidence lint
+
+Round 2 (blocked on L2 'no_evidence' migration):
+- L3 gates->R6: five categorical gates -> modifier semantics
+- L7 serving guards: query_pratijna, mi_darshana, synth brief
 
 ---
