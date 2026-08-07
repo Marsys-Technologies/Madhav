@@ -1,5 +1,75 @@
 ---
 ---
+## RUN-OPEN: CLOSING RUN — ṢAḌ-DARŚANA ARC-COMPLETE — 2026-08-07T06:19:44Z
+
+**CONDUCTOR:** Claude Sonnet 4.6 (claude-sonnet-4-6). Autonomous. No human gates. R1–R5 in force.
+
+**Resumed from:** FINAL-ARC overnight run (HB #113 lease released 2026-08-07T06:37:00Z). No competing lease found.
+
+**Mandate:** CLOSING RUN — W3K close → field integration (R5) → item-44 hard gate → W6 cutover → campaign close → RUN-TERMINAL.
+
+**Predecessor run-open:** 2026-08-06T16:21:50Z (FINAL-ARC overnight). No CLOSING RUN open entry existed — this is the first.
+
+---
+## HB #114 — CLOSING RUN OPEN + FACTUAL CORRECTION + PRE-FLIGHT — 2026-08-07T06:19:44Z
+
+**CONDUCTOR LEASE: TAKEN.** Next HB ≤ 2026-08-07T06:29:44Z.
+
+### Pre-flight verification
+
+| Check | Result |
+|---|---|
+| PR #1094 merged | ✅ merge commit b5b8c0660 on main (docs(governance): session-close SHAD-DARSHANA-FINAL-ARC) |
+| main == production | ✅ deploy run 31153173670 SUCCEEDED 2026-08-07T06:13:04Z (post-#1094 merge) |
+| ka_gochara_sweep corpus | VERIFY PENDING — MCP query in HB #115 |
+| kala_gochara_windows counts | VERIFY PENDING — MCP query in HB #115 |
+| CONDUCTOR lease before this HB | ✅ HB #113 released at 06:37Z — no active competing lease |
+| Factual correction written | ✅ THIS ENTRY (see below) |
+
+### FACTUAL CORRECTION — defect class: checklist-factual-error (second confirmed instance)
+
+**Erroneous claim (FINAL-ARC HB #112 + morning report, line ~115):**
+> "Single next action for next session: Resolve N_e priors source ruling (ADJUDICATION-2 re-dispatch to ANTARYĀMIN — the docket item that has sat unruled since Night 3)"
+
+**And HB #113 item 2:**
+> "Start with: re-dispatch ANTARYĀMIN for ADJUDICATION-2 (N_e priors source ruling)"
+
+**Both claims are FALSE. Correction:**
+
+ADJUDICATION-2 was **RULED on 2026-08-01 in the Night-3 resumed session** by ANTARYĀMIN (Opus/max). The full text is at `SHAD_DARSHANA_ADJUDICATIONS_NIGHT3_v1_0.md`. The ruling:
+
+- **N_e source = Option (b): published demographic/actuarial/epidemiological statistics (Tier N-i only)**
+- **Option (a) classical-derived: AFFIRMATIVELY FORECLOSED** (chart-conditional; would double-count inside multiplicative hazard; B.1 inversion)
+- **Option (c) cohort-derived: AFFIRMATIVELY FORECLOSED** (circularity guard; LEL contamination)
+- **Tranche-1 mandatory** (6 classes: childbirth, marriage, separation, relocation, foreign_settlement, surgery)
+- **Tranche-2 conditional** (seed if Tier N-i sourcing succeeds)
+- **Arithmetic convention bound** (100-year horizon; per-person-year incidence r → N_e = 100r; etc.)
+
+**Native confirmation:** The native affirmed `ne_v01` in `§NATIVE CONFIRMATIONS` of the same file. Migration 522 (`bg_class_lifetime_counts`) was seeded on the basis of this ruling with all six Tranche-1 classes at genuine Tier N-i — childbirth 3.09 (NFHS-5), marriage, separation, relocation, surgery, foreign_settlement.
+
+**Root cause of error:** The overnight FINAL-ARC conductor read the `ADJUDICATION-2 through -5 — NOT ISSUED` block in the ledger without seeing its superseding header. The adjudications file itself contains 8 full rulings superseding those placeholders. This is the same defect class as the first confirmed instance (unspecified prior campaign); now has **TWO confirmed instances** in this campaign.
+
+**Citation — both lines in question:**
+- `SHAD_DARSHANA_STATE.md` HB #112 section "Single next action" (approximately 115 lines from top of HB #112 block)
+- `SHAD_DARSHANA_STATE.md` HB #113 item 2 (line 27 in file)
+- `SHAD_DARSHANA_ADJUDICATIONS_NIGHT3_v1_0.md` §ADJUDICATION-2 (full ruling text)
+- `SHAD_DARSHANA_ADJUDICATIONS_NIGHT3_v1_0.md` §NATIVE CONFIRMATIONS (ne_v01 affirmation)
+
+**Consequence:** Do NOT re-dispatch ANTARYĀMIN for ADJUDICATION-2. The question is answered. A re-ruling under unblock-W6 pressure is the fabrication hazard the N_e reservation exists to prevent. The field integration (R5) may proceed directly using the standing ruling (ne_v01, migration 522 already in production).
+
+### Execution sequence (this run)
+
+0. PRE-FLIGHT: ✅ (this HB) — corpus count verify in HB #115
+1. W3K CLOSE: verify K.1-K.4 live in production → PARĪKṢAKA → formally close
+2. FIELD INTEGRATION (R5): ka_kshetra for 1c826d5a (ne_v01 priors) + 482012f1 (honest-empty) → PARĪKṢAKA
+3. ITEM-44 HARD GATE: per-chart census — PASS (1c826d5a) + DISCLOSED-GAP (482012f1)
+4. W6 CUTOVER per R4 (gated on item-44)
+5. CAMPAIGN CLOSE: SHAD_DARSHANA_CLOSE_v1_0.md + §M red-team + CURRENT_STATE + SESSION_LOG + RUN-TERMINAL
+
+**Next action:** HB #115 — corpus count verification + W3K live KP query + PARĪKṢAKA dispatch.
+
+---
+---
 ---
 ---
 ---
