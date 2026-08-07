@@ -1,4 +1,21 @@
 ---
+## HB #92 — 2026-08-07T03:25:11Z
+
+**Lease**: renewed; next HB due ≤ 03:35:11Z
+
+**PR #1092 merge queue**:
+- State: AWAITING_CHECKS (merge queue running its own CI)
+- Position: 1 (only entry)
+- Enqueued: 2026-08-07T03:21:05Z (~4 min in queue)
+- All 24/24 PR CI checks COMPLETED, 0 failures — gate-executor confirmed independently
+
+**Gate-executor (ac69b7fb01e23b68f)**: Running, monitoring merge + post-merge deploy.
+
+**Status**: Waiting for merge queue CI to complete → merge → Deploy to Cloud Run (expect ~5-10 min more).
+Gate W3 formal close write-up queued (all verification items confirmed in HBs #88-#91).
+
+---
+
 ## HB #91 — 2026-08-07T03:21:01Z
 
 **Lease**: renewed; next HB due ≤ 03:31:01Z
