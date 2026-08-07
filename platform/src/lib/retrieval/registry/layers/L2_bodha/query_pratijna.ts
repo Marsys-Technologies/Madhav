@@ -21,15 +21,17 @@ export const queryPratijnaCapability: CapabilityDescriptor = {
 
   description: [
     'Retrieve the chart pratijna (promise / denial) ledger from bodha_pratijna — one adjudicated',
-    'row per event_class: status (promised | denied | conditional), grade, varga_confirmation, the',
+    'row per event_class: status (promised | denied | conditional | no_evidence), grade, varga_confirmation, the',
     'supporting_signal_ids and contradicting_signal_ids that back it, and a derivation. Filters:',
     'ayanamsha_id, status, event_class_id. Bounded (LIMIT ≤50) with a disclosed total + offset pagination.',
+    'no_evidence rows (bo_pratijna v2.0) indicate event classes with zero supporting/contradicting signals;',
+    'their grade is NULL (not scored) — served honestly per R6/R8, not gated or fabricated.',
   ].join(' '),
 
   input_schema: {
     chart_id:       { type: 'string', description: 'Chart UUID. Required.', required: true },
     ayanamsha_id:   { type: 'string', description: "Filter by ayanamsha. Omit for all." },
-    status:         { type: 'string', description: "Filter by status ('promised' | 'denied' | 'conditional'). Omit for all." },
+    status:         { type: 'string', description: "Filter by status ('promised' | 'denied' | 'conditional' | 'no_evidence'). Omit for all." },
     event_class_id: { type: 'string', description: 'Filter by event_class_id. Omit for all.' },
     limit:          { type: 'number', description: `Max rows (default ${MAX_LIMIT}, max ${MAX_LIMIT}).` },
     offset:         { type: 'number', description: 'Pagination offset (default 0).' },
@@ -46,6 +48,15 @@ export const queryPratijnaCapability: CapabilityDescriptor = {
   llm_hints: {
     agentic: { cost_class: 'cheap', cacheable: true },
     bulk_context: { pre_fetch_priority: 55, always_include: false },
+  },
+  // L7-SERVING (ŚABDA-ŚUDDHI): density_contract discloses paginated behaviour,
+  // the facets callers can filter on, and the honest empty condition.
+  // empty_reason=true: the handler never silently returns empty — it always serves
+  // the honest row count including no_evidence rows and sets no_evidence_qualification.
+  density_contract: {
+    paginated: true,
+    facets: ['status', 'ayanamsha_id', 'event_class_id'],
+    empty_reason: true,
   },
 
   async handler(args: Record<string, unknown>, _ctx: unknown) {
@@ -83,6 +94,14 @@ export const queryPratijnaCapability: CapabilityDescriptor = {
         query<{ total: string }>(`SELECT COUNT(*)::text AS total FROM bodha_pratijna WHERE ${where}`, params),
       ])
       const total_matching = Number(countRes.rows[0]?.total ?? 0)
+      // L7-SERVING (ŚABDA-ŚUDDHI): count no_evidence rows and disclose them explicitly
+      // so callers can distinguish adjudicated verdicts from evidence-free placeholders.
+      const noEvidenceCount = (rowsRes.rows as Array<Record<string, unknown>>).filter(
+        (r) => r['status'] === 'no_evidence'
+      ).length
+      const no_evidence_qualification = noEvidenceCount > 0
+        ? `${noEvidenceCount} of ${rowsRes.rows.length} row(s) have status 'no_evidence' — these event classes had zero supporting/contradicting signals during the L2 Bodha adjudication. Their grade is NULL (not scored). They are served honestly (R6, R8) but should not be treated as assessed verdicts.`
+        : null
       return {
         content: {
           chart_id,
@@ -90,6 +109,7 @@ export const queryPratijnaCapability: CapabilityDescriptor = {
           count: rowsRes.rows.length,
           total_matching,
           more_available: offset + rowsRes.rows.length < total_matching,
+          no_evidence_qualification,
           filters: { ayanamsha_id, status, event_class_id, limit, offset },
           reference_note: 'supporting_signal_ids / contradicting_signal_ids reference upstream signal ids (§N.5) — resolve them via query_signals; values are not restated here.',
           provenance: { tables: ['bodha_pratijna'], source: 'L2 Bodha pratijna ledger; served chart-scoped, budgeted.' },
