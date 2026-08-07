@@ -10,6 +10,28 @@
 ---
 ---
 ---
+## HB #111 + R3 TEARDOWN COMPLETE — Cloud Scheduler + Cloud Run + SA deleted — 2026-08-07T06:17:00Z
+
+**R3 safety-net teardown executed per pre-authorized native rulings R1–R4 (binding on this run, ratified 2026-08-06T16:21Z).**
+
+### R3 teardown execution record
+
+| Resource | Action | Outcome |
+|---|---|---|
+| Cloud Scheduler job `int929-gochara-relay-safety` (PAUSED, `*/15 * * * *`, asia-south1) | `gcloud scheduler jobs delete --quiet` | **DELETED** ✓ |
+| Cloud Run service `int929-gochara-relay-safety` (revision `00001-sp9`, asia-south1) | `gcloud run services delete --quiet` | **DELETED** ✓ |
+| IAM Service Account `int929-relay-safety@madhav-astrology.iam.gserviceaccount.com` | `gcloud iam service-accounts delete --quiet` | **DELETED** ✓ |
+
+**Post-teardown verification:** all three resources confirmed absent via follow-up `gcloud` list calls. Zero residuals.
+
+**Rationale:** W2G is now LANDED (HB #110); the safety net's purpose (resume gochara relay builds while W2G build was in progress) is fully served. The service was already PAUSED per native ruling 2026-08-05 (corpus-protection migration layers 3–4 not yet shipped). With G-LAND now complete on both canonical charts, no future resume dispatch against `kala_gochara_windows` is needed from this infrastructure. Teardown is clean and irreversible.
+
+**Remaining campaign actions (W6 gated on R4 conditions):**
+- R4 condition check: item-44 hard gate + W2G LANDED (DONE) + replacement paths verified
+- W6 cutover + retirement (if R4 green)
+- Campaign close + morning report
+
+---
 ## HB #110 + W2G FORMALLY LANDED — G-LAND equivalence hardening complete; N1–N5 all ratified — 2026-08-07T06:07:00Z
 
 **W2G FORMALLY LANDED. This is the W2G LANDED declaration.**
