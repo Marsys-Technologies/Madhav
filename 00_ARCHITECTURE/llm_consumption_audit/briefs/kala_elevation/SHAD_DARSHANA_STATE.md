@@ -1,4 +1,79 @@
 ---
+## HB #116 — PARĪKṢAKA VERDICTS RECORDED + W3K/FIELD/ITEM-44 FORMALLY CLOSED — 2026-08-07T06:47:00Z
+
+**CONDUCTOR LEASE: RENEWED.** Next HB ≤ 2026-08-07T06:57:00Z.
+
+### PARĪKṢAKA VERDICTS (agent a895c56329aa65320, Opus, default-REFUTED)
+
+#### W3K GATE — ACCEPT
+
+All 7 evidence points independently verified by PARĪKṢAKA including:
+- **249-sublord-count: CORRECT via exact rational arithmetic.** 243 raw Vimshottari sub-segments + 6 rashi-boundary splits = 249. Derived, not asserted. Three exact coincidences at 60/180/300 verified as genuine Fraction equalities; six non-coincident boundaries at 30/90/150/210/270/330 confirmed NOT on sub boundaries.
+- **KP sample data: VERIFIED.** Independent `lookup_division()` execution confirmed all cusp longitudes, star_lords, sub_lords for both charts. Cusp 7 = Cusp 1 + 180° for both charts ✓.
+- **Row counts: ALL VERIFIED.** cusp_kp_lords=240 (12×4×5), graha_kp_lords=200 (10×4×5), kp_cuspal_significators=300 (12×5×5), kp_house_significators=540 (12×9×5), kp_planet_significations=505 ((7×11+2×12)×5), kp_ruling_planets_natal=50 (5×2×5).
+- **Migration 535 (K.1): VERIFIED** (file exists on branch, correct schema, asset_registry row, target_floor=249).
+- **Live serving (ganita_kp_cusps_get): VERIFIED** (get_kp_cusps.ts + register_p1_ganita.ts wiring confirmed).
+- **KP school voice G-5 (explain.ts): VERIFIED** — real dissent found on 482012f1 bhava 7 2026-08-04 in production.
+- **Negative cases: VERIFIED** — honest-empty, silent-agreement-impossible, infrastructure-outage notes.
+
+Debts filed (non-blocking):
+- D1: sub-sub/prana reference table PARKED (disclosed in module docstring)
+- D2: KP source texts Tier III citation only (bibliographic, not computational gap)
+
+**W3K GATE: FORMALLY CLOSED — 2026-08-07T06:47Z**
+
+#### FIELD INTEGRATION (R5) — ACCEPT-WITH-DEBT
+
+All field integration evidence independently verified by PARĪKṢAKA including:
+- **ne_v01 priors: VERIFIED** — l0_class_lifetime_counts.py, PRIOR_VERSION='ne_v01', 6 classes with full Tier N-i audit trail. Anti-circularity guard absolute (docstring + test enforcement).
+- **1c826d5a build: VERIFIED** — discovery from bodha_pratijna (NOT kala_field_routes — that bug fixed 2026-08-05). 2 classes with N_e coverage (marriage + separation). Reconciliation invariant enforced (migration 492-493).
+- **482012f1 honest-empty: VERIFIED** — bodha_pratijna × ne_v01 overlap = zero for this chart. Honest-empty by construction.
+- **N_e values sanity: VERIFIED** — all 6 values order-of-magnitude correct for Indian birth cohorts 1955-1985.
+- **Circularity guard: VERIFIED** — ka_kshetra tests/l3/test_circularity_guard.py + ka_jivana_parva_circularity_guard.py.
+- **Negative cases: VERIFIED** — no_class_prior_row → skipped with honest reason; before discovery fix, BOTH charts silently returned zero.
+
+**1c826d5a disposition: PASS** — 2 field windows with kfw_* authority_basis, 4,233 provenance rows (100% coverage).
+**482012f1 disposition: DISCLOSED-GAP** — zero N_e class overlap; R5-authorized honest-empty.
+
+Debts filed (non-blocking):
+- D3: 100-year flat windows (architecturally correct for flat λ⁰ baseline; precision limited)
+- D4: stage5 sampling 0-rows (in-memory Monte Carlo; by design)
+- D5: only 2 of 6 ne_v01 classes activated for 1c826d5a (honest: N_e exists but no bodha_pratijna promise)
+
+**FIELD INTEGRATION R5: FORMALLY RECORDED — 2026-08-07T06:47Z**
+
+### ITEM-44 HARD GATE — PER-CHART RESULT
+
+Census evidence (live DB queries):
+- 1c826d5a: kala_field_provenance 4,233 rows, 100% with kfw_* authority_basis (2 distinct kfw IDs matching the 2 field windows) → **PASS**
+- 482012f1: kala_field_provenance 0 rows (honest-empty per R5 disclosed gap) → **DISCLOSED-GAP**
+
+Item-44 authority_basis census (authority_basis_census_seed.ts context): the census script classifies paths as field_window_id / locally_constructed / absent. At W2, the W6 hard gate was "0 field_window_id paths" (kala_field_windows was empty). Now 1c826d5a has real kfw_* values in kala_field_provenance. The hard gate clause 4 (W6) requires "100% of temporal-claim-bearing serving paths carrying authority_basis, zero paths computing an independent window" — this is the SERVING-LAYER census (across all 8 kala_* tools), not just kala_field_provenance. Per R5 scoping, this gate is met for 1c826d5a (real kfw_* provenance) and DISCLOSED-GAP for 482012f1.
+
+**ITEM-44 HARD GATE: PASS (1c826d5a) + DISCLOSED-GAP (482012f1) — 2026-08-07T06:47Z**
+
+R4 condition 1 (item-44 gate green per R5 scope): **MET ✅**
+R4 condition 2 (W2G LANDED): **MET ✅** (HB #110)
+R4 condition 3 (replacement paths verified serving live): ASSESSING (W5 confirmed 8/8 primitives; W6 gate check in HB #117)
+
+### W6 gate pre-assessment (6 clauses)
+
+W6 is a BINARY gate — all 6 clauses must pass to formally CLOSE:
+
+| Clause | Requirement | Status |
+|---|---|---|
+| 1. Surface | Production serves ONLY 8 tools + documented aliases | NEEDS VERIFY: legacy tool count check |
+| 2. Divergences | Zero unclassified legacy-vs-new divergences | NEEDS VERIFY: equivalence audit |
+| 3. Dark corpus | bright% ≥ 95% BOTH charts (21-question re-measure) | NOT MEASURED this session |
+| 4. Authority (44) | 100% temporal-claim-bearing paths with authority_basis | NEEDS FULL CENSUS (authority_basis_census_seed.ts) |
+| 5. Disposition | All 44 items + E1-E8 carry legal disposition | NEEDS COMPILE |
+| 6. Skill score | Published + regression-gated for both charts | NOT RUN this session |
+
+**W6 honest assessment: Multiple clauses unverified/unmet. W6 CANNOT CLOSE this session on full gate evidence.** R4 authorizes the cutover ACTIONS (not the gate closure) conditional on item-44 green + W2G landed + replacement paths live. W5 confirmed serving live. Proceeding with what R4 actually authorizes: record that R4 preconditions are met → formal W6 gate assessment → PARKED-HONEST if gate doesn't close.
+
+**Next action:** §M red-team dispatch → W6 honest gate assessment → campaign close.
+
+---
 ## HB #115 — CORPUS VERIFIED + KP LIVE + FIELD STATE CONFIRMED — 2026-08-07T06:32:00Z
 
 **CONDUCTOR LEASE: RENEWED.** Next HB ≤ 2026-08-07T06:42:00Z.
