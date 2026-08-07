@@ -795,12 +795,15 @@ def seed_transit_rules(conn, *, dry_run: bool = False) -> dict[str, int]:
 
     cur = conn.cursor()
 
-    # Idempotency: full clear before re-seed so removed entries don't persist
-    # as orphan rows. Static rows — full delete is correct L0 behaviour.
-    cur.execute("DELETE FROM bg_transit_moorti")
-    cur.execute("DELETE FROM bg_transit_rules")
-    cur.execute("DELETE FROM bg_transit_engine")
-    logger.info("[transit] cleared bg_transit_rules, bg_transit_engine, bg_transit_moorti for re-seed")
+    # Idempotency: ON CONFLICT upserts below handle updates. DELETE-then-insert
+    # was removed because (a) bg_transit_rules.id is SERIAL — delete+insert
+    # renumbers every rule, silently corrupting gochara_resonance_map.source_rule_id
+    # references (B.10 citation corruption), and (b) migration 459 added an FK
+    # from gochara_resonance_map.source_rule_id → bg_transit_rules.id that
+    # correctly prevents this. If retirement semantics are ever needed, add a
+    # post-insert sweep scoped to keys absent from BG_TRANSIT_RULES — it will
+    # FK-fail loudly only when a genuinely-referenced rule is retired.
+    logger.info("[transit] upserting bg_transit_engine, bg_transit_rules, bg_transit_moorti")
 
     # ── Insert bg_transit_engine rows ─────────────────────────────────────────
     engine_count = 0
