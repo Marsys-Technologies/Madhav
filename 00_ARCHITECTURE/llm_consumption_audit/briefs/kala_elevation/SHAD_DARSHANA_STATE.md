@@ -2,6 +2,12 @@
 
 ---
 
+## HB #73 — 2026-08-07T01:33:13Z
+
+**Heartbeat** — PR #1090 mergeable=MERGEABLE, mergeStateStatus=UNSTABLE (one soft gate in_progress). Ganga Quality Gate SUCCESS ✅ (01:29:04Z). Awaiting Deploy to Cloud Run + soft gate. Lease extended; next HB due before 2026-08-07T01:43:13Z.
+
+---
+
 ## HB #72 — 2026-08-07T01:23:55Z
 
 **Heartbeat** — Ganga Quality Gate PASSED ✅ (01:23:23Z, run 31137424391). bg_parihara_rules dict_row fix confirmed green. Awaiting Deploy to Cloud Run and full PR #1090 checks. Lease maintained manually; next HB due before 2026-08-07T01:33:55Z.
