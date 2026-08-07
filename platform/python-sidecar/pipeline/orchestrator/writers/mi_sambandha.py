@@ -29,7 +29,7 @@ _PRIOR_PROPENSITIES: dict[str, dict[str, float]] = {
     "career":       {"ch_career_verbal": 0.40, "ch_career_material": 0.35, "ch_career_relational": 0.25},
     "health":       {"ch_health_bodily": 0.50, "ch_health_mental": 0.30, "ch_health_social": 0.20},
     "relationship": {"ch_rel_partnership": 0.45, "ch_rel_family": 0.35, "ch_rel_social": 0.20},
-    "finance":      {"ch_fin_income": 0.40, "ch_fin_asset": 0.35, "ch_fin_loss": 0.25},
+    "wealth":       {"ch_fin_income": 0.40, "ch_fin_asset": 0.35, "ch_fin_loss": 0.25},
     "travel":       {"ch_travel_short": 0.50, "ch_travel_long": 0.50},
     "education":    {"ch_edu_formal": 0.60, "ch_edu_informal": 0.40},
     "spirituality": {"ch_spirit_practice": 0.55, "ch_spirit_insight": 0.45},

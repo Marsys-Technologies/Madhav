@@ -197,9 +197,9 @@ _DOMAIN_HOUSES: dict[str, tuple[int, ...]] = {
     "loss":         (4, 8, 12),     # 4th (mother/property), 8th (longevity), 12th (loss)
     "travel":       (3, 9, 12),
     "creative":     (3, 5),
-    "finance":      (2, 11),
-    "spiritual":    (5, 9, 12),
-    "residential":  (4, 12),
+    "wealth":       (2, 11),
+    "spirituality": (5, 9, 12),
+    "residence":    (4, 12),
     "legal":        (6, 8),
 }
 

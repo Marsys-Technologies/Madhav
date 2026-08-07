@@ -330,6 +330,48 @@ class MiDarshanaWriter(WriterBase):
                     # neutral default. Only an actually-missing grade (None) should
                     # fall back to 5.0.
                     _raw_grade = pr.get("grade")
+
+                    # L7-SERVING / R8 (ŚABDA-ŚUDDHI): bo_pratijna v2.0 introduces
+                    # status='no_evidence' for event classes with zero supporting or
+                    # contradicting signals. grade IS NULL by design for these rows —
+                    # it cannot be scored because there is nothing to score.
+                    # §N.7 item 6: "an honest null beats an invented judgment."
+                    # Branching early: no_evidence rows must not run through the
+                    # grade→verdict_note→statement flow that would fabricate a
+                    # "grade 5.0/10. Conditional." statement from a null grade.
+                    if status == "no_evidence":
+                        _ne_sup_ids = [str(s) for s in (pr.get("supporting_signal_ids") or [])][:5]
+                        _ne_verdict_content = {
+                            "event_class_id": event_class_id,
+                            "event_class_name": name_en,
+                            "domain": domain,
+                            "activation_state": "no_evidence",
+                            "grade": None,
+                            "ayanamsha_robustness": aya_count,
+                            "canonical_ayanamsha_id": CANONICAL_AYA,
+                            "ranked_evidence": [],
+                            "contradictions": [],
+                            "tradition_concordance": {},
+                        }
+                        rows.append((
+                            chart_id,
+                            f"verdict_{event_class_id[:50]}",
+                            "verdict_object",
+                            domain, None, event_class_id,
+                            f"{name_en}: no evidence — no supporting or contradicting signals available for this event class.",
+                            0.0,       # rank_consequence: lowest, but row is still written (R6)
+                            None,      # confidence_band: no band computable from a null grade
+                            0,         # n_support: genuinely zero
+                            "clean",
+                            "structural",
+                            LEL_VERSION,
+                            None,
+                            json.dumps(_ne_verdict_content),
+                            False,
+                            SURFACE_FORMULA_VERSION,
+                        ))
+                        continue
+
                     grade = float(_raw_grade) if _raw_grade is not None else 5.0
 
                     sup_ids = [str(s) for s in (pr.get("supporting_signal_ids") or [])][:5]

@@ -1477,7 +1477,13 @@ function readContradictionsFamily(contradictions: Record<string, unknown> | unde
   if (items.length === 0) {
     return {
       family: 'contradictions_with_adjudication', label: 'Domain contradictions + adjudication', status: 'empty_for_this_chart',
-      sentences: [totalCount === 0 ? 'No contradictions tagged to this domain (bodha_contradictions) — a correct negative, this domain reads as internally consistent.' : `${totalCount} chart-wide contradiction(s) exist but none tag this domain.`],
+      // SHABDA-SHUDDHI Lane L5 Fix 6: bodha_contradictions covers only ~3 of 13 canonical domains;
+      // when items.length === 0, this is NOT a confirmed clean bill — it is a gap in adjudication
+      // coverage. Replacing the false "correct negative / internally consistent" claim with an
+      // honest not_adjudicated signal, following kala_lattice_query.ts:364-376 pattern.
+      sentences: [totalCount === 0
+        ? 'No contradictions tagged to this domain in bodha_contradictions — not_adjudicated: the contradiction corpus does not yet cover this domain, so absence of a tag is a coverage gap, not a confirmed clean reading.'
+        : `${totalCount} chart-wide contradiction(s) exist but none tag this domain — not_adjudicated: domain-specific contradiction coverage may be incomplete.`],
       fact_ids: [],
     }
   }

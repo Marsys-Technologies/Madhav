@@ -2,6 +2,7 @@
 import json
 from datetime import date
 from pipeline.orchestrator.writers import WriterBase, WriterResult, register
+from brahmagyan.domain_vocabulary import CANONICAL_DOMAINS, CANONICAL_DOMAINS_SORTED
 
 
 @register('ka_bhavishya_lekha')
@@ -155,24 +156,35 @@ def _assign_tier(effective_score: float, net_label: str) -> str:
     return 'tier_3_speculative'
 
 
-_DOMAINS = ['career', 'health', 'relationship', 'finance', 'spiritual', 'education', 'general']
-_ALLOWED_DOMAINS = set(_DOMAINS)  # mirrors kala_bhavishya_domain_check constraint
+# SHABDA-SHUDDHI Lane L5 (Fix 1): _DOMAINS imported from the canonical vocabulary module
+# (brahmagyan.domain_vocabulary.CANONICAL_DOMAINS). Before this fix the list was hardcoded
+# with 'finance' and 'spiritual' — both violate the DB CHECK constraint on kala_bhavishya
+# (migration 386), which is why the table was COMPLETELY EMPTY in production.
+_DOMAINS = CANONICAL_DOMAINS_SORTED  # all 13 canonical domains, deterministically sorted
+_ALLOWED_DOMAINS = CANONICAL_DOMAINS  # mirrors kala_bhavishya_domain_check constraint
 
 # CF.L3.5: keyword sets for signal_type_id → domain mapping.
-# Checked in order; first match wins; falls through to rank rotation.
+# Checked in order; first match wins; falls through to 'general'.
+# Keys must be canonical domain names (migration 386 CHECK constraint).
 _DOMAIN_KEYWORDS: list[tuple[str, list[str]]] = [
-    ('career',       ['raja_yoga', 'amatyakaraka', 'tenth', 'karma', 'arudha', 'dasamsha',
-                      'profession', 'status', 'power', 'authority']),
-    ('relationship', ['kalatra', 'seventh', 'upapada', 'navamsha', 'spouse', 'partner',
-                      'union', 'marriage', 'venus_yoga']),
-    ('finance',      ['dhana', 'second', 'eleventh', 'artha', 'wealth', 'income',
-                      'lakshmi', 'kubera', 'dhan']),
-    ('health',       ['ayur', 'sixth', 'eighth', 'maraka', 'bala', 'disease',
-                      'vitality', 'longevity', 'immunity']),
-    ('spiritual',    ['dharma', 'ninth', 'twelfth', 'moksha', 'guru', 'bhakti',
-                      'tapas', 'jnana', 'liberation']),
-    ('education',    ['vidya', 'fourth', 'fifth', 'learning', 'intellect', 'mercury_yoga',
-                      'saraswati', 'knowledge']),
+    ('career',        ['raja_yoga', 'amatyakaraka', 'tenth', 'karma', 'arudha', 'dasamsha',
+                       'profession', 'status', 'power', 'authority']),
+    ('relationship',  ['kalatra', 'seventh', 'upapada', 'navamsha', 'spouse', 'partner',
+                       'union', 'marriage', 'venus_yoga']),
+    ('wealth',        ['dhana', 'second', 'eleventh', 'artha', 'wealth', 'income',
+                       'lakshmi', 'kubera', 'dhan']),
+    ('health',        ['ayur', 'sixth', 'eighth', 'maraka', 'bala', 'disease',
+                       'vitality', 'longevity', 'immunity']),
+    ('spirituality',  ['dharma', 'ninth', 'twelfth', 'moksha', 'guru', 'bhakti',
+                       'tapas', 'jnana', 'liberation']),
+    ('education',     ['vidya', 'fourth', 'fifth', 'learning', 'intellect', 'mercury_yoga',
+                       'saraswati', 'knowledge']),
+    ('progeny',       ['putra', 'fifth', 'santana', 'children', 'creativity']),
+    ('family',        ['fourth', 'matru', 'sukha', 'mother', 'home', 'household']),
+    ('residence',     ['fourth', 'property', 'griha', 'bhoomi', 'land', 'building']),
+    ('travel',        ['yatra', 'twelfth', 'third', 'foreign', 'journey', 'pilgrimage']),
+    ('character',     ['lagna', 'first', 'atmakaraka', 'manas', 'psychology', 'self']),
+    ('transition',    ['eighth', 'twelfth', 'sandhi', 'transformation', 'change']),
 ]
 
 
@@ -194,14 +206,21 @@ def _build_falsifiability(tier: str, domain: str, peak_date, eff_score: float) -
     """Build falsifiability hooks for this projection."""
     peak_str = str(peak_date) if peak_date else 'the projected window'
 
+    # SHABDA-SHUDDHI R7: canonical 13-domain vocabulary, no legacy keys.
     domain_confirms = {
         'career': 'significant career event (new role, promotion, venture launch, client gain)',
         'health': 'notable health event (condition onset, recovery milestone, medical event)',
         'relationship': 'significant relational event (union, separation, new connection)',
-        'finance': 'measurable financial event (income jump, loss, investment event)',
-        'spiritual': 'notable spiritual shift (practice deepening, teacher encounter, insight)',
+        'wealth': 'measurable financial event (income jump, loss, investment event)',
+        'spirituality': 'notable spiritual shift (practice deepening, teacher encounter, insight)',
         'education': 'educational milestone (enrollment, completion, certification)',
-        'general': 'notable life event (relocation, legal matter, public recognition)',
+        'progeny': 'progeny-related event (conception, birth, child milestone)',
+        'family': 'family event (parental milestone, household change)',
+        'residence': 'property/residence event (move, purchase, renovation)',
+        'travel': 'travel event (relocation, foreign settlement, significant journey)',
+        'character': 'personal transformation (mindset shift, psychological change)',
+        'transition': 'life transition (phase change, significant endings/beginnings)',
+        'general': 'notable life event (legal matter, public recognition, general milestone)',
     }
 
     confirm = f"Observable within ±21 days of {peak_str}: {domain_confirms.get(domain, 'notable life event')}"

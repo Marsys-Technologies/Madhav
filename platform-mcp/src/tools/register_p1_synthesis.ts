@@ -253,8 +253,14 @@ function getProvenanceChain(row: Record<string, unknown>): ProvenanceChain | nul
 // Fallback parse from the templated statement string ("Name: status (grade
 // N.N/10). note") for depth=standard callers where provenance_chain wasn't
 // fetched — never invents a value, only extracts what's already in `statement`.
+// L7-SERVING (ŚABDA-ŚUDDHI): also handles the new no_evidence format from
+// bo_pratijna v2.0 which says "Name: no evidence — ..." with no grade clause.
 function parseStatement(statement: unknown): { name: string | null; status: string | null; grade: number | null } {
   const s = typeof statement === 'string' ? statement : ''
+  // Match the no_evidence format first (no grade in statement)
+  const mNoEvid = /^(.*?):\s*no evidence\b/i.exec(s)
+  if (mNoEvid) return { name: mNoEvid[1] ?? null, status: 'no_evidence', grade: null }
+  // Original format with grade
   const m = /^(.*?):\s*(promised|denied|conditional)\s*\(grade\s*([\d.]+)\/10\)/i.exec(s)
   if (!m) return { name: null, status: null, grade: null }
   return { name: m[1] ?? null, status: (m[2] ?? '').toLowerCase(), grade: m[3] ? Number(m[3]) : null }
@@ -266,14 +272,17 @@ function parseStatement(statement: unknown): { name: string | null; status: stri
 // in the same statement). Serving the raw text/anchor status verbatim in that case presents
 // an internally-contradictory verdict as settled. This never invents a NEW status — it only
 // detects when the raw text disagrees with itself and resolves to the more conservative
-// reading (never claim a delivered promise you cannot back): denied > conditional > promised.
-const STATUS_PRECEDENCE = ['denied', 'conditional', 'promised'] as const
+// reading (never claim a delivered promise you cannot back): no_evidence > denied > conditional > promised.
+// L7-SERVING (ŚABDA-ŚUDDHI): 'no_evidence' added as most conservative — no evidence at all
+// is more conservative than 'denied' (which at least had evidence to refute).
+const STATUS_PRECEDENCE = ['no_evidence', 'denied', 'conditional', 'promised'] as const
 
 function detectStatusVocabularyConflict(statement: unknown): { conflicting: boolean; keywordsFound: string[] } {
   const s = typeof statement === 'string' ? statement : ''
   const found = new Set<string>()
-  for (const m of s.matchAll(/\b(promised|denied|conditional)\b/gi)) {
-    found.add((m[1] ?? '').toLowerCase())
+  // L7-SERVING (ŚABDA-ŚUDDHI): include no_evidence / no evidence (both forms)
+  for (const m of s.matchAll(/\b(promised|denied|conditional|no_evidence|no\s+evidence)\b/gi)) {
+    found.add((m[1] ?? '').toLowerCase().replace(/\s+/g, '_'))
   }
   return { conflicting: found.size > 1, keywordsFound: Array.from(found) }
 }
@@ -386,12 +395,23 @@ function buildRankedThemes(
       status = resolved
     }
 
+    // L7-SERVING (ŚABDA-ŚUDDHI): no_evidence rows already carry an honest statement
+    // from mi_darshana. Route them directly to open_questions without running through
+    // grade/status sentence construction — they have no grade to display, and the
+    // zero-support masking path would replace their already-honest label.
+    if (status === 'no_evidence') {
+      let sentence = `${name}: no evidence available for this event class — cannot assess.`
+      if (citation) sentence += ` (${citation})`
+      openQuestions.push(sentence)
+      continue
+    }
+
     // D-12 fix (part 2): a grade with ZERO supporting rows is not the same claim as a
     // grade backed by evidence (R-21 principle applied here to a numeric grade rather than
     // a ✓ mark) — never present n_support=0 grades with unqualified confidence.
     const nSupport = typeof row['n_support'] === 'number' ? row['n_support'] as number : null
     const zeroSupport = nSupport === 0
-    if (zeroSupport) {
+    if (zeroSupport && status !== 'no_evidence') {
       verdictQualityFlags.push(
         `${name}: grade ${gradeStr} carries n_support=0 (zero backing evidence rows) — ` +
         `treat as unverified/provisional, not a confirmed grade.`
@@ -441,13 +461,20 @@ function buildRankedThemes(
 // zero-evidence STRUCTURAL-mode row will misread it as a confirmed categorical finding.
 // This never invents a new value — it only masks the verb token when n_support=0 proves
 // there is zero backing evidence for the grade the verb rides on.
-const ZERO_SUPPORT_VERB_RE = /\b(promised|denied|conditional|confirmed)\b/gi
+// L7-SERVING (ŚABDA-ŚUDDHI): 'no_evidence' / 'no evidence' added to the RE so the
+// conflict detector can see them — but sanitizeZeroSupportStatement must SKIP rows
+// whose statement already contains "no evidence", because those are ALREADY honest
+// (they were written by mi_darshana's no_evidence branch, §N.7-6 compliant).
+const ZERO_SUPPORT_VERB_RE = /\b(promised|denied|conditional|confirmed|no_evidence|no\s+evidence)\b/gi
 const ZERO_SUPPORT_SAFE_LABEL = 'not_yet_assessed (structural prior, no evidence rows)'
 
 function sanitizeZeroSupportStatement(row: Record<string, unknown>): Record<string, unknown> {
   const nSupport = typeof row['n_support'] === 'number' ? row['n_support'] as number : null
   const statement = row['statement']
   if (nSupport !== 0 || typeof statement !== 'string') return row
+  // no_evidence statements are already honest — masking them would replace the
+  // honest label with a fabricated one; skip them entirely (L7-SERVING, ŚABDA-ŚUDDHI).
+  if (/\bno\s*evidence\b/i.test(statement)) return row
   ZERO_SUPPORT_VERB_RE.lastIndex = 0
   if (!ZERO_SUPPORT_VERB_RE.test(statement)) return row
   ZERO_SUPPORT_VERB_RE.lastIndex = 0
@@ -901,17 +928,31 @@ export function registerP1SynthesisTools(server: McpServer, principal: Principal
         `, [chart_id, domain], principal)
 
         // 4. Activity ontology fructification rules for inferred action class
+        // SHABDA-SHUDDHI Lane L5 (Fix 3): canonical domain vocabulary + existing activity IDs.
+        //   - 'financial' → 'wealth' (legacy non-canonical domain key)
+        //   - 'spiritual' → 'spirituality' (legacy non-canonical domain key)
+        //   - 'sadhana' → 'spiritual_initiation' (sadhana does not exist in brahma_activity_ontology;
+        //      verified against l0_ghatana.py seed; spiritual_initiation does exist)
+        //   - Fallback changed from 'business_start' (misleading — implies a business undertaking
+        //     for any unresolved domain) to null (honest: no matching activity class found).
+        //   Activity IDs verified against brahmagyan/l0_ghatana.py seed data.
         const _DOMAIN_TO_ACTION: Record<string, string> = {
-          career: 'business_start', financial: 'contract_signing',
-          health: 'medical_procedure', relationship: 'marriage',
-          spiritual: 'sadhana', transition: 'travel_journey',
+          career:       'business_start',
+          wealth:       'contract_signing',
+          health:       'medical_procedure',
+          relationship: 'marriage',
+          spirituality: 'spiritual_initiation',
+          transition:   'travel_journey',
+          residence:    'griha_pravesh',
+          travel:       'travel_journey',
+          education:    'education_start',
         }
-        const actionClass = _DOMAIN_TO_ACTION[domain] ?? 'business_start'
-        const ontologyResult = await platformQuery(`
+        const actionClass: string | null = _DOMAIN_TO_ACTION[domain] ?? null
+        const ontologyResult = actionClass ? await platformQuery(`
           SELECT activity_class_id, name_en, significators, fructification_rules, citations
           FROM brahma_activity_ontology
           WHERE activity_class_id = $1
-        `, [actionClass], principal)
+        `, [actionClass], principal) : { rows: [] }
 
         // Composite undertaking score = mean(prashna verdict_strength, best election quality, best posterior).
         // R-12 fix: ga_prashna_judgment carries no numeric verdict-strength column (only the

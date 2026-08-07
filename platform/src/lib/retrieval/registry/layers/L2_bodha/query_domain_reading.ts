@@ -68,6 +68,9 @@ const RANKED_SIGNALS_PER_LENS_FULL = 200
  * tag — e.g. moksha/education); the pool is the whole chart and the composite domain overlay
  * (graha×domain + bhāva×domain + varga) does ALL the discrimination. Disclosed in provenance.
  */
+// SHABDA-SHUDDHI Lane L5 (Fix 4): extended to cover all 13 canonical domains.
+// Domains not stored as bodha_msr_signals domain tags use null (whole-chart ranked
+// by the domain-specific graha×bhāva×varga overlay).
 const DOMAIN_TO_SIGNAL_FILTER: Record<string, string | null> = {
   career:       'career',
   wealth:       'wealth',
@@ -76,8 +79,14 @@ const DOMAIN_TO_SIGNAL_FILTER: Record<string, string | null> = {
   character:    'character',
   spirituality: 'spirituality',
   education:    null,   // not a stored domain tag — rank whole-chart by the vidyā overlay (2/4/5/9 + Me/Ju/Ke)
+  progeny:      null,   // not a stored domain tag — rank whole-chart by the 5th-house/putra overlay
+  family:       null,   // not a stored domain tag — rank whole-chart by the 4th-house/sukha overlay
+  residence:    null,   // not a stored domain tag — rank whole-chart by the 4th-house/bhoomi overlay
+  travel:       null,   // not a stored domain tag — rank whole-chart by the 3rd/12th/yatra overlay
+  transition:   null,   // not a stored domain tag — rank whole-chart by the 8th-house/sandhi overlay
+  general:      null,   // no overlay — return highest salience signals chart-wide
   moksha:       null,   // not a stored domain tag — rank whole-chart by the mokṣa-trikoṇa overlay (4-8-12 + Ketu)
-  other:        null,
+  other:        null,   // no filter applied; all lenses returned
 }
 
 interface DiscriminatedSignal {
@@ -238,6 +247,15 @@ const DOMAIN_TO_QUESTION_TYPES: Record<string, string[]> = {
   spirituality: ['spirituality', 'education'],
   moksha:       ['spirituality', 'foreign_travel', 'longevity'],
   other:        [],
+  // SHABDA-SHUDDHI Lane L5 (Fix 4): canonical domains newly accessible.
+  // These map to question_types using the best available overlapping lens type;
+  // where no specific lens type covers them, an empty array returns all lenses.
+  progeny:      ['progeny'],
+  family:       ['health'],       // closest lens covering 4th-house sukha themes
+  residence:    ['property'],
+  travel:       ['foreign_travel'],
+  transition:   ['longevity'],    // closest lens covering 8th-house transformation
+  general:      [],               // no filter — all lenses returned (same as 'other')
 }
 
 export const queryDomainReadingCapability: CapabilityDescriptor = {
@@ -279,15 +297,20 @@ export const queryDomainReadingCapability: CapabilityDescriptor = {
     domain: {
       type: 'string',
       description: [
-        'Life domain to query.',
-        'One of: career, wealth, relationship, health, character, spirituality, education, moksha, other.',
-        'education = vidyā (bhāva 4/5/2/9 + Mercury/Jupiter/Ketu); moksha = the 4-8-12 mokṣa-trikoṇa',
-        '+ Ketu axis (NOT a 9th-house/dharma alias — that is spirituality).',
-        'Each domain re-ranks its signals by a domain-specific graha×bhāva×varga overlay, so the',
-        'ranked_signals surface genuinely differs across domains (see ranked_signals[].rationale).',
+        'Life domain to query. 13 canonical domains:',
+        'career, wealth, relationship, health, character, spirituality, education,',
+        'progeny, family, residence, travel, transition, general.',
+        'Plus backward-compat extras: moksha (spirituality alias via 4-8-12 overlay), other (all lenses).',
+        'education = vidyā (bhāva 4/5/2/9 + Me/Ju/Ke); moksha = the 4-8-12 mokṣa-trikoṇa + Ketu',
+        '(NOT a spirituality alias — has its own overlay). Each domain re-ranks signals by a',
+        'domain-specific graha×bhāva×varga overlay (see ranked_signals[].rationale).',
         'If omitted or unrecognized, returns the list of available domains for this chart.',
       ].join(' '),
-      enum: ['career', 'wealth', 'relationship', 'health', 'character', 'spirituality', 'education', 'moksha', 'other'],
+      enum: [
+        'career', 'wealth', 'relationship', 'health', 'character', 'spirituality',
+        'education', 'progeny', 'family', 'residence', 'travel', 'transition', 'general',
+        'moksha', 'other',
+      ],
     },
     ayanamsha_id: {
       type: 'string',
@@ -374,7 +397,19 @@ export const queryDomainReadingCapability: CapabilityDescriptor = {
           RANKED_SIGNALS_PER_LENS_MAX,
         )
 
-    const VALID_DOMAINS = ['career', 'wealth', 'relationship', 'health', 'character', 'spirituality', 'education', 'moksha', 'other']
+    // SHABDA-SHUDDHI Lane L5 (Fix 4): gate was inverted — blocked canonical domains
+    // (progeny/family/residence/travel/transition/general) and passed non-canonical
+    // 'moksha' (a spirituality alias) through. Extended to cover all 13 canonical domains.
+    // 'other' retained for "return all lenses" fallback (DOMAIN_TO_QUESTION_TYPES maps it
+    // to []). 'moksha' retained for backward compat (handled by DOMAIN_TO_SIGNAL_FILTER
+    // as null-filter = whole-chart ranking with moksha overlay).
+    const VALID_DOMAINS = [
+      // 13 canonical domains (brahmagyan.domain_vocabulary.CANONICAL_DOMAINS)
+      'career', 'wealth', 'relationship', 'health', 'character', 'spirituality',
+      'education', 'progeny', 'family', 'residence', 'travel', 'transition', 'general',
+      // non-canonical extras retained for backward compat
+      'moksha', 'other',
+    ]
 
     try {
       // Domain discovery is sourced from bodha_cdlm_cells (domain_row/domain_col).

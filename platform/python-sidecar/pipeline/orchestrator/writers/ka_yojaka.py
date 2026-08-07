@@ -29,6 +29,7 @@ Every emitted lord traces to a real L1 row (§N.5 — reference, never invent).
 import json
 import logging
 
+from brahmagyan.domain_vocabulary import canonical_domain
 from pipeline.orchestrator.writers import WriterBase, WriterResult, register
 from services.ka_yojaka.classifier import classify_signal
 from services.ka_yojaka.binder import build_predicate
@@ -136,10 +137,12 @@ class KaYojakaWriter(WriterBase):
             with conn.cursor() as cur:
                 cur.execute(
                     """
+                    -- SHABDA-SHUDDHI R6: status gate removed; all pratijna rows
+                    -- flow through as modifier data, never excluded.
                     SELECT bp.pratijna_id, beo.domain
                     FROM bodha_pratijna bp
                     JOIN brahma_event_ontology beo USING (event_class_id)
-                    WHERE bp.chart_id = %s AND bp.status IN ('promised', 'conditional')
+                    WHERE bp.chart_id = %s
                     ORDER BY bp.grade DESC
                     """,
                     (chart_id,),
@@ -150,10 +153,12 @@ class KaYojakaWriter(WriterBase):
             with conn.cursor() as cur:
                 cur.execute(
                     """
+                    -- SHABDA-SHUDDHI R6: status gate removed; multi-system
+                    -- confirmation counts all statuses, not just 'promised'.
                     SELECT beo.domain, COUNT(DISTINCT bp.ayanamsha_id) AS aya_count
                     FROM bodha_pratijna bp
                     JOIN brahma_event_ontology beo USING (event_class_id)
-                    WHERE bp.chart_id = %s AND bp.status = 'promised'
+                    WHERE bp.chart_id = %s
                     GROUP BY beo.domain
                     """,
                     (chart_id,),
@@ -614,22 +619,31 @@ def _extract_primary_graha(signal_dict: dict) -> str | None:
     return None
 
 
+# SHABDA-SHUDDHI Lane L5 (Fix 2): keys updated to canonical domain vocabulary
+# (brahmagyan.domain_vocabulary). 'finance' → 'wealth', 'spiritual' → 'spirituality'.
 _SIGNAL_DOMAIN_KEYWORDS: dict[str, list[str]] = {
-    'career':       ['raja', 'karma', 'tenth', 'arudha', 'amatyakaraka', 'profession'],
-    'relationship': ['kalatra', 'seventh', 'navamsha', 'spouse', 'venus', 'upapada'],
-    'finance':      ['dhana', 'second', 'eleventh', 'wealth', 'lakshmi', 'artha'],
-    'health':       ['ayur', 'sixth', 'eighth', 'maraka', 'vitality', 'disease'],
-    'spiritual':    ['dharma', 'ninth', 'twelfth', 'moksha', 'guru', 'liberation'],
-    'education':    ['vidya', 'fourth', 'fifth', 'mercury', 'saraswati', 'learning'],
+    'career':        ['raja', 'karma', 'tenth', 'arudha', 'amatyakaraka', 'profession'],
+    'relationship':  ['kalatra', 'seventh', 'navamsha', 'spouse', 'venus', 'upapada'],
+    'wealth':        ['dhana', 'second', 'eleventh', 'wealth', 'lakshmi', 'artha'],
+    'health':        ['ayur', 'sixth', 'eighth', 'maraka', 'vitality', 'disease'],
+    'spirituality':  ['dharma', 'ninth', 'twelfth', 'moksha', 'guru', 'liberation'],
+    'education':     ['vidya', 'fourth', 'fifth', 'mercury', 'saraswati', 'learning'],
 }
 
 
 def _infer_signal_domain(signal_dict: dict) -> str:
-    """Infer a signal's domain from signal_type_id for CDLM strength lookup."""
+    """Infer a signal's domain from signal_type_id for CDLM strength lookup.
+
+    Fix (SHABDA-SHUDDHI lane L4 Fix 2): applies canonical_domain() to the raw
+    keyword match before returning. Without this, keys like 'finance' and
+    'spiritual' never hit the CDLM/pratijna dicts (which are keyed by canonical
+    names 'wealth' and 'spirituality') — all three downstream lookups fell through
+    to their defaults (cdlm_domain_strength=0.5, pratijna_ids=[], confirmation=0).
+    """
     stid = (signal_dict.get('signal_type_id') or '').lower()
-    for domain, keywords in _SIGNAL_DOMAIN_KEYWORDS.items():
+    for raw_domain, keywords in _SIGNAL_DOMAIN_KEYWORDS.items():
         if any(kw in stid for kw in keywords):
-            return domain
+            return canonical_domain(raw_domain)
     return 'general'
 
 

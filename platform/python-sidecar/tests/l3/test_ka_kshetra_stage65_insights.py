@@ -157,17 +157,20 @@ class TestDetectRarityFiring:
 
 class TestDetectAbsenceOfExpected:
     def test_fires_when_strong_promise_and_no_windows(self):
-        cand = detect_absence_of_expected("career_entry", 0.75, [], 0.0, 36525.0)
+        # ABSENCE_MIN_PROMISE = 6.0 (grade on [0, 10] scale); 7.5 is above threshold
+        cand = detect_absence_of_expected("career_entry", 7.5, [], 0.0, 36525.0)
         assert cand is not None
         assert cand.window_id is None
         assert cand.event_class == "career_entry"
 
     def test_does_not_fire_below_promise_threshold(self):
-        assert detect_absence_of_expected("career_entry", 0.4, [], 0.0, 36525.0) is None
+        # 4.0 is below the [0,10] threshold of 6.0
+        assert detect_absence_of_expected("career_entry", 4.0, [], 0.0, 36525.0) is None
 
     def test_does_not_fire_when_windows_exist(self):
         w = _window(event_class="career_entry")
-        assert detect_absence_of_expected("career_entry", 0.9, [w], 0.0, 36525.0) is None
+        # 9.0 is above threshold but windows exist, so should not fire
+        assert detect_absence_of_expected("career_entry", 9.0, [w], 0.0, 36525.0) is None
 
 
 class TestDetectCompression:
@@ -345,7 +348,8 @@ class TestAssembleInsightRow:
         assert abs(row["insight_score"] - expected) < 1e-12
 
     def test_absence_of_expected_has_null_window_and_zero_score_components(self):
-        cand = detect_absence_of_expected("career_entry", 0.8, [], 0.0, 36525.0)
+        # ABSENCE_MIN_PROMISE = 6.0 (grade on [0, 10] scale); 8.0 is above threshold
+        cand = detect_absence_of_expected("career_entry", 8.0, [], 0.0, 36525.0)
         row = assemble_insight_row("chart-1", cand, "wv1", "snap1")
         assert row["window_id"] is None
         assert row["event_class"] == "career_entry"
@@ -407,9 +411,10 @@ class TestSynthesizeInsights:
         assert any(r["insight_type"] == "rarity_firing" for r in rows)
 
     def test_absence_of_expected_wired(self):
+        # ABSENCE_MIN_PROMISE = 6.0 (grade on [0, 10] scale); 9.0 is above threshold
         rows = synthesize_insights(
             "chart-1", [], "wv1", "snap1",
-            absence_candidates=[("career_entry", 0.9, 0.0, 36525.0)],
+            absence_candidates=[("career_entry", 9.0, 0.0, 36525.0)],
         )
         assert len(rows) == 1
         assert rows[0]["insight_type"] == "absence_of_expected"
@@ -479,8 +484,8 @@ class TestDetectAbsenceFromPratijna:
 
     Semantics:
     - Fires when the MAXIMUM grade across the pratijna_rows for `event_class`
-      exceeds ABSENCE_MIN_PROMISE (0.60) AND zero windows exist for that class
-      in the horizon.
+      exceeds ABSENCE_MIN_PROMISE (6.0 on [0, 10] scale) AND zero windows exist
+      for that class in the horizon.
     - The resulting InsightCandidate.fact_ids are the union of all pratijna
       row fact_ids (so the bodha_pratijna provenance rides the row).
     - Does NOT fire when no pratijna rows exist (not expected => absence is not
@@ -489,6 +494,9 @@ class TestDetectAbsenceFromPratijna:
     - Does NOT fire when windows exist.
     - Monotonicity property: ceteris paribus, a higher grade (still above
       threshold) never produces a lower `carrier_salience` than a lower grade.
+
+    NOTE: grades are on the bodha_pratijna [0, 10] scale.
+    ABSENCE_MIN_PROMISE = 6.0 (the 'promised' floor from bo_pratijna v2.0).
     """
 
     def _pratijna(self, grade: float, fact_ids=("f1",)):
@@ -500,7 +508,8 @@ class TestDetectAbsenceFromPratijna:
         )
 
     def test_fires_when_strong_promise_no_windows(self):
-        rows = [self._pratijna(0.8)]
+        # 8.0 is above ABSENCE_MIN_PROMISE (6.0) on [0, 10] scale
+        rows = [self._pratijna(8.0)]
         cand = detect_absence_from_pratijna("marriage", rows, [], 0.0, 36525.0)
         assert cand is not None
         assert cand.insight_type == "absence_of_expected"
@@ -508,9 +517,10 @@ class TestDetectAbsenceFromPratijna:
         assert cand.window_id is None
 
     def test_fact_ids_carried_from_pratijna_rows(self):
+        # Both rows above 6.0 threshold
         rows = [
-            PratijnaRow("p1", "marriage", 0.8, fact_ids=("fact_a",)),
-            PratijnaRow("p2", "marriage", 0.75, fact_ids=("fact_b", "fact_c")),
+            PratijnaRow("p1", "marriage", 8.0, fact_ids=("fact_a",)),
+            PratijnaRow("p2", "marriage", 7.5, fact_ids=("fact_b", "fact_c")),
         ]
         cand = detect_absence_from_pratijna("marriage", rows, [], 0.0, 36525.0)
         assert cand is not None
@@ -525,46 +535,51 @@ class TestDetectAbsenceFromPratijna:
         assert cand is None
 
     def test_does_not_fire_below_promise_threshold(self):
-        rows = [self._pratijna(0.4)]
+        # 4.0 is below ABSENCE_MIN_PROMISE (6.0)
+        rows = [self._pratijna(4.0)]
         assert detect_absence_from_pratijna("marriage", rows, [], 0.0, 36525.0) is None
 
     def test_does_not_fire_when_windows_exist(self):
-        rows = [self._pratijna(0.9)]
+        # 9.0 is above threshold but windows exist, so should not fire
+        rows = [self._pratijna(9.0)]
         w = _window(event_class="marriage")
         assert detect_absence_from_pratijna("marriage", rows, [w], 0.0, 36525.0) is None
 
     def test_uses_max_grade_across_multiple_rows(self):
         """Even if one row is below threshold, if another is above, it fires."""
         rows = [
-            self._pratijna(0.3),   # below threshold
-            self._pratijna(0.85),  # above threshold
+            self._pratijna(3.0),   # below threshold (6.0)
+            self._pratijna(8.5),   # above threshold
         ]
         cand = detect_absence_from_pratijna("marriage", rows, [], 0.0, 36525.0)
         assert cand is not None
 
     def test_grade_exactly_at_threshold_fires(self):
-        """p_e == ABSENCE_MIN_PROMISE: just at boundary, must fire."""
-        rows = [self._pratijna(0.60)]
+        """p_e == ABSENCE_MIN_PROMISE (6.0): just at boundary, must fire."""
+        rows = [self._pratijna(6.0)]
         cand = detect_absence_from_pratijna("marriage", rows, [], 0.0, 36525.0)
         assert cand is not None
 
     def test_grade_just_below_threshold_does_not_fire(self):
-        rows = [self._pratijna(0.5999)]
+        # 5.999 is just below ABSENCE_MIN_PROMISE (6.0)
+        rows = [self._pratijna(5.999)]
         assert detect_absence_from_pratijna("marriage", rows, [], 0.0, 36525.0) is None
 
     def test_monotonicity_higher_grade_never_lower_salience(self):
         """Property: for two above-threshold grades g1 < g2, salience(g1) <= salience(g2)."""
-        g1, g2 = 0.65, 0.95
+        # Both grades above 6.0; g1 < g2
+        g1, g2 = 6.5, 9.5
         cand1 = detect_absence_from_pratijna("marriage", [self._pratijna(g1)], [], 0.0, 36525.0)
         cand2 = detect_absence_from_pratijna("marriage", [self._pratijna(g2)], [], 0.0, 36525.0)
         assert cand1 is not None and cand2 is not None
         assert cand1.carrier_salience <= cand2.carrier_salience
 
     def test_statement_params_carry_max_grade(self):
-        rows = [self._pratijna(0.8)]
+        # 8.0 is above ABSENCE_MIN_PROMISE (6.0)
+        rows = [self._pratijna(8.0)]
         cand = detect_absence_from_pratijna("marriage", rows, [], 0.0, 36525.0)
         assert cand is not None
-        assert abs(cand.statement_params["p_e"] - 0.8) < 1e-9
+        assert abs(cand.statement_params["p_e"] - 8.0) < 1e-9
 
 
 # ── Item 34: Contrastive field-diff for kala_explain_get (W3 TDD additions) ──
