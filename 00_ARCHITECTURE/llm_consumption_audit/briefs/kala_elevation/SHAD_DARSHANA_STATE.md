@@ -1,4 +1,21 @@
 ---
+## HB #91 — 2026-08-07T03:21:01Z
+
+**Lease**: renewed; next HB due ≤ 03:31:01Z
+
+**PR #1092 CI** (hotfix/migration-renumber-544, 485→544 bg_parihara_rules disclosure):
+- Gate-executor (ac69b7fb01e23b68f) running independently
+- 22/24 checks COMPLETED, 0 FAILED, 2 IN_PROGRESS:
+  - Build Check (PR only) — deploy job, expected to complete
+  - Governance Gates (drift / schema / edge / native-literal / py-sidecar) — running
+- sql_identity INDEPENDENTLY VERIFIED by gate-executor: MATCH=true (42587f528d94e01f59a41c8a5f9fff2ea60d1abacf913fb8da20ab5e4fb0eb08)
+- Auto-merge enabled; pending governance gate completion
+
+**Status**: Waiting on PR #1092 CI to complete → auto-merge → deploy unblock.
+Gate W3 formal close pending successful deploy (no further MigrationRenumberedErrors expected — proactive scan confirmed exactly 2 duplicate base names: 543→484 bg_muhurta_lattice + 544→485 bg_parihara_rules).
+
+---
+
 
 ---
 
