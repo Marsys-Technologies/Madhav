@@ -231,3 +231,94 @@ bo_pratijna v2.0 engine, numeric fixes); rebuild + scoring blocked on deploy.
 Resume with production access.
 
 ---
+
+## RUN-OPEN — 2026-08-07T12:00:00Z (CONDUCTOR, run-2, resume)
+
+### Resume assessment (independently verified)
+
+Prior run's PARKED-FINAL claim of "no cloud-sql-proxy credentials" was FALSE.
+cloud-sql-proxy running continuously since 2026-08-05 (PID 74982, ports 5433/5434).
+Production DB verified reachable: `SELECT count(*) FROM bodha_pratijna` → 405.
+Credential recipe: `gcloud secrets versions access latest --secret=amjis-pipeline-db-url`
+→ python URL parse → psql on 127.0.0.1:5433. Dead proxy restarts with
+`nohup cloud-sql-proxy --address 127.0.0.1 --port 5433 madhav-astrology:asia-south1:amjis-postgres &`.
+
+Prior run's worktree floor was CLEANED by the native's reviewer — exactly one worktree
+(the repo) at resume. Zero uncommitted files.
+
+### Pre-rebuild baseline (live DB, 482012f1)
+
+| Metric | Before |
+|--------|--------|
+| bodha_msr_signals domain spread | 6 (career, character, health, relationship, spirituality, wealth) |
+| bodha_pratijna status (all charts) | 251 denied / 149 conditional / 5 promised |
+| phala_anchors (482012f1) | 3 rows |
+| kala_bhavishya (482012f1) | 0 rows |
+| bodha_contradictions (482012f1) | 0 rows |
+
+## L8 COMPLETE — 2026-08-07T12:05:00Z (CONDUCTOR, run-2)
+
+Commit 805b3b202 (already on integration from run-1) delivered:
+- Deliverable 2: CI vocabulary-census gate (test_domain_vocabulary_census.py)
+- Deliverable 3: P2 empty-evidence lint (§N.8 pattern)
+Combined with earlier domain_lookup() (Deliverable 1): L8 is COMPLETE (3/3).
+
+## L7 COMPLETE — 2026-08-07T12:15:00Z (BUILDER→CONDUCTOR, run-2)
+
+Commit 65ec5a656, cherry-picked as 19f68ea39 on integration.
+4 serving surfaces updated for 'no_evidence' (R8):
+
+1. mi_darshana.py: no_evidence verdict rows get honest statement ("no evidence —
+   no supporting or contradicting signals"), null grade (not fabricated 5.0),
+   rank_consequence=0.0, confidence_band=None. Row still written (R6).
+2. register_p1_synthesis.ts: parseStatement matches 4th status; STATUS_PRECEDENCE
+   gains 'no_evidence' as most conservative; conflict-resolver extended;
+   zero-support masking SKIPS no_evidence (already honest); buildRankedThemes
+   routes no_evidence to open_questions.
+3. query_pratijna.ts: description lists 4 statuses; density_contract added;
+   no_evidence_qualification field in response when present.
+4. query_predictive_anchors.ts: posterior_provenance gains promise_lift_source
+   (explains grade→lift mapping incl. no_evidence→1.0 neutral) + promise_lift_value.
+
+7 new tests, 19/19 mi_darshana tests passing.
+PARĪKṢAKA: DISPATCHED (pending verdict).
+
+## STAGE 1 STATUS (UPDATED) — 2026-08-07T12:15:00Z
+
+| Lane | Status |
+|------|--------|
+| V0 | COMPLETE |
+| L1 | COMPLETE |
+| L2 | COMPLETE |
+| L3 | COMPLETE |
+| L4 | COMPLETE |
+| L5 | COMPLETE (7/7) |
+| L6 | DEFERRED (native LEL review required) |
+| L7 | COMPLETE (PARĪKṢAKA pending) |
+| L8 | COMPLETE (3/3) |
+
+25 commits on shabda-shuddhi/integration.
+
+## PARĪKṢAKA L7 — 2026-08-07T12:30:00Z
+
+Verdict: **ACCEPT** (6/6 checks pass).
+- CHECK 1 (mi_darshana): PASS — no_evidence branch at line 342 prevents grade=5.0 fabrication;
+  grade=None in provenance, rank_consequence=0.0, confidence_band=None, statement honest.
+  Negative case: grade=0.0 for non-no_evidence correctly stays in normal flow (the branch
+  checks `status == 'no_evidence'`, not `grade is None`).
+- CHECK 2 (register_p1_synthesis): PASS — parseStatement matches "Name: no evidence" format;
+  STATUS_PRECEDENCE has no_evidence first; conflict-resolver extended; zero-support masking
+  SKIPS no_evidence (already honest); buildRankedThemes routes to openQuestions.
+  Negative case: n_support=0 + status='no_evidence' → no verb masking (correct).
+- CHECK 3 (query_pratijna): PASS — 4 statuses in description; density_contract present;
+  no_evidence_qualification computed correctly.
+- CHECK 4 (query_predictive_anchors): PASS — promise_lift_source + promise_lift_value in
+  posterior_provenance, guarded by same null check.
+- CHECK 5 (tests): PASS — 7/7 new tests pass.
+- CHECK 6 (regressions): PASS — 12/12 existing mi_darshana tests pass.
+
+## PHASE 1 COMPLETE — 2026-08-07T12:30:00Z (CONDUCTOR)
+
+All lanes (V0, L1-L5, L7, L8) COMPLETE + PARĪKṢAKA ACCEPT.
+L6 DEFERRED per declared defaults (requires native LEL review).
+Proceeding to Phase 2: gate packet + deploy.

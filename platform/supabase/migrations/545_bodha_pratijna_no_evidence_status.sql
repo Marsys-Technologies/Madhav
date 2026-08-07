@@ -35,3 +35,17 @@ COMMENT ON TABLE bodha_pratijna IS
   'Writer: bo_pratijna. DAG: bo_laksana → bo_pratijna.';
 
 COMMIT;
+
+-- DOWN (rollback): restore original 3-status constraint.
+-- To reverse this migration, run:
+--
+--   BEGIN;
+--   ALTER TABLE bodha_pratijna DROP CONSTRAINT IF EXISTS bodha_pratijna_status_check;
+--   ALTER TABLE bodha_pratijna ADD CONSTRAINT bodha_pratijna_status_check
+--       CHECK (status IN ('promised', 'denied', 'conditional'));
+--   -- NOTE: any rows with status='no_evidence' must be updated to 'denied' first,
+--   -- or the constraint will fail. Run:
+--   --   UPDATE bodha_pratijna SET status = 'denied', grade = 0.0
+--   --   WHERE status = 'no_evidence';
+--   -- before re-adding the narrower constraint.
+--   COMMIT;
