@@ -1,10 +1,12 @@
 """
 brahmagyan.l0_ghatana — bg_ghatana L0 global seed.
 
-Populates brahma_event_ontology (22 life-event classes) and
+Populates brahma_event_ontology (27 life-event classes) and
 brahma_activity_ontology (12 electional activity classes).
 
 Source: BEYOND_ACHARYA_W1_JUDGMENT_SEED_PACKAGE_v1_0.md §5–§6.
+DR-13 temporal_shape columns (point/interval/chain) added by migration 456
+(2026-07-19); 5 new classes added to reach full live-data coverage.
 Idempotency: L0 = ON CONFLICT DO UPDATE (global, not per-chart).
 """
 from __future__ import annotations
@@ -15,7 +17,7 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-# ── Event ontology (22 life-event classes) ────────────────────────────────────
+# ── Event ontology (27 life-event classes) ────────────────────────────────────
 
 EVENT_CLASSES: list[dict] = [
     {
@@ -33,6 +35,10 @@ EVENT_CLASSES: list[dict] = [
         "adjacency": ["career_change"],
         "base_rate_by_age": {"band_0_12": 0.00, "band_13_25": 0.55, "band_26_40": 0.20, "band_41_60": 0.05, "band_60_plus": 0.01},
         "citations": ["BPHS ch.10 (karma-bhava)", "Phaladeepika ch.10"],
+        "temporal_shape": "point",
+        "duration_prior": None,
+        "milestone_template": None,
+        "irreversibility_milestone": None,
     },
     {
         "event_class_id": "career_advancement",
@@ -49,6 +55,10 @@ EVENT_CLASSES: list[dict] = [
         "adjacency": ["career_entry"],
         "base_rate_by_age": {"band_0_12": 0.00, "band_13_25": 0.15, "band_26_40": 0.45, "band_41_60": 0.35, "band_60_plus": 0.05},
         "citations": ["BPHS ch.10", "Phaladeepika ch.10"],
+        "temporal_shape": "point",
+        "duration_prior": None,
+        "milestone_template": None,
+        "irreversibility_milestone": None,
     },
     {
         "event_class_id": "career_change",
@@ -65,6 +75,10 @@ EVENT_CLASSES: list[dict] = [
         "adjacency": ["career_entry", "transition"],
         "base_rate_by_age": {"band_0_12": 0.00, "band_13_25": 0.20, "band_26_40": 0.45, "band_41_60": 0.30, "band_60_plus": 0.05},
         "citations": ["BPHS ch.10", "standard Rahu transit rules"],
+        "temporal_shape": "chain",
+        "duration_prior": None,
+        "milestone_template": [{"milestone_id": "resignation_or_decision", "name_en": "Resignation / decision to change", "typical_offset_days_from_first": 0}, {"milestone_id": "offer_accepted", "name_en": "New offer accepted", "typical_offset_days_from_first": 30}, {"milestone_id": "new_role_start", "name_en": "New role start date", "typical_offset_days_from_first": 60}],
+        "irreversibility_milestone": "new_role_start",
     },
     {
         "event_class_id": "career_setback",
@@ -81,6 +95,10 @@ EVENT_CLASSES: list[dict] = [
         "adjacency": ["career_change"],
         "base_rate_by_age": {"band_0_12": 0.00, "band_13_25": 0.10, "band_26_40": 0.35, "band_41_60": 0.35, "band_60_plus": 0.15},
         "citations": ["BPHS dusthana chapter"],
+        "temporal_shape": "interval",
+        "duration_prior": {"min_days": 30, "typical_days": 180, "max_days": 720},
+        "milestone_template": None,
+        "irreversibility_milestone": None,
     },
     {
         "event_class_id": "business_launch",
@@ -97,6 +115,10 @@ EVENT_CLASSES: list[dict] = [
         "adjacency": ["career_entry"],
         "base_rate_by_age": {"band_0_12": 0.00, "band_13_25": 0.15, "band_26_40": 0.50, "band_41_60": 0.30, "band_60_plus": 0.05},
         "citations": ["BPHS ch.7,10,11"],
+        "temporal_shape": "chain",
+        "duration_prior": None,
+        "milestone_template": [{"milestone_id": "decision", "name_en": "Decision to found/launch", "typical_offset_days_from_first": 0}, {"milestone_id": "registration", "name_en": "Legal/business registration", "typical_offset_days_from_first": 45}, {"milestone_id": "first_revenue", "name_en": "First revenue booked", "typical_offset_days_from_first": 120}],
+        "irreversibility_milestone": "first_revenue",
     },
     {
         "event_class_id": "education_milestone",
@@ -113,6 +135,10 @@ EVENT_CLASSES: list[dict] = [
         "adjacency": [],
         "base_rate_by_age": {"band_0_12": 0.10, "band_13_25": 0.70, "band_26_40": 0.25, "band_41_60": 0.05, "band_60_plus": 0.01},
         "citations": ["BPHS ch.4,5,9", "Jaimini Sutram (vidya-karaka)"],
+        "temporal_shape": "chain",
+        "duration_prior": None,
+        "milestone_template": [{"milestone_id": "exam_written", "name_en": "Entrance/qualifying exam written", "typical_offset_days_from_first": 0}, {"milestone_id": "result_declared", "name_en": "Result declared", "typical_offset_days_from_first": 60}, {"milestone_id": "enrollment", "name_en": "Enrollment / admission taken up", "typical_offset_days_from_first": 150}, {"milestone_id": "completion", "name_en": "Program completion / degree conferral", "typical_offset_days_from_first": 730}],
+        "irreversibility_milestone": "completion",
     },
     {
         "event_class_id": "exam_outcome",
@@ -129,6 +155,10 @@ EVENT_CLASSES: list[dict] = [
         "adjacency": ["education_milestone"],
         "base_rate_by_age": {"band_0_12": 0.15, "band_13_25": 0.75, "band_26_40": 0.20, "band_41_60": 0.03, "band_60_plus": 0.01},
         "citations": ["BPHS ch.5"],
+        "temporal_shape": "point",
+        "duration_prior": None,
+        "milestone_template": None,
+        "irreversibility_milestone": None,
     },
     {
         "event_class_id": "marriage",
@@ -145,6 +175,10 @@ EVENT_CLASSES: list[dict] = [
         "adjacency": ["partnership_formed"],
         "base_rate_by_age": {"band_0_12": 0.00, "band_13_25": 0.45, "band_26_40": 0.45, "band_41_60": 0.10, "band_60_plus": 0.02},
         "citations": ["BPHS ch.7 (vivaha)", "Phaladeepika kalatra-bhava", "Jaimini Sutram DK"],
+        "temporal_shape": "point",
+        "duration_prior": None,
+        "milestone_template": None,
+        "irreversibility_milestone": None,
     },
     {
         "event_class_id": "romantic_start",
@@ -161,6 +195,10 @@ EVENT_CLASSES: list[dict] = [
         "adjacency": ["marriage"],
         "base_rate_by_age": {"band_0_12": 0.05, "band_13_25": 0.55, "band_26_40": 0.35, "band_41_60": 0.10, "band_60_plus": 0.02},
         "citations": ["BPHS ch.5,7"],
+        "temporal_shape": "point",
+        "duration_prior": None,
+        "milestone_template": None,
+        "irreversibility_milestone": None,
     },
     {
         "event_class_id": "separation",
@@ -177,6 +215,10 @@ EVENT_CLASSES: list[dict] = [
         "adjacency": ["marriage"],
         "base_rate_by_age": {"band_0_12": 0.00, "band_13_25": 0.15, "band_26_40": 0.40, "band_41_60": 0.30, "band_60_plus": 0.10},
         "citations": ["BPHS ch.7 (vivaha-vighna)"],
+        "temporal_shape": "chain",
+        "duration_prior": None,
+        "milestone_template": [{"milestone_id": "physical_separation", "name_en": "Physical/practical separation", "typical_offset_days_from_first": 0}, {"milestone_id": "legal_filing", "name_en": "Legal filing", "typical_offset_days_from_first": 180}, {"milestone_id": "final_decree", "name_en": "Final decree / legal dissolution", "typical_offset_days_from_first": 540}],
+        "irreversibility_milestone": "final_decree",
     },
     {
         "event_class_id": "childbirth",
@@ -193,6 +235,10 @@ EVENT_CLASSES: list[dict] = [
         "adjacency": [],
         "base_rate_by_age": {"band_0_12": 0.00, "band_13_25": 0.30, "band_26_40": 0.60, "band_41_60": 0.08, "band_60_plus": 0.00},
         "citations": ["BPHS ch.5 (putra-bhava)", "Jaimini Sutram putra-karaka"],
+        "temporal_shape": "point",
+        "duration_prior": None,
+        "milestone_template": None,
+        "irreversibility_milestone": None,
     },
     {
         "event_class_id": "parental_event",
@@ -209,6 +255,10 @@ EVENT_CLASSES: list[dict] = [
         "adjacency": ["bereavement"],
         "base_rate_by_age": {"band_0_12": 0.05, "band_13_25": 0.20, "band_26_40": 0.35, "band_41_60": 0.35, "band_60_plus": 0.20},
         "citations": ["BPHS ch.4 (matru-bhava), ch.9 (pitru-bhava)"],
+        "temporal_shape": "interval",
+        "duration_prior": {"min_days": 14, "typical_days": 180, "max_days": 3650},
+        "milestone_template": None,
+        "irreversibility_milestone": None,
     },
     {
         "event_class_id": "bereavement",
@@ -228,6 +278,10 @@ EVENT_CLASSES: list[dict] = [
         # re-seed does not revert the ratified edit via ON CONFLICT DO UPDATE.
         "base_rate_by_age": {"band_0_12": 0.10, "band_13_25": 0.15, "band_26_40": 0.30, "band_41_60": 0.35, "band_60_plus": 0.40},
         "citations": ["BPHS ch.8,2 (maraka/nidhan)"],
+        "temporal_shape": "point",
+        "duration_prior": None,
+        "milestone_template": None,
+        "irreversibility_milestone": None,
     },
     {
         "event_class_id": "major_gain",
@@ -244,6 +298,10 @@ EVENT_CLASSES: list[dict] = [
         "adjacency": ["property_acquisition"],
         "base_rate_by_age": {"band_0_12": 0.00, "band_13_25": 0.20, "band_26_40": 0.40, "band_41_60": 0.30, "band_60_plus": 0.10},
         "citations": ["BPHS ch.2,11 (dhana-bhava)"],
+        "temporal_shape": "interval",
+        "duration_prior": {"min_days": 14, "typical_days": 90, "max_days": 365},
+        "milestone_template": None,
+        "irreversibility_milestone": None,
     },
     {
         "event_class_id": "major_loss",
@@ -260,6 +318,10 @@ EVENT_CLASSES: list[dict] = [
         "adjacency": ["career_setback"],
         "base_rate_by_age": {"band_0_12": 0.00, "band_13_25": 0.15, "band_26_40": 0.40, "band_41_60": 0.30, "band_60_plus": 0.15},
         "citations": ["BPHS ch.12 (vyaya)"],
+        "temporal_shape": "interval",
+        "duration_prior": {"min_days": 1, "typical_days": 60, "max_days": 365},
+        "milestone_template": None,
+        "irreversibility_milestone": None,
     },
     {
         "event_class_id": "property_acquisition",
@@ -276,6 +338,10 @@ EVENT_CLASSES: list[dict] = [
         "adjacency": ["major_gain", "relocation"],
         "base_rate_by_age": {"band_0_12": 0.00, "band_13_25": 0.15, "band_26_40": 0.50, "band_41_60": 0.30, "band_60_plus": 0.05},
         "citations": ["BPHS ch.4 (bhumi-bhava)"],
+        "temporal_shape": "point",
+        "duration_prior": None,
+        "milestone_template": None,
+        "irreversibility_milestone": None,
     },
     {
         "event_class_id": "relocation",
@@ -292,6 +358,10 @@ EVENT_CLASSES: list[dict] = [
         "adjacency": ["property_acquisition", "foreign_settlement"],
         "base_rate_by_age": {"band_0_12": 0.05, "band_13_25": 0.30, "band_26_40": 0.40, "band_41_60": 0.20, "band_60_plus": 0.05},
         "citations": ["BPHS ch.4,12"],
+        "temporal_shape": "interval",
+        "duration_prior": {"min_days": 14, "typical_days": 240, "max_days": 3650},
+        "milestone_template": None,
+        "irreversibility_milestone": None,
     },
     {
         "event_class_id": "foreign_settlement",
@@ -308,6 +378,10 @@ EVENT_CLASSES: list[dict] = [
         "adjacency": ["relocation"],
         "base_rate_by_age": {"band_0_12": 0.00, "band_13_25": 0.35, "band_26_40": 0.45, "band_41_60": 0.15, "band_60_plus": 0.02},
         "citations": ["BPHS ch.12 (videsh)"],
+        "temporal_shape": "chain",
+        "duration_prior": None,
+        "milestone_template": [{"milestone_id": "departure", "name_en": "Departure", "typical_offset_days_from_first": 0}, {"milestone_id": "arrival", "name_en": "Arrival", "typical_offset_days_from_first": 1}, {"milestone_id": "residency_established", "name_en": "Durable residency established", "typical_offset_days_from_first": 365}],
+        "irreversibility_milestone": "residency_established",
     },
     {
         "event_class_id": "illness_acute",
@@ -324,6 +398,10 @@ EVENT_CLASSES: list[dict] = [
         "adjacency": ["surgery", "chronic_onset"],
         "base_rate_by_age": {"band_0_12": 0.15, "band_13_25": 0.20, "band_26_40": 0.25, "band_41_60": 0.30, "band_60_plus": 0.40},
         "citations": ["BPHS ch.6 (roga-bhava)", "Phaladeepika ch.6"],
+        "temporal_shape": "point",
+        "duration_prior": None,
+        "milestone_template": None,
+        "irreversibility_milestone": None,
     },
     {
         "event_class_id": "chronic_onset",
@@ -340,6 +418,10 @@ EVENT_CLASSES: list[dict] = [
         "adjacency": ["illness_acute"],
         "base_rate_by_age": {"band_0_12": 0.02, "band_13_25": 0.08, "band_26_40": 0.20, "band_41_60": 0.35, "band_60_plus": 0.45},
         "citations": ["BPHS ch.6,8; Sade-Sati rules"],
+        "temporal_shape": "interval",
+        "duration_prior": {"min_days": 1, "typical_days": 60, "max_days": 365},
+        "milestone_template": None,
+        "irreversibility_milestone": None,
     },
     {
         "event_class_id": "surgery",
@@ -356,6 +438,10 @@ EVENT_CLASSES: list[dict] = [
         "adjacency": ["illness_acute"],
         "base_rate_by_age": {"band_0_12": 0.05, "band_13_25": 0.10, "band_26_40": 0.20, "band_41_60": 0.30, "band_60_plus": 0.35},
         "citations": ["BPHS ch.6 (shastra-vrana)", "Phaladeepika on Mars aspects"],
+        "temporal_shape": "point",
+        "duration_prior": None,
+        "milestone_template": None,
+        "irreversibility_milestone": None,
     },
     {
         "event_class_id": "spiritual_turn",
@@ -372,6 +458,116 @@ EVENT_CLASSES: list[dict] = [
         "adjacency": ["transition"],
         "base_rate_by_age": {"band_0_12": 0.00, "band_13_25": 0.15, "band_26_40": 0.25, "band_41_60": 0.35, "band_60_plus": 0.45},
         "citations": ["BPHS ch.9 (dharma), ch.12 (moksha)", "Jaimini Sutram moksha-karaka"],
+        "temporal_shape": "interval",
+        "duration_prior": {"min_days": 7, "typical_days": 120, "max_days": 730},
+        "milestone_template": None,
+        "irreversibility_milestone": None,
+    },
+    # ── DR-13 additions: 5 new classes (migration 456, 2026-07-19) ────────────
+    {
+        "event_class_id": "achievement_recognition",
+        "name_en": "Achievement / Recognition",
+        "domain": "general",
+        "lel_category": "creative",
+        "signature_model": {
+            "provisional": True, "inherited_from": "career_advancement",
+            "houses": ["10", "11", "5"], "lords": ["10L", "11L", "5L"],
+            "karakas": ["Sun", "Mercury"], "vargas": ["D10"],
+            "dasha_rules": "benefic 10/11/5 dasha",
+            "transit_triggers": "Jupiter transit to 10th/11th/5th",
+        },
+        "magnitude_floor": "moderate",
+        "adjacency": ["career_advancement"],
+        "base_rate_by_age": {"band_0_12": 0.02, "band_13_25": 0.30, "band_26_40": 0.40, "band_41_60": 0.20, "band_60_plus": 0.05},
+        "citations": ["BPHS ch.10 (karma-bhava)", "Phaladeepika ch.10 (inherited — provisional pending dedicated sourcing)"],
+        "temporal_shape": "point",
+        "duration_prior": None,
+        "milestone_template": None,
+        "irreversibility_milestone": None,
+    },
+    {
+        "event_class_id": "financial_deception",
+        "name_en": "Financial Deception / Fraud Loss",
+        "domain": "wealth",
+        "lel_category": "loss",
+        "signature_model": {
+            "provisional": True, "inherited_from": "major_loss",
+            "houses": ["2", "11", "12"], "lords": ["2L/11L afflicted", "12L active"],
+            "karakas": ["Rahu", "Saturn"], "vargas": ["D2"],
+            "dasha_rules": "adverse dasha for 2nd/11th with Rahu involvement",
+            "transit_triggers": "adverse Rahu/Saturn transit to 2nd or 11th",
+        },
+        "magnitude_floor": "significant",
+        "adjacency": ["major_loss"],
+        "base_rate_by_age": {"band_0_12": 0.00, "band_13_25": 0.10, "band_26_40": 0.35, "band_41_60": 0.35, "band_60_plus": 0.20},
+        "citations": ["BPHS ch.12 (vyaya) — inherited from major_loss, provisional pending dedicated sourcing"],
+        "temporal_shape": "interval",
+        "duration_prior": {"min_days": 1, "typical_days": 60, "max_days": 365},
+        "milestone_template": None,
+        "irreversibility_milestone": None,
+    },
+    {
+        "event_class_id": "psychological_arc",
+        "name_en": "Psychological / Speech-Pattern Arc",
+        "domain": "character",
+        "lel_category": "psychological",
+        "signature_model": {
+            "provisional": True, "inherited_from": "chronic_onset",
+            "houses": ["1", "6", "12"], "lords": ["1L", "6L"],
+            "karakas": ["Moon", "Mercury", "Saturn"], "vargas": ["D1"],
+            "dasha_rules": "Saturn/Moon-afflicted dasha",
+            "transit_triggers": "adverse Saturn/Moon transit to lagna",
+        },
+        "magnitude_floor": "moderate",
+        "adjacency": ["chronic_onset"],
+        "base_rate_by_age": {"band_0_12": 0.10, "band_13_25": 0.20, "band_26_40": 0.25, "band_41_60": 0.25, "band_60_plus": 0.20},
+        "citations": ["BPHS ch.1 (lagna, temperament) — inherited from chronic_onset, provisional pending dedicated sourcing"],
+        "temporal_shape": "interval",
+        "duration_prior": {"min_days": 14, "typical_days": 180, "max_days": 1825},
+        "milestone_template": None,
+        "irreversibility_milestone": None,
+    },
+    {
+        "event_class_id": "birth_anchor",
+        "name_en": "Birth (Subject's Own, Chart Epoch)",
+        "domain": "transition",
+        "lel_category": "other",
+        "signature_model": {
+            "provisional": True, "inherited_from": None,
+            "houses": ["1"], "lords": ["1L"],
+            "karakas": ["Sun"], "vargas": ["D1"],
+            "dasha_rules": None,
+            "transit_triggers": None,
+        },
+        "magnitude_floor": "life_altering",
+        "adjacency": [],
+        "base_rate_by_age": {"band_0_12": 1.00, "band_13_25": 0.00, "band_26_40": 0.00, "band_41_60": 0.00, "band_60_plus": 0.00},
+        "citations": ["n/a — defines the natal epoch, not a classically-timed event"],
+        "temporal_shape": "point",
+        "duration_prior": None,
+        "milestone_template": None,
+        "irreversibility_milestone": None,
+    },
+    {
+        "event_class_id": "travel_event",
+        "name_en": "Discrete Travel Event",
+        "domain": "travel",
+        "lel_category": "travel",
+        "signature_model": {
+            "provisional": True, "inherited_from": "foreign_settlement",
+            "houses": ["3", "9", "12"], "lords": ["3L", "9L"],
+            "karakas": ["Moon"], "vargas": ["D1"],
+            "dasha_rules": "benefic 3/9/12 transit-dasha",
+            "transit_triggers": "benefic transit to 3rd, 9th, or 12th",
+        },
+        "magnitude_floor": "trivial",
+        "adjacency": ["foreign_settlement", "relocation"],
+        "base_rate_by_age": {"band_0_12": 0.10, "band_13_25": 0.35, "band_26_40": 0.35, "band_41_60": 0.15, "band_60_plus": 0.05},
+        "citations": ["BPHS ch.12 (videsh) — inherited from foreign_settlement, provisional pending dedicated sourcing"],
+        "temporal_shape": "point",
+        "duration_prior": None,
+        "milestone_template": None,
+        "irreversibility_milestone": None,
     },
 ]
 
@@ -619,6 +815,24 @@ def seed_ghatana(
                     f"{table} table does not exist — apply migration 388 first."
                 )
 
+        # ── preflight: shape/companion consistency (migration 456 CHECK constraints) ──
+        for ec in EVENT_CLASSES:
+            shape = ec.get("temporal_shape")
+            assert shape in ("point", "interval", "chain"), (
+                f"{ec['event_class_id']}: temporal_shape must be point|interval|chain, got {shape!r}"
+            )
+            if shape == "point":
+                assert ec.get("duration_prior") is None, f"{ec['event_class_id']}: point must have duration_prior=None"
+                assert ec.get("milestone_template") is None, f"{ec['event_class_id']}: point must have milestone_template=None"
+                assert ec.get("irreversibility_milestone") is None, f"{ec['event_class_id']}: point must have irreversibility_milestone=None"
+            elif shape == "interval":
+                assert ec.get("duration_prior") is not None, f"{ec['event_class_id']}: interval must have duration_prior"
+                assert ec.get("milestone_template") is None, f"{ec['event_class_id']}: interval must have milestone_template=None"
+                assert ec.get("irreversibility_milestone") is None, f"{ec['event_class_id']}: interval must have irreversibility_milestone=None"
+            elif shape == "chain":
+                mt = ec.get("milestone_template")
+                assert mt is not None and len(mt) >= 2, f"{ec['event_class_id']}: chain must have milestone_template with ≥2 elements"
+
         # ── brahma_event_ontology ─────────────────────────────────────────────
         for ec in EVENT_CLASSES:
             cur.execute(
@@ -626,8 +840,11 @@ def seed_ghatana(
                 INSERT INTO brahma_event_ontology
                   (event_class_id, name_en, domain, lel_category,
                    signature_model, magnitude_floor, adjacency,
-                   base_rate_by_age, citations, version)
-                VALUES (%s, %s, %s, %s, %s::jsonb, %s, %s::jsonb, %s::jsonb, %s, '1.1')
+                   base_rate_by_age, citations, version,
+                   temporal_shape, duration_prior, milestone_template,
+                   irreversibility_milestone)
+                VALUES (%s, %s, %s, %s, %s::jsonb, %s, %s::jsonb, %s::jsonb, %s, '2.0',
+                        %s, %s::jsonb, %s::jsonb, %s)
                 ON CONFLICT (event_class_id)
                 DO UPDATE SET
                     signature_model  = EXCLUDED.signature_model,
@@ -647,6 +864,10 @@ def seed_ghatana(
                     json.dumps(ec.get("adjacency") or []),
                     json.dumps(ec["base_rate_by_age"]),
                     ec.get("citations"),
+                    ec["temporal_shape"],
+                    json.dumps(ec["duration_prior"]) if ec["duration_prior"] is not None else None,
+                    json.dumps(ec["milestone_template"]) if ec["milestone_template"] is not None else None,
+                    ec["irreversibility_milestone"],
                 ),
             )
 
