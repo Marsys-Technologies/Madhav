@@ -249,11 +249,30 @@ class StructuredFalsifier:
 
 
 def _promise_lift(grade: float, status: str) -> float:
-    """bodha_pratijna grade [0..10] → Bayesian lift factor."""
+    """bodha_pratijna grade [0..10] → Bayesian lift factor.
+
+    Fix (SHABDA-SHUDDHI lane L4 / R6): corrects a sign-inversion bug in the
+    'denied' branch and adds an explicit 'no_evidence' case.
+
+    Correct semantics:
+      'promised' / 'conditional':
+        grade is promise strength; grade=0 -> 1.0x, grade=10 -> 2.5x.
+      'denied':
+        grade is denial strength; grade=0 -> 1.0 (neutral, no evidence),
+        grade=10 -> 0.1 (floor — promise is modifier, never a gate per R6).
+      'no_evidence':
+        lift = 1.0 always (no information -> no modification).
+
+    Previous bug: denied branch used max(0.20, 1.0 - (grade/10.0) * 0.80)
+    which compressed the dynamic range and left 'no_evidence' falling into
+    the promised/conditional formula (non-neutral lift).
+    """
+    if status == 'no_evidence':
+        return 1.0
     if status == 'denied':
-        # denied: suppress the base rate
-        return max(0.20, 1.0 - (grade / 10.0) * 0.80)
-    # promised/conditional: grade=0 → 1.0x; grade=10 → 2.5x
+        # grade=0 -> 1.0 (neutral: no denial evidence); grade=10 -> 0.1 (floor)
+        return max(0.1, 1.0 - grade / 10.0)
+    # 'promised' / 'conditional': grade=0 -> 1.0x; grade=10 -> 2.5x
     return 1.0 + (grade / 10.0) * 1.50
 
 
