@@ -84,8 +84,12 @@ def test_infer_domain_no_rotation_unclassified():
 
 
 def test_infer_domain_valid_enum():
-    """_infer_domain never returns outside the 7 valid domains"""
-    valid = {'career', 'health', 'relationship', 'finance', 'spiritual', 'education', 'general'}
+    """_infer_domain never returns outside the 13 valid canonical domains"""
+    valid = {
+        'career', 'wealth', 'relationship', 'progeny', 'health',
+        'education', 'family', 'residence', 'travel', 'spirituality',
+        'character', 'transition', 'general',
+    }
     for rank in range(50):
         assert _infer_domain(rank, 'label') in valid
 
@@ -94,7 +98,7 @@ def test_infer_domain_keyword_match_overrides_general():
     """signal_type_id keyword match produces correct domain (not 'general')."""
     assert _infer_domain(0, 'any', signal_type_id='raja_yoga_career') == 'career'
     assert _infer_domain(0, 'any', signal_type_id='kalatra_seventh') == 'relationship'
-    assert _infer_domain(0, 'any', signal_type_id='dhana_wealth') == 'finance'
+    assert _infer_domain(0, 'any', signal_type_id='dhana_wealth') == 'wealth'
 
 
 # ---------------------------------------------------------------------------
@@ -221,13 +225,17 @@ def test_tier_labels_all_3_defined():
 
 
 def test_domains_all_7_defined():
-    """_DOMAINS must contain exactly 7 entries"""
-    assert len(_DOMAINS) == 7
+    """_DOMAINS must contain exactly 13 entries (canonical vocabulary per migration 386)"""
+    assert len(_DOMAINS) == 13
 
 
 def test_domains_contains_required_values():
-    """_DOMAINS must include all 7 required domain values"""
-    required = {'career', 'health', 'relationship', 'finance', 'spiritual', 'education', 'general'}
+    """_DOMAINS must include all 13 canonical domain values"""
+    required = {
+        'career', 'wealth', 'relationship', 'progeny', 'health',
+        'education', 'family', 'residence', 'travel', 'spirituality',
+        'character', 'transition', 'general',
+    }
     assert set(_DOMAINS) == required
 
 

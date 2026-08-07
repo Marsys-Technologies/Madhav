@@ -192,7 +192,7 @@ class TestB4ConsumeKaBhavishya:
         )
 
         domains_seen = set()
-        for test_domain in ['relationship', 'financial', 'spiritual', 'psychological']:
+        for test_domain in ['relationship', 'wealth', 'spirituality', 'character']:
             darshana_row = self._make_darshana_row(test_domain)
 
             cur_timeout = _make_cursor()
@@ -217,7 +217,7 @@ class TestB4ConsumeKaBhavishya:
 
         # All 4 test domains should appear in output (not collapsed to 'general')
         assert 'relationship' in domains_seen
-        assert 'spiritual' in domains_seen
+        assert 'spirituality' in domains_seen
 
     def test_schema_probe_used_when_column_absent(self):
         """
