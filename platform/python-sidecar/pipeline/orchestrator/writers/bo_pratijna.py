@@ -37,11 +37,12 @@ import uuid
 from datetime import datetime, timezone
 
 from . import WriterBase, ContextSpec, WriterResult, register
+from .bo_pratijna_karyatva import get_karyatva, KARYATVA_REGISTRY
 
 logger = logging.getLogger(__name__)
 
-ENGINE_VERSION = "bo_pratijna_v2.0"
-FORMULA_VERSION = "v2.0"
+ENGINE_VERSION = "bo_pratijna_v3.0"
+FORMULA_VERSION = "v3.0"
 
 CANONICAL_AYAS = [
     "lahiri_chitrapaksha", "raman", "krishnamurti",
@@ -82,12 +83,14 @@ _PRATIJNA_INSERT = """
 INSERT INTO bodha_pratijna (
     pratijna_id, chart_id, ayanamsha_id, build_id,
     event_class_id, status, grade,
+    occurrence_grade, condition_grade,
     supporting_signal_ids, contradicting_signal_ids,
     varga_confirmation, derivation, formula_version,
     computed_at, engine_version
 ) VALUES (
     %(pratijna_id)s, %(chart_id)s, %(ayanamsha_id)s, %(build_id)s,
     %(event_class_id)s, %(status)s, %(grade)s,
+    %(occurrence_grade)s, %(condition_grade)s,
     %(supporting_signal_ids)s, %(contradicting_signal_ids)s,
     %(varga_confirmation)s, %(derivation)s, %(formula_version)s,
     %(computed_at)s, %(engine_version)s
@@ -96,6 +99,8 @@ ON CONFLICT (chart_id, ayanamsha_id, event_class_id)
 DO UPDATE SET
     status = EXCLUDED.status,
     grade = EXCLUDED.grade,
+    occurrence_grade = EXCLUDED.occurrence_grade,
+    condition_grade = EXCLUDED.condition_grade,
     supporting_signal_ids = EXCLUDED.supporting_signal_ids,
     contradicting_signal_ids = EXCLUDED.contradicting_signal_ids,
     derivation = EXCLUDED.derivation,
@@ -182,6 +187,72 @@ def _grade_to_status(grade: float, *, supporting_empty: bool, contradicting_empt
     return "conditional"
 
 
+def _match_signal_to_class(signal: dict, karyatva, conn, chart_id: str) -> tuple[float, float]:
+    """
+    Match a signal to an event class via its karyatva (significator) map.
+    Returns (occurrence_weight, condition_weight).
+
+    Uses constituent_facts_array to check if the signal references any of the
+    karyatva map's factors: houses, lords, karakas, divisionals, yogas.
+
+    For provisional classes (DR-13), falls back to domain matching.
+    """
+    sal = float(signal.get("computed_salience") or 0.0)
+    valence = str(signal.get("valence") or "neutral").lower().strip()
+
+    occ_w = 0.0
+    cond_w = 0.0
+
+    # Check constituent facts for matches against karyatva factors
+    constituent_facts = signal.get("constituent_facts_array") or []
+    signal_type_class = str(signal.get("signal_type_class") or "").lower()
+
+    # 1. Check if signal_type_class matches any yoga keywords
+    for kw in karyatva.yoga_keywords:
+        if kw.lower() in signal_type_class:
+            occ_w += sal * 0.7
+            break
+
+    # 2. Check constituent fact keys for bhava/house references
+    for fact_ref in constituent_facts:
+        fact_key = str(fact_ref) if not isinstance(fact_ref, dict) else str(fact_ref.get("fact_key", ""))
+        fact_key_lower = fact_key.lower()
+
+        # Check primary bhava match
+        for bhava in karyatva.primary_bhava:
+            bhava_patterns = [
+                f"house_{bhava}", f"bhava_{bhava}", f"h{bhava}_",
+                f"_{bhava}h", f"house{bhava}", f"bhava{bhava}",
+            ]
+            if any(p in fact_key_lower for p in bhava_patterns):
+                if karyatva.dusthana_required and bhava in (6, 8, 12):
+                    # For separation-type: dusthana IS the occurrence signal
+                    occ_w += sal
+                elif valence in ("benefic", "neutral"):
+                    occ_w += sal * 0.8
+                else:
+                    cond_w += sal * 0.6
+                break
+
+        # Check karaka match
+        for karaka in karyatva.karaka_grahas:
+            if karaka.lower() in fact_key_lower:
+                occ_w += sal * 0.8
+                break
+
+        # Check divisional match
+        if karyatva.divisional and karyatva.divisional.lower() in fact_key_lower:
+            occ_w += sal * 0.5
+
+        # Check condition malefics
+        for mal in karyatva.condition_malefic_grahas:
+            if mal.lower() in fact_key_lower:
+                cond_w += sal * 0.4
+                break
+
+    return (occ_w, cond_w)
+
+
 @register("bo_pratijna")
 class BoPratijnaWriter(WriterBase):
     """bo_pratijna -- Promise Register (L2 Bodha)."""
@@ -220,61 +291,74 @@ class BoPratijnaWriter(WriterBase):
             for ec in event_rows:
                 event_class_id = ec["event_class_id"]
                 domain = ec["domain"]
+                karyatva = get_karyatva(event_class_id)
 
-                # Find signals relevant to this domain and partition by valence.
-                # BUG-2 fix: use actual data valence values ('benefic'/'malefic'/'mixed'/'neutral')
-                #   via _partition_signal(), not the non-existent 'positive'/'negative'.
-                # BUG-3 fix: mixed and neutral signals are weighted evidence (R7), not discarded.
+                occurrence_sals: list[float] = []
+                condition_sals: list[float] = []
                 supporting_ids: list[str] = []
-                supporting_sal: list[float] = []
                 contradicting_ids: list[str] = []
-                contradicting_sal: list[float] = []
+                matched_any = False
+                confidence_tier = "karyatva"
 
-                # Count domain-overlapping signals before partitioning.
-                # This is the "truly_no_evidence" sentinel: if no signals at all
-                # matched this domain, status is 'no_evidence' regardless of grade.
-                domain_overlapping_count = 0
+                if karyatva and not karyatva.provisional:
+                    # v3 karyatva routing: route signals via classical significator map
+                    for sig in signal_rows:
+                        occ_w, cond_w = _match_signal_to_class(sig, karyatva, conn, chart_id)
+                        if occ_w > 0 or cond_w > 0:
+                            matched_any = True
+                            sig_id = str(sig.get("signal_id") or "")
+                            if occ_w > 0:
+                                occurrence_sals.append(occ_w)
+                                supporting_ids.append(sig_id)
+                            if cond_w > 0:
+                                condition_sals.append(cond_w)
+                                contradicting_ids.append(sig_id)
+                else:
+                    # Domain fallback (provisional DR-13 classes OR unmapped)
+                    confidence_tier = "domain_fallback"
+                    for sig in signal_rows:
+                        domains = sig.get("domains_affected_array") or []
+                        if domain not in domains:
+                            continue
+                        matched_any = True
+                        sal = float(sig.get("computed_salience") or 0.0)
+                        valence = str(sig.get("valence") or "neutral").lower().strip()
+                        sig_id = str(sig.get("signal_id") or "")
+                        sup_contrib, con_contrib = _partition_signal(valence, sal)
+                        if sup_contrib > 0:
+                            occurrence_sals.append(sup_contrib)
+                            supporting_ids.append(sig_id)
+                        if con_contrib > 0:
+                            condition_sals.append(con_contrib)
+                            contradicting_ids.append(sig_id)
 
-                for sig in signal_rows:
-                    domains = sig.get("domains_affected_array") or []
-                    if domain not in domains:
-                        continue
-                    domain_overlapping_count += 1
-                    sal = float(sig.get("computed_salience") or 0.0)
-                    valence = str(sig.get("valence") or "neutral").lower().strip()
-                    sig_id = str(sig.get("signal_id") or "")
-
-                    sup_contrib, con_contrib = _partition_signal(valence, sal)
-
-                    if sup_contrib > 0.0:
-                        supporting_ids.append(sig_id)
-                        supporting_sal.append(sup_contrib)
-                    if con_contrib > 0.0:
-                        contradicting_ids.append(sig_id)
-                        contradicting_sal.append(con_contrib)
-
-                # BUG-1 fix: truly_no_evidence = no signals matched this domain at all.
-                # (A mixed signal that contributed partial weight to both sides is NOT empty --
-                # it appears in both supporting_ids and contradicting_ids.)
-                truly_no_evidence = (domain_overlapping_count == 0)
-
-                grade = _compute_grade(supporting_sal, contradicting_sal)
-                status = _grade_to_status(
-                    grade,
-                    supporting_empty=truly_no_evidence,
-                    contradicting_empty=truly_no_evidence,
-                )
-
-                if status == "no_evidence":
+                if not matched_any:
+                    status = "no_evidence"
+                    grade = None
+                    occurrence_grade = None
+                    condition_grade = None
                     no_evidence_count += 1
+                else:
+                    occurrence_grade = _compute_grade(occurrence_sals, [])
+                    condition_grade = _compute_grade([], condition_sals)
+                    # Combined: 0.7 * occurrence + 0.3 * condition
+                    grade = round(0.7 * occurrence_grade + 0.3 * condition_grade, 3)
+                    # Status derives from occurrence_grade, NOT combined grade
+                    status = _grade_to_status(
+                        occurrence_grade,
+                        supporting_empty=(len(occurrence_sals) == 0),
+                        contradicting_empty=(len(condition_sals) == 0),
+                    )
+                    if status == "no_evidence":
+                        no_evidence_count += 1
 
                 derivation = {
                     "supporting_count": len(supporting_ids),
                     "contradicting_count": len(contradicting_ids),
-                    "top_supporting_saliences": sorted(supporting_sal, reverse=True)[:5],
-                    "top_contradicting_saliences": sorted(contradicting_sal, reverse=True)[:5],
-                    "domain_overlapping_signal_count": domain_overlapping_count,
-                    "formula": "grade = clamp(mean_top5_sup - 0.5*mean_top5_con, 0, 10) / 10 * 10",
+                    "top_supporting_saliences": sorted(occurrence_sals, reverse=True)[:5],
+                    "top_contradicting_saliences": sorted(condition_sals, reverse=True)[:5],
+                    "formula": "grade = 0.7*occurrence_grade + 0.3*condition_grade; status from occurrence_grade",
+                    "confidence_tier": confidence_tier,
                     "ayanamsha": aya,
                     "engine_version": ENGINE_VERSION,
                     "valence_weights": {
@@ -292,7 +376,9 @@ class BoPratijnaWriter(WriterBase):
                     "build_id":                 build_id,
                     "event_class_id":           event_class_id,
                     "status":                   status,
-                    "grade":                    grade if status != "no_evidence" else None,
+                    "grade":                    grade,
+                    "occurrence_grade":         occurrence_grade,
+                    "condition_grade":          condition_grade,
                     "supporting_signal_ids":    supporting_ids or None,
                     "contradicting_signal_ids": contradicting_ids or None,
                     "varga_confirmation":       None,

@@ -189,15 +189,18 @@ def test_bo_upaya_empty_prescriptions_summary_intensity_is_not_light():
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Fix 7b: mi_adhilepa._overlay_row leakage must be None
+# Fix 7b + SIDDHANTA: mi_adhilepa._overlay_row leakage must be 'not_assessed'
 # ─────────────────────────────────────────────────────────────────────────────
 
-def test_mi_adhilepa_overlay_row_leakage_is_none():
+def test_mi_adhilepa_overlay_row_leakage_is_not_assessed():
     """_overlay_row must NOT hardcode leakage='clean'.
 
     Before the fix: leakage = 'clean' is a hardcoded string with no detector
     behind it — violates §N.7-4 (a verification flag needs a real detector or
-    must be null).  The fix sets leakage=None until a real detector exists.
+    must be null). SHABDA-SHUDDHI set leakage=None (correct intent), but
+    the NOT NULL schema blocked it (HONEST-FIX-BLOCKED-BY-DISHONEST-SCHEMA).
+    SIDDHANTA migration 549 permits 'not_assessed' as the explicit honest
+    named state; the writer now emits 'not_assessed' instead of None.
     """
     import uuid
     from pipeline.orchestrator.writers.mi_adhilepa import _overlay_row
@@ -212,7 +215,7 @@ def test_mi_adhilepa_overlay_row_leakage_is_none():
     row = _overlay_row(str(uuid.uuid4()), 'L2', 'bo_laksana', str(uuid.uuid4()), mult, 0)
     # leakage_status is index 9 in the tuple
     leakage_status = row[9]
-    assert leakage_status is None, (
-        f"mi_adhilepa._overlay_row leakage_status should be None (no real detector exists), "
-        f"not {leakage_status!r}. Hardcoding 'clean' violates §N.7-4."
+    assert leakage_status == "not_assessed", (
+        f"mi_adhilepa._overlay_row leakage_status should be 'not_assessed' (no real detector "
+        f"exists — §N.7-4), not {leakage_status!r}. 'clean' would be a lie; None violates NOT NULL."
     )

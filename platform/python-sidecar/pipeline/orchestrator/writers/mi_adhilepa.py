@@ -153,11 +153,14 @@ def _overlay_row(chart_id: str, origin_layer: str, origin_asset_id: str,
     applied = float(mult["applied_multiplier"])
     raw = float(mult["raw_multiplier"])
     bound = min(applied, _MULTIPLIER_BOUND_MAX)
-    # SHABDA-SHUDDHI Lane L5 (Fix 7b): leakage=None until a real detector exists.
-    # Per §N.7-4: a verification flag must have a real detector behind it, or be null.
-    # Hardcoding "clean" with no code path that could produce a different value
-    # is an unimplemented check wearing a clean result's clothes.
-    leakage = None
+    # SHABDA-SHUDDHI Lane L5 (Fix 7b) + SIDDHANTA: leakage='not_assessed' until a real
+    # detector exists. Per §N.7-4: a verification flag must have a real detector behind
+    # it, or be null. The original code lied ("clean" with no detector); the §N.7 fix
+    # set None (correct intent, but NOT NULL schema blocked it — the HONEST-FIX-BLOCKED-
+    # BY-DISHONEST-SCHEMA defect class). Migration 547 permits 'not_assessed' as the
+    # explicit honest named state (preferred over bare NULL per kala_lattice_query.ts
+    # precedent). 'clean' is reserved for when a real leakage detector exists and passes.
+    leakage = "not_assessed"
     applies = mult.get("kill_switch_state", "active") == "active"
     return (
         chart_id,
