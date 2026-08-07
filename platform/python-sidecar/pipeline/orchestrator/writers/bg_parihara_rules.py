@@ -80,6 +80,8 @@ import logging
 import time
 from typing import Any
 
+import psycopg.rows
+
 from pipeline.orchestrator.writers import (
     ContextSpec,
     WriterBase,
@@ -147,17 +149,15 @@ def fetch_parihara_rows(conn: Any, build_id: str) -> list[dict[str, Any]]:
     on ctx.db_conn (no commit/close — caller owns the connection).
     """
     text_titles: dict[str, str] = {}
-    with conn.cursor() as cur:
+    with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
         cur.execute(_TEXT_TITLES_QUERY)
         for row in cur.fetchall():
             text_titles[row["text_id"]] = row["title_en"]
 
     rows: list[dict[str, Any]] = []
-    with conn.cursor() as cur:
+    with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
         cur.execute(_DOSHA_QUERY)
-        cols = [d[0] for d in cur.description]
-        for raw in cur.fetchall():
-            rec = dict(zip(cols, raw))
+        for rec in cur.fetchall():
             conditions = _extract_conditions(rec["cancellation_conditions"])
             citation, text_id, chapter = _build_citation(rec["classical_citations"], text_titles)
             for idx, condition_text in enumerate(conditions, start=1):
