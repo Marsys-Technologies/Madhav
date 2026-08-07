@@ -2,6 +2,12 @@
 
 ---
 
+## HB #77 — 2026-08-07T02:07:36Z
+
+**Heartbeat** — post-merge: Ganga Quality Gate on main in_progress (started 01:59:55Z, ~6 min). Deploy to Cloud Run pending (triggers on Ganga completion). Awaiting post-merge deploy then PARĪKṢAKA W3 gate. Next HB due before 2026-08-07T02:17:36Z.
+
+---
+
 ## HB #76 — 2026-08-07T02:02:19Z [MERGE RECORD]
 
 **PR #1090 MERGED** ✅ at 2026-08-07T01:59:53Z — merge commit `e81fc295895ebb01189b8a7208bc22d5b25eb951`.
