@@ -96,21 +96,21 @@
     },
     {
       "file": "platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py",
-      "line": 888,
+      "line": 931,
       "pattern": null,
-      "justification": "PRE-EXISTING, not in this wave's scope. Same file/defect-shape as P0-5 (_build_dignity_lookup: fact_category='graha_dignity_per_varga', pinned only by fact_value_jsonb->>'varga'='D1', no fact_key, no ORDER BY — the function's own comment already flags 'first row wins (avoid overwriting with duplicates)' as an explicit non-determinism guard). Recommend folding into lane:bo-laksana's P0-5 fix scope since it's the same file/same rebuild — newly discovered by this lint, not previously ledgered. [line updated 861->888 after ŚUDDHA-VĀCA P0-5/P0-6 fix (#838) shifted line numbers via docstring expansion; same defect, unchanged.]"
+      "justification": "PRE-EXISTING, not in this wave's scope. Same file/defect-shape as P0-5 (_build_dignity_lookup: fact_category='graha_dignity_per_varga', pinned only by fact_value_jsonb->>'varga'='D1', no fact_key, no ORDER BY — the function's own comment already flags 'first row wins (avoid overwriting with duplicates)' as an explicit non-determinism guard). Recommend folding into lane:bo-laksana's P0-5 fix scope since it's the same file/same rebuild — newly discovered by this lint, not previously ledgered. [line updated 888->931 after ŚABDA-ŚUDDHI L1 domain remap shifted line numbers; same defect, unchanged.]"
     },
     {
       "file": "platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py",
-      "line": 919,
+      "line": 962,
       "pattern": null,
-      "justification": "PRE-EXISTING, not in this wave's scope. Same file/defect-shape as P0-5 (_build_av_lookup: fact_category='ashtakavarga_bindu', no fact_key, no ORDER BY, pinned only by a fact_subject LIKE pattern). Recommend folding into lane:bo-laksana's P0-5 fix scope. Newly discovered by this lint. [line updated 892->919 after ŚUDDHA-VĀCA P0-5/P0-6 fix (#838) shifted line numbers via docstring expansion; same defect, unchanged.]"
+      "justification": "PRE-EXISTING, not in this wave's scope. Same file/defect-shape as P0-5 (_build_av_lookup: fact_category='ashtakavarga_bindu', no fact_key, no ORDER BY, pinned only by a fact_subject LIKE pattern). Recommend folding into lane:bo-laksana's P0-5 fix scope. Newly discovered by this lint. [line updated 919->962 after ŚABDA-ŚUDDHI L1 domain remap shifted line numbers; same defect, unchanged.]"
     },
     {
       "file": "platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py",
-      "line": 2318,
+      "line": 2361,
       "pattern": null,
-      "justification": "PRE-EXISTING, not in this wave's scope. Same file/defect-shape as P0-5 (second graha_dignity_per_varga selector, no fact_key, no ORDER BY). Recommend folding into lane:bo-laksana's P0-5 fix scope. Newly discovered by this lint. [line updated 2291->2318 after ŚUDDHA-VĀCA P0-5/P0-6 fix (#838) shifted line numbers via docstring expansion; same defect, unchanged.]"
+      "justification": "PRE-EXISTING, not in this wave's scope. Same file/defect-shape as P0-5 (second graha_dignity_per_varga selector, no fact_key, no ORDER BY). Recommend folding into lane:bo-laksana's P0-5 fix scope. Newly discovered by this lint. [line updated 2318->2361 after ŚABDA-ŚUDDHI L1 domain remap shifted line numbers; same defect, unchanged.]"
     },
     {
       "file": "platform/python-sidecar/pipeline/orchestrator/writers/bo_upaya.py",
@@ -132,15 +132,15 @@
     },
     {
       "file": "platform/python-sidecar/pipeline/orchestrator/writers/ka_yojaka.py",
-      "line": 362,
+      "line": 367,
       "pattern": null,
-      "justification": "PRE-EXISTING, not in this wave's scope. `lord_in_house_per_varga` has no fact_key dimension (fact_subject IS the {varga}_H{house} key per the function's own docstring); result is keyed by (ayanamsha_id, fact_subject), not collapsed further."
+      "justification": "PRE-EXISTING, not in this wave's scope. `lord_in_house_per_varga` has no fact_key dimension (fact_subject IS the {varga}_H{house} key per the function's own docstring); result is keyed by (ayanamsha_id, fact_subject), not collapsed further. [line updated 362->367 after ŚABDA-ŚUDDHI L4 fix shifted line numbers; same defect, unchanged.]"
     },
     {
       "file": "platform/python-sidecar/pipeline/orchestrator/writers/ka_yojaka.py",
-      "line": 540,
+      "line": 545,
       "pattern": null,
-      "justification": "PRE-EXISTING, not in this wave's scope. `fact_category IN ('yoga_label', 'dosha_label', 'graha_position')` with no fact_key — but the result is stored as `result[fact_id] = (fact_category, fact_subject)`, i.e. every row is preserved individually keyed by its own fact_id (no collapsing/overwrite across rows), so this does not exhibit the P0-5 'last-row-wins' hazard despite lacking the lint's literal fact_key signal."
+      "justification": "PRE-EXISTING, not in this wave's scope. `fact_category IN ('yoga_label', 'dosha_label', 'graha_position')` with no fact_key — but the result is stored as `result[fact_id] = (fact_category, fact_subject)`, i.e. every row is preserved individually keyed by its own fact_id (no collapsing/overwrite across rows), so this does not exhibit the P0-5 'last-row-wins' hazard despite lacking the lint's literal fact_key signal. [line updated 540->545 after ŚABDA-ŚUDDHI L4 fix shifted line numbers; same defect, unchanged.]"
     },
     {
       "file": "platform/python-sidecar/scripts/rebuild_el18_manglik_ga_structural.py",
