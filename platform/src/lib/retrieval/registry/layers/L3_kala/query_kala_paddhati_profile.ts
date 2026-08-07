@@ -92,7 +92,7 @@ export const queryKalaPaddhatiProfileCapability: CapabilityDescriptor = {
 
   required_inputs: ['chart_id'],
   scope: 'per_chart',
-  archetype: 'config',
+  archetype: 'temporal',
   traversal_level: 'L-SIGNAL',
   tool_role: 'reference',
   emits_references: false,
