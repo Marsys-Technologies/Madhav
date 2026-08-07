@@ -1,4 +1,40 @@
 ---
+## RUN-TERMINAL: PARKED-FINAL — ṢAḌ-DARŚANA CLOSING RUN — 2026-08-07T06:52:00Z
+
+**All campaign deliverables that can be completed within this arc are complete.**
+
+Reason for PARKED-FINAL (not ARC-COMPLETE):
+W6 gate PARKED-HONEST — 5 of 6 clauses unverified in this session:
+- C2: legacy divergence audit not run
+- C3: dark corpus bright% re-measure not run (requires 21-question evaluation)
+- C4: authority_basis serving census not run (authority_basis_census_seed.ts)
+- C5: full disposition compilation not formally verified against STATE.md
+- C6: skill score not published or regression-gated
+
+What is complete and closed:
+- W0/W1/W3/W3K/W5/W2G formally closed with PARĪKṢAKA evidence
+- ADJUDICATION-1 + ADJUDICATION-2 both RULED; factual correction propagated
+- R3 safety-net retired (HB #113)
+- W2 field integration: 1c826d5a PASS / 482012f1 DISCLOSED-GAP (R5-authorized)
+- All 9 Kāla MCP tools registered and serving live
+- §M red-team verdict: ACCEPT on 3 classes, REFUTE on D-CLASS-3 (corrected in CURRENT_STATE v6.53)
+- SHAD_DARSHANA_CLOSE_v1_0.md written (44+E per-item disposition, debt register, gate status)
+- CURRENT_STATE v6.53 published
+- SESSION_LOG appended (SHAD-DARSHANA-CLOSING-RUN-2026-08-07)
+
+Next-session obligations (from SHAD_DARSHANA_CLOSE_v1_0.md §4 W6 debts):
+1. Run authority_basis_census_seed.ts serving-layer census
+2. Execute 21-question dark corpus re-measure for both charts
+3. Run skill-score publication + regression gate
+4. Compile full legacy-vs-new divergence audit
+5. Address 482012f1 field integration (ne_v01 Tranche-N expansion or bodha_pratijna promises)
+6. W4 items (4/5/6/7/9/13/14/26/31/42) — full separate campaign
+
+Ledger: SHAD_DARSHANA_STATE.md HB #1–#118.
+Close doc: SHAD_DARSHANA_CLOSE_v1_0.md.
+Governance: CURRENT_STATE v6.53 / SESSION_LOG SHAD-DARSHANA-CLOSING-RUN-2026-08-07.
+
+---
 ## HB #118 — §M VERDICT RECORDED + CAMPAIGN CLOSE WRITTEN + CURRENT_STATE FIX MANDATED — 2026-08-07T06:47:53Z
 
 **CONDUCTOR LEASE: FINAL HB.** RUN-TERMINAL follows this entry.
