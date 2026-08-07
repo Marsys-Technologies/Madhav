@@ -1,5 +1,11 @@
 ---
 
+---
+
+## HB #71 — 2026-08-07T01:15:13Z
+
+**Heartbeat** — monitor v3 killed to give CI uninterrupted run window; bg_parihara_rules dict_row fix committed (fee5082a1), CI cycle clean. Lease maintained manually until PR #1090 merges. Next HB due before 2026-08-07T01:25:13Z.
+
 <!-- CONDUCTOR-NOTE HB #70 2026-08-07T01:07:16Z -->
 > **CONDUCTOR HEARTBEAT #70** — 2026-08-07T01:07:16Z
 > Actions status: **operational**
