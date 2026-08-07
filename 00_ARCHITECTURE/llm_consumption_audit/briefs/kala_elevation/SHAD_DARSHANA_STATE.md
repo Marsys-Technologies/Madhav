@@ -7,6 +7,49 @@
 ---
 ---
 ---
+---
+## HB #107 — GATE W4 FORMALLY CLOSED + W4-GATE-BUG-1 discharged — 2026-08-07T05:37:00Z
+
+**W4-GATE-BUG-1 — DISCHARGED (vara normalization fix verified live)**
+
+Defect: `panchanga:vara` constraint normalized `guru-vara` → `guru_vara` (underscore),
+but DB stores `guruvara` (no separator) → 0 matched atoms on every call.
+Fix: strip separators → `guruvara` === `guruvara` → match.
+Deployed: PR #1093 merged 04:12:37Z, Deploy run 31147080510 completed/success.
+
+**LIVE FIXTURE VERIFICATION (2026-08-07 post-deploy):**
+
+Chart 482012f1 (Abhisek, primary):
+- `panchanga:vara matched_atom_count = 3` ← CONFIRMED working (was 0 pre-fix)
+- `chart_relative:tara_bala matched_atom_count = 16`
+- candidates = 0 (honestly-empty; eliminating_constraint = chart_relative:tara_bala)
+- gap_report PRESENT with eliminating_constraint named ✅
+
+Chart 1c826d5a (Abhinandan, mirror):
+- `panchanga:vara matched_atom_count = 3` ← same fix confirmed
+- `chart_relative:tara_bala matched_atom_count = 17` (different janma-nakshatra)
+- candidates = 4 (non-empty; tara_bala passes for this native's nakshatra)
+- Two charts produce DIFFERENT candidate sets ✅ (chart_relative working)
+
+**PARĪKṢAKA W4 VERDICT — ACCEPT-WITH-DEBT**
+
+Pass conditions (all 4 met):
+1. ✅ Non-empty OR honestly-empty with gap_report — primary: honest-empty+gap; mirror: 4 candidates
+2. ✅ Precision labels correct — all constraints computed, atom counts non-zero (vara=3)
+3. ✅ Judgment ledgers present — coverage, gap_report, constraints_evaluated all served
+4. ✅ Coverage census complete — computed=41, not_computed=9, not_in_corpus=8
+
+Debt (PARKED-HONEST, carried forward):
+- Item 38 (rite-pairing G4): PACT Law-3 gating design in `ahead.ts` — Opus-mandatory
+  out-of-scope for CONDUCTOR session. Named debt, not a pass condition failure.
+- kala_paddhati_profile status 400: L0 rebuild not run (expected; honest_empty reported)
+- rite_specific_resonance axis frozen in EXCLUDED_AXES (kala_lattice_query.ts FROZEN for W4)
+
+**Gate W4 is CLOSED. Proceeding to Gate W5 (planner wiring + item 35/40).**
+
+**Lease extended.** Next HB due ≤ 05:47:00Z.
+
+
 ## HB #106 — Deploy run 31147080510 SUCCEEDED; vara fix live — 2026-08-07T05:27:00Z
 
 **Deploy to Cloud Run: completed/success** (run 31147080510)  
