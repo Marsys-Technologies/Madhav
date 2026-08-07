@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.51
+version: 6.52
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,7 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.52 (2026-08-07, ṢAḌ-DARŚANA FINAL-ARC continuation — this session): Gates W3/W4/W5 formally closed; W2G LANDED; R3 safety-net (Cloud Scheduler + Cloud Run + int929-relay-safety SA) deleted. W6 PARKED-HONEST — blocked on item-44 hard gate (field_window_id=0 → requires N_e priors ruling + ka_kshetra field integration). Single next action: re-dispatch ANTARYĀMIN for ADJUDICATION-2 (N_e priors source). PRs #1093 (vara normalization fix) + #1092 (migration renumber 544→485) both merged and deployed. Full record: SHAD_DARSHANA_STATE.md HB #110–#112. last_session_id: SHAD-DARSHANA-FINAL-ARC-2026-08-07.
   - v6.51 (2026-08-01, C4-LOOP-LIVE-PROOF close — the one item PŪRṆATĀ left open): full account in
     the new banner immediately above and in `00_ARCHITECTURE/briefs/purnata/PURNATA_CLOSE_REPORT_v1_0.md`
     §9 (v1.2). Headline facts: cookie anomaly diagnosed benign + tooling-fixed (#986) before

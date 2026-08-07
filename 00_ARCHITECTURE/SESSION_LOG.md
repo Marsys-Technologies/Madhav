@@ -35392,3 +35392,60 @@ against the SETTLED Kāla layer, using this arc's own proven method (defect-clas
 refuter panel + live-proof acceptance, the same discipline that closed C4). Smaller named items
 (ANTHROPIC_API_KEY provisioning, B-NAR-PH/TS remainder, OIR-surfaced items, the allowlist-fragility
 mechanism fix) remain in the consolidated backlog with resume conditions, not dropped.
+
+---
+
+## Session: SHAD-DARSHANA-FINAL-ARC-2026-08-07
+
+**Campaign:** ṢAḌ-DARŚANA — FINAL-ARC continuation (resumed after compaction)
+**Date:** 2026-08-07
+**Conductor:** Claude Sonnet 4.6 (autonomous CONDUCTOR session)
+
+This session resumed the ṢAḌ-DARŚANA FINAL-ARC from HB #109 (Gate W5 just closed) and completed the remaining campaign objectives through Gate W4, W5, W2G LANDED, R3 teardown, and W6 assessment. Full ledger evidence in SHAD_DARSHANA_STATE.md HB #110–#112.
+
+**Work completed this session:**
+- Gate W3: confirmed FORMALLY CLOSED (HB #96 / deploy 31144896520)
+- Gate W4: W4-GATE-BUG-1 (vara normalization) diagnosed, fixed (PR #1093), deployed; Mode-2 fixture verified both charts — FORMALLY CLOSED (HB #107)
+- Gate W5: 8/8 primitives verified via real MCP calls; Mode-3 routing confirmed — FORMALLY CLOSED (HB #109)
+- W2G LANDED: N1–N5 all ratified (ADJUDICATION-3/4/5/6 + native direct 2026-08-01); G-LAND PR #1089 (both charts, ANTARYAMIN PASS, dual-serve); formal declaration HB #110
+- R3 teardown: Cloud Scheduler job + Cloud Run service + int929-relay-safety SA — all 3 deleted and confirmed absent (HB #111)
+- W6 assessment: PARKED-HONEST — item-44 hard gate (field_window_id=0) blocked on N_e priors ruling
+- CURRENT_STATE updated to v6.52
+- Authority-basis census scoreboard updated with real numbers (paths=29, emitting=4, field_window_id=0)
+
+```yaml
+session_close:
+  session_id: SHAD-DARSHANA-FINAL-ARC-2026-08-07
+  campaign: "ṢAḌ-DARŚANA FINAL-ARC (continuation from compaction — HB #110–#112)"
+  close_criteria_met: "Gates W3/W4/W5 formally closed; W2G LANDED (N1–N5 ratified, G-LAND PR #1089, ANTARYAMIN hard-gate PASS); R3 safety-net fully retired (3 GCP resources deleted); W6 honestly assessed as PARKED-HONEST (item-44 hard gate not met — field_window_id=0). Campaign cannot fully close; single remaining blocker documented."
+  verification: "Gate W3: deploy run 31144896520; Gate W4: vara fix PR #1093 merged+deployed, Mode-2 fixture both charts; Gate W5: 8 real MCP call records in ledger; W2G: ANTARYAMIN ADJUDICATION record + PARĪKṢAKA ACCEPT-WITH-DEBT; R3: gcloud confirmed absent; all evidence in SHAD_DARSHANA_STATE.md HB #110–#112."
+  deploy: "PR #1093 (vara normalization fix) merged via merge queue; PR #1092 (migration renumber 544→485) already deployed in prior sub-session. Both deployed to production (asia-south1 Cloud Run)."
+  product_code_writes_made: "platform-mcp/src/lib/kala_sky_pattern.ts (vara normalization: .replace(/[\\s-]+/g, '_') → .replace(/[\\s-]+/g, '')); platform-mcp/src/tools/kala_views/ritual_mode2_gate.test.ts (mock lattice row key + detail schema aligned to real DB format). GCP infrastructure deleted: 1 Cloud Scheduler job, 1 Cloud Run service, 1 IAM service account."
+  native_chart_touched: false
+  current_state_updated: true
+  drift_detector_run:
+    script: platform/scripts/governance/drift_detector.py
+    exit_code: 3
+    finding_summary: "216 MEDIUM + 1 LOW — all pre-existing known residuals; no HIGH or CRITICAL. exit=3 is the established campaign baseline per ONGOING_HYGIENE_POLICIES §F."
+  schema_validator_run:
+    script: platform/scripts/governance/schema_validator.py
+    exit_code: 3
+    finding_summary: "42 violations — pre-existing; exit=3 accepted under §F whitelist with known_residuals block below."
+  known_residuals:
+    - finding: "drift_detector exit=3 (216 MEDIUM, 1 LOW) — pre-existing campaign baseline; no new findings introduced this session"
+      severity: MEDIUM
+      policy_ref: "ONGOING_HYGIENE_POLICIES §F exit-code-3 whitelist"
+    - finding: "schema_validator exit=3 (42 violations) — pre-existing; no new violations introduced this session"
+      severity: MEDIUM
+      policy_ref: "ONGOING_HYGIENE_POLICIES §F exit-code-3 whitelist"
+  red_team_pass:
+    due: false
+    rationale: "No red-team cadence trigger (not every-3rd session nor macro-phase close)"
+  register_dispositions_flipped: "Item 19 (GOCHARA-2.0 sub-day): NOT-STARTED → BUILT+EQUIVALENCE-HARDENED. Wave W2G: NOT-STARTED → BUILT+EQUIVALENCE-HARDENED LANDED. Authority-basis census scoreboard: stale '—' → real numbers (29 paths, 4 emitting, field_window_id=0). CURRENT_STATE: v6.51 → v6.52."
+  followups: "Single next action: re-dispatch ANTARYĀMIN for ADJUDICATION-2 (N_e priors source ruling — the docket item unruled since Night 3). This unblocks ka_kshetra field integration, Gate W2's parked items, item-44 hard gate (field_window_id>0), and W6. W3K production deploy gap also remains (K.1–K.4 merged but not yet in production). Full record: SHAD_DARSHANA_STATE.md HB #112 morning report."
+  next_session_objective: "Re-dispatch ANTARYĀMIN for ADJUDICATION-2: N_e priors source ruling (hazard formula fact_kind='lifetime_count_per_100y' — demographic structural priors, classical sources, or PARK). Once ruled: dispatch ka_kshetra N_e seeding lane, run ka_kshetra field build, verify skill-score/GOF, close item-44 (field_window_id>0), then W6 cutover."
+```
+
+### Next session objective
+
+Re-dispatch ANTARYĀMIN for ADJUDICATION-2 (N_e priors source ruling — the only remaining ṢAḌ-DARŚANA campaign blocker). Once ruled: dispatch ka_kshetra N_e seeding lane → field build → skill-score/GOF publish → item-44 hard gate (field_window_id>0) → W6 cutover + campaign close.
