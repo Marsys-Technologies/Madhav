@@ -268,9 +268,10 @@ def test_census_gate_known_violations_are_detected():
     # Remove an entry when the file is migrated (the zero-violations gate will catch
     # any regression — this dict is for "confirm scanner detects the known cases").
     # Previously included: ka_bhavishya_lekha.py (fixed by L5 lane), ka_yojaka.py (fixed).
-    _KNOWN_VIOLATIONS = {
-        "mi_sambandha.py": {"finance"},
-    }
+    # Previously included: mi_sambandha.py (fixed: 'finance' → 'wealth').
+    # Previously included: ph_rectification/engine.py (fixed: 'finance'→'wealth',
+    #   'spiritual'→'spirituality', 'residential'→'residence').
+    _KNOWN_VIOLATIONS: dict[str, set[str]] = {}
 
     all_files = _collect_py_files()
     file_by_name = {p.name: p for p in all_files}
@@ -431,9 +432,9 @@ def test_p2_known_instances_are_detected():
     """
     # Files confirmed to still have P2 instances on this branch.
     # Previously included: mi_adhilepa.py (P2b — fixed by L5 lane: leakage = None now).
-    _KNOWN_P2_INSTANCES = {
-        "bo_pratijna.py": "P2a_denied_return",   # _grade_to_status returns 'denied'
-    }
+    # Previously included: bo_pratijna.py (P2a — fixed: return "denied" replaced by
+    #   _STATUS_DENIED constant with empty-evidence guard; P2a lint no longer fires).
+    _KNOWN_P2_INSTANCES: dict[str, str] = {}
 
     all_files = _collect_py_files()
     file_by_name = {p.name: p for p in all_files}
