@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.52
+version: 6.53
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,7 +54,27 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
-  - v6.52 (2026-08-07, ṢAḌ-DARŚANA FINAL-ARC continuation — this session): Gates W3/W4/W5 formally closed; W2G LANDED; R3 safety-net (Cloud Scheduler + Cloud Run + int929-relay-safety SA) deleted. W6 PARKED-HONEST — blocked on item-44 hard gate (field_window_id=0 → requires N_e priors ruling + ka_kshetra field integration). Single next action: re-dispatch ANTARYĀMIN for ADJUDICATION-2 (N_e priors source). PRs #1093 (vara normalization fix) + #1092 (migration renumber 544→485) both merged and deployed. Full record: SHAD_DARSHANA_STATE.md HB #110–#112. last_session_id: SHAD-DARSHANA-FINAL-ARC-2026-08-07.
+  - v6.53 (2026-08-07, ṢAḌ-DARŚANA CLOSING RUN — arc complete): CORRECTS v6.52 factual error
+    (confirmed by §M red-team D-CLASS-3 finding): ADJUDICATION-2 was RULED on 2026-08-01 (Night-3,
+    ANTARYĀMIN) — N_e priors = demographic structural priors (Tier N-i), `ne_v01`, 6 Tranche-1
+    classes. "re-dispatch ANTARYĀMIN" was incorrect. field_window_id is NOT 0 for 1c826d5a — the
+    ka_kshetra field builds for both canonical charts completed Night-5 (2026-08-06T10:55–10:57Z).
+    W3K CLOSED (PARĪKṢAKA ACCEPT): item 18 KP sub-lord clock, `bg_kp_sublord_division` 249 rows
+    (derived: 243 Vimshottari sub-segments + 6 rashi-boundary splits), `ganita_kp_cusps_get` live.
+    W2 field integration R5-scoped: 1c826d5a PASS (4,233 kfw_* provenance rows in
+    `kala_field_provenance`); 482012f1 DISCLOSED-GAP (zero N_e class overlap with bodha_pratijna —
+    honest-empty by construction). Item-44 hard gate: PASS for 1c826d5a (100% kfw_* authority_basis),
+    DISCLOSED-GAP for 482012f1 (R5-authorized). §M red-team REFUTE-WITH-FINDINGS: D-CLASS-3
+    (this very changelog entry is the mandatory correction). Campaign close doc:
+    `SHAD_DARSHANA_CLOSE_v1_0.md` written to integration branch. RUN-TERMINAL: PARKED-FINAL
+    (W6 PARKED-HONEST — 5/6 clauses unverified; see SHAD_DARSHANA_CLOSE_v1_0.md §4 W6 debts).
+    W4 items (4/5/6/7/9/13/14/26/31/42) NOT-STARTED — future campaign.
+    last_session_id: SHAD-DARSHANA-CLOSING-RUN-2026-08-07.
+    predecessor_session: SHAD-DARSHANA-FINAL-ARC-2026-08-07.
+  - v6.52 (2026-08-07, ṢAḌ-DARŚANA FINAL-ARC continuation): Gates W3/W4/W5 formally closed;
+    W2G LANDED; R3 safety-net deleted. W6 PARKED-HONEST (at time of writing — corrected in v6.53
+    above: field_window_id was NOT 0; ADJUDICATION-2 was already RULED). PRs #1093 + #1092 merged.
+    Full record: SHAD_DARSHANA_STATE.md HB #110–#112. last_session_id: SHAD-DARSHANA-FINAL-ARC-2026-08-07.
   - v6.51 (2026-08-01, C4-LOOP-LIVE-PROOF close — the one item PŪRṆATĀ left open): full account in
     the new banner immediately above and in `00_ARCHITECTURE/briefs/purnata/PURNATA_CLOSE_REPORT_v1_0.md`
     §9 (v1.2). Headline facts: cookie anomaly diagnosed benign + tooling-fixed (#986) before
@@ -5606,6 +5626,21 @@ block (post-rebuild era), and proceeds.
 ---
 
 ## §2 — Canonical state block
+
+> 🟢 **ṢAḌ-DARŚANA CLOSING RUN complete (2026-08-07, session SHAD-DARSHANA-CLOSING-RUN-2026-08-07)
+> — supersedes v6.52's "field_window_id=0" and "re-dispatch ANTARYĀMIN" framing; those were
+> checklist factual errors confirmed by §M red-team D-CLASS-3 finding.** W3K CLOSED
+> (PARĪKṢAKA ACCEPT): KP sub-lord clock item 18, 249 sublord divisions, `ganita_kp_cusps_get`
+> serving live. ADJUDICATION-2 was RULED 2026-08-01 (Night-3): N_e = `ne_v01`, 6 Tranche-1
+> classes (childbirth/marriage/separation/relocation/foreign_settlement/surgery). ka_kshetra field
+> builds completed Night-5 for both charts. Item-44: 1c826d5a PASS (4,233 kfw_* rows) /
+> 482012f1 DISCLOSED-GAP (R5). §M red-team (Opus): REFUTE-WITH-FINDINGS — D-CLASS-3 confirmed
+> (CURRENT_STATE v6.52 stale "re-dispatch ANTARYAMIN" claim), corrected here. Campaign close doc:
+> `00_ARCHITECTURE/llm_consumption_audit/briefs/kala_elevation/SHAD_DARSHANA_CLOSE_v1_0.md`.
+> RUN-TERMINAL: PARKED-FINAL. W6 PARKED-HONEST (5/6 clauses unverified — see close doc §4).
+> Remaining: W4 items (future campaign); 482012f1 field integration (ne_v01 Tranche-N or
+> bodha_pratijna expansion needed); W6 gate full closure (future session).
+> See changelog v6.53.
 
 > 🟢 **C4-LOOP-LIVE-PROOF close (2026-08-01, session C4-CLOSE-2026-08-01) — the one item
 > PŪRṆATĀ's own banner below left genuinely open, now closed; supersedes that banner's "one

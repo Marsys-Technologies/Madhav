@@ -35463,3 +35463,120 @@ session_close:
 ### Next session objective
 
 Re-dispatch ANTARYĀMIN for ADJUDICATION-2 (N_e priors source ruling — the only remaining ṢAḌ-DARŚANA campaign blocker). Once ruled: dispatch ka_kshetra N_e seeding lane → field build → skill-score/GOF publish → item-44 hard gate (field_window_id>0) → W6 cutover + campaign close.
+
+---
+
+## SHAD-DARSHANA-CLOSING-RUN-2026-08-07 — ṢAḌ-DARŚANA CLOSING RUN: W3K closed; field integration R5-scoped; §M REFUTE D-CLASS-3; campaign close; RUN-TERMINAL PARKED-FINAL
+
+```yaml
+session_open:
+  session_id: SHAD-DARSHANA-CLOSING-RUN-2026-08-07
+  campaign: "ṢAḌ-DARŚANA CLOSING RUN — fully autonomous CONDUCTOR session (HB #114–#118 + RUN-TERMINAL). Resumed after FINAL-ARC session closed. Pre-authorized rulings R1–R5 in effect."
+  may_touch: "00_ARCHITECTURE/CURRENT_STATE_v1_0.md; 00_ARCHITECTURE/SESSION_LOG.md;
+    /private/tmp/shad-integration/00_ARCHITECTURE/llm_consumption_audit/briefs/kala_elevation/SHAD_DARSHANA_STATE.md (via worktree);
+    /private/tmp/shad-integration/00_ARCHITECTURE/llm_consumption_audit/briefs/kala_elevation/SHAD_DARSHANA_CLOSE_v1_0.md (new artifact)"
+  must_not_touch: "platform/* (no product code changes); any credential rotation;
+    no bypass of any CI gate; native chart data; no raw SQL writes to prediction ledger"
+```
+
+**Campaign:** ṢAḌ-DARŚANA — CLOSING RUN (fully autonomous CONDUCTOR)
+**Date:** 2026-08-07 (UTC 06:19–06:52Z)
+**Conductor:** Claude Sonnet 4.6 (CONDUCTOR, HB #114–#118 + RUN-TERMINAL)
+
+This session was the final autonomous orchestration pass for the ṢAḌ-DARŚANA campaign arc.
+Full ledger evidence in `SHAD_DARSHANA_STATE.md` HB #114–#118 + RUN-TERMINAL marker.
+
+**Key factual correction:** The FINAL-ARC overnight conductor had recorded ADJUDICATION-2 as
+"unruled" in CURRENT_STATE v6.52 and STATE.md. This was a checklist factual error (D-CLASS-3,
+confirmed by §M red-team). ADJUDICATION-2 was RULED on 2026-08-01 (Night-3, ANTARYĀMIN):
+N_e = demographic structural priors (Tier N-i), `ne_v01`, 6 Tranche-1 classes. The correction
+propagated to CURRENT_STATE v6.53 and is recorded in `SHAD_DARSHANA_ADJUDICATIONS_NIGHT3_v1_0.md`.
+
+**Work completed this session:**
+
+- **PRE-FLIGHT (HB #114–#115):** Factual correction documented; PR #1094 confirmed merged;
+  corpus counts verified (606/606 both charts, ne_v01 6-class, bg_kp_sublord_division 249);
+  ka_kshetra field builds confirmed complete for both charts (Night-5, 2026-08-06).
+
+- **W3K CLOSED (HB #116):** PARĪKṢAKA ACCEPT — 249-sublord-division verified via exact rational
+  arithmetic (243 Vimshottari sub-segments + 6 rashi-boundary splits); `ganita_kp_cusps_get`
+  live-verified; KP school voice G-5 confirmed in explain.ts; item 18 formally VERIFIED-CLOSED.
+
+- **W2 Field Integration R5-scoped (HB #116):** PARĪKṢAKA ACCEPT-WITH-DEBT.
+  1c826d5a: PASS (2 field windows, 4,233 kfw_* provenance rows, 100% authority_basis).
+  482012f1: DISCLOSED-GAP (zero N_e class overlap with bodha_pratijna — honest-empty).
+  Debts D3/D4/D5 filed (all non-blocking).
+
+- **ITEM-44 HARD GATE (HB #116):** PASS (1c826d5a) + DISCLOSED-GAP (482012f1).
+  R4 preconditions: all 3 met (item-44 green per R5, W2G LANDED, replacement paths live).
+
+- **W6 GATE ASSESSMENT (HB #117):** PARKED-HONEST — 5 of 6 clauses unverified this session.
+  Clause 1: 9 tools registered (stale "8" in docstring — W3K added kala_dasha_sandhi_get).
+  Clauses 2/3/4/5/6: not audited/measured/run this session.
+
+- **§M RED-TEAM (HB #118):** Opus adversarial agent dispatched. Verdict: REFUTE-WITH-FINDINGS.
+  D-CLASS-1 (proxy-signal): ACCEPT. D-CLASS-2 (wrong-write-target): ACCEPT.
+  D-CLASS-3 (checklist-factual-error): REFUTE — CURRENT_STATE v6.52 stale "re-dispatch ANTARYĀMIN"
+  claim (corrected in CURRENT_STATE v6.53 / this SESSION_LOG entry).
+  D-CLASS-4 (tests-validating-fiction): ACCEPT.
+
+- **CAMPAIGN CLOSE DOC:** `SHAD_DARSHANA_CLOSE_v1_0.md` written to integration branch.
+  Contains: per-item disposition (all 44+E), W2 R5 disposition, debt register, gate status, RUN-TERMINAL.
+
+- **CURRENT_STATE v6.53:** Published. Corrects v6.52 factual error per §M mandate.
+  Adds green banner for CLOSING RUN.
+
+- **RUN-TERMINAL: PARKED-FINAL** — written to `SHAD_DARSHANA_STATE.md` on integration branch.
+
+```yaml
+session_close:
+  session_id: SHAD-DARSHANA-CLOSING-RUN-2026-08-07
+  campaign: "ṢAḌ-DARŚANA CLOSING RUN (fully autonomous CONDUCTOR, HB #114–#118)"
+  step_completed: "ṢAḌ-DARŚANA CLOSING RUN"
+  artifacts_produced:
+    - "SHAD_DARSHANA_CLOSE_v1_0.md (integration branch, kala_elevation/)"
+    - "SHAD_DARSHANA_STATE.md HB #114–#118 + RUN-TERMINAL (integration branch)"
+    - "CURRENT_STATE_v1_0.md v6.53 (factual correction + CLOSING RUN banner)"
+    - "SESSION_LOG.md SHAD-DARSHANA-CLOSING-RUN-2026-08-07 entry (this entry)"
+  may_touch_actual: "SHAD_DARSHANA_STATE.md; SHAD_DARSHANA_CLOSE_v1_0.md (new); CURRENT_STATE_v1_0.md; SESSION_LOG.md"
+  must_not_touch_respected: true
+  drift_detector_run: "not run — governance-only session; no product code modified"
+  schema_validator_run: "not run — governance-only session"
+  red_team_due: true
+  red_team_discharged: true
+  red_team_verdict: "REFUTE-WITH-FINDINGS — D-CLASS-3 (CURRENT_STATE v6.52 stale claim); corrected in v6.53"
+  current_state_updated: true
+  session_log_appended: true
+  product_code_writes_made: false
+  native_chart_touched: false
+  known_residuals:
+    - finding: "W6 gate PARKED-HONEST — 5/6 clauses unverified (dark corpus re-measure, skill score, authority_basis census, divergence audit, disposition compilation). See SHAD_DARSHANA_CLOSE_v1_0.md §4 W6 debts."
+      severity: MEDIUM
+      policy_ref: "SHAD_DARSHANA_CLOSE_v1_0.md §7 RUN-TERMINAL"
+    - finding: "482012f1 field integration DISCLOSED-GAP — bodha_pratijna × ne_v01 overlap = zero. Requires ne_v01 Tranche-N expansion or bodha_pratijna promise expansion."
+      severity: MEDIUM
+      policy_ref: "SHAD_DARSHANA_CLOSE_v1_0.md §3"
+    - finding: "register_all.ts docstring says 'eight' tools but 9 are registered (kala_dasha_sandhi_get added by W3K). Cosmetic debt — W6-C1."
+      severity: LOW
+      policy_ref: "SHAD_DARSHANA_CLOSE_v1_0.md §4"
+  self_errors_named:
+    - "HB #116 timestamp mismatch: drafted as 06:47Z but committed at 06:38Z (lease maintained within bounds)"
+    - "First Agent dispatch missing 'description' parameter — caught and fixed same turn"
+    - "W6 Clause 1 docstring drift not caught until W6 assessment pass"
+    - "CURRENT_STATE v6.52 D-CLASS-3 error: should have propagated factual correction earlier in the session"
+  run_terminal: "PARKED-FINAL — W6 PARKED-HONEST; all completable deliverables complete"
+  followups: "W6 gate full closure (authority_basis serving census, dark corpus re-measure, skill score publication, legacy divergence audit). W4 campaign (items 4/5/6/7/9/13/14/26/31/42). 482012f1 field integration (ne_v01 Tranche-N). Full list: SHAD_DARSHANA_CLOSE_v1_0.md §4 + §7."
+  next_session_objective: "W6 gate closure: (1) run authority_basis_census_seed.ts serving census; (2) execute 21-question dark corpus re-measure; (3) publish skill score + regression gate; (4) compile legacy divergence audit; (5) formal 44+E disposition verification. All 6 clauses must pass before W6 can close."
+```
+
+### Next session objective
+
+W6 gate closure:
+1. Run `platform/scripts/census/shad_darshana_gates/authority_basis_census_seed.ts` serving census
+2. Execute 21-question dark corpus re-measure (bright% ≥95% both charts)
+3. Publish skill score + regression gate for both charts
+4. Compile legacy-vs-new divergence audit (zero unclassified)
+5. Formally verify all 44+E dispositions against STATE.md
+6. Fix register_all.ts docstring drift (W6-C1 cosmetic debt)
+
+Once all 6 W6 clauses pass: W6 formally CLOSED and campaign ARC-COMPLETE.
