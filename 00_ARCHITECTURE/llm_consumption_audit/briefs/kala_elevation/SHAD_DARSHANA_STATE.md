@@ -5,6 +5,21 @@
 ---
 ---
 ---
+---
+## HB #105 — Deploy to Cloud Run in progress (MCP done; Web building) — 2026-08-07T05:17:00Z
+
+**Deploy run 31147080510:**
+- Gate & detect: success
+- Build & Deploy MCP: success  
+- Build & Deploy Web: IN_PROGRESS
+- Build & Deploy Sidecar/Pipeline: skipped
+
+**Ganga on main:** completed/success  
+**Next:** Deploy finishes → confirm SUCCESS → re-run live Mode-2 fixture.
+
+**Lease extended.** Next HB due ≤ 05:27:00Z.
+
+
 ## HB #104 — Post-merge Ganga running; TAP/W0.6/Elevation SUCCESS — 2026-08-07T05:07:00Z
 
 **Post-merge main CI (PR #1093 vara norm fix):**
