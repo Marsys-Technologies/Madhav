@@ -2,6 +2,12 @@
 
 ---
 
+## HB #81 — 2026-08-07T02:32:30Z
+
+**HOTFIX FIX 2: canary test updated** — `migrate.test.ts` line 744 asserted `loadRenumberDisclosures(real).size === 0` (guard canary that fails when any entry added). Now documents the 484→543 disclosure: asserts size==1, checks specific entry fields. Committed to `hotfix/migration-renumber-543` (PR #1091), new CI run triggered. Awaiting CI completion (~6 min from 02:32:05Z push) then dispatching independent reviewer. Next HB due before 2026-08-07T02:42:30Z.
+
+---
+
 ## HB #80 — 2026-08-07T02:29:00Z
 
 **HOTFIX CI GREEN** — PR #1091 (hotfix/migration-renumber-543 → main) CI running: 11 SUCCESS, 6 SKIPPED, 0 FAILURE, 3 IN_PROGRESS as of 02:27:57Z. sql_identity in fix matches deploy error log exactly (`6ea6bf88d66b4616ea0972b53bceb7f3b4e7922e3b3201d9537f377e75144553`). Awaiting CI completion then dispatching independent reviewer per PRODUCTION_GATE_EXECUTION_POLICY v1.1. Next HB due before 2026-08-07T02:39:00Z.
