@@ -122,11 +122,27 @@ class MiGunakaWriter(WriterBase):
             )
             families = {r["family_id"]: dict(r) for r in cur.fetchall()}
 
-        # Aggregate evidence per family from clean calibration data
+        # Aggregate evidence per family from calibration data.
+        # §N.8 (Earned-Signal Principle): only exclude rows explicitly marked 'leaked'
+        # (when a real detector has run and found leakage). 'not_assessed' rows are
+        # admitted — excluding them would silently empty the calibration evidence path
+        # when no leakage detector exists, the same defect class as a filter that can
+        # never pass (§N.8). 'clean' rows are also admitted (detector ran, found nothing).
         evidence: dict[str, list[float]] = {}
+        not_assessed_count = 0
+        excluded_leaked_count = 0
         for cr in cal_rows:
-            if cr.get("leakage_status") != "clean":
+            ls = cr.get("leakage_status")
+            if ls == "leaked":
+                # Genuinely detected leakage — exclude from calibration evidence.
+                excluded_leaked_count += 1
                 continue
+            if ls == "not_assessed":
+                # No leakage detector has run — include with honest acknowledgment.
+                # §N.8: excluding un-assessed rows would silently empty the calibration
+                # path when no detector exists.
+                not_assessed_count += 1
+            # 'clean' and 'not_assessed' rows proceed to calibration evidence.
             driving = cr.get("driving_signals") or []
             if isinstance(driving, str):
                 try:
@@ -137,6 +153,10 @@ class MiGunakaWriter(WriterBase):
             for sig in driving:
                 family_id = str(sig.get("family_id") or sig.get("signal_id") or "unknown")
                 evidence.setdefault(family_id, []).append(score)
+        logger.info(
+            "[mi_gunanaka] calibration evidence: %d rows admitted (%d not_assessed, %d excluded as leaked)",
+            len(cal_rows) - excluded_leaked_count, not_assessed_count, excluded_leaked_count,
+        )
 
         # Global likelihood: mean across all observed scores
         all_scores = [s for scores in evidence.values() for s in scores]
