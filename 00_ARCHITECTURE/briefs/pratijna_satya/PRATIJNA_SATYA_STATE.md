@@ -28,37 +28,37 @@
 
 | Field | Value |
 |---|---|
-| Status | DISPATCHED |
+| Status | MERGED (2026-08-07 22:50 IST) |
 | Builder | Sonnet (worktree) |
-| Branch | pratijna-satya/lane-a1-ghatana |
+| Branch | pratijna-satya/lane-a1-ghatana → merged to integration (abf54fdb3) |
 | Root cause | l0_ghatana.py INSERT omits temporal_shape (NOT NULL since migration 456); version hardcoded '1.1' not '2.0'; 22/27 classes (5 DR-13 classes missing) |
-| Fix scope | Add temporal_shape/duration_prior/milestone_template/irreversibility_milestone to EVENT_CLASSES; add 5 missing classes; fix version; preflight assert |
+| Fix scope | All 27 EVENT_CLASSES now have DR-13 columns; version '2.0'; preflight assert; 5 new classes; INSERT expanded; DO UPDATE SET unchanged |
 | Dispatched | 2026-08-07 22:33 IST |
-| Deadline | — |
+| Merged | 2026-08-07 22:50 IST |
 
 ### Lane A2: bg_transit_rules (ForeignKeyViolation)
 
 | Field | Value |
 |---|---|
-| Status | DISPATCHED |
+| Status | MERGED (2026-08-07 22:38 IST) |
 | Builder | Sonnet (worktree) |
-| Branch | pratijna-satya/lane-a2-transit |
-| Root cause | l0_transit.py DELETE FROM bg_transit_rules blocked by gochara_resonance_map FK (migration 459); ON CONFLICT upsert below is dead code |
-| Fix scope | Remove 3 DELETE lines; update comment+log; the existing ON CONFLICT upserts become the sole idempotency mechanism |
+| Branch | pratijna-satya/lane-a2-transit → merged to integration (c5db09b24) |
+| Root cause | l0_transit.py DELETE FROM bg_transit_rules blocked by gochara_resonance_map FK (migration 459); ON CONFLICT upsert below was dead code |
+| Fix scope | Removed 3 DELETE lines; updated comment+log; ON CONFLICT upserts are now sole idempotency mechanism |
 | Dispatched | 2026-08-07 22:33 IST |
-| Deadline | — |
+| Merged | 2026-08-07 22:38 IST |
 
 ### Lane A3: ka_gochara_resonance DAG edge
 
 | Field | Value |
 |---|---|
-| Status | DISPATCHED |
+| Status | MERGED (2026-08-07 22:45 IST) |
 | Builder | Sonnet (worktree) |
-| Branch | pratijna-satya/lane-a3-dag-edge |
+| Branch | pratijna-satya/lane-a3-dag-edge → merged to integration (ee3d71adc) |
 | Root cause | Migration 459 registered ka_gochara_resonance with depends_on=ARRAY[]::text[] despite consuming bg_transit_rules |
-| Fix scope | Migration 546 to add 'bg_transit_rules' to depends_on |
+| Fix scope | Migration 546 adds 'bg_transit_rules' to depends_on; cycle safety verified (L0→L3, no reverse edge) |
 | Dispatched | 2026-08-07 22:33 IST |
-| Deadline | — |
+| Merged | 2026-08-07 22:45 IST |
 
 ---
 
