@@ -2,6 +2,12 @@
 
 ---
 
+## HB #90 — 2026-08-07T03:16:21Z
+
+**PR #1092 OPENED** — hotfix #2 for second MigrationRenumberedError (544→485 bg_parihara_rules). Branch `hotfix/migration-renumber-544` from main@abf73afd1 (includes PR #1091). Changes: disclosure entry added to migration_renumber_disclosed.json (sql_identity=42587f528d94..., deploy run 31143327280), canary test updated to size==2 (both 543→484 muhurta_lattice and 544→485 parihara_rules documented), tap-ci.yml no-op touch (paths bypass, same pattern as PR #1078/PR #1091). Auto-merge enabled. Awaiting CI. Gate-executor dispatch required. Next HB due before 2026-08-07T03:26:21Z.
+
+---
+
 ## HB #89 — 2026-08-07T03:12:00Z
 
 **SECOND MigrationRenumberedError** — Deploy run 31143327280 FAILED with: `Migration "544_bg_parihara_rules.sql" looks new but SQL content already applied as "485_bg_parihara_rules.sql"`. Same defect class as 543→484 (PR #1091 fixed bg_muhurta_lattice). Now bg_parihara_rules has same issue: renamed from 485→544 during campaign. Investigating sql_identity for `544_bg_parihara_rules.sql` to file second disclosure entry. Opening hotfix branch #2. W3 gate HOLD pending deploy PASS. Next HB due before 2026-08-07T03:22:00Z.
