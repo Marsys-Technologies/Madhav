@@ -137,10 +137,12 @@ class KaYojakaWriter(WriterBase):
             with conn.cursor() as cur:
                 cur.execute(
                     """
+                    -- SHABDA-SHUDDHI R6: status gate removed; all pratijna rows
+                    -- flow through as modifier data, never excluded.
                     SELECT bp.pratijna_id, beo.domain
                     FROM bodha_pratijna bp
                     JOIN brahma_event_ontology beo USING (event_class_id)
-                    WHERE bp.chart_id = %s AND bp.status IN ('promised', 'conditional')
+                    WHERE bp.chart_id = %s
                     ORDER BY bp.grade DESC
                     """,
                     (chart_id,),
@@ -151,10 +153,12 @@ class KaYojakaWriter(WriterBase):
             with conn.cursor() as cur:
                 cur.execute(
                     """
+                    -- SHABDA-SHUDDHI R6: status gate removed; multi-system
+                    -- confirmation counts all statuses, not just 'promised'.
                     SELECT beo.domain, COUNT(DISTINCT bp.ayanamsha_id) AS aya_count
                     FROM bodha_pratijna bp
                     JOIN brahma_event_ontology beo USING (event_class_id)
-                    WHERE bp.chart_id = %s AND bp.status = 'promised'
+                    WHERE bp.chart_id = %s
                     GROUP BY beo.domain
                     """,
                     (chart_id,),

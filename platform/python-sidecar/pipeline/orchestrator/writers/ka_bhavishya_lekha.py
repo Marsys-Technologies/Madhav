@@ -206,14 +206,21 @@ def _build_falsifiability(tier: str, domain: str, peak_date, eff_score: float) -
     """Build falsifiability hooks for this projection."""
     peak_str = str(peak_date) if peak_date else 'the projected window'
 
+    # SHABDA-SHUDDHI R7: canonical 13-domain vocabulary, no legacy keys.
     domain_confirms = {
         'career': 'significant career event (new role, promotion, venture launch, client gain)',
         'health': 'notable health event (condition onset, recovery milestone, medical event)',
         'relationship': 'significant relational event (union, separation, new connection)',
-        'finance': 'measurable financial event (income jump, loss, investment event)',
-        'spiritual': 'notable spiritual shift (practice deepening, teacher encounter, insight)',
+        'wealth': 'measurable financial event (income jump, loss, investment event)',
+        'spirituality': 'notable spiritual shift (practice deepening, teacher encounter, insight)',
         'education': 'educational milestone (enrollment, completion, certification)',
-        'general': 'notable life event (relocation, legal matter, public recognition)',
+        'progeny': 'progeny-related event (conception, birth, child milestone)',
+        'family': 'family event (parental milestone, household change)',
+        'residence': 'property/residence event (move, purchase, renovation)',
+        'travel': 'travel event (relocation, foreign settlement, significant journey)',
+        'character': 'personal transformation (mindset shift, psychological change)',
+        'transition': 'life transition (phase change, significant endings/beginnings)',
+        'general': 'notable life event (legal matter, public recognition, general milestone)',
     }
 
     confirm = f"Observable within ±21 days of {peak_str}: {domain_confirms.get(domain, 'notable life event')}"
