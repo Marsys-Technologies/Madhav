@@ -295,3 +295,5 @@ jobs:
         run: npx tsx --conditions=react-server scripts/audit/tap/tap7_distribution_gates.ts
 # no-op: touch to trigger TAP-6 on PR #1091 (migration_renumber_disclosed.json hotfix
 # does not match paths filter; this pattern established in PR #1078 — see NOTE above)
+# no-op: touch to trigger TAP-6 on hotfix/migration-renumber-544 (485→544 bg_parihara_rules
+# disclosure does not match paths filter; pattern established in PR #1078 — see NOTE above)

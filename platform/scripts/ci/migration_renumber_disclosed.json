@@ -27,6 +27,15 @@
   ],
   "entries": [
     {
+      "new_filename": "544_bg_parihara_rules.sql",
+      "applied_filename": "485_bg_parihara_rules.sql",
+      "sql_identity": "42587f528d94e01f59a41c8a5f9fff2ea60d1abacf913fb8da20ab5e4fb0eb08",
+      "disposition": "already-applied-under-old-name",
+      "reason": "bg_parihara_rules was initially filed as 485_bg_parihara_rules.sql and applied to production. During the ṢAḌ-DARŚANA campaign it was renumbered to 544 to reflect its actual dependency order relative to migrations 486–543. The SQL content is identical (only the -- Migration NNN: header comment differs, which is stripped by sqlIdentityOf). Production already has this table; the runner should record 544 as applied without re-executing.",
+      "disclosed_via": "ṢAḌ-DARŚANA campaign post-merge deploy failure 2026-08-07 — MigrationRenumberedError blocked deploy run 31143327280; DVA RULING 73 disclosure discipline (same pattern as migration_hash_disclosed_residuals.json and 543→484 disclosure on 2026-08-07)",
+      "disclosed_on": "2026-08-07"
+    },
+    {
       "new_filename": "543_bg_muhurta_lattice.sql",
       "applied_filename": "484_bg_muhurta_lattice.sql",
       "sql_identity": "6ea6bf88d66b4616ea0972b53bceb7f3b4e7922e3b3201d9537f377e75144553",

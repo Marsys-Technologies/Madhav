@@ -738,21 +738,29 @@ describe('loadRenumberDisclosures', () => {
     }
   })
 
-  it('the checked-in allowlist parses; one known disclosure: 484→543 bg_muhurta_lattice (2026-08-07)', () => {
+  it('the checked-in allowlist parses; two known disclosures: 484→543 bg_muhurta_lattice + 485→544 bg_parihara_rules (2026-08-07)', () => {
     // This test intentionally fails when entries are added without updating it — the canary
-    // forces documentation of each real renumber event. Current disclosed set: exactly 1.
-    // Entry: 484_bg_muhurta_lattice.sql applied to prod, then renumbered to 543 during ṢAḌ-DARŚANA.
-    // Disclosed 2026-08-07 (post-merge MigrationRenumberedError on deploy run 31140238243).
+    // forces documentation of each real renumber event. Current disclosed set: exactly 2.
+    // Entry 1: 484_bg_muhurta_lattice.sql applied to prod, renumbered to 543 during ṢAḌ-DARŚANA.
+    //   Disclosed 2026-08-07 (MigrationRenumberedError on deploy run 31140238243).
+    // Entry 2: 485_bg_parihara_rules.sql applied to prod, renumbered to 544 during ṢAḌ-DARŚANA.
+    //   Disclosed 2026-08-07 (MigrationRenumberedError on deploy run 31143327280).
     const real = path.resolve(__dirname, '../ci/migration_renumber_disclosed.json')
     expect(fs.existsSync(real)).toBe(true)
     const map = loadRenumberDisclosures(real)
-    expect(map.size).toBe(1)
-    const entry = map.get('543_bg_muhurta_lattice.sql')
-    expect(entry).toBeDefined()
-    expect(entry!.applied_filename).toBe('484_bg_muhurta_lattice.sql')
-    expect(entry!.sql_identity).toBe('6ea6bf88d66b4616ea0972b53bceb7f3b4e7922e3b3201d9537f377e75144553')
-    expect(entry!.disposition).toBe('already-applied-under-old-name')
-    expect(entry!.disclosed_on).toBe('2026-08-07')
+    expect(map.size).toBe(2)
+    const entry543 = map.get('543_bg_muhurta_lattice.sql')
+    expect(entry543).toBeDefined()
+    expect(entry543!.applied_filename).toBe('484_bg_muhurta_lattice.sql')
+    expect(entry543!.sql_identity).toBe('6ea6bf88d66b4616ea0972b53bceb7f3b4e7922e3b3201d9537f377e75144553')
+    expect(entry543!.disposition).toBe('already-applied-under-old-name')
+    expect(entry543!.disclosed_on).toBe('2026-08-07')
+    const entry544 = map.get('544_bg_parihara_rules.sql')
+    expect(entry544).toBeDefined()
+    expect(entry544!.applied_filename).toBe('485_bg_parihara_rules.sql')
+    expect(entry544!.sql_identity).toBe('42587f528d94e01f59a41c8a5f9fff2ea60d1abacf913fb8da20ab5e4fb0eb08')
+    expect(entry544!.disposition).toBe('already-applied-under-old-name')
+    expect(entry544!.disclosed_on).toBe('2026-08-07')
   })
 })
 
