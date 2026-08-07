@@ -184,6 +184,17 @@ KNOWN_HAS_WRITER_TRUE: frozenset[str] = frozenset({
     # the chart-independent monotone-arc transit substrate; has_writer=true and
     # has_substeps=true set by that migration's asset_registry seed) ─────────
     "bg_gochara_arcs",
+    # ── Kāla — migration 542 (ṢAḌ-DARŚANA W2G / GOCHARA-2.0 item 19, lane G
+    # REWORK per the native ruling 2026-08-06: the per-chart materialization
+    # writer -- joins bg_gochara_arcs against a chart's natal
+    # gochara_resonance_map targets, scores via v1's frozen gochara_intensity
+    # grammar, writes generation='2.0' rows to kala_gochara_windows_v2, its
+    # OWN table -- NEVER to the protected kala_gochara_windows. Renamed from
+    # the superseded ka_gochara_sweep_v2 (PR #1081, PARKED-HONEST). has_writer
+    # =true and has_substeps=true set by migration 542's asset_registry seed;
+    # migration 541's stale asset_registry row for the old name is DELETEd by
+    # migration 542) ───────────────────────────────────────────────────────
+    "ka_gochara_v2_materialize",
     # ── L4 Phala — migration 342 ─────────────────────────────────────────────
     "ph_muhurta",
     "ph_nimitta",

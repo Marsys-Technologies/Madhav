@@ -29,6 +29,7 @@ import { registerKalaPriorityTool } from './priority.js'
 import { registerKalaExplainTool } from './explain.js'
 import { registerKalaElectTool } from './elect.js'
 import { registerKalaStoryTool } from './story.js'
+import { registerDashaSandhiCalendar } from './dasha_sandhi.js'
 
 /**
  * Registers all eight ṢAḌ-DARŚANA kala_* view/capability facades on `server`.
@@ -48,6 +49,8 @@ import { registerKalaStoryTool } from './story.js'
  *   substrate and is THE SOLE SERVER OF MODE 3 — kala_ritual_get's redirect lands here.
  *   kala_story_get (VIEW 4, STORY) wraps kala_jivana_parva and fixes its known
  *   parva-duplication defect at serving (dedup by exact span + daśā level).
+ * — W3-CAL dasha-sandhi lane: kala_dasha_sandhi_get — bilateral daśā-sandhi calendar,
+ *   all levels, both directions, reading L1 chart_dashas via §N.5 JOIN.
  */
 export function registerAllKalaViews(server: McpServer, principal: Principal): void {
   registerKalaNowGetTool(server, principal)
@@ -58,4 +61,5 @@ export function registerAllKalaViews(server: McpServer, principal: Principal): v
   registerKalaExplainTool(server, principal)
   registerKalaElectTool(server, principal)
   registerKalaStoryTool(server, principal)
+  registerDashaSandhiCalendar(server)
 }
