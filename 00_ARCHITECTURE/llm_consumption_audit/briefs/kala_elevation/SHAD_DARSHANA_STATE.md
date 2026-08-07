@@ -1,4 +1,24 @@
 ---
+## HB #95 — 2026-08-07T03:40:15Z
+
+**Lease**: renewed; next HB due ≤ 03:50:15Z
+
+**Deploy to Cloud Run** (run 31144896520, started 03:37:10Z):
+- Gate & detect changed paths: SUCCESS ✅
+- Build Check (PR only): SKIPPED (expected — post-merge deploy)
+- Build & Deploy Web: IN_PROGRESS (migration step happens here)
+- Build & Deploy Sidecar/MCP/Pipeline: SKIPPED
+- Ganga Quality Gate: SUCCESS ✅ (03:29:18Z → completed before deploy)
+
+**Critical watch**: If Build & Deploy Web passes (migrations apply without MigrationRenumberedError),
+deploy succeeds → Gate W3 FORMALLY CLOSED.
+
+Both renumber disclosures now in migration_renumber_disclosed.json:
+1. 543→484 bg_muhurta_lattice (PR #1091)
+2. 544→485 bg_parihara_rules (PR #1092)
+
+---
+
 ## HB #94 — 2026-08-07T03:34:42Z
 
 **Lease**: renewed; next HB due ≤ 03:44:42Z
