@@ -901,17 +901,31 @@ export function registerP1SynthesisTools(server: McpServer, principal: Principal
         `, [chart_id, domain], principal)
 
         // 4. Activity ontology fructification rules for inferred action class
+        // SHABDA-SHUDDHI Lane L5 (Fix 3): canonical domain vocabulary + existing activity IDs.
+        //   - 'financial' → 'wealth' (legacy non-canonical domain key)
+        //   - 'spiritual' → 'spirituality' (legacy non-canonical domain key)
+        //   - 'sadhana' → 'spiritual_initiation' (sadhana does not exist in brahma_activity_ontology;
+        //      verified against l0_ghatana.py seed; spiritual_initiation does exist)
+        //   - Fallback changed from 'business_start' (misleading — implies a business undertaking
+        //     for any unresolved domain) to null (honest: no matching activity class found).
+        //   Activity IDs verified against brahmagyan/l0_ghatana.py seed data.
         const _DOMAIN_TO_ACTION: Record<string, string> = {
-          career: 'business_start', financial: 'contract_signing',
-          health: 'medical_procedure', relationship: 'marriage',
-          spiritual: 'sadhana', transition: 'travel_journey',
+          career:       'business_start',
+          wealth:       'contract_signing',
+          health:       'medical_procedure',
+          relationship: 'marriage',
+          spirituality: 'spiritual_initiation',
+          transition:   'travel_journey',
+          residence:    'griha_pravesh',
+          travel:       'travel_journey',
+          education:    'education_start',
         }
-        const actionClass = _DOMAIN_TO_ACTION[domain] ?? 'business_start'
-        const ontologyResult = await platformQuery(`
+        const actionClass: string | null = _DOMAIN_TO_ACTION[domain] ?? null
+        const ontologyResult = actionClass ? await platformQuery(`
           SELECT activity_class_id, name_en, significators, fructification_rules, citations
           FROM brahma_activity_ontology
           WHERE activity_class_id = $1
-        `, [actionClass], principal)
+        `, [actionClass], principal) : { rows: [] }
 
         // Composite undertaking score = mean(prashna verdict_strength, best election quality, best posterior).
         // R-12 fix: ga_prashna_judgment carries no numeric verdict-strength column (only the
