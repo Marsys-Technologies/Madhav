@@ -29,6 +29,7 @@ Every emitted lord traces to a real L1 row (§N.5 — reference, never invent).
 import json
 import logging
 
+from brahmagyan.domain_vocabulary import canonical_domain
 from pipeline.orchestrator.writers import WriterBase, WriterResult, register
 from services.ka_yojaka.classifier import classify_signal
 from services.ka_yojaka.binder import build_predicate
@@ -625,11 +626,18 @@ _SIGNAL_DOMAIN_KEYWORDS: dict[str, list[str]] = {
 
 
 def _infer_signal_domain(signal_dict: dict) -> str:
-    """Infer a signal's domain from signal_type_id for CDLM strength lookup."""
+    """Infer a signal's domain from signal_type_id for CDLM strength lookup.
+
+    Fix (SHABDA-SHUDDHI lane L4 Fix 2): applies canonical_domain() to the raw
+    keyword match before returning. Without this, keys like 'finance' and
+    'spiritual' never hit the CDLM/pratijna dicts (which are keyed by canonical
+    names 'wealth' and 'spirituality') — all three downstream lookups fell through
+    to their defaults (cdlm_domain_strength=0.5, pratijna_ids=[], confirmation=0).
+    """
     stid = (signal_dict.get('signal_type_id') or '').lower()
-    for domain, keywords in _SIGNAL_DOMAIN_KEYWORDS.items():
+    for raw_domain, keywords in _SIGNAL_DOMAIN_KEYWORDS.items():
         if any(kw in stid for kw in keywords):
-            return domain
+            return canonical_domain(raw_domain)
     return 'general'
 
 
