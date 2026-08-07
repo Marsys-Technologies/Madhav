@@ -1,4 +1,69 @@
 ---
+## HB #115 — CORPUS VERIFIED + KP LIVE + FIELD STATE CONFIRMED — 2026-08-07T06:32:00Z
+
+**CONDUCTOR LEASE: RENEWED.** Next HB ≤ 2026-08-07T06:42:00Z.
+
+### Pre-flight corpus verification COMPLETE
+
+| Metric | Expected | Actual | Status |
+|---|---|---|---|
+| ka_gochara_sweep substeps (482012f1) | 606 | 606 | ✅ |
+| ka_gochara_sweep substeps (1c826d5a) | 606 | 606 | ✅ |
+| kala_gochara_windows (482012f1) | 16,297 | 16,297 | ✅ |
+| kala_gochara_windows (1c826d5a) | 19,323 | 19,323 | ✅ |
+| bg_class_lifetime_counts (ne_v01) | 6 classes | 6 classes | ✅ |
+| bg_kp_sublord_division | 249 rows | 249 rows | ✅ |
+
+### W3K live serving verification COMPLETE (both charts, ganita_kp_cusps_get)
+
+Both canonical charts served full KP data via live MCP call:
+- 12 cusps each with full 5-level KP chain (sign_lord / star_lord / sub_lord / sub_sub_lord / prana_lord)
+- kp_cuspal_significators: 3 per cusp (300 total per chart)
+- 5 ruling planet roles served (RP_ASC_LORD, RP_ASC_SUB_LORD, RP_DAY_LORD, RP_MOON_SIGN_LORD, RP_MOON_STAR_LORD)
+- Fact IDs cited per row; provenance = "L1 Gaṇita KP cuspal facts; no new computation (B.10)"
+- Source categories: cusp_kp_lords, kp_cuspal_significators, bhava_cusps, kp_ruling_planets_natal, graha_kp_lords
+
+**KP correctness quick-checks passed:**
+- Cusp7 = Cusp1+180°: 482012f1 (192.528-12.528=180.000) ✅; 1c826d5a (203.623-23.623=180.000) ✅
+- Aries cusp1 → sign_lord=Mars: both charts ✅
+- 12.528° in Ashwini (0-13.33°) → star_lord=Ketu ✅; 23.623° in Bharani (13.33-26.67°) → star_lord=Venus ✅
+
+### Critical field integration discovery
+
+**ka_kshetra builds ALREADY COMPLETED** from Night-5 session (2026-08-06T10:55-10:57Z). This was NOT visible to the FINAL-ARC overnight conductor because that conductor believed ADJUDICATION-2 was unruled. In fact:
+
+**1c826d5a (PASS per R5):**
+- 2 classes with N_e coverage: marriage + separation (both in ne_v01 Tranche-1)
+- kala_field_windows: 2 rows (kfw_5c3993a=marriage, kfw_b9752c7=separation), 1985-2085 100-year horizon
+- kala_field_provenance: 4,233 rows, all with kfw_* authority_basis (marriage=4,214; separation=19)
+- stage5finalize: marriage=4,225 rows, separation=30 rows
+- Item-44: authority_basis POPULATED with real kfw_* IDs → gate condition MET
+
+**482012f1 (DISCLOSED-GAP per R5):**
+- 9 bodha_pratijna classes discovered; NONE in ne_v01 6-class coverage set
+- kala_field_windows: 0 rows (structural honest-empty)
+- kala_field_provenance: 0 rows (structural honest-empty)
+- Item-44: no kfw_* authority_basis (structural gap, not build error)
+- Per R5 ruling: DISCLOSED-GAP — not a failure
+
+**Field integration is effectively COMPLETE** — the Ne_v01 standing ruling (ADJUDICATION-2, Night-3) provided the correct foundation; migration 522 ran; ka_kshetra ran against it; real field data exists for 1c826d5a.
+
+### PARĪKṢAKA dispatched
+
+PARĪKṢAKA agent (Opus/max, default-REFUTED) dispatched for both W3K and field integration verification. Verdict will be recorded in HB #116.
+
+### Revised execution path
+
+The overnight conductor's W6 assessment was based on field_window_id=0 — which described the state BEFORE the Night-5 ka_kshetra build. That build ran and completed. The R5 conditions are effectively met pending PARĪKṢAKA:
+
+- W3K CLOSE → HB #116 (pending PARĪKṢAKA)
+- Field integration R5 → HB #116 (pending PARĪKṢAKA)
+- Item-44 hard gate → HB #116 (per-chart: 1c826d5a=PASS, 482012f1=DISCLOSED-GAP)
+- W6 cutover → HB #117 (pending item-44 gate + R4 replacement path verification)
+- §M red-team → HB #117
+- Campaign close → HB #118
+
+---
 ---
 ## RUN-OPEN: CLOSING RUN — ṢAḌ-DARŚANA ARC-COMPLETE — 2026-08-07T06:19:44Z
 
