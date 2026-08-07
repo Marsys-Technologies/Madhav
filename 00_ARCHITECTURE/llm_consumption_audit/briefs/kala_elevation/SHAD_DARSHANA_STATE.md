@@ -2,6 +2,12 @@
 
 ---
 
+## HB #87 — 2026-08-07T03:04:03Z
+
+**PR #1091 MERGED** at 2026-08-07T03:02:44Z (gh-readonly-queue → main). Migration renumber disclosure hotfix is on main. Post-merge Ganga+Deploy pipeline running. Context recovered from compaction (session resumed). W3 verification summary: W3.0 S4-05 PASS (both charts, 606/606 substeps, all health classes), W3.2 ELECT ledgers VERIFIED (dosas+pariharas+net_standing), W3.3 Abhijit parihara VERIFIED (source+serve), W3.4 gap_report VERIFIED, W3.5 factor_census VERIFIED. W3.1 gap documented: 5 table-level items (kala_moorti_nirnaya, kala_kota_chakra, kala_sudarshana_varsha, kala_tithi_pravesha, kala_vedha_gochara) empty for both canonical charts — PARKED-HONEST, release condition = asset writers run for these charts. Continuing: deploy monitor, E6 MCP verification, session close. Next HB due before 2026-08-07T03:14:03Z.
+
+---
+
 ## HB #86 — 2026-08-07T03:00:00Z
 
 **MERGE QUEUE ACTIVE** — PR #1091 in gh-readonly-queue. TAP-6 merge_group run COMPLETED/SUCCESS. Ganga Quality Gate merge_group IN_PROGRESS. Merge imminent on success. G-LAND finding noted: kala_field has 0 rows for 482012f1 (ka_kshetra shows lit — gap being investigated, W2 concern not W3 blocker). W3 verification score: W3.0 PASS, W3.2 VERIFIED, W3.3 VERIFIED (source+serve), W3.4 VERIFIED, W3.5 VERIFIED. W3.1 muhurta substrate all confirmed populated (both charts). Next HB due before 2026-08-07T03:10:00Z.
