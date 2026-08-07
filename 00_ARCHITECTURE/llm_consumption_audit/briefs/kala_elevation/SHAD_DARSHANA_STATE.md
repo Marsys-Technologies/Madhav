@@ -10,6 +10,79 @@
 ---
 ---
 ---
+## HB #112 + W6 ASSESSMENT + MORNING REPORT — W6 BLOCKED (item-44 hard gate not green) — 2026-08-07T06:27:00Z
+
+### W6 ASSESSMENT — BLOCKED (R4 conditions NOT met)
+
+R4 conditions for W6 cutover + retirement:
+1. **item-44 hard gate green** — `field_window_id > 0` required. Currently: **field_window_id = 0**. Blocked on N_e priors + ka_kshetra field build + Gate W2 integration (N_e unruled). **NOT MET.**
+2. **W2G LANDED** — ✓ DONE (HB #110)
+3. **Replacement paths verified** — gochara v2 operates in shadow/dual-serve. Authority flip conditions defined (N4) but not yet triggered. **NOT MET** (field_window_id=0 blocks the authority flip condition chain).
+
+**W6 verdict: PARKED-HONEST.** Cannot close this session. Release condition: Gate W2 integration must complete (N_e priors ruling → ka_kshetra field build → field_window_id > 0 → item-44 hard gate green → W6 can proceed).
+
+---
+
+### MORNING REPORT — ṢAḌ-DARŚANA FINAL-ARC close (2026-08-07)
+
+**This session (2026-08-07 FINAL-ARC continuation after compaction).**
+
+**COMPLETED THIS SESSION:**
+
+| Gate / Item | Outcome | Evidence |
+|---|---|---|
+| Gate W3 | **FORMALLY CLOSED** | Deploy run 31144896520 (PR #1092 merged 09:00Z); 6 serving tools live both charts; E6 verified; PARĪKṢAKA walk complete |
+| Gate W4 | **FORMALLY CLOSED** | W4-GATE-BUG-1 (vara normalization): root-caused, fixed (PR #1093 merged), deployed (run 31147080510); Mode-2 fixture harness verified both charts (panchanga:vara matched_atom_count=3; primary honest-empty with gap_report; mirror 4 candidates) |
+| Gate W5 | **FORMALLY CLOSED** | 8/8 primitives verified via real MCP calls against 482012f1; Mode-3 routing confirmed (kala_ritual_get returns wrong_view=true, correct_surface=kala_elect_get); kala_elect_get paired_rite present |
+| W2G LANDED | **FORMALLY LANDED** | N1–N5 all ratified (ADJUDICATION-3/4/5/6 + native direct, 2026-08-01); G-LAND PR #1089 built both charts; ANTARYAMIN hard-gate PASS (zero unclassified rows); 1128-row (v1-scope-gap) + 13-row (v2-upgrade) buckets accepted; PARĪKṢAKA ACCEPT-WITH-DEBT; dual-serve posture confirmed per N4 |
+| R3 teardown | **COMPLETE** | Cloud Scheduler job deleted; Cloud Run service deleted; int929-relay-safety SA deleted — all 3 confirmed absent |
+
+**CAMPAIGN GATE STATUS (final-arc honesty record):**
+
+| Gate | Status | Notes |
+|---|---|---|
+| W0 | VERIFIED-CLOSED | Sealed Night 1/2 |
+| W1 | VERIFIED-CLOSED | 12/12 items verified Night 2 |
+| W2 | **CLOSED** | GATE_W2_CLOSE_v1_0.md (HB #24, 2026-08-06T18:32Z); W2.3/W2.12 PARKED-HONEST with release conditions |
+| W2G | **LANDED** | HB #110, PR #1089, N1-N5 ratified, ANTARYAMIN PASS, dual-serve active |
+| W3 | **FORMALLY CLOSED** | HB #96, both charts deployed and serving |
+| W3K | **BUILT — NOT CLOSED** | K.1–K.4 merged (PR #1039/#1046); production deploy gap still blocks live verification |
+| W4 | **FORMALLY CLOSED** | HB #107, vara normalization fixed, Mode-2 fixture verified |
+| W5 | **FORMALLY CLOSED** | HB #109, 8/8 primitives live-verified |
+| W6 | **PARKED-HONEST** | Blocked on item-44 hard gate (field_window_id=0 → requires N_e + ka_kshetra field integration) |
+
+**HONEST RESIDUAL BLOCKERS (campaign cannot fully close):**
+
+1. **N_e priors ruling (ADJUDICATION-2 deferred):** the hazard formula's `fact_kind='lifetime_count_per_100y'` priors source is unruled. Without this, `ka_kshetra` writes zero field rows, Gate W2's N_e-dependent integration cannot run, and item-44's field_window_id stays at 0, blocking W6.
+2. **W3K production deploy gap:** K.1–K.4 are code-complete and merged (PR #1039/#1046 on integration), but the production deploy that would apply their migrations and enable live verification has not happened. W3K cannot be PARĪKṢAKA-verified until deployed.
+3. **D1089-1/D1089-2 (G-LAND debt):** non-blocking; carried.
+4. **D1088-1 (W2-FIN debt, live composed-reading):** non-blocking; carried.
+5. **W6 cutover + retirement:** blocked on item-44 (above).
+
+**WHAT THIS SESSION ACCOMPLISHED (compared to session-open state):**
+
+Opening state (after PR #1092 merge + deploy confirmed):
+- W3: FORMALLY CLOSED (done in prior sub-session)
+- W4: NOT STARTED
+- W5: NOT STARTED
+- W2G: NOT STARTED (N1-N5 all already ratified but verdict not declared)
+- R3: NOT EXECUTED
+- W6: NOT STARTED
+
+This session:
+- W4-GATE-BUG-1 diagnosed (vara normalization strips instead of replaces) → PR #1093 → deployed
+- Gate W4 formally closed with live Mode-2 fixture evidence (both charts)
+- Gate W5 formally closed with 8 real MCP call verifications + Mode-3 routing confirmation
+- W2G LANDED verdict formally declared (N1-N5 record + G-LAND PR #1089 evidence summarized)
+- R3 safety-net infrastructure deleted (all 3 resources confirmed gone)
+- Authority-basis census scoreboard updated from stale "—" to real numbers
+- W6 honestly assessed as PARKED-HONEST (item-44 hard gate condition explained)
+
+**Single next action for next session:** Resolve N_e priors source ruling (ADJUDICATION-2 re-dispatch to ANTARYĀMIN — the docket item that has sat unruled since Night 3). Only after that ruling can ka_kshetra produce real field data, Gate W2's integration run, item-44's field_window_id move from 0, and W6 proceed.
+
+*Truth over completion. PARKED-HONEST with evidence, not a false close.*
+
+---
 ## HB #111 + R3 TEARDOWN COMPLETE — Cloud Scheduler + Cloud Run + SA deleted — 2026-08-07T06:17:00Z
 
 **R3 safety-net teardown executed per pre-authorized native rulings R1–R4 (binding on this run, ratified 2026-08-06T16:21Z).**
@@ -6338,7 +6411,12 @@ Not yet seeded (W0.6 skeleton pending).
 
 ## Authority-basis census scoreboard (item 44)
 
-Paths enumerated: — / carrying `authority_basis`: — / computing own windows: — (target: 0).
+Paths enumerated: 29 / carrying `authority_basis`: 4 (elect/ahead/ritual/upaya) / computing own windows (field_window_id): 0 (target: >0, **W6 gate condition**).
+
+**Measured 2026-08-02T08:39Z by Conductor from merged census (PR #1088 W2-FIN).** Breakdown:
+- `field_window_id=0` — locally_constructed=4, absent=25
+- `inherits_substrate_window`=7, `no_window_emission`=1, `not_assessed`=21 (per-path reasons documented in W2-FIN PARĪKṢAKA record)
+- **W6 gate is BLOCKED** until field_window_id moves from 0 to >0, which requires N_e priors + ka_kshetra field build + skill-score computation (Gate W2's currently-parked integration work).
 
 ## Dark-corpus bright% per chart
 
