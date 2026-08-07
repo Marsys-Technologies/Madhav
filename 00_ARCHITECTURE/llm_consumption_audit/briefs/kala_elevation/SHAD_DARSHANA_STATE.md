@@ -1,5 +1,18 @@
 ---
 
+<!-- CONDUCTOR-NOTE HB #66 2026-08-07T00:25:15Z -->
+> **CONDUCTOR HEARTBEAT #66** — 2026-08-07T00:25:15Z
+> **MILESTONE: PR #1090 DIRTY CONFLICT RESOLVED**
+> Resolution: merged origin/main into integration-local (commit 293c966f9)
+> - Only conflict: SHAD_DARSHANA_STATE.md (integration superset — Gate-1 content confirmed present at char 131409)
+> - Conflict resolved with --ours (integration authoritative ledger kept)
+> - All other files auto-merged: tap-ci.yml (gets merge_group trigger from PR #1077), PRODUCTION_GATE_EXECUTION_POLICY, PARIPRASHNA_TARGET_ARCHITECTURE, CLAUDE.md, ga_sensitive_writer.py, verification_invariant.py, incident ledger files
+> PR #1090 state: OPEN · mergeStateStatus=BLOCKED (no longer DIRTY) · CI=5 runs queued
+> CI runs queued at 00:24:19Z: TAP CI, Paripraśna Acceptance Harness, W0.6 CI Skeletons, Ganga Quality Gate, Deploy to Cloud Run
+> Monitoring: awaiting CI completion to GREEN
+> Lease: active · v3 keepalive monitor (task bw8ld57ud) running
+<!-- END CONDUCTOR-NOTE #66 -->
+
 <!-- CONDUCTOR-NOTE HB #65 2026-08-07T00:21:29Z -->
 > **CONDUCTOR HEARTBEAT #65** — 2026-08-07T00:21:29Z
 > Status: Actions **OPERATIONAL** (recovered 00:13:07Z after 8.9h outage)
