@@ -1419,9 +1419,15 @@ def _build_rm_summary(chart_id: str, aya: str, build_id: str,
     feasibilities = [float(p.get("feasibility_score") or 0.0) for p in prescriptions]
     mean_feas = round(sum(feasibilities) / len(feasibilities), 4) if feasibilities else 0.0
 
-    top_class = ranked_res[0].get("remedy_priority_class") if ranked_res else "low"
-    intensity = {"critical": "intensive", "high": "sustained",
-                 "moderate": "moderate", "low": "light"}.get(str(top_class), "moderate")
+    # SHABDA-SHUDDHI Lane L5 (Fix 7a): when there are no resonances/prescriptions the
+    # intensity is None — there is no assessment to make (emitting "light" was a false
+    # clean-bill: it implied a real evaluation ran on actual data).
+    if not ranked_res:
+        intensity = None
+    else:
+        top_class = ranked_res[0].get("remedy_priority_class") or "low"
+        intensity = {"critical": "intensive", "high": "sustained",
+                     "moderate": "moderate", "low": "light"}.get(str(top_class), "moderate")
 
     trad_counts: dict[str, int] = defaultdict(int)
     for p in prescriptions:

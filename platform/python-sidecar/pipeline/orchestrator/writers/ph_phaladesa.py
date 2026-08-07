@@ -70,14 +70,24 @@ _NARRATION_METHOD = "deterministic_template_v1"
 # authoritative emission set. Before this fix, 'transition' — a real _ALL_DOMAINS
 # member — had no entry here, so the `.get(domain, domain)` fallback in
 # _build_deterministic_narration emitted the raw slug "transition" mid-sentence
-# instead of a proper label; 'general' had an entry but is never emitted by
-# _ALL_DOMAINS (dead config, kept below — harmless, and removing it is not what
-# the finding is about). _DOMAIN_LABEL must cover every _ALL_DOMAINS member.
+# instead of a proper label. _DOMAIN_LABEL must cover every _ALL_DOMAINS member.
+#
+# SHABDA-SHUDDHI Lane L5 (Fix 5): extended to cover all 13 canonical domains now that
+# _ALL_DOMAINS (engine.py) was updated to the full canonical set.
 _DOMAIN_LABEL: dict[str, str] = {
-    'career': 'career and profession', 'wealth': 'wealth and finances',
-    'health': 'health and vitality', 'relationship': 'relationships and marriage',
-    'spirituality': 'spirituality and dharma', 'character': 'character and psychology',
-    'transition': 'transition and change', 'general': 'general life-arc',
+    'career':       'career and profession',
+    'wealth':       'wealth and finances',
+    'health':       'health and vitality',
+    'relationship': 'relationships and marriage',
+    'spirituality': 'spirituality and dharma',
+    'character':    'character and psychology',
+    'transition':   'transition and change',
+    'general':      'general life-arc',
+    'progeny':      'progeny and children',
+    'education':    'education and learning',
+    'family':       'family and household',
+    'residence':    'residence and property',
+    'travel':       'travel and journeys',
 }
 
 
