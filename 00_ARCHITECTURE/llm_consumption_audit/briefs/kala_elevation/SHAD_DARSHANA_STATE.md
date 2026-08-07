@@ -4,6 +4,19 @@
 ---
 ---
 ---
+---
+## HB #104 — Post-merge Ganga running; TAP/W0.6/Elevation SUCCESS — 2026-08-07T05:07:00Z
+
+**Post-merge main CI (PR #1093 vara norm fix):**
+- Ganga: IN_PROGRESS (run 31146688561, ~8 min normal runtime)
+- TAP CI: completed/success
+- W0.6: completed/success
+- Elevation Serving Gates: completed/success
+- Deploy to Cloud Run: pending Ganga completion
+
+**Lease extended.** Next HB due ≤ 05:17:00Z.
+
+
 ## HB #103 — PR #1093 MERGED (317ac046); post-merge CI running — 2026-08-07T04:57:00Z
 
 **PR #1093** MERGED at 04:12:37Z (317ac046ca4efb43b9e6d65ecd4bf54be2d077f3)  
