@@ -6,6 +6,17 @@
 ---
 ---
 ---
+---
+## HB #106 — Deploy run 31147080510 SUCCEEDED; vara fix live — 2026-08-07T05:27:00Z
+
+**Deploy to Cloud Run: completed/success** (run 31147080510)  
+PR #1093 vara normalization fix is now LIVE in production.
+
+**Action:** Running live Mode-2 fixture against chart 482012f1 to discharge W4-GATE-BUG-1.
+
+**Lease extended.** Next HB due ≤ 05:37:00Z.
+
+
 ## HB #105 — Deploy to Cloud Run in progress (MCP done; Web building) — 2026-08-07T05:17:00Z
 
 **Deploy run 31147080510:**
