@@ -2,6 +2,12 @@
 
 ---
 
+## HB #72 — 2026-08-07T01:23:55Z
+
+**Heartbeat** — Ganga Quality Gate PASSED ✅ (01:23:23Z, run 31137424391). bg_parihara_rules dict_row fix confirmed green. Awaiting Deploy to Cloud Run and full PR #1090 checks. Lease maintained manually; next HB due before 2026-08-07T01:33:55Z.
+
+---
+
 ## HB #71 — 2026-08-07T01:15:13Z
 
 **Heartbeat** — monitor v3 killed to give CI uninterrupted run window; bg_parihara_rules dict_row fix committed (fee5082a1), CI cycle clean. Lease maintained manually until PR #1090 merges. Next HB due before 2026-08-07T01:25:13Z.
