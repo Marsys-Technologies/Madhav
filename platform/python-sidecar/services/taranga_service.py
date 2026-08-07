@@ -260,10 +260,18 @@ def _load_leverage_and_valence(conn, chart: ChartRef) -> tuple[dict[str, dict[st
     for domain, per_graha in leverage.items():
         signed: dict[str, float] = {}
         for subj, magnitude in per_graha.items():
-            sign = 1.0
             v = graha_valence.get(subj)
-            if v is not None and v < 0:
-                sign = -1.0
+            if v is None:
+                # Fix (SHABDA-SHUDDHI lane L4 Fix 3): when no valence_pass row
+                # exists for this graha, we do NOT know whether it is benefic or
+                # malefic. The old code defaulted sign=1.0 (benefic), silently
+                # biasing the activation formula toward a positive contribution
+                # for every graha with a missing valence row.
+                # Correct behaviour: omit the graha from this domain's weights
+                # entirely so it contributes 0 (no-signal) rather than an
+                # invented positive/benefic contribution.
+                continue
+            sign = 1.0 if v >= 0 else -1.0
             signed[subj] = magnitude * sign
         domain_weights[domain] = signed
     return domain_weights, graha_valence
