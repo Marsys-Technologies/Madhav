@@ -293,3 +293,5 @@ jobs:
           DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
           TAP7_API_BASE_URL: ${{ secrets.TAP7_API_BASE_URL }}
         run: npx tsx --conditions=react-server scripts/audit/tap/tap7_distribution_gates.ts
+# no-op: touch to trigger TAP-6 on PR #1091 (migration_renumber_disclosed.json hotfix
+# does not match paths filter; this pattern established in PR #1078 — see NOTE above)
