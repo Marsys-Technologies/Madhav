@@ -2,6 +2,12 @@
 
 ---
 
+## HB #79 — 2026-08-07T02:22:00Z
+
+**DEPLOY FIX IN PROGRESS** — Post-merge deploy failed: `MigrationRenumberedError` for `543_bg_muhurta_lattice.sql` (content already applied as `484_bg_muhurta_lattice.sql`). Fix: adding entry to `platform/scripts/ci/migration_renumber_disclosed.json` per migrate.ts renumber-disclosure protocol. sql_identity=`6ea6bf88d66b4616ea0972b53bceb7f3b4e7922e3b3201d9537f377e75144553`, disposition=`already-applied-under-old-name`. Opening hotfix PR to main to unblock deploy. Next HB due before 2026-08-07T02:32:00Z.
+
+---
+
 ## HB #78 — 2026-08-07T02:18:18Z
 
 **ALERT** — Post-merge Deploy to Cloud Run FAILED (run 31140238243, 02:07:41Z→02:17:52Z). Investigating failure. Lease gap: HB#77 at 02:07:36Z, lease expired at 02:17:36Z, HB#78 at 2026-08-07T02:18:18Z — 16-second gap (deploy failure concurrent with expiry). Next HB due before 2026-08-07T02:28:18Z.
