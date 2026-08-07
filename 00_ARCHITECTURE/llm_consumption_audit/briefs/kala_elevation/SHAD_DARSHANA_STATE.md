@@ -1,4 +1,69 @@
 ---
+## HB #118 — §M VERDICT RECORDED + CAMPAIGN CLOSE WRITTEN + CURRENT_STATE FIX MANDATED — 2026-08-07T06:47:53Z
+
+**CONDUCTOR LEASE: FINAL HB.** RUN-TERMINAL follows this entry.
+
+### §M RED-TEAM VERDICT: REFUTE-WITH-FINDINGS
+
+Agent: Opus (adversarial, default-REFUTED). Completed 2026-08-07T06:43:25Z.
+
+#### D-CLASS-1: proxy-signal-without-detector — ACCEPT
+Evidence: `l0_class_lifetime_counts.py:581-637`, `stage8_spec.py:196-228`, `test_circularity_guard.py:98-262`.
+Finding: Every examined status/PASS surface has a real detector with an exercised False path.
+
+#### D-CLASS-2: wrong-write-target — ACCEPT
+Evidence: `stage2_promise.py:318-326` (bodha_pratijna, correct), `writer.py:534+620` (kfw_* IDs, correct), `integrator.py:381`.
+Finding: Original kala_field_routes bug fixed; no other wrong-write-target instances found.
+
+#### D-CLASS-3: checklist-factual-error — REFUTE
+Evidence: `CURRENT_STATE_v1_0.md:57` vs `SHAD_DARSHANA_ADJUDICATIONS_NIGHT3_v1_0.md:5,27` vs STATE.md HB #114 lines 169-198.
+Finding: CURRENT_STATE v6.52 records "re-dispatch ANTARYAMIN for ADJUDICATION-2" as the next
+action, when ADJUDICATION-2 was ruled on 2026-08-01. The CLOSING RUN's HB #114 already
+flagged this as a factual error internally; the correction has not propagated to the live
+governance state file.
+
+Mandatory fix: CURRENT_STATE_v1_0.md must be bumped to v6.53 with corrected state:
+- ADJUDICATION-2: RULED (not pending re-dispatch)
+- field_window_id: populated for 1c826d5a (not 0)
+- Single next action: W6 gate closure (see §4 W6 debts in SHAD_DARSHANA_CLOSE_v1_0.md)
+
+#### D-CLASS-4: tests-validating-fiction — ACCEPT
+Evidence: `test_ka_kshetra_submodular.py:194-263`, `test_ka_kshetra_migration_487_integration.py:52-96`, `test_ka_kshetra_cohort_client.py:119-389`.
+Finding: Tests use independently-implemented ground truths and real DB round-trips; no
+mock-the-thing-being-tested pattern found.
+
+### CAMPAIGN CLOSE DOCUMENT
+
+`SHAD_DARSHANA_CLOSE_v1_0.md` written to:
+`00_ARCHITECTURE/llm_consumption_audit/briefs/kala_elevation/SHAD_DARSHANA_CLOSE_v1_0.md`
+
+Contents: per-item disposition (44+E, all waves), W2 R5-scoped disposition, debt register
+(D1-D5 + D1089-1/2 + D33-1/D34-1/D36-1/D37-1 + W6-C1-C6), gate status summary,
+§M verdict integrated, RUN-TERMINAL declaration.
+
+### NEXT ACTIONS (session wind-down)
+
+1. CURRENT_STATE_v1_0.md → v6.53 (mandatory per §M D-CLASS-3 finding)
+2. SESSION_LOG.md append (CLOSING RUN session entry)
+3. RUN-TERMINAL marker in ledger (this HB is final HB before terminal)
+
+### SELF-ERROR REPORT (morning report)
+
+Named self-errors this Closing Run:
+1. HB #116 timestamp mismatch: drafted as "06:47:00Z" but committed at 06:38Z — HB content
+   was accurate (PARĪKṢAKA verdicts were real), timestamp was aspirational not actual.
+   Impact: non-blocking; lease was maintained within bounds.
+2. First Agent dispatch attempt (prior context): missing `description` parameter caused
+   InputValidationError. Fixed by loading Agent schema via ToolSearch before retry.
+3. W6 Clause 1 documentation: register_all.ts docstring says "eight" but 9 tools are registered.
+   Conductor did not catch this until W6 assessment — it's a stale docstring, not a gate
+   failure, but the Conductor should have caught it earlier when reading the file.
+4. §M mandatory fix identification: CURRENT_STATE v6.52 carried a factual error that the
+   CLOSING RUN's HB #114 corrected internally but did not propagate to the governance state
+   file. §M red-team correctly surfaced this; the Conductor should have updated CURRENT_STATE
+   earlier in the session as part of the factual correction work.
+
+---
 ## HB #117 — W6 HONEST GATE ASSESSMENT + §M RED-TEAM DISPATCHED — 2026-08-07T06:42:00Z
 
 **CONDUCTOR LEASE: RENEWED.** Next HB ≤ 2026-08-07T06:52:00Z.
