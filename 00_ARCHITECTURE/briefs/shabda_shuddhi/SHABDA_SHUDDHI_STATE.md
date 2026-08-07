@@ -105,3 +105,31 @@ Round 2 (blocked on L2 'no_evidence' migration):
 - L7 serving guards: query_pratijna, mi_darshana, synth brief
 
 ---
+
+## L1 COMPLETE — 2026-08-07T10:43:00Z (CONDUCTOR)
+
+bo_laksana.py remapped to full 13-domain vocabulary:
+- _BHAVA_DOMAINS: expanded from 6 to 12 unique domains + 'general' fallback;
+  classical citations per B.3 (BPHS ch.11, ch.6, ch.30, ch.32, ch.34-39)
+- _DOMAIN_MAP: 48 entries selectively expanded (yoga/dosha/karaka/arudha/
+  sade_sati/lord-in-house/bhava categories gain progeny/education/family/
+  residence/travel/transition)
+- _CATEGORY_DEFAULT_DOMAINS: 10 subsystem defaults expanded
+- CR-62 varga gate: extended with D7->progeny, D4->residence, D24->education,
+  D12->travel (BPHS ch.6)
+- Fallback: ["career","character"] -> ["general"]
+- Imports CANONICAL_DOMAINS from brahmagyan.domain_vocabulary
+
+Domain coverage: 12/13 in explicit maps, 'general' as fallback = all 13 reachable.
+PARIKSHAKA: PENDING (to be dispatched when builders complete).
+Commits: 2a59931ed (L1) + 8ce882909 (L8 domain_lookup) on integration.
+
+## L8 PARTIAL — 2026-08-07T10:43:00Z (CONDUCTOR, consolidating builder output)
+
+domain_lookup() junction hit-rate telemetry landed on integration.
+7 tests added to test_domain_vocabulary.py (25/25 total PASS).
+Remaining L8 items (CI census gate, empty-evidence lint): builder in progress.
+
+## Builders in flight: L2, L4, L5, L8 (background agents)
+
+---
