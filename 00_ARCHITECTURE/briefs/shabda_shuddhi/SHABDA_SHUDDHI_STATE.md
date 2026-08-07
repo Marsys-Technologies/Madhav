@@ -70,7 +70,7 @@ tables regenerate; Maha-Brief verdict content re-derives.
 
 STAGE 0 (PRE-FLIGHT): COMPLETE
 STAGE V0 (VOCABULARY MODULE): COMPLETE (PARIKSHAKA ACCEPT 8/8, 18/18 tests)
-STAGE 1 (FAN-OUT L1-L8): DISPATCHING
+STAGE 1 (FAN-OUT L1-L8): MOSTLY COMPLETE (L5 partial, L6/L7 deferred/pending)
 STAGE R (REBUILD): PENDING (blocked on L1-L5 merged)
 STAGE S (FIRST SKILL SCORE): PENDING (blocked on R)
 CLOSE: PENDING
@@ -130,6 +130,51 @@ domain_lookup() junction hit-rate telemetry landed on integration.
 7 tests added to test_domain_vocabulary.py (25/25 total PASS).
 Remaining L8 items (CI census gate, empty-evidence lint): builder in progress.
 
-## Builders in flight: L2, L4, L5, L8 (background agents)
+## L2 COMPLETE — 2026-08-07T10:48:00Z (BUILDER→CONDUCTOR consolidated)
+
+- Migration 545: 'no_evidence' added to bodha_pratijna status CHECK constraint (R8)
+- stage2_promise._fetch_pratijna: status gate removed (R6 — gate 3/5)
+- TDD failing tests first, then fixes applied
+Commits: d1c3ad223, 06da154ab, 035bf40f8 on integration.
+
+## L3 COMPLETE — 2026-08-07T10:47:00Z (CONDUCTOR)
+
+- ka_kshetra._discover_event_classes: status gate removed (R6 — gate 4/5)
+- ka_avadhi._FETCH_PRATIJNA_SQL: status gate removed (R6 — gate 5/5)
+- stage65_insights ABSENCE_MIN_PROMISE: 0.60 → 6.0 (grade units fix [0,1]→[0,10])
+Commit: be86f6c28 on integration.
+
+## L4 COMPLETE — 2026-08-07T10:45:00Z (BUILDER, auto-consolidated)
+
+- Fix 1: _promise_lift sign inversion corrected in ph_nimitta/engine.py
+- Fix 2: ka_yojaka _infer_signal_domain uses canonical_domain() (R6 — gate 1/5)
+- Fix 3: taranga_service missing-valence benefic default → honest None
+Commits: 998ddd440, 74aa99a32, 7f1fd2fd6 on integration.
+
+## L5 PARTIAL — 2026-08-07T10:50:00Z (BUILDER→CONDUCTOR consolidated)
+
+Landed (4/7): ka_bhavishya_lekha domains, ka_yojaka classifier,
+ph_phaladesa 13 domains, false clean-bill fixes.
+Deferred (3/7): prashna_undertaking, query_domain_reading, bo_upaya/mi_adhilepa.
+Commits: 41511d1a4, a7e85e179 on integration.
+
+## STAGE 1 STATUS — 2026-08-07T10:52:00Z
+
+| Lane | Status | Gates converted |
+|------|--------|----------------|
+| V0 | COMPLETE | — |
+| L1 | COMPLETE | — (domain remap) |
+| L2 | COMPLETE | gate 3/5 (stage2_promise) |
+| L3 | COMPLETE | gates 4,5/5 (ka_kshetra, ka_avadhi) |
+| L4 | COMPLETE | gate 1/5 (ka_yojaka:143) + gate 2/5 (ka_yojaka:157 via L5) |
+| L5 | PARTIAL | 4/7 junction fixes |
+| L6 | DEFERRED | requires production DB + native LEL review |
+| L7 | PENDING | serving guards |
+| L8 | PARTIAL | domain_lookup + CI census landed |
+
+All 5 categorical gates CONVERTED (R6 satisfied).
+14 commits on shabda-shuddhi/integration.
+
+NEXT: PARIKSHAKA on consolidated integration, then prepare Stage R.
 
 ---
