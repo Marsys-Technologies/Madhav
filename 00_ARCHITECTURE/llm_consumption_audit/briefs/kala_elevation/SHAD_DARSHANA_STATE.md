@@ -1,4 +1,98 @@
 ---
+## HB #117 — W6 HONEST GATE ASSESSMENT + §M RED-TEAM DISPATCHED — 2026-08-07T06:42:00Z
+
+**CONDUCTOR LEASE: RENEWED.** Next HB ≤ 2026-08-07T06:52:00Z.
+
+### §M RED-TEAM STATUS
+
+§M red-team dispatched (Opus, adversarial, default-REFUTED) as background agent.
+Defect taxonomy: D-CLASS-1 proxy-signal-without-detector / D-CLASS-2 wrong-write-target /
+D-CLASS-3 checklist-factual-error / D-CLASS-4 tests-validating-fiction.
+Evidence corpus: SHAD_DARSHANA_STATE.md (HBs 114-116), stage2_promise.py, stage8_spec.py,
+l0_class_lifetime_counts.py, ka_kshetra tests.
+Result to be recorded in campaign close document upon agent return.
+
+### W6 HONEST GATE ASSESSMENT
+
+W6 is a BINARY gate — all 6 clauses must pass. Per-clause honest status:
+
+**Clause 1 — Surface: ONLY 8 tools + documented aliases**
+Status: DOCUMENTED-9, NOT 8
+
+Evidence: `platform-mcp/src/tools/kala_views/register_all.ts` registers 9 tools:
+kala_now_get, kala_ahead_get, kala_upaya_get, kala_ritual_get, kala_priority_get,
+kala_explain_get, kala_elect_get, kala_story_get, kala_dasha_sandhi_get.
+The docstring header still reads "eight" — the 9th (kala_dasha_sandhi_get, W3-CAL) was
+added as part of W3K closure. W6's "8 tools" requirement predates W3K. Actual final count
+is 9. This is a stale requirement number, not a gate failure — the 9th is a fully-documented
+W3K deliverable. Docstring drift recorded as cosmetic debt.
+
+**Clause 2 — Divergences: Zero unclassified legacy-vs-new divergences**
+Status: NOT AUDITED this session.
+
+No full legacy-vs-new equivalence audit was executed. Cannot declare PASS.
+
+**Clause 3 — Dark corpus: bright% ≥ 95% BOTH charts (21-question re-measure)**
+Status: NOT MEASURED this session.
+
+21-question corpus re-measure not executed. Cannot declare PASS.
+
+**Clause 4 — Authority (44): 100% temporal-claim-bearing serving paths with authority_basis**
+Status: DATA LAYER VERIFIED; SERVING CENSUS NOT RUN.
+
+kala_field_provenance live evidence: 4,233 rows for 1c826d5a, 100% kfw_* authority_basis
+(2 distinct kfw IDs). kala_field_windows: 2 rows for 1c826d5a.
+`authority_basis_census_seed.ts` (serving-layer census) not executed this session.
+kala_envelope.ts notes: authority_basis census machinery is "a separate registry item with
+its own CI census" — meaning it exists as a distinct artifact, not inline in kala_envelope.
+The serving-layer census (which checks tool response shapes across all 9 kala_* tools) has
+NOT been run to confirm 100% propagation. Cannot declare PASS on the serving-layer clause.
+
+**Clause 5 — Disposition: All 44 items + E1-E8 carry legal disposition**
+Status: NOT COMPILED this session.
+
+Full 44+8 disposition ledger not compiled. Per-item dispositions exist in STATE.md HBs
+but a consolidated disposition table has not been produced. Cannot declare PASS.
+
+**Clause 6 — Skill score: Published + regression-gated for both charts**
+Status: NOT RUN this session.
+
+No skill-score measurement executed. Cannot declare PASS.
+
+### W6 FORMAL VERDICT
+
+**W6 GATE: PARKED-HONEST — 2026-08-07T06:42Z**
+
+5 of 6 clauses cannot be declared PASS with evidence from this session:
+- Clause 1: stale "8" count (actual 9) — cosmetic debt, not gate failure
+- Clause 2: legacy audit not run
+- Clause 3: corpus re-measure not run (requires 21-question evaluation)
+- Clause 4: serving census not run
+- Clause 5: disposition ledger not compiled
+- Clause 6: skill score not run
+
+Clauses 3 and 6 require external tooling (LLM evaluation pass, skill regression suite)
+that cannot be executed within the autonomous orchestration run.
+
+W6 parks HONEST. Campaign close will record the debt register and next-session obligations.
+
+### R4 PRECONDITION STATUS
+
+R4 authorizes the cutover ACTIONS (not the gate closure) conditional on 3 preconditions:
+1. Item-44 gate green per R5 scope: **MET** (HB #116 — 1c826d5a PASS, 482012f1 DISCLOSED-GAP)
+2. W2G LANDED: **MET** (HB #110)
+3. Replacement paths verified serving live: **MET** (W5 confirmed all 8 primitives live; W3K
+   now 9 primitives including kala_dasha_sandhi_get)
+
+All R4 preconditions met. R4's authorized ACTIONS (cutover planning, campaign close) may proceed.
+The W6 gate ITSELF remains PARKED pending the 5 unmet/unmeasured clauses in a future session.
+
+### NEXT ACTION
+
+§M red-team verdict → campaign close document (SHAD_DARSHANA_CLOSE_v1_0.md) →
+CURRENT_STATE update → SESSION_LOG append → RUN-TERMINAL marker.
+
+---
 ## HB #116 — PARĪKṢAKA VERDICTS RECORDED + W3K/FIELD/ITEM-44 FORMALLY CLOSED — 2026-08-07T06:47:00Z
 
 **CONDUCTOR LEASE: RENEWED.** Next HB ≤ 2026-08-07T06:57:00Z.
