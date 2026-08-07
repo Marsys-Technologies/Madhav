@@ -1,5 +1,14 @@
 ---
 
+<!-- CONDUCTOR-NOTE HB #65 2026-08-07T00:21:29Z -->
+> **CONDUCTOR HEARTBEAT #65** — 2026-08-07T00:21:29Z
+> Status: Actions **OPERATIONAL** (recovered 00:13:07Z after 8.9h outage)
+> PR #1090: OPEN · mergeStateStatus=DIRTY · CI=0 checks
+> Conflict: SHAD_DARSHANA_STATE.md — integration (HB history at top) vs main (PR #1070 restoration notice)
+> Resolution required: independent reviewer must merge main→integration, resolve conflict (keep integration version + incorporate PR #1070 restoration notice content), push, trigger CI
+> Lease: active · Next HB due ≤00:31Z
+<!-- END CONDUCTOR-NOTE #65 -->
+
 ---
 type: CONDUCTOR-NOTE
 timestamp: 2026-08-07T00:13:51Z
