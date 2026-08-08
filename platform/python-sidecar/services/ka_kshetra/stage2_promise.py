@@ -24,6 +24,25 @@ Real L2 ingestion sources (verified against the live schema, not assumed):
     its primary graha via `configuration_jsonb` (the same tag keys
     bo_laksana_rerank's own `_extract_primary_graha_for_rerank` treats as
     authoritative: graha / primary_graha / lord / body).
+
+PRATIJÑĀ v4 (Lane B4 consumer audit, 2026-08-09): the v4.0 `bo_pratijna`
+engine NEVER populates `supporting_signal_ids` — it never reads
+`bodha_msr_signals` at all (see `bo_pratijna.py`'s module docstring,
+"grade (legacy compatibility)" section). Under the v3 writer this column
+carried the MSR-signal ids this module used to resolve graha seeds; under
+v4 it is always NULL, which without a fallback silently starves EVERY
+event_class sink of seeds — k_shortest_routes then finds zero routes and
+noisy_or_promise([]) returns exactly 0.0 for every class, indistinguishable
+from "no promise anywhere" (verified live against chart 482012f1: 0/135
+rows have a non-NULL supporting_signal_ids under the v4-scored build). The
+fix: when a pratijna row's `supporting_signal_ids` is empty, fall back to
+`derivation.weights` entries with `slot == "karaka"` (v4's own per-class
+significator weight table, §3 of V4_RUBRIC_SPEC_v1_0.md) as the graha
+seeds, weighted by their own scoring weight rather than a fabricated
+salience — see `_v4_karaka_seeds` below. This is a real significator, never
+invented: every one of the 27 event classes' `KARYATVA_REGISTRY` entries
+carries at least one karaka graha, so this fallback is populated whenever
+the row itself was populated.
 """
 from __future__ import annotations
 
@@ -336,12 +355,37 @@ def _fetch_pratijna(conn, chart_id: str, ayanamsha_id: str) -> list[dict]:
     # seed nodes to connect. 'denied' rows produce low-conductance edges that inhibit
     # routes rather than eliminating them from the graph.
     rows = conn.execute(
-        """SELECT event_class_id, status, grade, supporting_signal_ids
+        """SELECT pratijna_id, event_class_id, status, grade,
+                  supporting_signal_ids, derivation
            FROM bodha_pratijna
            WHERE chart_id = %s AND ayanamsha_id = %s""",
         [chart_id, ayanamsha_id],
     ).fetchall()
     return [dict(r) if not isinstance(r, dict) else r for r in rows]
+
+
+def _v4_karaka_seeds(derivation: Optional[dict]) -> list[tuple[str, float]]:
+    """PRATIJÑĀ v4 fallback graha-seed source (Lane B4): `derivation.weights`
+    entries with `slot == "karaka"` are the class's own karaka significators
+    from V4_RUBRIC_SPEC_v1_0.md §3 — real, per-class, never invented — used
+    when `supporting_signal_ids` is empty (always true under the v4 engine,
+    see module docstring). Returns [(graha, weight), ...] deterministically
+    ordered by the item's position in the weights list (already deterministic
+    from the engine's own KARYATVA_REGISTRY iteration order)."""
+    if not isinstance(derivation, dict):
+        return []
+    weights = derivation.get("weights")
+    if not isinstance(weights, list):
+        return []
+    out: list[tuple[str, float]] = []
+    for w in weights:
+        if not isinstance(w, dict) or w.get("slot") != "karaka":
+            continue
+        item = w.get("item")
+        if not item:
+            continue
+        out.append((str(item), float(w.get("weight") or 0.0)))
+    return out
 
 
 def _fetch_signal_primary_grahas(conn, signal_ids: Sequence[str]) -> dict[str, tuple[str, float]]:
@@ -437,7 +481,8 @@ def load_promise_graph(conn, chart_id: str, ayanamsha_id: str = CANONICAL_AYANAM
         ))
         seeds: list[str] = []
         grade = float(p.get("grade") or 0.0)  # bodha_pratijna.grade in [0, 10]
-        for sid in (p.get("supporting_signal_ids") or []):
+        supporting_ids = p.get("supporting_signal_ids") or []
+        for sid in supporting_ids:
             info = graha_by_signal.get(str(sid))
             if info is None:
                 continue
@@ -451,6 +496,24 @@ def load_promise_graph(conn, chart_id: str, ayanamsha_id: str = CANONICAL_AYANAM
                 source_fact_id=str(sid),
             ))
             fact_id_by_pair[(graha_id, sink_id)] = str(sid)
+        if not supporting_ids:
+            # PRATIJÑĀ v4 fallback (Lane B4, module docstring) — v4 never
+            # populates supporting_signal_ids, so without this branch every
+            # v4-scored chart's promise graph would have zero seeds/edges,
+            # zero routes, and P_e == 0.0 for every class.
+            pratijna_id = p.get("pratijna_id")
+            for graha, weight in _v4_karaka_seeds(p.get("derivation")):
+                graha_id = graha_node_id(graha)
+                seeds.append(graha_id)
+                conductance = normalize_conductance(max(weight, grade / 10.0), 0.0, 1.0)
+                source_fact_id = f"pratijna:{pratijna_id}" if pratijna_id else None
+                edges.append(PromiseEdge(
+                    from_node=graha_id, to_node=sink_id, edge_kind="class_signification",
+                    conductance=conductance, conductance_source="l2_inherited",
+                    source_fact_id=source_fact_id,
+                ))
+                if source_fact_id:
+                    fact_id_by_pair[(graha_id, sink_id)] = source_fact_id
         seeds_by_class[event_class] = sorted(set(seeds))
 
     # De-dupe nodes by node_id (a graha can appear once from CGM ingestion; no

@@ -7,6 +7,21 @@
  *
  * §N.5: supporting_signal_ids / contradicting_signal_ids REFERENCE upstream signal
  * ids (emits_references) — this tool never restates their derived values.
+ *
+ * PRATIJÑĀ v4 (Lane B4 consumer audit, 2026-08-09): the v4.0 bo_pratijna engine
+ * NEVER populates supporting_signal_ids / contradicting_signal_ids (it never reads
+ * bodha_msr_signals at all — see bo_pratijna.py's module docstring); they are always
+ * NULL now, not "reference ids to resolve via query_signals." The row's real
+ * classical evidence lives in `derivation.factor_ledger` / `derivation.weights`
+ * instead. Also: `status = 'no_evidence'` no longer means "zero supporting/
+ * contradicting signals matched" (that was v3's meaning) — under v4 it means "no
+ * KARYATVA_REGISTRY entry exists for this event_class_id" (a defensive path that
+ * should not fire now that the registry covers all 27 classes; a v4 row with
+ * genuinely weak/absent classical evidence gets status='denied' instead, not
+ * 'no_evidence'). Both the static description and the dynamic
+ * `no_evidence_qualification` string below were updated to state this honestly
+ * (§N.7 narration fidelity — a stale claim about what a served field means is the
+ * same defect class as a stale computed value).
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
@@ -21,11 +36,14 @@ export const queryPratijnaCapability: CapabilityDescriptor = {
 
   description: [
     'Retrieve the chart pratijna (promise / denial) ledger from bodha_pratijna — one adjudicated',
-    'row per event_class: status (promised | denied | conditional | no_evidence), grade, varga_confirmation, the',
-    'supporting_signal_ids and contradicting_signal_ids that back it, and a derivation. Filters:',
-    'ayanamsha_id, status, event_class_id. Bounded (LIMIT ≤50) with a disclosed total + offset pagination.',
-    'no_evidence rows (bo_pratijna v2.0) indicate event classes with zero supporting/contradicting signals;',
-    'their grade is NULL (not scored) — served honestly per R6/R8, not gated or fabricated.',
+    'row per event_class: status (promised | denied | conditional | no_evidence), grade, varga_confirmation,',
+    'and a derivation (bo_pratijna v4.0: a factor ledger of classical significators, weights, and denial',
+    'checks — the row\'s real evidence). Filters: ayanamsha_id, status, event_class_id. Bounded (LIMIT ≤50)',
+    'with a disclosed total + offset pagination.',
+    'supporting_signal_ids / contradicting_signal_ids are always NULL under the v4 engine (it does not use',
+    'MSR-signal matching); no_evidence rows now mean "no karyatva registry entry for this event class" (a',
+    'defensive case, not "zero signals") — their grade is NULL (not scored), served honestly per R6/R8, not',
+    'gated or fabricated.',
   ].join(' '),
 
   input_schema: {
@@ -100,7 +118,7 @@ export const queryPratijnaCapability: CapabilityDescriptor = {
         (r) => r['status'] === 'no_evidence'
       ).length
       const no_evidence_qualification = noEvidenceCount > 0
-        ? `${noEvidenceCount} of ${rowsRes.rows.length} row(s) have status 'no_evidence' — these event classes had zero supporting/contradicting signals during the L2 Bodha adjudication. Their grade is NULL (not scored). They are served honestly (R6, R8) but should not be treated as assessed verdicts.`
+        ? `${noEvidenceCount} of ${rowsRes.rows.length} row(s) have status 'no_evidence' — under the v4.0 engine this means no karyatva registry entry exists for that event class (a defensive case; it should not occur for any of the 27 standard classes). Their grade is NULL (not scored). They are served honestly (R6, R8) but should not be treated as assessed verdicts.`
         : null
       return {
         content: {
@@ -111,7 +129,7 @@ export const queryPratijnaCapability: CapabilityDescriptor = {
           more_available: offset + rowsRes.rows.length < total_matching,
           no_evidence_qualification,
           filters: { ayanamsha_id, status, event_class_id, limit, offset },
-          reference_note: 'supporting_signal_ids / contradicting_signal_ids reference upstream signal ids (§N.5) — resolve them via query_signals; values are not restated here.',
+          reference_note: 'supporting_signal_ids / contradicting_signal_ids are always NULL under the v4.0 engine (it does not match bodha_msr_signals) — the real classical evidence for a row is derivation.factor_ledger / derivation.weights, served inline above.',
           provenance: { tables: ['bodha_pratijna'], source: 'L2 Bodha pratijna ledger; served chart-scoped, budgeted.' },
         },
         is_error: false,
