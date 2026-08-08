@@ -22,6 +22,12 @@ was rebuilt LIVE (real commit, not rollback-wrapped) for chart `482012f1` via th
 `mimamsa_insight_units` rows now serve the correct v4 sentence in production, independently
 re-verified with a fresh, separate query — see the Rung P7 row for full evidence (before/after
 row counts, statement text, other-chart isolation check, Mahā-Brief-surface code confirmation).
+**Lane B5 (merge + deploy phase): CLOSED — MERGED to `main` @ `0f4a5045b` (PR #1118, squash),
+DEPLOY VERIFIED live.** GATE-EXECUTOR (this session, 2026-08-08/09) independently re-verified
+every packet claim, found and closed one real gap the packet did not surface (CI had never
+actually run on `pratijna-v4/integration` — see the B5 row below), then merged and confirmed the
+live deploy with a real authenticated MCP call. **Safe to proceed to the Lane B5 chart-rebuild
+sub-phase / Rung P8.**
 
 **Live status:** Stage 0, B0, B1, B2 (library+writer), B3 all CLOSED and MERGED — see the
 Lane status table below for full per-lane evidence (each row is the authoritative record;
@@ -104,8 +110,8 @@ queued ≠ merged.
 | B3 | Three-tier verification — CI tier (pre-merge/post-deploy tiers are Gate-Executor/later-lane scope) | **CLOSED — MERGED @ `6b04005ab` (PR #1116).** Permanent CI regression gate now live: fixture freshness independently confirmed against live prod (27853 rows, exact match), property tests confirmed to have real teeth via PARĪKṢAKA's OWN independent mutations (not just the builder's self-tests) — seeded a chart-ID literal into engine code (caught), collapsed separation's karaka set to marriage's, the exact historical v3 defect class (caught). Worktree + branch cleaned up. Was previously: to isolated-worktree BUILDER, branch `pratijna-v4/lane-b3-verification`. Deliverable: real-data snapshot fixture for `482012f1` (chart_facts+chart_fact_identity+chart_divisionals, versioned, refresh procedure documented, following the `fresh_chart_smoke.yml`/`SAMIKSHA_TEST_DATABASE_URL` ephemeral-Postgres precedent already in this repo) + property tests (marriage≠separation distinct evidence, childbirth independent of 7H affliction, afflicted-but-present-7H→occurrence>0∧condition>0, no status monoculture, no occurrence≥0.95 without cited near-maximal set, condition_grade nonzero somewhere, every citation resolves — structural check, R13 audit as an automated grep-based test) + CI wiring. Briefed to complete fully in one pass (no backgrounding-and-stopping, per B2 writer-wiring's 2 stalls) — **stalled the same way anyway** (backgrounded the full regression suite, stopped waiting on its own Monitor notification instead of inline). Conductor verified externally (waited on the OS process directly, ~40s, not hung — real work already present: `ci.yml` +84 lines, new fixture dir, new property-test file) and resumed with the same instruction, more explicitly. **Pattern note for future lanes**: this is the 3rd stall of this type across the campaign (B2 writer-wiring ×2, B3 ×1) — worth an even more explicit anti-backgrounding directive in B4+ dispatches, and worth flagging to the native as a recurring builder-agent tendency rather than a one-off. **Second resumption succeeded**: PR #1116 opened, full structured report — fixture at `tests/fixtures/pratijna_v4_snapshot/` (schema.sql + 5 gzipped CSVs, ~1.8MB, chart `482012f1` lahiri_chitrapaksha only, row count 27853 independently matching live production per the builder's own check), 21/21 property tests passing foreground against a fresh ephemeral Postgres (incl. 3 mutation-proof self-tests), new CI job `pratijna-v4-fixture-property-tests`, B0's identical-factor-sets test confirmed already CI-collected via `--collect-only`, full regression 5451/0-new. PARĪKṢAKA dispatched with emphasis on whether the property tests have real teeth (mutation-proof, or structurally guaranteed to pass regardless of engine correctness — the specific risk of a "permanent regression gate" creating false confidence) plus independent fixture-freshness re-check and full CI-job reproduction. NEXT ACTION on resumption: check PARĪKṢAKA verdict before merge. |
 | B4 | Consumer audit (ph_nimitta, ka_*, mi_darshana, query_pratijna) | **CLOSED — MERGED @ `fa9c727d3` (PR #1117).** Full-repo census (33 files vs. claimed 32, immaterial). 2 real production-affecting defects found and fixed (both root-caused to v4 never populating `supporting_signal_ids`): `stage2_promise.py`'s `promise_prior()` was returning exactly 0.0 for every class system-wide; `mi_darshana.py`'s Section-5 evidence count was silently 0 on all 135 scored rows. Both given a `derivation`-based fallback, PARĪKṢAKA-reproduced independently live (old code confirmed broken, new code confirmed fixed with real non-fabricated values traced to actual DB fields). `query_pratijna.ts` narration corrected to state v4's real semantics. **One defect found in the PR's OWN reasoning, not its code**: a false citation claiming ph_nimitta inherits specific threshold constants that PARĪKṢAKA proved never existed there (conflated with an unrelated file's constants) — ph_nimitta is genuinely safe for the real, verified reason (untouched by this PR, reads only grade/status on the preserved scale), but the stated evidence was wrong. Conductor corrected the PR body directly (prose/metadata only, consistent with the B2 docstring-fix precedent of not letting a false claim stand even when non-blocking) and added PARĪKṢAKA's disclosed non-blocking follow-up (inherited noisy-OR amplification risk in the stage2_promise fix's multi-karaka classes) to the permanent PR record. Worktree + branch cleaned up. |
 | — | Rung P7 (one class through consumers) | **GREEN — gap closed, gap-closure session (PARĪKṢAKA, 2026-08-08/09).** Prior PARĪKṢAKA pass (quoted findings 1–5 below, retained for the record) proved the `stage2_promise.py`/`mi_darshana.py` consumer CODE correct but found the production-SERVED `mimamsa_insight_units` rows for chart `482012f1` stale (v3-era, pre-v4-rewrite). This session closed that gap for real. **(6) Idempotency safety confirmed before writing** — read `mi_darshana.py` `_substep_insight_units` in full: it ends with `DELETE FROM mimamsa_insight_embeddings WHERE chart_id=%s` + `DELETE FROM mimamsa_insight_units WHERE chart_id=%s` immediately before its batch INSERT, scoped strictly to the one `chart_id` param — canonical §N.3 per-chart delete-then-insert, matching the pattern Rung P6 already live-proved safe for `bo_pratijna`. **(7) Real live write, NOT rollback-wrapped** — invoked the actual writer via the same `ContextSpec`/`WriterBase.run(ctx)` path Rung P6 used (`ContextSpec(asset_id='mi_darshana', build_id='00000000-0000-4000-8000-000000000007', db_conn=conn, config={'chart_id': '482012f1-710e-4a25-994a-93821f5871aa'})`, `MiDarshanaWriter().run(ctx)`), then `conn.commit()`. Result: `WriterResult(rows_inserted=113, rows_updated=0, rows_skipped=0)`. **(8) Independent re-verification, fresh separate connection/query (not inside the write transaction)** — BEFORE: `mimamsa_insight_units` total row count for `482012f1` = 113, `verdict_marriage.statement` = `"Marriage: promised (grade 6.2/10). Strong evidence, corroborated across traditions."` (`updated_at=2026-08-07 23:49:18 UTC`, stale). AFTER: total row count = 113 (unchanged — same count, principled replace not accretion/collapse), `verdict_marriage.statement` = **`"Marriage: conditional (grade 3.2/10). Conditional — context-dependent, per cross-tradition concordance."`** (`rank_consequence=0.321`, `n_support=5`, `updated_at=2026-08-08 21:43:22 UTC`) — exact match, word-for-word, to the prior pass's rollback-wrapped recomputation. `provenance_chain.activation_state='conditional'`, `ranked_evidence` traces to real `derivation.factor_ledger` entries (`house_lord`/Venus/enemy/0.15, `karaka`/Jupiter/moolatrikona/0.129, …) — never fabricated. **(9) Sanity spot-checks** — `verdict_separation`: `"Separation: conditional (grade 5.0/10). Conditional — context-dependent, per cross-tradition concordance."` (was `"promised (grade 6.2/10)…"`). `verdict_childbirth`: `"Childbirth: conditional (grade 5.9/10). Conditional — context-dependent."` (was `"promised (grade 5.9/10)…"`, `n_support` 5→4, both honest per-row reads, not corrupted). Full `insight_type` breakdown for `482012f1` post-rebuild: `verdict_object=27, retrodiction=50, emergent_law=20, calibrated_outlook=6, manifestation_grammar=6, load_bearing=4` (sums to 113 — matches total, no orphaned/nulled rows). **Other-chart isolation check**: queried ALL charts' row counts post-write — `1c826d5a-…` (Abhinandan) still shows 37 rows, completely untouched; only `482012f1` changed. **(10) Mahā-Brief surface re-confirmed against the ACTUAL refreshed table** (not just hand-traced as before) — `platform-mcp/src/tools/register_p1_synthesis.ts` line ~776 (`synth_chart_brief_get`) issues `SELECT insight_id, insight_type, domain, question_lens, … FROM mimamsa_insight_units` filtered/ranked with `CASE insight_type WHEN 'verdict_object' THEN 1 …`, then `rows.filter(r => r['insight_type'] === 'verdict_object')` at line ~807 — reads directly from the table just rebuilt; MCP tool itself remains unreachable read-only from this environment (auth-gated), so this is confirmed by code inspection against the live schema, not a live tool call, but the data path is unambiguous: next real invocation serves the corrected sentence. **VERDICT: Rung P7 is GREEN.** Both the consumer code (B4) and the served data (this session) are now independently verified correct and live for chart `482012f1`. Scope note carried to B5: this rebuild covered `482012f1` only (a one-off gap-closure write per this task's brief) — it does not by itself make `mi_darshana` rebuild a durable part of the deploy pipeline; B5 should still add that as an explicit, gated step for every chart. — Prior findings (1–5), retained: **(1)** `bodha_pratijna` row CONFIRMED: `status='conditional'`, `occurrence_grade=0.321`/WEAK, `condition_grade=5.830`/MODERATE, `grade=3.210`, `derivation.weights` Venus/Jupiter both `slot=karaka` weight `0.142857` each. **(2)** `promise_prior()` CONFIRMED FIXED live: `P_e=0.672321`, `n_routes=5`, nonzero (pre-fix was hard-zero). **(3)** the original staleness finding this session closed. **(4)** Mahā-Brief parser hand-trace: `parseStatement`/`detectStatusVocabularyConflict` handle the v4-shaped statement correctly, no false D-12 flag, routes to `open_questions`. **(5)** Noisy-OR amplification `P_e=0.672` vs raw `occurrence_grade=0.321` (2.09×) — real, reproducible, diagnostic-only design characteristic (not a bug), root-caused to `load_promise_graph`'s `max(weight, grade/10)` conductance rule; flagged as a named follow-up for whoever consumes `P_e` as a served confidence figure, not blocking. |
-| B5 | Gate + deploy + rebuild | **GATE PACKET ASSEMBLED, Gate-Executor DISPATCHED** (merge+deploy phase only — chart-rebuild phase follows as a separate dispatch after deploy is verified). See "## Gate Packet — B5" below for the full packet. |
-| — | Rung P8 (single-chart full acceptance, 482012f1 first) | PENDING |
+| B5 | Gate + deploy (merge+deploy phase) | **CLOSED — MERGED @ `0f4a5045b` (PR #1118, squash into `main`), DEPLOY VERIFIED LIVE.** GATE-EXECUTOR dispatch (fresh Opus-role context, own-query verification per campaign rails), full account below under "## Gate-Executor B5 Close Report". **Chart-rebuild sub-phase (Rung P8+) remains a separate, later dispatch — explicitly out of this session's scope**, consistent with the packet's own framing. |
+| — | Rung P8 (single-chart full acceptance, 482012f1 first) | PENDING — next action |
 | B6 | Measurement #3 (temporal skill, R15 event set) | NOT STARTED |
 | B7 | Promise-layer scoreboard v0 | NOT STARTED |
 | — | CLOSE | PENDING |
@@ -152,6 +158,97 @@ jobs): `amjis-sidecar` (python-sidecar — the actual writer/engine changes), `a
 `synth_chart_brief_get`/`query_pratijna` etc. — TS narration fix), `amjis-web`, `amjis-pipeline`
 (Cloud Run Job). Deploy triggers automatically on push to `main` after CI passes
 (`workflow_run` on `main`, or `workflow_dispatch` for a manual/forced run).
+
+## Gate-Executor B5 Close Report (2026-08-08/09)
+
+Fresh-context Opus-role GATE-EXECUTOR dispatch. Own-query verification throughout — every claim
+below is from a live command/query this session ran itself, not re-read from the packet.
+
+**Phase 1 — independent verification of the packet:**
+- `main == origin/main`: MATCH, both `4d725359b` (`git fetch origin main && git rev-parse main
+  origin/main`).
+- Zero migrations: confirmed, `git diff main..origin/pratijna-v4/integration --stat | grep -i
+  migration` returned empty.
+- Spot-check 1 (`bodha_pratijna`, chart `482012f1`, `ayanamsha_id='lahiri_chitrapaksha'`, live
+  `psql` query): marriage `occurrence_grade=0.321` / `condition_grade=5.830`; separation
+  `0.505`/`8.750`; childbirth `0.593`/`7.500` — exact match to the packet's RUNG_P3 numbers.
+  (Non-canonical ayanamshas — raman/krishnamurti/true_chitra/surya_siddhanta_classical — carry
+  slightly different marriage/separation numbers per-ayanamsha, as expected; lahiri is the
+  canonical row the packet cites.)
+- Spot-check 2 (`mimamsa_insight_units`, live `psql` query): `verdict_marriage.statement` =
+  `"Marriage: conditional (grade 3.2/10). Conditional — context-dependent, per cross-tradition
+  concordance."`, `rank_consequence=0.321`, `n_support=5`, `updated_at=2026-08-08 21:43:22 UTC` —
+  confirmed the CORRECTED v4 sentence, not the stale "promised" text.
+- No in-flight conflicting work: `git branch -a | grep pratijna-v4` showed only
+  `pratijna-v4/integration` (local + remote), no lingering lane branches. `git worktree list`
+  showed only pre-existing ADHIṢṬHĀNA-campaign stale worktrees (already flagged non-blocking in
+  this ledger's own "Note on stale worktrees") plus one unrelated detached PARĪKṢAKA scratch
+  worktree — neither collides with this campaign.
+- **CI-green check — REAL GAP FOUND, not in the packet:** `gh api
+  repos/.../commits/pratijna-v4/integration/status` returned `total_count: 0` and
+  `state: "pending"` — **CI had never actually run on `pratijna-v4/integration`, at any commit.**
+  Root cause, independently traced: `.github/workflows/ci.yml`'s `pull_request` trigger only
+  fires for `branches: [main, 'shad-darshana/integration']`. Every one of this campaign's 5 lane
+  PRs (#1113–#1117) targeted `pratijna-v4/integration` as base — none of them ever triggered a
+  GitHub Actions CI run (`gh pr view <n> --json statusCheckRollup` showed `checks: 0` on all 5).
+  All of this campaign's verification to date was real (builder self-runs + independent
+  PARĪKṢAKA live re-runs, extensively documented above) but none of it was the actual CI
+  pipeline / the new Lane B3 regression gate had literally never executed as a GH Actions job.
+  **Not a blocker in the sense of bad code — a process gap in how "CI green" was being claimed.**
+  Resolution (matches this repo's own established pattern — confirmed via precedent: PR #1108
+  `adhisthana/integration → main` ran full CI before merge): opened a real PR **#1118**
+  (`pratijna-v4/integration → main`), which correctly triggered `ci.yml`'s `pull_request` event
+  for the first time on this branch's actual content.
+
+**Phase 1 result: 4/5 checks clean, 1 finding (CI never ran) resolved via the intended mechanism
+(open the PR to `main`) rather than bypassed.** Proceeded to Phase 2 only after real CI ran green.
+
+**Phase 2 — merge:**
+- PR #1118 CI run: all 25 non-skipped checks `pass` (8 `skipping`, all conditional deploy/
+  dispatch-only jobs gated on path-filters or bearer tokens — same skip set as PR #1108's
+  precedent run), including the new **"PRATIJÑĀ v4 Fixture Property Tests (Lane B3)"** job —
+  its first-ever live GH Actions execution.
+- `gh pr merge 1118 --squash` was rejected — this repo's `main` is governed by a **merge queue**
+  (`gh pr merge` without `-s` auto-detects this: "no merge strategy is required... added to the
+  merge queue"). Re-ran without a strategy flag; PR queued, merge-queue ran a second full CI
+  cycle on the `gh-readonly-queue/main/pr-1118-...` ref (`run 31280849647`, `conclusion: success`)
+  before landing.
+- **Result: PR #1118 MERGED, squash commit `0f4a5045ba9623688512fecd0deda7f91d852d18` on `main`**
+  (single-parent, parent `4d725359b` — confirmed via `git log -1 --pretty='%P'`; same squash
+  pattern as PR #1108/`edd4cf928`, not a 2-parent merge commit — the packet's rollback-path
+  language "`git revert -m 1 <merge-sha>`" should read as plain `git revert <sha>` for a squash
+  commit, noted here for anyone executing that rollback path later).
+
+**Phase 3 — deploy verification:**
+- CI on `main` (push trigger, `run 31281181995`) — green, which fired `deploy.yml`'s
+  `workflow_run` trigger (`run 31281424466`).
+- `deploy-mcp` job **skipped** — independently confirmed this is CORRECT, not a gap: the actual
+  deploy-time path filter (`.github/workflows/deploy.yml` "Detect changed paths" step) checks
+  `^platform-mcp/` only; this PR's TS change (`query_pratijna.ts`) lives under
+  `platform/src/lib/retrieval/registry/...`, which is `amjis-web` territory, not
+  `platform-mcp/`. Traced the actual runtime call path (`platform-mcp/src/tools/retrieval/
+  kala_temporal.ts`'s documented pattern, generalizes to `query_pratijna`): `platform-mcp`
+  proxies registry-capability reads to `amjis-web`'s `/api/retrieval/capability` HTTP endpoint
+  rather than importing `platform/src/lib` directly — so the narration fix ships via `amjis-web`,
+  which DID redeploy. `deploy-sidecar` and `deploy-web` both ran and succeeded; `deploy-pipeline`
+  (Cloud Run Job image) also ran/succeeded (path-filter matched python-sidecar changes).
+- Traffic confirmed independently via `gcloud run services describe` (not just reading the
+  Action log): `amjis-web` → `{'latestRevision': True, 'percent': 100, 'revisionName':
+  'amjis-web-01381-st7'}`; `amjis-sidecar` → `{'latestRevision': True, 'percent': 100,
+  'revisionName': 'amjis-sidecar-00969-z9l'}`. Both services' `commit-sha` label =
+  `0f4a5045ba9623688512fecd0deda7f91d852d18` — the exact merged commit.
+- **Live authenticated MCP call** (`mcp__marsys-jis-direct__mcp_server_info` for liveness, then
+  `mimamsa_insight_get(chart_id=482012f1-..., insight_type=verdict_object,
+  domain=relationship)`): returned `verdict_marriage.statement = "Marriage: conditional (grade
+  3.2/10). Conditional — context-dependent, per cross-tradition concordance."`,
+  `rank_consequence=0.321`, `updated_at="2026-08-08 21:43:22.998317+00"` — byte-for-byte match to
+  the direct-DB spot-check above, served live through the real deployed `amjis-mcp → amjis-web →
+  Postgres` path, not a fixture or cached value.
+
+**VERDICT: DEPLOY VERIFIED. Safe to proceed to the Lane B5 chart-rebuild sub-phase / Rung P8.**
+Every gate-packet claim independently reproduced; the one real process gap found (CI never having
+run on the integration branch) was closed by using this repo's own established mechanism, not
+worked around; merge and deploy both confirmed live, not from logs alone.
 
 ## DB access (verified pattern; never park on this)
 
