@@ -263,7 +263,7 @@ class MiDarshanaWriter(WriterBase):
                 cur.execute("""
                     SELECT bp.event_class_id, bp.status, bp.grade,
                            bp.supporting_signal_ids, bp.contradicting_signal_ids,
-                           beo.name_en, beo.domain
+                           bp.derivation, beo.name_en, beo.domain
                     FROM bodha_pratijna bp
                     JOIN brahma_event_ontology beo USING (event_class_id)
                     WHERE bp.chart_id = %s AND bp.ayanamsha_id = %s
@@ -387,6 +387,38 @@ class MiDarshanaWriter(WriterBase):
                         for sid in sup_ids if sid in signal_by_id
                     ]
 
+                    # PRATIJÑĀ v4 Lane B4 fallback: the v4 bo_pratijna engine
+                    # never populates supporting_signal_ids (it never reads
+                    # bodha_msr_signals at all — see bo_pratijna.py's module
+                    # docstring). Without this, ranked_evidence would be
+                    # silently empty for every promised/conditional/denied
+                    # row, contradicting a "Strong evidence" verdict_note with
+                    # zero cited evidence. v4's real evidence for the class is
+                    # its own derivation.factor_ledger (§2 of
+                    # V4_RUBRIC_SPEC_v1_0.md) — a real, deterministic,
+                    # per-factor classical citation, never invented here.
+                    if not ranked_evidence:
+                        factor_ledger = (pr.get("derivation") or {}).get("factor_ledger")
+                        if isinstance(factor_ledger, list):
+                            ranked = sorted(
+                                (f for f in factor_ledger if isinstance(f, dict)),
+                                key=lambda f: float(f.get("contribution") or 0.0),
+                                reverse=True,
+                            )
+                            ranked_evidence = [
+                                {
+                                    "signal_id": None,
+                                    "signal_type_id": None,
+                                    "salience": float(f.get("contribution") or 0.0),
+                                    "tier": f.get("dignity_state"),
+                                    "fact_ids": [],
+                                    "classical_sources": [],
+                                    "slot": f.get("slot"),
+                                    "graha": f.get("graha") or f.get("lord"),
+                                }
+                                for f in ranked[:5]
+                            ]
+
                     domain_contras = [
                         {
                             "signal_a_id": str(c.get("signal_a_id")),
@@ -472,7 +504,7 @@ class MiDarshanaWriter(WriterBase):
                         statement,
                         g_norm,
                         f"[{conf_lo},{conf_hi})",
-                        len(sup_ids),
+                        len(ranked_evidence),
                         "clean",
                         "structural",
                         LEL_VERSION,

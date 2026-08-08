@@ -11,6 +11,7 @@ JSON-serializable provenance. The NULL/None path is kept for regression cover.
 """
 from __future__ import annotations
 
+import json
 from decimal import Decimal
 
 from pipeline.orchestrator.writers.mi_darshana import MiDarshanaWriter
@@ -94,15 +95,17 @@ def _run(reliability_rows):
     return conn, result
 
 
-def _pratijna_row(event_class_id, grade, status="conditional", domain="career", name_en=None):
+def _pratijna_row(event_class_id, grade, status="conditional", domain="career",
+                   name_en=None, supporting_signal_ids=None, derivation=None):
     return {
         "event_class_id": event_class_id,
         "status": status,
         "grade": grade,
-        "supporting_signal_ids": [],
+        "supporting_signal_ids": supporting_signal_ids if supporting_signal_ids is not None else [],
         "contradicting_signal_ids": [],
         "name_en": name_en or event_class_id,
         "domain": domain,
+        "derivation": derivation,
     }
 
 
@@ -384,3 +387,88 @@ def test_verdict_note_mid_grade_with_tradition_data():
     assert result.rows_inserted == 1
     row = conn.inserted_rows[0]
     assert "Conditional — context-dependent, per cross-tradition concordance." in row[STATEMENT]
+
+
+# ── PRATIJÑĀ v4 Lane B4 consumer audit — ranked_evidence factor_ledger fallback ─
+# v4's bo_pratijna engine never populates supporting_signal_ids (it never reads
+# bodha_msr_signals at all — see bo_pratijna.py's module docstring). Without a
+# fallback, EVERY non-no_evidence verdict_object row's `ranked_evidence` would
+# be silently empty and `n_support` would silently read 0, even for a row whose
+# statement claims "Strong evidence" — a misleading empty-evidence artifact,
+# not an honest one (the real evidence is v4's own `derivation.factor_ledger`,
+# just not looked at by this reader).
+
+def test_v4_row_with_no_supporting_signals_gets_ranked_evidence_from_factor_ledger():
+    conn, result = _run_verdict([
+        _pratijna_row(
+            "ec_v4", grade=8.5, status="promised", domain="career",
+            supporting_signal_ids=[],
+            derivation={
+                "factor_ledger": [
+                    {"slot": "house_lord", "lord": "Saturn", "house": 10,
+                     "weight": 0.32, "contribution": 0.32, "dignity_state": "exalted"},
+                    {"slot": "karaka", "graha": "Jupiter",
+                     "weight": 0.18, "contribution": 0.16, "dignity_state": "moolatrikona"},
+                ],
+            },
+        ),
+    ])
+    assert result.rows_inserted == 1
+    row = conn.inserted_rows[0]
+    prov = json.loads(row[PROVENANCE_CHAIN])
+    evidence = prov["ranked_evidence"]
+    assert len(evidence) == 2, "factor_ledger entries must populate ranked_evidence, not a silent []"
+    assert evidence[0]["salience"] >= evidence[1]["salience"], "must be ranked, highest contribution first"
+    assert evidence[0]["signal_id"] is None, "no MSR signal exists for a v4 factor-ledger entry — honest null"
+    assert {e.get("slot") for e in evidence} == {"house_lord", "karaka"}
+    assert row[9] == len(evidence), "n_support must reflect the real (factor-ledger) evidence count, not 0"
+
+
+def test_v4_no_evidence_row_still_gets_empty_ranked_evidence_not_a_fabricated_one():
+    """A genuine no_evidence row must NOT get factor_ledger evidence fabricated
+    for it — its derivation has no 'factor_ledger' key at all (bo_pratijna.py's
+    no_evidence branch), and the writer's own early-branch for no_evidence rows
+    is untouched by this fix."""
+    conn, result = _run_verdict([
+        _pratijna_row(
+            "ec_ne", grade=None, status="no_evidence", domain="career",
+            supporting_signal_ids=[],
+            derivation={"engine_version": "bo_pratijna_v4.0",
+                        "reason": "no KaryatvaMap registered"},
+        ),
+    ])
+    assert result.rows_inserted == 1
+    row = conn.inserted_rows[0]
+    prov = json.loads(row[PROVENANCE_CHAIN])
+    assert prov["ranked_evidence"] == []
+
+
+def test_msr_signal_evidence_still_preferred_when_present():
+    """A row that DOES have supporting_signal_ids (a hypothetical future
+    writer, or a not-yet-rebuilt v3 row) must keep using the MSR-signal path,
+    not the factor_ledger fallback — the fallback only fires when the MSR
+    path is genuinely empty."""
+    conn = _FakeConn([])
+    conn.existing_tables = {"bodha_pratijna", "bodha_triangulation"}
+    conn.pratijna_rows = [
+        _pratijna_row(
+            "ec_msr", grade=7.0, status="promised", domain="career",
+            supporting_signal_ids=["sig-1"],
+            derivation={"factor_ledger": [
+                {"slot": "karaka", "graha": "Mars", "weight": 0.5, "contribution": 0.5},
+            ]},
+        ),
+    ]
+    conn.msr_signal_rows = [
+        {"signal_id": "sig-1", "signal_type_id": "t1", "computed_salience": 0.7,
+         "tier": "primary", "constituent_facts_array": ["fact-1"],
+         "classical_sources_array": ["BPHS ch.10"]},
+    ]
+    writer = MiDarshanaWriter()
+    result = writer._substep_insight_units(conn, NATIVE_CHART_ID, t0=0.0)
+    assert result.rows_inserted == 1
+    row = conn.inserted_rows[0]
+    prov = json.loads(row[PROVENANCE_CHAIN])
+    evidence = prov["ranked_evidence"]
+    assert len(evidence) == 1
+    assert evidence[0]["signal_id"] == "sig-1", "MSR-signal evidence must win when it exists"

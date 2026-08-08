@@ -21,6 +21,7 @@ from services.ka_kshetra.stage2_promise import (
     _extract_primary_graha,
     _restrict_to_reachable,
     _stable_node_id,
+    _v4_karaka_seeds,
     bhava_node_id,
     build_digraph,
     event_class_node_id,
@@ -250,6 +251,40 @@ class TestExtractPrimaryGraha:
         assert _extract_primary_graha("not a dict") is None
 
 
+# ── PRATIJÑĀ v4 karaka-seed fallback (Lane B4 consumer audit) ────────────────
+# v4's bo_pratijna engine never populates supporting_signal_ids (it never
+# reads bodha_msr_signals at all) — without a fallback, load_promise_graph
+# would starve every event_class sink of seeds under any v4-scored chart.
+
+class TestV4KarakaSeeds:
+    def test_extracts_karaka_slot_entries_only(self):
+        derivation = {
+            "weights": [
+                {"item": "10", "slot": "house_lord", "weight": 0.32},
+                {"item": "Sun", "slot": "karaka", "weight": 0.18},
+                {"item": "Jupiter", "slot": "karaka", "weight": 0.18},
+                {"item": "D9", "slot": "divisional", "weight": 0.14},
+            ],
+        }
+        seeds = _v4_karaka_seeds(derivation)
+        assert seeds == [("Sun", 0.18), ("Jupiter", 0.18)]
+
+    def test_none_derivation_returns_empty(self):
+        assert _v4_karaka_seeds(None) == []
+
+    def test_missing_weights_key_returns_empty(self):
+        # e.g. a 'no_evidence' row's derivation (bo_pratijna.py _row_for_score)
+        assert _v4_karaka_seeds({"engine_version": "bo_pratijna_v4.0", "reason": "x"}) == []
+
+    def test_karaka_entry_with_null_item_skipped(self):
+        derivation = {"weights": [{"item": None, "slot": "karaka", "weight": 0.1}]}
+        assert _v4_karaka_seeds(derivation) == []
+
+    def test_non_dict_weights_entry_ignored(self):
+        derivation = {"weights": ["not-a-dict", {"item": "Mars", "slot": "karaka", "weight": 0.2}]}
+        assert _v4_karaka_seeds(derivation) == [("Mars", 0.2)]
+
+
 # ── promise_prior end-to-end over an in-memory graph (fake conn) ─────────────
 
 class _FakeCursorResult:
@@ -326,6 +361,53 @@ class TestPromisePriorEndToEnd:
         assert result.p == 0.0
         assert result.n_routes == 0
 
+    def test_v4_row_with_no_supporting_signal_ids_still_seeds_via_karaka_fallback(self):
+        """PRATIJÑĀ v4 shape: supporting_signal_ids is NULL/empty (v4 never
+        populates it), but derivation.weights carries the class's karaka
+        significators. Without the Lane B4 fallback this class would have
+        zero seeds, zero routes, and P_e == 0.0 — a silent regression that
+        would make every v4-scored chart's promise field structurally empty."""
+        from services.ka_kshetra.stage2_promise import promise_prior
+
+        cgm_nodes = [
+            {"node_id": "n1", "node_type": "graha", "node_subject": "Jupiter",
+             "node_label_human": "Jupiter", "strength_score": None,
+             "constituent_fact_ids_array": None},
+        ]
+        cgm_edges = []
+        pratijna = [
+            {"pratijna_id": "pid-1", "event_class_id": "career_change",
+             "status": "promised", "grade": 7.0, "supporting_signal_ids": None,
+             "derivation": {
+                 "weights": [
+                     {"item": "10", "slot": "house_lord", "weight": 0.32},
+                     {"item": "Jupiter", "slot": "karaka", "weight": 0.18},
+                 ],
+             }},
+        ]
+        conn = _FakeConn(cgm_nodes, cgm_edges, pratijna, [])
+        result = promise_prior("chart1", "career_change", conn)
+        assert result.p > 0.0, "v4 karaka-fallback seed must produce a non-zero route"
+        assert result.n_routes >= 1
+        assert "pratijna:pid-1" in result.fact_ids
+
+    def test_v4_no_evidence_row_correctly_yields_zero_seeds(self):
+        """A genuine 'no_evidence' row (no KaryatvaMap entry) has no 'weights'
+        key at all in its derivation — this must still correctly produce zero
+        seeds/routes, not a spurious fallback seed."""
+        from services.ka_kshetra.stage2_promise import promise_prior
+
+        pratijna = [
+            {"pratijna_id": "pid-2", "event_class_id": "career_change",
+             "status": "no_evidence", "grade": None, "supporting_signal_ids": None,
+             "derivation": {"engine_version": "bo_pratijna_v4.0",
+                            "reason": "no KaryatvaMap registered"}},
+        ]
+        conn = _FakeConn([], [], pratijna, [])
+        result = promise_prior("chart1", "career_change", conn)
+        assert result.p == 0.0
+        assert result.n_routes == 0
+
 
 # ── Live tier: needs a real DB connection ─────────────────────────────────────
 
@@ -344,5 +426,47 @@ class TestLiveDbIntegration:
             nodes, edges, seeds_by_class, fact_ids = load_promise_graph(conn, chart_id)
             assert isinstance(nodes, list)
             assert isinstance(edges, list)
+        finally:
+            conn.close()
+
+    def test_v4_scored_chart_has_real_seeds_not_a_starved_graph(self):
+        """PRATIJÑĀ v4 Lane B4 regression proof: chart 482012f1 is fully
+        v4-scored (bo_pratijna.py ENGINE_VERSION='bo_pratijna_v4.0') and has
+        0/135 rows with a non-NULL supporting_signal_ids. Before the Lane B4
+        karaka-fallback fix, every event_class's seeds list was empty on this
+        chart — this test would have failed pre-fix and proves the fix is
+        live, not just unit-tested against a fake conn."""
+        import psycopg
+        from services.ka_kshetra.stage2_promise import load_promise_graph, promise_prior
+
+        conn = psycopg.connect(os.environ["DATABASE_URL"], row_factory=psycopg.rows.dict_row)
+        try:
+            chart_id = "482012f1-710e-4a25-994a-93821f5871aa"
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT count(*) FROM bodha_pratijna WHERE chart_id = %s "
+                    "AND supporting_signal_ids IS NOT NULL",
+                    (chart_id,),
+                )
+                non_null_supporting = cur.fetchone()["count"]
+            assert non_null_supporting == 0, (
+                "this chart is expected to be v4-scored (supporting_signal_ids "
+                "always NULL) -- if this assertion fails, the fixture premise "
+                "changed and this test's framing needs re-checking, not the code."
+            )
+
+            nodes, edges, seeds_by_class, fact_ids = load_promise_graph(conn, chart_id)
+            non_empty_classes = [ec for ec, seeds in seeds_by_class.items() if seeds]
+            assert non_empty_classes, (
+                "every event_class has zero seeds -- the v4 karaka-fallback "
+                "regression (Lane B4) is back: promise_prior will return "
+                "P_e == 0.0 for every class on any v4-scored chart."
+            )
+
+            result = promise_prior(chart_id, "marriage", conn)
+            assert result.p > 0.0, (
+                "marriage is a promised/conditional class on this chart (Rung P6) "
+                "-- its live promise_prior() must be non-zero."
+            )
         finally:
             conn.close()
