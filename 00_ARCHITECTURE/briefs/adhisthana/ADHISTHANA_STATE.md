@@ -48,10 +48,10 @@ inconclusive) carried forward, not hidden.
 | Lane | Description | Status |
 |---|---|---|
 | A1 | Producer convergence (`ga_condition_writer` 5×`.upper()` sites + `ga_vargas_writer:3002`) | **MERGED** — PR #1101 → `adhisthana/integration` @ `9f0b75d20`. `ga_condition_writer.py` 5 sites + `ga_vargas_writer.py` 1 site now route through `PLANET_TO_SUBJECT` (imported from `ga_positions_writer`, not relocated). Rahu/Ketu edge fixed (`RAHU`→`RAH_MEAN`, `KETU`→`KET_MEAN`), not just case. TDD: 4/4 new tests red→green, 323 targeted regression pass, full suite pass except 23 pre-existing unrelated failures in `test_l0_remedy_corpus.py`. R19: forward-only, no `chart_facts` write. **Note for A2**: `PLANET_TO_SUBJECT` still lives in `ga_positions_writer.py`; if A2 relocates it to `graha_vocabulary.py`, the two new import lines in `ga_condition_writer.py`/`ga_vargas_writer.py` need a mechanical re-point at merge time. |
-| A2 | Graha SSoT by promotion (`brahmagyan/graha_vocabulary.py` from `norm_graha`; TS `grahaCodeOf` canonical) | PR #1104 OPEN (not yet merged) — builder stalled once (600s watchdog) mid-task, resumed from checkpoint with uncommitted Python-side work intact, completed. Scope far exceeded original estimate: real removal census found **Python 46→1 (+2 documented exclusions)**, **TS 18→1** (master plan's grounding table had estimated ~13/~6 — the true full-tree count was much larger). 57 files touched, 1160+/353-. Claims: `ka_yojaka` Title-case contract preserved value-for-value; rebased cleanly onto A1/A3/A4; 6688 Python tests pass (30 pre-existing unrelated failures); TS `tsc --noEmit` clean, 4827 vitest pass. **Given the size and risk, a fresh-context PARĪKṢAKA verification agent was dispatched to independently re-derive the census, spot-check value-for-value equivalence on ~10 files, re-run the load-bearing test suites, and verify R19/rebase-cleanliness claims before merge — not yet returned.** |
+| A2 | Graha SSoT by promotion (`brahmagyan/graha_vocabulary.py` from `norm_graha`; TS `grahaCodeOf` canonical) | **MERGED** — PR #1104 → `adhisthana/integration` @ `b646a0a9c`. Builder stalled once (600s watchdog) mid-task; resumed from checkpoint with uncommitted Python-side work intact. 57 files touched, 1160+/353-. **PARĪKṢAKA independent verification (fresh-context, default-refuted, ran everything itself — not a self-report read): verdict YELLOW, safe to merge.** TS census 18→1 exactly confirmed by re-running the committed scanner against a real pre-lane checkout. Python census: builder claimed 46→1(+2); PARĪKṢAKA's own independent re-derivation against two candidate pre-lane commits both gave **45, not 46** — a ~2% narrative discrepancy, the enforced CI gate itself is real and correctly fails-then-passes; not a functional defect, noted not silently accepted. All 43 retired Python maps + 17 retired TS maps re-executed old-literal-vs-new-code value-for-value: **zero deviations found anywhere.** `ka_yojaka` Title-case contract verified byte-identical for all 18 keys including the Rahu/Ketu edge case. Real before/after diff of ~6700 Python tests' pass/fail identity: byte-identical failure set except the one intended flip (census test FAIL→PASS). TS: `tsc --noEmit` clean, 4827/4827 vitest pass (exact match to claim). R19 clean (no migrations, no `chart_facts` DML). `git merge-tree` clean with A1/A3/A4; A1's `PLANET_TO_SUBJECT` import confirmed still working. **One caveat flagged for awareness, not blocking**: `bo_laksana._EXTRA_TEXT_ALIASES`'s exclusion from the census is a judgment call (structurally matches the scanner's own map definition, excluded only by an explicit allowlist) rather than a clean structural non-match — narrowly scoped to one free-text-extraction consumer, judged legitimate but worth a maintainer's eye later. |
 | A3 | Registry completion (`entity_class='varga'`, storage-code synonyms, `list_entities.ts`) | **MERGED** — PR #1103 → `adhisthana/integration` @ `5201612b5`. Migration 551 (renumbered from a draft 550 after rebasing onto A4's real 550) adds `entity_class='varga'` (30 rows — `l0_reference.py`'s 19 BPHS-cited vargas confirmed a strict subset of `ga_vargas_writer.py`'s 30-varga computational set, delta=11, cited per-tier) + storage-code synonyms on 11 planet + 12 house rows. Generated directly from `l0_ontology.py` (can't drift). Applied live TWICE (idempotent both times: `INSERT 0 30` then `INSERT 0 0`). `resolve_entity.ts` gained a deterministic tie-break (`entity_class='varga' DESC`) since 14/30 varga codes collide with pre-existing `concept`-class synonyms. `list_entities.ts` gained `'varga'`+`'amsa'`. **Live verification pasted verbatim in PR**: `MAR`→mars, `D9`→d9/Navamsha (correctly wins the tie-break over the legacy concept row), `HOUSE_07`/`HOUSE_7`→house_07. One honest documented gap: bare canonical_id `house_07` itself doesn't resolve — pre-existing resolver behavior, deliberately not widened (would create new ambiguity across 10 other canonical_id collisions). |
 | A4 | Event-class TS mirror + parity + FK/CHECK + stale-comment fix | **MERGED** — PR #1102 → `adhisthana/integration` @ `4de31ed33`. New `platform/src/lib/event_classes.ts` (zero-import, 27 ids extracted from `l0_ghatana.EVENT_CLASSES` via `ast.literal_eval`, not transcription); parity test `test_event_classes_parity.py` (id set + domain/lel_category per-class); migration 550 adds a real FK `gochara_resonance_map.event_class → brahma_event_ontology(event_class_id)` (chosen over CHECK — a real 27-row reference table already exists). **Live pre-check**: 370 rows, 6 distinct classes in use, 0 violations, 0 NULLs — FK applied directly (not NOT VALID), reviewed by `migration-guard` first. **Live rejection proof pasted verbatim** (bogus insert → FK violation error, rollback clean, row count unchanged at 370). Stale "22 classes" comments in `lel_event_writer.ts` fixed to point at the TS mirror instead of a hardcoded number. **Out-of-scope finding flagged for later**: `asset_registry_seed.ts:1377-1379` has the same stale "22" on `bo_pratijna`'s `expected_volume_inputs` — not fixed (outside this lane's declared scope), carried to backlog. |
-| — | **Rung P1** (blocking, after A2+A3) | NOT RUN |
+| — | **Rung P1** (blocking, after A2+A3) | **GREEN — 23/23 checks passed.** Probe: `platform/scripts/probes/probe_p1_identity.py` (committed @ `832be4d4b`, permanent regression gate). Run live against `adhisthana/integration` HEAD, `DBURL` via the standing cloud-sql-proxy. See "Rung P1 — actual output" below for the full verbatim run (R16). |
 | A5 | THE FACT IDENTITY INDEX (`chart_fact_identity` + deterministic parser) | NOT STARTED (blocked on P1) |
 | — | **Rung P2** (blocking, after A5) | NOT RUN |
 | A6 | Gates (registry-parity script, subject-wellformedness lint, graha/varga census in CI) | NOT STARTED (blocked on P2) |
@@ -63,16 +63,75 @@ inconclusive) carried forward, not hidden.
 
 ## Removal census (R17 acceptance ledger — filled in as lanes close)
 
-| Language | Independent graha maps before | Target | Current |
-|---|---|---|---|
-| Python | 13 | 1 | 13 (unchanged) |
-| TypeScript | 6 | 1 | 6 (unchanged) |
+| Language | Independent graha maps before (master plan estimate) | Independent graha maps before (real, PARĪKṢAKA-verified) | Target | Current |
+|---|---|---|---|---|
+| Python | 13 | 45 (builder claimed 46; PARĪKṢAKA independently re-derived 45 from two candidate pre-lane commits — see A2 row above) | 1 | **1** (+2 legitimate structural exclusions, 1 judgment-call exclusion flagged) — MET |
+| TypeScript | 6 | 18 (exactly confirmed) | 1 | **1** — MET |
+
+Enforced permanently by committed CI gates: `test_graha_vocabulary_census.py` (Python), `graha_vocabulary_census.test.ts` (TS).
 
 | Divergent TS domain vocabularies before | Target | Current |
 |---|---|---|
-| 4 live + 1 dead mirror | 0 live; mirror live | 4 live + 1 dead mirror (unchanged) |
+| 4 live + 1 dead mirror | 0 live; mirror live | 4 live + 1 dead mirror (unchanged — this is Lane A7's scope, Stage 3, not yet started) |
 
 ---
+
+## Rung P1 — actual output (verbatim, 2026-08-08)
+
+Run: `DBURL=<resolved via cloud-sql-proxy> python3 platform/scripts/probes/probe_p1_identity.py`
+against `adhisthana/integration` @ `832be4d4b`'s parent (post-A1/A2/A3/A4 merge). One harness
+fix required and recorded in the script's own comment: `address_resolver.ts` transitively
+imports `@/lib/db/client` → the `server-only` marker package, which unconditionally throws
+outside a Next.js server-component bundle; running under `npx tsx --conditions=react-server`
+reproduces Next's own build-time export-condition routing (to `server-only`'s `empty.js`)
+without touching any source file — a tooling adaptation, not a workaround of the actual check.
+
+```
+==============================================================================
+RUNG P1 — Identity round-trip (live, 482012f1-scope registries)
+==============================================================================
+
+-- 9 grahas --
+[PASS] graha          'Sun'                py='SUN' ts='SUN' db_canonical_id='sun' db_entity_class='planet'
+[PASS] graha          'Moon'               py='MOON' ts='MOON' db_canonical_id='moon' db_entity_class='planet'
+[PASS] graha          'Mars'               py='MAR' ts='MAR' db_canonical_id='mars' db_entity_class='planet'
+[PASS] graha          'Mercury'            py='MER' ts='MER' db_canonical_id='mercury' db_entity_class='planet'
+[PASS] graha          'Jupiter'            py='JUP' ts='JUP' db_canonical_id='jupiter' db_entity_class='planet'
+[PASS] graha          'Venus'              py='VEN' ts='VEN' db_canonical_id='venus' db_entity_class='planet'
+[PASS] graha          'Saturn'             py='SAT' ts='SAT' db_canonical_id='saturn' db_entity_class='planet'
+[PASS] graha          'Rahu'               py='RAH_MEAN' ts='RAH_MEAN' db_canonical_id='rahu' db_entity_class='planet'
+[PASS] graha          'Ketu'               py='KET_MEAN' ts='KET_MEAN' db_canonical_id='ketu' db_entity_class='planet'
+
+-- LAGNA (checked separately — see note) --
+[PASS] graha(lagna)   'LAGNA'              py='LAGNA' ts=None db_canonical_id='lagna' — py norm_graha('LAGNA')
+  and live brahma_ontology agree (canonical_id='lagna'); TS grahaCodeOf() intentionally scoped to
+  the 9 planetary graha_position/karaka_chara_position fact_subject codes only (GRAHA_CODE_TO_NAME's
+  own docstring) and correctly throws for LAGNA rather than silently returning a wrong graha code —
+  documented SCOPE BOUNDARY, not a three-way contradiction. Python's LAGNA agreement is an identity
+  fallback (no explicit _GRAHA_ALIASES entry for LAGNA), not a deliberate alias-table entry either.
+
+-- 3 sample houses --
+[PASS] house 'HOUSE_07' -> house_07/house   [PASS] house 'HOUSE_1' -> house_01/house   [PASS] house 'H12' -> house_12/house
+
+-- 5 sample vargas --
+[PASS] D1->d1/varga  [PASS] D9->d9/varga  [PASS] D10->d10/varga  [PASS] D30->d30/varga  [PASS] D60->d60/varga
+
+-- 5 sample event classes --
+[PASS] marriage py=True ts=True db=True   [PASS] separation py=True ts=True db=True
+[PASS] childbirth py=True ts=True db=True [PASS] surgery py=True ts=True db=True
+[PASS] relocation py=True ts=True db=True
+
+==============================================================================
+RUNG P1 RESULT: 23/23 checks passed
+==============================================================================
+```
+
+**Interpretation:** the identity contract is genuinely one contract, both languages, code↔registry
+— for grahas, houses, vargas, and event classes alike. LAGNA is the one asymmetric case, and it is
+asymmetric by design (TS's graha resolver is explicitly scoped to the 9 planetary bodies; LAGNA/MC
+are separate ontology entries, not "grahas" in the fact_subject sense) rather than a drifted
+identity — recorded honestly rather than silently counted as a clean pass or silently dropped.
+**Rung P1 CLOSED. Stage 2 (Lane A5) may open.**
 
 ## Backlog (out-of-scope findings carried forward, not fixed in-lane)
 
