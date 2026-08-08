@@ -27,7 +27,20 @@ decision — how to map v4's 5-band occurrence/condition threshold system onto t
 richer nuance or, worse, picking a mapping that happens to make a known chart look a particular way
 (explicit R13 flag). Rung P6 required as a real live write-then-read round-trip against
 `bodha_pratijna` for chart `482012f1`, diffed against Rung P5's offline numbers — not mocked.
-**NEXT ACTION on resumption:** check builder PR status; if open, dispatch fresh-context PARĪKṢAKA
+**INCIDENT (this line, resolved by resumption not redo):** the writer-wiring builder's first run
+ended with a degenerate final message instead of the required structured report, and left real,
+substantial, uncommitted work in its worktree (modified `bo_pratijna.py` + `test_bo_pratijna.py`,
+~680 net lines) — no commit, no push, no PR. A "zero unpushed work at close" violation, but the
+diff itself (spot-checked by the conductor) is well-reasoned: it implements exactly the a-priori,
+disclosed status-mapping discipline the brief required (5-band occurrence → 4-value `status`,
+justified by §6.1's own DENIED-band prose + the pre-existing v3 promised/denied thresholds at the
+same relative position, chosen before checking what it does to any specific chart's numbers).
+Rather than discard and re-dispatch a fresh builder (losing this work + its context, and risking a
+second attempt drifting from the same careful reasoning), the SAME agent was resumed via
+`SendMessage` and instructed to: re-verify its own state, re-run tests for real, confirm/re-run
+Rung P6 live, commit, push, open the PR, and give the proper structured report — or report honestly
+if the work turns out not to be sound. **NEXT ACTION on resumption:** check builder PR status; if
+open, dispatch fresh-context PARĪKṢAKA
 (scope: re-run Rung P6 live independently, scrutinize the status-mapping decision hardest — this is
 the newest real R13 surface — confirm FROZEN contract untouched, confirm idempotency preserved,
 confirm derivation ledger/provenance actually lands in the DB row not just computed-and-discarded)
