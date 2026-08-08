@@ -403,7 +403,16 @@ def test_stage2_promise_fetch_includes_no_evidence_rows(db_conn):
     """stage2_promise._fetch_pratijna must NOT filter out no_evidence rows.
     R6 (PROMISE IS A MODIFIER, NEVER A GATE): all statuses flow through."""
     from services.ka_kshetra.stage2_promise import _fetch_pratijna
-    src = inspect.getsource(_fetch_pratijna)
+
+    # DB12: this assertion originally grepped the RAW source, so it also matched
+    # the comment that DOCUMENTS the gate's removal -- failing on correct code.
+    # It stayed invisible because the test skips without a DB. Strip comment
+    # lines so the detector inspects executable SQL only, which is what the
+    # claim "the gate is gone" actually rests on.
+    src = "\n".join(
+        line for line in inspect.getsource(_fetch_pratijna).splitlines()
+        if not line.strip().startswith("#")
+    )
     assert "AND status IN ('promised', 'conditional')" not in src, (
         "stage2_promise._fetch_pratijna still gates on status='promised'/'conditional'. "
         "R6 fix: remove the status filter so ALL rows flow through as modifiers."
