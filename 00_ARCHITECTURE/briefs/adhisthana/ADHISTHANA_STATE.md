@@ -50,7 +50,7 @@ inconclusive) carried forward, not hidden.
 | A1 | Producer convergence (`ga_condition_writer` 5×`.upper()` sites + `ga_vargas_writer:3002`) | **MERGED** — PR #1101 → `adhisthana/integration` @ `9f0b75d20`. `ga_condition_writer.py` 5 sites + `ga_vargas_writer.py` 1 site now route through `PLANET_TO_SUBJECT` (imported from `ga_positions_writer`, not relocated). Rahu/Ketu edge fixed (`RAHU`→`RAH_MEAN`, `KETU`→`KET_MEAN`), not just case. TDD: 4/4 new tests red→green, 323 targeted regression pass, full suite pass except 23 pre-existing unrelated failures in `test_l0_remedy_corpus.py`. R19: forward-only, no `chart_facts` write. **Note for A2**: `PLANET_TO_SUBJECT` still lives in `ga_positions_writer.py`; if A2 relocates it to `graha_vocabulary.py`, the two new import lines in `ga_condition_writer.py`/`ga_vargas_writer.py` need a mechanical re-point at merge time. |
 | A2 | Graha SSoT by promotion (`brahmagyan/graha_vocabulary.py` from `norm_graha`; TS `grahaCodeOf` canonical) | DISPATCHED — builder running in isolated worktree, PR target `adhisthana/integration` |
 | A3 | Registry completion (`entity_class='varga'`, storage-code synonyms, `list_entities.ts`) | DISPATCHED — builder running in isolated worktree, PR target `adhisthana/integration` |
-| A4 | Event-class TS mirror + parity + FK/CHECK + stale-comment fix | DISPATCHED — builder running in isolated worktree, PR target `adhisthana/integration` |
+| A4 | Event-class TS mirror + parity + FK/CHECK + stale-comment fix | **MERGED** — PR #1102 → `adhisthana/integration` @ `4de31ed33`. New `platform/src/lib/event_classes.ts` (zero-import, 27 ids extracted from `l0_ghatana.EVENT_CLASSES` via `ast.literal_eval`, not transcription); parity test `test_event_classes_parity.py` (id set + domain/lel_category per-class); migration 550 adds a real FK `gochara_resonance_map.event_class → brahma_event_ontology(event_class_id)` (chosen over CHECK — a real 27-row reference table already exists). **Live pre-check**: 370 rows, 6 distinct classes in use, 0 violations, 0 NULLs — FK applied directly (not NOT VALID), reviewed by `migration-guard` first. **Live rejection proof pasted verbatim** (bogus insert → FK violation error, rollback clean, row count unchanged at 370). Stale "22 classes" comments in `lel_event_writer.ts` fixed to point at the TS mirror instead of a hardcoded number. **Out-of-scope finding flagged for later**: `asset_registry_seed.ts:1377-1379` has the same stale "22" on `bo_pratijna`'s `expected_volume_inputs` — not fixed (outside this lane's declared scope), carried to backlog. |
 | — | **Rung P1** (blocking, after A2+A3) | NOT RUN |
 | A5 | THE FACT IDENTITY INDEX (`chart_fact_identity` + deterministic parser) | NOT STARTED (blocked on P1) |
 | — | **Rung P2** (blocking, after A5) | NOT RUN |
@@ -73,6 +73,12 @@ inconclusive) carried forward, not hidden.
 | 4 live + 1 dead mirror | 0 live; mirror live | 4 live + 1 dead mirror (unchanged) |
 
 ---
+
+## Backlog (out-of-scope findings carried forward, not fixed in-lane)
+
+| ID | Description | Found by | Status |
+|---|---|---|---|
+| AB1 | `platform/scripts/seed/asset_registry_seed.ts:1377-1379` — `bo_pratijna`'s `expected_volume_inputs.EVENT_CLASSES: 22` is stale (real count is 27, same defect class as the `lel_event_writer.ts` comments A4 fixed) | Lane A4 builder | OPEN — not fixed, outside A4's declared scope (`gochara_resonance_map`/`lel_event_writer.ts` only) |
 
 ## Session log
 
