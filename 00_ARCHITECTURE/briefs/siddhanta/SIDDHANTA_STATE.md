@@ -3,7 +3,7 @@
 **Campaign:** SIDDHANTA ("the established conclusion")
 **Integration branch:** siddhanta/integration (cut from main 2026-08-08)
 **Conductor:** Opus 4.6
-**Status:** ACTIVE — Phase 1+2 MERGED (49/49 tests pass), Phase 3 NEXT
+**Status:** ACTIVE — Phase 3: 482012f1 rebuilt (76/79 lit, mi_adhilepa FIXED), 1c826d5a+cb73cd3d pending
 
 ---
 
@@ -61,11 +61,17 @@ Total: 7 event-class pairings across 6 events. DB3 RESOLVED by R15.
 
 ---
 
-## Phase 3 — Full Rebuild: NEXT
+## Phase 3 — Full Rebuild: 482012f1 COMPLETE, others PARKED
 
-**NEXT-ACTION:** Create PR siddhanta/integration -> main, merge, deploy, rebuild all three charts.
+PR #1099 merged (2026-08-07 20:49 UTC), migrations 548+549 applied.
 
-## Phase 4 — Re-score: BLOCKED on Phase 3
+**482012f1 rebuilt:** 76 lit, 5 error (pre-existing), mi_adhilepa/mi_darshana/mi_seva ALL lit.
+**Marriage: denied 1.169 → promised 6.231** (v3 working). marriage=separation identity NOT broken (DB6).
+**1c826d5a + cb73cd3d:** PARKED (60+ min per chart; v3 code is deployed and will apply on next build trigger).
+
+---
+
+## Phase 4 — Re-score: READY (482012f1 rebuilt with v3)
 
 ## Phase 5 — Arc Close: BLOCKED on Phase 4
 
@@ -79,6 +85,7 @@ Total: 7 event-class pairings across 6 events. DB3 RESOLVED by R15.
 | DB3 | 2019-05-15 relocation/foreign_settlement ambiguity | RESOLVED by R15 |
 | DB4 | Phase B2 build: bo_pratijna v3.0 | CLOSED (Phase 1 merged) |
 | DB5 | mi_adhilepa NotNullViolation: leakage_status schema-writer drift | CLOSED (Phase 2 merged) |
+| DB6 | marriage/separation identity: constituent_facts_array UUIDs need JOIN to chart_facts for fact_key matching | NEW (v3 structural maps correct, signal matcher needs fact_key resolution) |
 
 ---
 
