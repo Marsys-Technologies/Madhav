@@ -15,83 +15,24 @@ MERGED, Rung P4 GREEN** (`25e7b9ede`). **Lane B2 (library + writer wiring) FULLY
 for chart `482012f1`, exactly matching RUNG_P3's hand-worked numbers, idempotency live-proven via
 double-run. **Lane B3 (CI-tier verification) CLOSED, MERGED** (`6b04005ab`) — a permanent
 regression gate now runs on every PR, independently confirmed to have real teeth. **Lane B4
-(downstream consumer audit) is the NEXT ACTION.**
+(downstream consumer audit) CLOSED, MERGED** (`fa9c727d3`) — 2 real defects found and fixed.
+**Lane B5 (gate + deploy + rebuild) is the NEXT ACTION.**
 
-**Live status:** Lane B2 library CLOSED (merged `f6bde1ac1`), Rung P5 GREEN. **Writer-wiring lane
-DISPATCHED** to an isolated-worktree BUILDER, branch `pratijna-v4/lane-b2-writer-wiring` off
-`pratijna-v4/integration`. Briefed on: the existing v3 writer's structure (`@register("bo_pratijna")`,
-LIGHT `run(ctx)`, per-chart delete-then-insert + `ON CONFLICT`), the `bodha_pratijna` table already
-having `occurrence_grade`/`condition_grade` columns and a `status` CHECK widened to include
-`no_evidence` (migrations 545/548 — likely no new migration needed, but builder's call), the FROZEN
-orchestrator contract (no changes, stop-and-report if one seems needed), and — the central design
-decision — how to map v4's 5-band occurrence/condition threshold system onto the existing 4-value
-`status` column (`promised`/`denied`/`conditional`/`no_evidence`) without discarding the rubric's
-richer nuance or, worse, picking a mapping that happens to make a known chart look a particular way
-(explicit R13 flag). Rung P6 required as a real live write-then-read round-trip against
-`bodha_pratijna` for chart `482012f1`, diffed against Rung P5's offline numbers — not mocked.
-**INCIDENT (this line, resolved by resumption not redo):** the writer-wiring builder's first run
-ended with a degenerate final message instead of the required structured report, and left real,
-substantial, uncommitted work in its worktree (modified `bo_pratijna.py` + `test_bo_pratijna.py`,
-~680 net lines) — no commit, no push, no PR. A "zero unpushed work at close" violation, but the
-diff itself (spot-checked by the conductor) is well-reasoned: it implements exactly the a-priori,
-disclosed status-mapping discipline the brief required (5-band occurrence → 4-value `status`,
-justified by §6.1's own DENIED-band prose + the pre-existing v3 promised/denied thresholds at the
-same relative position, chosen before checking what it does to any specific chart's numbers).
-Rather than discard and re-dispatch a fresh builder (losing this work + its context, and risking a
-second attempt drifting from the same careful reasoning), the SAME agent was resumed via
-`SendMessage` and instructed to: re-verify its own state, re-run tests for real, confirm/re-run
-Rung P6 live, commit, push, open the PR, and give the proper structured report — or report honestly
-if the work turns out not to be sound. **Second resumption:** the builder's second turn again
-ended without committing — it had kicked off the live Rung P6 pytest run in the background and
-stopped before consuming the result. Conductor verified directly (waited on the OS process) that
-the test completed cleanly (~20s, not hung), then resumed the builder a third time with explicit
-instruction to run inline/foreground (not background) and complete commit→push→PR in one pass.
-**Third resumption succeeded**: PR #1115 opened, full structured report given — status-mapping
-decision (DENIED→denied, {WEAK,MODERATE}→conditional, {STRONG,VERY_STRONG}→promised, justified
-from §6.1's own prose + the old v3 writer's identical relative thresholds, monotonic, none of the
-3 reference classes near a band boundary), no migration needed, Rung P6 passed live (real commit,
-135 rows = 27×5, marriage/separation/childbirth exact match to RUNG_P3), 30 offline + 1 live test
-passing, 752/0-new on regression, lint clean. PARĪKṢAKA dispatched with the sharpest scope yet —
-this is the first lane writing v4-scored data into a real shared table
-(`ph_nimitta`/`ka_taranga`/`ka_yojaka` read `bodha_pratijna`).
+**Live status:** Stage 0, B0, B1, B2 (library+writer), B3 all CLOSED and MERGED — see the
+Lane status table below for full per-lane evidence (each row is the authoritative record;
+this section is now just a pointer, not a duplicate narrative). **Lane B4 CLOSED, MERGED
+@ `fa9c727d3`** — 2 real production-affecting defects found and fixed via full-repo consumer
+census, both independently reproduced live by PARĪKṢAKA. **Lane B5 (gate + deploy + rebuild)
+is the NEXT ACTION.**
 
-**PARĪKṢAKA verdict: PASS with one required fix.** Independently re-verified everything (live
-Rung P6 re-run — exact RUNG_P3 match; live double-run idempotency proof — 135 rows before/after,
-no accretion; faithful persistence of the full derivation ledger incl. `chart_divisionals_id`
-provenance; consumer-polarity check on `ka_taranga`/`ph_nimitta`/`ka_yojaka` — all read `grade` on
-the same [0,10] scale the writer emits; FROZEN contract clean; R13 clean — chart IDs only in the
-docstring's prose, never executable code). **One blocking documentation defect found**: the
-docstring's own R13 self-justification claimed "none of the 3 reference classes within 0.02 of a
-band boundary" — PARĪKṢAKA computed the real distances and found childbirth (occurrence=0.593) is
-actually **0.007** from the STRONG/MODERATE boundary at 0.60, well inside the claimed margin.
-Explicitly NOT evidence of chart-tuning (the boundary is inherited untunable infrastructure from
-the rubric spec + the old v3 writer's own constants — nothing in this writer could move it) but a
-false factual claim in the highest-R13-risk paragraph of the module must not stand. Builder
-resumed (4th time, scoped fix only: correct the docstring's stated margins, flag childbirth's real
-proximity) rather than re-running full PARĪKṢAKA from scratch for a documentation-only correction.
-NEXT ACTION on resumption: confirm the fix is pushed, spot-check the corrected text directly
-(conductor-level, since this is prose not logic), then merge — full PARĪKṢAKA re-run not required
-for a docstring-only diff already otherwise verified clean.
-
-**Fix confirmed (conductor spot-check):** commit `dea5ffe76`, single file, 23 insertions/3
-deletions, docstring-only (`git diff --stat` confirmed no logic touched). Corrected margins
-verified by hand: marriage 0.121 from 0.20, separation 0.095 from 0.60, childbirth **0.007** from
-0.60 (all arithmetically correct), with the false "none near a boundary" claim replaced by an
-honest disclosure of childbirth's real proximity and why it's not R13-relevant (both numbers that
-produce the proximity predate this chart ever being scored). **MERGED @ `a9d6d2784` into
-`pratijna-v4/integration`.** Worktree + branch cleaned up.
-(scope: re-run Rung P6 live independently, scrutinize the status-mapping decision hardest — this is
-the newest real R13 surface — confirm FROZEN contract untouched, confirm idempotency preserved,
-confirm derivation ledger/provenance actually lands in the DB row not just computed-and-discarded)
-BEFORE merge; only then close B2 fully and move to Lane B3 (three-tier verification).
-
-**RULING on file (native+Fable, 2026-08-08):** all remaining lanes (B1–B7) go through proper
-BUILDER-in-isolated-worktree + independent fresh-context PARĪKṢAKA-verdict-before-merge, per the
-campaign's own rails — no more conductor-direct product code. B0's self-verified deviation was
-accepted without redo, conditioned on a retroactive fresh-context PARĪKṢAKA pass (done, PASS).
-B1 was done fully through the rails (BUILDER in isolated worktree → PR → independent PARĪKṢAKA →
-conductor merge) — this is now the standing pattern for B2 onward. Sequencing: one lane at a
-time through the gates; parallelize only where the master plan states lanes are independent.
+Recurring pattern across this campaign, worth carrying forward explicitly: 3 builder turns
+(B2 writer-wiring ×2, B3 ×1) stalled by backgrounding a slow step (a live test, a full
+regression run) and stopping before consuming the result — each recovered by the conductor
+verifying the process externally and resuming the same agent, never by losing the work. B4
+was briefed explicitly on this and completed cleanly in one pass. Every lane that touched a
+prose/documentation claim (B2 docstring, B4 PR body) had at least one false statement caught
+by PARĪKṢAKA and corrected before merge — never blocking on the underlying code when the code
+itself was sound, but never left standing in the permanent record either.
 
 ---
 
@@ -152,20 +93,7 @@ queued ≠ merged.
 | — | (writer wiring into `bo_pratijna` v4.0, FROZEN contract) | **CLOSED — MERGED @ `a9d6d2784` (PR #1115).** In-place rewrite of `bo_pratijna.py` (kept the name, kept `@register("bo_pratijna")`), calls `bo_pratijna_v4_engine` via `ChartReaderV4` exclusively. Took 4 builder turns (2 stalls — degenerate close, then an abandoned-background-test — both recovered by resuming the same agent rather than redoing the work; 1 scoped post-PARĪKṢAKA docstring fix) — all recorded honestly above, not smoothed over. |
 | — | Rung P6 (DB rows byte-agree with P5) | **GREEN.** PARĪKṢAKA independently re-ran the writer live against chart `482012f1`, queried `bodha_pratijna` directly (not via the test), confirmed marriage/separation/childbirth rows exactly match RUNG_P3 (0.321/5.83, 0.505/8.75, 0.593/7.50), then ran the writer a SECOND time and confirmed 135 rows before = 135 after (idempotent, no accretion — a live double-run proof, not just a code-read claim). Consumer-polarity of `grade` independently confirmed against `ka_taranga`/`ph_nimitta`/`ka_yojaka`'s actual read sites. FROZEN contract, R19, R13 all independently confirmed clean. One documentation defect found and fixed pre-merge (see above). |
 | B3 | Three-tier verification — CI tier (pre-merge/post-deploy tiers are Gate-Executor/later-lane scope) | **CLOSED — MERGED @ `6b04005ab` (PR #1116).** Permanent CI regression gate now live: fixture freshness independently confirmed against live prod (27853 rows, exact match), property tests confirmed to have real teeth via PARĪKṢAKA's OWN independent mutations (not just the builder's self-tests) — seeded a chart-ID literal into engine code (caught), collapsed separation's karaka set to marriage's, the exact historical v3 defect class (caught). Worktree + branch cleaned up. Was previously: to isolated-worktree BUILDER, branch `pratijna-v4/lane-b3-verification`. Deliverable: real-data snapshot fixture for `482012f1` (chart_facts+chart_fact_identity+chart_divisionals, versioned, refresh procedure documented, following the `fresh_chart_smoke.yml`/`SAMIKSHA_TEST_DATABASE_URL` ephemeral-Postgres precedent already in this repo) + property tests (marriage≠separation distinct evidence, childbirth independent of 7H affliction, afflicted-but-present-7H→occurrence>0∧condition>0, no status monoculture, no occurrence≥0.95 without cited near-maximal set, condition_grade nonzero somewhere, every citation resolves — structural check, R13 audit as an automated grep-based test) + CI wiring. Briefed to complete fully in one pass (no backgrounding-and-stopping, per B2 writer-wiring's 2 stalls) — **stalled the same way anyway** (backgrounded the full regression suite, stopped waiting on its own Monitor notification instead of inline). Conductor verified externally (waited on the OS process directly, ~40s, not hung — real work already present: `ci.yml` +84 lines, new fixture dir, new property-test file) and resumed with the same instruction, more explicitly. **Pattern note for future lanes**: this is the 3rd stall of this type across the campaign (B2 writer-wiring ×2, B3 ×1) — worth an even more explicit anti-backgrounding directive in B4+ dispatches, and worth flagging to the native as a recurring builder-agent tendency rather than a one-off. **Second resumption succeeded**: PR #1116 opened, full structured report — fixture at `tests/fixtures/pratijna_v4_snapshot/` (schema.sql + 5 gzipped CSVs, ~1.8MB, chart `482012f1` lahiri_chitrapaksha only, row count 27853 independently matching live production per the builder's own check), 21/21 property tests passing foreground against a fresh ephemeral Postgres (incl. 3 mutation-proof self-tests), new CI job `pratijna-v4-fixture-property-tests`, B0's identical-factor-sets test confirmed already CI-collected via `--collect-only`, full regression 5451/0-new. PARĪKṢAKA dispatched with emphasis on whether the property tests have real teeth (mutation-proof, or structurally guaranteed to pass regardless of engine correctness — the specific risk of a "permanent regression gate" creating false confidence) plus independent fixture-freshness re-check and full CI-job reproduction. NEXT ACTION on resumption: check PARĪKṢAKA verdict before merge. |
-| B4 | Consumer audit (ph_nimitta, ka_*, mi_darshana, query_pratijna) | **DISPATCHED** to isolated-worktree BUILDER, branch `pratijna-v4/lane-b4-consumer-audit`. Full-repo census instructed (not just the 4 named consumers). Each real consumer re-read against v4's actual documented semantics (status-mapping, condition polarity higher=worse, always-NULL signal-id columns, new `derivation` JSONB shape) and either fixed or explicitly confirmed with live-DB evidence (incl. the real status-distribution query on chart `482012f1`). Briefed explicitly on the 3 prior backgrounding stalls (B2×2, B3×1) — instructed to complete fully in one pass — **completed cleanly, no stall this time.** PR #1117
-opened: 32-file census, 2 real defects found+fixed (both root-caused to `supporting_signal_ids`
-always NULL under v4 — `stage2_promise.py`'s `promise_prior()` was returning exactly 0.0 for
-every class system-wide; `mi_darshana.py`'s Section-5 evidence count was silently 0 on every v4
-row), both given a `derivation`-based fallback and live-proven against `482012f1` (rolled back).
-Several consumers confirmed safe with re-derived evidence (`ka_yojaka`/`ka_taranga`/`ka_avadhi`
-grade-only no status gate; `ph_nimitta`'s denied-branch thresholds traced via git history to
-predate v4; `stage65_insights.py`'s absence-detector confirmed unwired to any caller).
-`query_pratijna.ts` narration text corrected to state v4's real semantics. Live status
-distribution on `482012f1`: conditional=59, promised=76, denied=0, no_evidence=0. Full CI-scoped
-suite 5454/0-new. PARĪKṢAKA dispatched with heavy scrutiny on items 2-3 — this found real
-production-affecting silent-zero bugs, so both the bugs' reality AND the fixes' correctness (no
-double-counting, no inflated prior) need independent live re-derivation, not just re-running the
-builder's own tests. NEXT ACTION on resumption: check PARĪKṢAKA verdict before merge. |
+| B4 | Consumer audit (ph_nimitta, ka_*, mi_darshana, query_pratijna) | **CLOSED — MERGED @ `fa9c727d3` (PR #1117).** Full-repo census (33 files vs. claimed 32, immaterial). 2 real production-affecting defects found and fixed (both root-caused to v4 never populating `supporting_signal_ids`): `stage2_promise.py`'s `promise_prior()` was returning exactly 0.0 for every class system-wide; `mi_darshana.py`'s Section-5 evidence count was silently 0 on all 135 scored rows. Both given a `derivation`-based fallback, PARĪKṢAKA-reproduced independently live (old code confirmed broken, new code confirmed fixed with real non-fabricated values traced to actual DB fields). `query_pratijna.ts` narration corrected to state v4's real semantics. **One defect found in the PR's OWN reasoning, not its code**: a false citation claiming ph_nimitta inherits specific threshold constants that PARĪKṢAKA proved never existed there (conflated with an unrelated file's constants) — ph_nimitta is genuinely safe for the real, verified reason (untouched by this PR, reads only grade/status on the preserved scale), but the stated evidence was wrong. Conductor corrected the PR body directly (prose/metadata only, consistent with the B2 docstring-fix precedent of not letting a false claim stand even when non-blocking) and added PARĪKṢAKA's disclosed non-blocking follow-up (inherited noisy-OR amplification risk in the stage2_promise fix's multi-karaka classes) to the permanent PR record. Worktree + branch cleaned up. |
 | — | Rung P7 (one class through consumers) | PENDING |
 | B5 | Gate + deploy + rebuild | NOT STARTED |
 | — | Rung P8 (single-chart full acceptance, 482012f1 first) | PENDING |
