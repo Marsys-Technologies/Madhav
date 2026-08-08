@@ -41,6 +41,8 @@ import logging
 from datetime import datetime
 from typing import Any
 
+import psycopg.rows
+
 from pipeline.orchestrator.writers import WriterBase, WriterResult, register
 from pyjhora_adapter._jhora import drik, utils
 from pyjhora_adapter.compute import compute_chart
@@ -100,12 +102,15 @@ def _fetch_natal_moon_longitude(conn: Any, chart_id: str) -> tuple[float, str] |
     """Returns (natal Moon sidereal longitude deg, fact_id), or None if the L1
     dependency (ga_positions) has not produced this fact — honest absence,
     never fabricated (B.10)."""
-    with conn.cursor() as cur:
+    # DB9: the orchestrator connection is created with row_factory=dict_row, so a
+    # bare conn.cursor() yields dict rows and positional row[1] raised KeyError: 1,
+    # failing the whole asset. Pin the factory explicitly and read by column name.
+    with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
         cur.execute(_FETCH_NATAL_MOON_SQL, (chart_id, CANONICAL_AYANAMSHA))
         row = cur.fetchone()
-    if not row or row[1] is None:
+    if not row or row["fact_value_num"] is None:
         return None
-    return float(row[1]), str(row[0])
+    return float(row["fact_value_num"]), str(row["fact_id"])
 
 
 def _birth_dt_and_params_from_config(ctx) -> tuple[datetime, dict] | None:

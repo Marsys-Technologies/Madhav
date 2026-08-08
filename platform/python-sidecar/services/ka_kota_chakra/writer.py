@@ -120,14 +120,18 @@ def _fetch_janma_nakshatra_idx(conn: Any, chart_id: str) -> tuple[int, str] | No
     """Returns (0-based nakshatra_idx, fact_id) for the natal Moon, or None if
     the L1 dependency (ga_positions) has not produced this fact — honest
     absence, never fabricated (B.10)."""
-    with conn.cursor() as cur:
+    # DB9: the orchestrator connection is created with row_factory=dict_row, so a
+    # bare conn.cursor() yields dict rows and positional row[1] raised KeyError: 1,
+    # failing the whole asset. Pin the factory explicitly (the convention already
+    # used elsewhere in this file) and read by column name.
+    with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
         cur.execute(_FETCH_JANMA_MOON_SQL, (chart_id, CANONICAL_AYANAMSHA))
         row = cur.fetchone()
-    if not row or row[1] is None:
+    if not row or row["fact_value_num"] is None:
         return None
-    lon = float(row[1])
+    lon = float(row["fact_value_num"])
     nak_idx = int(lon // NAK_SIZE_DEG) % 27
-    return nak_idx, str(row[0])
+    return nak_idx, str(row["fact_id"])
 
 
 def _fetch_ring_assignments(conn: Any) -> tuple[dict[str, frozenset[int]], str] | None:
