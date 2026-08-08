@@ -25,7 +25,7 @@ import { describe, it, expect } from 'vitest'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import * as ts from 'typescript'
-import { GRAHA_CODE_TO_NAME } from '../address_resolver'
+import { GRAHA_CODE_TO_NAME } from '../graha_labels'
 
 const REPO_SRC = path.resolve(__dirname, '../../../')
 
@@ -52,7 +52,14 @@ for (const extra of [
 
 const GRAHA_KEY_THRESHOLD = 4
 
-const SSOT_FILE = 'address_resolver.ts'
+// The SSoT is now two files (ADHIṢṬHĀNA build-break fix, 2026-08-08): the graha
+// code/name/alias vocabulary + grahaCodeOf() itself live in graha_labels.ts (the
+// CLIENT-SAFE pure subset, extracted so a 'use client' component can import graha
+// labels without pulling in address_resolver.ts's `@/lib/db/client` → `server-only`
+// chain); address_resolver.ts re-exports the same names for its existing DB-touching
+// call sites. Both are excluded from the scan — the object literal genuinely lives
+// in graha_labels.ts now, address_resolver.ts carries only a re-export.
+const SSOT_FILES = new Set(['address_resolver.ts', 'graha_labels.ts'])
 
 // ── Known-safe exclusions ──────────────────────────────────────────────────────
 const EXCLUDED_PATH_SUBSTRINGS = ['__tests__', '.test.ts', '.gate.test.ts', 'node_modules', '/generated/']
@@ -82,7 +89,7 @@ function collectTsFiles(dir: string, out: string[]): void {
       collectTsFiles(full, out)
     } else if (entry.isFile() && (entry.name.endsWith('.ts') || entry.name.endsWith('.tsx'))) {
       if (EXCLUDED_PATH_SUBSTRINGS.some(s => full.includes(s))) continue
-      if (entry.name === SSOT_FILE) continue
+      if (SSOT_FILES.has(entry.name)) continue
       out.push(full)
     }
   }
@@ -154,10 +161,11 @@ describe('graha vocabulary census (TS)', () => {
     expect(names).toContain('priors_config.ts')
   })
 
-  it('SSoT file (address_resolver.ts) is excluded from the scan', () => {
+  it('SSoT files (address_resolver.ts, graha_labels.ts) are excluded from the scan', () => {
     const files: string[] = []
     for (const dir of SCAN_DIRS) collectTsFiles(dir, files)
-    expect(files.map(f => path.basename(f))).not.toContain(SSOT_FILE)
+    const names = files.map(f => path.basename(f))
+    for (const ssot of SSOT_FILES) expect(names).not.toContain(ssot)
   })
 
   it('THE GATE (R17): exactly ONE independent TS graha map survives tree-wide', () => {
@@ -175,10 +183,17 @@ describe('graha vocabulary census (TS)', () => {
     // register_d10_pact.ts. graha_portrait.ts was already adopted (imports
     // grahaCodeOf/GRAHA_CODE_TO_NAME directly, no independent literal) —
     // the brief's own "~line 82" pointer for it was stale.
-    // After: 0 outside the SSoT (this test) — address_resolver.ts is the one
-    // permitted canonical file (excluded from the scan by file name). It also
+    // After: 0 outside the SSoT (this test) — address_resolver.ts was the one
+    // permitted canonical file (excluded from the scan by file name); it also
     // gained 2-letter code aliases (rah/ket) for cross-language parity with
     // the Python SSoT and to cover identifier_format.ts's prior coverage.
+    // 2026-08-08 (ADHIṢṬHĀNA build-break fix): the literal itself (and
+    // grahaCodeOf()) moved to graha_labels.ts — the client-safe pure subset
+    // extracted so a 'use client' component (QueryDNAPanel.tsx) can import
+    // graha labels without pulling in address_resolver.ts's `@/lib/db/client`
+    // → `server-only` chain. address_resolver.ts re-exports the same names
+    // (still zero independent literals there); both files are now the SSoT
+    // pair excluded from the scan (SSOT_FILES above).
     const hits = runCensus()
     if (hits.length > 0) {
       const lines = ['Independent TS graha maps found outside the SSoT (R17 violation):']

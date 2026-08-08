@@ -16,7 +16,11 @@
 import { useState } from 'react'
 import { ChevronDown, ChevronUp, ChevronRight, Sparkles, AlertTriangle } from 'lucide-react'
 import type { TraceStep, TraceQueryPlan, TraceToolCallSpec } from '@/lib/trace/types'
-import { grahaCodeOf, GRAHA_CODE_TO_NAME } from '@/lib/retrieval/address_resolver'
+// CLIENT-SAFE import — this file is 'use client', so it must import graha
+// labels from graha_labels.ts, never from address_resolver.ts (which pulls
+// in @/lib/db/client → `server-only` and poisons the client bundle; see
+// graha_labels.ts's own header for the full defect-class explanation).
+import { grahaCodeOf, GRAHA_CODE_TO_NAME } from '@/lib/retrieval/graha_labels'
 
 interface Props {
   steps: TraceStep[]
@@ -44,7 +48,7 @@ const UNKNOWN_CLASS_STYLE = {
 
 // ── CGM seed-node humanizer ──────────────────────────────────────────────────
 
-// Values sourced from the graha SSoT (address_resolver.grahaCodeOf +
+// Values sourced from the graha SSoT (graha_labels.grahaCodeOf +
 // GRAHA_CODE_TO_NAME) rather than hardcoded literals — ADHIṢṬHĀNA Lane A2.
 const PLANET_LABELS: Record<string, string> = Object.fromEntries(
   ['SUN', 'MOON', 'MARS', 'MERCURY', 'JUPITER', 'VENUS', 'SATURN', 'RAHU', 'KETU']

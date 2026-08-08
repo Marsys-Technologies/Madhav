@@ -60,9 +60,19 @@
 
 import { query } from '@/lib/db/client'
 import { DEFAULT_AYANAMSHA } from './registry/constants'
+// Graha code/name/alias vocabulary + grahaCodeOf() + AddressResolutionError live in
+// graha_labels.ts — the CLIENT-SAFE pure subset of this module (no `@/lib/db/client`
+// import, so no `server-only` poisoning of a client bundle that only needs graha
+// labels). Re-exported below so every existing address_resolver.{GRAHA_CODE_TO_NAME,
+// grahaCodeOf, AddressResolutionError} call site is unaffected — moved, not copied.
+// A CLIENT COMPONENT must import from './graha_labels' directly, never from this file.
+import { AddressResolutionError, GRAHA_CODE_TO_NAME, grahaCodeOf } from './graha_labels'
+export { AddressResolutionError, GRAHA_CODE_TO_NAME, grahaCodeOf } from './graha_labels'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // § Vocabulary — coordinates with design §27.1 `about` facet + §27.3 `frame` facet
+// (graha code/name/alias vocabulary + grahaCodeOf() moved to graha_labels.ts —
+// see the import/re-export block above)
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** The 12 rāśi in zodiacal order — index 0 = Aries. Fixed; never re-derived per chart. */
@@ -87,57 +97,6 @@ export const SIGN_LORDS: Record<ZodiacSign, string> = {
   Capricorn: 'Saturn',
   Aquarius: 'Saturn',
   Pisces: 'Jupiter',
-}
-
-/** graha_position / karaka_chara_position fact_subject code ↔ classical graha name. */
-export const GRAHA_CODE_TO_NAME: Record<string, string> = {
-  SUN: 'Sun',
-  MOON: 'Moon',
-  MAR: 'Mars',
-  MER: 'Mercury',
-  JUP: 'Jupiter',
-  VEN: 'Venus',
-  SAT: 'Saturn',
-  RAH_MEAN: 'Rahu',
-  KET_MEAN: 'Ketu',
-}
-
-const NAME_TO_GRAHA_CODE: Record<string, string> = Object.fromEntries(
-  Object.entries(GRAHA_CODE_TO_NAME).map(([code, name]) => [name.toLowerCase(), code]),
-)
-// Common shorthand aliases seen in classical/DSL usage, plus the standard Sanskrit graha
-// names (undisputed across every Vedic paradigm — BPHS nomenclature, safe to hardcode per
-// B.10). Sanskrit aliases folded in at R5 W1 Ring-1 reconciliation (JL-010) from the
-// chart_query lane's now-retired inline stopgap (`chart_query_about.ts`), which supported
-// these but this canonical module did not yet — single-source mandate (design §19) means the
-// alias set lives here, not duplicated in a second table.
-const GRAHA_ALIASES: Record<string, string> = {
-  su: 'SUN', mo: 'MOON', ma: 'MAR', me: 'MER', ju: 'JUP', ve: 'VEN', sa: 'SAT',
-  ra: 'RAH_MEAN', ke: 'KET_MEAN',
-  rahu: 'RAH_MEAN', ketu: 'KET_MEAN', mars: 'MAR', mercury: 'MER',
-  jupiter: 'JUP', venus: 'VEN', saturn: 'SAT', sun: 'SUN', moon: 'MOON',
-  // Sanskrit names (classical, undisputed):
-  surya: 'SUN', chandra: 'MOON', mangala: 'MAR', kuja: 'MAR', budha: 'MER',
-  guru: 'JUP', brihaspati: 'JUP', shukra: 'VEN', shani: 'SAT',
-  // ADHIṢṬHĀNA Lane A2: bare "rah"/"ket" — already-recognized aliases in the
-  // Python SSoT's own alias table (brahmagyan/graha_vocabulary._GRAHA_ALIASES:
-  // "RAH"->RAH_MEAN, "KET"->KET_MEAN) that this TS module did not yet carry;
-  // added for cross-language parity (MASTER_PLAN_v1_0.md §3 Rung P1) and to
-  // let identifier_format.ts retire its own independent copy of these two
-  // aliases into this SSoT rather than duplicating them.
-  rah: 'RAH_MEAN', ket: 'KET_MEAN',
-}
-
-/** Normalize a graha name/alias/code (English, Sanskrit, or 2-letter shorthand) to its
- *  canonical fact_subject code (e.g. "Saturn" | "shani" | "SAT" -> "SAT"). Throws
- *  `AddressResolutionError` on an unrecognized name (B.10 — no silent fallback). */
-export function grahaCodeOf(input: string): string {
-  const k = input.trim().toLowerCase()
-  if (NAME_TO_GRAHA_CODE[k]) return NAME_TO_GRAHA_CODE[k]
-  if (GRAHA_ALIASES[k]) return GRAHA_ALIASES[k]
-  const upper = input.trim().toUpperCase()
-  if (GRAHA_CODE_TO_NAME[upper]) return upper
-  throw new AddressResolutionError(`Unknown graha "${input}" — not in GRAHA_CODE_TO_NAME/aliases.`)
 }
 
 /** Reference frames — design §27.3. `varnada` intentionally omitted (no backing data, see header). */
@@ -196,8 +155,6 @@ export type AddressExpression =
   // ── Paradigm-specific address types (design §27.4, R5 W2) ──
   | { type: 'sub_lord_of'; cusp: HouseNumber } // kp
   | { type: 'saham'; code: string } // tajika
-
-export class AddressResolutionError extends Error {}
 
 /** Thrown specifically by the paradigm coherence guard — a subtype of AddressResolutionError
  *  so existing `catch (AddressResolutionError)` call sites keep working unchanged, while a
