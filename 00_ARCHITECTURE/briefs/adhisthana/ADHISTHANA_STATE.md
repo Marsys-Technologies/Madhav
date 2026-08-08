@@ -47,10 +47,10 @@ inconclusive) carried forward, not hidden.
 
 | Lane | Description | Status |
 |---|---|---|
-| A1 | Producer convergence (`ga_condition_writer` 5×`.upper()` sites + `ga_vargas_writer:3002`) | NOT STARTED |
-| A2 | Graha SSoT by promotion (`brahmagyan/graha_vocabulary.py` from `norm_graha`; TS `grahaCodeOf` canonical) | NOT STARTED |
-| A3 | Registry completion (`entity_class='varga'`, storage-code synonyms, `list_entities.ts`) | NOT STARTED |
-| A4 | Event-class TS mirror + parity + FK/CHECK + stale-comment fix | NOT STARTED |
+| A1 | Producer convergence (`ga_condition_writer` 5×`.upper()` sites + `ga_vargas_writer:3002`) | DISPATCHED — builder running in isolated worktree, PR target `adhisthana/integration` |
+| A2 | Graha SSoT by promotion (`brahmagyan/graha_vocabulary.py` from `norm_graha`; TS `grahaCodeOf` canonical) | DISPATCHED — builder running in isolated worktree, PR target `adhisthana/integration` |
+| A3 | Registry completion (`entity_class='varga'`, storage-code synonyms, `list_entities.ts`) | DISPATCHED — builder running in isolated worktree, PR target `adhisthana/integration` |
+| A4 | Event-class TS mirror + parity + FK/CHECK + stale-comment fix | DISPATCHED — builder running in isolated worktree, PR target `adhisthana/integration` |
 | — | **Rung P1** (blocking, after A2+A3) | NOT RUN |
 | A5 | THE FACT IDENTITY INDEX (`chart_fact_identity` + deterministic parser) | NOT STARTED (blocked on P1) |
 | — | **Rung P2** (blocking, after A5) | NOT RUN |
