@@ -213,6 +213,28 @@ fact) and joining through it retrieves the right value, confirmed consistent wit
 | AB6 | M9 schools subsystem (`lib/schools/types.ts::Domain` + `school_runner.ts::ALL_DOMAINS` + `school-consensus/route.ts::ALL_DOMAINS`) writes UPPERCASE domain values into a column with a lowercase-only CHECK constraint | Lane A7 full census | OPEN — live bug, out of A7's declared scope (domain-vocabulary consolidation, not this subsystem's own separate defect); flagged, not fixed |
 | AB5 | `brahmagyan/graha_vocabulary._GRAHA_ALIASES` recognizes 14 alias forms as valid graha input (2-letter shorthand `SU`/`MO`/`MA`/`ME`/`JU`/`VE`/`SA`/`RA`/`KE` + `RAH`/`RAH_TRUE`/`KET`/`KET_TRUE`) that are NOT registered as `brahma_ontology` synonyms for `entity_class='planet'` — confirmed live against all 3 charts via `registry_parity_gate.py --live --domain graha`. Not a producer-emission bug (0 producers actually emit any of the 14 into `chart_facts`) — purely a registry-completeness gap on the alias-ACCEPTANCE side: `norm_graha('RAH')` succeeds in Python today with no matching `ref_entity_resolve('RAH')` in the registry | Lane A6(i) live run | OPEN — out of A6's scope (A6 is the gate, not the registry-content fix; surfacing this is exactly the gate doing its job) |
 
+## Stage 5 — Gate execution (2026-08-08)
+
+PR #1108 opened (`adhisthana/integration` → `main`, 29 commits, 98 files, +8604/-435), full gate
+packet in the PR body. Per `PRODUCTION_GATE_EXECUTION_POLICY_v1_0.md`, a fresh-context
+GATE-EXECUTOR (never saw this session's work) was dispatched to independently re-derive every
+gate condition — **not this session's self-report** — before executing the merge.
+
+**Verdict: PARKED, correctly.** The GATE-EXECUTOR found a real CI regression this session's own
+lane-by-lane sign-offs did not catch: `check_fact_category_pinning.py` (CI job "Fact-Category
+Pinning Gate (§5 C.7)") is green on `main` but red on `adhisthana/integration` — 15
+non-allowlisted violations, none of which were a pre-existing red (independently confirmed by the
+GATE-EXECUTOR checking `main`'s own most recent run of the same job = success). Most likely cause:
+Lane A2's graha-vocabulary refactor touched exactly the flagged files (`bo_laksana.py`,
+`bo_upaya.py`, `ka_yojaka.py`, `kala_permission/permission.py`, and others) and shifted line
+numbers the allowlist matches by exact line — an allowlist-drift false positive is the leading
+hypothesis, not yet confirmed. **This is exactly what the gate is for**: PARĪKṢAKA verified Lane
+A2 at full scale (all ~6700 tests, value-for-value map equivalence) but never ran this specific
+governance lint, which lives outside the standard pytest/vitest suites — a real gap in that
+verification's coverage, now caught before merge rather than after. No merge executed; `main`
+untouched. Fix dispatched to a dedicated builder (see below); GATE-EXECUTOR will be re-dispatched
+fresh, from zero, once the fix lands — its verdict is not assumed in advance.
+
 ## Session log
 
 - **2026-08-08 (this session, Sonnet 5):** Stage 0 pre-flight run (table above). Plan of
