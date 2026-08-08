@@ -44,7 +44,15 @@ ended without committing — it had kicked off the live Rung P6 pytest run in th
 stopped before consuming the result. Conductor verified directly (waited on the OS process) that
 the test completed cleanly (~20s, not hung), then resumed the builder a third time with explicit
 instruction to run inline/foreground (not background) and complete commit→push→PR in one pass.
-**NEXT ACTION on resumption:** check builder PR status; if open, dispatch fresh-context PARĪKṢAKA
+**Third resumption succeeded**: PR #1115 opened, full structured report given — status-mapping
+decision (DENIED→denied, {WEAK,MODERATE}→conditional, {STRONG,VERY_STRONG}→promised, justified
+from §6.1's own prose + the old v3 writer's identical relative thresholds, monotonic, none of the
+3 reference classes near a band boundary), no migration needed, Rung P6 passed live (real commit,
+135 rows = 27×5, marriage/separation/childbirth exact match to RUNG_P3), 30 offline + 1 live test
+passing, 752/0-new on regression, lint clean. PARĪKṢAKA dispatched with the sharpest scope yet —
+this is the first lane writing v4-scored data into a real shared table
+(`ph_nimitta`/`ka_taranga`/`ka_yojaka` read `bodha_pratijna`). NEXT ACTION on resumption: check
+PARĪKṢAKA verdict
 (scope: re-run Rung P6 live independently, scrutinize the status-mapping decision hardest — this is
 the newest real R13 surface — confirm FROZEN contract untouched, confirm idempotency preserved,
 confirm derivation ledger/provenance actually lands in the DB row not just computed-and-discarded)
