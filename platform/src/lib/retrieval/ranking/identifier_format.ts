@@ -14,25 +14,28 @@
  * growing a second one — the naming-governance gate this charter item asks for
  * is "one formatter used everywhere", not "one formatter per file".
  */
+import { grahaCodeOf, GRAHA_CODE_TO_NAME } from '@/lib/retrieval/address_resolver'
 
 // ── Graha canonicalization (EL-32) ─────────────────────────────────────────────
 // Every alias variant observed across L1/L2 layers resolves to ONE canonical
-// UPPERCASE full name on output. Mirrors composite_ranker.ts's GRAHA_TO_CODE /
-// GRAHA_TOKEN_TO_NAME tables (kept independent here — this module must not
-// depend on ranking internals — but doctrinally identical).
-const GRAHA_ALIAS_TO_CANONICAL: Record<string, string> = {
-  SU: 'SUN', MO: 'MOON', MA: 'MARS', ME: 'MERCURY', JU: 'JUPITER', VE: 'VENUS', SA: 'SATURN',
-  RA: 'RAHU', KE: 'KETU',
-  SUN: 'SUN', MOON: 'MOON', MARS: 'MARS', MERCURY: 'MERCURY', JUPITER: 'JUPITER',
-  VENUS: 'VENUS', SATURN: 'SATURN', RAHU: 'RAHU', KETU: 'KETU',
-  MAR: 'MARS', MER: 'MERCURY', JUP: 'JUPITER', VEN: 'VENUS', SAT: 'SATURN',
-  RAH_MEAN: 'RAHU', KET_MEAN: 'KETU', RAH: 'RAHU', KET: 'KETU',
-}
+// UPPERCASE full name on output. Values sourced from the graha SSoT
+// (address_resolver.grahaCodeOf + GRAHA_CODE_TO_NAME) rather than hardcoded
+// literals — ADHIṢṬHĀNA Lane A2. This module's own canonical form (UPPERCASE
+// full name, e.g. "MARS") differs from the SSoT's own canonical short-code
+// form ("MAR") — derived here as GRAHA_CODE_TO_NAME[grahaCodeOf(alias)].
+const _GRAHA_ALIAS_INPUTS = [
+  'SU', 'MO', 'MA', 'ME', 'JU', 'VE', 'SA', 'RA', 'KE',
+  'SUN', 'MOON', 'MARS', 'MERCURY', 'JUPITER', 'VENUS', 'SATURN', 'RAHU', 'KETU',
+  'MAR', 'MER', 'JUP', 'VEN', 'SAT', 'RAH_MEAN', 'KET_MEAN', 'RAH', 'KET',
+] as const
 
-const GRAHA_DISPLAY: Record<string, string> = {
-  SUN: 'Sun', MOON: 'Moon', MARS: 'Mars', MERCURY: 'Mercury', JUPITER: 'Jupiter',
-  VENUS: 'Venus', SATURN: 'Saturn', RAHU: 'Rahu', KETU: 'Ketu',
-}
+const GRAHA_ALIAS_TO_CANONICAL: Record<string, string> = Object.fromEntries(
+  _GRAHA_ALIAS_INPUTS.map(alias => [alias, GRAHA_CODE_TO_NAME[grahaCodeOf(alias)].toUpperCase()]),
+)
+
+const GRAHA_DISPLAY: Record<string, string> = Object.fromEntries(
+  Object.values(GRAHA_CODE_TO_NAME).map(name => [name.toUpperCase(), name]),
+)
 
 /** Canonical UPPERCASE full graha name for any alias input, or null if unresolvable. Never
  *  invents a graha (B.10) — returns null rather than guessing. */

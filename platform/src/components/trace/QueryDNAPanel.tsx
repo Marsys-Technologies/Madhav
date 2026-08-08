@@ -16,6 +16,7 @@
 import { useState } from 'react'
 import { ChevronDown, ChevronUp, ChevronRight, Sparkles, AlertTriangle } from 'lucide-react'
 import type { TraceStep, TraceQueryPlan, TraceToolCallSpec } from '@/lib/trace/types'
+import { grahaCodeOf, GRAHA_CODE_TO_NAME } from '@/lib/retrieval/address_resolver'
 
 interface Props {
   steps: TraceStep[]
@@ -43,10 +44,12 @@ const UNKNOWN_CLASS_STYLE = {
 
 // ── CGM seed-node humanizer ──────────────────────────────────────────────────
 
-const PLANET_LABELS: Record<string, string> = {
-  SUN: 'Sun', MOON: 'Moon', MARS: 'Mars', MERCURY: 'Mercury', JUPITER: 'Jupiter',
-  VENUS: 'Venus', SATURN: 'Saturn', RAHU: 'Rahu', KETU: 'Ketu',
-}
+// Values sourced from the graha SSoT (address_resolver.grahaCodeOf +
+// GRAHA_CODE_TO_NAME) rather than hardcoded literals — ADHIṢṬHĀNA Lane A2.
+const PLANET_LABELS: Record<string, string> = Object.fromEntries(
+  ['SUN', 'MOON', 'MARS', 'MERCURY', 'JUPITER', 'VENUS', 'SATURN', 'RAHU', 'KETU']
+    .map(p => [p, GRAHA_CODE_TO_NAME[grahaCodeOf(p)]]),
+)
 
 function humanizeSeedNode(seed: string): string {
   if (seed.startsWith('PLN.')) {

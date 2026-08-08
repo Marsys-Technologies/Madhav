@@ -19,6 +19,7 @@
  * B.10: never fabricates a rank — callers supply the real ordered population;
  * this module only formats it consistently.
  */
+import { grahaCodeOf, GRAHA_CODE_TO_NAME } from '@/lib/retrieval/address_resolver'
 
 export interface RankStatement {
   /** 1-indexed rank within the stated population (1 = strongest/first by the stated basis). */
@@ -107,7 +108,9 @@ export function rankGrahasByShadbala(
   })
 }
 
-const GRAHA_DISPLAY: Record<string, string> = {
-  SU: 'Sun', MO: 'Moon', MA: 'Mars', ME: 'Mercury',
-  JU: 'Jupiter', VE: 'Venus', SA: 'Saturn', RA: 'Rahu', KE: 'Ketu',
-}
+// Values sourced from the graha SSoT (address_resolver.grahaCodeOf +
+// GRAHA_CODE_TO_NAME) rather than hardcoded literals — ADHIṢṬHĀNA Lane A2.
+const GRAHA_DISPLAY: Record<string, string> = Object.fromEntries(
+  ['SU', 'MO', 'MA', 'ME', 'JU', 'VE', 'SA', 'RA', 'KE']
+    .map(code => [code, GRAHA_CODE_TO_NAME[grahaCodeOf(code)]]),
+)

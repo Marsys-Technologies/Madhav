@@ -36,16 +36,20 @@ import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
 import type { JudgmentFlagEntry } from '../../../envelope'
 import { judgmentFlag } from '../../../envelope'
+import { grahaCodeOf } from '@/lib/retrieval/address_resolver'
 
 // ── graha display-name <-> chart_facts/chart_vichara subject-code map ──────────────────
-// Mirrors ga_vichara_writer.py's PLANET_TO_SUBJECT (Python) — the SAME code vocabulary
-// chart_facts.fact_subject / chart_vichara.subject already use. Not re-derived logic, just
-// the TS-side mirror of an existing, frozen mapping.
-const GRAHA_TO_SUBJECT: Record<string, string> = {
-  Sun: 'SUN', Moon: 'MOON', Mars: 'MAR', Mercury: 'MER',
-  Jupiter: 'JUP', Venus: 'VEN', Saturn: 'SAT',
-  Rahu: 'RAH_MEAN', Ketu: 'KET_MEAN',
-}
+// Values sourced from the graha SSoT (address_resolver.grahaCodeOf) rather than
+// hardcoded literals — ADHIṢṬHĀNA Lane A2. Kept as a local Record (not a bare
+// grahaCodeOf() call at the read site below) because grahaCodeOf() THROWS on an
+// unrecognized name (B.10 — no silent fallback) while this call site's existing
+// contract is a graceful skip-with-judgment-flag for an unmapped lord_graha; the
+// 9 literal keys here are well-formed graha names so grahaCodeOf() never throws
+// building this table.
+const GRAHA_TO_SUBJECT: Record<string, string> = Object.fromEntries(
+  ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn', 'Rahu', 'Ketu']
+    .map(name => [name, grahaCodeOf(name)]),
+)
 
 interface DashaLordRow {
   lord: string

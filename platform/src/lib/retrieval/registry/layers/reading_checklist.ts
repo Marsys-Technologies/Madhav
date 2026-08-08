@@ -22,6 +22,7 @@
  * re-tuning a fragile prior — a caller never has to ask for them by name.
  */
 import { query } from '@/lib/db/client'
+import { grahaCodeOf, GRAHA_CODE_TO_NAME } from '@/lib/retrieval/address_resolver'
 
 // ── The checklist vocabulary (design §28.6, generalized) ──────────────────────
 
@@ -69,11 +70,13 @@ export function checklistExhaustiveness(units: ChecklistUnit[]): {
 
 // ── Leg 1: fired sensitive-degree checks (MC-030) ─────────────────────────────
 
-/** sensitive_degree_check fact_subject code → classical graha display name. */
-const SENSITIVE_SUBJECT_TO_GRAHA: Record<string, string> = {
-  SUN: 'Sun', MOON: 'Moon', MAR: 'Mars', MER: 'Mercury', JUP: 'Jupiter',
-  VEN: 'Venus', SAT: 'Saturn', RAH_MEAN: 'Rahu', KET_MEAN: 'Ketu',
-}
+/** sensitive_degree_check fact_subject code → classical graha display name.
+ *  Values sourced from the graha SSoT (address_resolver.grahaCodeOf +
+ *  GRAHA_CODE_TO_NAME) rather than hardcoded literals — ADHIṢṬHĀNA Lane A2. */
+const SENSITIVE_SUBJECT_TO_GRAHA: Record<string, string> = Object.fromEntries(
+  ['SUN', 'MOON', 'MAR', 'MER', 'JUP', 'VEN', 'SAT', 'RAH_MEAN', 'KET_MEAN']
+    .map(code => [code, GRAHA_CODE_TO_NAME[grahaCodeOf(code)]]),
+)
 
 /** The high-information check types — rare fired states that carry decisive weight
  *  (a fired one is a genuine event, not a routine descriptor). kartari is included:
