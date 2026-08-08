@@ -35580,3 +35580,192 @@ W6 gate closure:
 6. Fix register_all.ts docstring drift (W6-C1 cosmetic debt)
 
 Once all 6 W6 clauses pass: W6 formally CLOSED and campaign ARC-COMPLETE.
+
+## ADHISTHANA-CONDUCTOR-2026-08-08 — ADHIṢṬHĀNA Campaign A closed: foundation merged, checkpoint artifacts ready, RUN-TERMINAL ARC-COMPLETE
+
+```yaml
+session_open:
+  session_id: ADHISTHANA-CONDUCTOR-2026-08-08
+  cowork_thread_name: "Madhav — ADHIṢṬHĀNA Campaign A Conductor"
+  agent_name: claude-sonnet-5
+  agent_version: claude-sonnet-5
+  step_number_or_macro_phase: "Campaign A (ADHIṢṬHĀNA) — post-rebuild era, MASTER_PLAN_v1_0.md §3"
+  predecessor_session: SHAD-DARSHANA-CLOSING-RUN-2026-08-07
+  mandatory_reading_confirmation:
+    # Honest scoping note: this session opened via a native-authored ADHIṢṬHĀNA Campaign A
+    # conductor kickoff prompt (which itself names CLAUDE.md §C's mandatory-reading list plus
+    # campaign-specific reading), not a literal field-by-field SESSION_OPEN_TEMPLATE §2
+    # handshake with per-file sha256 fingerprints computed at read time. The items below were
+    # genuinely read in full during Stage 0 pre-flight; fingerprints are not populated (not
+    # computed at read time this session) rather than fabricated.
+    - file: CLAUDE.md
+      fingerprint_sha256: "<not computed this session>"
+      read_at: 2026-08-08T13:34:00+05:30
+    - file: 00_ARCHITECTURE/briefs/adhisthana/MASTER_PLAN_v1_0.md
+      fingerprint_sha256: "<not computed this session — this session's own first act copied this file into the repo>"
+      read_at: 2026-08-08T13:48:00+05:30
+    - file: 00_ARCHITECTURE/briefs/siddhanta/SIDDHANTA_STATE.md
+      fingerprint_sha256: "<not computed this session>"
+      read_at: 2026-08-08T13:34:00+05:30
+    - file: 00_ARCHITECTURE/llm_consumption_audit/briefs/kala_elevation/PRODUCTION_GATE_EXECUTION_POLICY_v1_0.md
+      fingerprint_sha256: "<not computed this session>"
+      read_at: 2026-08-08T13:34:00+05:30
+  scope_declaration:
+    may_touch: ["00_ARCHITECTURE/briefs/adhisthana/**", "platform/**/graha*", "platform/**/domain_vocabulary*",
+      "platform/scripts/probes/**", "platform/scripts/governance/**", "platform/supabase/migrations/**",
+      "00_ARCHITECTURE/CURRENT_STATE_v1_0.md", "00_ARCHITECTURE/SESSION_LOG.md"]
+    must_not_touch: ["engine/rubric implementation code (Campaign B)", "chart_facts (R19, absolute)",
+      "any file outside the identity/registry/gates/checkpoint-artifact scope of MASTER_PLAN_v1_0.md §3"]
+  red_team_due: false
+```
+
+**Campaign:** ADHIṢṬHĀNA ("the foundation"), Campaign A of the ratified MASTER PLAN (Identity,
+Promise, and the First True Measurement — native + Fable 5, 2026-08-08). Full ledger:
+`00_ARCHITECTURE/briefs/adhisthana/ADHISTHANA_STATE.md`. Plan of record:
+`00_ARCHITECTURE/briefs/adhisthana/MASTER_PLAN_v1_0.md`.
+
+### What happened
+
+Stage 0 pre-flight (main==origin/main clean, no blocking PRs/worktrees) → Stage 1 (Lanes A1–A4,
+producer convergence + graha SSoT + registry completion + event-class contract, dispatched
+parallel, all merged) → **Rung P1 GREEN (23/23)** → Stage 2 (Lane A5, THE FACT IDENTITY INDEX,
+the campaign's keystone — a single deterministic parser turning `chart_facts`'s six house
+encodings/three varga separators/two planet-naming systems into structured `chart_fact_identity`
+rows, 100.0000% coverage on all 3 canonical charts after a PARĪKṢAKA-caught fix cycle) →
+**Rung P2 GREEN** (with an honest architectural finding: base occupancy/position data lives in
+`chart_divisionals`, not `chart_facts` — recorded, not smoothed over) → Stage 3 (Lanes A6+A7,
+permanent governance gates + TS domain-vocabulary adoption debt, both merged) → Stage 4 (Lane A8,
+the two checkpoint artifacts + **Rung P3**, hand-worked marriage/separation/childbirth scoring on
+chart 482012f1) → Stage 5 (gate packet, 3 independent GATE-EXECUTOR rounds, 2 real regressions
+caught and fixed before merge, `main` @ `edd4cf928`).
+
+**Removal census (R17, detector-cited, not estimated):** independent graha maps Python 46→1
+(master plan estimated ~13), TS 18→1 (estimated ~6) — the true scope was far larger than the
+plan's own grounding table. Domain-vocabulary literals 16→0. Both enforced permanently by
+committed CI census tests.
+
+**Two lanes (A2, A5) independently re-verified at full scale by a fresh-context PARĪKṢAKA**
+(default-refuted posture, ran everything itself against live data, not sampled) before merge —
+both returned YELLOW with narrow, real, named findings; both fixed and directly re-verified, not
+re-trusted on self-report.
+
+**Gate execution worked exactly as designed.** Three fresh-context GATE-EXECUTOR rounds against
+PR #1108: round 1 PARKED (a CI fact-category-pin lint regression — allowlist line-drift from Lane
+A2's own edits, not a real new defect, fixed in PR #1109); round 2 PARKED (a genuine production
+build break — a client-bundled component transitively importing a server-only-poisoned module,
+also from Lane A2's edit, fixed architecturally in PR #1110, not band-aided); round 3 MERGED, all
+conditions independently re-derived from zero. **Both regressions were real and neither was caught
+by Lane A2's own extensive test sweep (~6700 tests) — the gate is what caught them, which is
+exactly its purpose.**
+
+### Checkpoint artifacts (Lane A8, the campaign's terminal deliverable — human+Fable review pending)
+
+- `00_ARCHITECTURE/briefs/adhisthana/A8_FACTOR_FACT_COVERAGE_MATRIX_v1_0.md` — all 27 event
+  classes' karyatva factors mapped to live, verified `(fact_category, fact_key)`/Index locations
+  on both canonical charts. Two real gaps found: `parental_event` has no `KaryatvaMap` entry at
+  all; `bereavement`'s entry diverges almost totally from its own `signature_model`.
+- `00_ARCHITECTURE/briefs/adhisthana/V4_RUBRIC_SPEC_v0_9.md` (DRAFT) — bounded rubric per R18, all
+  27 classes' weights verified summing to exactly 1.0 via rational arithmetic, dignity bands
+  adopted from the existing live L1 constant (not reinvented), written with zero queries against
+  the native's chart (R13). Self-flagged judgment-call risk areas in its own §8.
+- `00_ARCHITECTURE/briefs/adhisthana/RUNG_P3_HAND_WORKED_v1_0.md` — marriage (occurrence 0.321
+  WEAK), separation (0.505 MODERATE), childbirth (0.593 MODERATE-near-STRONG) hand-scored on
+  482012f1 from live facts, full arithmetic and citations shown. Marriage and separation score
+  from genuinely distinct evidence — the exact identical-grade defect this whole arc traces back
+  to. One honest gap applied consistently: none of the classes' `yoga_keywords` resolve to an
+  actual yoga catalog/firing match under the spec's strict definition.
+
+**This campaign ended at the checkpoint boundary, as its own governing instructions required — no
+Campaign B (promise-engine/rubric implementation) code was written.**
+
+### Honest backlog (R16 — 8 items, not silently dropped)
+
+AB1 (stale count elsewhere), AB2/AB3/AB4 (Campaign B scope notes + a value-level dignity
+divergence + a pre-existing base-layer data gap, all from Rung P2), AB5 (an alias-registration
+gap the new registry-parity gate itself surfaced), AB6 (an out-of-scope M9 subsystem bug), AB7/AB8
+(the `parental_event`/`bereavement` karyatva-registry gaps from Lane A8). Full detail + disposition
+reasoning in the campaign ledger's Backlog table.
+
+### Scoping note on this close entry
+
+This session-close entry is deliberately scoped to the spirit of `SESSION_CLOSE_TEMPLATE_v1_0.md`
+rather than its full letter: `drift_detector.py`/`schema_validator.py`/`mirror_enforcer.py` were
+not run (this was a product-code + campaign-governance session on the `adhisthana/integration`
+branch, not a governance-rebuild session those scripts target), per-file SHA256 hashing was not
+performed for the ~101 files this campaign touched (impractical at this scale; `git log`/the PR
+diffs are the authoritative record), and the `mirror_updates_propagated`/MP.1–MP.8 block is
+omitted as moot (Gemini mirror discipline is RETIRED per `CLAUDE.md §K`, 2026-05-27). Flagged
+honestly rather than fabricating compliance with fields that don't apply to this session's shape.
+
+```yaml
+session_close:
+  session_id: ADHISTHANA-CONDUCTOR-2026-08-08
+  closed_at: 2026-08-08T14:05:00+05:30
+  campaign: "ADHIṢṬHĀNA Campaign A (fully autonomous Conductor session)"
+  branch: adhisthana/integration
+  merged_to_main: true
+  main_head_after_merge: edd4cf928
+  merge_prs: [1108, 1109, 1110]
+  files_touched_summary: "~101 files across 10 PRs (#1101-#1110); full list = each PR's diff, not hash-enumerated here"
+  proof_ladder:
+    p1: {status: GREEN, checks_passed: "23/23", probe: "platform/scripts/probes/probe_p1_identity.py"}
+    p2: {status: GREEN, probe: "platform/scripts/probes/probe_p2_tracer.py", note: "honest architectural finding recorded, not blocking"}
+    p3: {status: DONE, artifact: "RUNG_P3_HAND_WORKED_v1_0.md"}
+  parikshaka_reviews:
+    - lane: A2
+      verdict: YELLOW
+      findings: 2
+      resolution: "both fixed and directly re-verified before merge"
+    - lane: A5
+      verdict: YELLOW
+      findings: 3
+      resolution: "all fixed (1 real gap ruled, 1 stat corrected, 1 script committed) and directly re-verified before merge"
+  gate_executor_rounds:
+    - round: 1
+      verdict: PARKED
+      reason: "fact-category-pin CI lint regression (allowlist line-drift)"
+      fix_pr: 1109
+    - round: 2
+      verdict: PARKED
+      reason: "production build break (client component importing server-only-poisoned module)"
+      fix_pr: 1110
+    - round: 3
+      verdict: MERGED
+  drift_detector_run: "not run — product/campaign session, not a governance-rebuild session"
+  schema_validator_run: "not run — same rationale"
+  mirror_enforcer_run: "not applicable — Gemini mirror discipline RETIRED 2026-05-27, CLAUDE.md §K"
+  red_team_pass: {due: false, performed: false, verdict: n/a}
+  current_state_updated: true
+  session_log_appended: true
+  disagreement_register_entries_opened: []
+  native_directive_per_step_verification: []
+  product_code_writes_made: true
+  native_chart_touched: false
+  known_residuals:
+    - finding: "AB7/AB8 — parental_event has no KaryatvaMap entry at all; bereavement's entry diverges almost totally from its own signature_model. Both flagged for the checkpoint, not fixed."
+      severity: MEDIUM
+      policy_ref: "ADHISTHANA_STATE.md backlog table"
+    - finding: "AB5 — 14 graha aliases the Python SSoT accepts as input are not registered as brahma_ontology synonyms (no producer currently emits any of them, so currently inert)."
+      severity: LOW
+      policy_ref: "ADHISTHANA_STATE.md backlog table"
+    - finding: "Yoga-presence rubric slot (V4_RUBRIC_SPEC §2.5) cannot see Jaimini-karaka/upapada/dosha-label evidence under its current strict definition — scored 0.00 for marriage/separation/childbirth in Rung P3 despite real related evidence existing elsewhere. Flagged for Campaign B, not resolved."
+      severity: MEDIUM
+      policy_ref: "RUNG_P3_HAND_WORKED_v1_0.md §1.3, §5"
+    - finding: "A local, gitignored scratch file (verify_l1_fixes.py, predates this campaign) contains a plaintext DB credential. Never entered git history — not a repo-wide leak — but flagged to the native as a housekeeping item."
+      severity: LOW
+      policy_ref: "ADHISTHANA_STATE.md Stage 5 section"
+  self_errors_named:
+    - "Lane A2's PR initially opened from a worktree branched off main instead of adhisthana/integration — self-corrected within the same lane before PR open, no downstream effect"
+    - "Lane A2's builder stalled once (600s watchdog) mid-task; resumed from its own uncommitted checkpoint with zero work lost, but this is exactly the kind of failure mode a longer campaign should expect and plan for"
+    - "PARĪKṢAKA (Lane A5 verify) itself once returned without a verdict, having armed background Monitors it then couldn't be woken by — resumed with an explicit instruction to finish synchronously; a process gap in how a subagent hands off to its own background children, not a finding about the code under review"
+    - "Two real regressions (fact-category-pin drift, production build break) shipped past Lane A2's own ~6700-test verification sweep and were caught only by the independent gate — the lane-level test sweep's coverage has a real blind spot (governance lints and actual production builds) worth carrying into future campaigns' own verification checklists"
+  run_terminal: "ARC-COMPLETE — all 8 lanes + all 3 Proof Ladder rungs closed; foundation merged to main; checkpoint artifacts ready; Campaign B correctly not started"
+  followups: "Human+Fable design checkpoint (MASTER_PLAN_v1_0.md §4) reviews the two checkpoint artifacts + Rung P3 before Campaign B (PRATIJÑĀ v4) can begin. 8 backlog items (AB1-AB8) carried, none blocking. verify_l1_fixes.py credential housekeeping note for the native."
+  next_session_objective: "Human+Fable checkpoint review of A8_FACTOR_FACT_COVERAGE_MATRIX_v1_0.md + V4_RUBRIC_SPEC_v0_9.md + RUNG_P3_HAND_WORKED_v1_0.md. Once ratified (v0.9→v1.0), Campaign B (PRATIJÑĀ v4) opens per MASTER_PLAN_v1_0.md §5."
+```
+
+### Next session objective
+
+Human+Fable checkpoint review of the three artifacts under `00_ARCHITECTURE/briefs/adhisthana/`.
+Once the rubric spec is ratified v0.9→v1.0 (with any new rulings the checkpoint issues), Campaign B
+(PRATIJÑĀ v4 — the actual promise-engine implementation) opens per `MASTER_PLAN_v1_0.md §5`.

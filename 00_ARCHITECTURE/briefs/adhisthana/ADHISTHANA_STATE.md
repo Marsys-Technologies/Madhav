@@ -6,9 +6,10 @@
 from `/Users/Dev/shad_overnight/MASTER_PLAN_IDENTITY_AND_PROMISE.md`, 2026-08-08).
 **Integration branch:** `adhisthana/integration` (cut from `main` @ `ac0545c2d`, 2026-08-08).
 **Conductor:** Sonnet 5, this session.
-**Status:** ACTIVE — Stage 0 pre-flight complete, lanes not yet dispatched.
-**This campaign ends at the checkpoint boundary.** No Campaign B (engine code, rubric
-implementation) begins in this campaign regardless of time remaining.
+**Status:** **RUN-TERMINAL: ARC-COMPLETE.** All 5 stages closed, all 3 Proof Ladder rungs GREEN,
+foundation work merged to `main` @ `edd4cf928` (2026-08-08T13:58:48Z). Checkpoint artifacts ready
+for the human+Fable design review. **This campaign ended at the checkpoint boundary, as instructed
+— no Campaign B (engine code, rubric implementation) work was started.**
 
 ---
 
@@ -276,6 +277,48 @@ ganita/forensic suite, new `graha_labels.test.ts` (11 tests incl. a static guard
 reintroducing the `@/lib/db/client` import), `graha_vocabulary_census.test.ts` updated for the
 relocated literal (would have false-positived otherwise). R19 confirmed clean (pure TS refactor,
 zero SQL).
+
+**Third GATE-EXECUTOR run (fresh context, independent, nothing trusted from either prior
+report): MERGED.** All 32 PR status checks confirmed `SUCCESS`/`SKIPPED`, zero failures. Lint
+re-run live: 0 new violations. Production build re-run from a clean `.next` against current HEAD:
+real exit 0, 123 pages generated. All 3 migrations + both probes + all 6 checkpoint/ledger
+artifacts confirmed present in the diff. R19 re-confirmed clean. All 3 migrations re-confirmed
+live (`chart_fact_identity`=375,856 rows, `brahma_ontology varga`=30 rows, the gochara FK present
+in `pg_constraint`) and independently re-proven idempotent by re-executing each migration's core
+operation. **One additional finding, investigated to a safe conclusion, not merge-blocking**: the
+3 migrations were applied out-of-band and aren't yet recorded in `_migrations_applied` — GATE-
+EXECUTOR ran `migrate.ts --dry-run` live and confirmed the next real deploy will safely no-op
+re-apply and self-heal the tracker (a disclosed, pre-existing pattern this project already uses
+elsewhere, not new to this campaign). Merge queue re-ran the full required check suite fresh
+against the merge commit before landing — both green.
+
+**MERGED: `adhisthana/integration` → `main` @ `edd4cf928` (2026-08-08T13:58:48Z), PR #1108.**
+
+**Session-close docs follow-up (PR #1111 → closed, PR #1112 opened):** attempting to merge the
+`CURRENT_STATE`/`SESSION_LOG` close-governance commit from `adhisthana/integration` hit a real git
+mechanics issue — squash-merging PR #1108 orphaned that branch's history relative to `main`'s new
+squash commit, so a further PR from the same branch re-showed the entire 103-file historical diff
+instead of just the 3 new files (both an independent GATE-EXECUTOR and this conductor's own direct
+check confirmed this). Fixed by branching fresh off current `main` (`adhisthana/session-close`,
+PR #1112) instead of continuing to use the now-poisoned branch. A second gate round on PR #1112
+then caught a second, genuine, unrelated finding: this session's own new `SESSION_LOG.md` entry
+was missing its required `session_open` YAML handshake block (`schema_validator.py`: 44 violations
+vs. the tolerated 43-baseline ceiling) — fixed by adding the block, honestly scoped (this session
+opened via a native-authored campaign kickoff, not a literal template handshake; fingerprints
+marked not-computed rather than fabricated). Re-verified locally (43/exit=3) before re-gating.
+
+**Third gate round on PR #1112 found a third, genuinely different, precedented issue** (this
+GATE-EXECUTOR instance also once paused waiting on its own background clone/CI monitor instead of
+finishing synchronously — resumed with an explicit instruction to complete, same class of process
+gap as Lane A5's PARĪKṢAKA earlier): the required merge-queue check "TAP-6 — Method audit grep
+set" never fires on a pure-docs PR because its `pull_request` trigger is path-filtered to
+`platform/scripts/audit/tap/**`/`platform/python-sidecar/**`/`platform-mcp/src/**`/
+`platform/src/lib/retrieval/**`/itself — none of which this PR's 3 files match — leaving
+`mergeStateStatus: BLOCKED` indefinitely (confirmed via both REST and GraphQL). Established,
+precedented fix (used identically by PR #1078/#1091/#1094/#1096, `tap-ci.yml`'s own inline
+changelog documents each instance): a comment-only no-op touch to `tap-ci.yml` itself, which is in
+its own allowlist, forcing TAP-6 to fire for real in `pull_request` context. Applied the same
+pattern, zero behavior change, R19 N/A (workflow YAML comment only).
 
 ## Session log
 

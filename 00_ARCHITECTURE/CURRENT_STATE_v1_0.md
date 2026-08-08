@@ -5627,6 +5627,39 @@ block (post-rebuild era), and proceeds.
 
 ## §2 — Canonical state block
 
+> 🟢 **ADHIṢṬHĀNA Campaign A close (2026-08-08, session ADHISTHANA-CONDUCTOR-2026-08-08) —
+> Campaign A of the ratified MASTER PLAN (Identity, Promise, and the First True Measurement, native
+> + Fable 5, 2026-08-08). RUN-TERMINAL: ARC-COMPLETE.** Full campaign ledger:
+> `00_ARCHITECTURE/briefs/adhisthana/ADHISTHANA_STATE.md`. Plan of record:
+> `00_ARCHITECTURE/briefs/adhisthana/MASTER_PLAN_v1_0.md`. All 8 lanes (A1–A8) merged to `main`
+> @ `edd4cf928` (PR #1108, 2026-08-08T13:58:48Z) plus two follow-up gate-triggered fixes (PR
+> #1109, #1110) — 29 commits, 101 files. All 3 Proof Ladder rungs (§10) closed **GREEN**, two
+> permanent regression probes committed (`platform/scripts/probes/probe_p1_identity.py`,
+> `probe_p2_tracer.py`). **Identity contract unified**: graha independent-map census Python 46→1,
+> TS 18→1 (master plan estimated ~13/~6 — true count far larger); domain-vocabulary census 16→0;
+> registry completion (`brahma_ontology` gains `entity_class='varga'` + storage-code synonyms);
+> event-class TS mirror + real FK (previously comment-only). **THE FACT IDENTITY INDEX**
+> (`chart_fact_identity`, keystone Lane A5) live on all 3 canonical charts, 100.0000% coverage,
+> parser deterministic with per-row provenance. Two lanes (A2, A5) independently re-verified at
+> full scale by a fresh-context PARĪKṢAKA against live data (not sampled) before merge — both
+> found real, narrow issues, both fixed and re-verified. **Gate execution caught two real
+> regressions before they reached main** (a CI lint allowlist-drift false-negative and a
+> production-build-breaking client/server import boundary violation, both from Lane A2's own
+> refactor, neither caught by that lane's own extensive test sweep) — fixed and independently
+> re-verified by a third fresh-context GATE-EXECUTOR before the actual merge. **Checkpoint
+> artifacts ready for the human+Fable design review** (blocking Campaign B, not yet scheduled):
+> `A8_FACTOR_FACT_COVERAGE_MATRIX_v1_0.md` (27 event classes, live-verified, 2 real gaps named),
+> `V4_RUBRIC_SPEC_v0_9.md` (DRAFT — bounded rubric per R18, all 27 classes' weights sum to exactly
+> 1.0), `RUNG_P3_HAND_WORKED_v1_0.md` (marriage/separation/childbirth hand-scored on 482012f1 from
+> live facts, full arithmetic shown). **This campaign ended at the checkpoint boundary, as
+> instructed — no Campaign B (engine/rubric implementation) code was written.** Honest backlog
+> (8 items, AB1–AB8) carried forward per R16, not silently dropped — see the ledger's Backlog
+> table. One housekeeping note flagged to the native, not campaign-related: a local,
+> `.gitignore`-excluded scratch file (`platform/python-sidecar/verify_l1_fixes.py`, predates this
+> campaign) contains a plaintext DB credential — never entered git history, not a repo-wide leak,
+> but worth the native's own review/cleanup. Full account: `ADHISTHANA_STATE.md`. See changelog
+> v6.54.
+
 > 🟢 **ṢAḌ-DARŚANA CLOSING RUN complete (2026-08-07, session SHAD-DARSHANA-CLOSING-RUN-2026-08-07)
 > — supersedes v6.52's "field_window_id=0" and "re-dispatch ANTARYĀMIN" framing; those were
 > checklist factual errors confirmed by §M red-team D-CLASS-3 finding.** W3K CLOSED
