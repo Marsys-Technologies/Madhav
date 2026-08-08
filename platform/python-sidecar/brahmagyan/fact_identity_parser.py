@@ -598,15 +598,28 @@ def _parse_subject(fact_subject: str) -> IdentityMatch | None:
 
 _KEY_VARGA_RE = re.compile(r"^D(\d{1,4})$")
 _KEY_HOUSE_RE = re.compile(r"^house_0*(\d{1,2})$")
+# `nakshatra_co_tenancy`'s co-tenancy key shape: `co_<GRAHA>_<GRAHA>` (e.g.
+# `co_MAR_VEN`) — the two grahas that jointly occupy the nakshatra named in
+# fact_subject. fact_subject there is a bare nakshatra name (out of this
+# Index's scope, per `classify_unparsed_subject`'s
+# `nakshatra_name_fifth_dimension_out_of_scope`), but the fact_key text
+# itself genuinely carries a two-graha-pair identity, squarely within this
+# parser's chartered scope (the same dimension already extracted from the
+# hyphen/underscore/`MAITRI_`/`_v_` graha-pair subject shapes) — found and
+# fixed per PARĪKṢAKA A5 acceptance-gate review (2026-08-08): the original
+# release classified these 12 rows as identity-free by SUBJECT alone,
+# because `classify_unparsed_subject()` never saw fact_key. Real gap, not a
+# genuinely identity-free shape — fixed here rather than merely disclosed.
+_KEY_CO_TENANCY_PAIR_RE = re.compile(rf"^co_({_UNDERSCORE_GRAHA_ALT})_({_UNDERSCORE_GRAHA_ALT})$")
 
 
 def _parse_key_identity(fact_key: str) -> tuple[str, IdentityMatch] | tuple[None, None]:
     """Returns (dimension, partial IdentityMatch) for the narrow set of
-    fact_key shapes that themselves carry varga/house identity, or
-    (None, None) if fact_key is not one of those (the overwhelming common
-    case — plain attribute names like 'grade', 'dignity_state', or matrix
-    coordinates like 'h8_offset7' are NOT identity carriers; see module
-    docstring's Scope boundary)."""
+    fact_key shapes that themselves carry varga/house/graha-pair identity,
+    or (None, None) if fact_key is not one of those (the overwhelming
+    common case — plain attribute names like 'grade', 'dignity_state', or
+    matrix coordinates like 'h8_offset7' are NOT identity carriers; see
+    module docstring's Scope boundary)."""
     if fact_key == "D_ALL":
         # Explicit floor marker — "all vargas", not a specific varga. Must
         # NOT be parsed as a literal varga id (see ga_condition_writer.py
@@ -618,6 +631,12 @@ def _parse_key_identity(fact_key: str) -> tuple[str, IdentityMatch] | tuple[None
     m = _KEY_HOUSE_RE.match(fact_key)
     if m:
         return "house", IdentityMatch(entity_kind="_partial_", parse_rule="bare_house_key", house_num=int(m.group(1)))
+    m = _KEY_CO_TENANCY_PAIR_RE.match(fact_key)
+    if m:
+        return "graha_pair", IdentityMatch(
+            entity_kind="graha_pair", parse_rule="co_tenancy_graha_pair_key",
+            graha_code=m.group(1), graha_code_secondary=m.group(2),
+        )
     return None, None
 
 
@@ -675,6 +694,11 @@ def parse_fact_identity(
         return IdentityMatch(entity_kind="varga", parse_rule=key_partial.parse_rule, varga_id=key_partial.varga_id)
     if key_dim == "house":
         return IdentityMatch(entity_kind="house", parse_rule=key_partial.parse_rule, house_num=key_partial.house_num)
+    if key_dim == "graha_pair":
+        # key_partial is already a complete IdentityMatch for this shape
+        # (co_tenancy_graha_pair_key) — fact_subject (a nakshatra name)
+        # contributes nothing further.
+        return key_partial
 
     return None
 

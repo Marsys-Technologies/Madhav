@@ -437,11 +437,41 @@ def test_nakshatra_name_bare_subject_is_out_of_scope_not_a_gap():
     # 'Purva Bhadrapada' — the native's own birth Moon nakshatra (FORENSIC
     # anchor #2) — appears as a bare subject in nakshatra_co_tenancy /
     # nakshatra_conjunction. Nakshatra identity is a genuine fifth
-    # dimension outside this lane's graha/house/varga/sign scope.
+    # dimension outside this lane's graha/house/varga/sign scope. Uses a
+    # fact_key that carries no identity of its own ('bodies_list'), unlike
+    # the 'co_<GRAHA>_<GRAHA>' key shape covered by
+    # test_nakshatra_co_tenancy_graha_pair_key below — that shape DOES
+    # parse, via the key, even though the subject alone does not.
     assert parse_fact_identity("Purva Bhadrapada", "bodies_list", "nakshatra_conjunction") is None
     assert classify_unparsed_subject("Purva Bhadrapada") == "nakshatra_name_fifth_dimension_out_of_scope"
-    assert parse_fact_identity("Vishakha", "co_MER_SUN", "nakshatra_co_tenancy") is None
+    assert parse_fact_identity("Vishakha", "some_other_key", "nakshatra_conjunction") is None
     assert classify_unparsed_subject("Vishakha") == "nakshatra_name_fifth_dimension_out_of_scope"
+
+
+def test_nakshatra_co_tenancy_graha_pair_key():
+    # PARĪKṢAKA A5 acceptance-gate finding (2026-08-08): `nakshatra_co_
+    # tenancy`'s fact_key carries a genuine two-graha-pair identity
+    # (`co_<GRAHA>_<GRAHA>`) even though fact_subject is an out-of-scope
+    # bare nakshatra name. All 12 live rows across the 3 canonical charts,
+    # verified by direct query, exercised here.
+    for subject, key, g1, g2 in [
+        ("Revati", "co_MAR_VEN", "MAR", "VEN"),
+        ("Purva Bhadrapada", "co_MER_SUN", "MER", "SUN"),
+        ("Vishakha", "co_MAR_SAT", "MAR", "SAT"),
+        ("Swati", "co_MER_SUN", "MER", "SUN"),
+        ("Vishakha", "co_MER_VEN", "MER", "VEN"),
+        ("Swati", "co_SUN_MER", "SUN", "MER"),
+    ]:
+        r = parse_fact_identity(subject, key, "nakshatra_co_tenancy")
+        assert r is not None, f"{subject!r}/{key!r} should parse via the fact_key, not fall through to None"
+        assert r.entity_kind == "graha_pair"
+        assert r.parse_rule == "co_tenancy_graha_pair_key"
+        assert r.graha_code == g1
+        assert r.graha_code_secondary == g2
+        # The nakshatra-name subject must not leak into any dimension.
+        assert r.house_num is None
+        assert r.varga_id is None
+        assert r.sign_num is None
 
 
 def test_bare_sign_name_is_parsed_not_identity_free():

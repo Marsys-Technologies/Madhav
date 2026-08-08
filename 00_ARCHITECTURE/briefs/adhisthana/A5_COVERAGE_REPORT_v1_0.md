@@ -1,10 +1,19 @@
 ---
 canonical_id: A5_COVERAGE_REPORT
-version: 1.0
+version: 1.1
 status: CURRENT
 campaign: ADHIṢṬHĀNA (Campaign A)
 lane: A5 — THE FACT IDENTITY INDEX (keystone lane)
 date: 2026-08-08
+changelog: |
+  v1.1 (2026-08-08, same day) — PARĪKṢAKA acceptance-gate correction (see
+  §7, new section): fixed a real 12-row gap (nakshatra_co_tenancy's
+  co_<GRAHA>_<GRAHA> fact_key shape, previously mis-bucketed as
+  identity-free) with a new parser rule; corrected the sign-dimension
+  percentage claim from the wrong ≈31% to the correct ≈44%; committed the
+  reconnaissance script that had been claimed-but-not-committed. All §1/§2/
+  §3/§4/§5 numbers in this version are POST-fix. v1.0 (2026-08-08) — initial
+  release.
 ---
 
 # A5 Coverage Report — THE FACT IDENTITY INDEX
@@ -14,8 +23,8 @@ identity-bearing facts parsed, every unparsed shape individually enumerated
 and classified (identity-free vs real gap).
 
 **Result: 100.0000% coverage of identity-bearing facts on all three
-canonical charts, zero real gaps.** Every one of the 41,424 (chart 1) /
-41,383 (chart 2) / 41,235 (chart 3) rows this parser could not directly
+canonical charts, zero real gaps.** Every one of the 13,878 (chart 1) /
+13,844 (chart 2) / 13,690 (chart 3) rows this parser could not directly
 assign a graha/house/varga/sign dimension to is individually accounted for
 below as genuinely identity-free — none were silently dropped into a vague
 "other" bucket (R16).
@@ -24,6 +33,29 @@ This number is a real detector, not an estimate (CLAUDE.md §N.8): it is the
 literal per-chart `count(*)` in `chart_fact_identity` after the live
 population run against `chart_facts`, reconciled row-for-row against the
 population script's own in-flight counters. See §4.
+
+**Independently re-verified 2026-08-08 by a fresh-context PARĪKṢAKA
+acceptance-gate review, run at full scale (not sampled) against live data.**
+Verdict on the first release of this PR: **YELLOW** — the parser logic,
+idempotency, R19 compliance, and migration safety were all independently
+re-confirmed clean, but the "100.0000%, zero real gaps" claim was not
+literally true as stated. Three concrete findings, all fixed in this
+revision (§7 records the full correction for R16 auditability):
+1. 12 rows (`nakshatra_co_tenancy`'s `co_<GRAHA>_<GRAHA>` fact_key shape)
+   were genuine graha-pair identity that a real gap, misclassified as
+   identity-free because the classification helper only ever inspected
+   `fact_subject`, never `fact_key`. **Fixed with a new parse rule**
+   (`co_tenancy_graha_pair_key`), not merely disclosed — see §3/§7.
+2. The "≈31% of rows carry a sign dimension" figure in §1 was a reporting
+   arithmetic error; the real figure, computed three independent ways by
+   PARĪKṢAKA and re-confirmed here, is **≈44%**. The underlying `sign_num`
+   data itself was verified correct (exhaustive, non-sampled invariant
+   checks against all 125,592 rows of chart `482012f1`) — this was a
+   narration error only, now corrected throughout this report.
+3. The claim that per-shape counts were "reproducible via the
+   reconnaissance script committed history" was false — no such script had
+   been committed. `platform/python-sidecar/scripts/
+   reconnoiter_fact_identity_shapes.py` is now committed in this PR (§1.1).
 
 ---
 
@@ -61,10 +93,13 @@ mention:**
 | identity-free panchanga constants | ✅ confirmed — plus a much wider identity-free population than "panchanga constants" alone (special points, karaka roles, sahams, degree/index dimensions distinct from house/varga; see §3) |
 
 **Additional structural finding not in the grounding notes:** a large
-fraction of `chart_facts` (≈31% of all rows) smuggles a **sign** (rashi
-1-12) identity, not a house identity, using the same encoding patterns as
-houses (`D9_SIGN_4`, `MOON-SIGN_1`, bare Title-case sign names in
-`aspect_jaimini`'s Rasi-drishti matrix). Sign is ascendant-independent,
+fraction of `chart_facts` (**≈44% of all rows** — `varga_sign` +
+`graha_in_sign` + bare `sign` entity_kind rows ÷ total facts, computed
+per chart: 61,100/139,471 = 43.81% on `482012f1`; 61,105/139,717 = 43.73%
+on `1c826d5a`; 61,078/138,080 = 44.23% on `cb73cd3d`) smuggles a **sign**
+(rashi 1-12) identity, not a house identity, using the same encoding
+patterns as houses (`D9_SIGN_4`, `MOON-SIGN_1`, bare Title-case sign names
+in `aspect_jaimini`'s Rasi-drishti matrix). Sign is ascendant-independent,
 house is not — conflating them would have been a real defect, so the
 schema (§2) carries `sign_num` as its own column, never overloaded onto
 `house_num`.
@@ -103,9 +138,13 @@ schema (§2) carries `sign_num` as its own column, never overloaded onto
 | ~13,000 | `D#_<domain_word>` (30 domain words combined) | `D108_artha` |
 
 (577 distinct shapes total exist; the table above is the head. Full
-per-shape counts are reproducible via the reconnaissance script committed
-history — every rule in §3 traces back to a real shape in this inventory,
-none invented.)
+per-shape counts are reproducible via `platform/python-sidecar/scripts/
+reconnoiter_fact_identity_shapes.py`, committed in this PR — the actual
+script used to generate this table, not a reconstruction after the fact.
+Re-running `DATABASE_URL=... python3 scripts/
+reconnoiter_fact_identity_shapes.py --all-canonical` reproduces the same
+577/365 shape counts and the same 417,268-row total verbatim. Every rule
+in §3 traces back to a real shape in this inventory, none invented.)
 
 ### 1.2 Top fact_key shapes (aggregated across all 3 charts, verbatim counts)
 
@@ -163,7 +202,7 @@ not gospel-driven):**
   Dropping the second participant would have silently halved what the
   Index captures for ~2% of all rows.
 - **`sign_num` added.** See §1's "additional structural finding" — sign
-  (rashi) identity is a genuinely distinct, heavily-populated (≈31% of all
+  (rashi) identity is a genuinely distinct, heavily-populated (≈44% of all
   rows) dimension from house identity, encoded with the same swamp pattern.
   Never written into `house_num` — the two are structurally different
   (ascendant-independent vs ascendant-dependent) and conflating them would
@@ -183,17 +222,17 @@ not gospel-driven):**
 
 ---
 
-## 3. The parser — one deterministic module, 27 named rules
+## 3. The parser — one deterministic module, 29 named rules
 
 `platform/python-sidecar/brahmagyan/fact_identity_parser.py`. Two-phase
 parse + merge (see the module's own docstring for the full design
 rationale): `fact_subject` is tried against an ordered list of shape rules
 (most specific first); if that yields only a bare/partial identity (a bare
 graha, or nothing), a narrow set of `fact_key` rules (bare varga code,
-`D_ALL` floor marker, bare `house_N`) is consulted and merged in. Every
-rule has a name that becomes the `parse_rule` provenance value on the row
-it produces — a human or PARĪKṢAKA auditing any row can see exactly which
-rule matched.
+`D_ALL` floor marker, bare `house_N`, or a `co_<GRAHA>_<GRAHA>` graha-pair
+key) is consulted and merged in. Every rule has a name that becomes the
+`parse_rule` provenance value on the row it produces — a human or
+PARĪKṢAKA auditing any row can see exactly which rule matched.
 
 | # | parse_rule | Shape | entity_kind |
 |---|---|---|---|
@@ -228,6 +267,7 @@ rule matched.
 | — | `bare_graha_subject` | bare graha token (checked after all compound rules) | `graha` |
 | — | `bare_varga_key` + `bare_house_key` | `fact_key`-carried varga/house merged onto a bare-graha or unresolved subject | `graha_in_varga` / `graha_in_house` / `varga` / `house` |
 | — | `d_all_floor_key` | `fact_key='D_ALL'` merged onto a graha subject — explicitly NOT a varga id | `graha` (varga_id left NULL) |
+| 29 | `co_tenancy_graha_pair_key` | `fact_key='co_<GRAHA>_<GRAHA>'` (e.g. `co_MAR_VEN`) — carries a two-graha identity even though `fact_subject` is an out-of-scope bare nakshatra name | `graha_pair` |
 
 **Two deliberate B.10 refusals, named explicitly per the lane brief's
 warning:**
@@ -254,39 +294,44 @@ detector against drift, not an unverified claim (CLAUDE.md §N.7 item 3).
 Run: `DATABASE_URL=<resolved via cloud-sql-proxy> python3 scripts/
 build_fact_identity_index.py --all-canonical`, from
 `platform/python-sidecar/`, against `chart_facts` live on the shared
-staging/prod DB. Verbatim script output (R16):
+staging/prod DB. This is the run AFTER the `co_tenancy_graha_pair_key` fix
+(§7) — 12 rows moved from `identity_free` to `parsed` relative to the
+first release, `gap` stays 0 (it was always 0 in the script's own count;
+the 12 rows were mis-bucketed as identity-free, not counted as a gap, which
+is exactly why PARĪKṢAKA's independent re-derivation was needed to catch
+it — see §7). Verbatim script output (R16):
 
 ### Chart `482012f1-710e-4a25-994a-93821f5871aa`
 ```
 total_facts=139471
-deleted_prior_rows=0
-parsed=125592
-identity_free=13879
+deleted_prior_rows=125592
+parsed=125593
+identity_free=13878
 gap=0
 coverage_of_identity_bearing_pct=100.0
-elapsed_sec=21.89
+elapsed_sec=24.31
 ```
 
 ### Chart `1c826d5a-41cb-4450-b4dc-59d440e5f75a`
 ```
 total_facts=139717
-deleted_prior_rows=0
-parsed=125867
-identity_free=13850
+deleted_prior_rows=125867
+parsed=125873
+identity_free=13844
 gap=0
 coverage_of_identity_bearing_pct=100.0
-elapsed_sec=26.38
+elapsed_sec=26.11
 ```
 
 ### Chart `cb73cd3d-9eba-4220-9902-0de91566e980`
 ```
 total_facts=138080
-deleted_prior_rows=0
-parsed=124385
-identity_free=13695
+deleted_prior_rows=124385
+parsed=124390
+identity_free=13690
 gap=0
 coverage_of_identity_bearing_pct=100.0
-elapsed_sec=22.17
+elapsed_sec=23.32
 ```
 
 **Cross-check against the live table (independent of the script's own
@@ -294,18 +339,19 @@ in-flight counters, R16 "detector, not self-report"):**
 
 ```sql
 SELECT chart_id, count(*) FROM chart_fact_identity GROUP BY chart_id;
---  1c826d5a-... | 125867
---  482012f1-... | 125592
---  cb73cd3d-... | 124385
-SELECT count(*) FROM chart_fact_identity;  -- 375844  (= 125592+125867+124385, exact match)
+--  1c826d5a-... | 125873
+--  482012f1-... | 125593
+--  cb73cd3d-... | 124390
+SELECT count(*) FROM chart_fact_identity;  -- 375856  (= 125593+125873+124390, exact match;
+                                            -- = 375844 (pre-fix total) + 12 (the fixed co_ pair rows))
 ```
 
 **Idempotency proof (R19 / §N.3 — rebuild REPLACES, never accretes):** the
-script was run a second time, end to end, against all three charts. The
-`deleted_prior_rows` on the second run equals exactly the prior run's
-insert count for each chart, and the post-run `count(*)` is byte-identical
-to the first run's — no duplication, no accretion. See the PR's CI/run log
-for the verbatim second-run output.
+script was run a second time, end to end, against all three charts both
+before and after this fix. In each case, `deleted_prior_rows` on the second
+run equals exactly the prior run's insert count for each chart, and the
+post-run `count(*)` is byte-identical to the first run's — no duplication,
+no accretion.
 
 `entity_kind` distribution (chart `482012f1`, representative of all three
 — the other two differ only in low-single-digit-percent ways expected from
@@ -321,7 +367,7 @@ each chart's own natal facts):
       5206  graha
       4350  varga_domain
       3275  house
-      1320  graha_pair
+      1321  graha_pair          (+1 vs. pre-fix: this chart's 1 co_MAR_SAT row)
       1260  graha_in_sign
        657  arudha_pada
        650  varga
@@ -335,13 +381,17 @@ each chart's own natal facts):
 
 ## 5. Disposition of every unparsed shape
 
-**Zero real gaps on all three charts.** Every unparsed row across all
-three charts falls into one of 14 explicitly-named, individually-reasoned
-identity-free classes (each backed by a real code path in
-`classify_unparsed_subject()` — never a blanket "unrecognized uppercase
-token = identity-free" heuristic, which would have silently swallowed real
-gaps). Counts below are chart `482012f1`'s (the other two charts' counts
-are within a few percent, printed in full in §4's per-chart blocks):
+**Zero real gaps on all three charts, as of the §7 fix.** Every unparsed
+row across all three charts falls into one of 14 explicitly-named,
+individually-reasoned identity-free classes (each backed by a real code
+path in `classify_unparsed_subject()` — never a blanket "unrecognized
+uppercase token = identity-free" heuristic, which would have silently
+swallowed real gaps). Counts below are chart `482012f1`'s POST-FIX numbers
+(the other two charts' counts are within a few percent, printed in full in
+§4's per-chart blocks); §7 records the one class (`nakshatra_name_fifth_
+dimension_out_of_scope`) whose count changed because 12 rows across all 3
+charts were previously mis-bucketed here instead of being parsed via their
+`fact_key`:
 
 | Disposition class | Count | Reasoning |
 |---|---:|---|
@@ -358,7 +408,7 @@ are within a few percent, printed in full in §4's per-chart blocks):
 | `yoga_label_catalog_label` | 34 | `yoga_label` category — gated by CATEGORY, not an enumerated name list, because this is an open-ended classical yoga-name catalog that keeps growing as new yoga detectors land; enumerating today's members as a frozen set would silently go stale. |
 | `ayurdaya_method_label` | 15 | `AMSAYU` / `NISARGAYU` / `PINDAYU` — the three longevity-calculation-method labels. |
 | `dosha_label_catalog_label` | 6 | `dosha_label` category — same open-ended-catalog reasoning as `yoga_label`. |
-| `nakshatra_name_fifth_dimension_out_of_scope` | 2 | Bare nakshatra names (`Purva Bhadrapada` — the native's own birth Moon nakshatra, FORENSIC anchor #2; `Vishakha`) in `nakshatra_co_tenancy`/`nakshatra_conjunction`. Nakshatra identity (27 nakshatras) is a genuine fifth dimension this lane was not chartered to structure (MASTER_PLAN_v1_0.md §3 Lane A5 scopes to graha/house/varga, extended in-lane to sign — never to nakshatra); named honestly rather than silently absorbed into the sign dimension it superficially resembles. |
+| `nakshatra_name_fifth_dimension_out_of_scope` | 1 | Bare nakshatra names (e.g. `Vishakha`) in `nakshatra_conjunction`/`nakshatra_co_tenancy` rows whose fact_key ALSO carries no identity (e.g. `bodies_list`). Nakshatra identity (27 nakshatras) is a genuine fifth dimension this lane was not chartered to structure (MASTER_PLAN_v1_0.md §3 Lane A5 scopes to graha/house/varga, extended in-lane to sign — never to nakshatra); named honestly rather than silently absorbed into the sign dimension it superficially resembles. **Post-§7-fix note:** this class previously also caught `nakshatra_co_tenancy` rows whose `fact_key` is `co_<GRAHA>_<GRAHA>` (e.g. `Purva Bhadrapada`/`co_MER_SUN`) — those 12 rows across all 3 charts are now correctly parsed as `graha_pair` via the fix in §7, not swept in here. |
 
 **Named, disclosed limitation (not a gap in the coverage sense — every row
 still gets its primary identity dimension captured — but a boundary a
@@ -403,6 +453,92 @@ docstring section for the full reasoning.
 7. Live population run (§4) against the actual `chart_facts` table,
    cross-checked against the resulting `chart_fact_identity` row counts
    independently of the script's own counters, plus an idempotency re-run.
+8. **Independent PARĪKṢAKA acceptance-gate re-verification** (fresh
+   context, full-scale, not sampled) — see §7 for the fix this produced.
 
 No step in this chain assumed a number; every percentage in this report
 traces to a `count(*)` a person could re-run today.
+
+---
+
+## 7. Post-release correction (PARĪKṢAKA acceptance-gate review, 2026-08-08)
+
+This section exists per R16: a status/coverage claim that turned out wrong
+gets corrected in place, with the correction itself on the record, not
+quietly overwritten.
+
+**What PARĪKṢAKA found, independently, at full scale:**
+
+1. **Real gap, 12 rows total across the 3 charts:** `nakshatra_co_tenancy`
+   rows carry a genuine two-graha identity in `fact_key`
+   (`co_<GRAHA>_<GRAHA>`, e.g. `co_MAR_VEN`) even though `fact_subject` is
+   an out-of-scope bare nakshatra name (e.g. `Revati`). The release's
+   `classify_unparsed_subject()` took only `fact_subject` as input, so
+   these rows were bucketed into `nakshatra_name_fifth_dimension_out_of_
+   scope` — a real gap silently reported as identity-free, exactly the
+   failure mode R16/§N.8 exist to catch. **Disposition: fixed, not
+   disclosed-and-left.** A new parser rule
+   (`co_tenancy_graha_pair_key`, table row 29 in §3) extracts both graha
+   codes from the fact_key text — the same dimension already handled by 4
+   other graha-pair conventions this parser recognizes (hyphen, bare
+   underscore, `MAITRI_`, `_v_`), so this is squarely within the parser's
+   chartered scope, not an expansion of it. Verified against all 12 live
+   rows (query below); a new unit test
+   (`test_nakshatra_co_tenancy_graha_pair_key`) exercises the 6 distinct
+   `(subject, key)` combinations those 12 rows reduce to (the pre-existing
+   "nakshatra name out of scope" test was also corrected — it had
+   asserted the WRONG expected result, `None`, for the `co_MER_SUN` key
+   case, which is exactly the bug this section is about).
+
+   ```sql
+   -- All 12 live rows this fix now parses (verbatim, all 3 charts):
+   --  1c826d5a-... | Revati            | co_MAR_VEN | MAR&VEN  (×5)
+   --  1c826d5a-... | Purva Bhadrapada  | co_MER_SUN | MER&SUN  (×1)
+   --  482012f1-... | Vishakha          | co_MAR_SAT | MAR&SAT  (×1)
+   --  cb73cd3d-... | Swati             | co_MER_SUN | MER&SUN  (×1)
+   --  cb73cd3d-... | Vishakha          | co_MER_VEN | MER&VEN  (×2)
+   --  cb73cd3d-... | Swati             | co_SUN_MER | SUN&MER  (×2)
+   ```
+
+   Coverage does not change numerically (it was already reported as
+   100.0000% — these rows were never counted in `gap`, only mis-labeled
+   within `identity_free`), but the DISPOSITION was wrong, which is the
+   thing that actually matters for a keystone Index a whole campaign
+   builds on. `chart_fact_identity` gained exactly 12 rows (375,844 →
+   375,856) after re-running the population script; the coverage report's
+   §4/§5 numbers above are the POST-fix numbers throughout.
+
+2. **Reporting-arithmetic error, not a functional bug:** §1's "sign
+   dimension" claim said ≈31%; the correct figure (computed three
+   independent ways by PARĪKṢAKA, re-confirmed here per-chart: 43.81% /
+   43.73% / 44.23%) is **≈44%**. The `sign_num` column's actual data was
+   independently verified correct by PARĪKṢAKA via exhaustive SQL
+   invariant checks against all 125,592 rows of chart `482012f1` — this
+   was purely a narration mistake in how the earlier draft summed/divided
+   the entity_kind counts, now corrected in §1 and §2 above.
+
+3. **Reproducibility gap:** the original coverage report claimed its
+   shape counts were "reproducible via the reconnaissance script committed
+   history," but no such script existed in the branch's commit history —
+   `git log --all --diff-filter=A` on the branch showed only the schema,
+   parser+tests, and population-script+report commits. Fixed by committing
+   `platform/python-sidecar/scripts/reconnoiter_fact_identity_shapes.py`
+   in this PR — the actual script, re-run to confirm it reproduces §1.1's
+   577-shape/417,268-row numbers verbatim (not a script written after the
+   fact to match numbers already in the report).
+
+**What PARĪKṢAKA independently re-confirmed clean (no action needed):**
+row totals; the `D9.MAR`-zero-rows finding; 100% coverage via PARĪKṢAKA's
+own independent driver script; all 125,592 rows of chart `482012f1` via SQL
+invariants (not the parser itself); `D_ALL` correctly not misparsed as a
+literal varga; the `house_1`-vs-`house_10/11/12` (DB10) zero-padding
+collision genuinely fixed; idempotency (independent second live run with an
+MD5 content checksum); R19 compliance (chart_facts never written); the
+migration file itself; and that the one test-suite failure PARĪKṢAKA saw
+in its own environment (`test_all_30_vargas_matches_writer_constant`, out
+of 106 tests at review time / 107 after this fix's addition) is a
+dependency-incomplete-environment artifact there, not a real defect —
+PARĪKṢAKA confirmed the underlying `ALL_30_VARGAS` constants are
+byte-identical by reading both source files directly, and the test passes
+in this environment (`pytest tests/test_fact_identity_parser.py` →
+107/107).
