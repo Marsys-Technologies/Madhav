@@ -6,9 +6,10 @@
 from `/Users/Dev/shad_overnight/MASTER_PLAN_IDENTITY_AND_PROMISE.md`, 2026-08-08).
 **Integration branch:** `adhisthana/integration` (cut from `main` @ `ac0545c2d`, 2026-08-08).
 **Conductor:** Sonnet 5, this session.
-**Status:** ACTIVE — Stage 0 pre-flight complete, lanes not yet dispatched.
-**This campaign ends at the checkpoint boundary.** No Campaign B (engine code, rubric
-implementation) begins in this campaign regardless of time remaining.
+**Status:** **RUN-TERMINAL: ARC-COMPLETE.** All 5 stages closed, all 3 Proof Ladder rungs GREEN,
+foundation work merged to `main` @ `edd4cf928` (2026-08-08T13:58:48Z). Checkpoint artifacts ready
+for the human+Fable design review. **This campaign ended at the checkpoint boundary, as instructed
+— no Campaign B (engine code, rubric implementation) work was started.**
 
 ---
 
@@ -276,6 +277,22 @@ ganita/forensic suite, new `graha_labels.test.ts` (11 tests incl. a static guard
 reintroducing the `@/lib/db/client` import), `graha_vocabulary_census.test.ts` updated for the
 relocated literal (would have false-positived otherwise). R19 confirmed clean (pure TS refactor,
 zero SQL).
+
+**Third GATE-EXECUTOR run (fresh context, independent, nothing trusted from either prior
+report): MERGED.** All 32 PR status checks confirmed `SUCCESS`/`SKIPPED`, zero failures. Lint
+re-run live: 0 new violations. Production build re-run from a clean `.next` against current HEAD:
+real exit 0, 123 pages generated. All 3 migrations + both probes + all 6 checkpoint/ledger
+artifacts confirmed present in the diff. R19 re-confirmed clean. All 3 migrations re-confirmed
+live (`chart_fact_identity`=375,856 rows, `brahma_ontology varga`=30 rows, the gochara FK present
+in `pg_constraint`) and independently re-proven idempotent by re-executing each migration's core
+operation. **One additional finding, investigated to a safe conclusion, not merge-blocking**: the
+3 migrations were applied out-of-band and aren't yet recorded in `_migrations_applied` — GATE-
+EXECUTOR ran `migrate.ts --dry-run` live and confirmed the next real deploy will safely no-op
+re-apply and self-heal the tracker (a disclosed, pre-existing pattern this project already uses
+elsewhere, not new to this campaign). Merge queue re-ran the full required check suite fresh
+against the merge commit before landing — both green.
+
+**MERGED: `adhisthana/integration` → `main` @ `edd4cf928` (2026-08-08T13:58:48Z), PR #1108.**
 
 ## Session log
 
