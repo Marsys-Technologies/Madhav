@@ -43,20 +43,30 @@ class _FakeConnOne:
         return _FakeCursorOne(self._fetchone_result)
 
 
+
+# DB9 (2026-08-08): these fixtures previously supplied TUPLE rows, e.g.
+# fetchone_result=("fact123", None). Production does not produce tuple rows --
+# the orchestrator connection is created with row_factory=psycopg.rows.dict_row
+# (pipeline/orchestrator/db.py), so every cursor yields DICT rows. The helpers
+# under test indexed positionally (row[1]) and therefore raised KeyError: 1 in
+# production while these tests stayed green, because the fixture fed the code a
+# row shape production never emits. A detector that cannot see the real input is
+# not a detector (CLAUDE.md N.8). Fixtures now supply dict rows, as production does.
+
 class TestFetchJanmaNakshatraIdx:
     def test_missing_fact_returns_none(self):
         conn = _FakeConnOne(fetchone_result=None)
         assert _fetch_janma_nakshatra_idx(conn, "chart-x") is None
 
     def test_null_value_returns_none(self):
-        conn = _FakeConnOne(fetchone_result=("fact123", None))
+        conn = _FakeConnOne(fetchone_result={"fact_id": "fact123", "fact_value_num": None})
         assert _fetch_janma_nakshatra_idx(conn, "chart-x") is None
 
     def test_present_fact_derives_nakshatra_idx(self):
         # Moon longitude_sidereal = 327.055230133129 -> nak_idx 24 (Purva
         # Bhadrapada), the exact FORENSIC-anchored value for chart 482012f1
         # (CLAUDE.md §B) — same fixture value test_ka_kota_chakra_writer.py uses.
-        conn = _FakeConnOne(fetchone_result=("7cf5902c6bd63146", 327.055230133129))
+        conn = _FakeConnOne(fetchone_result={"fact_id": "7cf5902c6bd63146", "fact_value_num": 327.055230133129})
         result = _fetch_janma_nakshatra_idx(conn, "482012f1-710e-4a25-994a-93821f5871aa")
         assert result == (24, "7cf5902c6bd63146")
 
