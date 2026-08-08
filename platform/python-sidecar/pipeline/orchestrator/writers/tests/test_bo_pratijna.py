@@ -408,3 +408,182 @@ def test_stage2_promise_fetch_includes_no_evidence_rows(db_conn):
         "stage2_promise._fetch_pratijna still gates on status='promised'/'conditional'. "
         "R6 fix: remove the status filter so ALL rows flow through as modifiers."
     )
+
+
+# ── DB6: fact_id → fact_key resolution (SIDDHANTA arc-finishing run) ──────────
+#
+# DB6 root cause: bodha_msr_signals.constituent_facts_array stores fact_id
+# digests (16-hex-char, e.g. '012f55cebed7f5a0'), NOT fact_keys. The matcher
+# tested bhava/karaka/divisional patterns ('house_7', 'venus', 'd9') against
+# those opaque digests, so it matched NOTHING on live data. Every occurrence
+# and condition weight came out 0.0, which is why every v3 skill score was
+# numerically zero (~1e-16) and condition_grade was 0.000 everywhere (DB7).
+#
+# Verified against live production before this fix (chart 482012f1):
+#   - constituent_facts_array sample -> {012f55cebed7f5a0}
+#   - chart_facts.fact_id '012f55cebed7f5a0' -> fact_key 'conjunct_MOON'
+#   - fact_key 'house_7' exists with 223 rows (so patterns DO match once resolved)
+#   - 58,786 of 70,512 distinct fact_ids resolve (83.4%)
+#
+# §N.5: an L2 signal must REFERENCE the L1 fact, never restate it. Resolving
+# fact_id -> fact_key through chart_facts is that reference being followed.
+
+
+class _FakeCursor:
+    def __init__(self, rows):
+        self._rows = rows
+
+    def fetchall(self):
+        return self._rows
+
+
+class _FakeConn:
+    """Minimal stand-in for the orchestrator's db_conn (chart_facts lookup only)."""
+
+    def __init__(self, mapping: dict[str, str]):
+        self._mapping = mapping
+        self.queries: list = []
+
+    def execute(self, sql, params=None):
+        self.queries.append((sql, params))
+        return _FakeCursor(
+            [{"fact_id": k, "fact_key": v} for k, v in self._mapping.items()]
+        )
+
+
+class TestDB6FactKeyResolution:
+    """The matcher must resolve fact_ids to fact_keys before pattern matching."""
+
+    @pytest.fixture(autouse=True)
+    def _clear_fact_key_cache(self):
+        """The fact_key map is cached module-level and keyed by chart_id.
+
+        Production clears it per writer run (see BoPratijnaWriter.run) so a
+        rebuild never reads a previous generation's mapping. Tests must clear it
+        too, or one test's mapping leaks into the next. This fixture is also the
+        executable record that the cache is shared mutable state.
+        """
+        from pipeline.orchestrator.writers.bo_pratijna import _FACT_KEY_MAP_CACHE
+
+        _FACT_KEY_MAP_CACHE.clear()
+        yield
+        _FACT_KEY_MAP_CACHE.clear()
+
+    def test_fact_id_resolves_to_house_fact_key_and_matches(self):
+        """DB6 CORE: a fact_id that resolves to 'house_7' must match marriage (7th bhava).
+
+        This is the exact live-data shape. Before the fix the matcher compared
+        'deadbeefcafe0001' against 'house_7' patterns and returned (0.0, 0.0).
+        """
+        from pipeline.orchestrator.writers.bo_pratijna import _match_signal_to_class
+
+        karyatva = get_karyatva("marriage")  # primary_bhava=[7]
+        conn = _FakeConn({"deadbeefcafe0001": "house_7"})
+        signal = {
+            "computed_salience": 5.0,
+            "valence": "benefic",
+            "constituent_facts_array": ["deadbeefcafe0001"],
+            "signal_type_class": "",
+        }
+
+        occ_w, cond_w = _match_signal_to_class(signal, karyatva, conn, "chart-x")
+
+        assert occ_w > 0, (
+            "DB6: matcher failed to resolve fact_id -> fact_key 'house_7'. "
+            f"Got occurrence_weight={occ_w}, condition_weight={cond_w}. "
+            "The matcher is comparing raw fact_id digests against bhava patterns."
+        )
+
+    def test_unrelated_fact_key_still_does_not_match(self):
+        """NEGATIVE CASE: resolution must not make everything match.
+
+        'house_3' is not marriage's bhava, contains no marriage karaka
+        (Venus/Jupiter), no D9, and no condition malefic — so it must score 0.
+        A fix that returns nonzero here would be matching indiscriminately.
+        """
+        from pipeline.orchestrator.writers.bo_pratijna import _match_signal_to_class
+
+        karyatva = get_karyatva("marriage")
+        conn = _FakeConn({"aaaabbbbccccdddd": "house_3"})
+        signal = {
+            "computed_salience": 5.0,
+            "valence": "benefic",
+            "constituent_facts_array": ["aaaabbbbccccdddd"],
+            "signal_type_class": "",
+        }
+
+        occ_w, cond_w = _match_signal_to_class(signal, karyatva, conn, "chart-x")
+
+        assert occ_w == 0 and cond_w == 0, (
+            f"Unrelated fact_key 'house_3' matched marriage karyatva "
+            f"(occ={occ_w}, cond={cond_w}) — resolution is over-matching."
+        )
+
+    def test_karaka_graha_resolves_and_matches(self):
+        """A fact_id resolving to a karaka-bearing fact_key must match."""
+        from pipeline.orchestrator.writers.bo_pratijna import _match_signal_to_class
+
+        karyatva = get_karyatva("childbirth")  # karaka_grahas=['Jupiter']
+        conn = _FakeConn({"1111222233334444": "conjunct_JUPITER"})
+        signal = {
+            "computed_salience": 4.0,
+            "valence": "benefic",
+            "constituent_facts_array": ["1111222233334444"],
+            "signal_type_class": "",
+        }
+
+        occ_w, _ = _match_signal_to_class(signal, karyatva, conn, "chart-x")
+
+        assert occ_w > 0, "Karaka 'Jupiter' in 'conjunct_JUPITER' did not match childbirth"
+
+    def test_unresolvable_fact_id_does_not_crash(self):
+        """A fact_id absent from chart_facts must degrade honestly, not raise.
+
+        83.4% of live fact_ids resolve; the remaining 16.6% must not break the build.
+        """
+        from pipeline.orchestrator.writers.bo_pratijna import _match_signal_to_class
+
+        karyatva = get_karyatva("marriage")
+        conn = _FakeConn({"known0000000000": "house_7"})
+        signal = {
+            "computed_salience": 5.0,
+            "valence": "benefic",
+            "constituent_facts_array": ["totally_unknown_id"],
+            "signal_type_class": "",
+        }
+
+        occ_w, cond_w = _match_signal_to_class(signal, karyatva, conn, "chart-x")
+        assert occ_w == 0 and cond_w == 0
+
+    def test_property_every_nonprovisional_class_reachable_via_its_primary_bhava(self):
+        """PROPERTY: every non-provisional class must be matchable from a real fact_key.
+
+        For each class, synthesize the 'house_N' fact_key its own karyatva map
+        declares primary. If any class cannot be reached, the karyatva routing
+        is structurally unreachable for that class — the DB6 failure mode.
+        """
+        from pipeline.orchestrator.writers.bo_pratijna import _match_signal_to_class
+
+        unreachable = []
+        for ec_id, km in KARYATVA_REGISTRY.items():
+            if km.provisional or not km.primary_bhava:
+                continue
+            bhava = km.primary_bhava[0]
+            conn = _FakeConn({"f" * 16: f"house_{bhava}"})
+            signal = {
+                "computed_salience": 5.0,
+                "valence": "benefic",
+                "constituent_facts_array": ["f" * 16],
+                "signal_type_class": "",
+            }
+            # Distinct chart_id per class: the fact_key map is cached per chart,
+            # so reusing one id here would serve the first class's map to all
+            # the rest and silently fake a pass.
+            occ_w, cond_w = _match_signal_to_class(signal, km, conn, f"chart-{ec_id}")
+            if occ_w == 0 and cond_w == 0:
+                unreachable.append(f"{ec_id} (house_{bhava})")
+
+        assert not unreachable, (
+            "These event classes cannot be reached from their own declared "
+            f"primary bhava fact_key: {unreachable}"
+        )

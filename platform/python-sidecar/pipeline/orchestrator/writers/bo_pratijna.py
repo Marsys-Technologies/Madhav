@@ -187,6 +187,48 @@ def _grade_to_status(grade: float, *, supporting_empty: bool, contradicting_empt
     return "conditional"
 
 
+_FACT_KEY_MAP_CACHE: dict[str, dict[str, str]] = {}
+
+_FETCH_FACT_KEYS_SQL = """
+    SELECT fact_id, fact_key
+    FROM chart_facts
+    WHERE chart_id = %s
+"""
+
+
+def _load_fact_key_map(conn, chart_id: str) -> dict[str, str]:
+    """Resolve this chart's fact_id -> fact_key mapping (DB6).
+
+    bodha_msr_signals.constituent_facts_array stores fact_id digests, not
+    fact_keys. §N.5 makes L1 the authority over L2 derivations: an L2 signal
+    REFERENCES the L1 fact_id and must follow that reference to read the fact's
+    key — it may not restate or guess it. This is that dereference.
+
+    Cached per chart_id because the matcher runs once per (signal x event_class)
+    pair; without the cache this would issue tens of thousands of identical
+    queries per build. The cache is cleared at the top of every writer run so a
+    rebuild never reads a previous generation's mapping.
+    """
+    cached = _FACT_KEY_MAP_CACHE.get(chart_id)
+    if cached is not None:
+        return cached
+
+    mapping: dict[str, str] = {}
+    for row in conn.execute(_FETCH_FACT_KEYS_SQL, [chart_id]).fetchall():
+        r = row if isinstance(row, dict) else dict(row)
+        fid = r.get("fact_id")
+        fkey = r.get("fact_key")
+        if fid is not None and fkey is not None:
+            mapping[str(fid)] = str(fkey)
+
+    _FACT_KEY_MAP_CACHE[chart_id] = mapping
+    logger.info(
+        "[bo_pratijna] DB6 fact_key map loaded: chart=%s resolved_fact_ids=%d",
+        chart_id, len(mapping),
+    )
+    return mapping
+
+
 def _match_signal_to_class(signal: dict, karyatva, conn, chart_id: str) -> tuple[float, float]:
     """
     Match a signal to an event class via its karyatva (significator) map.
@@ -196,6 +238,12 @@ def _match_signal_to_class(signal: dict, karyatva, conn, chart_id: str) -> tuple
     karyatva map's factors: houses, lords, karakas, divisionals, yogas.
 
     For provisional classes (DR-13), falls back to domain matching.
+
+    DB6: constituent_facts_array holds fact_id digests (e.g. '012f55cebed7f5a0'),
+    so each entry is dereferenced to its chart_facts.fact_key ('house_7',
+    'conjunct_JUPITER', ...) BEFORE pattern matching. Matching the raw digest
+    matched nothing for every non-provisional class, which drove every
+    occurrence/condition weight — and therefore every v3 skill score — to zero.
     """
     sal = float(signal.get("computed_salience") or 0.0)
     valence = str(signal.get("valence") or "neutral").lower().strip()
@@ -214,8 +262,14 @@ def _match_signal_to_class(signal: dict, karyatva, conn, chart_id: str) -> tuple
             break
 
     # 2. Check constituent fact keys for bhava/house references
+    fact_key_map = _load_fact_key_map(conn, chart_id)
     for fact_ref in constituent_facts:
-        fact_key = str(fact_ref) if not isinstance(fact_ref, dict) else str(fact_ref.get("fact_key", ""))
+        raw_ref = str(fact_ref) if not isinstance(fact_ref, dict) else str(fact_ref.get("fact_key", ""))
+        # DB6: dereference fact_id -> fact_key. An entry that is already a
+        # fact_key (dict form) or that does not resolve falls through unchanged
+        # rather than being dropped — an unresolvable reference simply matches
+        # nothing, which is the honest outcome (§N.7-6: no invented default).
+        fact_key = fact_key_map.get(raw_ref, raw_ref)
         fact_key_lower = fact_key.lower()
 
         # Check primary bhava match
@@ -262,6 +316,10 @@ class BoPratijnaWriter(WriterBase):
         build_id = ctx.build_id
         conn = ctx.db_conn
         now = datetime.now(timezone.utc).isoformat()
+
+        # DB6: drop any cached fact_id->fact_key map so a rebuild resolves
+        # against this generation's chart_facts, never a previous one.
+        _FACT_KEY_MAP_CACHE.pop(chart_id, None)
 
         # Idempotency: delete prior rows for this chart.
         # Disable per-statement timeout for the heavy DELETE on large charts.
