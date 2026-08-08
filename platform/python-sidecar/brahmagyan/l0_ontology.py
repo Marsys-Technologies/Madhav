@@ -47,39 +47,64 @@ def _e(entity_class: str, canonical_id: str, name_en: str, name_sa: str,
 
 # ── Planets ────────────────────────────────────────────────────────────────────
 
+
+# ── Storage-format codes (ADHIṢṬHĀNA Lane A3, 2026-08-08) ──────────────────────
+# The exact short codes L1 writers emit into chart_facts.fact_subject/fact_key
+# (PLANET_TO_SUBJECT convention — ga_positions_writer.py, ga_vargas_writer.py
+# BODY_TO_SUBJECT — plus the bare full-name forms; both confirmed live against
+# chart_id=482012f1-710e-4a25-994a-93821f5871aa 2026-08-08). 'MC' is the
+# BODY_TO_SUBJECT code for midheaven — evidenced in source (a floored body,
+# not yet populated for this native's chart, hence not live-confirmed there).
+BPHS_CITATION_STORAGE_CODE = (
+    "PLANET_TO_SUBJECT (ga_positions_writer.py) / BODY_TO_SUBJECT (ga_vargas_writer.py) "
+    "— L1 writer storage-format convention, live-confirmed against chart_facts.fact_subject "
+    "for chart_id=482012f1-710e-4a25-994a-93821f5871aa 2026-08-08"
+)
+
 ENTITIES += [
     _e("planet", "sun", "Sun", "Surya",
-       ["surya", "ravi", "aditya", "Sol", "Sūrya", "Arka", "arka", "bhaskar"],
+       ["surya", "ravi", "aditya", "Sol", "Sūrya", "Arka", "arka", "bhaskar",
+        "SUN"],
        "Soul, father, authority, vitality; natural malefic"),
     _e("planet", "moon", "Moon", "Chandra",
-       ["chandra", "soma", "luna", "indu", "Chandra", "Moon", "chandrama"],
+       ["chandra", "soma", "luna", "indu", "Chandra", "Moon", "chandrama",
+        "MOON"],
        "Mind, mother, emotions, public; natural benefic"),
     _e("planet", "mars", "Mars", "Mangala",
-       ["mangala", "kuja", "angaraka", "bhumi", "Mars", "Mangal"],
+       ["mangala", "kuja", "angaraka", "bhumi", "Mars", "Mangal",
+        "MAR", "MARS"],
        "Courage, siblings, land, surgery; natural malefic"),
     _e("planet", "mercury", "Mercury", "Budha",
-       ["budha", "buddha", "Mercury", "Budh"],
+       ["budha", "buddha", "Mercury", "Budh",
+        "MER", "MERCURY"],
        "Intellect, speech, trade, mathematics; natural benefic"),
     _e("planet", "jupiter", "Jupiter", "Guru",
-       ["guru", "brihaspati", "brhaspati", "Jupiter", "Brahmanaspati", "devaguru"],
+       ["guru", "brihaspati", "brhaspati", "Jupiter", "Brahmanaspati", "devaguru",
+        "JUP", "JUPITER"],
        "Wisdom, dharma, children, expansion; natural benefic"),
     _e("planet", "venus", "Venus", "Shukra",
-       ["shukra", "sukra", "Venus", "Bhargava", "usana"],
+       ["shukra", "sukra", "Venus", "Bhargava", "usana",
+        "VEN", "VENUS"],
        "Beauty, marriage, luxury, arts; natural benefic"),
     _e("planet", "saturn", "Saturn", "Shani",
-       ["shani", "sani", "Saturn", "shanaischar", "manda", "Shanaischara"],
+       ["shani", "sani", "Saturn", "shanaischar", "manda", "Shanaischara",
+        "SAT", "SATURN"],
        "Karma, discipline, longevity, delays; natural malefic"),
     _e("planet", "rahu", "Rahu", "Rahu",
-       ["rahu", "caput_draconis", "north_node", "dragon_head", "ascending_node"],
+       ["rahu", "caput_draconis", "north_node", "dragon_head", "ascending_node",
+        "RAH_MEAN", "RAHU"],
        "North lunar node; foreigners, technology, obsession; shadow planet"),
     _e("planet", "ketu", "Ketu", "Ketu",
-       ["ketu", "cauda_draconis", "south_node", "dragon_tail", "descending_node"],
+       ["ketu", "cauda_draconis", "south_node", "dragon_tail", "descending_node",
+        "KET_MEAN", "KETU"],
        "South lunar node; spirituality, moksha, past karma; shadow planet"),
     _e("planet", "ascendant", "Ascendant", "Lagna",
-       ["lagna", "ascendant", "rising_sign", "udaya_lagna", "AC"],
+       ["lagna", "ascendant", "rising_sign", "udaya_lagna", "AC",
+        "LAGNA"],
        "First house cusp; self, body, personality"),
     _e("planet", "midheaven", "Midheaven", "Madhya Lagna",
-       ["mc", "midheaven", "madhya_lagna", "medium_coeli"],
+       ["mc", "midheaven", "madhya_lagna", "medium_coeli",
+        "MC"],
        "10th house cusp; career, social status"),
 ]
 
@@ -176,9 +201,23 @@ HOUSE_DATA = [
 ]
 
 for house_num, name_en, name_sa, synonyms, desc in HOUSE_DATA:
+    # ADHIṢṬHĀNA Lane A3: storage-format codes actually used in
+    # chart_facts.fact_subject — both zero-padded ("HOUSE_07") and unpadded
+    # ("HOUSE_7") forms are live writer output (ga_kp_significators.py uses
+    # f"HOUSE_{h:02d}"; ga_strength_writer.py/ga_structural_writer.py use
+    # f"HOUSE_{h}") — both confirmed present for chart_id=
+    # 482012f1-710e-4a25-994a-93821f5871aa 2026-08-08. The short "H7" idiom
+    # appears only embedded in compound varga-house fact_subjects
+    # (e.g. "D9.H7", "D108_H1") on this chart, never standalone, but is
+    # added defensively since it is a real code idiom in the writer source
+    # (ga_vargas_writer.py f"H{house}").
+    storage_codes = list(dict.fromkeys(
+        [f"HOUSE_{house_num:02d}", f"HOUSE_{house_num}", f"H{house_num}"]
+    ))
+    all_synonyms = synonyms + [c for c in storage_codes if c not in synonyms]
     ENTITIES.append(_e(
         "house", f"house_{house_num:02d}",
-        name_en, name_sa, synonyms, desc,
+        name_en, name_sa, all_synonyms, desc,
     ))
 
 # ── Dasha systems ──────────────────────────────────────────────────────────────
@@ -889,6 +928,137 @@ CONCEPT_EXTRA = [
 
 for cid, name_en, name_sa, synonyms, desc in CONCEPT_EXTRA:
     ENTITIES.append(_e("concept", cid, name_en, name_sa, synonyms, desc))
+
+# ── Vargas (divisional charts, 30) — ADHIṢṬHĀNA Lane A3, 2026-08-08 ───────────
+# Reconciliation: l0_reference.py's VARGAS (19: D1,D2,D3,D4,D5,D6,D7,D8,D9,D10,
+# D12,D16,D20,D24,D27,D30,D40,D45,D60) is a STRICT SUBSET of the L1 writer's
+# 30-varga computational set (ga_vargas_writer.py ALL_30_VARGAS = PARASHARI_16
+# + SUPPLEMENTARY_11 + NADI_3; A6_VARGAS_SPEC_v1_0.md §1) — 19/19 overlap, 0
+# conflicts, delta = 11 new (D11,D14,D15,D21,D32,D33,D50,D54,D108,D150,D2700).
+# Canonical set seeded here = the full 30 (the writer's set, since it strictly
+# contains l0_reference's 19).
+#
+# KNOWN COLLISION (documented, not fixed here — additive-only constraint for
+# this lane): 14 of these 30 codes (D3,D4,D7,D9,D10,D12,D16,D20,D24,D27,D30,
+# D40,D45,D60) already appear as a bare 'D<n>' synonym on a PRE-EXISTING
+# entity_class='concept' row (e.g. canonical_id='navamsa' carries synonym
+# 'D9', added under CONCEPT_EXTRA above, long before this lane). This lane
+# cannot remove that legacy synonym (R19-style additive-only discipline);
+# instead resolve_entity.ts's SQL now carries an explicit ORDER BY that
+# prefers entity_class='varga' on a tie, so ref_entity_resolve('D9') resolves
+# deterministically to THIS row, not the legacy concept one — see
+# resolve_entity.ts. A genuine cleanup of the stale concept-level D-codes
+# belongs to Lane A5/A6 (Fact Identity Index / registry-parity gate), not
+# this lane.
+CITATION_VARGA_CORE = (
+    "BPHS Ch.6 (Shodasha-varga-adhyaya) / Ch.7 (Vimshati-varga extension); "
+    "name + signification per brahmagyan/l0_reference.py VARGAS "
+    "(reference_vargas seed, BPHS_SHODASHA citation)"
+)
+CITATION_VARGA_SUPPLEMENTARY = (
+    "Not in l0_reference.py's 19-varga BPHS-cited set. Sanskrit ordinal-numeral "
+    "+ \"aṃśa\" divisional-chart naming convention (same pattern as the 19 "
+    "BPHS-cited vargas, e.g. D4=Chaturthamsha/D20=Vimshamsha), applied to the "
+    "L1 writer's supplementary Parashari varga set (ga_vargas_writer.py "
+    "SUPPLEMENTARY_11 / A6_VARGAS_SPEC_v1_0.md §1); signification per "
+    "ga_vargas_writer.py VARGA_KARYA."
+)
+CITATION_VARGA_NADI = (
+    "Not in l0_reference.py's 19-varga BPHS-cited set. \"Nadiamsa\" terminology "
+    "and rishi/karma-type attribution per ga_vargas_writer.py inline "
+    "documentation (D150_RISHIS/D2700_SUB_RISHIS) and A6_VARGAS_SPEC_v1_0.md "
+    "§Q5/Q6 (K.N. Rao Nadi-jyotish tradition, 27-rishi cycle); D108/D2700 "
+    "named by the same ordinal-numeral convention as the core set."
+)
+
+
+def _e_varga(n: int, name_en: str, name_sa: str, extra_synonyms: list[str],
+             description: str, citation: str) -> dict:
+    code = f"D{n}"
+    synonyms = list(dict.fromkeys([code] + extra_synonyms))
+    return {
+        "entity_class": "varga",
+        "canonical_id": f"d{n}",
+        "canonical_name_en": name_en,
+        "canonical_name_sa": name_sa,
+        "synonyms": synonyms,
+        "description": description,
+        "source_citation": citation,
+    }
+
+
+# (n, name_en, name_sa, extra_synonyms, description, citation)
+VARGA_DATA = [
+    (1, "Rashi", "Rashi", ["rashi_chart", "d1_chart"],
+     "Overall chart; physical body; all life matters (the birth/natal chart itself)",
+     CITATION_VARGA_CORE),
+    (2, "Hora", "Hora", ["hora_chart"],
+     "Wealth; finances; material possessions", CITATION_VARGA_CORE),
+    (3, "Drekkana", "Drekkana", ["drekkana_chart"],
+     "Siblings; courage; communication (3 formula variants: Parashari/Jagannatha/Somanatha)",
+     CITATION_VARGA_CORE),
+    (4, "Chaturthamsha", "Chaturthamsha", ["chaturthamsa"],
+     "Property; fixed assets; home; fortune", CITATION_VARGA_CORE),
+    (5, "Panchamsha", "Panchamsha", ["panchamsa"],
+     "Spiritual merit; past-life credit; children", CITATION_VARGA_CORE),
+    (6, "Shashthamsha", "Shashthamsha", ["shashthamsa"],
+     "Health; enemies; debts; service", CITATION_VARGA_CORE),
+    (7, "Saptamsha", "Saptamsha", ["saptamsa"],
+     "Children; progeny; creativity", CITATION_VARGA_CORE),
+    (8, "Ashtamsha", "Ashtamsha", ["ashtamsa"],
+     "Longevity; obstacles; sudden events; inheritance", CITATION_VARGA_CORE),
+    (9, "Navamsha", "Navamsha", ["navamsha_chart"],
+     "Marriage; dharma; spiritual development; inner nature — most important divisional",
+     CITATION_VARGA_CORE),
+    (10, "Dashamsha", "Dashamsha", ["dasamsa"],
+     "Career; professional achievement; public life", CITATION_VARGA_CORE),
+    (11, "Rudramsha", "Rudramsha", ["ekadashamsha", "ekadasamsa"],
+     "Gains; elder siblings; fulfillment of desires (11H significations)",
+     CITATION_VARGA_SUPPLEMENTARY),
+    (12, "Dvadashamsha", "Dvadashamsha", ["dwadasamsa"],
+     "Parents; ancestors; karmic inheritance", CITATION_VARGA_CORE),
+    (14, "Chaturdashamsha", "Chaturdashamsha", [],
+     "Father, paternal matters (secondary emphasis)", CITATION_VARGA_SUPPLEMENTARY),
+    (15, "Panchadashamsha", "Panchadashamsha", [],
+     "Children, progeny (tertiary emphasis)", CITATION_VARGA_SUPPLEMENTARY),
+    (16, "Shodashamsha", "Shodashamsha", ["shodasamsa"],
+     "Vehicles; conveyances; happiness", CITATION_VARGA_CORE),
+    (20, "Vimshamsha", "Vimshamsha", ["vimsamsa"],
+     "Spiritual practice; upasana; religious activities", CITATION_VARGA_CORE),
+    (21, "Ekavimshamsha", "Ekavimshamsha", [],
+     "Mother, maternal matters (secondary emphasis)", CITATION_VARGA_SUPPLEMENTARY),
+    (24, "Chaturvimshamsha", "Chaturvimshamsha", ["chaturvimsamsa"],
+     "Education; learning; academic achievements", CITATION_VARGA_CORE),
+    (27, "Nakshatramsha", "Nakshatramsha", ["bhamsa", "saptavimshamsha"],
+     "Strength; stamina; vitality", CITATION_VARGA_CORE),
+    (30, "Trimshamsha", "Trimshamsha", ["trimsamsa"],
+     "Miseries; evils; health issues", CITATION_VARGA_CORE),
+    (32, "Dvatrimshamsha", "Dvatrimshamsha", [],
+     "Secondary navamsha-linked harmonics", CITATION_VARGA_SUPPLEMENTARY),
+    (33, "Trayastrimshamsha", "Trayastrimshamsha", [],
+     "Secondary ashtamsha-linked harmonics (longevity/obstacles)", CITATION_VARGA_SUPPLEMENTARY),
+    (40, "Khavedamsha", "Khavedamsha", ["khavedamsa"],
+     "Maternal ancestry; auspicious effects", CITATION_VARGA_CORE),
+    (45, "Akshavedamsha", "Akshavedamsha", ["akshavedamsa"],
+     "Paternal ancestry; general indications", CITATION_VARGA_CORE),
+    (50, "Panchashamsha", "Panchashamsha", [],
+     "Higher/subtle significations (secondary emphasis)", CITATION_VARGA_SUPPLEMENTARY),
+    (54, "Chatuhpanchashamsha", "Chatuhpanchashamsha", [],
+     "Higher/subtle significations (tertiary emphasis)", CITATION_VARGA_SUPPLEMENTARY),
+    (60, "Shastiamsha", "Shastiamsha", ["shashtiamsa", "shashtyamsha"],
+     "Past-life karma; most subtle influences", CITATION_VARGA_CORE),
+    (108, "Ashtottaramsha", "Ashtottaramsha", ["ashtottaramsa"],
+     "Karma-type attribution; finest Nadi-tradition subdivision", CITATION_VARGA_NADI),
+    (150, "Nadiamsha", "Nadiamsha", ["nadiamsa"],
+     "Nadi rishi attribution; 27-rishi cycle; finest Nadi-tradition subdivision",
+     CITATION_VARGA_NADI),
+    (2700, "Sukshma Nadiamsha", "Sukshma-Nadiamsha", ["sub_nadiamsa", "atinadiamsa"],
+     "Sub-Nadi (sub-rishi) attribution; finest Nadi-tradition sub-subdivision",
+     CITATION_VARGA_NADI),
+]
+
+for n, name_en, name_sa, extra_synonyms, description, citation in VARGA_DATA:
+    ENTITIES.append(_e_varga(n, name_en, name_sa, extra_synonyms, description, citation))
 
 # ── Resolve function ───────────────────────────────────────────────────────────
 
