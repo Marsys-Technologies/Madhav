@@ -17,6 +17,7 @@ from typing import Any
 
 from pipeline.orchestrator.writers import WriterBase, WriterResult, SubStep, register, ContextSpec
 from ga_writers._idempotency import replace_prior_chart_facts
+from brahmagyan.graha_vocabulary import to_title
 from brahmagyan.verification_vocab import UNVERIFIED_DEFAULT, assert_legal, two_pass_verdict
 from ga_writers.ga_nakshatra_emitters import (
     emit_nakshatra_join, emit_kp_lords, emit_gandanta_flags,
@@ -52,10 +53,14 @@ GA_NAKSHATRA_FACT_CATEGORIES = [
     HOUSE_SIGNIFICATORS_CATEGORY, PLANET_SIGNIFICATIONS_CATEGORY,
 ]
 
+# Identity/validation map (a recognized graha name -> itself; `.get()`
+# returns None for anything else). Derived from the graha SSoT's to_title()
+# helper (brahmagyan/graha_vocabulary) rather than hardcoded literals —
+# ADHIṢṬHĀNA Lane A2 (found via the full-tree census; not one of the
+# originally-enumerated retirement targets).
 NAK_LORD_STR_TO_BODY: dict[str, str] = {
-    "Ketu": "Ketu", "Venus": "Venus", "Sun": "Sun", "Moon": "Moon",
-    "Mars": "Mars", "Rahu": "Rahu", "Jupiter": "Jupiter",
-    "Saturn": "Saturn", "Mercury": "Mercury",
+    name: to_title(name)
+    for name in ("Ketu", "Venus", "Sun", "Moon", "Mars", "Rahu", "Jupiter", "Saturn", "Mercury")
 }
 
 

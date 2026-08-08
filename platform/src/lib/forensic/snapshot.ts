@@ -1,4 +1,5 @@
 import 'server-only'
+import { grahaCodeOf, GRAHA_CODE_TO_NAME } from '@/lib/retrieval/address_resolver'
 
 export interface PlanetPlacement {
   planet: string
@@ -95,12 +96,13 @@ export async function getForensicSnapshot(chartId: string): Promise<ForensicChar
       return { house: houseNum, sign, planets: [] as string[] }
     })
 
-    // Assign planets to houses
-    const PLANET_DISPLAY: Record<string, string> = {
-      SUN: 'Sun', MOON: 'Moon', MARS: 'Mars', MERCURY: 'Mercury',
-      JUPITER: 'Jupiter', VENUS: 'Venus', SATURN: 'Saturn',
-      RAHU: 'Rahu', KETU: 'Ketu',
-    }
+    // Assign planets to houses. Values sourced from the graha SSoT
+    // (address_resolver.grahaCodeOf + GRAHA_CODE_TO_NAME) rather than
+    // hardcoded literals — ADHIṢṬHĀNA Lane A2.
+    const PLANET_DISPLAY: Record<string, string> = Object.fromEntries(
+      ['SUN', 'MOON', 'MARS', 'MERCURY', 'JUPITER', 'VENUS', 'SATURN', 'RAHU', 'KETU']
+        .map(p => [p, GRAHA_CODE_TO_NAME[grahaCodeOf(p)]]),
+    )
     for (const [planet, signIdx] of Object.entries(planetSigns)) {
       const houseIdx = ((signIdx - lagnaSignIdx) % 12 + 12) % 12
       const displayName = PLANET_DISPLAY[planet] ?? planet

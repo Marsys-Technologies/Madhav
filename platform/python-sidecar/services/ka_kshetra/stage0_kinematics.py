@@ -38,6 +38,8 @@ from typing import Callable, Optional, Sequence
 
 from scipy.optimize import brentq
 
+from brahmagyan.graha_vocabulary import norm_graha
+
 # ── Constants ─────────────────────────────────────────────────────────────────
 
 J2000_EPOCH = date(2000, 1, 1)
@@ -53,12 +55,11 @@ DAILY_BODIES: tuple[str, ...] = (
 # (§N.5 — do not re-derive the conversion itself, reuse the existing convention).
 CANONICAL_AYANAMSHA = "lahiri_chitrapaksha"
 
-# natal fact_subject codes (chart_facts), matching ga_transit_anchors._SUBJECT_TO_GRAHA
-# and bo_karanajala's shared map exactly (§N.5 — reused, not re-declared with new codes).
-GRAHA_FACT_SUBJECTS: dict[str, str] = {
-    "Sun": "SUN", "Moon": "MOON", "Mars": "MAR", "Mercury": "MER",
-    "Jupiter": "JUP", "Venus": "VEN", "Saturn": "SAT", "Rahu": "RAH_MEAN", "Ketu": "KET_MEAN",
-}
+# natal fact_subject codes (chart_facts). Values sourced from the graha SSoT
+# (brahmagyan/graha_vocabulary) rather than hardcoded literals — ADHIṢṬHĀNA
+# Lane A2 (found via the full-tree census; not one of the originally-
+# enumerated retirement targets, but the same shape).
+GRAHA_FACT_SUBJECTS: dict[str, str] = {name: norm_graha(name) for name in DAILY_BODIES}
 LAGNA_FACT_SUBJECT = "LAGNA"
 
 # Default orb when bg_transit_rules has no per-(body,target_class) entry — the

@@ -56,15 +56,20 @@ from typing import Any
 
 import psycopg2.extras
 
+from brahmagyan.graha_vocabulary import to_title
+
 # ── The closed whitelist (§6.3's table) ──────────────────────────────────────
 
 # The ten stored `positions` keys, lower-case caller spelling -> stored
 # capitalization (`bg_synthetic_cohort.positions` is case-sensitive per the
 # design doc: "Sun, Moon, ..., Lagna").
+# Values sourced from the graha SSoT's to_title() helper
+# (brahmagyan/graha_vocabulary) rather than hardcoded literals — ADHIṢṬHĀNA
+# Lane A2 (found via the full-tree census; not one of the originally-
+# enumerated retirement targets).
 _GRAHA_CAP: dict[str, str] = {
-    "sun": "Sun", "moon": "Moon", "mars": "Mars", "mercury": "Mercury",
-    "jupiter": "Jupiter", "venus": "Venus", "saturn": "Saturn",
-    "rahu": "Rahu", "ketu": "Ketu", "lagna": "Lagna",
+    name: to_title(name)
+    for name in ("sun", "moon", "mars", "mercury", "jupiter", "venus", "saturn", "rahu", "ketu", "lagna")
 }
 
 # suffix -> (json_field, value_kind). value_kind governs casting of the

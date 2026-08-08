@@ -77,6 +77,7 @@ logger = logging.getLogger(__name__)
 # ── T-3 shared-kernel adapter point (see module docstring) ─────────────────
 # ONE import site. Swap to T-3's shared kernel module here when it ships.
 from services.ka_sangam.engine import orb_strength_score as _orb_strength_score  # noqa: E402
+from brahmagyan.graha_vocabulary import norm_graha  # noqa: E402
 
 # Existing ephemeris position/speed lookup (already relied on by ka_gochara /
 # ka_sangam via find_aspect_events) — reused, not reinvented.
@@ -85,13 +86,11 @@ from pipeline.transit_search import _shortest_arc_diff as _shortest_arc_diff  # 
 
 FORMULA_VERSION = "taranga_v1"
 
-PLANET_TO_SUBJECT: dict[str, str] = {
-    "Sun": "SUN", "Moon": "MOON", "Mars": "MAR", "Mercury": "MER",
-    "Jupiter": "JUP", "Venus": "VEN", "Saturn": "SAT",
-    "Rahu": "RAH_MEAN", "Ketu": "KET_MEAN",
-}
 CLASSICAL_GRAHAS = ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn"]
 TRANSIT_PLANETS = CLASSICAL_GRAHAS + ["Rahu", "Ketu"]
+# Values sourced from the graha SSoT (brahmagyan/graha_vocabulary) rather
+# than hardcoded literals — ADHIṢṬHĀNA Lane A2.
+PLANET_TO_SUBJECT: dict[str, str] = {name: norm_graha(name) for name in TRANSIT_PLANETS}
 SAV_ELIGIBLE_SUBJECTS = {"SUN", "MOON", "MAR", "MER", "JUP", "VEN", "SAT"}
 
 ASPECT_ANGLES: tuple[float, ...] = (0.0, 60.0, 90.0, 120.0, 180.0)

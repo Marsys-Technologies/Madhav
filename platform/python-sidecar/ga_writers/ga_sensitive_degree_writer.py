@@ -73,6 +73,7 @@ from typing import Any, Optional
 import psycopg.rows
 
 from jhora import const as _jconst
+from brahmagyan.graha_vocabulary import norm_graha
 from ga_writers._idempotency import replace_prior_chart_facts
 
 logger = logging.getLogger(__name__)
@@ -97,11 +98,16 @@ CANONICAL_AYANAMSHAS = [
 SIGNS = ["Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",
          "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces"]
 
-# fact_subject codes — must match ga_positions_writer.PLANET_TO_SUBJECT
+# fact_subject codes. Values sourced from the graha SSoT
+# (brahmagyan/graha_vocabulary) rather than hardcoded literals —
+# ADHIṢṬHĀNA Lane A2 (this map was found via the full-tree census; not one
+# of the originally-enumerated retirement targets, but the same shape).
 GRAHA_SUBJECT = {
-    "Sun": "SUN", "Moon": "MOON", "Mars": "MAR", "Mercury": "MER",
-    "Jupiter": "JUP", "Venus": "VEN", "Saturn": "SAT",
-    "Rahu": "RAH_MEAN", "Ketu": "KET_MEAN", "Lagna": "LAGNA",
+    name: norm_graha(name)
+    for name in (
+        "Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn",
+        "Rahu", "Ketu", "Lagna",
+    )
 }
 SUBJECT_GRAHA = {v: k for k, v in GRAHA_SUBJECT.items()}
 SEVEN_GRAHAS = ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn"]

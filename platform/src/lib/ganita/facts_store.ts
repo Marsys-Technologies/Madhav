@@ -31,6 +31,7 @@ import type {
   FactProvenance,
 } from './types'
 import { CHART_FACTS_CATEGORIES, FORENSIC_V8_REQUIRED_DOMAINS } from './types'
+import { grahaCodeOf, GRAHA_CODE_TO_NAME } from '@/lib/retrieval/address_resolver'
 
 // ─── DB client interface (injected; avoids hard coupling to pg Pool) ──────────
 
@@ -143,11 +144,11 @@ function parseMetadata(rows: ChartFactRow[]): MetadataSection {
 
 function parsePlanets(rows: ChartFactRow[]): PlanetPlacementRow[] {
   const PLANETS = ['SUN', 'MOON', 'MARS', 'MERCURY', 'JUPITER', 'VENUS', 'SATURN', 'RAHU', 'KETU']
-  const PLANET_DISPLAY: Record<string, string> = {
-    SUN: 'Sun', MOON: 'Moon', MARS: 'Mars', MERCURY: 'Mercury',
-    JUPITER: 'Jupiter', VENUS: 'Venus', SATURN: 'Saturn',
-    RAHU: 'Rahu', KETU: 'Ketu',
-  }
+  // Values sourced from the graha SSoT (address_resolver.grahaCodeOf +
+  // GRAHA_CODE_TO_NAME) rather than hardcoded literals — ADHIṢṬHĀNA Lane A2.
+  const PLANET_DISPLAY: Record<string, string> = Object.fromEntries(
+    PLANETS.map(p => [p, GRAHA_CODE_TO_NAME[grahaCodeOf(p)]]),
+  )
 
   return PLANETS.map(planet => {
     const prefix = `PLN.${planet}.`

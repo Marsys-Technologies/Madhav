@@ -18,6 +18,7 @@
  * MUST NOT: write to bodha_* tables, run migrations, modify stored salience.
  * All values are query-time multipliers only.
  */
+import { grahaCodeOf, GRAHA_CODE_TO_NAME } from '@/lib/retrieval/address_resolver'
 
 // '1.0': Frozen after P2T iteration. Formula is correct; G10-QT score ≈9/15.
 // Criteria 1 (≥3 yoga-class) + 4 (ZERO AV atomic tallies) PASS.
@@ -240,22 +241,25 @@ type Domain =
   | 'education' | 'family' | 'residence' | 'travel' | 'spirituality' | 'character'
   | 'moksha'
 
-// Canonical graha key variants (DB uses several forms across layers)
-const GRAHA_ALIASES: Record<string, string> = {
+// Canonical graha key variants (DB uses several forms across layers). Values
+// sourced from the graha SSoT (address_resolver.grahaCodeOf + GRAHA_CODE_TO_NAME)
+// rather than hardcoded literals — ADHIṢṬHĀNA Lane A2. This file's own
+// established canonical form is lowercase long name (e.g. "sun"), derived
+// from the SSoT's Title-case form via .toLowerCase().
+const _GRAHA_ALIAS_INPUTS = [
   // 2-char codes (retrieval layer)
-  SU: 'sun',   MO: 'moon', MA: 'mars',  ME: 'mercury',
-  JU: 'jupiter', VE: 'venus', SA: 'saturn', RA: 'rahu', KE: 'ketu',
+  'SU', 'MO', 'MA', 'ME', 'JU', 'VE', 'SA', 'RA', 'KE',
   // Lowercase long form
-  sun: 'sun', moon: 'moon', mars: 'mars', mercury: 'mercury',
-  jupiter: 'jupiter', venus: 'venus', saturn: 'saturn', rahu: 'rahu', ketu: 'ketu',
+  'sun', 'moon', 'mars', 'mercury', 'jupiter', 'venus', 'saturn', 'rahu', 'ketu',
   // L1 chart_facts.fact_subject format (observed in live data)
-  SUN: 'sun', MOON: 'moon', MAR: 'mars', MER: 'mercury',
-  JUP: 'jupiter', VEN: 'venus', SAT: 'saturn',
-  RAH_MEAN: 'rahu', KET_MEAN: 'ketu',
+  'SUN', 'MOON', 'MAR', 'MER', 'JUP', 'VEN', 'SAT', 'RAH_MEAN', 'KET_MEAN',
   // Uppercase full names (bodha_msr_signals.configuration_jsonb format)
-  MARS: 'mars', MERCURY: 'mercury', JUPITER: 'jupiter',
-  VENUS: 'venus', SATURN: 'saturn', RAHU: 'rahu', KETU: 'ketu',
-}
+  'MARS', 'MERCURY', 'JUPITER', 'VENUS', 'SATURN', 'RAHU', 'KETU',
+] as const
+
+const GRAHA_ALIASES: Record<string, string> = Object.fromEntries(
+  _GRAHA_ALIAS_INPUTS.map(alias => [alias, GRAHA_CODE_TO_NAME[grahaCodeOf(alias)].toLowerCase()]),
+)
 
 const GRAHA_DOMAIN_AFFINITY: Record<string, Record<Domain, number>> = {
   sun: {

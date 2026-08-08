@@ -24,6 +24,8 @@ import json
 import logging
 import re
 import uuid
+
+from brahmagyan.graha_vocabulary import to_title
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Generator
@@ -47,17 +49,23 @@ PLANETS_ALT = [
     "Rahu", "Ketu", "Sol", "Luna",
 ]
 
+# Lowercase alias -> canonical lowercase name. Derived from the graha SSoT's
+# to_title() helper (brahmagyan/graha_vocabulary) rather than hardcoded
+# literals — ADHIṢṬHĀNA Lane A2 (found via the full-tree census; not one of
+# the originally-enumerated retirement targets). "sol"/"luna"/"mangal"/
+# "budh"/"sukra" are documented extra prose aliases the SSoT itself does not
+# carry (see bo_laksana._EXTRA_TEXT_ALIASES for the same variants).
 PLANET_CANONICAL = {
-    # English
-    "sun": "sun", "moon": "moon", "mars": "mars", "mercury": "mercury",
-    "jupiter": "jupiter", "venus": "venus", "saturn": "saturn",
-    "rahu": "rahu", "ketu": "ketu",
-    # Sanskrit aliases
-    "surya": "sun", "chandra": "moon", "mangal": "mars", "mangala": "mars",
-    "budha": "mercury", "guru": "jupiter", "shukra": "venus",
-    "shani": "saturn", "sol": "sun", "luna": "moon",
-    "sukra": "venus", "budh": "mercury",
+    w: to_title(w).lower()
+    for w in (
+        "sun", "moon", "mars", "mercury", "jupiter", "venus", "saturn",
+        "rahu", "ketu", "surya", "chandra", "mangala", "budha", "guru",
+        "shukra", "shani",
+    )
 }
+PLANET_CANONICAL.update({
+    "sol": "sun", "luna": "moon", "mangal": "mars", "sukra": "venus", "budh": "mercury",
+})
 
 SIGNS_EN = [
     "Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",

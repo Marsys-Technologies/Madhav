@@ -65,6 +65,7 @@ from typing import Optional
 
 from services.gochara_grammar.models import ResonanceTarget
 from ._dbutil import savepoint_scope
+from brahmagyan.graha_vocabulary import norm_graha
 
 logger = logging.getLogger(__name__)
 
@@ -78,10 +79,12 @@ _GRAHA_NAMES = {"Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn", 
 # Full Title-case graha name (this package's/G-2's vocabulary everywhere
 # else) -> live chart_facts.fact_subject abbreviation. See module docstring
 # "fact_subject naming CORRECTION" for provenance/live-verification.
+# Values sourced from the graha SSoT (brahmagyan/graha_vocabulary) rather
+# than hardcoded literals — ADHIṢṬHĀNA Lane A2 (found via the full-tree
+# census; not one of the originally-enumerated retirement targets).
 GRAHA_TO_FACT_SUBJECT: dict[str, str] = {
-    "Sun": "SUN", "Moon": "MOON", "Mars": "MAR", "Mercury": "MER",
-    "Jupiter": "JUP", "Venus": "VEN", "Saturn": "SAT",
-    "Rahu": "RAH_MEAN", "Ketu": "KET_MEAN",
+    name: norm_graha(name)
+    for name in ("Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn", "Rahu", "Ketu")
 }
 
 

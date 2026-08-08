@@ -42,6 +42,7 @@ from typing import Any
 from bodha_writers.formulas import salience_formula_v2, SalienceInputsV2
 from bodha_writers.sudarshana_emitter import GRAHAS, SIGNS, sign_index
 from brahmagyan import valence_doctrine as _vd
+from brahmagyan.graha_vocabulary import to_title
 
 ENGINE_VERSION = "bo_vargottama_dhana_v1.0"
 
@@ -54,10 +55,13 @@ DHANA_AXIS_CLASS_PRIOR = 1.05
 DHANA_AXIS_SUBSYSTEM = "structural"
 DHANA_AXIS_SIGNAL_TYPE_CLASS = "dhana_axis"
 
+# Values sourced from the graha SSoT's to_title() helper
+# (brahmagyan/graha_vocabulary) rather than hardcoded literals — ADHIṢṬHĀNA
+# Lane A2. Kept as a local dict so `.get(code, code)` preserves its
+# fall-back-to-raw-input-unchanged behavior for unrecognized codes.
 _GRAHA_DISPLAY: dict[str, str] = {
-    "SUN": "Sun", "MOON": "Moon", "MAR": "Mars", "MER": "Mercury",
-    "JUP": "Jupiter", "VEN": "Venus", "SAT": "Saturn",
-    "RAH_MEAN": "Rahu", "KET_MEAN": "Ketu",
+    code: to_title(code)
+    for code in ("SUN", "MOON", "MAR", "MER", "JUP", "VEN", "SAT", "RAH_MEAN", "KET_MEAN")
 }
 
 # Classical fixed sign-lordship (BPHS) — Rahu/Ketu are NOT sign lords in the

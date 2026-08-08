@@ -119,6 +119,13 @@ const GRAHA_ALIASES: Record<string, string> = {
   // Sanskrit names (classical, undisputed):
   surya: 'SUN', chandra: 'MOON', mangala: 'MAR', kuja: 'MAR', budha: 'MER',
   guru: 'JUP', brihaspati: 'JUP', shukra: 'VEN', shani: 'SAT',
+  // ADHIṢṬHĀNA Lane A2: bare "rah"/"ket" — already-recognized aliases in the
+  // Python SSoT's own alias table (brahmagyan/graha_vocabulary._GRAHA_ALIASES:
+  // "RAH"->RAH_MEAN, "KET"->KET_MEAN) that this TS module did not yet carry;
+  // added for cross-language parity (MASTER_PLAN_v1_0.md §3 Rung P1) and to
+  // let identifier_format.ts retire its own independent copy of these two
+  // aliases into this SSoT rather than duplicating them.
+  rah: 'RAH_MEAN', ket: 'KET_MEAN',
 }
 
 /** Normalize a graha name/alias/code (English, Sanskrit, or 2-letter shorthand) to its

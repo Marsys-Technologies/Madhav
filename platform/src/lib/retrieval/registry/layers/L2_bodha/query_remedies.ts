@@ -72,6 +72,7 @@
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
 import { DEFAULT_AYANAMSHA } from '../../constants'
+import { grahaCodeOf, GRAHA_CODE_TO_NAME } from '@/lib/retrieval/address_resolver'
 
 // ── CR-69 (SARVA-SIDDHI W-3): leverage-ranked remedy synthesis ──────────────
 // intervention_synthesis calls this tool with `leverage_ranked: true`, but the
@@ -100,11 +101,13 @@ const LEVERAGE_FORMULA_DOC =
   'brahma_vichara_constants registry). Read here, not recomputed (§N.5).'
 
 // chart_vichara.subject uses L1 planet codes; resonances/prescriptions use the
-// title-case graha name. Reverse of the sidecar _SUBJECT_TO_PLANET map.
-const SUBJECT_TO_GRAHA: Record<string, string> = {
-  SUN: 'Sun', MOON: 'Moon', MAR: 'Mars', MER: 'Mercury', JUP: 'Jupiter',
-  VEN: 'Venus', SAT: 'Saturn', RAH_MEAN: 'Rahu', KET_MEAN: 'Ketu',
-}
+// title-case graha name. Values sourced from the graha SSoT
+// (address_resolver.grahaCodeOf + GRAHA_CODE_TO_NAME) rather than hardcoded
+// literals — ADHIṢṬHĀNA Lane A2.
+const SUBJECT_TO_GRAHA: Record<string, string> = Object.fromEntries(
+  ['SUN', 'MOON', 'MAR', 'MER', 'JUP', 'VEN', 'SAT', 'RAH_MEAN', 'KET_MEAN']
+    .map(code => [code, GRAHA_CODE_TO_NAME[grahaCodeOf(code)]]),
+)
 
 interface LeverageEntry {
   leverage_index: number

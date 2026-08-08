@@ -51,6 +51,7 @@ from __future__ import annotations
 import logging
 from typing import Any, Iterable
 
+from brahmagyan.graha_vocabulary import norm_graha
 from services.gochara_grammar.event_class_scope import SWEEP_EVENT_CLASSES
 
 logger = logging.getLogger(__name__)
@@ -87,10 +88,12 @@ _MECHANISM_WEIGHTS: dict[str, float] = {
 # karaka (Title Case planet name, as used in brahma_event_ontology.signature_model)
 # -> the fact_subject code chart_facts uses for that graha (§0 confirmed live:
 # Sun/Moon are spelled out, the rest are 3-letter PyJHora-inherited codes).
+# Values sourced from the graha SSoT (brahmagyan/graha_vocabulary) rather
+# than hardcoded literals — ADHIṢṬHĀNA Lane A2 (found via the full-tree
+# census; not one of the originally-enumerated retirement targets).
 _KARAKA_FACT_SUBJECT: dict[str, str] = {
-    "Sun": "SUN", "Moon": "MOON", "Mars": "MAR", "Mercury": "MER",
-    "Jupiter": "JUP", "Venus": "VEN", "Saturn": "SAT",
-    "Rahu": "RAH_MEAN", "Ketu": "KET_MEAN",
+    name: norm_graha(name)
+    for name in ("Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn", "Rahu", "Ketu")
 }
 
 _SENSITIVE_DEGREE_KEYS = ("mrityu_bhaga", "gandanta", "kartari", "pushkara")

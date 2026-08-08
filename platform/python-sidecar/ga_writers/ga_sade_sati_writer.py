@@ -55,6 +55,7 @@ import re
 from datetime import datetime, timezone, timedelta
 from typing import Any
 
+from brahmagyan.graha_vocabulary import norm_graha
 from brahmagyan.verification_vocab import TWO_PASS_VERIFIED, UNVERIFIED_DEFAULT, assert_legal
 from ga_writers._idempotency import replace_prior_chart_facts
 from ga_writers._telemetry import update_asset_throughput
@@ -213,12 +214,17 @@ YOGA_KARAKA_BY_LAGNA: dict[str, str] = {
 }
 
 # Planet full-name (as stored in graha_position.sign_lord) -> fact_subject
-# abbreviation used by GA3 graha_position rows (A3 §5 UPPER_SNAKE convention;
-# mirrors ga_positions_writer.PLANET_TO_SUBJECT).
+# abbreviation used by GA3 graha_position rows (A3 §5 UPPER_SNAKE convention).
+# Values sourced from the graha SSoT (brahmagyan/graha_vocabulary) rather
+# than hardcoded literals — ADHIṢṬHĀNA Lane A2 (found via the full-tree
+# census; not one of the originally-enumerated retirement targets, but the
+# same shape).
 PLANET_NAME_TO_SUBJECT: dict[str, str] = {
-    "Sun": "SUN", "Moon": "MOON", "Mars": "MAR", "Mercury": "MER",
-    "Jupiter": "JUP", "Venus": "VEN", "Saturn": "SAT",
-    "Rahu": "RAH_MEAN", "Ketu": "KET_MEAN",
+    name: norm_graha(name)
+    for name in (
+        "Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn",
+        "Rahu", "Ketu",
+    )
 }
 
 # Nakshatra short codes matching GA4's tara_bala_natal_baseline fact_subject

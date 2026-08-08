@@ -53,6 +53,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from brahmagyan import valence_doctrine as _vd
+from brahmagyan.graha_vocabulary import norm_graha
 
 logger = logging.getLogger(__name__)
 
@@ -61,11 +62,12 @@ CANONICAL_CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
 CLASSICAL_GRAHAS = ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn"]
 ALL_GRAHAS = CLASSICAL_GRAHAS + ["Rahu", "Ketu"]
 
-PLANET_TO_SUBJECT: dict[str, str] = {
-    "Sun": "SUN", "Moon": "MOON", "Mars": "MAR", "Mercury": "MER",
-    "Jupiter": "JUP", "Venus": "VEN", "Saturn": "SAT",
-    "Rahu": "RAH_MEAN", "Ketu": "KET_MEAN",
-}
+# PLANET_TO_SUBJECT is a read-dependency of the parallel ADHIṢṬHĀNA Lane A1
+# (ga_condition_writer imports it) — kept as this exact name/shape/values.
+# Values are sourced from the graha SSoT (brahmagyan/graha_vocabulary) rather
+# than hardcoded literals — ADHIṢṬHĀNA Lane A2 (it was a pure duplicate: a
+# 9-key Title-case subset of the SSoT's alias table).
+PLANET_TO_SUBJECT: dict[str, str] = {name: norm_graha(name) for name in ALL_GRAHAS}
 SUBJECT_TO_PLANET: dict[str, str] = {v: k for k, v in PLANET_TO_SUBJECT.items()}
 
 FORMULA_VERSION = "leverage_index_v1"

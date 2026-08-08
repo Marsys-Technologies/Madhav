@@ -40,6 +40,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
+import { grahaCodeOf, GRAHA_CODE_TO_NAME } from '../../../address_resolver'
 
 const OPTION_A_CITATION =
   'Brhat Parasara Hora Sastra (graha-yuddha sloka): Venus is conqueror whether North or South; ' +
@@ -52,14 +53,12 @@ const OPTION_A_CITATION =
 // are never combatants, regardless of what the (must_not_touch) writer floored.
 const TARA_GRAHA_SUBJECTS = new Set(['MAR', 'MER', 'JUP', 'VEN', 'SAT'])
 
-// fact_subject code -> ephemeris_daily.body name
-const SUBJECT_TO_EPHEMERIS_BODY: Record<string, string> = {
-  MAR: 'Mars',
-  MER: 'Mercury',
-  JUP: 'Jupiter',
-  VEN: 'Venus',
-  SAT: 'Saturn',
-}
+// fact_subject code -> ephemeris_daily.body name. Values sourced from the
+// graha SSoT (address_resolver.grahaCodeOf + GRAHA_CODE_TO_NAME) rather
+// than hardcoded literals — ADHIṢṬHĀNA Lane A2.
+const SUBJECT_TO_EPHEMERIS_BODY: Record<string, string> = Object.fromEntries(
+  ['MAR', 'MER', 'JUP', 'VEN', 'SAT'].map(code => [code, GRAHA_CODE_TO_NAME[grahaCodeOf(code)]]),
+)
 
 function splitPairKey(pairKey: string): [string, string] | null {
   const parts = pairKey.split('_v_')

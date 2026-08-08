@@ -28,6 +28,7 @@ import type { CapabilityDescriptor } from '../../types'
 import type { DrillPointer, JudgmentFlagEntry } from '../../../envelope'
 import { judgmentFlag } from '../../../envelope'
 import { query } from '@/lib/db/client'
+import { grahaCodeOf } from '../../../address_resolver'
 
 // The 7 dasha systems actually written to chart_dashas.system_id (verified live, both charts:
 // native 482012f1 + Abhinandan 1c826d5a). NOTE: this replaces a stale doc claim (Narayana/Shoola
@@ -341,10 +342,12 @@ export const getDashasCapability: CapabilityDescriptor = {
       // stores the DISPLAY name ("Venus") — so it silently matched nothing (a second R-43 bug).
       // This block keys on display-name → chart_facts subject-code, per (ayanamsha, graha),
       // and carries a PERMANENT verifier cross-check (served == chart_facts).
-      const GRAHA_NAME_TO_FACT_SUBJECT: Record<string, string> = {
-        Sun: 'SUN', Moon: 'MOON', Mars: 'MAR', Mercury: 'MER', Jupiter: 'JUP',
-        Venus: 'VEN', Saturn: 'SAT', Rahu: 'RAH_MEAN', Ketu: 'KET_MEAN',
-      }
+      // Values sourced from the graha SSoT (address_resolver.grahaCodeOf)
+      // rather than hardcoded literals — ADHIṢṬHĀNA Lane A2.
+      const GRAHA_NAME_TO_FACT_SUBJECT: Record<string, string> = Object.fromEntries(
+        ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn', 'Rahu', 'Ketu']
+          .map(name => [name, grahaCodeOf(name)]),
+      )
 
       // Re-derived condition keyed by `${ayanamsha_id}|${factSubject}`.
       const dignityMap: Record<string, string | null> = {}

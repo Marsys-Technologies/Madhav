@@ -37,6 +37,7 @@ from typing import Any
 
 from bodha_writers.formulas import salience_formula_v2, SalienceInputsV2
 from bodha_writers.sudarshana_emitter import GRAHAS, SIGN_INDEX, sign_index
+from brahmagyan.graha_vocabulary import to_title
 
 ENGINE_VERSION = "bo_nakshatra_semantic_v1.0"
 
@@ -45,10 +46,13 @@ NAKSHATRA_SEMANTIC_CLASS_PRIOR = 1.00
 NAKSHATRA_SEMANTIC_SUBSYSTEM = "nakshatra"
 SIGNAL_TYPE_CLASS = "nakshatra_semantic"
 
+# Values sourced from the graha SSoT's to_title() helper
+# (brahmagyan/graha_vocabulary) rather than hardcoded literals — ADHIṢṬHĀNA
+# Lane A2. Kept as a local dict so `.get(code, code)` preserves its
+# fall-back-to-raw-input-unchanged behavior for unrecognized codes.
 _GRAHA_DISPLAY: dict[str, str] = {
-    "SUN": "Sun", "MOON": "Moon", "MAR": "Mars", "MER": "Mercury",
-    "JUP": "Jupiter", "VEN": "Venus", "SAT": "Saturn",
-    "RAH_MEAN": "Rahu", "KET_MEAN": "Ketu",
+    code: to_title(code)
+    for code in ("SUN", "MOON", "MAR", "MER", "JUP", "VEN", "SAT", "RAH_MEAN", "KET_MEAN")
 }
 
 # ── Classical 27-nakshatra span (13°20' each), 0-indexed from Ashwini ───────

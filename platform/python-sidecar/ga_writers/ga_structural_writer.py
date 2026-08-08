@@ -111,6 +111,7 @@ from ga_writers.ga_positions_writer import (
     forensic_gate,
     _conn,
 )
+from brahmagyan.graha_vocabulary import norm_graha
 from brahmagyan.l0_upapada_maitri_rules import (
     UPAPADA_RULES,
     TEMPORAL_FRIEND_HOUSES,
@@ -1580,9 +1581,12 @@ def _build_anubindu_rows(
         logger.warning("[ga_structural] _derive_ashtakavarga failed: %s", exc)
         return rows
 
+    # Values sourced from the graha SSoT (brahmagyan/graha_vocabulary) rather
+    # than hardcoded literals — ADHIṢṬHĀNA Lane A2 (found via the full-tree
+    # census; not one of the originally-enumerated retirement targets).
     planet_subjects = {
-        "Sun": "SUN", "Moon": "MOON", "Mars": "MAR", "Mercury": "MER",
-        "Jupiter": "JUP", "Venus": "VEN", "Saturn": "SAT",
+        name: norm_graha(name)
+        for name in ("Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn")
     }
 
     for planet_name, subject in planet_subjects.items():
