@@ -235,6 +235,18 @@ verification's coverage, now caught before merge rather than after. No merge exe
 untouched. Fix dispatched to a dedicated builder (see below); GATE-EXECUTOR will be re-dispatched
 fresh, from zero, once the fix lands — its verdict is not assumed in advance.
 
+**Fix (PR #1109, merged @ `165523c7f`):** confirmed all 14 non-allowlisted CI violations were
+category (a) allowlist line-drift (Lane A2's edits shifted line numbers in 7 already-reviewed
+files) — zero real new violations, zero silent allowlisting of anything unreviewed. Converted the
+14 entries from `line`-pinned to `pattern`-based matching (more robust against future drift, per
+the allowlist schema's own guidance). Config-only change (only `fact_category_pin_allowlist.json`
+touched). Verbatim final lint output: `0 new violations (27 pre-existing, allowlisted). PASS.`
+exit 0. One out-of-scope side note (not a merge blocker): a local, `.gitignore`-excluded scratch
+file (`platform/python-sidecar/verify_l1_fixes.py`, predates this campaign, never tracked by git)
+was surfaced by a filesystem-walk local lint run — confirmed harmless (not in any commit, not in
+the PR, not visible to CI's clean checkout) but flagged to the native as a housekeeping item since
+it contains a plaintext DB credential.
+
 ## Session log
 
 - **2026-08-08 (this session, Sonnet 5):** Stage 0 pre-flight run (table above). Plan of
