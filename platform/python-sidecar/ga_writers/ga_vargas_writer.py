@@ -61,6 +61,7 @@ from typing import Any
 
 import psycopg.rows
 
+from brahmagyan.graha_vocabulary import norm_graha
 from brahmagyan.verification_vocab import (
     CLASSICAL_MATCH,
     TWO_PASS_VERIFIED,
@@ -75,6 +76,7 @@ from ga_writers.ga_positions_writer import (
     CANONICAL_AYANAMSHAS,
     CANONICAL_CHART_ID,
     FORBIDDEN_PATTERNS,
+    PLANET_TO_SUBJECT,
     _conn,
     _write_halt_log,
 )
@@ -103,14 +105,17 @@ CLASSICAL_BODIES = ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus",
 FLOORED_BODIES = ["Uranus", "Neptune", "Pluto", "Lilith", "MC"]
 ALL_BODIES = CLASSICAL_BODIES + FLOORED_BODIES
 
-# Body → fact_subject mapping
-BODY_TO_SUBJECT = {
-    "Sun": "SUN", "Moon": "MOON", "Mars": "MAR", "Mercury": "MER",
-    "Jupiter": "JUP", "Venus": "VEN", "Saturn": "SAT",
-    "Rahu": "RAH_MEAN", "Ketu": "KET_MEAN", "Lagna": "LAGNA",
+# Body → fact_subject mapping. The 10 classical bodies (9 grahas + Lagna) are
+# sourced from the graha SSoT (brahmagyan/graha_vocabulary) rather than
+# hardcoded literals — ADHIṢṬHĀNA Lane A2. FLOORED_BODIES are outside the
+# SSoT's scope (not classical grahas — no PyJHora support) and keep their
+# own identity mapping.
+_FLOORED_BODY_TO_SUBJECT = {
     "MC": "MC", "Uranus": "URANUS", "Neptune": "NEPTUNE",
     "Pluto": "PLUTO", "Lilith": "LILITH",
 }
+BODY_TO_SUBJECT = {name: norm_graha(name) for name in CLASSICAL_BODIES}
+BODY_TO_SUBJECT.update(_FLOORED_BODY_TO_SUBJECT)
 
 # Saptavargaja bala: 7 vargas used by D1 (D1=moolam, D2, D3, D9, D12, D30, D60)
 SAPTAVARGA_SET = {1, 2, 3, 9, 12, 30, 60}
@@ -2999,7 +3004,7 @@ def build_ga_vargas(
                         "fact_key": "computation_status",
                         "fact_value_text": "intentionally_not_computed",
                         "fact_value_num": None,
-                        "fact_subject": floored_body.upper(),
+                        "fact_subject": PLANET_TO_SUBJECT.get(floored_body, floored_body.upper()),
                         "build_id_uuid": build_id,
                         "verification_pass_status": UNVERIFIED_DEFAULT,
                         "engine_version": ENGINE_VERSION,

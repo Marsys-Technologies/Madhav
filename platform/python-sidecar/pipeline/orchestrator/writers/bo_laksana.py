@@ -50,6 +50,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from brahmagyan.domain_vocabulary import CANONICAL_DOMAINS
+from brahmagyan.graha_vocabulary import norm_graha, to_title
 from . import WriterBase, ContextSpec, WriterResult, SubStep, register
 from bodha_writers.formulas import (
     salience_formula_v2,
@@ -1547,18 +1548,25 @@ def _build_classical_sources(
 # ── B3: Graha inference for yoga/dosha signals ────────────────────────────────
 
 # Maps uppercase name tokens found in fire_reason / fact_value_text → canonical graha key
-# (matching the graha keys used in strength_lookup / dignity_lookup)
-_GRAHA_NAME_MAP: dict[str, str] = {
-    "sun": "SUN", "sol": "SUN", "surya": "SUN",
-    "moon": "MOON", "chandra": "MOON", "luna": "MOON",
-    "mars": "MAR", "kuja": "MAR", "mangal": "MAR", "mangala": "MAR",
-    "mercury": "MER", "budha": "MER", "budh": "MER",
-    "jupiter": "JUP", "guru": "JUP", "brihaspati": "JUP",
-    "venus": "VEN", "shukra": "VEN", "sukra": "VEN",
-    "saturn": "SAT", "shani": "SAT", "sani": "SAT",
-    "rahu": "RAH_MEAN", "rahoo": "RAH_MEAN",
-    "ketu": "KET_MEAN", "kethu": "KET_MEAN",
+# (matching the graha keys used in strength_lookup / dignity_lookup).
+# The graha SSoT (brahmagyan/graha_vocabulary) tokens are derived via
+# norm_graha(); _EXTRA_TEXT_ALIASES adds looser prose spellings this
+# free-text extractor additionally recognizes that are not themselves
+# canonical identifiers anywhere else in the codebase — ADHIṢṬHĀNA Lane A2.
+_EXTRA_TEXT_ALIASES: dict[str, str] = {
+    "sol": "SUN", "luna": "MOON", "mangal": "MAR", "budh": "MER",
+    "brihaspati": "JUP", "sukra": "VEN", "sani": "SAT",
+    "rahoo": "RAH_MEAN", "kethu": "KET_MEAN",
 }
+_GRAHA_NAME_MAP: dict[str, str] = {
+    tok: norm_graha(tok)
+    for tok in (
+        "sun", "surya", "moon", "chandra", "mars", "kuja", "mangala",
+        "mercury", "budha", "jupiter", "guru", "venus", "shukra",
+        "saturn", "shani", "rahu", "ketu",
+    )
+}
+_GRAHA_NAME_MAP.update(_EXTRA_TEXT_ALIASES)
 
 # Dosha-group → primary graha (classical primary graha for each dosha type)
 _DOSHA_GROUP_GRAHA: dict[str, str] = {
@@ -1570,16 +1578,14 @@ _DOSHA_GROUP_GRAHA: dict[str, str] = {
 # Long graha name (as returned by chart_divisionals queries) → short strength_lookup key.
 # Used by O3 navamsha signals so shadbala_norm resolves correctly instead of falling
 # back to 1.0 when graha is e.g. "Saturn" and strength_lookup keys are "SAT".
+# Values sourced from the graha SSoT (brahmagyan/graha_vocabulary) rather than
+# hardcoded literals — ADHIṢṬHĀNA Lane A2.
 _LONG_TO_SHORT: dict[str, str] = {
-    "Sun":     "SUN",
-    "Moon":    "MOON",
-    "Mars":    "MAR",
-    "Mercury": "MER",
-    "Jupiter": "JUP",
-    "Venus":   "VEN",
-    "Saturn":  "SAT",
-    "Rahu":    "RAH_MEAN",
-    "Ketu":    "KET_MEAN",
+    name: norm_graha(name)
+    for name in (
+        "Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn",
+        "Rahu", "Ketu",
+    )
 }
 
 
@@ -2352,10 +2358,16 @@ def _build_d1_dignity_map(
     constituent_facts_array (B2 governance mandate: every L2 signal must
     cite the L1 fact IDs it consumes).
     """
+    # Values sourced from the graha SSoT (brahmagyan/graha_vocabulary.to_title)
+    # rather than hardcoded literals — ADHIṢṬHĀNA Lane A2. Kept as a local
+    # dict (not a direct to_title() call) so `.get()` preserves None-on-miss
+    # for any unexpected fact_subject shape (to_title() never returns None).
     short_to_long = {
-        "SUN": "Sun", "MOON": "Moon", "MAR": "Mars", "MER": "Mercury",
-        "JUP": "Jupiter", "VEN": "Venus", "SAT": "Saturn",
-        "RAH_MEAN": "Rahu", "KET_MEAN": "Ketu",
+        code: to_title(code)
+        for code in (
+            "SUN", "MOON", "MAR", "MER", "JUP", "VEN", "SAT",
+            "RAH_MEAN", "KET_MEAN",
+        )
     }
     rows = _fetch_dict(conn,
         """SELECT fact_id, fact_subject, fact_value_text FROM chart_facts

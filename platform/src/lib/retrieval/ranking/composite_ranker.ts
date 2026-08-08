@@ -20,16 +20,22 @@ import {
   DIGNITY_SCORE,
   VARGA_WEIGHT_CITATION,
 } from './priors_config'
+import { grahaCodeOf, GRAHA_CODE_TO_NAME } from '@/lib/retrieval/address_resolver'
 
 // Graha code normalizer: converts any key variant to the 2-char code used in L1ChartContext.graha_map.
 // L1 stores graha_map under 2-char codes (SU, MO, SA, etc.); MSR signals use MOON/SATURN/etc.
-const GRAHA_TO_CODE: Record<string, string> = {
-  SUN: 'SU', MOON: 'MO', MARS: 'MA', MERCURY: 'ME', JUPITER: 'JU',
-  VENUS: 'VE', SATURN: 'SA', RAHU: 'RA', KETU: 'KE',
-  // L1 chart_facts fact_subject format
-  MAR: 'MA', MER: 'ME', JUP: 'JU', VEN: 'VE', SAT: 'SA',
-  RAH_MEAN: 'RA', KET_MEAN: 'KE',
-}
+// Derived from the graha SSoT (address_resolver.grahaCodeOf) rather than hardcoded
+// literals — ADHIṢṬHĀNA Lane A2: the SSoT's own canonical short code's first 2
+// characters always yield this file's established 2-char L1 convention
+// (RAH_MEAN[:2]="RA", KET_MEAN[:2]="KE", etc).
+const _GRAHA_TO_CODE_INPUTS = [
+  'SUN', 'MOON', 'MARS', 'MERCURY', 'JUPITER', 'VENUS', 'SATURN', 'RAHU', 'KETU',
+  'MAR', 'MER', 'JUP', 'VEN', 'SAT', 'RAH_MEAN', 'KET_MEAN',
+] as const
+
+const GRAHA_TO_CODE: Record<string, string> = Object.fromEntries(
+  _GRAHA_TO_CODE_INPUTS.map(input => [input, grahaCodeOf(input).slice(0, 2)]),
+)
 
 // ── L1 Context (provided by l1_context_fetcher) ───────────────────────────────
 
@@ -414,19 +420,19 @@ export function buildRankingBasis(
  * entity attribution. Covers the 2-char L1 codes (SU/MO/SA…), the MSR-side full
  * names (MOON/SATURN…), and the 3-char chart_facts fact_subject tokens
  * (SAT/RAH_MEAN…). Any variant resolves to ONE canonical entity name so a graha
- * is never split across two entity buckets.
+ * is never split across two entity buckets. Values sourced from the graha SSoT
+ * (address_resolver.grahaCodeOf + GRAHA_CODE_TO_NAME) rather than hardcoded
+ * literals — ADHIṢṬHĀNA Lane A2.
  */
-const GRAHA_TOKEN_TO_NAME: Record<string, string> = {
-  SU: 'SUN', SUN: 'SUN',
-  MO: 'MOON', MOON: 'MOON',
-  MA: 'MARS', MAR: 'MARS', MARS: 'MARS',
-  ME: 'MERCURY', MER: 'MERCURY', MERCURY: 'MERCURY',
-  JU: 'JUPITER', JUP: 'JUPITER', JUPITER: 'JUPITER',
-  VE: 'VENUS', VEN: 'VENUS', VENUS: 'VENUS',
-  SA: 'SATURN', SAT: 'SATURN', SATURN: 'SATURN',
-  RA: 'RAHU', RAH: 'RAHU', RAHU: 'RAHU',
-  KE: 'KETU', KET: 'KETU', KETU: 'KETU',
-}
+const _GRAHA_TOKEN_INPUTS = [
+  'SU', 'SUN', 'MO', 'MOON', 'MA', 'MAR', 'MARS', 'ME', 'MER', 'MERCURY',
+  'JU', 'JUP', 'JUPITER', 'VE', 'VEN', 'VENUS', 'SA', 'SAT', 'SATURN',
+  'RA', 'RAH', 'RAHU', 'KE', 'KET', 'KETU',
+] as const
+
+const GRAHA_TOKEN_TO_NAME: Record<string, string> = Object.fromEntries(
+  _GRAHA_TOKEN_INPUTS.map(token => [token, GRAHA_CODE_TO_NAME[grahaCodeOf(token)].toUpperCase()]),
+)
 
 /** Canonicalize any graha token/name to its full-name entity key, or null. */
 function canonicalGrahaName(token: string | null | undefined): string | null {

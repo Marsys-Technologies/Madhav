@@ -39,6 +39,8 @@ from typing import Any, Callable
 
 import psycopg.rows
 
+from brahmagyan.graha_vocabulary import norm_graha, to_title
+
 logger = logging.getLogger(__name__)
 
 # ── Constants ──────────────────────────────────────────────────────────────────
@@ -55,20 +57,6 @@ CANONICAL_AYANAMSHAS = [
 ]
 
 STRENGTH_FORMULA_VERSION = "yoga_strength_formula_v1"
-
-# Planet name normalisations (as stored in chart_facts.fact_subject)
-# Based on ga_positions_writer PLANET_TO_SUBJECT convention
-PLANET_SUBJECTS = {
-    "sun": "SUN",
-    "moon": "MOON",
-    "mars": "MARS",
-    "mercury": "MERCURY",
-    "jupiter": "JUPITER",
-    "venus": "VENUS",
-    "saturn": "SATURN",
-    "rahu": "RAHU",
-    "ketu": "KETU",
-}
 
 # Benefics and malefics (natural, context-independent)
 NATURAL_BENEFICS = {"jupiter", "venus", "mercury", "moon"}
@@ -88,10 +76,12 @@ CONSTITUENT_BALA_DERIVATION = "constituent_bala_v1"
 CONSTITUENT_BALA_LABEL = "computed_extension"
 
 # planet (lowercase, as used in constituent_planets) → graha_shadbala_total
-# fact_subject code (mirrors ga_positions_writer.PLANET_TO_SUBJECT)
+# fact_subject code. Values sourced from the graha SSoT
+# (brahmagyan/graha_vocabulary) rather than hardcoded literals —
+# ADHIṢṬHĀNA Lane A2.
 GRAHA_SHADBALA_SUBJECTS: dict[str, str] = {
-    "sun": "SUN", "moon": "MOON", "mars": "MAR", "mercury": "MER",
-    "jupiter": "JUP", "venus": "VEN", "saturn": "SAT",
+    planet: norm_graha(planet)
+    for planet in ("sun", "moon", "mars", "mercury", "jupiter", "venus", "saturn")
 }
 
 # Kemadruma's cancellation (bhanga) is already gated into its own firing
@@ -335,11 +325,18 @@ class ChartState:
 
         self._parse(facts)
 
-    # Maps abbreviated fact_subject values → full planet names used in yoga catalog
+    # Maps abbreviated fact_subject values → full planet names used in yoga
+    # catalog (lowercase). Derived from the graha SSoT's to_title() helper
+    # (brahmagyan/graha_vocabulary) rather than hardcoded literals —
+    # ADHIṢṬHĀNA Lane A2 (found via the full-tree census; not one of the
+    # originally-enumerated retirement targets — this file's own
+    # established output convention happens to be all-lowercase).
     _SUBJECT_NORM: dict[str, str] = {
-        "sun": "sun", "moon": "moon", "mar": "mars", "mer": "mercury",
-        "jup": "jupiter", "ven": "venus", "sat": "saturn",
-        "rah_mean": "rahu", "ket_mean": "ketu", "lagna": "lagna",
+        code.lower(): to_title(code).lower()
+        for code in (
+            "sun", "moon", "mar", "mer", "jup", "ven", "sat",
+            "rah_mean", "ket_mean", "lagna",
+        )
     }
 
     def _parse(self, facts: list[dict]) -> None:

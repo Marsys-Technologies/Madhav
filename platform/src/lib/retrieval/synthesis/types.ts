@@ -23,9 +23,23 @@
 
 // ── (1) intent decomposition — P-10 ───────────────────────────────────────────
 
-/** The life-domains the L2 layer tags signals with (bodha_msr_signals.domains_affected_array). */
-export type Domain =
-  | 'career' | 'wealth' | 'relationship' | 'health' | 'character' | 'spirituality' | 'other'
+import type { CanonicalDomain } from '@/lib/domain_vocabulary'
+
+/**
+ * The life-domains the L2 layer tags signals with (bodha_msr_signals.domains_affected_array).
+ *
+ * ADHIṢṬHĀNA Lane A7: previously a local literal (6 members + 'other'), one of 4 divergent
+ * TS domain vocabularies. Now sourced from the canonical 13-domain SSoT
+ * (`brahmagyan/domain_vocabulary.py` / `@/lib/domain_vocabulary`). The local 'other' fallback
+ * is superseded by the SSoT's own unknown-domain term, 'general' — identical semantic role
+ * (intent.ts's decompose() renames its 'other' literal to 'general' accordingly; no test
+ * asserted the literal 'other' string, so this is a behavior-preserving rename, not a
+ * semantic change). This type only widens the DECLARED domain space to 13; intent.ts's own
+ * keyword-classifier content (DOMAIN_KEYWORDS/HEAVY_TEMPLATES) intentionally still covers
+ * only the original 6 + general — inventing keyword lists for the 7 newly-representable
+ * domains would be fabricated content, not a vocabulary fix (see intent.ts comment).
+ */
+export type Domain = CanonicalDomain
 
 /**
  * One family of evidence the compound question needs. The evidence CONTRACT is the

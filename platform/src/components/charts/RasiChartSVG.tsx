@@ -1,5 +1,6 @@
 import type { ForensicChart } from '@/lib/forensic/snapshot'
 import { cn } from '@/lib/utils'
+import { grahaCodeOf } from '@/lib/retrieval/address_resolver'
 
 export interface RasiChartSVGProps {
   chart: ForensicChart
@@ -9,11 +10,17 @@ export interface RasiChartSVGProps {
   paused?: boolean
 }
 
-// Abbreviated display names for planets
-const ABBREV: Record<string, string> = {
-  Sun: 'Su', Moon: 'Mo', Mars: 'Ma', Mercury: 'Me',
-  Jupiter: 'Ju', Venus: 'Ve', Saturn: 'Sa', Rahu: 'Ra', Ketu: 'Ke',
-}
+// Abbreviated display names for planets. Derived from the graha SSoT
+// (address_resolver.grahaCodeOf) rather than hardcoded literals —
+// ADHIṢṬHĀNA Lane A2: the SSoT's own canonical short code's first 2
+// characters, Title-cased, always yield this component's established
+// 2-letter display convention.
+const ABBREV: Record<string, string> = Object.fromEntries(
+  ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn', 'Rahu', 'Ketu'].map(name => {
+    const short = grahaCodeOf(name).slice(0, 2)
+    return [name, short.charAt(0) + short.slice(1).toLowerCase()]
+  }),
+)
 
 // North Indian 4×4 grid layout.
 // Cell [row][col] = house number (0 = center filler, -1 = unused).

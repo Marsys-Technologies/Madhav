@@ -31,8 +31,13 @@ const ENTITY_CLASS_ALIAS: Record<string, string> = {
   bhava: 'house', house: 'house',
   nakshatra: 'nakshatra',
   upagraha: 'upagraha',
+  // ADHIṢṬHĀNA Lane A3 (2026-08-08): 'varga' (divisional chart, e.g. D9/Navamsha)
+  // is a new top-level entity_class — 30 rows seeded, canonical_id 'd1'..'d2700'.
+  // 'amsa' is the Sanskrit term for a varga division; aliased for symmetry with
+  // the graha/rashi/bhava Sanskrit aliases above.
+  varga: 'varga', amsa: 'varga',
 }
-const VALID_ENTITY_CLASSES = ['planet', 'sign', 'house', 'nakshatra', 'upagraha', 'dasha_system', 'domain', 'concept', 'karaka', 'aspect_type', 'remedy_type', 'school', 'text']
+const VALID_ENTITY_CLASSES = ['planet', 'sign', 'house', 'nakshatra', 'upagraha', 'dasha_system', 'domain', 'concept', 'karaka', 'aspect_type', 'remedy_type', 'school', 'text', 'varga']
 const UNBACKED_CLASSES = new Set(['yoga', 'karana'])
 
 export const listEntitiesCapability: CapabilityDescriptor = {
@@ -51,12 +56,13 @@ export const listEntitiesCapability: CapabilityDescriptor = {
       description:
         'Optional filter: entity class to list. Accepts either the stored vocabulary ' +
         '(planet, sign, house, nakshatra, upagraha, dasha_system, domain, concept, karaka, ' +
-        'aspect_type, remedy_type, school, text) or the Sanskrit synonyms graha (→planet), ' +
-        'rashi (→sign), bhava (→house). If omitted, returns all classes. ' +
+        'aspect_type, remedy_type, school, text, varga) or the Sanskrit synonyms graha (→planet), ' +
+        'rashi (→sign), bhava (→house), amsa (→varga). If omitted, returns all classes. ' +
         '"yoga"/"karana" are NOT valid filters here (see empty_reason if requested) — they ' +
         'have no dedicated top-level class; use query_yoga_catalog / L0 panchanga tools instead.',
       enum: ['graha', 'planet', 'nakshatra', 'rashi', 'sign', 'bhava', 'house', 'upagraha',
-        'dasha_system', 'domain', 'concept', 'karaka', 'aspect_type', 'remedy_type', 'school', 'text'],
+        'dasha_system', 'domain', 'concept', 'karaka', 'aspect_type', 'remedy_type', 'school', 'text',
+        'varga', 'amsa'],
     },
     limit: {
       type: 'number',

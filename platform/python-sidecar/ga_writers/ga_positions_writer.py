@@ -31,6 +31,7 @@ from typing import Any
 from pyjhora_adapter.compute import compute_chart
 from pyjhora_adapter.version import ENGINE_VERSION
 
+from brahmagyan.graha_vocabulary import norm_graha
 from ga_writers._idempotency import replace_prior_chart_facts
 from ga_writers._telemetry import update_asset_throughput
 
@@ -50,18 +51,18 @@ CANONICAL_AYANAMSHAS: dict[str, str] = {
     "surya_siddhanta_classical": "surya_siddhanta",
 }
 
-# Planet name → fact_subject (A3 §5 UPPER_SNAKE convention)
+# Planet name → fact_subject (A3 §5 UPPER_SNAKE convention).
+# Values sourced from the graha SSoT (brahmagyan/graha_vocabulary.norm_graha)
+# rather than hardcoded literals — ADHIṢṬHĀNA Lane A2. `.get()`-with-None
+# semantics on an unrecognized engine name are preserved exactly (this dict
+# is a closed allowlist of the pyjhora_adapter engine's own output names,
+# not a general normalizer).
 PLANET_TO_SUBJECT: dict[str, str] = {
-    "Sun": "SUN",
-    "Moon": "MOON",
-    "Mars": "MAR",
-    "Mercury": "MER",
-    "Jupiter": "JUP",
-    "Venus": "VEN",
-    "Saturn": "SAT",
-    "Rahu": "RAH_MEAN",
-    "Ketu": "KET_MEAN",
-    "Lagna": "LAGNA",
+    name: norm_graha(name)
+    for name in (
+        "Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn",
+        "Rahu", "Ketu", "Lagna",
+    )
 }
 
 # Forbidden narration patterns (A3 §17, brief §7)

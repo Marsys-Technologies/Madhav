@@ -61,6 +61,7 @@ from ga_writers.ga_positions_writer import (
     _conn,
     _write_halt_log,
 )
+from brahmagyan.graha_vocabulary import norm_graha, to_title
 
 logger = logging.getLogger(__name__)
 
@@ -107,11 +108,16 @@ SARVA_BINDU_TOTAL = 337
 # ── Amendment 1: Divisional planet name mapping ──────────────────────────────
 # Maps uppercase planet codes from chart_divisionals.graha to the title-case
 # names used by BENEFIC_HOUSES in _derive_ashtakavarga.
+# Values sourced from the graha SSoT's to_title() helper
+# (brahmagyan/graha_vocabulary) rather than hardcoded literals — ADHIṢṬHĀNA
+# Lane A2 (found via the full-tree census; not one of the originally-
+# enumerated retirement targets). "ASC" is a documented extra Ascendant
+# storage-name alias the SSoT itself does not carry.
 _DIVISIONAL_TO_BENEFIC: dict[str, str] = {
-    "SUN": "Sun", "MOON": "Moon", "MAR": "Mars", "MER": "Mercury",
-    "JUP": "Jupiter", "VEN": "Venus", "SAT": "Saturn",
-    "LAGNA": "Lagna", "ASC": "Lagna",
+    code: to_title(code)
+    for code in ("SUN", "MOON", "MAR", "MER", "JUP", "VEN", "SAT", "LAGNA")
 }
+_DIVISIONAL_TO_BENEFIC["ASC"] = "Lagna"
 
 
 # ── fact_id + citations ──────────────────────────────────────────────────────
@@ -973,10 +979,15 @@ def _build_ashtakavarga_rows(
     trikona_grid = grids.get("trikona", {})
     ekadhipatya_grid = grids.get("ekadhipatya", {})
 
+    # Values sourced from the graha SSoT (brahmagyan/graha_vocabulary) rather
+    # than hardcoded literals — ADHIṢṬHĀNA Lane A2 (found via the full-tree
+    # census; not one of the originally-enumerated retirement targets).
+    # "SARVA" is the ashtakavarga aggregate row, not a graha.
     planet_subjects = {
-        "Sun": "SUN", "Moon": "MOON", "Mars": "MAR", "Mercury": "MER",
-        "Jupiter": "JUP", "Venus": "VEN", "Saturn": "SAT", "SARVA": "SARVA",
+        name: norm_graha(name)
+        for name in ("Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn")
     }
+    planet_subjects["SARVA"] = "SARVA"
 
     src = f"pyjhora_adapter.strength.compute_ashtakavarga_shodhana/{eng_ver}"
 
@@ -1317,10 +1328,15 @@ def _build_ashtakavarga_per_varga_rows(
     """
     rows: list[dict[str, Any]] = []
 
+    # Values sourced from the graha SSoT (brahmagyan/graha_vocabulary) rather
+    # than hardcoded literals — ADHIṢṬHĀNA Lane A2 (found via the full-tree
+    # census; not one of the originally-enumerated retirement targets).
+    # "SARVA" is the ashtakavarga aggregate row, not a graha.
     planet_subjects = {
-        "Sun": "SUN", "Moon": "MOON", "Mars": "MAR", "Mercury": "MER",
-        "Jupiter": "JUP", "Venus": "VEN", "Saturn": "SAT", "SARVA": "SARVA",
+        name: norm_graha(name)
+        for name in ("Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn")
     }
+    planet_subjects["SARVA"] = "SARVA"
 
     # Verify SARVA = 337
     sarva_list = bav_varga.get("SARVA", [])
@@ -1437,9 +1453,13 @@ def _build_positional_components_per_varga_rows(
     """
     rows: list[dict[str, Any]] = []
 
+    # Values sourced from the graha SSoT's to_title() helper
+    # (brahmagyan/graha_vocabulary) rather than hardcoded literals —
+    # ADHIṢṬHĀNA Lane A2 (found via the full-tree census; not one of the
+    # originally-enumerated retirement targets).
     classical_subjects = {
-        "SUN": "Sun", "MOON": "Moon", "MAR": "Mars", "MER": "Mercury",
-        "JUP": "Jupiter", "VEN": "Venus", "SAT": "Saturn",
+        code: to_title(code)
+        for code in ("SUN", "MOON", "MAR", "MER", "JUP", "VEN", "SAT")
     }
 
     for varga in gap_vargas:

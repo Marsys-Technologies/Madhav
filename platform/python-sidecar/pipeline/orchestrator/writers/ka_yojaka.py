@@ -30,6 +30,7 @@ import json
 import logging
 
 from brahmagyan.domain_vocabulary import canonical_domain
+from brahmagyan.graha_vocabulary import to_title
 from pipeline.orchestrator.writers import WriterBase, WriterResult, register
 from services.ka_yojaka.classifier import classify_signal
 from services.ka_yojaka.binder import build_predicate
@@ -577,12 +578,21 @@ class KaYojakaWriter(WriterBase):
 # predicate. Fix: normalize through the SAME Title-Case map bo_bimba/
 # bo_karanajala already use as the CGM node_subject convention, so a real hit
 # — not the 0.5 stub — is the common case.
+# ADHIṢṬHĀNA Lane A2: values sourced from the graha SSoT's to_title() helper
+# (brahmagyan/graha_vocabulary) rather than hardcoded literals. This map's
+# output feeds bodha_cgm_nodes.node_subject, which stores Title-case ("Mars"),
+# NOT the short code — retiring this map to the SSoT must not (and does not,
+# verified value-for-value) change that write contract. Kept as an explicit
+# local dict (not a bare to_title() call) so `_normalize_graha_to_node_subject`
+# preserves its exact None-on-unrecognized-input contract — to_title() itself
+# always returns a non-None string, which would silently accept garbage input.
 _GRAHA_CODE_TO_TITLE: dict[str, str] = {
-    "SUN": "Sun", "MOON": "Moon", "MAR": "Mars", "MARS": "Mars",
-    "MER": "Mercury", "MERCURY": "Mercury", "JUP": "Jupiter", "JUPITER": "Jupiter",
-    "VEN": "Venus", "VENUS": "Venus", "SAT": "Saturn", "SATURN": "Saturn",
-    "RAH": "Rahu", "RAH_MEAN": "Rahu", "RAHU": "Rahu",
-    "KET": "Ketu", "KET_MEAN": "Ketu", "KETU": "Ketu",
+    code: to_title(code)
+    for code in (
+        "SUN", "MOON", "MAR", "MARS", "MER", "MERCURY", "JUP", "JUPITER",
+        "VEN", "VENUS", "SAT", "SATURN", "RAH", "RAH_MEAN", "RAHU",
+        "KET", "KET_MEAN", "KETU",
+    )
 }
 
 

@@ -25,6 +25,7 @@
 import { query } from '@/lib/db/client'
 import type { L1ChartContext, GrahaStrength } from './composite_ranker'
 import { COMPOSITE_CACHE_TTL_MS } from './priors_config'
+import { grahaCodeOf } from '@/lib/retrieval/address_resolver'
 
 // Ranking-layer cache (separate from 60s retrieval cache — needs 30d TTL)
 const _rankingCache = new Map<string, { data: unknown; expiresAt: number }>()
@@ -45,12 +46,14 @@ function rankingCacheSet(key: string, data: unknown, ttl_ms = COMPOSITE_CACHE_TT
   _rankingCache.set(key, { data, expiresAt: Date.now() + ttl_ms })
 }
 
-// L1 graha key → canonical 2-char code used in graha_map
-const L1_GRAHA_TO_CODE: Record<string, string> = {
-  SUN: 'SU', MOON: 'MO', MAR: 'MA', MER: 'ME',
-  JUP: 'JU', VEN: 'VE', SAT: 'SA',
-  RAH_MEAN: 'RA', KET_MEAN: 'KE',
-}
+// L1 graha key → canonical 2-char code used in graha_map. Derived from the
+// graha SSoT (address_resolver.grahaCodeOf) rather than hardcoded literals —
+// ADHIṢṬHĀNA Lane A2: the SSoT's own canonical short code's first 2
+// characters always yield this file's established 2-char L1 convention.
+const L1_GRAHA_TO_CODE: Record<string, string> = Object.fromEntries(
+  ['SUN', 'MOON', 'MAR', 'MER', 'JUP', 'VEN', 'SAT', 'RAH_MEAN', 'KET_MEAN']
+    .map(code => [code, grahaCodeOf(code).slice(0, 2)]),
+)
 
 /**
  * Fetch L1 context for composite ranking.

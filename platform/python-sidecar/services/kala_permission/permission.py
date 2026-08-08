@@ -95,6 +95,7 @@ from services.ph_nimitta.dasha_consensus import (  # noqa: E402
 # ── brahmagyan.l0_upapada_maitri_rules is NOT on T-4's must-not-touch list
 # (only ga_structural_writer.py / ga_nakshatra_compute.py / tara_bala.py /
 # dasha_consensus.py / ka_sangam/** are) — imported directly, not copied.
+from brahmagyan.graha_vocabulary import norm_graha  # noqa: E402
 from brahmagyan.l0_upapada_maitri_rules import (  # noqa: E402
     KENDRA_HOUSES_NON_LAGNA,  # frozenset({4, 7, 10}) — kendra EXCLUDING the reference bhava itself
     TRIKONA_HOUSES,           # frozenset({1, 5, 9})
@@ -120,16 +121,19 @@ NAKSHATRA_NAMES_27: list[str] = [
     "Shatabhisha", "Purva Bhadrapada", "Uttara Bhadrapada", "Revati",
 ]
 
-# ── graha -> chart_facts/chart_vichara subject-code map. Mirrors
-# ga_writers/ga_positions_writer.py's PLANET_TO_SUBJECT (that file is NOT on
-# the must-not-touch list, but the map is 9 lines and copying it keeps this
-# module import-graph-independent from the L1 writers, same rationale as the
-# NAKSHATRA_NAMES_27 copy above and the same pattern get_dasha_lord_capability.ts
-# uses for its own GRAHA_TO_SUBJECT mirror). ────────────────────────────────
+# ── graha -> chart_facts/chart_vichara subject-code map. Previously an
+# independent copy of ga_writers/ga_positions_writer.py's PLANET_TO_SUBJECT
+# (rationale: import-graph independence from the L1 writers) — retired to an
+# import of the graha SSoT (brahmagyan/graha_vocabulary) instead, per R17
+# (ADHIṢṬHĀNA Lane A2): import-graph independence doesn't require duplicating
+# the alias TABLE, only avoiding a dependency on the L1 writer MODULE, and
+# graha_vocabulary carries no writer dependencies. ─────────────────────────
 PLANET_TO_SUBJECT: dict[str, str] = {
-    "Sun": "SUN", "Moon": "MOON", "Mars": "MAR", "Mercury": "MER",
-    "Jupiter": "JUP", "Venus": "VEN", "Saturn": "SAT",
-    "Rahu": "RAH_MEAN", "Ketu": "KET_MEAN",
+    name: norm_graha(name)
+    for name in (
+        "Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn",
+        "Rahu", "Ketu",
+    )
 }
 
 # ── WARNING_TIER_WEIGHTS / LOW_SHADBALA_PERCENTILE — copied VERBATIM from

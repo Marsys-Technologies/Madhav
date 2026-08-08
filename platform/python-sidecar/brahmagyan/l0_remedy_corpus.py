@@ -26,6 +26,8 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+
+from brahmagyan.graha_vocabulary import to_title
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -3168,14 +3170,22 @@ def sweep_classical_text_chunks(conn) -> list[dict[str, Any]]:
         (re.compile(r'\bwear\b', re.IGNORECASE), 'gemstone'),
     ]
 
-    # Planet word → canonical planet name (used in VALID_PLANETS)
+    # Planet word → canonical planet name (used in VALID_PLANETS), lowercase.
+    # Derived from the graha SSoT's to_title() helper
+    # (brahmagyan/graha_vocabulary) rather than hardcoded literals —
+    # ADHIṢṬHĀNA Lane A2 (found via the full-tree census; not one of the
+    # originally-enumerated retirement targets). "mangal" is a documented
+    # extra prose alias the SSoT itself does not carry (see
+    # bo_laksana._EXTRA_TEXT_ALIASES for the same variant).
     PLANET_WORDS = {
-        'sun': 'sun', 'moon': 'moon', 'mars': 'mars', 'mercury': 'mercury',
-        'jupiter': 'jupiter', 'venus': 'venus', 'saturn': 'saturn',
-        'rahu': 'rahu', 'ketu': 'ketu',
-        'surya': 'sun', 'chandra': 'moon', 'mangal': 'mars', 'budha': 'mercury',
-        'guru': 'jupiter', 'shukra': 'venus', 'shani': 'saturn',
+        w: to_title(w).lower()
+        for w in (
+            'sun', 'moon', 'mars', 'mercury', 'jupiter', 'venus', 'saturn',
+            'rahu', 'ketu', 'surya', 'chandra', 'budha', 'guru', 'shukra',
+            'shani',
+        )
     }
+    PLANET_WORDS['mangal'] = 'mars'
     PLANET_PATTERN = re.compile(
         r'\b(' + '|'.join(PLANET_WORDS.keys()) + r')\b',
         re.IGNORECASE,

@@ -58,6 +58,7 @@ import type { CapabilityDescriptor } from '../types'
 import { query } from '@/lib/db/client'
 import type { DrillPointer, JudgmentFlagEntry } from '../../envelope'
 import { judgmentFlag } from '../../envelope'
+import { grahaCodeOf } from '../../address_resolver'
 
 // ── Classical dignity weighting for the CONFIRMATION stage (design §28.1's own weighting
 // discipline — deterministic, never an LLM judgment, never a fabricated probability;
@@ -99,14 +100,17 @@ async function gradeGrahaInVarga(
   }
 }
 
-// graha display name -> the 2-letter/mean code chart_facts uses in fact_subject
-// (same GRAHA_CODE_TO_NAME reverse map as address_resolver.ts / register_d9_judgment.ts;
-// duplicated here as a tiny read-only lookup table rather than importing an unexported
-// internal — no parallel RESOLUTION logic, just this one label map).
-const GRAHA_NAME_TO_CODE: Record<string, string> = {
-  Sun: 'SUN', Moon: 'MOON', Mars: 'MAR', Mercury: 'MER', Jupiter: 'JUP',
-  Venus: 'VEN', Saturn: 'SAT', Rahu: 'RAH_MEAN', Ketu: 'KET_MEAN',
-}
+// graha display name -> the 2-letter/mean code chart_facts uses in fact_subject.
+// Values sourced from the graha SSoT (address_resolver.grahaCodeOf) rather than
+// hardcoded literals — ADHIṢṬHĀNA Lane A2. Kept as a local Record (not a bare
+// grahaCodeOf() call at the read site below) because grahaCodeOf() THROWS on an
+// unrecognized name while this call site's contract is a graceful
+// skip-with-judgment-flag for an unrecognized `name`; the 9 literal keys here
+// are well-formed graha names so grahaCodeOf() never throws building this table.
+const GRAHA_NAME_TO_CODE: Record<string, string> = Object.fromEntries(
+  ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn', 'Rahu', 'Ketu']
+    .map(name => [name, grahaCodeOf(name)]),
+)
 
 const SIDECAR_URL = process.env['PYTHON_SIDECAR_URL'] ?? 'http://localhost:8001'
 // CR-40 fix: forward the sidecar API key when configured — same WP-1.7 pattern as

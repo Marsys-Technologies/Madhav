@@ -27,7 +27,9 @@ from typing import Any, Optional
 
 import psycopg.rows
 
-from ga_writers.ga_positions_writer import CANONICAL_AYANAMSHAS
+from brahmagyan.graha_vocabulary import to_title
+
+from ga_writers.ga_positions_writer import CANONICAL_AYANAMSHAS, PLANET_TO_SUBJECT
 from pyjhora_adapter.version import ENGINE_VERSION
 
 logger = logging.getLogger(__name__)
@@ -724,11 +726,16 @@ def _load_graha_positions(conn: Any, chart_id: str, ayanamsha_id: str) -> list[d
             """, (chart_id, ayanamsha_id))
 
             for subject, key, val_text, val_num in cur.fetchall():
-                # Map UPPER_SNAKE subjects back to planet names
+                # Map UPPER_SNAKE subjects back to planet names. Values
+                # sourced from the graha SSoT's to_title() helper
+                # (brahmagyan/graha_vocabulary) rather than hardcoded
+                # literals — ADHIṢṬHĀNA Lane A2 (found via the full-tree
+                # census; not one of the originally-enumerated retirement
+                # targets — this file's PLANET_TO_SUBJECT import is Lane A1's
+                # own convergence fix, this is a separate local map).
                 subject_to_graha = {
-                    "SUN": "Sun", "MOON": "Moon", "MAR": "Mars", "MER": "Mercury",
-                    "JUP": "Jupiter", "VEN": "Venus", "SAT": "Saturn",
-                    "RAH_MEAN": "Rahu", "KET_MEAN": "Ketu",
+                    code: to_title(code)
+                    for code in ("SUN", "MOON", "MAR", "MER", "JUP", "VEN", "SAT", "RAH_MEAN", "KET_MEAN")
                 }
                 graha = subject_to_graha.get(subject)
                 if graha is None:
@@ -1075,7 +1082,7 @@ def _build_per_varga_avastha_rows(
                 "ayanamsha_id":            ayanamsha_id,
                 "build_id":                build_id,
                 "fact_category":           "graha_avastha_baladi_per_varga",
-                "fact_subject":            graha.upper(),
+                "fact_subject":            PLANET_TO_SUBJECT.get(graha, graha.upper()),
                 "fact_key":                varga,
                 "fact_value_text":         baladi_val,
                 "fact_value_num":          None,
@@ -1101,7 +1108,7 @@ def _build_per_varga_avastha_rows(
                 "ayanamsha_id":            ayanamsha_id,
                 "build_id":                build_id,
                 "fact_category":           "graha_avastha_deeptaadi_per_varga",
-                "fact_subject":            graha.upper(),
+                "fact_subject":            PLANET_TO_SUBJECT.get(graha, graha.upper()),
                 "fact_key":                varga,
                 "fact_value_text":         deeptaadi_val,
                 "fact_value_num":          None,
@@ -1124,7 +1131,7 @@ def _build_per_varga_avastha_rows(
                 "ayanamsha_id":            ayanamsha_id,
                 "build_id":                build_id,
                 "fact_category":           floor_cat,
-                "fact_subject":            graha.upper(),
+                "fact_subject":            PLANET_TO_SUBJECT.get(graha, graha.upper()),
                 "fact_key":                "D_ALL",
                 "fact_value_text":         reason,
                 "fact_value_num":          None,
@@ -1307,7 +1314,7 @@ def _build_d1_avastha_rows(
                 "ayanamsha_id":            ayanamsha_id,
                 "build_id":                build_id or "",
                 "fact_category":           "graha_avastha_sayanadi",
-                "fact_subject":            graha.upper(),
+                "fact_subject":            PLANET_TO_SUBJECT.get(graha, graha.upper()),
                 "fact_key":                "D1",
                 "fact_value_text":         sayanadi_val,
                 "fact_value_num":          None,
@@ -1331,7 +1338,7 @@ def _build_d1_avastha_rows(
             "ayanamsha_id":            ayanamsha_id,
             "build_id":                build_id or "",
             "fact_category":           "graha_avastha_lajjitadi",
-            "fact_subject":            graha.upper(),
+            "fact_subject":            PLANET_TO_SUBJECT.get(graha, graha.upper()),
             "fact_key":                "D1",
             "fact_value_text":         lajjitadi_val,
             "fact_value_num":          None,

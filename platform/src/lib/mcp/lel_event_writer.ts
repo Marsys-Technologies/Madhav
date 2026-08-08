@@ -18,8 +18,10 @@
  * fails a NOT-NULL constraint against prod.
  *
  * Validation: the event's class MUST be a known `brahma_event_ontology`
- * event_class_id (22 classes). Unknown classes are rejected — an intake payload
- * cannot invent a new event taxonomy.
+ * event_class_id (see `EVENT_CLASSES` in `@/lib/event_classes.ts` — the TS
+ * mirror of `l0_ghatana.EVENT_CLASSES` — for the current, parity-guarded
+ * count). Unknown classes are rejected — an intake payload cannot invent a
+ * new event taxonomy.
  *
  * Idempotency: ON CONFLICT (chart_id, event_id) DO UPDATE refreshes the mutable
  * fields but NEVER clobbers `recorded_at` — the first observation time is
@@ -134,7 +136,8 @@ export function deriveLelEventId(chartId: string, event: LelEvent): string {
 export async function recordLelEvent(
   { chartId, event, provenance }: RecordLelEventArgs
 ): Promise<RecordLelEventResult> {
-  // 1. Validate the event class against the ontology (22 classes).
+  // 1. Validate the event class against the ontology (see EVENT_CLASSES in
+  //    @/lib/event_classes.ts for the current, parity-guarded class count).
   const { rows: classRows } = await query<{ event_class_id: string }>(
     `SELECT event_class_id FROM brahma_event_ontology WHERE event_class_id = $1`,
     [event.event_class]

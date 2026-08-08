@@ -35,6 +35,7 @@ from typing import Optional, Sequence
 import networkx as nx
 
 from .contracts import PromisePrior, Route
+from brahmagyan.graha_vocabulary import norm_graha
 
 CANONICAL_AYANAMSHA = "lahiri_chitrapaksha"
 
@@ -98,9 +99,16 @@ def graha_node_id(graha: str) -> str:
     return f"graha:{_short_graha_code(graha)}"
 
 
+# 2-letter display code, derived from the graha SSoT's canonical short code
+# (brahmagyan/graha_vocabulary.norm_graha) rather than hardcoded literals —
+# ADHIṢṬHĀNA Lane A2 (found via the full-tree census; not one of the
+# originally-enumerated retirement targets). This file's own established
+# output convention is a 2-letter Title-case code (e.g. "Ra" for Rahu,
+# "Ke" for Ketu), which the SSoT's canonical short code's first 2 characters
+# always yield (RAH_MEAN[:2]="RA", KET_MEAN[:2]="KE", etc).
 _GRAHA_SHORT: dict[str, str] = {
-    "Sun": "Su", "Moon": "Mo", "Mars": "Ma", "Mercury": "Me", "Jupiter": "Ju",
-    "Venus": "Ve", "Saturn": "Sa", "Rahu": "Ra", "Ketu": "Ke",
+    name: norm_graha(name)[:2].capitalize()
+    for name in ("Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn", "Rahu", "Ketu")
 }
 
 

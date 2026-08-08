@@ -31,15 +31,19 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
-import { ZODIAC_SIGNS, type ZodiacSign } from '../../../address_resolver'
+import { ZODIAC_SIGNS, type ZodiacSign, grahaCodeOf } from '../../../address_resolver'
 import { DEFAULT_AYANAMSHA } from '../../constants'
 
 // Compact 2-3 letter graha abbreviations for the grid (distinct from the SUN/MOON/MAR/...
 // fact_subject codes used elsewhere — these are the short display labels of the grid itself).
-const GRAHA_ABBREV: Record<string, string> = {
-  Sun: 'Su', Moon: 'Mo', Mars: 'Ma', Mercury: 'Me', Jupiter: 'Ju',
-  Venus: 'Ve', Saturn: 'Sa', Rahu: 'Ra', Ketu: 'Ke',
-}
+// Derived from the graha SSoT (address_resolver.grahaCodeOf) rather than
+// hardcoded literals — ADHIṢṬHĀNA Lane A2.
+const GRAHA_ABBREV: Record<string, string> = Object.fromEntries(
+  ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn', 'Rahu', 'Ketu'].map(name => {
+    const short = grahaCodeOf(name).slice(0, 2)
+    return [name, short.charAt(0) + short.slice(1).toLowerCase()]
+  }),
+)
 
 const SIGN_ABBREV: Record<string, string> = {
   Aries: 'Ari', Taurus: 'Tau', Gemini: 'Gem', Cancer: 'Can', Leo: 'Leo', Virgo: 'Vir',

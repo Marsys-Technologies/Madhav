@@ -160,6 +160,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
+from brahmagyan.graha_vocabulary import norm_graha
 from . import uncertainty as U
 from .contracts import ClockApplicability
 
@@ -205,12 +206,14 @@ CHARA_KARAKA_CANDIDATE_GRAHAS: tuple[str, ...] = (
     "Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn",
 )
 
-#: chart_facts.fact_subject abbreviations (PLANET_TO_SUBJECT, mirrored
-#: from ga_writers/ga_nakshatra_emitters.py / ga_positions_writer.py) for
-#: the seven chara-karaka candidates.
+#: chart_facts.fact_subject abbreviations for the seven chara-karaka
+#: candidates. Values sourced from the graha SSoT
+#: (brahmagyan/graha_vocabulary) rather than hardcoded literals —
+#: ADHIṢṬHĀNA Lane A2 (found via the full-tree census; not one of the
+#: originally-enumerated retirement targets, but the same shape).
 GRAHA_TO_FACT_SUBJECT: dict[str, str] = {
-    "Sun": "SUN", "Moon": "MOON", "Mars": "MAR", "Mercury": "MER",
-    "Jupiter": "JUP", "Venus": "VEN", "Saturn": "SAT",
+    name: norm_graha(name)
+    for name in ("Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn")
 }
 
 DEFAULT_AYANAMSHA_ID = "lahiri_chitrapaksha"

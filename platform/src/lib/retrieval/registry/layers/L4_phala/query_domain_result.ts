@@ -1,16 +1,24 @@
 /**
  * query_domain_result — Domain Result Map (L4 Phala)
  * ====================================================
- * Queries phala_phaladesa (ph_phaladesa) — 7 rows per chart (one per domain).
+ * Queries phala_phaladesa (ph_phaladesa) — 13 rows per chart (one per canonical domain).
  * Returns B.11-compliant domain result declaration rows.
  *
- * Note: 7 rows total — by design (one row per domain). This is SPARSE but complete.
+ * Note: 13 rows total — by design (one row per canonical domain). This is SPARSE but complete.
+ *
+ * ADHIṢṬHĀNA Lane A7: this description + the `domain` enum below previously said "7 rows" /
+ * listed only 6 domains + 'other' — stale since SHABDA-SHUDDHI Lane L5 Fix 5 extended
+ * ph_phaladesa.py's `_ALL_DOMAINS` (engine.py) to the full 13-domain canonical set (verified:
+ * `_DOMAIN_LABEL` in ph_phaladesa.py now covers all 13 CANONICAL_DOMAINS members). The domain
+ * enum now imports the same SSoT (`brahmagyan/domain_vocabulary.py` / `@/lib/domain_vocabulary`)
+ * instead of restating a stale subset.
  *
  * Chart-agnostic: no native chart_id defaults (principle #14).
  */
 
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
+import { CANONICAL_DOMAINS } from '@/lib/domain_vocabulary'
 
 export const queryDomainResultCapability: CapabilityDescriptor = {
   uri:   'marsys://tool/L4/query_domain_result',
@@ -20,12 +28,12 @@ export const queryDomainResultCapability: CapabilityDescriptor = {
 
   description: [
     'Returns the L4 domain result map for a chart from phala_phaladesa (ph_phaladesa).',
-    'Source: phala_phaladesa (7 rows — one per life domain, by design).',
+    'Source: phala_phaladesa (13 rows — one per canonical life domain, by design).',
     'Each row is a B.11-compliant domain result declaration covering:',
     'anchor inventory count, clean/staged/anomaly counts, incoming spillover,',
     'mitigation availability, and muhurta availability.',
-    'Returns all 7 domains by default; filter by domain for a specific one.',
-    'NOTE: 7 total rows is by design — one row per domain per chart. Expected sparse count.',
+    'Returns all 13 domains by default; filter by domain for a specific one.',
+    'NOTE: 13 total rows is by design — one row per canonical domain per chart. Expected sparse count.',
   ].join(' '),
 
   scope: 'per_chart',
@@ -46,8 +54,8 @@ export const queryDomainResultCapability: CapabilityDescriptor = {
     },
     domain: {
       type: 'string',
-      description: 'Filter by domain (career, wealth, relationship, health, character, spirituality, other). Omit for all 7.',
-      enum: ['career', 'wealth', 'relationship', 'health', 'character', 'spirituality', 'other'],
+      description: `Filter by canonical domain (${CANONICAL_DOMAINS.join(', ')}). Omit for all 13.`,
+      enum: [...CANONICAL_DOMAINS],
     },
   },
 
@@ -99,7 +107,7 @@ export const queryDomainResultCapability: CapabilityDescriptor = {
           domain_results:  result.rows,
           domain_count:    result.rows.length,
           anchor_id_refs:  anchorRefs,
-          design_note:     '7 rows is by design — one per domain. Sparse count is expected.',
+          design_note:     '13 rows is by design — one per canonical domain. Sparse count is expected.',
           filters: { domain },
           provenance: { tables: ['phala_phaladesa'] },
         },

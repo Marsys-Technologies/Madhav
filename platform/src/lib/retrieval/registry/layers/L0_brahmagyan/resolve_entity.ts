@@ -47,6 +47,19 @@ export const resolveEntityCapability: CapabilityDescriptor = {
       const name = (args.name as string)?.trim()
       if (!name) return { content: 'name is required', is_error: true }
 
+      // ADHIṢṬHĀNA Lane A3 (2026-08-08): a bare varga code like 'D9' can match
+      // TWO rows — the new entity_class='varga' row added this lane AND a
+      // pre-existing entity_class='concept' row (e.g. canonical_id='navamsa'
+      // has carried synonym 'D9' since before this lane; l0_ontology.py
+      // CONCEPT_EXTRA). The additive-only registry-completion constraint for
+      // this lane forbids removing that legacy synonym, so the ambiguity is
+      // real at the data level — without a deterministic tie-break, which row
+      // `LIMIT 1` returns is an accident of query-plan/physical row order,
+      // not a guarantee. `entity_class='varga'` is the authoritative class for
+      // varga-code identity going forward (see l0_ontology.py's VARGA_DATA
+      // comment), so it wins ties deterministically here. All other
+      // resolutions (planets, houses, nakshatras, ...) are unambiguous single
+      // matches and are unaffected by this ORDER BY.
       const result = await query<Record<string, unknown>>(
         `SELECT canonical_id, entity_class, canonical_name_en, canonical_name_sa,
                 synonyms, description, source_citation
@@ -54,6 +67,7 @@ export const resolveEntityCapability: CapabilityDescriptor = {
          WHERE $1 = ANY(synonyms)
             OR lower(canonical_name_en) = lower($1)
             OR lower(canonical_name_sa) = lower($1)
+         ORDER BY (entity_class = 'varga') DESC, entity_class, canonical_id
          LIMIT 1`,
         [name],
       )

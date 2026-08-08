@@ -540,6 +540,58 @@ jobs:
         # fail exactly like a brand-new one.
         run: python platform/scripts/governance/check_earned_signal.py
 
+  registry-parity-gate:
+    # ADHIṢṬHĀNA Campaign A, Lane A6(i)+(ii) (MASTER_PLAN_v1_0.md §3). Makes
+    # the identity-contract convergence Lanes A1-A5 did PERMANENT: future code
+    # cannot silently re-fragment graha/varga/house/event_class identity, and
+    # a new writer cannot reintroduce Lane A1's exact fact_subject defect
+    # class. Same shape as fact-category-pin-lint / earned-signal-lint above
+    # (bundled self-test fixtures, then a repo scan) and, for the registry
+    # script specifically, the msr_referential_integrity.py --self-test /
+    # --live split (see that script's header). Both scripts are stdlib-only —
+    # no pyyaml, no DB, no npx needed for --self-test; --live (registry-
+    # parity script only) needs a real DBURL + `npx tsx` and is deploy-gate
+    # tooling, not wired into CI (same rationale as msr_referential_integrity
+    # --live and schema_pin_mimamsa_predictions --verify).
+    name: Registry Parity + fact_subject Well-Formedness Gate (ADHIṢṬHĀNA A6)
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Registry-parity gate — self-test (Lane A6(i), DB-free)
+        # 4 clean domain fixtures (graha/varga/house/event_class) must be
+        # silent AND 3 independent mutations (unregistered_alias, ssot_drift,
+        # unresolved_producer_value) must each be caught before this script is
+        # trusted to run --live at a deploy gate. --live mode (real Python
+        # SSoT + npx tsx TS SSoT + real DB) is not wired into CI (no DB here,
+        # same as msr_referential_integrity.py) — see the script's header.
+        run: python platform/scripts/governance/registry_parity_gate.py --self-test
+
+      - name: fact_subject well-formedness lint — self-test (Lane A6(ii), bundled fixtures)
+        # FAIL fixtures include a literal reproduction of both real Lane A1
+        # defect sites (ga_condition_writer.py graha.upper(), ga_vargas_writer.py
+        # floored_body.upper()) plus the bare-assignment shape; PASS fixtures
+        # pin the established safe idiom (X_TO_SUBJECT.get(v, v.upper())),
+        # norm_graha()-only routing, and a non-graha .upper() (scope boundary).
+        run: python platform/scripts/governance/check_fact_subject_wellformedness.py --self-test
+
+      - name: fact_subject well-formedness lint — repo scan (allowlist-aware)
+        # Baseline is EMPTY (calibrated 2026-08-08 against the live tree, post
+        # Lane A1 merge: zero existing violations) — any violation this reports
+        # is a real regression, not legacy debt. Same allowlist mechanism as
+        # fact-category-pin-lint for future honest exceptions, if any arise.
+        run: python platform/scripts/governance/check_fact_subject_wellformedness.py
+
   governance-gates:
     # v1.2 follow-on (2026-05-28): four gates from session_queue.yaml that the
     # seal-time ci.yml was missing (per OPERATOR_CLEANUP_REPORT_v1_0 line 57 +

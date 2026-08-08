@@ -18,26 +18,30 @@ from __future__ import annotations
 import logging
 from typing import Optional, Any
 
+from brahmagyan.graha_vocabulary import to_title
+
 logger = logging.getLogger(__name__)
 
 # Abbreviation-to-full-name map: chart_facts.fact_subject uses abbreviated tokens,
 # but bg_prashna_significators stores full planet names.  Normalize at source so all
 # downstream lookups (PLANET_DAILY_MOTION, PLANET_ORBS, querent_planet checks) work.
+# Values sourced from the graha SSoT's to_title() helper
+# (brahmagyan/graha_vocabulary) rather than hardcoded literals — ADHIṢṬHĀNA
+# Lane A2 (found via the full-tree census; not one of the originally-
+# enumerated retirement targets). "ASC"/"ASCENDANT" are documented extra
+# alternate Ascendant storage names the SSoT itself does not carry.
 _ABBREV_TO_FULL: dict[str, str] = {
-    "SUN":       "Sun",
-    "MOON":      "Moon",
-    "MAR":       "Mars",
-    "MER":       "Mercury",
-    "JUP":       "Jupiter",
-    "VEN":       "Venus",
-    "SAT":       "Saturn",
-    "RAH_MEAN":  "Rahu",
-    "KET_MEAN":  "Ketu",
-    "LAGNA":     "Lagna",
-    # Alternate Ascendant storage names
-    "ASC":       "Lagna",
-    "ASCENDANT": "Lagna",
+    code: to_title(code)
+    for code in (
+        "SUN", "MOON", "MAR", "MER", "JUP", "VEN", "SAT", "RAH_MEAN",
+        "KET_MEAN", "LAGNA",
+    )
 }
+_ABBREV_TO_FULL.update({
+    # Alternate Ascendant storage names
+    "ASC": "Lagna",
+    "ASCENDANT": "Lagna",
+})
 
 # Canonical ayanamshas — MUST match ga_positions_writer.py CANONICAL_AYANAMSHAS exactly
 CANONICAL_AYANAMSHAS = [
