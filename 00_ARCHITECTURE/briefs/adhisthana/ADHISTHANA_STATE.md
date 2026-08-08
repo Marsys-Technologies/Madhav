@@ -294,6 +294,19 @@ against the merge commit before landing — both green.
 
 **MERGED: `adhisthana/integration` → `main` @ `edd4cf928` (2026-08-08T13:58:48Z), PR #1108.**
 
+**Session-close docs follow-up (PR #1111 → closed, PR #1112 opened):** attempting to merge the
+`CURRENT_STATE`/`SESSION_LOG` close-governance commit from `adhisthana/integration` hit a real git
+mechanics issue — squash-merging PR #1108 orphaned that branch's history relative to `main`'s new
+squash commit, so a further PR from the same branch re-showed the entire 103-file historical diff
+instead of just the 3 new files (both an independent GATE-EXECUTOR and this conductor's own direct
+check confirmed this). Fixed by branching fresh off current `main` (`adhisthana/session-close`,
+PR #1112) instead of continuing to use the now-poisoned branch. A second gate round on PR #1112
+then caught a second, genuine, unrelated finding: this session's own new `SESSION_LOG.md` entry
+was missing its required `session_open` YAML handshake block (`schema_validator.py`: 44 violations
+vs. the tolerated 43-baseline ceiling) — fixed by adding the block, honestly scoped (this session
+opened via a native-authored campaign kickoff, not a literal template handshake; fingerprints
+marked not-computed rather than fabricated). Re-verified locally (43/exit=3) before re-gating.
+
 ## Session log
 
 - **2026-08-08 (this session, Sonnet 5):** Stage 0 pre-flight run (table above). Plan of
