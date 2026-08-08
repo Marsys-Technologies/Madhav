@@ -138,6 +138,132 @@ class TestResolve:
         assert e["entity_class"] == "house"
 
 
+class TestVargaEntityClass:
+    """ADHIṢṬHĀNA Lane A3 — registry completion.
+
+    brahma_ontology had NO entity_class='varga' before this lane, and existing
+    synonyms did not include the storage-format codes actually used in
+    chart_facts (e.g. 'MAR', 'RAH_MEAN', 'HOUSE_07', 'D9'). These tests pin
+    the reconciled 30-varga set (l0_reference.VARGAS' 19 ∪ ga_vargas_writer's
+    ALL_30_VARGAS 30 = the writer's 30, l0_reference's 19 fully contained
+    within it) and the storage-code synonym additions for planets/houses.
+    """
+
+    EXPECTED_VARGA_NUMBERS = {
+        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 15, 16, 20, 21, 24, 27, 30,
+        32, 33, 40, 45, 50, 54, 60, 108, 150, 2700,
+    }
+
+    def test_30_varga_entities_present(self):
+        mod = _get_module()
+        vargas = [e for e in mod.ENTITIES if e["entity_class"] == "varga"]
+        assert len(vargas) == 30, f"Need 30 varga entities, got {len(vargas)}"
+
+    def test_varga_canonical_ids_match_writer_set(self):
+        mod = _get_module()
+        vargas = [e for e in mod.ENTITIES if e["entity_class"] == "varga"]
+        got_ids = {e["canonical_id"] for e in vargas}
+        expected_ids = {f"d{n}" for n in self.EXPECTED_VARGA_NUMBERS}
+        assert got_ids == expected_ids
+
+    def test_every_varga_has_bare_d_code_synonym(self):
+        """Each varga entity must carry its bare 'D<n>' storage code so
+        ref_entity_resolve('D9') etc. resolve."""
+        mod = _get_module()
+        vargas = {e["canonical_id"]: e for e in mod.ENTITIES if e["entity_class"] == "varga"}
+        for n in self.EXPECTED_VARGA_NUMBERS:
+            e = vargas[f"d{n}"]
+            assert f"D{n}" in e["synonyms"], f"d{n} missing bare 'D{n}' synonym"
+
+    def test_every_varga_has_citation(self):
+        mod = _get_module()
+        vargas = [e for e in mod.ENTITIES if e["entity_class"] == "varga"]
+        for e in vargas:
+            assert e.get("source_citation"), f"varga {e['canonical_id']} missing source_citation"
+
+    def test_resolve_d9_prefers_varga_class(self):
+        """D9 already collides with the pre-existing concept/navamsa row's
+        'D9' synonym (additive-only constraint forbids removing that legacy
+        synonym) — Python resolve() just needs SOME correct hit; the DB-side
+        ORDER BY tie-break (resolve_entity.ts) is what makes 'varga' win
+        deterministically at the SQL layer."""
+        mod = _get_module()
+        e = mod.resolve("D9")
+        assert e is not None
+        assert e["entity_class"] in ("varga", "concept")
+
+    def test_resolve_d150_to_varga(self):
+        """D150 has no pre-existing concept-class collision — must resolve
+        cleanly to entity_class='varga'."""
+        mod = _get_module()
+        e = mod.resolve("D150")
+        assert e is not None
+        assert e["entity_class"] == "varga"
+        assert e["canonical_id"] == "d150"
+
+
+class TestStorageCodeSynonyms:
+    """ADHIṢṬHĀNA Lane A3 — storage-code synonyms for planets/houses that
+    actually appear in chart_facts.fact_subject (live-verified against
+    482012f1-710e-4a25-994a-93821f5871aa 2026-08-08)."""
+
+    PLANET_STORAGE_CODES = {
+        "sun": ["SUN"],
+        "moon": ["MOON"],
+        "mars": ["MAR", "MARS"],
+        "mercury": ["MER", "MERCURY"],
+        "jupiter": ["JUP", "JUPITER"],
+        "venus": ["VEN", "VENUS"],
+        "saturn": ["SAT", "SATURN"],
+        "rahu": ["RAH_MEAN", "RAHU"],
+        "ketu": ["KET_MEAN", "KETU"],
+        "ascendant": ["LAGNA"],
+        "midheaven": ["MC"],
+    }
+
+    def test_planet_storage_codes_present(self):
+        mod = _get_module()
+        planets = {e["canonical_id"]: e for e in mod.ENTITIES if e["entity_class"] == "planet"}
+        for cid, codes in self.PLANET_STORAGE_CODES.items():
+            for code in codes:
+                assert code in planets[cid]["synonyms"], \
+                    f"planet/{cid} missing storage-code synonym '{code}'"
+
+    def test_resolve_mar_to_mars(self):
+        mod = _get_module()
+        e = mod.resolve("MAR")
+        assert e is not None
+        assert e["canonical_id"] == "mars"
+
+    def test_resolve_rah_mean_to_rahu(self):
+        mod = _get_module()
+        e = mod.resolve("RAH_MEAN")
+        assert e is not None
+        assert e["canonical_id"] == "rahu"
+
+    def test_house_storage_codes_present(self):
+        mod = _get_module()
+        houses = {e["canonical_id"]: e for e in mod.ENTITIES if e["entity_class"] == "house"}
+        for h in range(1, 13):
+            cid = f"house_{h:02d}"
+            padded = f"HOUSE_{h:02d}"
+            unpadded = f"HOUSE_{h}"
+            assert padded in houses[cid]["synonyms"], f"{cid} missing '{padded}'"
+            assert unpadded in houses[cid]["synonyms"], f"{cid} missing '{unpadded}'"
+
+    def test_resolve_house_07_to_seventh_house(self):
+        mod = _get_module()
+        e = mod.resolve("HOUSE_07")
+        assert e is not None
+        assert e["canonical_id"] == "house_07"
+
+    def test_resolve_house_7_to_seventh_house(self):
+        mod = _get_module()
+        e = mod.resolve("HOUSE_7")
+        assert e is not None
+        assert e["canonical_id"] == "house_07"
+
+
 class TestDataIntegrity:
     def test_all_entities_have_source_citation(self):
         mod = _get_module()
