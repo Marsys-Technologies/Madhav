@@ -51,8 +51,25 @@ from §6.1's own prose + the old v3 writer's identical relative thresholds, mono
 135 rows = 27×5, marriage/separation/childbirth exact match to RUNG_P3), 30 offline + 1 live test
 passing, 752/0-new on regression, lint clean. PARĪKṢAKA dispatched with the sharpest scope yet —
 this is the first lane writing v4-scored data into a real shared table
-(`ph_nimitta`/`ka_taranga`/`ka_yojaka` read `bodha_pratijna`). NEXT ACTION on resumption: check
-PARĪKṢAKA verdict
+(`ph_nimitta`/`ka_taranga`/`ka_yojaka` read `bodha_pratijna`).
+
+**PARĪKṢAKA verdict: PASS with one required fix.** Independently re-verified everything (live
+Rung P6 re-run — exact RUNG_P3 match; live double-run idempotency proof — 135 rows before/after,
+no accretion; faithful persistence of the full derivation ledger incl. `chart_divisionals_id`
+provenance; consumer-polarity check on `ka_taranga`/`ph_nimitta`/`ka_yojaka` — all read `grade` on
+the same [0,10] scale the writer emits; FROZEN contract clean; R13 clean — chart IDs only in the
+docstring's prose, never executable code). **One blocking documentation defect found**: the
+docstring's own R13 self-justification claimed "none of the 3 reference classes within 0.02 of a
+band boundary" — PARĪKṢAKA computed the real distances and found childbirth (occurrence=0.593) is
+actually **0.007** from the STRONG/MODERATE boundary at 0.60, well inside the claimed margin.
+Explicitly NOT evidence of chart-tuning (the boundary is inherited untunable infrastructure from
+the rubric spec + the old v3 writer's own constants — nothing in this writer could move it) but a
+false factual claim in the highest-R13-risk paragraph of the module must not stand. Builder
+resumed (4th time, scoped fix only: correct the docstring's stated margins, flag childbirth's real
+proximity) rather than re-running full PARĪKṢAKA from scratch for a documentation-only correction.
+NEXT ACTION on resumption: confirm the fix is pushed, spot-check the corrected text directly
+(conductor-level, since this is prose not logic), then merge — full PARĪKṢAKA re-run not required
+for a docstring-only diff already otherwise verified clean.
 (scope: re-run Rung P6 live independently, scrutinize the status-mapping decision hardest — this is
 the newest real R13 surface — confirm FROZEN contract untouched, confirm idempotency preserved,
 confirm derivation ledger/provenance actually lands in the DB row not just computed-and-discarded)
