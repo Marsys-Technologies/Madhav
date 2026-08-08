@@ -303,3 +303,5 @@ jobs:
 # v6.53 + SESSION_LOG CLOSING-RUN does not match paths filter; same pattern; PR #1096)
 # no-op: touch to trigger TAP-6 on adhisthana/session-close (CURRENT_STATE v6.54 + SESSION_LOG
 # ADHISTHANA-CONDUCTOR-2026-08-08 close entry does not match paths filter; same pattern; PR #1112)
+# no-op: touch to trigger TAP-6 on pratijna-v4/b5-ledger-close (PRATIJNA_V4_STATE.md Lane B5
+# close entry does not match paths filter; same pattern; PR #1119)
