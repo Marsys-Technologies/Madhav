@@ -264,6 +264,19 @@ no DB access) into a new client-safe module, re-exported back from `address_reso
 "move not copy" discipline as Lane A2's own Python-side `norm_graha` promotion) — not a band-aid
 duplicate map. GATE-EXECUTOR will be re-dispatched fresh a third time once this lands.
 
+**Fix (PR #1110, merged @ `9cc1b8bd2`):** new client-safe module `platform/src/lib/retrieval/
+graha_labels.ts` (the pure subset — `AddressResolutionError`, `GRAHA_CODE_TO_NAME`, `grahaCodeOf`,
+zero DB import), `address_resolver.ts` imports and re-exports it (move not copy — all 12 existing
+server-side call sites unaffected), `QueryDNAPanel.tsx` now imports the client-safe module
+directly. Checked all 14 files importing `address_resolver.ts` for `'use client'` — only
+`QueryDNAPanel.tsx` had the live defect (`RasiChartSVG.tsx` noted as a latent risk, currently
+inert — all-Server-Component render path). Real `npm run build` success confirmed (previously
+failed with the exact reported trace), `tsc --noEmit` clean, 1680 tests pass across the retrieval/
+ganita/forensic suite, new `graha_labels.test.ts` (11 tests incl. a static guard against
+reintroducing the `@/lib/db/client` import), `graha_vocabulary_census.test.ts` updated for the
+relocated literal (would have false-positived otherwise). R19 confirmed clean (pure TS refactor,
+zero SQL).
+
 ## Session log
 
 - **2026-08-08 (this session, Sonnet 5):** Stage 0 pre-flight run (table above). Plan of
