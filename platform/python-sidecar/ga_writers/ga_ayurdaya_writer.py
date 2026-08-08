@@ -45,6 +45,8 @@ from typing import Any, Optional
 
 import psycopg.rows
 
+from brahmagyan.graha_vocabulary import to_title
+
 from jhora import const as _jconst
 from jhora.horoscope.dhasa.graha import aayu as _aayu
 from ga_writers._idempotency import replace_prior_chart_facts
@@ -65,12 +67,16 @@ SIGNS = ["Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",
 SIGN_LORDS = ["Mars", "Venus", "Mercury", "Moon", "Sun", "Mercury",
               "Venus", "Mars", "Jupiter", "Saturn", "Saturn", "Jupiter"]
 
-GRAHA_SUBJECT = {
-    "Sun": "SUN", "Moon": "MOON", "Mars": "MAR", "Mercury": "MER",
-    "Jupiter": "JUP", "Venus": "VEN", "Saturn": "SAT",
-    "Rahu": "RAH_MEAN", "Ketu": "KET_MEAN", "Lagna": "LAGNA",
+# Values sourced from the graha SSoT's to_title() helper
+# (brahmagyan/graha_vocabulary) rather than hardcoded literals — ADHIṢṬHĀNA
+# Lane A2 (found via the full-tree census; not one of the originally-
+# enumerated retirement targets). GRAHA_SUBJECT itself needs the REVERSE
+# direction (title -> code), built by inverting SUBJECT_GRAHA.
+SUBJECT_GRAHA = {
+    code: to_title(code)
+    for code in ("SUN", "MOON", "MAR", "MER", "JUP", "VEN", "SAT", "RAH_MEAN", "KET_MEAN", "LAGNA")
 }
-SUBJECT_GRAHA = {v: k for k, v in GRAHA_SUBJECT.items()}
+GRAHA_SUBJECT = {v: k for k, v in SUBJECT_GRAHA.items()}
 # jhora planet ids: 0=Sun..6=Saturn, 7=Rahu, 8=Ketu, 'L'=Lagna
 _JHORA_ID = {"Sun": 0, "Moon": 1, "Mars": 2, "Mercury": 3, "Jupiter": 4,
              "Venus": 5, "Saturn": 6, "Rahu": 7, "Ketu": 8}

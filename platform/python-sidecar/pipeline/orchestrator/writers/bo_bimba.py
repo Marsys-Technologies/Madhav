@@ -23,6 +23,7 @@ import uuid
 from datetime import datetime, timezone
 
 from . import WriterBase, ContextSpec, WriterResult, register
+from brahmagyan.graha_vocabulary import to_title
 
 logger = logging.getLogger(__name__)
 
@@ -44,16 +45,13 @@ KNOWN_GRAHAS = [
 # subject.title() only worked for SUN→Sun and MOON→Moon; abbreviated codes like
 # MAR, MER, JUP, VEN, SAT title-case to Mar/Mer/Jup/Ven/Sat (wrong) causing 7/9
 # graha nodes to get position_in_chart_jsonb=null.
+# Values sourced from the graha SSoT's to_title() helper
+# (brahmagyan/graha_vocabulary) rather than hardcoded literals — ADHIṢṬHĀNA
+# Lane A2 (found via the full-tree census; not one of the originally-
+# enumerated retirement targets, but the same shape).
 _SUBJECT_TO_GRAHA: dict[str, str] = {
-    "SUN":      "Sun",
-    "MOON":     "Moon",
-    "MAR":      "Mars",
-    "MER":      "Mercury",
-    "JUP":      "Jupiter",
-    "VEN":      "Venus",
-    "SAT":      "Saturn",
-    "RAH_MEAN": "Rahu",
-    "KET_MEAN": "Ketu",
+    code: to_title(code)
+    for code in ("SUN", "MOON", "MAR", "MER", "JUP", "VEN", "SAT", "RAH_MEAN", "KET_MEAN")
 }
 
 KNOWN_DOMAINS = [

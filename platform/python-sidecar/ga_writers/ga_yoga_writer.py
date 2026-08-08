@@ -39,7 +39,7 @@ from typing import Any, Callable
 
 import psycopg.rows
 
-from brahmagyan.graha_vocabulary import norm_graha
+from brahmagyan.graha_vocabulary import norm_graha, to_title
 
 logger = logging.getLogger(__name__)
 
@@ -325,11 +325,18 @@ class ChartState:
 
         self._parse(facts)
 
-    # Maps abbreviated fact_subject values → full planet names used in yoga catalog
+    # Maps abbreviated fact_subject values → full planet names used in yoga
+    # catalog (lowercase). Derived from the graha SSoT's to_title() helper
+    # (brahmagyan/graha_vocabulary) rather than hardcoded literals —
+    # ADHIṢṬHĀNA Lane A2 (found via the full-tree census; not one of the
+    # originally-enumerated retirement targets — this file's own
+    # established output convention happens to be all-lowercase).
     _SUBJECT_NORM: dict[str, str] = {
-        "sun": "sun", "moon": "moon", "mar": "mars", "mer": "mercury",
-        "jup": "jupiter", "ven": "venus", "sat": "saturn",
-        "rah_mean": "rahu", "ket_mean": "ketu", "lagna": "lagna",
+        code.lower(): to_title(code).lower()
+        for code in (
+            "sun", "moon", "mar", "mer", "jup", "ven", "sat",
+            "rah_mean", "ket_mean", "lagna",
+        )
     }
 
     def _parse(self, facts: list[dict]) -> None:

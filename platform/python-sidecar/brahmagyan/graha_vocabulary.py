@@ -30,15 +30,15 @@ from __future__ import annotations
 # subject code so every call site wires trivially regardless of its local
 # vocabulary.
 _GRAHA_ALIASES: dict[str, str] = {
-    "SUN": "SUN", "SURYA": "SUN",
-    "MOON": "MOON", "MON": "MOON", "CHANDRA": "MOON",
-    "MARS": "MAR", "MAR": "MAR", "MANGALA": "MAR", "KUJA": "MAR",
-    "MERCURY": "MER", "MER": "MER", "BUDHA": "MER",
-    "JUPITER": "JUP", "JUP": "JUP", "GURU": "JUP",
-    "VENUS": "VEN", "VEN": "VEN", "SHUKRA": "VEN",
-    "SATURN": "SAT", "SAT": "SAT", "SHANI": "SAT",
-    "RAHU": "RAH_MEAN", "RAH": "RAH_MEAN", "RAH_MEAN": "RAH_MEAN", "RAH_TRUE": "RAH_MEAN",
-    "KETU": "KET_MEAN", "KET": "KET_MEAN", "KET_MEAN": "KET_MEAN", "KET_TRUE": "KET_MEAN",
+    "SUN": "SUN", "SURYA": "SUN", "SU": "SUN",
+    "MOON": "MOON", "MON": "MOON", "CHANDRA": "MOON", "MO": "MOON",
+    "MARS": "MAR", "MAR": "MAR", "MANGALA": "MAR", "KUJA": "MAR", "MA": "MAR",
+    "MERCURY": "MER", "MER": "MER", "BUDHA": "MER", "ME": "MER",
+    "JUPITER": "JUP", "JUP": "JUP", "GURU": "JUP", "JU": "JUP",
+    "VENUS": "VEN", "VEN": "VEN", "SHUKRA": "VEN", "VE": "VEN",
+    "SATURN": "SAT", "SAT": "SAT", "SHANI": "SAT", "SA": "SAT",
+    "RAHU": "RAH_MEAN", "RAH": "RAH_MEAN", "RAH_MEAN": "RAH_MEAN", "RAH_TRUE": "RAH_MEAN", "RA": "RAH_MEAN",
+    "KETU": "KET_MEAN", "KET": "KET_MEAN", "KET_MEAN": "KET_MEAN", "KET_TRUE": "KET_MEAN", "KE": "KET_MEAN",
 }
 
 

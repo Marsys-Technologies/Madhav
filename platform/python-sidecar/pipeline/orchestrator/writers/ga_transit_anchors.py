@@ -19,22 +19,21 @@ import logging
 import psycopg.rows
 
 from . import register, WriterBase, ContextSpec, WriterResult, SubStep
+from brahmagyan.graha_vocabulary import to_title
 
 logger = logging.getLogger(__name__)
 
 CANONICAL_CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
 
 # 9 canonical grahas in UPPER_SNAKE fact_subject form
+# lowercase long form, derived from the graha SSoT's to_title() helper
+# (brahmagyan/graha_vocabulary) rather than hardcoded literals — ADHIṢṬHĀNA
+# Lane A2 (found via the full-tree census; not one of the originally-
+# enumerated retirement targets, but the same shape — this file's own
+# established output convention happens to be lowercase, not Title-case).
 _SUBJECT_TO_GRAHA: dict[str, str] = {
-    "SUN":      "sun",
-    "MOON":     "moon",
-    "MAR":      "mars",
-    "MER":      "mercury",
-    "JUP":      "jupiter",
-    "VEN":      "venus",
-    "SAT":      "saturn",
-    "RAH_MEAN": "rahu",
-    "KET_MEAN": "ketu",
+    code: to_title(code).lower()
+    for code in ("SUN", "MOON", "MAR", "MER", "JUP", "VEN", "SAT", "RAH_MEAN", "KET_MEAN")
 }
 
 # Ayanamshas matching CANONICAL_AYANAMSHAS in ga_positions_writer

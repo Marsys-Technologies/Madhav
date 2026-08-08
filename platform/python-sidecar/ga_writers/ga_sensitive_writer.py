@@ -39,6 +39,7 @@ from typing import Any
 
 from pyjhora_adapter.compute import compute_chart
 from pyjhora_adapter.version import ENGINE_VERSION
+from brahmagyan.graha_vocabulary import norm_graha
 from brahmagyan.verification_vocab import TWO_PASS_VERIFIED, UNVERIFIED_DEFAULT
 from ga_writers._idempotency import replace_prior_chart_facts
 from ga_writers._telemetry import update_asset_throughput
@@ -2621,11 +2622,13 @@ def _build_all_sensitive_rows_for_ayanamsha(
     # canonical_id = ayanamsha_key; used for all row fact_subject/fact_key storage
     canonical_id = ayanamsha_key
 
-    # Extract longitudes map from grahas list + ascendant dict
+    # Extract longitudes map from grahas list + ascendant dict. Values
+    # sourced from the graha SSoT (brahmagyan/graha_vocabulary) rather than
+    # hardcoded literals — ADHIṢṬHĀNA Lane A2 (found via the full-tree
+    # census; not one of the originally-enumerated retirement targets).
     planet_name_map: dict[str, str] = {
-        "Sun": "SUN", "Moon": "MOON", "Mars": "MAR", "Mercury": "MER",
-        "Jupiter": "JUP", "Venus": "VEN", "Saturn": "SAT",
-        "Rahu": "RAH_MEAN", "Ketu": "KET_MEAN",
+        name: norm_graha(name)
+        for name in ("Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn", "Rahu", "Ketu")
     }
     grahas = chart_data.get("grahas", [])
     ascendant = chart_data.get("ascendant", {})

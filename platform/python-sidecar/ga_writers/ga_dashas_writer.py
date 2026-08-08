@@ -37,6 +37,7 @@ from contextlib import contextmanager
 from datetime import date, datetime, timedelta, timezone
 from typing import Any, Generator
 
+from brahmagyan.graha_vocabulary import to_title
 from brahmagyan.verification_vocab import (
     CLASSICAL_MATCH,
     DIVERGENT_FLAGGED,
@@ -1809,9 +1810,13 @@ def _compute_dynamic_chara_params(
     # SUN, MOON, MAR, MER, JUP, VEN, SAT, LAGNA — see ga_strength_writer.py:1439
     # for the same convention). A prior version of this query filtered on
     # full names and matched zero rows for every chart (Ring-2 finding).
+    # Values sourced from the graha SSoT's to_title() helper
+    # (brahmagyan/graha_vocabulary) rather than hardcoded literals —
+    # ADHIṢṬHĀNA Lane A2 (found via the full-tree census; not one of the
+    # originally-enumerated retirement targets).
     _CODE_TO_GRAHA = {
-        "SUN": "Sun", "MOON": "Moon", "MAR": "Mars", "MER": "Mercury",
-        "JUP": "Jupiter", "VEN": "Venus", "SAT": "Saturn",
+        code: to_title(code)
+        for code in ("SUN", "MOON", "MAR", "MER", "JUP", "VEN", "SAT")
     }
     _GRAHA_CODES = list(_CODE_TO_GRAHA.keys())
 
