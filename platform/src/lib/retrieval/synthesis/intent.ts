@@ -20,14 +20,24 @@
 
 import type { Domain, EvidenceContract, EvidenceFamilyRequest } from './types'
 
-const DOMAIN_KEYWORDS: Record<Domain, string[]> = {
+// ADHIṢṬHĀNA Lane A7: `Domain` is now the full 13-member canonical vocabulary (imported via
+// types.ts), not a local 6+'other' literal. This classifier's own keyword/template content
+// below intentionally still covers only the original 6 domains + 'general' (renamed from
+// 'other' — same fallback role) — the maps are `Partial<Record<Domain, ...>>` rather than a
+// full `Record<Domain, ...>` so the type system doesn't force entries for the 7 newly-
+// representable domains (progeny/education/family/residence/travel/transition). Inventing
+// keyword lists and cross-domain templates for those would be fabricated content with no
+// classical/audit basis (per B.10 discipline) — out of this lane's scope. A future lane can
+// extend DOMAIN_KEYWORDS/HEAVY_TEMPLATES with real content once those domains get their own
+// P-10 heavy-question templates.
+const DOMAIN_KEYWORDS: Partial<Record<Domain, string[]>> = {
   relationship: ['marriage', 'marry', 'spouse', 'wife', 'husband', 'partner', 'relationship', 'love', 'divorce', '7th', 'seventh', 'venus'],
   career: ['career', 'profession', 'job', 'work', 'vocation', 'business', 'occupation', '10th', 'tenth', 'rajayoga'],
   wealth: ['wealth', 'money', 'finance', 'income', 'prosperity', 'riches', 'dhana', '2nd', '11th'],
   health: ['health', 'disease', 'illness', 'body', 'longevity', 'ayush', 'medical', 'roga', '6th'],
   spirituality: ['moksha', 'spiritual', 'spirituality', 'liberation', 'enlightenment', 'dharma', 'renunciation', 'sannyasa', '12th', 'guru', 'jupiter', 'ketu'],
   character: ['character', 'personality', 'temperament', 'nature', 'mind', 'psychology', 'self', 'lagna', 'moon'],
-  other: [],
+  general: [],
 }
 
 /**
@@ -43,7 +53,7 @@ interface HeavyTemplate {
   cross: Array<[Domain, EvidenceFamilyRequest['role'], string]>
 }
 
-const HEAVY_TEMPLATES: Record<Domain, HeavyTemplate> = {
+const HEAVY_TEMPLATES: Partial<Record<Domain, HeavyTemplate>> = {
   relationship: {
     id: 'marriage_universe',
     primary: 'relationship',
@@ -96,12 +106,12 @@ const HEAVY_TEMPLATES: Record<Domain, HeavyTemplate> = {
       ['career', 'cross_domain', 'temperament expressed through vocation'],
     ],
   },
-  other: { id: 'generic', primary: 'other', cross: [] },
+  general: { id: 'generic', primary: 'general', cross: [] },
 }
 
 /** Score a domain by keyword hits in the question (lowercased). */
 function scoreDomain(q: string, domain: Domain): number {
-  const words = DOMAIN_KEYWORDS[domain]
+  const words = DOMAIN_KEYWORDS[domain] ?? []
   let score = 0
   for (const w of words) if (q.includes(w)) score += 1
   return score
@@ -117,16 +127,21 @@ function scoreDomain(q: string, domain: Domain): number {
 export function decompose(question: string): EvidenceContract {
   const q = (question ?? '').toLowerCase()
 
-  // Pick the primary domain by keyword score; tie/empty → 'other' generic.
+  // Pick the primary domain by keyword score; tie/empty → 'general' generic.
+  // NOTE: this `domains` list is the classifier's own supported-domain subset (which of the
+  // 13 canonical domains this SKELETON keyword-matcher has real content for), not a
+  // redefinition of the vocabulary itself — every member is already a CanonicalDomain value.
   const domains: Domain[] = ['relationship', 'career', 'wealth', 'health', 'spirituality', 'character']
-  let primary: Domain = 'other'
+  let primary: Domain = 'general'
   let best = 0
   for (const d of domains) {
     const s = scoreDomain(q, d)
     if (s > best) { best = s; primary = d }
   }
 
-  const template = HEAVY_TEMPLATES[primary]
+  // 'general' is always defined in HEAVY_TEMPLATES (the guaranteed fallback); every other
+  // reachable `primary` value comes from `domains` above, which is also fully covered.
+  const template = HEAVY_TEMPLATES[primary] ?? HEAVY_TEMPLATES['general']!
   const matched = best > 0 ? template.id : null
 
   const families: EvidenceFamilyRequest[] = []
