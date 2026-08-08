@@ -71,9 +71,29 @@ Why this mapping and not another, stated plainly (R13/R16):
   4. This mapping was written by reading §6.1's own prose FIRST, before
      computing what it does to chart 482012f1's marriage/separation/
      childbirth numbers (Rung P5: 0.321->WEAK->conditional, 0.505->
-     MODERATE->conditional, 0.593->MODERATE->conditional -- none of the
-     three RUNG_P3 classes land on a band boundary this writer could have
-     been tempted to nudge).
+     MODERATE->conditional, 0.593->MODERATE->conditional). Their exact
+     margins to the nearest STATUS-CHANGING threshold ({0.20, 0.60} --
+     0.40 is a band edge but not a status-changing one, since both WEAK
+     and MODERATE map to 'conditional'): marriage is 0.121 from 0.20;
+     separation is 0.095 from 0.60; childbirth is only **0.007** from the
+     STRONG/MODERATE boundary at 0.60 -- close enough that a status of
+     'promised' rather than 'conditional' would have resulted from an
+     occurrence 0.007 higher. This proximity is disclosed plainly, not
+     minimized: it is NOT evidence of R13 chart-fitting, because neither
+     number that produces it was chosen with this chart in view --
+     the 0.20/0.40/0.60/0.80 band edges come from V4_RUBRIC_SPEC_v1_0.md
+     §6.1, written and committed before any chart was scored (R20 blind-
+     definition discipline), and the 0.60/0.20 status-collapse thresholds
+     this mapping reuses are inherited UNCHANGED from the pre-existing v3
+     writer's own `_PROMISED_FLOOR`/`_DENIED_CEIL` constants (reason #2
+     above) -- nothing in this writer's own logic could have nudged 0.60
+     to move childbirth off it. The proximity is a property of the v4
+     engine's classical-factor arithmetic on this chart (Lane B2, out of
+     this lane's scope to touch), not of the status-mapping choice audited
+     here; it is recorded so a future reader -- or a future rebuild after
+     any Lane B2 fix -- knows this specific class sits right at a status
+     edge and is worth a second look, not so it can be quietly smoothed
+     over.
 
 No new migration is required for this mapping (§N.4): `occurrence_grade`
 and `condition_grade` (NUMERIC(5,3), migration 548) already exist and
