@@ -13,16 +13,21 @@ from __future__ import annotations
 import json
 from typing import Any
 
+from brahmagyan.graha_vocabulary import norm_graha
 from ga_writers.ga_nakshatra_compute import (
     compute_kp_lords, compute_gandanta, compute_tara,
     compute_dispositor_chain, compute_center_of_gravity,
     PLANET_CYCLE, TARA_NAMES,
 )
 
+# Values sourced from the graha SSoT (brahmagyan/graha_vocabulary) rather
+# than hardcoded literals — ADHIṢṬHĀNA Lane A2.
 PLANET_TO_SUBJECT: dict[str, str] = {
-    "Sun": "SUN", "Moon": "MOON", "Mars": "MAR", "Mercury": "MER",
-    "Jupiter": "JUP", "Venus": "VEN", "Saturn": "SAT",
-    "Rahu": "RAH_MEAN", "Ketu": "KET_MEAN", "Lagna": "LAGNA",
+    name: norm_graha(name)
+    for name in (
+        "Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn",
+        "Rahu", "Ketu", "Lagna",
+    )
 }
 
 

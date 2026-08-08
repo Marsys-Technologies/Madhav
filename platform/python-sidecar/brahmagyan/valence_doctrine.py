@@ -46,6 +46,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from brahmagyan.graha_vocabulary import norm_graha  # noqa: F401 — re-exported (ADHIṢṬHĀNA A2)
+
 VALENCE_DOCTRINE_VERSION = "valence_doctrine_v1"
 
 # ── The 4-way signed vocabulary ─────────────────────────────────────────────
@@ -119,28 +121,10 @@ _MIXED_THRESHOLD = 0.4   # both components must reach this for a genuine MIXED
 _SIGN_EPS = 0.10         # net magnitude below this → neutral
 
 
-# Graha-code normalization — consumers use varied forms (title-case names,
-# 3-letter codes, RAH/RAH_MEAN). Normalize to the canonical subject code so
-# every call site wires trivially regardless of its local vocabulary.
-_GRAHA_ALIASES: dict[str, str] = {
-    "SUN": "SUN", "SURYA": "SUN",
-    "MOON": "MOON", "MON": "MOON", "CHANDRA": "MOON",
-    "MARS": "MAR", "MAR": "MAR", "MANGALA": "MAR", "KUJA": "MAR",
-    "MERCURY": "MER", "MER": "MER", "BUDHA": "MER",
-    "JUPITER": "JUP", "JUP": "JUP", "GURU": "JUP",
-    "VENUS": "VEN", "VEN": "VEN", "SHUKRA": "VEN",
-    "SATURN": "SAT", "SAT": "SAT", "SHANI": "SAT",
-    "RAHU": "RAH_MEAN", "RAH": "RAH_MEAN", "RAH_MEAN": "RAH_MEAN", "RAH_TRUE": "RAH_MEAN",
-    "KETU": "KET_MEAN", "KET": "KET_MEAN", "KET_MEAN": "KET_MEAN", "KET_TRUE": "KET_MEAN",
-}
-
-
-def norm_graha(graha: str | None) -> str:
-    """Normalize any recognized graha form → canonical subject code (or '' )."""
-    if not graha:
-        return ""
-    return _GRAHA_ALIASES.get(str(graha).strip().upper(), str(graha).strip().upper())
-
+# Graha-code normalization moved to `brahmagyan/graha_vocabulary.py` (the
+# graha SSoT, ADHIṢṬHĀNA Lane A2) — `norm_graha` is imported back above so
+# every existing `valence_doctrine.norm_graha` call site keeps working
+# unchanged.
 
 # Node (Rahu/Ketu) exaltation — the estate's L1 dignity computation does not
 # assign a dignity to the nodes (they classify "neutral"), but classically the

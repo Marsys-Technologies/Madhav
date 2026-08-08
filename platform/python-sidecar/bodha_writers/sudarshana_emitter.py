@@ -36,6 +36,7 @@ from bodha_writers.formulas import (
     salience_formula_v2,
     SalienceInputsV2,
 )
+from brahmagyan.graha_vocabulary import to_title
 
 ENGINE_VERSION = "bo_sudarshana_v1.0"
 
@@ -55,10 +56,13 @@ SIGN_INDEX: dict[str, int] = {s: i for i, s in enumerate(SIGNS)}
 # per standard practice — Sudarshana is applied to all 9 chara/graha bodies) ──
 GRAHAS: list[str] = ["SUN", "MOON", "MAR", "MER", "JUP", "VEN", "SAT", "RAH_MEAN", "KET_MEAN"]
 
+# Values sourced from the graha SSoT's to_title() helper
+# (brahmagyan/graha_vocabulary) rather than hardcoded literals — ADHIṢṬHĀNA
+# Lane A2. Kept as a local dict so `.get(code, code)` preserves its
+# fall-back-to-raw-input-unchanged behavior for unrecognized codes.
 _GRAHA_DISPLAY: dict[str, str] = {
-    "SUN": "Sun", "MOON": "Moon", "MAR": "Mars", "MER": "Mercury",
-    "JUP": "Jupiter", "VEN": "Venus", "SAT": "Saturn",
-    "RAH_MEAN": "Rahu", "KET_MEAN": "Ketu",
+    code: to_title(code)
+    for code in ("SUN", "MOON", "MAR", "MER", "JUP", "VEN", "SAT", "RAH_MEAN", "KET_MEAN")
 }
 
 # ── Classical quadrant/category classification (priority order matters: a

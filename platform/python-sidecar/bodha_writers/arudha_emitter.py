@@ -32,6 +32,7 @@ from typing import Any
 from bodha_writers.formulas import salience_formula_v2, SalienceInputsV2
 from bodha_writers.sudarshana_emitter import GRAHAS, classify_house
 from brahmagyan import valence_doctrine as _vd
+from brahmagyan.graha_vocabulary import to_title
 
 ENGINE_VERSION = "bo_arudha_v1.0"
 
@@ -40,10 +41,13 @@ ARUDHA_CLASS_PRIOR = 1.10
 ARUDHA_SUBSYSTEM = "jaimini"
 SIGNAL_TYPE_CLASS = "arudha"
 
+# Values sourced from the graha SSoT's to_title() helper
+# (brahmagyan/graha_vocabulary) rather than hardcoded literals — ADHIṢṬHĀNA
+# Lane A2. Kept as a local dict so `.get(code, code)` preserves its
+# fall-back-to-raw-input-unchanged behavior for unrecognized codes.
 _GRAHA_DISPLAY: dict[str, str] = {
-    "SUN": "Sun", "MOON": "Moon", "MAR": "Mars", "MER": "Mercury",
-    "JUP": "Jupiter", "VEN": "Venus", "SAT": "Saturn",
-    "RAH_MEAN": "Rahu", "KET_MEAN": "Ketu",
+    code: to_title(code)
+    for code in ("SUN", "MOON", "MAR", "MER", "JUP", "VEN", "SAT", "RAH_MEAN", "KET_MEAN")
 }
 
 # Classical malefic/benefic split (natural, unconditioned — used only to

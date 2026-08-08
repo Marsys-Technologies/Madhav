@@ -39,6 +39,8 @@ from typing import Any, Callable
 
 import psycopg.rows
 
+from brahmagyan.graha_vocabulary import norm_graha
+
 logger = logging.getLogger(__name__)
 
 # ── Constants ──────────────────────────────────────────────────────────────────
@@ -55,20 +57,6 @@ CANONICAL_AYANAMSHAS = [
 ]
 
 STRENGTH_FORMULA_VERSION = "yoga_strength_formula_v1"
-
-# Planet name normalisations (as stored in chart_facts.fact_subject)
-# Based on ga_positions_writer PLANET_TO_SUBJECT convention
-PLANET_SUBJECTS = {
-    "sun": "SUN",
-    "moon": "MOON",
-    "mars": "MARS",
-    "mercury": "MERCURY",
-    "jupiter": "JUPITER",
-    "venus": "VENUS",
-    "saturn": "SATURN",
-    "rahu": "RAHU",
-    "ketu": "KETU",
-}
 
 # Benefics and malefics (natural, context-independent)
 NATURAL_BENEFICS = {"jupiter", "venus", "mercury", "moon"}
@@ -88,10 +76,12 @@ CONSTITUENT_BALA_DERIVATION = "constituent_bala_v1"
 CONSTITUENT_BALA_LABEL = "computed_extension"
 
 # planet (lowercase, as used in constituent_planets) → graha_shadbala_total
-# fact_subject code (mirrors ga_positions_writer.PLANET_TO_SUBJECT)
+# fact_subject code. Values sourced from the graha SSoT
+# (brahmagyan/graha_vocabulary) rather than hardcoded literals —
+# ADHIṢṬHĀNA Lane A2.
 GRAHA_SHADBALA_SUBJECTS: dict[str, str] = {
-    "sun": "SUN", "moon": "MOON", "mars": "MAR", "mercury": "MER",
-    "jupiter": "JUP", "venus": "VEN", "saturn": "SAT",
+    planet: norm_graha(planet)
+    for planet in ("sun", "moon", "mars", "mercury", "jupiter", "venus", "saturn")
 }
 
 # Kemadruma's cancellation (bhanga) is already gated into its own firing

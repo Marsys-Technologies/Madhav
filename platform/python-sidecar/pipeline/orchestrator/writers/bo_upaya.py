@@ -33,6 +33,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from . import WriterBase, ContextSpec, WriterResult, register
+from brahmagyan.graha_vocabulary import to_title
 from brahmagyan.verification_vocab import UNVERIFIED_DEFAULT
 
 logger = logging.getLogger(__name__)
@@ -187,10 +188,12 @@ INSERT INTO bodha_rm_pattern_remedies (
 
 # ── L1 data fetchers ───────────────────────────────────────────────────────────
 
+# Values sourced from the graha SSoT's to_title() helper
+# (brahmagyan/graha_vocabulary) rather than hardcoded literals — ADHIṢṬHĀNA
+# Lane A2. Kept as a local dict so `.get()` preserves None-on-miss.
 _SUBJECT_TO_PLANET: dict[str, str] = {
-    "SUN": "Sun", "MOON": "Moon", "MAR": "Mars", "MER": "Mercury",
-    "JUP": "Jupiter", "VEN": "Venus", "SAT": "Saturn",
-    "RAH_MEAN": "Rahu", "KET_MEAN": "Ketu",
+    code: to_title(code)
+    for code in ("SUN", "MOON", "MAR", "MER", "JUP", "VEN", "SAT", "RAH_MEAN", "KET_MEAN")
 }
 
 
