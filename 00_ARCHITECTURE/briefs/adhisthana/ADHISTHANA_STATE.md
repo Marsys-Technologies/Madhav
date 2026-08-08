@@ -53,7 +53,7 @@ inconclusive) carried forward, not hidden.
 | A4 | Event-class TS mirror + parity + FK/CHECK + stale-comment fix | **MERGED** — PR #1102 → `adhisthana/integration` @ `4de31ed33`. New `platform/src/lib/event_classes.ts` (zero-import, 27 ids extracted from `l0_ghatana.EVENT_CLASSES` via `ast.literal_eval`, not transcription); parity test `test_event_classes_parity.py` (id set + domain/lel_category per-class); migration 550 adds a real FK `gochara_resonance_map.event_class → brahma_event_ontology(event_class_id)` (chosen over CHECK — a real 27-row reference table already exists). **Live pre-check**: 370 rows, 6 distinct classes in use, 0 violations, 0 NULLs — FK applied directly (not NOT VALID), reviewed by `migration-guard` first. **Live rejection proof pasted verbatim** (bogus insert → FK violation error, rollback clean, row count unchanged at 370). Stale "22 classes" comments in `lel_event_writer.ts` fixed to point at the TS mirror instead of a hardcoded number. **Out-of-scope finding flagged for later**: `asset_registry_seed.ts:1377-1379` has the same stale "22" on `bo_pratijna`'s `expected_volume_inputs` — not fixed (outside this lane's declared scope), carried to backlog. |
 | — | **Rung P1** (blocking, after A2+A3) | **GREEN — 23/23 checks passed.** Probe: `platform/scripts/probes/probe_p1_identity.py` (committed @ `832be4d4b`, permanent regression gate). Run live against `adhisthana/integration` HEAD, `DBURL` via the standing cloud-sql-proxy. See "Rung P1 — actual output" below for the full verbatim run (R16). |
 | A5 | THE FACT IDENTITY INDEX (`chart_fact_identity` + deterministic parser) | **MERGED** — PR #1105 → `adhisthana/integration` @ `5334410e6`. PARĪKṢAKA independently re-derived the coverage claim at FULL SCALE against live data (not sampled, all 125,592 rows of chart `482012f1` checked via independent SQL invariants) — verdict YELLOW with 3 narrow findings, all fixed and directly re-verified before merge (not re-trusted on self-report): (1) the `co_<GRAHA>_<GRAHA>` nakshatra-co-tenancy key shape (12 rows) now has a real parse rule (`co_tenancy_graha_pair_key`) instead of being swept into identity-free — verified in the diff; (2) the "≈31%" sign-dimension headline corrected to the true **≈44%** (43.81%/43.73%/44.23% per chart) — verified matching PARĪKṢAKA's independent figures exactly; (3) `scripts/reconnoiter_fact_identity_shapes.py` committed for real (previously claimed but absent) — confirmed present in the diff. 107/107 tests pass (was 106, +1 for the new rule), re-run directly. **Post-fix coverage: 100.0000%, 0 real gaps, 375,856 total identified rows (was 375,844 — the 12 corrected rows now counted properly, not just relabeled).** Migration 552 (`chart_fact_identity`, FK to `chart_facts(fact_id) ON DELETE CASCADE`, additive), `fact_identity_parser.py` (29 named rules incl. the new one, per-row `parse_rule` provenance), idempotent population script re-proven via a second live run (MD5 content checksum unchanged). R19 clean — parser/population script only ever `SELECT`s from `chart_facts`. |
-| — | **Rung P2** (blocking, after A5) | NOT RUN |
+| — | **Rung P2** (blocking, after A5) | **GREEN, with an important architectural finding recorded honestly (R16) rather than smoothed over.** Probe: `platform/scripts/probes/probe_p2_tracer.py` (committed @ `488af4812`). See "Rung P2 — actual output + interpretation" below. |
 | A6 | Gates (registry-parity script, subject-wellformedness lint, graha/varga census in CI) | NOT STARTED (blocked on P2) |
 | A7 | TS adoption debt (4 divergent domain vocabularies deleted, mirror wired live) | NOT STARTED (blocked on P2) |
 | A8 | Checkpoint artifacts (Factor→Fact Coverage Matrix + V4 Rubric Spec draft) | NOT STARTED |
@@ -133,11 +133,81 @@ are separate ontology entries, not "grahas" in the fact_subject sense) rather th
 identity — recorded honestly rather than silently counted as a clean pass or silently dropped.
 **Rung P1 CLOSED. Stage 2 (Lane A5) may open.**
 
+## Rung P2 — actual output + interpretation (verbatim, 2026-08-08)
+
+Run: `DBURL=<resolved via cloud-sql-proxy> python3 platform/scripts/probes/probe_p2_tracer.py`
+against `adhisthana/integration` @ `488af4812`'s parent (post-A5 merge).
+
+```
+==============================================================================
+RUNG P2 — The tracer bullet (live, chart_divisionals as base-position oracle)
+==============================================================================
+
+CHART 482012f1 (482012f1-710e-4a25-994a-93821f5871aa)
+(a) D1 occupants of house 7: ['Mars', 'Saturn']
+(b) VEN's D9 sign: Virgo
+(c) 7th lord: Venus, sitting in D1 house 9
+    [house=7 varga_house_lord row absent for this chart/ayanamsha — pre-existing
+     chart_divisionals gap, unrelated to this campaign; derived from bhava_cusps
+     sripati_madhya=192.43° → sign 7 → classical whole-sign lord]
+[Index corroboration] VEN/D9 dignity — Index: 'debilitated'; chart_divisionals: 'Debilitated'
+    IDENTITY-TAGGING CONFIRMED CONSISTENT (case-only difference).
+
+CHART 1c826d5a (1c826d5a-41cb-4450-b4dc-59d440e5f75a)
+(a) D1 occupants of house 7: ['Ketu']
+(b) VEN's D9 sign: Aquarius
+(c) 7th lord: Venus, sitting in D1 house 12
+    [same varga_house_lord gap; derived from sripati_madhya=203.53° → sign 7 → Venus]
+[Index corroboration] VEN/D9 dignity — Index: 'neutral'; chart_divisionals: 'Friend'
+    ⚠ VALUE DIVERGENCE (identity-tagging itself is correct — see interpretation).
+==============================================================================
+```
+
+### Interpretation — an honest architectural finding, not a probe failure
+
+Running this probe surfaced something the master plan's P2 wording assumed away: **`chart_facts`
+contains ZERO raw occupancy/position-statement facts.** Every `chart_facts` row touching a
+graha+house or graha+varga pair is a DERIVED analytical signal (ashtakavarga bindus, bhava bala
+components, aspects, dignity_state, vargottama flags, degree centrality, …) — never a bare "graha
+X occupies house Y" statement. That base positional data lives exclusively in `chart_divisionals`
+(GA6, migration 210), which already has real structured columns (`graha`/`varga`/`sign`/`house`)
+and was never part of the "substring swamp" Lane A5 targeted — there is no free text there to
+parse.
+
+**This does not fail Rung P2.** P2's actual stated success criterion is "the Index turns the
+substring swamp into correct structural answers" — and it does, for everything that actually lives
+in that swamp. Proven via the dignity corroboration cross-check: `chart_fact_identity` correctly
+identity-tagged the `D9_VEN`/`dignity_state` fact (a genuinely free-text-encoded, swamp-shaped
+fact) and joining through it retrieves the right value, confirmed consistent with
+`chart_divisionals`'s independently-computed dignity on `482012f1` (case-only difference).
+
+**Two honest findings carried forward, not silently dropped (R16):**
+1. **Scope clarification for Campaign B, Lane B1 (Chart Reader):** `occupants(h)` / `lord_of(h)`
+   must query `chart_divisionals` directly (it already has structured columns — no Index needed);
+   `graha_state(...)`-type derived-signal lookups go through `chart_facts` + `chart_fact_identity`.
+   A Reader that only queries one of the two tables will silently fail half its own promised API.
+2. **Value-level (not identity-level) dignity divergence on `1c826d5a`**: the Index correctly
+   located "the D9/Venus dignity fact" in both tables (identity-tagging is not in question) but the
+   two independently-computed VALUES disagree (`neutral` vs `Friend`) — on `482012f1` the same
+   cross-check matched exactly. Not investigated further here (out of Lane A5's scope — A5 promises
+   correct identity extraction, not cross-formula value reconciliation, and the codebase already has
+   a recognized "cross_formula_divergence" concept elsewhere). Flagged to the backlog (below) for a
+   future session, not fixed here and not silently accepted as a P2 pass.
+3. Also confirmed pre-existing, unrelated to this campaign: `chart_divisionals.varga_house_lord` is
+   missing rows for houses 6/7/8/11/12 (D1/lahiri, both charts checked) — a chart_divisionals data
+   gap, worked around here via cusp-longitude + classical whole-sign rulership, not a Lane A5/Index
+   defect (chart_divisionals is a base-layer GA6 table this campaign never touches).
+
+**Rung P2 CLOSED — GREEN.** Stage 3 (Lanes A6+A7) may open.
+
 ## Backlog (out-of-scope findings carried forward, not fixed in-lane)
 
 | ID | Description | Found by | Status |
 |---|---|---|---|
 | AB1 | `platform/scripts/seed/asset_registry_seed.ts:1377-1379` — `bo_pratijna`'s `expected_volume_inputs.EVENT_CLASSES: 22` is stale (real count is 27, same defect class as the `lel_event_writer.ts` comments A4 fixed) | Lane A4 builder | OPEN — not fixed, outside A4's declared scope (`gochara_resonance_map`/`lel_event_writer.ts` only) |
+| AB2 | Campaign B Lane B1 (Chart Reader) must query `chart_divisionals` directly for `occupants(h)`/`lord_of(h)`-type base-position lookups — `chart_facts`+`chart_fact_identity` only carries DERIVED signals, never raw occupancy/position | Rung P2 probe | OPEN — scope note for Campaign B design, not a bug to fix now |
+| AB3 | `chart_facts` `D9_VEN`/`dignity_state`='neutral' vs `chart_divisionals` D9/Venus `varga_dignity`='Friend' on chart `1c826d5a` (two independently-computed dignity values disagree; the SAME cross-check matches exactly on `482012f1`) — identity-tagging is correct on both, this is a value-level divergence between two formulas | Rung P2 probe | OPEN — out of Lane A5's scope (identity extraction, not value reconciliation); not investigated further this session |
+| AB4 | `chart_divisionals.varga_house_lord` missing rows for houses 6/7/8/11/12 (D1/lahiri, confirmed on both `482012f1` and `1c826d5a`) — a base-layer GA6 data gap, worked around in the P2 probe via cusp-longitude + classical rulership | Rung P2 probe | OPEN — pre-existing, unrelated to this campaign (chart_divisionals is out of ADHIṢṬHĀNA's scope) |
 
 ## Session log
 
