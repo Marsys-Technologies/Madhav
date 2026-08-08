@@ -104,6 +104,43 @@ ways at once, and the register records both.
 
 ---
 
+## PRE-DB6 PRODUCTION BASELINE (bodha_pratijna, captured 2026-08-08)
+
+Captured from live production while the **v3 engine was deployed but DB6 was
+NOT**. This isolates DB6's effect: any change after the rebuild is attributable
+to the dereference fix alone, not to the v3 rewrite (already live here).
+
+Chart 482012f1, ayanamsha `lahiri_chitrapaksha`:
+
+| event_class | status | grade | occurrence_grade | condition_grade |
+|---|---|---|---|---|
+| childbirth | promised | 5.941 | 8.487 | **0.000** |
+| foreign_settlement | promised | **6.231** | **8.901** | **0.000** |
+| marriage | promised | **6.231** | **8.901** | **0.000** |
+| relocation | promised | 6.259 | 8.942 | **0.000** |
+| separation | promised | **6.231** | **8.901** | **0.000** |
+| surgery | conditional | 2.210 | 3.157 | **0.000** |
+
+**Two defects visible in one table:**
+
+1. **DB7 is platform-wide, not sample-scoped.** `condition_grade` is `0.000` for
+   **135 of 135** rows on this chart across all ayanamshas — not merely the
+   4,000-signal sample originally examined. The condition half of the
+   two-judgment architecture was contributing nothing, anywhere.
+
+2. **The identity collapse is live.** `marriage`, `separation`, and
+   `foreign_settlement` are byte-identical (6.231 / 8.901). These are
+   classically distinct — marriage keys on 7H/Venus/Jupiter/D9, separation
+   additionally requires dusthana involvement (6/8/12) with Saturn/Ketu. With
+   fact-key matching dead, the classes could not diverge because the evidence
+   that distinguishes them was never read.
+
+This is the state the native's chart is in as of this capture: `separation` and
+`marriage` are the *same promise*, and nothing in the promise register can tell
+them apart.
+
+---
+
 ## MEASUREMENT #3 — POST-DB6-FIX
 
 | Field | Value |
