@@ -47,7 +47,7 @@ inconclusive) carried forward, not hidden.
 
 | Lane | Description | Status |
 |---|---|---|
-| A1 | Producer convergence (`ga_condition_writer` 5×`.upper()` sites + `ga_vargas_writer:3002`) | DISPATCHED — builder running in isolated worktree, PR target `adhisthana/integration` |
+| A1 | Producer convergence (`ga_condition_writer` 5×`.upper()` sites + `ga_vargas_writer:3002`) | **MERGED** — PR #1101 → `adhisthana/integration` @ `9f0b75d20`. `ga_condition_writer.py` 5 sites + `ga_vargas_writer.py` 1 site now route through `PLANET_TO_SUBJECT` (imported from `ga_positions_writer`, not relocated). Rahu/Ketu edge fixed (`RAHU`→`RAH_MEAN`, `KETU`→`KET_MEAN`), not just case. TDD: 4/4 new tests red→green, 323 targeted regression pass, full suite pass except 23 pre-existing unrelated failures in `test_l0_remedy_corpus.py`. R19: forward-only, no `chart_facts` write. **Note for A2**: `PLANET_TO_SUBJECT` still lives in `ga_positions_writer.py`; if A2 relocates it to `graha_vocabulary.py`, the two new import lines in `ga_condition_writer.py`/`ga_vargas_writer.py` need a mechanical re-point at merge time. |
 | A2 | Graha SSoT by promotion (`brahmagyan/graha_vocabulary.py` from `norm_graha`; TS `grahaCodeOf` canonical) | DISPATCHED — builder running in isolated worktree, PR target `adhisthana/integration` |
 | A3 | Registry completion (`entity_class='varga'`, storage-code synonyms, `list_entities.ts`) | DISPATCHED — builder running in isolated worktree, PR target `adhisthana/integration` |
 | A4 | Event-class TS mirror + parity + FK/CHECK + stale-comment fix | DISPATCHED — builder running in isolated worktree, PR target `adhisthana/integration` |
