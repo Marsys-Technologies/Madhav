@@ -426,6 +426,58 @@ class ChartReaderV4:
             for r in rows
         ]
 
+    # ── reference_planets (extension — see PRATIJÑĀ v4 Lane B2 PR description) ──
+
+    def reference_planets(self, planet: str | None = None) -> list[dict[str, Any]]:
+        """Static classical planetary attributes (exaltation/debilitation/
+        mooltrikona/own-signs/natural_benefic), from the GLOBAL `reference_
+        planets` table (BPHS, L0 Brahmagyan — not chart-scoped, no chart_id/
+        ayanamsha filter, unlike every other method on this Reader).
+
+        Judgment call (Lane B2, disclosed per the campaign brief's Reader-gap
+        instruction): the five original + `sign_of` functions only ever
+        answer questions about a specific chart's computed facts
+        (`chart_divisionals`/`chart_facts`). `V4_RUBRIC_SPEC_v1_0.md §2.1`'s
+        dignity band is instead anchored on `reference_planets`, a static L0
+        reference table with no chart_id column at all — a genuinely
+        different kind of question ("what IS Venus's exaltation sign",
+        never "what is Venus's exaltation sign in THIS chart"). Rather than
+        have the v4 engine (Lane B2) issue raw SQL against a table outside
+        this Reader's stated scope, this small addition keeps 'the Reader is
+        the only way the engine touches the database' true in spirit as well
+        as letter, at the cost of the Reader no longer being purely
+        chart-scoped. Source: `platform/migrations/ws2_l0_reference.sql`."""
+        with self.conn.cursor() as cur:
+            if planet is not None:
+                cur.execute(
+                    """SELECT planet_id, canonical_name_en, exaltation_sign, debilitation_sign,
+                              mooltrikona_sign, own_signs, natural_benefic, source_citation
+                       FROM reference_planets WHERE planet_id=%s""",
+                    (to_title(planet).lower(),),
+                )
+            else:
+                cur.execute(
+                    """SELECT planet_id, canonical_name_en, exaltation_sign, debilitation_sign,
+                              mooltrikona_sign, own_signs, natural_benefic, source_citation
+                       FROM reference_planets ORDER BY planet_id"""
+                )
+            rows = cur.fetchall()
+        return [
+            {
+                "planet_id": r["planet_id"],
+                "graha": r["canonical_name_en"],
+                "exaltation_sign": r["exaltation_sign"],
+                "debilitation_sign": r["debilitation_sign"],
+                "mooltrikona_sign": r["mooltrikona_sign"],
+                "own_signs": list(r["own_signs"] or []),
+                "natural_benefic": r["natural_benefic"],
+                "provenance": [
+                    {"source_table": "reference_planets", "id_kind": "planet_id", "id": r["planet_id"]}
+                ],
+            }
+            for r in rows
+        ]
+
     # ── aspect_between ───────────────────────────────────────────────────
 
     def aspect_between(
