@@ -307,6 +307,19 @@ vs. the tolerated 43-baseline ceiling) — fixed by adding the block, honestly s
 opened via a native-authored campaign kickoff, not a literal template handshake; fingerprints
 marked not-computed rather than fabricated). Re-verified locally (43/exit=3) before re-gating.
 
+**Third gate round on PR #1112 found a third, genuinely different, precedented issue** (this
+GATE-EXECUTOR instance also once paused waiting on its own background clone/CI monitor instead of
+finishing synchronously — resumed with an explicit instruction to complete, same class of process
+gap as Lane A5's PARĪKṢAKA earlier): the required merge-queue check "TAP-6 — Method audit grep
+set" never fires on a pure-docs PR because its `pull_request` trigger is path-filtered to
+`platform/scripts/audit/tap/**`/`platform/python-sidecar/**`/`platform-mcp/src/**`/
+`platform/src/lib/retrieval/**`/itself — none of which this PR's 3 files match — leaving
+`mergeStateStatus: BLOCKED` indefinitely (confirmed via both REST and GraphQL). Established,
+precedented fix (used identically by PR #1078/#1091/#1094/#1096, `tap-ci.yml`'s own inline
+changelog documents each instance): a comment-only no-op touch to `tap-ci.yml` itself, which is in
+its own allowlist, forcing TAP-6 to fire for real in `pull_request` context. Applied the same
+pattern, zero behavior change, R19 N/A (workflow YAML comment only).
+
 ## Session log
 
 - **2026-08-08 (this session, Sonnet 5):** Stage 0 pre-flight run (table above). Plan of
