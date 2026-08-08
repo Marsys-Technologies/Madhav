@@ -87,8 +87,10 @@ describe('D5 L4 Phala — specific constraints', () => {
     expect(queryPredictiveAnchorsCapability.drill_children).toContain('marsys://tool/L4/query_falsifiers')
   })
 
-  it('query_domain_result: description mentions 7 rows by design', () => {
-    expect(queryDomainResultCapability.description).toContain('7 rows')
+  it('query_domain_result: description mentions 13 rows by design', () => {
+    // ADHIṢṬHĀNA Lane A7: was '7 rows' — stale since SHABDA-SHUDDHI Lane L5 Fix 5 extended
+    // ph_phaladesa.py to write all 13 canonical domains (see query_domain_result.ts header).
+    expect(queryDomainResultCapability.description).toContain('13 rows')
   })
 
   it('query_rectification: emits_references = false (meta-analysis, not signal ref)', () => {
