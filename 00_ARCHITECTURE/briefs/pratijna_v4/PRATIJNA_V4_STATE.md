@@ -39,8 +39,12 @@ Rather than discard and re-dispatch a fresh builder (losing this work + its cont
 second attempt drifting from the same careful reasoning), the SAME agent was resumed via
 `SendMessage` and instructed to: re-verify its own state, re-run tests for real, confirm/re-run
 Rung P6 live, commit, push, open the PR, and give the proper structured report — or report honestly
-if the work turns out not to be sound. **NEXT ACTION on resumption:** check builder PR status; if
-open, dispatch fresh-context PARĪKṢAKA
+if the work turns out not to be sound. **Second resumption:** the builder's second turn again
+ended without committing — it had kicked off the live Rung P6 pytest run in the background and
+stopped before consuming the result. Conductor verified directly (waited on the OS process) that
+the test completed cleanly (~20s, not hung), then resumed the builder a third time with explicit
+instruction to run inline/foreground (not background) and complete commit→push→PR in one pass.
+**NEXT ACTION on resumption:** check builder PR status; if open, dispatch fresh-context PARĪKṢAKA
 (scope: re-run Rung P6 live independently, scrutinize the status-mapping decision hardest — this is
 the newest real R13 surface — confirm FROZEN contract untouched, confirm idempotency preserved,
 confirm derivation ledger/provenance actually lands in the DB row not just computed-and-discarded)
