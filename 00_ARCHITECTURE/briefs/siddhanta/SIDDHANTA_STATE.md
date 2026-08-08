@@ -3,9 +3,11 @@
 **Campaign:** SIDDHANTA ("the established conclusion")
 **Integration branch:** siddhanta/integration (cut from main 2026-08-08)
 **Conductor:** Opus 4.6
-**Status:** ACTIVE — arc-finishing run (2026-08-08). DB6 FIXED and live-verified;
-DB7 falls with it; DB9 (3 KeyErrors) root-caused and fixed; DB12 found and fixed.
-Awaiting PR #1100 merge + deploy + rebuild → MEASUREMENT #3.
+**Status:** RUN-TERMINAL: PARKED-HONEST (arc-finishing run, 2026-08-08).
+DB6/DB7/DB9/DB12 FIXED, merged (PR #1100, squash `ac0545c2d`) and DEPLOYED
+(Deploy to Cloud Run SUCCESS). MEASUREMENT #3 **NOT taken** — the rebuild that
+would produce it is blocked; see DB15/DB16 and SKILL_MEASUREMENT_REGISTER_v1_0.md.
+The code fix is live and independently gate-verified; the measurement is not.
 
 ---
 
@@ -63,7 +65,12 @@ Total: 7 event-class pairings across 6 events. DB3 RESOLVED by R15.
 
 ---
 
-## Phase 3 — Full Rebuild: 482012f1 COMPLETE, others PARKED
+## Phase 3 — Full Rebuild: CLAIM DISPUTED (see DB16)
+
+> **2026-08-08 correction:** the "COMPLETE / 76 lit" claim below is contradicted
+> by `build_runs` (six most recent runs all `failed`/`stopped`) and by live
+> `asset_throughput` (lit=21, stale=53, error=6). Retained verbatim as the
+> original record; DB16 carries the discrepancy.
 
 PR #1099 merged (2026-08-07 20:49 UTC), migrations 548+549 applied.
 
@@ -89,13 +96,15 @@ Skill scores invariant. R14 baseline preserved (same field_snapshot_id).
 | DB3 | 2019-05-15 relocation/foreign_settlement ambiguity | RESOLVED by R15 |
 | DB4 | Phase B2 build: bo_pratijna v3.0 | CLOSED (Phase 1 merged) |
 | DB5 | mi_adhilepa NotNullViolation: leakage_status schema-writer drift | CLOSED (Phase 2 merged) |
-| DB6 | bo_pratijna matched raw fact_id digests instead of fact_keys -> ALL 21 non-provisional classes matched nothing; every skill score epsilon-zero | **FIXED** 20121a154 — live-verified 21/21 classes match, 139,471 fact_ids resolved |
+| DB6 | bo_pratijna matched raw fact_id digests instead of fact_keys -> ALL 21 non-provisional classes matched nothing; every skill score epsilon-zero | **FIXED** 20121a154 — live-verified 21/21 non-provisional classes now match (was 0/21). **Corrected figure:** 58,786 of 70,512 distinct fact refs resolve (83.4%); the '139,471' quoted earlier was the SIZE OF THE LOOKUP MAP (all chart_facts rows for the chart), not resolutions — mislabelled by the conductor and caught by the Gate-Executor |
 | DB7 | condition_grade always 0.000 | **FIXED** — falls with DB6; nonzero for 20/21 classes on live data |
 | DB9 | 3 KeyError: 1 (ka_kota_chakra / ka_moorti_nirnaya / ka_tithi_pravesha) | **FIXED** 09fa25715 — one bug class: bare conn.cursor() inherited dict_row, then indexed positionally row[1]. Tables were 0 rows (fail precedes DELETE, so no partial writes) |
 | DB8 | 1c826d5a + cb73cd3d full rebuilds | **OPEN** — DB9 fix now unblocks 'zero errors'; rebuild pending deploy of PR #1100 |
-| DB10 | Bhava pattern `house_1` substring-matches `house_10`/`11`/`12` | **OPEN but currently INERT — verified 2026-08-08.** Exhaustive check over bhavas 1-12 vs real `house_N` fact_keys: **bhava 1 is the ONLY colliding pattern**. No non-provisional event class declares primary_bhava=1, so today the collision reaches nothing. It becomes live the moment any class adds bhava 1 (lagna). R13 forbids fixing it alongside the mechanical repair; fix before adding any lagna-primary class |
+| DB10 | Bhava pattern `house_1` substring-matches `house_10`/`11`/`12` | **OPEN, INERT — but for a WEAKER reason post-DB6. Re-verified 2026-08-08 against the REAL 466-key resolved space** (the first check used only 12 synthetic keys and was incomplete). Bhava 1 remains the ONLY collider (matches house_10/11/12); no non-provisional class declares primary_bhava=1, so nothing is reached. **The Gate-Executor correctly challenged the earlier 'inert' label:** before DB6 this was inert because NOTHING resolved at all; now it is inert only because the registry happens not to use bhava 1. Inertness now depends solely on registry contents. Fix before any lagna-primary class is added |
 | DB11 | separation cond_sum=0.00 in 4,000-signal sample | **OPEN — R16 sample-scoped observation, NOT a defect claim.** Re-check against full post-rebuild data |
 | DB12 | R6 gate detector grepped raw source and matched the comment DOCUMENTING the gate's removal; failed on correct code; invisible because it skipped without a DB | **FIXED** 7594107b7 — comment-stripped, mutation-proven still catches a real gate |
+| DB15 | Scoped (`scope='asset'`) rebuilds are blocked by the orchestrator's upstream-completeness guard, and the dependency graph it enforces is CODE-resident — `build_dependencies` has ZERO rows for `bo_pratijna`/`bo_laksana`/`bo_sangati` | **OPEN** — verified 2026-08-08 by run `c796689e`. The guard itself is correct (refuses to build on stale upstream). But a targeted rebuild is therefore impossible without the full upstream closure, and the closure cannot be computed from the DB. This is the mechanism behind SIDDHANTA self-error #2 |
+| DB16 | Ledger claimed Phase 3 "482012f1 rebuilt: 76 lit" and Phase 4 "COMPLETE", but `build_runs` shows the six most recent runs for this chart ALL `failed`/`stopped` (two with `orphan-watchdog: run never dispatched`), and live `asset_throughput` reads lit=21 / stale=53 / error=6 / dormant=2 | **OPEN** — the claimed status and the actual run record disagree. Same defect class as §N.8: a completion claim whose own detector says otherwise |
 | DB13 | relation "bodha_graph" does not exist -> 3 test_bo22.py failures | **OPEN** — pre-existing schema/test drift, unrelated to this arc |
 | DB14 | **Isolation rail is unenforced prose.** PARIKSHAKA verdict NO-GUARD-EXISTS: no hook, no CI check, no script can detect a builder writing to the main checkout. Structurally undetectable post-hoc — git commits carry no cwd provenance, so CI is blind by construction | **OPEN** — §N.8 UNEARNED. Recommended: versioned .githooks/pre-commit failing when git rev-parse --show-toplevel is the shared checkout |
 

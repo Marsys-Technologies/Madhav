@@ -158,7 +158,46 @@ will very likely still report `underpowered`. **A non-zero field does not entitl
 the platform to a skill number.** If the machinery reports `underpowered` again,
 that is the correct and expected result, and it must be published as such.
 
-*(to be filled in after the rebuild — never before)*
+### OUTCOME: **PARKED — not measured this run**
+
+The DB6 fix is **merged and live in production** (squash `ac0545c2d`, Deploy to
+Cloud Run SUCCESS, 2026-08-08T06:17Z). MEASUREMENT #3 was NOT taken, because the
+rebuild that would produce it could not be run honestly within this session.
+
+**What was attempted, and what happened:**
+
+A bounded scoped rebuild of `bo_pratijna` alone (`scope='asset'`, run
+`c796689e`) was created and executed. The orchestrator **refused it**:
+
+> `BLOCKED: upstream dependency(ies) bo_laksana, bo_sangati did not complete in
+> this run; skipped to avoid building on incomplete data`
+
+That guard is correct and should not be worked around — it is the orchestrator
+refusing to build on stale upstream data, which is the same discipline this
+whole arc is about. The attempt was clean: **`bodha_pratijna` still holds its
+135 rows, untouched** (the guard fires before the writer's delete-then-insert).
+
+**Disclosed side effect:** the blocked attempt moved `bo_pratijna`'s
+`asset_throughput.state` from `stale` to `error` (chart error count 5 → 6). The
+recorded reason is accurate and self-describing. It was left in place rather
+than hand-reverted — editing production state to look tidier would erase a real
+event.
+
+**Why the full rebuild was not launched instead:** a full-DAG rebuild is 60+
+minutes (`ga_sensitive` alone ~45), and the six most recent build runs on this
+chart are all `failed` or `stopped`, several with
+`orphan-watchdog: run never dispatched`. Starting a multi-hour production
+rebuild that could not be supervised to completion — on a chart whose recent
+rebuild history is entirely failures — risked leaving it in a worse partial
+state than it is now. PARKED-HONEST with evidence beats a half-finished rebuild.
+
+**Resume condition (precise):** run a full-DAG rebuild of chart 482012f1 with
+the now-deployed DB6 code, supervised to completion, then re-score
+`kala_field_skill`/`kala_field_gof` and record the result here as MEASUREMENT #3
+— whatever it is, including `underpowered`.
+
+**The pre-registered expectation above stands unmodified and unconsumed.** It
+was written before any measurement and is still the prediction to be tested.
 
 ---
 
