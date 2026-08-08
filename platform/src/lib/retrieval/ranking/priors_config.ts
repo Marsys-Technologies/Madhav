@@ -19,6 +19,7 @@
  * All values are query-time multipliers only.
  */
 import { grahaCodeOf, GRAHA_CODE_TO_NAME } from '@/lib/retrieval/address_resolver'
+import type { CanonicalDomain } from '@/lib/domain_vocabulary'
 
 // '1.0': Frozen after P2T iteration. Formula is correct; G10-QT score ≈9/15.
 // Criteria 1 (≥3 yoga-class) + 4 (ZERO AV atomic tallies) PASS.
@@ -236,10 +237,25 @@ export function vargaWeight(varga: string | null | undefined, domain?: string | 
 // Base 1.0; strong natural-karaka congruence up to 1.5; weak/contrary down to 0.7.
 // Sources: BPHS kāraka chapter + Jaimini chara-kāraka + standard bhāva-kāraka.
 
-type Domain =
-  | 'career' | 'wealth' | 'relationship' | 'progeny' | 'health'
-  | 'education' | 'family' | 'residence' | 'travel' | 'spirituality' | 'character'
-  | 'moksha'
+// ADHIṢṬHĀNA Lane A7: previously a local literal (12 members — 11 canonical + 'moksha'), one
+// of 4 divergent TS domain vocabularies. Now DERIVED from the canonical 13-domain SSoT
+// (`brahmagyan/domain_vocabulary.py` / `@/lib/domain_vocabulary`) instead of re-declared, so
+// a rename/addition to the SSoT is caught here at compile time. Two things this file
+// deliberately does NOT collapse into the SSoT, kept exactly as before (verified value-for-
+// value — no numeric content changed):
+//   - 'moksha' stays a DISTINCT key from 'spirituality', even though domain_vocabulary.py's
+//     DOMAIN_SYNONYMS resolves 'moksha' -> 'spirituality' for storage/classification purposes.
+//     Here it is query-time RANKING content, not stored classification: GRAHA_DOMAIN_AFFINITY
+//     and DOMAIN_BHAVA_AFFINITY score moksha (4-8-12 mokṣa-trikoṇa) and spirituality (9th-house
+//     dharma-trikoṇa) with DIFFERENT classically-cited multipliers (e.g. ketu: spirituality
+//     1.5 vs moksha 1.6; bhavaAffinity(12,'moksha') > bhavaAffinity(9,'moksha'), asserted by
+//     composite_ranker.wp12b.test.ts). Collapsing the two would either destroy that real
+//     classical distinction or require picking one value to throw away — not a vocabulary fix.
+//   - 'transition' and 'general' are excluded: this file has no query-time affinity content
+//     for either (no citation, no test coverage) — inventing multipliers for them would be
+//     fabricated content (B.10), not adoption of the existing SSoT.
+// `Domain` is NOT exported — purely internal to this file's affinity/overlay tables.
+type Domain = Exclude<CanonicalDomain, 'transition' | 'general'> | 'moksha'
 
 // Canonical graha key variants (DB uses several forms across layers). Values
 // sourced from the graha SSoT (address_resolver.grahaCodeOf + GRAHA_CODE_TO_NAME)

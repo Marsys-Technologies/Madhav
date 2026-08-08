@@ -36,6 +36,16 @@ import {
 } from '../../../ranking/composite_ranker'
 import { fetchL1Context } from '../../../ranking/l1_context_fetcher'
 import { grahaAffinity, bhavaAffinity, DOMAIN_BHAVA_AFFINITY } from '../../../ranking/priors_config'
+import { CANONICAL_DOMAINS } from '@/lib/domain_vocabulary'
+
+// ADHIṢṬHĀNA Lane A7: this file's own comment already cited
+// "brahmagyan.domain_vocabulary.CANONICAL_DOMAINS" by name (SHABDA-SHUDDHI Lane L5 Fix 4) but
+// hardcoded the 13 values as a separate literal instead of importing the SSoT — textbook
+// adoption debt. `VALID_DOMAINS` and the `domain` input_schema `enum` below now spread the
+// real import; the two non-canonical backward-compat extras ('moksha', 'other') are retained
+// verbatim (same reasoning as before: 'moksha' has its own DOMAIN_TO_SIGNAL_FILTER overlay
+// distinct from 'spirituality'; 'other' means "return all lenses" via DOMAIN_TO_QUESTION_TYPES).
+const DOMAIN_READING_VALID_DOMAINS: readonly string[] = [...CANONICAL_DOMAINS, 'moksha', 'other']
 
 /** Max signal_ids hydrated with text in one bounded lookup (payload + query safety). */
 const HYDRATION_ID_CAP = 2000
@@ -306,11 +316,7 @@ export const queryDomainReadingCapability: CapabilityDescriptor = {
         'domain-specific graha×bhāva×varga overlay (see ranked_signals[].rationale).',
         'If omitted or unrecognized, returns the list of available domains for this chart.',
       ].join(' '),
-      enum: [
-        'career', 'wealth', 'relationship', 'health', 'character', 'spirituality',
-        'education', 'progeny', 'family', 'residence', 'travel', 'transition', 'general',
-        'moksha', 'other',
-      ],
+      enum: [...DOMAIN_READING_VALID_DOMAINS],
     },
     ayanamsha_id: {
       type: 'string',
@@ -402,19 +408,14 @@ export const queryDomainReadingCapability: CapabilityDescriptor = {
     // 'moksha' (a spirituality alias) through. Extended to cover all 13 canonical domains.
     // 'other' retained for "return all lenses" fallback (DOMAIN_TO_QUESTION_TYPES maps it
     // to []). 'moksha' retained for backward compat (handled by DOMAIN_TO_SIGNAL_FILTER
-    // as null-filter = whole-chart ranking with moksha overlay).
-    const VALID_DOMAINS = [
-      // 13 canonical domains (brahmagyan.domain_vocabulary.CANONICAL_DOMAINS)
-      'career', 'wealth', 'relationship', 'health', 'character', 'spirituality',
-      'education', 'progeny', 'family', 'residence', 'travel', 'transition', 'general',
-      // non-canonical extras retained for backward compat
-      'moksha', 'other',
-    ]
+    // as null-filter = whole-chart ranking with moksha overlay). ADHIṢṬHĀNA Lane A7: the
+    // literal below is now DOMAIN_READING_VALID_DOMAINS (module-level, sourced from the
+    // CANONICAL_DOMAINS SSoT import) instead of a second inline copy of the same 15 values.
 
     try {
       // Domain discovery is sourced from bodha_cdlm_cells (domain_row/domain_col).
       // bodha_question_lenses has no domain column; lenses are filtered via DOMAIN_TO_QUESTION_TYPES.
-      if (!domain || !VALID_DOMAINS.includes(domain)) {
+      if (!domain || !DOMAIN_READING_VALID_DOMAINS.includes(domain)) {
         const availSql = `
           SELECT DISTINCT d AS domain
           FROM bodha_cdlm_cells,
