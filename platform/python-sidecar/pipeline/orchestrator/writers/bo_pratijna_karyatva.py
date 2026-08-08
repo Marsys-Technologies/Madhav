@@ -23,7 +23,7 @@ class KaryatvaMap:
     provisional: bool = False         # True for DR-13 classes that use domain fallback
 
 
-# The 13-domain karyatva map, one entry per event_class_id.
+# The 27-class karyatva map, one entry per event_class_id (brahma_event_ontology).
 # R13 MANDATE: every entry drawn from classical rules with citations.
 # No weight or threshold traces to any native's known outcomes.
 KARYATVA_REGISTRY: dict[str, KaryatvaMap] = {
@@ -109,13 +109,13 @@ KARYATVA_REGISTRY: dict[str, KaryatvaMap] = {
     ),
     "career_change": KaryatvaMap(
         event_class_id="career_change",
-        primary_bhava=[10],
-        karaka_grahas=["Sun", "Saturn"],
+        primary_bhava=[10, 3, 9],
+        karaka_grahas=["Rahu"],
         dusthana_required=False,
         divisional="D10",
-        yoga_keywords=["karma", "rajya"],
-        condition_malefic_grahas=["Rahu", "Ketu"],
-        citations=["BPHS ch.10 (karma-bhava)", "BPHS ch.28"],
+        yoga_keywords=["parivartana", "vrtti_badal"],
+        condition_malefic_grahas=["Saturn", "Ketu"],
+        citations=["BPHS ch.10 (karma-bhava)", "BPHS ch.3 (parakrama, initiative-of-change)", "BPHS ch.9 (labha of 9th, fortune-of-change)", "BPHS ch.28 (Rahu karakatva for sudden/foreign-influenced change)"],
     ),
     "career_advancement": KaryatvaMap(
         event_class_id="career_advancement",
@@ -219,13 +219,23 @@ KARYATVA_REGISTRY: dict[str, KaryatvaMap] = {
     ),
     "bereavement": KaryatvaMap(
         event_class_id="bereavement",
-        primary_bhava=[4, 9, 8],
-        karaka_grahas=["Moon", "Sun", "Saturn"],
+        primary_bhava=[8, 12, 2],
+        karaka_grahas=["Saturn", "Ketu"],
         dusthana_required=False,
-        divisional="D12",
-        yoga_keywords=["marana", "preta"],
+        divisional="D8",
+        yoga_keywords=["marana", "maraka"],
         condition_malefic_grahas=["Mars", "Rahu"],
-        citations=["BPHS ch.4 (mother)", "BPHS ch.9 (father)", "BPHS ch.28"],
+        citations=["BPHS maraka-sthana (2nd/7th lords + occupants as maraka)", "BPHS ch.12 (8th bhava, ayus/marana-vicara)", "BPHS ch.11 (12th bhava, vyaya/loss)", "BPHS ch.6 (ashtamamsha)"],
+    ),
+    "parental_event": KaryatvaMap(
+        event_class_id="parental_event",
+        primary_bhava=[4, 9],
+        karaka_grahas=["Moon", "Sun"],
+        dusthana_required=False,   # non-death parental events; bereavement (death) stays the separate, dusthana-eligible class
+        divisional="D12",
+        yoga_keywords=["matru", "pitru"],
+        condition_malefic_grahas=["Saturn", "Rahu"],
+        citations=["BPHS ch.4 (mother)", "BPHS ch.9 (father)", "BPHS ch.6 (dwadashamsha)"],
     ),
     "spiritual_turn": KaryatvaMap(
         event_class_id="spiritual_turn",

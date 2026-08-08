@@ -2,8 +2,14 @@
   "schema_version": "1.0",
   "$comment": "Allowlist for check_fact_category_pinning.py (brief §5 C.7, SUDDHA-VACA Phase C lane:ci-lint). Every entry requires: file (repo-relative POSIX path, must match a Violation.file exactly), EITHER line (int, matched exactly against the violation's line number) OR pattern (a string matched as a regex, falling back to a plain substring match, against the violation's snippet text) — line is preferred when known since it is unambiguous; pattern is for cases where line drift is expected, and justification (a non-empty, specific, human-readable reason — 'pre-existing' alone is not sufficient, say WHY it's safe or why it's out of scope). An entry with neither line nor pattern never matches anything (fails closed, not open). Populated 2026-07-28 during the initial rollout scan against the live repo tree (this worktree, base main, before this wave's other lanes landed) — see the ci-lint lane's session report for the full disposition rationale of every entry.",
   "generated_by": "check_fact_category_pinning.py initial-rollout scan, 2026-07-28",
-  "entry_count": 31,
+  "entry_count": 32,
   "entries": [
+    {
+      "file": "platform/python-sidecar/brahmagyan/chart_reader_v4.py",
+      "line": null,
+      "pattern": "fact_id, fact_subject, fact_key, fact_value_text, fact_value_num,\\s*computed_at",
+      "justification": "NEW in PRATIJNA v4 Lane B1 (chart_reader_v4.py's special_points()). Intentionally returns ALL fact_key rows for a chart_facts fact_category (upapada_lagna / special_lagna / karaka_chara_position) — the caller needs every fact_key variant (e.g. upapada's 'sign' and 'lord_placement_verdict'), so there is nothing to reduce to a single row. fact_subject AND fact_key are both selected and preserved per output row, never collapsed into a dict keyed by subject alone — same safe shape as the pre-existing arudha_emitter.py/nakshatra_semantic_emitter.py entries below ('fact_key selected+preserved per row, no cross-fact_key collision hazard'). A deterministic ORDER BY fact_subject, fact_key, computed_at, fact_id is present on this query (visible in the surrounding source, not in this snippet) — this specific defect class (row silently picked at random among several sharing category+subject+key) is exactly what this function's own docstring documents and handles honestly for the live karaka_chara_position school-duplication case (both Jaimini karaka schools are returned, not one silently dropped)."
+    },
     {
       "file": "platform-mcp/src/tools/register_p1_ganita.ts",
       "line": 365,
