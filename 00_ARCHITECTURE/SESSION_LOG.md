@@ -35583,6 +35583,42 @@ Once all 6 W6 clauses pass: W6 formally CLOSED and campaign ARC-COMPLETE.
 
 ## ADHISTHANA-CONDUCTOR-2026-08-08 — ADHIṢṬHĀNA Campaign A closed: foundation merged, checkpoint artifacts ready, RUN-TERMINAL ARC-COMPLETE
 
+```yaml
+session_open:
+  session_id: ADHISTHANA-CONDUCTOR-2026-08-08
+  cowork_thread_name: "Madhav — ADHIṢṬHĀNA Campaign A Conductor"
+  agent_name: claude-sonnet-5
+  agent_version: claude-sonnet-5
+  step_number_or_macro_phase: "Campaign A (ADHIṢṬHĀNA) — post-rebuild era, MASTER_PLAN_v1_0.md §3"
+  predecessor_session: SHAD-DARSHANA-CLOSING-RUN-2026-08-07
+  mandatory_reading_confirmation:
+    # Honest scoping note: this session opened via a native-authored ADHIṢṬHĀNA Campaign A
+    # conductor kickoff prompt (which itself names CLAUDE.md §C's mandatory-reading list plus
+    # campaign-specific reading), not a literal field-by-field SESSION_OPEN_TEMPLATE §2
+    # handshake with per-file sha256 fingerprints computed at read time. The items below were
+    # genuinely read in full during Stage 0 pre-flight; fingerprints are not populated (not
+    # computed at read time this session) rather than fabricated.
+    - file: CLAUDE.md
+      fingerprint_sha256: "<not computed this session>"
+      read_at: 2026-08-08T13:34:00+05:30
+    - file: 00_ARCHITECTURE/briefs/adhisthana/MASTER_PLAN_v1_0.md
+      fingerprint_sha256: "<not computed this session — this session's own first act copied this file into the repo>"
+      read_at: 2026-08-08T13:48:00+05:30
+    - file: 00_ARCHITECTURE/briefs/siddhanta/SIDDHANTA_STATE.md
+      fingerprint_sha256: "<not computed this session>"
+      read_at: 2026-08-08T13:34:00+05:30
+    - file: 00_ARCHITECTURE/llm_consumption_audit/briefs/kala_elevation/PRODUCTION_GATE_EXECUTION_POLICY_v1_0.md
+      fingerprint_sha256: "<not computed this session>"
+      read_at: 2026-08-08T13:34:00+05:30
+  scope_declaration:
+    may_touch: ["00_ARCHITECTURE/briefs/adhisthana/**", "platform/**/graha*", "platform/**/domain_vocabulary*",
+      "platform/scripts/probes/**", "platform/scripts/governance/**", "platform/supabase/migrations/**",
+      "00_ARCHITECTURE/CURRENT_STATE_v1_0.md", "00_ARCHITECTURE/SESSION_LOG.md"]
+    must_not_touch: ["engine/rubric implementation code (Campaign B)", "chart_facts (R19, absolute)",
+      "any file outside the identity/registry/gates/checkpoint-artifact scope of MASTER_PLAN_v1_0.md §3"]
+  red_team_due: false
+```
+
 **Campaign:** ADHIṢṬHĀNA ("the foundation"), Campaign A of the ratified MASTER PLAN (Identity,
 Promise, and the First True Measurement — native + Fable 5, 2026-08-08). Full ledger:
 `00_ARCHITECTURE/briefs/adhisthana/ADHISTHANA_STATE.md`. Plan of record:
