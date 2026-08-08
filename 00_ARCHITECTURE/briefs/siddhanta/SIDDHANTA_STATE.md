@@ -3,7 +3,7 @@
 **Campaign:** SIDDHANTA ("the established conclusion")
 **Integration branch:** siddhanta/integration (cut from main 2026-08-08)
 **Conductor:** Opus 4.6
-**Status:** ACTIVE — Phase 3: 482012f1 rebuilt (76/79 lit, mi_adhilepa FIXED), 1c826d5a+cb73cd3d pending
+**Status:** RUN-TERMINAL: PARKED-FINAL (DB6 marriage/separation identity requires fact_key resolution)
 
 ---
 
@@ -71,9 +71,11 @@ PR #1099 merged (2026-08-07 20:49 UTC), migrations 548+549 applied.
 
 ---
 
-## Phase 4 — Re-score: READY (482012f1 rebuilt with v3)
+## Phase 4 — Re-score: COMPLETE
 
-## Phase 5 — Arc Close: BLOCKED on Phase 4
+R15 event-class mappings applied (6 UPDATEs + 1 INSERT). mi_bhara re-scored (4.4s, 13 rows).
+All classes underpowered (n<8). AGGREGATE n: 6->7 (foreign_settlement +1 per R15).
+Skill scores invariant. R14 baseline preserved (same field_snapshot_id).
 
 ---
 
@@ -85,14 +87,29 @@ PR #1099 merged (2026-08-07 20:49 UTC), migrations 548+549 applied.
 | DB3 | 2019-05-15 relocation/foreign_settlement ambiguity | RESOLVED by R15 |
 | DB4 | Phase B2 build: bo_pratijna v3.0 | CLOSED (Phase 1 merged) |
 | DB5 | mi_adhilepa NotNullViolation: leakage_status schema-writer drift | CLOSED (Phase 2 merged) |
-| DB6 | marriage/separation identity: constituent_facts_array UUIDs need JOIN to chart_facts for fact_key matching | NEW (v3 structural maps correct, signal matcher needs fact_key resolution) |
+| DB6 | marriage/separation identity: constituent_facts_array UUIDs need JOIN to chart_facts for fact_key matching | NEW — release: add fact_key lookup to _match_signal_to_class |
+| DB7 | condition_grade always 0.000 (same root cause as DB6) | NEW — blocked on DB6 |
+| DB8 | 1c826d5a + cb73cd3d full rebuilds | PARKED — v3 deployed, will apply on next build |
+| DB9 | 3 pre-existing KeyError (ka_kota_chakra/ka_moorti_nirnaya/ka_tithi_pravesha) | PRE-EXISTING |
 
 ---
 
 ## Self-Errors
 
-(none yet)
+| # | Error | Mitigation |
+|---|---|---|
+| 1 | Builder wrote to main checkout not worktree | Recovered from lane branches |
+| 2 | Partial rebuild plans blocked by orchestrator | Used full DAG plan |
+| 3 | ga_sensitive 45+ min on full rebuild | Future: targeted reset |
+| 4 | UUID fact matching not caught pre-deploy | Recorded as DB6 |
 
 ---
 
-*Ledger created 2026-08-08 01:32 IST by CONDUCTOR (Opus 4.6)*
+RUN-TERMINAL: PARKED-FINAL
+
+Parked cause VERIFIED: DB6 (marriage/separation identity) root cause is constituent_facts_array
+containing UUID strings. The karyatva signal matcher's bhava/karaka/divisional patterns match
+against these UUIDs, which never matches. Release condition: add a JOIN to chart_facts in
+_match_signal_to_class to resolve fact_ids -> fact_keys. The structural karyatva maps are correct.
+
+*Ledger created 2026-08-08 01:32 IST, closed 2026-08-08 06:15 IST by CONDUCTOR (Opus 4.6)*
