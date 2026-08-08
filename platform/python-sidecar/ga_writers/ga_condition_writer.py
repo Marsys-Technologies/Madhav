@@ -27,7 +27,7 @@ from typing import Any, Optional
 
 import psycopg.rows
 
-from ga_writers.ga_positions_writer import CANONICAL_AYANAMSHAS
+from ga_writers.ga_positions_writer import CANONICAL_AYANAMSHAS, PLANET_TO_SUBJECT
 from pyjhora_adapter.version import ENGINE_VERSION
 
 logger = logging.getLogger(__name__)
@@ -1075,7 +1075,7 @@ def _build_per_varga_avastha_rows(
                 "ayanamsha_id":            ayanamsha_id,
                 "build_id":                build_id,
                 "fact_category":           "graha_avastha_baladi_per_varga",
-                "fact_subject":            graha.upper(),
+                "fact_subject":            PLANET_TO_SUBJECT.get(graha, graha.upper()),
                 "fact_key":                varga,
                 "fact_value_text":         baladi_val,
                 "fact_value_num":          None,
@@ -1101,7 +1101,7 @@ def _build_per_varga_avastha_rows(
                 "ayanamsha_id":            ayanamsha_id,
                 "build_id":                build_id,
                 "fact_category":           "graha_avastha_deeptaadi_per_varga",
-                "fact_subject":            graha.upper(),
+                "fact_subject":            PLANET_TO_SUBJECT.get(graha, graha.upper()),
                 "fact_key":                varga,
                 "fact_value_text":         deeptaadi_val,
                 "fact_value_num":          None,
@@ -1124,7 +1124,7 @@ def _build_per_varga_avastha_rows(
                 "ayanamsha_id":            ayanamsha_id,
                 "build_id":                build_id,
                 "fact_category":           floor_cat,
-                "fact_subject":            graha.upper(),
+                "fact_subject":            PLANET_TO_SUBJECT.get(graha, graha.upper()),
                 "fact_key":                "D_ALL",
                 "fact_value_text":         reason,
                 "fact_value_num":          None,
@@ -1307,7 +1307,7 @@ def _build_d1_avastha_rows(
                 "ayanamsha_id":            ayanamsha_id,
                 "build_id":                build_id or "",
                 "fact_category":           "graha_avastha_sayanadi",
-                "fact_subject":            graha.upper(),
+                "fact_subject":            PLANET_TO_SUBJECT.get(graha, graha.upper()),
                 "fact_key":                "D1",
                 "fact_value_text":         sayanadi_val,
                 "fact_value_num":          None,
@@ -1331,7 +1331,7 @@ def _build_d1_avastha_rows(
             "ayanamsha_id":            ayanamsha_id,
             "build_id":                build_id or "",
             "fact_category":           "graha_avastha_lajjitadi",
-            "fact_subject":            graha.upper(),
+            "fact_subject":            PLANET_TO_SUBJECT.get(graha, graha.upper()),
             "fact_key":                "D1",
             "fact_value_text":         lajjitadi_val,
             "fact_value_num":          None,

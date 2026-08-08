@@ -75,6 +75,7 @@ from ga_writers.ga_positions_writer import (
     CANONICAL_AYANAMSHAS,
     CANONICAL_CHART_ID,
     FORBIDDEN_PATTERNS,
+    PLANET_TO_SUBJECT,
     _conn,
     _write_halt_log,
 )
@@ -2999,7 +3000,7 @@ def build_ga_vargas(
                         "fact_key": "computation_status",
                         "fact_value_text": "intentionally_not_computed",
                         "fact_value_num": None,
-                        "fact_subject": floored_body.upper(),
+                        "fact_subject": PLANET_TO_SUBJECT.get(floored_body, floored_body.upper()),
                         "build_id_uuid": build_id,
                         "verification_pass_status": UNVERIFIED_DEFAULT,
                         "engine_version": ENGINE_VERSION,

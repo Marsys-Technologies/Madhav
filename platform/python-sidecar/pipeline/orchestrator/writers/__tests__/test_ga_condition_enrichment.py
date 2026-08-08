@@ -34,6 +34,7 @@ from ga_writers.ga_condition_writer import (
     _insert_per_varga_avastha_rows,
     ALL_GRAHAS,
 )
+from ga_writers.ga_positions_writer import PLANET_TO_SUBJECT
 
 
 # ---------------------------------------------------------------------------
@@ -208,7 +209,10 @@ class TestBuildPerVargaAvastaRows:
         rows = self._call()
         baladi = [r for r in rows
                   if r["fact_category"] == "graha_avastha_baladi_per_varga"
-                  and r["fact_subject"] == "RAHU"
+                  # A1 fix (2026-08-08): fact_subject is now the system-A
+                  # short code (PLANET_TO_SUBJECT), not graha.upper() —
+                  # "RAH_MEAN", never "RAHU".
+                  and r["fact_subject"] == "RAH_MEAN"
                   and r["fact_key"] == "D9"]
         assert len(baladi) == 1
         assert baladi[0]["fact_value_text"] == "bala"  # degree=5.0
@@ -245,7 +249,8 @@ class TestBuildPerVargaAvastaRows:
         rows = self._call()
         deeptaadi = [r for r in rows
                      if r["fact_category"] == "graha_avastha_deeptaadi_per_varga"
-                     and r["fact_subject"] == "RAHU"
+                     # A1 fix: system-A short code "RAH_MEAN", not "RAHU".
+                     and r["fact_subject"] == "RAH_MEAN"
                      and r["fact_key"] == "D9"]
         assert len(deeptaadi) == 1
         # Neutral → neutral_sign → shanta
@@ -286,7 +291,11 @@ class TestBuildPerVargaAvastaRows:
         rows = self._call()
         floor_cats = {cat for cat, _ in INTRINSICALLY_D1_AVASTHAS}
         floor_subjects = {r["fact_subject"] for r in rows if r["fact_category"] in floor_cats}
-        expected = {g.upper() for g in ALL_GRAHAS}
+        # A1 fix (2026-08-08): fact_subject is the system-A short code
+        # (PLANET_TO_SUBJECT), not a bare graha.upper() — {g.upper() for g in
+        # ALL_GRAHAS} produced "MARS"/"MERCURY"/.../"RAHU"/"KETU" before the
+        # fix; PLANET_TO_SUBJECT.values() is the correct expected set.
+        expected = set(PLANET_TO_SUBJECT[g] for g in ALL_GRAHAS)
         assert floor_subjects == expected
 
     def test_floor_rows_all_three_categories(self):
@@ -309,13 +318,17 @@ class TestBuildPerVargaAvastaRows:
         rows = self._call()
         baladi_subjects = {r["fact_subject"] for r in rows
                            if r["fact_category"] == "graha_avastha_baladi_per_varga"}
-        assert "RAHU" in baladi_subjects
+        # A1 fix: system-A short code "RAH_MEAN", not "RAHU".
+        assert "RAH_MEAN" in baladi_subjects
+        assert "RAHU" not in baladi_subjects
 
     def test_rahu_in_deeptaadi_output(self):
         rows = self._call()
         deeptaadi_subjects = {r["fact_subject"] for r in rows
                               if r["fact_category"] == "graha_avastha_deeptaadi_per_varga"}
-        assert "RAHU" in deeptaadi_subjects
+        # A1 fix: system-A short code "RAH_MEAN", not "RAHU".
+        assert "RAH_MEAN" in deeptaadi_subjects
+        assert "RAHU" not in deeptaadi_subjects
 
     # ── Metadata fields ────────────────────────────────────────────────────
 
