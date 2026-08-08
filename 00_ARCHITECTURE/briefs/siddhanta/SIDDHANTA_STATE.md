@@ -3,7 +3,9 @@
 **Campaign:** SIDDHANTA ("the established conclusion")
 **Integration branch:** siddhanta/integration (cut from main 2026-08-08)
 **Conductor:** Opus 4.6
-**Status:** RUN-TERMINAL: PARKED-FINAL (DB6 marriage/separation identity requires fact_key resolution)
+**Status:** ACTIVE — arc-finishing run (2026-08-08). DB6 FIXED and live-verified;
+DB7 falls with it; DB9 (3 KeyErrors) root-caused and fixed; DB12 found and fixed.
+Awaiting PR #1100 merge + deploy + rebuild → MEASUREMENT #3.
 
 ---
 
@@ -87,10 +89,15 @@ Skill scores invariant. R14 baseline preserved (same field_snapshot_id).
 | DB3 | 2019-05-15 relocation/foreign_settlement ambiguity | RESOLVED by R15 |
 | DB4 | Phase B2 build: bo_pratijna v3.0 | CLOSED (Phase 1 merged) |
 | DB5 | mi_adhilepa NotNullViolation: leakage_status schema-writer drift | CLOSED (Phase 2 merged) |
-| DB6 | marriage/separation identity: constituent_facts_array UUIDs need JOIN to chart_facts for fact_key matching | NEW — release: add fact_key lookup to _match_signal_to_class |
-| DB7 | condition_grade always 0.000 (same root cause as DB6) | NEW — blocked on DB6 |
-| DB8 | 1c826d5a + cb73cd3d full rebuilds | PARKED — v3 deployed, will apply on next build |
-| DB9 | 3 pre-existing KeyError (ka_kota_chakra/ka_moorti_nirnaya/ka_tithi_pravesha) | PRE-EXISTING |
+| DB6 | bo_pratijna matched raw fact_id digests instead of fact_keys -> ALL 21 non-provisional classes matched nothing; every skill score epsilon-zero | **FIXED** 20121a154 — live-verified 21/21 classes match, 139,471 fact_ids resolved |
+| DB7 | condition_grade always 0.000 | **FIXED** — falls with DB6; nonzero for 20/21 classes on live data |
+| DB9 | 3 KeyError: 1 (ka_kota_chakra / ka_moorti_nirnaya / ka_tithi_pravesha) | **FIXED** 09fa25715 — one bug class: bare conn.cursor() inherited dict_row, then indexed positionally row[1]. Tables were 0 rows (fail precedes DELETE, so no partial writes) |
+| DB8 | 1c826d5a + cb73cd3d full rebuilds | **OPEN** — DB9 fix now unblocks 'zero errors'; rebuild pending deploy of PR #1100 |
+| DB10 | Bhava pattern 'house_1' substring-matches house_10/11/12 | **OPEN** — pre-existing matcher semantics; R13 forbids riding along with the mechanical repair |
+| DB11 | separation cond_sum=0.00 in 4,000-signal sample | **OPEN — R16 sample-scoped observation, NOT a defect claim.** Re-check against full post-rebuild data |
+| DB12 | R6 gate detector grepped raw source and matched the comment DOCUMENTING the gate's removal; failed on correct code; invisible because it skipped without a DB | **FIXED** 7594107b7 — comment-stripped, mutation-proven still catches a real gate |
+| DB13 | relation "bodha_graph" does not exist -> 3 test_bo22.py failures | **OPEN** — pre-existing schema/test drift, unrelated to this arc |
+| DB14 | **Isolation rail is unenforced prose.** PARIKSHAKA verdict NO-GUARD-EXISTS: no hook, no CI check, no script can detect a builder writing to the main checkout. Structurally undetectable post-hoc — git commits carry no cwd provenance, so CI is blind by construction | **OPEN** — §N.8 UNEARNED. Recommended: versioned .githooks/pre-commit failing when git rev-parse --show-toplevel is the shared checkout |
 
 ---
 
@@ -102,14 +109,27 @@ Skill scores invariant. R14 baseline preserved (same field_snapshot_id).
 | 2 | Partial rebuild plans blocked by orchestrator | Used full DAG plan |
 | 3 | ga_sensitive 45+ min on full rebuild | Future: targeted reset |
 | 4 | UUID fact matching not caught pre-deploy | Recorded as DB6 |
+| 5 | Arc-finishing run: ran `git checkout HEAD~1 -- bo_pratijna.py` to A/B a test, which silently reverted the DB6 fix in the working tree | Caught immediately by re-grepping for the fix; restored from HEAD (already committed+pushed, so nothing was lost). Lesson: never use checkout-from-another-commit to A/B; use a scratch worktree |
+| 6 | Reported the predecessor's PARKED-FINAL 'no cloud-sql-proxy credentials' claim to the native as fact, twice, without testing it — the proxy had been running since 2026-08-05 | A later run disproved it by simply connecting. Lesson: verify a blocker before relaying it, especially an inherited one |
 
 ---
 
-RUN-TERMINAL: PARKED-FINAL
+## Arc-finishing run — 2026-08-08
 
-Parked cause VERIFIED: DB6 (marriage/separation identity) root cause is constituent_facts_array
-containing UUID strings. The karyatva signal matcher's bhava/karaka/divisional patterns match
-against these UUIDs, which never matches. Release condition: add a JOIN to chart_facts in
-_match_signal_to_class to resolve fact_ids -> fact_keys. The structural karyatva maps are correct.
+DB6 root cause was confirmed as stated, with one precision correction: the
+constituent_facts_array entries are **16-hex fact_id digests**, not UUIDs.
 
-*Ledger created 2026-08-08 01:32 IST, closed 2026-08-08 06:15 IST by CONDUCTOR (Opus 4.6)*
+Fixed and live-verified (read-only, chart 482012f1, 4,000-signal sample):
+- 139,471 fact_ids resolve through chart_facts
+- **21/21** non-provisional classes now match (was **0/21** — the entire karyatva
+  engine was inert)
+- condition weights nonzero for **20/21** classes -> DB7 falls with DB6
+
+Also fixed this run: DB9 (3 KeyErrors, one bug class) and DB12 (a gate detector
+that matched its own removal comment). Both mutation-proven, not asserted.
+
+PR #1100 open (DB6 + DB12 + DB9). Merge -> deploy -> rebuild -> MEASUREMENT #3.
+MEASUREMENT #2's row-level values were captured to
+SKILL_MEASUREMENT_REGISTER_v1_0.md BEFORE the rebuild can overwrite them.
+
+*Ledger created 2026-08-08 01:32 IST; arc-finishing run 2026-08-08 by CONDUCTOR (Opus 4.6)*
