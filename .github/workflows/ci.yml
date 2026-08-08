@@ -253,6 +253,90 @@ jobs:
       - name: SAMĪKṢĀ DB-integration suites (skip themselves without the env vars above)
         run: npx vitest run tests/pariprashna/samiksha src/lib/pariprashna/samiksha --reporter=verbose
 
+  pratijna-v4-fixture-property-tests:
+    # PRATIJÑĀ v4 Lane B3 — the CI tier of the campaign's three-tier
+    # verification plan (00_ARCHITECTURE/briefs/adhisthana/MASTER_PLAN_v1_0.md
+    # §5): "real-data snapshot fixture (one chart's facts+signals+Index
+    # exported, versioned, refresh procedure documented) + property tests".
+    #
+    # Pattern chosen: the `db-integration-tests` job immediately above (a
+    # throwaway `postgres:16` service container this job restores its own
+    # schema+data into), NOT `fresh_chart_smoke.yml`'s full-production-schema
+    # snapshot-and-restore. Rationale (disclosed per this lane's own task
+    # brief, which asked for this choice to be justified): the property tests
+    # here only ever touch 5 specific tables (chart_divisionals, chart_facts,
+    # chart_fact_identity, reference_planets, charts) via ChartReaderV4/
+    # PratijnaV4Engine — a committed, versioned, ~1.8MB gzipped fixture
+    # (platform/python-sidecar/tests/fixtures/pratijna_v4_snapshot/) restores
+    # in seconds and needs no live Cloud SQL Auth Proxy connection at all,
+    # unlike fresh_chart_smoke.yml's full-schema approach (which exists for a
+    # DIFFERENT purpose — catching schema/vocabulary drift across the ENTIRE
+    # 107-asset writer fleet, not exercising one already-built engine against
+    # one chart's already-computed facts). Runs on every PR (unlike
+    # fresh_chart_smoke.yml's Wednesday-only cadence) because restoring a
+    # ~1.8MB fixture and running the engine against it is fast enough to gate
+    # every PR on, and this is exactly the kind of regression (a change to
+    # bo_pratijna_v4_engine.py/bo_pratijna_karyatva.py silently breaking one
+    # of the master plan's named properties) that should fail loudly on the
+    # PR that introduces it, not wait for a weekly smoke run.
+    name: PRATIJÑĀ v4 Fixture Property Tests (Lane B3)
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/pratijna_v4_fixture
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: |
+            platform/python-sidecar/requirements-ci.txt
+
+      - name: Install Python dependencies
+        run: pip install -r platform/python-sidecar/requirements-ci.txt --quiet
+
+      - name: Provision the fixture database
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 \
+            -c "CREATE DATABASE pratijna_v4_fixture;"
+
+      - name: Restore the pratijna_v4_snapshot fixture (schema + gzipped per-table CSVs)
+        # See platform/python-sidecar/tests/fixtures/pratijna_v4_snapshot/README.md
+        # for what this fixture is and how to regenerate it, and
+        # platform/scripts/fixtures/restore_pratijna_v4_snapshot.py's own
+        # module docstring for the restore procedure itself (identical to
+        # what a developer runs locally to reproduce this job).
+        run: |
+          python3 platform/scripts/fixtures/restore_pratijna_v4_snapshot.py "$DATABASE_URL"
+
+      - name: pytest — PRATIJÑĀ v4 CI-tier property tests
+        # Mutation-proven properties, not rubber stamps: three of these
+        # tests (test_near_maximal_occurrence_check_is_a_real_detector,
+        # test_citation_resolution_check_is_a_real_detector,
+        # test_r13_audit_check_is_a_real_detector) exist specifically to
+        # prove the OTHER property checks in this file would actually catch
+        # a seeded defect, not just pass vacuously on the one fixture chart
+        # available (§N.8 Earned-Signal Principle).
+        working-directory: platform/python-sidecar
+        run: |
+          pytest tests/test_pratijna_v4_snapshot_properties.py -v --tb=short
+
   planner-regression:
     name: Planner Regression Gate
     runs-on: ubuntu-latest
