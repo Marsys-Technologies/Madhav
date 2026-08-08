@@ -247,6 +247,23 @@ was surfaced by a filesystem-walk local lint run — confirmed harmless (not in 
 the PR, not visible to CI's clean checkout) but flagged to the native as a housekeeping item since
 it contains a plaintext DB credential.
 
+**Second GATE-EXECUTOR run (fresh context, independent re-derivation from zero — the fix above
+was NOT trusted, re-verified live): PARKED AGAIN, correctly.** Confirmed the fact-category-pin
+fix genuinely holds (re-ran the lint live, 0 new violations) and confirmed R19/migration-liveness/
+idempotency/rollback all clean — but found a SECOND, different real regression: CI's "Build Check
+(PR only)" is red. Root cause independently traced via direct log inspection: Lane A2's edit to
+`platform/src/components/trace/QueryDNAPanel.tsx` (a client-bundled component, reached via
+`TracePanel.tsx`→`TraceDrawer.tsx`→`ConsumeChatV2.tsx`) now imports from `address_resolver.ts`,
+which transitively pulls in `@/lib/db/client` → the `server-only` marker package — poisoning the
+client bundle and failing `npm run build` for real (Docker image build fails). Confirmed via diff
+against `main`: this import chain does not exist there. **A second real defect PARĪKṢAKA's
+per-lane sign-off on A2 did not catch** (its test sweep — ~6700 pytest + tsc + vitest — never
+included an actual production Next.js build). Fix dispatched: extract the pure, client-safe subset
+of `address_resolver.ts` (the graha label constants/functions `QueryDNAPanel.tsx` actually needs,
+no DB access) into a new client-safe module, re-exported back from `address_resolver.ts` (same
+"move not copy" discipline as Lane A2's own Python-side `norm_graha` promotion) — not a band-aid
+duplicate map. GATE-EXECUTOR will be re-dispatched fresh a third time once this lands.
+
 ## Session log
 
 - **2026-08-08 (this session, Sonnet 5):** Stage 0 pre-flight run (table above). Plan of
