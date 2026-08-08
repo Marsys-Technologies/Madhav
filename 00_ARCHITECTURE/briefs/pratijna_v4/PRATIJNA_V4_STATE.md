@@ -15,13 +15,23 @@ MERGED, Rung P4 GREEN** (`25e7b9ede`). **Lane B2 library half CLOSED, MERGED, Ru
 separation 0.505/8.75, childbirth 0.593/7.50), PARĪKṢAKA-verified factor-by-factor, no
 compensating errors, R13 clean. **The writer-wiring follow-on lane is the NEXT ACTION.**
 
-**Live status:** Lane B2 library CLOSED (merged `f6bde1ac1`), Rung P5 GREEN. **NEXT ACTION on
-resumption: dispatch the writer-wiring follow-on lane** — wire `bo_pratijna_v4_engine.py` into a
-new `bo_pratijna` v4.0 writer (FROZEN orchestrator contract: `@register`, `run(ctx)`/
-`plan_substeps`+`run_substep`, `ctx.db_conn` never committed by writer, §N.3 per-chart delete-
-then-insert idempotency, `no_evidence` preserved, `ON CONFLICT` semantics preserved) — through the
-same BUILDER-in-worktree → PR → PARĪKṢAKA → conductor-merge rails, then Rung P6 (one orchestrated
-run, one chart → DB rows byte-agree with Rung P5's offline table). GREEN before B3.
+**Live status:** Lane B2 library CLOSED (merged `f6bde1ac1`), Rung P5 GREEN. **Writer-wiring lane
+DISPATCHED** to an isolated-worktree BUILDER, branch `pratijna-v4/lane-b2-writer-wiring` off
+`pratijna-v4/integration`. Briefed on: the existing v3 writer's structure (`@register("bo_pratijna")`,
+LIGHT `run(ctx)`, per-chart delete-then-insert + `ON CONFLICT`), the `bodha_pratijna` table already
+having `occurrence_grade`/`condition_grade` columns and a `status` CHECK widened to include
+`no_evidence` (migrations 545/548 — likely no new migration needed, but builder's call), the FROZEN
+orchestrator contract (no changes, stop-and-report if one seems needed), and — the central design
+decision — how to map v4's 5-band occurrence/condition threshold system onto the existing 4-value
+`status` column (`promised`/`denied`/`conditional`/`no_evidence`) without discarding the rubric's
+richer nuance or, worse, picking a mapping that happens to make a known chart look a particular way
+(explicit R13 flag). Rung P6 required as a real live write-then-read round-trip against
+`bodha_pratijna` for chart `482012f1`, diffed against Rung P5's offline numbers — not mocked.
+**NEXT ACTION on resumption:** check builder PR status; if open, dispatch fresh-context PARĪKṢAKA
+(scope: re-run Rung P6 live independently, scrutinize the status-mapping decision hardest — this is
+the newest real R13 surface — confirm FROZEN contract untouched, confirm idempotency preserved,
+confirm derivation ledger/provenance actually lands in the DB row not just computed-and-discarded)
+BEFORE merge; only then close B2 fully and move to Lane B3 (three-tier verification).
 
 **RULING on file (native+Fable, 2026-08-08):** all remaining lanes (B1–B7) go through proper
 BUILDER-in-isolated-worktree + independent fresh-context PARĪKṢAKA-verdict-before-merge, per the
@@ -87,8 +97,8 @@ queued ≠ merged.
 | — | Rung P4 (reader ≡ probe_p2_tracer) | **GREEN.** Builder's own live run + PARĪKṢAKA's independent live re-run of both `probe_p4_reader.py` and `probe_p2_tracer.py` agree byte-for-byte on both charts (occupants, D9 sign, 7th lord+house, incl. identical `sripati_madhya` fallback values), non-empty provenance on every answer. PARĪKṢAKA verdict PASS across all 7 scope items (Rung P4 self-run, 5 hard requirements, `sign_of` extension judgment, independent test re-run incl. pre-existing-failure baseline diff against clean `pratijna-v4/integration`, the stash incident — resolved, no data loss, SIDDHANTA's committed state untouched, only ephemeral stash ever at risk — R19 read-only check). Worktree + lane branch cleaned up post-merge (`node_modules` was the only untracked leftover, force-removed safely). |
 | B2 | The v4 engine — LIBRARY half | **CLOSED — MERGED @ `f6bde1ac1` (PR #1114).** `bo_pratijna_v4_engine.py` implementing all 27 classes; `chart_reader_v4.py` gained one disclosed addition (`reference_planets()`, global L0 classical-attribute lookup); `probe_p5_offline_grades.py`. Builder's own claim: **exact reproduction of all 3 RUNG_P3 numbers** on the first fully-debugged live run (no fudging — built from `ga_condition_writer.py`'s existing dignity-relation functions + RUNG_P3's own worked arithmetic). 70/70 new tests, 316 passed/0 new failures on scoped regression, 27/27 weight sums `==Fraction(1)`. 5 R13/R16-disclosed judgment calls (yoga-presence always 0.00 — matches RUNG_P3's own honest gap; dusthana test = full-strength aspects only; CFG-2 combustion sub-test always False — only makes denial less likely, never fabricates affliction; missing-varga = honest gap not fabricated debilitation; CFG-1 cancellation untested against the oracle). **PARĪKṢAKA scope is deliberately harder than B0/B1**: item 2 is a factor-by-factor trace of separation's derivation ledger against RUNG_P3 §2's own worked table (final-number match alone is NOT sufficient — compensating errors are the specific risk on a claim like this), item 3 is a sharper R13 audit of the 5 disclosed judgment calls (genuinely forced vs. convenient dial), plus independent Rung P5 re-run, Reader-exclusivity check, weight-sum re-derivation, test re-run, R19/writer-scope check, lint. |
 | — | Rung P5 (offline grades vs P3 hand-worked numbers) | **GREEN.** PARĪKṢAKA independently re-ran `probe_p5_offline_grades.py` live on both charts — byte-for-byte match to the builder's output, all 5 assertions PASS, exact reproduction of marriage 0.321/5.83, separation 0.505/8.75, childbirth 0.593/7.50. Went further than a final-number check: extracted the live `factor_ledger`/`denials`/`condition_ledger` for all three classes and verified EVERY individual weighted term (house_lord, each karaka, divisional, dusthana, yoga, each condition-malefic) against RUNG_P3's own worked tables line-for-line — no compensating errors. Independently re-derived weight tables for 7 classes as exact `Fraction`s against the spec — matched. R13 audit clean (no chart-ID branching, `DIGNITY_BAND` byte-identical to the pre-existing production `DIGNITY_SCORES`, single-commit branch history, no visible tune-and-rerun pattern; the `full_contact` judgment call independently re-checked against RUNG_P3's own counter-example and confirmed correct). Reader-exclusivity confirmed (zero raw SQL), `reference_planets()` confirmed genuinely global/chart-agnostic. One non-blocking note carried forward: CFG-1's neecha-bhaṅga cancellation path is untested against any live chart (synthetic tests only) — flag for a future lane, not a blocker. Worktree + branch cleaned up post-merge. |
-| — | (writer wiring into `bo_pratijna` v4.0, FROZEN contract) | NOT STARTED — separate follow-on lane after B2 library + Rung P5 close |
-| — | Rung P6 (DB rows byte-agree with P5) | PENDING — blocked on writer wiring |
+| — | (writer wiring into `bo_pratijna` v4.0, FROZEN contract) | **DISPATCHED** to isolated-worktree BUILDER, branch `pratijna-v4/lane-b2-writer-wiring`. See "Live status" above for full brief summary. |
+| — | Rung P6 (DB rows byte-agree with P5) | PENDING — builder deliverable, real live write-then-read round-trip required, no mocks. |
 | B3 | Three-tier verification (snapshot fixture + property tests + CI) | NOT STARTED |
 | B4 | Consumer audit (ph_nimitta, ka_*, mi_darshana, query_pratijna) | NOT STARTED |
 | — | Rung P7 (one class through consumers) | PENDING |
