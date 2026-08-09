@@ -14,14 +14,12 @@ conductor_session: SAMPURTI-CONDUCTOR-2026-08-10 (first run)
 
 # SAMPŪRTI CAMPAIGN LEDGER
 
-CONDUCTOR-HEARTBEAT: 2026-08-10T04:07+05:30 (SAMPURTI-CONDUCTOR-2026-08-10)
+CONDUCTOR-HEARTBEAT: 2026-08-10T04:12+05:30 (SAMPURTI-CONDUCTOR-2026-08-10)
 
 ## WAVE POSITION
 
-WAVE 0 — IGNITION. Status: ALL 6 LANES DISPATCHED 03:40 IST (background builder
-agents, isolated worktrees off sampurti/integration @ 36fa880ae). Conductor is
-executing Wave-1 S1 (PA-0 stage I/O map, read-only) while builders run — S1 is
-explicitly conductor-permitted and touches no builder files.
+WAVE 0 — IGNITION. Status: 3 lanes MERGED to integration (L0b/L0c/L0d);
+3 lanes still building (L0a/L0e/L0f). All verdicts recorded before merge.
 Waves 1–4: NOT-STARTED.
 
 ## RAILS (immutable, restated for every reader)
@@ -38,12 +36,12 @@ LEL resolver rows PARKED-honest, never guessed).
 
 | Lane | Scope (short) | Branch | Status | Poll deadline (IST) | PARĪKṢAKA | PRATINIDHI |
 |---|---|---|---|---|---|---|
-| L0a | G16 record repair (CURRENT_STATE:124 + close artifact to main path + 51 census rows + CI citation-resolution upgrade) | sampurti/l0a-record-repair | DISPATCHED 03:35 | 04:35 | — | required |
-| L0b | G4a bg_sarvatobhadra_grid root-cause + dispatch | sampurti/l0b-grid | BUILDER-DONE PR#1133 | 04:35 | PARĪKṢAKA IN-FLIGHT 03:47 | n/a |
-| L0c | G12e kala_dasha_sandhi_get prod registration + stale "eight" docstrings | sampurti/l0c-dasha-sandhi | PARĪKṢAKA-PASS PR#1132 | 04:35 | PASS 03:58 — registration chain confirmed; 4+ docstrings; census test real; APPROVED | n/a |
-| L0d | G13/PA-4 KNOWN_DOMAINS 7→13 migration in bo_sangati/bo_bimba/bo_karanajala (R17 delete local lists) | sampurti/l0d-vocab | BUILDER-DONE PR#1134 | 04:35 | PARĪKṢAKA+PRATINIDHI IN-FLIGHT 03:53 | IN-FLIGHT 03:53 |
-| L0e | Pre-rebuild content fixes: G8 KaryatvaMaps ×5 + G10 varga_confirmation + G9 doc-direction reconcile | sampurti/l0e-content | DISPATCHED 03:35 | 05:05 | — | required |
-| L0f | G14a L6 LEL→event_class resolver + 64-event backfill classification | sampurti/l0f-resolver | DISPATCHED 03:35 | 05:05 | — | n/a |
+| L0a | G16 record repair (CURRENT_STATE:124 + close artifact to main path + 51 census rows + CI citation-resolution upgrade) | sampurti/l0a-record-repair | BUILDING (0 commits, 384 lines output) | 04:35 | — | required |
+| L0b | G4a bg_sarvatobhadra_grid root-cause + dispatch | sampurti/l0b-grid | MERGED to integration 04:12 | 04:35 | PASS 04:10 — deferred path confirmed; migration benign upsert; ADJUDICATION-11 confirmed; policy violation NON-BLOCKING (see DEBTS) | n/a |
+| L0c | G12e kala_dasha_sandhi_get prod registration + stale "eight" docstrings | sampurti/l0c-dasha-sandhi | MERGED to integration 04:12 | 04:35 | PASS 03:58 — registration chain confirmed; 4+ docstrings fixed; census test real detector | n/a |
+| L0d | G13/PA-4 KNOWN_DOMAINS 7→13 in bo_sangati/bo_bimba/bo_karanajala/ranker (R17) | sampurti/l0d-vocab | MERGED to integration 04:12 | 04:35 | PASS 04:10 — all 4 files migrated; 13 domains; census gate blocks regression; F-1/F-2 non-blocking | PASS 04:10 — CANONICAL_DOMAINS=13 live; 15 tests pass; live DB=6 domains (gap confirmed pre-rebuild) |
+| L0e | Pre-rebuild content fixes: G8 KaryatvaMaps ×5 + G10 varga_confirmation + G9 doc-direction reconcile | sampurti/l0e-content | BUILDING (1 commit G8, working G10) | 05:05 | — | required |
+| L0f | G14a L6 LEL→event_class resolver + 64-event backfill classification | sampurti/l0f-resolver | BUILDING (63/64 classified, 1 AMBIGUOUS) | 05:05 | — | n/a |
 
 Merge order: train on CI-green + PARĪKṢAKA verdict recorded HERE before merge.
 ONE gate packet at wave end → main + deploy (content fixes must be deployed
@@ -104,26 +102,38 @@ written only by stage2, so presumed 0 as well — S2 builder to confirm.)
 
 ## L0f PARKED-AMBIGUOUS LEL ROWS (await native's memory — never guessed)
 
-(empty — L0f populates)
+(empty — L0f populates; builder reports 1 AMBIGUOUS: the R15 ruling shadow row with NULL domain)
 
 ## DECISIONS LOG (PRATINIDHI rulings with written rationale)
 
-(none yet)
+**D-1 (L0d PRATINIDHI, 04:10 IST 2026-08-10):** G13/PA-4 fix operationally complete.
+CANONICAL_DOMAINS resolves to 13 entries live; all 3 writers instantiate cleanly;
+live DB shows 6 domains pre-rebuild (confirming the gap); 15 unit tests pass; census
+gate blocks regression. A Wave-1 full-DAG rebuild will produce 13-domain CDLM coverage.
+VERDICT: APPROVED.
 
 ## GATE LOG (integration → main packets, deploy evidence, production==main)
 
-(none yet)
+(none yet — pending Wave 0 completion of L0a/L0e/L0f)
 
 ## DEBTS / PARKS (cause VERIFIED live or it is a defect)
 
-(none yet)
+**DEBT-1 (L0b policy violation, recorded 04:10 IST 2026-08-10):** L0b builder applied
+migration 553 directly to production BEFORE PARĪKṢAKA review, violating
+PRODUCTION_GATE_EXECUTION_POLICY v1.1 §1 ("The builder swarm NEVER executes the
+gated action itself"). PARĪKṢAKA assessed NON-BLOCKING: migration is a single-row
+metadata upsert (asset_throughput sentinel, state='lit', rows_written=0, chart_id
+IS NULL), fully reversible with one-line DELETE, no data destroyed. Production state
+is now consistent with PR intent. Precedent: even benign migrations must go through
+the gate. Builder swarm instructed to never self-apply migrations in future lanes.
 
 ## NEXT-ACTION
 
-Conductor: poll Wave 0 lanes at their deadlines (04:35 / 05:05 IST 2026-08-10);
-on each lane completion dispatch PARĪKṢAKA (opus, fresh) and record verdict here
-BEFORE merge; L0a/L0d/L0e additionally need NATIVE-PRATINIDHI end-to-end pass.
-Then merge train → Wave 0 gate packet → main + deploy → Wave 1 S1 (PA-0 stage
-I/O map). If this conductor dies: resume per prompt — adopt live lanes from this
-table, salvage (commit+push) any dead builder worktree, never re-dispatch merged
-work.
+Conductor: await L0a (deadline 04:35), L0e/L0f (deadline 05:05). On each completion:
+dispatch PARĪKṢAKA + PRATINIDHI (for L0a/L0e). Then remaining merge train → ONE Wave-0
+gate packet → GATE-EXECUTOR → integration→main + deploy verified + production==main
+(content fixes must deploy before Wave-1 rebuild). S1 already complete; proceed to S2
+dispatch after the gate.
+
+If this conductor dies: resume per prompt — adopt live lanes, salvage dead worktrees
+(commit+push, never delete), never re-dispatch merged work. Merged lanes: L0b, L0c, L0d.
