@@ -35772,7 +35772,56 @@ Once the rubric spec is ratified v0.9→v1.0 (with any new rulings the checkpoin
 
 ---
 
-## Session: PRATIJÑĀ-V4-CONDUCTOR-2026-08-09
+## PRATIJNA-V4-CONDUCTOR-2026-08-09 — PRATIJÑĀ v4 Campaign B closed: v4 scoring engine live, marriage answer served, RUN-TERMINAL ARC-COMPLETE
+
+```yaml
+session_open:
+  session_id: PRATIJNA-V4-CONDUCTOR-2026-08-09
+  cowork_thread_name: "Madhav — PRATIJÑĀ v4 Campaign B Conductor"
+  agent_name: claude-sonnet-5
+  agent_version: claude-sonnet-5
+  step_number_or_macro_phase: "Campaign B (PRATIJÑĀ v4) — post-rebuild era, MASTER_PLAN_v1_0.md §5"
+  predecessor_session: ADHISTHANA-CONDUCTOR-2026-08-08
+  mandatory_reading_confirmation:
+    # Honest scoping note: this session opened via a native-authored PRATIJÑĀ v4 Campaign B
+    # conductor kickoff prompt (which itself names the mandatory-reading list plus
+    # campaign-specific reading), not a literal field-by-field SESSION_OPEN_TEMPLATE §2
+    # handshake with per-file sha256 fingerprints computed at read time. The items below were
+    # genuinely read in full during Stage 0, at the point in the session they were first needed
+    # (not all at literal session-open) — fingerprints are not populated (not computed at read
+    # time this session) rather than fabricated.
+    - file: CLAUDE.md
+      fingerprint_sha256: "<not computed this session>"
+      read_at: "<start of session, exact timestamp not captured>"
+    - file: 00_ARCHITECTURE/briefs/adhisthana/MASTER_PLAN_v1_0.md
+      fingerprint_sha256: "<not computed this session>"
+      read_at: "<start of session, exact timestamp not captured>"
+    - file: 00_ARCHITECTURE/briefs/pratijna_v4/V4_RUBRIC_SPEC_v0_9.md
+      fingerprint_sha256: "<not computed this session — this session's own first act copied this file forward as V4_RUBRIC_SPEC_v1_0.md>"
+      read_at: "<Stage 0, exact timestamp not captured>"
+    - file: 00_ARCHITECTURE/briefs/adhisthana/RUNG_P3_HAND_WORKED_v1_0.md
+      fingerprint_sha256: "<not computed this session>"
+      read_at: "<Stage 0, exact timestamp not captured>"
+    - file: 00_ARCHITECTURE/briefs/adhisthana/A8_FACTOR_FACT_COVERAGE_MATRIX_v1_0.md
+      fingerprint_sha256: "<not computed this session>"
+      read_at: "<Stage 0, exact timestamp not captured>"
+    - file: 00_ARCHITECTURE/briefs/adhisthana/ADHISTHANA_STATE.md
+      fingerprint_sha256: "<not computed this session>"
+      read_at: "<Stage 0, exact timestamp not captured>"
+  scope_declaration:
+    may_touch: ["00_ARCHITECTURE/briefs/pratijna_v4/**", "platform/python-sidecar/pipeline/orchestrator/writers/bo_pratijna*",
+      "platform/python-sidecar/brahmagyan/chart_reader_v4.py", "platform/python-sidecar/pipeline/orchestrator/writers/mi_darshana.py",
+      "platform/python-sidecar/pipeline/orchestrator/writers/{ka_yojaka,ka_avadhi,ka_taranga,ph_nimitta}.py",
+      "platform/python-sidecar/services/ka_kshetra/**", "platform/python-sidecar/pipeline/orchestrator/writers/mi_bhara.py",
+      "platform/scripts/probes/**", "platform/scripts/fixtures/**", ".github/workflows/ci.yml", ".github/workflows/tap-ci.yml",
+      "00_ARCHITECTURE/briefs/siddhanta/SKILL_MEASUREMENT_REGISTER_v1_0.md",
+      "00_ARCHITECTURE/CURRENT_STATE_v1_0.md", "00_ARCHITECTURE/SESSION_LOG.md",
+      "bodha_pratijna, mimamsa_insight_units, kala_field_windows, kala_field_skill/gof, and the 5 downstream-consumer output tables (DB writes, not files — see native_chart_touch_detail below)"]
+    must_not_touch: ["chart_facts (R19, absolute)", "chart_divisionals (R19, absolute)",
+      "kala_gochara_windows for protected (asset_id, chart_id) pairs without explicit opt-in (R1, sweep-corpus untouchable)",
+      "any file outside PRATIJÑĀ v4's declared engine/writer/consumer/measurement scope"]
+  red_team_due: false
+```
 
 **Campaign:** PRATIJÑĀ v4 ("the promise"), Campaign B of the ratified MASTER PLAN — the actual
 promise-engine implementation, following ADHIṢṬHĀNA's checkpoint. Full ledger:
