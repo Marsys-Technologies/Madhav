@@ -146,6 +146,29 @@ adoption phase").
 **Result: CLOSED, PARĪKṢAKA-VERIFIED PASS.**
 
 ---
+
+## ADOPTION PHASE — Stage 2 (gate + deploy + rebuild) — CLOSED
+
+| Item | Detector | Result |
+|---|---|---|
+| Gate packet (R22-cited) | PR #1130, "F1 ADOPTION CYCLE: production flip to v4.1.0 (R22)" | https://github.com/Marsys-Technologies/Madhav/pull/1130 |
+| CI green | `gh pr checks 1130` | All checks pass, incl. `PRATIJÑĀ v4 Fixture Property Tests (Lane B3)` |
+| Merge | Merge queue, `mergeStateStatus=CLEAN` | Squashed to `main` as `912402983` |
+| Deploy verified | `gh run list` "Deploy to Cloud Run" for `912402983`; `gcloud run services describe amjis-sidecar` | Deploy run `conclusion=success`; `amjis-sidecar-00971-d28` Ready, 100% traffic |
+| One real MCP call | `mcp_server_info` against the live deployed server | `catalog_version=catalog-1+t152+r653c2a1a98c8`, `stale=false` — server live and responding |
+| Rebuild 482012f1 (sequential, first) | Real `BoPratijnaWriter.run(ctx)` via `cloud-sql-proxy` against production `amjis-postgres`, committed | `build_id=897b87e8-c056-4ca8-adf6-505dd03489f4`; 135 rows; `engine=bo_pratijna_v4.1.0`; `status_counts={'conditional': 57, 'promised': 78}` |
+| Rebuild 1c826d5a (sequential, second) | Same real writer path | `build_id=ebc8335b-8357-4dbf-92ea-8ae9e019ebae`; 135 rows; `engine=bo_pratijna_v4.1.0`; `status_counts={'promised': 25, 'conditional': 105, 'denied': 5}` |
+| **Acceptance — marriage row (482012f1)** | Live SELECT, `lahiri_chitrapaksha` | `status=conditional, occurrence_grade=0.450, condition_grade=5.830, engine_version=bo_pratijna_v4.1.0` — matches R16-cited target exactly |
+| **Acceptance — 10 moved classes exact match** | Live SELECT vs `F1_SIDE_BY_SIDE_v1_0.md` §1 | All 10 occurrence/condition pairs on 482012f1 match the side-by-side's v4.1 column exactly (bereavement 0.719/10.00, business_launch 0.731/8.75, career_setback 0.880/7.50, foreign_settlement 0.740/7.50, major_gain 0.689/10.00, major_loss 0.695/10.00, marriage 0.450/5.83, property_acquisition 0.379/6.25, romantic_start 0.393/7.50, separation 0.575/8.75) |
+| **Acceptance — 17 unmoved classes byte-identical to v4.0** | Live SELECT vs `V4_RUBRIC_SPEC`/side-by-side v4.0 baseline | All 17 unchanged (achievement_recognition 0.891, birth_anchor 0.564, career_advancement 0.771/7.50, career_change 0.774/6.25, career_entry 0.786/3.75, childbirth 0.593/7.50, chronic_onset 0.586/3.75, education_milestone 0.583/6.25, exam_outcome 0.500/6.25, financial_deception 0.841/0.00, illness_acute 0.471/6.25, parental_event 0.500/6.25, psychological_arc 0.661/0.00, relocation 0.486/8.75, spiritual_turn 0.740/7.50, surgery 0.471/6.25, travel_event 0.745/0.00) |
+| **Acceptance — 1c826d5a all 27 rows byte-identical except version tag** | Live SELECT, all 27 classes | Every occurrence/condition value matches the v4.0 baseline exactly; only `engine_version`/`formula_version` changed to `v4.1.0` |
+| **Acceptance — sweep corpus counts intact (detector query)** | `SELECT chart_id, count(*), count(distinct ayanamsha_id), count(distinct engine_version) ... GROUP BY chart_id` | Both charts: 135 rows, 5 ayanamshas, exactly 1 engine_version (`bo_pratijna_v4.1.0`) — no partial/mixed-version rows |
+| **Acceptance — downstream consumer spot-read, stage2_promise** | `services.ka_kshetra.stage2_promise._fetch_pratijna(conn, 482012f1, lahiri_chitrapaksha)`, live | marriage: `status=conditional, grade=4.500` (0.450×10 rescale) — consumer sees the new value |
+| **Acceptance — downstream consumer spot-read, mi_darshana** | `mi_darshana.py`'s own §5 query (lines 262-270), unmodified, run live, scoped to marriage | `status=conditional, grade=4.500, domain=relationship`; `derivation.engine_version=bo_pratijna_v4_engine.0.1+F1` — consumer sees the amendment tag |
+
+**Result: CLOSED.**
+
+---
 *F1_CYCLE_STATE.md v1.0 (2026-08-09). Created at Stage 3 close per the governing prompt's Stage 3
 instruction ("Ledger close + morning report"). This is the campaign's only ledger entry — the
 whole cycle closed in one session.*
