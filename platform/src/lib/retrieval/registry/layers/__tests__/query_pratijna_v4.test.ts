@@ -63,3 +63,62 @@ describe('query_pratijna — PRATIJÑĀ v4 served-text accuracy (Lane B4)', () =
     expect(content['no_evidence_qualification']).toBeNull()
   })
 })
+
+describe('query_pratijna — G10 varga_confirmation serving (SAMPURTI L0e)', () => {
+  it('description mentions varga_confirmation consensus with per_system, consensus_dignity, unanimous, dissent (G10/SAMPURTI L0e)', () => {
+    // The description is a static string on the capability — no DB call needed.
+    const desc = queryPratijnaCapability.description
+    expect(desc).toMatch(/varga_confirmation/)
+    expect(desc).toMatch(/per_system/)
+    expect(desc).toMatch(/consensus_dignity/)
+    expect(desc).toMatch(/unanimous/)
+    expect(desc).toMatch(/dissent/)
+    // G10 annotation
+    expect(desc).toMatch(/G10/)
+  })
+
+  it('reference_note in handler output documents varga_confirmation shape and G10 provenance', async () => {
+    mockRows.mockReturnValue([
+      { pratijna_id: 'p1', event_class_id: 'marriage', status: 'promised', grade: 8.5,
+        varga_confirmation: JSON.stringify({
+          varga: 'D9', graha: 'Venus',
+          per_system: { lahiri_chitrapaksha: { varga_sign: 'Pisces', dignity_state: 'own', band: 0.8 } },
+          consensus_dignity: 'own', unanimous: false, dissent: [],
+          source: 'cross-ayanamsha consensus, 5 L1-computed systems (G10/SAMPURTI L0e)',
+        }) },
+    ])
+    const r = await queryPratijnaCapability.handler({ chart_id: CHART_A }, {})
+    expect(r.is_error).toBe(false)
+    const content = r.content as Record<string, unknown>
+    const refNote = String(content['reference_note'])
+    // reference_note must document varga_confirmation
+    expect(refNote).toMatch(/varga_confirmation/)
+    // must cite G10 or cross-ayanamsha consensus
+    expect(refNote).toMatch(/G10|cross-ayanamsha/)
+  })
+
+  it('varga_confirmation column is selected (rows pass it through)', async () => {
+    const vcPayload = {
+      varga: 'D10', graha: 'Mercury',
+      per_system: {
+        lahiri_chitrapaksha: { varga_sign: 'Capricorn', dignity_state: 'great_enemy', band: 0.2 },
+        raman: { varga_sign: 'Capricorn', dignity_state: 'great_enemy', band: 0.2 },
+      },
+      consensus_dignity: 'great_enemy', unanimous: false, dissent: [],
+      source: 'cross-ayanamsha consensus, 5 L1-computed systems (G10/SAMPURTI L0e)',
+    }
+    mockRows.mockReturnValue([
+      { pratijna_id: 'p1', event_class_id: 'career_advancement', status: 'promised',
+        grade: 7.2, varga_confirmation: JSON.stringify(vcPayload) },
+    ])
+    const r = await queryPratijnaCapability.handler({ chart_id: CHART_A }, {})
+    const content = r.content as Record<string, unknown>
+    const rows = content['rows'] as Array<Record<string, unknown>>
+    // The served row must carry varga_confirmation through unchanged
+    expect(rows[0]['varga_confirmation']).toBeTruthy()
+    // The JSON payload must round-trip correctly (served as-is from DB)
+    const vc = JSON.parse(rows[0]['varga_confirmation'] as string)
+    expect(vc['varga']).toBe('D10')
+    expect(vc['consensus_dignity']).toBe('great_enemy')
+  })
+})
