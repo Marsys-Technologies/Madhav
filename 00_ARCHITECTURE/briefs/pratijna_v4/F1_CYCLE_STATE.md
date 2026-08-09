@@ -100,6 +100,55 @@ ledger value (`great_enemy`/0.20, not the placeholder 0.30 first written). Both 
 visible in the published artifact's own text (not scrubbed), consistent with R16.
 
 ---
+
+## R22 — ADOPTION RULING (native + Fable, 2026-08-09)
+
+> **R22 — F1 ADOPTION.** Amendment F1 (dispositor-conjunction exception, R20 cycle 1) is ADOPTED
+> into production, on the evidence of `F1_SIDE_BY_SIDE_v1_0.md`: 10/27 classes moved on chart
+> `482012f1` (all traced to exactly two dispositor-conjunction pairs, no unexplained residual),
+> 0/27 moved on chart `1c826d5a` (the amendment's narrow scope is inert absent its trigger, an
+> honest confirmation not a defect), Δcondition = 0.000 everywhere (structurally guaranteed), and
+> exactly one band-crossing cell in the whole 54-cell sweep (marriage, WEAK→MODERATE, the native's
+> own married outcome). R13 (no tuning against any chart) and R16 (full disclosure) were upheld
+> throughout Stages 0–2; this ruling is decided from the measurement + classical merit per R20
+> item 4, not from a target number.
+
+**Effect of this ruling:** opens the F1 AMENDMENT CYCLE's Stage 3+ as a new **ADOPTION** phase
+(distinct from the AMENDMENT CYCLE's own three stages, already closed above) — this ledger
+continues in the same file, same campaign home, per the governing prompt's framing ("same cycle,
+adoption phase").
+
+---
+
+## ADOPTION PHASE — Stage 0 (R22 record + spec amendment) — CLOSED
+
+| Item | Detector | Result |
+|---|---|---|
+| Branch cut from `main` | `git checkout -b f1-adoption/integration main` | Done, from `0bc61bb6c` |
+| R22 recorded in ledger | This entry, verbatim ruling text | Done |
+| `V4_RUBRIC_SPEC` v1.0 → v1.1 | New §2.1.1, F1 rule quoted verbatim from `AMENDMENT_F1_SPEC_v1_0.md`; frontmatter version + changelog bump; no other content touched | Done |
+
+**Result: CLOSED.**
+
+---
+
+## ADOPTION PHASE — Stage 1 (production flip, builder + PARĪKṢAKA) — CLOSED
+
+| Item | Detector | Result |
+|---|---|---|
+| `DEFAULT_AMENDMENTS = frozenset({'F1'})`, `bo_pratijna.py` | `engine = PratijnaV4Engine(reader, amendments=DEFAULT_AMENDMENTS)` | Commit `74450a782` |
+| Version tags | `ENGINE_VERSION` "bo_pratijna_v4.0"→"bo_pratijna_v4.1.0"; `FORMULA_VERSION` "v4.0"→"v4.1.0" | Same commit |
+| `amendments` param remains available | `bo_pratijna_v4_engine.py` untouched by this commit — `PratijnaV4Engine.__init__(..., amendments: frozenset[str] = frozenset())` unchanged | Confirmed |
+| Test fixtures updated, evidence-cited | `RUNG_P3_EXPECTED`: marriage 0.321→0.450, separation 0.505→0.575 (childbirth unchanged 0.593) — source `F1_SIDE_BY_SIDE_v1_0.md` §1; offline comparison engine in the live test also gets `amendments=DEFAULT_AMENDMENTS` so it doesn't spuriously diverge from the now-F1-scored DB rows | Same commit |
+| Full test suite green | `pytest` (writer + engine unit/live suites) | 99 passed, 13 skipped (DBURL unset — expected) |
+| PARĪKṢAKA independent review | Dispatched as separate `code-reviewer` subagent, 5 numbered checks against the raw commit diff | **PASS** — diff is exactly default-flip + version tag + fixture update, nothing else rides along; no assertion weakened; new expected numbers cross-checked against `F1_SIDE_BY_SIDE_v1_0.md` and match exactly |
+
+**Result: CLOSED, PARĪKṢAKA-VERIFIED PASS.**
+
+---
 *F1_CYCLE_STATE.md v1.0 (2026-08-09). Created at Stage 3 close per the governing prompt's Stage 3
 instruction ("Ledger close + morning report"). This is the campaign's only ledger entry — the
 whole cycle closed in one session.*
+
+*Continued 2026-08-09, same session, F1 ADOPTION CYCLE (R22) — same ledger file, adoption phase
+appended above rather than a new file, per the governing prompt.*

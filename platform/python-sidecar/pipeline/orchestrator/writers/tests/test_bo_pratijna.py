@@ -1,4 +1,5 @@
-"""Tests for the bo_pratijna writer (Promise Register, L2 Bodha), PRATIJÑĀ v4.0.
+"""Tests for the bo_pratijna writer (Promise Register, L2 Bodha), PRATIJÑĀ v4.1.0
+(R22 adoption, F1 default-on, 2026-08-09).
 
 Two tiers, matching the project's established writer-test convention:
 
@@ -33,6 +34,7 @@ import pytest
 
 from pipeline.orchestrator.writers.bo_pratijna import (
     CANONICAL_AYAS,
+    DEFAULT_AMENDMENTS,
     ENGINE_VERSION,
     FORMULA_VERSION,
     _row_for_score,
@@ -364,9 +366,18 @@ class TestCanonicalAyanamshas:
 CHART_482012F1 = "482012f1-710e-4a25-994a-93821f5871aa"
 _LIVE_AYA = "lahiri_chitrapaksha"
 
+# v4.1.0 numbers (R22 adoption, F1 default-on 2026-08-09) -- source of the
+# new expected values is F1_SIDE_BY_SIDE_v1_0.md §1: marriage moves
+# 0.321->0.450 (WEAK->MODERATE, the sole band-crossing cell in the whole
+# 54-cell sweep) and separation moves 0.505->0.575 (stays MODERATE);
+# childbirth is one of the 17 unmoved classes on this chart (byte-identical
+# v4.0/v4.1), so its expected value is unchanged. Condition (5.83/8.75/7.50)
+# is unchanged for all three -- Δcondition = 0.000 structurally, per
+# F1_SIDE_BY_SIDE_v1_0.md's own §5.2 analysis (the dignity-band amendment
+# cannot touch the condition axis's disjoint inputs).
 RUNG_P3_EXPECTED = {
-    "marriage": (0.321, 5.83),
-    "separation": (0.505, 8.75),
+    "marriage": (0.450, 5.83),
+    "separation": (0.575, 8.75),
     "childbirth": (0.593, 7.50),
 }
 
@@ -474,7 +485,11 @@ class TestRungP6LiveWriteThenRead:
         #      check this rung requires without doubling the DB round-trip
         #      cost of the whole 135-row run). ──
         reader = ChartReaderV4(conn, ayanamsha=_LIVE_AYA)
-        engine = PratijnaV4Engine(reader)
+        # DEFAULT_AMENDMENTS ({'F1'}, R22 adoption) -- must match the
+        # writer's own production default exactly, or this "offline vs DB
+        # row" agreement check would compare a v4.1-written row against a
+        # v4.0-scored offline recomputation and fail spuriously.
+        engine = PratijnaV4Engine(reader, amendments=DEFAULT_AMENDMENTS)
         offline_scores = {
             event_class_id: engine.score_class(CHART_482012F1, event_class_id)
             for event_class_id in RUNG_P3_EXPECTED

@@ -1,7 +1,14 @@
 """
 bo_pratijna -- Promise Register (L2 Bodha)
 ==========================================
-PRATIJÑĀ v4.0 -- writer wiring (Lane B2 follow-on).
+PRATIJÑĀ v4.1.0 -- writer wiring (Lane B2 follow-on; F1 ADOPTION CYCLE, R22, 2026-08-09).
+
+Production default flipped from v4.0 (amendments unset) to v4.1.0
+(amendments={'F1'}) per ruling R22 on the evidence of `F1_SIDE_BY_SIDE_v1_0.md`
+-- see `V4_RUBRIC_SPEC_v1_0.md` §2.1.1 and `F1_CYCLE_STATE.md` (adoption
+phase). The `amendments` parameter on `PratijnaV4Engine` remains available,
+unremoved, for future R20 cycles (F3/F7/F6a/F6b and beyond) -- this writer
+simply now supplies a non-empty default instead of none.
 
 Reads chart_divisionals / chart_facts / chart_fact_identity (exclusively
 through `brahmagyan.chart_reader_v4.ChartReaderV4`, per §N.2's per-writer
@@ -156,8 +163,15 @@ from .bo_pratijna_v4_engine import ClassScore, PratijnaV4Engine
 
 logger = logging.getLogger(__name__)
 
-ENGINE_VERSION = "bo_pratijna_v4.0"
-FORMULA_VERSION = "v4.0"
+ENGINE_VERSION = "bo_pratijna_v4.1.0"
+FORMULA_VERSION = "v4.1.0"
+
+# R22 adoption (2026-08-09): production default amendment set. F1
+# (dispositor-conjunction exception, V4_RUBRIC_SPEC_v1_0.md §2.1.1) is now
+# applied by default. Future R20 cycles add their own amendment id here
+# only after their own adoption ruling -- this constant is the single
+# point that gates production behavior, never a per-call literal.
+DEFAULT_AMENDMENTS: frozenset[str] = frozenset({"F1"})
 
 CANONICAL_AYAS = [
     "lahiri_chitrapaksha", "raman", "krishnamurti",
@@ -307,7 +321,7 @@ def _row_for_score(
 
 @register("bo_pratijna")
 class BoPratijnaWriter(WriterBase):
-    """bo_pratijna -- Promise Register (L2 Bodha), PRATIJÑĀ v4.0."""
+    """bo_pratijna -- Promise Register (L2 Bodha), PRATIJÑĀ v4.1.0 (R22 adoption)."""
 
     def run(self, ctx: ContextSpec) -> WriterResult:
         chart_id = ctx.config.get("chart_id")
@@ -327,7 +341,7 @@ class BoPratijnaWriter(WriterBase):
 
         for aya in CANONICAL_AYAS:
             reader = ChartReaderV4(conn, ayanamsha=aya)
-            engine = PratijnaV4Engine(reader)
+            engine = PratijnaV4Engine(reader, amendments=DEFAULT_AMENDMENTS)
             scores = engine.score_all(chart_id)
 
             for event_class_id, score in scores.items():
