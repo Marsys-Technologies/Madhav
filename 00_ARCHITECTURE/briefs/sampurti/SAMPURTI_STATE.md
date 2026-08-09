@@ -41,7 +41,7 @@ LEL resolver rows PARKED-honest, never guessed).
 | L0c | G12e kala_dasha_sandhi_get prod registration + stale "eight" docstrings | sampurti/l0c-dasha-sandhi | MERGED to integration 04:12 | 04:35 | PASS 03:58 — registration chain confirmed; 4+ docstrings fixed; census test real detector | n/a |
 | L0d | G13/PA-4 KNOWN_DOMAINS 7→13 in bo_sangati/bo_bimba/bo_karanajala/ranker (R17) | sampurti/l0d-vocab | MERGED to integration 04:12 | 04:35 | PASS 04:10 — all 4 files migrated; 13 domains; census gate blocks regression; F-1/F-2 non-blocking | PASS 04:10 — CANONICAL_DOMAINS=13 live; 15 tests pass; live DB=6 domains (gap confirmed pre-rebuild) |
 | L0e | Pre-rebuild content fixes: G8 KaryatvaMaps ×5 + G10 varga_confirmation + G9 doc-direction reconcile | sampurti/l0e-content | FIX-PUSHED (mig renamed 554→555) PR#1136 | 05:30 | PARĪKṢAKA+PRATINIDHI IN-FLIGHT (context-resume 05:00) | IN-FLIGHT (context-resume 05:00) |
-| L0f | G14a L6 LEL→event_class resolver + 64-event backfill classification | sampurti/l0f-resolver | FIX-PUSHED (mig renamed 553→554) PR#1135 | 05:30 | PARĪKṢAKA IN-FLIGHT (context-resume 05:00; prev near-PASS cosmetic only) | n/a |
+| L0f | G14a L6 LEL→event_class resolver + 64-event backfill classification | sampurti/l0f-resolver | VERDICT-RECORDED — merging PR#1135 | 05:30 | PASS (a3128136 05:05) — mig-554 clean; 53 tests confirmed; cosmetic SQL comment NON-BLOCKING | n/a |
 
 Merge order: train on CI-green + PARĪKṢAKA verdict recorded HERE before merge.
 ONE gate packet at wave end → main + deploy (content fixes must be deployed
@@ -131,8 +131,8 @@ the gate. Builder swarm instructed to never self-apply migrations in future lane
 
 ## NEXT-ACTION
 
-Context-resumed 05:00. Dispatched PARĪKṢAKA for L0a/L0e/L0f and PRATINIDHI for L0a/L0e.
-On PASS verdicts: record in ledger, merge in order: L0f (#1135 mig-554) → L0e (#1136 mig-555) → L0a (#1137 no-mig).
+L0f PASS recorded. Merging L0f (#1135) now. Awaiting L0a+L0e verdicts.
+Merge order: L0f (#1135 mig-554) → L0e (#1136 mig-555, on PASS) → L0a (#1137 no-mig, on PASS).
 Then ONE Wave-0 gate packet → GATE-EXECUTOR → integration→main + deploy + production==main.
 S1 complete; S2 dispatch after gate. Content fixes must deploy before Wave-1 rebuild.
 
