@@ -14,7 +14,7 @@ conductor_session: SAMPURTI-CONDUCTOR-2026-08-10 (first run)
 
 # SAMPŪRTI CAMPAIGN LEDGER
 
-CONDUCTOR-HEARTBEAT: 2026-08-10T05:20+05:30 (SAMPURTI-CONDUCTOR-2026-08-10) [PR #1138 MERGED to main (3311ae0e3); Ganga gate in-progress on main; deploy triggered]
+CONDUCTOR-HEARTBEAT: 2026-08-10T05:30+05:30 (SAMPURTI-CONDUCTOR-2026-08-10) [WAVE 0 FULLY COMPLETE: merged+deployed+backfill; dispatching Wave 1 S2]
 
 ## WAVE POSITION
 
@@ -136,6 +136,17 @@ VERDICT: APPROVED.
   not a Wave 0 / SAMPŪRTI defect (same failure pre-existed PR #1138).
   Deploy triggered by merge.
 
+**Deploy completed (31341882724) — SUCCESS (~05:25 IST):**
+  Deploy to Cloud Run completed with conclusion: success. All sidecar, pipeline, MCP, web builds deployed.
+  Production==main confirmed.
+
+**L0f backfill executed (conductor, ~05:28 IST):**
+  backfill_lel_event_class_resolution.py --persist run against production DB (127.0.0.1:5433).
+  Result: 64 rows persisted to lel_event_class_resolution (ON CONFLICT DO UPDATE).
+  classified=63 (tier1_domain_exact EXACT or tier2_single_candidate KEYWORD) · ambiguous=1 (fs shadow row,
+  NULL domain, PARKED-AMBIGUOUS per ledger — correctly stored as AMBIGUOUS confidence, not guessed).
+  Coverage assertion: 63 + 1 = 64 ✓.
+
 ## DEBTS / PARKS (cause VERIFIED live or it is a defect)
 
 **DEBT-1 (L0b policy violation, recorded 04:10 IST 2026-08-10):** L0b builder applied
@@ -147,15 +158,24 @@ IS NULL), fully reversible with one-line DELETE, no data destroyed. Production s
 is now consistent with PR intent. Precedent: even benign migrations must go through
 the gate. Builder swarm instructed to never self-apply migrations in future lanes.
 
+## WAVE 1 S2 STATUS
+
+S2 builder dispatched as background agent (05:35 IST). Branch: `sampurti/l1a-wire-stages`.
+Agent ID: a5ef44c4aa88263c1.
+
+Builder task: (1) Fix _optional_stage_plugins order: stage0→stage2→stage3→stage1;
+(2) Fix S1-F1: stage3_clocks.py kala_field_promise_routes→kala_field_routes;
+(3) Add plan_substeps/handles_substep/run_substep to stage0/stage1/stage2/stage3;
+(4) Create PR to sampurti/integration.
+
 ## NEXT-ACTION
 
-WAVE 0 GATE COMPLETE — PR #1138 merged to main (3311ae0e3).
-1. Await Ganga Quality Gate (run 31341578009) on main — expected GREEN.
-2. Confirm deploy completes (check deploy workflow / production).
-3. Run L0f backfill: `backfill_lel_event_class_resolution.py --persist` after deploy.
-4. Dispatch Wave 1 S2 builder (ka_kshetra wiring). S2 wires stages 0–3 per S1 I/O map.
-   Key: stage0→stage2→stage3→stage1→stage4+. Fix S1-F1: stage3_clocks.py:1163 repoint to kala_field_routes.
-   Content fixes (L0e) deployed first — confirm before Wave-1 rebuild begins.
+Await S2 builder PR. On PR available:
+- PARĪKṢAKA reviews: plugin order correct, S1-F1 fixed, §N.3 delete once-per-plan,
+  WriterResult.rows_inserted accurate, no commit/close on ctx.db_conn.
+- If PASS: conductor merges S2 PR to integration.
+- After merge: dispatch rebuild (chart 482012f1 full-DAG L1→L5).
+- After rebuild: P-G1 proof ladder (clocks > 0, windows narrow, AHEAD serves).
 
-If this conductor dies: integration→main ALREADY MERGED. Resume at Wave 1 S2 dispatch.
-Confirm deploy, run L0f backfill, then dispatch S2 builder.
+If conductor dies: check agent a5ef44c4aa88263c1 output for PR number.
+WAVE 0 COMPLETE: main=3311ae0e3, deploy SUCCESS, L0f 64 rows persisted.
