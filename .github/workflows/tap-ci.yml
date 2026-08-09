@@ -317,3 +317,5 @@ jobs:
 # close entry does not match paths filter; same pattern; PR #1124)
 # no-op: touch to trigger TAP-6 on pratijna-v4/b7-scoreboard (new
 # PROMISE_LAYER_SCOREBOARD_v1_0.md does not match paths filter; same pattern; PR TBD)
+# no-op: touch to trigger TAP-6 on pratijna-v4/b7-close-ledger (PRATIJNA_V4_STATE.md Lane B7
+# close + Rung P9 GREEN entry does not match paths filter; same pattern; PR TBD)
