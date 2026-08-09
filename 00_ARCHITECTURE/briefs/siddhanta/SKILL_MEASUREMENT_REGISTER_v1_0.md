@@ -141,24 +141,110 @@ them apart.
 
 ---
 
-## MEASUREMENT #3 — POST-DB6-FIX
+## MEASUREMENT #3 — POST-DB6-FIX — ATTEMPTED, BLOCKED BY DEGENERATE-INTERVAL TRIPWIRE
 
 | Field | Value |
 |---|---|
-| Campaign | SIDDHANTA arc-finishing run |
-| Status | **PENDING** — awaiting merge of PR #1100, deploy, and rebuild |
-| Prerequisite | DB6 fix live in production code |
+| Campaign | PRATIJÑĀ v4, Lane B6 |
+| Status | **BLOCKED — NOT a valid skill measurement. Real live write; NOT rolled back. Live `kala_field_skill`/`kala_field_gof` tables now hold THIS run's numbers (they supersede MEASUREMENT #2's stale numbers in the table, per §N.3 delete-then-insert — MEASUREMENT #2's numbers above remain the register's permanent transcription of that prior state).** |
+| Engine | `bo_pratijna` v4 + `ka_kshetra` (this campaign's Lanes B2/B5 rebuild) |
+| Weights version | `v0_classical` (unchanged — no refit occurred; see diagnosis) |
+| Field snapshot | `kfs_87484404af9d6fe9dc66a3d78812f8bc` (pin-identity hash — chart/corpus/weights/schema/config; unchanged from MEASUREMENT #2 because none of THOSE pins changed, even though the field's own computed rows did — confirmed by direct read, see diagnosis) |
+| Writer invocation | Real live write via `ContextSpec`/`WriterBase.run(ctx)` + `conn.commit()` (same pattern twice-proven this campaign). `MiBharaWriter().run(ctx)` → `WriterResult(rows_inserted=13, rows_updated=0, rows_skipped=0, duration_seconds=10.39)`. Committed 2026-08-09T09:25:34Z. |
+| Aggregate n_events | 7 (unchanged from MEASUREMENT #2 — same R15 event set: childbirth ×1, foreign_settlement ×1, marriage ×1, relocation ×2, separation ×1, surgery ×1) |
 
-**Pre-registered expectation (recorded BEFORE the measurement, so it cannot be
-retrofitted):** the hazard field will become non-degenerate — 21/21 event classes
-match on live data and condition weights are nonzero for 20/21 (verified
-read-only, 4,000-signal sample, chart 482012f1). Whether that yields a *certifiable*
-skill score is a separate question entirely: with aggregate n=7 events, classes
-will very likely still report `underpowered`. **A non-zero field does not entitle
-the platform to a skill number.** If the machinery reports `underpowered` again,
-that is the correct and expected result, and it must be published as such.
+### Full row snapshot (verbatim, as freshly queried post-write, independent connection)
 
-*(to be filled in after the rebuild — never before)*
+| event_class | n_events | n_prospective | skill_score | skill_lo | skill_hi | skill_state | degenerate? |
+|---|---|---|---|---|---|---|---|
+| childbirth | 1 | 0 | -1.7763568394002505e-15 | -1.7763568394002505e-15 | -1.7763568394002505e-15 | underpowered | YES (n=1) |
+| foreign_settlement | 1 | 0 | 5.329070518200751e-15 | 5.329070518200751e-15 | 5.329070518200751e-15 | underpowered | YES (n=1) |
+| marriage | 1 | 0 | -1.9984014443252818e-15 | -1.9984014443252818e-15 | -1.9984014443252818e-15 | underpowered | YES (n=1) |
+| relocation | 2 | 0 | 5.551115123125783e-17 | 5.551115123125783e-17 | 5.551115123125783e-17 | underpowered | YES (n=2) |
+| separation | 1 | 0 | -3.552713678800501e-15 | -3.552713678800501e-15 | -3.552713678800501e-15 | underpowered | YES (n=1) |
+| surgery | 1 | 0 | -1.7208456881689926e-15 | -1.7208456881689926e-15 | -1.7208456881689926e-15 | underpowered | YES (n=1) |
+| **(aggregate)** | 7 | 0 | -5.15460690004537e-16 | -2.038052266633323e-15 | 1.5146614121671778e-15 | underpowered | **no — `skill_lo != skill_hi`** |
+
+### Goodness-of-fit (kala_field_gof), same run
+
+| event_class | n | ks_statistic | ks_p | ljung_box_stat | ljung_box_p | gof_state |
+|---|---|---|---|---|---|---|
+| childbirth | 1 | 0.5125215391350215 | 0.974956921729957 | — | — | underpowered |
+| foreign_settlement | 1 | 0.9967218389142283 | 0.006556322171543449 | — | — | underpowered |
+| marriage | 1 | 0.8168694788266082 | 0.3662610423467836 | — | — | underpowered |
+| relocation | 2 | 0.8937905624751672 | 0.022560889238682727 | 2 | 0.15729920705028105 | underpowered |
+| separation | 1 | 0.9970813886288142 | 0.005837222742371528 | — | — | underpowered |
+| surgery | 1 | 0.9594810383367165 | 0.08103792332656701 | — | — | underpowered |
+
+### Degenerate-interval tripwire: FIRED (6 of 7 rows)
+
+Every per-class row except the chart-level aggregate shows `skill_lo == skill_hi`. Per this
+register's own discipline, that is the exact shape of MEASUREMENT #2's defining defect and
+blocks publication as a valid measurement pending diagnosis. Diagnosis performed, root cause
+identified, and it is **NOT the same defect as MEASUREMENT #2**:
+
+**1. DB6 is confirmed fixed and live for this snapshot.** Direct read of `kala_field` for
+`482012f1` (computed_at `2026-08-08T23:47:54Z`, i.e. after PR #1100 merged `2026-08-08T06:08:51Z`)
+shows real, non-zero, PER-CLASS-DIFFERENTIATED hazard magnitudes — e.g. `alpha` = `-9.8664`
+(childbirth) / `-15.1825` (foreign_settlement) / `-11.6504` (relocation), `promise_term` =
+`0.61335` / `0.72165` / `0.84665` respectively, `lambda_start` ranging `1.9e-7` to `5.2e-5`
+across classes. This is the opposite of MEASUREMENT #2's all-zero-by-construction field (every
+`condition_grade` was `0.000`, every class's grade byte-identical). DB6's fix is real and live.
+
+**2. The degenerate intervals have a DIFFERENT, separate root cause: the field carries zero
+TIME VARIATION.** For every one of the 6 event classes, `gamma = 0` and `alpha` is IDENTICAL
+across all 10 segments spanning the full observation window (confirmed by direct query:
+`count(DISTINCT alpha) = 1`, `count(DISTINCT gamma) = 1` per class); `clock_term_start`,
+`modifier_term_start`, `suppression_term_start` are the identity value `1` in every segment —
+i.e. the transit/clock modulation terms are not populated, only the flat structural-prior
+baseline is. A perfectly flat (non-time-varying) hazard, compared against `mi_bhara`'s own
+null (the SAME field circularly shifted in time — §5.5), is mathematically indistinguishable
+from its null: shifting a constant changes nothing, so the per-event advantage `d_k = ln
+λ_model(t_k) − mean_r ln λ_null(t_k) ≈ 0` for every event, in every class, by construction —
+independent of `n` and independent of whether the underlying promise magnitude is correct.
+This is exactly what `mi_bhara.py`'s own docstring already names as a known, scoped limitation
+("fitting needs the θ-INDEPENDENT per-segment basis... Until `kala_field` carries those
+columns, this method publishes skill and GOF against the AS-BUILT field... It does not
+fabricate a basis in order to look complete") — confirmed here as the live, current state:
+`weights_version` stayed pinned at `v0_classical` (no refit occurred) and the field is being
+served on structural priors only, with the time-varying clock/transit basis not yet wired into
+`ka_kshetra`'s stage 4 output.
+
+**3. The `n=1` singleton classes (5 of 6) are degenerate for a THIRD, purely mathematical
+reason, independent of both 1 and 2 above:** `compute_skill`'s percentile bootstrap resamples
+`n` events from a pool of `n`; for `n=1` every resample draws the same single observation, so
+`skill_lo == skill_hi == skill_score` always, for any field, correct or not. This is intrinsic
+to the current bootstrap harness at `n=1` and will recur on every future run while any class
+has exactly one recorded event — it is not itself evidence of a defect, but it does mean the
+tripwire as stated will always fire on singleton classes.
+
+**4. The chart-level aggregate is the one row NOT degenerate** (`skill_lo = -2.038e-15 ≠
+skill_hi = 1.515e-15`) — the pooled bootstrap over 7 events does show real (if minuscule)
+spread — and its point estimate is honestly ~0, consistent with §7.3: "a field with no temporal
+information produces `d_k ≈ 0`... that is a real detector, not a flag." Given the field is
+genuinely flat, an aggregate skill of ~0 is the CORRECT answer, not a symptom of brokenness.
+
+### Verdict
+
+**MEASUREMENT #3 is NOT published as a certified skill score.** The pre-registered expectation
+("classes will very likely still report `underpowered`... a non-zero field does not entitle the
+platform to a skill number") is CONFIRMED — every row reports `underpowered`, correctly, since
+`n < 8` everywhere. But the degenerate-interval tripwire additionally surfaced a second,
+previously undiagnosed gap this register did not anticipate: DB6 fixed the field's MAGNITUDE
+(occurrence/condition weights now resolve and differ correctly across classes), but the field's
+TIME-VARYING basis (the clock/transit modulation that would let timing itself carry
+information) is not yet wired into `ka_kshetra`'s stage 4 emission for this chart/snapshot.
+Until that basis is populated and a real weights refit runs (`v0_classical` → a fitted version),
+`mi_bhara`'s skill score cannot become anything other than machine-epsilon-near-zero, REGARDLESS
+of event count — i.e. reaching `n≥8` alone will not be sufficient for a future measurement to
+certify `established`/`not_established` on real information; the flat-field gap must close
+first. This is a genuine, named, non-blocking follow-up for a future lane — not a regression
+introduced by this run, and not something R13 (no tuning) permits this task to fix.
+
+**R14 discipline preserved:** MEASUREMENT #1 remains the permanent baseline; MEASUREMENT #2
+remains superseded and INVALID; this entry is retained as evidence about the instrument (a
+second, distinct defect class found after the first was fixed), not deleted or hidden, per the
+register's own stated purpose.
 
 ---
 
