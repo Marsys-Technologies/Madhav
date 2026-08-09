@@ -18,9 +18,8 @@ CONDUCTOR-HEARTBEAT: 2026-08-10T05:00+05:30 (SAMPURTI-CONDUCTOR-2026-08-10) [con
 
 ## WAVE POSITION
 
-WAVE 0 — IGNITION. Status: 5 lanes MERGED (L0b/L0c/L0d/L0f/L0e);
-L0a PARĪKṢAKA+PRATINIDHI in-flight. All verdicts recorded before merge.
-Waves 1–4: NOT-STARTED.
+WAVE 0 — IGNITION. Status: ALL 6 LANES VERDICT-RECORDED; merging L0a to complete wave.
+All verdicts recorded before merge. Waves 1–4: NOT-STARTED.
 
 ## RAILS (immutable, restated for every reader)
 
@@ -36,7 +35,7 @@ LEL resolver rows PARKED-honest, never guessed).
 
 | Lane | Scope (short) | Branch | Status | Poll deadline (IST) | PARĪKṢAKA | PRATINIDHI |
 |---|---|---|---|---|---|---|
-| L0a | G16 record repair (CURRENT_STATE:124 + close artifact to main path + 51 census rows + CI citation-resolution upgrade) | sampurti/l0a-record-repair | FIX-PUSHED (0d2910423 — bare main() guard) PR#1137 | 05:30 | FAIL (aaa5ab63 05:15) Part1-3 PASS; Part4 FAIL bare main() → fix pushed → RE-REVIEW IN-FLIGHT | IN-FLIGHT (a962f924) |
+| L0a | G16 record repair (CURRENT_STATE:124 + close artifact to main path + 51 census rows + CI citation-resolution upgrade) | sampurti/l0a-record-repair | VERDICT-RECORDED — merging PR#1137 | 05:30 | PASS (a4bdb529 05:20 re-review) — Parts 1-3 carry forward; Part4 fix confirmed; guard correct; no other bare calls | PASS (a962f924 pre-fix) — SHAs exist; TS syntax clean; evidence field present; defect found = same fix applied 0d2910423; substantive PASS |
 | L0b | G4a bg_sarvatobhadra_grid root-cause + dispatch | sampurti/l0b-grid | MERGED to integration 04:12 | 04:35 | PASS 04:10 — deferred path confirmed; migration benign upsert; ADJUDICATION-11 confirmed; policy violation NON-BLOCKING (see DEBTS) | n/a |
 | L0c | G12e kala_dasha_sandhi_get prod registration + stale "eight" docstrings | sampurti/l0c-dasha-sandhi | MERGED to integration 04:12 | 04:35 | PASS 03:58 — registration chain confirmed; 4+ docstrings fixed; census test real detector | n/a |
 | L0d | G13/PA-4 KNOWN_DOMAINS 7→13 in bo_sangati/bo_bimba/bo_karanajala/ranker (R17) | sampurti/l0d-vocab | MERGED to integration 04:12 | 04:35 | PASS 04:10 — all 4 files migrated; 13 domains; census gate blocks regression; F-1/F-2 non-blocking | PASS 04:10 — CANONICAL_DOMAINS=13 live; 15 tests pass; live DB=6 domains (gap confirmed pre-rebuild) |
@@ -131,9 +130,8 @@ the gate. Builder swarm instructed to never self-apply migrations in future lane
 
 ## NEXT-ACTION
 
-L0f+L0e MERGED. L0a PARĪKṢAKA+PRATINIDHI in-flight (aaa5ab63 + a962f924).
-On L0a PASS: record verdict → merge #1137 → assemble gate packet → dispatch GATE-EXECUTOR.
-Then ONE Wave-0 gate packet → GATE-EXECUTOR → integration→main + deploy + production==main.
+ALL 6 LANES PASS. Merging L0a (#1137). Then assemble gate packet → GATE-EXECUTOR.
+GATE-EXECUTOR: integration→main merge + deploy verified + production==main.
 S1 complete; S2 dispatch after gate. Content fixes must deploy before Wave-1 rebuild.
 
 If this conductor dies: resume per prompt — adopt live lanes, salvage dead worktrees
