@@ -14,7 +14,7 @@ conductor_session: SAMPURTI-CONDUCTOR-2026-08-10 (first run)
 
 # SAMPŪRTI CAMPAIGN LEDGER
 
-CONDUCTOR-HEARTBEAT: 2026-08-10T04:12+05:30 (SAMPURTI-CONDUCTOR-2026-08-10)
+CONDUCTOR-HEARTBEAT: 2026-08-10T04:17+05:30 (SAMPURTI-CONDUCTOR-2026-08-10)
 
 ## WAVE POSITION
 
@@ -41,7 +41,7 @@ LEL resolver rows PARKED-honest, never guessed).
 | L0c | G12e kala_dasha_sandhi_get prod registration + stale "eight" docstrings | sampurti/l0c-dasha-sandhi | MERGED to integration 04:12 | 04:35 | PASS 03:58 — registration chain confirmed; 4+ docstrings fixed; census test real detector | n/a |
 | L0d | G13/PA-4 KNOWN_DOMAINS 7→13 in bo_sangati/bo_bimba/bo_karanajala/ranker (R17) | sampurti/l0d-vocab | MERGED to integration 04:12 | 04:35 | PASS 04:10 — all 4 files migrated; 13 domains; census gate blocks regression; F-1/F-2 non-blocking | PASS 04:10 — CANONICAL_DOMAINS=13 live; 15 tests pass; live DB=6 domains (gap confirmed pre-rebuild) |
 | L0e | Pre-rebuild content fixes: G8 KaryatvaMaps ×5 + G10 varga_confirmation + G9 doc-direction reconcile | sampurti/l0e-content | BUILDING (1 commit G8, working G10) | 05:05 | — | required |
-| L0f | G14a L6 LEL→event_class resolver + 64-event backfill classification | sampurti/l0f-resolver | BUILDING (63/64 classified, 1 AMBIGUOUS) | 05:05 | — | n/a |
+| L0f | G14a L6 LEL→event_class resolver + 64-event backfill classification | sampurti/l0f-resolver | BUILDER-DONE PR#1135 ⚠️ mig-553 conflict suspected | 05:05 | PARĪKṢAKA IN-FLIGHT 04:14 | n/a |
 
 Merge order: train on CI-green + PARĪKṢAKA verdict recorded HERE before merge.
 ONE gate packet at wave end → main + deploy (content fixes must be deployed
@@ -102,7 +102,9 @@ written only by stage2, so presumed 0 as well — S2 builder to confirm.)
 
 ## L0f PARKED-AMBIGUOUS LEL ROWS (await native's memory — never guessed)
 
-(empty — L0f populates; builder reports 1 AMBIGUOUS: the R15 ruling shadow row with NULL domain)
+R15 shadow row (to be ledgered after PARĪKṢAKA pass): event_id contains 'fs' suffix, NULL domain,
+candidates=[relocation, foreign_settlement]. Primary row (no 'fs' suffix) correctly resolves via
+tier-1 to `foreign_settlement`. This row is PARKED-honest pending native memory confirmation.
 
 ## DECISIONS LOG (PRATINIDHI rulings with written rationale)
 
