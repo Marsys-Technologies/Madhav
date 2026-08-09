@@ -1,7 +1,7 @@
 ---
 title: "PRATIJÑĀ v4 — Bounded Rubric Scoring Specification"
 canonical_id: V4_RUBRIC_SPEC
-version: 1.0
+version: 1.1
 status: RATIFIED
 date: 2026-08-08
 ratified_at: 2026-08-08 human+Fable checkpoint (ratified AS-IS from v0.9; content byte-identical
@@ -9,10 +9,16 @@ ratified_at: 2026-08-08 human+Fable checkpoint (ratified AS-IS from v0.9; conten
 campaign: ADHIṢṬHĀNA, Lane A8 item 2 (checkpoint artifact 2 of 2); ratified under PRATIJÑĀ v4
   Campaign B, CHECKPOINT_RECORD_v1_0.md Decision 1
 author: Conductor (Sonnet 5), dispatched research/writing agent, document-only
-rulings_governed: R11, R12, R13, R18, R20, R21
+rulings_governed: R11, R12, R13, R18, R20, R21, R22
 supersedes: V4_RUBRIC_SPEC_v0_9.md (00_ARCHITECTURE/briefs/adhisthana/), unchanged content
 implements_nothing: this document specifies; it contains no engine code and authorizes none.
   Campaign B (PRATIJÑĀ v4 engine) implements it starting Lane B0.
+changelog: >
+  v1.1 (2026-08-09, R22 adoption cycle, F1 ADOPTION CYCLE conductor session): §2.1 gains a new
+  subsection, §2.1.1 AMENDMENT F1 (ADOPTED), stating the dispositor-conjunction exception verbatim
+  from AMENDMENT_F1_SPEC_v1_0.md. Content change is exactly the amendment text; nothing else in
+  this document was touched. Evidence: F1_SIDE_BY_SIDE_v1_0.md (same directory). Prior: v1.0
+  (2026-08-08, ratified AS-IS from v0.9 at the human+Fable checkpoint).
 ---
 
 # PRATIJÑĀ v4 — Bounded Rubric Scoring Specification (DRAFT v0.9)
@@ -148,6 +154,56 @@ friendship doctrine) — for `karaka_grahas` entries that are Rāhu or Ketu (sep
 foreign_settlement, spiritual_turn, financial_deception, travel_event), the band collapses to
 three reachable states only: exalted (1.00) / debilitated (0.00) / neutral (0.50, the default for
 every other sign). This is an honest scale restriction, not a new number.
+
+### 2.1.1 AMENDMENT F1 — Dispositor-Conjunction Exception (ADOPTED 2026-08-09 per R22, evidence: F1_SIDE_BY_SIDE_v1_0.md)
+
+The following rule is quoted verbatim from `AMENDMENT_F1_SPEC_v1_0.md` (committed blind, Stage 0
+of the F1 AMENDMENT CYCLE, before any effect on any chart was computed, per R20 item 1). It is
+adopted into this rubric's §2.1 dignity band, engine version v4.1.0, per ruling R22
+(native + Fable, 2026-08-09) on the evidence of `F1_SIDE_BY_SIDE_v1_0.md`. No other rule in this
+document is altered by this adoption — the compounding table, band values, and every other §2.1
+rule are unchanged, exactly as the amendment itself states.
+
+> « AMENDMENT F1 — Dispositor-Conjunction Exception (R20 cycle 1).
+> RULE: In the §2.1 dignity band's pañcadhā maitri computation, when the
+> graha G being scored occupies sign S and S's own lord L is CONJUNCT G
+> (same sign, same varga being evaluated), G's relationship to L is read
+> as NAISARGIKA ONLY — the tātkālika (temporal) term is set aside for the
+> dispositor pair specifically. All other same-sign pairs, and all
+> non-dispositor relationships, are unchanged. The compounding table,
+> band values, and every other §2.1 rule are unchanged.
+> TRIGGER SCOPE: applies wherever the dignity band is evaluated — D1
+> lord/karaka slots and varga (divisional) slots alike. For varga
+> evaluation the conjunction test uses the same convention the ratified
+> spec uses for tātkālika there (D1-snapshot positions, per
+> CHECKPOINT_RECORD Decision 1).
+> CLASSICAL BASIS: (1) the nīca-bhaṅga family explicitly treats the
+> dispositor's conjunction with its guest as a STRENGTHENING/cancelling
+> condition (standard BPHS-lineage rule: "the lord of the debilitation
+> sign conjoins the debilitated planet" → cancellation) — doctrine reads
+> dispositor association as support; (2) the general principle that a
+> bhāva/graha is protected by association with its own lord, applied
+> throughout classical judgment; (3) the tātkālika 1st-from-enemy rule is
+> a generic temporal doctrine never stated with the dispositor as its
+> intended target — where generic mechanics and specific doctrine
+> conflict, the specific governs. Citation precision per §N.7-6: cited by
+> doctrine name where chapter/verse could not be independently verified.
+> DISCLOSURE (R20 integrity record): before this spec was committed, one
+> partial effect estimate existed in the checkpoint conversation record —
+> the native's reviewer estimated marriage occurrence 0.321→~0.42 for
+> chart 482012f1 under a naisargika-only reading. Effects on the other 26
+> classes, on condition grades, and on chart 1c826d5a were NOT computed
+> before this commit. The adoption decision will weigh the FULL side-by-
+> side plus classical merit; per R13, no tuning against this chart ever.
+> ENGINE FORM: v4.1 = v4.0 + this single rule, behind an explicit
+> amendment parameter (amendments={'F1'}); default remains v4.0 —
+> production behavior unchanged by merging this code. »
+
+**Post-adoption note (this entry, R22):** the amendment's own "ENGINE FORM" clause describes the
+Stage-1 build-time default (v4.0, amendments unset). Adoption flips the production default to
+`amendments={'F1'}` (engine version tag `v4.1.0`) — see Stage 1/2 of the F1 ADOPTION CYCLE
+(`F1_CYCLE_STATE.md`) for the writer change and acceptance evidence. The `amendments` parameter
+itself remains available, unremoved, for future R20 cycles (F3/F7/F6a/F6b and beyond).
 
 ### 2.2 House-lord strength band
 
