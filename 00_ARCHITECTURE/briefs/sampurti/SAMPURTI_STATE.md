@@ -14,7 +14,7 @@ conductor_session: SAMPURTI-CONDUCTOR-2026-08-10 (first run)
 
 # SAMPŪRTI CAMPAIGN LEDGER
 
-CONDUCTOR-HEARTBEAT: 2026-08-10T04:22+05:30 (SAMPURTI-CONDUCTOR-2026-08-10)
+CONDUCTOR-HEARTBEAT: 2026-08-10T04:26+05:30 (SAMPURTI-CONDUCTOR-2026-08-10)
 
 ## WAVE POSITION
 
@@ -41,7 +41,7 @@ LEL resolver rows PARKED-honest, never guessed).
 | L0c | G12e kala_dasha_sandhi_get prod registration + stale "eight" docstrings | sampurti/l0c-dasha-sandhi | MERGED to integration 04:12 | 04:35 | PASS 03:58 — registration chain confirmed; 4+ docstrings fixed; census test real detector | n/a |
 | L0d | G13/PA-4 KNOWN_DOMAINS 7→13 in bo_sangati/bo_bimba/bo_karanajala/ranker (R17) | sampurti/l0d-vocab | MERGED to integration 04:12 | 04:35 | PASS 04:10 — all 4 files migrated; 13 domains; census gate blocks regression; F-1/F-2 non-blocking | PASS 04:10 — CANONICAL_DOMAINS=13 live; 15 tests pass; live DB=6 domains (gap confirmed pre-rebuild) |
 | L0e | Pre-rebuild content fixes: G8 KaryatvaMaps ×5 + G10 varga_confirmation + G9 doc-direction reconcile | sampurti/l0e-content | BUILDING (1 commit G8, working G10) | 05:05 | — | required |
-| L0f | G14a L6 LEL→event_class resolver + 64-event backfill classification | sampurti/l0f-resolver | BUILDER-DONE PR#1135 ⚠️ mig-553 conflict suspected | 05:05 | PARĪKṢAKA IN-FLIGHT 04:14 | n/a |
+| L0f | G14a L6 LEL→event_class resolver + 64-event backfill classification | sampurti/l0f-resolver | FIX-PUSHED (mig renamed 553→554) PR#1135 | 05:05 | BLOCKED 04:22 mig-553 conflict / fix pushed / RE-REVIEW IN-FLIGHT 04:25 | n/a |
 
 Merge order: train on CI-green + PARĪKṢAKA verdict recorded HERE before merge.
 ONE gate packet at wave end → main + deploy (content fixes must be deployed
