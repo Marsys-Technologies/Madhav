@@ -36040,12 +36040,50 @@ picking this back up.
 
 ---
 
-## Session: F1-AMENDMENT-CONDUCTOR-2026-08-09
+## F1-AMENDMENT-CONDUCTOR-2026-08-09 — F1 AMENDMENT CYCLE closed: dispositor-conjunction exception side-by-side published, no adoption ruling made
 
 **Campaign:** F1 AMENDMENT CYCLE — the first R20 amendment cycle against ratified
 `V4_RUBRIC_SPEC_v1_0.md`, run as a fully autonomous Conductor session directly against the
-governing prompt (no separate session_open handshake was emitted before substantive work began;
-noted honestly here rather than fabricated after the fact).
+governing prompt. No separate session_open handshake was emitted before substantive work began;
+the block below is backfilled at close time from the session's actual scope, disclosed as such
+rather than presented as a live-emitted handshake.
+
+```yaml
+session_open:
+  session_id: F1-AMENDMENT-CONDUCTOR-2026-08-09
+  cowork_thread_name: "Madhav — F1 Amendment Cycle (dispositor-conjunction exception)"
+  agent_name: claude-sonnet-5
+  agent_version: claude-sonnet-5
+  step_number_or_macro_phase: "PRATIJÑĀ_v4.R20_CYCLE_1"
+  predecessor_session: PRATIJNA-V4-CONDUCTOR-2026-08-09
+  backfilled: true
+  backfill_rationale: "No formal handshake was emitted before work began; this block is
+    reconstructed at close time from the governing prompt's own declared scope, per the same
+    honest-disclosure discipline the close checklist itself follows."
+  mandatory_reading_confirmation:
+    - CLAUDE.md §C (self-reference)
+    - V4_RUBRIC_SPEC_v1_0.md §2.1 (dignity band, the amendment's target)
+    - CHECKPOINT_RECORD_v1_0.md (F1 filed there)
+    - RUNG_P3_HAND_WORKED_v1_0.md §0.3 (Venus@Sag hand-worked case)
+    - PROMISE_LAYER_SCOREBOARD_v1_0.md (v4.0 baseline)
+    - bo_pratijna_v4_engine.py + its P5 probe
+  declared_scope:
+    may_touch:
+      - 00_ARCHITECTURE/briefs/pratijna_v4/**
+      - platform/python-sidecar/pipeline/orchestrator/writers/bo_pratijna_v4_engine.py
+      - platform/python-sidecar/pipeline/orchestrator/writers/tests/test_bo_pratijna_v4_engine.py
+      - platform/python-sidecar/tests/test_bo_pratijna_v4_engine_live.py
+      - platform/scripts/probes/probe_f1_side_by_side.py
+      - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+      - 00_ARCHITECTURE/SESSION_LOG.md
+    must_not_touch:
+      - bo_pratijna_karyatva.py                    # production registry, unchanged this cycle
+      - pipeline/orchestrator/writers/bo_pratijna.py # v4 writer construction, unchanged this cycle
+      - any bodha_pratijna row / any DB write        # R19, offline-only cycle
+      - 025_HOLISTIC_SYNTHESIS/**
+      - 01_FACTS_LAYER/**
+  red_team_due: false
+```
 
 **Body:** Implemented and published the side-by-side comparison for AMENDMENT F1 (dispositor-
 conjunction exception), the finding filed as an R20 amendment candidate at the original ADHIṢṬHĀNA
@@ -36131,8 +36169,8 @@ session_close:
       verdict: PASS
       findings: 0
       note: "independent code-reviewer subagent, adversarial 8-point brief, re-ran tests independently"
-  drift_detector_run: "not run — product/campaign session, not a governance-rebuild session (consistent with prior campaign-session precedent, PRATIJNA-V4-CONDUCTOR-2026-08-09)"
-  schema_validator_run: "attempted via --close-checklist; validator raised AttributeError on this block's free-text drift_detector_run/mirror_enforcer_run fields (it expects a structured {exit_code:...} dict for those, same convention the immediately-prior PRATIJNA-V4-CONDUCTOR-2026-08-09 close also used and which was also not validator-clean) — a real, pre-existing validator/precedent-format mismatch, not chased further this session; disclosed rather than silently worked around"
+  drift_detector_run: {exit_code: 3, findings: 216, note: "== T0 baseline ceiling exactly (DVA Ruling 4), no new drift introduced"}
+  schema_validator_run: {exit_code: 3, violations: 42, note: "1 BELOW the 43 baseline ceiling — fixed 2 real pre-existing-this-session governance gaps found while closing: this entry's own SESSION_LOG heading format (missing the '— description' em-dash form the parser requires) and a stale CURRENT_STATE.last_session_id field, both corrected in-flight, not left as new debt. Note: --close-checklist itself (a separate validator mode from the repo-wide scan above) still raises AttributeError on this template's own free-text drift_detector_run/mirror_enforcer_run convention when those fields are strings rather than {exit_code:...} dicts — a real, pre-existing validator/template-precedent mismatch (also present, unfixed, in the immediately-prior PRATIJNA-V4-CONDUCTOR-2026-08-09 close), not chased further this session; disclosed rather than silently worked around."}
   mirror_enforcer_run: "not applicable — Gemini mirror discipline RETIRED 2026-05-27, CLAUDE.md §K"
   red_team_pass: {due: false, performed: false, verdict: n/a}
   current_state_updated: true
