@@ -823,3 +823,172 @@ def write_kinematics_rows(conn, rows: Sequence[KinematicsRow]) -> int:
         conn.execute(UPSERT_SQL, row_to_params(r))
         n += 1
     return n
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# Module-level substep wiring (SAMPURTI G1 — plugs this stage into the
+# ka_kshetra HEAVY writer's _optional_stage_plugins mechanism).
+#
+# §N.3 contract: the once-per-chart DELETE runs exactly ONCE in plan_substeps,
+# BEFORE any substep executes. It never runs per-substep (the lesson written
+# in blood in ka_kshetra's module docstring: a per-substep delete can fire AFTER
+# sibling substeps have committed rows, silently wiping them).
+# ═════════════════════════════════════════════════════════════════════════════
+
+def _birth_date_from_config(config: dict) -> date:
+    """Extract birth date from ctx.config.
+
+    birth_params shape (from pipeline.orchestrator.birth_params.fetch_birth_params):
+      {'datetime_iso': <local naive ISO string>, 'tz_offset_hours': <float>, ...}
+
+    The birth date is the LOCAL date (the date at the place of birth in local
+    time), not the UTC date — matching the convention used by chart_dashas /
+    chart_facts everywhere else in this codebase (§N.5: reference, never
+    recompute).
+    """
+    from datetime import datetime as _dt
+    birth_params = config.get('birth_params') or {}
+    iso = birth_params.get('datetime_iso')
+    if iso:
+        return _dt.fromisoformat(iso).date()
+    # Fallback: read from chart_id's birth_date if available in config
+    # (the orchestrator populates both; if birth_params is absent we cannot
+    # proceed — raise so the build fails loudly rather than computing against
+    # an unknown horizon, which is the §N.8 "earned signal" requirement).
+    raise RuntimeError(
+        "stage0_kinematics: cannot determine birth date — "
+        "ctx.config['birth_params']['datetime_iso'] is missing"
+    )
+
+
+def _fetch_all_natal_targets(conn, chart_id: str,
+                              ayanamsha: str = CANONICAL_AYANAMSHA,
+                              ) -> list[tuple[str, str, float]]:
+    """Return all natal targets as (target_kind, target_ref, natal_lon_deg).
+
+    Transit contacts are computed for every body passing over every natal
+    point (9 grahasthat + Lagna). §N.5: longitudes are REFERENCED from
+    chart_facts, never recomputed.
+    """
+    targets: list[tuple[str, str, float]] = []
+    # Natal graha positions
+    for graha_name in DAILY_BODIES:
+        try:
+            lon = fetch_natal_longitude(conn, chart_id, "natal_graha", graha_name, ayanamsha)
+            targets.append(("natal_graha", graha_name, lon))
+        except RuntimeError:
+            # Missing natal graha row — honest gap, skip without crash (§N.7 item 6)
+            pass
+    # Natal lagna
+    try:
+        lon = fetch_natal_longitude(conn, chart_id, "natal_lagna", "LAGNA", ayanamsha)
+        targets.append(("natal_lagna", "LAGNA", lon))
+    except RuntimeError:
+        pass
+    return targets
+
+
+def plan_substeps(ctx) -> list:
+    """Wire stage 0 (kinematics) into the ka_kshetra substep plan.
+
+    One substep per planetary body in DAILY_BODIES (9 total). §N.3 delete
+    runs ONCE here (not per substep) — before any substep executes.
+
+    Returns a list of SubStep objects. The import is deferred to avoid a
+    hard dependency on the orchestrator at module import time (this module
+    must be independently importable/testable, §N.4).
+    """
+    from pipeline.orchestrator.writers import SubStep
+    conn = ctx.db_conn
+    chart_id = ctx.config['chart_id']
+    # §N.3: delete prior rows ONCE before any substep can execute.
+    conn.execute(REPLACE_PRIOR_SQL, [chart_id])
+    return [
+        SubStep(key=f'stage0:{body}', label=f'kinematics {body}')
+        for body in DAILY_BODIES
+    ]
+
+
+def handles_substep(step) -> bool:
+    """Return True if this stage owns the given substep key."""
+    return step.key.startswith('stage0:')
+
+
+def run_substep(ctx, step) -> object:
+    """Run kinematics computation for one planetary body.
+
+    Builds the Hermite spline from ephemeris_daily, computes transit contact
+    episodes against every natal target (§N.5: natal longitudes referenced from
+    chart_facts, never recomputed), and writes the up-to-5 knot rows per
+    episode plus ingress/station/syzygy rows. Writes are row-level idempotent
+    (UPSERT); the coarser per-chart delete ran once in plan_substeps.
+    """
+    from pipeline.orchestrator.writers import WriterResult
+    from datetime import timedelta as _td
+
+    conn = ctx.db_conn
+    chart_id = ctx.config['chart_id']
+    body = step.key.split(':', 1)[1]
+    birth_date = _birth_date_from_config(ctx.config)
+
+    date_start = birth_date
+    date_end = birth_date + _td(days=int(HORIZON_DAYS) + 1)
+
+    # Build the Hermite spline for this body over the full horizon.
+    series = fetch_ephemeris_series(conn, body, date_start, date_end, CANONICAL_AYANAMSHA)
+    t_days_list = series["t_days"]
+    lon_list = series["longitude_deg"]
+    speed_list = series["speed_dps"]
+    spline = build_spline(t_days_list, lon_list, speed_list)
+
+    # V0-1 build-time velocity assert for Moon (§3.1).
+    if body == "Moon":
+        assert_moon_velocity_in_range(spline)
+
+    # t_grid: one sample per day, aligned to the ephemeris knots.
+    t_grid = [float(t) for t in t_days_list]
+
+    # Fetch ALL natal targets (every body transits over every natal point).
+    natal_targets = _fetch_all_natal_targets(conn, chart_id, CANONICAL_AYANAMSHA)
+
+    rows: list[KinematicsRow] = []
+
+    # ── Contact episodes ──────────────────────────────────────────────────
+    def orb_lookup(b: str, target_class: str) -> tuple:
+        return fetch_orb_deg(conn, b, target_class)
+
+    contact_rows = compute_contacts_for_body(
+        chart_id, spline, body, natal_targets, t_grid, orb_lookup, CANONICAL_AYANAMSHA,
+    )
+    rows.extend(contact_rows)
+
+    # ── Sign ingress ──────────────────────────────────────────────────────
+    sign_roots = find_modulus_boundary_roots(spline, t_grid, 30.0)
+    rows.extend(ingress_rows(chart_id, body, spline, "sign_ingress", sign_roots,
+                             CANONICAL_AYANAMSHA))
+
+    # ── Nakshatra ingress ─────────────────────────────────────────────────
+    nak_roots = find_modulus_boundary_roots(spline, t_grid, 360.0 / 27.0)
+    rows.extend(ingress_rows(chart_id, body, spline, "nakshatra_ingress", nak_roots,
+                             CANONICAL_AYANAMSHA))
+
+    # ── Station roots (direct/retrograde turning points) ─────────────────
+    stat_roots = find_station_roots(spline, t_grid)
+    rows.extend(station_rows(chart_id, body, spline, stat_roots, CANONICAL_AYANAMSHA))
+
+    # ── Syzygy (new/full Moon — Moon body only) ───────────────────────────
+    if body == "Moon":
+        sun_series = fetch_ephemeris_series(conn, "Sun", date_start, date_end,
+                                            CANONICAL_AYANAMSHA)
+        sun_spline = build_spline(sun_series["t_days"], sun_series["longitude_deg"],
+                                  sun_series["speed_dps"])
+        # Moon's latitude spline (for eclipse_candidate / gamma_proxy).
+        lat_spline = build_spline(t_days_list,
+                                  series.get("latitude_deg", [0.0] * len(t_days_list)),
+                                  [0.0] * len(t_days_list))
+        syz_roots = find_syzygy_roots(spline, sun_spline, t_grid)
+        rows.extend(syzygy_rows(chart_id, spline, sun_spline, lat_spline, syz_roots,
+                                CANONICAL_AYANAMSHA))
+
+    n = write_kinematics_rows(conn, rows)
+    return WriterResult(asset_id='ka_kshetra', rows_inserted=n)

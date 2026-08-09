@@ -1160,7 +1160,7 @@ def _route_gain_and_sign_for_lord(
     node_id = f"graha:{graha}"
     rows = conn.execute(
         """
-        SELECT route_gain, suppressed_by FROM kala_field_promise_routes
+        SELECT route_gain, suppressed_by FROM kala_field_routes
         WHERE chart_id = %s AND event_class = %s AND %s = ANY(path_node_ids)
         """,
         [chart_id, event_class, node_id],
@@ -1202,3 +1202,105 @@ def clock_activation(chart_id: str, system_id: str, event_class: str, t: float, 
 
     r = math.tanh(total)
     return math.exp(float(a_s) * r)
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# Module-level substep wiring (SAMPURTI G1 — plugs this stage into the
+# ka_kshetra HEAVY writer's _optional_stage_plugins mechanism).
+#
+# Stage 3 computes dasha-clock applicability (kala_field_clocks) and boundary
+# uncertainty rows (kala_field_boundaries) for every dasha system. These tables
+# are consumed by stage1 (sandhi_band primitive) and stage4 (clock_activation).
+# Stage 3 must run AFTER stage2 (needs kala_field_routes for
+# _route_gain_and_sign_for_lord) and BEFORE stage1 and stage4.
+#
+# §N.3 contract: the once-per-chart DELETE runs exactly ONCE in plan_substeps,
+# BEFORE the substep executes. write_clock_rows and write_boundary_rows each
+# do their own scoped per-(chart, system_id) deletes — the coarser table-level
+# deletes here clear any rows from a prior build of a now-absent system_id.
+# ═════════════════════════════════════════════════════════════════════════════
+
+def plan_substeps(ctx) -> list:
+    """Wire stage 3 (dasha clocks + boundaries) into the ka_kshetra substep plan.
+
+    Single substep — all dasha systems are evaluated in one pass for
+    determinism (the KP redundancy detector compares systems against each other;
+    evaluating them in separate substeps would introduce dispatch-order
+    dependency into that cross-system comparison). §N.3 delete runs ONCE here,
+    before the substep executes.
+    """
+    from pipeline.orchestrator.writers import SubStep
+    conn = ctx.db_conn
+    chart_id = ctx.config['chart_id']
+    # §N.3: delete prior rows ONCE for both owned tables.
+    conn.execute("DELETE FROM kala_field_clocks WHERE chart_id = %s", [chart_id])
+    conn.execute("DELETE FROM kala_field_boundaries WHERE chart_id = %s", [chart_id])
+    return [SubStep(key='stage3:run', label='dasha clocks + boundaries')]
+
+
+def handles_substep(step) -> bool:
+    """Return True if this stage owns the given substep key."""
+    return step.key == 'stage3:run'
+
+
+def run_substep(ctx, step) -> object:
+    """Compute and persist kala_field_clocks and kala_field_boundaries.
+
+    Calls applicable_systems (the full §4.1 algorithm for every dasha system)
+    then compute_boundaries_for_system for each applicable system.
+    birth_params is passed through from ctx.config for the Moon velocity and
+    sigma_t chain (§4.2).
+    WriterResult.rows_inserted is the actual count of rows written (clock rows
+    + boundary rows across all systems).
+    """
+    from pipeline.orchestrator.writers import WriterResult
+
+    conn = ctx.db_conn
+    chart_id = ctx.config['chart_id']
+    birth_params = ctx.config.get('birth_params') or {}
+    ayanamsha_id = DEFAULT_AYANAMSHA_ID
+
+    # Reconstruct the birth datetime for the field horizon anchor (§5.2).
+    birth_dt: Optional[datetime] = None
+    iso = birth_params.get('datetime_iso')
+    if iso:
+        from datetime import timedelta as _td
+        local_dt = datetime.fromisoformat(iso)
+        utc_dt = local_dt - _td(hours=float(birth_params.get('tz_offset_hours', 0.0)))
+        birth_dt = utc_dt.replace(tzinfo=timezone.utc)
+
+    # Evaluate clock applicability for every dasha system.
+    applicabilities = applicable_systems(
+        chart_id, conn,
+        ayanamsha_id=ayanamsha_id,
+        birth_dt=birth_dt,
+    )
+    n_clocks = write_clock_rows(chart_id, applicabilities, conn)
+
+    # Compute and write boundary rows for each applicable (and not
+    # excluded_by_condition) system. Non-applicable systems produce no boundary
+    # rows — their absence is the honest state, not a build error.
+    n_boundaries = 0
+    for app in applicabilities:
+        if app.applicability_state not in ('applicable',):
+            continue
+        try:
+            boundary_rows = compute_boundaries_for_system(
+                chart_id, app.system_id, conn,
+                birth_params=birth_params,
+                ayanamsha_id=ayanamsha_id,
+            )
+            n_boundaries += write_boundary_rows(chart_id, app.system_id, boundary_rows, conn)
+        except Exception as exc:
+            import logging
+            logging.getLogger(__name__).warning(
+                'stage3_clocks: compute_boundaries_for_system failed for '
+                'chart=%s system=%s: %s', chart_id, app.system_id, exc,
+            )
+            # A boundary computation failure for one system is not build-fatal:
+            # write_clock_rows already recorded this system's applicability row
+            # (even if its boundaries couldn't be computed), and stage4 will
+            # simply not find boundary rows for it — which is the honest state.
+
+    return WriterResult(asset_id='ka_kshetra',
+                        rows_inserted=n_clocks + n_boundaries)

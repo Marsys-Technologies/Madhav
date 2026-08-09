@@ -307,11 +307,24 @@ class KaKshetraWriter(WriterBase):
         # their publication moved into this writer (see the module docstring's
         # LANE COMPOSITION section) — leaving them here would double-plan them
         # the moment one of those modules grew a `plan_substeps` attribute.
+        #
+        # ORDER IS LOAD-BEARING (SAMPURTI G1):
+        #   stage0 → stage2 → stage3 → stage1
+        # Rationale (data dependencies across stages):
+        #   • stage2 reads bodha_cgm_nodes/edges/pratijna (no stage0 dependency)
+        #     but must run before stage3 because stage3 reads kala_field_routes
+        #     (written by stage2) in clock_activation/_route_gain_and_sign_for_lord.
+        #   • stage3 reads chart_dashas AND kala_field_routes (stage2 output),
+        #     writes kala_field_clocks + kala_field_boundaries.
+        #   • stage1 reads BOTH kala_field_kinematics (stage0 output) AND
+        #     kala_field_boundaries (stage3 output) for the sandhi_band primitive;
+        #     it must therefore run after BOTH stage0 and stage3.
+        #   • stage4+ reads all of the above.
         plugins = [
             ('services.ka_kshetra.stage0_kinematics', 'plan_substeps'),
-            ('services.ka_kshetra.stage1_symbolization', 'plan_substeps'),
             ('services.ka_kshetra.stage2_promise', 'plan_substeps'),
             ('services.ka_kshetra.stage3_clocks', 'plan_substeps'),
+            ('services.ka_kshetra.stage1_symbolization', 'plan_substeps'),
         ]
         out: list[SubStep] = []
         self._plugin_stages: list[str] = []
