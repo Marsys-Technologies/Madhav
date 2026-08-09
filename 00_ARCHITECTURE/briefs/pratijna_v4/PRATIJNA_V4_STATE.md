@@ -111,7 +111,7 @@ queued ≠ merged.
 | B4 | Consumer audit (ph_nimitta, ka_*, mi_darshana, query_pratijna) | **CLOSED — MERGED @ `fa9c727d3` (PR #1117).** Full-repo census (33 files vs. claimed 32, immaterial). 2 real production-affecting defects found and fixed (both root-caused to v4 never populating `supporting_signal_ids`): `stage2_promise.py`'s `promise_prior()` was returning exactly 0.0 for every class system-wide; `mi_darshana.py`'s Section-5 evidence count was silently 0 on all 135 scored rows. Both given a `derivation`-based fallback, PARĪKṢAKA-reproduced independently live (old code confirmed broken, new code confirmed fixed with real non-fabricated values traced to actual DB fields). `query_pratijna.ts` narration corrected to state v4's real semantics. **One defect found in the PR's OWN reasoning, not its code**: a false citation claiming ph_nimitta inherits specific threshold constants that PARĪKṢAKA proved never existed there (conflated with an unrelated file's constants) — ph_nimitta is genuinely safe for the real, verified reason (untouched by this PR, reads only grade/status on the preserved scale), but the stated evidence was wrong. Conductor corrected the PR body directly (prose/metadata only, consistent with the B2 docstring-fix precedent of not letting a false claim stand even when non-blocking) and added PARĪKṢAKA's disclosed non-blocking follow-up (inherited noisy-OR amplification risk in the stage2_promise fix's multi-karaka classes) to the permanent PR record. Worktree + branch cleaned up. |
 | — | Rung P7 (one class through consumers) | **GREEN — gap closed, gap-closure session (PARĪKṢAKA, 2026-08-08/09).** Prior PARĪKṢAKA pass (quoted findings 1–5 below, retained for the record) proved the `stage2_promise.py`/`mi_darshana.py` consumer CODE correct but found the production-SERVED `mimamsa_insight_units` rows for chart `482012f1` stale (v3-era, pre-v4-rewrite). This session closed that gap for real. **(6) Idempotency safety confirmed before writing** — read `mi_darshana.py` `_substep_insight_units` in full: it ends with `DELETE FROM mimamsa_insight_embeddings WHERE chart_id=%s` + `DELETE FROM mimamsa_insight_units WHERE chart_id=%s` immediately before its batch INSERT, scoped strictly to the one `chart_id` param — canonical §N.3 per-chart delete-then-insert, matching the pattern Rung P6 already live-proved safe for `bo_pratijna`. **(7) Real live write, NOT rollback-wrapped** — invoked the actual writer via the same `ContextSpec`/`WriterBase.run(ctx)` path Rung P6 used (`ContextSpec(asset_id='mi_darshana', build_id='00000000-0000-4000-8000-000000000007', db_conn=conn, config={'chart_id': '482012f1-710e-4a25-994a-93821f5871aa'})`, `MiDarshanaWriter().run(ctx)`), then `conn.commit()`. Result: `WriterResult(rows_inserted=113, rows_updated=0, rows_skipped=0)`. **(8) Independent re-verification, fresh separate connection/query (not inside the write transaction)** — BEFORE: `mimamsa_insight_units` total row count for `482012f1` = 113, `verdict_marriage.statement` = `"Marriage: promised (grade 6.2/10). Strong evidence, corroborated across traditions."` (`updated_at=2026-08-07 23:49:18 UTC`, stale). AFTER: total row count = 113 (unchanged — same count, principled replace not accretion/collapse), `verdict_marriage.statement` = **`"Marriage: conditional (grade 3.2/10). Conditional — context-dependent, per cross-tradition concordance."`** (`rank_consequence=0.321`, `n_support=5`, `updated_at=2026-08-08 21:43:22 UTC`) — exact match, word-for-word, to the prior pass's rollback-wrapped recomputation. `provenance_chain.activation_state='conditional'`, `ranked_evidence` traces to real `derivation.factor_ledger` entries (`house_lord`/Venus/enemy/0.15, `karaka`/Jupiter/moolatrikona/0.129, …) — never fabricated. **(9) Sanity spot-checks** — `verdict_separation`: `"Separation: conditional (grade 5.0/10). Conditional — context-dependent, per cross-tradition concordance."` (was `"promised (grade 6.2/10)…"`). `verdict_childbirth`: `"Childbirth: conditional (grade 5.9/10). Conditional — context-dependent."` (was `"promised (grade 5.9/10)…"`, `n_support` 5→4, both honest per-row reads, not corrupted). Full `insight_type` breakdown for `482012f1` post-rebuild: `verdict_object=27, retrodiction=50, emergent_law=20, calibrated_outlook=6, manifestation_grammar=6, load_bearing=4` (sums to 113 — matches total, no orphaned/nulled rows). **Other-chart isolation check**: queried ALL charts' row counts post-write — `1c826d5a-…` (Abhinandan) still shows 37 rows, completely untouched; only `482012f1` changed. **(10) Mahā-Brief surface re-confirmed against the ACTUAL refreshed table** (not just hand-traced as before) — `platform-mcp/src/tools/register_p1_synthesis.ts` line ~776 (`synth_chart_brief_get`) issues `SELECT insight_id, insight_type, domain, question_lens, … FROM mimamsa_insight_units` filtered/ranked with `CASE insight_type WHEN 'verdict_object' THEN 1 …`, then `rows.filter(r => r['insight_type'] === 'verdict_object')` at line ~807 — reads directly from the table just rebuilt; MCP tool itself remains unreachable read-only from this environment (auth-gated), so this is confirmed by code inspection against the live schema, not a live tool call, but the data path is unambiguous: next real invocation serves the corrected sentence. **VERDICT: Rung P7 is GREEN.** Both the consumer code (B4) and the served data (this session) are now independently verified correct and live for chart `482012f1`. Scope note carried to B5: this rebuild covered `482012f1` only (a one-off gap-closure write per this task's brief) — it does not by itself make `mi_darshana` rebuild a durable part of the deploy pipeline; B5 should still add that as an explicit, gated step for every chart. — Prior findings (1–5), retained: **(1)** `bodha_pratijna` row CONFIRMED: `status='conditional'`, `occurrence_grade=0.321`/WEAK, `condition_grade=5.830`/MODERATE, `grade=3.210`, `derivation.weights` Venus/Jupiter both `slot=karaka` weight `0.142857` each. **(2)** `promise_prior()` CONFIRMED FIXED live: `P_e=0.672321`, `n_routes=5`, nonzero (pre-fix was hard-zero). **(3)** the original staleness finding this session closed. **(4)** Mahā-Brief parser hand-trace: `parseStatement`/`detectStatusVocabularyConflict` handle the v4-shaped statement correctly, no false D-12 flag, routes to `open_questions`. **(5)** Noisy-OR amplification `P_e=0.672` vs raw `occurrence_grade=0.321` (2.09×) — real, reproducible, diagnostic-only design characteristic (not a bug), root-caused to `load_promise_graph`'s `max(weight, grade/10)` conductance rule; flagged as a named follow-up for whoever consumes `P_e` as a served confidence figure, not blocking. |
 | B5 | Gate + deploy (merge+deploy phase) | **CLOSED — MERGED @ `0f4a5045b` (PR #1118, squash into `main`), DEPLOY VERIFIED LIVE.** GATE-EXECUTOR dispatch (fresh Opus-role context, own-query verification per campaign rails), full account below under "## Gate-Executor B5 Close Report". **Chart-rebuild sub-phase (Rung P8+) remains a separate, later dispatch — explicitly out of this session's scope**, consistent with the packet's own framing. |
-| — | Rung P8 (single-chart full acceptance, 482012f1 first) | PENDING — next action |
+| — | Rung P8 (single-chart full acceptance, 482012f1 first) | **GREEN — scoped rebuild complete for `482012f1` only** (charts 2/3 explicitly out of scope, next dispatch). Independent PARĪKṢAKA/Gate-Executor session (2026-08-09), full account below under "## Lane B5 chart-rebuild sub-phase — 482012f1 scoped rebuild (Rung P8)". Real live writes for `ka_yojaka`/`ka_avadhi`/`ka_taranga`/`ph_nimitta`/`ka_kshetra`, one real gap found and closed (`ka_kshetra`'s resume-fingerprint doesn't cover `bodha_pratijna` content, so its first invocation silently no-op'd against a stale 2026-08-07 build — cleared and force-rebuilt), sweep-corpus EXACTLY unchanged before/after, `asset_throughput` honestly reported as NOT reflecting this method's writes (bypasses the orchestrator, the sole `asset_throughput` writer per §N.2) — the real acceptance evidence is direct-query verification of every table, not that bookkeeping surface. |
 | B6 | Measurement #3 (temporal skill, R15 event set) | NOT STARTED |
 | B7 | Promise-layer scoreboard v0 | NOT STARTED |
 | — | CLOSE | PENDING |
@@ -249,6 +249,67 @@ below is from a live command/query this session ran itself, not re-read from the
 Every gate-packet claim independently reproduced; the one real process gap found (CI never having
 run on the integration branch) was closed by using this repo's own established mechanism, not
 worked around; merge and deploy both confirmed live, not from logs alone.
+
+## Lane B5 chart-rebuild sub-phase — 482012f1 scoped rebuild (Rung P8)
+
+**Scope decision (native ruling, this session):** SCOPED rebuild, not full L0-L5 DAG. Only the
+assets PRATIJÑĀ v4 actually changed. `bo_pratijna`/`mi_darshana` were already freshly rebuilt for
+`482012f1` in the Rung P7 gap-closure session; this phase re-ran the 5 downstream consumers that
+hadn't yet been re-run against the new `bo_pratijna` output: `ka_yojaka`, `ka_avadhi`,
+`ka_taranga`, `ph_nimitta`, `ka_kshetra`. Census cross-checked against the B4 consumer audit's
+full list — confirmed complete (TS consumers `query_pratijna.ts`/`query_predictive_anchors.ts`
+are live-read serving layers needing no rebuild, already fixed in B4).
+
+**R1 sweep-corpus check, run BEFORE any write**: none of the 5 writers write to
+`kala_gochara_windows` (grep-confirmed on each file); `ka_kshetra`'s `stage4_field.py` reads it
+read-only as a legacy cross-check corpus only. `build_protected_assets` confirmed showing
+`ka_gochara_sweep` protected for both `482012f1` and `1c826d5a`. Baseline counts BEFORE:
+`482012f1`=16297, `1c826d5a`=19323, `cb73cd3d`=2667.
+
+**Dependency order** (derived from actual code, not assumed): `ka_yojaka` → `ka_avadhi` →
+`ka_taranga` → `ph_nimitta` (reads `kala_activation_predicates`, `ka_yojaka`'s output) →
+`ka_kshetra` (heaviest; reads `bodha_pratijna` directly via its `stage2_promise` plugin).
+
+**Results, real live writes via the established `ContextSpec`/`WriterBase.run(ctx)` +
+`conn.commit()` pattern (twice-proven safe earlier this campaign — Rung P6, Rung P7
+gap-closure), each independently re-verified with a fresh query, other-chart isolation confirmed
+for `ka_yojaka` (`1c826d5a` untouched):**
+
+| Writer | Result |
+|---|---|
+| `ka_yojaka` | `rows_inserted=50104`. |
+| `ka_avadhi` | `rows_inserted=1169`. |
+| `ka_taranga` | `rows_inserted=92412`. |
+| `ph_nimitta` | `rows_inserted=92`; relationship-domain anchor spot-checked, non-placeholder values. |
+| `ka_kshetra` | **First invocation: `rows_inserted=0` — a real gap, not accepted at face value.** Investigation found its resume-fingerprint (`_fingerprint()`) is built from `chart_id` + `field_snapshot_id` (corpus_pin/weights_version/config_pin) + the SET of event-class IDs — but NOT `bodha_pratijna`'s grade/status content. Since the event-class set hadn't changed and 123 substeps were already marked complete under that exact fingerprint from a **2026-08-07 14:57 UTC** build (before this campaign's v4 rewrite), the writer silently resumed as "already done" and touched nothing — `kala_field`/`kala_field_windows`/`kala_insights`/`kala_timeline_spec` were still serving stale pre-v4 field data. **Fix applied**: cleared the 123 stale `build_substep_progress` rows for `(chart_id=482012f1, asset_id=ka_kshetra)` — the exact same scoped delete the writer's own `_delete_prior_rows` performs for a fresh chart, not a novel operation — and re-launched. **Second invocation (independently waited on by the conductor via direct OS-process monitoring after the dispatched agent's connection failed mid-task): `rows_inserted=8520`.** Several event classes honestly skipped via the pre-existing LAW ZERO mechanism (`no_class_prior_row` — no `bg_class_priors` lifetime-count row for that class; reason recorded in `kala_field_snapshots.skipped_classes`, not silently dropped). This fingerprint gap is a real, disclosed finding for a future lane: `ka_kshetra`'s resumption logic should incorporate `bodha_pratijna`'s own `computed_at`/content into its fingerprint so a future upstream rescoring doesn't require a manual substep-progress clear. |
+
+**R1 sweep-corpus re-check, run AFTER all writes (conductor's own direct query, independent of
+the dispatched agent — its connection failed twice mid-report, so this was verified directly
+rather than trusted from a partial transcript):** `SELECT chart_id, count(*) FROM
+kala_gochara_windows GROUP BY chart_id` → `1c826d5a`=19323, `482012f1`=16297, `cb73cd3d`=2667 —
+**EXACTLY UNCHANGED**, matching the pre-write baseline to the row. `kala_field_windows` for
+`482012f1` (a genuinely new table `ka_kshetra` writes, distinct from the protected
+`kala_gochara_windows`): 6 rows, `computed_at` fresh.
+
+**Rung P8 scoped acceptance:**
+- `bodha_pratijna` marriage/separation/childbirth for `482012f1`/`lahiri_chitrapaksha`: still 3
+  rows, `max(computed_at)=2026-08-08 19:44:48 UTC` — unaffected by this phase (as expected, this
+  phase didn't re-touch `bo_pratijna`), still matching RUNG_P3 (verified earlier in this session
+  and unchanged since).
+- **Honest limitation, disclosed not hidden**: `asset_throughput` was NOT updated by any of these
+  5 writer invocations — the direct `ContextSpec`/`WriterBase.run(ctx)` pattern bypasses the full
+  orchestrator's `execute_run`, and per §N.2 the orchestrator is the SOLE `asset_throughput`
+  writer. "Zero error/stale, detector-cited" per the master plan's literal text cannot be claimed
+  against that bookkeeping surface via this method — the real acceptance evidence here is the
+  direct per-table query verification above (row counts, fresh timestamps, non-placeholder
+  content, sweep-corpus integrity), not an `asset_throughput` state read. Flagged for whoever
+  next runs a REAL orchestrated build for this chart: `asset_throughput` will still show these 5
+  assets in their pre-this-phase state until a real `execute_run` touches them.
+
+**VERDICT: Rung P8 GREEN for chart `482012f1`'s scoped asset set.** Two real findings surfaced and
+closed (the `ka_kshetra` fingerprint gap; two agent-connection failures recovered by direct
+conductor verification rather than lost work) — both disclosed above, neither hidden. **Charts
+`1c826d5a` and `cb73cd3d` remain out of scope — next dispatch, only after this record stands.**
 
 ## DB access (verified pattern; never park on this)
 
