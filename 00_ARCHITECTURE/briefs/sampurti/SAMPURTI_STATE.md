@@ -14,7 +14,7 @@ conductor_session: SAMPURTI-CONDUCTOR-2026-08-10 (first run)
 
 # SAMPŪRTI CAMPAIGN LEDGER
 
-CONDUCTOR-HEARTBEAT: 2026-08-10T05:00+05:30 (SAMPURTI-CONDUCTOR-2026-08-10) [context-resume after compaction]
+CONDUCTOR-HEARTBEAT: 2026-08-10T05:05+05:30 (SAMPURTI-CONDUCTOR-2026-08-10) [CI-fix committed 65f967873; CI re-triggered on PR #1138]
 
 ## WAVE POSITION
 
@@ -115,7 +115,18 @@ VERDICT: APPROVED.
 
 ## GATE LOG (integration → main packets, deploy evidence, production==main)
 
-(none yet — pending Wave 0 completion of L0a/L0e/L0f)
+**Gate attempt 1 (GATE-EXECUTOR a81e82e8):** PR #1138 created (b9a7ebdfd→main). CI FAILED.
+  - BLOCKING: unit-tests — citation_verify_gate.test.ts: hardcoded SHA + integration test sampled
+    census SHAs; all fail in shallow clone (depth=1). CI check: FAIL.
+  - NON-BLOCKING: fact_category_pin_allowlist.json — bo_karanajala.py line 796 stale after L0d +4
+    shift. Allowlist gate: FAIL (non-blocking for this gate but blocks CI).
+  - Merge: NOT executed.
+
+**Gate fix (conductor, 65f967873, 05:05 IST):** 3 targeted fixes committed to integration and pushed:
+  1. ci.yml unit-tests checkout: add fetch-depth: 0 → full history available for all SHA assertions.
+  2. citation_verify_gate.test.ts: replace hardcoded historical SHA with dynamic git rev-parse HEAD.
+  3. fact_category_pin_allowlist.json: bo_karanajala.py 796→800 (L0d +4 line shift corrected).
+  CI re-triggered on PR #1138 — awaiting green.
 
 ## DEBTS / PARKS (cause VERIFIED live or it is a defect)
 
@@ -130,10 +141,13 @@ the gate. Builder swarm instructed to never self-apply migrations in future lane
 
 ## NEXT-ACTION
 
-Wave 0 COMPLETE. GATE-EXECUTOR dispatched (see GATE LOG below).
-On GATE complete: dispatch Wave 1 S2 builder. S2 wires ka_kshetra stages 0–3 per S1 I/O map.
+Wave 0 CI-fix pushed (65f967873). PR #1138 CI re-running.
+On CI GREEN: conductor merges PR #1138 (integration→main) — GATED, conductor performs this.
+On deploy complete: dispatch Wave 1 S2 builder. S2 wires ka_kshetra stages 0–3 per S1 I/O map.
 Key: stage0→stage2→stage3→stage1→stage4+. Fix S1-F1: stage3_clocks.py:1163 repoint to kala_field_routes.
 Content fixes (L0e) must be deployed before Wave-1 rebuild begins.
+L0f backfill: run backfill_lel_event_class_resolution.py --persist after gate+deploy.
 
-If this conductor dies: resume per prompt — check GATE LOG; if integration→main already merged,
-proceed directly to Wave 1 S2 dispatch. Merged to integration: ALL 6 (L0b/L0c/L0d/L0f/L0e/L0a).
+If this conductor dies: resume per prompt — check GATE LOG for PR #1138 CI status; if green, merge;
+if integration→main already merged, proceed directly to Wave 1 S2 dispatch.
+Merged to integration: ALL 6 (L0b/L0c/L0d/L0f/L0e/L0a) + CI-fix (65f967873).
