@@ -305,3 +305,5 @@ jobs:
 # ADHISTHANA-CONDUCTOR-2026-08-08 close entry does not match paths filter; same pattern; PR #1112)
 # no-op: touch to trigger TAP-6 on pratijna-v4/b5-ledger-close (PRATIJNA_V4_STATE.md Lane B5
 # close entry does not match paths filter; same pattern; PR #1119)
+# no-op: touch to trigger TAP-6 on pratijna-v4/b5-rung-p8-ledger (PRATIJNA_V4_STATE.md Lane B5
+# chart-rebuild sub-phase entry does not match paths filter; same pattern; PR #1120)
