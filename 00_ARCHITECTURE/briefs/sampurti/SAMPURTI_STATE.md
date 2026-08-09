@@ -14,7 +14,7 @@ conductor_session: SAMPURTI-CONDUCTOR-2026-08-10 (first run)
 
 # SAMPŪRTI CAMPAIGN LEDGER
 
-CONDUCTOR-HEARTBEAT: 2026-08-10T03:53+05:30 (SAMPURTI-CONDUCTOR-2026-08-10)
+CONDUCTOR-HEARTBEAT: 2026-08-10T04:00+05:30 (SAMPURTI-CONDUCTOR-2026-08-10)
 
 ## WAVE POSITION
 
@@ -40,7 +40,7 @@ LEL resolver rows PARKED-honest, never guessed).
 |---|---|---|---|---|---|---|
 | L0a | G16 record repair (CURRENT_STATE:124 + close artifact to main path + 51 census rows + CI citation-resolution upgrade) | sampurti/l0a-record-repair | DISPATCHED 03:35 | 04:35 | — | required |
 | L0b | G4a bg_sarvatobhadra_grid root-cause + dispatch | sampurti/l0b-grid | BUILDER-DONE PR#1133 | 04:35 | PARĪKṢAKA IN-FLIGHT 03:47 | n/a |
-| L0c | G12e kala_dasha_sandhi_get prod registration + stale "eight" docstrings | sampurti/l0c-dasha-sandhi | BUILDER-DONE PR#1132 | 04:35 | PARĪKṢAKA IN-FLIGHT 03:47 | n/a |
+| L0c | G12e kala_dasha_sandhi_get prod registration + stale "eight" docstrings | sampurti/l0c-dasha-sandhi | PARĪKṢAKA-PASS PR#1132 | 04:35 | PASS 03:58 — registration chain confirmed; 4+ docstrings; census test real; APPROVED | n/a |
 | L0d | G13/PA-4 KNOWN_DOMAINS 7→13 migration in bo_sangati/bo_bimba/bo_karanajala (R17 delete local lists) | sampurti/l0d-vocab | BUILDER-DONE PR#1134 | 04:35 | PARĪKṢAKA+PRATINIDHI IN-FLIGHT 03:53 | IN-FLIGHT 03:53 |
 | L0e | Pre-rebuild content fixes: G8 KaryatvaMaps ×5 + G10 varga_confirmation + G9 doc-direction reconcile | sampurti/l0e-content | DISPATCHED 03:35 | 05:05 | — | required |
 | L0f | G14a L6 LEL→event_class resolver + 64-event backfill classification | sampurti/l0f-resolver | DISPATCHED 03:35 | 05:05 | — | n/a |
