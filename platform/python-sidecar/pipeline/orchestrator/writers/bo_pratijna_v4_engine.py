@@ -313,11 +313,25 @@ def dignity_of_with_positions(
     graha_house_d1: int | None,
     d1_houses: dict[str, int],
     ref: dict[str, dict[str, Any]],
+    amendments: frozenset[str] = frozenset(),
 ) -> DignityResult:
     """Full §2.1 dignity resolution, including the pañcadhā-maitri compound
     tier, using `d1_houses` (graha -> D1 whole-sign house, for every
     classical graha) to resolve the sign lord's own D1 house for the
-    tatkalika computation."""
+    tatkalika computation.
+
+    `amendments` — R20 amendment gate (default empty = v4.0, unchanged).
+    When `'F1'` is present (AMENDMENT_F1_SPEC_v1_0.md, dispositor-conjunction
+    exception): if the scored graha and its own sign's lord are CONJUNCT in
+    D1 (`graha_house_d1 == sign_lord_house_d1` — the same D1-snapshot
+    convention CHECKPOINT_RECORD_v1_0.md Decision 1 already binds tatkalika
+    to, extended here per the amendment's own TRIGGER SCOPE clause), the
+    relationship is read naisargika-only; the tatkalika term is set aside
+    for that dispositor pair specifically. Every other same-sign pair and
+    every non-dispositor relationship is untouched — this branch only ever
+    fires for the one pair `dignity_of_with_positions` is already computing
+    (the scored graha vs. its OWN sign's lord), so it cannot leak to any
+    other relationship by construction."""
     try:
         return dignity_of(graha, sign_number, graha_house_d1, ref)
     except _NeedsSignLordHouse as need:
@@ -331,6 +345,14 @@ def dignity_of_with_positions(
                 graha, sign_number, state, DIGNITY_BAND[state],
                 f"naisargika-only (tatkalika unavailable): {graha}->{need.sign_lord}="
                 f"{need.naisargika_rel}",
+            )
+        if "F1" in amendments and graha_house_d1 == sign_lord_house_d1:
+            state = need.naisargika_rel
+            return DignityResult(
+                graha, sign_number, state, DIGNITY_BAND[state],
+                f"AMENDMENT F1 (dispositor-conjunction exception): {graha} conjunct its "
+                f"dispositor {need.sign_lord} (both D1 house {graha_house_d1}) — "
+                f"naisargika-only={state}, tatkalika set aside",
             )
         tatkalika_rel = compute_tatkalika_relation(sign_lord_house_d1, graha_house_d1)
         compound = compute_panchadha_maitri(need.naisargika_rel, tatkalika_rel)
@@ -708,8 +730,14 @@ class PratijnaV4Engine:
     chart-wide D1 position map + the global reference_planets table (the
     latter is genuinely global, cached across charts within one process)."""
 
-    def __init__(self, reader: ChartReaderV4):
+    def __init__(self, reader: ChartReaderV4, amendments: frozenset[str] = frozenset()):
+        """`amendments` — R20 amendment gate (default empty frozenset = v4.0,
+        production behavior). Pass `frozenset({'F1'})` for the F1 amendment
+        cycle's offline v4.1 variant (AMENDMENT_F1_SPEC_v1_0.md). No writer
+        passes a non-empty value; this parameter exists solely for the F1
+        side-by-side probe."""
         self.reader = reader
+        self.amendments = amendments
         self._ref_cache: dict[str, dict[str, Any]] | None = None
         self._d1_cache: dict[str, dict[str, Any]] = {}
 
@@ -783,7 +811,7 @@ class PratijnaV4Engine:
                 # Lord's own D1 sign unknown (defensive; should not occur).
                 dig = DignityResult(lord, -1, "neutral", DIGNITY_BAND["neutral"], "lord D1 sign unavailable")
             else:
-                dig = dignity_of_with_positions(lord, lord_sign, lord_house_d1, d1_houses, ref)
+                dig = dignity_of_with_positions(lord, lord_sign, lord_house_d1, d1_houses, ref, self.amendments)
             dignities[("house_lord", str(house))] = dig
             contrib = float(w.weight) * dig.band
             total += contrib
@@ -800,7 +828,7 @@ class PratijnaV4Engine:
             graha = w.item
             sign = d1_signs.get(graha)
             house_d1 = d1_houses.get(graha)
-            dig = dignity_of_with_positions(graha, sign, house_d1, d1_houses, ref)
+            dig = dignity_of_with_positions(graha, sign, house_d1, d1_houses, ref, self.amendments)
             dignities[("karaka", graha)] = dig
             contrib = float(w.weight) * dig.band
             total += contrib
@@ -840,7 +868,7 @@ class PratijnaV4Engine:
             provenance.extend(varga_pos["provenance"])
             house_d1 = d1_houses.get(primary_karaka)  # tatkalika always from D1 (checkpoint ruling)
             dig = dignity_of_with_positions(
-                primary_karaka, varga_pos["sign_number"], house_d1, d1_houses, ref,
+                primary_karaka, varga_pos["sign_number"], house_d1, d1_houses, ref, self.amendments,
             )
             contrib = float(w.weight) * dig.band
             total += contrib
@@ -936,6 +964,10 @@ class PratijnaV4Engine:
             condition_ledger=cond_ledger,
             weights=[{"slot": w.slot, "item": w.item, "weight": float(w.weight)} for w in weights],
             provenance=provenance,
+            engine_version=(
+                ENGINE_VERSION if not self.amendments
+                else f"{ENGINE_VERSION}+{'+'.join(sorted(self.amendments))}"
+            ),
         )
 
     def score_all(self, chart_id: str) -> dict[str, ClassScore]:
