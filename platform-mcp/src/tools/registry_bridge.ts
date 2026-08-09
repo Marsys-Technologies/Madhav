@@ -72,7 +72,7 @@ import { finalizeMcpBudget, autoDetectTrimmableSections, type TrimmableSection }
 // shallow slice. No computation is reimplemented (B.10) — dossier is a deterministic join of the
 // Total Concept Inventory × completeness accounting.
 import { runDossier, type DossierPage } from './dossier.js'
-// ṢAḌ-DARŚANA (SHAD_DARSHANA_BRIEF_v2_0.md §2 file map) — the eight kala_* view/capability
+// ṢAḌ-DARŚANA (SHAD_DARSHANA_BRIEF_v2_0.md §2 file map) — the nine kala_* view/capability
 // facades over the elevated kala envelope. Consolidated (post-Night-2 hygiene fix) into ONE
 // dedicated, kala-owned aggregator — see kala_views/register_all.ts's docstring for why: this
 // file's own registration surface serves every campaign's tools, so a hand-edited per-tool
@@ -4646,7 +4646,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
     }
   )
 
-  // ── ṢAḌ-DARŚANA — all eight kala_* view/capability facades (brief §2 file map) ────
+  // ── ṢAḌ-DARŚANA — all nine kala_* view/capability facades (brief §2 file map) ────
   // Consolidated into ONE call (post-Night-2 hygiene fix; see kala_views/register_all.ts's
   // docstring). "One canonical registration per tool, asserted by test" (brief §2) still
   // holds — each tool's server.tool() call is reached from exactly one place, now inside
