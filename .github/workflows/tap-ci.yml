@@ -309,3 +309,5 @@ jobs:
 # chart-rebuild sub-phase entry does not match paths filter; same pattern; PR #1120)
 # no-op: touch to trigger TAP-6 on pratijna-v4/b5-chart2-rebuild (PRATIJNA_V4_STATE.md Lane B5
 # chart 1c826d5a full 7-asset rebuild entry does not match paths filter; same pattern; PR TBD)
+# no-op: touch to trigger TAP-6 on pratijna-v4/b5-chart3-drop-ledger (PRATIJNA_V4_STATE.md
+# chart-3-dropped entry does not match paths filter; same pattern; PR TBD)
