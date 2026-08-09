@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.53
+version: 6.54
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,23 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.54 (2026-08-09, PRATIJÑĀ v4 Campaign B close — arc complete): full account in the new
+    banner immediately above and in `00_ARCHITECTURE/briefs/pratijna_v4/PRATIJNA_V4_STATE.md`.
+    Headline facts: all 8 campaign stages merged to `main` @ `baf9f51e8` (14 PRs, #1113–#1126);
+    all 9 Proof Ladder rungs (P1–P9) GREEN; v4 scoring engine live in production for 2/3 canonical
+    charts (`482012f1`, `1c826d5a` — chart 3 explicitly out of scope per native instruction); the
+    marriage answer served honestly (occurrence WEAK, condition MODERATE, against a real marriage
+    that occurred — not corrected to fit the outcome); 2 real production-affecting defects found
+    and fixed in the B4 consumer audit; every PARĪKṢAKA pass ran independent live re-derivation
+    and caught 2 false prose claims before merge (neither a code defect). Honest backlog carried:
+    chart 3 unrebuilt, a `ka_kshetra` fingerprint defect, MEASUREMENT #3's flat-hazard-field gap
+    now live-confirmed, a disclosed noisy-OR characteristic in one fix — none blocking.
+    Note (honest, not chased further this entry): the immediately-prior ADHIṢṬHĀNA close banner's
+    own text referenced "changelog v6.54" but no such entry was ever added before this one — a
+    pre-existing drift, corrected here only by this entry now legitimately occupying v6.54, not by
+    retroactively authoring ADHIṢṬHĀNA's missing entry.
+    last_session_id: PRATIJNA-V4-CONDUCTOR-2026-08-09.
+    predecessor_session: ADHISTHANA-CONDUCTOR-2026-08-08.
   - v6.53 (2026-08-07, ṢAḌ-DARŚANA CLOSING RUN — arc complete): CORRECTS v6.52 factual error
     (confirmed by §M red-team D-CLASS-3 finding): ADJUDICATION-2 was RULED on 2026-08-01 (Night-3,
     ANTARYĀMIN) — N_e priors = demographic structural priors (Tier N-i), `ne_v01`, 6 Tranche-1
@@ -5627,6 +5644,35 @@ block (post-rebuild era), and proceeds.
 
 ## §2 — Canonical state block
 
+> 🟢 **PRATIJÑĀ v4 Campaign B close (2026-08-09, session PRATIJNA-V4-CONDUCTOR-2026-08-09) —
+> Campaign B of the ratified MASTER PLAN, following ADHIṢṬHĀNA's checkpoint. RUN-TERMINAL:
+> ARC-COMPLETE.** Full campaign ledger: `00_ARCHITECTURE/briefs/pratijna_v4/PRATIJNA_V4_STATE.md`.
+> All 8 stages (Stage 0, B0–B7) merged to `main` @ `baf9f51e8` across 14 PRs (#1113–#1126). **All 9
+> Proof Ladder rungs (P1–P9) GREEN**, spanning this campaign and ADHIṢṬHĀNA together — Rung P9 (the
+> final rung) closed by two independent halves: the MEASUREMENT #3 degenerate-interval tripwire
+> correctly firing and being root-caused rather than blind-published (Lane B6), and 27/27 promise-
+> layer-scoreboard derivation links independently re-verified to resolve (Lane B7). **The v4
+> scoring engine is live in production** for two of three canonical charts (`482012f1`, `1c826d5a`
+> — chart 3 `cb73cd3d` explicitly dropped from scope per native instruction mid-campaign, not a
+> gap): `bo_pratijna_v4_engine.py` reproduces `RUNG_P3_HAND_WORKED_v1_0.md`'s hand-worked numbers
+> exactly, factor-by-factor, PARĪKṢAKA-verified with no compensating errors. **THE MARRIAGE
+> ANSWER, served at its earned tier**: v4's real verdict for `482012f1` — occurrence 0.321 (WEAK),
+> condition 5.83 (MODERATE) — against a marriage that genuinely occurred (2013-12-11), an honest
+> divergence not corrected to fit the outcome. Full scoreboard:
+> `00_ARCHITECTURE/briefs/pratijna_v4/PROMISE_LAYER_SCOREBOARD_v1_0.md`. **Two real production-
+> affecting defects found and fixed** in Lane B4's consumer audit (both root-caused to v4 never
+> populating the legacy `supporting_signal_ids` column, silently zeroing evidence in two downstream
+> consumers). Every PARĪKṢAKA pass ran independent live re-derivation, not a re-read of builder
+> claims — caught and fixed two false prose claims (a docstring margin-proximity error, a PR-body
+> citation error) before merge, neither a code defect. **Process pattern named for future
+> campaigns**: 6 separate builder-agent stalls (backgrounding a slow step, ending the turn without
+> consuming the result) across the campaign, every instance recovered by direct external
+> verification with zero work lost — worth a stronger anti-backgrounding directive in future
+> dispatches. Honest backlog carried forward per R16 (chart 3 unrebuilt; a `ka_kshetra` resume-
+> fingerprint defect; MEASUREMENT #3's flat-hazard-field scope gap now live-confirmed; a disclosed
+> noisy-OR amplification characteristic in one B4 fix — none blocking). Full account: session close
+> entry in `SESSION_LOG.md` (session `PRATIJNA-V4-CONDUCTOR-2026-08-09`). See changelog v6.54.
+
 > 🟢 **ADHIṢṬHĀNA Campaign A close (2026-08-08, session ADHISTHANA-CONDUCTOR-2026-08-08) —
 > Campaign A of the ratified MASTER PLAN (Identity, Promise, and the First True Measurement, native
 > + Fable 5, 2026-08-08). RUN-TERMINAL: ARC-COMPLETE.** Full campaign ledger:
@@ -6861,7 +6907,7 @@ current_state:
   # ------------------------------------------------------------------
   # Last-session pointer
   # ------------------------------------------------------------------
-  last_session_id: C4-CLOSE-2026-08-01  # 2026-08-01: C4-LOOP-LIVE-PROOF closed — the one item PŪRṆATĀ left open, resolved live end-to-end against the deployed app and the real production DB; see PURNATA_CLOSE_REPORT_v1_0.md v1.2 §9 and this file's §2 banner (top entry). This field was stale at SUDDHA-VACA-PHASE-CDEF-2026-07-28 across every intervening session close since (including PURNATA-CLOSE-2026-07-31) — corrected here as an in-scope hygiene fix per schema_validator's cross-check, not a claim that the omitted predecessors are individually documented in this chain. Predecessor SUDDHA-VACA-PHASE-CDEF-2026-07-28  # 2026-07-28: SUDDHA-VACA Phase C/D/E/F CLOSED PARTIAL — 5/7 P0 narration defects VERIFIED-FIXED + rebuilt into both charts, 2/7 PARKED on PARISHODHANA #827/#828; see SUDDHA_VACA_REPORT_v1_0.md and this file's §2 banner. Predecessor DOCTRINE-WAVES-D-5-CLOSE-2026-07-20  # 2026-07-20/21: D-5 "Gochara-Chitra" CLOSED GREEN-WITH-PARTIALS, current_wave advances to D-4b — see REPORT_D-5.md §10/STATE_D-5.md (gate_run_3/native_disposition_gate_run_2 blocks) for full detail. Predecessor DOCTRINE-WAVES-D-5-CONDUCTOR-HALT-2026-07-20 (2026-07-20: D-5 HALTED-AND-REPORTED, not closed, on gate_run_2's RED-C/RED-D findings — this field was stale since 2026-07-13 across several intervening wave closes, corrected as an in-scope hygiene fix). Predecessor LLM-CONSUMPTION-REMEDIATION-W1-2026-07-13  # 2026-07-13: LLM Consumption Remediation W1 (serving plane, 16 lanes) CLOSED — deployed amjis-web 2385fb62 + amjis-mcp fc84cd0d (both == main HEAD, deploy-parity confirmed), 7/7 prod-verified on deployed channel (attribution/grounding/discrimination; WP-1.3 assets; envelope+dates honest; WP-1.8 varga→chart_facts; LCA-17 0-substitution; lel_query 57 native/honest-0 Abhinandan post-ADJ-2). ND-W1.1 295-finding gate PASS (0 unreconciled: 108 REMEDIATED-PENDING-W4 / 136 PENDING-W2 / 50 PENDING-W3 / 1 PARKED). NEXT: W2 writer wave (WP-2.1..2.5). See v6.39 changelog + run ledger §6.6/§6.7. Predecessor LLM-CONSUMPTION-REMEDIATION-W0-2026-07-12 (2026-07-12: W0 CLOSED — WP-0.1/LCA-17 wrong-chart substitution REMEDIATED (SHA-256 cache key + echo-back guard; PR #553 6ec244c0; deployed amjis-web-00955-qt5; blind-verified 0 subs/2M iters); program conductor ACTIVE, REMEDIATION_PLAN_v3_0). Predecessor LLM-CONSUMPTION-AUDIT-EXECUTION-2026-07-12 (audit campaign COMPLETE, 1,009 findings). Predecessor LLM-CONSUMPTION-AUDIT-BRIEF-FOUNDRY-2026-07-12  # 2026-07-12: BRIEF FOUNDRY session CLOSED (BUILD-ONLY — no audit/fix/DB-write). Built 8 ledgers + CHARTER + Item-0 brief + 10 lane briefs + AUDIT_STATE skeleton + TRACEABILITY_MATRIX (0 unmapped) for the upcoming LLM Consumption Audit program under 00_ARCHITECTURE/llm_consumption_audit/. See v6.36 changelog entry above and FOUNDRY_CLOSE_REPORT.md. Independent of the L0-L5 layer-build arc (§E) — no macro-phase/layer-campaign change. Predecessor R5.3-CONTENT-DEPTH-2026-07-10 (2026-07-10: R5.3 content-depth iteration CLOSED — §B/B1/B2/B3/B4 complete, gate NOT MET (39.5%), honest close, backlog transfers to R6 TOTAL ELEVATION. Predecessor R5.2-ACCEPTANCE-2026-07-09.)
+  last_session_id: PRATIJNA-V4-CONDUCTOR-2026-08-09  # 2026-08-09: PRATIJÑĀ v4 Campaign B closed — v4 scoring engine live for 2/3 canonical charts, the marriage answer served at its earned tier, all 9 Proof Ladder rungs GREEN; see this file's §2 banner (top entry) and SESSION_LOG.md. This field was stale at C4-CLOSE-2026-08-01 across every intervening session close since (including ADHISTHANA-CONDUCTOR-2026-08-08) — corrected here as an in-scope hygiene fix per schema_validator's cross-check, not a claim that the omitted predecessors are individually documented in this chain. Predecessor ADHISTHANA-CONDUCTOR-2026-08-08 (2026-08-08: ADHIṢṬHĀNA Campaign A closed — foundation merged to main @ edd4cf928, checkpoint artifacts ready for the human+Fable review; see this file's §2 banner and ADHISTHANA_STATE.md). Predecessor C4-CLOSE-2026-08-01  # 2026-08-01: C4-LOOP-LIVE-PROOF closed — the one item PŪRṆATĀ left open, resolved live end-to-end against the deployed app and the real production DB; see PURNATA_CLOSE_REPORT_v1_0.md v1.2 §9. Predecessor SUDDHA-VACA-PHASE-CDEF-2026-07-28  # 2026-07-28: SUDDHA-VACA Phase C/D/E/F CLOSED PARTIAL — 5/7 P0 narration defects VERIFIED-FIXED + rebuilt into both charts, 2/7 PARKED on PARISHODHANA #827/#828; see SUDDHA_VACA_REPORT_v1_0.md and this file's §2 banner. Predecessor DOCTRINE-WAVES-D-5-CLOSE-2026-07-20  # 2026-07-20/21: D-5 "Gochara-Chitra" CLOSED GREEN-WITH-PARTIALS, current_wave advances to D-4b — see REPORT_D-5.md §10/STATE_D-5.md (gate_run_3/native_disposition_gate_run_2 blocks) for full detail. Predecessor DOCTRINE-WAVES-D-5-CONDUCTOR-HALT-2026-07-20 (2026-07-20: D-5 HALTED-AND-REPORTED, not closed, on gate_run_2's RED-C/RED-D findings — this field was stale since 2026-07-13 across several intervening wave closes, corrected as an in-scope hygiene fix). Predecessor LLM-CONSUMPTION-REMEDIATION-W1-2026-07-13  # 2026-07-13: LLM Consumption Remediation W1 (serving plane, 16 lanes) CLOSED — deployed amjis-web 2385fb62 + amjis-mcp fc84cd0d (both == main HEAD, deploy-parity confirmed), 7/7 prod-verified on deployed channel (attribution/grounding/discrimination; WP-1.3 assets; envelope+dates honest; WP-1.8 varga→chart_facts; LCA-17 0-substitution; lel_query 57 native/honest-0 Abhinandan post-ADJ-2). ND-W1.1 295-finding gate PASS (0 unreconciled: 108 REMEDIATED-PENDING-W4 / 136 PENDING-W2 / 50 PENDING-W3 / 1 PARKED). NEXT: W2 writer wave (WP-2.1..2.5). See v6.39 changelog + run ledger §6.6/§6.7. Predecessor LLM-CONSUMPTION-REMEDIATION-W0-2026-07-12 (2026-07-12: W0 CLOSED — WP-0.1/LCA-17 wrong-chart substitution REMEDIATED (SHA-256 cache key + echo-back guard; PR #553 6ec244c0; deployed amjis-web-00955-qt5; blind-verified 0 subs/2M iters); program conductor ACTIVE, REMEDIATION_PLAN_v3_0). Predecessor LLM-CONSUMPTION-AUDIT-EXECUTION-2026-07-12 (audit campaign COMPLETE, 1,009 findings). Predecessor LLM-CONSUMPTION-AUDIT-BRIEF-FOUNDRY-2026-07-12  # 2026-07-12: BRIEF FOUNDRY session CLOSED (BUILD-ONLY — no audit/fix/DB-write). Built 8 ledgers + CHARTER + Item-0 brief + 10 lane briefs + AUDIT_STATE skeleton + TRACEABILITY_MATRIX (0 unmapped) for the upcoming LLM Consumption Audit program under 00_ARCHITECTURE/llm_consumption_audit/. See v6.36 changelog entry above and FOUNDRY_CLOSE_REPORT.md. Independent of the L0-L5 layer-build arc (§E) — no macro-phase/layer-campaign change. Predecessor R5.3-CONTENT-DEPTH-2026-07-10 (2026-07-10: R5.3 content-depth iteration CLOSED — §B/B1/B2/B3/B4 complete, gate NOT MET (39.5%), honest close, backlog transfers to R6 TOTAL ELEVATION. Predecessor R5.2-ACCEPTANCE-2026-07-09.)
     # === Predecessor FOUNDATION-SESSION-1 (2026-06-18) ===
     # FOUNDATION-SESSION-1: Pre-L2 foundation close-out COMPLETE. All 6 ITEM close criteria met. Migrations 315-317 prod-applied. 4 autonomy writers REGENERABLE confirmed. bg_rules full mine (2,912 ceiling). Catalogs ACCEPTED. Endpoint ALL L0+L1 lit/service_ok. Sealing artifact: FOUNDATION_SESSION_1_CLOSE.md. Predecessor L1-GANITA-REBASE-AND-PR.
     # === Predecessor L1-GANITA-REBASE-AND-PR (2026-06-18) ===
