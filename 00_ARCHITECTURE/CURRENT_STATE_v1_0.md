@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.54
+version: 6.55
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,16 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.55 (2026-08-09, F1 AMENDMENT CYCLE close — first R20 amendment cycle): full account in the
+    new banner immediately above and in `00_ARCHITECTURE/briefs/pratijna_v4/F1_CYCLE_STATE.md` +
+    `F1_SIDE_BY_SIDE_v1_0.md`. Headline facts: 3 stages closed, merged to `main` @ `9353737e5` (PR
+    #1128); dispositor-conjunction exception implemented as a default-off `amendments={'F1'}`
+    engine parameter (production v4.0 behavior byte-identical, independently confirmed live);
+    PARĪKṢAKA PASS with zero findings; full 54-cell side-by-side published (10/27 classes moved on
+    `482012f1`, marriage the sole band-crossing cell WEAK→MODERATE; 0/27 moved on `1c826d5a`); no
+    adoption decision made — that ruling is reserved for the native + Fable per R20 item 4.
+    last_session_id: F1-AMENDMENT-CONDUCTOR-2026-08-09.
+    predecessor_session: PRATIJNA-V4-CONDUCTOR-2026-08-09.
   - v6.54 (2026-08-09, PRATIJÑĀ v4 Campaign B close — arc complete): full account in the new
     banner immediately above and in `00_ARCHITECTURE/briefs/pratijna_v4/PRATIJNA_V4_STATE.md`.
     Headline facts: all 8 campaign stages merged to `main` @ `baf9f51e8` (14 PRs, #1113–#1126);
@@ -5643,6 +5653,31 @@ block (post-rebuild era), and proceeds.
 ---
 
 ## §2 — Canonical state block
+
+> 🟢 **F1 AMENDMENT CYCLE close (2026-08-09, session F1-AMENDMENT-CONDUCTOR-2026-08-09) — the
+> first R20 amendment cycle against ratified `V4_RUBRIC_SPEC_v1_0.md`, following PRATIJÑĀ v4
+> Campaign B's close.** Full campaign ledger: `00_ARCHITECTURE/briefs/pratijna_v4/F1_CYCLE_STATE.md`.
+> **No production write, no deploy, no adoption decision made** — v4.0/v1.0 remains the production
+> rubric; the F1 amendment (dispositor-conjunction exception, filed at the original ADHIṢṬHĀNA
+> checkpoint) exists only as an offline, default-off `amendments={'F1'}` engine variant. All 3
+> R20-mandated stages closed and merged to `main` @ `9353737e5` (PR #1128, single squash merge via
+> merge queue): **Stage 0** — `AMENDMENT_F1_SPEC_v1_0.md` committed blind, before any effect beyond
+> one disclosed checkpoint estimate was computed. **Stage 1** — `bo_pratijna_v4_engine.py`'s
+> `dignity_of_with_positions`/`PratijnaV4Engine` gained an `amendments: frozenset[str] = frozenset()`
+> parameter (default = v4.0, byte-identical to production); 8 new TDD unit tests + 4 new live-DB
+> tests; independent PARĪKṢAKA subagent review returned **PASS, zero findings**. **Stage 2** — the
+> permanent, read-only `platform/scripts/probes/probe_f1_side_by_side.py` ran v4.0 vs v4.1 across
+> both live canonical charts, all 27 classes (54 cells): **10/27 classes moved on `482012f1`**
+> (marriage the only band-crossing cell, WEAK→MODERATE, 0.321→0.450), **0/27 moved on `1c826d5a`**.
+> Every moved cell traced to exactly one of two dispositor-conjunction pairs (Venus/Jupiter D1 house
+> 9; Saturn/Mars via career_setback's D10 divisional slot) with exact `chart_divisionals` fact_ids —
+> full table + trace in `F1_SIDE_BY_SIDE_v1_0.md`. **Stage 3** — this ledger + gate packet, merged
+> with 0 CI failures across all required checks. **The adoption decision belongs to the native +
+> Fable (R20 item 4) and was NOT made this cycle** — the artifact makes no recommendation. Two
+> self-errors caught and corrected during Stage 2 drafting (a mis-attributed trigger mechanism for 3
+> classes, a mis-stated intermediate band value), both disclosed in-place per R16, not scrubbed.
+> Full account: session close entry in `SESSION_LOG.md` (session
+> `F1-AMENDMENT-CONDUCTOR-2026-08-09`). See changelog v6.55.
 
 > 🟢 **PRATIJÑĀ v4 Campaign B close (2026-08-09, session PRATIJNA-V4-CONDUCTOR-2026-08-09) —
 > Campaign B of the ratified MASTER PLAN, following ADHIṢṬHĀNA's checkpoint. RUN-TERMINAL:
