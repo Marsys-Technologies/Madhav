@@ -321,3 +321,5 @@ jobs:
 # close + Rung P9 GREEN entry does not match paths filter; same pattern; PR TBD)
 # no-op: touch to trigger TAP-6 on pratijna-v4/session-close (CURRENT_STATE v6.54 + SESSION_LOG
 # PRATIJNA-V4-CONDUCTOR-2026-08-09 close entry does not match paths filter; same pattern; PR TBD)
+# no-op: touch to trigger TAP-6 on f1-amendment/session-close (CURRENT_STATE v6.55 + SESSION_LOG
+# F1-AMENDMENT-CONDUCTOR-2026-08-09 close entry does not match paths filter; same pattern; PR #1129)
