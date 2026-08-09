@@ -54,6 +54,19 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.58 (2026-08-10, SAMPURTI Wave 0 COMPLETE): Wave 0 of SAMPURTI Gap Remediation fully
+    closed. PR #1138 (sampurti/integration → main) merged via merge queue @ merge commit
+    3311ae0e3 (2026-08-09T23:18Z). All 6 lanes landed: L0a (G16 record repair + citation gate
+    upgrade), L0b (G4a bg_sarvatobhadra_grid root-cause + dispatch), L0c (G12e kala_dasha_sandhi_get
+    production registration), L0d (G13/PA-4 KNOWN_DOMAINS 7→13 in bo_sangati/bo_bimba/bo_karanajala),
+    L0e (G8 KaryatvaMaps ×5 + G10 varga_confirmation + G9 doc-direction reconcile), L0f (G14a
+    LEL→event_class resolver migration + backfill). Ganga Quality Gate SUCCESS. Deploy to Cloud Run
+    SUCCESS. L0f backfill: 64 rows persisted to lel_event_class_resolution (63 EXACT + 1 AMBIGUOUS,
+    fs shadow row PARKED-honest per ledger). Wave 1 S2 builder dispatched (agent a5ef44c4aa88263c1)
+    to wire ka_kshetra stages 0–3 (G1 CLOCKLESS FIELD fix): branch sampurti/l1a-wire-stages.
+    Campaign ledger: 00_ARCHITECTURE/briefs/sampurti/SAMPURTI_STATE.md.
+    last_session_id: SAMPURTI-CONDUCTOR-2026-08-10.
+    predecessor_session: SAMPURTI-L0A-2026-08-10.
   - v6.57 (2026-08-10, SAMPURTI L0a — G16 record repair): CORRECTS the false line at :124 in the
     v6.53 entry. Evidence: `git show --stat f19969c5b` (PR #1025) title names W3 items 9/13/31/6/7
     and W4 items 26/42 as shipped; `git show --stat e81fc2958` (PR #1090) title names W3 items
@@ -5703,6 +5716,14 @@ block (post-rebuild era), and proceeds.
 ---
 
 ## §2 — Canonical state block
+
+> 🟢 **SAMPŪRTI Wave 0 COMPLETE (2026-08-10, session SAMPURTI-CONDUCTOR-2026-08-10) —
+> All 6 Wave 0 lanes (L0a–L0f: G16 record repair, G4a grid dispatch, G12e dasha_sandhi
+> registration, G13/PA-4 KNOWN_DOMAINS 7→13, G8/G10/G9 content fixes, G14a LEL resolver
+> backfill) merged to integration then gated to main @ 3311ae0e3. Deploy SUCCESS. L0f
+> backfill: 64 rows persisted. Wave 1 S2 builder dispatched: branch sampurti/l1a-wire-stages
+> wires ka_kshetra stages 0–3 (G1 CLOCKLESS FIELD fix). Campaign ledger:
+> 00_ARCHITECTURE/briefs/sampurti/SAMPURTI_STATE.md. See changelog v6.58.**
 
 > 🟢 **F1 ADOPTION CYCLE close (2026-08-09, session F1-ADOPTION-CONDUCTOR-2026-08-09) —
 > executes ruling R22 (native + Fable, 2026-08-09): AMENDMENT F1 (dispositor-conjunction
