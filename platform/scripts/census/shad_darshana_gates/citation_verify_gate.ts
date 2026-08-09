@@ -266,4 +266,6 @@ function main(): void {
   process.exit(printGateReport('citation_verify_gate', validate()))
 }
 
-main()
+if (process.argv[1] && /citation_verify_gate\.(ts|mts|cts|js|mjs|cjs)$/.test(process.argv[1])) {
+  main()
+}
