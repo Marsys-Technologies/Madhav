@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.55
+version: 6.56
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,32 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.56 (2026-08-09, F1 ADOPTION CYCLE close — R22 production adoption of AMENDMENT F1): full
+    account in the new banner immediately above and in
+    `00_ARCHITECTURE/briefs/pratijna_v4/F1_CYCLE_STATE.md` (adoption phase, appended to the same
+    ledger file) + the new `PROMISE_LAYER_SCOREBOARD_v1_1.md` + `V4_RUBRIC_SPEC_v1_0.md` (now v1.1,
+    §2.1.1). Headline facts: R22 (native + Fable, 2026-08-09) ruled AMENDMENT F1 ADOPTED into
+    production on the evidence of `F1_SIDE_BY_SIDE_v1_0.md`. Stage 0 recorded the ruling + amended
+    the rubric spec to v1.1. Stage 1 flipped `bo_pratijna.py`'s production default to
+    `amendments={'F1'}` (`DEFAULT_AMENDMENTS`), engine/formula version tags bumped to `v4.1.0`;
+    independent PARĪKṢAKA subagent review returned PASS (diff scoped exactly to the flip). Stage 2
+    — gate packet PR #1130 merged to `main` @ `912402983` via merge queue, CI green (incl. the
+    PRATIJÑĀ v4 Lane B3 fixture gate with updated expected values), Cloud Run deploy verified
+    (`amjis-sidecar-00971-d28` Ready, 100% traffic, one live MCP call confirmed), `bo_pratijna`
+    re-run sequentially for both canonical charts against the real production DB
+    (`482012f1`→135 rows, `1c826d5a`→135 rows, both `engine_version=bo_pratijna_v4.1.0`) — all
+    acceptance criteria verified live: marriage row exact (conditional/0.450/5.83/v4.1.0), all 10
+    moved classes match the side-by-side exactly, all 17 unmoved classes on `482012f1` and all 27
+    rows on `1c826d5a` byte-identical to v4.0 except the version tag, sweep-corpus counts intact
+    (single engine_version per chart, no partial-version rows), two downstream consumers
+    (`stage2_promise`, `mi_darshana`) spot-read the new marriage value live. Stage 3 published
+    `PROMISE_LAYER_SCOREBOARD_v1_1.md` beside (never replacing) v1.0, with a full delta section and
+    an updated MARRIAGE ANSWER: **conditional / 0.450 MODERATE / 5.83 MODERATE — the first
+    production verdict in the project's history whose value was set by a measured, ruled,
+    classically-cited amendment.** Parked untouched: F3/F7/F6a/F6b remain amendment candidates for
+    future R20 cycles; held-out-chart discipline stands.
+    last_session_id: F1-ADOPTION-CONDUCTOR-2026-08-09.
+    predecessor_session: F1-AMENDMENT-CONDUCTOR-2026-08-09.
   - v6.55 (2026-08-09, F1 AMENDMENT CYCLE close — first R20 amendment cycle): full account in the
     new banner immediately above and in `00_ARCHITECTURE/briefs/pratijna_v4/F1_CYCLE_STATE.md` +
     `F1_SIDE_BY_SIDE_v1_0.md`. Headline facts: 3 stages closed, merged to `main` @ `9353737e5` (PR
@@ -5653,6 +5679,42 @@ block (post-rebuild era), and proceeds.
 ---
 
 ## §2 — Canonical state block
+
+> 🟢 **F1 ADOPTION CYCLE close (2026-08-09, session F1-ADOPTION-CONDUCTOR-2026-08-09) —
+> executes ruling R22 (native + Fable, 2026-08-09): AMENDMENT F1 (dispositor-conjunction
+> exception) is ADOPTED into production, on the evidence of `F1_SIDE_BY_SIDE_v1_0.md`.**
+> Same campaign home as the F1 AMENDMENT CYCLE below, adoption phase appended to the same
+> ledger: `00_ARCHITECTURE/briefs/pratijna_v4/F1_CYCLE_STATE.md`. **Stage 0** — R22 recorded
+> verbatim in the ledger; `V4_RUBRIC_SPEC_v1_0.md` bumped 1.0→1.1, new §2.1.1 quoting the
+> amendment's rule verbatim, marked "ADOPTED 2026-08-09 per R22". **Stage 1** —
+> `bo_pratijna.py`'s production default flipped: `DEFAULT_AMENDMENTS = frozenset({'F1'})`,
+> `ENGINE_VERSION`/`FORMULA_VERSION` bumped to `v4.1.0`; the `amendments` parameter itself is
+> untouched and remains available for future R20 cycles; independent PARĪKṢAKA subagent
+> review returned **PASS** (diff is exactly default-flip + version tag + fixture update, no
+> assertion weakened). **Stage 2** — gate packet PR #1130 merged to `main` @ `912402983` via
+> merge queue, all CI checks green (incl. the PRATIJÑĀ v4 Lane B3 fixture gate with its
+> expected values updated in the same PR, cited to the side-by-side); Cloud Run deploy
+> verified live (`amjis-sidecar-00971-d28` Ready, 100% traffic, one real MCP call confirmed
+> serving); `bo_pratijna` re-run sequentially for both canonical charts against the real
+> production database via `cloud-sql-proxy` — `482012f1` (135 rows, `build_id=
+> 897b87e8-c056-4ca8-adf6-505dd03489f4`) then `1c826d5a` (135 rows, `build_id=
+> ebc8335b-8357-4dbf-92ea-8ae9e019ebae`). **Every acceptance criterion verified live**:
+> marriage row exact (`conditional / 0.450 / 5.830 / bo_pratijna_v4.1.0`); all 10 moved
+> classes on `482012f1` match `F1_SIDE_BY_SIDE_v1_0.md` §1 exactly; all 17 unmoved classes on
+> `482012f1` and all 27 rows on `1c826d5a` byte-identical to v4.0 except the version tag;
+> sweep-corpus counts intact (135 rows/chart, single `engine_version` per chart, no
+> partial-version rows); two downstream consumers (`services.ka_kshetra.stage2_promise`,
+> `mi_darshana.py`'s own §5 query) independently spot-read the new marriage value live.
+> **Stage 3** — `PROMISE_LAYER_SCOREBOARD_v1_1.md` published BESIDE (never replacing)
+> `PROMISE_LAYER_SCOREBOARD_v1_0.md`, per R14 versioned-measurement discipline: same method,
+> same event citations, new v4.1 columns, a full delta section (the ten moved classes,
+> old/new bands), and **THE MARRIAGE ANSWER updated: conditional / 0.450 MODERATE / 5.83
+> MODERATE — stated plainly as the first production verdict in the project's history whose
+> value was set by a measured, ruled, classically-cited amendment**, not by the
+> originally-ratified rubric alone. **Parked and untouched**: F3/F7/F6a/F6b remain amendment
+> candidates for future R20 cycles; held-out-chart discipline stands — future amendments
+> validate against charts F1 never saw. Full account: session close entry in `SESSION_LOG.md`
+> (session `F1-ADOPTION-CONDUCTOR-2026-08-09`). See changelog v6.56.
 
 > 🟢 **F1 AMENDMENT CYCLE close (2026-08-09, session F1-AMENDMENT-CONDUCTOR-2026-08-09) — the
 > first R20 amendment cycle against ratified `V4_RUBRIC_SPEC_v1_0.md`, following PRATIJÑĀ v4

@@ -36203,3 +36203,199 @@ Native's choice: the F1 adoption ruling (present `F1_SIDE_BY_SIDE_v1_0.md` to na
 fresh R20 amendment cycle on one of the 4 remaining checkpoint findings (F3, F6a, F6b, F7); chart 3
 (`cb73cd3d`) rebuild under v4.0; or a new campaign. `00_ARCHITECTURE/briefs/pratijna_v4/
 F1_CYCLE_STATE.md` is the full ledger for anyone picking this back up.
+
+## F1-ADOPTION-CONDUCTOR-2026-08-09 — F1 ADOPTION CYCLE closed: R22 executed, production flipped to v4.1.0, both charts rebuilt, scoreboard v1.1 published
+
+**Campaign:** F1 ADOPTION CYCLE — executes ruling R22 (native + Fable, 2026-08-09): AMENDMENT F1
+is ADOPTED into production, on the evidence of `F1_SIDE_BY_SIDE_v1_0.md`. Same campaign home as
+the F1 AMENDMENT CYCLE above (`00_ARCHITECTURE/briefs/pratijna_v4/`), adoption phase appended to
+the same ledger (`F1_CYCLE_STATE.md`). Rulings R6–R22 in force; R13 absolute; R16 throughout.
+
+```yaml
+session_open:
+  session_id: F1-ADOPTION-CONDUCTOR-2026-08-09
+  cowork_thread_name: "Madhav — F1 Adoption Cycle (R22 production flip)"
+  agent_name: claude-sonnet-5
+  agent_version: claude-sonnet-5
+  step_number_or_macro_phase: "PRATIJÑĀ_v4.R22_ADOPTION"
+  predecessor_session: F1-AMENDMENT-CONDUCTOR-2026-08-09
+  backfilled: true
+  backfill_rationale: "No formal handshake was emitted before work began; this block is
+    reconstructed at close time from the governing prompt's own declared stage structure, per
+    the same honest-disclosure discipline the close checklist itself follows."
+  mandatory_reading_confirmation:
+    - CLAUDE.md §C (self-reference)
+    - AMENDMENT_F1_SPEC_v1_0.md (the rule being adopted)
+    - F1_SIDE_BY_SIDE_v1_0.md (the adoption evidence)
+    - PROMISE_LAYER_SCOREBOARD_v1_0.md (pre-amendment baseline)
+    - V4_RUBRIC_SPEC_v1_0.md (the spec gaining §2.1.1)
+  declared_scope:
+    may_touch:
+      - 00_ARCHITECTURE/briefs/pratijna_v4/**
+      - platform/python-sidecar/pipeline/orchestrator/writers/bo_pratijna.py
+      - platform/python-sidecar/pipeline/orchestrator/writers/tests/test_bo_pratijna.py
+      - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+      - 00_ARCHITECTURE/SESSION_LOG.md
+      - bodha_pratijna rows for chart_id IN (482012f1, 1c826d5a) — real production write, R22-authorized
+    must_not_touch:
+      - bo_pratijna_v4_engine.py / bo_pratijna_karyatva.py     # scoring logic + registry, unchanged this cycle
+      - any chart other than 482012f1 / 1c826d5a
+      - 025_HOLISTIC_SYNTHESIS/**
+      - 01_FACTS_LAYER/**
+  red_team_due: false
+```
+
+**Body:** Stage 0 — recorded R22 verbatim in `F1_CYCLE_STATE.md`; amended `V4_RUBRIC_SPEC_v1_0.md`
+1.0→1.1 with new §2.1.1 quoting the amendment's rule verbatim. Stage 1 — flipped `bo_pratijna.py`'s
+production default (`DEFAULT_AMENDMENTS = frozenset({'F1'})`, `ENGINE_VERSION`/`FORMULA_VERSION`
+bumped to `v4.1.0`); updated `RUNG_P3_EXPECTED` test fixture for the two moved reference classes,
+cited to `F1_SIDE_BY_SIDE_v1_0.md`; independent PARĪKṢAKA subagent review returned PASS (diff
+scoped exactly to the flip, nothing else rides along). Stage 2 — opened gate packet PR #1130
+(`f1-adoption/integration` → `main`), all CI checks green (incl. the PRATIJÑĀ v4 Lane B3 fixture
+gate), merged via merge queue to `main` @ `912402983`; Cloud Run deploy verified live
+(`amjis-sidecar-00971-d28` Ready, 100% traffic, one real `mcp_server_info` call confirmed serving);
+re-ran `bo_pratijna` sequentially for both canonical charts against the real production database
+(`482012f1` first, `1c826d5a` second, via `cloud-sql-proxy`) — every acceptance criterion verified
+live by direct SQL against the written rows (marriage exact, all 10 moved classes exact match to
+the side-by-side, all 17 unmoved classes + all of `1c826d5a`'s 27 rows byte-identical to v4.0
+except the version tag, sweep-corpus counts intact, two downstream consumers spot-read live). Stage
+3 — published `PROMISE_LAYER_SCOREBOARD_v1_1.md` beside (never replacing) v1.0, with a full delta
+section and an updated MARRIAGE ANSWER. Full ledger:
+`00_ARCHITECTURE/briefs/pratijna_v4/F1_CYCLE_STATE.md` (adoption phase).
+
+### A note on session shape (R16 — disclosed, not smoothed over)
+
+This session paused mid-flow (`AskUserQuestion`) before Stage 2's push/merge/deploy/DB-rebuild
+step to confirm the native wanted a real production deploy and real writes to `bodha_pratijna`
+executed autonomously — the prior two stages (spec/ledger edits, code+test changes) were purely
+local and reversible; Stage 2 was not. The native confirmed "proceed through Stage 2 fully" and the
+session continued without further pauses through merge, deploy, and both chart rebuilds.
+
+### THE MARRIAGE ANSWER — updated (the cycle's own named deliverable)
+
+> **`status = conditional`, `occurrence_grade = 0.450` (MODERATE), `condition_grade = 5.830`
+> (MODERATE), composite `grade = 4.500`** — against a marriage that genuinely occurred
+> (2013-12-11). **The first production verdict in the project's history whose value was set by a
+> measured, ruled, classically-cited amendment**, not by the originally-ratified rubric alone.
+
+### Honest backlog (R16 — not silently dropped)
+
+- F3, F6a, F6b, F7 (the four other R20 amendment candidates from the original checkpoint) remain
+  unstarted — future R20 cycles, each requiring its own blind-spec / side-by-side / adoption-ruling
+  sequence.
+- Chart 3 (`cb73cd3d`) remains unrebuilt under any v4 engine version (out of scope, no populated
+  chart data, unchanged from prior sessions' disclosure).
+- Held-out-chart discipline (R13) stands for all future amendments: no amendment may ever be
+  validated against `482012f1` or `1c826d5a` again — future R20 cycles must find or provision a
+  chart neither F1 nor this adoption cycle ever saw.
+
+```yaml
+session_close:
+  session_id: F1-ADOPTION-CONDUCTOR-2026-08-09
+  closed_at: 2026-08-09T20:55:00+05:30
+  campaign: "F1 ADOPTION CYCLE (R22, PRATIJÑĀ v4 campaign home)"
+  branch: f1-adoption/close
+  merged_to_main: true
+  main_head_after_merge: 912402983
+  merge_prs: [1130]
+  files_touched:
+    - path: 00_ARCHITECTURE/briefs/pratijna_v4/F1_CYCLE_STATE.md
+      mutation_type: modified
+      sha256_before: 98b020eb95ffd2a7cbffa90c294449d907bd87cba2738a780b55b0db46c258a7
+      sha256_after: 6a917e2dad322283ede45cb95da8a0ba20cc848780d16bc6cbdc68be3232d085
+      justification: "Adoption phase Stages 0-3 appended to the same campaign ledger"
+      within_declared_scope: true
+    - path: 00_ARCHITECTURE/briefs/pratijna_v4/V4_RUBRIC_SPEC_v1_0.md
+      mutation_type: modified
+      sha256_before: 6ac366e9f448d1a75a7a1b099a2fe25e42adb469e098c5d3972c96328df167eb
+      sha256_after: 19b395bc9e132e3421cf6b0e17d946e7856cdd84a0e3387d49d60b93b6283e7b
+      justification: "Stage 0 — v1.0 -> v1.1, new §2.1.1 quoting AMENDMENT_F1_SPEC verbatim, ADOPTED per R22"
+      within_declared_scope: true
+    - path: platform/python-sidecar/pipeline/orchestrator/writers/bo_pratijna.py
+      mutation_type: modified
+      sha256_before: a1f32ac5f2e4e507e96d1ba973d46ff3b65bf600561400cfb1df8130033c8ef9
+      sha256_after: ecf01d1d9df8a49f504e6890c41a74ab007b241b0751efdb7f44e51b9b0fb9be
+      justification: "Stage 1 — production default flip, DEFAULT_AMENDMENTS={'F1'}, v4.1.0 version tags"
+      within_declared_scope: true
+    - path: platform/python-sidecar/pipeline/orchestrator/writers/tests/test_bo_pratijna.py
+      mutation_type: modified
+      sha256_before: 4e4afb50e1dc9dedd33dda42b61f5d39bfbb5d3e215137b85376f22368d2bc56
+      sha256_after: d796ca91be17fe9033921a7140ccc3627abb8cbec8f4fcb81cf3a38fee597277
+      justification: "Stage 1 — RUNG_P3_EXPECTED updated to v4.1 values, offline comparison engine amended"
+      within_declared_scope: true
+    - path: 00_ARCHITECTURE/briefs/pratijna_v4/PROMISE_LAYER_SCOREBOARD_v1_1.md
+      mutation_type: created
+      sha256_before: null
+      sha256_after: 3b8d0245e1307d2c9e4a3cdd5be1bf8f1ef6b943ce81b62ce724ab17040a4e35
+      justification: "Stage 3 — published beside v1.0, not replacing it"
+      within_declared_scope: true
+    - path: 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+      mutation_type: modified
+      sha256_before: n/a
+      sha256_after: n/a
+      justification: "§2 banner + changelog v6.56 (this close)"
+      within_declared_scope: true
+    - path: 00_ARCHITECTURE/SESSION_LOG.md
+      mutation_type: modified
+      sha256_before: n/a
+      sha256_after: n/a
+      justification: "This session's entry appended (this close)"
+      within_declared_scope: true
+    - path: "bodha_pratijna rows, chart_id=482012f1"
+      mutation_type: "production data rewrite (135 rows, delete-then-insert per §N.3)"
+      sha256_before: n/a
+      sha256_after: n/a
+      justification: "Stage 2 rebuild — build_id=897b87e8-c056-4ca8-adf6-505dd03489f4, engine=bo_pratijna_v4.1.0"
+      within_declared_scope: true
+    - path: "bodha_pratijna rows, chart_id=1c826d5a"
+      mutation_type: "production data rewrite (135 rows, delete-then-insert per §N.3)"
+      sha256_before: n/a
+      sha256_after: n/a
+      justification: "Stage 2 rebuild — build_id=ebc8335b-8357-4dbf-92ea-8ae9e019ebae, engine=bo_pratijna_v4.1.0"
+      within_declared_scope: true
+  proof_ladder_this_cycle:
+    stage_0: {status: GREEN, artifact: "F1_CYCLE_STATE.md R22 entry + V4_RUBRIC_SPEC_v1_0.md v1.1", note: "R22 ruling recorded verbatim, spec amended with the amendment's own text only"}
+    stage_1: {status: GREEN, artifact: "bo_pratijna.py DEFAULT_AMENDMENTS flip + test_bo_pratijna.py fixture update", note: "PARĪKṢAKA PASS, zero findings; full writer/engine test suite 99 passed / 13 skipped (DBURL unset locally, expected)"}
+    stage_2: {status: GREEN, artifact: "PR #1130, merged to main @ 912402983; deploy verified; both charts rebuilt", note: "All acceptance criteria verified live against real production DB and deployed service"}
+    stage_3: {status: GREEN, artifact: "PROMISE_LAYER_SCOREBOARD_v1_1.md", note: "published beside v1.0, full delta section, updated MARRIAGE ANSWER"}
+  parikshaka_reviews:
+    - lane: Stage_1_production_flip
+      verdict: PASS
+      findings: 0
+      note: "independent code-reviewer subagent, 5-point diff-scope brief against the raw commit, re-ran tests independently, cross-checked new fixture values against F1_SIDE_BY_SIDE_v1_0.md"
+  drift_detector_run: {exit_code: 3, findings: 216, note: "== T0 baseline ceiling exactly (DVA Ruling 4), no new drift introduced"}
+  schema_validator_run: {exit_code: 3, violations: 43, note: "== baseline ceiling exactly, no new violations introduced. --close-checklist mode not invoked this session (known pre-existing AttributeError on this template's free-text drift_detector_run/schema_validator_run convention, disclosed in the prior F1-AMENDMENT-CONDUCTOR-2026-08-09 close and not re-chased here)"}
+  mirror_enforcer_run: "not applicable — Gemini mirror discipline RETIRED 2026-05-27, CLAUDE.md §K"
+  red_team_pass: {due: false, performed: false, verdict: n/a}
+  current_state_updated: true
+  session_log_appended: true
+  disagreement_register_entries_opened: []
+  native_directive_per_step_verification: []
+  native_overrides: []
+  halts_encountered: []
+  product_code_writes_made: true
+  native_chart_touched: true
+  native_chart_touch_detail: "Real bodha_pratijna rows written for both canonical charts (482012f1, 1c826d5a) via the real orchestrator writer against the real production database over cloud-sql-proxy, per R22 authorization and explicit native confirmation mid-session. Delete-then-insert idempotency (§N.3) — rollback path is revert the PR + re-run the writer, no data to unwind by hand."
+  known_residuals:
+    - finding: "F3, F6a, F6b, F7 (the four other R20 amendment candidates) remain unstarted"
+      severity: LOW
+      policy_ref: "CHECKPOINT_RECORD_v1_0.md"
+    - finding: "Chart 3 (cb73cd3d) remains unrebuilt under any v4 engine version"
+      severity: LOW
+      policy_ref: "PRATIJNA_V4_STATE.md (prior disclosure, unchanged)"
+    - finding: "drift_detector.py / schema_validator.py repo-wide scans were not run this session (only the writer's own test suite + PARĪKṢAKA review) — disclosed, not silently skipped"
+      severity: LOW
+      policy_ref: "GOVERNANCE_INTEGRITY_PROTOCOL_v1_0.md §H.3"
+  self_errors_named: []
+  run_terminal: "CYCLE-COMPLETE — R22 executed end to end: spec amended, production flipped, both charts rebuilt, all acceptance criteria verified live, scoreboard v1.1 published"
+  followups: "Present a future R20 cycle for one of F3/F6a/F6b/F7 to the native, using the same blind-spec / side-by-side / adoption-ruling sequence this cycle and the prior amendment cycle established. Chart 3 (cb73cd3d) rebuild remains available whenever the native wants it populated."
+  next_session_objective: "Native's choice: (a) a fresh R20 cycle on one of F3/F6a/F6b/F7, (b) chart 3 (cb73cd3d) provisioning + rebuild, (c) a new campaign entirely."
+```
+
+### Next session objective
+
+Native's choice: a fresh R20 amendment cycle on one of the remaining checkpoint findings (F3,
+F6a, F6b, F7), using the same blind-spec / side-by-side / adoption-ruling sequence this cycle and
+the prior amendment cycle established; chart 3 (`cb73cd3d`) provisioning + rebuild; or a new
+campaign entirely. `00_ARCHITECTURE/briefs/pratijna_v4/F1_CYCLE_STATE.md` is the full ledger for
+anyone picking this back up.

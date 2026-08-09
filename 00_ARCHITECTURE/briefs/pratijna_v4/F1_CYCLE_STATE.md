@@ -169,6 +169,21 @@ adoption phase").
 **Result: CLOSED.**
 
 ---
+
+## ADOPTION PHASE — Stage 3 (scoreboard v1.1) — CLOSED
+
+| Item | Detector | Result |
+|---|---|---|
+| Published beside v1.0, not replacing | `PROMISE_LAYER_SCOREBOARD_v1_1.md` new file; `PROMISE_LAYER_SCOREBOARD_v1_0.md` untouched | Commit `5e400ff38` |
+| Same method, same event citations | §1/§2/§3 "Lifetime outcome"/"Match basis" columns copied verbatim from v1.0 | Confirmed by diff — no re-adjudication |
+| New v4.1 columns | §2/§3 occurrence/condition/status columns updated to the live Stage-2 production values; Δ column added | Cross-checked against the Stage 2 acceptance query output — exact match, all 10 moved + 17 unmoved cells |
+| Delta section, old/new bands | §5, all 10 moved classes restated with v4.0/v4.1 occurrence + band-crossing flag | Sourced from `F1_SIDE_BY_SIDE_v1_0.md` §1/§6, cited in-line |
+| THE MARRIAGE ANSWER updated | §4: `conditional / 0.450 MODERATE / 5.83 MODERATE`, stated as the first production verdict set by a measured, ruled, classically-cited amendment | Present verbatim |
+| v1.0 remains the pre-amendment record | `PROMISE_LAYER_SCOREBOARD_v1_0.md` frontmatter/content unchanged by this cycle | Confirmed — zero edits to that file |
+
+**Result: CLOSED.**
+
+---
 *F1_CYCLE_STATE.md v1.0 (2026-08-09). Created at Stage 3 close per the governing prompt's Stage 3
 instruction ("Ledger close + morning report"). This is the campaign's only ledger entry — the
 whole cycle closed in one session.*
