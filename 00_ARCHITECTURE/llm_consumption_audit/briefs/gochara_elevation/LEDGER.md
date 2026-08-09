@@ -49,11 +49,11 @@ Status: QUEUED | BUILDING | VERIFYING | PASS | FAIL(n) | BLOCKED | MERGED
 
 | lane | wave | tag | title | status | branch | worktree | builder_model | deps | notes |
 |---|---|---|---|---|---|---|---|---|---|
-| W0.1 | 0 | [mech] | Registry & seed hygiene | QUEUED | — | — | sonnet | none | Parallel W0 |
-| W0.2 | 0 | [mech] | Baseline builds + error triage | QUEUED | — | — | sonnet | none | Parallel W0; never rebuilds ka_gochara_sweep for protected charts |
-| W0.3 | 0 | [heavy] | Schema migration bundle | QUEUED | — | — | opus | none | Parallel W0; two-phase deploy (Phase A writer PR, Phase B migration) |
-| W0.4 | 0 | [heavy] | Batched-context scoring engine | QUEUED | — | — | opus | none | Parallel W0; long pole |
-| W0.5 | 0 | [adj] | Campaign rulings (UTK-R1/R2/R3) | QUEUED | — | — | ADJUDICATOR | none | ADJUDICATOR task, not a builder lane |
+| W0.1 | 0 | [mech] | Registry & seed hygiene | BUILDING | gochara3/w01 | /Users/Dev/Vibe-Coding/Apps/utk-w01 | sonnet | none | Parallel W0 |
+| W0.2 | 0 | [mech] | Baseline builds + error triage | BUILDING | gochara3/w02 | /Users/Dev/Vibe-Coding/Apps/utk-w02 | sonnet | none | Parallel W0; never rebuilds ka_gochara_sweep for protected charts |
+| W0.3 | 0 | [heavy] | Schema migration bundle | BUILDING | gochara3/w03 | /Users/Dev/Vibe-Coding/Apps/utk-w03 | opus | none | Parallel W0; two-phase deploy (Phase A writer PR, Phase B migration) |
+| W0.4 | 0 | [heavy] | Batched-context scoring engine | BUILDING | gochara3/w04 | /Users/Dev/Vibe-Coding/Apps/utk-w04 | opus | none | Parallel W0; long pole |
+| W0.5 | 0 | [adj] | Campaign rulings (UTK-R1/R2/R3) | BUILDING | — | — | ADJUDICATOR | none | ADJUDICATOR task in progress |
 | W1.1 | 1 | [heavy] | Bounded λ_v3 core | QUEUED | — | — | opus | W0.4 PASS | Gate: W0.4 |
 | W1.2 | 1 | [heavy] | Direction restored | QUEUED | — | — | opus | W1.1 PASS | Gate: W1.1 |
 | W1.3 | 1 | [heavy] | Graded suppression | QUEUED | — | — | opus | W1.1 PASS | Gate: W1.1 |
