@@ -18,7 +18,7 @@ CONDUCTOR-HEARTBEAT: 2026-08-10T05:00+05:30 (SAMPURTI-CONDUCTOR-2026-08-10) [con
 
 ## WAVE POSITION
 
-WAVE 0 — IGNITION. Status: 4 lanes MERGED (L0b/L0c/L0d/L0f); L0e verdict recorded, merging;
+WAVE 0 — IGNITION. Status: 5 lanes MERGED (L0b/L0c/L0d/L0f/L0e);
 L0a PARĪKṢAKA+PRATINIDHI in-flight. All verdicts recorded before merge.
 Waves 1–4: NOT-STARTED.
 
@@ -40,7 +40,7 @@ LEL resolver rows PARKED-honest, never guessed).
 | L0b | G4a bg_sarvatobhadra_grid root-cause + dispatch | sampurti/l0b-grid | MERGED to integration 04:12 | 04:35 | PASS 04:10 — deferred path confirmed; migration benign upsert; ADJUDICATION-11 confirmed; policy violation NON-BLOCKING (see DEBTS) | n/a |
 | L0c | G12e kala_dasha_sandhi_get prod registration + stale "eight" docstrings | sampurti/l0c-dasha-sandhi | MERGED to integration 04:12 | 04:35 | PASS 03:58 — registration chain confirmed; 4+ docstrings fixed; census test real detector | n/a |
 | L0d | G13/PA-4 KNOWN_DOMAINS 7→13 in bo_sangati/bo_bimba/bo_karanajala/ranker (R17) | sampurti/l0d-vocab | MERGED to integration 04:12 | 04:35 | PASS 04:10 — all 4 files migrated; 13 domains; census gate blocks regression; F-1/F-2 non-blocking | PASS 04:10 — CANONICAL_DOMAINS=13 live; 15 tests pass; live DB=6 domains (gap confirmed pre-rebuild) |
-| L0e | Pre-rebuild content fixes: G8 KaryatvaMaps ×5 + G10 varga_confirmation + G9 doc-direction reconcile | sampurti/l0e-content | VERDICT-RECORDED — merging PR#1136 | 05:30 | PASS (ac5ff024 05:10) — 27 classes clean; G10 N.5 compliant; mig-555 correct; cosmetic SQL comment NON-BLOCKING | APPROVED (ac5ff024 05:10) — 17/17 tests; varga_confirmation populated; R13+R19 compliant |
+| L0e | Pre-rebuild content fixes: G8 KaryatvaMaps ×5 + G10 varga_confirmation + G9 doc-direction reconcile | sampurti/l0e-content | MERGED to integration 05:10 (425dd8fd0) | 05:30 | PASS (ac5ff024 05:10) — 27 classes clean; G10 N.5 compliant; mig-555 correct; cosmetic SQL comment NON-BLOCKING | APPROVED (ac5ff024 05:10) — 17/17 tests; varga_confirmation populated; R13+R19 compliant |
 | L0f | G14a L6 LEL→event_class resolver + 64-event backfill classification | sampurti/l0f-resolver | MERGED to integration 05:05 (84d6a79d5) | 05:30 | PASS (a3128136 05:05) — mig-554 clean; 53 tests confirmed; cosmetic SQL comment NON-BLOCKING | n/a |
 
 Merge order: train on CI-green + PARĪKṢAKA verdict recorded HERE before merge.
@@ -131,10 +131,10 @@ the gate. Builder swarm instructed to never self-apply migrations in future lane
 
 ## NEXT-ACTION
 
-L0f MERGED. L0e PASS+APPROVED recorded, merging now. L0a PARĪKṢAKA+PRATINIDHI in-flight.
-Merge order: L0e (#1136 mig-555) → L0a (#1137 no-mig, on PASS). Then gate packet.
+L0f+L0e MERGED. L0a PARĪKṢAKA+PRATINIDHI in-flight (aaa5ab63 + a962f924).
+On L0a PASS: record verdict → merge #1137 → assemble gate packet → dispatch GATE-EXECUTOR.
 Then ONE Wave-0 gate packet → GATE-EXECUTOR → integration→main + deploy + production==main.
 S1 complete; S2 dispatch after gate. Content fixes must deploy before Wave-1 rebuild.
 
 If this conductor dies: resume per prompt — adopt live lanes, salvage dead worktrees
-(commit+push, never delete), never re-dispatch merged work. Merged lanes: L0b, L0c, L0d, L0f.
+(commit+push, never delete), never re-dispatch merged work. Merged lanes: L0b, L0c, L0d, L0f, L0e.
