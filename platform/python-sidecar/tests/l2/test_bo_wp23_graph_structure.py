@@ -227,12 +227,18 @@ class TestYogaNodes:
         assert s == "yoga:gaja_kesari_yoga"
 
     def test_baseline_node_counts_unchanged(self) -> None:
-        """9 graha + 12 bhava + 7 domain still present alongside yoga nodes."""
+        """9 graha + 12 bhava + 13 domain (G13/PA-4) present alongside yoga nodes.
+
+        Domain count updated 7→13 after G13/PA-4 (R17): bo_bimba now creates one
+        CGM node per canonical domain from CANONICAL_DOMAINS (13 members) rather
+        than the legacy 7-domain local list.  Graha (9) and bhava (12) unchanged.
+        """
+        from brahmagyan.domain_vocabulary import CANONICAL_DOMAINS as _CD
         signals = [_yoga_signal("yoga", "Some Yoga", graha="Sun")]
         nodes = _build_nodes_for_aya(CHART_ID, AYA, BUILD_ID, signals, NOW, {})
         assert len([n for n in nodes if n["node_type"] == "graha"]) == 9
         assert len([n for n in nodes if n["node_type"] == "bhava"]) == 12
-        assert len([n for n in nodes if n["node_type"] == "domain"]) == 7
+        assert len([n for n in nodes if n["node_type"] == "domain"]) == len(_CD)
 
 
 # ── yoga membership edges (bo_karanajala) ─────────────────────────────────────
