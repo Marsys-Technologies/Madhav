@@ -14,11 +14,14 @@ conductor_session: SAMPURTI-CONDUCTOR-2026-08-10 (first run)
 
 # SAMPŪRTI CAMPAIGN LEDGER
 
-CONDUCTOR-HEARTBEAT: 2026-08-10T03:35+05:30 (SAMPURTI-CONDUCTOR-2026-08-10)
+CONDUCTOR-HEARTBEAT: 2026-08-10T03:42+05:30 (SAMPURTI-CONDUCTOR-2026-08-10)
 
 ## WAVE POSITION
 
-WAVE 0 — IGNITION. Status: DISPATCHING (first run; no prior state).
+WAVE 0 — IGNITION. Status: ALL 6 LANES DISPATCHED 03:40 IST (background builder
+agents, isolated worktrees off sampurti/integration @ 36fa880ae). Conductor is
+executing Wave-1 S1 (PA-0 stage I/O map, read-only) while builders run — S1 is
+explicitly conductor-permitted and touches no builder files.
 Waves 1–4: NOT-STARTED.
 
 ## RAILS (immutable, restated for every reader)
