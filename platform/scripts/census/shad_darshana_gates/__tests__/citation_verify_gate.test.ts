@@ -76,8 +76,13 @@ describe('parseCitations', () => {
 // ---------------------------------------------------------------------------
 describe('resolveCitation', () => {
   it('resolves a known-good SHA from the repo', () => {
-    // 3d61455a822bebb1d42ebd870e59df2bd647b66c = PR #1087 (lane-w3muh), confirmed on main
-    const citation: ParsedCitation = { raw: '3d61455a822bebb1d42ebd870e59df2bd647b66c', kind: 'sha' }
+    // Use HEAD SHA — always resolves in any clone depth (shallow or full). A hardcoded historical
+    // SHA fails CI shallow clones (depth=1); HEAD is always present regardless of fetch depth.
+    const headSha = execFileSync('git', ['rev-parse', 'HEAD'], {
+      cwd: REPO_ROOT,
+      encoding: 'utf-8',
+    }).trim()
+    const citation: ParsedCitation = { raw: headSha, kind: 'sha' }
     const result = resolveCitation(citation)
     expect(result.resolved).toBe(true)
   })

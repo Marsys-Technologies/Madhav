@@ -128,7 +128,12 @@ jobs:
     env:
       NODE_ENV: test
     steps:
+      # SAMPURTI-fix (2026-08-10): citation_verify_gate.test.ts resolves historical commit SHAs via
+      # `git cat-file -e`; default depth=1 (shallow clone) fails for any SHA not at HEAD. Full
+      # history required so all census-evidence citations resolve during the test run.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
