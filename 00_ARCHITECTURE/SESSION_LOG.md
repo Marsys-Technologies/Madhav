@@ -35769,3 +35769,222 @@ session_close:
 Human+Fable checkpoint review of the three artifacts under `00_ARCHITECTURE/briefs/adhisthana/`.
 Once the rubric spec is ratified v0.9→v1.0 (with any new rulings the checkpoint issues), Campaign B
 (PRATIJÑĀ v4 — the actual promise-engine implementation) opens per `MASTER_PLAN_v1_0.md §5`.
+
+---
+
+## Session: PRATIJÑĀ-V4-CONDUCTOR-2026-08-09
+
+**Campaign:** PRATIJÑĀ v4 ("the promise"), Campaign B of the ratified MASTER PLAN — the actual
+promise-engine implementation, following ADHIṢṬHĀNA's checkpoint. Full ledger:
+`00_ARCHITECTURE/briefs/pratijna_v4/PRATIJNA_V4_STATE.md`. Plan of record:
+`00_ARCHITECTURE/briefs/adhisthana/MASTER_PLAN_v1_0.md` §5. Fully autonomous Conductor session
+(native+Fable rulings authorized continuation at every major boundary; one explicit native
+instruction mid-session dropped chart 3's rebuild from scope).
+
+### What happened
+
+Stage 0 (rubric spec v0.9→v1.0 ratification, byte-identical, checkpoint record committed) → Lane
+B0 (registry harmonization: `parental_event` added, `bereavement` reframed to maraka doctrine,
+`career_change` differentiated via Rahu/D10, identical-factor-sets property test proven both
+directions — done conductor-direct, later retroactively PARĪKṢAKA-verified PASS per native ruling
+establishing full rails for B1 onward) → Lane B1 (the Chart Reader, **Rung P4 GREEN**) → Lane B2
+(the v4 scoring engine as a library, **Rung P5 GREEN** — exact reproduction of RUNG_P3's
+hand-worked numbers, factor-by-factor, no compensating errors — then wired into the `bo_pratijna`
+writer, **Rung P6 GREEN**, live in `bodha_pratijna`) → Lane B3 (permanent CI regression gate,
+mutation-proofness independently confirmed by PARĪKṢAKA's own adversarial mutations, not just the
+builder's self-tests) → Lane B4 (full-repo consumer census, 2 real production-affecting defects
+found and fixed — both root-caused to v4 never populating the legacy `supporting_signal_ids`
+column) → **Rung P7 GREEN** (a genuine gap found — `mi_darshana`'s served rows were stale — closed
+in a dedicated gap-closure pass) → Lane B5 (gate packet → merge to `main` @ `0f4a5045b` → deploy
+verified live via a real authenticated MCP call → scoped chart-rebuild sub-phase: `482012f1` full
+Rung P8 acceptance, then `1c826d5a` full 7-asset rebuild since its `bo_pratijna`/`mi_darshana` had
+never run under v4 — both charts' sweep corpus independently re-verified exactly unchanged
+throughout; **chart 3 (`cb73cd3d`) explicitly dropped per native instruction**, not attempted, not
+hidden) → Lane B6 (MEASUREMENT #3: filled a slot pre-registered by the prior SIDDHĀNTA campaign
+before any number was seen — the degenerate-interval tripwire correctly fired and was root-caused
+to a genuinely different, already-documented scope gap, not blind-published, not blind-blocked) →
+Lane B7 (the promise-layer scoreboard v0 — THE MARRIAGE ANSWER served at its earned tier,
+occurrence 0.321 WEAK / condition 5.83 MODERATE against a real marriage that did occur, an honest
+divergence not corrected to fit the outcome; 27/27 derivation links independently re-verified to
+resolve, closing **Rung P9 GREEN**, the Proof Ladder's final rung).
+
+**All 8 stages closed. All 9 Proof Ladder rungs (P1–P9, spanning this campaign and ADHIṢṬHĀNA)
+GREEN.** `main` @ `baf9f51e8` after 14 merged PRs (#1113–#1126, one via the `pratijna-v4/integration`
+branch carrying B0–B4, the rest direct-to-`main` small PRs for B5–B7's per-boundary ledger/measurement
+updates, each through the required merge queue).
+
+### Rails discipline (native ruling, mid-campaign)
+
+After Lane B0 was done conductor-direct (an honest deviation, flagged not hidden), the native
+ruled: every remaining lane goes through proper BUILDER-in-isolated-worktree → PR → independent
+fresh-context PARĪKṢAKA-verdict-before-merge. This held for the rest of the campaign. Every
+PARĪKṢAKA pass ran real, independent, live re-derivation — not a re-read of the builder's claims —
+and caught real things: a false margin-proximity claim in a docstring (B2 writer-wiring, fixed
+before merge), a false citation about inherited thresholds in a PR body (B4, corrected in place),
+and multiple confirmations that a builder's claimed fix actually held up under adversarial
+scrutiny (B2's factor-by-factor RUNG_P3 trace; B3's own independent mutation tests).
+
+### Process pattern worth carrying forward: the repeated builder stall
+
+**6 separate instances** across this campaign of a dispatched agent backgrounding a slow step (a
+live-DB test, a full regression suite, a heavy writer invocation, a CI-check poll) and then ending
+its turn without consuming the result — reported as "completed" but with a degenerate or
+placeholder final message. Every instance was recovered the same way: the conductor verified the
+underlying OS process or GitHub Actions state directly from outside, confirmed it had actually
+finished (never once found genuinely hung), and either resumed the same agent with the result
+already known, or — twice, after the agent's own connection failed outright mid-task — completed
+the verification and ledger write-up directly rather than losing the underlying work. No work was
+ever lost to this pattern; it cost wall-clock time and required treating "agent reports completed"
+and "the task is actually done" as two different claims, always independently checked, never
+conflated.
+
+### THE MARRIAGE ANSWER (the campaign's own named deliverable)
+
+v4's real, unmodified verdict for chart `482012f1`: `occurrence_grade=0.321` (WEAK),
+`condition_grade=5.830` (MODERATE), `status=conditional`. The real lifetime outcome: marriage did
+occur, 2013-12-11. Served honestly as an occurrence-WEAK / condition-MODERATE reading that
+coexists with a real marriage having happened — not upgraded to fit the outcome, not hidden. Full
+scoreboard: `00_ARCHITECTURE/briefs/pratijna_v4/PROMISE_LAYER_SCOREBOARD_v1_0.md`.
+
+### Honest backlog (R16 — not silently dropped)
+
+- Chart 3 (`cb73cd3d`) never rebuilt under v4 — `bo_pratijna` stale, `mimamsa_insight_units`
+  empty. Left in pre-campaign state per explicit native instruction, not a gap to silently close
+  later without the same instruction being revisited.
+- `ka_kshetra`'s resume-fingerprint doesn't incorporate `bodha_pratijna`'s own content — a future
+  upstream rescoring can silently no-op a `ka_kshetra` rebuild the way it did once for `482012f1`
+  (caught and manually cleared) but did NOT for `1c826d5a` (fingerprint genuinely didn't match, no
+  manual intervention needed that time — the underlying defect is real either way, named as a
+  follow-up in the B5 rebuild sections, not fixed this campaign).
+- MEASUREMENT #3's flat-hazard-field finding (`ka_kshetra` stage 4's transit/clock modulation
+  basis is identity/placeholder) is a real, already-documented scope gap, not new — but this
+  campaign is the first to have live-confirmed its actual effect (universal degenerate skill
+  interval) rather than only naming it in a docstring.
+- `stage2_promise.py`'s B4 fix (karaka-seed fallback) has a disclosed noisy-OR amplification
+  characteristic for multi-karaka classes — inherited design, not introduced this campaign,
+  flagged for a future lane to examine.
+- `exam_outcome` and `property_acquisition` in the B7 scoreboard are honest `NO-OUTCOME-DATA` —
+  the LEL doesn't currently carry a confident match for either; not forced into a verdict.
+- `asset_throughput` was never updated by any of this campaign's direct-writer-invocation rebuild
+  writes (Rung P6/P7/B5's chart rebuilds) — by design, the orchestrator is `asset_throughput`'s
+  sole writer (§N.2) and this campaign's rebuild method deliberately bypassed the full
+  orchestrator; a real orchestrated `execute_run` for these charts will still show pre-campaign
+  bookkeeping state until one actually runs.
+
+### Self-errors named (R16)
+
+- The 6 builder-agent stalls described above (process pattern, not a code defect).
+- One real merge-queue race: two PRs (chart-2-rebuild-ledger and chart-3-drop-ledger) both
+  appended a line to `.github/workflows/tap-ci.yml` near-simultaneously, producing a genuine merge
+  conflict on `main` between B6-measurement's PR and a concurrent one — resolved directly by the
+  conductor (kept both precedent-comment lines), not by either dispatched agent.
+- Lane B5's merge+deploy Gate-Executor found a real gap the gate packet itself hadn't surfaced: CI
+  had never actually run against the `pratijna-v4/integration` branch as a PR base (the `ci.yml`
+  `pull_request` trigger only covered `[main, 'shad-darshana/integration']`) — closed by following
+  this repo's own established precedent (PR direct to `main`) rather than working around it.
+
+### Scoping note on this close entry
+
+Per the precedent set at ADHIṢṬHĀNA's own close (this section quotes that reasoning, extended):
+`drift_detector.py`/`schema_validator.py`/`mirror_enforcer.py` were not run this session (a
+product-code + campaign-governance session on real feature branches, not a governance-rebuild
+session those scripts target); per-file SHA256 hashing was not performed for the many files this
+campaign touched across 14 PRs (impractical at this scale — the PR list + `git log` on `main` is
+the authoritative record); the `mirror_updates_propagated`/MP.1–MP.8 block is omitted as moot
+(Gemini mirror discipline RETIRED, `CLAUDE.md §K`). Flagged honestly per the same discipline this
+whole campaign was built on, rather than fabricating compliance with fields that don't apply.
+
+```yaml
+session_close:
+  session_id: PRATIJNA-V4-CONDUCTOR-2026-08-09
+  closed_at: 2026-08-09T11:35:56+05:30
+  campaign: "PRATIJÑĀ v4 Campaign B (fully autonomous Conductor session, native+Fable ruled continuation at each major boundary)"
+  branch: main
+  merged_to_main: true
+  main_head_after_merge: baf9f51e85ec77866d98d4eb2180691e9e872429
+  merge_prs: [1113, 1114, 1115, 1116, 1117, 1118, 1119, 1120, 1121, 1122, 1123, 1124, 1125, 1126]
+  files_touched_summary: "engine+writer+consumer files across 14 PRs; full list = each PR's diff, not hash-enumerated here"
+  proof_ladder:
+    p4: {status: GREEN, lane: B1, artifact: "platform/scripts/probes/probe_p4_reader.py"}
+    p5: {status: GREEN, lane: B2, artifact: "platform/scripts/probes/probe_p5_offline_grades.py", note: "factor-by-factor RUNG_P3 match, PARĪKṢAKA-verified"}
+    p6: {status: GREEN, lane: B2, note: "live double-run idempotency proof"}
+    p7: {status: GREEN, lane: B4, note: "gap found (stale mi_darshana rows) and closed same-day"}
+    p8: {status: GREEN, lane: B5, chart: "482012f1 + 1c826d5a", note: "chart 3 explicitly out of scope per native instruction"}
+    p9: {status: GREEN, lane: B6_B7, note: "degenerate-interval tripwire correctly fired+diagnosed (B6); 27/27 scoreboard derivation links resolve (B7)"}
+  parikshaka_reviews:
+    - lane: B0
+      verdict: PASS
+      note: "retroactive, post-hoc per native ruling (originally conductor-direct)"
+    - lane: B1
+      verdict: PASS
+      findings: 0
+    - lane: B2_library
+      verdict: PASS
+      note: "factor-by-factor trace of separation's derivation ledger, no compensating errors"
+    - lane: B2_writer
+      verdict: "PASS with one required fix"
+      findings: 1
+      resolution: "false margin-proximity claim in docstring, corrected pre-merge"
+    - lane: B3
+      verdict: PASS
+      note: "own independent adversarial mutations, not just builder's self-tests"
+    - lane: B4
+      verdict: "PASS with one required fix"
+      findings: 1
+      resolution: "false citation in PR body corrected pre-merge; underlying code was already sound"
+  gate_executor_rounds:
+    - phase: "B5 merge+deploy"
+      verdict: MERGED
+      real_gap_found: "CI had never run against pratijna-v4/integration as a PR base branch"
+      resolution: "PR direct to main, established repo precedent"
+      deploy_verified: true
+      verification_method: "real authenticated MCP call (mimamsa_insight_get)"
+  drift_detector_run: "not run — product/campaign session, not a governance-rebuild session"
+  schema_validator_run: "not run — same rationale"
+  mirror_enforcer_run: "not applicable — Gemini mirror discipline RETIRED 2026-05-27, CLAUDE.md §K"
+  red_team_pass: {due: false, performed: false, verdict: n/a}
+  current_state_updated: true
+  session_log_appended: true
+  disagreement_register_entries_opened: []
+  native_directive_per_step_verification: []
+  native_overrides:
+    - override_id: "OVR.PV4.1"
+      issued_at: "2026-08-09 (mid-session)"
+      description: "Chart 3 (cb73cd3d) full rebuild dropped from scope — user explicit instruction, not attempted"
+      scope_effect: "B5's chart-rebuild sub-phase closes at 2/3 charts instead of 3/3; recorded as a deliberate scope decision in the ledger, not a gap"
+  product_code_writes_made: true
+  native_chart_touched: true
+  native_chart_touch_detail: "chart_facts/chart_divisionals (L1) NEVER touched — R19 held throughout. bodha_pratijna, mimamsa_insight_units, kala_field_windows, kala_field_skill/gof, and 5 downstream-consumer tables (ka_yojaka/ka_avadhi/ka_taranga/ph_nimitta/ka_kshetra outputs) were written for real, live, for charts 482012f1 and 1c826d5a — this IS the campaign's deliverable, not an incidental side effect."
+  known_residuals:
+    - finding: "Chart 3 (cb73cd3d) never rebuilt under v4 — left in pre-campaign stale state per explicit native instruction"
+      severity: MEDIUM
+      policy_ref: "PRATIJNA_V4_STATE.md Rung P8 row"
+    - finding: "ka_kshetra's resume-fingerprint doesn't incorporate bodha_pratijna content — a future upstream rescoring can silently no-op a rebuild without a manual substep-progress clear"
+      severity: MEDIUM
+      policy_ref: "PRATIJNA_V4_STATE.md Lane B5 chart-rebuild sections"
+    - finding: "MEASUREMENT #3 flat-hazard-field finding (ka_kshetra transit/clock modulation basis is identity/placeholder) — live-confirmed effect (universal degenerate skill interval) of an already-documented scope gap"
+      severity: MEDIUM
+      policy_ref: "SKILL_MEASUREMENT_REGISTER_v1_0.md MEASUREMENT #3"
+    - finding: "stage2_promise.py's B4 fix has a disclosed noisy-OR amplification characteristic for multi-karaka classes — inherited design, not introduced this campaign"
+      severity: LOW
+      policy_ref: "PRATIJNA_V4_STATE.md Lane B4 row"
+    - finding: "asset_throughput not updated by this campaign's direct-writer-invocation rebuild method (bypasses the orchestrator, its sole writer per §N.2) — a real orchestrated execute_run for 482012f1/1c826d5a will still show pre-campaign bookkeeping state until one actually runs"
+      severity: LOW
+      policy_ref: "PRATIJNA_V4_STATE.md Lane B5 rows"
+  self_errors_named:
+    - "6 separate builder-agent stalls (backgrounding a slow step, ending the turn without consuming the result) across B2 (×2), B3 (×1), B5 writer-wiring (×2), B5 chart-2-rebuild (×1) — every instance recovered by direct external verification, zero work lost, but a real recurring pattern worth a stronger anti-backgrounding directive in future campaign dispatches"
+    - "Two agent connection failures (API error, connection closed mid-response) during the B5 482012f1 chart-rebuild sub-phase — recovered by the conductor completing the verification and ledger write-up directly rather than re-dispatching from scratch"
+    - "One genuine merge-queue race: two concurrent PRs both appended a line to tap-ci.yml, producing a real merge conflict on main, resolved directly by the conductor"
+  run_terminal: "ARC-COMPLETE — all 8 stages + all 9 Proof Ladder rungs (P1-P9 spanning ADHIṢṬHĀNA+PRATIJÑĀ v4) closed; live in production for 2/3 canonical charts; the marriage answer served at its earned tier"
+  followups: "Chart 3 (cb73cd3d) rebuild remains available whenever the native wants it — same proven recipe, lower risk than chart 1's first run. ka_kshetra fingerprint defect, MEASUREMENT #3's flat-hazard-field gap, and the noisy-OR amplification characteristic are all named follow-ups for a future lane, none blocking. R20 amendment protocol remains open for the 5 findings (F1/F3/F6a/F6b/F7) parked at the original checkpoint."
+  next_session_objective: "Native's choice: (a) chart 3 rebuild, (b) an R20 amendment cycle on one of the 5 parked findings, (c) a new campaign entirely. No campaign-internal blocking work remains."
+```
+
+### Next session objective
+
+No campaign-internal blocking work remains. Native's choice: chart 3 (`cb73cd3d`) rebuild using
+the now-proven recipe; an R20 amendment cycle on one of the 5 findings parked at the original
+ADHIṢṬHĀNA checkpoint (F1 dispositor-conjunction exception, F3 broadened auxiliary-evidence band,
+F6a node-aspect convention, F6b naisargika-only varga dignity, F7 bhava-occupancy factor); or a new
+campaign. `00_ARCHITECTURE/briefs/pratijna_v4/PRATIJNA_V4_STATE.md` is the full ledger for anyone
+picking this back up.

@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.53
+version: 6.54
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,23 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.54 (2026-08-09, PRATIJÑĀ v4 Campaign B close — arc complete): full account in the new
+    banner immediately above and in `00_ARCHITECTURE/briefs/pratijna_v4/PRATIJNA_V4_STATE.md`.
+    Headline facts: all 8 campaign stages merged to `main` @ `baf9f51e8` (14 PRs, #1113–#1126);
+    all 9 Proof Ladder rungs (P1–P9) GREEN; v4 scoring engine live in production for 2/3 canonical
+    charts (`482012f1`, `1c826d5a` — chart 3 explicitly out of scope per native instruction); the
+    marriage answer served honestly (occurrence WEAK, condition MODERATE, against a real marriage
+    that occurred — not corrected to fit the outcome); 2 real production-affecting defects found
+    and fixed in the B4 consumer audit; every PARĪKṢAKA pass ran independent live re-derivation
+    and caught 2 false prose claims before merge (neither a code defect). Honest backlog carried:
+    chart 3 unrebuilt, a `ka_kshetra` fingerprint defect, MEASUREMENT #3's flat-hazard-field gap
+    now live-confirmed, a disclosed noisy-OR characteristic in one fix — none blocking.
+    Note (honest, not chased further this entry): the immediately-prior ADHIṢṬHĀNA close banner's
+    own text referenced "changelog v6.54" but no such entry was ever added before this one — a
+    pre-existing drift, corrected here only by this entry now legitimately occupying v6.54, not by
+    retroactively authoring ADHIṢṬHĀNA's missing entry.
+    last_session_id: PRATIJNA-V4-CONDUCTOR-2026-08-09.
+    predecessor_session: ADHISTHANA-CONDUCTOR-2026-08-08.
   - v6.53 (2026-08-07, ṢAḌ-DARŚANA CLOSING RUN — arc complete): CORRECTS v6.52 factual error
     (confirmed by §M red-team D-CLASS-3 finding): ADJUDICATION-2 was RULED on 2026-08-01 (Night-3,
     ANTARYĀMIN) — N_e priors = demographic structural priors (Tier N-i), `ne_v01`, 6 Tranche-1
@@ -5626,6 +5643,35 @@ block (post-rebuild era), and proceeds.
 ---
 
 ## §2 — Canonical state block
+
+> 🟢 **PRATIJÑĀ v4 Campaign B close (2026-08-09, session PRATIJNA-V4-CONDUCTOR-2026-08-09) —
+> Campaign B of the ratified MASTER PLAN, following ADHIṢṬHĀNA's checkpoint. RUN-TERMINAL:
+> ARC-COMPLETE.** Full campaign ledger: `00_ARCHITECTURE/briefs/pratijna_v4/PRATIJNA_V4_STATE.md`.
+> All 8 stages (Stage 0, B0–B7) merged to `main` @ `baf9f51e8` across 14 PRs (#1113–#1126). **All 9
+> Proof Ladder rungs (P1–P9) GREEN**, spanning this campaign and ADHIṢṬHĀNA together — Rung P9 (the
+> final rung) closed by two independent halves: the MEASUREMENT #3 degenerate-interval tripwire
+> correctly firing and being root-caused rather than blind-published (Lane B6), and 27/27 promise-
+> layer-scoreboard derivation links independently re-verified to resolve (Lane B7). **The v4
+> scoring engine is live in production** for two of three canonical charts (`482012f1`, `1c826d5a`
+> — chart 3 `cb73cd3d` explicitly dropped from scope per native instruction mid-campaign, not a
+> gap): `bo_pratijna_v4_engine.py` reproduces `RUNG_P3_HAND_WORKED_v1_0.md`'s hand-worked numbers
+> exactly, factor-by-factor, PARĪKṢAKA-verified with no compensating errors. **THE MARRIAGE
+> ANSWER, served at its earned tier**: v4's real verdict for `482012f1` — occurrence 0.321 (WEAK),
+> condition 5.83 (MODERATE) — against a marriage that genuinely occurred (2013-12-11), an honest
+> divergence not corrected to fit the outcome. Full scoreboard:
+> `00_ARCHITECTURE/briefs/pratijna_v4/PROMISE_LAYER_SCOREBOARD_v1_0.md`. **Two real production-
+> affecting defects found and fixed** in Lane B4's consumer audit (both root-caused to v4 never
+> populating the legacy `supporting_signal_ids` column, silently zeroing evidence in two downstream
+> consumers). Every PARĪKṢAKA pass ran independent live re-derivation, not a re-read of builder
+> claims — caught and fixed two false prose claims (a docstring margin-proximity error, a PR-body
+> citation error) before merge, neither a code defect. **Process pattern named for future
+> campaigns**: 6 separate builder-agent stalls (backgrounding a slow step, ending the turn without
+> consuming the result) across the campaign, every instance recovered by direct external
+> verification with zero work lost — worth a stronger anti-backgrounding directive in future
+> dispatches. Honest backlog carried forward per R16 (chart 3 unrebuilt; a `ka_kshetra` resume-
+> fingerprint defect; MEASUREMENT #3's flat-hazard-field scope gap now live-confirmed; a disclosed
+> noisy-OR amplification characteristic in one B4 fix — none blocking). Full account: session close
+> entry in `SESSION_LOG.md` (session `PRATIJNA-V4-CONDUCTOR-2026-08-09`). See changelog v6.54.
 
 > 🟢 **ADHIṢṬHĀNA Campaign A close (2026-08-08, session ADHISTHANA-CONDUCTOR-2026-08-08) —
 > Campaign A of the ratified MASTER PLAN (Identity, Promise, and the First True Measurement, native
