@@ -115,3 +115,61 @@ def test_runs_on_second_chart_without_error(engine):
 def test_provenance_non_empty_for_scored_class(engine):
     result = engine.score_class(CHART_482012F1, "marriage")
     assert len(result.provenance) > 0
+
+
+# ── AMENDMENT F1 (R20 cycle 1) — live-chart proof that the amendment-gated
+#    engine reproduces v4.0 unmodified by default, and moves marriage's
+#    dignity-driven cells under 'F1' on the real chart 482012f1. ────────────
+
+
+@pytest.fixture()
+def engine_f1(conn):
+    return PratijnaV4Engine(ChartReaderV4(conn, ayanamsha=AYANAMSHA), amendments=frozenset({"F1"}))
+
+
+@requires_db
+def test_f1_engine_default_off_matches_v40_rung_p3_marriage(engine):
+    """The default-constructed engine (amendments unset) must still
+    reproduce RUNG_P3's exact marriage number — merging F1 support changes
+    no production behavior."""
+    result = engine.score_class(CHART_482012F1, "marriage")
+    assert result.occurrence == 0.321
+    assert result.occurrence_label == "WEAK"
+    assert "+F1" not in result.engine_version
+
+
+@requires_db
+def test_f1_amendment_moves_marriage_occurrence_on_482012f1(engine_f1):
+    """Live proof of the dispositor-conjunction exception firing on the real
+    chart: 7L=Venus and karaka=Venus are both dignity-scored against Venus's
+    conjunction with its own dispositor Jupiter (both D1 house 9,
+    RUNG_P3_HAND_WORKED_v1_0.md §0.3) — under F1 this reads naisargika-only
+    (neutral/0.50) instead of v4.0's compound enemy/0.30, raising marriage's
+    occurrence above the v4.0 RUNG_P3 baseline of 0.321."""
+    result = engine_f1.score_class(CHART_482012F1, "marriage")
+    assert result.occurrence > 0.321
+    assert result.engine_version.endswith("+F1")
+    venus_entries = [f for f in result.factor_ledger if f.get("graha") == "Venus" or f.get("lord") == "Venus"]
+    assert any("AMENDMENT F1" in f.get("detail", "") for f in venus_entries)
+
+
+@requires_db
+def test_f1_amendment_does_not_change_condition_axis(engine, engine_f1):
+    """§5.2's condition axis has no dignity-band input at all (§2.7 aspect
+    fractions only) — F1 must leave condition scores byte-identical."""
+    v40 = engine.score_class(CHART_482012F1, "marriage")
+    v41 = engine_f1.score_class(CHART_482012F1, "marriage")
+    assert v40.condition == v41.condition
+    assert v40.condition_label == v41.condition_label
+
+
+@requires_db
+def test_f1_amendment_leaves_unaffected_classes_untouched(engine, engine_f1):
+    """Surgical-scope live check: a class whose slots never touch a
+    dispositor-conjunction pair on this chart must score byte-identical
+    under F1. `career_entry` (10L=Saturn@exalted house7, karaka Sun/Saturn)
+    has no Venus/Jupiter-in-Sagittarius dependency."""
+    v40 = engine.score_class(CHART_482012F1, "career_entry")
+    v41 = engine_f1.score_class(CHART_482012F1, "career_entry")
+    assert v40.occurrence == v41.occurrence
+    assert v40.condition == v41.condition

@@ -159,6 +159,99 @@ def test_dignity_compound_panchadha_maitri_matches_rung_p3_jupiter_friend_d7():
     assert r.state == "friend" and r.band == 0.60
 
 
+# ── AMENDMENT F1 (R20 cycle 1, AMENDMENT_F1_SPEC_v1_0.md) — dispositor-
+#    conjunction exception: graha conjunct its own dispositor reads
+#    naisargika-only, tatkalika set aside, ONLY for that pair. ──────────────
+
+
+def test_f1_default_off_v40_path_unchanged_venus_sag_enemy():
+    """Both engines from one test, no amendment param: v4.0 (default,
+    amendments unset) still yields Venus@Sag/Jupiter -> enemy/0.30, byte-
+    identical to the pre-amendment RUNG_P3 acceptance number."""
+    r = dignity_of_with_positions("Venus", 9, 9, {"Jupiter": 9, "Venus": 9}, _ref())
+    assert r.state == "enemy" and r.band == 0.30
+
+
+def test_f1_amendment_venus_sag_naisargika_only_neutral():
+    """Same Venus@Sagittarius(9)/Jupiter-conjunct case, amendments={'F1'}:
+    Venus's naisargika relationship to Jupiter is neutral (NAISARGIKA
+    table) — with F1 active the tatkalika term (which alone produced the
+    v4.0 'enemy' reading, same-house distance-1) is set aside for this
+    dispositor pair, yielding neutral/0.50 per AMENDMENT_F1_SPEC_v1_0.md."""
+    r = dignity_of_with_positions(
+        "Venus", 9, 9, {"Jupiter": 9, "Venus": 9}, _ref(), amendments=frozenset({"F1"}),
+    )
+    assert r.state == "neutral" and r.band == 0.50
+
+
+def test_f1_amendment_generalizes_mars_leo_sun_conjunct_friend():
+    """A second, independently-constructed dispositor-conjunction pair
+    (Mars@Leo(5), Sun as Leo's lord, both D1 house 5) — proves the rule is
+    general, not hardcoded to the Venus/Jupiter case. Naisargika Mars->Sun
+    = friend (0.60); v4.0's same-house tatkalika (enemy) compounds
+    friend+enemy -> neutral/0.50; F1 gives naisargika-only friend/0.60."""
+    ref = _ref()
+    v40 = dignity_of_with_positions("Mars", 5, 5, {"Sun": 5, "Mars": 5}, ref)
+    assert v40.state == "neutral" and v40.band == 0.50
+    v41 = dignity_of_with_positions(
+        "Mars", 5, 5, {"Sun": 5, "Mars": 5}, ref, amendments=frozenset({"F1"}),
+    )
+    assert v41.state == "friend" and v41.band == 0.60
+
+
+@pytest.mark.parametrize(
+    "graha,sign_number,graha_house_d1,d1_houses",
+    [
+        # Sun@Capricorn(10), Saturn(lord) @ house 7 — NOT conjunct.
+        ("Sun", 10, 10, {"Saturn": 7, "Sun": 10}),
+        # Jupiter@Aquarius(11, D7 sign), D1 house 9; Saturn(lord) D1 house 7 — NOT conjunct.
+        ("Jupiter", 11, 9, {"Saturn": 7, "Jupiter": 9}),
+    ],
+)
+def test_f1_surgical_scope_non_conjunct_pairs_identical_both_engines(
+    graha, sign_number, graha_house_d1, d1_houses,
+):
+    """Property test (R13/mutation-proof surgical scope): for any
+    graha/sign-lord pair that is NOT conjunct in D1, amendments={'F1'}
+    must not change the dignity result at all — the amendment must not
+    leak beyond the dispositor pair it names."""
+    ref = _ref()
+    v40 = dignity_of_with_positions(graha, sign_number, graha_house_d1, d1_houses, ref)
+    v41 = dignity_of_with_positions(
+        graha, sign_number, graha_house_d1, d1_houses, ref, amendments=frozenset({"F1"}),
+    )
+    assert v40 == v41
+
+
+def test_f1_surgical_scope_non_dispositor_conjunction_unaffected():
+    """A same-sign co-occupant that is NOT the sign's dispositor plays no
+    role in dignity_of_with_positions at all (the function's only inputs
+    are the scored graha and its OWN sign lord) — so a chart where some
+    third graha shares Venus's sign but Jupiter (the true dispositor)
+    does not, must score identically to the no-co-occupant case, with or
+    without F1. This is the structural proof the amendment cannot fire on
+    a same-sign pair that isn't the dispositor pair."""
+    ref = _ref()
+    # Jupiter (the real dispositor of Sagittarius) is NOT in house 9 here;
+    # only a co-occupant (irrelevant to this function's signature) would be.
+    d1_houses = {"Jupiter": 3, "Venus": 9}
+    v40 = dignity_of_with_positions("Venus", 9, 9, d1_houses, ref)
+    v41 = dignity_of_with_positions("Venus", 9, 9, d1_houses, ref, amendments=frozenset({"F1"}))
+    assert v40 == v41
+    # And it must NOT equal the naisargika-only reading (neutral) — proves
+    # the amendment genuinely did not fire, not merely coincide.
+    assert v40.state != "neutral"
+
+
+def test_f1_amendment_scoped_by_name_other_amendment_ids_do_nothing():
+    """Passing a non-'F1' amendment id must not trigger F1's behavior —
+    the parameter is named-amendment-gated, not a bare boolean."""
+    r = dignity_of_with_positions(
+        "Venus", 9, 9, {"Jupiter": 9, "Venus": 9}, _ref(), amendments=frozenset({"F7"}),
+    )
+    assert r.state == "enemy" and r.band == 0.30  # unchanged v4.0 reading
+
+
 # ── NAISARGIKA drift guard against ga_condition_writer.py's own copy ──────
 
 
