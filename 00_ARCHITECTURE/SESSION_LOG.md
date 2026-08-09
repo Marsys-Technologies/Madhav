@@ -36037,3 +36037,169 @@ ADHIṢṬHĀNA checkpoint (F1 dispositor-conjunction exception, F3 broadened au
 F6a node-aspect convention, F6b naisargika-only varga dignity, F7 bhava-occupancy factor); or a new
 campaign. `00_ARCHITECTURE/briefs/pratijna_v4/PRATIJNA_V4_STATE.md` is the full ledger for anyone
 picking this back up.
+
+---
+
+## F1-AMENDMENT-CONDUCTOR-2026-08-09 — F1 AMENDMENT CYCLE closed: dispositor-conjunction exception side-by-side published, no adoption ruling made
+
+**Campaign:** F1 AMENDMENT CYCLE — the first R20 amendment cycle against ratified
+`V4_RUBRIC_SPEC_v1_0.md`, run as a fully autonomous Conductor session directly against the
+governing prompt. No separate session_open handshake was emitted before substantive work began;
+the block below is backfilled at close time from the session's actual scope, disclosed as such
+rather than presented as a live-emitted handshake.
+
+```yaml
+session_open:
+  session_id: F1-AMENDMENT-CONDUCTOR-2026-08-09
+  cowork_thread_name: "Madhav — F1 Amendment Cycle (dispositor-conjunction exception)"
+  agent_name: claude-sonnet-5
+  agent_version: claude-sonnet-5
+  step_number_or_macro_phase: "PRATIJÑĀ_v4.R20_CYCLE_1"
+  predecessor_session: PRATIJNA-V4-CONDUCTOR-2026-08-09
+  backfilled: true
+  backfill_rationale: "No formal handshake was emitted before work began; this block is
+    reconstructed at close time from the governing prompt's own declared scope, per the same
+    honest-disclosure discipline the close checklist itself follows."
+  mandatory_reading_confirmation:
+    - CLAUDE.md §C (self-reference)
+    - V4_RUBRIC_SPEC_v1_0.md §2.1 (dignity band, the amendment's target)
+    - CHECKPOINT_RECORD_v1_0.md (F1 filed there)
+    - RUNG_P3_HAND_WORKED_v1_0.md §0.3 (Venus@Sag hand-worked case)
+    - PROMISE_LAYER_SCOREBOARD_v1_0.md (v4.0 baseline)
+    - bo_pratijna_v4_engine.py + its P5 probe
+  declared_scope:
+    may_touch:
+      - 00_ARCHITECTURE/briefs/pratijna_v4/**
+      - platform/python-sidecar/pipeline/orchestrator/writers/bo_pratijna_v4_engine.py
+      - platform/python-sidecar/pipeline/orchestrator/writers/tests/test_bo_pratijna_v4_engine.py
+      - platform/python-sidecar/tests/test_bo_pratijna_v4_engine_live.py
+      - platform/scripts/probes/probe_f1_side_by_side.py
+      - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+      - 00_ARCHITECTURE/SESSION_LOG.md
+    must_not_touch:
+      - bo_pratijna_karyatva.py                    # production registry, unchanged this cycle
+      - pipeline/orchestrator/writers/bo_pratijna.py # v4 writer construction, unchanged this cycle
+      - any bodha_pratijna row / any DB write        # R19, offline-only cycle
+      - 025_HOLISTIC_SYNTHESIS/**
+      - 01_FACTS_LAYER/**
+  red_team_due: false
+```
+
+**Body:** Implemented and published the side-by-side comparison for AMENDMENT F1 (dispositor-
+conjunction exception), the finding filed as an R20 amendment candidate at the original ADHIṢṬHĀNA
+checkpoint (`CHECKPOINT_RECORD_v1_0.md`). All three R20-mandated stages closed in one session:
+Stage 0 (blind spec commit), Stage 1 (offline `amendments={'F1'}` engine variant, TDD, independent
+PARĪKṢAKA review — PASS, zero findings), Stage 2 (permanent `probe_f1_side_by_side.py`, full
+54-cell live comparison published in `F1_SIDE_BY_SIDE_v1_0.md`), Stage 3 (this close). Merged to
+`main` via PR #1128 (merge queue, all required checks green, 0 failures). No production write, no
+deploy, no adoption ruling — the campaign's own governing instruction reserves the adoption
+decision for the native + Fable. Full ledger: `00_ARCHITECTURE/briefs/pratijna_v4/F1_CYCLE_STATE.md`.
+
+```yaml
+session_close:
+  session_id: F1-AMENDMENT-CONDUCTOR-2026-08-09
+  closed_at: 2026-08-09T18:35:00+05:30
+  campaign: "F1 AMENDMENT CYCLE (first R20 amendment cycle, PRATIJÑĀ v4 campaign home)"
+  branch: main
+  merged_to_main: true
+  main_head_after_merge: 9353737e5
+  merge_prs: [1128]
+  files_touched:
+    - path: 00_ARCHITECTURE/briefs/pratijna_v4/AMENDMENT_F1_SPEC_v1_0.md
+      mutation_type: created
+      sha256_before: null
+      sha256_after: 2e31814cac5b04f4a09ba4789bd1aaee50938f91250465f9c4af085ddecfbfbd
+      justification: "Stage 0 — blind amendment definition, committed before any effect computed"
+      within_declared_scope: true
+    - path: platform/python-sidecar/pipeline/orchestrator/writers/bo_pratijna_v4_engine.py
+      mutation_type: modified
+      sha256_before: 0c84df5062442bb6a996c4764078dac892aea02ef46e8065ed851b9de1664fa4
+      sha256_after: c56cf083b600a2bb7d3e91a47fe7830fd8a109d4fb8c47f611b567d6b1adbcd5
+      justification: "Stage 1 — amendments={'F1'} dispositor-conjunction exception, default-off"
+      within_declared_scope: true
+    - path: platform/python-sidecar/pipeline/orchestrator/writers/tests/test_bo_pratijna_v4_engine.py
+      mutation_type: modified
+      sha256_before: 1b4d3f692b38df5421a2c367b1573e03d44b34f63f9706b5f0c1e4698b5e6289
+      sha256_after: c5920c0d1eba52013babcd45602863d0fe925e00c412ab48bc17381e5b101d53
+      justification: "Stage 1 — 8 new TDD unit tests"
+      within_declared_scope: true
+    - path: platform/python-sidecar/tests/test_bo_pratijna_v4_engine_live.py
+      mutation_type: modified
+      sha256_before: 618fdd43862ec1dd31d74d6e12a08f1958dabbdc21548f085174ff60b84c5a77
+      sha256_after: f68d8cc974635c9ac10eaf744c0f6095304247ca06c5381961929d1c3e41997a
+      justification: "Stage 1 — 4 new live-DB tests"
+      within_declared_scope: true
+    - path: platform/scripts/probes/probe_f1_side_by_side.py
+      mutation_type: created
+      sha256_before: null
+      sha256_after: 182e1b84a888684888885f90b7737190f975ef4702119543f867f511e994575f
+      justification: "Stage 2 — permanent, read-only side-by-side probe (R19)"
+      within_declared_scope: true
+    - path: 00_ARCHITECTURE/briefs/pratijna_v4/F1_SIDE_BY_SIDE_v1_0.md
+      mutation_type: created
+      sha256_before: null
+      sha256_after: 887358b2cf882486677a635d91cf4c5fda41f40c074049159933b47ef701ce74
+      justification: "Stage 2 — the campaign's payoff artifact"
+      within_declared_scope: true
+    - path: 00_ARCHITECTURE/briefs/pratijna_v4/F1_CYCLE_STATE.md
+      mutation_type: created
+      sha256_before: null
+      sha256_after: 98b020eb95ffd2a7cbffa90c294449d907bd87cba2738a780b55b0db46c258a7
+      justification: "Stage 3 — campaign ledger"
+      within_declared_scope: true
+    - path: 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+      mutation_type: modified
+      sha256_before: n/a
+      sha256_after: n/a
+      justification: "§2 banner + changelog v6.55 (this close)"
+      within_declared_scope: true
+    - path: 00_ARCHITECTURE/SESSION_LOG.md
+      mutation_type: modified
+      sha256_before: n/a
+      sha256_after: n/a
+      justification: "This session's entry appended (this close)"
+      within_declared_scope: true
+  proof_ladder_this_cycle:
+    stage_0: {status: GREEN, artifact: "AMENDMENT_F1_SPEC_v1_0.md", note: "committed before any effect beyond one disclosed checkpoint estimate was computed"}
+    stage_1: {status: GREEN, artifact: "bo_pratijna_v4_engine.py + 12 new tests (8 unit + 4 live)", note: "PARĪKṢAKA PASS, zero findings; full v4 suite 98 passed / 10 skipped (pre-existing, unrelated)"}
+    stage_2: {status: GREEN, artifact: "probe_f1_side_by_side.py + F1_SIDE_BY_SIDE_v1_0.md", note: "10/27 classes moved on 482012f1 (1 band-crossing: marriage WEAK->MODERATE), 0/27 on 1c826d5a; every moved cell traced to fact_id-level evidence"}
+    stage_3: {status: GREEN, note: "gate packet, PR #1128, merge queue, 0 CI failures, merged to main"}
+  parikshaka_reviews:
+    - lane: Stage_1_engine_implementation
+      verdict: PASS
+      findings: 0
+      note: "independent code-reviewer subagent, adversarial 8-point brief, re-ran tests independently"
+  drift_detector_run: {exit_code: 3, findings: 216, note: "== T0 baseline ceiling exactly (DVA Ruling 4), no new drift introduced"}
+  schema_validator_run: {exit_code: 3, violations: 42, note: "1 BELOW the 43 baseline ceiling — fixed 2 real pre-existing-this-session governance gaps found while closing: this entry's own SESSION_LOG heading format (missing the '— description' em-dash form the parser requires) and a stale CURRENT_STATE.last_session_id field, both corrected in-flight, not left as new debt. Note: --close-checklist itself (a separate validator mode from the repo-wide scan above) still raises AttributeError on this template's own free-text drift_detector_run/mirror_enforcer_run convention when those fields are strings rather than {exit_code:...} dicts — a real, pre-existing validator/template-precedent mismatch (also present, unfixed, in the immediately-prior PRATIJNA-V4-CONDUCTOR-2026-08-09 close), not chased further this session; disclosed rather than silently worked around."}
+  mirror_enforcer_run: "not applicable — Gemini mirror discipline RETIRED 2026-05-27, CLAUDE.md §K"
+  red_team_pass: {due: false, performed: false, verdict: n/a}
+  current_state_updated: true
+  session_log_appended: true
+  disagreement_register_entries_opened: []
+  native_directive_per_step_verification: []
+  native_overrides: []
+  halts_encountered: []
+  product_code_writes_made: true
+  native_chart_touched: false
+  native_chart_touch_detail: "No chart_facts/chart_divisionals/bodha_pratijna row was written this cycle — R19 held throughout. The engine reads live chart data (read-only) via the existing ChartReaderV4; the probe never writes to any table. This is a deliberate property of the campaign (offline analysis only)."
+  known_residuals:
+    - finding: "F1's own adoption decision is not made — reserved for the native + Fable per R20 item 4"
+      severity: LOW
+      policy_ref: "F1_CYCLE_STATE.md Stage 3"
+    - finding: "4 other R20 amendment candidates from the original checkpoint (F3, F6a, F6b, F7) remain unstarted"
+      severity: LOW
+      policy_ref: "CHECKPOINT_RECORD_v1_0.md"
+  self_errors_named:
+    - "F1_SIDE_BY_SIDE_v1_0.md's first draft mis-attributed bereavement/major_gain/major_loss's movement to a nonexistent Venus karaka listing; corrected in-place after re-checking the live factor_ledger and finding the true mechanism (both are Venus-ruled houses, not karaka listings) — visible in the published artifact's own §3.1, not scrubbed"
+    - "F1_SIDE_BY_SIDE_v1_0.md's first draft mis-stated career_setback's v4.0 intermediate dignity band before being corrected against the live ledger value (great_enemy/0.20, not the placeholder first written) — visible in §3.2"
+  run_terminal: "CYCLE-COMPLETE — all 3 R20-mandated stages closed, merged to main, no adoption ruling made (by design)"
+  followups: "Present F1_SIDE_BY_SIDE_v1_0.md to the native + Fable for the R20 item-4 adoption ruling. If adopted, a future session wires amendments={'F1'} into the production writer's engine construction and re-runs the full chart-rebuild pipeline (out of scope for this cycle). If not adopted, no further action needed — the offline variant costs nothing to leave in place, default-off."
+  next_session_objective: "Native's choice: (a) the F1 adoption ruling itself, (b) a fresh R20 cycle on one of F3/F6a/F6b/F7, (c) chart 3 (cb73cd3d) rebuild under v4.0, (d) a new campaign entirely."
+```
+
+### Next session objective
+
+Native's choice: the F1 adoption ruling (present `F1_SIDE_BY_SIDE_v1_0.md` to native + Fable); a
+fresh R20 amendment cycle on one of the 4 remaining checkpoint findings (F3, F6a, F6b, F7); chart 3
+(`cb73cd3d`) rebuild under v4.0; or a new campaign. `00_ARCHITECTURE/briefs/pratijna_v4/
+F1_CYCLE_STATE.md` is the full ledger for anyone picking this back up.

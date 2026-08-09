@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.54
+version: 6.55
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,16 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.55 (2026-08-09, F1 AMENDMENT CYCLE close — first R20 amendment cycle): full account in the
+    new banner immediately above and in `00_ARCHITECTURE/briefs/pratijna_v4/F1_CYCLE_STATE.md` +
+    `F1_SIDE_BY_SIDE_v1_0.md`. Headline facts: 3 stages closed, merged to `main` @ `9353737e5` (PR
+    #1128); dispositor-conjunction exception implemented as a default-off `amendments={'F1'}`
+    engine parameter (production v4.0 behavior byte-identical, independently confirmed live);
+    PARĪKṢAKA PASS with zero findings; full 54-cell side-by-side published (10/27 classes moved on
+    `482012f1`, marriage the sole band-crossing cell WEAK→MODERATE; 0/27 moved on `1c826d5a`); no
+    adoption decision made — that ruling is reserved for the native + Fable per R20 item 4.
+    last_session_id: F1-AMENDMENT-CONDUCTOR-2026-08-09.
+    predecessor_session: PRATIJNA-V4-CONDUCTOR-2026-08-09.
   - v6.54 (2026-08-09, PRATIJÑĀ v4 Campaign B close — arc complete): full account in the new
     banner immediately above and in `00_ARCHITECTURE/briefs/pratijna_v4/PRATIJNA_V4_STATE.md`.
     Headline facts: all 8 campaign stages merged to `main` @ `baf9f51e8` (14 PRs, #1113–#1126);
@@ -5644,6 +5654,31 @@ block (post-rebuild era), and proceeds.
 
 ## §2 — Canonical state block
 
+> 🟢 **F1 AMENDMENT CYCLE close (2026-08-09, session F1-AMENDMENT-CONDUCTOR-2026-08-09) — the
+> first R20 amendment cycle against ratified `V4_RUBRIC_SPEC_v1_0.md`, following PRATIJÑĀ v4
+> Campaign B's close.** Full campaign ledger: `00_ARCHITECTURE/briefs/pratijna_v4/F1_CYCLE_STATE.md`.
+> **No production write, no deploy, no adoption decision made** — v4.0/v1.0 remains the production
+> rubric; the F1 amendment (dispositor-conjunction exception, filed at the original ADHIṢṬHĀNA
+> checkpoint) exists only as an offline, default-off `amendments={'F1'}` engine variant. All 3
+> R20-mandated stages closed and merged to `main` @ `9353737e5` (PR #1128, single squash merge via
+> merge queue): **Stage 0** — `AMENDMENT_F1_SPEC_v1_0.md` committed blind, before any effect beyond
+> one disclosed checkpoint estimate was computed. **Stage 1** — `bo_pratijna_v4_engine.py`'s
+> `dignity_of_with_positions`/`PratijnaV4Engine` gained an `amendments: frozenset[str] = frozenset()`
+> parameter (default = v4.0, byte-identical to production); 8 new TDD unit tests + 4 new live-DB
+> tests; independent PARĪKṢAKA subagent review returned **PASS, zero findings**. **Stage 2** — the
+> permanent, read-only `platform/scripts/probes/probe_f1_side_by_side.py` ran v4.0 vs v4.1 across
+> both live canonical charts, all 27 classes (54 cells): **10/27 classes moved on `482012f1`**
+> (marriage the only band-crossing cell, WEAK→MODERATE, 0.321→0.450), **0/27 moved on `1c826d5a`**.
+> Every moved cell traced to exactly one of two dispositor-conjunction pairs (Venus/Jupiter D1 house
+> 9; Saturn/Mars via career_setback's D10 divisional slot) with exact `chart_divisionals` fact_ids —
+> full table + trace in `F1_SIDE_BY_SIDE_v1_0.md`. **Stage 3** — this ledger + gate packet, merged
+> with 0 CI failures across all required checks. **The adoption decision belongs to the native +
+> Fable (R20 item 4) and was NOT made this cycle** — the artifact makes no recommendation. Two
+> self-errors caught and corrected during Stage 2 drafting (a mis-attributed trigger mechanism for 3
+> classes, a mis-stated intermediate band value), both disclosed in-place per R16, not scrubbed.
+> Full account: session close entry in `SESSION_LOG.md` (session
+> `F1-AMENDMENT-CONDUCTOR-2026-08-09`). See changelog v6.55.
+
 > 🟢 **PRATIJÑĀ v4 Campaign B close (2026-08-09, session PRATIJNA-V4-CONDUCTOR-2026-08-09) —
 > Campaign B of the ratified MASTER PLAN, following ADHIṢṬHĀNA's checkpoint. RUN-TERMINAL:
 > ARC-COMPLETE.** Full campaign ledger: `00_ARCHITECTURE/briefs/pratijna_v4/PRATIJNA_V4_STATE.md`.
@@ -6907,7 +6942,7 @@ current_state:
   # ------------------------------------------------------------------
   # Last-session pointer
   # ------------------------------------------------------------------
-  last_session_id: PRATIJNA-V4-CONDUCTOR-2026-08-09  # 2026-08-09: PRATIJÑĀ v4 Campaign B closed — v4 scoring engine live for 2/3 canonical charts, the marriage answer served at its earned tier, all 9 Proof Ladder rungs GREEN; see this file's §2 banner (top entry) and SESSION_LOG.md. This field was stale at C4-CLOSE-2026-08-01 across every intervening session close since (including ADHISTHANA-CONDUCTOR-2026-08-08) — corrected here as an in-scope hygiene fix per schema_validator's cross-check, not a claim that the omitted predecessors are individually documented in this chain. Predecessor ADHISTHANA-CONDUCTOR-2026-08-08 (2026-08-08: ADHIṢṬHĀNA Campaign A closed — foundation merged to main @ edd4cf928, checkpoint artifacts ready for the human+Fable review; see this file's §2 banner and ADHISTHANA_STATE.md). Predecessor C4-CLOSE-2026-08-01  # 2026-08-01: C4-LOOP-LIVE-PROOF closed — the one item PŪRṆATĀ left open, resolved live end-to-end against the deployed app and the real production DB; see PURNATA_CLOSE_REPORT_v1_0.md v1.2 §9. Predecessor SUDDHA-VACA-PHASE-CDEF-2026-07-28  # 2026-07-28: SUDDHA-VACA Phase C/D/E/F CLOSED PARTIAL — 5/7 P0 narration defects VERIFIED-FIXED + rebuilt into both charts, 2/7 PARKED on PARISHODHANA #827/#828; see SUDDHA_VACA_REPORT_v1_0.md and this file's §2 banner. Predecessor DOCTRINE-WAVES-D-5-CLOSE-2026-07-20  # 2026-07-20/21: D-5 "Gochara-Chitra" CLOSED GREEN-WITH-PARTIALS, current_wave advances to D-4b — see REPORT_D-5.md §10/STATE_D-5.md (gate_run_3/native_disposition_gate_run_2 blocks) for full detail. Predecessor DOCTRINE-WAVES-D-5-CONDUCTOR-HALT-2026-07-20 (2026-07-20: D-5 HALTED-AND-REPORTED, not closed, on gate_run_2's RED-C/RED-D findings — this field was stale since 2026-07-13 across several intervening wave closes, corrected as an in-scope hygiene fix). Predecessor LLM-CONSUMPTION-REMEDIATION-W1-2026-07-13  # 2026-07-13: LLM Consumption Remediation W1 (serving plane, 16 lanes) CLOSED — deployed amjis-web 2385fb62 + amjis-mcp fc84cd0d (both == main HEAD, deploy-parity confirmed), 7/7 prod-verified on deployed channel (attribution/grounding/discrimination; WP-1.3 assets; envelope+dates honest; WP-1.8 varga→chart_facts; LCA-17 0-substitution; lel_query 57 native/honest-0 Abhinandan post-ADJ-2). ND-W1.1 295-finding gate PASS (0 unreconciled: 108 REMEDIATED-PENDING-W4 / 136 PENDING-W2 / 50 PENDING-W3 / 1 PARKED). NEXT: W2 writer wave (WP-2.1..2.5). See v6.39 changelog + run ledger §6.6/§6.7. Predecessor LLM-CONSUMPTION-REMEDIATION-W0-2026-07-12 (2026-07-12: W0 CLOSED — WP-0.1/LCA-17 wrong-chart substitution REMEDIATED (SHA-256 cache key + echo-back guard; PR #553 6ec244c0; deployed amjis-web-00955-qt5; blind-verified 0 subs/2M iters); program conductor ACTIVE, REMEDIATION_PLAN_v3_0). Predecessor LLM-CONSUMPTION-AUDIT-EXECUTION-2026-07-12 (audit campaign COMPLETE, 1,009 findings). Predecessor LLM-CONSUMPTION-AUDIT-BRIEF-FOUNDRY-2026-07-12  # 2026-07-12: BRIEF FOUNDRY session CLOSED (BUILD-ONLY — no audit/fix/DB-write). Built 8 ledgers + CHARTER + Item-0 brief + 10 lane briefs + AUDIT_STATE skeleton + TRACEABILITY_MATRIX (0 unmapped) for the upcoming LLM Consumption Audit program under 00_ARCHITECTURE/llm_consumption_audit/. See v6.36 changelog entry above and FOUNDRY_CLOSE_REPORT.md. Independent of the L0-L5 layer-build arc (§E) — no macro-phase/layer-campaign change. Predecessor R5.3-CONTENT-DEPTH-2026-07-10 (2026-07-10: R5.3 content-depth iteration CLOSED — §B/B1/B2/B3/B4 complete, gate NOT MET (39.5%), honest close, backlog transfers to R6 TOTAL ELEVATION. Predecessor R5.2-ACCEPTANCE-2026-07-09.)
+  last_session_id: F1-AMENDMENT-CONDUCTOR-2026-08-09  # 2026-08-09: F1 AMENDMENT CYCLE closed — first R20 amendment cycle against ratified V4_RUBRIC_SPEC_v1_0.md; dispositor-conjunction exception implemented as an offline, default-off amendments={'F1'} engine variant, full 54-cell side-by-side published (10/27 classes moved on 482012f1, marriage the sole band-crossing cell WEAK→MODERATE; 0/27 on 1c826d5a); PARĪKṢAKA PASS zero findings; no production write, no deploy, no adoption ruling made (reserved for native+Fable per R20 item 4); see this file's §2 banner (top entry) and F1_CYCLE_STATE.md. Predecessor PRATIJNA-V4-CONDUCTOR-2026-08-09 (2026-08-09: PRATIJÑĀ v4 Campaign B closed — v4 scoring engine live for 2/3 canonical charts, the marriage answer served at its earned tier, all 9 Proof Ladder rungs GREEN; see PRATIJNA_V4_STATE.md). Predecessor ADHISTHANA-CONDUCTOR-2026-08-08 (2026-08-08: ADHIṢṬHĀNA Campaign A closed — foundation merged to main @ edd4cf928, checkpoint artifacts ready for the human+Fable review; see this file's §2 banner and ADHISTHANA_STATE.md). Predecessor C4-CLOSE-2026-08-01  # 2026-08-01: C4-LOOP-LIVE-PROOF closed — the one item PŪRṆATĀ left open, resolved live end-to-end against the deployed app and the real production DB; see PURNATA_CLOSE_REPORT_v1_0.md v1.2 §9. Predecessor SUDDHA-VACA-PHASE-CDEF-2026-07-28  # 2026-07-28: SUDDHA-VACA Phase C/D/E/F CLOSED PARTIAL — 5/7 P0 narration defects VERIFIED-FIXED + rebuilt into both charts, 2/7 PARKED on PARISHODHANA #827/#828; see SUDDHA_VACA_REPORT_v1_0.md and this file's §2 banner. Predecessor DOCTRINE-WAVES-D-5-CLOSE-2026-07-20  # 2026-07-20/21: D-5 "Gochara-Chitra" CLOSED GREEN-WITH-PARTIALS, current_wave advances to D-4b — see REPORT_D-5.md §10/STATE_D-5.md (gate_run_3/native_disposition_gate_run_2 blocks) for full detail. Predecessor DOCTRINE-WAVES-D-5-CONDUCTOR-HALT-2026-07-20 (2026-07-20: D-5 HALTED-AND-REPORTED, not closed, on gate_run_2's RED-C/RED-D findings — this field was stale since 2026-07-13 across several intervening wave closes, corrected as an in-scope hygiene fix). Predecessor LLM-CONSUMPTION-REMEDIATION-W1-2026-07-13  # 2026-07-13: LLM Consumption Remediation W1 (serving plane, 16 lanes) CLOSED — deployed amjis-web 2385fb62 + amjis-mcp fc84cd0d (both == main HEAD, deploy-parity confirmed), 7/7 prod-verified on deployed channel (attribution/grounding/discrimination; WP-1.3 assets; envelope+dates honest; WP-1.8 varga→chart_facts; LCA-17 0-substitution; lel_query 57 native/honest-0 Abhinandan post-ADJ-2). ND-W1.1 295-finding gate PASS (0 unreconciled: 108 REMEDIATED-PENDING-W4 / 136 PENDING-W2 / 50 PENDING-W3 / 1 PARKED). NEXT: W2 writer wave (WP-2.1..2.5). See v6.39 changelog + run ledger §6.6/§6.7. Predecessor LLM-CONSUMPTION-REMEDIATION-W0-2026-07-12 (2026-07-12: W0 CLOSED — WP-0.1/LCA-17 wrong-chart substitution REMEDIATED (SHA-256 cache key + echo-back guard; PR #553 6ec244c0; deployed amjis-web-00955-qt5; blind-verified 0 subs/2M iters); program conductor ACTIVE, REMEDIATION_PLAN_v3_0). Predecessor LLM-CONSUMPTION-AUDIT-EXECUTION-2026-07-12 (audit campaign COMPLETE, 1,009 findings). Predecessor LLM-CONSUMPTION-AUDIT-BRIEF-FOUNDRY-2026-07-12  # 2026-07-12: BRIEF FOUNDRY session CLOSED (BUILD-ONLY — no audit/fix/DB-write). Built 8 ledgers + CHARTER + Item-0 brief + 10 lane briefs + AUDIT_STATE skeleton + TRACEABILITY_MATRIX (0 unmapped) for the upcoming LLM Consumption Audit program under 00_ARCHITECTURE/llm_consumption_audit/. See v6.36 changelog entry above and FOUNDRY_CLOSE_REPORT.md. Independent of the L0-L5 layer-build arc (§E) — no macro-phase/layer-campaign change. Predecessor R5.3-CONTENT-DEPTH-2026-07-10 (2026-07-10: R5.3 content-depth iteration CLOSED — §B/B1/B2/B3/B4 complete, gate NOT MET (39.5%), honest close, backlog transfers to R6 TOTAL ELEVATION. Predecessor R5.2-ACCEPTANCE-2026-07-09.)
     # === Predecessor FOUNDATION-SESSION-1 (2026-06-18) ===
     # FOUNDATION-SESSION-1: Pre-L2 foundation close-out COMPLETE. All 6 ITEM close criteria met. Migrations 315-317 prod-applied. 4 autonomy writers REGENERABLE confirmed. bg_rules full mine (2,912 ceiling). Catalogs ACCEPTED. Endpoint ALL L0+L1 lit/service_ok. Sealing artifact: FOUNDATION_SESSION_1_CLOSE.md. Predecessor L1-GANITA-REBASE-AND-PR.
     # === Predecessor L1-GANITA-REBASE-AND-PR (2026-06-18) ===
