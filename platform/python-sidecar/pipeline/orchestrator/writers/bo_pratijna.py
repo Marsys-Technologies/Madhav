@@ -2,6 +2,8 @@
 bo_pratijna -- Promise Register (L2 Bodha)
 ==========================================
 PRATIJÑĀ v4.1.0 -- writer wiring (Lane B2 follow-on; F1 ADOPTION CYCLE, R22, 2026-08-09).
+G10 varga_confirmation (SAMPURTI L0e, 2026-08-10): populated as cross-ayanamsha consensus.
+See _varga_confirmation_consensus() for the JSON shape and derivation.
 
 Production default flipped from v4.0 (amendments unset) to v4.1.0
 (amendments={'F1'}) per ruling R22 on the evidence of `F1_SIDE_BY_SIDE_v1_0.md`
@@ -133,11 +135,13 @@ reads `bodha_msr_signals` at all (see "what replaced what" above), so there
 is nothing honest to put in those columns. This is a real, disclosed
 capability difference from v3, not an oversight.
 
-`varga_confirmation` (JSONB) is populated from the class's own divisional
-(varga) factor-ledger entry when one was scored (the slot v4 dedicates to
-divisional-chart confirmation, §2.4) -- a natural, non-invented fit for a
-column that already existed for exactly this purpose and was always NULL
-under v3.
+`varga_confirmation` (JSONB) is populated as a CROSS-AYANAMSHA CONSENSUS
+summary (G10, SAMPURTI L0e) — the five L1-computed ayanamshas' divisional
+readings compared and summarised. See `_varga_confirmation_consensus()` for
+the JSON shape. §N.5 discipline: this function REFERENCES the divisional
+factor_ledger entry that PratijnaV4Engine already produced from L1
+chart_divisionals; it never re-derives sign positions or dignity states
+independently — the engine's own per-aya readings are the source.
 
 LIGHT writer: one run() call. §N.3: per-chart delete-then-insert,
 idempotent, ON CONFLICT (chart_id, ayanamsha_id, event_class_id) DO UPDATE
@@ -240,21 +244,117 @@ DO UPDATE SET
 """
 
 
-def _varga_confirmation_from_ledger(score: ClassScore) -> dict | None:
-    """Pull the divisional-slot factor_ledger entry (§2.4), if this class
-    scored one, into the pre-existing `varga_confirmation` JSONB column --
-    a natural fit for a column that was always NULL under v3 and exists
-    specifically for divisional-chart confirmation evidence."""
+def _divisional_entry_from_ledger(score: ClassScore) -> dict | None:
+    """Return the divisional-slot factor_ledger entry from a ClassScore, or
+    None if no divisional was scored (class has no KaryatvaMap divisional).
+    §N.5: references the engine's already-computed L1-derived entry; never
+    re-derives sign positions or dignity states from raw chart data."""
     for entry in score.factor_ledger:
         if entry.get("slot") == "divisional":
             return entry
     return None
 
 
+def _varga_confirmation_consensus(
+    per_aya_divisional: dict[str, dict | None],
+) -> dict | None:
+    """Build the cross-ayanamsha consensus JSON for varga_confirmation (G10).
+
+    per_aya_divisional: {ayanamsha_id -> divisional factor_ledger entry | None}
+                        (None means this class has no divisional in its map)
+
+    Returns None if all entries are None (no divisional for this class).
+
+    JSON shape (§N.5 — values are verbatim from the engine's L1-derived readings):
+    {
+      "varga": "D10",                          # the varga (same for all ayas)
+      "graha": "Mercury",                      # the primary karaka scored (same)
+      "per_system": {                          # per-ayanamsha reading
+        "lahiri_chitrapaksha": {
+          "varga_sign": "Capricorn",
+          "dignity_state": "great_enemy",
+          "band": 0.2
+        },
+        ...
+      },
+      "consensus_dignity": "great_enemy",      # majority/unanimous dignity state
+                                               # (None if no majority)
+      "unanimous": true,                       # all 5 systems agree on dignity_state
+      "dissent": [                             # ayanamshas that differ from consensus
+        {"ayanamsha_id": "raman",
+         "varga_sign": "Aquarius",
+         "dignity_state": "own",
+         "band": 0.8}
+      ],
+      "source": "cross-ayanamsha consensus, 5 L1-computed systems (G10/SAMPURTI L0e)"
+    }
+    """
+    # If all entries are None, no divisional scored for this class.
+    scored = {k: v for k, v in per_aya_divisional.items() if v is not None}
+    if not scored:
+        return None
+
+    # All scored entries share the same varga/graha (engine uses the same
+    # KaryatvaMap regardless of ayanamsha — the varga slot only varies in
+    # sign position due to ayanamsha offset).
+    any_entry = next(iter(scored.values()))
+    varga = any_entry.get("varga")
+    graha = any_entry.get("graha")
+
+    per_system: dict[str, dict] = {}
+    dignity_votes: dict[str, int] = {}
+    for aya, entry in scored.items():
+        ds = entry.get("dignity_state", "unknown")
+        dignity_votes[ds] = dignity_votes.get(ds, 0) + 1
+        per_system[aya] = {
+            "varga_sign": entry.get("varga_sign"),
+            "dignity_state": ds,
+            "band": entry.get("band"),
+        }
+
+    # Consensus = the dignity_state with the most votes; if a tie, None.
+    max_votes = max(dignity_votes.values())
+    leaders = [d for d, v in dignity_votes.items() if v == max_votes]
+    consensus_dignity = leaders[0] if len(leaders) == 1 else None
+    unanimous = len(dignity_votes) == 1
+
+    dissent = [
+        {"ayanamsha_id": aya, **reading}
+        for aya, reading in per_system.items()
+        if reading["dignity_state"] != consensus_dignity
+    ] if consensus_dignity else []
+
+    return {
+        "varga": varga,
+        "graha": graha,
+        "per_system": per_system,
+        "consensus_dignity": consensus_dignity,
+        "unanimous": unanimous,
+        "dissent": dissent,
+        "source": (
+            "cross-ayanamsha consensus, 5 L1-computed systems "
+            "(G10/SAMPURTI L0e — §N.5: values referenced from "
+            "PratijnaV4Engine factor_ledger, not re-derived)"
+        ),
+    }
+
+
 def _row_for_score(
     *, chart_id: str, aya: str, build_id: str, event_class_id: str,
     score: ClassScore, now: str,
+    varga_confirmation: dict | None = None,
 ) -> dict:
+    """Build the INSERT row dict for one (chart, aya, event_class) score.
+
+    varga_confirmation: the pre-computed cross-ayanamsha consensus dict
+    (from _varga_confirmation_consensus), or None.  It is passed in rather
+    than derived here because consensus requires ALL 5 ayanamshas' scores
+    to be available before any single row is committed — the caller (run())
+    accumulates the full set first, then calls this function.  §N.5:
+    individual-aya divisional readings are extracted by
+    _divisional_entry_from_ledger(), which only references the engine's own
+    already-computed factor_ledger entries.
+    """
     if score.status == "no_evidence":
         return {
             "pratijna_id": str(uuid.uuid4()),
@@ -281,7 +381,6 @@ def _row_for_score(
 
     status = status_from_occurrence_label(score.occurrence_label)
     grade = round(score.occurrence * 10.0, 3) if score.occurrence is not None else None
-    varga_confirmation = _varga_confirmation_from_ledger(score)
     derivation = {
         "engine_version": score.engine_version,
         "rubric_version": score.rubric_version,
@@ -339,15 +438,41 @@ class BoPratijnaWriter(WriterBase):
         no_evidence_count = 0
         status_counts: dict[str, int] = {}
 
+        # G10 (SAMPURTI L0e): accumulate ALL 5 ayanamshas' scores BEFORE
+        # inserting, so we can compute the cross-ayanamsha consensus for
+        # varga_confirmation in one pass.
+        #
+        # Structure: {ayanamsha_id -> {event_class_id -> ClassScore}}
+        all_scores: dict[str, dict] = {}
         for aya in CANONICAL_AYAS:
             reader = ChartReaderV4(conn, ayanamsha=aya)
             engine = PratijnaV4Engine(reader, amendments=DEFAULT_AMENDMENTS)
-            scores = engine.score_all(chart_id)
+            all_scores[aya] = engine.score_all(chart_id)
 
-            for event_class_id, score in scores.items():
+        # Build per-class cross-ayanamsha divisional consensus (§N.5:
+        # _divisional_entry_from_ledger references the engine's factor_ledger
+        # — never re-derives L1 values).
+        # Structure: {event_class_id -> consensus dict | None}
+        all_class_ids = set()
+        for aya_scores in all_scores.values():
+            all_class_ids.update(aya_scores.keys())
+
+        consensus_by_class: dict[str, dict | None] = {}
+        for class_id in all_class_ids:
+            per_aya_div: dict[str, dict | None] = {
+                aya: _divisional_entry_from_ledger(all_scores[aya][class_id])
+                if class_id in all_scores[aya] else None
+                for aya in CANONICAL_AYAS
+            }
+            consensus_by_class[class_id] = _varga_confirmation_consensus(per_aya_div)
+
+        # Now insert one row per (aya, event_class) using the pre-computed consensus.
+        for aya in CANONICAL_AYAS:
+            for event_class_id, score in all_scores[aya].items():
                 row = _row_for_score(
                     chart_id=chart_id, aya=aya, build_id=build_id,
                     event_class_id=event_class_id, score=score, now=now,
+                    varga_confirmation=consensus_by_class.get(event_class_id),
                 )
                 conn.execute(_PRATIJNA_INSERT, row)
                 rows_inserted += 1
@@ -355,9 +480,14 @@ class BoPratijnaWriter(WriterBase):
                 if row["status"] == _STATUS_NO_EVIDENCE:
                     no_evidence_count += 1
 
+        consensus_populated = sum(
+            1 for v in consensus_by_class.values() if v is not None
+        )
         logger.info(
-            "[bo_pratijna] chart=%s: %d rows inserted (%d no_evidence); status_counts=%s",
+            "[bo_pratijna] chart=%s: %d rows inserted (%d no_evidence); "
+            "status_counts=%s; varga_confirmation_populated=%d/%d classes",
             chart_id, rows_inserted, no_evidence_count, status_counts,
+            consensus_populated, len(consensus_by_class),
         )
 
         return WriterResult(
@@ -365,6 +495,7 @@ class BoPratijnaWriter(WriterBase):
             rows_inserted=rows_inserted,
             notes=(
                 f"engine={ENGINE_VERSION};ayanamshas={len(CANONICAL_AYAS)};"
-                f"no_evidence={no_evidence_count};status_counts={status_counts}"
+                f"no_evidence={no_evidence_count};status_counts={status_counts};"
+                f"varga_confirmation_populated={consensus_populated}"
             ),
         )

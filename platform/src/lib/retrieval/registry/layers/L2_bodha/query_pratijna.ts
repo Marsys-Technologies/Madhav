@@ -37,13 +37,17 @@ export const queryPratijnaCapability: CapabilityDescriptor = {
   description: [
     'Retrieve the chart pratijna (promise / denial) ledger from bodha_pratijna — one adjudicated',
     'row per event_class: status (promised | denied | conditional | no_evidence), grade, varga_confirmation,',
-    'and a derivation (bo_pratijna v4.0: a factor ledger of classical significators, weights, and denial',
+    'and a derivation (bo_pratijna v4.1: a factor ledger of classical significators, weights, and denial',
     'checks — the row\'s real evidence). Filters: ayanamsha_id, status, event_class_id. Bounded (LIMIT ≤50)',
     'with a disclosed total + offset pagination.',
     'supporting_signal_ids / contradicting_signal_ids are always NULL under the v4 engine (it does not use',
     'MSR-signal matching); no_evidence rows now mean "no karyatva registry entry for this event class" (a',
     'defensive case, not "zero signals") — their grade is NULL (not scored), served honestly per R6/R8, not',
     'gated or fabricated.',
+    'varga_confirmation (JSONB, G10/SAMPURTI L0e): cross-ayanamsha consensus — per_system gives each of the',
+    '5 ayanamshas\' varga_sign + dignity_state + band; consensus_dignity is the plurality dignity state;',
+    'unanimous=true when all 5 agree; dissent lists the diverging systems. NULL for classes with no divisional',
+    'in their KaryatvaMap (e.g. birth_anchor whose kill_switch excludes it from scoring).',
   ].join(' '),
 
   input_schema: {
@@ -129,7 +133,7 @@ export const queryPratijnaCapability: CapabilityDescriptor = {
           more_available: offset + rowsRes.rows.length < total_matching,
           no_evidence_qualification,
           filters: { ayanamsha_id, status, event_class_id, limit, offset },
-          reference_note: 'supporting_signal_ids / contradicting_signal_ids are always NULL under the v4.0 engine (it does not match bodha_msr_signals) — the real classical evidence for a row is derivation.factor_ledger / derivation.weights, served inline above.',
+          reference_note: 'supporting_signal_ids / contradicting_signal_ids are always NULL under the v4.0 engine (it does not match bodha_msr_signals) — the real classical evidence for a row is derivation.factor_ledger / derivation.weights, served inline above. varga_confirmation (G10): cross-ayanamsha consensus over the 5 L1-computed ayanamshas; per_system gives each system\'s varga_sign+dignity; consensus_dignity+unanimous+dissent summarise agreement; NULL when the class has no divisional in its KaryatvaMap.',
           provenance: { tables: ['bodha_pratijna'], source: 'L2 Bodha pratijna ledger; served chart-scoped, budgeted.' },
         },
         is_error: false,

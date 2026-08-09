@@ -1,12 +1,14 @@
 """Tests for the bo_pratijna writer (Promise Register, L2 Bodha), PRATIJÑĀ v4.1.0
 (R22 adoption, F1 default-on, 2026-08-09).
+G10 varga_confirmation (SAMPURTI L0e, 2026-08-10): cross-ayanamsha consensus
+tests added in TestVargaConfirmationConsensus.
 
 Two tiers, matching the project's established writer-test convention:
 
 1. Offline (always runs, no DB required): the pure, DB-free status-mapping
    logic (`status_from_occurrence_label`), row-shaping logic
-   (`_row_for_score`, `_varga_confirmation_from_ledger`), and structural
-   checks against the writer's source.
+   (`_row_for_score`, `_varga_confirmation_consensus`, `_divisional_entry_from_ledger`),
+   and structural checks against the writer's source.
 2. Live (skipped unless DBURL/DATABASE_URL/PROD_DB_URL is set): Rung P6, the
    PRATIJÑĀ v4 writer-wiring acceptance gate -- a REAL orchestrated
    `run(ctx)` call against chart 482012f1, followed by reading the rows
@@ -37,8 +39,9 @@ from pipeline.orchestrator.writers.bo_pratijna import (
     DEFAULT_AMENDMENTS,
     ENGINE_VERSION,
     FORMULA_VERSION,
+    _divisional_entry_from_ledger,
     _row_for_score,
-    _varga_confirmation_from_ledger,
+    _varga_confirmation_consensus,
     status_from_occurrence_label,
 )
 from pipeline.orchestrator.writers.bo_pratijna_karyatva import (
@@ -174,20 +177,27 @@ class TestRowShaping:
         assert row["supporting_signal_ids"] is None
         assert row["contradicting_signal_ids"] is None
 
-    def test_varga_confirmation_populated_from_divisional_ledger_entry(self):
+    def test_varga_confirmation_populated_when_passed_in(self):
+        """varga_confirmation is passed in from the pre-computed consensus;
+        _row_for_score only serialises it to JSON — it does not compute it."""
         score = self._scored()
+        consensus = {"varga": "D9", "graha": "Venus", "unanimous": True,
+                     "per_system": {}, "consensus_dignity": "friend",
+                     "dissent": [], "source": "test"}
         row = _row_for_score(
             chart_id="c1", aya="lahiri_chitrapaksha", build_id="b1",
             event_class_id="marriage", score=score, now="2026-08-09T00:00:00Z",
+            varga_confirmation=consensus,
         )
         assert row["varga_confirmation"] is not None
         assert "D9" in row["varga_confirmation"]
 
-    def test_varga_confirmation_null_when_no_divisional_slot(self):
-        score = self._scored(factor_ledger=[{"slot": "house_lord", "house": 7, "band": 0.6}])
+    def test_varga_confirmation_null_when_none_passed(self):
+        score = self._scored()
         row = _row_for_score(
             chart_id="c1", aya="lahiri_chitrapaksha", build_id="b1",
             event_class_id="marriage", score=score, now="2026-08-09T00:00:00Z",
+            varga_confirmation=None,
         )
         assert row["varga_confirmation"] is None
 
@@ -210,8 +220,17 @@ class TestRowShaping:
         assert derivation["provenance"] == score.provenance
         assert "status_mapping_rule" in derivation
 
-    def test_varga_confirmation_helper_returns_none_for_empty_ledger(self):
-        assert _varga_confirmation_from_ledger(ClassScore(event_class_id="x", status="scored", factor_ledger=[])) is None
+    def test_divisional_entry_helper_returns_none_for_empty_ledger(self):
+        """_divisional_entry_from_ledger references the engine's factor_ledger;
+        an empty ledger (no divisional slot scored) correctly returns None."""
+        assert _divisional_entry_from_ledger(ClassScore(event_class_id="x", status="scored", factor_ledger=[])) is None
+
+    def test_divisional_entry_helper_returns_entry_when_slot_present(self):
+        score = self._scored()  # includes a divisional slot in factor_ledger
+        entry = _divisional_entry_from_ledger(score)
+        assert entry is not None
+        assert entry["slot"] == "divisional"
+        assert entry["varga"] == "D9"
 
 
 # ── Structural / source checks ─────────────────────────────────────────────
@@ -358,6 +377,92 @@ class TestCanonicalAyanamshas:
     def test_five_canonical_ayanamshas(self):
         assert len(CANONICAL_AYAS) == 5
         assert "lahiri_chitrapaksha" in CANONICAL_AYAS
+
+
+class TestVargaConfirmationConsensus:
+    """G10 (SAMPURTI L0e): _varga_confirmation_consensus builds the
+    cross-ayanamsha consensus JSON. §N.5 discipline: it only REFERENCES
+    the engine's already-computed factor_ledger entries; it never re-derives
+    sign positions or dignity states from raw chart data."""
+
+    def _div_entry(self, aya: str, varga_sign: str, dignity_state: str, band: float) -> dict:
+        return {
+            "slot": "divisional", "varga": "D10", "graha": "Mercury",
+            "varga_sign": varga_sign, "dignity_state": dignity_state, "band": band,
+        }
+
+    def test_all_none_returns_none(self):
+        """Classes with no divisional in their KaryatvaMap (e.g. birth_anchor
+        for which the kill_switch makes scoring moot) produce None."""
+        per_aya = {aya: None for aya in CANONICAL_AYAS}
+        assert _varga_confirmation_consensus(per_aya) is None
+
+    def test_unanimous_consensus_all_five_agree(self):
+        per_aya = {
+            aya: self._div_entry(aya, "Capricorn", "great_enemy", 0.2)
+            for aya in CANONICAL_AYAS
+        }
+        result = _varga_confirmation_consensus(per_aya)
+        assert result is not None
+        assert result["unanimous"] is True
+        assert result["consensus_dignity"] == "great_enemy"
+        assert result["dissent"] == []
+        assert len(result["per_system"]) == 5
+        assert result["varga"] == "D10"
+        assert result["graha"] == "Mercury"
+
+    def test_dissent_when_one_system_differs(self):
+        per_aya = {aya: self._div_entry(aya, "Capricorn", "great_enemy", 0.2)
+                   for aya in CANONICAL_AYAS}
+        # Override one ayanamsha to a different sign/dignity
+        raman_entry = self._div_entry("raman", "Aquarius", "own", 0.8)
+        per_aya["raman"] = raman_entry
+        result = _varga_confirmation_consensus(per_aya)
+        assert result is not None
+        assert result["unanimous"] is False
+        assert result["consensus_dignity"] == "great_enemy"  # 4 vs 1 -> majority
+        assert len(result["dissent"]) == 1
+        assert result["dissent"][0]["ayanamsha_id"] == "raman"
+        assert result["dissent"][0]["dignity_state"] == "own"
+
+    def test_no_majority_consensus_dignity_is_none(self):
+        """3-way split (or balanced split) -> consensus_dignity=None, not a guess."""
+        ayas = list(CANONICAL_AYAS)
+        # 2 agree on A, 2 agree on B, 1 agrees on C -> tie between A and B
+        dignities = ["great_enemy", "great_enemy", "own", "own", "neutral"]
+        per_aya = {
+            aya: self._div_entry(aya, "Capricorn", dig, 0.5)
+            for aya, dig in zip(ayas, dignities)
+        }
+        result = _varga_confirmation_consensus(per_aya)
+        assert result is not None
+        assert result["unanimous"] is False
+        assert result["consensus_dignity"] is None  # tie, honest null not a guess
+
+    def test_partial_none_entries_scored_by_available_systems(self):
+        """If only 3 of 5 ayanamshas have a divisional entry (None for 2),
+        consensus is built from the 3 that are present."""
+        per_aya = {aya: None for aya in CANONICAL_AYAS}
+        present_ayas = list(CANONICAL_AYAS)[:3]
+        for aya in present_ayas:
+            per_aya[aya] = self._div_entry(aya, "Capricorn", "great_enemy", 0.2)
+        result = _varga_confirmation_consensus(per_aya)
+        assert result is not None
+        assert len(result["per_system"]) == 3
+        assert result["unanimous"] is True  # all 3 present ones agree
+        assert result["consensus_dignity"] == "great_enemy"
+
+    def test_source_field_documents_g10_provenance(self):
+        """§N.7 item 1: the source field must state the G10 reference path,
+        not a generic or invented string."""
+        per_aya = {
+            aya: self._div_entry(aya, "Capricorn", "great_enemy", 0.2)
+            for aya in CANONICAL_AYAS
+        }
+        result = _varga_confirmation_consensus(per_aya)
+        assert result is not None
+        assert "G10" in result["source"]
+        assert "§N.5" in result["source"]
 
 
 # ── Live tests (require DBURL/DATABASE_URL/PROD_DB_URL; skipped otherwise) ────
