@@ -14,7 +14,7 @@ conductor_session: SAMPURTI-CONDUCTOR-2026-08-10 (first run)
 
 # SAMPŪRTI CAMPAIGN LEDGER
 
-CONDUCTOR-HEARTBEAT: 2026-08-10T03:42+05:30 (SAMPURTI-CONDUCTOR-2026-08-10)
+CONDUCTOR-HEARTBEAT: 2026-08-10T04:00+05:30 (SAMPURTI-CONDUCTOR-2026-08-10)
 
 ## WAVE POSITION
 
@@ -48,6 +48,55 @@ LEL resolver rows PARKED-honest, never guessed).
 Merge order: train on CI-green + PARĪKṢAKA verdict recorded HERE before merge.
 ONE gate packet at wave end → main + deploy (content fixes must be deployed
 before Wave 1's rebuild).
+
+## WAVE 1 · S1 — PA-0 STAGE I/O MAP (COMPLETE, read-only, conductor, 2026-08-10 03:55 IST)
+
+All detectors cited inline. Code refs are sampurti/integration @ 1069fff77;
+live queries ran against production via cloud-sql-proxy:5433.
+
+**Writer wiring mechanism (the S2 target):** `services/ka_kshetra/writer.py`
+`plan_substeps` probes the four stage modules for a module-level
+`plan_substeps` attribute (writer.py:309–314) and routes foreign substeps via
+module-level `handles_substep`/`run_substep` (writer.py:360–370). None of
+stage0–3 exposes `plan_substeps` (writer.py:245 says so in prose; grep
+confirms zero `def plan_substeps` in stage0/1/2/3 files) → RC1 confirmed at
+code level. Plugin-lane substeps are included BEFORE stage4 substeps
+(writer.py:243–245). §N.3 idempotency delete runs ONCE in plan_substeps on
+the fresh/replanned branch, NEVER per-substep (writer.py module docstring
+:20–:23 — the ka_gochara_sweep blood lesson); each stage's own
+REPLACE_PRIOR_SQL must therefore move under that same discipline when wired.
+
+**Per-stage I/O (grep detectors, line-cited):**
+| Stage | READS | WRITES |
+|---|---|---|
+| stage0_kinematics | ephemeris_daily (:635) · chart_facts (:677, :686) · bg_transit_rules (:712) | kala_field_kinematics — delete-then-insert (:762, :765) |
+| stage1_symbolization | kala_field_kinematics (:185, :198, :215) · kala_field_boundaries (:314–331; hard-requires live conn) | kala_field_primitives (envelope JSONB knots — the "envelopes" store; there is no separate envelopes table) — delete-then-insert (:368, :371) |
+| stage2_promise | bodha_cgm_nodes (:327) · bodha_cgm_edges (:338) · bodha_pratijna (:360) · bodha_msr_signals (:397) | kala_field_promise_nodes (:546) · kala_field_promise_edges (:558) · kala_field_routes (:571) — triple delete (:583–585) |
+| stage3_clocks | chart_dashas (:400, :414, :428, :509, :518, :1014, :1127) · kala_field_promise_routes (:1163 — S1-F1 DEFECT below) · own outputs re-read (:1096, :1116, :1186) | kala_field_clocks (:842, :848) · kala_field_boundaries (:1068, :1074) — delete-then-insert per system |
+
+**Derived wiring order for S2:** stage0 → stage2 → stage3 → stage1 → existing
+stage4+. Rationale: stage1 reads BOTH stage0's kinematics and stage3's
+boundaries (the PA-0 probe finding, now line-cited); stage3 reads stage2's
+route gains. Cross-check before build: stage4 already reads routes/clocks/
+boundaries/kinematics (stage4_field.py:802, :832, :864, :930) and primitives
+(per stage1 module docstring: "stage 4 can consume every" envelope), so all
+four stage lanes belong before every stage4 substep — exactly where the
+writer's plugin mechanism already puts them.
+
+**S1-F1 DEFECT (live-verified):** `kala_field_promise_routes` is defined in
+NO migration (repo-wide SQL grep: zero matches) and does NOT exist in
+production (detector: pg_class relname LIKE 'kala_field%' query, 03:55 IST —
+absent from list). Yet stage3_clocks.py:1163 SELECTs route_gain,
+suppressed_by from it. `kala_field_routes` DOES carry exactly route_gain +
+suppressed_by (information_schema query, 03:58 IST) → high-confidence naming
+defect; S2's stage3 lane must repoint to kala_field_routes (verify semantics
+at build time), else stage3 crashes on first real run.
+
+**PA-0 audit answer (live-verified, 03:55 IST, chart 482012f1):**
+kinematics=0 · primitives=0 · routes=0 · clocks=0 · boundaries=0. ALL of
+stages 0–3 share the never-run fate — the wiring gap is the single root
+cause for all five empty lead tables. (kala_field_promise_nodes/edges also
+written only by stage2, so presumed 0 as well — S2 builder to confirm.)
 
 ## G9 DISPUTES QUEUE (for Wave 3 mini-cycles)
 
