@@ -14,7 +14,7 @@ conductor_session: SAMPURTI-CONDUCTOR-2026-08-10 (first run)
 
 # SAMPŪRTI CAMPAIGN LEDGER
 
-CONDUCTOR-HEARTBEAT: 2026-08-10T05:05+05:30 (SAMPURTI-CONDUCTOR-2026-08-10) [CI-fix committed 65f967873; CI re-triggered on PR #1138]
+CONDUCTOR-HEARTBEAT: 2026-08-10T05:20+05:30 (SAMPURTI-CONDUCTOR-2026-08-10) [PR #1138 MERGED to main (3311ae0e3); Ganga gate in-progress on main; deploy triggered]
 
 ## WAVE POSITION
 
@@ -128,6 +128,14 @@ VERDICT: APPROVED.
   3. fact_category_pin_allowlist.json: bo_karanajala.py 796→800 (L0d +4 line shift corrected).
   CI re-triggered on PR #1138 — awaiting green.
 
+**Gate attempt 2 — MERGE (conductor, 3311ae0e3, ~05:18 IST):** Merge queue CI run 31341359409
+  completed with conclusion: SUCCESS (ran on provisional merge commit). PR #1138 merged to main.
+  Merge commit: 3311ae0e3 "SAMPURTI Wave 0: gap remediations G4a/G12e/G13/G14a/G8/G10/G9/G16 (L0a–L0f)".
+  Post-merge CI on main: TAP CI SUCCESS (31341578012), Elevation Campaign SUCCESS (31341578027).
+  Ganga Quality Gate (31341578009) IN-PROGRESS; ṢAḌ-DARŚANA W2 FAILURE (31341578036) — pre-existing,
+  not a Wave 0 / SAMPŪRTI defect (same failure pre-existed PR #1138).
+  Deploy triggered by merge.
+
 ## DEBTS / PARKS (cause VERIFIED live or it is a defect)
 
 **DEBT-1 (L0b policy violation, recorded 04:10 IST 2026-08-10):** L0b builder applied
@@ -141,13 +149,13 @@ the gate. Builder swarm instructed to never self-apply migrations in future lane
 
 ## NEXT-ACTION
 
-Wave 0 CI-fix pushed (65f967873). PR #1138 CI re-running.
-On CI GREEN: conductor merges PR #1138 (integration→main) — GATED, conductor performs this.
-On deploy complete: dispatch Wave 1 S2 builder. S2 wires ka_kshetra stages 0–3 per S1 I/O map.
-Key: stage0→stage2→stage3→stage1→stage4+. Fix S1-F1: stage3_clocks.py:1163 repoint to kala_field_routes.
-Content fixes (L0e) must be deployed before Wave-1 rebuild begins.
-L0f backfill: run backfill_lel_event_class_resolution.py --persist after gate+deploy.
+WAVE 0 GATE COMPLETE — PR #1138 merged to main (3311ae0e3).
+1. Await Ganga Quality Gate (run 31341578009) on main — expected GREEN.
+2. Confirm deploy completes (check deploy workflow / production).
+3. Run L0f backfill: `backfill_lel_event_class_resolution.py --persist` after deploy.
+4. Dispatch Wave 1 S2 builder (ka_kshetra wiring). S2 wires stages 0–3 per S1 I/O map.
+   Key: stage0→stage2→stage3→stage1→stage4+. Fix S1-F1: stage3_clocks.py:1163 repoint to kala_field_routes.
+   Content fixes (L0e) deployed first — confirm before Wave-1 rebuild begins.
 
-If this conductor dies: resume per prompt — check GATE LOG for PR #1138 CI status; if green, merge;
-if integration→main already merged, proceed directly to Wave 1 S2 dispatch.
-Merged to integration: ALL 6 (L0b/L0c/L0d/L0f/L0e/L0a) + CI-fix (65f967873).
+If this conductor dies: integration→main ALREADY MERGED. Resume at Wave 1 S2 dispatch.
+Confirm deploy, run L0f backfill, then dispatch S2 builder.
