@@ -495,3 +495,113 @@ def test_p2_scanner_finds_writers():
     names = {p.name for p in files}
     assert "bo_pratijna.py" in names
     assert "mi_adhilepa.py" in names
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# DELIVERABLE 4: G13/PA-4 (R17) — No local KNOWN_DOMAINS list in any writer
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# Writers MUST import CANONICAL_DOMAINS from brahmagyan.domain_vocabulary rather
+# than maintaining their own local domain enumeration.  A local list is a
+# vocabulary-drift hazard: it will silently produce fewer CDLM cells, domain
+# nodes, and contradiction checks than the canonical 13-domain set requires.
+#
+# Pattern detected:  a line that assigns a list or set literal whose content
+# starts with a subset of the canonical domain names to a name that matches
+# `KNOWN_DOMAINS` (case-insensitive, with or without leading underscore).
+#
+#   KNOWN_DOMAINS = ["career", "wealth", ...]
+#   KNOWN_DOMAINS = {"career", "wealth", ...}
+#
+# The pattern uses a simple name check: any module-level variable whose name
+# is exactly KNOWN_DOMAINS (with optional leading underscores) that is assigned
+# a list or set literal containing at least one canonical domain string.
+#
+# NOTE: this gate is written FAILING-FIRST against the un-migrated codebase
+# (bo_sangati, bo_bimba, bo_karanajala all had local 7-domain lists) and PASSES
+# after the G13/PA-4 migration deletes those lists.
+
+_LOCAL_KNOWN_DOMAINS_RE = re.compile(
+    # Matches: KNOWN_DOMAINS = [ or { with a canonical domain string inside
+    r"""^(?:_*KNOWN_DOMAINS)\s*=\s*[\[\{]\s*["'](?:"""
+    + "|".join(re.escape(d) for d in sorted(DOMAIN_SYNONYMS.values()
+                                            if DOMAIN_SYNONYMS else []))
+    + r"""|career|wealth|health|relationship|spirituality|character|general|"""
+    r"""progeny|education|family|residence|travel|transition)["']""",
+    re.MULTILINE,
+)
+
+# Simpler pattern: any top-level assignment `KNOWN_DOMAINS = [` or `= {`
+# (the list/set bracket immediately follows the `=`).  Combined with a check
+# that a canonical domain string appears in the same line we avoid false positives
+# from other coincidental variable names.
+_KNOWN_DOMAINS_ASSIGN_RE = re.compile(
+    r"""^_*KNOWN_DOMAINS\s*=\s*[\[\{]""",
+    re.MULTILINE,
+)
+_CANONICAL_DOMAIN_IN_LINE_RE = re.compile(
+    r"""["'](?:career|wealth|health|relationship|spirituality|character|general|"""
+    r"""progeny|education|family|residence|travel|transition)["']""",
+)
+
+
+def _find_local_known_domains(path: pathlib.Path) -> list[tuple[str, int]]:
+    """Return [(match_snippet, lineno)] for any local KNOWN_DOMAINS definition."""
+    try:
+        source = path.read_text(encoding='utf-8', errors='replace')
+    except OSError:
+        return []
+
+    code = _strip_non_code(source)
+    hits = []
+    seen: set[int] = set()
+    for m in _KNOWN_DOMAINS_ASSIGN_RE.finditer(code):
+        lineno = code[:m.start()].count('\n') + 1
+        if lineno in seen:
+            continue
+        # Grab the next 200 chars to check for a canonical domain string
+        context_slice = code[m.start():m.start() + 200]
+        if _CANONICAL_DOMAIN_IN_LINE_RE.search(context_slice):
+            seen.add(lineno)
+            hits.append((m.group(0).strip()[:80], lineno))
+    return hits
+
+
+def test_no_local_known_domains_in_writers():
+    """GATE (G13/PA-4 · R17): no writer defines a local KNOWN_DOMAINS list/set.
+
+    Every domain enumeration must import CANONICAL_DOMAINS from
+    brahmagyan.domain_vocabulary rather than maintaining a local copy.
+    A local list causes the writer to silently skip the 6 domains added in
+    migration 386 (progeny, education, family, residence, travel, transition).
+
+    This test FAILS on un-migrated bo_sangati / bo_bimba / bo_karanajala and
+    PASSES once those three local 7-domain lists are deleted and replaced with
+    the canonical import.
+    """
+    files = _collect_py_files()
+    violations_by_file: dict[str, list[tuple[str, int]]] = {}
+
+    for path in sorted(files):
+        hits = _find_local_known_domains(path)
+        if hits:
+            rel = str(path.relative_to(_SIDECAR))
+            violations_by_file[rel] = hits
+
+    if violations_by_file:
+        lines = [
+            "Local KNOWN_DOMAINS list/set found (G13/PA-4: import CANONICAL_DOMAINS instead):"
+        ]
+        for fname, hits in sorted(violations_by_file.items()):
+            for snippet, lineno in hits:
+                lines.append(f"  {fname}:{lineno}: {snippet!r}")
+        pytest.fail("\n".join(lines))
+
+
+def test_no_local_known_domains_scanner_finds_writers():
+    """Sanity: the G13/PA-4 scanner finds the three target writers."""
+    files = _collect_py_files()
+    names = {p.name for p in files}
+    assert "bo_sangati.py" in names, "bo_sangati.py not found in scan paths"
+    assert "bo_bimba.py" in names, "bo_bimba.py not found in scan paths"
+    assert "bo_karanajala.py" in names, "bo_karanajala.py not found in scan paths"

@@ -90,7 +90,7 @@
     },
     {
       "file": "platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py",
-      "line": 796,
+      "line": 800,
       "pattern": null,
       "justification": "PRE-EXISTING, not in this wave's scope. `_fetch_bhava_lordship_facts`: fact_subject LIKE 'D1\\_H%%' already scopes to exactly one row per house number (subject IS the D1_H<n> key); no fact_key dimension exists for this category per the function's own docstring."
     },

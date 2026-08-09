@@ -9,7 +9,8 @@ I-11 composite weights (NATIVE-RATIFIED 2026-06-21):
 
 NEVER writes to DB. NEVER calls conn.commit() / .rollback().
 NEVER restates or recomputes kala_convergence / kala_darshana scores — reads only.
-Uses KNOWN_DOMAINS from L2 bo_sangati (canonical; anti-drift).
+G13/PA-4 (R17): domain vocabulary sourced from brahmagyan.domain_vocabulary (13-domain
+canonical SSoT) — formerly a local 7-domain list mirroring bo_sangati.KNOWN_DOMAINS.
 """
 from __future__ import annotations
 
@@ -19,10 +20,19 @@ from dataclasses import dataclass, field
 from datetime import date
 from typing import Any, Optional
 
+from brahmagyan.domain_vocabulary import CANONICAL_DOMAINS
+
 logger = logging.getLogger(__name__)
 
-# Canonical domains — must match bo_sangati.KNOWN_DOMAINS exactly (anti-drift)
-KNOWN_DOMAINS = ["career", "wealth", "health", "relationship", "spirituality", "character", "general"]
+# G13/PA-4 (R17): local 7-domain list deleted; import canonical 13-domain vocabulary
+# from brahmagyan.domain_vocabulary (the L0 SSoT).
+# KNOWN_DOMAINS was a literal ["career", "wealth", "health", "relationship",
+#                               "spirituality", "character", "general"] (7 domains).
+# The ranker now buckets by all 13 canonical domains.
+# Public name kept for backward compatibility with existing callers / tests that
+# import `KNOWN_DOMAINS` from this module.
+KNOWN_DOMAINS = CANONICAL_DOMAINS
+_KNOWN_DOMAINS = CANONICAL_DOMAINS  # private alias used internally
 
 # I-11 ratified composite weights (native sign-off 2026-06-21)
 I11_WEIGHTS = {
@@ -326,8 +336,8 @@ class KaTulanaService:
 
         ranked = self.rank_windows(in_horizon, ref)
 
-        # Top window per known domain
-        by_domain: dict[str, list[RankedWindow]] = {d: [] for d in KNOWN_DOMAINS}
+        # Top window per known domain — G13/PA-4: over all 13 canonical domains
+        by_domain: dict[str, list[RankedWindow]] = {d: [] for d in _KNOWN_DOMAINS}
         for rw in ranked:
             for domain in (rw.window.domains or ['general']):
                 if domain in by_domain:

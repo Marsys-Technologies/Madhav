@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.56
+version: 6.57
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,21 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.57 (2026-08-10, SAMPURTI L0a — G16 record repair): CORRECTS the false line at :124 in the
+    v6.53 entry. Evidence: `git show --stat f19969c5b` (PR #1025) title names W3 items 9/13/31/6/7
+    and W4 items 26/42 as shipped; `git show --stat e81fc2958` (PR #1090) title names W3 items
+    4/5/14 as shipped (VERIFIED-FIXED projected: items 4/5/6/7/9/13/14/16/17/31/34/36/37-part/
+    38-full/41 per the PARĪKṢAKA mid-run record). Files confirmed present in main:
+    `ka_moorti_nirnaya.py`, `ka_tithi_pravesha.py`, `ka_vedha_gochara.py`, `kala_upaya_diagnosis.ts`,
+    `upaya.ts`, `intervention_filing.ts`, `s4_05_health_coverage.test.ts`, `kala_ahead_get_period_echo_w3.test.ts`.
+    The SHAD_DARSHANA_CLOSE_v1_0.md on shad-darshana/integration carried the same D-CLASS-3 error;
+    corrected version landed to main by SAMPURTI L0a (path:
+    00_ARCHITECTURE/llm_consumption_audit/briefs/kala_elevation/SHAD_DARSHANA_CLOSE_v1_0.md).
+    completeness_census_seed.ts rewritten to audited truth (51 NOT-STARTED rows corrected); CI gate
+    upgraded with sampled citation-resolution verification. See PR on sampurti/l0a-record-repair
+    → sampurti/integration.
+    last_session_id: SAMPURTI-L0A-2026-08-10.
+    predecessor_session: F1-ADOPTION-CONDUCTOR-2026-08-09.
   - v6.56 (2026-08-09, F1 ADOPTION CYCLE close — R22 production adoption of AMENDMENT F1): full
     account in the new banner immediately above and in
     `00_ARCHITECTURE/briefs/pratijna_v4/F1_CYCLE_STATE.md` (adoption phase, appended to the same
@@ -121,7 +136,16 @@ changelog:
     (this very changelog entry is the mandatory correction). Campaign close doc:
     `SHAD_DARSHANA_CLOSE_v1_0.md` written to integration branch. RUN-TERMINAL: PARKED-FINAL
     (W6 PARKED-HONEST — 5/6 clauses unverified; see SHAD_DARSHANA_CLOSE_v1_0.md §4 W6 debts).
-    W4 items (4/5/6/7/9/13/14/26/31/42) NOT-STARTED — future campaign.
+    [CORRECTED IN v6.57: the ten items listed here as NOT-STARTED had code shipped by
+    merge commits f19969c5b (PR #1025) and e81fc2958 (PR #1090). PR #1025 title names
+    items 9/13/31/6/7 and W4 items 26/42 as shipped; PR #1090 title names items 4/5/14
+    as shipped. The SHAD_DARSHANA_CLOSE_v1_0.md §2 disposition table on the integration
+    branch carries these same items as NOT-STARTED — that entry itself contains the
+    D-CLASS-3 factual error the §M red-team detected. The corrected per-item dispositions
+    are recorded in the audited close artifact landed to main by SAMPURTI L0a
+    (00_ARCHITECTURE/llm_consumption_audit/briefs/kala_elevation/SHAD_DARSHANA_CLOSE_v1_0.md)
+    and in the completeness_census_seed.ts audit (PR for branch sampurti/l0a-record-repair).]
+    W4 items (4/5/6/7/9/13/14/26/31/42) NOT-STARTED — future campaign [SEE CORRECTION ABOVE].
     last_session_id: SHAD-DARSHANA-CLOSING-RUN-2026-08-07.
     predecessor_session: SHAD-DARSHANA-FINAL-ARC-2026-08-07.
   - v6.52 (2026-08-07, ṢAḌ-DARŚANA FINAL-ARC continuation): Gates W3/W4/W5 formally closed;

@@ -1,14 +1,14 @@
 /**
  * register_all.ts — the ONE place kala_views tools attach to registry_bridge.ts.
  *
- * ORIGIN (post-Night-2 hygiene fix): the 8 kala_* view/capability facades were
+ * ORIGIN (post-Night-2 hygiene fix): the 9 kala_* view/capability facades were
  * originally registered as 8 separate import lines + 8 separate call lines, hand-placed
  * directly inside registry_bridge.ts's ~4500-line registerRegistryBridgeTools() function.
  * That file also carries the registration surface for every OTHER campaign's tools
  * (holistic_bundle, phala, mimamsa, chart_selection, ...), so every kala lane's PR edited
  * the same shared, high-traffic file — Night 1 alone required three separate manual
  * merge-conflict resolutions on this exact spot (see SHAD_DARSHANA_STATE.md's Phase 1b
- * log, PRs #882/#883/#884). Consolidating all 8 into this ONE dedicated, kala-owned file
+ * log, PRs #882/#883/#884). Consolidating all 9 into this ONE dedicated, kala-owned file
  * means registry_bridge.ts changes exactly ONCE (see the bottom of this file's docstring
  * for the one-line hookup) — any future kala-tool addition touches only this file, which
  * is exclusively shad-darshana's, so a collision here is at worst shad-darshana-internal
@@ -32,7 +32,7 @@ import { registerKalaStoryTool } from './story.js'
 import { registerDashaSandhiCalendar } from './dasha_sandhi.js'
 
 /**
- * Registers all eight ṢAḌ-DARŚANA kala_* view/capability facades on `server`.
+ * Registers all nine ṢAḌ-DARŚANA kala_* view/capability facades on `server`.
  * Called exactly once from registry_bridge.ts's registerRegistryBridgeTools().
  *
  * — now-ahead lane: kala_now_get, kala_ahead_get.
