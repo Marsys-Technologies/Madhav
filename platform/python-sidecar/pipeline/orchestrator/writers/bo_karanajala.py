@@ -33,6 +33,7 @@ from collections import defaultdict
 from datetime import datetime, timezone
 
 from brahmagyan import valence_doctrine as _vd
+from brahmagyan.domain_vocabulary import CANONICAL_DOMAINS, CANONICAL_DOMAINS_SORTED
 from . import WriterBase, ContextSpec, WriterResult, register
 from pipeline.orchestrator.writers.bo_bimba import (
     _SUBJECT_TO_GRAHA as _GRAHA_SUBJECT_MAP,
@@ -380,10 +381,13 @@ KNOWN_GRAHAS = {
     "Venus", "Saturn", "Rahu", "Ketu",
 }
 
-KNOWN_DOMAINS = {
-    "career", "wealth", "health", "relationship",
-    "spirituality", "character", "general",
-}
+# G13/PA-4 (R17): local 7-domain KNOWN_DOMAINS deleted; import canonical 13-domain
+# vocabulary from brahmagyan.domain_vocabulary (the L0 SSoT).
+# KNOWN_DOMAINS was: {"career", "wealth", "health", "relationship",
+#                     "spirituality", "character", "general"}
+# Now: CANONICAL_DOMAINS (frozenset of 13). Class 2 contradiction detection
+# (domain_promise_vs_denial) operates over all 13 canonical domains.
+_KNOWN_DOMAINS = CANONICAL_DOMAINS  # module-local alias; not re-exported
 
 # ── Argala constants (BPHS Ch. 28) ───────────────────────────────────────────
 # Argala positions: B creates argala on A when B is in the 2nd, 4th, or 11th house FROM A
@@ -1377,7 +1381,8 @@ def _detect_contradictions(
             _emit(best[1], best[2], best[3], "graha_yoga_vs_dosha", graha)
 
     # ── Class 2: domain promise-vs-denial (graha-agnostic) ──────────────────────
-    for domain in sorted(KNOWN_DOMAINS):
+    # G13/PA-4: iterate over all 13 canonical domains (was 7-domain local set).
+    for domain in CANONICAL_DOMAINS_SORTED:
         dom_yogas = sorted(
             (s for s in yoga_sigs if domain in (s.get("domains_affected_array") or [])),
             key=lambda s: float(s.get("computed_salience") or 0.0), reverse=True)

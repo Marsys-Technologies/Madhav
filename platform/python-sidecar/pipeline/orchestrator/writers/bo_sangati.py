@@ -33,6 +33,7 @@ from datetime import datetime, timezone
 from itertools import combinations
 
 from . import WriterBase, ContextSpec, WriterResult, register
+from brahmagyan.domain_vocabulary import CANONICAL_DOMAINS, CANONICAL_DOMAINS_SORTED
 
 logger = logging.getLogger(__name__)
 
@@ -43,10 +44,13 @@ CANONICAL_AYAS   = [
     "surya_siddhanta_classical", "true_chitra",
 ]
 
-KNOWN_DOMAINS = [
-    "career", "wealth", "health", "relationship",
-    "spirituality", "character", "general",
-]
+# G13/PA-4 (R17): local 7-domain KNOWN_DOMAINS deleted; import canonical 13-domain
+# vocabulary from brahmagyan.domain_vocabulary (the L0 SSoT).
+# KNOWN_DOMAINS was: ["career", "wealth", "health", "relationship",
+#                     "spirituality", "character", "general"]
+# Now: CANONICAL_DOMAINS (frozenset of 13) — all writers operate over the full set.
+# Use CANONICAL_DOMAINS_SORTED for deterministic iteration (same as combinations()).
+_KNOWN_DOMAINS = CANONICAL_DOMAINS  # module-local alias for clarity; not re-exported
 
 _CDLM_INSERT = """
 INSERT INTO bodha_cdlm_cells (
@@ -145,7 +149,7 @@ def _build_triangulation_rows(
 ) -> list[dict]:
     """Per (domain × tradition) concordance: mean salience of top-5 signals."""
     rows: list[dict] = []
-    for domain in KNOWN_DOMAINS:
+    for domain in CANONICAL_DOMAINS_SORTED:
         for trad in _TRIANGULATION_TRADITIONS:
             trad_sigs = [
                 s for s in signals
@@ -227,13 +231,14 @@ def _build_cdlm_cells(
     domain_signals: dict[str, list[dict]] = defaultdict(list)
     for sig in signals:
         for d in (sig.get("domains_affected_array") or []):
-            if d in KNOWN_DOMAINS:
+            if d in _KNOWN_DOMAINS:
                 domain_signals[d].append(sig)
 
     cells: list[dict] = []
 
     # For each ordered pair (A, B) where A < B (alphabetically)
-    all_pairs = list(combinations(sorted(KNOWN_DOMAINS), 2))
+    # G13/PA-4: operate over all 13 canonical domains (was 7).
+    all_pairs = list(combinations(CANONICAL_DOMAINS_SORTED, 2))
     ranked_cells: list[tuple[float, dict]] = []
 
     for domain_a, domain_b in all_pairs:
@@ -328,11 +333,12 @@ def _build_convergence_rows(
     domain_signals: dict[str, list[dict]] = defaultdict(list)
     for sig in signals:
         for d in (sig.get("domains_affected_array") or []):
-            if d in KNOWN_DOMAINS:
+            if d in _KNOWN_DOMAINS:
                 domain_signals[d].append(sig)
 
     rows: list[dict] = []
-    for domain in KNOWN_DOMAINS:
+    # G13/PA-4: iterate over all 13 canonical domains (was 7).
+    for domain in CANONICAL_DOMAINS_SORTED:
         sigs = domain_signals.get(domain, [])
         if not sigs:
             continue

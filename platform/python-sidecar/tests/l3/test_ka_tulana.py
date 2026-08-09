@@ -185,11 +185,20 @@ class TestDissonanceAwareVerdicts:
 
 class TestKnownDomains:
     def test_known_domains_not_invented(self):
-        """AC §5.4: domains match L2 bo_sangati.KNOWN_DOMAINS exactly."""
-        assert set(KNOWN_DOMAINS) == {
-            'career', 'wealth', 'health', 'relationship',
-            'spirituality', 'character', 'general',
-        }
+        """AC §5.4 (updated G13/PA-4): domains match CANONICAL_DOMAINS from
+        brahmagyan.domain_vocabulary — the 13-domain vocabulary.
+
+        Previously this test asserted the old 7-domain list that mirrored
+        bo_sangati.KNOWN_DOMAINS. After G13/PA-4 (R17) both ka_tulana and
+        bo_sangati import from the canonical SSoT, so the assertion is now
+        against all 13 canonical domains.
+        """
+        from brahmagyan.domain_vocabulary import CANONICAL_DOMAINS as _CD
+        assert set(KNOWN_DOMAINS) == _CD, (
+            f"ka_tulana.KNOWN_DOMAINS ({sorted(KNOWN_DOMAINS)}) "
+            f"does not match CANONICAL_DOMAINS ({sorted(_CD)}). "
+            "G13/PA-4: import CANONICAL_DOMAINS from brahmagyan.domain_vocabulary."
+        )
 
     def test_attention_map_keys_are_known_domains(self):
         svc = KaTulanaService()

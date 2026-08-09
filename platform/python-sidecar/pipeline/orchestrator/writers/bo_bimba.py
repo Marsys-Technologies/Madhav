@@ -24,6 +24,7 @@ from datetime import datetime, timezone
 
 from . import WriterBase, ContextSpec, WriterResult, register
 from brahmagyan.graha_vocabulary import to_title
+from brahmagyan.domain_vocabulary import CANONICAL_DOMAINS, CANONICAL_DOMAINS_SORTED
 
 logger = logging.getLogger(__name__)
 
@@ -54,10 +55,14 @@ _SUBJECT_TO_GRAHA: dict[str, str] = {
     for code in ("SUN", "MOON", "MAR", "MER", "JUP", "VEN", "SAT", "RAH_MEAN", "KET_MEAN")
 }
 
-KNOWN_DOMAINS = [
-    "career", "wealth", "health", "relationship",
-    "spirituality", "character", "general",
-]
+# G13/PA-4 (R17): local 7-domain KNOWN_DOMAINS deleted; import canonical 13-domain
+# vocabulary from brahmagyan.domain_vocabulary (the L0 SSoT).
+# KNOWN_DOMAINS was: ["career", "wealth", "health", "relationship",
+#                     "spirituality", "character", "general"]
+# Now: CANONICAL_DOMAINS (frozenset of 13). Domain nodes are created for every
+# canonical domain; salience accumulation operates over the full 13-domain set.
+# CANONICAL_DOMAINS_SORTED used for deterministic loop order.
+_KNOWN_DOMAINS = CANONICAL_DOMAINS  # module-local alias; not re-exported
 
 _NODE_INSERT = """
 INSERT INTO bodha_cgm_nodes (
@@ -398,7 +403,8 @@ def _build_nodes_for_aya(
         })
 
     # ── Domain nodes ──────────────────────────────────────────────────────────
-    domain_salience: dict[str, float] = {d: 0.0 for d in KNOWN_DOMAINS}
+    # G13/PA-4: initialise over all 13 canonical domains (was 7-domain local list).
+    domain_salience: dict[str, float] = {d: 0.0 for d in _KNOWN_DOMAINS}
     for sig in signals:
         domains = sig.get("domains_affected_array") or []
         sal = float(sig.get("computed_salience") or 0.0)
@@ -406,7 +412,7 @@ def _build_nodes_for_aya(
             if d in domain_salience:
                 domain_salience[d] += sal
 
-    for domain in KNOWN_DOMAINS:
+    for domain in CANONICAL_DOMAINS_SORTED:
         nodes.append({
             "node_id": str(uuid.uuid4()),
             "chart_id": chart_id,
