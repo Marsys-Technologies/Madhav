@@ -267,19 +267,19 @@ class TestV1ParityPermission:
         v3_detail = v3_results[0].permission_detail
 
         # Dasha systems should report the same active/inactive state
+        from services.gochara_intensity.permission import DASHA_SYSTEM_IDS as _DASHA_IDS
         v1_dasha_active = {
             s["system_id"]: s["active"]
             for s in v1_detail["systems"]
-            if s["system_id"] in set(DASHA_SYSTEM_IDS)
+            if s["system_id"] in set(_DASHA_IDS)
         }
         v3_dasha_active = {
             s["system_id"]: s["active"]
             for s in v3_detail["systems"]
-            if s["system_id"] in set(DASHA_SYSTEM_IDS)
+            if s["system_id"] in set(_DASHA_IDS)
         }
 
-        from services.gochara_intensity.permission import DASHA_SYSTEM_IDS
-        for sid in DASHA_SYSTEM_IDS:
+        for sid in _DASHA_IDS:
             assert v3_dasha_active.get(sid) == v1_dasha_active.get(sid), (
                 f"Dasha system {sid}: v3={v3_dasha_active.get(sid)}, "
                 f"v1={v1_dasha_active.get(sid)}"

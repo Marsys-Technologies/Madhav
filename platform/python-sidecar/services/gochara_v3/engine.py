@@ -310,6 +310,7 @@ def _compute_permission_from_context(
     # 10: Guru-Shani double transit (ephemeris only — no DB)
     gsdt_active, gsdt_detail = _check_guru_shani_from_context(
         swe, context, targets, start_jd, end_jd,
+        window_days=window_days,
     )
     systems.append({
         "system_id": "guru_shani_double_transit",
@@ -439,6 +440,7 @@ def _check_guru_shani_from_context(
     targets: list[ResonanceTarget],
     start_jd: float,
     end_jd: float,
+    window_days: float = 15.0,
 ) -> tuple[bool, dict]:
     """Guru-Shani double transit — ephemeris only, no DB needed.
 
@@ -446,6 +448,12 @@ def _check_guru_shani_from_context(
     ephemeris-only primitives (drishti_contact, degree_contact,
     sign_occupation all take swe + target, no conn needed for the
     ephemeris calls themselves).
+
+    IMPORTANT: window_days passed to CO.double_transit/double_transit_mixed
+    must match v1's compute_permission, which passes its own window_days
+    parameter (default 15.0), NOT the span of the search window
+    (2*window_days). The search window is for primitive scanning; the
+    clustering window for composition is separate.
     """
     try:
         contact_sentences = []
@@ -465,9 +473,9 @@ def _check_guru_shani_from_context(
                     swe, context.chart_id, target, start_jd, end_jd,
                     planets=["Jupiter", "Saturn"],
                 )
-        comps = CO.double_transit(contact_sentences, window_days=end_jd - start_jd)
+        comps = CO.double_transit(contact_sentences, window_days=window_days)
         comps += CO.double_transit_mixed(
-            contact_sentences + occupation_sentences, window_days=end_jd - start_jd,
+            contact_sentences + occupation_sentences, window_days=window_days,
         )
         for c in comps:
             if c.detail.get("is_guru_shani_double_transit"):
