@@ -36,7 +36,7 @@ LEL resolver rows PARKED-honest, never guessed).
 
 | Lane | Scope (short) | Branch | Status | Poll deadline (IST) | PARĪKṢAKA | PRATINIDHI |
 |---|---|---|---|---|---|---|
-| L0a | G16 record repair (CURRENT_STATE:124 + close artifact to main path + 51 census rows + CI citation-resolution upgrade) | sampurti/l0a-record-repair | PR #1137 OPEN — builder done; PARĪKṢAKA+PRATINIDHI IN-FLIGHT (context-resume 05:00) | 05:30 | IN-FLIGHT | IN-FLIGHT |
+| L0a | G16 record repair (CURRENT_STATE:124 + close artifact to main path + 51 census rows + CI citation-resolution upgrade) | sampurti/l0a-record-repair | FIX-PUSHED (0d2910423 — bare main() guard) PR#1137 | 05:30 | FAIL (aaa5ab63 05:15) Part1-3 PASS; Part4 FAIL bare main() → fix pushed → RE-REVIEW IN-FLIGHT | IN-FLIGHT (a962f924) |
 | L0b | G4a bg_sarvatobhadra_grid root-cause + dispatch | sampurti/l0b-grid | MERGED to integration 04:12 | 04:35 | PASS 04:10 — deferred path confirmed; migration benign upsert; ADJUDICATION-11 confirmed; policy violation NON-BLOCKING (see DEBTS) | n/a |
 | L0c | G12e kala_dasha_sandhi_get prod registration + stale "eight" docstrings | sampurti/l0c-dasha-sandhi | MERGED to integration 04:12 | 04:35 | PASS 03:58 — registration chain confirmed; 4+ docstrings fixed; census test real detector | n/a |
 | L0d | G13/PA-4 KNOWN_DOMAINS 7→13 in bo_sangati/bo_bimba/bo_karanajala/ranker (R17) | sampurti/l0d-vocab | MERGED to integration 04:12 | 04:35 | PASS 04:10 — all 4 files migrated; 13 domains; census gate blocks regression; F-1/F-2 non-blocking | PASS 04:10 — CANONICAL_DOMAINS=13 live; 15 tests pass; live DB=6 domains (gap confirmed pre-rebuild) |
