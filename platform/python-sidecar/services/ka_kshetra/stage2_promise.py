@@ -620,3 +620,92 @@ def write_routes(conn, chart_id: str, event_class: str, routes: Sequence[Route])
         })
         n += 1
     return n
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# Module-level substep wiring (SAMPURTI G1 — plugs this stage into the
+# ka_kshetra HEAVY writer's _optional_stage_plugins mechanism).
+#
+# Stage 2 is a single cohesive computation (promise graph + routes for all
+# event classes) — split-per-event-class would produce partial graphs whose
+# noisy-OR P_e values depend on which slices have already been committed, the
+# same dispatch-order-dependent result §8.1 forbids. One substep is correct.
+#
+# §N.3 contract: the once-per-chart DELETE runs exactly ONCE in plan_substeps,
+# BEFORE the substep executes.
+# ═════════════════════════════════════════════════════════════════════════════
+
+def plan_substeps(ctx) -> list:
+    """Wire stage 2 (promise graph + routes) into the ka_kshetra substep plan.
+
+    Single substep for the whole chart — splitting by event_class would produce
+    dispatch-order-dependent P_e values (§8.1 hazard). §N.3 delete runs ONCE
+    here (routes + promise_edges + promise_nodes), in dependency order
+    (routes first so FK-shaped references to nodes/edges are gone before nodes
+    are deleted).
+    """
+    from pipeline.orchestrator.writers import SubStep
+    conn = ctx.db_conn
+    chart_id = ctx.config['chart_id']
+    # §N.3: delete prior rows ONCE, in FK-safe order (routes → edges → nodes).
+    for sql in REPLACE_PRIOR_SQL.split(';'):
+        sql = sql.strip()
+        if sql:
+            conn.execute(sql, [chart_id])
+    return [SubStep(key='stage2:run', label='promise graph + routes')]
+
+
+def handles_substep(step) -> bool:
+    """Return True if this stage owns the given substep key."""
+    return step.key == 'stage2:run'
+
+
+def run_substep(ctx, step) -> object:
+    """Build and persist the promise graph and all per-class routes.
+
+    Reads from bodha_cgm_nodes/edges and bodha_pratijna (L2, §N.5 — inherited
+    strength, never invented). Writes kala_field_promise_nodes, _edges, _routes.
+    WriterResult.rows_inserted is the actual count of rows written.
+    """
+    from pipeline.orchestrator.writers import WriterResult
+
+    conn = ctx.db_conn
+    chart_id = ctx.config['chart_id']
+
+    # Build the promise graph from L2 Bodha tables.
+    nodes, edges, seeds_by_class, _ = load_promise_graph(conn, chart_id, CANONICAL_AYANAMSHA)
+
+    # Persist nodes + edges; collect edge_ids for path_edge_ids on routes.
+    edge_ids = write_promise_graph(conn, chart_id, nodes, edges)
+
+    # For each event_class, run K-shortest routes and persist them.
+    g = build_digraph(nodes, edges)
+    n_routes_total = 0
+    for event_class, seeds in seeds_by_class.items():
+        sink = event_class_node_id(event_class)
+        routes, _ = k_shortest_routes(g, seeds, sink)
+        # Resolve path_edge_ids from the committed edge_ids map.
+        resolved_routes = []
+        for r in routes:
+            path_edge_ids: list[int] = []
+            for i in range(len(r.path_node_ids) - 1):
+                key = (r.path_node_ids[i], r.path_node_ids[i + 1])
+                # Try all edge_kinds that share this (from, to) pair.
+                for (fn, tn, _ek), eid in edge_ids.items():
+                    if fn == key[0] and tn == key[1]:
+                        path_edge_ids.append(eid)
+                        break
+            from .contracts import Route
+            resolved_routes.append(Route(
+                event_class=event_class,
+                route_rank=r.route_rank,
+                path_node_ids=r.path_node_ids,
+                path_edge_ids=tuple(path_edge_ids),
+                route_gain=r.route_gain,
+                is_primary=r.is_primary,
+                suppressed_by=r.suppressed_by,
+            ))
+        n_routes_total += write_routes(conn, chart_id, event_class, resolved_routes)
+
+    rows_inserted = len(nodes) + len(edges) + n_routes_total
+    return WriterResult(asset_id='ka_kshetra', rows_inserted=rows_inserted)
