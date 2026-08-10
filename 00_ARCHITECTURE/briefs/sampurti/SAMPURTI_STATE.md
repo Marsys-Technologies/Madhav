@@ -9,19 +9,12 @@ branch_model: >
   Integration branch sampurti/integration cut from main @ 1432d7492 (2026-08-10).
   All lane work in worktrees off sampurti/integration; lane PRs -> integration;
   integration -> main only via Gate-Executor packets at wave boundaries.
-conductor_session: SAMPURTI-CONDUCTOR-2026-08-10 (first run)
+conductor_session: SAMPURTI-CONDUCTOR-2026-08-10 (R3 — native relaunch, all prior conductors confirmed dead)
 ---
 
 # SAMPŪRTI CAMPAIGN LEDGER
 
-CONDUCTOR-HEARTBEAT: **STOOD DOWN 2026-08-10T07:05+05:30 — this heartbeat is
-DELIBERATELY VACATED, not stale.** The Antigravity/IDE conductor session
-(`6145b01c`, PID 32524) has permanently ceased conductor operations on this
-campaign (native-ruled 07:05 IST; see DEBT-3). **The live SAMPŪRTI conductor is the
-SCRIPTED one — PID 30560, supervised by `run_overnight.sh` (PID 30489) until 15:31
-IST.** It owns this heartbeat line and this ledger from here. No other session may
-claim the lease without a LIVENESS check per DEBT-3's rail (a process check, never
-a timestamp alone).
+CONDUCTOR-HEARTBEAT: 2026-08-10T02:19+00:00 (SAMPURTI-CONDUCTOR-2026-08-10-R3) [LIVENESS: pid=74382 host=Montys-MacBook-Pro.local — prior scripted (PID 30560) confirmed dead (ps -p 30560 → no process); L1b fix committed c9a7c27b0, PR open, CI running]
 
 ## MODEL POLICY (BINDING — native directive 2026-08-10)
 
@@ -44,8 +37,8 @@ Sonnet/Opus respectively per the original charter and are unaffected.
 ## WAVE POSITION
 
 WAVE 0 — IGNITION. Status: COMPLETE (merged to main 3311ae0e3, deployed 31341882724).
-WAVE 1 — RC1 G1 WIRING. Status: S2 MERGED to integration (5ba9b646, PR #1139). PARĪKṢAKA PASS (9/9 checks GREEN).
-Next: dispatch P-G1 proof builder (full L1→L5 rebuild on integration; verify clocks>0, windows narrow, AHEAD serves narrow windows).
+WAVE 1 — RC1 G1 WIRING. Status: S2 MERGED to integration (5ba9b646, PR #1139). P-G1 PROOF PENDING (5 runs failed — root cause found, L1b fix in review).
+L1b ROOT CAUSE: fetch_orb_deg (stage0_kinematics.py:710-717) queries SELECT orb_deg FROM bg_transit_rules (column absent per mig-397). Bare except swallowed Python exception but left PG transaction ABORTED. All subsequent conn.execute() calls failed with InFailedSqlTransaction → kala_field_kinematics never populated → all downstream stages empty → P-G1 always 0. Fix: SAVEPOINT fetch_orb_deg / ROLLBACK TO SAVEPOINT pattern. Commit: c9a7c27b0 on sampurti/l1b-fetch-orb-fix. Tests: 5/5 offline pass (47 total, 0 failures). PR: open, CI running.
 
 ## RAILS (immutable, restated for every reader)
 
@@ -381,23 +374,29 @@ NEXT STEP (in order):
    treat with the same urgency as a production defect, since it IS one (main
    carries the fix, deploy has not yet fired as of 06:40 IST — see DEBT-2).
 
-**HANDOFF TO THE SCRIPTED CONDUCTOR (PID 30560) — read DEBT-3 first, in full.**
-Steps 1–2 above are DONE. Step 3's run `88268b2d` is **FAILED, not running** (killed
-by cross-conductor proxy restart; 5/13 assets reached `lit`, `bo_laksana` left
-ZOMBIE `building` — see DEBT-3's DB-state block). The IDE session that wrote steps
-1–5 has STOOD DOWN and will not act again; you are the sole conductor.
+**R3 CONDUCTOR STATE (2026-08-10T02:19+00:00):**
+All prior conductors confirmed dead (PID 30560 scripted: ps -p shows no process;
+PID 32524 IDE: stood down 07:05 IST per DEBT-3). No competing conductor alive.
 
-Your immediate path: (a) confirm orphan-cleanup cleared `bo_laksana`'s zombie state;
-(b) re-dispatch the P-G1 rebuild over the 13-asset DAG closure named in DEBT-3
-(NOT ka_kshetra alone — the orchestrator will correctly dep-block that, as run
-`cdbbc6c4` proved); (c) with the competing conductor gone, expect the
-`AdminShutdown` failure mode to stop recurring; (d) evaluate P-G1 against the PA-1
-criteria in step 4 and paste real detector output here; (e) only then does the hard
-block lift.
+ROOT CAUSE of all 5 P-G1 failures now identified and fixed:
+- fetch_orb_deg SELECT on non-existent column → PG transaction ABORTED → InFailedSqlTransaction on all writes
+- Fix: SAVEPOINT pattern, commit c9a7c27b0, branch sampurti/l1b-fetch-orb-fix
+- PR open to integration; CI running; awaiting PARĪKṢAKA pass
 
-Live facts to re-verify rather than trust: `kala_field_clocks`=0 and all six
-`kala_field_windows` rows at `duration_days`=36525 as of 07:04 IST — the field is
-still flat and P-G1 has never once completed. PR #1142 (coordination file) is
-queued to main, CI green. PR #1141 already merged @ `c93540ca8`; production was
-still on `3311ae0e3` at 06:40 IST — verify whether its deploy has since fired.
-Merged to integration: ALL 6 Wave-0 + CI-fix (65f967873) + Wave-1 S2 (5ba9b646).
+NEXT STEP (in order):
+1. [IN PROGRESS] L1b PR CI green → PARĪKṢAKA verify → merge to sampurti/integration
+2. Deploy integration to production (carry L1b fix; gate packet to main required)
+3. Verify DB dep state: confirm bo_laksana no longer ZOMBIE; confirm all ka_kshetra
+   declared deps 'lit' (re-query, do not trust stale ledger state from 07:04 IST)
+4. Dispatch P-G1 rebuild: ka_kshetra-only if all 9 declared deps are 'lit';
+   otherwise DAG-closure subset of remaining non-lit deps + ka_kshetra
+5. Verify PA-1 criteria: (a) kala_field_clocks>0 Law-1 states; (b) >1 window per
+   clocked class; (c) windowed fraction ≤20%; (d) compression/scarcity features
+   computable; (e) windows track daśā ladder — paste real detector output here
+6. On P-G1 GREEN: HARD BLOCK lifts; proceed to S5 full-DAG rebuild (Wave 1 close)
+
+If this conductor dies: L1b fix is committed (c9a7c27b0), tests green. Resume:
+  merge L1b PR to integration → deploy → dispatch P-G1 (all deps should be lit).
+
+Merged to integration: ALL Wave-0 lanes (L0a-f) + CI-fix (65f967873) + S2 (5ba9b646).
+PR #1142 (CAMPAIGN_COORDINATION.md) merged to main. PR #1141 (S2 wiring) already on main.
