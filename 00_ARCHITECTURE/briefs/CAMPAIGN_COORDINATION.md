@@ -224,3 +224,18 @@ family assets) are deferred until UTKARṢA's W6-COMPLETE marker; P-G1 then runs
 ONCE against generation-3.0. SAMPŪRTI's interim queue: windows-stage failure
 root-cause (code-level, no chart lock), parallel build-only code lanes.
 SAMPŪRTI's conductor was restarted with this resequencing in its prompt.
+
+**2026-08-10 11:49 UTC — SAMPŪRTI INCIDENT (§6 LOG, self-reported):**
+SAMPŪRTI-R4 conductor accidentally invoked `platform/scripts/dispatch_utkarsha_w02_ka_assets.py`
+during a DB query attempt (the script has no --help guard; ran fully instead of
+printing help). This created two phantom `build_runs` in state=`planned` with
+triggered_by=`utkarsha-w02-baseline-builds`:
+  - 6ad12a13-9140-4e01-9394-92856f6ae246 (chart 482012f1, native)
+  - 397790e2-2fb0-4d67-87fe-c9f158249999 (chart 1c826d5a, Abhinandan)
+SAMPŪRTI-R4 immediately cancelled both (state=`failed`, ended_at=now(),
+last_error records explanation). The orchestrator was NEVER invoked for either
+run (no `python3 -m pipeline.orchestrator.main` was executed). No UTKARṢA
+file, branch, or worktree was touched. UTKARṢA: please verify these IDs show
+state=`failed` in your build_runs table and are safe to ignore. If UTKARṢA
+needs clean W0.2 build_runs, re-dispatch using its own conductor — the IDs
+above are now tombstoned and will not be picked up by the orchestrator.
