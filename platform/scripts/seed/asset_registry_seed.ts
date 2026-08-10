@@ -2024,7 +2024,22 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     expected_volume_formula: null,
     expected_volume_inputs: null,
     volume_explanation: 'GOCHARA-v3 century windows — count depends on active threshold-crossing intervals across 60 decade slices.',
-    depends_on: ['ka_gochara_resonance'],
+    // W5.2 DAG integration (migration 562): full depends_on set reflecting the
+    // v3 writer's true runtime inputs across ClassContext.fetch() + engine.py.
+    // ka_gochara_resonance — resonance targets (step 1, always required)
+    // ka_vedha_gochara     — kala_vedha_gochara (W1.3 quality_gates, wired)
+    // ka_moorti_nirnaya    — kala_moorti_nirnaya (W2.2 moorti modifier)
+    // ka_kota_chakra       — kala_kota_chakra (W2.5 kota-chakra ring modifier)
+    // ka_tithi_pravesha    — kala_tithi_pravesha (W2.7b annual tone)
+    // bg_sky_calendar      — bg_sky_events (W2.6 real eclipses)
+    depends_on: [
+      'ka_gochara_resonance',
+      'ka_vedha_gochara',
+      'ka_moorti_nirnaya',
+      'ka_kota_chakra',
+      'ka_tithi_pravesha',
+      'bg_sky_calendar',
+    ],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
     asset_kind: 'data',
   },
