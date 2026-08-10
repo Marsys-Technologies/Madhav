@@ -121,6 +121,22 @@ TABLE = "kala_gochara_windows_v2"
 BUILD_STATE_TABLE = "kala_gochara_v2_build_state"
 BODIES = eager_bodies()  # Tier A only, this lane -- see module docstring
 
+# PG-4 fix: engine emits 'favourable'|'adverse'|'mixed'; DB schema (migration 460)
+# requires 'gain'|'loss'|'neutral'|'mixed'.  Map at write time so valence facets
+# resolve correctly.  Safe fallback to 'neutral' for any unrecognised engine value.
+# Named constant per §N.4 — never a bare string literal.
+_VALENCE_MAP: dict[str, str] = {
+    'favourable': 'gain',
+    'adverse': 'loss',
+    'mixed': 'mixed',
+}
+
+
+def _map_valence(engine_valence: str) -> str:
+    """Translate engine vocabulary to canonical DB enum value."""
+    return _VALENCE_MAP.get(engine_valence, 'neutral')
+
+
 INSERT_SQL = f"""
     INSERT INTO {TABLE}
       (chart_id, event_class, temporal_shape,
@@ -286,7 +302,7 @@ class KaGocharaWriter(WriterBase):
                 "is_irreversibility_milestone": row["is_irreversibility_milestone"],
                 "signed_intensity": row["signed_intensity"],
                 "raw_intensity": row["raw_intensity"],
-                "valence": row["valence"],
+                "valence": _map_valence(row["valence"]),
                 "is_adverse": row["is_adverse"],
                 "active_sentences": _dumps(row["active_sentences"]),
                 "contributing_systems": _dumps(row["contributing_systems"]),
