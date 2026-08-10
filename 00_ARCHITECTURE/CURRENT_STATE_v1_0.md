@@ -5717,7 +5717,28 @@ block (post-rebuild era), and proceeds.
 
 ## §2 — Canonical state block
 
-> 🟢 **SAMPŪRTI Wave 0 COMPLETE (2026-08-10, session SAMPURTI-CONDUCTOR-2026-08-10) —
+> **GOCHARA-UTKARSA Wave 5 IN PROGRESS (2026-08-10) — serving elevation, DAG integration,
+> writer repoint, docs-of-record. Campaign ledger:
+> `00_ARCHITECTURE/llm_consumption_audit/briefs/gochara_elevation/GOCHARA_UTKARSHA_CAMPAIGN_PLAN_v1_0.md`.
+> Branches: `utkarsha/campaign` (integration) + `gochara3/w5*` (lane worktrees).**
+>
+> Waves 0–4 COMPLETE (all VERIFIER PASS + MERGED to main):
+> - W0 (Foundations): registry, baseline builds, schema migration bundle (migration 556), grammar-v3 catalog
+> - W1 (lambda-v3 bounded formula): W1.1–W1.5 — bounded [0,1] lambda, signed channels, vedha suppression, self-normalizing thresholds, decomposition
+> - W2 (Mechanism wiring): W2.1–W2.9 — AV gating, moorti nirnaya, tara bala, sade sati, kota chakra, real eclipses, annual stack (+ w27a/w27b/w27c sub-components), bhava degrees, citation resolution
+> - W3 (Infrastructure): W3.1 event coverage 6->27, W3.2 interval solver, W3.3 resolution hierarchy, W3.4 century materializer writer
+> - W4 (Calibration): W4.1 lambda contenders, W4.2 negative control/noise floor, W4.3 ablation runner + ADJUDICATOR admission ruling UTK-R3, W4.4 cross-chart weight fitting (migration 561), W4.5 post-fit rebuild + calibration stamper + prospective ledger seeding, W4.6 LEL mining
+>
+> Admitted mechanisms (UTK-R3 ruling): 10 admitted (w21–w27 + w27a/b/c, weight_type=fitted) +
+> 2 structural-only (w28 bhava_degrees, w29 citation_resolution, modifier=1.0).
+> Mechanism register: `platform/python-sidecar/services/gochara_v3/mechanism_register.yaml` (W5.3).
+>
+> Wave 5 lanes: W5.1 serving elevation (gochara3/w51), W5.2 DAG integration (gochara3/w52,
+> migration 562, MERGED), W5.3 docs-of-record (gochara3/w53 — this lane), W5.4 writer repoint.
+> Wave 6 (v3 replacement cutover) pending Wave 5 PASS.
+> Cross-campaign coordination: `00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md`.
+
+> **SAMPŪRTI Wave 0 COMPLETE (2026-08-10, session SAMPURTI-CONDUCTOR-2026-08-10) —
 > All 6 Wave 0 lanes (L0a–L0f: G16 record repair, G4a grid dispatch, G12e dasha_sandhi
 > registration, G13/PA-4 KNOWN_DOMAINS 7→13, G8/G10/G9 content fixes, G14a LEL resolver
 > backfill) merged to integration then gated to main @ 3311ae0e3. Deploy SUCCESS. L0f
