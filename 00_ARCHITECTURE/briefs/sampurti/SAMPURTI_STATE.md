@@ -14,12 +14,13 @@ conductor_session: SAMPURTI-CONDUCTOR-2026-08-10 (first run)
 
 # SAMPŪRTI CAMPAIGN LEDGER
 
-CONDUCTOR-HEARTBEAT: 2026-08-10T05:30+05:30 (SAMPURTI-CONDUCTOR-2026-08-10) [WAVE 0 FULLY COMPLETE: merged+deployed+backfill; dispatching Wave 1 S2]
+CONDUCTOR-HEARTBEAT: 2026-08-10T05:35+05:30 (SAMPURTI-CONDUCTOR-2026-08-10) [Wave 1 S2 PR #1139 PARĪKṢAKA PASS + MERGED to integration (5ba9b646)]
 
 ## WAVE POSITION
 
-WAVE 0 — IGNITION. Status: ALL 6 LANES MERGED to integration (534494ef3).
-Gate packet assembled; GATE-EXECUTOR dispatched. Waves 1–4: NOT-STARTED.
+WAVE 0 — IGNITION. Status: COMPLETE (merged to main 3311ae0e3, deployed 31341882724).
+WAVE 1 — RC1 G1 WIRING. Status: S2 MERGED to integration (5ba9b646, PR #1139). PARĪKṢAKA PASS (9/9 checks GREEN).
+Next: dispatch P-G1 proof builder (full L1→L5 rebuild on integration; verify clocks>0, windows narrow, AHEAD serves narrow windows).
 
 ## RAILS (immutable, restated for every reader)
 
@@ -128,25 +129,6 @@ VERDICT: APPROVED.
   3. fact_category_pin_allowlist.json: bo_karanajala.py 796→800 (L0d +4 line shift corrected).
   CI re-triggered on PR #1138 — awaiting green.
 
-**Gate attempt 2 — MERGE (conductor, 3311ae0e3, ~05:18 IST):** Merge queue CI run 31341359409
-  completed with conclusion: SUCCESS (ran on provisional merge commit). PR #1138 merged to main.
-  Merge commit: 3311ae0e3 "SAMPURTI Wave 0: gap remediations G4a/G12e/G13/G14a/G8/G10/G9/G16 (L0a–L0f)".
-  Post-merge CI on main: TAP CI SUCCESS (31341578012), Elevation Campaign SUCCESS (31341578027).
-  Ganga Quality Gate (31341578009) IN-PROGRESS; ṢAḌ-DARŚANA W2 FAILURE (31341578036) — pre-existing,
-  not a Wave 0 / SAMPŪRTI defect (same failure pre-existed PR #1138).
-  Deploy triggered by merge.
-
-**Deploy completed (31341882724) — SUCCESS (~05:25 IST):**
-  Deploy to Cloud Run completed with conclusion: success. All sidecar, pipeline, MCP, web builds deployed.
-  Production==main confirmed.
-
-**L0f backfill executed (conductor, ~05:28 IST):**
-  backfill_lel_event_class_resolution.py --persist run against production DB (127.0.0.1:5433).
-  Result: 64 rows persisted to lel_event_class_resolution (ON CONFLICT DO UPDATE).
-  classified=63 (tier1_domain_exact EXACT or tier2_single_candidate KEYWORD) · ambiguous=1 (fs shadow row,
-  NULL domain, PARKED-AMBIGUOUS per ledger — correctly stored as AMBIGUOUS confidence, not guessed).
-  Coverage assertion: 63 + 1 = 64 ✓.
-
 ## DEBTS / PARKS (cause VERIFIED live or it is a defect)
 
 **DEBT-1 (L0b policy violation, recorded 04:10 IST 2026-08-10):** L0b builder applied
@@ -158,24 +140,14 @@ IS NULL), fully reversible with one-line DELETE, no data destroyed. Production s
 is now consistent with PR intent. Precedent: even benign migrations must go through
 the gate. Builder swarm instructed to never self-apply migrations in future lanes.
 
-## WAVE 1 S2 STATUS
-
-S2 builder dispatched as background agent (05:35 IST). Branch: `sampurti/l1a-wire-stages`.
-Agent ID: a5ef44c4aa88263c1.
-
-Builder task: (1) Fix _optional_stage_plugins order: stage0→stage2→stage3→stage1;
-(2) Fix S1-F1: stage3_clocks.py kala_field_promise_routes→kala_field_routes;
-(3) Add plan_substeps/handles_substep/run_substep to stage0/stage1/stage2/stage3;
-(4) Create PR to sampurti/integration.
-
 ## NEXT-ACTION
 
-Await S2 builder PR. On PR available:
-- PARĪKṢAKA reviews: plugin order correct, S1-F1 fixed, §N.3 delete once-per-plan,
-  WriterResult.rows_inserted accurate, no commit/close on ctx.db_conn.
-- If PASS: conductor merges S2 PR to integration.
-- After merge: dispatch rebuild (chart 482012f1 full-DAG L1→L5).
-- After rebuild: P-G1 proof ladder (clocks > 0, windows narrow, AHEAD serves).
+Wave 1 S2 COMPLETE: PR #1139 MERGED to sampurti/integration (5ba9b646).
+PARĪKṢAKA PASS (9/9 checks: plugin order, S1-F1 fix, §N.3 discipline, WriterResult, no commit/close, stage2 SQL, 3-tuple, annotations, test coverage).
 
-If conductor dies: check agent a5ef44c4aa88263c1 output for PR number.
-WAVE 0 COMPLETE: main=3311ae0e3, deploy SUCCESS, L0f 64 rows persisted.
+NEXT STEP: Dispatch P-G1 proof builder (full L1→L5 rebuild of chart 482012f1 on sampurti/integration branch).
+P-G1 proof ladder: (a) kala_field_clocks > 0 rows with Law-1 states; (b) kala_field_windows narrow; (c) kala_ahead_get serves narrow windows for canonical chart.
+On P-G1 PASS: assemble Wave 1 gate packet (integration→main) + deploy.
+
+If this conductor dies: resume per prompt — Wave 1 S2 merged; next action is P-G1 rebuild + proof.
+Merged to integration: ALL 6 Wave-0 + CI-fix (65f967873) + Wave-1 S2 (5ba9b646).
