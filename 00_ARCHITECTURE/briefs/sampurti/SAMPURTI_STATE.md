@@ -14,7 +14,7 @@ conductor_session: SAMPURTI-CONDUCTOR-2026-08-10 (R4 — native relaunch 16:38 I
 
 # SAMPŪRTI CAMPAIGN LEDGER
 
-CONDUCTOR-HEARTBEAT: 2026-08-10T11:55+00:00 (SAMPURTI-CONDUCTOR-2026-08-10-R4) pid=68645 host=Dev-Mac [INCIDENT: accidental dispatch_utkarsha_w02 invocation — 2 phantom build_runs created then cancelled; §6 LOG updated (96eba88a1). PARĪKṢAKA running for G12 #1191 + G14b #1190. W6-COMPLETE not yet seen. P-G1 deferred.]
+CONDUCTOR-HEARTBEAT: 2026-08-10T12:03+00:00 (SAMPURTI-CONDUCTOR-2026-08-10-R4) pid=68645 host=Dev-Mac [G12 PARĪKṢAKA (a579b755): verdict imminent (R1/R2/R3 PASS from stream). G14b PARĪKṢAKA (ad41d6a3): resolveEventClass verify stage. Incident: 2 phantom W02 build_runs cancelled + §6 LOG pushed (96eba88a1). W6-COMPLETE not yet seen. P-G1 deferred.]
 
 ## MODEL POLICY (BINDING — native directive 2026-08-10)
 
