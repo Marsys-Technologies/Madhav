@@ -14,12 +14,13 @@ conductor_session: SAMPURTI-CONDUCTOR-2026-08-10 (first run)
 
 # SAMPŪRTI CAMPAIGN LEDGER
 
-CONDUCTOR-HEARTBEAT: 2026-08-10T05:05+05:30 (SAMPURTI-CONDUCTOR-2026-08-10) [CI-fix committed 65f967873; CI re-triggered on PR #1138]
+CONDUCTOR-HEARTBEAT: 2026-08-10T05:35+05:30 (SAMPURTI-CONDUCTOR-2026-08-10) [Wave 1 S2 PR #1139 PARĪKṢAKA PASS + MERGED to integration (5ba9b646)]
 
 ## WAVE POSITION
 
-WAVE 0 — IGNITION. Status: ALL 6 LANES MERGED to integration (534494ef3).
-Gate packet assembled; GATE-EXECUTOR dispatched. Waves 1–4: NOT-STARTED.
+WAVE 0 — IGNITION. Status: COMPLETE (merged to main 3311ae0e3, deployed 31341882724).
+WAVE 1 — RC1 G1 WIRING. Status: S2 MERGED to integration (5ba9b646, PR #1139). PARĪKṢAKA PASS (9/9 checks GREEN).
+Next: dispatch P-G1 proof builder (full L1→L5 rebuild on integration; verify clocks>0, windows narrow, AHEAD serves narrow windows).
 
 ## RAILS (immutable, restated for every reader)
 
@@ -141,13 +142,12 @@ the gate. Builder swarm instructed to never self-apply migrations in future lane
 
 ## NEXT-ACTION
 
-Wave 0 CI-fix pushed (65f967873). PR #1138 CI re-running.
-On CI GREEN: conductor merges PR #1138 (integration→main) — GATED, conductor performs this.
-On deploy complete: dispatch Wave 1 S2 builder. S2 wires ka_kshetra stages 0–3 per S1 I/O map.
-Key: stage0→stage2→stage3→stage1→stage4+. Fix S1-F1: stage3_clocks.py:1163 repoint to kala_field_routes.
-Content fixes (L0e) must be deployed before Wave-1 rebuild begins.
-L0f backfill: run backfill_lel_event_class_resolution.py --persist after gate+deploy.
+Wave 1 S2 COMPLETE: PR #1139 MERGED to sampurti/integration (5ba9b646).
+PARĪKṢAKA PASS (9/9 checks: plugin order, S1-F1 fix, §N.3 discipline, WriterResult, no commit/close, stage2 SQL, 3-tuple, annotations, test coverage).
 
-If this conductor dies: resume per prompt — check GATE LOG for PR #1138 CI status; if green, merge;
-if integration→main already merged, proceed directly to Wave 1 S2 dispatch.
-Merged to integration: ALL 6 (L0b/L0c/L0d/L0f/L0e/L0a) + CI-fix (65f967873).
+NEXT STEP: Dispatch P-G1 proof builder (full L1→L5 rebuild of chart 482012f1 on sampurti/integration branch).
+P-G1 proof ladder: (a) kala_field_clocks > 0 rows with Law-1 states; (b) kala_field_windows narrow; (c) kala_ahead_get serves narrow windows for canonical chart.
+On P-G1 PASS: assemble Wave 1 gate packet (integration→main) + deploy.
+
+If this conductor dies: resume per prompt — Wave 1 S2 merged; next action is P-G1 rebuild + proof.
+Merged to integration: ALL 6 Wave-0 + CI-fix (65f967873) + Wave-1 S2 (5ba9b646).
