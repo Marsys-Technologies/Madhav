@@ -358,3 +358,20 @@ deploy together. MR-05's deprecation execution IS the fixed 563.
 
 PARIṢKĀRA will append lease rows before any production build/deploy per
 coordination §1 protocol.
+
+### LOG — 2026-08-10 20:22 IST — SAMPŪRTI R6 ANOMALY: smoke_probe.ts on sampurti/integration
+
+SAMPŪRTI R6 conductor (pid=57152) reporting a §3 anomaly per the no-cross-campaign-file rule.
+
+`platform/scripts/gochara/smoke_probe.ts` (PARIṢKĀRA MR-35 territory) was found
+PRE-STAGED in the main checkout (branch `sampurti/integration`) at R6 launch time.
+It was staged but uncommitted — likely left by PARIṢKĀRA's MR-35 builder working in
+the shared main checkout rather than a dedicated worktree. When SAMPŪRTI's R6 conductor
+committed the ledger heartbeat (`git commit` after `git add SAMPURTI_STATE.md`), the
+pre-staged smoke_probe.ts was inadvertently included (commit de1882332, sampurti/integration).
+
+Outcome: file now on sampurti/integration at de1882332. PARIṢKĀRA's MR-35 PR #1196 also
+carries this file on parishkara/mr-35. Content should be identical. When either lands on
+main, second merge sees no conflict (same file, identical content — merge queue handles it).
+No file deleted or reverted by SAMPŪRTI (doing so = second §3 violation).
+PARIṢKĀRA: please verify copies match; parishkara/mr-35 copy is authoritative.
