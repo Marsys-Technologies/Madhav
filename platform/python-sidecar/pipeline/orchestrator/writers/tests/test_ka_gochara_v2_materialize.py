@@ -35,11 +35,14 @@ from datetime import date
 
 import pytest
 
-import pipeline.orchestrator.writers.ka_gochara_v2_materialize as mod
+import pipeline.orchestrator.writers.ka_gochara as mod
 import services.w2g.materialize as materialize_mod
 from pipeline.orchestrator.writers import ContextSpec
-from pipeline.orchestrator.writers.ka_gochara_v2_materialize import GocharaV2MaterializeWriter
+from pipeline.orchestrator.writers.ka_gochara import KaGocharaWriter
 from services.w2g.materialize import GENERATION_V2, HORIZON_STATUS_PROGRESSIVE, MaterializeResult
+
+# Alias for backward-compatibility with test assertions that reference the old class name
+GocharaV2MaterializeWriter = KaGocharaWriter
 
 # Word-boundary regex: matches the bare v1 table name but NOT as a prefix of
 # `kala_gochara_windows_v2` (there is no \b between "s" and "_", both \w).
@@ -143,7 +146,7 @@ def _responder(*, event_classes=("marriage",), stored_fingerprint=None):
 
 def _ctx(conn, **config) -> ContextSpec:
     return ContextSpec(
-        asset_id="ka_gochara_v2_materialize",
+        asset_id="ka_gochara",
         build_id="00000000-0000-0000-0000-0000000000v2",
         db_conn=conn,
         config={"chart_id": "c1", "now_date": "2026-08-06", **config},
@@ -178,11 +181,11 @@ def _served_row(peak_date=date(2026, 9, 1)):
 
 def test_writer_is_registered_under_its_asset_id():
     from pipeline.orchestrator.writers import get_writer
-    assert get_writer("ka_gochara_v2_materialize") is not None
+    assert get_writer("ka_gochara") is not None
 
 
 def test_asset_id_matches_registration():
-    assert GocharaV2MaterializeWriter.asset_id == "ka_gochara_v2_materialize"
+    assert GocharaV2MaterializeWriter.asset_id == "ka_gochara"
 
 
 def test_asset_id_is_not_the_superseded_name():
@@ -248,7 +251,7 @@ def test_writer_source_never_references_the_protected_table():
     source = _source_excluding_module_docstring(mod)
     matches = PROTECTED_TABLE_RE.findall(source)
     assert matches == [], (
-        f"ka_gochara_v2_materialize.py must never reference the protected "
+        f"ka_gochara.py must never reference the protected "
         f"kala_gochara_windows table (found {len(matches)} occurrence(s)) — "
         f"native ruling point 2"
     )
@@ -273,7 +276,7 @@ def test_writer_source_never_references_the_override_setting():
     statements issued in one test run."""
     source = _source_excluding_module_docstring(mod)
     assert OVERRIDE_SETTING not in source, (
-        f"ka_gochara_v2_materialize.py must never reference "
+        f"ka_gochara.py must never reference "
         f"app.{OVERRIDE_SETTING} — native ruling point 1 is a hard rule, "
         f"not a style preference"
     )

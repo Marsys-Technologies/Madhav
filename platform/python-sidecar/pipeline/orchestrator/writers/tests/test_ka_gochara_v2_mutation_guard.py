@@ -33,7 +33,7 @@ import re
 
 import pytest
 
-import pipeline.orchestrator.writers.ka_gochara_v2_materialize as mod
+import pipeline.orchestrator.writers.ka_gochara as mod
 
 PROTECTED_TABLE_RE = re.compile(r"\bkala_gochara_windows\b")
 OVERRIDE_SETTING = "allow_protected_sweep_rewrite"
