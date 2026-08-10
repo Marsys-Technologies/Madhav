@@ -287,3 +287,18 @@ scope reduction below 27 classes · retiring any serving surface · LEL content.
     MR-03: buildSourceCitation '3.0' branch (cites v3 materializer)
     MR-07: count_sql cockpit truth (sweep: generation='v1' scoped; ka_gochara: generation='3.0')
   NEXT-ACTION: await GATE-EXECUTOR (PR #1201); await MR-03/07 builders + PARĪKṢAKA verdicts.
+
+- 2026-08-10 ~20:42 IST (conductor session 6 — MR-03 + MR-07 builders dispatched):
+  CONDUCTOR-HEARTBEAT: 2026-08-10T15:12:00Z pid=38773 host=Montys-MacBook-Pro.local
+  BUILDERS DISPATCHED (next wave):
+    MR-03 (a9ef4b27412450ecc, sonnet): buildSourceCitation '3.0' branch
+      Worktree: /Users/Dev/Vibe-Coding/Apps/Madhav/pk-mr03 (from origin/parishkara/integration)
+      Goal: add generation='3.0' branch citing ka_gochara + gochara_v3 engine
+    MR-07 (afa7a6e584e582850, sonnet): count_sql cockpit truth
+      Worktree: /Users/Dev/Vibe-Coding/Apps/Madhav/pk-mr07 (from origin/parishkara/integration)
+      Goal: scope ka_gochara_sweep count_sql to AND generation='v1'
+  ACTIVE AGENTS:
+    GATE-EXECUTOR (a2c8c6190edff81a1): PR #1201 CI pending (Build Check Docker image ~18 min)
+    MR-03 builder (a9ef4b27412450ecc): RUNNING
+    MR-07 builder (afa7a6e584e582850): RUNNING
+  NEXT-ACTION: await builder PRs; dispatch PARĪKṢAKA for each; await GATE-EXECUTOR.
