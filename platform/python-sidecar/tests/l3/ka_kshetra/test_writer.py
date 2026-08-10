@@ -55,6 +55,14 @@ def _small_build(monkeypatch):
     # deliberately, not by accident — so this suite keeps testing what it says it
     # tests: the writer's own contract, against the simple fixture it was built for.
     monkeypatch.setitem(sys.modules, 'services.ka_kshetra.stage2_promise', None)
+    # SAMPŪRTI G1 (2026-08-10): stage0/1/3 are now wired into plan_substeps but
+    # require swisseph + ephemeris_daily DB rows that FakeConn doesn't provide.
+    # Exclude them from the import table so writer.py's __import__ silently skips
+    # them (same pattern as stage2_promise above). Stage wiring correctness is
+    # separately verified by test_sampurti_g1_stage_wiring.py.
+    monkeypatch.setitem(sys.modules, 'services.ka_kshetra.stage0_kinematics', None)
+    monkeypatch.setitem(sys.modules, 'services.ka_kshetra.stage1_symbolization', None)
+    monkeypatch.setitem(sys.modules, 'services.ka_kshetra.stage3_clocks', None)
     yield
 
 
