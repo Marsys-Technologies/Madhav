@@ -376,10 +376,20 @@ future cleanup "fixes" it into deletion.
 ## §8 — EXECUTION SEQUENCE + REQUIRED NATIVE RULINGS
 
 Sequence (hard dependencies): MR-01 → MR-02 → MR-05 → MR-06(+PG-8) → MR-03/04/07/08 →
-MR-13 → MR-14+15 → MR-10 → MR-12 → MR-16 → MR-19..23 → MR-20 → MR-24 (full
-battery) → MR-26..30 → MR-29 re-close verdict. Parallel any time: MR-09, 18,
-25, 30, 34, 35. SAMPŪRTI-owned, gates P-G1: MR-17 (+MR-31 merge).
-W6-COMPLETE marker posts ONLY after MR-01..08, 10, 13, 24 gates pass.
+MR-13 → MR-14+15 → MR-10 → MR-12 → MR-19..23 → MR-20 → MR-24 (full battery) →
+MR-26..30 → MR-29 re-close verdict. Parallel any time: MR-09, 18, 25, 30, 34,
+35. SAMPŪRTI-owned, gates P-G1: MR-17 (+MR-31 merge).
+**W6-COMPLETE marker posts ONLY after MR-01..08, 10, 13, 14, 15, 24 gates
+pass** — i.e. ALL remediation production builds precede the marker, so
+SAMPŪRTI's P-G1/S5 never overlap a gochara rebuild (coordination Alignment
+Protocol §2). **MR-16 is the ONE planned post-marker build**: a versioned
+iteration that, on landing, triggers SAMPŪRTI's PA-5 scoped re-field + R14
+measurement-versioning (new measurement beside, never overwriting). Verified
+low-risk: gochara corpus changes alter field PROVENANCE edges, not field
+values. **R-COORD-4 (coordination file) governs the gochara_* tools'
+end-state** — retain-vs-later-joint-retirement is a native ruling; every MR
+item remains valid under either outcome; no gochara_* surface retires until
+ruled.
 
 Native rulings required (nothing else can close these): (1) MR-11 —
 serving-resolution bar; (2) MR-16 — only if 27-class scope is to be reduced;
