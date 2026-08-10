@@ -267,6 +267,18 @@ function capActiveSentences(rows: GocharaWindowRow[]): GocharaWindowRow[] {
 // per-generation string for whichever generation the filter resolved to.
 // The filter guarantees all rows in one response share one generation.
 function buildSourceCitation(generation: string | null | undefined): string {
+  // MR-03: explicit branch for generation='3.0' (post-cutover W6.4 rows).
+  // ka_gochara (renamed from ka_gochara_v2_materialize at migration 563) is the
+  // authoritative writer for these rows; ka_gochara_sweep was RETIRED at cutover.
+  // Without this branch, '3.0' falls through to the v1 else-branch below and
+  // returns false provenance (ka_gochara_sweep / generation=v1).
+  if (generation === '3.0') {
+    return (
+      'kala_gochara_windows (L3 Kāla, W6.4 cutover ka_gochara materializer) — ' +
+      'lambda_v3 via services/gochara_v3, consuming gochara_resonance_map (G-1); ' +
+      'generation=3.0'
+    )
+  }
   if (generation != null && (generation === 'g3_utkarsha' || generation.startsWith('g3_'))) {
     return (
       'kala_gochara_windows (L3 Kāla, GOCHARA-UTKARSA W3.4 ka_gochara_v3_century_materialize writer) — ' +
