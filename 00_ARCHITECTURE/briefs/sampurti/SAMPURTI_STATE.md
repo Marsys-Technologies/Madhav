@@ -9,12 +9,12 @@ branch_model: >
   Integration branch sampurti/integration cut from main @ 1432d7492 (2026-08-10).
   All lane work in worktrees off sampurti/integration; lane PRs -> integration;
   integration -> main only via Gate-Executor packets at wave boundaries.
-conductor_session: SAMPURTI-CONDUCTOR-2026-08-10 (R4 — native relaunch 16:38 IST; R3 pid=69929 CONFIRMED DEAD; sole conductor)
+conductor_session: SAMPURTI-CONDUCTOR-2026-08-10 (R5 — relaunch 20:02 IST; R4 pid=68645 CONFIRMED DEAD; PARISHKARA pid=47856 also dead [separate campaign, not our concern]; sole SAMPŪRTI conductor)
 ---
 
 # SAMPŪRTI CAMPAIGN LEDGER
 
-CONDUCTOR-HEARTBEAT: 2026-08-10T14:21+00:00-08-10T14:11+00:00-08-10T14:02+00:00-08-10T13:53+00:00-08-10T13:43+00:00-08-10T13:34+00:00 (SAMPURTI-CONDUCTOR-2026-08-10-R4) pid=68645 host=Dev-Mac [W6-COMPLETE WITHHELD: F-gates pending. PG-31+PG-32 resolved. All sampurti/integration PRs merged. Holding for W6-COMPLETE.]
+CONDUCTOR-HEARTBEAT: 2026-08-10T14:32+00:00 (SAMPURTI-CONDUCTOR-2026-08-10-R5) pid=33133 host=Montys-MacBook-Pro.local [R5 RELAUNCH: predecessor pid=68645 DEAD. PARISHKARA pid=47856 dead (separate campaign). W6-COMPLETE still WITHHELD — PARISHKARA MR-01/02 in flight. All sampurti/integration PRs merged. Holding for W6-COMPLETE marker.]
 
 ## MODEL POLICY (BINDING — native directive 2026-08-10)
 
