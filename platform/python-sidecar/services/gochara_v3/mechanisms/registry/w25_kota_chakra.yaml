@@ -1,0 +1,16 @@
+mechanism_id: w25_kota_chakra
+wave: 2
+lane: W2.5
+description: "Kota Chakra ring modifier — malefic siege intensity for adverse event classes"
+citation_status: cited
+classical_citation: "Kota Chakra tradition; bg_kota_chakra_rings (ADJUDICATION-9 tier-iii)"
+v1_lineage:
+  replaces: "kala_kota_chakra table produced but never consumed in v1 gochara scoring"
+  v1_module: services/ka_gochara_sweep/writer.py
+  change_type: new
+  note: "v1 built kala_kota_chakra but never used it in lambda computation"
+module_path: services/gochara_v3/mechanisms/w25_kota_chakra.py
+admission_state: candidate
+ablation_evidence_link: null
+admission_ruling_id: null
+toggle_key: w25_kota_chakra
