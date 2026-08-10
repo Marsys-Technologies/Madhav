@@ -9,12 +9,12 @@ branch_model: >
   Integration branch sampurti/integration cut from main @ 1432d7492 (2026-08-10).
   All lane work in worktrees off sampurti/integration; lane PRs -> integration;
   integration -> main only via Gate-Executor packets at wave boundaries.
-conductor_session: SAMPURTI-CONDUCTOR-2026-08-10 (R3 — native relaunch, all prior conductors confirmed dead)
+conductor_session: SAMPURTI-CONDUCTOR-2026-08-10 (R4 — native relaunch 16:38 IST; R3 pid=69929 CONFIRMED DEAD via ps; sole conductor)
 ---
 
 # SAMPŪRTI CAMPAIGN LEDGER
 
-CONDUCTOR-HEARTBEAT: 2026-08-10T08:05+00:00 (SAMPURTI-CONDUCTOR-2026-08-10-R3) [L1d batch insert MERGED PR #1158. L1e OOM fix PR #1172 OPEN CI running. P-G1 runs 3+4 FAILED (OOM — root cause identified). Awaiting #1172 merge+deploy for run 5.] [LIVENESS: conductor session active on main]
+CONDUCTOR-HEARTBEAT: 2026-08-10T11:08+00:00 (SAMPURTI-CONDUCTOR-2026-08-10-R4) pid=68645 host=Dev-Mac [R4 START: P-G1 deferred to post-W6-COMPLETE (R-COORD-2 extended — ka_kshetra DAG depends on gochara). L1e MERGED (#1172). L1f MERGED (#1185). L1g+L1h+L1i+L1j on fix/sampurti-l1hi-stage4-envelope-perf — PR in queue. Windows failure ROOT-CAUSE: stage4 writes kala_field_windows substep-by-substep (SAVEPOINT per substep); 183k rows written from achievement_recognition before SIGTERM kills (not OOM, not code bug — coordination yield at index ~92/534). UTKARSHA L-3 ACTIVE (18:30 IST). Work queue: PR L1g-L1j → parallel code lanes (G12/G13/G14b).]
 
 ## MODEL POLICY (BINDING — native directive 2026-08-10)
 
