@@ -610,5 +610,15 @@ CONDUCTOR-HEARTBEAT: 2026-08-10T15:10+00:00 (SAMPURTI-CONDUCTOR-2026-08-10-R7) p
 
 **ONE-LINE ANSWER:** PARIṢKĀRA posts W6-COMPLETE → claim lease → gate G12/G14b/PG-31/L1j to main → dispatch Cloud Run P-G1 on 482012f1 (gen-3.0) → paste window tables → hard block lifts → S5 full-DAG rebuild → Wave 2.
 
-**NEXT-ACTION:** Poll coordination file every ≤10 min for W6-COMPLETE. Until then: no production DB work; monitor PR #1201 CI; clean stale worktree when clear.
+**HOUSEKEEPING (R8, 20:51 IST):**
+- Stale worktree /private/tmp/sampurti-integration (sampurti/g14b-ahead-autofile, merged PR #1190 2026-08-10T11:59Z) REMOVED. Remote branch sampurti/g14b-ahead-autofile DELETED from origin.
+- Active worktrees: sampurti-conductor-r8 (.claude/worktrees/sampurti-conductor-r8, sampurti/integration 11c72a72d) + /private/tmp/utk-audit (UTKARṢA's, DO NOT TOUCH).
+
+**PR #1201 CI OBSERVATION (20:51 IST, PARIṢKĀRA territory — noting per §3, not acting):**
+- Unit Tests: COMPLETED/FAILURE (job 93501268830 — PARIṢKĀRA's CI to fix)
+- Build Check: IN_PROGRESS
+- Governance Gates: IN_PROGRESS
+- L-4 lease expiry: 21:30 IST (~39 min remaining). If Unit Tests failure not resolved before expiry, PARIṢKĀRA takes a new lease after fixing. W6-COMPLETE timeline slides accordingly. SAMPŪRTI parks correctly on this dependency.
+
+**NEXT-ACTION:** Poll coordination file every ≤10 min for W6-COMPLETE. Until then: no production DB work; monitor PR #1201 CI (PARIṢKĀRA's fix to watch); next heartbeat ≤ 2026-08-10T15:28+00:00.
 
