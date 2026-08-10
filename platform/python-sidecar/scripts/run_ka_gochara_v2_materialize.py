@@ -62,7 +62,7 @@ def main() -> int:
 
     from pipeline.orchestrator.db import connect
     from pipeline.orchestrator.writers import ContextSpec
-    from pipeline.orchestrator.writers.ka_gochara_v2_materialize import GocharaV2MaterializeWriter
+    from pipeline.orchestrator.writers.ka_gochara import KaGocharaWriter as GocharaV2MaterializeWriter
 
     conn = connect()
     writer = GocharaV2MaterializeWriter()
