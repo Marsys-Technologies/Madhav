@@ -27,7 +27,15 @@ on:
     # HEAD branch is shad-darshana/integration itself, so if that branch were also in
     # push.branches, a push landing on it while that PR is open would fire both a push
     # run and a pull_request(synchronize) run for the same commit.
-    branches: [main, 'shad-darshana/integration']
+    #
+    # parishkara/integration (added 2026-08-10, PARIṢKĀRA remediation campaign, native
+    # go-ahead — carve-in per campaign-coordination §3): same reasoning as
+    # shad-darshana/integration above — pull_request-only, not in push.branches, since
+    # parishkara/integration is itself the HEAD branch of the campaign's gate-close PR.
+    # Root cause this fixes: every PARIṢKĀRA lane PR into parishkara/integration ran
+    # ZERO CI checks (branch was never in this allowlist), merging on PARĪKṢAKA verifier
+    # verdict alone. This is additive only — no existing trigger path changes.
+    branches: [main, 'shad-darshana/integration', 'parishkara/integration']
   # MERGE-QUEUE PRECONDITION (CI efficiency audit, 2026-07-31). This is the ONLY change in
   # the PR that adds it, deliberately, because getting it wrong hangs every queued PR.
   #
