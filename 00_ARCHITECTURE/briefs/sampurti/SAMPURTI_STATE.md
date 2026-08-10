@@ -14,7 +14,7 @@ conductor_session: SAMPURTI-CONDUCTOR-2026-08-10 (R4 — native relaunch 16:38 I
 
 # SAMPŪRTI CAMPAIGN LEDGER
 
-CONDUCTOR-HEARTBEAT: 2026-08-10T11:45+00:00 (SAMPURTI-CONDUCTOR-2026-08-10-R4) pid=68645 host=Dev-Mac [PA-0 Stage I/O Map committed (04a2538b8). G12 PR #1191 OPEN (638 adds: E8 register + E6 honest_empty + timeline test). G14b PR #1190 OPEN (1029 adds: AHEAD auto-file, 32 tests). PARĪKṢAKA dispatched for both. G13 deferred (PA-4 CDLM substrate). UTKARSHA L-3 ACTIVE; W6-COMPLETE not yet seen. P-G1 deferred.]
+CONDUCTOR-HEARTBEAT: 2026-08-10T11:55+00:00 (SAMPURTI-CONDUCTOR-2026-08-10-R4) pid=68645 host=Dev-Mac [INCIDENT: accidental dispatch_utkarsha_w02 invocation — 2 phantom build_runs created then cancelled; §6 LOG updated (96eba88a1). PARĪKṢAKA running for G12 #1191 + G14b #1190. W6-COMPLETE not yet seen. P-G1 deferred.]
 
 ## MODEL POLICY (BINDING — native directive 2026-08-10)
 
