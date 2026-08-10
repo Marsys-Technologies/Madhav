@@ -38,6 +38,7 @@ cutover wave (its W6), UTKARṢA yields otherwise.
 
 | # | campaign | purpose | started (IST) | expiry (IST) | status |
 |---|---|---|---|---|---|
+| L-3 | SAMPŪRTI | P-G1 ka_kshetra rebuild (fetch_orb_deg L1b fix deployed) | 08:34 IST | 10:00 IST | ACTIVE |
 
 ## 2. MIGRATION NUMBER CLAIMS (claim-at-PR-open; renumber-on-collision stands)
 

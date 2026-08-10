@@ -14,7 +14,7 @@ conductor_session: SAMPURTI-CONDUCTOR-2026-08-10 (R3 — native relaunch, all pr
 
 # SAMPŪRTI CAMPAIGN LEDGER
 
-CONDUCTOR-HEARTBEAT: 2026-08-10T02:19+00:00 (SAMPURTI-CONDUCTOR-2026-08-10-R3) [LIVENESS: pid=74382 host=Montys-MacBook-Pro.local — prior scripted (PID 30560) confirmed dead (ps -p 30560 → no process); L1b fix committed c9a7c27b0, PR open, CI running]
+CONDUCTOR-HEARTBEAT: 2026-08-10T03:40+00:00 (SAMPURTI-CONDUCTOR-2026-08-10-R3) [L1c boundary dedup fix: PARĪKṢAKA PASS 10/10, gate PR #1153 in merge queue CI] [LIVENESS: pid=74382 host=Montys-MacBook-Pro.local — prior scripted (PID 30560) confirmed dead (ps -p 30560 → no process); L1b fix committed c9a7c27b0, PR open, CI running]
 
 ## MODEL POLICY (BINDING — native directive 2026-08-10)
 
@@ -37,8 +37,10 @@ Sonnet/Opus respectively per the original charter and are unaffected.
 ## WAVE POSITION
 
 WAVE 0 — IGNITION. Status: COMPLETE (merged to main 3311ae0e3, deployed 31341882724).
-WAVE 1 — RC1 G1 WIRING. Status: S2 MERGED to integration (5ba9b646, PR #1139). P-G1 PROOF PENDING (5 runs failed — root cause found, L1b fix in review).
-L1b ROOT CAUSE: fetch_orb_deg (stage0_kinematics.py:710-717) queries SELECT orb_deg FROM bg_transit_rules (column absent per mig-397). Bare except swallowed Python exception but left PG transaction ABORTED. All subsequent conn.execute() calls failed with InFailedSqlTransaction → kala_field_kinematics never populated → all downstream stages empty → P-G1 always 0. Fix: SAVEPOINT fetch_orb_deg / ROLLBACK TO SAVEPOINT pattern. PARĪKṢAKA: PASS 10/10, no blocking findings. MERGED to integration (7d577aebc). Gate packet PR to main: PENDING.
+WAVE 1 — RC1 G1 WIRING. Status: L1b GATE MERGED (PR #1150, 976af2a2f). L1c IN-FLIGHT (PR #1153, merge queue).
+L1b (fetch_orb_deg SAVEPOINT fix): DEPLOYED (sidecar + pipeline image). RESULT: kala_field_kinematics = 120,377 rows. Stage0 FIXED.
+L1c ROOT CAUSE: stage3_clocks.compute_boundaries_for_system emits duplicate BoundaryRow objects when chart_dashas has duplicate (level_n, start_iso) for chara_karaka (up to 5 MD rows per start date). write_boundary_rows hits unique constraint on (chart_id, system_id, level, t_boundary) → InFailedSqlTransaction cascades to vimshottari/yogini/etc → kala_field_clocks = 0.
+L1c FIX: deduplicate by (level, t_boundary) in compute_boundaries_for_system, keep first (SELECT order: level_n ASC, start_iso ASC is deterministic). 5 tests pass. PARĪKṢAKA: PASS with WARN 10/10 (WARN non-blocking: stacked W0.2 commit on branch). Gate PR #1153: IN MERGE QUEUE.
 
 ## RAILS (immutable, restated for every reader)
 
