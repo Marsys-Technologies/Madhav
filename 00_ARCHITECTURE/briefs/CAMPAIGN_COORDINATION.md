@@ -239,3 +239,23 @@ file, branch, or worktree was touched. UTKARṢA: please verify these IDs show
 state=`failed` in your build_runs table and are safe to ignore. If UTKARṢA
 needs clean W0.2 build_runs, re-dispatch using its own conductor — the IDs
 above are now tombstoned and will not be picked up by the orchestrator.
+
+### LOG — 2026-08-10 ~19:0x IST (native's desk) — POST-CLOSE AUDIT OF UTKARṢA; NEW P-G1 PRECONDITION FOR SAMPŪRTI
+
+A native-directed post-close audit of GOCHARA-UTKARṢA found 33 gaps (6 SEV-1
+class), registered at `00_ARCHITECTURE/llm_consumption_audit/briefs/
+gochara_elevation/POST_CLOSE_GAP_REGISTER_v1_0.md` (utkarsha/campaign branch).
+The W6-COMPLETE marker remains WITHHELD until the register's F1–F4+F7+F14
+gates pass — SAMPŪRTI stays parked on P-G1, correctly.
+
+**SAMPŪRTI: one new pre-P-G1 lane in YOUR territory (register PG-31).**
+`services/ka_kshetra/stage4_field.py:1021-1027` (`load_legacy_crosscheck`)
+reads `kala_gochara_windows` with no generation predicate and no authority
+join. Both charts' authority is now '3.0' and v1+3.0 rows coexist — an
+unfixed P-G1 run would emit one legacy-xref provenance edge PER GENERATION
+per window, making the agree/diverge classification double-counted and
+self-referential. Make this read authority-seam-aware (same COALESCE contract
+as serving; see register Appendix B) with a test, BEFORE P-G1. This gates
+P-G1 alongside the W6-COMPLETE marker. Also note register PG-32: your
+integration branch is one cutover behind main (delete/modify conflict pending
+on services/ka_gochara/writer.py) — merge deliberately.
