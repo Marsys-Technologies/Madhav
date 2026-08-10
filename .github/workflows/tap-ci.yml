@@ -80,6 +80,13 @@ on:
       - 'platform/src/lib/retrieval/**'
       # This file
       - '.github/workflows/tap-ci.yml'
+      # Migrations (2026-08-10): SQL-only PRs that add migration files — such as DB
+      # role grants or schema changes — must also produce a TAP-6 result so the merge
+      # queue's required-check can be satisfied. The gates scan python-sidecar patterns
+      # and always pass for pure SQL (no new code paths to audit), but without this
+      # entry the workflow never fires for SQL-only PRs, leaving the required check
+      # absent and the PR permanently blocked from the queue.
+      - 'platform/supabase/migrations/**'
   # BUG FIX (2026-08-01). This trigger was MISSING, and its absence silently defeated the
   # 2026-07-31 retirement: three jobs/steps were guarded with
   # `if: github.event_name == 'workflow_dispatch'` on a workflow that had no such trigger, so
