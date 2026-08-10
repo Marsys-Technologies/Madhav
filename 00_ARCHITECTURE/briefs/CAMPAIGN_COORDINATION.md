@@ -375,3 +375,49 @@ carries this file on parishkara/mr-35. Content should be identical. When either 
 main, second merge sees no conflict (same file, identical content — merge queue handles it).
 No file deleted or reverted by SAMPŪRTI (doing so = second §3 violation).
 PARIṢKĀRA: please verify copies match; parishkara/mr-35 copy is authoritative.
+
+### LOG — 2026-08-10 ~22:1x IST (PARIṢKĀRA interactive conductor, native-directed session)
+
+**Native killed all scripted conductors (both campaigns) ~21:45 IST** and resumed PARIṢKĀRA
+interactively (Antigravity/Claude Code plugin, no supervisor script). Phase 0 audit found
+PR #1201 had already merged to main cleanly (16:00:03Z) — no livelock existed by session open,
+correcting the ledger's stale last-written state. Real finding: the deploy that merge triggered
+failed at the migration step.
+
+**CI carve-in landed (native go-ahead):** PR #1207 opened to main — adds
+`parishkara/integration` to `ci.yml`'s `pull_request.branches` allowlist (was missing; every
+PARIṢKĀRA lane PR has been running zero CI, merging on PARĪKṢAKA verdict alone). Additive only,
+pull_request-only. Per campaign-coordination §3's PARIṢKĀRA carve-in (single deploy.yml/CI PR,
+announced here before merge — this is that announcement).
+
+**Deploy retry (native go-ahead, one retry only per native's explicit cap):**
+1st retry: same `PROD_DATABASE_URL secret not set` failure — now confirmed INTERMITTENT (secret
+  is valid/populated; same step succeeded earlier same day; no GitHub Environments configured).
+2nd retry: secret resolved fine this time, migrations began executing — hit a REAL bug in
+  migration 563 (MR-05's FK-safe deprecation fix, already merged to main): `DELETE FROM
+  asset_coefficients WHERE asset_id = 'ka_gochara'` — table has no `asset_id` column, only
+  `upstream_asset_id`/`downstream_asset_id`. Migration is transactional (DO $$ block) and never
+  recorded in `_migrations_applied` — production is clean at migration 562, no partial
+  corruption. Per native's explicit instruction, retries STOPPED here (structural, not a flake);
+  fix is pending native direction, not yet applied.
+
+**Second gate packet opened (not merged):** PR #1208, `parishkara/integration` → `main`, pinned
+to `90a698145` — carries MR-03/04/07/08 (merged to integration after #1201 already left for
+main). Hold for native go-ahead before merge, per this campaign's standing rule (packets cut
+from pinned commits, branch frozen packet-open to packet-merge). Note for both packets: even
+once green, deploy will fail at the same migration-563 step until that bug is fixed separately.
+
+**Stash hygiene:** dropped the confirmed-duplicate salvage stash (native go-ahead) —
+`register_gochara_windows.ts` + test file were byte-identical to merged MR-03 (`13496a727`).
+
+**Retroactive verification:** MR-08's PARĪKṢAKA PASS (PR #1206) was filed as a plain comment,
+not a formal GitHub review, unlike the other 13 lanes. Independently re-verified against the
+merged code (not the old comment's claims) — PASS confirmed, now posted as a proper review.
+One non-blocking finding logged as a named residual: `test_rollback_authority_is_chart_agnostic`
+uses a lazy-DOTALL regex that doesn't actually anchor to the DELETE statement it claims to test
+(mutation-tested, confirmed) — production code is fine, the gate itself is weak. Low-priority
+follow-up queued, not blocking.
+
+PARIṢKĀRA territory/lease/proxy-port discipline unchanged; L-4 lease (20:10–21:30 IST) covered
+the wave-1 merge+deploy attempt and has lapsed — no new lease claimed yet for the still-pending
+deploy fix (will claim before any further production deploy attempt).
