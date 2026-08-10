@@ -59,7 +59,7 @@ Status: QUEUED | BUILDING | VERIFYING | PASS | FAIL(n) | BLOCKED | MERGED
 | W1.2 | 1 | [heavy] | Direction restored | MERGED | gochara3/w12 | /Users/Dev/Vibe-Coding/Apps/utk-w12 | sonnet | W1.1 PASS | MERGED to main (PR #1152, 246bbcd69). _compute_signed_channels_v3 + _resolve_valence_v3. |
 | W1.3 | 1 | [heavy] | Graded suppression | MERGED | gochara3/w13 | /Users/Dev/Vibe-Coding/Apps/utk-w13 | sonnet | W1.1 PASS | MERGED to main (PR #1155, e8e6988ec). Vedha multiplicative quality_gates gate live. |
 | W1.4 | 1 | [heavy] | Self-normalizing thresholds | VERIFYING | gochara3/w14 | /Users/Dev/Vibe-Coding/Apps/utk-w14 | sonnet | W1.1 PASS | PR #1156 open (9374f4fe3 — rebased on W1.3 main; migration renumbered 557→558). CI running, 0 failures. |
-| W1.5 | 1 | [mech] | λ decomposition + uncertainty output | VERIFYING | gochara3/w15 | /Users/Dev/Vibe-Coding/Apps/utk-w15 | sonnet | W1.1 PASS | PR #1154 open (2e4eab483 — migration renumbered 557→559, dequeued+re-pushed). CI running, 0 failures. |
+| W1.5 | 1 | [mech] | λ decomposition + uncertainty output | MERGED | gochara3/w15 | /Users/Dev/Vibe-Coding/Apps/utk-w15 | sonnet | W1.1 PASS | MERGED to main (PR #1154, 249aa844f). term_breakdown JSONB + migration 559 live. |
 | W2.1 | 2 | [heavy] | Ashtakavarga gating, real | QUEUED | — | — | opus | W1.1 PASS | Parallel W2; needs W0.2 data |
 | W2.2 | 2 | [mech] | Moorti nirnaya modifier | QUEUED | — | — | sonnet | W1.1 PASS | Parallel W2; needs W0.2 data |
 | W2.3 | 2 | [mech] | Tara bala, alive | QUEUED | — | — | sonnet | W1.1 PASS | Parallel W2 |
@@ -207,4 +207,6 @@ CONDUCTOR-HEARTBEAT: 2026-08-10T03:30:00Z pid=94277 host=Montys-MacBook-Pro.loca
 - 2026-08-10 09:31 IST: All three Wave 1 PRs #1155/#1156/#1154 CLEAN (0 failures) and in merge queue (UNKNOWN = being processed by queue). SAMPŪRTI L1c commit (d5cdf39a8) landed on main mid-session — no conflict with W1.x (different files). SAMPŪRTI L-2 lease still ACTIVE (expires 12:00 IST / 06:30 UTC — 2h30min remaining). Awaiting merge queue to process W1.3/W1.4/W1.5.
 - 2026-08-10 09:42 IST: W1.3 (PR #1155) MERGED to main (e8e6988ec). W1.4 (PR #1156) needed rebase — conflict in imports (W1.3 added VedhaRow/MaleficScaleRow to context import; W1.4 adds ThresholdConfig import) — merged both, pushed 9374f4fe3. CRITICAL: W1.4 migration collision discovered — both I6a and W1.4 builder used 557; renamed W1.4 migration to 558 (558_kala_gochara_windows_v2_w14_threshold.sql). W1.5 also had 557 collision — renamed to 559; was in merge queue, had to dequeue (GraphQL dequeuePullRequest), rename, push 2e4eab483, re-auto-merge. W1.4/#1156: CI running (pending=3, 0 fail). W1.5/#1154: CI re-triggered after dequeue+push.
 
-CONDUCTOR-HEARTBEAT: 2026-08-10T04:20:00Z pid=94277 host=Montys-MacBook-Pro.local
+- 2026-08-10 10:12 IST: W1.5 (PR #1154) MERGED to main (249aa844f). W1.4 (PR #1156) still in merge queue (UNKNOWN, 0 pending, 0 failures). W1.4 queue is processing now. SAMPŪRTI L-2 expires in ~1h48min (06:30 UTC).
+
+CONDUCTOR-HEARTBEAT: 2026-08-10T04:42:39Z pid=94277 host=Montys-MacBook-Pro.local
