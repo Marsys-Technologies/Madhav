@@ -14,7 +14,7 @@ conductor_session: SAMPURTI-CONDUCTOR-2026-08-10 (R3 — native relaunch, all pr
 
 # SAMPŪRTI CAMPAIGN LEDGER
 
-CONDUCTOR-HEARTBEAT: 2026-08-10T03:40+00:00 (SAMPURTI-CONDUCTOR-2026-08-10-R3) [L1c boundary dedup fix: PARĪKṢAKA PASS 10/10, gate PR #1153 in merge queue CI] [LIVENESS: pid=74382 host=Montys-MacBook-Pro.local — prior scripted (PID 30560) confirmed dead (ps -p 30560 → no process); L1b fix committed c9a7c27b0, PR open, CI running]
+CONDUCTOR-HEARTBEAT: 2026-08-10T08:05+00:00 (SAMPURTI-CONDUCTOR-2026-08-10-R3) [L1d batch insert MERGED PR #1158. L1e OOM fix PR #1172 OPEN CI running. P-G1 runs 3+4 FAILED (OOM — root cause identified). Awaiting #1172 merge+deploy for run 5.] [LIVENESS: conductor session active on main]
 
 ## MODEL POLICY (BINDING — native directive 2026-08-10)
 
@@ -37,10 +37,27 @@ Sonnet/Opus respectively per the original charter and are unaffected.
 ## WAVE POSITION
 
 WAVE 0 — IGNITION. Status: COMPLETE (merged to main 3311ae0e3, deployed 31341882724).
-WAVE 1 — RC1 G1 WIRING. Status: L1b GATE MERGED (PR #1150, 976af2a2f). L1c IN-FLIGHT (PR #1153, merge queue).
-L1b (fetch_orb_deg SAVEPOINT fix): DEPLOYED (sidecar + pipeline image). RESULT: kala_field_kinematics = 120,377 rows. Stage0 FIXED.
+WAVE 1 — RC1 G1 WIRING. Status: L1b GATE MERGED (PR #1150, 976af2a2f). L1c GATE MERGED (PR #1153). L1d GATE MERGED (PR #1158). L1e PR #1172 OPEN (CI running). P-G1 run 5 PENDING (#1172 deploy).
+L1b (fetch_orb_deg SAVEPOINT fix): DEPLOYED. RESULT: kala_field_kinematics = 120,377 rows. Stage0 FIXED.
 L1c ROOT CAUSE: stage3_clocks.compute_boundaries_for_system emits duplicate BoundaryRow objects when chart_dashas has duplicate (level_n, start_iso) for chara_karaka (up to 5 MD rows per start date). write_boundary_rows hits unique constraint on (chart_id, system_id, level, t_boundary) → InFailedSqlTransaction cascades to vimshottari/yogini/etc → kala_field_clocks = 0.
-L1c FIX: deduplicate by (level, t_boundary) in compute_boundaries_for_system, keep first (SELECT order: level_n ASC, start_iso ASC is deterministic). 5 tests pass. PARĪKṢAKA: PASS with WARN 10/10 (WARN non-blocking: stacked W0.2 commit on branch). Gate PR #1153: IN MERGE QUEUE.
+L1c FIX: deduplicate by (level, t_boundary) in compute_boundaries_for_system, keep first (SELECT order: level_n ASC, start_iso ASC is deterministic). 5 tests pass. PARĪKṢAKA: PASS 10/10. Gate PR #1153: MERGED.
+L1d ROOT CAUSE: write_boundary_rows executed one conn.execute() per boundary row → per-row DB round-trips → 22-min stage3 timeout for 262,730 boundaries. (P-G1 run after L1c deploy survived stage3 but stalled there.)
+L1d FIX: write_boundary_rows converted to cursor.executemany() batch insert (single round-trip for all rows of a system). Tests added: batch detector (executemany called once with all N rows), empty-list guard, 14-column param check. 3 new tests + all prior pass. Gate PR #1158: MERGED.
+L1d RESULT (run 3 post-deploy): stage3 ran in ~9 min, kala_field_boundaries = 262,730. Stages 0–3 ALL COMPLETE. P-G1 criterion (a) CONFIRMED MET: kala_field_clocks = 8 total, 6 applicable.
+
+L1e ROOT CAUSE (run 3 + run 4 both FAILED stage4/5 — silent OOM kill):
+  - stage4/5 executes 19 event classes sequentially. _class_context() loads EnvelopeIndex (ALL 166,205 kala_field_primitives) for EACH class separately — 19 separate copies.
+  - 166,205 Primitive objects × ~500-650 bytes/object × 19 classes ≈ 2 GB → Cloud Run OOM kill.
+  - OOM kills produce no application log (silent failure). Observed: log ends at 07:00:16Z, build marked failed ~07:20Z. NO idle_in_transaction_session_timeout involvement — db.py ALREADY disables it (both startup option AND explicit SET; confirmed by reading db.py).
+  - Runs 3 and 4 both died with identical silent signature at the same stage for the same reason.
+L1e FIX: share ONE EnvelopeIndex (and clocks/ladder/extra_breakpoints) across all 19 event class contexts via lazy-init _shared_* attributes on the writer. _class_context() now sets self._shared_envelopes on first class, reuses it for all subsequent classes. Safety: EnvelopeIndex.circular_shift() creates new instances per replicate — shared base is read-only. Peak memory: ~360 MB (vs ~2 GB). Commit: 1a3ea25e7. Branch: sampurti/l1e-oom-fix-shared-envelope. 250/250 tests pass. PR #1172: OPEN, CI running.
+
+P-G1 RUN LOG (chart 482012f1):
+  Run 1 cdbbc6c4: BLOCKED — dep closure incomplete (correct §N.8 gate behavior)
+  Run 2 88268b2d: FAILED — cloud-sql-proxy restart killed mid-build (DEBT-3 dual-conductor)
+  Run 3 (post L1b+L1c+L1d): FAILED stage4/5 — OOM kill (silent, no app log, Cloud Run). Root cause: 19× EnvelopeIndex duplication (~2GB). kala_field_clocks=8 (6 applicable) CONFIRMED before failure. kala_field_windows=0.
+  Run 4 (after L1d, same code): FAILED same root cause — OOM kill. Dispatched inert run e088529e (no Cloud Run execution — accidental extra dispatch, confirmed inert).
+  Run 5: PENDING — awaiting PR #1172 merge+deploy.
 
 ## RAILS (immutable, restated for every reader)
 
@@ -386,19 +403,24 @@ ROOT CAUSE of all 5 P-G1 failures now identified and fixed:
 - PR open to integration; CI running; awaiting PARĪKṢAKA pass
 
 NEXT STEP (in order):
-1. [DONE] L1b PARĪKṢAKA PASS 10/10 → merged to integration (7d577aebc)
-2. [IN PROGRESS] Gate packet PR (sampurti/integration → main) → CI green → merge → deploy
-3. [DONE — live-verified 02:19Z] DB dep state: all 13 declared deps 'lit';
-   bo_laksana=lit (zombie cleared); ka_kshetra=error (reset to dormant at dispatch)
-   kala_field_clocks=0, kala_field_kinematics=0 (pre-fix baseline confirmed)
-4. After deploy: dispatch ka_kshetra-only rebuild using dispatch script (all deps lit)
-5. Verify PA-1 criteria: (a) kala_field_clocks>0 Law-1 states; (b) >1 window per
-   clocked class; (c) windowed fraction ≤20%; (d) compression/scarcity features
-   computable; (e) windows track daśā ladder — paste real detector output here
-6. On P-G1 GREEN: HARD BLOCK lifts; proceed to S5 full-DAG rebuild (Wave 1 close)
+1. [DONE] L1b PARĪKṢAKA PASS 10/10 → merged to integration → gate PR #1150 → MERGED to main
+2. [DONE] L1c boundary dedup fix → PR #1153 → MERGED to main
+3. [DONE] L1d batch insert fix → PR #1158 → MERGED to main
+4. [IN PROGRESS] L1e OOM fix → PR #1172 open, CI running → await CI green → merge to main → deploy
+5. After #1172 deploy: dispatch run 5 — ka_kshetra-only rebuild (all 13 deps lit from prior runs)
+   - Dispatch: python3 platform/scripts/dispatch_sampurti_p_g1_ka_kshetra_rebuild.py
+   - Then: cd platform/python-sidecar && python3 -m pipeline.orchestrator.main --run-id <run_id>
+6. Verify PA-1 criteria: (a) kala_field_clocks>0 applicable ← ALREADY MET (6 rows from run 3);
+   (b) kala_field_windows>0 ← NOT YET MET; (c) windowed fraction ≤20%; (d) compression features;
+   (e) windows track daśā ladder — paste fresh detector output here after run 5 completes
+7. On P-G1 GREEN: HARD BLOCK lifts; proceed to S5 full-DAG rebuild (Wave 1 close)
+   On P-G1 RED: diagnose against S1 stage I/O map; do not proceed to S5.
 
-If this conductor dies: L1b fix is committed (c9a7c27b0), tests green. Resume:
-  merge L1b PR to integration → deploy → dispatch P-G1 (all deps should be lit).
+If this conductor dies: L1e OOM fix committed 1a3ea25e7 on sampurti/l1e-oom-fix-shared-envelope.
+  Resume: merge PR #1172 (CI should be green) → deploy → dispatch run 5.
+  All 13 ka_kshetra closure deps are 'lit' from prior successful runs; ka_kshetra itself is 'dormant'.
+  kala_field_clocks = 8 (6 applicable) already populated from run 3 — stage3 does delete-then-insert
+  so run 5 will repopulate it cleanly.
 
-Merged to integration: ALL Wave-0 lanes (L0a-f) + CI-fix (65f967873) + S2 (5ba9b646).
-PR #1142 (CAMPAIGN_COORDINATION.md) merged to main. PR #1141 (S2 wiring) already on main.
+Merged to main: ALL Wave-0 lanes + CI-fix + S2 (PR #1141) + L1b (PR #1150) + L1c (PR #1153) + L1d (PR #1158).
+PR #1142 (CAMPAIGN_COORDINATION.md) merged to main.
