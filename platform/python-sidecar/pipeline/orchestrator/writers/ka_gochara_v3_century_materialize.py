@@ -79,7 +79,7 @@ from pipeline.orchestrator.writers import (
 
 # gochara_v3 imports only (I2: no gochara_grammar/*, gochara_intensity/*, ka_gochara_sweep/*)
 from services.gochara_v3.interval_solver import find_threshold_crossings, IntervalBoundary
-from services.gochara_v3.threshold import ThresholdConfig
+from services.gochara_v3.threshold import ThresholdConfig, fetch_base_rate_for_class
 from services.gochara_v3.context import ClassContext
 
 logger = logging.getLogger(__name__)
@@ -572,14 +572,27 @@ class GocharaV3CenturyMaterializeWriter(WriterBase):
         #    as the honest structural prior before per-class calibration.
         #    This is a deliberate design choice for W3.4 — the full
         #    self-normalizing threshold (W1.4) is applied at serve time.
+        #
+        #    §N.8: fallback_used must be derived from a real DB lookup, not
+        #    bound to a literal — the lookup result (True iff the class has no
+        #    base_rate row in brahma_event_ontology) is the earned signal.
+        #    base_rate_cited and age_band_used are also populated from the
+        #    lookup; lambda_thresh stays 0.0 per the structural-prior design.
+        try:
+            _base_rate_cited, _age_band_used, _fallback_used = fetch_base_rate_for_class(
+                conn, event_class,
+            )
+        except Exception:  # noqa: BLE001
+            _base_rate_cited, _age_band_used, _fallback_used = 0.0, "band_41_60", True
+
         threshold_config = ThresholdConfig(
             percentile_used=0.0,
             lambda_thresh=0.0,
             implied_density=0.0,
-            base_rate_cited=0.0,
-            age_band_used="band_41_60",
-            density_flag="no_base_rate",
-            fallback_used=True,
+            base_rate_cited=_base_rate_cited,
+            age_band_used=_age_band_used,
+            density_flag="no_base_rate" if _fallback_used else "ok",
+            fallback_used=_fallback_used,
             sample_count=0,
         )
 
