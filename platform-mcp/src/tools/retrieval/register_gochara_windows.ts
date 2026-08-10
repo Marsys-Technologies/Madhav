@@ -299,11 +299,15 @@ const ROW_COLUMNS = `
   computed_at, continuity_state,
   generation, era_slice_key, term_breakdown
 `
-// W5.1 (GOCHARA-UTKARSA): generation, era_slice_key, and term_breakdown are
-// nullable columns present on kala_gochara_windows since migrations 527/556/559.
-// All three arrive as NULL for v1 rows written before those migrations — the
-// interface declares them optional-nullable and the serving code passes them
-// through without requiring them non-null, per §N.3 "honest tier over fabricated".
+// W5.1 (GOCHARA-UTKARSA): generation and era_slice_key are nullable columns
+// present on kala_gochara_windows since migrations 527 and 556 respectively.
+// term_breakdown, lambda_v3_ci_low, lambda_v3_ci_high, ci_source,
+// threshold_lambda, threshold_percentile, implied_density, and base_rate_cited
+// are the 8 v3 output-model columns added to kala_gochara_windows by migration
+// 564 (PARIṢKĀRA MR-01). All arrive as NULL for v1 rows written before those
+// migrations — the interface declares them optional-nullable and the serving
+// code passes them through without requiring them non-null, per §N.3 "honest
+// tier over fabricated".
 
 // ADJUDICATION-6 (SHAD_DARSHANA_ADJUDICATIONS_NIGHT3_v1_0.md, migration 527):
 // GOCHARA-2.0 writes generation-stamped rows BESIDE v1, never over it — so
@@ -392,6 +396,47 @@ export async function computeGocharaCoverage(
   chartId: string,
   principal: Principal
 ): Promise<{ coverage: GocharaCoverage; ok: boolean }> {
+  // MR-02 (PARIṢKĀRA): coverage source is authority-aware.
+  // After migration 563 retires ka_gochara_sweep, v3-authority charts never had
+  // substeps recorded under 'ka_gochara_sweep' — the v3 materializer (ka_gochara,
+  // renamed from ka_gochara_v2_materialize) logs under its own asset_id. Querying
+  // build_substep_progress for 'ka_gochara_sweep' on a v3-authority chart would
+  // always return 0, misreporting a fully-built chart as uncovered.
+  //
+  // Resolution:
+  //   - No kala_gochara_authority row (or absent table) → v1 authority → use
+  //     'ka_gochara_sweep' substep history (unchanged existing behaviour).
+  //   - kala_gochara_authority row present with any g3_* or '3.0' generation →
+  //     v3 authority → use 'ka_gochara' (the renamed materializer) substep history.
+  //     The resonance-map coverage (classesResp) is still the canonical scope source
+  //     for WHAT was built; the substep count shifts to the v3 asset_id.
+  //
+  // The authority lookup is a single SELECT that never throws on a missing table
+  // (the IF NOT EXISTS guard produces an empty rows array instead).
+  const authorityResp = await platformQuery(
+    `SELECT authoritative_generation
+       FROM kala_gochara_authority
+      WHERE chart_id = $1
+      LIMIT 1`,
+    [chartId],
+    principal
+  ).then((r) => ({ rows: r.rows, ok: true as const })).catch(() => ({ rows: [] as Record<string, unknown>[], ok: true as const }))
+
+  const authGen = typeof authorityResp.rows[0]?.['authoritative_generation'] === 'string'
+    ? authorityResp.rows[0]['authoritative_generation'] as string
+    : 'v1'
+  const isV3Authority = authGen === '3.0' || authGen.startsWith('g3_')
+
+  // The substep asset_id and source description differ by authority generation.
+  // v1: 'ka_gochara_sweep' (D-5 Lane G-4 sweep writer, now RETIRED but substep
+  //     history is preserved in build_substep_progress for existing charts).
+  // v3: 'ka_gochara' (the renamed ka_gochara_v2_materialize per-chart materializer,
+  //     post-migration 563 rename; substeps use ':year:' suffix convention per W3.4).
+  const substepAssetId = isV3Authority ? 'ka_gochara' : 'ka_gochara_sweep'
+  const substepSourceLabel = isV3Authority
+    ? `build_substep_progress (asset_id=ka_gochara, chart-scoped, v3 materializer)`
+    : `build_substep_progress (asset_id=ka_gochara_sweep, chart-scoped)`
+
   const [classesResp, universeResp, substepResp] = await Promise.all([
     platformQuery(
       `SELECT DISTINCT rm.event_class AS event_class, eo.domain AS domain
@@ -415,8 +460,8 @@ export async function computeGocharaCoverage(
                 ARRAY[]::text[]
               ) AS swept_event_classes
          FROM build_substep_progress
-        WHERE chart_id = $1 AND asset_id = 'ka_gochara_sweep'`,
-      [chartId],
+        WHERE chart_id = $1 AND asset_id = $2`,
+      [chartId, substepAssetId],
       principal
     ).then((r) => ({ rows: r.rows, ok: true as const })).catch((err) => ({ rows: [] as Record<string, unknown>[], ok: false as const, error: String(err) })),
   ])
@@ -455,9 +500,11 @@ export async function computeGocharaCoverage(
       universe_source: COVERAGE_UNIVERSE_SOURCE,
       sweep_completeness: {
         substeps_committed: substepsCommitted,
-        source: 'build_substep_progress (asset_id=ka_gochara_sweep, chart-scoped)',
+        source: substepSourceLabel,
         note:
-          'Execution completeness ONLY — how many sweep substeps have committed for THIS chart. ' +
+          'Execution completeness ONLY — how many substeps have committed for THIS chart ' +
+          '(MR-02: asset_id is authority-aware: ka_gochara_sweep for v1-authority charts, ' +
+          'ka_gochara for v3-authority charts per kala_gochara_authority.authoritative_generation). ' +
           'NOT the same axis as the category coverage above (which domains the sweep can ever ' +
           'surface at all, per event_classes_covered/domains_not_covered) — a fully-executed sweep ' +
           '(every substep committed) still structurally excludes any domain in domains_not_covered. ' +

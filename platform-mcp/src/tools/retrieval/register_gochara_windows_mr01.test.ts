@@ -19,7 +19,8 @@
  * RUN_DB_INTEGRATION=1 in the sibling register_gochara_windows.test.ts.
  */
 
-import { describe, it, expect, vi, type Mock } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest'
+import { computeGocharaActivation, computeGocharaCoverage } from './register_gochara_windows.js'
 
 // ── MR-01: 8-column schema parity ────────────────────────────────────────────
 
@@ -49,58 +50,63 @@ describe('MR-01 — ROW_COLUMNS includes all 8 v3 output-model columns', () => {
   })
 
   it('a row with all 8 v3 cols null is accepted without throw', async () => {
-    // Dynamically import so we can vi.mock before resolution
-    vi.resetModules()
+    // Mock fetch so platformQuery returns a row with all 8 new cols set to null.
+    // This proves the code does not crash when the columns are present but null.
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation((_url, init) => {
+      const { sql } = JSON.parse((init as RequestInit).body as string) as { sql: string }
+      if (sql.includes('kala_gochara_authority')) {
+        return Promise.resolve(fakeJsonResponse([]))
+      }
+      if (sql.includes('gochara_resonance_map') && !sql.includes('rm.event_class')) {
+        return Promise.resolve(fakeJsonResponse([]))
+      }
+      if (sql.includes('brahma_event_ontology')) {
+        return Promise.resolve(fakeJsonResponse([{ domain: 'marriage' }]))
+      }
+      if (sql.includes('build_substep_progress')) {
+        return Promise.resolve(fakeJsonResponse([{ substeps_committed: 0, swept_event_classes: [] }]))
+      }
+      // Main row query — return a row with all 8 new cols null
+      return Promise.resolve(fakeJsonResponse([{
+        id: 42,
+        chart_id: '482012f1-710e-4a25-994a-93821f5871aa',
+        event_class: 'marriage',
+        temporal_shape: 'point',
+        window_start: '2026-01-01',
+        window_end: '2026-01-01',
+        peak_date: '2026-01-01',
+        milestone_id: null,
+        is_irreversibility_milestone: false,
+        signed_intensity: 0.5,
+        raw_intensity: 0.5,
+        valence: 'neutral',
+        is_adverse: false,
+        active_sentences: [],
+        contributing_systems: [],
+        suppression_state: {},
+        peak_basis: 'gochara_lambda_e_v1',
+        calibration_state: 'structural_prior',
+        source: 'live',
+        computed_at: '2026-08-10T00:00:00Z',
+        continuity_state: null,
+        generation: 'g3_utkarsha',
+        era_slice_key: 'g3_2020_2030',
+        // 8 v3 output-model cols (all null — what a pre-W1.4/W1.5 v3 row looks like)
+        term_breakdown: null,
+        lambda_v3_ci_low: null,
+        lambda_v3_ci_high: null,
+        ci_source: null,
+        threshold_lambda: null,
+        threshold_percentile: null,
+        implied_density: null,
+        base_rate_cited: null,
+      }]))
+    })
 
-    // Mock platformQuery to return one complete v3-capable row with all 8 cols null
-    vi.doMock('../../lib/platform_query.js', () => ({
-      platformQuery: vi.fn().mockResolvedValue({
-        rows: [
-          {
-            id: 42,
-            chart_id: '482012f1-710e-4a25-994a-93821f5871aa',
-            event_class: 'marriage',
-            temporal_shape: 'point',
-            window_start: '2026-01-01',
-            window_end: '2026-01-01',
-            peak_date: '2026-01-01',
-            milestone_id: null,
-            is_irreversibility_milestone: false,
-            signed_intensity: 0.5,
-            raw_intensity: 0.5,
-            valence: 'neutral',
-            is_adverse: false,
-            active_sentences: [],
-            contributing_systems: [],
-            suppression_state: {},
-            peak_basis: 'gochara_lambda_e_v1',
-            calibration_state: 'structural_prior',
-            source: 'live',
-            computed_at: '2026-08-10T00:00:00Z',
-            continuity_state: null,
-            // generation column (migration 527/556)
-            generation: 'g3_utkarsha',
-            // era_slice_key column (migration 556)
-            era_slice_key: 'g3_2020_2030',
-            // --- 8 v3 output-model cols added by migration 564 ---
-            term_breakdown: null,
-            lambda_v3_ci_low: null,
-            lambda_v3_ci_high: null,
-            ci_source: null,
-            threshold_lambda: null,
-            threshold_percentile: null,
-            implied_density: null,
-            base_rate_cited: null,
-          },
-        ],
-      }),
-    }))
-
-    const mod = await import('./register_gochara_windows.js')
     const principal = { user_uid: 'test', key_id: 'test', role: 'super_admin' as const }
 
     // Should not throw — the 8 null cols are passed through transparently
-    const result = (await mod.computeGocharaActivation(
+    const result = (await computeGocharaActivation(
       '482012f1-710e-4a25-994a-93821f5871aa',
       '2026-01-01',
       principal,
@@ -111,167 +117,147 @@ describe('MR-01 — ROW_COLUMNS includes all 8 v3 output-model columns', () => {
     // The tool must not 500 (throw) when the 8 new cols are present but null
     expect(result.windows.length).toBeGreaterThanOrEqual(0)
 
-    vi.resetModules()
+    fetchSpy.mockRestore()
   })
 })
 
 // ── MR-02: authority-aware computeGocharaCoverage ───────────────────────────
 
 /**
- * We test computeGocharaCoverage's branching by mocking platformQuery calls.
- * The function makes 3 queries in Promise.all:
- *   [0] gochara_resonance_map classes for this chart
- *   [1] brahma_event_ontology all domains
- *   [2] build_substep_progress WHERE asset_id = 'ka_gochara_sweep'  ← MR-02 changes this
+ * We test computeGocharaCoverage's authority-aware branching by intercepting
+ * the fetch() calls it makes through its local platformQuery function (which
+ * posts to /api/mcp/db/query). We mock globalThis.fetch and inspect the
+ * JSON body of each POST to verify which asset_id is used in the
+ * build_substep_progress query.
  *
  * After MR-02:
- *   - For a v3-authority chart (kala_gochara_authority row exists with
- *     authoritative_generation = '3.0' or a g3_* string): query [2] uses the
- *     v3 asset_id (e.g. 'ka_gochara' — the renamed materializer), NOT 'ka_gochara_sweep'.
- *   - For a v1-authority chart (no kala_gochara_authority row): query [2] keeps
- *     'ka_gochara_sweep' (unchanged existing behaviour).
+ *   - v1-authority (no kala_gochara_authority row): build_substep_progress
+ *     query params[1] == 'ka_gochara_sweep'.
+ *   - v3-authority (authority row exists with gen '3.0' / 'g3_*'):
+ *     build_substep_progress query params[1] == 'ka_gochara'.
  *
- * We verify which asset_id string appears in the SQL that platformQuery receives.
+ * The body of each POST is { sql, params } — we inspect body.params[1] on the
+ * call whose body.sql includes 'build_substep_progress'.
  */
 
+/** Build a fake fetch response returning a { rows } JSON payload. */
+function fakeJsonResponse(rows: unknown[]): Response {
+  return {
+    ok: true,
+    json: () => Promise.resolve({ rows }),
+    text: () => Promise.resolve(JSON.stringify({ rows })),
+  } as unknown as Response
+}
+
 describe('MR-02 — computeGocharaCoverage is authority-aware', () => {
-  it('uses ka_gochara_sweep asset_id for v1-authority charts (no authority row)', async () => {
-    vi.resetModules()
+  let fetchSpy: Mock
 
-    const mockQuery: Mock = vi.fn()
-
-    // Call sequence for a v1-authority chart:
-    //   [0] resonance map classes → empty (no targets yet)
-    //   [1] all domains → one domain
-    //   [2] sweep substep progress → 0 substeps (no sweep run)
-    // Additionally: authority lookup (SELECT authoritative_generation) → null row
-    mockQuery.mockImplementation((sql: string, _params: unknown[]) => {
-      if (sql.includes('kala_gochara_authority')) {
-        // No authority row for this chart → v1
-        return Promise.resolve({ rows: [] })
-      }
-      if (sql.includes('gochara_resonance_map')) {
-        return Promise.resolve({ rows: [] })
-      }
-      if (sql.includes('brahma_event_ontology')) {
-        return Promise.resolve({ rows: [{ domain: 'career' }] })
-      }
-      if (sql.includes('build_substep_progress')) {
-        return Promise.resolve({
-          rows: [{ substeps_committed: 0, swept_event_classes: [] }],
-        })
-      }
-      return Promise.resolve({ rows: [] })
-    })
-
-    vi.doMock('../../lib/platform_query.js', () => ({ platformQuery: mockQuery }))
-
-    const mod = await import('./register_gochara_windows.js')
-    const principal = { user_uid: 'test', key_id: 'test', role: 'super_admin' as const }
-
-    await mod.computeGocharaCoverage('cb73cd3d-0000-0000-0000-000000000000', principal)
-
-    // After MR-02: the build_substep_progress query for a v1-authority chart
-    // MUST use 'ka_gochara_sweep' as the asset_id
-    const substepCall = mockQuery.mock.calls.find(
-      ([sql]: [string]) => sql.includes('build_substep_progress')
-    )
-    expect(substepCall).toBeDefined()
-    const [substepSql] = substepCall as [string]
-    expect(substepSql).toContain('ka_gochara_sweep')
-
-    vi.resetModules()
+  beforeEach(() => {
+    fetchSpy = vi.fn()
+    vi.spyOn(globalThis, 'fetch').mockImplementation(fetchSpy)
   })
 
-  it('uses v3 asset_id for v3-authority charts (authority row with g3_* generation)', async () => {
-    vi.resetModules()
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
 
-    const mockQuery: Mock = vi.fn()
+  /**
+   * Parse the JSON body from a fetch call's RequestInit argument.
+   * platformQuery posts { sql, params } — body is a string.
+   */
+  function getBody(call: unknown[]): { sql: string; params: unknown[] } {
+    const init = call[1] as RequestInit
+    return JSON.parse(init.body as string) as { sql: string; params: unknown[] }
+  }
 
-    mockQuery.mockImplementation((sql: string, _params: unknown[]) => {
+  it('uses ka_gochara_sweep as $2 param for v1-authority charts (no authority row)', async () => {
+    // Mock fetch: route each SQL query to the right response
+    fetchSpy.mockImplementation((_url: string, init: RequestInit) => {
+      const { sql } = JSON.parse(init.body as string) as { sql: string; params: unknown[] }
       if (sql.includes('kala_gochara_authority')) {
-        // v3-authority chart: authoritative_generation = '3.0'
-        return Promise.resolve({
-          rows: [{ authoritative_generation: '3.0' }],
-        })
+        // No row → v1 authority
+        return Promise.resolve(fakeJsonResponse([]))
       }
       if (sql.includes('gochara_resonance_map')) {
-        return Promise.resolve({
-          rows: [{ event_class: 'marriage', domain: 'marriage' }],
-        })
+        return Promise.resolve(fakeJsonResponse([]))
       }
       if (sql.includes('brahma_event_ontology')) {
-        return Promise.resolve({ rows: [{ domain: 'marriage' }] })
+        return Promise.resolve(fakeJsonResponse([{ domain: 'career' }]))
       }
       if (sql.includes('build_substep_progress')) {
-        return Promise.resolve({
-          rows: [{ substeps_committed: 5, swept_event_classes: ['marriage'] }],
-        })
+        return Promise.resolve(fakeJsonResponse([{ substeps_committed: 0, swept_event_classes: [] }]))
       }
-      return Promise.resolve({ rows: [] })
+      return Promise.resolve(fakeJsonResponse([]))
     })
 
-    vi.doMock('../../lib/platform_query.js', () => ({ platformQuery: mockQuery }))
-
-    const mod = await import('./register_gochara_windows.js')
     const principal = { user_uid: 'test', key_id: 'test', role: 'super_admin' as const }
+    await computeGocharaCoverage('cb73cd3d-0000-0000-0000-000000000000', principal)
 
-    await mod.computeGocharaCoverage('482012f1-710e-4a25-994a-93821f5871aa', principal)
+    // Find the build_substep_progress call and check its $2 param
+    const substepCall = fetchSpy.mock.calls.find(([, init]: [string, RequestInit]) => {
+      const b = JSON.parse(init.body as string) as { sql: string }
+      return b.sql.includes('build_substep_progress')
+    })
+    expect(substepCall).toBeDefined()
+    const body = getBody(substepCall!)
+    // $2 (params[1]) must be 'ka_gochara_sweep' for a v1-authority chart
+    expect(body.params[1]).toBe('ka_gochara_sweep')
+  })
 
-    // After MR-02: the build_substep_progress query for a v3-authority chart
-    // MUST NOT use 'ka_gochara_sweep' — it must use the v3 asset_id ('ka_gochara')
-    const substepCall = mockQuery.mock.calls.find(
-      ([sql]: [string]) => sql.includes('build_substep_progress')
-    )
-    // For a v3-authority chart the function may use a different coverage source
-    // (gochara_resonance_map directly). Either: (a) no build_substep_progress call
-    // is made at all, OR (b) the call uses 'ka_gochara' not 'ka_gochara_sweep'.
-    if (substepCall) {
-      const [substepSql] = substepCall as [string]
-      expect(substepSql).not.toContain("'ka_gochara_sweep'")
-    }
-    // Either way, the function must return without error
-    // (already asserted by no throw above)
+  it('uses ka_gochara as $2 param for v3-authority charts (authority row with 3.0)', async () => {
+    fetchSpy.mockImplementation((_url: string, init: RequestInit) => {
+      const { sql } = JSON.parse(init.body as string) as { sql: string; params: unknown[] }
+      if (sql.includes('kala_gochara_authority')) {
+        // v3-authority: authoritative_generation = '3.0'
+        return Promise.resolve(fakeJsonResponse([{ authoritative_generation: '3.0' }]))
+      }
+      if (sql.includes('gochara_resonance_map')) {
+        return Promise.resolve(fakeJsonResponse([{ event_class: 'marriage', domain: 'marriage' }]))
+      }
+      if (sql.includes('brahma_event_ontology')) {
+        return Promise.resolve(fakeJsonResponse([{ domain: 'marriage' }]))
+      }
+      if (sql.includes('build_substep_progress')) {
+        return Promise.resolve(fakeJsonResponse([{ substeps_committed: 5, swept_event_classes: ['marriage'] }]))
+      }
+      return Promise.resolve(fakeJsonResponse([]))
+    })
 
-    vi.resetModules()
+    const principal = { user_uid: 'test', key_id: 'test', role: 'super_admin' as const }
+    await computeGocharaCoverage('482012f1-710e-4a25-994a-93821f5871aa', principal)
+
+    const substepCall = fetchSpy.mock.calls.find(([, init]: [string, RequestInit]) => {
+      const b = JSON.parse(init.body as string) as { sql: string }
+      return b.sql.includes('build_substep_progress')
+    })
+    expect(substepCall).toBeDefined()
+    const body = getBody(substepCall!)
+    // $2 (params[1]) must be 'ka_gochara' for a v3-authority chart
+    expect(body.params[1]).toBe('ka_gochara')
+    expect(body.params[1]).not.toBe('ka_gochara_sweep')
   })
 
   it('v1-authority coverage.sweep_completeness.source names ka_gochara_sweep', async () => {
-    vi.resetModules()
-
-    const mockQuery: Mock = vi.fn()
-    mockQuery.mockImplementation((sql: string) => {
-      if (sql.includes('kala_gochara_authority')) return Promise.resolve({ rows: [] })
+    fetchSpy.mockImplementation((_url: string, init: RequestInit) => {
+      const { sql } = JSON.parse(init.body as string) as { sql: string; params: unknown[] }
+      if (sql.includes('kala_gochara_authority')) return Promise.resolve(fakeJsonResponse([]))
       if (sql.includes('gochara_resonance_map')) {
-        return Promise.resolve({
-          rows: [{ event_class: 'career_advancement', domain: 'career' }],
-        })
+        return Promise.resolve(fakeJsonResponse([{ event_class: 'career_advancement', domain: 'career' }]))
       }
       if (sql.includes('brahma_event_ontology')) {
-        return Promise.resolve({ rows: [{ domain: 'career' }] })
+        return Promise.resolve(fakeJsonResponse([{ domain: 'career' }]))
       }
       if (sql.includes('build_substep_progress')) {
-        return Promise.resolve({
-          rows: [{ substeps_committed: 3, swept_event_classes: ['career_advancement'] }],
-        })
+        return Promise.resolve(fakeJsonResponse([{ substeps_committed: 3, swept_event_classes: ['career_advancement'] }]))
       }
-      return Promise.resolve({ rows: [] })
+      return Promise.resolve(fakeJsonResponse([]))
     })
 
-    vi.doMock('../../lib/platform_query.js', () => ({ platformQuery: mockQuery }))
-
-    const mod = await import('./register_gochara_windows.js')
     const principal = { user_uid: 'test', key_id: 'test', role: 'super_admin' as const }
-
-    const { coverage } = await mod.computeGocharaCoverage(
-      'cb73cd3d-0000-0000-0000-000000000000',
-      principal
-    )
+    const { coverage } = await computeGocharaCoverage('cb73cd3d-0000-0000-0000-000000000000', principal)
 
     // The sweep_completeness.source field must honestly name the asset queried
     expect(coverage.sweep_completeness.source).toContain('ka_gochara_sweep')
-
-    vi.resetModules()
   })
 })
 
