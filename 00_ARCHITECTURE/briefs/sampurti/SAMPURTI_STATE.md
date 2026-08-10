@@ -14,7 +14,7 @@ conductor_session: SAMPURTI-CONDUCTOR-2026-08-10 (R4 — native relaunch 16:38 I
 
 # SAMPŪRTI CAMPAIGN LEDGER
 
-CONDUCTOR-HEARTBEAT: 2026-08-10T12:18+00:00 (SAMPURTI-CONDUCTOR-2026-08-10-R4) pid=68645 host=Dev-Mac [G12+G14b MERGED. dasha_sandhi_get registration CONFIRMED live (register_all.ts:64). ELECT/EXPLAIN E6 coverage already in place. All feasible yield-window code lanes exhausted. Holding for W6-COMPLETE (L-3 ACTIVE until 18:30 IST / 13:00 UTC; ~1 hr remaining). P-G1 deferred. Gate Packet ready: sampurti/integration→main covers L1j+G12+G14b+PA-0.]
+CONDUCTOR-HEARTBEAT: 2026-08-10T12:25+00:00 (SAMPURTI-CONDUCTOR-2026-08-10-R4) pid=68645 host=Dev-Mac [G12 FULLY CLOSED (all sub-items confirmed by builder agent). G14b MERGED. Gate Packet ready (L1j+G12+G14b+PA-0 on sampurti/integration). W6-COMPLETE poll: NOT YET at 12:14 UTC; L-3 ACTIVE, expires 18:30 IST / 13:00 UTC (~46 min). P-G1 deferred. Polling every 10 min.]
 
 ## MODEL POLICY (BINDING — native directive 2026-08-10)
 
