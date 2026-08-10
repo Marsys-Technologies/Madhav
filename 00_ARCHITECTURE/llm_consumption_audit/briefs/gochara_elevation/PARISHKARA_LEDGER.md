@@ -449,3 +449,68 @@ scope reduction below 27 classes · retiring any serving surface · LEL content.
     MR-03, MR-04, MR-07, MR-08: now merged to integration (will ride next integration→main PR)
     QUEUED for next wave: MR-10, MR-13, MR-14, MR-15 (corpus repair — promote point rows)
   NEXT-ACTION: await GATE-EXECUTOR deploy verification + L-4 release; then dispatch next wave.
+
+- 2026-08-10 ~21:57 IST (INTERACTIVE-MODE CONDUCTOR — session opens after native killed all
+  scripted conductors ~21:45 IST): PHASE 0 AUDIT RECONCILIATION (read-only; ground truth
+  reconstructed from GitHub API, git log, live production DB, live product MCP calls — nothing
+  taken on faith from this ledger's own last-written state, which lagged reality).
+  CONDUCTOR-HEARTBEAT: pid=(interactive session, no separate PID) host=Montys-MacBook-Pro.local
+  Liveness: `pgrep -f "CONDUCTOR of PARIṢKĀRA"` shows nothing but this session. Proxy 5434 not
+  independently re-verified this pass (no DB write path needed yet beyond read-only query tool).
+  A1/A2 — PR + INTEGRATION TRUTH (GitHub is authoritative, not this ledger's last entry):
+    PR #1201 (integration→main) IS MERGED — 2026-08-10T16:00:03Z, merge commit 670d56c2f.
+      GATE-EXECUTOR's session ended mid-verification (session-6's last entry above was written
+      AT the merge event but never confirmed deploy). No livelock existed by the time this
+      session opened — the brief's M1 assumption (#1201 stuck re-triggering) is STALE.
+    PR #1203 (MR-07), #1204 (MR-03), #1205 (MR-04), #1206 (MR-08): all MERGED to
+      parishkara/integration at 16:04Z — i.e. AFTER #1201 already left for main. Confirmed via
+      `git log origin/main..origin/parishkara/integration`: these 4 commits are NOT yet on main.
+      They need one more integration→main gate.
+  A3 — WORKTREES: all 13 pk-mr* worktrees + pk-mr06 (external) + parishkara-conductor: clean,
+    zero unpushed commits, zero uncommitted changes. pk-mr10/pk-mr13 legitimately un-dispatched
+    (sitting at integration HEAD, matches MR-10/13 QUEUED status — not stalled work).
+    Non-PARIṢKĀRA note (flag only, not touched): /Users/Dev/Vibe-Coding/Apps/utk-w61
+    (gochara3/w61, UTKARṢA territory) has 3 untracked w63 scripts — outside this campaign's
+    scope per coordination file §3; left alone.
+  A4 — STASH: stash@{0} confirmed byte-identical to merged MR-03 commit 13496a727 (both
+    register_gochara_windows.ts and test_mr03_citation_branch.py diff clean). Genuine duplicate,
+    safe to drop — held pending native go-ahead per this session's operating agreement.
+  A5 — GATE PACKET: moot, already merged; its own CI run (15 jobs) was clean green, no
+    re-trigger churn by the time it landed.
+  A6 — PRODUCTION REALITY (live-checked, NOT as expected — this is the real finding):
+    `_migrations_applied` last = 562. Migrations 563/564/565/566 NOT applied.
+    `asset_registry`: ka_gochara=DRAFT/global, ka_gochara_sweep=CURRENT/active,
+      ka_gochara_v2_materialize=CURRENT — all still pre-cutover.
+    Live `gochara_activation_get(482012f1…)`: still 500s — `column "term_breakdown" does not
+      exist`. All 3 gochara tools still broken in production DESPITE #1201 having merged to
+      main >5.5h ago.
+    ROOT CAUSE (confirmed via `gh run view` on the actual failed run, not inferred): the deploy
+      triggered by 670d56c2f (run 31407300776) FAILED at Build&Deploy Web → "Run database
+      migrations" with `PROD_DATABASE_URL secret not set — migrations NOT applied`. Pipeline/
+      MCP/Sidecar images deployed fine; only the web job's migration step failed.
+      Secret IS valid+populated (`gh secret list` confirms, set 2026-06-22); the SAME step
+      succeeded cleanly on run 31381281513 at 10:55Z same day with zero config changes between.
+      No GitHub Environments configured (ruled out env-scoping). This is the SAME failure mode
+      the brief flagged from an EARLIER 12:12Z deploy — now confirmed to have recurred on the
+      wave-1 deploy itself, twice in one day, interleaved with clean successes. Read as an
+      intermittent workflow_run secret-resolution flake, not a broken deploy.yml — deploy.yml
+      itself is not proposed for edit; a clean retry is the diagnosed fix, PENDING NATIVE
+      GO-AHEAD (production-affecting action per this session's operating agreement).
+  A7 — VERIFIER DEBT: `ci.yml` `pull_request.branches` allowlist = `[main,
+    'shad-darshana/integration']` — parishkara/integration was never added, confirming the
+    brief's M2: every lane PR into integration ran ZERO CI checks (verified via `statusCheckRollup`
+    on #1198/#1204/#1206 — all empty), merged on PARĪKṢAKA verdict alone. All 14 merged lanes DO
+    carry a substantive PARĪKṢAKA verdict on GitHub — genuine content, not fabricated. One filing
+    inconsistency: MR-08's PASS (PR #1206) was posted as a plain issue COMMENT, not a formal
+    GitHub PR review object (the other 13 are proper reviews) — retroactive formal-review dispatch
+    queued this session to close the gap.
+  MR STATUS: no MR row changes from this reconciliation — the ledger's MERGED marks were
+    already correct for all 14 lanes; the correction is at the PACKET level (#1201 landed;
+    #1203/1204/1205/1206 are one hop behind on integration; deploy for the landed packet failed
+    and has not yet been retried).
+  NEXT-ACTION: (1) retry wave-1 deploy on native go-ahead, verify migrations 563-566 apply +
+    registry flips + all 3 tools un-500 on both charts; (2) land ci.yml integration allowlist fix
+    (M2) on native go-ahead; (3) dispatch retroactive formal PARĪKṢAKA review for MR-08; (4) drop
+    duplicate stash on native go-ahead; (5) open next integration→main gate packet for
+    MR-03/04/07/08 off a pinned commit, hold merge for native go-ahead; (6) resume MR-10/13/14/15
+    once schema cols confirmed live.
