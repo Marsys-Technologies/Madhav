@@ -1,0 +1,25 @@
+mechanism_id: w27_annual_stack
+wave: 2
+lane: W2.7
+description: "Annual context stack — composite of w27a (Tājaka year-lord), w27b (Tithi Praveśa tone), w27c (Sudarśana cakra placement); product modifier"
+citation_status: cited
+classical_citation: "Tājaka Nīlakaṇṭhī, Sudarśana Cakra Paddhati, BPHS Tājaka chapter — the three annual-context PERMISSION generators combined as a product modifier"
+v1_lineage:
+  replaces: "no v1 equivalent — new annual-context PERMISSION stack; sub-components w27a/b/c are independently togglable"
+  v1_module: null
+  change_type: new_generator
+  note: >
+    w27_annual_stack is the parent composite: compute() returns the product of
+    w27a (tajaka_year_lord), w27b (tithi_pravesha), w27c (sudarshana) sub-modifiers.
+    Each sub-mechanism is independently admitted (has its own toggle_key YAML).
+    This parent YAML exists for W4.4 weight-fitting registry completeness.
+module_path: services/gochara_v3/mechanisms/w27_annual_stack.py
+function: compute
+admission_state: candidate
+ablation_evidence_link: null
+admission_ruling_id: null
+toggle_key: w27_annual_stack
+sub_components:
+  - w27a_tajaka_year_lord
+  - w27b_tithi_pravesha
+  - w27c_sudarshana
