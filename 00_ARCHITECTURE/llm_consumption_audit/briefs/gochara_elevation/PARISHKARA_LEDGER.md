@@ -43,7 +43,7 @@ marker_duty: post W6-COMPLETE to campaign-coordination §6 after MR-01..08,10,13
 | MR-31 | SAMPŪRTI branch merge (theirs — track only) | EXTERNAL | coordination file |
 | MR-32 | DR-13 → Stage C seeding | QUEUED | — |
 | MR-33 | CRPS honest-deferred (verify L5 wiring, record trigger) | QUEUED | — |
-| MR-34 | Third-chart scope statement | BUILDING | re-dispatching (prior task not found) |
+| MR-34 | Third-chart scope statement | PR-OPEN | PR #1194 (parishkara/mr-34 → parishkara/integration) · PARĪKṢAKA ac2cbc5a running · re-dispatch ae1e5938 adding canonical filename + TDD tests |
 | MR-35 | Serving-outage smoke probe (CI) | BUILDING | agent a688496f098af7485 · worktree pk-mr35 |
 | MR-36 | (merged into MR-21) | MERGED-INTO-21 | register §7 |
 
@@ -93,3 +93,14 @@ scope reduction below 27 classes · retiring any serving surface · LEL content.
   MR-34 task not found — re-dispatching. MR-25 dispatching (deferred parallel lane).
   NEXT-ACTION: await builder completions; spawn PARĪKṢAKA (opus) for each completed PR;
   MR-25 now in flight. Monitor MR-01 vitest install issue — may need npm install step.
+
+- 2026-08-10 ~19:37 IST (conductor heartbeat):
+  CONDUCTOR-HEARTBEAT: 2026-08-10T14:07:00Z pid=47856 host=Montys-MacBook-Pro.local
+  MR-34 COMPLETED: PR #1194 opened (parishkara/mr-34 → parishkara/integration).
+  Key finding: AUTHORITATIVE_GENERATION_FILTER COALESCE('v1') confirmed correct
+  for cb73cd3d (no authority row → naturally serves v1; no code fix needed for MR-02
+  null-chart case). Re-dispatch ae1e5938 adding canonical THIRD_CHART_SCOPE_STATEMENT_v1_0.md
+  + TDD tests to same branch. PARĪKṢAKA ac2cbc5a dispatched for PR #1194.
+  Active builders: MR-01+02+05 (vitest issue), MR-09, MR-18 (fixes in flight),
+  MR-25 (new), MR-30, MR-34-redispatch, MR-35.
+  NEXT-ACTION: await remaining builders; merge PR #1194 when PARĪKṢAKA passes.
