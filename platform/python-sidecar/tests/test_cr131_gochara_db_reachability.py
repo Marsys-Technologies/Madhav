@@ -94,18 +94,44 @@ def test_kala_gochara_windows_reachable_and_has_rows_for_native_chart():
     table + chart_id the gochara serving tools query. Before PR #732 this was
     unreachable from the MCP server's own process (DATABASE_URL not set there);
     this test proves the underlying table itself was never the problem -- the
-    problem was always the connection path, exactly as CR-131 diagnosed."""
+    problem was always the connection path, exactly as CR-131 diagnosed.
+
+    MR-18 generation stance: this test uses the authority-seam COALESCE to
+    resolve which generation is currently authoritative for the chart, then
+    asserts row presence for THAT generation. After the v1→3.0 cutover the
+    table holds rows from both generations; a flat COUNT(*) with no generation
+    filter would give a spuriously large number and mask an honest-zero state
+    on the authoritative generation. The COALESCE pattern matches what the
+    serving tools themselves do (register_gochara_windows.ts reads the
+    authority pointer per chart before querying rows).
+    """
     conn = _live_conn_or_skip()
     try:
         with conn.cursor() as cur:
+            # Resolve authoritative generation via the authority seam.
+            # COALESCE(..., 'v1') matches the absent-row-means-v1 contract
+            # established by migration 527 / ADJUDICATION-6.
             cur.execute(
-                "SELECT count(*) AS n FROM kala_gochara_windows WHERE chart_id = %s",
+                "SELECT COALESCE("
+                "  (SELECT authoritative_generation FROM kala_gochara_authority"
+                "   WHERE chart_id = %s),"
+                "  'v1'"
+                ") AS authoritative_generation",
                 (CHART_ID,),
+            )
+            auth_row = cur.fetchone()
+            authoritative_generation = (auth_row or {}).get("authoritative_generation", "v1")
+
+            cur.execute(
+                "SELECT count(*) AS n FROM kala_gochara_windows "
+                "WHERE chart_id = %s AND generation = %s",
+                (CHART_ID, authoritative_generation),
             )
             row = cur.fetchone()
         assert row is not None
         assert row["n"] > 0, (
-            "kala_gochara_windows has zero rows for chart 482012f1 -- if this ever "
+            f"kala_gochara_windows has zero rows for chart 482012f1 "
+            f"(generation={authoritative_generation!r}) -- if this ever "
             "flips true, gochara_activation_get/forecast_get's honest-empty path "
             "should fire, not a reachability error."
         )
