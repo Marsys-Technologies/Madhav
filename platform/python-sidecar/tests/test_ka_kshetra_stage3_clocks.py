@@ -664,7 +664,14 @@ class TestWriteBoundaryRows:
         assert conn.calls[0][1] == [CHART_ID, "vimshottari"]
 
     def test_writes_one_insert_per_row(self):
-        conn = _FakeConn()
+        from unittest.mock import MagicMock
+        mock_cursor = MagicMock()
+        mock_cursor.__enter__ = lambda s: s
+        mock_cursor.__exit__ = MagicMock(return_value=False)
+
+        mock_conn = MagicMock()
+        mock_conn.cursor.return_value = mock_cursor
+
         rows = [
             SC.BoundaryRow(
                 system_id="vimshottari", level="MD", lord="Jupiter", parent_lords=[],
@@ -674,7 +681,8 @@ class TestWriteBoundaryRows:
                 source_pk="row-1",
             ),
         ]
-        n = SC.write_boundary_rows(CHART_ID, "vimshottari", rows, conn)
+        n = SC.write_boundary_rows(CHART_ID, "vimshottari", rows, mock_conn)
         assert n == 1
-        insert_calls = [c for c in conn.calls if c[0].strip().startswith("INSERT")]
-        assert len(insert_calls) == 1
+        # DELETE goes through conn.execute; batch INSERT goes through cursor.executemany (L1d fix)
+        mock_conn.execute.assert_called_once()
+        mock_cursor.executemany.assert_called_once()
