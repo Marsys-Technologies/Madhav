@@ -14,7 +14,7 @@ conductor_session: SAMPURTI-CONDUCTOR-2026-08-10 (first run)
 
 # SAMPŪRTI CAMPAIGN LEDGER
 
-CONDUCTOR-HEARTBEAT: 2026-08-10T05:35+05:30 (SAMPURTI-CONDUCTOR-2026-08-10) [Wave 1 S2 PR #1139 PARĪKṢAKA PASS + MERGED to integration (5ba9b646)]
+CONDUCTOR-HEARTBEAT: 2026-08-10T06:05+05:30 (SAMPURTI-CONDUCTOR-2026-08-10, resumed) [coordination protocol landed (PR #1142); PR #1141 drafted pending P-G1; preparing P-G1 dispatch]
 
 ## WAVE POSITION
 
@@ -31,6 +31,29 @@ before effects computed; CI-checkable by commit order) · R16 every claim
 scope-stated + detector-cited · R29 full delegation to NATIVE-PRATINIDHI except
 life-event data creation (Abhinandan LEL AWAITING-NATIVE; genuinely ambiguous
 LEL resolver rows PARKED-honest, never guessed).
+
+## CROSS-CAMPAIGN COORDINATION (BINDING — native-directed 2026-08-10)
+
+GOCHARA-UTKARṢA runs concurrently on this repo (branches `utkarsha/campaign` +
+`gochara3/*`). `00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md` (PR #1142) is
+BINDING on this campaign:
+
+1. **Deploy/rebuild lease** — before ANY production deploy or orchestrator
+   build/rebuild: fetch + read the coordination file from origin/main, verify no
+   ACTIVE UTKARṢA lease, record our lease (with expiry), release when done.
+2. **Migration claims** — 556 is UTKARṢA's (unmerged). Our next claim starts at
+   557, recorded in the coordination file at PR-open.
+3. **Pin-SHA rule** — every rebuild/acceptance evidence records the commit SHA
+   the rebuild ran at (UTKARṢA edits kota/vedha/sweep writers concurrently; our
+   S5/S6 evidence must be SHA-anchored, not "current").
+4. **R-COORD-2** — after UTKARṢA's migration 556 (generation-aware sweep guard)
+   merges, our sweep-corpus detectors (606/606 + 16,297/19,323) must be
+   re-derived generation-filtered BEFORE being cited again.
+5. **G11 deferral (R-COORD-1, proposed)** — Wave-2 gochara-family retirements
+   DEFERRED until UTKARṢA's cutover completes, then executed jointly. Non-gochara
+   retirements proceed normally. Awaiting UTKARṢA ADJUDICATOR counter-signature.
+6. **Never touch UTKARṢA's files/worktrees/branches** — flag anomalies in the
+   coordination file §6 LOG instead.
 
 ## WAVE 0 LANE TABLE
 
@@ -145,9 +168,21 @@ the gate. Builder swarm instructed to never self-apply migrations in future lane
 Wave 1 S2 COMPLETE: PR #1139 MERGED to sampurti/integration (5ba9b646).
 PARĪKṢAKA PASS (9/9 checks: plugin order, S1-F1 fix, §N.3 discipline, WriterResult, no commit/close, stage2 SQL, 3-tuple, annotations, test coverage).
 
-NEXT STEP: Dispatch P-G1 proof builder (full L1→L5 rebuild of chart 482012f1 on sampurti/integration branch).
-P-G1 proof ladder: (a) kala_field_clocks > 0 rows with Law-1 states; (b) kala_field_windows narrow; (c) kala_ahead_get serves narrow windows for canonical chart.
-On P-G1 PASS: assemble Wave 1 gate packet (integration→main) + deploy.
+Governance acts (06:05 IST, native-directed "go"): coordination protocol PR #1142
+opened + auto-merge armed (CAMPAIGN_COORDINATION.md → main); PR #1141 converted to
+DRAFT with hold comment (merges only after P-G1 GREEN pasted here); coordination
+block added above (BINDING).
 
-If this conductor dies: resume per prompt — Wave 1 S2 merged; next action is P-G1 rebuild + proof.
+NEXT STEP (in order):
+1. Verify Wave-0 deploy independently (four services on new revisions, production==main) — ledger
+   claims run 31341882724; conductor re-verifies before rebuild.
+2. Take deploy/rebuild LEASE per coordination block.
+3. Dispatch P-G1 proof: rebuild 482012f1 through wired stages 0–3 on sampurti/integration @ pinned SHA.
+   P-G1 rung (PA-1 criteria): (a) kala_field_clocks > 0 with Law-1 states; (b) >1 window per clocked
+   class; (c) windowed fraction ≈≤20% of horizon; (d) compression/scarcity features computable;
+   (e) windows track daśā ladder (spot-read). Paste window tables here.
+4. On P-G1 GREEN: un-draft PR #1141, gate integration→main, deploy, release lease.
+
+If this conductor dies: resume per prompt — check PR #1142/#1141 state, coordination
+block above is binding; next action is the numbered list above from wherever it stopped.
 Merged to integration: ALL 6 Wave-0 + CI-fix (65f967873) + Wave-1 S2 (5ba9b646).
