@@ -1,0 +1,16 @@
+mechanism_id: w24_sade_sati
+wave: 2
+lane: W2.4
+description: "Sade Sati fully — phase-quarter intensity + cancellation rules from ga_sade_sati chart_facts"
+citation_status: cited
+classical_citation: "Brihat Parashara Hora Shastra — Sade Sati chapter; ga_sade_sati 11k chart_facts rows"
+v1_lineage:
+  replaces: "only boolean phase-membership consumed in v1; quarter intensity + 8 cancellation rules unread"
+  v1_module: services/gochara_intensity/permission.py
+  change_type: enhancement
+  note: "v1 used boolean only; v3 uses phased intensity from ClassContext.sade_sati_phases"
+module_path: services/gochara_v3/mechanisms/w24_sade_sati.py
+admission_state: candidate
+ablation_evidence_link: null
+admission_ruling_id: null
+toggle_key: w24_sade_sati
