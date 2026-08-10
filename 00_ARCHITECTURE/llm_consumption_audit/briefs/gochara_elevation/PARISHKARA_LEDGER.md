@@ -341,4 +341,7 @@ scope reduction below 27 classes · retiring any serving surface · LEL content.
     GATE-EXECUTOR (a2c8c6190edff81a1): RUNNING — PR #1201 pending 3 CI checks, will merge+deploy
     PARĪKṢAKA MR-03 (a986ab61334781bb2, opus): RUNNING
     PARĪKṢAKA MR-07 (a4a80abdef87985d2, opus): RUNNING
+  NOTE: TS hotfix push (97240701a) triggered 4th CI re-run on PR #1201 (run 31403334441).
+    All checks fresh-PENDING again; GATE-EXECUTOR watching latest run. Protocol: hold MR-03/07
+    merges to integration until PR #1201 lands on main (to avoid further CI re-triggers).
   NEXT-ACTION: await PARĪKṢAKA verdicts for MR-03/07; await GATE-EXECUTOR (PR #1201 → deploy → L-4).
