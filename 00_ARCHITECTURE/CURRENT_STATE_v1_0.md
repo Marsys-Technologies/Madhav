@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.57
+version: 6.58
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,24 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.58 (2026-08-10, GOCHARA-UTKARṢA CAMPAIGN CLOSE — all 34 lanes COMPLETE): All 6 waves
+    merged to main and all ops lanes executed. Wave summary: W0 (6 lanes incl. I6a) — registry/
+    schema/engine/rulings/utkarsha_builder-role infrastructure; W1 (5 lanes) — bounded λ_v3 core
+    engine; W2 (9 lanes) — 9 mechanism upgrades (AV-gating/moorti/tara/sade-sati/kota/eclipses/
+    annual-context/bhava-degrees/citation-table); W3 (4 lanes) — 27-class/interval-chain/
+    multi-resolution/century-horizon; W4 (6 lanes) — bakeoff/negative-control/ablation/weight-
+    fitting/post-fit-rebuild/LEL-mining; W5 (4 lanes) — serving-elevation/DAG-integration/docs/
+    writer-repoint+mutation-guard; W6 (5 lanes) — full-century corpus builds/three-legged gate/
+    authority-flip/UTK-R2 rename/close. Production state: kala_gochara_windows gen='3.0'
+    rows=60/chart (native+Abhinandan, empirically_calibrated); v1 corpus intact (native=16297,
+    Abhinandan=19323, I1 invariant HOLDS throughout); Abhinandan authority flipped→3.0;
+    ka_gochara_sweep marked RETIRED; migration 563 applied. Known residuals carried to L5
+    calibration loop: W4.5 Stage C brahma_prospective_ledger seeding (DR-13 shape mismatch),
+    W6.2 AC3 CRPS comparison (no outcome data yet), gochara_v3_calibration weights 0.0
+    (term_breakdown=NULL in current corpus), native chart authority flip (deferred — native
+    controls own cockpit trigger). LEDGER sealed CAMPAIGN: COMPLETE. Main HEAD: 63435580a.
+    last_session_id: UTKARSHA-CONDUCTOR-SESSION-12-2026-08-10.
+    predecessor_session: SAMPURTI-L0A-2026-08-10.
   - v6.57 (2026-08-10, SAMPURTI L0a — G16 record repair): CORRECTS the false line at :124 in the
     v6.53 entry. Evidence: `git show --stat f19969c5b` (PR #1025) title names W3 items 9/13/31/6/7
     and W4 items 26/42 as shipped; `git show --stat e81fc2958` (PR #1090) title names W3 items
