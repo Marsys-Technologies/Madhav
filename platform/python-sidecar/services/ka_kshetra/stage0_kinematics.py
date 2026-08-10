@@ -824,16 +824,51 @@ def row_to_params(row: KinematicsRow) -> dict:
     }
 
 
+_BATCH_INSERT_SQL = """
+INSERT INTO kala_field_kinematics (
+    chart_id, event_kind, body, target_kind, target_ref, t_days, event_ts,
+    longitude_deg, velocity_dps, latitude_deg, episode_id, dwell_days,
+    dwell_weight, orb_deg, orb_source, eclipse_candidate, gamma_proxy,
+    precision_regime, ayanamsha_id, source_table
+) VALUES (
+    %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'ephemeris_daily'
+)
+ON CONFLICT (chart_id, event_kind, body, COALESCE(target_ref, ''), t_days)
+DO UPDATE SET
+    longitude_deg = EXCLUDED.longitude_deg,
+    velocity_dps = EXCLUDED.velocity_dps,
+    latitude_deg = EXCLUDED.latitude_deg,
+    dwell_days = EXCLUDED.dwell_days,
+    dwell_weight = EXCLUDED.dwell_weight,
+    orb_deg = EXCLUDED.orb_deg,
+    orb_source = EXCLUDED.orb_source,
+    eclipse_candidate = EXCLUDED.eclipse_candidate,
+    gamma_proxy = EXCLUDED.gamma_proxy,
+    computed_at = now()
+"""
+
+
 def write_kinematics_rows(conn, rows: Sequence[KinematicsRow]) -> int:
-    """Idempotent per-row upsert (natural key = chart_id, event_kind, body,
-    target_ref, t_days) — row-level idempotency; the coarser once-per-chart
-    delete-then-insert (§N.3) is orchestrated once in `ka_kshetra.plan_substeps`
-    (Lane C), never here (§1 rail 4)."""
-    n = 0
-    for r in rows:
-        conn.execute(UPSERT_SQL, row_to_params(r))
-        n += 1
-    return n
+    """Batch-inserts all rows via cursor.executemany() to avoid per-row round-trip
+    latency (L1f fix — same class as L1d stage3_clocks fix, SAMPURTI campaign).
+
+    §N.3: the once-per-chart DELETE runs once in plan_substeps before any substep;
+    the ON CONFLICT clause handles idempotent re-runs within the same substep."""
+    if not rows:
+        return 0
+    params = [
+        [
+            r.chart_id, r.event_kind, r.body, r.target_kind, r.target_ref,
+            r.t_days, t_days_to_datetime(r.t_days), r.longitude_deg, r.velocity_dps,
+            r.latitude_deg, r.episode_id, r.dwell_days, r.dwell_weight,
+            r.orb_deg, r.orb_source, r.eclipse_candidate, r.gamma_proxy,
+            r.precision_regime, r.ayanamsha_id,
+        ]
+        for r in rows
+    ]
+    with conn.cursor() as cur:
+        cur.executemany(_BATCH_INSERT_SQL, params)
+    return len(rows)
 
 
 # ═════════════════════════════════════════════════════════════════════════════
