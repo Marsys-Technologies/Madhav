@@ -1,0 +1,16 @@
+mechanism_id: w26_real_eclipses
+wave: 2
+lane: W2.6
+description: "Real eclipses from bg_sky_calendar — replaces node×luminary proxy with actual eclipse events"
+citation_status: cited
+classical_citation: "BPHS — Graha yuddha and eclipse chapters; bg_sky_events (31,059-row sky calendar)"
+v1_lineage:
+  replaces: "eclipse_degree proxy via Rahu/Ketu node×luminary proximity (uncited_extension=True)"
+  v1_module: services/gochara_grammar/primitives.py
+  change_type: replacement
+  note: "v1 used node proximity as eclipse proxy; v3 uses real eclipse events from bg_sky_calendar"
+module_path: services/gochara_v3/mechanisms/w26_real_eclipses.py
+admission_state: candidate
+ablation_evidence_link: null
+admission_ruling_id: null
+toggle_key: w26_real_eclipses
