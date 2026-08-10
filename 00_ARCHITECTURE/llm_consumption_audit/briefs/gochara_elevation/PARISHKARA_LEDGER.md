@@ -147,3 +147,25 @@ scope reduction below 27 classes · retiring any serving surface · LEL content.
     in parallel. Re-dispatching MR-25 builder (sonnet) to pk-mr25 worktree.
   NEXT-ACTION: await PARĪKṢAKA verdicts; merge PASS PRs to parishkara/integration in batches;
     re-dispatch MR-25; advance spine items (MR-06/07/08) once MR-01+02+05 PARĪKṢAKA PASS.
+
+- 2026-08-10 ~19:55 IST (conductor session 4 open):
+  CONDUCTOR-HEARTBEAT: 2026-08-10T14:24:00Z pid=7460 host=Montys-MacBook-Pro.local
+  SESSION-4: context compacted again. Prior pid=47856 DEAD, pid=10226 DEAD (ps -p both → exit 1).
+  pgrep -f "CONDUCTOR of PARIṢKĀRA" → 7460 (only self). Lease free.
+  STATE RECONCILIATION:
+    All session-3 PARĪKṢAKA agents expired without posting verdicts (0 reviews on all PRs).
+    6 PRs remain OPEN and UNREVIEWED:
+      PR #1194 (MR-34): 2 commits — scope statement + TDD tests
+      PR #1195 (MR-18): 2 commits — generation-stance fixes + 8 gate tests GREEN
+      PR #1196 (MR-35): 3 commits — smoke probe skeleton + working probe + CI workflow
+      PR #1197 (MR-09): 4 commits — transit rename + health probe + discoverability + docstring
+      PR #1198 (MR-01+02+05): 4 commits — TDD red + FK fix (563) + 8-col migration (564) + coverage fix
+      PR #1199 (MR-30): 5 commits — flip/rollback/probe scripts + docstring + cleanup report
+    MR-25 (pk-mr25): builder stalled; uncommitted work exists in worktree:
+      modified: platform-mcp/src/tools/retrieval/register_gochara_windows.ts (+160 lines)
+      modified: platform/src/app/api/mcp/db/query/route.ts (+5 lines)
+      untracked: test_mr25_citation_verse_refs.py + 565_bg_gochara_citation_resolution.sql
+  ACTIONS THIS SESSION:
+    Dispatching 6 fresh PARĪKṢAKA agents (opus) for all 6 PRs.
+    Dispatching MR-25 builder rescue (sonnet) to commit + complete.
+  NEXT-ACTION: await PARĪKṢAKA verdicts; merge PASS PRs to integration; gate to main.
