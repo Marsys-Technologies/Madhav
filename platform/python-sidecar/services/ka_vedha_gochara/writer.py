@@ -150,15 +150,18 @@ def _fetch_janma_moon(conn: Any, chart_id: str) -> tuple[int, int, str] | None:
     """Returns (moon_sign_idx 0-11, moon_nak_idx 0-26, fact_id) for the natal
     Moon, or None if the L1 dependency (ga_positions) has not produced this
     fact — honest absence, never fabricated (B.10)."""
-    with conn.cursor() as cur:
+    # DB9b: the orchestrator connection uses dict_row factory; a bare cursor()
+    # inherits it, making positional row[0]/row[1] access raise KeyError.
+    # Pin dict_row explicitly and read by column name.
+    with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
         cur.execute(_FETCH_JANMA_MOON_SQL, (chart_id, CANONICAL_AYANAMSHA))
         row = cur.fetchone()
-    if not row or row[1] is None:
+    if not row or row["fact_value_num"] is None:
         return None
-    lon = float(row[1])
+    lon = float(row["fact_value_num"])
     sign_idx = int(lon // SIGN_SIZE_DEG) % 12
     nak_idx = int(lon // NAK_SIZE_DEG) % 27
-    return sign_idx, nak_idx, str(row[0])
+    return sign_idx, nak_idx, str(row["fact_id"])
 
 
 def _compute_ayanamsha_offset(reference_date: date) -> float:
@@ -189,13 +192,15 @@ def _fetch_school_tagged_vedha_pair(conn: Any, nakshatra_id_1based: int) -> tupl
     school_tag), or None if the table has no matching row (the honest, only
     -currently-possible outcome). A future native-approved, source-verified
     school's grid activates this path with zero code change."""
-    with conn.cursor() as cur:
+    # DB9b: pin dict_row and read by column name — bare cursor() inherits the
+    # orchestrator connection's dict_row factory, making row[0]/row[1] fail.
+    with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
         cur.execute(_FETCH_GRID_VEDHA_PAIR_SQL, (nakshatra_id_1based,))
         row = cur.fetchone()
-    if not row or row[0] is None:
+    if not row or row["cell_value"] is None:
         return None
     try:
-        return int(row[0]), str(row[1])
+        return int(row["cell_value"]), str(row["school_tag"])
     except (TypeError, ValueError):
         return None
 

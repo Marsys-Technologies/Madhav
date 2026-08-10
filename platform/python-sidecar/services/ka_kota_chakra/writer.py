@@ -147,7 +147,11 @@ def _fetch_ring_assignments(conn: Any) -> tuple[dict[str, frozenset[int]], str] 
     served `ring_table_citation` on kala_kota_chakra rows is a reference to
     the L0 row's table_version, per the ruling's item 4, rather than a
     Python string literal duplicated in this module."""
-    with conn.cursor() as cur:
+    # DB9b: the orchestrator connection uses dict_row factory; a bare cursor()
+    # inherits it, making positional tuple unpacking below raise KeyError/TypeError.
+    # Pin tuple_row explicitly so the positional unpack (ring_position, ring_name,
+    # _table_version, row_citation) receives the correct sequence type.
+    with conn.cursor(row_factory=psycopg.rows.tuple_row) as cur:
         cur.execute(_FETCH_RING_ASSIGNMENTS_SQL)
         rows = cur.fetchall()
     if not rows:
