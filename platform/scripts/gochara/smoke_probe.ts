@@ -45,14 +45,15 @@
  *   npx tsx scripts/gochara/smoke_probe.ts
  *   MCP_SERVER_URL=https://<mcp-host>/mcp MCP_BEARER=<token> npx tsx scripts/gochara/smoke_probe.ts
  *
- * TDD NOTE: this file starts with ALWAYS_FAIL_MODE = true (skeleton / commit 1).
- * Commit 2 sets ALWAYS_FAIL_MODE = false and wires the real probe logic.
+ * TDD NOTE: commit 1 started with ALWAYS_FAIL_MODE = true to prove exit-1 detection
+ * works before real logic was wired. ALWAYS_FAIL_MODE is now false (commit 2) —
+ * the real probe calls the deployed product.
  */
 
 // ── TDD skeleton: hardcoded always-fail path ──────────────────────────────────
-// This exists to prove the failure-detection machinery works before the real
-// probe is wired. Remove / set false in commit 2.
-const ALWAYS_FAIL_MODE = true
+// Was true in commit 1 to prove the failure-detection path works before real
+// logic was wired. Now false — real probe is live (commit 2).
+const ALWAYS_FAIL_MODE = false
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -358,8 +359,9 @@ function printReport(results: ProbeResult[]): void {
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 async function main(): Promise<void> {
-  // TDD skeleton: always-fail path to prove detection works.
-  // COMMIT 2 removes this block and wires the real probe.
+  // TDD skeleton (commit 1): always-fail path to prove detection works.
+  // ALWAYS_FAIL_MODE is now false; this block is inert dead code kept as
+  // a documented test anchor. Safe to delete after audit.
   if (ALWAYS_FAIL_MODE) {
     const syntheticResult: ProbeResult = {
       id: 'tdd-skeleton:always-fail',
