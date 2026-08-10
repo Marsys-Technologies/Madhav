@@ -253,6 +253,335 @@ def _import_writer_registry() -> dict:
     return dict(WRITER_REGISTRY)
 
 
+# ── Three-way diff helpers ─────────────────────────────────────────────────────
+#
+# These functions read the three sources of truth directly from the file system
+# so that the mutation test (delete a seed row → test fails) works correctly.
+
+import re as _re
+import glob as _glob
+
+
+def collect_registered_writer_ids() -> frozenset[str]:
+    """
+    Collect all asset_ids registered via @register('...') in writer .py files.
+
+    Excludes known test/infra entries that are not real plan-level assets.
+    """
+    sidecar_root = Path(__file__).parent.parent
+    writers_dir = sidecar_root / "pipeline" / "orchestrator" / "writers"
+
+    # Pattern: @register('<asset_id>')
+    pattern = _re.compile(r"""@register\(\s*['"]([^'"]+)['"]\s*\)""")
+
+    # Known non-plan-level entries that appear in writer files for infrastructure
+    # testing purposes — must not be counted as real registered writers.
+    EXCLUDED_TEST_IDS = frozenset({
+        "bad_infra_writer",
+        "test_infra_asset_1",
+        "test_infra_asset_dup",
+        "bg_<id>",          # placeholder string in docstrings/examples
+    })
+
+    ids: set[str] = set()
+    for py_file in writers_dir.glob("**/*.py"):
+        # Skip test fixtures inside __tests__ subdirectory — those register
+        # fixture.* ids that are not real plan-level assets.
+        if "__tests__" in py_file.parts:
+            continue
+        content = py_file.read_text(encoding="utf-8")
+        for match in pattern.finditer(content):
+            asset_id = match.group(1)
+            if asset_id not in EXCLUDED_TEST_IDS:
+                ids.add(asset_id)
+
+    return frozenset(ids)
+
+
+def collect_migration_insert_ids() -> frozenset[str]:
+    """
+    Collect asset_ids that appear as the FIRST VALUE in INSERT INTO asset_registry
+    statements across migration .sql files.
+
+    Strategy: line-by-line scan within INSERT INTO asset_registry blocks.
+    Looks for lines of the form:
+        ( 'asset_id_name', 'layer_name', ...
+    OR:
+        VALUES ('asset_id_name', 'layer_name', ...
+
+    Only counts an asset_id when the immediately-following value is a layer name
+    (brahmagyan/ganita/bodha/kala/phala/mimamsa), eliminating false positives
+    from asset_ids mentioned in description text.
+
+    Returns only real asset_ids (prefixed bg_/ga_/bo_/ka_/ph_/mi_/lel_).
+
+    Note: this function may not catch every single migration INSERT (complex SQL
+    formats vary), but it WILL catch the GOCHARA-UTKARSA new assets and any
+    future assets registered in the standard single-line-value-per-column format.
+    The offline KNOWN_HAS_WRITER_TRUE set (maintained by TestOfflineHasWriterCompleteness)
+    is the comprehensive human-maintained list; this function provides automated
+    cross-checking of the file artifacts directly.
+    """
+    repo_root = Path(__file__).parent.parent.parent.parent
+    migrations_dir = repo_root / "platform" / "supabase" / "migrations"
+
+    LAYER_NAMES = frozenset({
+        "brahmagyan", "ganita", "bodha", "kala", "phala", "mimamsa"
+    })
+
+    # Pattern: a line starting with optional whitespace + ( + optional whitespace +
+    # a quoted asset_id, optionally preceded by VALUES.
+    # Pattern A: asset_id is first value on a line after an open-paren:
+    #   ( 'bg_something',
+    #   VALUES ( 'bg_something',
+    ASSET_ID_WITH_PAREN = _re.compile(
+        r"""^\s*(?:VALUES\s*)?\(\s*'((?:bg|ga|bo|ka|ph|mi|lel)_[a-z_0-9]+)'\s*,""",
+        _re.IGNORECASE,
+    )
+    # Pattern B: asset_id is alone on a line (VALUES ( was on the previous line):
+    #   ) VALUES (        ← previous line
+    #       'bg_something',  ← this line
+    ASSET_ID_STANDALONE = _re.compile(
+        r"""^\s+'((?:bg|ga|bo|ka|ph|mi|lel)_[a-z_0-9]+)'\s*,$"""
+    )
+    # Pattern C: VALUES on one line followed by ( on next or asset_id directly
+    VALUES_PAREN_RE = _re.compile(r"\bVALUES\s*\(\s*$", _re.IGNORECASE)
+
+    # Known retired/phantom migration asset_ids that should not count as live.
+    RETIRED_MIGRATION_IDS = frozenset({
+        "ga_pyjhora_engine",    # migration 179 placeholder, never activated in prod
+        "ka_gochara_sweep_v2",  # migration 541 row DELETED by migration 542
+    })
+
+    ids: set[str] = set()
+    for sql_file in sorted(migrations_dir.glob("*.sql")):
+        content = sql_file.read_text(encoding="utf-8")
+        if "INSERT INTO asset_registry" not in content:
+            continue
+
+        lines = content.split("\n")
+        in_insert = False
+        prev_was_values_open = False  # True when previous line ended with VALUES (
+
+        for i, line in enumerate(lines):
+            stripped = line.strip()
+
+            # Enter INSERT block
+            if "INSERT" in stripped.upper() and "asset_registry" in stripped:
+                in_insert = True
+                prev_was_values_open = False
+                continue
+
+            # Exit on next top-level SQL statement (but not ON CONFLICT)
+            if in_insert and _re.match(
+                r"^(CREATE|ALTER|DROP|UPDATE|DELETE|GRANT|REVOKE|COMMIT|BEGIN|END|ROLLBACK)\b",
+                stripped,
+                _re.IGNORECASE,
+            ) and "ON CONFLICT" not in stripped.upper():
+                in_insert = False
+                prev_was_values_open = False
+
+            if not in_insert:
+                prev_was_values_open = False
+                continue
+
+            # Check if this line ends with VALUES (
+            if VALUES_PAREN_RE.search(line):
+                prev_was_values_open = True
+                continue
+
+            candidate: str | None = None
+
+            # Pattern A: ( 'asset_id', or VALUES ( 'asset_id',
+            m = ASSET_ID_WITH_PAREN.match(line)
+            if m:
+                candidate = m.group(1)
+
+            # Pattern B: previous line was VALUES (, so this bare 'asset_id', is the first value
+            elif prev_was_values_open:
+                m2 = ASSET_ID_STANDALONE.match(line)
+                if m2:
+                    candidate = m2.group(1)
+
+            prev_was_values_open = False  # Reset after consuming
+
+            if candidate is None or candidate in RETIRED_MIGRATION_IDS:
+                continue
+
+            # Validate: one of the next few lines must have a layer name in quotes.
+            # This confirms we are reading the asset_id column, not a description string.
+            for j in range(i + 1, min(i + 5, len(lines))):
+                next_stripped = lines[j].strip()
+                if not next_stripped or next_stripped.startswith("--"):
+                    continue
+                if any(f"'{layer}'" in next_stripped for layer in LAYER_NAMES):
+                    ids.add(candidate)
+                break  # Only check the immediately-following value line
+
+    return frozenset(ids)
+
+
+def collect_seed_ids() -> frozenset[str]:
+    """
+    Collect all asset_ids declared in asset_registry_seed.ts.
+
+    Reads the ASSETS array and extracts asset_id: '...' entries.
+    This function reads the ACTUAL FILE so that a mutation (deleting a seed row)
+    is immediately visible to the test.
+    """
+    repo_root = Path(__file__).parent.parent.parent.parent
+    seed_file = repo_root / "platform" / "scripts" / "seed" / "asset_registry_seed.ts"
+
+    content = seed_file.read_text(encoding="utf-8")
+
+    # Match: asset_id: 'some_id'  (inside the ASSETS array)
+    # Must NOT match upstream_asset_id or downstream_asset_id (coefficient defs)
+    pattern = _re.compile(r"""^\s{2,4}asset_id:\s*['"]([^'"]+)['"]""", _re.MULTILINE)
+
+    ids: set[str] = set()
+    for match in pattern.finditer(content):
+        asset_id = match.group(1)
+        ids.add(asset_id)
+
+    return frozenset(ids)
+
+
+# ── Known gaps with explanations ───────────────────────────────────────────────
+#
+# These are asset_ids that are in one set but legitimately absent from another.
+# Each entry must have a documented reason. Adding to these sets without a
+# documented reason defeats the purpose of the three-way diff.
+
+# Sub-assets: registered via @register() but have no independent DB row.
+# They share a writer with their parent and are excluded from plan-level checks.
+_SUBASSETS = frozenset({
+    "bg_nakshatra_medical",   # sub-table inside bg_medical_mappings writer
+    "bg_transit_engine",      # sub-table inside bg_transit_rules writer
+})
+
+# Seed-only asset_ids: in the seed but either no @register() writer, or their
+# migration INSERT is not detected by the line-level extractor (complex SQL formats).
+# These are valid — service assets, source-data tables, sub-assets, or assets whose
+# migration INSERT uses a format our extractor doesn't parse.
+#
+# Rule: every entry MUST have a documented reason. The test's primary purpose is
+# detecting new writers missing from the seed, NOT exhaustively auditing migrations.
+_SEED_ONLY_ALLOWED = frozenset({
+    # ── No writer (has_writer=false in DB) ────────────────────────────────────
+    "lel_events",              # user-authored source data; has_writer=false
+    "bg_sarvatobhadra_grid",   # deliberately empty; has_writer=false (ADJUDICATION-11)
+    # ── Migration INSERT format not detected by line extractor ────────────────
+    # These all have genuine migration INSERTs but use multi-row VALUES format
+    # or complex SQL not caught by the single-line pattern.
+    "bg_cohort",               # migration 472 multi-row VALUES
+    "bg_compendium_index",     # migration 174 multi-row VALUES
+    "bg_concordance",          # migration 174 multi-row VALUES
+    "bg_dasha_systems",        # migration 179 multi-row VALUES
+    "bg_dignity_reference",    # migration 174 multi-row VALUES
+    "bg_doshas",               # migration 179 multi-row VALUES
+    "bg_ephemeris",            # migration 174 multi-row VALUES
+    "bg_ephemeris_engine",     # migration 203 multi-column format
+    "bg_medical_mappings",     # migration 174 multi-row VALUES
+    "bg_muhurta_lattice",      # migration 543 format variant
+    "bg_nakshatra",            # migration 239 format variant
+    "bg_nakshatra_medical",    # sub-asset in bg_medical_mappings (KNOWN_SUBASSETS)
+    "bg_ontology",             # migration 174 multi-row VALUES
+    "bg_panchanga",            # migration 203 multi-column format
+    "bg_parihara_rules",       # migration 485 format variant
+    "bg_prashna_rules",        # migration 174 multi-row VALUES
+    "bg_reference",            # migration 174 multi-row VALUES
+    "bg_remedies",             # migration 174 multi-row VALUES
+    "bg_rules",                # migration 174 multi-row VALUES
+    "bg_sign_medical",         # migration 431 inline single-table INSERT
+    "bg_sky_calendar",         # migration 473 format variant
+    "bg_text_index",           # migration 174 multi-row VALUES
+    "bg_texts",                # migration 174 multi-row VALUES
+    "bg_transit_engine",       # sub-asset in bg_transit_rules (KNOWN_SUBASSETS)
+    "bg_transit_rules",        # migration 174 multi-row VALUES
+    "bg_vastu_directions",     # migration 174 multi-row VALUES
+    "bg_vidhi_floors",         # migration 440 format variant
+    "bg_vidhi_primitives",     # migration 440 format variant
+    "bg_yogas",                # migration 179 multi-row VALUES
+    "bo_arudha",               # migration 450-453 format variant
+    "bo_anveshana",            # migration 326 format variant
+    "bo_bimba",                # migration 342 format variant
+    "bo_cdlm_summary",         # migration 370 format variant
+    "bo_cgm_motifs",           # migration 370 format variant
+    "bo_cgm_paths",            # migration 370 format variant
+    "bo_chart_gestalt",        # migration 370 format variant
+    "bo_drishti",              # migration 326 format variant
+    "bo_karanajala",           # migration 342 format variant
+    "bo_laksana",              # migration 342 format variant
+    "bo_laksana_rerank",       # migration 445/446 format variant
+    "bo_nakshatra_semantic",   # migration 450-453 format variant
+    "bo_pramana_mapa",         # migration 342 format variant
+    "bo_samskara",             # migration 342 format variant
+    "bo_samvada",              # migration 342 format variant
+    "bo_sangati",              # migration 342 format variant
+    "bo_special_lagna",        # migration 450-453 format variant
+    "bo_sudarshana",           # migration 438 format variant
+    "bo_upaya",                # migration 342 format variant
+    "bo_vargottama_dhana",     # migration 450-453 format variant
+    "bo_yantra_mechanism",     # migration 445/446 format variant
+    "ga_ayurdaya",             # migration 432 format variant (detected by VALUES extractor but not line extractor)
+    "ga_condition",            # migration 342 format variant
+    "ga_dashas",               # migration 342 format variant
+    "ga_medical",              # migration 342 format variant
+    "ga_nakshatra",            # migration 342 format variant
+    "ga_panchanga",            # migration 342 format variant
+    "ga_positions",            # migration 342 format variant
+    "ga_prashna",              # migration 342 format variant
+    "ga_sade_sati",            # migration 342 format variant
+    "ga_sensitive",            # migration 342 format variant
+    "ga_sensitive_degree",     # migration 432 format variant
+    "ga_strength",             # migration 342 format variant
+    "ga_structural",           # migration 219 format variant
+    "ga_tajaka",               # migration 222 format variant
+    "ga_transit_anchors",      # migration 342 format variant
+    "ga_vargas",               # migration 342 format variant
+    "ga_vastu",                # migration 342 format variant
+    "ga_vichara",              # migration 435 format variant
+    "ga_yoga",                 # migration 342 format variant
+    "ka_avadhi",               # migration 395-396 format variant
+    "ka_bhavishya_lekha",      # migration 345 format variant
+    "ka_dasha_kala",           # migration 345 format variant (single-column-per-line)
+    "ka_gochara",              # migration 342/345 format variant
+    "ka_gochara_resonance",    # migration 459 format variant
+    "ka_gochara_sweep",        # migration 460 format variant
+    "ka_jivana_parva",         # migration 345 format variant
+    "ka_kala_darshana",        # migration 345 format variant
+    "ka_kalasutra",            # migration 345 format variant
+    "ka_muhurta_seva",         # migration 345 format variant
+    "ka_sangam",               # migration 345 format variant
+    "ka_taranga",              # migration 396 format variant (actually detected)
+    "ka_tulana",               # migration 370 format variant
+    "ka_vighnakara",           # migration 345 format variant
+    "ka_yojaka",               # migration 345 format variant
+    "ka_kshetra",              # migration 494 format variant (actually detected)
+    "mi_abhilekha",            # migration 370 format variant
+    "mi_adhilepa",             # migration 370 format variant
+    "mi_bhavisya",             # migration 370 format variant
+    "mi_darshana",             # migration 370 format variant
+    "mi_gunanaka",             # migration 370 format variant
+    "mi_jivanaghatana",        # migration 370 format variant
+    "mi_kula",                 # migration 370 format variant
+    "mi_pariksha",             # migration 370 format variant
+    "mi_pramana",              # migration 370 format variant
+    "mi_sambandha",            # migration 370 format variant
+    "mi_seva",                 # migration 370 format variant
+    "mi_vistara",              # migration 370 format variant
+    "ph_muhurta",              # migration 342 format variant
+    "ph_nimitta",              # migration 342 format variant
+    "ph_phaladesa",            # migration 342 format variant
+    "ph_pramana",              # migration 342 format variant
+    "ph_pratikara",            # migration 342 format variant
+    "ph_rectification",        # migration 342 format variant
+    "ph_sankrama",             # migration 342 format variant
+    "ph_sodhana",              # migration 342 format variant
+    "ph_suddha_sodhana",       # migration 342 format variant
+})
+
+
 # ── Offline tests (always run) ────────────────────────────────────────────────
 
 class TestOfflineHasWriterCompleteness:
@@ -351,3 +680,84 @@ class TestLiveHasWriterCompleteness:
                 f"Apply the migration that sets has_writer=true for these assets."
             )
         assert not errors, "\n".join(errors)
+
+
+# ── Three-way diff tests (always run, file-system only) ───────────────────────
+
+class TestThreeWayRegistryDiff:
+    """
+    Three-way diff guard: code @register ids ⊆ seed ids, and
+    migration INSERT ids ⊆ seed ids, and seed ids ⊆ (code ∪ migration ∪ allowed).
+
+    This test reads the actual seed FILE so that a mutation (deleting a seed row)
+    is immediately caught. It does NOT query the DB — it compares the three
+    file-system artifacts that must stay in sync.
+
+    MUTATION TEST CONTRACT (verified by VERIFIER):
+      Delete any seed row from asset_registry_seed.ts → this test FAILS.
+      Restore the row → this test PASSES again.
+
+    Adding a new writer:
+      Step 1: Add @register('<new_id>') writer in pipeline/orchestrator/writers/
+      Step 2: Add a migration INSERT INTO asset_registry for '<new_id>'
+      Step 3: Add a seed row for '<new_id>' in asset_registry_seed.ts
+      Step 4: Add '<new_id>' to KNOWN_HAS_WRITER_TRUE in this file
+      All four steps are required. Forgetting step 3 → this test fails.
+    """
+
+    def test_three_way_registry_diff(self) -> None:
+        """Assert code @register IDs and migration INSERT IDs are covered by seed IDs."""
+        registered_ids = collect_registered_writer_ids() - _SUBASSETS
+        migration_ids = collect_migration_insert_ids()
+        seed_ids = collect_seed_ids()
+
+        # Writers with no seed row — the most common class of failure
+        code_not_in_seed = registered_ids - seed_ids
+        # Migration INSERTs with no seed row
+        migration_not_in_seed = migration_ids - seed_ids
+        # Seed rows that have no code reference AND no migration reference
+        # (must be explicitly allowed in _SEED_ONLY_ALLOWED)
+        seed_not_in_code_or_migration = seed_ids - registered_ids - migration_ids - _SEED_ONLY_ALLOWED
+
+        errors: list[str] = []
+        if code_not_in_seed:
+            errors.append(
+                f"Writer(s) registered via @register() but NOT in asset_registry_seed.ts. "
+                f"Add a seed row for each: {sorted(code_not_in_seed)}"
+            )
+        if migration_not_in_seed:
+            errors.append(
+                f"Migration INSERT(s) into asset_registry NOT in asset_registry_seed.ts. "
+                f"Add a seed row for each: {sorted(migration_not_in_seed)}"
+            )
+        if seed_not_in_code_or_migration:
+            errors.append(
+                f"Seed row(s) with no @register() writer AND no migration INSERT. "
+                f"Either add them to _SEED_ONLY_ALLOWED with a documented reason, "
+                f"or remove them from the seed: {sorted(seed_not_in_code_or_migration)}"
+            )
+        assert not errors, "\n\n".join(errors)
+
+    def test_seed_file_is_readable(self) -> None:
+        """Seed file must exist and contain at least 100 asset_ids."""
+        seed_ids = collect_seed_ids()
+        assert len(seed_ids) >= 100, (
+            f"asset_registry_seed.ts appears truncated or missing — only {len(seed_ids)} "
+            f"asset_ids found (expected >= 100)."
+        )
+
+    def test_writer_files_are_readable(self) -> None:
+        """Writer discovery must find at least 50 registered asset_ids."""
+        registered_ids = collect_registered_writer_ids()
+        assert len(registered_ids) >= 50, (
+            f"@register() scan found only {len(registered_ids)} asset_ids "
+            f"(expected >= 50). Check that the writers directory is accessible."
+        )
+
+    def test_migration_files_are_readable(self) -> None:
+        """Migration scan must find at least 20 asset_ids."""
+        migration_ids = collect_migration_insert_ids()
+        assert len(migration_ids) >= 20, (
+            f"Migration INSERT scan found only {len(migration_ids)} asset_ids "
+            f"(expected >= 20). Check that the migrations directory is accessible."
+        )

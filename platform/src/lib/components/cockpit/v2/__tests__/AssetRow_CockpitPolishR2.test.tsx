@@ -334,7 +334,7 @@ describe('CF.L3.8 — StatusDot: DRAFT catalog_status does not override healthy 
 
 // ── Seed governance: Kāla layer count after hard-removal of ka_transit_almanac ──
 describe('Asset seed governance — Kāla layer', () => {
-  it('has exactly 20 kala assets in the seed (ka_transit_almanac removed; ka_avadhi + ka_taranga + ka_kshetra registered; ka_kota_chakra + ka_sudarshana_varsha + ka_moorti_nirnaya + ka_vedha_gochara + ka_tithi_pravesha added (SHAD-DARSHANA W3 items 16/17/4/5/13))', () => {
+  it('has exactly 23 kala assets in the seed (ka_transit_almanac removed; ka_avadhi + ka_taranga + ka_kshetra registered; ka_kota_chakra + ka_sudarshana_varsha + ka_moorti_nirnaya + ka_vedha_gochara + ka_tithi_pravesha added (SHAD-DARSHANA W3 items 16/17/4/5/13); ka_gochara_sweep + ka_gochara_resonance + ka_gochara_v2_materialize added (GOCHARA-UTKARSA W0.1))', () => {
     const { readFileSync } = require('fs')
     const { resolve } = require('path')
     const seedContent: string = readFileSync(resolve(process.cwd(), 'scripts/seed/asset_registry_seed.ts'), 'utf8')
@@ -369,7 +369,12 @@ describe('Asset seed governance — Kāla layer', () => {
     // ṢAḌ-DARŚANA W3 (Lane w3-tithi-pravesha): one more brand-new Kāla writer
     // landed with its own Nirmāṇa asset_registry seed row — `ka_tithi_pravesha`
     // (item 13, migration 531, lunar-return annual chart). 19 → 20.
-    expect(kalaMatches).toHaveLength(20)
+    //
+    // GOCHARA-UTKARSA W0.1 (2026-08-10): three new gochara elevation assets
+    // added to the seed — `ka_gochara_sweep` (migration 460 pre-existing,
+    // now seeded), `ka_gochara_resonance` (migration 459 pre-existing, now
+    // seeded), `ka_gochara_v2_materialize` (new λ_v3 write target). 20 → 23.
+    expect(kalaMatches).toHaveLength(23)
   })
 
   it('contains no ka_transit_almanac entry in the seed', () => {
