@@ -14,7 +14,7 @@ conductor_session: SAMPURTI-CONDUCTOR-2026-08-10 (R4 — native relaunch 16:38 I
 
 # SAMPŪRTI CAMPAIGN LEDGER
 
-CONDUCTOR-HEARTBEAT: 2026-08-10T13:19+00:00 (SAMPURTI-CONDUCTOR-2026-08-10-R4) pid=68645 host=Dev-Mac [W6-COMPLETE WITHHELD: 33 UTKARSHA gaps found (6 SEV-1), F1–F4+F7+F14 gates pending. PG-31 FIXED: PR #1193 open, PARĪKṢAKA dispatched (a6de7131). PG-32 RESOLVED: main merged cleanly (writer.py delete, no conflict). Merging now. W6-COMPLETE await continues.]
+CONDUCTOR-HEARTBEAT: 2026-08-10T13:25+00:00 (SAMPURTI-CONDUCTOR-2026-08-10-R4) pid=68645 host=Dev-Mac [W6-COMPLETE WITHHELD: F1–F4+F7+F14 gates pending. PG-31 MERGED: PR #1193 merged to sampurti/integration (4eabe824, PARĪKṢAKA PASS R1–R5). PG-32 RESOLVED: integration current with main (5468d20a). W6-COMPLETE await continues.]
 
 ## MODEL POLICY (BINDING — native directive 2026-08-10)
 
@@ -51,7 +51,7 @@ PA-0: G1_STAGE_IO_MAP_v1_0.md committed to sampurti/integration (04a2538b8).
 - G12 PR #1191: PARĪKṢAKA OVERALL PASS (R1–R7). Merge commit 682366d9d (2026-08-10T11:59Z). **G12 FULLY CLOSED** — builder agent confirmed: E8 register (5 HELD constraints); E6 NOW+STORY done in PR; AHEAD digest_90d E6-lite pre-existing; ELECT muhurta_lagna_strength honest_empty pre-existing; EXPLAIN pedagogy/counterfactual pre-existing; item 24 robustness wired W1; item 7 is W4 work (not a G12 gap); dasha_sandhi registration verified Wave 0. All G12 sub-items accounted for.
 - G14b PR #1190: PARĪKṢAKA OVERALL PASS (R1–R8). Merge commit c2317eaec (2026-08-10T11:59Z). Non-blocking: no source_citation index (follow-up migration at scale); PR description stated types.ts modified (actually ahead.ts); resolveEventClass order-dependence documented and tested. MERGED.
 - W6-COMPLETE: WITHHELD — native post-close audit found 33 UTKARSHA gaps (6 SEV-1); registered at gochara_elevation/POST_CLOSE_GAP_REGISTER_v1_0.md on utkarsha/campaign. Marker withheld until F1–F4+F7+F14 gates pass. SAMPŪRTI stays on P-G1 hold, correctly.
-- PG-31 (new pre-P-G1 gate, SAMPŪRTI territory): stage4_field.py load_legacy_crosscheck was generation-blind. FIXED: COALESCE authority-seam filter added (same contract as serving layer). PR #1193 OPEN, PARĪKṢAKA dispatched (a6de7131). 4/4 tests PASS, 50/50 total.
+- PG-31 (new pre-P-G1 gate, SAMPŪRTI territory): stage4_field.py load_legacy_crosscheck was generation-blind. FIXED: COALESCE authority-seam filter added (same contract as serving layer). PR #1193 MERGED to sampurti/integration (4eabe824, PARĪKṢAKA PASS R1–R5, 2026-08-10T13:24Z). 4/4 tests PASS, 50/50 total.
 - PG-32 (branch skew): main merged into sampurti/integration cleanly (W6.4 PR #1192 commit 63435580a). No conflict: services/ka_gochara/writer.py delete merged without modify clash. Migration 563 now on integration.
 - P-G1 deferred: ka_kshetra DAG depends on ka_gochara_sweep + ka_gochara_resonance and hazard.py
   cross-checks kala_gochara_windows (R-COORD-2 extension). P-G1 runs ONCE post-W6-COMPLETE on gen-3.0, after PG-31 MERGED.
