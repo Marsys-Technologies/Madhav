@@ -87,6 +87,23 @@ on:
       # entry the workflow never fires for SQL-only PRs, leaving the required check
       # absent and the PR permanently blocked from the queue.
       - 'platform/supabase/migrations/**'
+      # PARIṢKĀRA additive-carve-in (2026-08-10, native-authorized, additive-only trigger
+      # coverage): same defect class as the two entries above, hit a third+ time this
+      # session on two different gaps simultaneously —
+      #   (a) 'platform/supabase/migrations/**' above does NOT cover the OTHER migrations
+      #       directory, 'platform/migrations/**' (563_utkarsha_w64_asset_rename.sql lives
+      #       there) — a SQL-only PR touching only that directory never fired TAP-6 either.
+      #   (b) the 'This file' entry above only covers tap-ci.yml itself — a PR touching any
+      #       OTHER workflow file (e.g. ci.yml) never fired TAP-6.
+      # Both close the same way: cover the whole class (all migrations, all workflow files),
+      # not just the one file that happened to trip it this time — matching the campaign's
+      # own migration-sweep discipline (fix the class, not the instance) applied here to CI
+      # trigger coverage. A REQUIRED check that can silently never report is a queue deadlock
+      # with no red anywhere; a follow-up lane to restructure TAP-6 to an always-report
+      # pattern (no-op success when no matching paths change) is queued separately — that is
+      # a behavior change, not additive coverage, and stays paused for the native.
+      - 'platform/migrations/**'
+      - '.github/workflows/**'
   # BUG FIX (2026-08-01). This trigger was MISSING, and its absence silently defeated the
   # 2026-07-31 retirement: three jobs/steps were guarded with
   # `if: github.event_name == 'workflow_dispatch'` on a workflow that had no such trigger, so
