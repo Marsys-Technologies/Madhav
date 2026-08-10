@@ -201,6 +201,15 @@ class KaKshetraWriter(WriterBase):
         #: the rarity axis being unavailable. Surfaced in the substep notes so a
         #: NULL factor always carries a stated reason (§N.8).
         self._coverage_notes: list[str] = []
+        # Chart-level data shared across all event-class contexts.
+        # load_primitives / load_clocks / load_ladder / load_kinematics_breakpoints
+        # all return the same rows regardless of event_class; loading them once
+        # and sharing the objects prevents 19× duplication of the 166 k-primitive
+        # EnvelopeIndex that was the primary OOM trigger in stage4/5.
+        self._shared_envelopes = None          # S4.EnvelopeIndex, set on first class
+        self._shared_clocks = None             # list[ClockApplicability]
+        self._shared_ladder = None             # list[BoundaryRow]
+        self._shared_extra_breakpoints = None  # list[float]
         self._birth_date, self._birth_time = self._load_birth_instant(conn, self._chart_id)
 
         # §7.5 sub-rule 5: resolve the weights version EXACTLY ONCE, here, and
@@ -1489,6 +1498,19 @@ class KaKshetraWriter(WriterBase):
         cached = self._class_cache.get(event_class)
         if cached is not None:
             return cached
+        # Lazy-init chart-level shared objects (same across all event classes).
+        if self._shared_envelopes is None:
+            self._shared_envelopes = S4.EnvelopeIndex(
+                S4.load_primitives(conn, self._chart_id), HORIZON_DAYS
+            )
+        if self._shared_clocks is None:
+            self._shared_clocks = S4.load_clocks(conn, self._chart_id)
+        if self._shared_ladder is None:
+            self._shared_ladder = S4.load_ladder(conn, self._chart_id)
+        if self._shared_extra_breakpoints is None:
+            self._shared_extra_breakpoints = S4.load_kinematics_breakpoints(
+                conn, self._chart_id
+            )
         lifetime, source = S4.load_class_lifetime_count(conn, event_class)
         lifetime = S4.require_baseline(lifetime, event_class)
         shape = S4.require_event_shape(S4.load_event_shape(conn, event_class), event_class)
@@ -1496,14 +1518,13 @@ class KaKshetraWriter(WriterBase):
             event_class=event_class,
             lifetime_count=lifetime,
             promise=S4.load_promise_prior(conn, self._chart_id, event_class),
-            clocks=S4.load_clocks(conn, self._chart_id),
-            ladder=S4.load_ladder(conn, self._chart_id),
-            envelopes=S4.EnvelopeIndex(S4.load_primitives(conn, self._chart_id),
-                                       HORIZON_DAYS),
+            clocks=self._shared_clocks,
+            ladder=self._shared_ladder,
+            envelopes=self._shared_envelopes,
             weights=self._weights,
             horizon_days=HORIZON_DAYS,
             baseline_source=source,
-            extra_breakpoints=S4.load_kinematics_breakpoints(conn, self._chart_id),
+            extra_breakpoints=self._shared_extra_breakpoints,
         )
         ctx = _ClassContext(
             event_class=event_class,
