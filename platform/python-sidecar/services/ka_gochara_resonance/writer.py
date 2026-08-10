@@ -52,30 +52,134 @@ import logging
 from typing import Any, Iterable
 
 from brahmagyan.graha_vocabulary import norm_graha
-from services.gochara_grammar.event_class_scope import SWEEP_EVENT_CLASSES
 
 logger = logging.getLogger(__name__)
 
-FORMULA_VERSION = "ka_gochara_resonance_v1.0"
+FORMULA_VERSION = "ka_gochara_resonance_v2.0"
 _CANONICAL_AYANAMSHA = "lahiri_chitrapaksha"
 
 # ── Event-class scope ────────────────────────────────────────────────────────
-# NO LONGER DECLARED HERE (ṢAḌ-DARŚANA item 9, 2026-08-02). The scope now lives
-# in `services.gochara_grammar.event_class_scope.SWEEP_EVENT_CLASSES`, the ONE
-# shared, CI-diffed declaration the whole gochara grammar coordinates through
-# (brief §7 ONE-VOCABULARY rail) — because this tuple silently governs far more
-# than this writer: `ka_gochara_sweep` plans its substeps from whatever
-# `gochara_resonance_map` rows exist, and the served
-# `coverage.event_classes_covered` / `domains_not_covered`
-# (platform-mcp `register_gochara_windows.ts`) are derived from the same table.
-# Its original 3 classes named no health-domain and no adverse-valence class,
-# which is DP-4 — the data root of the S4-05 trust-breaking veto. See that
-# module's docstring and `tests/l3/test_s4_05_health_adverse_class.py`.
+# W3.1: Extended to all 27 canonical event classes (2026-08-10).
 #
-# The original selection rationale (richest bg_transit_rules graha x house
-# coverage) is retained in GOCHARA_RESONANCE_MAP_SPEC.md §4 and still describes
-# the three legacy classes.
-TARGET_EVENT_CLASSES: tuple[str, ...] = SWEEP_EVENT_CLASSES
+# NOTE: We do NOT import SWEEP_EVENT_CLASSES for this — the gochara_grammar
+# tuple covers only 6 (the SWEEP scope). The resonance writer's scope is now
+# LARGER than the sweep scope by design: resonance map covers all 27 domains,
+# while the sweep substep plan is gated by what's in the resonance map.
+# I2: this file (ka_gochara_resonance/writer.py) is NOT in gochara_grammar/,
+# so this change is legal and does not touch the frozen gochara_grammar module.
+#
+# The original 6-class scope (3 legacy + 3 health/adverse) is retained as the
+# leading prefix so an existing chart's substep plan keeps its historical
+# ordering. Order is stable and legacy-first.
+_ALL_27_EVENT_CLASSES: tuple[str, ...] = (
+    # Legacy 3 (richest bg_transit_rules coverage — GOCHARA_RESONANCE_MAP_SPEC.md §4)
+    "marriage", "major_gain", "career_advancement",
+    # Health/adverse extension (ṢAḌ-DARŚANA item 9, closes DP-4)
+    "illness_acute", "chronic_onset", "surgery",
+    # W3.1 extension — remaining 21 canonical classes
+    "career_entry", "career_change", "career_setback", "business_launch",
+    "education_milestone", "exam_outcome",
+    "romantic_start", "separation",
+    "childbirth", "parental_event", "bereavement",
+    "major_loss", "property_acquisition",
+    "relocation", "foreign_settlement",
+    "spiritual_turn",
+    "achievement_recognition", "financial_deception", "psychological_arc",
+    "birth_anchor", "travel_event",
+)
+TARGET_EVENT_CLASSES: tuple[str, ...] = _ALL_27_EVENT_CLASSES
+
+# ── Per-class coverage quality notes (I4 honest thin map documentation) ──────
+# Documents the signature_model depth for each event class as seeded in
+# brahma_event_ontology (migrations 388 + 456). Classes marked "provisional"
+# inherited their signature_model from a sibling class; a dedicated Jyotish
+# sourcing pass is an open item for those. This dict does NOT affect what rows
+# get emitted — the writer always emits exactly what the ontology data supports,
+# no more (I4). Sparse signature_models produce fewer rows, not fabricated ones.
+COVERAGE_QUALITY_NOTES: dict[str, str] = {
+    # ── Legacy 3 (non-provisional, dedicated citations) ──
+    "marriage":
+        "rich_model: houses 7,2 + lord 7L + karaka Venus; BPHS ch.7/Phaladeepika/Jaimini DK cited",
+    "major_gain":
+        "rich_model: houses 2,11 + lords 2L,11L + karakas Jupiter,Mercury; BPHS ch.2,11 cited",
+    "career_advancement":
+        "rich_model: houses 10,11 + lords 10L,11L + karaka Sun; BPHS ch.10/Phaladeepika cited",
+    # ── Health/adverse extension (non-provisional, dedicated citations) ──
+    "illness_acute":
+        "rich_model: houses 6,8 + lords 6L,8L + karakas Mars,Saturn; BPHS ch.6/Phaladeepika cited",
+    "chronic_onset":
+        "rich_model: houses 6,8 + lords 6L,8L + karaka Saturn; BPHS ch.6,8/Sade-Sati rules cited",
+    "surgery":
+        "rich_model: houses 6,8 + lords 6L,8L + karaka Mars; BPHS ch.6/Phaladeepika cited",
+    # ── W3.1 extension ──
+    "career_entry":
+        "rich_model: houses 10,6,1 + lords 10L,6L + karakas Sun,Saturn; BPHS ch.10/Phaladeepika cited",
+    "career_change":
+        "rich_model: houses 10,3,9 + lord 10L + karaka Rahu; BPHS ch.10/Rahu transit rules cited",
+    "career_setback":
+        "rich_model: houses 10,6,8,12 + lord 10L afflicted + karakas Saturn,Rahu; BPHS dusthana cited. "
+        "Note: lords field contains 'afflicted' qualifier text — qualifier tokens are dropped by "
+        "_build_lord_rows (non-numeric tokens stripped), only clean lord refs emit rows.",
+    "business_launch":
+        "rich_model: houses 7,10,11 + lords 7L,10L,11L + karakas Mercury,Jupiter; BPHS ch.7,10,11 cited",
+    "education_milestone":
+        "rich_model: houses 4,5,9 + lords 4L,5L,9L + karakas Mercury,Jupiter; "
+        "BPHS ch.4,5,9/Jaimini Sutram cited",
+    "exam_outcome":
+        "moderate_model: houses 5,9 + lord 5L + karaka Mercury; BPHS ch.5 cited",
+    "romantic_start":
+        "moderate_model: houses 5,7 + lords 5L,7L + karaka Venus; BPHS ch.5,7 cited. "
+        "self_report_non_discriminating=true (evidence_requirements); rows emitted honestly, "
+        "calibration layer must weight accordingly",
+    "separation":
+        "rich_model: houses 6,8,12 + lord 7L afflicted + karakas Rahu,Saturn,Mars; "
+        "BPHS ch.7 vivaha-vighna cited. Note: '7L afflicted' qualifier dropped same as career_setback",
+    "childbirth":
+        "moderate_model: houses 5,1 + lord 5L + karaka Jupiter; BPHS ch.5/Jaimini putra-karaka cited",
+    "parental_event":
+        "rich_model: houses 4,9 + lords 4L,9L + karakas Moon,Sun; BPHS ch.4,9 cited",
+    "bereavement":
+        "rich_model: houses 8,12,2 + lords 8L + maraka lords (2L/7L) + karakas Saturn,Ketu; "
+        "BPHS ch.8,2 cited. Note: 'maraka lords (2L/7L)' is a compound gloss — "
+        "_build_lord_rows emits '8L' and 'maraka lords (2L/7L)' as-is (non-empty strings); "
+        "the latter is a descriptive token, not a clean lord ref",
+    "major_loss":
+        "rich_model: houses 2,11,12 + lords 2L/11L afflicted + 12L + karakas Saturn,Rahu; "
+        "BPHS ch.12 cited. Note: compound lord tokens ('2L/11L afflicted') passed through as-is",
+    "property_acquisition":
+        "moderate_model: house 4 + lord 4L + karaka Mars; BPHS ch.4 cited",
+    "relocation":
+        "rich_model: houses 4,3,12 + lords 4L,3L + karakas Moon,Rahu; BPHS ch.4,12 cited",
+    "foreign_settlement":
+        "rich_model: houses 12,9,7 + lords 12L,9L + karaka Rahu; BPHS ch.12 cited",
+    "spiritual_turn":
+        "rich_model: houses 9,12,5 + lords 9L,12L + karakas Jupiter,Ketu; "
+        "BPHS ch.9,12/Jaimini Sutram cited. "
+        "self_report_non_discriminating=true (evidence_requirements); rows emitted honestly",
+    # ── 5 provisional classes (migration 456, signature_model inherited from sibling) ──
+    "achievement_recognition":
+        "provisional_model (inherited from career_advancement): houses 10,11,5 + lords 10L,11L,5L "
+        "+ karakas Sun,Mercury; BPHS ch.10/Phaladeepika inherited — pending dedicated Jyotish sourcing",
+    "financial_deception":
+        "provisional_model (inherited from major_loss): houses 2,11,12 + lords 2L/11L afflicted + "
+        "12L active + karakas Rahu,Saturn; BPHS ch.12 inherited — pending dedicated sourcing. "
+        "self_report_non_discriminating=true",
+    "psychological_arc":
+        "provisional_model (inherited from chronic_onset): houses 1,6,12 + lords 1L,6L "
+        "+ karakas Moon,Mercury,Saturn; BPHS ch.1 inherited — pending dedicated sourcing. "
+        "self_report_non_discriminating=true",
+    "birth_anchor":
+        "thin_model (provisional, no predecessor): house 1 + lord 1L + karaka Sun only; "
+        "no dasha_rules or transit_triggers in ontology (birth is the chart epoch, not a "
+        "predictable configuration). Emits bhava/lord/karaka rows only; mechanism/sensitive/"
+        "arudha/yoga rows will be minimal. kill_switch epoch_tautology: excluded from lambda_e "
+        "scoring — emitting resonance rows is honest documentation of natal significators, "
+        "not a timing claim",
+    "travel_event":
+        "provisional_model (inherited from foreign_settlement): houses 3,9,12 + lords 3L,9L "
+        "+ karaka Moon; BPHS ch.12 inherited — pending dedicated sourcing. Lighter-weight "
+        "than foreign_settlement (single trip vs durable residency chain)",
+}
 
 # rule_type -> classical-prior weight (documented in GOCHARA_RESONANCE_MAP_SPEC.md §2)
 _MECHANISM_WEIGHTS: dict[str, float] = {
