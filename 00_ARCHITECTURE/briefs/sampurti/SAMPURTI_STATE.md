@@ -545,3 +545,19 @@ tables must exist) is the remaining gating condition.
 6. Paste kala_field_clocks + kala_field_windows results against PA-1 criteria.
 7. On GREEN: hard block lifts → S5 full-DAG → Wave 2.
 
+---
+
+## R7 HEARTBEAT — 2026-08-10T15:10+00:00 (R7 continuing, W6-COMPLETE poll)
+
+CONDUCTOR-HEARTBEAT: 2026-08-10T15:10+00:00 (SAMPURTI-CONDUCTOR-2026-08-10-R7) pid=86254 host=Montys-MacBook-Pro.local [R7 active: W6-COMPLETE not yet posted. PARIṢKĀRA L-4 lease ACTIVE (expiry 21:30 IST). PR #1201 OPEN — Build Check IN_PROGRESS, all other checks COMPLETED SUCCESS. PARIṢKĀRA MR-08/10/13/14/15/24 still QUEUED (marker gate items). No SAMPŪRTI production work until marker + lease clear.]
+
+**STATE SNAPSHOT (2026-08-10T15:10+00:00, R16):**
+- W6-COMPLETE: NOT POSTED (detector: git show origin/campaign-coordination:CAMPAIGN_COORDINATION.md — no W6-COMPLETE entry in §6 LOG as of this read)
+- L-4 (PARIṢKĀRA deploy lease): ACTIVE, expiry 21:30 IST — do not touch production DB
+- PR #1201 CI: Build Check IN_PROGRESS; all 34 other checks COMPLETED (30 SUCCESS, 4 SKIPPED); no FAILURES
+- PARIṢKĀRA marker gate items outstanding: MR-08 (flip/rollback tooling), MR-10 (promote 54 point rows), MR-13 (honest valence), MR-14 (term_breakdown rebuild), MR-15 (AV gating), MR-24 (product E2E battery) — all QUEUED per PARIṢKĀRA ledger
+- sampurti/integration HEAD: a79b8213f (latest heartbeat commit — PG-31+G12+G14b+L1j all aboard)
+- HARD BLOCK: enforced — no integration→main gate until P-G1 GREEN
+
+**NEXT-ACTION (unchanged):** Poll for W6-COMPLETE every ≤10 min. On marker: verify lease clear → claim SAMPŪRTI lease → gate G12/G14b/PG-31/L1j to main → dispatch P-G1 Cloud Run → paste window tables → hard block lifts.
+
