@@ -14,7 +14,7 @@ conductor_session: SAMPURTI-CONDUCTOR-2026-08-10 (R4 — native relaunch 16:38 I
 
 # SAMPŪRTI CAMPAIGN LEDGER
 
-CONDUCTOR-HEARTBEAT: 2026-08-10T12:45+00:00 (SAMPURTI-CONDUCTOR-2026-08-10-R4) pid=68645 host=Dev-Mac [W6-COMPLETE poll: NOT YET at 12:36 UTC (18:06 IST). L-3 ACTIVE, expires 18:30 IST / 13:00 UTC (~24 min). Gate Packet staged. P-G1 deferred. Polling.]
+CONDUCTOR-HEARTBEAT: 2026-08-10T12:50+00:00 (SAMPURTI-CONDUCTOR-2026-08-10-R4) pid=68645 host=Dev-Mac [W6-COMPLETE poll: NOT YET at 12:46 UTC (18:16 IST). L-3 ACTIVE, expires 18:30 IST / 13:00 UTC (~14 min). Switching to 5-min poll. Gate Packet staged. P-G1 deferred.]
 
 ## MODEL POLICY (BINDING — native directive 2026-08-10)
 
