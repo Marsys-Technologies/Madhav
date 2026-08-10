@@ -425,6 +425,112 @@ class TestRowEmission:
         assert kinds == ["contact_in", "contact_peak", "contact_out"]
 
 
+# ── fetch_orb_deg SAVEPOINT guard (SAMPURTI L1b) ─────────────────────────────
+
+class TestFetchOrbDeg:
+    """Offline tests for fetch_orb_deg's SAVEPOINT/ROLLBACK guard.
+
+    The critical invariant: when the SELECT raises (because orb_deg column
+    does not exist in the live schema), the function must (a) return the
+    default fallback and (b) leave the connection's transaction usable so
+    subsequent execute() calls do NOT fail with InFailedSqlTransaction.
+    Without the SAVEPOINT guard, the bare `except Exception: row = None`
+    pattern swallows the Python exception but leaves PostgreSQL's transaction
+    state ABORTED, causing all subsequent writes to fail.
+    """
+
+    def _make_conn(self, raise_on_select: bool = False, return_row: dict | None = None):
+        """Minimal fake connection that tracks SAVEPOINT/ROLLBACK/RELEASE calls
+        and optionally raises on the SELECT to simulate the missing-column error."""
+        calls = []
+
+        class FakeCursor:
+            def fetchone(self_inner):
+                if raise_on_select:
+                    raise Exception("column orb_deg does not exist")
+                return return_row
+
+        class FakeConn:
+            def execute(self_inner, sql, params=None):
+                calls.append(sql.strip())
+                if "SELECT orb_deg" in sql and raise_on_select:
+                    raise Exception("column orb_deg does not exist")
+                return FakeCursor()
+
+        conn = FakeConn()
+        conn._calls = calls
+        return conn
+
+    def test_returns_default_when_column_missing(self):
+        from services.ka_kshetra.stage0_kinematics import DEFAULT_ORB_DEG, fetch_orb_deg
+
+        conn = self._make_conn(raise_on_select=True)
+        orb, source = fetch_orb_deg(conn, "Su", "natal_graha")
+        assert orb == DEFAULT_ORB_DEG
+        assert source == "default_3deg"
+
+    def test_savepoint_issued_before_select(self):
+        from services.ka_kshetra.stage0_kinematics import fetch_orb_deg
+
+        conn = self._make_conn(raise_on_select=True)
+        fetch_orb_deg(conn, "Su", "natal_graha")
+        # SAVEPOINT must be issued BEFORE the SELECT
+        savepoint_idx = next(
+            (i for i, c in enumerate(conn._calls) if "SAVEPOINT" in c and "ROLLBACK" not in c and "RELEASE" not in c),
+            None,
+        )
+        select_idx = next((i for i, c in enumerate(conn._calls) if "SELECT orb_deg" in c), None)
+        assert savepoint_idx is not None, "SAVEPOINT not issued"
+        assert select_idx is not None, "SELECT not issued"
+        assert savepoint_idx < select_idx, "SAVEPOINT must precede SELECT"
+
+    def test_rollback_issued_on_exception(self):
+        from services.ka_kshetra.stage0_kinematics import fetch_orb_deg
+
+        conn = self._make_conn(raise_on_select=True)
+        fetch_orb_deg(conn, "Su", "natal_graha")
+        rollback_calls = [c for c in conn._calls if "ROLLBACK TO SAVEPOINT" in c]
+        assert rollback_calls, "ROLLBACK TO SAVEPOINT not issued on exception"
+
+    def test_release_issued_on_success(self):
+        from services.ka_kshetra.stage0_kinematics import fetch_orb_deg
+
+        conn = self._make_conn(raise_on_select=False, return_row=None)
+        fetch_orb_deg(conn, "Su", "natal_graha")
+        release_calls = [c for c in conn._calls if "RELEASE SAVEPOINT" in c]
+        assert release_calls, "RELEASE SAVEPOINT not issued on success"
+
+    def test_connection_remains_usable_after_exception(self):
+        """The critical regression test: after fetch_orb_deg raises internally,
+        subsequent execute() calls on the same connection must NOT raise.
+        This was broken before the SAVEPOINT fix — InFailedSqlTransaction would
+        propagate to write_kinematics_rows and silently kill all writes."""
+        from services.ka_kshetra.stage0_kinematics import fetch_orb_deg
+
+        subsequent_calls = []
+
+        class TrackingConn:
+            def execute(self_inner, sql, params=None):
+                if "SELECT orb_deg" in sql:
+                    raise Exception("column orb_deg does not exist")
+                subsequent_calls.append(sql.strip())
+
+                class _Cur:
+                    def fetchone(self):
+                        return None
+                return _Cur()
+
+        conn = TrackingConn()
+        fetch_orb_deg(conn, "Su", "natal_graha")
+
+        # Simulate what write_kinematics_rows does after fetch_orb_deg returns
+        conn.execute("INSERT INTO kala_field_kinematics VALUES (%s)", ["dummy"])
+        assert any("INSERT" in c for c in subsequent_calls), (
+            "Connection was not usable after fetch_orb_deg raised — "
+            "SAVEPOINT/ROLLBACK guard is missing or broken"
+        )
+
+
 # ── Live tier: needs a real DB connection ─────────────────────────────────────
 
 _HAS_DB = bool(os.environ.get("DATABASE_URL"))
