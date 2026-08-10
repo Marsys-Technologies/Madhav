@@ -57,9 +57,9 @@ Status: QUEUED | BUILDING | VERIFYING | PASS | FAIL(n) | BLOCKED | MERGED
 | I6a | 0 | [mech] | DB role migration (utkarsha_builder) | MERGED | gochara3/i6a-role | /Users/Dev/Vibe-Coding/Apps/utk-i6a | sonnet | W0.5 PASS | MERGED to main (PR #1146, ceaafbadd). utkarsha_builder role + TAP-CI paths fix live in main. |
 | W1.1 | 1 | [heavy] | Bounded λ_v3 core | MERGED | gochara3/w11 | — (removed) | sonnet | W0.4 PASS | MERGED 02:48Z (PR #1149, 2d040d8e9). VERIFIER PASS (opus). |
 | W1.2 | 1 | [heavy] | Direction restored | MERGED | gochara3/w12 | /Users/Dev/Vibe-Coding/Apps/utk-w12 | sonnet | W1.1 PASS | MERGED to main (PR #1152, 246bbcd69). _compute_signed_channels_v3 + _resolve_valence_v3. |
-| W1.3 | 1 | [heavy] | Graded suppression | VERIFYING | gochara3/w13 | /Users/Dev/Vibe-Coding/Apps/utk-w13 | sonnet | W1.1 PASS | PR #1155 open (71da20688 — rebased on main post-W1.2). Vedha multiplicative gate on quality_gates. Auto-merge enabled. CI running. |
-| W1.4 | 1 | [heavy] | Self-normalizing thresholds | VERIFYING | gochara3/w14 | /Users/Dev/Vibe-Coding/Apps/utk-w14 | sonnet | W1.1 PASS | PR #1156 open (628eb8e49 — rebased on main post-W1.2). Percentile-based activation per chart×class. Auto-merge enabled. CI running. |
-| W1.5 | 1 | [mech] | λ decomposition + uncertainty output | VERIFYING | gochara3/w15 | /Users/Dev/Vibe-Coding/Apps/utk-w15 | sonnet | W1.1 PASS | PR #1154 open (218c1c37b — fix b8a907e2c + rebase). term_breakdown JSONB + CI pair. Auto-merge enabled. CI running. |
+| W1.3 | 1 | [heavy] | Graded suppression | MERGED | gochara3/w13 | /Users/Dev/Vibe-Coding/Apps/utk-w13 | sonnet | W1.1 PASS | MERGED to main (PR #1155, e8e6988ec). Vedha multiplicative quality_gates gate live. |
+| W1.4 | 1 | [heavy] | Self-normalizing thresholds | VERIFYING | gochara3/w14 | /Users/Dev/Vibe-Coding/Apps/utk-w14 | sonnet | W1.1 PASS | PR #1156 open (9374f4fe3 — rebased on W1.3 main; migration renumbered 557→558). CI running, 0 failures. |
+| W1.5 | 1 | [mech] | λ decomposition + uncertainty output | VERIFYING | gochara3/w15 | /Users/Dev/Vibe-Coding/Apps/utk-w15 | sonnet | W1.1 PASS | PR #1154 open (2e4eab483 — migration renumbered 557→559, dequeued+re-pushed). CI running, 0 failures. |
 | W2.1 | 2 | [heavy] | Ashtakavarga gating, real | QUEUED | — | — | opus | W1.1 PASS | Parallel W2; needs W0.2 data |
 | W2.2 | 2 | [mech] | Moorti nirnaya modifier | QUEUED | — | — | sonnet | W1.1 PASS | Parallel W2; needs W0.2 data |
 | W2.3 | 2 | [mech] | Tara bala, alive | QUEUED | — | — | sonnet | W1.1 PASS | Parallel W2 |
@@ -205,5 +205,6 @@ CONDUCTOR-HEARTBEAT: 2026-08-10T03:30:00Z pid=94277 host=Montys-MacBook-Pro.loca
 
 - 2026-08-10 09:18 IST: PR #1146 (I6a) MERGED to main (ceaafbadd). utkarsha_builder role now live in main. W1.3/W1.4/W1.5 CI still running (no failures). Main now has: W0.1/W0.2/W0.3/W0.4 MERGED, I6a MERGED, W1.1/W1.2 MERGED. Remaining Wave 1 in VERIFYING: W1.3/#1155, W1.4/#1156, W1.5/#1154.
 - 2026-08-10 09:31 IST: All three Wave 1 PRs #1155/#1156/#1154 CLEAN (0 failures) and in merge queue (UNKNOWN = being processed by queue). SAMPŪRTI L1c commit (d5cdf39a8) landed on main mid-session — no conflict with W1.x (different files). SAMPŪRTI L-2 lease still ACTIVE (expires 12:00 IST / 06:30 UTC — 2h30min remaining). Awaiting merge queue to process W1.3/W1.4/W1.5.
+- 2026-08-10 09:42 IST: W1.3 (PR #1155) MERGED to main (e8e6988ec). W1.4 (PR #1156) needed rebase — conflict in imports (W1.3 added VedhaRow/MaleficScaleRow to context import; W1.4 adds ThresholdConfig import) — merged both, pushed 9374f4fe3. CRITICAL: W1.4 migration collision discovered — both I6a and W1.4 builder used 557; renamed W1.4 migration to 558 (558_kala_gochara_windows_v2_w14_threshold.sql). W1.5 also had 557 collision — renamed to 559; was in merge queue, had to dequeue (GraphQL dequeuePullRequest), rename, push 2e4eab483, re-auto-merge. W1.4/#1156: CI running (pending=3, 0 fail). W1.5/#1154: CI re-triggered after dequeue+push.
 
-CONDUCTOR-HEARTBEAT: 2026-08-10T04:01:00Z pid=94277 host=Montys-MacBook-Pro.local
+CONDUCTOR-HEARTBEAT: 2026-08-10T04:20:00Z pid=94277 host=Montys-MacBook-Pro.local
