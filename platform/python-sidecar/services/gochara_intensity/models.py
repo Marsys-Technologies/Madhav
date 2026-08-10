@@ -104,6 +104,17 @@ class IntensityResult:
     notes: list = field(default_factory=list)
     source: str = "live"  # 'live' | 'fixture' -- honesty marker, never silently blurred
 
+    # ── W1.5 λ decomposition + structural prior CI ────────────────────────────
+    # Populated by the v3 (non-parity) path only; None on v1-parity rows.
+    # term_breakdown: per-mechanism contributions to lambda_v3 (JSONB on disk).
+    # lambda_v3_ci_{low,high}: 80% credible interval, structural_prior band
+    #   (±20% of lambda_v3, clamped to [0,1]) until Wave-4.5 fitted posteriors.
+    # ci_source: 'structural_prior' | 'fitted_posterior' — mandatory disclosure.
+    term_breakdown: Optional[dict] = None
+    lambda_v3_ci_low: Optional[float] = None
+    lambda_v3_ci_high: Optional[float] = None
+    ci_source: Optional[str] = None
+
     def __post_init__(self) -> None:
         if self.temporal_shape not in VALID_TEMPORAL_SHAPES:
             raise ValueError(f"temporal_shape must be one of {VALID_TEMPORAL_SHAPES}, got {self.temporal_shape!r}")
@@ -148,6 +159,11 @@ class IntensityResult:
             "calibration_state": self.calibration_state,
             "notes": self.notes,
             "source": self.source,
+            # W1.5 fields — None on v1-parity rows, populated on v3 rows
+            "term_breakdown": self.term_breakdown,
+            "lambda_v3_ci_low": self.lambda_v3_ci_low,
+            "lambda_v3_ci_high": self.lambda_v3_ci_high,
+            "ci_source": self.ci_source,
         }
 
 

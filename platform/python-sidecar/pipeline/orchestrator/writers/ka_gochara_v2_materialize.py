@@ -127,14 +127,16 @@ INSERT_SQL = f"""
        milestone_id, is_irreversibility_milestone,
        signed_intensity, raw_intensity, valence, is_adverse,
        active_sentences, contributing_systems, suppression_state,
-       peak_basis, calibration_state, source, generation)
+       peak_basis, calibration_state, source, generation,
+       term_breakdown, lambda_v3_ci_low, lambda_v3_ci_high, ci_source)
     VALUES
       (%(chart_id)s, %(event_class)s, %(temporal_shape)s,
        %(window_start)s, %(window_end)s, %(peak_date)s,
        %(milestone_id)s, %(is_irreversibility_milestone)s,
        %(signed_intensity)s, %(raw_intensity)s, %(valence)s, %(is_adverse)s,
        %(active_sentences)s::jsonb, %(contributing_systems)s::jsonb, %(suppression_state)s::jsonb,
-       %(peak_basis)s, %(calibration_state)s, %(source)s, %(generation)s)
+       %(peak_basis)s, %(calibration_state)s, %(source)s, %(generation)s,
+       %(term_breakdown)s::jsonb, %(lambda_v3_ci_low)s, %(lambda_v3_ci_high)s, %(ci_source)s)
 """
 
 
@@ -292,6 +294,11 @@ class GocharaV2MaterializeWriter(WriterBase):
                 "calibration_state": row["calibration_state"],
                 "source": row["source"],
                 "generation": GENERATION_V2,
+                # W1.5: λ decomposition + structural prior CI (nullable on v1-parity rows)
+                "term_breakdown": _dumps(row["term_breakdown"]) if row.get("term_breakdown") is not None else None,
+                "lambda_v3_ci_low": row.get("lambda_v3_ci_low"),
+                "lambda_v3_ci_high": row.get("lambda_v3_ci_high"),
+                "ci_source": row.get("ci_source"),
             }
             try:
                 with savepoint_scope(conn, "w2g_v2_row_insert"):

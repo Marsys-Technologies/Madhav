@@ -364,6 +364,24 @@ def _evaluate_single_from_context(
         "calibration_state": "structural_prior",
     }
 
+    # ── W1.5 λ decomposition output ──────────────────────────────────────────
+    # Full term_breakdown JSONB: top-level scalar factors + per-sentence list
+    # from _compute_activity_v3, plus the assembled formula and final value.
+    w15_term_breakdown = {
+        "promise": round(promise, 8),
+        "permission": round(permission, 8),
+        "activity": round(activity, 8),
+        "quality_gates": round(quality_gates, 8),
+        "lambda_v3": round(raw_lambda, 8),
+        "activity_terms": x_t_detail_compat.get("contributions", []),
+        "formula": "PROMISE × PERMISSION × activity × quality_gates",
+    }
+
+    # W1.5 credible interval — structural_prior: ±20% band, clamped to [0,1].
+    # ci_source='structural_prior' until Wave-4.5 fitted posteriors replace this.
+    ci_low = max(0.0, raw_lambda * 0.8)
+    ci_high = min(1.0, raw_lambda * 1.2)
+
     return IntensityResult(
         chart_id=context.chart_id,
         event_class=context.event_class,
@@ -387,6 +405,11 @@ def _evaluate_single_from_context(
         signed_lambda=signed_lambda,
         notes=notes,
         source=source,
+        # W1.5: λ decomposition + structural prior credible interval
+        term_breakdown=w15_term_breakdown,
+        lambda_v3_ci_low=ci_low,
+        lambda_v3_ci_high=ci_high,
+        ci_source="structural_prior",
     )
 
 
