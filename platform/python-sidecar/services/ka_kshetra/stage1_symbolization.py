@@ -617,21 +617,31 @@ def run_substep(ctx, step) -> object:
     def _row_val(r, key, idx):
         return r[key] if isinstance(r, dict) else r[idx]
 
+    # L1g fix: bulk pre-fetch all contact_in dwell_weights into a lookup dict to avoid
+    # per-episode SELECT round-trips through cloud-sql-proxy (same class as L1d/L1f fixes,
+    # SAMPURTI campaign). One bulk SELECT replaces O(N) per-episode SELECTs.
+    # Key: (body, coalesce(target_ref, ''), t_days) → dwell_weight float | None
+    _contact_dw_cache: dict = {}
+    for _r in conn.execute(
+        """SELECT body, COALESCE(target_ref, '') AS tr, t_days, dwell_weight
+           FROM kala_field_kinematics
+           WHERE chart_id = %s AND event_kind = 'contact_in'""",
+        [chart_id],
+    ).fetchall():
+        if isinstance(_r, dict):
+            _k = (_r['body'], _r['tr'], float(_r['t_days']))
+            _v = _r['dwell_weight']
+        else:
+            _k = (_r[0], _r[1], float(_r[2]))
+            _v = _r[3]
+        _contact_dw_cache[_k] = float(_v) if _v is not None else None
+
     for kin_id, ep in episodes:
         target_ref = ep.target_ref
-        w_dwell = None
-        # Read dwell_weight directly from the contact_in kinematics row (§N.5).
-        dw_rows = conn.execute(
-            """SELECT dwell_weight FROM kala_field_kinematics
-               WHERE chart_id = %s AND event_kind = 'contact_in'
-                 AND body = %s AND COALESCE(target_ref, '') = %s
-                 AND t_days = %s LIMIT 1""",
-            [chart_id, ep.body, target_ref if target_ref else '', ep.t_in],
-        ).fetchone()
-        if dw_rows is not None:
-            dw_val = dw_rows['dwell_weight'] if isinstance(dw_rows, dict) else dw_rows[0]
-            if dw_val is not None:
-                w_dwell = float(dw_val)
+        # Look up dwell_weight from pre-fetched cache — §N.5 reference, no re-derivation.
+        w_dwell = _contact_dw_cache.get(
+            (ep.body, target_ref if target_ref else '', float(ep.t_in))
+        )
 
         if w_dwell is None:
             # No dwell_weight in DB — cannot build a correctly-weighted primitive.
