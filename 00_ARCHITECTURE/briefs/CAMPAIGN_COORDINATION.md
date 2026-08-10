@@ -421,3 +421,33 @@ follow-up queued, not blocking.
 PARIṢKĀRA territory/lease/proxy-port discipline unchanged; L-4 lease (20:10–21:30 IST) covered
 the wave-1 merge+deploy attempt and has lapsed — no new lease claimed yet for the still-pending
 deploy fix (will claim before any further production deploy attempt).
+
+### LOG — 2026-08-10 ~23:0x IST (PARIṢKĀRA interactive conductor — TAP-6 trigger coverage widened)
+
+**Carve-in widened (native-authorized):** PARIṢKĀRA is now standingly authorized for
+ADDITIVE-ONLY trigger-coverage fixes (paths/branches lists) to CI workflow files whenever a
+required check fails to run on a PR in this campaign's merge chain — not just the original
+single-PR ci.yml carve-in. Anything beyond additive coverage (check behavior, removals,
+permissions) still requires native go-ahead.
+
+**PR #1210 opened** (`fix/tap6-trigger-coverage-migrations-workflows` → `main`): TAP-6
+("Method audit grep set", a REQUIRED check on main's merge-queue ruleset) never fired on
+either PR #1207 (ci.yml allowlist fix) or #1209 (migration 563 fix) — both stuck with
+`mergeStateStatus: BLOCKED` and the merge queue itself confirmed EMPTY (GraphQL
+`mergeQueue.entries` = `[]`) because GitHub won't admit a PR to the queue until every
+required check has reported, and an absent check blocks exactly like a failing one, silently.
+Root cause: `tap-ci.yml`'s `pull_request.paths` filter covers `platform/supabase/migrations/**`
+but not `platform/migrations/**` (563's own directory), and covers only `tap-ci.yml` itself
+under "This file", not other workflow files (`ci.yml` included). Same defect class the file's
+own comments already document fixing twice (2026-08-01, 2026-08-06) — third+ recurrence.
+Fixed by adding `platform/migrations/**` and `.github/workflows/**` to the filter (additive
+only, no behavior change to what TAP-6 checks).
+
+**Structural follow-up queued, NOT done here:** restructure TAP-6 to an always-report pattern
+(no-op success job when no matching paths change) so a REQUIRED check can never again be
+silently absent. That's a behavior change, not additive coverage — stays paused for native
+review when picked up. Logged as a named residual in the PARIṢKĀRA ledger.
+
+Once #1210 merges, PRs #1207 and #1209 will be re-triggered (update-branch or empty commit,
+since the path filter reads each PR's own diffed files — the tap-ci.yml fix alone doesn't
+retroactively make TAP-6 report on their existing heads) so they can finally enter the queue.
