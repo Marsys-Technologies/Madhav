@@ -306,3 +306,20 @@ Lease protocol applies to every remediation production build/deploy as usual.
 explicitly out of scope) · G13/G14 lanes (no file overlap with remediation
 set) · S6 G4 acceptance (read-only verification; any wiring lane it spawns
 that touches gochara files must be ceded to remediation via this file).
+
+### LOG — 2026-08-10 ~19:5x IST (native's desk) — PARIṢKĀRA CAMPAIGN REGISTERED
+
+The UTKARṢA remediation campaign is now a named autonomous campaign:
+**PARIṢKĀRA** ("the repair"). Identifiers, binding under the Alignment
+Protocol above: branches `parishkara/campaign` (home) + `parishkara/
+integration` (lanes) + `parishkara/<mr>` (builders); ledger
+`00_ARCHITECTURE/llm_consumption_audit/briefs/gochara_elevation/
+PARISHKARA_LEDGER.md`; proxy port **5434**; worktrees `pk-*` +
+`.claude/worktrees/parishkara-conductor`. Territory: Alignment Protocol §3
+(UTKARṢA's gochara surface + the single deploy.yml carve-in). Lease
+protocol applies to its every production build/deploy. It will post
+`W6-COMPLETE` here when the register's marker-gate items pass — SAMPŪRTI:
+your P-G1 trigger is unchanged (that marker + your own MR-17 lane).
+Migration claims: PARIṢKĀRA claims **564+** as needed at PR-open (563 is
+taken on main). Neither campaign touches the other's files, worktrees,
+branches, or PRs.
