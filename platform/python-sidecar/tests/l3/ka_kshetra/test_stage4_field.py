@@ -503,3 +503,66 @@ class TestClassLifetimeCountSelection:
                                           value=9.9)])
         value, source = S4.load_class_lifetime_count(conn, 'marriage')
         assert value is None and source is None
+
+
+class TestLoadLegacyCrosscheck:
+    """PG-31 (UTK post-close audit): load_legacy_crosscheck must be
+    generation-aware so that it reads only the authoritative generation's rows
+    from kala_gochara_windows when v1 and 3.0 rows coexist.
+
+    The fix: a correlated COALESCE sub-select against kala_gochara_authority —
+    the same seam contract the MCP serving layer uses
+    (register_gochara_windows.ts AUTHORITATIVE_GENERATION_FILTER).  When the
+    authority table has no row for this chart, 'v1' is the default (migration
+    527: an ABSENT row means v1 authoritative by definition).
+    """
+
+    def test_sql_filters_by_authoritative_generation(self):
+        # The SQL emitted must reference kala_gochara_authority and
+        # authoritative_generation so the filter is generation-aware, not
+        # generation-blind.  A missing predicate would cause one xref edge PER
+        # GENERATION per window — double-counted, self-referential provenance.
+        conn = _RecordingConn([])
+        S4.load_legacy_crosscheck(conn, 'chart-abc', 'career_advancement')
+        sql, params = conn.log[0]
+        assert 'kala_gochara_authority' in sql, (
+            'load_legacy_crosscheck must join kala_gochara_authority to resolve '
+            'the authoritative generation; generation-blind reads produce '
+            'double-counted provenance edges when v1+3.0 rows coexist')
+        assert 'authoritative_generation' in sql
+        assert 'COALESCE' in sql, (
+            "default to 'v1' via COALESCE so charts without an authority row "
+            'remain functional (migration 527: absent row → v1 authoritative)')
+
+    def test_default_generation_fallback_is_v1(self):
+        # The COALESCE fallback must be the string literal 'v1' — the same
+        # default the serving layer and migration 527 specify.
+        conn = _RecordingConn([])
+        S4.load_legacy_crosscheck(conn, 'chart-abc', 'career_advancement')
+        sql, _ = conn.log[0]
+        assert "'v1'" in sql, (
+            "COALESCE fallback must be literal 'v1' to match the authority "
+            "table's documented default (migration 527 COMMENT ON TABLE)")
+
+    def test_generation_predicate_is_not_hardcoded(self):
+        # Must NOT hardcode generation='v1' — that would never flip to 3.0 even
+        # after the authority table is seeded, defeating the whole fix.
+        conn = _RecordingConn([])
+        S4.load_legacy_crosscheck(conn, 'chart-abc', 'career_advancement')
+        sql, _ = conn.log[0]
+        assert "generation = 'v1'" not in sql, (
+            "generation must not be hardcoded: use COALESCE against "
+            "kala_gochara_authority so the predicate flips automatically when "
+            "the authority row is updated to '3.0'")
+
+    def test_params_are_chart_id_and_event_class_only(self):
+        # The correlated sub-select uses kala_gochara_windows.chart_id as a
+        # column reference, NOT a bound parameter — so params must still be
+        # exactly (chart_id, event_class), same as before the fix.
+        conn = _RecordingConn([])
+        S4.load_legacy_crosscheck(conn, 'chart-abc', 'career_advancement')
+        _, params = conn.log[0]
+        assert params == ('chart-abc', 'career_advancement'), (
+            'Bound params must be exactly (chart_id, event_class); '
+            'the authority sub-select uses a correlated column reference, '
+            'not a third bound parameter')

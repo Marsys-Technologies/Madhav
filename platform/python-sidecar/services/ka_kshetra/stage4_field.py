@@ -1022,6 +1022,10 @@ def load_legacy_crosscheck(conn, chart_id: str, event_class: str) -> list[dict]:
             """SELECT id, window_start, window_end, peak_date, temporal_shape
                  FROM kala_gochara_windows
                 WHERE chart_id = %s AND event_class = %s
+                  AND generation = COALESCE(
+                        (SELECT authoritative_generation
+                           FROM kala_gochara_authority
+                          WHERE chart_id = kala_gochara_windows.chart_id), 'v1')
                 ORDER BY window_start, peak_date""",
             (chart_id, event_class),
         )
