@@ -104,7 +104,14 @@ through 5434; never kill, restart, or start anything on 5433. **R-COORD-2 (nativ
 post-cutover pass — while you are pre-cutover, no SAMPŪRTI rebuild will run your writers.
 After your W6 cutover completes, the deferred gochara-family assets (ka_gochara_sweep,
 ka_vedha_gochara, ka_kota_chakra, kala_gochara_authority) rebuild jointly under a lease
-both campaigns' delegates sign — expect that request and cooperate with it. Migration numbers: 557 is CLAIMED for this campaign's
+both campaigns' delegates sign — expect that request and cooperate with it. **R-COORD-3
+(native-directed):** SAMPŪRTI will ADOPT your elevated engine — its gochara-consuming
+surfaces move to generation '3.0' via the authority seam after your cutover. YOUR duty in
+the handshake: when W6 completes (authority '3.0' live and verified on BOTH charts,
+rollback rehearsal passed), append a `W6-COMPLETE` marker entry to §6 LOG of the
+coordination file (branch campaign-coordination) and push. SAMPŪRTI's adoption pass
+triggers on that marker and on nothing else — do not skip it, do not substitute a ledger
+note in your own branch; the marker must land in the coordination file itself. Migration numbers: 557 is CLAIMED for this campaign's
 `utkarsha_builder` role; claim 558+ in the coordination file before use. Never touch
 SAMPŪRTI's files, worktrees, branches, or PRs — flag anomalies in the coordination LOG.
 
