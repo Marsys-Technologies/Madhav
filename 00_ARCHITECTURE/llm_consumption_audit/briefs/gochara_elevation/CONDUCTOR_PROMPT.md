@@ -97,7 +97,14 @@ connection die?); a dead connection with a live proxy means retry, never restart
 proxy is genuinely absent AND no foreign lease is ACTIVE, only then start it; if a foreign
 lease IS active, PARK and record it. (Verified 2026-08-10: this prompt previously contained
 no proxy instruction at all — this rule is added to keep it that way deliberately, not
-accidentally.) Migration numbers: 557 is CLAIMED for this campaign's
+accidentally.) **PORT OWNERSHIP (coordination file §3):** YOUR proxy is 127.0.0.1:5434 —
+the instance this campaign already runs. SAMPŪRTI owns 127.0.0.1:5433. Connect only
+through 5434; never kill, restart, or start anything on 5433. **R-COORD-2 (native-directed
+2026-08-10):** SAMPŪRTI has deferred ALL gochara-family builds and code to a joint
+post-cutover pass — while you are pre-cutover, no SAMPŪRTI rebuild will run your writers.
+After your W6 cutover completes, the deferred gochara-family assets (ka_gochara_sweep,
+ka_vedha_gochara, ka_kota_chakra, kala_gochara_authority) rebuild jointly under a lease
+both campaigns' delegates sign — expect that request and cooperate with it. Migration numbers: 557 is CLAIMED for this campaign's
 `utkarsha_builder` role; claim 558+ in the coordination file before use. Never touch
 SAMPŪRTI's files, worktrees, branches, or PRs — flag anomalies in the coordination LOG.
 
