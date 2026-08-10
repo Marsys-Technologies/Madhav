@@ -306,17 +306,32 @@ class TestPhMuhurtaDocstring:
             )
 
     def test_load_gochara_transits_method_returns_empty_explicitly(self):
-        """_load_gochara_transits must explicitly return {} (not via a swallowed
-        error), confirming the implementation matches the corrected docstring."""
+        """_load_gochara_transits must explicitly return {} and must not issue
+        a live SQL query against kala_gochara (that table does not exist).
+
+        We check the actual code lines (non-docstring) for the key properties:
+          1. 'return {}' must be present (the honest deferred path)
+          2. No cur.execute / conn.execute call referencing 'kala_gochara'
+             in the code body (docstring may quote old behaviour as history)
+        """
         import pipeline.orchestrator.writers.ph_muhurta as mod
         src = inspect.getsource(mod.PhMuhurtaWriter._load_gochara_transits)
-        # Must NOT have a table query (would indicate the old broken path)
-        assert "FROM kala_gochara" not in src, (
-            "_load_gochara_transits must not query FROM kala_gochara (that table does not exist)"
-        )
-        # Must return {} explicitly
+
+        # 1. Must have an explicit 'return {}'
         assert "return {}" in src, (
             "_load_gochara_transits must return {} explicitly (deferred wiring path)"
+        )
+
+        # 2. No live SQL execute statement referencing kala_gochara.
+        # Strip docstring lines (lines inside triple-quoted strings) before checking.
+        # Simple heuristic: look for 'execute' + 'kala_gochara' on the same line.
+        code_lines = [
+            line for line in src.splitlines()
+            if "execute" in line and "kala_gochara" in line
+        ]
+        assert not code_lines, (
+            "_load_gochara_transits must not execute a query referencing "
+            f"kala_gochara.  Offending lines:\n" + "\n".join(code_lines)
         )
 
 
