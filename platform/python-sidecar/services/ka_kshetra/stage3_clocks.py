@@ -1058,7 +1058,30 @@ def compute_boundaries_for_system(
                 source_pk=r["dasha_row_id"],
             )
         )
-    return out
+
+    # Guard: L1 chart_dashas may have duplicate (level_n, start_iso) rows for
+    # some systems (e.g. chara_karaka has up to 5 MD rows with the same
+    # start_iso). Deduplicate by (level, t_boundary) — take the first
+    # occurrence (ordering is deterministic: level_n ASC, start_iso ASC from
+    # the SELECT above, so the first row wins consistently across rebuilds).
+    seen: set[tuple[str, float]] = set()
+    deduped: list[BoundaryRow] = []
+    n_skipped = 0
+    for row in out:
+        key = (row.level, row.t_boundary)
+        if key in seen:
+            n_skipped += 1
+            continue
+        seen.add(key)
+        deduped.append(row)
+    if n_skipped:
+        import logging
+        logging.getLogger(__name__).warning(
+            "stage3_clocks: deduplicated %d boundary row(s) for system=%s "
+            "(duplicate (level, t_boundary) in chart_dashas — L1 data quality)",
+            n_skipped, system_id,
+        )
+    return deduped
 
 
 def write_boundary_rows(chart_id: str, system_id: str, rows: list[BoundaryRow], conn: Any) -> int:
