@@ -173,5 +173,6 @@ Format: `WAVE N: DEPLOYED+SYNCED — revision <sha>, migrations applied through 
 
 - 2026-08-10 07:01 IST: VERIFIER VERDICTS — W0.3: PASS, W0.4: PASS. W0.1: builder updated LEDGER directly (protocol note: accepted); builder assessed 0 gaps, 9 ka_kshetra edges, guard passes — W0.1 → VERIFYING, VERIFIER dispatched. W0.2 builder still running. Migration-guard for I6a still running.
 - 2026-08-10 07:03 IST: PRs opened — W0.3: PR #1144, W0.4: PR #1145. Both awaiting CI. W0.1 VERIFIER dispatched in parallel.
+- 2026-08-10 07:12 IST: W0.4 CI fix — Fact-Category Pinning Gate failure on PR #1145 resolved. Added entry 33 to fact_category_pin_allowlist.json for gochara_v3/context.py _fetch_sade_sati_phases (full-row-list multi-row fetch, not D1 defect class — same shape as primitives.py:1043 entry). Committed SHA a9ee5068e, pushed to gochara3/w04. CI re-run triggered on PR #1145.
 
-CONDUCTOR-HEARTBEAT: 2026-08-10T01:33:00Z
+CONDUCTOR-HEARTBEAT: 2026-08-10T01:42:17Z
