@@ -396,6 +396,42 @@ IS NULL), fully reversible with one-line DELETE, no data destroyed. Production s
 is now consistent with PR intent. Precedent: even benign migrations must go through
 the gate. Builder swarm instructed to never self-apply migrations in future lanes.
 
+## R6 MORNING REPORT (2026-08-10 ~20:21 IST, R16 throughout)
+
+**LIVENESS (verified before lease takeover):**
+- R5 pid=33133: DEAD (`ps -p 33133` exit=0, no CMD output)
+- pgrep "CONDUCTOR of SAMPŪRTI": no match → sole conductor confirmed
+
+**WAVE POSITIONS (detector-cited):**
+- Wave 0: COMPLETE — merged to main (3311ae0e3), deployed (31341882724). ✅
+- Wave 1 S2 (G1 wiring): MERGED to main (#1141, c93540ca8). ✅
+- Wave 1 L1b-L1j: ALL merged to main (PR #1150/#1153/#1158/#1172/#1185/#1186/#1187). ✅
+- Wave 1 G12 (#1191), G14b (#1190), PG-31 (#1193): MERGED to integration. Gated to main after P-G1 GREEN.
+- Wave 1 G13: DEFERRED (requires CDLM 13-domain rebuild — post-P-G1).
+- PA-0 stage I/O map: COMMITTED (04a2538b8).
+- **P-G1: DEFERRED — awaiting W6-COMPLETE marker from PARIṢKĀRA** (R-COORD-2 extension: ka_kshetra DAG depends on ka_gochara_sweep + hazard.py cross-checks kala_gochara_windows).
+- HARD BLOCK: no integration→main gate until P-G1 GREEN. ✅ (enforced)
+
+**CROSS-CAMPAIGN STATE:**
+- L-4 ACTIVE (PARIṢKĀRA deploy lease, started 20:10 IST, expiry 21:30 IST): merging parishkara/integration → main + deploy (migrations 563/564/565 — schema parity 8 cols, FK fix, citation resolution).
+- W6-COMPLETE marker: NOT YET in coordination file. PARIṢKĀRA L-4 deploy is a prerequisite step for some F-gate items.
+- PARIṢKĀRA conductors S1 (pid=47856) + S2 (pid=10226): both DEAD per ledger. L-4 implies a Session 3 or GATE-EXECUTOR is active.
+- PR #1175 (stale conductor-heartbeat-l1e): CLOSED (R6 cleanup).
+- ANOMALY LOGGED (coordination §6 LOG, 20:22 IST): `platform/scripts/gochara/smoke_probe.ts` (PARIṢKĀRA MR-35) was pre-staged in main checkout and inadvertently committed in R6 heartbeat commit de1882332. Logged per §3; no reversal — PARIṢKĀRA copy on parishkara/mr-35 is authoritative; merge queue handles duplicate on main merge.
+
+**PROOF LADDER STATUS:**
+- P-G1 rung: NOT YET GREEN. Root cause of prior failures: ALL RESOLVED (OOM fixed L1e, batch-insert L1d, dedup L1c, SAVEPOINT L1b, auth-seam PG-31). Build infrastructure is sound. Block is coordination (wait for gen-3.0 gochara tables).
+- P-G1 will run ONCE post-W6-COMPLETE as Cloud Run job with all fixes deployed.
+
+**ONE-LINE ANSWER (what single relaunch finishes remaining scope):**
+PARIṢKĀRA posts W6-COMPLETE → SAMPŪRTI claims lease → dispatch Cloud Run P-G1 on 482012f1 with gen-3.0 → paste window tables → hard block lifts → gate G12/G14b/PG-31/L1j to main → S5 full-DAG rebuild → Wave 2 proceeds.
+
+**DEBRIS / PARKS:**
+- pk-mr01, pk-mr09, pk-mr18, pk-mr25, pk-mr30, pk-mr34, pk-mr35 worktrees: PARIṢKĀRA's — DO NOT TOUCH.
+- `platform/scripts/dispatch_utkarsha_w02_ka_assets.py`: PARIṢKĀRA territory file in main checkout — DO NOT TOUCH.
+
+---
+
 ## NEXT-ACTION
 
 Wave 1 S2 COMPLETE: PR #1139 MERGED to sampurti/integration (5ba9b646).
