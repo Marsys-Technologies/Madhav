@@ -48,9 +48,9 @@ PA-0: G1_STAGE_IO_MAP_v1_0.md committed to sampurti/integration (04a2538b8).
 - L1h+L1i MERGED (#1187): vectorize EnvelopeIndex range check (stage4). DEPLOYED.
 - L1j MERGED to sampurti/integration (#1188, commit a68dbdf9e, 11:36 UTC). PARĪKṢAKA verdict: PASS all R1–R7 (sort invariant/bisect/state/coverage/equivalence/R13R16/regression). No blocking findings. Non-blocking: boundary-exact test gap (pre-existing, not introduced).
 - PA-0 compliance: G1_STAGE_IO_MAP_v1_0.md created + committed (04a2538b8). Documents stage 0→2→3→1→4 dependency order; confirms writer.py lines 333-336 implement correct order.
-- G12 PR #1191: PARĪKṢAKA OVERALL PASS (R1–R7). Merge commit 682366d9d (2026-08-10T11:59Z). Non-blocking: C1 vacuous `threw||true` (crash-resistance doc only, not behavioral); timeline golden assertions CI-skip by isError guards; timeline_query tool previously orphaned. MERGED.
-- G14b PR #1190: PARĪKṢAKA OVERALL PASS (R1–R8). Merge commit c2317eaec (2026-08-10T11:59Z). Non-blocking: no source_citation index on brahma_prospective_ledger (follow-up migration at scale); PR description stated types.ts modified (actually ahead.ts, no correctness issue); resolveEventClass order-dependence documented and tested. MERGED.
-- W6-COMPLETE: NOT YET (L-3 ACTIVE, expires 18:30 IST / 13:00 UTC). Waiting. P-G1 deferred.
+- G12 PR #1191: PARĪKṢAKA OVERALL PASS (R1–R7). Merge commit 682366d9d (2026-08-10T11:59Z). **G12 FULLY CLOSED** — builder agent confirmed: E8 register (5 HELD constraints); E6 NOW+STORY done in PR; AHEAD digest_90d E6-lite pre-existing; ELECT muhurta_lagna_strength honest_empty pre-existing; EXPLAIN pedagogy/counterfactual pre-existing; item 24 robustness wired W1; item 7 is W4 work (not a G12 gap); dasha_sandhi registration verified Wave 0. All G12 sub-items accounted for.
+- G14b PR #1190: PARĪKṢAKA OVERALL PASS (R1–R8). Merge commit c2317eaec (2026-08-10T11:59Z). Non-blocking: no source_citation index (follow-up migration at scale); PR description stated types.ts modified (actually ahead.ts); resolveEventClass order-dependence documented and tested. MERGED.
+- W6-COMPLETE: NOT YET (L-3 ACTIVE, expires 18:30 IST / 13:00 UTC). Polling. P-G1 deferred.
 - P-G1 deferred: ka_kshetra DAG depends on ka_gochara_sweep + ka_gochara_resonance and hazard.py
   cross-checks kala_gochara_windows (R-COORD-2 extension). Field rebuilds ONCE post-W6-COMPLETE on gen-3.0.
 - L-2 RELEASED on campaign-coordination (hygiene fix, push 87b0abf6f).
