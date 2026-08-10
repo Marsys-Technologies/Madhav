@@ -56,10 +56,10 @@ Status: QUEUED | BUILDING | VERIFYING | PASS | FAIL(n) | BLOCKED | MERGED
 | W0.5 | 0 | [adj] | Campaign rulings (UTK-R1/R2/R3) | PASS | — | — | ADJUDICATOR | none | UTK-R1/R2/R3 issued + I6(a) migration approved. Rulings in §Rulings. |
 | I6a | 0 | [mech] | DB role migration (utkarsha_builder) | VERIFYING | gochara3/i6a-role | /Users/Dev/Vibe-Coding/Apps/utk-i6a | sonnet | W0.5 PASS | Migration 557 written + pushed (SHA 4879a6882, session 5). Migration-guard (opus, independent, session 6): PASS. PR #1146 opened. Awaiting CI + VERIFIER PASS before merge. |
 | W1.1 | 1 | [heavy] | Bounded λ_v3 core | MERGED | gochara3/w11 | — (removed) | sonnet | W0.4 PASS | MERGED 02:48Z (PR #1149, 2d040d8e9). VERIFIER PASS (opus). |
-| W1.2 | 1 | [heavy] | Direction restored | BUILDING | gochara3/w12 | /Users/Dev/Vibe-Coding/Apps/utk-w12 | sonnet | W1.1 PASS | Builder dispatched 03:15 UTC (ae3f7721, session 8). |
-| W1.3 | 1 | [heavy] | Graded suppression | BUILDING | gochara3/w13 | /Users/Dev/Vibe-Coding/Apps/utk-w13 | sonnet | W1.1 PASS | Builder dispatched 03:15 UTC (ae89d03a, session 8). Needs W0.2 build data for real-corpus test (blocked on L-2). |
-| W1.4 | 1 | [heavy] | Self-normalizing thresholds | BUILDING | gochara3/w14 | /Users/Dev/Vibe-Coding/Apps/utk-w14 | sonnet | W1.1 PASS | Builder dispatched 03:15 UTC (a3dc8d7e, session 8). |
-| W1.5 | 1 | [mech] | λ decomposition + uncertainty output | BUILDING | gochara3/w15 | /Users/Dev/Vibe-Coding/Apps/utk-w15 | sonnet | W1.1 PASS | Builder dispatched 03:15 UTC (a19ada06, session 8). |
+| W1.2 | 1 | [heavy] | Direction restored | VERIFYING | gochara3/w12 | /Users/Dev/Vibe-Coding/Apps/utk-w12 | sonnet | W1.1 PASS | PR #1152 open (31b9dfb36). _compute_signed_channels_v3 + _resolve_valence_v3. 30+ tests. CI running. |
+| W1.3 | 1 | [heavy] | Graded suppression | VERIFYING | gochara3/w13 | /Users/Dev/Vibe-Coding/Apps/utk-w13 | sonnet | W1.1 PASS | PR #1155 open. Vedha multiplicative gate on quality_gates. CI running. |
+| W1.4 | 1 | [heavy] | Self-normalizing thresholds | VERIFYING | gochara3/w14 | /Users/Dev/Vibe-Coding/Apps/utk-w14 | sonnet | W1.1 PASS | PR #1156 open. Percentile-based activation per chart×class. CI running. |
+| W1.5 | 1 | [mech] | λ decomposition + uncertainty output | VERIFYING | gochara3/w15 | /Users/Dev/Vibe-Coding/Apps/utk-w15 | sonnet | W1.1 PASS | PR #1154 open. term_breakdown JSONB + CI pair + migration. CI running. |
 | W2.1 | 2 | [heavy] | Ashtakavarga gating, real | QUEUED | — | — | opus | W1.1 PASS | Parallel W2; needs W0.2 data |
 | W2.2 | 2 | [mech] | Moorti nirnaya modifier | QUEUED | — | — | sonnet | W1.1 PASS | Parallel W2; needs W0.2 data |
 | W2.3 | 2 | [mech] | Tara bala, alive | QUEUED | — | — | sonnet | W1.1 PASS | Parallel W2 |
@@ -197,4 +197,6 @@ CONDUCTOR-HEARTBEAT: 2026-08-10T02:51:11Z pid=94277 host=Montys-MacBook-Pro.loca
 
 - 2026-08-10 08:45 IST: W1.2/W1.3/W1.4/W1.5 builders dispatched in parallel (all sonnet, gate W1.1 PASS). Worktrees utk-w12/w13/w14/w15 provisioned at main HEAD 162c387a6. PR #1146 (I6a) fresh CI running (31352006820) after rebase; will re-add to merge queue when CI clears. SAMPŪRTI L-2 still ACTIVE (12:00 IST / 06:30 UTC expiry); W0.2 builds still parked.
 
-CONDUCTOR-HEARTBEAT: 2026-08-10T03:17:00Z pid=94277 host=Montys-MacBook-Pro.local
+- 2026-08-10 08:57 IST: W1.2/W1.3/W1.4/W1.5 builders ALL COMPLETE. PRs open: #1152 (W1.2), #1154 (W1.5), #1155 (W1.3), #1156 (W1.4). All CI running. PR #1146 (I6a) TAP-CI path fix committed (tap-ci.yml now includes migrations/**), TAP-6 now passes (31352540207); waiting for Build Check + Governance Gates to complete before re-queueing.
+
+CONDUCTOR-HEARTBEAT: 2026-08-10T03:30:00Z pid=94277 host=Montys-MacBook-Pro.local
