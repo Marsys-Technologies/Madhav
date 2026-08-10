@@ -14,7 +14,7 @@ conductor_session: SAMPURTI-CONDUCTOR-2026-08-10 (R8 — relaunch 20:48 IST; R7 
 
 # SAMPŪRTI CAMPAIGN LEDGER
 
-CONDUCTOR-HEARTBEAT: 2026-08-10T15:57:24+00:00 (SAMPURTI-CONDUCTOR-2026-08-10-R8) pid=87229 host=Montys-MacBook-Pro.local [R8 active: PR #1201 still OPEN (33/33 green, GATE-EXECUTOR not yet acted). L-4 EXPIRES ~21:30 IST in ~3 min — unmerged. W6-COMPLETE NOT YET posted. SAMPŪRTI parking correctly.]
+CONDUCTOR-HEARTBEAT: 2026-08-10T16:03:07+00:00 (SAMPURTI-CONDUCTOR-2026-08-10-R8) pid=87229 host=Montys-MacBook-Pro.local [R8 active: PR #1201 MERGED 16:00:03Z (migrations 563/564/565 on main). PARIṢKĀRA deploy pending. L-4 still ACTIVE in coord file (not yet RELEASED). W6-COMPLETE NOT YET posted. Awaiting deploy + F-gates + marker.]
 
 ## MODEL POLICY (BINDING — native directive 2026-08-10)
 
