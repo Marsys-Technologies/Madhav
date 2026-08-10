@@ -228,7 +228,77 @@ test, W0.3's applied-verification SELECTs, W0.5/I6a, and W5.1's LEL-signature
 v1-sensitivity detector are the places where a detector could genuinely have
 said otherwise and didn't. The λ_v3 engine's property tests (W1.1) are real.
 
-*(Consumer/wiring census sweep appends as §APPENDIX B when complete.)*
+## APPENDIX B — CONSUMER/WIRING CENSUS FINDINGS (sweep complete)
+
+Full census (every reader of kala_gochara_windows / _v2 / authority across
+platform, platform-mcp, python-sidecar, with file:line) is in the audit
+transcript; the load-bearing findings are registered here.
+
+**UTK-PG-27 · [SEV-1] A SECOND, INDEPENDENT KILL-SWITCH: THE COVERAGE GATE
+HARDCODES THE RETIRED ASSET AND FAILS CLOSED.** `register_gochara_windows.ts
+:418` computes coverage from `build_substep_progress WHERE asset_id =
+'ka_gochara_sweep'`. Once the sweep is retired and stops producing substeps,
+`event_classes_covered` goes empty → `domains_not_covered` becomes the entire
+ontology → every domain-filtered call on all three tools returns a REFUSAL
+before any window SQL runs. This survives fixing PG-1 — executing the F2
+retirement without fixing this line takes serving down a second way. The
+coverage query knows nothing of the v3 asset's 60-substep plan.
+
+**UTK-PG-28 · [SEV-1] THE CUTOVER IS NOT DURABLE — THE REGISTRY SEED REVERSES
+IT.** `asset_registry_seed.ts` (identical on HEAD and main; ON CONFLICT DO
+UPDATE over scope/is_active/catalog_status/target_table/count_sql/asset_kind)
+still declares: sweep=CURRENT/active, ka_gochara = the zero-row global
+transit-search SERVICE (null target/count), v2_materialize = live CURRENT.
+One seed run after 563 un-retires the sweep, resurrects the old id, and
+overwrites the renamed materializer's registry identity with the service
+definition. Migration 542's ON-CONFLICT re-seed does part of the same damage.
+
+**UTK-PG-29 · [SEV-2] GENERATION-LABEL INCOHERENCE — COCKPIT-INVISIBLE CORPUS
++ FALSE PROVENANCE ON SERVED OUTPUT.** The production writer stamps
+`generation='3.0'`; every gochara count_sql (seed :2021, migrations 560/562,
+and post-563 unchanged) counts STAGING rows `generation LIKE 'g3_%'` — the
+production corpus is invisible to the cockpit and build-completeness. Worse:
+`buildSourceCitation` (:268) recognizes only `g3_*`; a served '3.0' row falls
+through to the v1 branch and is cited as "ka_gochara_sweep writer …
+generation=v1" — a false source citation on every served v3 window.
+
+**UTK-PG-30 · [SEV-2] NO AUTHORITY-FLIP TOOLING EXISTS.** No writer, script,
+API, or migration anywhere INSERTs into `kala_gochara_authority`. Both real
+flips (Abhinandan's, via an uncommitted worktree script; the native's, by the
+desk) were ad-hoc SQL. No committed rollback tooling. The cutover mechanism —
+the campaign's centerpiece — has no versioned operational surface.
+
+**UTK-PG-31 · [SEV-2 — BLOCKS P-G1] ka_kshetra'S CROSS-CHECK IS
+GENERATION-BLIND.** `services/ka_kshetra/stage4_field.py:1021-1027`
+(`load_legacy_crosscheck`) reads kala_gochara_windows with NO generation
+predicate and NO authority join — the only Python read in the repo that lands
+in a persisted artifact (provenance gate edges on kala_field_windows). With
+v1+3.0 coexisting it emits one xref edge PER GENERATION per window: the
+agree/diverge classification becomes double-counted and self-referential.
+**This must be made seam-aware BEFORE SAMPŪRTI's P-G1 rebuild** (ka_kshetra is
+SAMPŪRTI territory — this is a SAMPŪRTI pre-P-G1 lane, added to its gate).
+Same blindness in offline validators (v6_divergence_pilot, s4_05 retest,
+cr131 test); and two scripts HARDCODE generation='v1' — including
+`w2g_equivalence_report.py`, meaning the report meant to justify the flip
+keeps measuring v1 as "current" forever.
+
+**UTK-PG-32 · [SEV-3] BRANCH SKEW HAZARD FOR SAMPŪRTI.** sampurti/integration
+is one cutover behind main: 563 absent, old writer files present, and its
+`run_ka_gochara_v2_materialize.py` currently imports the transit-search
+SELF-TEST shim under the materializer's name. The eventual main→integration
+merge carries a delete/modify conflict on `services/ka_gochara/writer.py`.
+Recorded so SAMPŪRTI's conductor merges deliberately, not incidentally.
+
+**UTK-PG-33 · [SEV-3] NAMING COLLISION + CONTRADICTED PRIOR RULING.** Post-
+rename, asset id `ka_gochara` (v3 materializer) and Python symbol
+`KaGocharaService` (live pyswisseph transit compute — never touches the
+windows tables; ka_sangam's output is unaffected by any flip, verified) are
+two unrelated things sharing one name; the transit-search service_health
+self-test is gone with no replacement; ph_muhurta's gochara wiring is a dead
+docstring pointer; the retired sweep writer remains @register-discoverable;
+and a prior ruling doc (2026-06-26 nirmana-build-tracker-hardening) that said
+"do NOT add a writers/ka_gochara.py adapter and do NOT delete their seed
+rows" is directly contradicted by 563 — the conflict was never adjudicated.
 
 ## FIX PLAN — sequenced to "flawlessly integrated, confirmed by testing"
 
@@ -283,10 +353,27 @@ said otherwise and didn't. The λ_v3 engine's property tests (W1.1) are real.
   runs per admitted mechanism, then RE-adjudicated admissions on evidence;
   publish the W4.2 noise floor; publish the suppression firing count; record
   the SLO wall-clocks. GATE: each number pasted in the register's close-out.
-- **F13 (governance repair).** Issue the four skipped adjudications; write the
-  missing close report; reconcile the ledger's internal state (lane table,
-  deployments section, chronology note); obtain a real VERIFIER verdict for
-  W6.5; record this register's existence in CURRENT_STATE.
+- **F13 (governance repair).** Issue the four skipped adjudications (+ the
+  never-adjudicated conflict with the 2026-06-26 ruling, PG-33); write the
+  missing close report; reconcile the ledger's internal state; obtain a real
+  VERIFIER verdict for W6.5; record this register in CURRENT_STATE.
+- **F14 (census closures — REQUIRED for F2/F7 to hold).** (a) Fix the
+  coverage gate (:418) to source coverage from the v3 asset's substeps/
+  resonance map BEFORE retirement executes (PG-27); (b) harmonize
+  asset_registry_seed.ts + migration 542 with the post-563 world so no seed
+  run can reverse the cutover (PG-28); (c) unify generation labels: count_sql
+  for the production asset counts kala_gochara_windows generation='3.0', and
+  buildSourceCitation recognizes '3.0' with a truthful v3 citation (PG-29);
+  (d) commit versioned flip/rollback tooling for kala_gochara_authority
+  (PG-30); (e) make ka_kshetra's load_legacy_crosscheck + the offline
+  validators seam-aware, and re-scope the two hardcoded-v1 scripts with an
+  explicit documented reason or fix (PG-31 — the ka_kshetra piece lands in
+  SAMPŪRTI's territory as a pre-P-G1 lane).
+
+**REVISED F-SEQUENCE (census-aware):** F1 → F14a+F14b → F2 → F3 → F14c+F14d →
+F4 → F7. Executing F2 (retirement) before F14a would re-break serving; F2
+without F14b is reversible by the next seed run. PG-31's ka_kshetra fix gates
+P-G1 alongside F10's marker.
 
 ## SAMPŪRTI IMPACT STATEMENT
 
