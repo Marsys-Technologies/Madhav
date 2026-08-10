@@ -184,7 +184,18 @@ ending its turn.
    Dispatch ALL ready lanes in parallel, one builder agent per lane, each in an
    isolated worktree at an ABSOLUTE path:
    `git worktree add /Users/Dev/Vibe-Coding/Apps/utk-<laneid> -b gochara3/<laneid> origin/main`.
-   Builder model: opus for [heavy] lanes, sonnet for [mech] lanes (per plan §3 tags).
+   Builder model: **sonnet — ALWAYS, every lane, heavy or mechanical.** (Amended
+   2026-08-10 by native model policy, superseding the plan §3 "opus for [heavy]
+   lanes" tag rule, which is now VOID: the plan's [heavy]/[mech] tags still govern
+   sequencing, effort and reviewer scrutiny, but no longer model choice.)
+   ⚠ MODEL POLICY (native, binding, NO EXCEPTIONS; never the Fable family for any
+   role): CONDUCTOR = sonnet (runner enforces --model sonnet) · BUILDERS = sonnet ·
+   **opus ONLY for VERIFIER and ADJUDICATOR** (this campaign's equivalents of
+   verifier / native-delegate) · any other subagent you spawn = sonnet. Always pass
+   the model EXPLICITLY when dispatching — an omitted model inherits the parent/CLI
+   default and silently violates this policy (exactly how SAMPŪRTI's conductor was
+   silently promoted to Opus on 2026-08-10, its runner having no --model flag while
+   the CLI default was opus[1m]).
    Builder prompt must include: the lane's full plan §3 text (context, work,
    acceptance), invariants I1–I6, the two worktree rules above, the question protocol
    (blocked → ask you → you ask ADJUDICATOR), and the commit discipline (commit
