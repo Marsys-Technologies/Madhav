@@ -548,6 +548,31 @@ class FieldEvaluator:
         self.horizon_days = float(horizon_days)
         self.baseline_source = baseline_source
         self.extra_breakpoints = tuple(float(t) for t in extra_breakpoints)
+        # L1j: pre-built binary-search arrays per (system_id, level) for O(log N)
+        # lord_stacks_at instead of the O(N) linear scan over 165K+ periods.
+        # Periods in self.ladder are already sorted by (_LEVEL_RANK, t_start), so
+        # grouping by level here preserves outermost-first order (MD→AD→PD→SD→PrD).
+        self._ladder_bsearch: dict[str, list[tuple[str, list[float], list[float], list[str]]]] = {}
+        for sid, periods in self.ladder.items():
+            levels_data: list[tuple[str, list[float], list[float], list[str]]] = []
+            cur_level = ''
+            lvl_t_starts: list[float] = []
+            lvl_t_ends: list[float] = []
+            lvl_lords: list[str] = []
+            for p in periods:
+                if p.level != cur_level:
+                    if cur_level:
+                        levels_data.append((cur_level, lvl_t_starts, lvl_t_ends, lvl_lords))
+                    cur_level = p.level
+                    lvl_t_starts = []
+                    lvl_t_ends = []
+                    lvl_lords = []
+                lvl_t_starts.append(p.t_start)
+                lvl_t_ends.append(p.t_end)
+                lvl_lords.append(p.lord)
+            if cur_level:
+                levels_data.append((cur_level, lvl_t_starts, lvl_t_ends, lvl_lords))
+            self._ladder_bsearch[sid] = levels_data
 
     # ── inputs at an instant ─────────────────────────────────────────────────
 
@@ -558,10 +583,19 @@ class FieldEvaluator:
         exactly one period — the same discipline §6.3's cohort MD-chain join
         uses, and for the same reason: a closed interval double-counts the
         boundary and an open one drops it.
+
+        L1j: O(log N) via pre-built binary-search arrays instead of O(N) linear
+        scan. For this chart 165K+ periods reduce to ~110 bisect comparisons.
         """
         out: dict[str, list[tuple[str, str]]] = {}
-        for sid, periods in self.ladder.items():
-            stack = [(p.level, p.lord) for p in periods if p.t_start <= t < p.t_end]
+        for sid, levels_data in self._ladder_bsearch.items():
+            stack: list[tuple[str, str]] = []
+            for level, lvl_t_starts, lvl_t_ends, lvl_lords in levels_data:
+                # bisect_right gives the first i where t_starts[i] > t, so
+                # t_starts[idx] <= t for idx = result - 1.
+                idx = bisect.bisect_right(lvl_t_starts, t) - 1
+                if idx >= 0 and lvl_t_ends[idx] > t:  # [t_start, t_end) containment
+                    stack.append((level, lvl_lords[idx]))
             if stack:
                 out[sid] = stack
         return out
