@@ -1,9 +1,10 @@
-"""ka_gochara_v3_century_materialize — W3.4 Century horizon + slice receipts.
+"""ka_gochara_v3_century_materialize — W3.4/W5.4 Century horizon + slice receipts.
 
-GOCHARA-UTKARSA campaign, wave W3.4.
+GOCHARA-UTKARSA campaign, wave W3.4 (original) + W5.4 (writer repoint).
 
 Gate: W0.3 PASS (generation schema + utkarsha_builder role in place) +
-      W3.2 PASS (interval_solver root-solved threshold crossings).
+      W3.2 PASS (interval_solver root-solved threshold crossings) +
+      UTK-R1 ADJUDICATOR ruling (W5.4 repoint to kala_gochara_windows generation='3.0').
 
 PURPOSE
 -------
@@ -22,8 +23,9 @@ Key behaviours:
        b. Check kala_gochara_v2_build_state for a matching stored fingerprint.
        c. If fingerprint unchanged AND rows exist: skip (honest no-op).
        d. Else: call find_threshold_crossings from gochara_v3.interval_solver
-          over the decade JD range; DELETE-then-INSERT results into
-          kala_gochara_windows_v2 with era_slice_key set.
+          over the decade JD range; DELETE-then-INSERT results into BOTH:
+            * kala_gochara_windows_v2 (calibration/staging surface, generation='g3_utkarsha')
+            * kala_gochara_windows (production surface, generation='3.0') [W5.4 repoint]
        e. Upsert fingerprint to kala_gochara_v2_build_state.
        f. Log wall-clock time per substep at DEBUG level (AC5 / first SLO
           evidence point).
@@ -35,9 +37,25 @@ Key behaviours:
 
 TABLES
 ------
-Write target:  kala_gochara_windows_v2  (own surface, never touches the
-               protected kala_gochara_windows v1 table)
-Build state:   kala_gochara_v2_build_state  (substep-keyed fingerprint)
+Write target 1: kala_gochara_windows_v2  (calibration/staging surface;
+                generation='g3_utkarsha'; never touches v1 rows)
+Write target 2: kala_gochara_windows  (production surface; generation='3.0';
+                I1 rail: DB trigger protects generation='v1' rows for the two
+                canonical charts — generation='3.0' writes pass through safely)
+Build state:    kala_gochara_v2_build_state  (substep-keyed fingerprint)
+
+W5.4 REPOINT (UTK-R1)
+----------------------
+Per ADJUDICATOR ruling UTK-R1, the production writer's FINAL target is
+kala_gochara_windows with generation='3.0'. W5.4 adds this production write
+while retaining the kala_gochara_windows_v2 calibration write.
+
+I1 INVARIANT
+------------
+Every DML statement against kala_gochara_windows MUST carry the
+generation='3.0' predicate. The mutation-guard test
+(test_ka_gochara_v3_mutation_guard.py) enforces this invariant and is
+mutation-tested to prove it is a real detector.
 
 FROZEN ORCHESTRATOR CONTRACT (§N.2)
 ------------------------------------
@@ -48,8 +66,9 @@ FROZEN ORCHESTRATOR CONTRACT (§N.2)
 
 IDEMPOTENCY (§N.3)
 ------------------
-Delete-then-INSERT scoped to (chart_id × event_class × generation='g3_utkarsha'
-× era_slice_key) against kala_gochara_windows_v2 ONLY.
+Delete-then-INSERT scoped to:
+  kala_gochara_windows_v2: (chart_id × event_class × generation='g3_utkarsha' × era_slice_key)
+  kala_gochara_windows:    (chart_id × event_class × generation='3.0' × era_slice_key)
 
 I2 STATIC CHECK (for test_w34_century_horizon.py)
 ---------------------------------------------------
@@ -90,8 +109,14 @@ logger = logging.getLogger(__name__)
 
 ASSET_ID = "ka_gochara_v3_century_materialize"
 
-# Generation label for all rows this writer produces.
+# Generation label for the calibration/staging surface (kala_gochara_windows_v2).
 GENERATION_V3 = "g3_utkarsha"
+
+# Generation label for the production surface (kala_gochara_windows).
+# Per UTK-R1 ADJUDICATOR ruling (W5.4 repoint): every DML statement against
+# kala_gochara_windows MUST carry this predicate — enforced by the mutation-guard
+# test (test_ka_gochara_v3_mutation_guard.py).
+GENERATION_PROD = "3.0"
 
 # Engine version for fingerprinting.  Bumped whenever the scoring engine
 # changes in a way that would move a stored window.  gochara_v3/__init__.py
@@ -123,11 +148,17 @@ DECADE_COUNT: int = 10
 # Days per Julian year (standard astronomical).
 DAYS_PER_YEAR: float = 365.25
 
-# Table constants (this writer's own surface; v1 protected table is never named).
+# Table constants.
+# Calibration/staging surface (W3.4 original target): kala_gochara_windows_v2.
 TABLE = "kala_gochara_windows_v2"
+# Production surface (W5.4 repoint, UTK-R1): kala_gochara_windows with generation='3.0'.
+# I1 rail: the DB trigger on this table protects generation='v1' rows for the two
+# canonical charts (482012f1-… and 1c826d5a-…). generation='3.0' writes are
+# explicitly allowed by the generation-aware guard (migration 556).
+PROD_TABLE = "kala_gochara_windows"
 BUILD_STATE_TABLE = "kala_gochara_v2_build_state"
 
-# INSERT template for kala_gochara_windows_v2.
+# INSERT template for kala_gochara_windows_v2 (calibration/staging).
 INSERT_SQL = f"""
     INSERT INTO {TABLE}
       (chart_id, event_class, temporal_shape,
@@ -145,6 +176,31 @@ INSERT_SQL = f"""
        %(suppression_state)s::jsonb,
        %(peak_basis)s, %(calibration_state)s, %(source)s,
        %(generation)s, %(era_slice_key)s)
+"""
+
+# INSERT template for kala_gochara_windows (production, W5.4 repoint, UTK-R1).
+# Every DML on this table MUST carry generation='3.0' — enforced by the
+# mutation-guard test (test_ka_gochara_v3_mutation_guard.py).
+# I1 mutation-guard anchor: generation='3.0' (%(generation)s parameter always
+# bound to GENERATION_PROD='3.0'; literal here for static-source guard coverage).
+INSERT_PROD_SQL = f"""
+    INSERT INTO {PROD_TABLE}
+      (chart_id, event_class, temporal_shape,
+       window_start, window_end, peak_date,
+       milestone_id, is_irreversibility_milestone,
+       signed_intensity, raw_intensity, valence, is_adverse,
+       active_sentences, contributing_systems, suppression_state,
+       peak_basis, calibration_state, source, generation, era_slice_key)
+    VALUES
+      (%(chart_id)s, %(event_class)s, %(temporal_shape)s,
+       %(window_start)s, %(window_end)s, %(peak_date)s,
+       %(milestone_id)s, %(is_irreversibility_milestone)s,
+       %(signed_intensity)s, %(raw_intensity)s, %(valence)s, %(is_adverse)s,
+       %(active_sentences)s::jsonb, %(contributing_systems)s::jsonb,
+       %(suppression_state)s::jsonb,
+       %(peak_basis)s, %(calibration_state)s, %(source)s,
+       %(generation)s, %(era_slice_key)s)
+    -- W5.4 I1 invariant: generation='3.0' only; v1 rows are protected by DB trigger
 """
 
 
@@ -400,8 +456,17 @@ def _build_row(
     event_class: str,
     boundary: IntervalBoundary,
     era_slice_key: str,
+    generation: str = GENERATION_V3,
 ) -> dict[str, Any]:
-    """Convert one IntervalBoundary to a kala_gochara_windows_v2 row dict."""
+    """Convert one IntervalBoundary to a kala_gochara_windows(_v2) row dict.
+
+    Parameters
+    ----------
+    generation
+        The generation label to stamp on the row.
+        * GENERATION_V3 ('g3_utkarsha') → calibration row for kala_gochara_windows_v2
+        * GENERATION_PROD ('3.0')       → production row for kala_gochara_windows
+    """
     window_start = _jd_to_date(boundary.enter_jd)
     window_end = _jd_to_date(boundary.exit_jd)
     peak_date = _jd_to_date(boundary.peak_jd)
@@ -424,7 +489,7 @@ def _build_row(
         "peak_basis": "gochara_lambda_v3",
         "calibration_state": "structural_prior",
         "source": "live",
-        "generation": GENERATION_V3,
+        "generation": generation,
         "era_slice_key": era_slice_key,
     }
 
@@ -660,6 +725,14 @@ class GocharaV3CenturyMaterializeWriter(WriterBase):
         # 7. DELETE-then-INSERT (§N.3 replace-not-accrete).
         #    Scoped to (chart_id, event_class, generation, era_slice_key) so
         #    a resubmit of this decade slice does not touch other slices.
+        #
+        #    W5.4 repoint (UTK-R1): write to BOTH tables.
+        #      (a) kala_gochara_windows_v2 — calibration/staging (generation='g3_utkarsha')
+        #      (b) kala_gochara_windows    — production           (generation='3.0')
+        #    Every DML on kala_gochara_windows MUST carry generation='3.0'.
+        #    The I1 rail (DB trigger) allows generation='3.0'; it only blocks 'v1'.
+
+        # (a) Calibration/staging table: kala_gochara_windows_v2
         with conn.cursor() as cur:
             cur.execute(
                 f"DELETE FROM {TABLE} "
@@ -668,15 +741,38 @@ class GocharaV3CenturyMaterializeWriter(WriterBase):
                 [chart_id, event_class, GENERATION_V3, era_slice_key],
             )
 
+        # (b) Production table: kala_gochara_windows with generation='3.0'
+        #     I1 mutation-guard invariant: this DELETE carries generation='3.0'.
+        with conn.cursor() as cur:
+            cur.execute(
+                f"DELETE FROM {PROD_TABLE} "
+                f"WHERE chart_id = %s AND event_class = %s "
+                f"AND generation = '3.0' AND era_slice_key = %s",
+                [chart_id, event_class, era_slice_key],
+            )
+
         inserted = 0
         for boundary in intervals:
-            row = _build_row(chart_id, event_class, boundary, era_slice_key)
+            # (a) Insert into calibration/staging table.
+            row_v2 = _build_row(chart_id, event_class, boundary, era_slice_key, generation=GENERATION_V3)
             try:
-                conn.execute(INSERT_SQL, row)
+                conn.execute(INSERT_SQL, row_v2)
                 inserted += 1
             except Exception as exc:  # noqa: BLE001
                 logger.warning(
-                    "[%s] substep=%r row insert failed (peak_date=%s): %s",
+                    "[%s] substep=%r v2 row insert failed (peak_date=%s): %s",
+                    ASSET_ID, substep_key,
+                    _jd_to_date(boundary.peak_jd), exc,
+                )
+
+            # (b) Insert into production table (generation='3.0').
+            #     I1 mutation-guard invariant: row carries generation='3.0'.
+            row_prod = _build_row(chart_id, event_class, boundary, era_slice_key, generation=GENERATION_PROD)
+            try:
+                conn.execute(INSERT_PROD_SQL, row_prod)
+            except Exception as exc:  # noqa: BLE001
+                logger.warning(
+                    "[%s] substep=%r prod row insert failed (peak_date=%s): %s",
                     ASSET_ID, substep_key,
                     _jd_to_date(boundary.peak_jd), exc,
                 )
@@ -705,7 +801,8 @@ class GocharaV3CenturyMaterializeWriter(WriterBase):
             duration_seconds=elapsed,
             notes=(
                 f"{substep_key}: {len(intervals)} intervals found, "
-                f"{inserted} rows inserted into {TABLE}, "
+                f"{inserted} rows inserted into {TABLE} (generation={GENERATION_V3}) "
+                f"and {PROD_TABLE} (generation={GENERATION_PROD}), "
                 f"era_slice_key={era_slice_key}, "
                 f"fingerprint={fingerprint}"
             ),
@@ -739,6 +836,8 @@ __all__ = [
     "ENGINE_VERSION",
     "EVENT_CLASSES",
     "GENERATION_V3",
+    "GENERATION_PROD",
+    "PROD_TABLE",
     "TABLE",
     "GocharaV3CenturyMaterializeWriter",
     "build_decade_slices",

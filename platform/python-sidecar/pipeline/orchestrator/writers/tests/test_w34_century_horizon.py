@@ -37,7 +37,9 @@ from pipeline.orchestrator.writers.ka_gochara_v3_century_materialize import (
     DECADE_SLICES,
     ENGINE_VERSION,
     EVENT_CLASSES,
+    GENERATION_PROD,
     GENERATION_V3,
+    PROD_TABLE,
     TABLE,
     GocharaV3CenturyMaterializeWriter,
     build_decade_slices,
@@ -194,16 +196,14 @@ def test_i2_no_ka_gochara_sweep_imports():
         )
 
 
-def test_writer_never_references_protected_v1_table():
-    """The string 'kala_gochara_windows\\b' (bare v1 table name) must not
-    appear in the writer's code (only the _v2 variant is allowed)."""
-    source = _module_source_excluding_docstring(mod)
-    # \\b is a word boundary: matches "kala_gochara_windows" but NOT
-    # "kala_gochara_windows_v2" (no word-boundary between "s" and "_").
-    matches = re.findall(r"\bkala_gochara_windows\b", source)
-    assert matches == [], (
-        f"Writer must not reference bare kala_gochara_windows table "
-        f"(found {len(matches)} occurrence(s))"
+def test_writer_production_table_is_kala_gochara_windows():
+    """W5.4 repoint (UTK-R1): PROD_TABLE is kala_gochara_windows (production surface).
+    The writer now intentionally references kala_gochara_windows for generation='3.0'
+    writes. The generation='3.0' predicate invariant is enforced by the mutation-guard
+    test (test_ka_gochara_v3_mutation_guard.py), not by banning the table name."""
+    from pipeline.orchestrator.writers.ka_gochara_v3_century_materialize import PROD_TABLE
+    assert PROD_TABLE == "kala_gochara_windows", (
+        f"PROD_TABLE must be 'kala_gochara_windows' (UTK-R1), got {PROD_TABLE!r}"
     )
 
 
@@ -803,6 +803,13 @@ def test_event_classes_constant():
 
 
 def test_table_constant_is_v2():
-    """Writer targets kala_gochara_windows_v2, not the protected v1 table."""
+    """Calibration/staging surface (TABLE) is kala_gochara_windows_v2."""
     assert TABLE == "kala_gochara_windows_v2"
-    assert TABLE != "kala_gochara_windows"
+
+def test_prod_table_constant():
+    """W5.4 repoint: production surface (PROD_TABLE) is kala_gochara_windows."""
+    assert PROD_TABLE == "kala_gochara_windows"
+
+def test_generation_prod_constant():
+    """W5.4 repoint: production generation label is '3.0'."""
+    assert GENERATION_PROD == "3.0"
