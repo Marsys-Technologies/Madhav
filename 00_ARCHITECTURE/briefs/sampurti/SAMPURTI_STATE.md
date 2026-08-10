@@ -9,12 +9,12 @@ branch_model: >
   Integration branch sampurti/integration cut from main @ 1432d7492 (2026-08-10).
   All lane work in worktrees off sampurti/integration; lane PRs -> integration;
   integration -> main only via Gate-Executor packets at wave boundaries.
-conductor_session: SAMPURTI-CONDUCTOR-2026-08-10 (R5 — relaunch 20:02 IST; R4 pid=68645 CONFIRMED DEAD; PARISHKARA pid=47856 also dead [separate campaign, not our concern]; sole SAMPŪRTI conductor)
+conductor_session: SAMPURTI-CONDUCTOR-2026-08-10 (R6 — relaunch 20:21 IST; R5 pid=33133 CONFIRMED DEAD [ps -p 33133 exit=0 with no CMD output]; pgrep "CONDUCTOR of SAMPŪRTI" = no match; sole SAMPŪRTI conductor)
 ---
 
 # SAMPŪRTI CAMPAIGN LEDGER
 
-CONDUCTOR-HEARTBEAT: 2026-08-10T14:32+00:00 (SAMPURTI-CONDUCTOR-2026-08-10-R5) pid=33133 host=Montys-MacBook-Pro.local [R5 RELAUNCH: predecessor pid=68645 DEAD. PARISHKARA pid=47856 dead (separate campaign). W6-COMPLETE still WITHHELD — PARISHKARA MR-01/02 in flight. All sampurti/integration PRs merged. Holding for W6-COMPLETE marker.]
+CONDUCTOR-HEARTBEAT: 2026-08-10T14:51+00:00 (SAMPURTI-CONDUCTOR-2026-08-10-R6) pid=57152 host=Montys-MacBook-Pro.local [R6 RELAUNCH: R5 pid=33133 DEAD (ps -p confirms). pgrep "CONDUCTOR of SAMPŪRTI" = no match. W6-COMPLETE still WITHHELD — PARIṢKĀRA has 6 open PRs (MR-01 #1198, MR-09 #1197, MR-18 #1195, MR-25 #1200, MR-30 #1199, MR-35 #1196) with PARĪKṢAKA verdicts pending; PARIṢKĀRA conductors S1(pid=47856)+S2(pid=10226) both dead per ledger. Integration PRs all merged. Holding for W6-COMPLETE.]
 
 ## MODEL POLICY (BINDING — native directive 2026-08-10)
 
