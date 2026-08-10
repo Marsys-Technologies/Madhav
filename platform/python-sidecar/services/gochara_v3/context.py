@@ -78,6 +78,39 @@ class AVGateRow:
 
 
 @dataclass(frozen=True)
+class VedhaRow:
+    """One row from kala_vedha_gochara, pre-fetched for W1.3 quality_gates suppression.
+
+    Only columns needed for the suppression computation are stored:
+      - vedha_kind / graha / window_start / window_end: for overlap checking
+      - detail: JSONB carrying malefic_count (and malefic_obstructing_grahas,
+        malefic_effect_grade, etc.) for grading
+    Dates are stored as ISO strings (YYYY-MM-DD) for fast string comparison
+    against the window start/end derived from a JD.
+    """
+    vedha_kind: str
+    graha: str
+    window_start: str   # ISO date YYYY-MM-DD
+    window_end: str     # ISO date YYYY-MM-DD
+    classical_citation: Optional[str]
+    detail: dict        # JSONB — malefic_count, malefic_effect_grade, etc.
+
+
+@dataclass(frozen=True)
+class MaleficScaleRow:
+    """One row from bg_vedha_malefic_scale, pre-fetched for W1.3 suppression grading.
+
+    malefic_count → (effect_grade, suppression_factor) where suppression_factor
+    is derived here rather than stored in the DB (the DB stores effect_grade /
+    effect_description; the factor mapping is our own calibrated schedule).
+    """
+    malefic_count: int
+    effect_grade: str
+    effect_description: Optional[str]
+    source_citation: Optional[str]
+
+
+@dataclass(frozen=True)
 class ClassContext:
     """All data needed to evaluate lambda_e for a (chart x event_class) pair,
     fetched ONCE. After construction this object is immutable and contains
@@ -121,6 +154,15 @@ class ClassContext:
 
     # Sade Sati phases (pre-fetched intervals)
     sade_sati_phases: tuple[dict, ...] = ()
+
+    # W1.3: vedha windows + malefic scale (pre-fetched for quality_gates suppression)
+    # vedha_rows: all kala_vedha_gochara rows for this chart_id.
+    # Empty when table is absent or has no rows — quality_gates degrades to 1.0.
+    vedha_rows: tuple[VedhaRow, ...] = ()
+
+    # malefic_scale: bg_vedha_malefic_scale rows {malefic_count: MaleficScaleRow}.
+    # Empty when table is absent — suppression factor falls back to a fixed schedule.
+    malefic_scale: tuple[MaleficScaleRow, ...] = ()
 
     @classmethod
     def fetch(
@@ -180,6 +222,10 @@ class ClassContext:
         # 11. Sade Sati phases (pre-fetch the intervals)
         sade_sati_phases = _fetch_sade_sati_phases(conn, chart_id, targets)
 
+        # 12. W1.3: vedha windows + malefic scale for quality_gates suppression
+        vedha_rows = _fetch_vedha_rows(conn, chart_id)
+        malefic_scale = _fetch_malefic_scale(conn)
+
         return cls(
             chart_id=chart_id,
             event_class=event_class,
@@ -197,6 +243,8 @@ class ClassContext:
             natal_facts=natal_facts,
             av_gate_rows=tuple(av_gate_rows),
             sade_sati_phases=tuple(sade_sati_phases),
+            vedha_rows=tuple(vedha_rows),
+            malefic_scale=tuple(malefic_scale),
         )
 
 
@@ -330,6 +378,112 @@ def _fetch_sade_sati_phases(
     return phases
 
 
+def _fetch_vedha_rows(conn, chart_id: str) -> list[VedhaRow]:
+    """Pre-fetch all kala_vedha_gochara rows for this chart.
+
+    Empty list when the table is absent (CI without prod DB) or has no rows —
+    quality_gates degrades gracefully to 1.0 (AC1).
+
+    Fetches: vedha_kind, graha, window_start, window_end,
+             classical_citation, detail (JSONB).
+    The detail JSONB contains malefic_count (and malefic_obstructing_grahas,
+    malefic_effect_grade, etc.) written by ka_vedha_gochara writer.
+    """
+    if conn is None:
+        return []
+    try:
+        with savepoint_scope(conn, "v3_vedha_rows"):
+            cur = conn.execute(
+                """
+                SELECT vedha_kind, graha,
+                       window_start::text AS window_start,
+                       window_end::text   AS window_end,
+                       classical_citation,
+                       detail
+                  FROM kala_vedha_gochara
+                 WHERE chart_id = %s
+                 ORDER BY window_start
+                """,
+                [chart_id],
+            )
+            rows = cur.fetchall()
+    except Exception as exc:  # noqa: BLE001
+        logger.info("[v3.context] vedha_rows fetch failed: %s", exc)
+        return []
+
+    import json as _json
+    result = []
+    for row in rows:
+        d = row if isinstance(row, dict) else dict(
+            zip(["vedha_kind", "graha", "window_start", "window_end",
+                 "classical_citation", "detail"], row)
+        )
+        detail_raw = d.get("detail")
+        if isinstance(detail_raw, str):
+            try:
+                detail_raw = _json.loads(detail_raw)
+            except Exception:  # noqa: BLE001
+                detail_raw = {}
+        if not isinstance(detail_raw, dict):
+            detail_raw = {}
+        result.append(VedhaRow(
+            vedha_kind=str(d["vedha_kind"]),
+            graha=str(d["graha"]),
+            window_start=str(d["window_start"]),
+            window_end=str(d["window_end"]),
+            classical_citation=d.get("classical_citation"),
+            detail=detail_raw,
+        ))
+    return result
+
+
+def _fetch_malefic_scale(conn) -> list[MaleficScaleRow]:
+    """Pre-fetch bg_vedha_malefic_scale rows.
+
+    Empty list when the table is absent — suppression factor falls back to
+    the engine's own fixed schedule (AC1 graceful degrade).
+
+    The Phaladeepika PG353 scale: malefic_count (1-5) → effect_grade
+    (fear / …/ ignominy). The suppression factor mapping is the engine's
+    own calibrated schedule (not stored in the DB).
+    """
+    if conn is None:
+        return []
+    try:
+        with savepoint_scope(conn, "v3_malefic_scale"):
+            cur = conn.execute(
+                """
+                SELECT malefic_count, effect_grade, effect_description,
+                       source_citation
+                  FROM bg_vedha_malefic_scale
+                 ORDER BY malefic_count
+                """,
+            )
+            rows = cur.fetchall()
+    except Exception as exc:  # noqa: BLE001
+        logger.info("[v3.context] malefic_scale fetch failed: %s", exc)
+        return []
+
+    result = []
+    for row in rows:
+        d = row if isinstance(row, dict) else dict(
+            zip(["malefic_count", "effect_grade", "effect_description",
+                 "source_citation"], row)
+        )
+        try:
+            mc = int(d["malefic_count"])
+        except (TypeError, ValueError):
+            continue
+        result.append(MaleficScaleRow(
+            malefic_count=mc,
+            effect_grade=str(d.get("effect_grade") or ""),
+            effect_description=d.get("effect_description"),
+            source_citation=d.get("source_citation"),
+        ))
+    return result
+
+
 __all__ = [
     "ClassContext", "NatalFacts", "DashaPeriod", "AVGateRow",
+    "VedhaRow", "MaleficScaleRow",
 ]
