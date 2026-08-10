@@ -1,0 +1,47 @@
+mechanism_id: w29_citation_resolution
+wave: 2
+lane: W2.9
+description: "Citation resolution catalog — maps all gochara citation strings to classical text verse_refs"
+citation_status: cited
+classical_citation: "All three citation sources cataloged: citations.py (14 constants in __all__), primitives.py (12 primitive families + sign_occupation addendum), bg_transit_rules / bg_transit_av_gates (dynamic DB columns)"
+v1_lineage:
+  replaces: "citation strings unresolved — no link from window sentences to classical_text_chunks verse_refs"
+  v1_module: services/gochara_grammar/citations.py
+  change_type: new
+  note: >
+    v1 carries citation strings as module constants (citations.py) and inline
+    classical_citation= assignments (primitives.py) but never resolves them to
+    verse_refs in the classical_text_chunks table. v3 W2.9 builds the static
+    catalog baseline; Wave 5 seeding job will populate verse_refs by querying
+    classical_text_chunks via the existing hybrid search. The modifier is always
+    1.0 — this mechanism annotates resolution status, never gates lambda.
+module_path: services/gochara_v3/mechanisms/w29_citation_resolution.py
+admission_state: candidate
+ablation_evidence_link: null
+admission_ruling_id: null
+toggle_key: w29_citation_resolution
+sources:
+  citations_py:
+    count: 14
+    path: services/gochara_grammar/citations.py
+    note: "__all__ has 14 named constants; each is a verbatim codebase-attested citation string"
+  primitives_py:
+    primitive_families: 12
+    addendum: sign_occupation
+    path: services/gochara_grammar/primitives.py
+    note: >
+      3 families are uncited_extension (degree_contact, eclipse_degree, planetary_return);
+      2 families inherit citation from DB rows (gochara_vedha_pair, av_threshold_state);
+      remaining 8 families use citations.py constants directly
+  bg_transit_rules:
+    tables:
+      - bg_transit_rules (classical_citation column, rule_type='vedha' rows)
+      - bg_transit_av_gates (classical_citation column, gate_kind='sav_threshold' rows)
+    note: >
+      Dynamic DB columns — distinct value set not enumerable statically.
+      Cataloged by fallback constants (already in citations_py section).
+      Wave 5 will query DISTINCT values for full enumeration.
+wave5_seeding_contract:
+  function: get_all_citations()
+  returns: "dict[citation_string, {status, source, verse_refs, note, ...}]"
+  action: "Populate verse_refs by querying classical_text_chunks via hybrid search per citation string"
