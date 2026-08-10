@@ -608,3 +608,42 @@ scope reduction below 27 classes · retiring any serving surface · LEL content.
     un-500 on both charts via the deployed product) → merge PR #1208 once M5 verifies green →
     dispatch MR-10/13/14/15 builders. W6-COMPLETE marker still waits for the FULL marker-gate set
     (MR-01..08,10,13,14,15,24) — this session's work does not change that gate.
+
+- 2026-08-10 ~23:0x IST (interactive conductor — merge queue silently deadlocked, TAP-6 trigger
+  coverage widened, native carve-in expanded to standing additive-only CI-trigger authority):
+  BOTH #1207 and #1209 sat mergeStateStatus=BLOCKED with autoMergeRequest enabled for ~10+
+  minutes with no visible progress. Diagnosed via GraphQL `repository.mergeQueue.entries` —
+  EMPTY. Neither PR had actually been admitted to the queue at all (not stuck IN it, never
+  ENTERED it). Root cause: "TAP-6 — Method audit grep set" is one of only 5 REQUIRED checks on
+  main's ruleset (id 20141220) but never ran on either PR — absent, not failing. GitHub will not
+  admit a PR to the merge queue until every required check has reported SOMETHING; an absent
+  required check blocks silently, with no red anywhere to point at.
+  RECURRING-CLASS FINDING (native-directed log entry): tap-ci.yml's own header comments already
+    document fixing this exact failure mode twice (2026-08-01: workflow_dispatch didn't satisfy
+    the ruleset the same way pull_request does; 2026-08-06: the trigger was entirely missing for
+    a stretch). This session hit it a THIRD time — actually TWO gaps at once (platform/migrations/**
+    not covered though platform/supabase/migrations/** was; no workflow file but tap-ci.yml
+    itself was covered). Cross-referencing session memory: this is not confined to PARIṢKĀRA —
+    at least 4 more prior incidents this same week across OTHER campaigns (adhisthana/session-close
+    2026-08-08, pratijna-v4 b5-ledger-close and b5-rung-p8-ledger 2026-08-09, F1-adoption/close
+    2026-08-09) each needed their own manual "TAP-6 trigger workaround" commit. The pattern is
+    structural, not incidental: a REQUIRED check with a path filter is a queue-deadlock trap by
+    construction, and it has now cost real time on at least 6 separate occasions across the repo's
+    recent history.
+  FIX (additive-only, native go-ahead, standing carve-in WIDENED): PR #1210 opened
+    (fix/tap6-trigger-coverage-migrations-workflows → main) adding 'platform/migrations/**' and
+    '.github/workflows/**' to tap-ci.yml's pull_request.paths. Announced in coordination file
+    (commit a3c062dc5). Native's carve-in is no longer scoped to "one deploy.yml/CI PR" — PARIṢKĀRA
+    now holds standing authorization for ADDITIVE-ONLY trigger-coverage fixes (paths/branches
+    lists only) to any CI workflow file whenever a required check fails to run in this campaign's
+    merge chain, announced each time. Anything beyond additive coverage (check behavior, removals,
+    permissions) still pauses for native.
+  NAMED RESIDUAL QUEUED (behavior change, stays paused for native when picked up): restructure
+    TAP-6 to an always-report pattern (a no-op success job that runs when no matching paths
+    changed, instead of the workflow not triggering at all) — this is the structural fix that
+    closes the class permanently instead of chasing each new path gap. Given the ≥6 documented
+    incidents, this should be prioritized, but it is explicitly OUT OF SCOPE for the additive
+    carve-in and not done in this session.
+  NEXT-ACTION: merge #1210 on green → re-trigger #1207 and #1209 (path filter reads each PR's
+    own diffed files; the tap-ci.yml fix alone does not retroactively make TAP-6 report on
+    their existing heads) → resume the deploy/M5/gate-packet/corpus-repair chain as before.
