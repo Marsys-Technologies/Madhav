@@ -10,8 +10,8 @@ marker_duty: post W6-COMPLETE to campaign-coordination §6 after MR-01..08,10,13
 
 | MR | Item (short) | Status | Evidence |
 |---|---|---|---|
-| MR-01 | Schema parity (8 cols) → tools un-500 | BUILDING | agent a07974c83ba407711 · worktree pk-mr01 · migration 564 claimed |
-| MR-02 | Coverage gate authority-aware | BUILDING | combined with MR-01+05 in pk-mr01 |
+| MR-01 | Schema parity (8 cols) → tools un-500 | BUILDING | agent a07974c83ba407711 · worktree pk-mr01 · 4 commits pushed (9e4005886) · 27+12 tests GREEN · PR opening |
+| MR-02 | Coverage gate authority-aware | BUILDING | combined with MR-01+05 in pk-mr01 · authority-aware computeGocharaCoverage committed |
 | MR-03 | Truthful '3.0' citation | QUEUED | after MR-01+02+05 spine lands |
 | MR-04 | Valence vocabulary contract | QUEUED | after MR-01+02+05 spine lands |
 | MR-05 | Corrected deprecation migration (FK-safe) | BUILDING | combined with MR-01+02 in pk-mr01; 563 FK root cause: asset_throughput 1 row blocks DELETE |
@@ -27,14 +27,14 @@ marker_duty: post W6-COMPLETE to campaign-coordination §6 after MR-01..08,10,13
 | MR-15 | AV gating contributes (bhava_num) | QUEUED | — |
 | MR-16 | 27-class expansion (POST-MARKER only) | QUEUED | — |
 | MR-17 | ka_kshetra seam (SAMPŪRTI's — track only) | EXTERNAL | coordination file |
-| MR-18 | Validators generation stance | BUILDING | agent a6d113847284979ce · worktree pk-mr18 · TDD red (7 failing tests committed, fixing now) |
+| MR-18 | Validators generation stance | PR-OPEN | PR #1195 (parishkara/mr-18 → parishkara/integration) · 8 gate tests GREEN · PARĪKṢAKA af2f4442193d57e89 running |
 | MR-19 | Ablations → re-adjudicated admissions | QUEUED | — |
 | MR-20 | Real no-loss gate (35,620 windows) | QUEUED | — |
 | MR-21 | Quantitative evidence chain published | QUEUED | — |
 | MR-22 | Suppression detector + count | QUEUED | — |
 | MR-23 | Remaining unrun acceptance artifacts | QUEUED | — |
 | MR-24 | Product-level E2E battery (standing) | QUEUED | — |
-| MR-25 | Citations resolve in serving | BUILDING | dispatching this session |
+| MR-25 | Citations resolve in serving | BUILDING | agent a8cb08dead1023b35 · worktree pk-mr25 · TDD tests written (AC-1..6) · implementing migration 565 |
 | MR-26 | Honest amended close report | QUEUED | — |
 | MR-27 | Prod-sync + deploy discipline | QUEUED | — |
 | MR-28 | Five retro adjudications | QUEUED | — |
@@ -104,3 +104,25 @@ scope reduction below 27 classes · retiring any serving surface · LEL content.
   Active builders: MR-01+02+05 (vitest issue), MR-09, MR-18 (fixes in flight),
   MR-25 (new), MR-30, MR-34-redispatch, MR-35.
   NEXT-ACTION: await remaining builders; merge PR #1194 when PARĪKṢAKA passes.
+
+- 2026-08-10 ~19:47 IST (conductor session 2 open — context compacted):
+  CONDUCTOR-HEARTBEAT: 2026-08-10T14:17:00Z pid=47856 host=Montys-MacBook-Pro.local
+  SESSION-2: context window compacted mid-session; resuming with full ledger re-read.
+  MR-18 COMPLETED: PR #1195 opened. Fixes: v6_divergence_pilot.py (AND generation='v1' +
+    INTENTIONAL comment), s4_05_data_real_retest.py (both queries pinned), test_cr131 (COALESCE
+    pattern), w2g_equivalence_report.py (INTENTIONAL comment), w41_lambda_contenders.py
+    (INTENTIONAL comment), test_migration_527_generation_catalog_only.py (INTENTIONAL comment).
+    NEW: test_mr18_generation_stance.py (8 gate tests, all GREEN). PARĪKṢAKA af2f4442193d57e89
+    dispatched (opus).
+  MR-01+02+05: 4 commits on parishkara/mr-01 — 5bb70f990 (TDD red), cdb803188 (MR-05 FK fix),
+    60eafb8ff (migration 564: 8 cols), 9e4005886 (MR-02 authority-aware coverage + false comment fix).
+    27 new tests + 12 original = all GREEN. PR opening imminently.
+  MR-30: active, bulk worktree cleanup (utk-w21..w64 groups removed). w61-scripts first.
+  MR-25: TDD tests written (AC-1..6: migration 565, bg_gochara_citation_resolution, BPHS Ch.26
+    seed, verse_refs serving join, route.ts whitelist, citations.py grounding). Implementing.
+  MR-09/MR-35/MR-34-redispatch: task IDs expired (prev context window). Worktree state check
+    dispatched (ad4b7a87207281606). Awaiting result.
+  MR-34: PARĪKṢAKA verdict from ac2cbc5a not pollable (ID from prior window). Will re-verify
+    via GitHub PR status check on next heartbeat if no notification.
+  NEXT-ACTION: await MR-01 PR, spawn PARĪKṢAKA; await MR-09/35 state result; await PARĪKṢAKA
+    MR-18 (af2f4442193d57e89) verdict; merge MR-34 PR #1194 if PARĪKṢAKA passed.
