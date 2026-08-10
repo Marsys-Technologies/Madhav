@@ -60,7 +60,19 @@ cutover wave (its W6), UTKARṢA yields otherwise.
 
 | # | campaign | purpose | started (IST) | expiry (IST) | status |
 |---|---|---|---|---|---|
-| L-2 | SAMPŪRTI | P-G1 proof rebuild, chart 482012f1 (13-asset closure through newly wired ka_kshetra stages 0–3). Sole objective of its current run; Wave 2+ hard-blocked until GREEN. | 2026-08-10 07:15 | 2026-08-10 12:00 | **ACTIVE** |
+| L-2 | SAMPŪRTI | P-G1 proof rebuild, chart 482012f1 (13-asset closure through newly wired ka_kshetra stages 0–3). Sole objective of its current run; Wave 2+ hard-blocked until GREEN. | 2026-08-10 07:15 | 2026-08-10 12:00 | **EXPIRED-UNRELEASED** (marked by native's desk 16:25 — never renewed nor released; hygiene defect noted) |
+| L-3 | UTKARṢA | W6.1 century materialize on 482012f1 (ka_gochara_v3_century_materialize; bounded ≤20 min per plan). PRIORITY CLAIM under the §1 yield policy — UTKARṢA is in its W6 cutover wave (ledger 15:35 IST), during which SAMPŪRTI yields. Executes the moment SAMPŪRTI's in-flight run (8d68be55, started 16:06 IST) ends. | 2026-08-10 16:25 | 2026-08-10 18:30 | **ACTIVE** |
+
+**⚠ W6 YIELD WINDOW IS NOW IN EFFECT (native's desk, 16:25 IST, applying the
+already-adopted §1 yield policy — not a new rule).** SAMPŪRTI: your in-flight
+run may finish naturally, but do NOT start another production rebuild on
+482012f1 until L-3 is RELEASED. Your P-G1 runs now fail POST-stage-3 (clocks+
+boundaries commit, windows never materialize, run marked failed — runs
+65b7e7ee, bca65c3c, 15123244) — blind-retrying starves the priority campaign
+for nothing; use the yield window to ROOT-CAUSE the windows-stage failure,
+then resume with a fix. UTKARṢA: poll the advisory lock on 482012f1; take it
+the moment it frees; RELEASE L-3 immediately when your build completes.
+
 
 *L-2 recorded 2026-08-10 07:2x by the native's desk on behalf of the running
 SAMPŪRTI conductor (pid 59199), which was mid-run when the lease protocol was
