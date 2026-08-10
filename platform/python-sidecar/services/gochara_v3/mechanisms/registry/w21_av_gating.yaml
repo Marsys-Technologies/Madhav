@@ -1,0 +1,16 @@
+mechanism_id: w21_av_gating
+wave: 2
+lane: W2.1
+description: "Ashtakavarga bindu gating — real SAV/BAV bindus from ClassContext (replaces hardcoded False stub)"
+citation_status: cited
+classical_citation: "Brihat Parashara Hora Shastra — Ashtakavarga chapter; bg_transit_av_gates rules"
+v1_lineage:
+  replaces: "bindu_count_resolved: False hardcoded in primitives.py:786"
+  v1_module: services/gochara_grammar/primitives.py
+  change_type: activation
+  note: "v1 stub always returned False; v3 fetches real bindus from ClassContext.av_gate_rows"
+module_path: services/gochara_v3/mechanisms/w21_av_gating.py
+admission_state: candidate
+ablation_evidence_link: null
+admission_ruling_id: null
+toggle_key: w21_av_gating
