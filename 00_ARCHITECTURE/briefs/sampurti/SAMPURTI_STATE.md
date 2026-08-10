@@ -55,6 +55,14 @@ BINDING on this campaign:
 6. **Never touch UTKARṢA's files/worktrees/branches** — flag anomalies in the
    coordination file §6 LOG instead.
 
+### ACTIVE LEASE (per coordination §1 — recorded here while PR #1142 is in queue)
+
+| # | campaign | purpose | started (IST) | expiry (IST) | status |
+|---|---|---|---|---|---|
+| L-1 | SAMPŪRTI | P-G1 proof rebuild: ka_kshetra, chart 482012f1 only, on integration @ 42476ba0f | 2026-08-10 06:15 | 2026-08-10 09:15 | ACTIVE |
+
+Detector before grant: `SELECT count(*) FROM build_runs WHERE state IN ('planned','running')` → 0 (06:12 IST). No UTKARṢA deploy since 23:34Z (all three Cloud Run revisions carry commit-sha=3311ae0e3, verified 06:10 IST).
+
 ## WAVE 0 LANE TABLE
 
 | Lane | Scope (short) | Branch | Status | Poll deadline (IST) | PARĪKṢAKA | PRATINIDHI |
