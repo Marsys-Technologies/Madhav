@@ -46,7 +46,7 @@ interface AssetDef {
   layer_index?: string                      // e.g. 'L0', 'L1'
   provides_apis?: Record<string, unknown>[] | null
   health_probe?: Record<string, unknown> | null
-  catalog_status?: 'CURRENT' | 'DRAFT'     // L0 = CURRENT; L1–L5 = DRAFT
+  catalog_status?: 'CURRENT' | 'DRAFT' | 'RETIRED'  // L0 = CURRENT; L1–L5 = DRAFT; RETIRED for post-cutover decommissioned assets
   // Migration 242 fields (L3 service/artifact asset kinds)
   asset_kind?: 'data' | 'service' | 'artifact'  // defaults to 'data'
 }
