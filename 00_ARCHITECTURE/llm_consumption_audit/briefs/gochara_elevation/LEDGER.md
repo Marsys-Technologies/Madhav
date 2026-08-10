@@ -51,8 +51,8 @@ Status: QUEUED | BUILDING | VERIFYING | PASS | FAIL(n) | BLOCKED | MERGED
 |---|---|---|---|---|---|---|---|---|---|
 | W0.1 | 0 | [mech] | Registry & seed hygiene | VERIFYING | gochara3/w01 | /Users/Dev/Vibe-Coding/Apps/utk-w01 | sonnet | none | COMPLETE (session 3): seed has 0 gaps (127 ids, 120 writers + 5 seed-only-allowed), ka_kshetra 9 edges, 3-way guard passes, mutation test confirmed. SHA 6dfb45462 already on origin/gochara3/w01. |
 | W0.2 | 0 | [mech] | Baseline builds + error triage | BUILDING | gochara3/w02 | /Users/Dev/Vibe-Coding/Apps/utk-w02 | sonnet | none | Uncommitted: ka_vedha_gochara/writer.py + ka_kota_chakra/writer.py + sarvatobhadra.py (DB9 fixes). Actual builds not yet run. Re-spawned in session 2. |
-| W0.3 | 0 | [heavy] | Schema migration bundle | VERIFYING | gochara3/w03 | /Users/Dev/Vibe-Coding/Apps/utk-w03 | opus | none | 3 commits: Phase A writer scoping, Phase B migration 556, generation-aware guard tests. Clean branch. VERIFIER spawned. |
-| W0.4 | 0 | [heavy] | Batched-context scoring engine | VERIFYING | gochara3/w04 | /Users/Dev/Vibe-Coding/Apps/utk-w04 | opus | none | 3 commits: gochara_v3 package (context.py + engine.py), 3 test files (query-count, parity, speedup). Clean branch. VERIFIER spawned. |
+| W0.3 | 0 | [heavy] | Schema migration bundle | PASS | gochara3/w03 | /Users/Dev/Vibe-Coding/Apps/utk-w03 | opus | none | VERIFIER PASS (session 5). Migration 556: generation-inclusive index, protected_generations guard, era_slice_key, all 5 trigger tests present and correct. Phase A writer scoped to generation='v1'. I2 clean. PR opening. |
+| W0.4 | 0 | [heavy] | Batched-context scoring engine | PASS | gochara3/w04 | /Users/Dev/Vibe-Coding/Apps/utk-w04 | opus | none | VERIFIER PASS (session 5). Zero DB calls in evaluate_lambda_vector (structural proof via signature). Bounded fetch in ClassContext. GRAMMAR_VERSION='v3_utkarsha'. I2 clean. Guru-shani fix correct. Minor: DBQueryCounter dead code (non-blocking). PR opening. |
 | W0.5 | 0 | [adj] | Campaign rulings (UTK-R1/R2/R3) | PASS | — | — | ADJUDICATOR | none | UTK-R1/R2/R3 issued + I6(a) migration approved. Rulings in §Rulings. |
 | I6a | 0 | [mech] | DB role migration (utkarsha_builder) | VERIFYING | gochara3/i6a-role | /Users/Dev/Vibe-Coding/Apps/utk-i6a | sonnet | W0.5 PASS | Migration 557 written + pushed (SHA 4879a6882, session 5). Migration-guard self-review: PASS. Awaiting dedicated VERIFIER PASS before PR. |
 | W1.1 | 1 | [heavy] | Bounded λ_v3 core | QUEUED | — | — | opus | W0.4 PASS | Gate: W0.4 |
@@ -171,4 +171,6 @@ Format: `WAVE N: DEPLOYED+SYNCED — revision <sha>, migrations applied through 
 
 - 2026-08-10 06:57 IST: I6a DONE — migration 557 written and pushed (4879a6882). Migration-guard self-review PASS. I6a → VERIFYING. VERIFIER for W0.3/W0.4 still running; W0.1/W0.2 builders still running.
 
-CONDUCTOR-HEARTBEAT: 2026-08-10T01:27:00Z
+- 2026-08-10 07:01 IST: VERIFIER VERDICTS — W0.3: PASS, W0.4: PASS. W0.1: builder updated LEDGER directly (protocol note: only CONDUCTOR should write LEDGER; accepted as intended); builder assessed 0 gaps, 9 ka_kshetra edges, guard passes — W0.1 → VERIFYING, sending to VERIFIER. W0.2 builder still running. Migration-guard for I6a running. Opening PRs for W0.3 + W0.4 now.
+
+CONDUCTOR-HEARTBEAT: 2026-08-10T01:31:00Z
