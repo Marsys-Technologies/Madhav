@@ -131,3 +131,100 @@ class TestBoundaryDeduplication:
         result = self._call(rows)
         assert isinstance(result, list)
         assert all(isinstance(r, BoundaryRow) for r in result)
+
+
+# ── L1d: batch insert verification ─────────────────────────────────────────
+
+class TestWriteBoundaryRowsBatch:
+    """write_boundary_rows must use cursor.executemany() for batch insert, not
+    individual conn.execute() calls (L1d fix: avoids per-row round-trip latency
+    that caused the 22-min stage3:run timeout — SAMPURTI campaign 2026-08-10).
+
+    §N.8: a PASS on the batch fix requires a real detector, not just passing
+    tests that don't exercise the executemany path.
+    """
+
+    def _make_boundary_row(self, t_boundary=100.0, lord="Sun"):
+        return BoundaryRow(
+            system_id="chara_karaka",
+            level="MD",
+            lord=lord,
+            parent_lords=[],
+            t_boundary=t_boundary,
+            period_days=365.0,
+            sigma_t_days=1.0,
+            interval_lo=t_boundary - 1.0,
+            interval_hi=t_boundary + 1.0,
+            precision_state="rough",
+            dominant_uncertainty_source="birth_time",
+            sigma_t_source="test",
+            source_pk="uuid-1",
+        )
+
+    def test_uses_executemany_not_individual_execute(self):
+        """Each INSERT must go through cursor.executemany, not separate execute calls."""
+        from unittest.mock import MagicMock
+        from services.ka_kshetra.stage3_clocks import write_boundary_rows
+
+        executemany_calls: list[int] = []
+
+        mock_cursor = MagicMock()
+        mock_cursor.executemany.side_effect = lambda sql, params: executemany_calls.append(len(params))
+        mock_cursor.__enter__ = lambda s: s
+        mock_cursor.__exit__ = MagicMock(return_value=False)
+
+        mock_conn = MagicMock()
+        mock_conn.cursor.return_value = mock_cursor
+
+        rows = [self._make_boundary_row(t_boundary=float(i)) for i in range(5)]
+        n = write_boundary_rows("482012f1", "chara_karaka", rows, mock_conn)
+
+        assert n == 5
+        # DELETE must use conn.execute once
+        mock_conn.execute.assert_called_once()
+        # INSERT must use cursor.executemany exactly once with all 5 rows
+        assert len(executemany_calls) == 1, (
+            "Expected exactly one executemany call (batch), "
+            f"got {len(executemany_calls)}"
+        )
+        assert executemany_calls[0] == 5, (
+            f"Expected executemany with 5 rows, got {executemany_calls[0]}"
+        )
+
+    def test_empty_rows_no_executemany(self):
+        """Empty rows list returns 0 and never opens a cursor (§N.8: no false work)."""
+        from unittest.mock import MagicMock
+        from services.ka_kshetra.stage3_clocks import write_boundary_rows
+
+        mock_conn = MagicMock()
+        n = write_boundary_rows("482012f1", "chara_karaka", [], mock_conn)
+
+        assert n == 0
+        mock_conn.cursor.assert_not_called()
+
+    def test_executemany_params_column_count(self):
+        """Each param row must have exactly 14 values (matches INSERT column list)."""
+        from unittest.mock import MagicMock
+        from services.ka_kshetra.stage3_clocks import write_boundary_rows
+
+        captured_params: list = []
+
+        mock_cursor = MagicMock()
+        mock_cursor.executemany.side_effect = lambda sql, params: captured_params.extend(params)
+        mock_cursor.__enter__ = lambda s: s
+        mock_cursor.__exit__ = MagicMock(return_value=False)
+
+        mock_conn = MagicMock()
+        mock_conn.cursor.return_value = mock_cursor
+
+        rows = [self._make_boundary_row(t_boundary=1.0)]
+        write_boundary_rows("482012f1", "chara_karaka", rows, mock_conn)
+
+        assert len(captured_params) == 1
+        # 14 columns: chart_id, system_id, level, lord, parent_lords,
+        # t_boundary, period_days, sigma_t_days, interval_lo, interval_hi,
+        # precision_state, dominant_uncertainty_source, sigma_t_source,
+        # source_pk  (source_table = literal 'chart_dashas' in SQL, not param)
+        assert len(captured_params[0]) == 14, (
+            f"Expected 14 param values per row, got {len(captured_params[0])}"
+        )
