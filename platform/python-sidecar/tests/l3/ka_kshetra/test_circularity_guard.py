@@ -195,6 +195,11 @@ class TestDynamicInvariance:
         # guard is about the WRITER's own corpus-read discipline; it must not become
         # an incidental integration test of Lane A's real promise-graph tables.
         monkeypatch.setitem(sys.modules, 'services.ka_kshetra.stage2_promise', None)
+        # SAMPŪRTI G1 (2026-08-10): exclude newly-wired stages that need
+        # swisseph/ephemeris infrastructure — same pattern as stage2_promise above.
+        monkeypatch.setitem(sys.modules, 'services.ka_kshetra.stage0_kinematics', None)
+        monkeypatch.setitem(sys.modules, 'services.ka_kshetra.stage1_symbolization', None)
+        monkeypatch.setitem(sys.modules, 'services.ka_kshetra.stage3_clocks', None)
         conn = FakeConn(F.build_tables(life_event_rows=life_event_rows))
         ctx = FakeCtx(conn, F.CHART_ID)
         writer = W.KaKshetraWriter()
