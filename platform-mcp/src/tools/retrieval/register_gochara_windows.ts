@@ -336,6 +336,148 @@ async function queryRows(
 }
 
 // ══════════════════════════════════════════════════════════════════════════
+// MR-25 — Citation → verse_refs resolution (PARIṢKĀRA campaign)
+// ══════════════════════════════════════════════════════════════════════════
+//
+// Closes the W2.9 gap: citation strings present in active_sentences (sourced
+// from gochara_grammar/citations.py constants + primitives.py families) are
+// resolved to classical_text_chunks verse_refs via bg_gochara_citation_resolution
+// (migration 565, "verified-before-seeded" pattern per migration 528).
+//
+// Design:
+//   1. extractCitationStrings(): walks active_sentences JSONB looking for any
+//      'classical_citation' or 'citation' key in sentence objects. Returns
+//      the de-duplicated set across all rows.
+//   2. fetchVerseRefs(): queries bg_gochara_citation_resolution for the batch
+//      of distinct citation strings. Returns a Map<citation_string, VerseRef[]>.
+//      Fails SOFT — if the table is unreachable (e.g. migration not yet applied),
+//      returns an empty Map (never breaks the serving call; verse_refs is additive).
+//   3. enrichWindowsWithVerseRefs(): adds `citation_verse_refs` to each served
+//      window — a list of {citation_string, chunk_id, verse_ref, text_id, status}
+//      objects for every resolved citation in that window's active_sentences.
+//      A window with no recognized citation strings carries an empty array.
+//
+// Gate (MR-25): at minimum one served window carries a non-empty citation_verse_refs
+// array when any resolved row exists in bg_gochara_citation_resolution.
+// AT-PAR: B.3 derivation-ledger discipline — served verse_refs trace to the
+// classical_text_chunks table via the resolution table's chunk_id FK.
+
+export interface CitationVerseRef {
+  citation_string: string
+  chunk_id: string
+  text_id: string
+  verse_ref: string
+  /** 'resolved' = confirmed corpus chunk; 'unresolved' = honest corpus gap */
+  status: 'resolved' | 'unresolved'
+}
+
+/**
+ * Walk active_sentences looking for citation strings in any sentence object
+ * that carries a 'classical_citation' or 'citation' key.
+ * Returns the de-duplicated set of non-empty citation strings found.
+ */
+export function extractCitationStrings(rows: GocharaWindowRow[]): Set<string> {
+  const found = new Set<string>()
+  for (const row of rows) {
+    const sentences = row.active_sentences ?? []
+    for (const sentence of sentences) {
+      if (sentence && typeof sentence === 'object') {
+        const s = sentence as Record<string, unknown>
+        // W2.9 mechanism sentences use 'classical_citation' key.
+        const cit = s['classical_citation'] ?? s['citation']
+        if (typeof cit === 'string' && cit.trim()) {
+          found.add(cit.trim())
+        }
+      }
+    }
+  }
+  return found
+}
+
+/**
+ * Query bg_gochara_citation_resolution for the given citation strings.
+ * Returns a Map from citation_string → CitationVerseRef[].
+ * Fails soft: returns empty Map on any error (verse_refs is additive, never gating).
+ */
+export async function fetchVerseRefs(
+  citationStrings: Set<string>,
+  principal: Principal
+): Promise<Map<string, CitationVerseRef[]>> {
+  if (citationStrings.size === 0) return new Map()
+
+  const strings = Array.from(citationStrings)
+  // Build parameterized IN clause: $1, $2, ...
+  const placeholders = strings.map((_, i) => `$${i + 1}`).join(', ')
+  const sql =
+    `SELECT citation_string, chunk_id, text_id, verse_ref, status ` +
+    `FROM bg_gochara_citation_resolution ` +
+    `WHERE citation_string IN (${placeholders})`
+
+  try {
+    const { rows } = await platformQuery(sql, strings, principal)
+    const result = new Map<string, CitationVerseRef[]>()
+    for (const row of rows) {
+      const cs = row['citation_string'] as string
+      if (!result.has(cs)) result.set(cs, [])
+      result.get(cs)!.push({
+        citation_string: cs,
+        chunk_id: row['chunk_id'] as string,
+        text_id: row['text_id'] as string,
+        verse_ref: row['verse_ref'] as string,
+        status: (row['status'] as 'resolved' | 'unresolved') ?? 'unresolved',
+      })
+    }
+    return result
+  } catch {
+    // Soft failure: bg_gochara_citation_resolution unreachable (e.g. migration
+    // not yet applied). verse_refs is additive — the serving call succeeds without it.
+    return new Map()
+  }
+}
+
+/**
+ * Add `citation_verse_refs` to each served window object.
+ * citation_verse_refs carries only 'resolved' rows (confirmed corpus chunks)
+ * to avoid serving CORPUS_GAP stub rows as if they were live verse refs.
+ * The raw row count (including unresolved) is disclosed in the provenance.
+ */
+export function enrichWindowsWithVerseRefs<T extends { active_sentences: unknown[] }>(
+  windows: T[],
+  rows: GocharaWindowRow[],
+  verseRefMap: Map<string, CitationVerseRef[]>
+): Array<T & { citation_verse_refs: CitationVerseRef[]; citation_resolution_note: string | null }> {
+  return windows.map((window, i) => {
+    const row = rows[i]
+    if (!row) {
+      return { ...window, citation_verse_refs: [], citation_resolution_note: null }
+    }
+
+    // Collect all citation strings for this row's active_sentences.
+    const citations = extractCitationStrings([row])
+
+    // Gather only resolved entries (status='resolved', chunk_id not starting with CORPUS_GAP:).
+    const resolved: CitationVerseRef[] = []
+    for (const cit of citations) {
+      const refs = verseRefMap.get(cit) ?? []
+      for (const ref of refs) {
+        if (ref.status === 'resolved' && !ref.chunk_id.startsWith('CORPUS_GAP:')) {
+          resolved.push(ref)
+        }
+      }
+    }
+
+    const note =
+      citations.size === 0
+        ? null
+        : resolved.length > 0
+          ? `${resolved.length} citation(s) resolved to verse_refs from bg_gochara_citation_resolution (migration 565)`
+          : `${citations.size} citation string(s) found in active_sentences but none resolved to corpus chunks yet — see bg_gochara_citation_resolution for honest gap catalog`
+
+    return { ...window, citation_verse_refs: resolved, citation_resolution_note: note }
+  })
+}
+
+// ══════════════════════════════════════════════════════════════════════════
 // W2 — Category-coverage attestation (SATYA-ŚEṢA, S4-05 mechanism fix)
 // ══════════════════════════════════════════════════════════════════════════
 //
@@ -739,8 +881,14 @@ export async function computeGocharaActivation(
   const facets = computeWindowFacets(rows)
   const resolvedCitation = buildSourceCitation(rawRows[0]?.generation ?? null)
 
+  // MR-25: resolve citation strings from active_sentences to verse_refs.
+  // Soft failure: verseRefMap is empty Map on any error (additive, never gating).
+  const citationStrings = extractCitationStrings(rows)
+  const verseRefMap = await fetchVerseRefs(citationStrings, principal)
+  const enrichedWindows = enrichWindowsWithVerseRefs(rows as unknown as Array<{ active_sentences: unknown[] }>, rows, verseRefMap)
+
   const content: Record<string, unknown> = {
-    windows: rows,
+    windows: enrichedWindows,
     facets,
     coverage,
     drill_pointers: [] as unknown[],
@@ -749,6 +897,7 @@ export async function computeGocharaActivation(
       source_citation: resolvedCitation,
       window_count: rows.length,
       backing_data_reachable: ok && coverageOk,
+      citation_verse_refs_available: verseRefMap.size > 0,
       empty_reason: rows.length === 0
         ? (ok
             ? 'no kala_gochara_windows row spans this date for this chart/event_class/domain filter — an honest zero-activation result, not a fabricated one'
@@ -898,8 +1047,14 @@ export async function computeGocharaForecast(
   const facets = computeWindowFacets(rows)
   const resolvedCitation = buildSourceCitation(rawRows[0]?.generation ?? null)
 
+  // MR-25: resolve citation strings from active_sentences to verse_refs.
+  // Soft failure: verseRefMap is empty Map on any error (additive, never gating).
+  const citationStrings = extractCitationStrings(rows)
+  const verseRefMap = await fetchVerseRefs(citationStrings, principal)
+  const enrichedWindows = enrichWindowsWithVerseRefs(rows as unknown as Array<{ active_sentences: unknown[] }>, rows, verseRefMap)
+
   const content: Record<string, unknown> = {
-    windows: rows,
+    windows: enrichedWindows,
     facets,
     coverage,
     drill_pointers: [] as unknown[],
@@ -909,6 +1064,7 @@ export async function computeGocharaForecast(
       window_count: rawRows.length,
       shape_breakdown: byShape,
       backing_data_reachable: ok && coverageOk,
+      citation_verse_refs_available: verseRefMap.size > 0,
       empty_reason: rawRows.length === 0
         ? (ok
             ? 'no kala_gochara_windows rows overlap this date_range/filter combination — honest zero result. ' +
