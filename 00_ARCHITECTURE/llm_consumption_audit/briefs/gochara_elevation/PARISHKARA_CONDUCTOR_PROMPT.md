@@ -47,7 +47,11 @@ Fetch origin/parishkara/campaign; read PARISHKARA_LEDGER.md's heartbeat.
 LIVENESS, NOT TIMESTAMP (§N.8 — the 2026-08-10 two-conductor incident):
   • heartbeat has pid= → `ps -p <pid>`; command contains "CONDUCTOR of
     PARIṢKĀRA" → another conductor LIVES → EXIT IMMEDIATELY, however stale
-    the timestamp. Process dead → lease free; record that you verified it.
+    the timestamp. Process dead → ALSO run `pgrep -f "CONDUCTOR of
+    PARIṢKĀRA"`: any OTHER live match → EXIT (a peer that has not written its
+    first heartbeat yet — this exact race created dual conductors on
+    2026-08-10). Only with the recorded pid dead AND no other live conductor
+    process is the lease genuinely free; record both checks.
   • no pid → `pgrep -f "CONDUCTOR of PARIṢKĀRA"`; any non-self match → EXIT.
 If YOUR pushes fail non-fast-forward: STOP, fetch, find who else is pushing —
 never loop silently. Resume = reconcile ledger vs reality (adopt, never

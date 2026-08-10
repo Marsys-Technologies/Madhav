@@ -10,15 +10,15 @@ marker_duty: post W6-COMPLETE to campaign-coordination §6 after MR-01..08,10,13
 
 | MR | Item (short) | Status | Evidence |
 |---|---|---|---|
-| MR-01 | Schema parity (8 cols) → tools un-500 | VERIFYING | PR #1198 (parishkara/mr-01 → parishkara/integration) · PARĪKṢAKA pending (session-2 ID expired) |
-| MR-02 | Coverage gate authority-aware | VERIFYING | combined in PR #1198 · authority-aware computeGocharaCoverage · PARĪKṢAKA pending |
+| MR-01 | Schema parity (8 cols) → tools un-500 | MERGED | PR #1198 MERGED to parishkara/integration · PARĪKṢAKA PASS: migration 564 correct (8 nullable cols, IF NOT EXISTS, DO verify, DOWN path, false comment fixed) |
+| MR-02 | Coverage gate authority-aware | MERGED | combined in PR #1198 · PARĪKṢAKA PASS: substepAssetId switches v1↔3.0 per authority seam, substepSourceLabel honest |
 | MR-03 | Truthful '3.0' citation | QUEUED | after MR-01+02+05 spine lands |
 | MR-04 | Valence vocabulary contract | QUEUED | after MR-01+02+05 spine lands |
-| MR-05 | Corrected deprecation migration (FK-safe) | VERIFYING | combined in PR #1198 · FK fix: DELETE FROM asset_throughput WHERE asset_id='ka_gochara' AND chart_id IS NULL · PARĪKṢAKA pending |
+| MR-05 | Corrected deprecation migration (FK-safe) | MERGED | combined in PR #1198 · PARĪKṢAKA PASS: FK chain confirmed (mig-169); step 0a/0b clean FK referrers before step 1 DELETE; sequencing correct |
 | MR-06 | Seed/542 durability + gen-3.0 protection | QUEUED | after MR-05 |
 | MR-07 | Cockpit truth (count_sql) | QUEUED | after MR-01+02+05 |
 | MR-08 | Flip/rollback/probe tooling | QUEUED | after MR-30 scripts committed |
-| MR-09 | Naming coherence + health + pointers | VERIFYING | PR #1197 (parishkara/mr-09 → parishkara/integration) · PARĪKṢAKA pending (session-2 ID expired) |
+| MR-09 | Naming coherence + health + pointers | MERGED | PR #1197 MERGED · PARĪKṢAKA PASS: GocharaTransitService rename (alias kept), health probe JD-sanity check, discoverability guard, ph_muhurta docstring correct, 17 tests verified |
 | MR-10 | Promote 54 point rows | QUEUED | needs MR-01 cols first |
 | MR-11 | Resolution bar + hierarchy windows | QUEUED (ADJUDICATOR bar ruling first) | — |
 | MR-12 | Chain rows (marriage first) | QUEUED | — |
@@ -27,24 +27,24 @@ marker_duty: post W6-COMPLETE to campaign-coordination §6 after MR-01..08,10,13
 | MR-15 | AV gating contributes (bhava_num) | QUEUED | — |
 | MR-16 | 27-class expansion (POST-MARKER only) | QUEUED | — |
 | MR-17 | ka_kshetra seam (SAMPŪRTI's — track only) | EXTERNAL | coordination file |
-| MR-18 | Validators generation stance | VERIFYING | PR #1195 (parishkara/mr-18 → parishkara/integration) · 8 gate tests GREEN · PARĪKṢAKA pending (session-2 ID expired) |
+| MR-18 | Validators generation stance | MERGED | PR #1195 MERGED · PARĪKṢAKA PASS (7/8 tests functional; mig-527 gate test vacuous pass noted as non-blocking finding; fix itself correct) |
 | MR-19 | Ablations → re-adjudicated admissions | QUEUED | — |
 | MR-20 | Real no-loss gate (35,620 windows) | QUEUED | — |
 | MR-21 | Quantitative evidence chain published | QUEUED | — |
 | MR-22 | Suppression detector + count | QUEUED | — |
 | MR-23 | Remaining unrun acceptance artifacts | QUEUED | — |
 | MR-24 | Product-level E2E battery (standing) | QUEUED | — |
-| MR-25 | Citations resolve in serving | VERIFYING | PR #1200 (parishkara/mr-25 → parishkara/integration) · commit 7d355b717 (migration 565 + verse_refs wiring) · PARĪKṢAKA dispatching session-5 |
+| MR-25 | Citations resolve in serving | MERGED | PR #1200 MERGED · PARĪKṢAKA PASS (code review): mig-565 correct (14 rows: 4 resolved verified vs corpus, 10 CORPUS_GAP not silenced), B.3 compliant, live gate honestly deferred |
 | MR-26 | Honest amended close report | QUEUED | — |
 | MR-27 | Prod-sync + deploy discipline | QUEUED | — |
 | MR-28 | Five retro adjudications | QUEUED | — |
 | MR-29 | Ledger reconciliation + re-close verdict (LAST) | QUEUED | — |
-| MR-30 | Hygiene (w61 scripts FIRST, worktrees, docstrings) | VERIFYING | PR #1199 (parishkara/mr-30 → parishkara/integration) · PARĪKṢAKA pending (session-2 ID expired) |
+| MR-30 | Hygiene (w61 scripts FIRST, worktrees, docstrings) | MERGED | PR #1199 MERGED · PARĪKṢAKA PASS: probe_gochara.py uses urllib HTTP (not psycopg), 24 stale worktrees removed, docstring corrected |
 | MR-31 | SAMPŪRTI branch merge (theirs — track only) | EXTERNAL | coordination file |
 | MR-32 | DR-13 → Stage C seeding | QUEUED | — |
 | MR-33 | CRPS honest-deferred (verify L5 wiring, record trigger) | QUEUED | — |
 | MR-34 | Third-chart scope statement | MERGED | PR #1194 MERGED to parishkara/integration · PARĪKṢAKA PASS: amonty84/14:30:52Z — 5/5 tests pass, source cross-check ok, COALESCE contract verified |
-| MR-35 | Serving-outage smoke probe (CI) | VERIFYING | PR #1196 (parishkara/mr-35 → parishkara/integration) · 3 commits (TDD→working probe→CI workflow) · PARĪKṢAKA pending |
+| MR-35 | Serving-outage smoke probe (CI) | MERGED | PR #1196 MERGED · PARĪKṢAKA PASS: HTTP JSON-RPC probe, seeded failure exit=1 verified, Gate 3 (green live) honestly deferred (MR-01 pending deploy) |
 | MR-36 | (merged into MR-21) | MERGED-INTO-21 | register §7 |
 
 ## RULINGS
@@ -214,3 +214,36 @@ scope reduction below 27 classes · retiring any serving surface · LEL content.
     MR-34: VERIFYING → MERGED (PR #1194, PARĪKṢAKA PASS, merging to integration)
   NEXT-ACTION: await 6 PARĪKṢAKA verdicts; merge PASS PRs to integration in batches;
     prepare gate packet for integration → main once MR-01+02+05 PARĪKṢAKA PASS.
+
+- 2026-08-10 ~20:15 IST (conductor session 5 — all PRs merged, gate in flight):
+  CONDUCTOR-HEARTBEAT: 2026-08-10T14:45:00Z pid=38773 host=Montys-MacBook-Pro.local
+  ALL 7 LANE PRS MERGED TO PARISHKARA/INTEGRATION (session-5):
+    MR-34 (a8facad74) MERGED · PARĪKṢAKA PASS
+    MR-30 (dbb56ffb3) MERGED · PARĪKṢAKA PASS: probe_gochara.py uses urllib HTTP (not SQL)
+    MR-09 (32761a777) MERGED · PARĪKṢAKA PASS: 17 tests verified, GocharaTransitService alias
+    MR-35 (45f0a47ed) MERGED · PARĪKṢAKA PASS: seeded failure exit=1 confirmed; Gate 3 deferred
+    MR-18 (ff03b51f8) MERGED · PARĪKṢAKA PASS: 7/8 tests functional; mig-527 gate vacuous noted
+    MR-01+02+05 (73a4a3f3e) MERGED · PARĪKṢAKA PASS: FK fix correct, 8 cols nullable, coverage ok
+    MR-25 (cd9146f48) MERGED · PARĪKṢAKA PASS: 14 rows (4 resolved + 10 CORPUS_GAP), B.3 ok
+  LEASE L-4 CLAIMED: integration→main deploy, ACTIVE until 21:30 IST
+  GATE-EXECUTOR dispatched: a2c8c6190edff81a1 (opus, fresh context)
+    Task: create PR integration→main, wait CI, merge, verify deploy + _migrations_applied 563/564/565
+  MR-06 BUILDER dispatched (sonnet): parishkara/mr-06 worktree
+  MIGRATION 565 CLAIMED: coordination §2 updated (564+565 registered to PARIṢKĀRA)
+  NEXT-ACTION: await GATE-EXECUTOR result; advance MR-06/07/08 builders; release L-4 on GREEN deploy.
+
+- 2026-08-10 ~20:27 IST (conductor session 6 open — context resumed post-compaction):
+  CONDUCTOR-HEARTBEAT: 2026-08-10T14:57:41Z pid=38773 host=Montys-MacBook-Pro.local
+  SESSION-6: prior context compacted (session 5 reached context limit). Resuming from ledger state.
+  Prior PID 20145 DEAD (ps exit=1). Lease L-4 still ACTIVE until 21:30 IST.
+  AGENT STATUS AT SESSION-6 OPEN:
+    GATE-EXECUTOR (a2c8c6190edff81a1, opus): RUNNING
+      Lease L-4 verified ACTIVE. PR #1201 created (parishkara/integration→main, 7 commits).
+      Currently watching CI checks on PR #1201 via `gh pr checks --watch`.
+      CI checks mostly PENDING at 14:54Z; deploy jobs SKIPPING (path-gate expected).
+    MR-06 builder (ae699bd97282e540f, sonnet): RUNNING
+      Rebased parishkara/mr-06 onto origin/parishkara/integration (clean, no conflicts).
+      Currently reading asset_registry_seed.ts to understand post-cutover ka_gochara seed state.
+      Working in /Users/Dev/Vibe-Coding/Apps/pk-mr06.
+  SESSION-5 LEDGER COMMIT: deferred edit now committing (parishkara/campaign push overdue).
+  NEXT-ACTION: await both agent completions; verify CI green + deploy; release L-4; advance next wave.

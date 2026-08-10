@@ -13,6 +13,19 @@
 #   5. Ledger-blob-SHA baseline: a PRE-EXISTING terminal marker never stops a
 #      new run; only a marker in ledger content CHANGED during this run does.
 
+
+# ── single-instance guard (2026-08-10, after a double-launch created dual
+# conductors): refuse to start if another instance of this script runs.
+# Excludes self and parent (the caffeinate wrapper of THIS launch).
+# NOTE: match only the SHELL running this script — `pgrep -f <name>` also
+# matches the `caffeinate -i <script>` wrapper, which is neither $$ nor
+# $PPID, and that false positive blocked every launch (fixed 2026-08-10).
+_OTHERS=$(pgrep -f "bash .*$(basename "$0")" | grep -vw "$$" | wc -l | tr -d ' ')
+if [ "$_OTHERS" -gt 0 ]; then
+  echo "[$(date +%H:%M:%S)] another $(basename "$0") instance is already running — refusing to double-launch" >&2
+  exit 1
+fi
+
 REPO="/Users/Dev/Vibe-Coding/Apps/Madhav"
 CONDUCTOR_WORKTREE="$REPO/.claude/worktrees/parishkara-conductor"
 HOME_REL="00_ARCHITECTURE/llm_consumption_audit/briefs/gochara_elevation"
