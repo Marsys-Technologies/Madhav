@@ -135,11 +135,13 @@ INSERT INTO kala_vedha_gochara (
     chart_id, ayanamsha_id, vedha_kind, graha,
     window_start, window_end, start_truncated, end_truncated,
     janma_reference_fact_id, classical_citation, uncited_extension,
+    grid_basis, grid_school_tag,
     detail, formula_version
 ) VALUES (
     %(chart_id)s, %(ayanamsha_id)s, %(vedha_kind)s, %(graha)s,
     %(window_start)s, %(window_end)s, %(start_truncated)s, %(end_truncated)s,
     %(janma_reference_fact_id)s, %(classical_citation)s, %(uncited_extension)s,
+    %(grid_basis)s, %(grid_school_tag)s,
     %(detail)s::jsonb, %(formula_version)s
 )
 ON CONFLICT (chart_id, ayanamsha_id, vedha_kind, graha, window_start) DO NOTHING
@@ -407,6 +409,10 @@ class KaVedhaGocharaWriter(WriterBase):
                     "janma_reference_fact_id": janma_fact_id,
                     "classical_citation": rule.get("classical_citation") or C.PHALADEEPIKA_VEDHA_26,
                     "uncited_extension": False,
+                    # Constraint kala_vedha_gochara_grid_fields_scope: grid_basis/
+                    # grid_school_tag must be NULL for non-sarvatobhadra rows.
+                    "grid_basis": None,
+                    "grid_school_tag": None,
                     "detail": {
                         "primary_house": house,
                         "primary_sign_idx": run["sign_idx"],
@@ -459,6 +465,12 @@ class KaVedhaGocharaWriter(WriterBase):
                     "janma_reference_fact_id": janma_fact_id,
                     "classical_citation": SARVATOBHADRA_CITATION,
                     "uncited_extension": sarvatobhadra_uncited,
+                    # Constraint kala_vedha_gochara_grid_fields_scope: grid_basis
+                    # must be NOT NULL for sarvatobhadra rows; grid_school_tag
+                    # is NULL when no school-tagged source was found (the current,
+                    # only-populated state for the algorithmic approximation).
+                    "grid_basis": grid_basis,
+                    "grid_school_tag": grid_school_tag,
                     "detail": {
                         "target_nakshatra_idx": janma_moon_nak_idx,
                         "target_nakshatra_name": NAKSHATRAS[janma_moon_nak_idx],
@@ -503,6 +515,10 @@ class KaVedhaGocharaWriter(WriterBase):
                     "janma_reference_fact_id": janma_fact_id,
                     "classical_citation": rule["source_citation"],
                     "uncited_extension": False,
+                    # Constraint kala_vedha_gochara_grid_fields_scope: grid_basis/
+                    # grid_school_tag must be NULL for non-sarvatobhadra rows.
+                    "grid_basis": None,
+                    "grid_school_tag": None,
                     "detail": {
                         "count_from_graha": int(rule["count_from_graha"]),
                         "direction": rule["direction"],
