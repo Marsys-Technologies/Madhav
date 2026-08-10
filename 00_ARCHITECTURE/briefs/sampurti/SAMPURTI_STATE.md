@@ -14,7 +14,7 @@ conductor_session: SAMPURTI-CONDUCTOR-2026-08-10 (R6 — relaunch 20:21 IST; R5 
 
 # SAMPŪRTI CAMPAIGN LEDGER
 
-CONDUCTOR-HEARTBEAT: 2026-08-10T14:51+00:00 (SAMPURTI-CONDUCTOR-2026-08-10-R6) pid=57152 host=Montys-MacBook-Pro.local [R6 RELAUNCH: R5 pid=33133 DEAD (ps -p confirms). pgrep "CONDUCTOR of SAMPŪRTI" = no match. W6-COMPLETE still WITHHELD — PARIṢKĀRA has 6 open PRs (MR-01 #1198, MR-09 #1197, MR-18 #1195, MR-25 #1200, MR-30 #1199, MR-35 #1196) with PARĪKṢAKA verdicts pending; PARIṢKĀRA conductors S1(pid=47856)+S2(pid=10226) both dead per ledger. Integration PRs all merged. Holding for W6-COMPLETE.]
+CONDUCTOR-HEARTBEAT: 2026-08-10T15:05+00:00 (SAMPURTI-CONDUCTOR-2026-08-10-R6) pid=57152 host=Montys-MacBook-Pro.local [R6 stable: PARIṢKĀRA L-4 deploy lease ACTIVE (20:10–21:30 IST, migrations 563/564/565). Anomaly CAMPAIGN_COORDINATION.md overwrite corrected (restored to main version, 6cbce1ff3). Stale PR #1175 CLOSED. Polling for W6-COMPLETE.]
 
 ## MODEL POLICY (BINDING — native directive 2026-08-10)
 
