@@ -92,7 +92,29 @@ this is RELEASED or expired.*
 - Neither campaign deletes or moves the other's files, worktrees, or branches — even
   apparently orphaned ones. Flag in §6 LOG instead.
 
+- **Proxy ports (formalized 2026-08-10, already live de facto):** SAMPŪRTI owns the
+  `cloud-sql-proxy` on **127.0.0.1:5433**; UTKARṢA owns its own instance on
+  **127.0.0.1:5434**. Each campaign connects ONLY through its own port and never
+  restarts, kills, or starts a proxy on the other's port. This removes the shared-
+  proxy blast radius entirely (the 2026-08-10 incident vector).
+
 ## 4. STANDING RULINGS / PROPOSALS
+
+- **R-COORD-2 (NATIVE-DIRECTED, 2026-08-10 ~15:05 IST — binding immediately, no
+  counter-signature needed):** While UTKARṢA is pre-cutover, SAMPŪRTI **defers all
+  gochara-family work to the end of its campaign**: (a) full-DAG rebuilds (Wave 1
+  S5 and any later rebuild) EXCLUDE every gochara-family asset — ka_gochara_sweep,
+  ka_vedha_gochara, ka_kota_chakra, and the kala_gochara_authority seam — assemble
+  the exclusion by asset-id match, not prose; (b) no SAMPŪRTI code lane touches
+  gochara territory (already §3, restated as a build-scope rule). The excluded
+  assets rebuild in a **joint post-cutover pass** after UTKARṢA W6 completes, under
+  a lease both delegates sign. Extends R-COORD-1 from "defer G11 retirements" to
+  "defer the entire gochara build+code surface." Evidence note for the record: the
+  2026-08-10 ka_kshetra stalls were NOT gochara contention — the stalled runs were
+  single-asset (ka_kshetra only, verified in build_run_assets), pg_locks showed
+  zero blocked queries, and the diagnosed mechanism was a client-side connection
+  hang after a server-side-successful INSERT. This ruling removes the future
+  overlap (S5), not the current stall.
 
 - **R-COORD-1 (PROPOSED by SAMPŪRTI NATIVE-PRATINIDHI — awaiting UTKARṢA ADJUDICATOR
   counter-signature):** SAMPŪRTI's Wave-2 G11 retirement of gochara-family legacy
