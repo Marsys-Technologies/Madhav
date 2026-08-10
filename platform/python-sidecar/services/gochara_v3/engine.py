@@ -93,7 +93,7 @@ from services.gochara_intensity.permission import (
 from services.gochara_intensity.beta_priors import beta_for
 from pipeline.transit_search import _jd_to_ist_iso
 
-from .context import ClassContext
+from .context import ClassContext, VedhaRow, MaleficScaleRow
 
 logger = logging.getLogger(__name__)
 
@@ -132,6 +132,178 @@ _ACTIVITY_PRIMITIVES = frozenset({
 # A ratio of 0.1 means the winning channel holds less than 55% of the total
 # evidence weight — genuinely contested ground.
 _VALENCE_TENSION_THRESHOLD: float = 0.1
+
+
+# ---------------------------------------------------------------------------
+# W1.3 suppression schedule
+# ---------------------------------------------------------------------------
+# Suppression factor schedule keyed by effect_grade from bg_vedha_malefic_scale
+# (Phaladeepika PG353). The scale maps malefic_count → effect_grade; we map
+# effect_grade → suppression factor in (0, 1].
+#
+# Design principle: even a malefic_count=0 vedha (a non-malefic obstructor)
+# mildly suppresses. Stronger malefic presence suppresses more.
+# Factors are calibrated conservatively — lambda remains > 0 unless PROMISE
+# or PERMISSION are already near zero. A factor of 1.0 means no suppression
+# (passthrough); 0.0 would mean full suppression (not used; too aggressive
+# for a structural prior).
+#
+# Grade → suppression_factor schedule (structural_prior; refines via L5
+# calibration loop as outcome data accrues):
+#   no_grade (malefic_count=0 vedha, no scale row):  0.85  (mild)
+#   fear  (malefic_count=1):                          0.75
+#   grade 2 (malefic_count=2):                        0.65
+#   grade 3 (malefic_count=3):                        0.55
+#   grade 4 (malefic_count=4):                        0.45
+#   ignominy (malefic_count=5, worst):                0.35
+# Any count > 5 (not in Phaladeepika): clamped to the grade-5 factor.
+_VEDHA_GRADE_SUPPRESSION: dict[str, float] = {
+    # Matches the five Phaladeepika grades in bg_vedha_malefic_scale.
+    # Keys match effect_grade column values (case-insensitive comparison used
+    # at runtime). The "no_grade" sentinel covers malefic_count=0 vedha rows
+    # (obstruction_active with zero malefic occupants) and any unrecognised
+    # grade string — these get a mild suppression, not a free pass.
+    "no_grade": 0.85,
+    "fear": 0.75,
+    "grade_2": 0.65,
+    "grade_3": 0.55,
+    "grade_4": 0.45,
+    "ignominy": 0.35,
+}
+# Fallback when malefic_count > 5 or effect_grade not in schedule
+_VEDHA_WORST_SUPPRESSION: float = 0.35
+# Factor when no malefic scale row exists for count>0 (table empty / CI)
+_VEDHA_NO_SCALE_ROW_FACTOR: float = 0.70
+# Factor for a vedha row with malefic_count=0 (an obstruction is active but
+# entirely from benefic planets — mildest suppression)
+_VEDHA_ZERO_MALEFIC_FACTOR: float = 0.85
+
+
+def _suppression_factor_for_grade(effect_grade: str) -> float:
+    """Map a bg_vedha_malefic_scale effect_grade to a suppression factor in (0,1]."""
+    key = (effect_grade or "").strip().lower().replace(" ", "_")
+    return _VEDHA_GRADE_SUPPRESSION.get(key, _VEDHA_WORST_SUPPRESSION)
+
+
+def _jd_to_date_iso(swe, jd: float) -> str:
+    """Convert Julian day to a YYYY-MM-DD date string (Gregorian, no timezone).
+
+    Used for overlap-checking evaluation window bounds against the
+    kala_vedha_gochara window_start / window_end date columns (stored as
+    YYYY-MM-DD). We use UT directly (the date boundary shift of ±hours is
+    within the same day for practically all evaluation windows, and vedha
+    windows span days-to-months, making sub-day precision irrelevant here).
+    """
+    y, m, d, _ = swe.revjul(jd)
+    return f"{int(y):04d}-{int(m):02d}-{int(d):02d}"
+
+
+def _compute_quality_gates_from_context(
+    context: ClassContext,
+    window_start_iso: str,
+    window_end_iso: str,
+) -> tuple[float, dict]:
+    """W1.3: compute quality_gates suppression from pre-fetched vedha rows.
+
+    Finds all kala_vedha_gochara rows whose [window_start, window_end] overlaps
+    [window_start_iso, window_end_iso] (the evaluation window). For each
+    overlapping vedha, reads malefic_count from the detail JSONB and looks up
+    the suppression factor from the bg_vedha_malefic_scale grading schedule.
+    Multiple concurrent vedhā are combined by multiplication (noisy-OR product
+    of suppression factors — same pattern as activity).
+
+    Returns:
+        quality_gates  float in (0, 1]  (1.0 when no vedha overlaps — AC1)
+        detail         dict carrying which vedhā fired, per-vedha suppression,
+                       combined factor, and calibration_state (AC6)
+
+    Graceful degrades:
+        - Empty context.vedha_rows (CI / no prod DB) → quality_gates = 1.0 (AC1)
+        - Empty context.malefic_scale (table absent) → uses _VEDHA_NO_SCALE_ROW_FACTOR
+        - malefic_count = 0 in detail → uses _VEDHA_ZERO_MALEFIC_FACTOR (mild)
+    """
+    # Build a fast-lookup dict from the pre-fetched malefic_scale rows.
+    # Keys are malefic_count integers; values are MaleficScaleRow.
+    scale_by_count: dict[int, MaleficScaleRow] = {
+        r.malefic_count: r for r in context.malefic_scale
+    }
+
+    fired_vedha: list[dict] = []
+    product = 1.0  # noisy-OR product of (1 - suppression) inverted: start at 1.0
+                   # We accumulate product of suppression factors directly
+                   # (multiplicative: f1 * f2 * … gives the combined gate).
+
+    for vrow in context.vedha_rows:
+        # Date-string overlap check: [vrow.window_start, vrow.window_end]
+        # overlaps [window_start_iso, window_end_iso] iff:
+        #   vrow.window_start <= window_end_iso AND vrow.window_end >= window_start_iso
+        # Dates are ISO YYYY-MM-DD strings; lexicographic comparison is correct.
+        if vrow.window_start > window_end_iso:
+            continue
+        if vrow.window_end < window_start_iso:
+            continue
+
+        # This vedha overlaps the evaluation window.
+        detail = vrow.detail
+        malefic_count = detail.get("malefic_count", 0)
+        try:
+            malefic_count = int(malefic_count)
+        except (TypeError, ValueError):
+            malefic_count = 0
+
+        # Determine suppression factor.
+        if malefic_count == 0:
+            # Obstruction from benefics only — mildest suppression.
+            suppression_factor = _VEDHA_ZERO_MALEFIC_FACTOR
+            effect_grade = "no_grade"
+            scale_citation = None
+        elif malefic_count > 0 and scale_by_count:
+            # Look up the PG353 scale row; fall back to the worst factor if
+            # the count exceeds the table's maximum (>5 in practice).
+            scale_row = scale_by_count.get(malefic_count)
+            if scale_row is None:
+                # Count out of table range (e.g. 6+) — use worst grade
+                scale_row = scale_by_count.get(max(scale_by_count))
+            effect_grade = scale_row.effect_grade if scale_row else "unknown"
+            suppression_factor = _suppression_factor_for_grade(effect_grade)
+            scale_citation = scale_row.source_citation if scale_row else None
+        else:
+            # malefic_count > 0 but malefic_scale table was empty (CI / absent)
+            suppression_factor = _VEDHA_NO_SCALE_ROW_FACTOR
+            effect_grade = "unknown_no_scale_table"
+            scale_citation = None
+
+        product *= suppression_factor
+
+        fired_vedha.append({
+            "vedha_kind": vrow.vedha_kind,
+            "graha": vrow.graha,
+            "window_start": vrow.window_start,
+            "window_end": vrow.window_end,
+            "malefic_count": malefic_count,
+            "malefic_obstructing_grahas": detail.get("malefic_obstructing_grahas", []),
+            "effect_grade": effect_grade,
+            "suppression_factor": round(suppression_factor, 6),
+            "classical_citation": vrow.classical_citation,
+            "scale_citation": scale_citation,
+        })
+
+    quality_gates = product  # product of suppression factors; 1.0 when no vedha fired
+
+    detail_out = {
+        "quality_gates": round(quality_gates, 8),
+        "vedha_fired_count": len(fired_vedha),
+        "vedha_rows_total": len(context.vedha_rows),
+        "aggregation": "multiplicative",
+        "fired_vedha": fired_vedha,
+        "calibration_state": "structural_prior",
+        "note": (
+            "W1.3 quality_gates: multiplicative product of per-vedha suppression "
+            "factors (each factor in (0,1]); 1.0 when no kala_vedha_gochara rows "
+            "overlap the evaluation window."
+        ),
+    }
+    return quality_gates, detail_out
 
 
 def evaluate_lambda_vector(
@@ -311,10 +483,15 @@ def _evaluate_single_from_context(
         class_is_adverse=context.is_adverse,
     )
 
-    # 4d. quality_gates: product of quality filters (W1.1 placeholder = 1.0).
-    #     W1.3+ will add suppression-based quality gates here.
-    quality_gates = 1.0
-    quality_gates_detail = {"quality_gates_applied": [], "quality_gates_v1_1_placeholder": 1.0}
+    # 4d. quality_gates: W1.3 vedha-based multiplicative suppression gate.
+    #     Looks up kala_vedha_gochara rows (pre-fetched in context) that
+    #     overlap the evaluation window and multiplies their suppression factors.
+    #     Falls back to 1.0 when no vedha rows overlap (AC1).
+    eval_start_iso = _jd_to_date_iso(swe, start_jd)
+    eval_end_iso = _jd_to_date_iso(swe, end_jd)
+    quality_gates, quality_gates_detail = _compute_quality_gates_from_context(
+        context, eval_start_iso, eval_end_iso,
+    )
 
     # 5. Assemble lambda_v3 — bounded [0,1] by construction
     raw_lambda = promise * permission * activity * quality_gates
@@ -351,16 +528,18 @@ def _evaluate_single_from_context(
         "note": (
             "W1.2 direction restored: signed supportive/afflicting channels separate; "
             "valence derived from net evidence sign. "
-            "W1.1 bounded lambda_v3: activity replaces exp(beta*X). "
+            "W1.1/W1.3 bounded lambda_v3: activity replaces exp(beta*X); "
+            "quality_gates is W1.3 vedha suppression (multiplicative; 1.0 when no vedha). "
             "activity=noisy_OR over orb-decayed sentence contributions in [0,1]. "
             "exp_term=1.0 (no exponential in v3 formula)."
         ),
     }
 
-    # suppression is reported as 0.0 in v3 (quality_gates handles this role in W1.3+)
+    # suppression field is 0.0 in v3 (quality_gates is the W1.3 suppression mechanism)
     suppression_v3 = 0.0
     suppression_detail_v3 = {
-        "note": "suppression is not applied in v3 lambda formula; quality_gates placeholder (W1.3+)",
+        "note": "v3 formula uses quality_gates for vedha suppression (W1.3); "
+                "suppression field is kept at 0.0 for schema compatibility with v1.",
         "calibration_state": "structural_prior",
     }
 
