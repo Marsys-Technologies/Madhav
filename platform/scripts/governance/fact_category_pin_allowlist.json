@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "$comment": "Allowlist for check_fact_category_pinning.py (brief §5 C.7, SUDDHA-VACA Phase C lane:ci-lint). Every entry requires: file (repo-relative POSIX path, must match a Violation.file exactly), EITHER line (int, matched exactly against the violation's line number) OR pattern (a string matched as a regex, falling back to a plain substring match, against the violation's snippet text) — line is preferred when known since it is unambiguous; pattern is for cases where line drift is expected, and justification (a non-empty, specific, human-readable reason — 'pre-existing' alone is not sufficient, say WHY it's safe or why it's out of scope). An entry with neither line nor pattern never matches anything (fails closed, not open). Populated 2026-07-28 during the initial rollout scan against the live repo tree (this worktree, base main, before this wave's other lanes landed) — see the ci-lint lane's session report for the full disposition rationale of every entry.",
   "generated_by": "check_fact_category_pinning.py initial-rollout scan, 2026-07-28",
-  "entry_count": 32,
+  "entry_count": 33,
   "entries": [
     {
       "file": "platform/python-sidecar/brahmagyan/chart_reader_v4.py",
@@ -195,6 +195,12 @@
       "line": null,
       "pattern": "fact_key, fact_value_num FROM chart_facts WHERE chart_id = %s AND ayanamsha_id = %s AND fact_category = 'argala_natal_matrix' AND fact_subject = %s",
       "justification": "PRE-EXISTING, introduced by PR #1045 (m22/stage2 campaign, 2026-08-04), not touched by any shad-darshana lane. Verified via git blame + PR diff inspection during the ShadDarshana night-run merge-train (T3/T4 PRs #1050/#1052): this file is untouched by shad-darshana work. Out of this campaign's scope to fix another concurrent campaign's writer; flagged for m22 to address in its own lane. [ADHISTHANA fact-category-pinning-lint repair, 2026-08-08: line 1624->1630, shifted by the same +6 as the sibling entries above (same file, same unrelated earlier-in-file edit) — verified same code (_lookup_argala_for_sign) via diff. Switched line->pattern; pattern is distinct in shape from the COUNT(*) sibling above.]"
+    },
+    {
+      "file": "platform/python-sidecar/services/gochara_v3/context.py",
+      "line": null,
+      "pattern": "fact_category IN \\('sade_sati_cycle'",
+      "justification": "NEW in GOCHARA-UTKARSA W0.4 (gochara_v3/context.py _fetch_sade_sati_phases). Intentionally fetches ALL sade_sati phase rows for a chart — not a single-row reduction. The full row list is stored as tuple(phases) in ClassContext without any key-based collapse; every row is preserved unmodified. Identical shape and justification to the existing services/gochara_grammar/primitives.py:1043 entry (_fetch_sade_sati_rows: 'returns the full row list unmodified for the caller to interpret; no reduction/collapse happens in this function'). Not the D1 defect class (which selects ONE row by category alone with no fact_key to disambiguate which measurement is read)."
     }
   ]
 }
