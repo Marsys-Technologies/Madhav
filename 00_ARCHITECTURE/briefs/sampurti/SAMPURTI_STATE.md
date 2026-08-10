@@ -59,7 +59,20 @@ BINDING on this campaign:
 
 | # | campaign | purpose | started (IST) | expiry (IST) | status |
 |---|---|---|---|---|---|
-| L-1 | SAMPŪRTI | P-G1 proof rebuild: ka_kshetra, chart 482012f1 only, on integration @ 42476ba0f | 2026-08-10 06:15 | 2026-08-10 09:15 | ACTIVE |
+| L-1 | SAMPŪRTI | P-G1 proof rebuild: ka_kshetra + DAG-derived non-lit upstream closure (13 assets), chart 482012f1 only, on integration @ 42476ba0f | 2026-08-10 06:15 | 2026-08-10 09:15 | ACTIVE |
+
+**Run log:** run 1 `cdbbc6c4` (ka_kshetra only) BLOCKED honestly by the orchestrator —
+direct deps bo_pratijna (error) / bo_sangati / bo_upaya (stale) not complete. Correct
+per §N.8: the dependency gate did its job. Re-scoped per the master plan's own rule
+("assemble the set by QUERYING THE DAG, never prose"): recursive CTE over
+asset_registry.depends_on found 12 non-lit closure assets (5 ga_ stale — the Wave-0
+migration-555 staleness cascade — + 7 bo_ stale/error). Run 2 `88268b2d` dispatched
+06:14 IST with plan [ga_sensitive, ga_sade_sati, ga_structural, ga_vichara, ga_yoga,
+bo_laksana, bo_bimba, bo_karanajala, bo_cgm_motifs, bo_sangati, bo_upaya, bo_pratijna,
+ka_kshetra]. ka_gochara_sweep is lit and EXCLUDED (UTKARṢA never-rebuild rule; sweep
+corpus untouched). This also makes the Wave-0 content fixes (13-domain vocab, G8
+KaryatvaMaps, G10 varga_confirmation) actually execute in this rebuild, as the wave
+plan requires.
 
 Detector before grant: `SELECT count(*) FROM build_runs WHERE state IN ('planned','running')` → 0 (06:12 IST). No UTKARṢA deploy since 23:34Z (all three Cloud Run revisions carry commit-sha=3311ae0e3, verified 06:10 IST).
 
