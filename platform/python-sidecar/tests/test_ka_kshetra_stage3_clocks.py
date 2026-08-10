@@ -506,7 +506,7 @@ class TestClockActivation:
             .when("kala_field_clocks", [{"quality": 0.8}])
             .when("FROM kala_field_boundaries", [{"level": "MD"}])
             .when("FROM chart_dashas", [{"lord_graha": "Jupiter", "lord_sign": None}])
-            .when("kala_field_promise_routes", [{"route_gain": 0.7, "suppressed_by": []}])
+            .when("kala_field_routes", [{"route_gain": 0.7, "suppressed_by": []}])
         )
         result = SC.clock_activation(CHART_ID, "vimshottari", "career_change", 0.0, conn)
         assert result > 1.0
@@ -517,7 +517,7 @@ class TestClockActivation:
             .when("kala_field_clocks", [{"quality": 0.8}])
             .when("FROM kala_field_boundaries", [{"level": "MD"}])
             .when("FROM chart_dashas", [{"lord_graha": "Jupiter", "lord_sign": None}])
-            .when("kala_field_promise_routes", [{"route_gain": 0.7, "suppressed_by": ["vedha:Sa->10"]}])
+            .when("kala_field_routes", [{"route_gain": 0.7, "suppressed_by": ["vedha:Sa->10"]}])
         )
         result = SC.clock_activation(CHART_ID, "vimshottari", "career_change", 0.0, conn)
         assert result < 1.0
@@ -528,11 +528,11 @@ class TestClockActivation:
             .when("kala_field_clocks", [{"quality": 0.8}])
             .when("FROM kala_field_boundaries", [{"level": "MD"}])
             .when("FROM chart_dashas", [{"lord_graha": None, "lord_sign": "Aries"}])
-            .when("kala_field_promise_routes", [{"route_gain": 0.5, "suppressed_by": []}])
+            .when("kala_field_routes", [{"route_gain": 0.5, "suppressed_by": []}])
         )
         result = SC.clock_activation(CHART_ID, "chara_karaka", "career_change", 0.0, conn)
         # Aries -> Mars; the route query must have been issued with graha:Mars
-        route_calls = [c for c in conn.calls if "kala_field_promise_routes" in c[0]]
+        route_calls = [c for c in conn.calls if "kala_field_routes" in c[0]]
         assert route_calls[0][1][2] == "graha:Mars"
         assert result > 1.0
 
