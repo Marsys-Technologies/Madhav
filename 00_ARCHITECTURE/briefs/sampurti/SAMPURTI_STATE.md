@@ -14,7 +14,7 @@ conductor_session: SAMPURTI-CONDUCTOR-2026-08-10 (R4 — native relaunch 16:38 I
 
 # SAMPŪRTI CAMPAIGN LEDGER
 
-CONDUCTOR-HEARTBEAT: 2026-08-10T11:16+00:00 (SAMPURTI-CONDUCTOR-2026-08-10-R4) pid=68645 host=Dev-Mac [R4 UP. P-G1 deferred to post-W6-COMPLETE. L1f/L1g/L1h+L1i all MERGED to main (#1185/#1186/#1187). L1j PR #1188 OPEN → integration. PARĪKṢAKA dispatched. Parallel lanes queued: G12/G13/G14b. UTKARSHA L-3 ACTIVE until 18:30 IST — no production builds.]
+CONDUCTOR-HEARTBEAT: 2026-08-10T11:24+00:00 (SAMPURTI-CONDUCTOR-2026-08-10-R4) pid=68645 host=Dev-Mac [R4 LIVE (context-compacted resume). UTKARSHA L-3 ACTIVE until 18:30 IST — P-G1 deferred, no production builds. PARĪKṢAKA task lost to context compaction — re-dispatching for L1j (#1188). Parallel lanes G12/G13/G14b queued for dispatch. L-2 lease hygiene fix: marking EXPIRED-UNRELEASED → RELEASED on coordination file. W6-COMPLETE NOT YET present.]
 
 ## MODEL POLICY (BINDING — native directive 2026-08-10)
 
@@ -37,18 +37,21 @@ Sonnet/Opus respectively per the original charter and are unaffected.
 ## WAVE POSITION
 
 WAVE 0 — IGNITION. Status: COMPLETE (merged to main 3311ae0e3, deployed 31341882724).
-WAVE 1 — RC1 G1 WIRING. Status: L1b/L1c/L1d/L1e/L1f/L1g/L1h+L1i all MERGED to main. L1j PR #1188 OPEN (PARĪKṢAKA pending). P-G1 deferred pending UTKARSHA W6-COMPLETE (R-COORD-2 extended).
+WAVE 1 — RC1 G1 WIRING. Status: L1b/L1c/L1d/L1e/L1f/L1g/L1h+L1i all MERGED to main. L1j PR #1188 OPEN (PARĪKṢAKA re-dispatched after context compaction). P-G1 deferred pending UTKARSHA W6-COMPLETE (R-COORD-2 extended).
+PARALLEL LANES (code-only, dispatched during W6 yield window): G12 builder running (sampurti/g12-facade-enrichments); G14b builder running (sampurti/g14b-ahead-autofile). G13 DEFERRED: PA-4 requires bodha_cdlm_cells migration to 13 domains + CDLM regeneration; blocked until post-W6-COMPLETE rebuild.
 
-**R4 STATE (2026-08-10T11:16+00:00, conductor pid=68645):**
+**R4 STATE (2026-08-10T11:24+00:00, conductor pid=68645 — context-compacted resume):**
 - L1e MERGED (#1172): OOM fix (shared EnvelopeIndex). DEPLOYED.
-- L1f MERGED (#1185): batch-insert stage0+stage1 executemany.
-- L1g MERGED (#1186): bulk pre-fetch contact_in dwell_weights (stage1).
-- L1h+L1i MERGED (#1187): vectorize EnvelopeIndex range check (stage4).
-- L1j PR #1188 OPEN → sampurti/integration. CI running. PARĪKṢAKA dispatched (model: opus).
+- L1f MERGED (#1185): batch-insert stage0+stage1 executemany. DEPLOYED.
+- L1g MERGED (#1186): bulk pre-fetch contact_in dwell_weights (stage1). DEPLOYED.
+- L1h+L1i MERGED (#1187): vectorize EnvelopeIndex range check (stage4). DEPLOYED.
+- L1j PR #1188 OPEN → sampurti/integration. No CI (integration branch). PARĪKṢAKA re-dispatched (model: opus, background agent a3c76ed0ac52ffdae).
 - P-G1 deferred: ka_kshetra DAG depends on ka_gochara_sweep + ka_gochara_resonance and hazard.py
-  cross-checks kala_gochara_windows (R-COORD-2 extension confirmed in coordination file LOG
-  2026-08-10 16:47 IST). Field rebuilds run ONCE post-W6-COMPLETE on gen-3.0.
-- UTKARSHA L-3 ACTIVE until 18:30 IST. W6.1 century materialize running on 482012f1.
+  cross-checks kala_gochara_windows (R-COORD-2 extension). Field rebuilds ONCE post-W6-COMPLETE on gen-3.0.
+- L-2 RELEASED on campaign-coordination (hygiene fix, push 87b0abf6f).
+- UTKARSHA L-3 ACTIVE until 18:30 IST. W6-COMPLETE NOT YET present. W6 yield window in effect.
+- Parallel lane builders dispatched: G12 (adcc3cf935c17be30), G14b (acf348fd02d667a12).
+- G13: deferred. PA-4 exposed substrate gap — bodha_cdlm_cells still only 5 domains; requires bo_sangati/bo_bimba/bo_karanajala CDLM regeneration which is a production rebuild. G13 code can only proceed after P-G1 + rebuild.
 
 **WINDOWS-STAGE FAILURE ROOT CAUSE (R16, verified from run logs /tmp/sampurti_run7-11.log):**
 THREE distinct failure modes, now fully resolved or deferred correctly:
