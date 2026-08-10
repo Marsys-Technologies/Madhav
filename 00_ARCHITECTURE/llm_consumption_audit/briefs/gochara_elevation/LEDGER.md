@@ -55,11 +55,11 @@ Status: QUEUED | BUILDING | VERIFYING | PASS | FAIL(n) | BLOCKED | MERGED
 | W0.4 | 0 | [heavy] | Batched-context scoring engine | MERGED | gochara3/w04 | — (removed) | sonnet | none | MERGED to main 2026-08-10T02:04:23Z (PR #1145). Worktree removed. Deploy in progress (CI in_progress on main). |
 | W0.5 | 0 | [adj] | Campaign rulings (UTK-R1/R2/R3) | PASS | — | — | ADJUDICATOR | none | UTK-R1/R2/R3 issued + I6(a) migration approved. Rulings in §Rulings. |
 | I6a | 0 | [mech] | DB role migration (utkarsha_builder) | VERIFYING | gochara3/i6a-role | /Users/Dev/Vibe-Coding/Apps/utk-i6a | sonnet | W0.5 PASS | Migration 557 written + pushed (SHA 4879a6882, session 5). Migration-guard (opus, independent, session 6): PASS. PR #1146 opened. Awaiting CI + VERIFIER PASS before merge. |
-| W1.1 | 1 | [heavy] | Bounded λ_v3 core | BUILDING | gochara3/w11 | /Users/Dev/Vibe-Coding/Apps/utk-w11 | sonnet | W0.4 PASS | Dispatched session 6 (02:17 UTC). Builder (sonnet, model policy 2026-08-10). |
-| W1.2 | 1 | [heavy] | Direction restored | QUEUED | — | — | opus | W1.1 PASS | Gate: W1.1 |
-| W1.3 | 1 | [heavy] | Graded suppression | QUEUED | — | — | opus | W1.1 PASS | Gate: W1.1 |
-| W1.4 | 1 | [heavy] | Self-normalizing thresholds | QUEUED | — | — | opus | W1.1 PASS | Gate: W1.1 |
-| W1.5 | 1 | [mech] | λ decomposition + uncertainty output | QUEUED | — | — | sonnet | W1.1 PASS | Gate: W1.1 |
+| W1.1 | 1 | [heavy] | Bounded λ_v3 core | MERGED | gochara3/w11 | — (removed) | sonnet | W0.4 PASS | MERGED 02:48Z (PR #1149, 2d040d8e9). VERIFIER PASS (opus). |
+| W1.2 | 1 | [heavy] | Direction restored | BUILDING | gochara3/w12 | /Users/Dev/Vibe-Coding/Apps/utk-w12 | sonnet | W1.1 PASS | Builder dispatched 03:15 UTC (ae3f7721, session 8). |
+| W1.3 | 1 | [heavy] | Graded suppression | BUILDING | gochara3/w13 | /Users/Dev/Vibe-Coding/Apps/utk-w13 | sonnet | W1.1 PASS | Builder dispatched 03:15 UTC (ae89d03a, session 8). Needs W0.2 build data for real-corpus test (blocked on L-2). |
+| W1.4 | 1 | [heavy] | Self-normalizing thresholds | BUILDING | gochara3/w14 | /Users/Dev/Vibe-Coding/Apps/utk-w14 | sonnet | W1.1 PASS | Builder dispatched 03:15 UTC (a3dc8d7e, session 8). |
+| W1.5 | 1 | [mech] | λ decomposition + uncertainty output | BUILDING | gochara3/w15 | /Users/Dev/Vibe-Coding/Apps/utk-w15 | sonnet | W1.1 PASS | Builder dispatched 03:15 UTC (a19ada06, session 8). |
 | W2.1 | 2 | [heavy] | Ashtakavarga gating, real | QUEUED | — | — | opus | W1.1 PASS | Parallel W2; needs W0.2 data |
 | W2.2 | 2 | [mech] | Moorti nirnaya modifier | QUEUED | — | — | sonnet | W1.1 PASS | Parallel W2; needs W0.2 data |
 | W2.3 | 2 | [mech] | Tara bala, alive | QUEUED | — | — | sonnet | W1.1 PASS | Parallel W2 |
@@ -195,4 +195,6 @@ CONDUCTOR-HEARTBEAT: 2026-08-10T02:51:11Z pid=94277 host=Montys-MacBook-Pro.loca
 
 - 2026-08-10 08:40 IST: PR #1151 (W0.2) ALL GREEN CI → MERGED (162c387a6). W0.2 lane → PASS. Orchestrator builds still blocked on L-2 (12:00 IST). PR #1146 (I6a) NOT in merge queue despite CI clean; root-cause: required checks "expected" for merge group. Rebased gochara3/i6a-role on latest main (2a19eb26a, now 1 commit ahead). Fresh CI triggered; will re-add to queue when CI passes. W1.2/W1.3/W1.4/W1.5 gate (W1.1 PASS) satisfied — standing by to dispatch when W0.2 merge confirmed.
 
-CONDUCTOR-HEARTBEAT: 2026-08-10T03:12:00Z pid=94277 host=Montys-MacBook-Pro.local
+- 2026-08-10 08:45 IST: W1.2/W1.3/W1.4/W1.5 builders dispatched in parallel (all sonnet, gate W1.1 PASS). Worktrees utk-w12/w13/w14/w15 provisioned at main HEAD 162c387a6. PR #1146 (I6a) fresh CI running (31352006820) after rebase; will re-add to merge queue when CI clears. SAMPŪRTI L-2 still ACTIVE (12:00 IST / 06:30 UTC expiry); W0.2 builds still parked.
+
+CONDUCTOR-HEARTBEAT: 2026-08-10T03:17:00Z pid=94277 host=Montys-MacBook-Pro.local
