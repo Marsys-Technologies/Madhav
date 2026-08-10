@@ -43,12 +43,63 @@ below is absolute. **Two rules that follow, binding on you and every agent you s
 ## RESUME + LEASE (read before anything else — this run is supervised by a relaunch script)
 
 **This is step 0, before you read the plan, before anything.** Fetch `origin/utkarsha/
-campaign` and read LEDGER.md's `CONDUCTOR-HEARTBEAT` line. If it is timestamped
-**<15 minutes old**, another conductor is presumably still alive on this exact branch —
-**exit immediately, print "another conductor is live", do nothing else.** Colliding two
-conductors on one branch is exactly the incident this protocol exists to prevent, and
+campaign` and read LEDGER.md's `CONDUCTOR-HEARTBEAT` line.
+
+⚠ **LIVENESS, NOT TIMESTAMP** (amended 2026-08-10 by the native's desk after a real
+incident — see the coordination file's LOG). The old rule below ("<15 min old ⇒ another
+conductor lives; stale ⇒ proceed") is the §N.8 Earned-Signal defect: it measures COMMIT
+RECENCY and claims PROCESS LIVENESS. On 2026-08-10 a *live, busy* SAMPŪRTI conductor —
+livelocked on non-fast-forward pushes, so not committing — was read as dead by a second
+session, which seized the lease; the two then destroyed five production rebuilds. Do
+this instead:
+  • Your heartbeat line MUST carry a liveness token: `pid=<your CLI process pid>` +
+    `host=<hostname>` alongside the timestamp.
+  • On start, read the predecessor's `pid` and TEST IT: `ps -p <pid>` and confirm the
+    command contains "CONDUCTOR" and this campaign's name.
+      – process ALIVE → another conductor genuinely lives: **EXIT IMMEDIATELY**, no
+        matter how stale the timestamp looks.
+      – process DEAD/absent → lease genuinely free: take it, and record in the ledger
+        that you verified the predecessor's pid was dead.
+      – no pid recorded (old format) → fall back to `pgrep -f "CONDUCTOR"` scoped to
+        this campaign's prompt signature; if any non-self match, EXIT.
+  • If YOUR pushes begin failing non-fast-forward, that is a collision signal: stop,
+    fetch, find who else is pushing, resolve — never loop silently on failed pushes.
+
+Legacy rule, retained only as the fallback when no pid is available: if the heartbeat is
+timestamped **<15 minutes old**, another conductor is presumably still alive on this exact
+branch — **exit immediately, print "another conductor is live", do nothing else.** Colliding
+two conductors on one branch is exactly the incident this protocol exists to prevent, and
 it can happen regardless of what caused the previous session to end — never assume the
 previous one is dead just because you were (re)launched.
+
+⚠ **CROSS-CAMPAIGN LEASE — MANDATORY BEFORE ANY PRODUCTION BUILD/REBUILD OR DEPLOY.**
+SAMPŪRTI (gap-remediation campaign) runs CONCURRENTLY on this repo, machine, and
+production DB. Worktrees isolate files; they do NOT isolate main merges, deploys, the
+production DB, migration numbers, the shared `cloud-sql-proxy`, or overlapping asset
+territory. AUTHORITATIVE LIVE COPY of the coordination file: branch
+`campaign-coordination`, path `00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md` — NOT
+main's copy (main is PR+merge-queue protected and cannot carry a real-time lease), and
+NOT your own branch (the file is not there). Before **every** production orchestrator
+build/rebuild and **every** deploy, in order: (1) `git fetch origin campaign-coordination`;
+(2) read §1's lease table; (3) if SAMPŪRTI holds an ACTIVE unexpired lease → DO NOT
+PROCEED, wait or do non-DB work, record the wait; (4) if clear, append YOUR lease row and
+`git push origin HEAD:campaign-coordination` (on non-fast-forward: fetch, RE-READ — their
+new lease may now block you — re-apply, push); (5) only then act; (6) mark RELEASED the
+moment you finish. **Currently on record: L-2 — SAMPŪRTI holds an ACTIVE lease for a
+P-G1 production rebuild of chart 482012f1, expiring 12:00 IST 2026-08-10.** Until it is
+RELEASED or expired, run no production builds/rebuilds or deploys.
+
+⚠ **NEVER RESTART `cloud-sql-proxy` REFLEXIVELY.** It is shared machine-wide; restarting
+it terminates every in-flight connection including SAMPŪRTI's multi-hour rebuilds
+(`psycopg.errors.AdminShutdown` — this destroyed five runs on 2026-08-10). On a connection
+error: diagnose first (`pgrep -f cloud-sql-proxy` — is the proxy down, or did only YOUR
+connection die?); a dead connection with a live proxy means retry, never restart; if the
+proxy is genuinely absent AND no foreign lease is ACTIVE, only then start it; if a foreign
+lease IS active, PARK and record it. (Verified 2026-08-10: this prompt previously contained
+no proxy instruction at all — this rule is added to keep it that way deliberately, not
+accidentally.) Migration numbers: 557 is CLAIMED for this campaign's
+`utkarsha_builder` role; claim 558+ in the coordination file before use. Never touch
+SAMPŪRTI's files, worktrees, branches, or PRs — flag anomalies in the coordination LOG.
 
 If the heartbeat is stale (≥15min) or absent, proceed. Once you begin real work, write/
 refresh `CONDUCTOR-HEARTBEAT: <UTC timestamp>` in the ledger and **commit+push it at
