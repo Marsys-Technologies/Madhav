@@ -14,7 +14,7 @@ conductor_session: SAMPURTI-CONDUCTOR-2026-08-10 (R8 — relaunch 20:48 IST; R7 
 
 # SAMPŪRTI CAMPAIGN LEDGER
 
-CONDUCTOR-HEARTBEAT: 2026-08-10T15:18:51+00:00 (SAMPURTI-CONDUCTOR-2026-08-10-R8) pid=87229 host=Montys-MacBook-Pro.local [R8 launch: R7 pid=86254 DEAD (pgrep-exit:1). L-4 PARIṢKĀRA lease ACTIVE (expiry 21:30 IST, PR #1201 CI: Build Check+Unit Tests+Governance Gates IN_PROGRESS, all others SUCCESS). W6-COMPLETE NOT YET posted. Awaiting marker. No production DB work this cycle.]
+CONDUCTOR-HEARTBEAT: 2026-08-10T15:27:00+00:00 (SAMPURTI-CONDUCTOR-2026-08-10-R8) pid=87229 host=Montys-MacBook-Pro.local [R8 active: PR #1201 Governance Gates FAILED (Unit Tests recovered to SUCCESS). Build Check IN_PROGRESS. L-4 expiry ~21:30 IST. W6-COMPLETE NOT YET posted. PARIṢKĀRA must fix Governance Gates CI. No SAMPŪRTI production work until W6-COMPLETE.]
 
 ## MODEL POLICY (BINDING — native directive 2026-08-10)
 
