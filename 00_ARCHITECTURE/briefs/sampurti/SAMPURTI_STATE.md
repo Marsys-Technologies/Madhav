@@ -14,7 +14,25 @@ conductor_session: SAMPURTI-CONDUCTOR-2026-08-10 (first run)
 
 # SAMPŪRTI CAMPAIGN LEDGER
 
-CONDUCTOR-HEARTBEAT: 2026-08-10T06:05+05:30 (SAMPURTI-CONDUCTOR-2026-08-10, resumed) [coordination protocol landed (PR #1142); PR #1141 drafted pending P-G1; preparing P-G1 dispatch]
+CONDUCTOR-HEARTBEAT: 2026-08-10T06:25+05:30 (SAMPURTI-CONDUCTOR-2026-08-10, resumed) [model policy adopted; P-G1 run 2 (88268b2d) rebuilding 13-asset closure]
+
+## MODEL POLICY (BINDING — native directive 2026-08-10)
+
+Two-tier only, no other model for any role in this campaign:
+
+| Role | Model | Notes |
+|---|---|---|
+| CONDUCTOR | **Sonnet** | this session; switched from Fable 5 by native 06:2x IST |
+| BUILDERS | **Sonnet** | unchanged from charter default |
+| PARĪKṢAKA (verifier) | **Opus** | unchanged — was already pinned |
+| NATIVE-PRATINIDHI | **Opus** | unchanged — was already pinned |
+| GATE-EXECUTOR | **Opus** | unchanged — was already pinned |
+
+Enforcement: every Agent/Workflow dispatch from this conductor passes an explicit
+`model` param (`"sonnet"` or `"opus"` per the table above) — never omitted, never
+`"fable"`/`"haiku"`/default-inherit. Applies going forward from this heartbeat;
+prior dispatches (Wave 0/1 builders, PARĪKṢAKA/PRATINIDHI passes) were already
+Sonnet/Opus respectively per the original charter and are unaffected.
 
 ## WAVE POSITION
 
