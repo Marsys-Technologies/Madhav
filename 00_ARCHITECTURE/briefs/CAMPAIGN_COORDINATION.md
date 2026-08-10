@@ -116,6 +116,30 @@ this is RELEASED or expired.*
   hang after a server-side-successful INSERT. This ruling removes the future
   overlap (S5), not the current stall.
 
+- **R-COORD-3 (NATIVE-DIRECTED, 2026-08-10 ~15:20 IST — binding immediately):
+  SAMPŪRTI adopts UTKARṢA's elevated gochara; it never builds new work on the
+  legacy generation.** UTKARṢA finishes well before SAMPŪRTI; the dependency
+  direction is therefore fixed:
+  (a) No SAMPŪRTI lane builds against, or verifies against, legacy-generation
+      gochara output for any NEW work. Gochara-consuming surfaces adopt
+      UTKARṢA's generation-'3.0' output via the per-chart
+      `kala_gochara_authority` seam once flipped.
+  (b) **Handshake:** when UTKARṢA's W6 completes (authority = '3.0' live on
+      both charts, verified, rollback rehearsal passed), UTKARṢA appends a
+      `W6-COMPLETE` marker entry to §6 LOG of this file and pushes. That
+      marker is the trigger — not a guess, not a timestamp.
+  (c) On that marker, SAMPŪRTI runs its **ADOPTION PASS**: (i) the R-COORD-2
+      joint gochara-family rebuild, against the elevated assets in their
+      post-UTK-R2 renamed form (`ka_gochara` as the production asset), never
+      the legacy ones; (ii) re-verify every SAMPŪRTI gochara-consuming
+      surface on generation-3.0 (grep + one live read each); (iii) only then
+      execute the deferred G11 gochara retirements (R-COORD-1's joint
+      signing); (iv) SAMPŪRTI's G15 21-question re-measure runs AFTER
+      adoption, so it measures the new engine, not the old.
+  (d) The v1 sweep corpus remains untouchable throughout — it is UTKARṢA's
+      rollback baseline AND SAMPŪRTI's corpus-integrity reference; both
+      campaigns' protection counts continue unchanged.
+
 - **R-COORD-1 (PROPOSED by SAMPŪRTI NATIVE-PRATINIDHI — awaiting UTKARṢA ADJUDICATOR
   counter-signature):** SAMPŪRTI's Wave-2 G11 retirement of gochara-family legacy
   temporal surfaces is DEFERRED until UTKARṢA's authority-seam cutover completes;
