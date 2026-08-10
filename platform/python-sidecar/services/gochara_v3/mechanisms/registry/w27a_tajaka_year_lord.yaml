@@ -1,0 +1,23 @@
+mechanism_id: w27a_tajaka_year_lord
+wave: 2
+lane: W2.7
+description: "Tājaka year-lord (Vārṣeśa) relevance — amplifies when the transit body is the current year-lord"
+citation_status: cited
+classical_citation: "Tājaka Nīlakaṇṭhī Ch.1; BPHS Tājaka chapter — Vārṣeśa is the primary annual significator"
+v1_lineage:
+  replaces: "documented gap in services/gochara_intensity/permission.py:60-68 — standalone Tājaka year-lord signal was explicitly excluded from G-3 scope"
+  v1_module: services/gochara_intensity/permission.py
+  change_type: new_generator
+  note: "v1 permission.py documented this gap honestly; W2.7a is the candidate implementation of the missing signal, reading from l1_tajik_varsha_year_lords via ClassContext.tajaka_year_lords"
+module_path: services/gochara_v3/mechanisms/w27_annual_stack.py
+function: compute_tajaka_year_lord
+admission_state: candidate
+ablation_evidence_link: null
+admission_ruling_id: null
+toggle_key: w27a_tajaka_year_lord
+data_source: "ClassContext.tajaka_year_lords (from l1_tajik_varsha_year_lords, 240 rows)"
+modifier_schedule:
+  year_lord_match: 1.35
+  no_match: 1.00
+  disabled: 1.00
+  no_data: 1.00

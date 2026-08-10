@@ -1,0 +1,34 @@
+mechanism_id: w27c_sudarshana
+wave: 2
+lane: W2.7
+description: "Sudarśana cakra house placement modifier — transit body house position in Sudarśana composite chart"
+citation_status: cited
+classical_citation: "Sudarśana Cakra Paddhati — house placement of transit body as seen from Sun-ascendant composite modifies classical effectiveness; BPHS Sudarśana Cakra chapter"
+v1_lineage:
+  replaces: "no v1 equivalent — new annual-context PERMISSION generator"
+  v1_module: null
+  change_type: new_generator
+  note: "Sudarśana house placement was not evaluated in v1 permission.py; W2.7c adds it as an independent candidate generator reading sudarshana_rows from ClassContext.sudarshana_rows (populated by Sudarshana varsha tables, W0.2)"
+module_path: services/gochara_v3/mechanisms/w27_annual_stack.py
+function: compute_sudarshana
+admission_state: candidate
+ablation_evidence_link: null
+admission_ruling_id: null
+toggle_key: w27c_sudarshana
+data_source: "ClassContext.sudarshana_rows (from kala_sudarshana / bo_sudarshana, Sudarshana varsha tables — W0.2)"
+modifier_schedule:
+  house_1: 1.30
+  house_2: 1.10
+  house_3: 0.95
+  house_4: 1.25
+  house_5: 1.20
+  house_6: 0.85
+  house_7: 1.25
+  house_8: 0.75
+  house_9: 1.20
+  house_10: 1.30
+  house_11: 1.10
+  house_12: 0.80
+  unknown: 1.00
+  disabled: 1.00
+  no_data: 1.00

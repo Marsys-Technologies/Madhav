@@ -1,0 +1,24 @@
+mechanism_id: w27b_tithi_pravesha
+wave: 2
+lane: W2.7
+description: "Tithi Praveśa annual chart tone — annual favourability modifier per event class from kala_tithi_pravesha"
+citation_status: cited
+classical_citation: "Kṛṣṇa Miśra / Tājaka tradition — Praveśa chart at annual tithi entry gives annual tone per domain; Sudarśana Cakra Paddhati"
+v1_lineage:
+  replaces: "no v1 equivalent — new annual-context PERMISSION generator"
+  v1_module: null
+  change_type: new_generator
+  note: "Pravesha-chart annual tone was not evaluated in v1 permission.py; W2.7b adds it as an independent candidate generator reading kala_tithi_pravesha rows from ClassContext.tithi_pravesha_rows"
+module_path: services/gochara_v3/mechanisms/w27_annual_stack.py
+function: compute_tithi_pravesha
+admission_state: candidate
+ablation_evidence_link: null
+admission_ruling_id: null
+toggle_key: w27b_tithi_pravesha
+data_source: "ClassContext.tithi_pravesha_rows (from kala_tithi_pravesha, Sudarshana varsha tables — W0.2)"
+modifier_schedule:
+  favourable: 1.25
+  mixed: 1.00
+  adverse: 0.80
+  disabled: 1.00
+  no_data: 1.00
