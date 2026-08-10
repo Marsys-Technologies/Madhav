@@ -9,12 +9,12 @@ branch_model: >
   Integration branch sampurti/integration cut from main @ 1432d7492 (2026-08-10).
   All lane work in worktrees off sampurti/integration; lane PRs -> integration;
   integration -> main only via Gate-Executor packets at wave boundaries.
-conductor_session: SAMPURTI-CONDUCTOR-2026-08-10 (R6 — relaunch 20:21 IST; R5 pid=33133 CONFIRMED DEAD [ps -p 33133 exit=0 with no CMD output]; pgrep "CONDUCTOR of SAMPŪRTI" = no match; sole SAMPŪRTI conductor)
+conductor_session: SAMPURTI-CONDUCTOR-2026-08-10 (R8 — relaunch 20:48 IST; R7 pid=86254 CONFIRMED DEAD [pgrep-exit:1, no CMD match]; pgrep "CONDUCTOR of SAMPŪRTI" = no match; broader ps scan shows only watch_sampurti.sh PID 55453 (watcher, not conductor); sole SAMPŪRTI conductor confirmed)
 ---
 
 # SAMPŪRTI CAMPAIGN LEDGER
 
-CONDUCTOR-HEARTBEAT: 2026-08-10T15:05+00:00 (SAMPURTI-CONDUCTOR-2026-08-10-R6) pid=57152 host=Montys-MacBook-Pro.local [R6 stable: PARIṢKĀRA L-4 deploy lease ACTIVE (20:10–21:30 IST, migrations 563/564/565). Anomaly CAMPAIGN_COORDINATION.md overwrite corrected (restored to main version, 6cbce1ff3). Stale PR #1175 CLOSED. Polling for W6-COMPLETE.]
+CONDUCTOR-HEARTBEAT: 2026-08-10T15:18:51+00:00 (SAMPURTI-CONDUCTOR-2026-08-10-R8) pid=87229 host=Montys-MacBook-Pro.local [R8 launch: R7 pid=86254 DEAD (pgrep-exit:1). L-4 PARIṢKĀRA lease ACTIVE (expiry 21:30 IST, PR #1201 CI: Build Check+Unit Tests+Governance Gates IN_PROGRESS, all others SUCCESS). W6-COMPLETE NOT YET posted. Awaiting marker. No production DB work this cycle.]
 
 ## MODEL POLICY (BINDING — native directive 2026-08-10)
 
@@ -560,4 +560,55 @@ CONDUCTOR-HEARTBEAT: 2026-08-10T15:10+00:00 (SAMPURTI-CONDUCTOR-2026-08-10-R7) p
 - HARD BLOCK: enforced — no integration→main gate until P-G1 GREEN
 
 **NEXT-ACTION (unchanged):** Poll for W6-COMPLETE every ≤10 min. On marker: verify lease clear → claim SAMPŪRTI lease → gate G12/G14b/PG-31/L1j to main → dispatch P-G1 Cloud Run → paste window tables → hard block lifts.
+
+---
+
+## R8 MORNING REPORT — 2026-08-10T15:18:51+00:00 (R16 throughout)
+
+**LIVENESS CHECK (per RESUME + LEASE protocol):**
+- R7 pid=86254: DEAD (pgrep-exit:1, no "CONDUCTOR of SAMPŪRTI" match)
+- Broader ps scan: only watch_sampurti.sh PID 55453 (watcher, not conductor)
+- pgrep -f "cloud-sql-proxy": PIDs 36155, 58012, 74982 (proxy live — SAMPŪRTI owns 5433)
+- Sole SAMPŪRTI conductor: CONFIRMED. R8 (pid=87229, IDE session).
+
+**WAVE POSITIONS (R16, detector-cited):**
+- Wave 0: COMPLETE, on main (3311ae0e3) ✅
+- Wave 1 S2 (G1 wiring): on main (c93540ca8) ✅
+- Wave 1 L1b–L1j: ALL on main (PR #1150/#1153/#1158/#1172/#1185/#1186/#1187/#1188) ✅
+  - PR #1172 (L1e OOM fix): MERGED — all CI SUCCESS, mergeable=UNKNOWN (already merged) ✅
+- Wave 1 G12 (#1191), G14b (#1190), PG-31 (#1193), L1j (#1188): on sampurti/integration; gated to main after P-G1 GREEN
+- PA-0 stage I/O map: committed (04a2538b8) ✅
+- G13 (assess_domain): DEFERRED — requires 13-domain CDLM rebuild (post-P-G1)
+- P-G1: DEFERRED — awaiting W6-COMPLETE marker (R-COORD-2: ka_kshetra hazard.py cross-checks kala_gochara_windows; field must build against gen-3.0)
+- HARD BLOCK: no integration→main gate until P-G1 GREEN ✅ (enforced)
+
+**WINDOWS-STAGE ROOT CAUSE (FULLY RESOLVED — all three failure modes):**
+- (A) Cloud Run OOM (runs 1–4): FIXED by L1e shared-EnvelopeIndex — PR #1172 MERGED+DEPLOYED
+- (B) SIGTERM at stage3 completion (run 5): coordination yield, not a code bug
+- (C) SIGTERM during stage4 runs 6–11 (183k–566k windows written before kill): coordination yield by design; stage4 IS working
+- PG-31 (load_legacy_crosscheck generation-blind): FIXED — PR #1193 merged to integration
+- PG-32 (branch skew): RESOLVED — main merged into sampurti/integration cleanly (63435580a)
+- **Remaining block: coordination only** — W6-COMPLETE marker from PARIṢKĀRA triggers P-G1 run 12 on Cloud Run with gen-3.0 gochara tables
+
+**CROSS-CAMPAIGN STATE:**
+- L-4 (PARIṢKĀRA deploy lease): ACTIVE, expiry 21:30 IST — PR #1201 (parishkara/integration→main, migrations 563/564/565) OPEN; CI: Build Check + Unit Tests + Governance Gates IN_PROGRESS; all 30 other checks COMPLETED SUCCESS; mergeable=MERGEABLE
+- W6-COMPLETE marker: NOT YET posted in coordination file §6 LOG
+- PARIṢKĀRA marker-gate outstanding: MR-08/10/13/14/15/24 per PARIṢKĀRA ledger
+- Stale worktree: /private/tmp/sampurti-integration on sampurti/g14b-ahead-autofile (lane merged PR #1190, worktree orphaned). TO CLEAN at next housekeeping pass.
+- smoke_probe.ts anomaly (logged R6, coordination §6 LOG): no action needed — PARIṢKĀRA parishkara/mr-35 copy authoritative; merge queue handles duplicate.
+
+**PROOF LADDER STATUS:**
+- P-G1: NOT YET GREEN. All code bugs fixed. Build infrastructure sound. Block = coordination.
+- Run 12 target: Cloud Run, no coordination SIGTERM, all L1b–L1j+PG-31 deployed, gen-3.0 gochara tables live.
+
+**DEBTS / PARKS:**
+- DEBT-1: CLOSED (L0b migration policy violation, assessed NON-BLOCKING)
+- DEBT-2: CLOSED (PR #1141 premature merge, self-inflicted; substantive finding = P-G1 hard block enforced)
+- DEBT-3: CLOSED (dual-conductor collision; protocol hardened in campaign prompt)
+- pk-mr* worktrees: PARIṢKĀRA's — DO NOT TOUCH
+- platform/scripts/dispatch_utkarsha_w02_ka_assets.py: PARIṢKĀRA territory — DO NOT TOUCH
+
+**ONE-LINE ANSWER:** PARIṢKĀRA posts W6-COMPLETE → claim lease → gate G12/G14b/PG-31/L1j to main → dispatch Cloud Run P-G1 on 482012f1 (gen-3.0) → paste window tables → hard block lifts → S5 full-DAG rebuild → Wave 2.
+
+**NEXT-ACTION:** Poll coordination file every ≤10 min for W6-COMPLETE. Until then: no production DB work; monitor PR #1201 CI; clean stale worktree when clear.
 
