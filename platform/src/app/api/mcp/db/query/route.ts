@@ -112,6 +112,11 @@ const ALLOWED_TABLES = new Set([
   // must lead with the highest-scoring insight_score row). Same writer, same chart scope.
   'kala_field_salience',
   'kala_insights',
+  // MR-25 (PARIṢKĀRA, migration 565): register_gochara_windows.ts's verse_refs
+  // lookup queries bg_gochara_citation_resolution to resolve gochara citation
+  // strings (gochara_grammar/citations.py constants) to classical_text_chunks
+  // verse_refs. Global read-only reference table; no write path added.
+  'bg_gochara_citation_resolution',
 ])
 
 // Forbidden anywhere in the statement: write/DDL verbs and statement separators.

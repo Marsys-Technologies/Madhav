@@ -357,6 +357,7 @@ def collect_migration_insert_ids() -> frozenset[str]:
     RETIRED_MIGRATION_IDS = frozenset({
         "ga_pyjhora_engine",    # migration 179 placeholder, never activated in prod
         "ka_gochara_sweep_v2",  # migration 541 row DELETED by migration 542
+        "ka_gochara_v2_materialize",  # migration 542 INSERT; RENAMED to ka_gochara by migration 563 (W6.4 UTK-R2, MR-06)
     })
 
     ids: set[str] = set()

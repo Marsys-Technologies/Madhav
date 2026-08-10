@@ -299,11 +299,15 @@ const ROW_COLUMNS = `
   computed_at, continuity_state,
   generation, era_slice_key, term_breakdown
 `
-// W5.1 (GOCHARA-UTKARSA): generation, era_slice_key, and term_breakdown are
-// nullable columns present on kala_gochara_windows since migrations 527/556/559.
-// All three arrive as NULL for v1 rows written before those migrations — the
-// interface declares them optional-nullable and the serving code passes them
-// through without requiring them non-null, per §N.3 "honest tier over fabricated".
+// W5.1 (GOCHARA-UTKARSA): generation and era_slice_key are nullable columns
+// present on kala_gochara_windows since migrations 527 and 556 respectively.
+// term_breakdown, lambda_v3_ci_low, lambda_v3_ci_high, ci_source,
+// threshold_lambda, threshold_percentile, implied_density, and base_rate_cited
+// are the 8 v3 output-model columns added to kala_gochara_windows by migration
+// 564 (PARIṢKĀRA MR-01). All arrive as NULL for v1 rows written before those
+// migrations — the interface declares them optional-nullable and the serving
+// code passes them through without requiring them non-null, per §N.3 "honest
+// tier over fabricated".
 
 // ADJUDICATION-6 (SHAD_DARSHANA_ADJUDICATIONS_NIGHT3_v1_0.md, migration 527):
 // GOCHARA-2.0 writes generation-stamped rows BESIDE v1, never over it — so
@@ -333,6 +337,148 @@ async function queryRows(
     const message = err instanceof Error ? err.message : String(err)
     return { rows: [], ok: false, error: message }
   }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// MR-25 — Citation → verse_refs resolution (PARIṢKĀRA campaign)
+// ══════════════════════════════════════════════════════════════════════════
+//
+// Closes the W2.9 gap: citation strings present in active_sentences (sourced
+// from gochara_grammar/citations.py constants + primitives.py families) are
+// resolved to classical_text_chunks verse_refs via bg_gochara_citation_resolution
+// (migration 565, "verified-before-seeded" pattern per migration 528).
+//
+// Design:
+//   1. extractCitationStrings(): walks active_sentences JSONB looking for any
+//      'classical_citation' or 'citation' key in sentence objects. Returns
+//      the de-duplicated set across all rows.
+//   2. fetchVerseRefs(): queries bg_gochara_citation_resolution for the batch
+//      of distinct citation strings. Returns a Map<citation_string, VerseRef[]>.
+//      Fails SOFT — if the table is unreachable (e.g. migration not yet applied),
+//      returns an empty Map (never breaks the serving call; verse_refs is additive).
+//   3. enrichWindowsWithVerseRefs(): adds `citation_verse_refs` to each served
+//      window — a list of {citation_string, chunk_id, verse_ref, text_id, status}
+//      objects for every resolved citation in that window's active_sentences.
+//      A window with no recognized citation strings carries an empty array.
+//
+// Gate (MR-25): at minimum one served window carries a non-empty citation_verse_refs
+// array when any resolved row exists in bg_gochara_citation_resolution.
+// AT-PAR: B.3 derivation-ledger discipline — served verse_refs trace to the
+// classical_text_chunks table via the resolution table's chunk_id FK.
+
+export interface CitationVerseRef {
+  citation_string: string
+  chunk_id: string
+  text_id: string
+  verse_ref: string
+  /** 'resolved' = confirmed corpus chunk; 'unresolved' = honest corpus gap */
+  status: 'resolved' | 'unresolved'
+}
+
+/**
+ * Walk active_sentences looking for citation strings in any sentence object
+ * that carries a 'classical_citation' or 'citation' key.
+ * Returns the de-duplicated set of non-empty citation strings found.
+ */
+export function extractCitationStrings(rows: GocharaWindowRow[]): Set<string> {
+  const found = new Set<string>()
+  for (const row of rows) {
+    const sentences = row.active_sentences ?? []
+    for (const sentence of sentences) {
+      if (sentence && typeof sentence === 'object') {
+        const s = sentence as Record<string, unknown>
+        // W2.9 mechanism sentences use 'classical_citation' key.
+        const cit = s['classical_citation'] ?? s['citation']
+        if (typeof cit === 'string' && cit.trim()) {
+          found.add(cit.trim())
+        }
+      }
+    }
+  }
+  return found
+}
+
+/**
+ * Query bg_gochara_citation_resolution for the given citation strings.
+ * Returns a Map from citation_string → CitationVerseRef[].
+ * Fails soft: returns empty Map on any error (verse_refs is additive, never gating).
+ */
+export async function fetchVerseRefs(
+  citationStrings: Set<string>,
+  principal: Principal
+): Promise<Map<string, CitationVerseRef[]>> {
+  if (citationStrings.size === 0) return new Map()
+
+  const strings = Array.from(citationStrings)
+  // Build parameterized IN clause: $1, $2, ...
+  const placeholders = strings.map((_, i) => `$${i + 1}`).join(', ')
+  const sql =
+    `SELECT citation_string, chunk_id, text_id, verse_ref, status ` +
+    `FROM bg_gochara_citation_resolution ` +
+    `WHERE citation_string IN (${placeholders})`
+
+  try {
+    const { rows } = await platformQuery(sql, strings, principal)
+    const result = new Map<string, CitationVerseRef[]>()
+    for (const row of rows) {
+      const cs = row['citation_string'] as string
+      if (!result.has(cs)) result.set(cs, [])
+      result.get(cs)!.push({
+        citation_string: cs,
+        chunk_id: row['chunk_id'] as string,
+        text_id: row['text_id'] as string,
+        verse_ref: row['verse_ref'] as string,
+        status: (row['status'] as 'resolved' | 'unresolved') ?? 'unresolved',
+      })
+    }
+    return result
+  } catch {
+    // Soft failure: bg_gochara_citation_resolution unreachable (e.g. migration
+    // not yet applied). verse_refs is additive — the serving call succeeds without it.
+    return new Map()
+  }
+}
+
+/**
+ * Add `citation_verse_refs` to each served window object.
+ * citation_verse_refs carries only 'resolved' rows (confirmed corpus chunks)
+ * to avoid serving CORPUS_GAP stub rows as if they were live verse refs.
+ * The raw row count (including unresolved) is disclosed in the provenance.
+ */
+export function enrichWindowsWithVerseRefs<T extends { active_sentences: unknown[] }>(
+  windows: T[],
+  rows: GocharaWindowRow[],
+  verseRefMap: Map<string, CitationVerseRef[]>
+): Array<T & { citation_verse_refs: CitationVerseRef[]; citation_resolution_note: string | null }> {
+  return windows.map((window, i) => {
+    const row = rows[i]
+    if (!row) {
+      return { ...window, citation_verse_refs: [], citation_resolution_note: null }
+    }
+
+    // Collect all citation strings for this row's active_sentences.
+    const citations = extractCitationStrings([row])
+
+    // Gather only resolved entries (status='resolved', chunk_id not starting with CORPUS_GAP:).
+    const resolved: CitationVerseRef[] = []
+    for (const cit of citations) {
+      const refs = verseRefMap.get(cit) ?? []
+      for (const ref of refs) {
+        if (ref.status === 'resolved' && !ref.chunk_id.startsWith('CORPUS_GAP:')) {
+          resolved.push(ref)
+        }
+      }
+    }
+
+    const note =
+      citations.size === 0
+        ? null
+        : resolved.length > 0
+          ? `${resolved.length} citation(s) resolved to verse_refs from bg_gochara_citation_resolution (migration 565)`
+          : `${citations.size} citation string(s) found in active_sentences but none resolved to corpus chunks yet — see bg_gochara_citation_resolution for honest gap catalog`
+
+    return { ...window, citation_verse_refs: resolved, citation_resolution_note: note }
+  })
 }
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -392,6 +538,47 @@ export async function computeGocharaCoverage(
   chartId: string,
   principal: Principal
 ): Promise<{ coverage: GocharaCoverage; ok: boolean }> {
+  // MR-02 (PARIṢKĀRA): coverage source is authority-aware.
+  // After migration 563 retires ka_gochara_sweep, v3-authority charts never had
+  // substeps recorded under 'ka_gochara_sweep' — the v3 materializer (ka_gochara,
+  // renamed from ka_gochara_v2_materialize) logs under its own asset_id. Querying
+  // build_substep_progress for 'ka_gochara_sweep' on a v3-authority chart would
+  // always return 0, misreporting a fully-built chart as uncovered.
+  //
+  // Resolution:
+  //   - No kala_gochara_authority row (or absent table) → v1 authority → use
+  //     'ka_gochara_sweep' substep history (unchanged existing behaviour).
+  //   - kala_gochara_authority row present with any g3_* or '3.0' generation →
+  //     v3 authority → use 'ka_gochara' (the renamed materializer) substep history.
+  //     The resonance-map coverage (classesResp) is still the canonical scope source
+  //     for WHAT was built; the substep count shifts to the v3 asset_id.
+  //
+  // The authority lookup is a single SELECT that never throws on a missing table
+  // (the IF NOT EXISTS guard produces an empty rows array instead).
+  const authorityResp = await platformQuery(
+    `SELECT authoritative_generation
+       FROM kala_gochara_authority
+      WHERE chart_id = $1
+      LIMIT 1`,
+    [chartId],
+    principal
+  ).then((r) => ({ rows: r.rows, ok: true as const })).catch(() => ({ rows: [] as Record<string, unknown>[], ok: true as const }))
+
+  const authGen = typeof authorityResp.rows[0]?.['authoritative_generation'] === 'string'
+    ? authorityResp.rows[0]['authoritative_generation'] as string
+    : 'v1'
+  const isV3Authority = authGen === '3.0' || authGen.startsWith('g3_')
+
+  // The substep asset_id and source description differ by authority generation.
+  // v1: 'ka_gochara_sweep' (D-5 Lane G-4 sweep writer, now RETIRED but substep
+  //     history is preserved in build_substep_progress for existing charts).
+  // v3: 'ka_gochara' (the renamed ka_gochara_v2_materialize per-chart materializer,
+  //     post-migration 563 rename; substeps use ':year:' suffix convention per W3.4).
+  const substepAssetId = isV3Authority ? 'ka_gochara' : 'ka_gochara_sweep'
+  const substepSourceLabel = isV3Authority
+    ? `build_substep_progress (asset_id=ka_gochara, chart-scoped, v3 materializer)`
+    : `build_substep_progress (asset_id=ka_gochara_sweep, chart-scoped)`
+
   const [classesResp, universeResp, substepResp] = await Promise.all([
     platformQuery(
       `SELECT DISTINCT rm.event_class AS event_class, eo.domain AS domain
@@ -415,8 +602,8 @@ export async function computeGocharaCoverage(
                 ARRAY[]::text[]
               ) AS swept_event_classes
          FROM build_substep_progress
-        WHERE chart_id = $1 AND asset_id = 'ka_gochara_sweep'`,
-      [chartId],
+        WHERE chart_id = $1 AND asset_id = $2`,
+      [chartId, substepAssetId],
       principal
     ).then((r) => ({ rows: r.rows, ok: true as const })).catch((err) => ({ rows: [] as Record<string, unknown>[], ok: false as const, error: String(err) })),
   ])
@@ -455,9 +642,11 @@ export async function computeGocharaCoverage(
       universe_source: COVERAGE_UNIVERSE_SOURCE,
       sweep_completeness: {
         substeps_committed: substepsCommitted,
-        source: 'build_substep_progress (asset_id=ka_gochara_sweep, chart-scoped)',
+        source: substepSourceLabel,
         note:
-          'Execution completeness ONLY — how many sweep substeps have committed for THIS chart. ' +
+          'Execution completeness ONLY — how many substeps have committed for THIS chart ' +
+          '(MR-02: asset_id is authority-aware: ka_gochara_sweep for v1-authority charts, ' +
+          'ka_gochara for v3-authority charts per kala_gochara_authority.authoritative_generation). ' +
           'NOT the same axis as the category coverage above (which domains the sweep can ever ' +
           'surface at all, per event_classes_covered/domains_not_covered) — a fully-executed sweep ' +
           '(every substep committed) still structurally excludes any domain in domains_not_covered. ' +
@@ -739,8 +928,14 @@ export async function computeGocharaActivation(
   const facets = computeWindowFacets(rows)
   const resolvedCitation = buildSourceCitation(rawRows[0]?.generation ?? null)
 
+  // MR-25: resolve citation strings from active_sentences to verse_refs.
+  // Soft failure: verseRefMap is empty Map on any error (additive, never gating).
+  const citationStrings = extractCitationStrings(rows)
+  const verseRefMap = await fetchVerseRefs(citationStrings, principal)
+  const enrichedWindows = enrichWindowsWithVerseRefs(rows as unknown as Array<{ active_sentences: unknown[] }>, rows, verseRefMap)
+
   const content: Record<string, unknown> = {
-    windows: rows,
+    windows: enrichedWindows,
     facets,
     coverage,
     drill_pointers: [] as unknown[],
@@ -749,6 +944,7 @@ export async function computeGocharaActivation(
       source_citation: resolvedCitation,
       window_count: rows.length,
       backing_data_reachable: ok && coverageOk,
+      citation_verse_refs_available: verseRefMap.size > 0,
       empty_reason: rows.length === 0
         ? (ok
             ? 'no kala_gochara_windows row spans this date for this chart/event_class/domain filter — an honest zero-activation result, not a fabricated one'
@@ -898,8 +1094,14 @@ export async function computeGocharaForecast(
   const facets = computeWindowFacets(rows)
   const resolvedCitation = buildSourceCitation(rawRows[0]?.generation ?? null)
 
+  // MR-25: resolve citation strings from active_sentences to verse_refs.
+  // Soft failure: verseRefMap is empty Map on any error (additive, never gating).
+  const citationStrings = extractCitationStrings(rows)
+  const verseRefMap = await fetchVerseRefs(citationStrings, principal)
+  const enrichedWindows = enrichWindowsWithVerseRefs(rows as unknown as Array<{ active_sentences: unknown[] }>, rows, verseRefMap)
+
   const content: Record<string, unknown> = {
-    windows: rows,
+    windows: enrichedWindows,
     facets,
     coverage,
     drill_pointers: [] as unknown[],
@@ -909,6 +1111,7 @@ export async function computeGocharaForecast(
       window_count: rawRows.length,
       shape_breakdown: byShape,
       backing_data_reachable: ok && coverageOk,
+      citation_verse_refs_available: verseRefMap.size > 0,
       empty_reason: rawRows.length === 0
         ? (ok
             ? 'no kala_gochara_windows rows overlap this date_range/filter combination — honest zero result. ' +
