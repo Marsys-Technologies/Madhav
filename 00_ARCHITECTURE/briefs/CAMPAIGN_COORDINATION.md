@@ -23,6 +23,28 @@ isolate files; this file coordinates the five surfaces worktrees cannot isolate:
 main merges/deploys, the production DB, migration numbering, the protected sweep
 corpus schema, and overlapping asset territory.
 
+## 0. WHERE THIS FILE LIVES — READ THIS FIRST (added 2026-08-10, native's desk)
+
+**The authoritative, live copy of this file is on branch `campaign-coordination`.**
+`main` carries a mirror that is SLOW BY CONSTRUCTION: main is protected
+(pull_request + merge_queue + non_fast_forward, verified 2026-08-10), so a lease
+row can take many minutes to land there — useless for a real-time lease. The
+`campaign-coordination` branch is unprotected and directly pushable by BOTH
+campaigns. Despite thehistory of its predecessor's name (`sampurti/coordination`),
+this branch is jointly owned: neither campaign owns it, both append to it.
+
+Operate the lease like this (fast, ~10 seconds):
+```
+cd <your own worktree>            # never the main checkout
+git fetch origin campaign-coordination
+git show origin/campaign-coordination:00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md
+# ...read §1 lease table; if the other campaign holds an ACTIVE, unexpired lease: WAIT.
+# to claim/release, edit the file on a local checkout of campaign-coordination and:
+git push origin HEAD:campaign-coordination
+```
+If your push is rejected non-fast-forward, another campaign wrote concurrently:
+fetch, re-read (their lease may now block you), re-apply, push again.
+
 ## 1. DEPLOY/REBUILD LEASE (prime rule)
 
 Only ONE campaign may (a) deploy to production or (b) run a production orchestrator
@@ -38,6 +60,14 @@ cutover wave (its W6), UTKARṢA yields otherwise.
 
 | # | campaign | purpose | started (IST) | expiry (IST) | status |
 |---|---|---|---|---|---|
+| L-2 | SAMPŪRTI | P-G1 proof rebuild, chart 482012f1 (13-asset closure through newly wired ka_kshetra stages 0–3). Sole objective of its current run; Wave 2+ hard-blocked until GREEN. | 2026-08-10 07:15 | 2026-08-10 12:00 | **ACTIVE** |
+
+*L-2 recorded 2026-08-10 07:2x by the native's desk on behalf of the running
+SAMPŪRTI conductor (pid 59199), which was mid-run when the lease protocol was
+made mandatory. SAMPŪRTI must RELEASE it when P-G1 completes or its run ends.
+UTKARṢA: do not run production orchestrator builds/rebuilds or deploys until
+this is RELEASED or expired.*
+
 
 ## 2. MIGRATION NUMBER CLAIMS (claim-at-PR-open; renumber-on-collision stands)
 
@@ -45,7 +75,8 @@ cutover wave (its W6), UTKARṢA yields otherwise.
 |---|---|---|---|
 | 553–555 | SAMPŪRTI | Wave-0 migrations | MERGED to main (#1138) |
 | 556 | UTKARṢA | 556_gochara_generation_schema.sql | CLAIMED (gochara3/w03, unmerged) |
-| 557+ | — | next free; claim here before use | — |
+| 557 | UTKARṢA | 557_utkarsha_builder_role.sql (I6(a) restricted builder DB role) | CLAIMED (per UTKARṢA ledger, gochara3/i6a-role) |
+| 558+ | — | next free; claim here before use | — |
 
 ## 3. TERRITORY MAP (edit-ownership during the concurrency window)
 
@@ -88,3 +119,33 @@ cutover wave (its W6), UTKARṢA yields otherwise.
   §3's no-cross-campaign-deletion rule exists to prevent recurrence.
 - 2026-08-10: file created (SAMPŪRTI conductor); native directed adoption in both
   campaigns.
+
+---
+
+### LOG — 2026-08-10 ~07:25 IST (native's desk, acting on native instruction)
+
+Three changes, made from an isolated worktree; NO campaign worktree, branch, or
+file was touched:
+1. **§0 added** — `campaign-coordination` declared the authoritative live surface.
+   Root cause: the lease's only copy was on `main`, which is protected
+   (pull_request + merge_queue + non_fast_forward) and therefore cannot carry a
+   real-time lease. Also: the file was absent from BOTH campaign branches, so
+   neither conductor saw it in its own worktree.
+2. **§1 L-2 recorded** for SAMPŪRTI's in-flight P-G1 rebuild (see row note).
+3. **§2 migration 557 claimed for UTKARṢA**, matching its own ledger's stated
+   intent; 558+ now next free. Prevents a silent first-writer-wins race.
+
+Context (incident of the same night, for both campaigns' awareness): two SAMPŪRTI
+conductors ran concurrently 03:31–07:10 IST after the lease's staleness detector —
+"heartbeat >15 min old ⇒ no conductor alive" — reported a live, busy conductor as
+dead. That detector measured commit recency and claimed process liveness (the §N.8
+Earned-Signal defect the project had already codified). Both campaigns' prompts now
+require a PID-based liveness test instead. Five P-G1 production rebuilds were
+destroyed by the resulting collision, via `cloud-sql-proxy` restarts that terminate
+every in-flight connection machine-wide (`psycopg.errors.AdminShutdown`). SAMPŪRTI's
+reflexive proxy-restart instruction has been removed and replaced with a
+diagnose-first, never-under-a-foreign-lease rule. UTKARṢA was verified to have no
+proxy-restart instruction anywhere — it was not a contributor to that failure, and
+an earlier suspicion that it had touched SAMPŪRTI's PR #1141 was disproven: zero
+`gh pr` state-change commands exist in any UTKARṢA log or transcript. The actual
+actor was SAMPŪRTI's own conductor.
