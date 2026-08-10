@@ -199,7 +199,7 @@
     {
       "file": "platform/python-sidecar/services/gochara_v3/context.py",
       "line": null,
-      "pattern": "fact_category IN \\('sade_sati_cycle', 'sade_sati_phase'\\)",
+      "pattern": "fact_category IN \\('sade_sati_cycle'",
       "justification": "NEW in GOCHARA-UTKARSA W0.4 (gochara_v3/context.py _fetch_sade_sati_phases). Intentionally fetches ALL sade_sati phase rows for a chart — not a single-row reduction. The full row list is stored as tuple(phases) in ClassContext without any key-based collapse; every row is preserved unmodified. Identical shape and justification to the existing services/gochara_grammar/primitives.py:1043 entry (_fetch_sade_sati_rows: 'returns the full row list unmodified for the caller to interpret; no reduction/collapse happens in this function'). Not the D1 defect class (which selects ONE row by category alone with no fact_key to disambiguate which measurement is read)."
     }
   ]
