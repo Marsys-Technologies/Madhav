@@ -14,7 +14,7 @@ conductor_session: SAMPURTI-CONDUCTOR-2026-08-10 (R4 — native relaunch 16:38 I
 
 # SAMPŪRTI CAMPAIGN LEDGER
 
-CONDUCTOR-HEARTBEAT: 2026-08-10T13:25+00:00 (SAMPURTI-CONDUCTOR-2026-08-10-R4) pid=68645 host=Dev-Mac [W6-COMPLETE WITHHELD: F1–F4+F7+F14 gates pending. PG-31 MERGED: PR #1193 merged to sampurti/integration (4eabe824, PARĪKṢAKA PASS R1–R5). PG-32 RESOLVED: integration current with main (5468d20a). W6-COMPLETE await continues.]
+CONDUCTOR-HEARTBEAT: 2026-08-10T13:34+00:00 (SAMPURTI-CONDUCTOR-2026-08-10-R4) pid=68645 host=Dev-Mac [W6-COMPLETE WITHHELD: F-gates pending. PG-31+PG-32 resolved. All sampurti/integration PRs merged. Holding for W6-COMPLETE.]
 
 ## MODEL POLICY (BINDING — native directive 2026-08-10)
 
