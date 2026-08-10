@@ -186,56 +186,88 @@ class TestTransitServiceHealth:
 # ---------------------------------------------------------------------------
 # 3. DISCOVERABILITY: ka_gochara_sweep absent from WRITER_REGISTRY
 # ---------------------------------------------------------------------------
+#
+# Strategy: rather than calling discover_all() (which hard-fails when the full
+# writer module set can't be imported due to missing optional dependencies like
+# jhora in CI), we directly import just the two shims under test and check
+# the WRITER_REGISTRY state after each import.  This is the correct isolation
+# level: we are testing what the SHIM does, not whether the full writer zoo loads.
 
 class TestSweepWriterDiscoverability:
-    def _fresh_registry(self):
-        """Return the WRITER_REGISTRY after a clean discover_all().
+    def _isolated_registry(self):
+        """Return the WRITER_REGISTRY state after a clean import of just the
+        two shims under test (ka_gochara and ka_gochara_sweep).
 
-        We must unload ka_gochara_sweep-related modules so the shim's top-level
-        import fires fresh (so any guard logic runs, not cached module state).
+        Avoids calling discover_all() which hard-fails on missing optional
+        deps (jhora, swisseph data files, etc.) in CI environments.
+
+        We must also remove any pre-existing 'ka_gochara_sweep' registry entry
+        that was added before this test runs (e.g. from another test's
+        discover_all() or a direct writer import in the same session), so the
+        test measures what the SHIM does when imported from scratch, not what
+        an earlier import already stamped in.
         """
-        # Remove cached modules so the discover_all() re-import is live
-        to_remove = [
+        import pipeline.orchestrator.writers as w_pkg
+
+        # Evict all sweep-related modules so re-import fires fresh
+        to_evict = [
             k for k in sys.modules
             if "ka_gochara_sweep" in k
-            or k == "pipeline.orchestrator.writers"
-            or k.startswith("pipeline.orchestrator.writers.")
+            or k in (
+                "pipeline.orchestrator.writers.ka_gochara",
+                "services.w2g",
+                "services.w2g.materialize",
+                "services.w2g.fingerprint",
+                "services.w2g.tiers",
+                "services.w2g.db_source",
+            )
         ]
-        for k in to_remove:
+        for k in to_evict:
             sys.modules.pop(k, None)
 
-        # Also reset _discovered flag if the package was already imported
-        try:
-            import pipeline.orchestrator.writers as w_pkg
-            w_pkg._discovered = False  # type: ignore[attr-defined]
-        except Exception:
-            pass
+        # Remove pre-existing registry entries for our two assets under test
+        # (guards against earlier imports in the same pytest session)
+        for aid in ("ka_gochara_sweep",):
+            w_pkg.WRITER_REGISTRY.pop(aid, None)
+            # Also remove from the private _REGISTRY dict (same object)
+            w_pkg._REGISTRY.pop(aid, None)  # type: ignore[attr-defined]
 
-        import pipeline.orchestrator.writers as w_pkg
-        w_pkg.discover_all()
-        return dict(w_pkg.WRITER_REGISTRY)
+        # Snapshot, then import our two shims
+        before = set(w_pkg.WRITER_REGISTRY.keys())
+
+        # Import the sweep shim — after MR-09 this must NOT re-add 'ka_gochara_sweep'
+        importlib.import_module("pipeline.orchestrator.writers.ka_gochara_sweep")
+
+        # Import the materializer shim — must still have 'ka_gochara'
+        importlib.import_module("pipeline.orchestrator.writers.ka_gochara")
+
+        after = set(w_pkg.WRITER_REGISTRY.keys())
+        newly_added = after - before
+        return newly_added, dict(w_pkg.WRITER_REGISTRY)
 
     def test_ka_gochara_sweep_not_in_dispatchable_registry(self):
-        """After MR-09: discover_all() must NOT add 'ka_gochara_sweep' to the
-        WRITER_REGISTRY because the shim no longer unconditionally registers a
-        retired writer.
+        """After MR-09: importing the ka_gochara_sweep shim must NOT add
+        'ka_gochara_sweep' to the WRITER_REGISTRY.
 
         The sweep writer is RETIRED — routing it into a new build plan is a bug.
+        The shim now serves as a tombstone with the import line commented out.
         """
-        registry = self._fresh_registry()
+        newly_added, registry = self._isolated_registry()
         assert "ka_gochara_sweep" not in registry, (
             "ka_gochara_sweep must NOT appear in WRITER_REGISTRY after MR-09. "
-            "The retired sweep writer should not be dispatched for new builds. "
+            "The retired sweep shim should no longer unconditionally register "
+            "the writer via @register. "
             f"Registry keys containing 'sweep': "
             f"{[k for k in registry if 'sweep' in k]}"
         )
 
     def test_ka_gochara_writer_still_in_registry(self):
-        """The materializer ka_gochara must still be discoverable."""
-        registry = self._fresh_registry()
+        """The materializer ka_gochara must still be discoverable after
+        the sweep shim is silenced."""
+        newly_added, registry = self._isolated_registry()
         assert "ka_gochara" in registry, (
-            "ka_gochara materializer writer must still appear in WRITER_REGISTRY "
-            "after removing the retired sweep shim"
+            "ka_gochara materializer writer must still appear in WRITER_REGISTRY. "
+            "Only the retired sweep entry should be removed."
         )
 
 
