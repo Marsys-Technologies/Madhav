@@ -30,7 +30,7 @@ corpus schema, and overlapping asset territory.
 (pull_request + merge_queue + non_fast_forward, verified 2026-08-10), so a lease
 row can take many minutes to land there — useless for a real-time lease. The
 `campaign-coordination` branch is unprotected and directly pushable by BOTH
-campaigns. Despite thehistory of its predecessor's name (`sampurti/coordination`),
+campaigns. Despite the history of its predecessor's name (`sampurti/coordination`),
 this branch is jointly owned: neither campaign owns it, both append to it.
 
 Operate the lease like this (fast, ~10 seconds):
