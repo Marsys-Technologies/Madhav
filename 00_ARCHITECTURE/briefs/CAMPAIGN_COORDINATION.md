@@ -259,3 +259,50 @@ as serving; see register Appendix B) with a test, BEFORE P-G1. This gates
 P-G1 alongside the W6-COMPLETE marker. Also note register PG-32: your
 integration branch is one cutover behind main (delete/modify conflict pending
 on services/ka_gochara/writer.py) — merge deliberately.
+
+### ALIGNMENT PROTOCOL — UTKARṢA REMEDIATION ↔ SAMPŪRTI (native's desk, 2026-08-10 ~19:4x IST)
+
+The MASTER_REMEDIATION_REGISTER_v2_0 (utkarsha/campaign branch) will execute
+as a bounded remediation campaign. Cross-campaign alignment, checked item by
+item against SAMPŪRTI's plan:
+
+**1. R-COORD-4 (PROPOSED — awaiting native ruling).** SAMPŪRTI L2a's staged
+retirement list includes `gochara_*` serving tools; the remediation register
+(MR-01..04, 24, 35) repairs those same tools. These are COMPATIBLE — the
+corpus/data repairs (the bulk of the register) are needed by the field itself
+regardless of the tools' fate, and L2a retirement is already deferred, joint,
+and PA-7 parity-audited — but the tools' end-state needs one explicit ruling
+to prevent thrash: (a) RETAIN gochara_* as standing serving surfaces over the
+elevated corpus (G11's "one authority" applies to the FIELD as the temporal
+claim authority; gochara remains a distinct input modality), or (b) RETIRE
+them later under the joint PA-7 process, in which case MR-01..04 fixes are
+still prerequisite (a parity audit cannot audit a 500ing surface). Either
+ruling keeps every register item valid; the ruling only decides the tools'
+horizon. Until ruled: NO retirement of gochara_* surfaces.
+
+**2. Marker-gate scope (register §8 amended in same push).** All remediation
+PRODUCTION BUILDS (corpus repair MR-10/13/14/15 rebuilds) complete BEFORE the
+W6-COMPLETE marker posts, so SAMPŪRTI's P-G1/S5 never overlap a gochara
+rebuild. ONE planned exception: MR-16 (27-class corpus expansion) is a large
+build explicitly scheduled POST-marker as a versioned iteration — when it
+lands, it triggers SAMPŪRTI's own PA-5 scoped re-field mechanism + R14
+measurement versioning (a new measurement BESIDE, never overwriting). This is
+planned iteration, not undoing: gochara corpus changes alter field PROVENANCE
+edges (identity terms), not field values (verified: hazard's dual-reference
+derives from stage-1 kinematics, not windows).
+
+**3. Territory (remediation campaign, until its close):** inherits UTKARṢA's
+§3 territory (gochara writers/engine/corpus/serving file
+`register_gochara_windows.ts`, w2g/kala_admission validators, gochara seed
+rows) + one carve-in: the deploy.yml migration-step fix (MR-27), single PR,
+announced here before merge. It does NOT touch: ka_kshetra (MR-17 is
+SAMPŪRTI's, already assigned) · CURRENT_STATE/SESSION_LOG (SAMPŪRTI
+governance territory — remediation requests updates via this file, SAMPŪRTI's
+conductor applies them) · any kala_*/bo_*/mi_*/ph_* writer · main checkout.
+Lease protocol applies to every remediation production build/deploy as usual.
+
+**4. Standing SAMPŪRTI items unaffected (verified):** Wave-3 rubric cycles
+(bodha_pratijna rubric — no gochara input) · R24 aspect audit (grid-vedha
+explicitly out of scope) · G13/G14 lanes (no file overlap with remediation
+set) · S6 G4 acceptance (read-only verification; any wiring lane it spawns
+that touches gochara files must be ceded to remediation via this file).
