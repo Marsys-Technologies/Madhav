@@ -1,20 +1,32 @@
 #!/usr/bin/env bash
-# GOCHARA-UTKARṢA autonomous conductor runner (v1.2)
+# GOCHARA-UTKARṢA autonomous conductor runner (v1.3)
 # Relaunches the conductor on any crash/API-drop/hang until the ledger on the
 # dedicated campaign branch (utkarsha/campaign) is sealed COMPLETE or PAUSED.
 #
-# v1.2 fixes a real incident from the first launch: the conductor was running
-# from the SHARED primary repo checkout (/Users/Dev/Vibe-Coding/Apps/Madhav), which
-# collided with an unrelated autonomous campaign (SAMPURTI) also using that shared
-# directory, and a relative worktree path (`../utk-i6a`) landed inside the repo tree
-# instead of beside it. Fix: the conductor now runs from its OWN dedicated worktree
-# (mirroring how builder lanes already work), and all paths below are absolute.
+# v1.2 fixed: the conductor was running from the SHARED primary repo checkout
+# (/Users/Dev/Vibe-Coding/Apps/Madhav), which collided with an unrelated autonomous
+# campaign (SAMPURTI) also using that shared directory, and a relative worktree path
+# (`../utk-i6a`) landed inside the repo tree instead of beside it. Fixed: the
+# conductor now runs from its OWN dedicated worktree, and all paths are absolute.
+#
+# v1.3 fixed: this script MUST be run from a real terminal, never from inside an
+# active Claude Code session's own Bash tool — `claude -p` refuses to nest (it
+# detects the inherited CLAUDECODE env var and exits immediately, every single
+# time, silently burning the backoff loop forever with zero progress). `unset
+# CLAUDECODE` below is a defensive belt-and-suspenders fix per the CLI's own error
+# message, in case this is ever invoked from a context that leaked the var — but
+# the real fix is operational: run this in your own terminal window, not through
+# an agent's tool call. v1.3 also adds --verbose --output-format stream-json so a
+# real terminal run shows live execution (tool calls, sub-agent dispatch,
+# reasoning), not just final text blocks (the plain default -p mode's `text`
+# format only prints completed responses, not the granular activity in between).
 #
 # Usage:  ./run_conductor.sh
 # Stop:   touch the STOP file (takes effect at next relaunch boundary). To stop a
 #         LIVE run immediately, kill the claude process (the loop then sees STOP).
 
 set -u
+unset CLAUDECODE 2>/dev/null || true
 REPO="/Users/Dev/Vibe-Coding/Apps/Madhav"
 CONDUCTOR_WORKTREE="$REPO/.claude/worktrees/utkarsha-conductor"
 HOME_REL="00_ARCHITECTURE/llm_consumption_audit/briefs/gochara_elevation"
@@ -78,41 +90,38 @@ while true; do
   # restricted builder DB role, wave-boundary rail verification, corpus snapshot,
   # and the DB protection triggers.
   #
-  # Logging: claude -p fully-buffers stdout when it isn't a TTY, so a plain
-  # redirect produces a log that stays empty until process exit (this bit us on
-  # the first launch — a killed session left zero forensic trail). `script`
-  # allocates a pseudo-TTY so output is written as it's produced; it ships with
-  # macOS by default. Falls back to a plain redirect if `script` is unavailable.
-  if command -v gtimeout >/dev/null 2>&1; then TIMEOUT_BIN="gtimeout";
-  elif command -v timeout >/dev/null 2>&1; then TIMEOUT_BIN="timeout";
-  else TIMEOUT_BIN=""; fi
-
+  # Logging: stream-json + verbose gives real execution visibility (tool calls,
+  # sub-agent dispatch, reasoning) in place of the plain `text` format's
+  # "final answer only" output, and it flushes per-event since it's designed to
+  # be piped — no pty trick needed (the earlier `script` approach is no longer
+  # required now that we're not using plain-text mode).
+  #
+  # Portability note: deliberately NOT using `timeout`/`gtimeout` + `bash -c
+  # "$(declare -f ...)"` here — that pattern runs the function in a fresh child
+  # process that does NOT inherit this shell's unexported variables (LOG,
+  # PROMPT_FILE, CONDUCTOR_WORKTREE), a latent bug that only stayed invisible
+  # because this machine happens to have neither binary installed. The manual
+  # sleep+kill watcher below is fully portable and keeps everything in the same
+  # shell's variable scope.
   run_conductor_once() {
-    if command -v script >/dev/null 2>&1; then
-      # macOS script syntax: script -q <logfile> <command...>
-      (cd "$CONDUCTOR_WORKTREE" && script -q "$LOG" \
-        claude -p "$(cat "$PROMPT_FILE")" --model sonnet --dangerously-skip-permissions)
-    else
-      (cd "$CONDUCTOR_WORKTREE" && \
-        claude -p "$(cat "$PROMPT_FILE")" --model sonnet --dangerously-skip-permissions \
-        >>"$LOG" 2>&1)
-    fi
+    (cd "$CONDUCTOR_WORKTREE" && claude -p "$(cat "$PROMPT_FILE")" \
+      --model sonnet --dangerously-skip-permissions \
+      --verbose --output-format stream-json --include-partial-messages \
+      >>"$LOG" 2>&1)
   }
 
-  if [ -n "$TIMEOUT_BIN" ]; then
-    "$TIMEOUT_BIN" --signal=TERM --kill-after=60 "$RUN_TIMEOUT" bash -c "$(declare -f run_conductor_once); run_conductor_once"
-    RC=$?
-  else
-    run_conductor_once &
-    CPID=$!
-    ( sleep "$RUN_TIMEOUT" && kill -TERM "$CPID" 2>/dev/null \
-        && sleep 60 && kill -KILL "$CPID" 2>/dev/null ) &
-    WPID=$!
-    wait "$CPID"; RC=$?
-    kill "$WPID" 2>/dev/null; wait "$WPID" 2>/dev/null
-  fi
+  run_conductor_once &
+  CPID=$!
+  ( sleep "$RUN_TIMEOUT" && kill -TERM "$CPID" 2>/dev/null \
+      && sleep 60 && kill -KILL "$CPID" 2>/dev/null ) &
+  WPID=$!
+  wait "$CPID"; RC=$?
+  kill "$WPID" 2>/dev/null; wait "$WPID" 2>/dev/null
   ELAPSED=$(( $(date +%s) - START ))
-  [ "$RC" -eq 124 ] && echo "[runner] Session hit the ${RUN_TIMEOUT}s hard cap (hang guard) - relaunching."
+  # 143 = 128+SIGTERM, 137 = 128+SIGKILL — the manual watcher's exit codes when it
+  # had to intervene (vs. the conductor exiting on its own).
+  { [ "$RC" -eq 143 ] || [ "$RC" -eq 137 ]; } && [ "$ELAPSED" -ge $((RUN_TIMEOUT - 5)) ] && \
+    echo "[runner] Session hit the ${RUN_TIMEOUT}s hard cap (hang guard) - relaunching."
 
   STATUS=$(ledger_status)
   case "$STATUS" in
