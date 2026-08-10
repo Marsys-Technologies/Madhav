@@ -93,6 +93,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import type { Principal } from '../../types.js'
+import { autofileAheadWindows, type AheadAutofileResult } from '../../lib/ahead_autofile.js'
 import {
   makeKalaEnvelope,
   noLelCalibrationMaturity,
@@ -1618,6 +1619,11 @@ export interface KalaAheadResult {
   // never served as a prediction. One entry per active chain level (Mahadasha, Antardasha).
   period_echo: PeriodEchoEntry[]
   drill_pointers: DrillPointerLike[]
+  // G14b AHEAD auto-file (MASTER_PLAN_v1_0.md G14b): summary of prospective entries filed
+  // into brahma_prospective_ledger for this serving call. Best-effort — null when the
+  // auto-file hook was not invoked (e.g. the result object was constructed without it),
+  // an AheadAutofileResult when it ran (even if filed_count = 0).
+  predictions_logged: AheadAutofileResult | null
   provenance_envelope: {
     source: string
     assets: string[]
@@ -1978,6 +1984,23 @@ export async function computeKalaAhead(
     calibrationMaturity: noLelCalibrationMaturity(),
   })
 
+  // ── G14b AHEAD auto-file (MASTER_PLAN_v1_0.md G14b) ────────────────────────────────
+  //
+  // Every served prediction becomes a dated claim against the native's future
+  // (brahma_prospective_ledger). This is a BEST-EFFORT side effect: the filing result
+  // is captured and surfaced in the response, but a filing failure MUST NOT fail this
+  // serving call. `autofileAheadWindows` never throws (see its own module doc).
+  //
+  // Only `windowFamilies` are auto-filed here — see `ahead_autofile.ts` module doc for
+  // why projections are intentionally excluded (they lack an event_class).
+  let predictionsLogged: AheadAutofileResult | null = null
+  try {
+    predictionsLogged = await autofileAheadWindows(chartId, windowFamilies, principal)
+  } catch {
+    // Should never happen (autofileAheadWindows guarantees no throw), but defence in depth.
+    predictionsLogged = null
+  }
+
   return {
     tool: 'kala_ahead_get',
     chart_id: chartId,
@@ -1994,6 +2017,7 @@ export async function computeKalaAhead(
     digest_90d: digest90d,
     period_echo: periodEcho,
     drill_pointers: drillPointers,
+    predictions_logged: predictionsLogged,
     provenance_envelope: {
       source: 'kala_ahead_get',
       assets: [
