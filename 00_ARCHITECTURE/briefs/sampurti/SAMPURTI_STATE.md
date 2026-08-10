@@ -502,3 +502,46 @@ If this conductor dies: L1e OOM fix committed 1a3ea25e7 on sampurti/l1e-oom-fix-
 
 Merged to main: ALL Wave-0 lanes + CI-fix + S2 (PR #1141) + L1b (PR #1150) + L1c (PR #1153) + L1d (PR #1158).
 PR #1142 (CAMPAIGN_COORDINATION.md) merged to main.
+
+---
+
+## R7 HEARTBEAT — 2026-08-10T15:01+00:00 (R7 launch, liveness verified)
+
+CONDUCTOR-HEARTBEAT: 2026-08-10T15:01+00:00 (SAMPURTI-CONDUCTOR-2026-08-10-R7) pid=86254 host=Montys-MacBook-Pro.local [R7 launch: sole conductor confirmed]
+
+**LIVENESS CHECK (per RESUME + LEASE protocol):**
+- R6 pid=57152: DEAD (`ps -p 57152` exit=1, no CMD output)
+- pgrep "CONDUCTOR of SAMPŪRTI": no match
+- pgrep "CONDUCTOR of SAMP" (broader): no match
+- Sole SAMPŪRTI conductor: CONFIRMED. Lease taken as R7 (pid=86254, IDE session, resume=2917831b).
+
+**CROSS-CAMPAIGN STATE (20:31 IST):**
+- L-4 (PARIṢKĀRA deploy lease): ACTIVE, expiry 21:30 IST — PR #1201 (parishkara/integration→main, migrations 563/564/565) OPEN, CI: Build Check in_progress; all other required checks PASS. SAMPŪRTI is NOT doing production DB work — L-4 does not block us.
+- W6-COMPLETE marker: NOT YET POSTED. PARIṢKĀRA must post it after F1–F4+F7+F14 gates pass.
+- PARIṢKĀRA conductor (session 6, pid=38773): DEAD per ps check (not verified here — will monitor).
+
+**WAVE POSITIONS (unchanged from R6 morning report — no new work done):**
+- Wave 0: COMPLETE, on main ✅
+- Wave 1 S2 (G1 wiring): on main ✅
+- Wave 1 L1b..L1j: on main ✅
+- Wave 1 G12 (#1191), G14b (#1190), PG-31 (#1193): on sampurti/integration, gated to main after P-G1 GREEN
+- P-G1: DEFERRED — awaiting W6-COMPLETE (R-COORD-2; ka_kshetra hazard.py cross-checks kala_gochara_windows)
+- HARD BLOCK: no integration→main gate until P-G1 GREEN ✅
+
+**WINDOWS-STAGE FAILURE ROOT CAUSE (recorded by R5/R6 — verified complete):**
+Root cause of P-G1 failure mode #2 (clocks+boundaries commit but windows never populate):
+`services/ka_kshetra/stage4_field.py:1021-1027` (`load_legacy_crosscheck`) reads `kala_gochara_windows`
+with NO generation predicate. Pre-cutover rows in that table (gen-2.x/v1 data) are the wrong input
+for a gen-3.0 build. Fix: PG-31 (PR #1193) adds generation-aware predicate — merged to integration.
+Deployment of PG-31 waits for P-G1 GREEN gate. Technical code fix is DONE; coordination (gen-3.0
+tables must exist) is the remaining gating condition.
+
+**NEXT-ACTION:** Poll coordination file for W6-COMPLETE marker (≤10 min cadence). On marker:
+1. Verify PARIṢKĀRA L-4/L-5 lease released.
+2. Claim SAMPŪRTI lease (purpose: P-G1 rebuild on 482012f1 with PG-31 + gen-3.0 gochara).
+3. Verify P-G1's integration branch has PG-31 (check sampurti/integration HEAD).
+4. Gate G12/G14b/PG-31 to main first (integrate these before running P-G1 so production has the fix).
+5. Dispatch P-G1 ka_kshetra rebuild (13-asset closure on 482012f1).
+6. Paste kala_field_clocks + kala_field_windows results against PA-1 criteria.
+7. On GREEN: hard block lifts → S5 full-DAG → Wave 2.
+
