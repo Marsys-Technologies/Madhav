@@ -24,6 +24,28 @@ Architecture:
   - X(t) is evaluated per-JD via the same v1 primitives (ephemeris only,
     no DB) with pre-fetched targets
   - SUPPRESSION is evaluated per-JD from the same sentence pool as X(t)
+
+W1.1 — Bounded lambda_v3 formula (v1_parity_mode=False):
+  lambda_v3 = PROMISE * PERMISSION * activity * quality_gates
+
+  Where:
+    PROMISE    in [0,1]: noisy-OR over target weights (same compute_promise math)
+    PERMISSION in [0,1]: weighted-fraction of active timing systems
+    activity   in [0,1]: saturating aggregate of orb-strength-decayed sentences
+                         via noisy-OR over per-sentence contributions
+    quality_gates: product of quality filters (default 1.0 for W1.1)
+
+  KEY INVARIANT: lambda_v3 in [0,1] by construction (noisy-OR of [0,1]
+  values multiplied by [0,1] factors = [0,1]).
+
+  REMOVED: exp(beta * X(t)) — the unbounded exponential that produced
+  values 1e0–1.5e21 (X reaching ~66, beta=0.45), swamping PROMISE
+  and PERMISSION.
+
+v1-parity mode (v1_parity_mode=True):
+  The original PROMISE * PERMISSION * exp(beta*X) - suppression formula,
+  preserved bit-for-bit for golden-test comparison. The existing
+  test_v1_parity.py tests rely on this path.
 """
 from __future__ import annotations
 
@@ -54,6 +76,32 @@ from .context import ClassContext
 
 logger = logging.getLogger(__name__)
 
+# ---------------------------------------------------------------------------
+# W1.1 constants
+# ---------------------------------------------------------------------------
+# Maximum orb for activity decay (degrees). Contacts within this orb score
+# fractionally based on proximity; contacts at or beyond this orb score 0.
+# This is the linear-decay bound: activity_strength = 1 - orb / MAX_ORB_DEG
+# (clamped to [0, 1]).
+_ACTIVITY_MAX_ORB_DEG: float = 5.0
+
+# Primitives that contribute to the v3 activity term (same set as X(t)).
+# Station/eclipse contacts always report orb_strength via detail; when absent
+# we fall back to the raw activity_strength computed from the sentence's
+# own orb_degrees if available, else a conservative 0.5 (not flat 1.0 as in
+# v1's X(t)) to avoid overcounting poorly-orbed contacts.
+_ACTIVITY_PRIMITIVES = frozenset({
+    "degree_contact",
+    "drishti_contact",
+    "sign_ingress",
+    "nakshatra_ingress_tara",
+    "kakshya_cell_crossing",
+    "station_retro_loop",
+    "eclipse_degree",
+    "gochara_vedha_pair",
+    "sarvatobhadra_vedha",
+})
+
 
 def evaluate_lambda_vector(
     swe,
@@ -64,6 +112,7 @@ def evaluate_lambda_vector(
     window_days_activity: float = 5.0,
     suppression_window_days: float = 3.0,
     source: str = "v3_batch",
+    v1_parity_mode: bool = False,
 ) -> list[IntensityResult]:
     """Evaluate lambda_e for ALL JDs simultaneously. ZERO per-JD DB access.
 
@@ -74,6 +123,16 @@ def evaluate_lambda_vector(
         sade_sati phases; guru-shani/av/return use ephemeris only)
       - gather + compute_x_t (v1 primitives, ephemeris-only)
       - compute_suppression (pure compute on gathered sentences)
+
+    v1_parity_mode=False (default, W1.1):
+      Uses the new bounded lambda_v3 formula:
+        lambda_v3 = PROMISE * PERMISSION * activity * quality_gates
+      All terms are in [0,1]; result is in [0,1] by construction.
+
+    v1_parity_mode=True:
+      Uses the original v1 formula:
+        lambda_e = PROMISE * PERMISSION * exp(beta_e * X(t)) - suppression
+      Preserved for golden-test comparison (test_v1_parity.py).
 
     Returns a list of IntensityResult, one per JD in jd_vector.
     """
@@ -88,6 +147,7 @@ def evaluate_lambda_vector(
             window_days_activity=window_days_activity,
             suppression_window_days=suppression_window_days,
             source=source,
+            v1_parity_mode=v1_parity_mode,
         )
         results.append(result)
 
@@ -104,8 +164,9 @@ def _evaluate_single_from_context(
     window_days_activity: float = 5.0,
     suppression_window_days: float = 3.0,
     source: str = "v3_batch",
+    v1_parity_mode: bool = False,
 ) -> IntensityResult:
-    """Compute ONE lambda_e value using ONLY the pre-fetched ClassContext.
+    """Compute ONE lambda value using ONLY the pre-fetched ClassContext.
 
     This function does ZERO DB access. All data comes from context.
     Ephemeris calls (swe.calc_ut via transit_search primitives) are the
@@ -121,38 +182,130 @@ def _evaluate_single_from_context(
         window_days=window_days_permission,
     )
 
-    # 3. X(t) — gather configuration sentences (ephemeris only, no DB)
+    # 3. Gather configuration sentences (ephemeris only, no DB)
     start_jd = t_jd - window_days_activity
     end_jd = t_jd + window_days_activity
     sentences = _gather_sentences_no_db(swe, context, targets, start_jd, end_jd)
-    x_t, x_t_detail = compute_x_t(sentences, context.weight_by_target_ref)
 
-    # 4. exp(beta * X(t))
-    beta_e = context.beta_e
-    exp_term = math.exp(beta_e * x_t)
+    notes = []
 
-    # 5. Suppression (pure compute on gathered sentences)
-    suppression, suppression_detail = compute_suppression(
-        sentences, window_days=suppression_window_days,
+    if v1_parity_mode:
+        # ── v1-parity path: PROMISE * PERMISSION * exp(beta*X) - suppression ──
+        x_t, x_t_detail = compute_x_t(sentences, context.weight_by_target_ref)
+        beta_e = context.beta_e
+        exp_term = math.exp(beta_e * x_t)
+
+        suppression, suppression_detail = compute_suppression(
+            sentences, window_days=suppression_window_days,
+        )
+
+        raw_lambda = promise * permission * exp_term - suppression
+        if raw_lambda < 0:
+            notes.append(
+                f"raw product ({promise * permission * exp_term:.6f}) fully absorbed by suppression "
+                f"({suppression:.6f}) -- clamped to 0.0."
+            )
+            raw_lambda = 0.0
+
+        signed_lambda = raw_lambda * (-1.0 if context.is_adverse else 1.0)
+
+        if not targets:
+            notes.append(
+                "no gochara_resonance_map targets resolved for this chart/event_class -- "
+                "PROMISE (and therefore lambda_e) is an honest 0.0."
+            )
+
+        return IntensityResult(
+            chart_id=context.chart_id,
+            event_class=context.event_class,
+            temporal_shape=context.temporal_shape,
+            t_jd=t_jd,
+            t_datetime_ist=_jd_to_ist_iso(swe, t_jd),
+            promise=promise,
+            promise_detail=promise_detail,
+            permission=permission,
+            permission_detail=permission_detail,
+            x_t=x_t,
+            x_t_detail=x_t_detail,
+            beta_e=beta_e,
+            beta_e_calibration_state="structural_prior",
+            exp_term=exp_term,
+            suppression=suppression,
+            suppression_detail=suppression_detail,
+            raw_lambda=raw_lambda,
+            valence=context.valence,
+            is_adverse=context.is_adverse,
+            signed_lambda=signed_lambda,
+            notes=notes,
+            source=source,
+        )
+
+    # ── W1.1 bounded lambda_v3 path ─────────────────────────────────────────
+    # Formula: lambda_v3 = PROMISE * PERMISSION * activity * quality_gates
+    # Invariant: all terms in [0,1] => result in [0,1]
+
+    # 4a. activity in [0,1]: noisy-OR over per-sentence orb-decayed strengths,
+    #     weighted by the sentence's target weight.
+    #
+    #     Each sentence contributes a value p_i in [0,1]:
+    #       orb_decay    = 1 - min(orb_degrees / MAX_ORB_DEG, 1.0)
+    #       target_weight = clamp(weight_by_target_ref[target_ref], 0, 1)
+    #       p_i           = orb_decay * target_weight
+    #
+    #     Then activity = 1 - product_i(1 - p_i)   (noisy-OR, same as PROMISE)
+    #
+    #     This saturates at 1.0 (multiple strong contacts can't exceed 1.0),
+    #     is monotonically non-decreasing in sentence count, and preserves the
+    #     qualitative ordering: tighter-orb contacts count for more.
+    activity, activity_detail, term_breakdown = _compute_activity_v3(
+        sentences, context.weight_by_target_ref,
     )
 
-    # 6. Assemble
-    raw_lambda = promise * permission * exp_term - suppression
-    notes = []
-    if raw_lambda < 0:
-        notes.append(
-            f"raw product ({promise * permission * exp_term:.6f}) fully absorbed by suppression "
-            f"({suppression:.6f}) -- clamped to 0.0."
-        )
-        raw_lambda = 0.0
+    # 4b. quality_gates: product of quality filters (W1.1 placeholder = 1.0).
+    #     W1.3+ will add suppression-based quality gates here.
+    quality_gates = 1.0
+    quality_gates_detail = {"quality_gates_applied": [], "quality_gates_v1_1_placeholder": 1.0}
+
+    # 5. Assemble lambda_v3 — bounded [0,1] by construction
+    raw_lambda = promise * permission * activity * quality_gates
+
+    # Clamp for floating-point edge cases (should be impossible, but defensive)
+    raw_lambda = max(0.0, min(1.0, raw_lambda))
 
     signed_lambda = raw_lambda * (-1.0 if context.is_adverse else 1.0)
 
     if not targets:
         notes.append(
             "no gochara_resonance_map targets resolved for this chart/event_class -- "
-            "PROMISE (and therefore lambda_e) is an honest 0.0."
+            "PROMISE (and therefore lambda_v3) is an honest 0.0."
         )
+
+    # v3 uses activity in place of X(t)/exp_term. We still populate
+    # x_t/exp_term fields on IntensityResult for schema compatibility,
+    # but set them to their v3 equivalents (activity / 1.0) so the
+    # existing parity tests that read these fields still get sensible values.
+    # The term_breakdown carries the full W1.1 decomposition.
+    x_t_compat = activity  # activity IS the v3 replacement for X(t)
+    x_t_detail_compat = {
+        **activity_detail,
+        "formula": "lambda_v3 = PROMISE * PERMISSION * activity * quality_gates",
+        "v3_mode": True,
+        "term_breakdown": term_breakdown,
+        "quality_gates": quality_gates,
+        "quality_gates_detail": quality_gates_detail,
+        "note": (
+            "W1.1 bounded lambda_v3: activity replaces exp(beta*X). "
+            "activity=noisy_OR over orb-decayed sentence contributions in [0,1]. "
+            "exp_term=1.0 (no exponential in v3 formula)."
+        ),
+    }
+
+    # suppression is reported as 0.0 in v3 (quality_gates handles this role in W1.3+)
+    suppression_v3 = 0.0
+    suppression_detail_v3 = {
+        "note": "suppression is not applied in v3 lambda formula; quality_gates placeholder (W1.3+)",
+        "calibration_state": "structural_prior",
+    }
 
     return IntensityResult(
         chart_id=context.chart_id,
@@ -164,13 +317,13 @@ def _evaluate_single_from_context(
         promise_detail=promise_detail,
         permission=permission,
         permission_detail=permission_detail,
-        x_t=x_t,
-        x_t_detail=x_t_detail,
-        beta_e=beta_e,
+        x_t=x_t_compat,
+        x_t_detail=x_t_detail_compat,
+        beta_e=context.beta_e,
         beta_e_calibration_state="structural_prior",
-        exp_term=exp_term,
-        suppression=suppression,
-        suppression_detail=suppression_detail,
+        exp_term=1.0,            # no exp() in v3 formula
+        suppression=suppression_v3,
+        suppression_detail=suppression_detail_v3,
         raw_lambda=raw_lambda,
         valence=context.valence,
         is_adverse=context.is_adverse,
@@ -178,6 +331,105 @@ def _evaluate_single_from_context(
         notes=notes,
         source=source,
     )
+
+
+def _compute_activity_v3(
+    sentences: list[ConfigurationSentence],
+    weight_by_target_ref: dict[str, float],
+) -> tuple[float, dict, dict]:
+    """Compute the W1.1 activity term in [0,1].
+
+    Uses noisy-OR over per-sentence orb-decayed strengths:
+
+        p_i = orb_decay_i * target_weight_i
+
+    where:
+        orb_decay_i    = 1 - min(orb_degrees_i / MAX_ORB_DEG, 1.0)
+                         (linear decay; stations/eclipses may report
+                          orb_strength directly in detail — use it)
+        target_weight_i = clamp(weight_by_target_ref[target_ref], 0, 1)
+
+    Then:
+        activity = 1 - product_i(1 - p_i)   (noisy-OR; same math as PROMISE)
+
+    Returns:
+        activity      float in [0,1]
+        detail        dict with per-sentence contributions for debugging
+        term_breakdown dict with per-primitive contribution sums (for W1.5)
+    """
+    product_complement = 1.0
+    contributions = []
+    term_breakdown: dict[str, float] = {}
+
+    for s in sentences:
+        if s.primitive not in _ACTIVITY_PRIMITIVES:
+            continue
+        if s.primitive == "gochara_vedha_pair" and s.detail.get("cancelled"):
+            continue  # cancelled vedha pair: not an activity signal
+
+        # Target weight: clamp to [0,1] (negative weights encode direction,
+        # not activity magnitude; direction is handled at the signed_lambda level)
+        target_weight = max(0.0, min(1.0, weight_by_target_ref.get(s.target_ref or "", 0.5)))
+
+        # Orb strength: prefer detail['orb_strength'] if present (already
+        # normalized by the primitive), else compute from detail['orb_degrees']
+        # with linear decay, else fall back to 0.5 (conservative neutral,
+        # not flat 1.0 — stations/eclipses not near exact degree get partial credit)
+        orb_strength_raw = s.detail.get("orb_strength")
+        if orb_strength_raw is not None:
+            # Primitive already computed orb_strength in [0,1]
+            orb_decay = float(max(0.0, min(1.0, orb_strength_raw)))
+        else:
+            orb_degrees_raw = s.detail.get("orb_degrees")
+            if orb_degrees_raw is not None:
+                orb_degrees = abs(float(orb_degrees_raw))
+                orb_decay = 1.0 - min(orb_degrees / _ACTIVITY_MAX_ORB_DEG, 1.0)
+            else:
+                # No orb information available (sign_ingress, nakshatra_ingress,
+                # eclipse_degree, some vedha variants): use 0.5 as the honest
+                # "present but unorbed" contribution level
+                orb_decay = 0.5
+
+        p_i = orb_decay * target_weight
+        # p_i is in [0,1] (both factors clamped)
+
+        product_complement *= (1.0 - p_i)
+
+        contributions.append({
+            "primitive": s.primitive,
+            "target_ref": s.target_ref,
+            "transit_planet": s.transit_planet,
+            "event_datetime_ist": s.event_datetime_ist,
+            "target_weight": round(target_weight, 6),
+            "orb_decay": round(orb_decay, 6),
+            "p_i": round(p_i, 6),
+        })
+
+        # Accumulate per-primitive signed scalar for W1.5 term_breakdown
+        # The scalar is p_i itself (the marginal activity contribution of
+        # this sentence before noisy-OR combination)
+        term_breakdown[s.primitive] = term_breakdown.get(s.primitive, 0.0) + p_i
+
+    activity = 1.0 - product_complement
+    # Clamp for floating-point accumulation edge cases
+    activity = max(0.0, min(1.0, activity))
+
+    detail = {
+        "activity": round(activity, 8),
+        "aggregation": "noisy_or",
+        "sentence_count_active": len(contributions),
+        "sentence_count_total_gathered": len(sentences),
+        "max_orb_deg": _ACTIVITY_MAX_ORB_DEG,
+        "contributions": contributions,
+        "calibration_state": "structural_prior",
+        "note": (
+            "W1.1 activity: noisy-OR over orb-decayed sentence contributions; "
+            "each p_i = orb_decay * target_weight in [0,1]; "
+            "result saturates at 1.0 (replaces unbounded X(t) from v1)."
+        ),
+    }
+
+    return activity, detail, term_breakdown
 
 
 def _gather_sentences_no_db(
