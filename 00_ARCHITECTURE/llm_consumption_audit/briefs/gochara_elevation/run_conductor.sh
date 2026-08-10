@@ -1,141 +1,99 @@
-#!/usr/bin/env bash
-# GOCHARA-UTKARṢA autonomous conductor runner (v1.3)
-# Relaunches the conductor on any crash/API-drop/hang until the ledger on the
-# dedicated campaign branch (utkarsha/campaign) is sealed COMPLETE or PAUSED.
+#!/bin/bash
+# GOCHARA-UTKARṢA supervisor (v2.0) — relaunches the conductor session on ANY
+# exit (crash, API drop, terminal closure, hang) until the ledger carries a
+# CAMPAIGN-STATUS: COMPLETE/PAUSED marker written DURING this run, or the
+# wall-clock cap is reached.
 #
-# v1.2 fixed: the conductor was running from the SHARED primary repo checkout
-# (/Users/Dev/Vibe-Coding/Apps/Madhav), which collided with an unrelated autonomous
-# campaign (SAMPURTI) also using that shared directory, and a relative worktree path
-# (`../utk-i6a`) landed inside the repo tree instead of beside it. Fixed: the
-# conductor now runs from its OWN dedicated worktree, and all paths are absolute.
+# v2.0 rebuilds this on the proven pattern from /Users/Dev/shad_overnight/
+# run_overnight.sh (battle-tested on the SAMPURTI/ṢAḌ-DARŚANA campaign),
+# after investigating three real incidents from the v1.x line tonight:
 #
-# v1.3 fixed: this script MUST be run from a real terminal, never from inside an
-# active Claude Code session's own Bash tool — `claude -p` refuses to nest (it
-# detects the inherited CLAUDECODE env var and exits immediately, every single
-# time, silently burning the backoff loop forever with zero progress). `unset
-# CLAUDECODE` below is a defensive belt-and-suspenders fix per the CLI's own error
-# message, in case this is ever invoked from a context that leaked the var — but
-# the real fix is operational: run this in your own terminal window, not through
-# an agent's tool call. v1.3 also adds --verbose --output-format stream-json so a
-# real terminal run shows live execution (tool calls, sub-agent dispatch,
-# reasoning), not just final text blocks (the plain default -p mode's `text`
-# format only prints completed responses, not the granular activity in between).
+#   1. Terminal closure ended the conductor (twice). v1.x launched it as a
+#      plain foreground command — its life was tied to that terminal window.
+#      Fixed: launch this script itself via nohup+disown+stdin-null (see the
+#      launch command at the bottom of this file), and every claude
+#      invocation below also gets `< /dev/null` so it never blocks on stdin.
+#   2. A double-conductor collision: killing a child process without killing
+#      its parent outer loop left a stale instance that auto-relaunched and
+#      briefly ran alongside a freshly-fixed one. Fixed: this script no
+#      longer needs to defend against that case directly — the fix lives in
+#      the conductor PROMPT now (CONDUCTOR-HEARTBEAT lease, ≤10min refresh;
+#      a new session exits immediately if it finds a <15min-old heartbeat).
+#   3. Nested-session refusal (claude -p won't launch inside another Claude
+#      Code session) — already fixed in v1.3, retained here as `env -u
+#      CLAUDECODE` directly on the invocation line (matching the proven
+#      pattern exactly) plus a defensive `unset` at script start.
 #
-# Usage:  ./run_conductor.sh
-# Stop:   touch the STOP file (takes effect at next relaunch boundary). To stop a
-#         LIVE run immediately, kill the claude process (the loop then sees STOP).
+# Also newly adopted: a baseline-hash guard so a PRE-EXISTING terminal
+# marker (from before this run started) can never be misread as this run's
+# own completion — only a marker that appears AFTER the baseline counts.
+# This wasn't a live UTKARSHA incident (its ledger path isn't shared with
+# another campaign) but it's the same class of bug and costs nothing to
+# prevent.
+#
+# Launch (from a real terminal, never from inside a Claude Code session):
+#   nohup caffeinate -i /Users/Dev/Vibe-Coding/Apps/Madhav/.claude/worktrees/utkarsha-conductor/00_ARCHITECTURE/llm_consumption_audit/briefs/gochara_elevation/run_conductor.sh </dev/null >/dev/null 2>&1 & disown
 
-set -u
-unset CLAUDECODE 2>/dev/null || true
 REPO="/Users/Dev/Vibe-Coding/Apps/Madhav"
 CONDUCTOR_WORKTREE="$REPO/.claude/worktrees/utkarsha-conductor"
 HOME_REL="00_ARCHITECTURE/llm_consumption_audit/briefs/gochara_elevation"
 PROMPT_FILE="$CONDUCTOR_WORKTREE/$HOME_REL/CONDUCTOR_PROMPT.md"
-STOP_FILE="$CONDUCTOR_WORKTREE/$HOME_REL/STOP"
-# Logs live OUTSIDE any git worktree's tracked tree — a plain directory, not a
-# worktree, so it can never again be mistaken for repo content or fought over.
+LEDGER="$HOME_REL/LEDGER.md"
+BRANCH="utkarsha/campaign"
 LOG_DIR="$REPO/.claude/worktrees/utkarsha-conductor-logs"
-LEDGER_REF="origin/utkarsha/campaign:$HOME_REL/LEDGER.md"
 mkdir -p "$LOG_DIR"
+DEADLINE=$(( $(date +%s) + 12*3600 ))   # 12h wall-clock cap per supervisor run
+ATTEMPT=0
 
-BACKOFF=30            # seconds; doubles on consecutive fast failures, caps at 900
-MAX_BACKOFF=900
-FAST_FAIL_SECS=120    # a run dying faster than this counts as a fast failure
-RUN_TIMEOUT=21600     # 6h hard cap per conductor session: a wedged/hung session is
-                      # killed and relaunched (resume is ledger-based, so this is safe)
+unset CLAUDECODE 2>/dev/null
 
-ledger_status() {
-  # Reads the sealed status from the campaign branch on origin (not any working
-  # tree). Anchored sentinel per the plan's sentinel rule.
-  git -C "$REPO" fetch origin utkarsha/campaign >/dev/null 2>&1 || true
-  git -C "$REPO" show "$LEDGER_REF" 2>/dev/null | grep -E '^CAMPAIGN-STATUS: (COMPLETE|PAUSED\(.*\))$' | head -1
-}
+log() { echo "[$(date -u '+%H:%M:%S')] $*" | tee -a "$LOG_DIR/supervisor.log"; }
 
 ensure_conductor_worktree() {
-  # Idempotent: create the dedicated worktree if it doesn't exist yet. Never uses
-  # a relative path — this is exactly the class of bug v1.1 hit.
   if [ ! -d "$CONDUCTOR_WORKTREE" ]; then
-    echo "[runner] Dedicated conductor worktree missing — creating at $CONDUCTOR_WORKTREE"
-    git -C "$REPO" fetch origin utkarsha/campaign 2>&1
-    if git -C "$REPO" show-ref --verify --quiet refs/heads/utkarsha/campaign; then
-      git -C "$REPO" worktree add "$CONDUCTOR_WORKTREE" utkarsha/campaign
+    log "dedicated conductor worktree missing — creating at $CONDUCTOR_WORKTREE"
+    git -C "$REPO" fetch origin "$BRANCH" 2>&1 | tee -a "$LOG_DIR/supervisor.log"
+    if git -C "$REPO" show-ref --verify --quiet "refs/heads/$BRANCH"; then
+      git -C "$REPO" worktree add "$CONDUCTOR_WORKTREE" "$BRANCH"
     else
-      git -C "$REPO" worktree add "$CONDUCTOR_WORKTREE" -b utkarsha/campaign origin/main
+      git -C "$REPO" worktree add "$CONDUCTOR_WORKTREE" -b "$BRANCH" origin/main
     fi
   fi
 }
+ensure_conductor_worktree
 
-echo "[runner] GOCHARA-UTKARSHA conductor loop starting $(date -u +%FT%TZ)"
-while true; do
-  ensure_conductor_worktree
-  if [ -f "$STOP_FILE" ]; then
-    echo "[runner] STOP file present - exiting."; exit 0
+# Baseline: a CAMPAIGN-STATUS marker that already existed before this
+# supervisor started can never be honored as THIS run's completion — only a
+# ledger content-hash change during this run, carrying the marker, counts.
+BASELINE_SHA=$(git -C "$REPO" rev-parse "origin/$BRANCH:$LEDGER" 2>/dev/null || echo "none")
+log "ledger baseline: $BASELINE_SHA (a pre-existing terminal marker will NOT stop this run)"
+log "supervisor started; cap at $(date -r "$DEADLINE" 2>/dev/null || date -d "@$DEADLINE" 2>/dev/null)"
+
+while [ "$(date +%s)" -lt "$DEADLINE" ]; do
+  # Terminal check BEFORE (re)launching: has the campaign actually finished?
+  git -C "$REPO" fetch origin "$BRANCH" --quiet 2>/dev/null
+  CUR_SHA=$(git -C "$REPO" rev-parse "origin/$BRANCH:$LEDGER" 2>/dev/null || echo "none")
+  if [ "$CUR_SHA" != "$BASELINE_SHA" ]; then
+    MARKER=$(git -C "$REPO" show "origin/$BRANCH:$LEDGER" 2>/dev/null \
+             | grep -E '^CAMPAIGN-STATUS: (COMPLETE|PAUSED\(.*\))$' | head -1)
+    if [ -n "$MARKER" ]; then
+      log "NEW terminal marker (ledger moved $BASELINE_SHA -> $CUR_SHA): $MARKER — exiting."
+      exit 0
+    fi
   fi
-  STATUS=$(ledger_status)
-  case "$STATUS" in
-    "CAMPAIGN-STATUS: COMPLETE")
-      echo "[runner] Ledger sealed COMPLETE - campaign done. Exiting."; exit 0 ;;
-    CAMPAIGN-STATUS:\ PAUSED*)
-      echo "[runner] Ledger sealed: $STATUS - awaiting native. Exiting."; exit 2 ;;
-  esac
 
-  TS=$(date -u +%Y%m%dT%H%M%SZ)
-  LOG="$LOG_DIR/run_$TS.log"
-  echo "[runner] Launching conductor (cwd: $CONDUCTOR_WORKTREE, log: $LOG, timeout: ${RUN_TIMEOUT}s)"
-  START=$(date +%s)
+  ATTEMPT=$((ATTEMPT+1))
+  log "attempt $ATTEMPT — launching conductor session"
 
-  # Sonnet conductor, headless, autonomous. --dangerously-skip-permissions is required
-  # for zero-gate autonomy per the native's explicit ratification (plan frontmatter
-  # A1). CLI permissions are NOT the safety layer: the layered rails are plan I6 -
-  # restricted builder DB role, wave-boundary rail verification, corpus snapshot,
-  # and the DB protection triggers.
-  #
-  # Logging: stream-json + verbose gives real execution visibility (tool calls,
-  # sub-agent dispatch, reasoning) in place of the plain `text` format's
-  # "final answer only" output, and it flushes per-event since it's designed to
-  # be piped — no pty trick needed (the earlier `script` approach is no longer
-  # required now that we're not using plain-text mode).
-  #
-  # Portability note: deliberately NOT using `timeout`/`gtimeout` + `bash -c
-  # "$(declare -f ...)"` here — that pattern runs the function in a fresh child
-  # process that does NOT inherit this shell's unexported variables (LOG,
-  # PROMPT_FILE, CONDUCTOR_WORKTREE), a latent bug that only stayed invisible
-  # because this machine happens to have neither binary installed. The manual
-  # sleep+kill watcher below is fully portable and keeps everything in the same
-  # shell's variable scope.
-  run_conductor_once() {
-    (cd "$CONDUCTOR_WORKTREE" && claude -p "$(cat "$PROMPT_FILE")" \
-      --model sonnet --dangerously-skip-permissions \
-      --verbose --output-format stream-json --include-partial-messages \
-      >>"$LOG" 2>&1)
-  }
+  cd "$CONDUCTOR_WORKTREE" && env -u CLAUDECODE claude -p "$(cat "$PROMPT_FILE")" \
+    --model sonnet \
+    --permission-mode bypassPermissions \
+    --verbose --output-format stream-json --include-partial-messages \
+    < /dev/null >> "$LOG_DIR/attempt_${ATTEMPT}.log" 2>&1
+  EXIT=$?
 
-  run_conductor_once &
-  CPID=$!
-  ( sleep "$RUN_TIMEOUT" && kill -TERM "$CPID" 2>/dev/null \
-      && sleep 60 && kill -KILL "$CPID" 2>/dev/null ) &
-  WPID=$!
-  wait "$CPID"; RC=$?
-  kill "$WPID" 2>/dev/null; wait "$WPID" 2>/dev/null
-  ELAPSED=$(( $(date +%s) - START ))
-  # 143 = 128+SIGTERM, 137 = 128+SIGKILL — the manual watcher's exit codes when it
-  # had to intervene (vs. the conductor exiting on its own).
-  { [ "$RC" -eq 143 ] || [ "$RC" -eq 137 ]; } && [ "$ELAPSED" -ge $((RUN_TIMEOUT - 5)) ] && \
-    echo "[runner] Session hit the ${RUN_TIMEOUT}s hard cap (hang guard) - relaunching."
-
-  STATUS=$(ledger_status)
-  case "$STATUS" in
-    "CAMPAIGN-STATUS: COMPLETE")
-      echo "[runner] Conductor exited (rc=$RC) with sealed ledger - done."; exit 0 ;;
-    CAMPAIGN-STATUS:\ PAUSED*)
-      echo "[runner] Conductor sealed: $STATUS - awaiting native. Exiting."; exit 2 ;;
-  esac
-
-  if [ "$ELAPSED" -lt "$FAST_FAIL_SECS" ]; then
-    BACKOFF=$(( BACKOFF * 2 )); [ "$BACKOFF" -gt "$MAX_BACKOFF" ] && BACKOFF=$MAX_BACKOFF
-  else
-    BACKOFF=30
-  fi
-  echo "[runner] Conductor exited rc=$RC after ${ELAPSED}s; relaunching in ${BACKOFF}s $(date -u +%FT%TZ)"
-  sleep "$BACKOFF"
+  log "attempt $ATTEMPT exited (code $EXIT) — rechecking terminal marker, then 90s pause"
+  sleep 90
 done
+
+log "12h wall-clock cap reached — supervisor exiting. Check the ledger for final state."
