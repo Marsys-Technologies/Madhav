@@ -14,7 +14,7 @@ conductor_session: SAMPURTI-CONDUCTOR-2026-08-10 (R4 — native relaunch 16:38 I
 
 # SAMPŪRTI CAMPAIGN LEDGER
 
-CONDUCTOR-HEARTBEAT: 2026-08-10T12:08+00:00 (SAMPURTI-CONDUCTOR-2026-08-10-R4) pid=68645 host=Dev-Mac [G12 PARĪKṢAKA (a579b755): OVERALL PASS R1–R7, 2 non-blocking findings, MERGE. G14b PARĪKṢAKA (ad41d6a3): OVERALL PASS R1–R8, 3 non-blocking findings, MERGE. Both PRs merging to sampurti/integration. W6-COMPLETE not yet seen. P-G1 deferred.]
+CONDUCTOR-HEARTBEAT: 2026-08-10T12:18+00:00 (SAMPURTI-CONDUCTOR-2026-08-10-R4) pid=68645 host=Dev-Mac [G12+G14b MERGED. dasha_sandhi_get registration CONFIRMED live (register_all.ts:64). ELECT/EXPLAIN E6 coverage already in place. All feasible yield-window code lanes exhausted. Holding for W6-COMPLETE (L-3 ACTIVE until 18:30 IST / 13:00 UTC; ~1 hr remaining). P-G1 deferred. Gate Packet ready: sampurti/integration→main covers L1j+G12+G14b+PA-0.]
 
 ## MODEL POLICY (BINDING — native directive 2026-08-10)
 
