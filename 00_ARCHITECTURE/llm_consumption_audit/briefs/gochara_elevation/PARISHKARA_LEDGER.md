@@ -202,6 +202,13 @@ scope reduction below 27 classes · retiring any serving surface · LEL content.
     PR #1200 opened (MR-25, parishkara/mr-25 → parishkara/integration).
     PR #1194 (MR-34): merging to parishkara/integration (PARĪKṢAKA PASS evidence above).
     Dispatching 6 fresh PARĪKṢAKA (opus) agents: MR-01+02+05, MR-09, MR-18, MR-30, MR-35, MR-25.
+    PARĪKṢAKA agent IDs (session-5):
+      MR-18: ab490d99376575a06 → PR #1195
+      MR-09: a9a99c90b88f94c68 → PR #1197
+      MR-35: a84cf13410a1e88eb → PR #1196
+      MR-30: a0be560ddc03f3add → PR #1199
+      MR-01+02+05: a0ed0fd3082c6ddfd → PR #1198
+      MR-25: a811a10b921f02992 → PR #1200
   MR STATUS UPDATES:
     MR-25: STALLED → VERIFYING (PR #1200 opened; PARĪKṢAKA dispatching)
     MR-34: VERIFYING → MERGED (PR #1194, PARĪKṢAKA PASS, merging to integration)
