@@ -187,11 +187,27 @@ def test_domain_map_is_the_full_27_class_ontology():
 
 
 def test_sweep_scope_is_the_resonance_writer_scope():
-    """The resonance writer (which populates `gochara_resonance_map`, the table
-    the sweep discovers its event classes from, and the table the served
-    `coverage.event_classes_covered` is derived from) must read its scope from
-    the shared constant — not keep a second, drifting copy."""
-    assert tuple(TARGET_EVENT_CLASSES) == tuple(SWEEP_EVENT_CLASSES)
+    """W3.1 expanded TARGET_EVENT_CLASSES from 6 (SWEEP_EVENT_CLASSES) to all 27
+    canonical event classes (I2-compliant: defined directly in writer.py rather
+    than imported from gochara_grammar which is frozen). The writer's scope is
+    now a strict superset of the sweep grammar's scope.
+
+    INVARIANT: every SWEEP_EVENT_CLASS must remain in TARGET_EVENT_CLASSES
+    (additive, never narrowing). The 21 new classes are additional coverage.
+    """
+    sweep_set = set(SWEEP_EVENT_CLASSES)
+    target_set = set(TARGET_EVENT_CLASSES)
+    missing = sweep_set - target_set
+    assert not missing, (
+        f"S4-05 REGRESSION: resonance writer's TARGET_EVENT_CLASSES dropped "
+        f"legacy SWEEP_EVENT_CLASSES classes: {sorted(missing)}. "
+        "W3.1 expansion must be strictly additive — no legacy class may be dropped."
+    )
+    # W3.1 contract: writer covers strictly MORE than the 6-class sweep grammar.
+    assert len(target_set) > len(sweep_set), (
+        f"TARGET_EVENT_CLASSES ({len(target_set)}) must be a proper superset of "
+        f"SWEEP_EVENT_CLASSES ({len(sweep_set)}) after the W3.1 27-class expansion."
+    )
 
 
 def test_legacy_classes_are_retained_additively():
