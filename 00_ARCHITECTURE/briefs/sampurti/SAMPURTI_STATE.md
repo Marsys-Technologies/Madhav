@@ -38,7 +38,7 @@ Sonnet/Opus respectively per the original charter and are unaffected.
 
 WAVE 0 — IGNITION. Status: COMPLETE (merged to main 3311ae0e3, deployed 31341882724).
 WAVE 1 — RC1 G1 WIRING. Status: S2 MERGED to integration (5ba9b646, PR #1139). P-G1 PROOF PENDING (5 runs failed — root cause found, L1b fix in review).
-L1b ROOT CAUSE: fetch_orb_deg (stage0_kinematics.py:710-717) queries SELECT orb_deg FROM bg_transit_rules (column absent per mig-397). Bare except swallowed Python exception but left PG transaction ABORTED. All subsequent conn.execute() calls failed with InFailedSqlTransaction → kala_field_kinematics never populated → all downstream stages empty → P-G1 always 0. Fix: SAVEPOINT fetch_orb_deg / ROLLBACK TO SAVEPOINT pattern. Commit: c9a7c27b0 on sampurti/l1b-fetch-orb-fix. Tests: 5/5 offline pass (47 total, 0 failures). PR: open, CI running.
+L1b ROOT CAUSE: fetch_orb_deg (stage0_kinematics.py:710-717) queries SELECT orb_deg FROM bg_transit_rules (column absent per mig-397). Bare except swallowed Python exception but left PG transaction ABORTED. All subsequent conn.execute() calls failed with InFailedSqlTransaction → kala_field_kinematics never populated → all downstream stages empty → P-G1 always 0. Fix: SAVEPOINT fetch_orb_deg / ROLLBACK TO SAVEPOINT pattern. PARĪKṢAKA: PASS 10/10, no blocking findings. MERGED to integration (7d577aebc). Gate packet PR to main: PENDING.
 
 ## RAILS (immutable, restated for every reader)
 
@@ -384,12 +384,12 @@ ROOT CAUSE of all 5 P-G1 failures now identified and fixed:
 - PR open to integration; CI running; awaiting PARĪKṢAKA pass
 
 NEXT STEP (in order):
-1. [IN PROGRESS] L1b PR CI green → PARĪKṢAKA verify → merge to sampurti/integration
-2. Deploy integration to production (carry L1b fix; gate packet to main required)
-3. Verify DB dep state: confirm bo_laksana no longer ZOMBIE; confirm all ka_kshetra
-   declared deps 'lit' (re-query, do not trust stale ledger state from 07:04 IST)
-4. Dispatch P-G1 rebuild: ka_kshetra-only if all 9 declared deps are 'lit';
-   otherwise DAG-closure subset of remaining non-lit deps + ka_kshetra
+1. [DONE] L1b PARĪKṢAKA PASS 10/10 → merged to integration (7d577aebc)
+2. [IN PROGRESS] Gate packet PR (sampurti/integration → main) → CI green → merge → deploy
+3. [DONE — live-verified 02:19Z] DB dep state: all 13 declared deps 'lit';
+   bo_laksana=lit (zombie cleared); ka_kshetra=error (reset to dormant at dispatch)
+   kala_field_clocks=0, kala_field_kinematics=0 (pre-fix baseline confirmed)
+4. After deploy: dispatch ka_kshetra-only rebuild using dispatch script (all deps lit)
 5. Verify PA-1 criteria: (a) kala_field_clocks>0 Law-1 states; (b) >1 window per
    clocked class; (c) windowed fraction ≤20%; (d) compression/scarcity features
    computable; (e) windows track daśā ladder — paste real detector output here
