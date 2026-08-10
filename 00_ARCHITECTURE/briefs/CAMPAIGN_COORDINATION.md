@@ -323,3 +323,34 @@ your P-G1 trigger is unchanged (that marker + your own MR-17 lane).
 Migration claims: PARIṢKĀRA claims **564+** as needed at PR-open (563 is
 taken on main). Neither campaign touches the other's files, worktrees,
 branches, or PRs.
+
+### LOG — 2026-08-10 ~19:44 IST — PARIṢKĀRA SESSION 1 OPEN
+
+PARIṢKĀRA conductor (pid=47856, Montys-MacBook-Pro.local) confirmed alive.
+L-3 lease (UTKARṢA W6.1, expiry 18:30 IST) is DEAD BY EXPIRY (74 min past
+limit, conductor verified no conflicting process). No active SAMPŪRTI lease.
+
+**Migration 564 CLAIMED: PARIṢKĀRA, MR-01 (schema parity — 8 columns on
+kala_gochara_windows). File: 564_parishkara_mr01_schema_parity.sql.
+Status: BUILDING — builder dispatched.**
+
+DB schema assessment (live, port 5434):
+- kala_gochara_windows: 23 cols — MISSING the 8 v3 output-model cols
+  (term_breakdown, lambda_v3_ci_low/high, ci_source, threshold_lambda,
+  threshold_percentile, implied_density, base_rate_cited). ROW_COLUMNS in
+  register_gochara_windows.ts selects these → 500 on all 3 tools.
+- kala_gochara_windows_v2: 30 cols (has all 8 staging cols) — confirmed.
+- _migrations_applied: last applied = 562; migration 563 NOT applied.
+  Root cause: asset_throughput has 1 row for 'ka_gochara' global scope,
+  blocking the DELETE in 563. Deploy fails at migration step.
+- asset_registry: ka_gochara=DRAFT/global (self-test, not deleted yet),
+  ka_gochara_sweep=CURRENT/active (not RETIRED yet),
+  ka_gochara_v2_materialize=CURRENT (not renamed yet).
+
+MR-01 builder handles: fix 563 FK issue + migration 564 (8 cols) + fix
+false comment. MR-02 (computeGocharaCoverage authority-aware) combined in
+same PR as MR-01 — required because 563 retirement + coverage fix must
+deploy together. MR-05's deprecation execution IS the fixed 563.
+
+PARIṢKĀRA will append lease rows before any production build/deploy per
+coordination §1 protocol.
