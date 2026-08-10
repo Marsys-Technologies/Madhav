@@ -9,12 +9,12 @@ branch_model: >
   Integration branch sampurti/integration cut from main @ 1432d7492 (2026-08-10).
   All lane work in worktrees off sampurti/integration; lane PRs -> integration;
   integration -> main only via Gate-Executor packets at wave boundaries.
-conductor_session: SAMPURTI-CONDUCTOR-2026-08-10 (R3 — native relaunch, all prior conductors confirmed dead)
+conductor_session: SAMPURTI-CONDUCTOR-2026-08-10 (R4 — native relaunch 16:38 IST; R3 pid=69929 CONFIRMED DEAD; sole conductor)
 ---
 
 # SAMPŪRTI CAMPAIGN LEDGER
 
-CONDUCTOR-HEARTBEAT: 2026-08-10T08:05+00:00 (SAMPURTI-CONDUCTOR-2026-08-10-R3) [L1d batch insert MERGED PR #1158. L1e OOM fix PR #1172 OPEN CI running. P-G1 runs 3+4 FAILED (OOM — root cause identified). Awaiting #1172 merge+deploy for run 5.] [LIVENESS: conductor session active on main]
+CONDUCTOR-HEARTBEAT: 2026-08-10T11:16+00:00 (SAMPURTI-CONDUCTOR-2026-08-10-R4) pid=68645 host=Dev-Mac [R4 UP. P-G1 deferred to post-W6-COMPLETE. L1f/L1g/L1h+L1i all MERGED to main (#1185/#1186/#1187). L1j PR #1188 OPEN → integration. PARĪKṢAKA dispatched. Parallel lanes queued: G12/G13/G14b. UTKARSHA L-3 ACTIVE until 18:30 IST — no production builds.]
 
 ## MODEL POLICY (BINDING — native directive 2026-08-10)
 
@@ -37,7 +37,40 @@ Sonnet/Opus respectively per the original charter and are unaffected.
 ## WAVE POSITION
 
 WAVE 0 — IGNITION. Status: COMPLETE (merged to main 3311ae0e3, deployed 31341882724).
-WAVE 1 — RC1 G1 WIRING. Status: L1b GATE MERGED (PR #1150, 976af2a2f). L1c GATE MERGED (PR #1153). L1d GATE MERGED (PR #1158). L1e PR #1172 OPEN (CI running). P-G1 run 5 PENDING (#1172 deploy).
+WAVE 1 — RC1 G1 WIRING. Status: L1b/L1c/L1d/L1e/L1f/L1g/L1h+L1i all MERGED to main. L1j PR #1188 OPEN (PARĪKṢAKA pending). P-G1 deferred pending UTKARSHA W6-COMPLETE (R-COORD-2 extended).
+
+**R4 STATE (2026-08-10T11:16+00:00, conductor pid=68645):**
+- L1e MERGED (#1172): OOM fix (shared EnvelopeIndex). DEPLOYED.
+- L1f MERGED (#1185): batch-insert stage0+stage1 executemany.
+- L1g MERGED (#1186): bulk pre-fetch contact_in dwell_weights (stage1).
+- L1h+L1i MERGED (#1187): vectorize EnvelopeIndex range check (stage4).
+- L1j PR #1188 OPEN → sampurti/integration. CI running. PARĪKṢAKA dispatched (model: opus).
+- P-G1 deferred: ka_kshetra DAG depends on ka_gochara_sweep + ka_gochara_resonance and hazard.py
+  cross-checks kala_gochara_windows (R-COORD-2 extension confirmed in coordination file LOG
+  2026-08-10 16:47 IST). Field rebuilds run ONCE post-W6-COMPLETE on gen-3.0.
+- UTKARSHA L-3 ACTIVE until 18:30 IST. W6.1 century materialize running on 482012f1.
+
+**WINDOWS-STAGE FAILURE ROOT CAUSE (R16, verified from run logs /tmp/sampurti_run7-11.log):**
+THREE distinct failure modes, now fully resolved or deferred correctly:
+  (A) Runs 1-4 (Cloud Run, pre-L1e): 19× EnvelopeIndex copies → ~2 GB OOM → stage4 never ran
+      → kala_field_windows = 0. FIXED by L1e shared-EnvelopeIndex.
+  (B) Run 7 (local, 15:17 IST): SIGTERM at stage3:run completion — 534-substep stage4 never
+      started in this run window. Not a code bug.
+  (C) Runs 8-11 (local, 15:50/15:58/16:37/16:37 IST): stage4 running and writing
+      kala_field_windows (183,137 rows from achievement_recognition committed); SIGTERM'd at
+      substep index ~92/534 by coordination yield mechanism (L-3 ACTIVE). Not a code bug.
+  Root cause of "zero windows in production": (A) was the code bug, FIXED. (B)+(C) are
+  coordination kills during the W6 yield window, by design. Production run (post-W6-COMPLETE)
+  will run in Cloud Run without coordination SIGTERM, with L1g/L1h+L1i/L1j perf fixes deployed.
+
+P-G1 RUN LOG (chart 482012f1) — R4 UPDATE:
+  Runs 1-4: FAILED (OOM — L1e fixed)
+  Run 5 (local): SIGTERM at stage3 completion (coordination yield)
+  Runs 6-7 (local 65b7e7ee/bca65c3c): SIGTERM during stage4 (coordination yield;
+    index ~92/534; 183k windows written from achievement_recognition class)
+  Runs 8-11 (local, after L1f+L1g+L1h+L1i): SIGTERM during stage4 (coordination yield;
+    same index ~92/534; wins locked to 566,545 rows — coordination correctly yielding)
+  Run 12 (TBD): post-W6-COMPLETE + L1j deployed → Cloud Run → full stage4 completion target.
 L1b (fetch_orb_deg SAVEPOINT fix): DEPLOYED. RESULT: kala_field_kinematics = 120,377 rows. Stage0 FIXED.
 L1c ROOT CAUSE: stage3_clocks.compute_boundaries_for_system emits duplicate BoundaryRow objects when chart_dashas has duplicate (level_n, start_iso) for chara_karaka (up to 5 MD rows per start date). write_boundary_rows hits unique constraint on (chart_id, system_id, level, t_boundary) → InFailedSqlTransaction cascades to vimshottari/yogini/etc → kala_field_clocks = 0.
 L1c FIX: deduplicate by (level, t_boundary) in compute_boundaries_for_system, keep first (SELECT order: level_n ASC, start_iso ASC is deterministic). 5 tests pass. PARĪKṢAKA: PASS 10/10. Gate PR #1153: MERGED.
