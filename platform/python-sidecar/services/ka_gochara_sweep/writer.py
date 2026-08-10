@@ -327,7 +327,17 @@ class KaGocharaSweepWriter(WriterBase):
         completed = self._load_completed_substeps(conn, chart_id, self._resume_fingerprint)
         if completed is None:
             with conn.cursor() as cur:
-                cur.execute("DELETE FROM kala_gochara_windows WHERE chart_id = %s", (chart_id,))
+                # Phase A (GOCHARA-UTKARSA W0.3): delete scoped to
+                # generation='v1' so a future generation-3.0 row set for the
+                # same chart is never destroyed by this writer's own rebuild.
+                # Invariant I1: protected charts' v1 rows are guarded by
+                # migration 540's trigger — this DELETE will raise for them,
+                # which is the intended behavior.
+                cur.execute(
+                    "DELETE FROM kala_gochara_windows "
+                    "WHERE chart_id = %s AND generation = 'v1'",
+                    (chart_id,),
+                )
                 cur.execute(
                     "DELETE FROM build_substep_progress WHERE chart_id = %s AND asset_id = 'ka_gochara_sweep'",
                     (chart_id,),
@@ -686,6 +696,15 @@ class KaGocharaSweepWriter(WriterBase):
             # for those -- see shape_output's point/chain builders, which
             # never set this key).
             continuity_state = row.get('continuity_state')
+            # Phase A (GOCHARA-UTKARSA W0.3): plain INSERT, no ON CONFLICT.
+            # The §N.3 delete-then-insert pattern (plan_substeps clears all
+            # generation='v1' rows for this chart before any substep runs)
+            # guarantees no natural-key collisions among v1 rows. A collision
+            # here would indicate a real bug -- let it raise rather than
+            # silently upserting. `generation` is explicitly set to 'v1' so
+            # this writer's rows are correctly stamped under BOTH the current
+            # generation-blind unique index (migration 460) AND the future
+            # generation-inclusive index (migration 556).
             cur.execute(
                 """
                 INSERT INTO kala_gochara_windows (
@@ -694,25 +713,17 @@ class KaGocharaSweepWriter(WriterBase):
                     milestone_id, is_irreversibility_milestone,
                     signed_intensity, raw_intensity, valence, is_adverse,
                     active_sentences, contributing_systems, suppression_state,
-                    peak_basis, calibration_state, source, continuity_state
+                    peak_basis, calibration_state, source, continuity_state,
+                    generation
                 ) VALUES (
                     %s, %s, %s,
                     %s, %s, %s,
                     %s, %s,
                     %s, %s, %s, %s,
                     %s::jsonb, %s::jsonb, %s::jsonb,
-                    %s, %s, %s, %s::jsonb
+                    %s, %s, %s, %s::jsonb,
+                    'v1'
                 )
-                ON CONFLICT (chart_id, event_class, window_start, peak_date, COALESCE(milestone_id, ''))
-                DO UPDATE SET
-                    window_end = EXCLUDED.window_end,
-                    signed_intensity = EXCLUDED.signed_intensity,
-                    raw_intensity = EXCLUDED.raw_intensity,
-                    active_sentences = EXCLUDED.active_sentences,
-                    contributing_systems = EXCLUDED.contributing_systems,
-                    suppression_state = EXCLUDED.suppression_state,
-                    continuity_state = EXCLUDED.continuity_state,
-                    computed_at = now()
                 """,
                 (
                     chart_id, row['event_class'], row['temporal_shape'],

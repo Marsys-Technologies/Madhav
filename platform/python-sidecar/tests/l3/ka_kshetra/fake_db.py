@@ -263,6 +263,13 @@ class FakeConn:
     def cursor(self, *args, **kwargs) -> FakeCursor:
         return FakeCursor(self)
 
+    # psycopg3 allows calling execute() directly on the connection object;
+    # delegate to FakeCursor so the same dispatch logic applies.
+    def execute(self, sql: str, params=None) -> FakeCursor:
+        cur = FakeCursor(self)
+        cur.execute(sql, params if params is not None else ())
+        return cur
+
     # The FROZEN contract forbids the writer touching any of these. Each raises
     # so a violation is a test failure at the exact call site, not a subtle
     # behavioural difference discovered in production.

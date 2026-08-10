@@ -326,3 +326,5 @@ jobs:
 # no-op: touch to trigger TAP-6 on f1-adoption/close (CURRENT_STATE v6.56 + SESSION_LOG
 # F1-ADOPTION-CONDUCTOR-2026-08-09 close entry + PROMISE_LAYER_SCOREBOARD_v1_1.md do not match
 # paths filter; same pattern; PR #1131)
+# no-op: touch to trigger TAP-6 on sampurti/coordination (CAMPAIGN_COORDINATION.md does not
+# match paths filter; same pattern; PR #1142)
