@@ -4,7 +4,7 @@ plan: GOCHARA_UTKARSHA_CAMPAIGN_PLAN_v1_0.md
 branch: utkarsha/campaign
 conductor_model: claude-sonnet-4-6
 launched: 2026-08-10
-last_updated: 2026-08-10 (session 11 — W3.3 PASS, W3.4 BUILDING, W2.8/W2.9 in queue)
+last_updated: 2026-08-10 (session 12 — W3.4 MERGED, Wave-4 builders dispatched)
 
 ---
 
@@ -72,13 +72,13 @@ Status: QUEUED | BUILDING | VERIFYING | PASS | FAIL(n) | BLOCKED | MERGED
 | W3.1 | 3 | [heavy] | 27-class coverage | MERGED | gochara3/w31 | /Users/Dev/Vibe-Coding/Apps/utk-w31 | sonnet | W1.* PASS | MERGED to main 2026-08-10T06:39:21Z (PR #1168, bfc09471e). VERIFIER PASS (opus, aca61717): 92/92 tests, 27/27 DOMAIN_MAP. |
 | W3.2 | 3 | [heavy] | Interval + chain shapes | MERGED | gochara3/w32 | /Users/Dev/Vibe-Coding/Apps/utk-w32 | sonnet | W1.4 PASS | MERGED to main 2026-08-10T06:31:02Z (PR #1169, 18252a5f9). VERIFIER PASS (opus, ac29dc76): 7/7 AC. |
 | W3.3 | 3 | [heavy] | Multi-resolution hierarchy | MERGED | gochara3/w33 | /Users/Dev/Vibe-Coding/Apps/utk-w33 | sonnet | W3.2 PASS | MERGED to main 2026-08-10T06:56:53Z (PR #1170, b155763e18). VERIFIER PASS (opus, a86c06b1): 10/10 AC. |
-| W3.4 | 3 | [heavy] | Century horizon + slice receipts | PASS | gochara3/w34 | /Users/Dev/Vibe-Coding/Apps/utk-w34 | sonnet | W0.3 PASS + W3.2 PASS | PR #1171 CI ALL GREEN (4 fix commits: afe249905). In merge queue. VERIFIER (opus, a0514899) dispatched. |
-| W4.1 | 4 | [heavy] | λ contenders in the bakeoff | QUEUED | — | — | opus | W3.4 + ALL Wave-2 PASS | Gate: W3.4 + all W2.* |
-| W4.2 | 4 | [heavy] | Negative-control harness | QUEUED | — | — | opus | W3.4 PASS | Gate: W3.4 |
-| W4.3 | 4 | [heavy] | Ablation runner → grammar admissions | QUEUED | — | — | opus | W3.4 + ALL Wave-2 PASS | Gate: W3.4 + all W2.* |
+| W3.4 | 3 | [heavy] | Century horizon + slice receipts | MERGED | gochara3/w34 | /Users/Dev/Vibe-Coding/Apps/utk-w34 | sonnet | W0.3 PASS + W3.2 PASS | MERGED 4a6bca948 (PR #1171). VERIFIER (opus, a0514899) ALL 10 AC PASS. |
+| W4.1 | 4 | [heavy] | λ contenders in the bakeoff | BUILDING | gochara3/w41 | /Users/Dev/Vibe-Coding/Apps/utk-w41 | sonnet | W3.4 + ALL Wave-2 PASS | Builder dispatched (sonnet). Gate satisfied. |
+| W4.2 | 4 | [heavy] | Negative-control harness | BUILDING | gochara3/w42 | /Users/Dev/Vibe-Coding/Apps/utk-w42 | sonnet | W3.4 PASS | Builder dispatched (sonnet). Gate satisfied. |
+| W4.3 | 4 | [heavy] | Ablation runner → grammar admissions | BUILDING | gochara3/w43 | /Users/Dev/Vibe-Coding/Apps/utk-w43 | sonnet | W3.4 + ALL Wave-2 PASS | Builder dispatched (sonnet). Gate satisfied. |
 | W4.4 | 4 | [heavy] | Weight fitting, cross-chart pooled | QUEUED | — | — | opus | W4.1 + W4.2 + W4.3 PASS | Gate: W4.1–W4.3 |
 | W4.5 | 4 | [heavy] | empirically_calibrated, earnable + post-fit rebuild | QUEUED | — | — | opus | W4.4 PASS | Gate: W4.4; owns post-fit rebuild |
-| W4.6 | 4 | [mech] | LEL mining (non-blocking) | QUEUED | — | — | sonnet | W3.4 PASS | Non-blocking; output is LEL_CANDIDATES_STAGED.md for native review |
+| W4.6 | 4 | [mech] | LEL mining (non-blocking) | BUILDING | gochara3/w46 | /Users/Dev/Vibe-Coding/Apps/utk-w46 | sonnet | W3.4 PASS | Builder dispatched (sonnet). Non-blocking; output is LEL_CANDIDATES_STAGED.md for native review |
 | W5.1 | 5 | [heavy] | Serving elevation under density contract | QUEUED | — | — | opus | W3.3 + W4.5 PASS | Parallel W5 |
 | W5.2 | 5 | [mech] | Nirmāṇa/DAG integration | QUEUED | — | — | sonnet | W3.3 + W4.5 PASS | Parallel W5 |
 | W5.3 | 5 | [mech] | Docs-of-record | QUEUED | — | — | sonnet | W3.3 + W4.5 PASS | Parallel W5 |
@@ -225,6 +225,8 @@ CONDUCTOR-HEARTBEAT: 2026-08-10T06:27:00Z pid=93857 host=Montys-MacBook-Pro.loca
 - 2026-08-10 12:30 IST: **W3.3 VERIFIER PASS** (opus, a86c06b1). 10/10 AC: RESOLUTION_TIERS order (era<month<day<muhurta) ✓; WindowResolutionRecord 7 fields exact ✓; assign_parent_window_ids pure function widest-wins ✓; build_era_windows duration>=365→era else month ✓; build_month_windows 30-day midpoint peak ✓; build_day_windows 1-day midpoint peak ✓; build_resolution_hierarchy era→month→day→assign_parents HierarchyResult ✓; I2 clean (no gochara_grammar/intensity/sweep imports) ✓; 15 DB-free tests ✓; ERA_BODIES arithmetic correct (computed constants correct, comment rounding noted as minor) ✓. PR #1170 in readonly merge queue — VERIFIER comment posted. W3.3 → PASS.
 
 CONDUCTOR-HEARTBEAT: 2026-08-10T07:05:00Z pid=40131 host=Montys-MacBook-Pro
+CONDUCTOR-HEARTBEAT: 2026-08-10T07:48:00Z pid=40131 host=Montys-MacBook-Pro
 - 2026-08-10 12:35 IST: W2.5 confirmed MERGED to main at 863741c26 (feat(W2.5): kota chakra ring modifier). W3.3 is next in merge queue (gh-readonly-queue branch confirmed). W2.8/W2.9 confirmed in queue (GraphQL enqueuePullRequest → "already in queue"). W3.4 builder writing implementation actively (new writer at ka_gochara_v3_century_materialize). Queue order: W3.3 → W2.8 → W2.9.
 - 2026-08-10 12:30 IST: SESSION 12 (context-compact continuation). Immediate task: W3.4 CI §N.8 failure on PR #1171. Root-cause: `fallback_used=True` literal constant in ThresholdConfig construction at line 582 of ka_gochara_v3_century_materialize.py — no program input could change it, violating §N.8. Fix: imported `fetch_base_rate_for_class` from `services.gochara_v3.threshold`; derived `(base_rate_cited, age_band_used, fallback_used)` from a real DB lookup before constructing ThresholdConfig; `lambda_thresh=0.0` structural-prior design preserved. Local earned-signal lint: PASS (0 new violations). Commit f31e319dd pushed to gochara3/w34.
 - 2026-08-10 12:30–13:05 IST: W3.4 CI — 3 rounds of fixes (4 commits total on gochara3/w34). Fix 1: §N.8 (f31e319dd). Fix 2: asset_registry seed — KNOWN_HAS_WRITER_TRUE + seed row + migration 560 (5014db1d0). Fix 3: cockpit kala count 23→24 (afe249905). **W3.4 CI ALL GREEN** (run 31365906372/383: all checks PASS including Unit Tests, Governance Gates, §N.8, Build Check). PR #1171 in merge queue. VERIFIER (opus, a0514899) dispatched in background. W3.3 MERGED (b155763e18, 06:56Z). W2.8 MERGED (c3edb6584e, 07:06Z). W2.9 MERGED (40ec19867a, 07:11Z). **ALL WAVE-2 LANES IN MAIN.** W3.4 → PASS (awaiting VERIFIER + merge).
+- 2026-08-10 13:15 IST: SESSION 12 continued. **W3.4 MERGED** (4a6bca948, PR #1171). VERIFIER (opus, a0514899) ALL 10 AC PASS (posted to PR). Wave-4 worktrees utk-w41/w42/w43/w46 provisioned at 4a6bca948. W4.1/W4.2/W4.3/W4.6 builders dispatched (all sonnet — model policy). Gates confirmed met: W3.4 MERGED + all W2.* MERGED.
