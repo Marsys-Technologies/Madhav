@@ -1,0 +1,16 @@
+mechanism_id: w28_bhava_degrees
+wave: 2
+lane: W2.8
+description: "Bhava cusp degrees — enriches bhava targets with L1 cusp degrees from chart_facts"
+citation_status: cited
+classical_citation: "L1 chart_facts bhava cusp data via fact_id reference (§N.5); ga_positions_writer bhava_cusps rows (sripati_madhya) — Sripati system per Parashara"
+v1_lineage:
+  replaces: "enrich_targets resolves bhava to sign only; degree-hungry primitives silently skip house targets"
+  v1_module: services/gochara_intensity/enrichment.py
+  change_type: enhancement
+  note: "v1 bhava targets get target_sign but not target_longitude_deg (documented gap, enrichment.py lines 46-58); v3 adds sripati_madhya degree from L1 chart_facts; enables station_retro_loop, eclipse_degree, planetary_return to evaluate bhava targets"
+module_path: services/gochara_v3/mechanisms/w28_bhava_degrees.py
+admission_state: candidate
+ablation_evidence_link: null
+admission_ruling_id: null
+toggle_key: w28_bhava_degrees
