@@ -175,6 +175,10 @@ class _FakeIntensityResult:
     suppression_detail: dict
     calibration_state: str = "structural_prior"
     source: str = "live"
+    term_breakdown: dict | None = None
+    lambda_v3_ci_low: float | None = None
+    lambda_v3_ci_high: float | None = None
+    ci_source: str | None = None
 
 
 def _fake_scorer(active_jds: set[float], **_ignored_kwargs):

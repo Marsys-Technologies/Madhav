@@ -1,4 +1,4 @@
--- Migration 557: kala_gochara_windows_v2 — W1.5 λ decomposition + structural prior CI
+-- Migration 559: kala_gochara_windows_v2 — W1.5 λ decomposition + structural prior CI
 -- =============================================================================
 -- GOCHARA-UTKARṢA campaign, wave W1.5 (λ decomposition + uncertainty output model).
 --
