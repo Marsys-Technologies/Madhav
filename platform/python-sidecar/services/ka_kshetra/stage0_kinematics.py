@@ -706,14 +706,25 @@ def fetch_orb_deg(conn, body: str, target_class: str) -> tuple[float, str]:
     column in the live schema as of this writer (its columns are rule_type /
     graha / primary_house / vedha_house / phala — see migration 397), so this
     currently always falls back; the lookup is still attempted so a future
-    schema addition is picked up automatically without a code change here."""
+    schema addition is picked up automatically without a code change here.
+
+    SAVEPOINT guard (SAMPURTI L1b): querying a non-existent column raises a
+    PostgreSQL error that aborts the transaction. Without the SAVEPOINT the
+    bare `except Exception: row = None` swallows the Python exception but
+    leaves the connection in InFailedSqlTransaction state, causing every
+    subsequent execute (including write_kinematics_rows) to fail. The
+    SAVEPOINT/ROLLBACK pattern is the canonical orchestrator recovery idiom."""
+    row = None
     try:
+        conn.execute("SAVEPOINT fetch_orb_deg")
         row = conn.execute(
             """SELECT orb_deg FROM bg_transit_rules
                WHERE graha = %s AND rule_type = %s LIMIT 1""",
             [body, target_class],
         ).fetchone()
+        conn.execute("RELEASE SAVEPOINT fetch_orb_deg")
     except Exception:
+        conn.execute("ROLLBACK TO SAVEPOINT fetch_orb_deg")
         row = None
     if row is not None:
         val = row["orb_deg"] if isinstance(row, dict) else row[0]
