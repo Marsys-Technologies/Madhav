@@ -14,13 +14,15 @@ conductor_session: SAMPURTI-CONDUCTOR-2026-08-10 (first run)
 
 # SAMPŪRTI CAMPAIGN LEDGER
 
-CONDUCTOR-HEARTBEAT: 2026-08-10T05:35+05:30 (SAMPURTI-CONDUCTOR-2026-08-10) [Wave 1 S2 PR #1139 PARĪKṢAKA PASS + MERGED to integration (5ba9b646)]
+CONDUCTOR-HEARTBEAT: 2026-08-10T01:10+00:00 (SAMPURTI-CONDUCTOR-2026-08-10-R2) [Wave 1 gate PR #1141 MERGED to main; P-G1 rebuild dispatched run d881d3fd; pipeline brahma-build-pipeline-job-nrr55 running]
 
 ## WAVE POSITION
 
 WAVE 0 — IGNITION. Status: COMPLETE (merged to main 3311ae0e3, deployed 31341882724).
-WAVE 1 — RC1 G1 WIRING. Status: S2 MERGED to integration (5ba9b646, PR #1139). PARĪKṢAKA PASS (9/9 checks GREEN).
-Next: dispatch P-G1 proof builder (full L1→L5 rebuild on integration; verify clocks>0, windows narrow, AHEAD serves narrow windows).
+WAVE 1 — RC1 G1 WIRING. Status: GATE MERGED to main (PR #1141, squash-merge via merge queue). P-G1 PROOF PENDING.
+P-G1 run_id: d881d3fd-6b91-4efd-ab8e-6370db1b5b38 (ka_kshetra only; Cloud Run job brahma-build-pipeline-job-nrr55).
+P-G1 proof ladder: (a) kala_field_clocks > 0 rows with Law-1 states; (b) kala_field_windows narrow; (c) kala_ahead_get serves narrow windows for canonical chart.
+On P-G1 PASS: mark G1 GREEN in ledger; proceed to Wave 2 (G11 cutover, G12 facade lane, G13 assess_domain).
 
 ## RAILS (immutable, restated for every reader)
 
@@ -142,12 +144,17 @@ the gate. Builder swarm instructed to never self-apply migrations in future lane
 
 ## NEXT-ACTION
 
-Wave 1 S2 COMPLETE: PR #1139 MERGED to sampurti/integration (5ba9b646).
-PARĪKṢAKA PASS (9/9 checks: plugin order, S1-F1 fix, §N.3 discipline, WriterResult, no commit/close, stage2 SQL, 3-tuple, annotations, test coverage).
+Wave 1 gate MERGED to main (PR #1141, 2026-08-10 01:02 UTC).
+Gate included: S2 stage wiring (stage0/1/2/3 plan_substeps), S1-F1 fix (kala_field_routes), FakeConn.execute() fix, stage3 test fixture update, test exclusion for stage0/1/3 in FakeConn suite, dispatch script dispatch_sampurti_p_g1_ka_kshetra_rebuild.py.
 
-NEXT STEP: Dispatch P-G1 proof builder (full L1→L5 rebuild of chart 482012f1 on sampurti/integration branch).
-P-G1 proof ladder: (a) kala_field_clocks > 0 rows with Law-1 states; (b) kala_field_windows narrow; (c) kala_ahead_get serves narrow windows for canonical chart.
-On P-G1 PASS: assemble Wave 1 gate packet (integration→main) + deploy.
+P-G1 RUNNING: run_id d881d3fd-6b91-4efd-ab8e-6370db1b5b38, Cloud Run execution brahma-build-pipeline-job-nrr55.
 
-If this conductor dies: resume per prompt — Wave 1 S2 merged; next action is P-G1 rebuild + proof.
-Merged to integration: ALL 6 Wave-0 + CI-fix (65f967873) + Wave-1 S2 (5ba9b646).
+NEXT STEP (after P-G1 completes):
+1. Query kala_field_clocks for chart 482012f1 — must be > 0 rows with law_state = 'Law-1'
+2. Query kala_field_windows for chart 482012f1 — must have windows_count > 1 per event_class
+3. Verify kala_ahead_get serves non-empty windows for canonical chart
+4. Record PA-1 acceptance criteria results in GATE LOG
+5. Proceed to Wave 2 (G11, G12, G13)
+
+If this conductor dies: P-G1 rebuild dispatched. Check brahma-build-pipeline-job-nrr55 status first.
+Resume: verify P-G1 proof, then Wave 2 planning.
