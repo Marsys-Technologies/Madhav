@@ -364,5 +364,14 @@ scope reduction below 27 classes · retiring any serving surface · LEL content.
     PARĪKṢAKA MR-07 (a4a80abdef87985d2): reviewing PR #1203
     MR-04 builder (a56c5ac8499825eac): RUNNING
     MR-08 builder (ab00584c6db07e369): RUNNING
+  GATE-EXECUTOR PUSHED THIRD HOTFIX (fe6a835df): fix(MR-06): add ka_gochara_v2_materialize
+    to RETIRED_MIGRATION_IDS in test_has_writer_completeness.py. Root cause: Governance Gates
+    failed with "Migration INSERT(s) NOT in asset_registry_seed.ts: ['ka_gochara_v2_materialize']"
+    — migration 542 inserted it; MR-06 removed it from seed; test needed allowlist entry.
+    Fix: added 'ka_gochara_v2_materialize' to RETIRED_MIGRATION_IDS frozenset (line 360).
+  PR #1201 CI STATUS (HEAD fe6a835df, ~20:56 IST):
+    New CI run 31404233631. Pending: Unit Tests, DB Integration Tests, Governance Gates, Build Check.
+    No failures. GATE-EXECUTOR has pushed 3 MR-06 hotfixes total; CI re-triggered 5 times.
+    Expect all-green this run — all known failure modes now addressed.
   NEXT-ACTION: await GATE-EXECUTOR merge; await PARĪKṢAKA MR-03/07; await MR-04/08 PRs.
     HOLD: do NOT merge MR-03/07/04/08 to integration until PR #1201 lands on main.
