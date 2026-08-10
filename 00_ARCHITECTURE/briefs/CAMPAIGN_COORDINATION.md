@@ -88,7 +88,10 @@ this is RELEASED or expired.*
 | 553–555 | SAMPŪRTI | Wave-0 migrations | MERGED to main (#1138) |
 | 556 | UTKARṢA | 556_gochara_generation_schema.sql | CLAIMED (gochara3/w03, unmerged) |
 | 557 | UTKARṢA | 557_utkarsha_builder_role.sql (I6(a) restricted builder DB role) | CLAIMED (per UTKARṢA ledger, gochara3/i6a-role) |
-| 558+ | — | next free; claim here before use | — |
+| 558–563 | UTKARṢA / main | Migrations applied to main (556/557 never merged separately; 563 on main, unappliable — FK fixed by MR-05) | HISTORICAL |
+| 564 | PARIṢKĀRA | 564_parishkara_mr01_schema_parity.sql (8 v3 cols on kala_gochara_windows) | CLAIMED — PR #1198 open |
+| 565 | PARIṢKĀRA | 565_bg_gochara_citation_resolution.sql (citation resolution table L0) | CLAIMED — PR #1200 open |
+| 566+ | — | next free; claim here before use | — |
 
 ## 3. TERRITORY MAP (edit-ownership during the concurrency window)
 
