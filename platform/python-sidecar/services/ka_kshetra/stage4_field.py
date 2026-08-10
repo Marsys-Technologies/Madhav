@@ -64,6 +64,8 @@ import math
 from dataclasses import dataclass, field
 from typing import Any, Iterable, Mapping, Optional, Sequence
 
+import numpy as np
+
 from services.ka_kshetra import hazard, integrator
 from services.ka_kshetra.contracts import (
     ClockApplicability,
@@ -278,9 +280,12 @@ class Primitive:
                 'A one-knot envelope has no defined value anywhere and would read '
                 'as an honest 0 for the entire horizon.'
             )
-        ts = [k[0] for k in self.knots]
-        if t < ts[0] or t > ts[-1]:
+        # L1h: range check against tuple directly before any list allocation.
+        # For the ~99% of calls where t is outside this primitive's span, this
+        # avoids the [k[0] for k in self.knots] allocation entirely.
+        if t < self.knots[0][0] or t > self.knots[-1][0]:
             return 0.0
+        ts = [k[0] for k in self.knots]
         i = bisect.bisect_right(ts, t) - 1
         if i >= len(self.knots) - 1:
             return self.knots[-1][1]
@@ -317,6 +322,27 @@ class EnvelopeIndex:
         self.obstructive: list[Primitive] = []
         for p in primitives:
             (self.obstructive if p.polarity == 'obstructive' else self.supportive).append(p)
+        # L1i: pre-built numpy arrays for vectorized range-check in covariates_at /
+        # obstructions_at.  Building these once in __init__ (the EnvelopeIndex is
+        # constructed once and shared across ALL stage-4 substeps and stage-5 null
+        # replicates) costs ~2 ms and eliminates the O(N_primitives) Python loop
+        # that previously dominated every covariates_at call.
+        self._sup_t0: np.ndarray = (
+            np.array([p.knots[0][0] for p in self.supportive], dtype=np.float64)
+            if self.supportive else np.empty(0, dtype=np.float64)
+        )
+        self._sup_t1: np.ndarray = (
+            np.array([p.knots[-1][0] for p in self.supportive], dtype=np.float64)
+            if self.supportive else np.empty(0, dtype=np.float64)
+        )
+        self._obs_t0: np.ndarray = (
+            np.array([p.knots[0][0] for p in self.obstructive], dtype=np.float64)
+            if self.obstructive else np.empty(0, dtype=np.float64)
+        )
+        self._obs_t1: np.ndarray = (
+            np.array([p.knots[-1][0] for p in self.obstructive], dtype=np.float64)
+            if self.obstructive else np.empty(0, dtype=np.float64)
+        )
 
     # ── evaluation ───────────────────────────────────────────────────────────
 
@@ -334,8 +360,16 @@ class EnvelopeIndex:
         present, still auditable) provenance edge.
         """
         out: dict[str, float] = {}
-        for p in self.supportive:
-            v = p.value_at(t)
+        if self._sup_t0.size == 0:
+            return out
+        # L1i: vectorized range check — finds active primitives in O(N) numpy
+        # rather than O(N) Python, then calls value_at only for the K << N
+        # primitives whose span contains t.
+        t_f = float(t)
+        active_idx = np.where((self._sup_t0 <= t_f) & (t_f <= self._sup_t1))[0]
+        for i in active_idx:
+            p = self.supportive[int(i)]
+            v = p.value_at(t_f)
             if v <= 0.0:
                 continue
             for key in self._covariate_keys(p):
@@ -366,8 +400,14 @@ class EnvelopeIndex:
         harmless — a reader would see a reason that is not a reason).
         """
         out: dict[str, float] = {}
-        for p in self.obstructive:
-            v = p.value_at(t)
+        if self._obs_t0.size == 0:
+            return out
+        # L1i: same vectorized gate as covariates_at.
+        t_f = float(t)
+        active_idx = np.where((self._obs_t0 <= t_f) & (t_f <= self._obs_t1))[0]
+        for i in active_idx:
+            p = self.obstructive[int(i)]
+            v = p.value_at(t_f)
             if v <= 0.0:
                 continue
             key = p.vighna_key()
