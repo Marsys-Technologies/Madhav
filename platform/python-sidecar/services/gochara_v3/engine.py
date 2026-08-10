@@ -42,6 +42,27 @@ W1.1 — Bounded lambda_v3 formula (v1_parity_mode=False):
   values 1e0–1.5e21 (X reaching ~66, beta=0.45), swamping PROMISE
   and PERMISSION.
 
+W1.2 — Direction Restored (signed valence channels):
+  _compute_signed_channels_v3 separates sentences into:
+    - supportive channel  (weight > 0): noisy-OR of orb_decay * |weight|
+    - afflicting channel  (weight < 0): noisy-OR of orb_decay * |weight|
+
+  Window valence emerges from the net evidence sign:
+    - sum_supportive > sum_afflicting  => valence = 'favourable'
+    - sum_afflicting > sum_supportive  => valence = 'adverse'
+    - roughly equal (within VALENCE_TENSION_THRESHOLD) => valence = 'mixed',
+      valence_tension = True
+
+  The class-level valence (from brahma_event_ontology, context.valence) is
+  retained as prior when both channels are zero (no configuration evidence).
+
+  KEY INVARIANT: valence_tension is True IFF afflicting and supportive
+  channels nearly cancel. It is surfaced in x_t_detail['valence_tension']
+  and does NOT average away the disagreement.
+
+  I2 COMPLIANCE: no file in gochara_grammar/ or gochara_intensity/ is
+  modified. All sign handling is in this module only.
+
 v1-parity mode (v1_parity_mode=True):
   The original PROMISE * PERMISSION * exp(beta*X) - suppression formula,
   preserved bit-for-bit for golden-test comparison. The existing
@@ -101,6 +122,16 @@ _ACTIVITY_PRIMITIVES = frozenset({
     "gochara_vedha_pair",
     "sarvatobhadra_vedha",
 })
+
+# ---------------------------------------------------------------------------
+# W1.2 constants
+# ---------------------------------------------------------------------------
+# When |supportive - afflicting| / max(supportive + afflicting, epsilon) is
+# below this threshold, the two channels are judged "roughly equal" and
+# valence_tension is set True with valence='mixed'.
+# A ratio of 0.1 means the winning channel holds less than 55% of the total
+# evidence weight — genuinely contested ground.
+_VALENCE_TENSION_THRESHOLD: float = 0.1
 
 
 def evaluate_lambda_vector(
@@ -261,7 +292,26 @@ def _evaluate_single_from_context(
         sentences, context.weight_by_target_ref,
     )
 
-    # 4b. quality_gates: product of quality filters (W1.1 placeholder = 1.0).
+    # 4b. W1.2 — Signed channels: separate supportive (weight > 0) and
+    #     afflicting (weight < 0) contributions. The v1 engine clamps negative
+    #     weights to zero in both configuration_activity.py (line ~133) and
+    #     promise.py (line ~64), silently erasing afflictions. In v3 we carry
+    #     both channels here — no edit to any gochara_grammar/*.py file (I2).
+    supportive_channel, afflicting_channel, signed_channel_detail = (
+        _compute_signed_channels_v3(sentences, context.weight_by_target_ref)
+    )
+
+    # 4c. Window valence emerges from the sign of net configuration evidence.
+    #     Class-level valence (context.valence) is the prior when evidence is
+    #     zero on both channels (no sentences fired).
+    v3_valence, v3_is_adverse, valence_tension = _resolve_valence_v3(
+        supportive_channel,
+        afflicting_channel,
+        class_valence=context.valence,
+        class_is_adverse=context.is_adverse,
+    )
+
+    # 4d. quality_gates: product of quality filters (W1.1 placeholder = 1.0).
     #     W1.3+ will add suppression-based quality gates here.
     quality_gates = 1.0
     quality_gates_detail = {"quality_gates_applied": [], "quality_gates_v1_1_placeholder": 1.0}
@@ -272,7 +322,7 @@ def _evaluate_single_from_context(
     # Clamp for floating-point edge cases (should be impossible, but defensive)
     raw_lambda = max(0.0, min(1.0, raw_lambda))
 
-    signed_lambda = raw_lambda * (-1.0 if context.is_adverse else 1.0)
+    signed_lambda = raw_lambda * (-1.0 if v3_is_adverse else 1.0)
 
     if not targets:
         notes.append(
@@ -285,6 +335,7 @@ def _evaluate_single_from_context(
     # but set them to their v3 equivalents (activity / 1.0) so the
     # existing parity tests that read these fields still get sensible values.
     # The term_breakdown carries the full W1.1 decomposition.
+    # W1.2 signed-channel data is in x_t_detail['signed_channels'].
     x_t_compat = activity  # activity IS the v3 replacement for X(t)
     x_t_detail_compat = {
         **activity_detail,
@@ -293,7 +344,13 @@ def _evaluate_single_from_context(
         "term_breakdown": term_breakdown,
         "quality_gates": quality_gates,
         "quality_gates_detail": quality_gates_detail,
+        # W1.2 signed-channel fields
+        "signed_channels": signed_channel_detail,
+        "valence_v3": v3_valence,
+        "valence_tension": valence_tension,
         "note": (
+            "W1.2 direction restored: signed supportive/afflicting channels separate; "
+            "valence derived from net evidence sign. "
             "W1.1 bounded lambda_v3: activity replaces exp(beta*X). "
             "activity=noisy_OR over orb-decayed sentence contributions in [0,1]. "
             "exp_term=1.0 (no exponential in v3 formula)."
@@ -325,8 +382,8 @@ def _evaluate_single_from_context(
         suppression=suppression_v3,
         suppression_detail=suppression_detail_v3,
         raw_lambda=raw_lambda,
-        valence=context.valence,
-        is_adverse=context.is_adverse,
+        valence=v3_valence,      # W1.2: dynamic valence from net evidence
+        is_adverse=v3_is_adverse,
         signed_lambda=signed_lambda,
         notes=notes,
         source=source,
@@ -430,6 +487,149 @@ def _compute_activity_v3(
     }
 
     return activity, detail, term_breakdown
+
+
+def _compute_signed_channels_v3(
+    sentences: list[ConfigurationSentence],
+    weight_by_target_ref: dict[str, float],
+) -> tuple[float, float, dict]:
+    """W1.2 — Separate configuration sentences into supportive and afflicting channels.
+
+    v1 (gochara_intensity/configuration_activity.py line ~133 and
+    gochara_intensity/promise.py line ~64) clamp negative weights to zero.
+    This function deliberately does NOT clamp, letting the v3 engine see the
+    full signed evidence. No gochara_grammar/*.py file is modified (I2).
+
+    For each sentence in _ACTIVITY_PRIMITIVES:
+      raw_weight = weight_by_target_ref[target_ref]   (may be negative)
+      orb_decay  = same computation as _compute_activity_v3
+      p_i        = orb_decay * |raw_weight|            (always >= 0)
+
+      If raw_weight > 0  => contributes p_i to the supportive channel
+      If raw_weight < 0  => contributes p_i to the afflicting channel
+      If raw_weight == 0 => neutral; excluded from both channels
+
+    Each channel is aggregated via noisy-OR (same as activity / PROMISE):
+      channel = 1 - product_i(1 - p_i)   in [0,1]
+
+    Returns:
+      supportive_channel  float in [0,1]
+      afflicting_channel  float in [0,1]
+      detail              dict with per-channel breakdown for debugging
+    """
+    supportive_complement = 1.0
+    afflicting_complement = 1.0
+    supportive_contributions = []
+    afflicting_contributions = []
+
+    for s in sentences:
+        if s.primitive not in _ACTIVITY_PRIMITIVES:
+            continue
+        if s.primitive == "gochara_vedha_pair" and s.detail.get("cancelled"):
+            continue
+
+        raw_weight = weight_by_target_ref.get(s.target_ref or "", 0.0)
+        if raw_weight == 0.0:
+            continue  # neutral; no channel contribution
+
+        # Orb decay: identical logic to _compute_activity_v3
+        orb_strength_raw = s.detail.get("orb_strength")
+        if orb_strength_raw is not None:
+            orb_decay = float(max(0.0, min(1.0, orb_strength_raw)))
+        else:
+            orb_degrees_raw = s.detail.get("orb_degrees")
+            if orb_degrees_raw is not None:
+                orb_degrees = abs(float(orb_degrees_raw))
+                orb_decay = 1.0 - min(orb_degrees / _ACTIVITY_MAX_ORB_DEG, 1.0)
+            else:
+                orb_decay = 0.5
+
+        # p_i uses the ABSOLUTE value of the weight (magnitude only;
+        # sign determines which channel receives it)
+        p_i = orb_decay * abs(raw_weight)
+        # Clamp to [0,1]: abs weight could exceed 1 for over-weighted targets
+        p_i = min(1.0, p_i)
+
+        contribution_record = {
+            "primitive": s.primitive,
+            "target_ref": s.target_ref,
+            "transit_planet": s.transit_planet,
+            "event_datetime_ist": s.event_datetime_ist,
+            "raw_weight": round(raw_weight, 6),
+            "orb_decay": round(orb_decay, 6),
+            "p_i": round(p_i, 6),
+        }
+
+        if raw_weight > 0.0:
+            supportive_complement *= (1.0 - p_i)
+            supportive_contributions.append(contribution_record)
+        else:
+            afflicting_complement *= (1.0 - p_i)
+            afflicting_contributions.append(contribution_record)
+
+    supportive_channel = max(0.0, min(1.0, 1.0 - supportive_complement))
+    afflicting_channel = max(0.0, min(1.0, 1.0 - afflicting_complement))
+
+    detail = {
+        "supportive_channel": round(supportive_channel, 8),
+        "afflicting_channel": round(afflicting_channel, 8),
+        "supportive_sentence_count": len(supportive_contributions),
+        "afflicting_sentence_count": len(afflicting_contributions),
+        "supportive_contributions": supportive_contributions,
+        "afflicting_contributions": afflicting_contributions,
+        "aggregation": "noisy_or_per_channel",
+        "note": (
+            "W1.2: signed channels. Negative weights (afflictions) are NOT "
+            "clamped to zero as in v1. Each channel is a noisy-OR in [0,1]. "
+            "I2 compliant: gochara_grammar/*.py untouched."
+        ),
+    }
+    return supportive_channel, afflicting_channel, detail
+
+
+def _resolve_valence_v3(
+    supportive_channel: float,
+    afflicting_channel: float,
+    *,
+    class_valence: str,
+    class_is_adverse: bool,
+) -> tuple[str, bool, bool]:
+    """W1.2 — Derive window valence from the sign of net configuration evidence.
+
+    Rules (in order):
+
+    1. If both channels are zero (no sentences fired, or all weights neutral):
+       Fall back to class-level prior (class_valence / class_is_adverse).
+       valence_tension = False.
+
+    2. If |supportive - afflicting| / (supportive + afflicting) < threshold:
+       The two channels nearly cancel => valence = 'mixed', tension = True.
+
+    3. If supportive > afflicting: valence = 'favourable', tension = False.
+
+    4. If afflicting > supportive: valence = 'adverse', tension = False.
+
+    Returns:
+      valence       str   'favourable' | 'adverse' | 'mixed' | class_valence fallback
+      is_adverse    bool  True iff valence == 'adverse'
+      valence_tension bool True iff channels nearly cancel (rule 2)
+    """
+    total = supportive_channel + afflicting_channel
+
+    if total < 1e-10:
+        # No configuration evidence — use class-level prior
+        return class_valence, class_is_adverse, False
+
+    imbalance_ratio = abs(supportive_channel - afflicting_channel) / total
+
+    if imbalance_ratio < _VALENCE_TENSION_THRESHOLD:
+        # Channels nearly cancel — genuine disagreement
+        return "mixed", False, True
+
+    if supportive_channel > afflicting_channel:
+        return "favourable", False, False
+    else:
+        return "adverse", True, False
 
 
 def _gather_sentences_no_db(
@@ -819,4 +1019,10 @@ def _check_planetary_return_from_context(
     return False, {}
 
 
-__all__ = ["evaluate_lambda_vector"]
+__all__ = [
+    "evaluate_lambda_vector",
+    "_compute_activity_v3",
+    "_compute_signed_channels_v3",
+    "_resolve_valence_v3",
+    "_VALENCE_TENSION_THRESHOLD",
+]
