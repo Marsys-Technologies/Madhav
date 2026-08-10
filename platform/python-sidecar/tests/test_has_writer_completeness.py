@@ -195,6 +195,12 @@ KNOWN_HAS_WRITER_TRUE: frozenset[str] = frozenset({
     # migration 541's stale asset_registry row for the old name is DELETEd by
     # migration 542) ───────────────────────────────────────────────────────
     "ka_gochara_v2_materialize",
+    # ── GOCHARA-UTKARSA W3.4 — migration 560 ─────────────────────────────────
+    # century-horizon heavy writer: plan_substeps (60 substeps = 6 classes ×
+    # 10 decade slices) + run_substep. Writes generation='g3_utkarsha' rows
+    # into kala_gochara_windows_v2 ONLY. Seed row added to asset_registry
+    # via migration 560 with has_writer=true, has_substeps=true.
+    "ka_gochara_v3_century_materialize",
     # ── L4 Phala — migration 342 ─────────────────────────────────────────────
     "ph_muhurta",
     "ph_nimitta",

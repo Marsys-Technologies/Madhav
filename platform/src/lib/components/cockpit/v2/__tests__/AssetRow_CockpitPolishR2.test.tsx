@@ -334,7 +334,7 @@ describe('CF.L3.8 — StatusDot: DRAFT catalog_status does not override healthy 
 
 // ── Seed governance: Kāla layer count after hard-removal of ka_transit_almanac ──
 describe('Asset seed governance — Kāla layer', () => {
-  it('has exactly 23 kala assets in the seed (ka_transit_almanac removed; ka_avadhi + ka_taranga + ka_kshetra registered; ka_kota_chakra + ka_sudarshana_varsha + ka_moorti_nirnaya + ka_vedha_gochara + ka_tithi_pravesha added (SHAD-DARSHANA W3 items 16/17/4/5/13); ka_gochara_sweep + ka_gochara_resonance + ka_gochara_v2_materialize added (GOCHARA-UTKARSA W0.1))', () => {
+  it('has exactly 24 kala assets in the seed (ka_transit_almanac removed; ka_avadhi + ka_taranga + ka_kshetra registered; ka_kota_chakra + ka_sudarshana_varsha + ka_moorti_nirnaya + ka_vedha_gochara + ka_tithi_pravesha added (SHAD-DARSHANA W3 items 16/17/4/5/13); ka_gochara_sweep + ka_gochara_resonance + ka_gochara_v2_materialize added (GOCHARA-UTKARSA W0.1); ka_gochara_v3_century_materialize added (GOCHARA-UTKARSA W3.4))', () => {
     const { readFileSync } = require('fs')
     const { resolve } = require('path')
     const seedContent: string = readFileSync(resolve(process.cwd(), 'scripts/seed/asset_registry_seed.ts'), 'utf8')
@@ -374,7 +374,11 @@ describe('Asset seed governance — Kāla layer', () => {
     // added to the seed — `ka_gochara_sweep` (migration 460 pre-existing,
     // now seeded), `ka_gochara_resonance` (migration 459 pre-existing, now
     // seeded), `ka_gochara_v2_materialize` (new λ_v3 write target). 20 → 23.
-    expect(kalaMatches).toHaveLength(23)
+    //
+    // GOCHARA-UTKARSA W3.4 (2026-08-10): century-horizon heavy writer
+    // `ka_gochara_v3_century_materialize` (migration 560, 60-substep plan,
+    // decade slices 1984-2084). 23 → 24.
+    expect(kalaMatches).toHaveLength(24)
   })
 
   it('contains no ka_transit_almanac entry in the seed', () => {

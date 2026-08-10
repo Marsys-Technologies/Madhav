@@ -1,0 +1,16 @@
+mechanism_id: w23_tara_bala
+wave: 2
+lane: W2.3
+description: "Tara bala — 9-cycle nakshatra quality modifier for gochara transits vs natal Moon"
+citation_status: cited
+classical_citation: "Muhurta Chintamani — Tara bala chapter; BPHS nakshatra transit quality"
+v1_lineage:
+  replaces: "nakshatra_ingress_tara wired-but-dead in primitives.py:558 (natal_moon_nakshatra_id never passed)"
+  v1_module: services/gochara_grammar/primitives.py
+  change_type: activation
+  note: "v1 call site never passed natal_moon_nakshatra_id; v3 gets it from ClassContext.natal_facts"
+module_path: services/gochara_v3/mechanisms/w23_tara_bala.py
+admission_state: candidate
+ablation_evidence_link: null
+admission_ruling_id: null
+toggle_key: w23_tara_bala

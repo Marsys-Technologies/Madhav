@@ -180,6 +180,21 @@ export interface GocharaWindowRow {
   // W3: present once `capActiveSentences` has run; absent (undefined) means
   // the row's active_sentences array is already whole (never fabricated).
   active_sentences_total_count?: number
+  // W5.1 (GOCHARA-UTKARSA): pass-through columns from kala_gochara_windows.
+  // All three are nullable: v1 rows written before migration 556/559 carry NULL.
+  /** Generation-tier discriminator. 'v1' for legacy sweep rows; 'g3_utkarsha'
+   * for GOCHARA-UTKARSA W3.4 century-materialize rows. NULL on rows predating
+   * migration 527's generation column. */
+  generation?: string | null
+  /** Era-slice key identifying the decade band this window belongs to.
+   * Format: 'g3_{year_start}_{year_end}' for v3 rows (e.g. 'g3_1984_1994').
+   * NULL for v1 rows (predates migration 556). */
+  era_slice_key?: string | null
+  /** Per-mechanism λ_v3 decomposition (W1.5). Structure:
+   * {promise, permission, activity, quality_gates, lambda_v3,
+   *  activity_terms: [{primitive, target_ref, orb_decay, target_weight, p_i}]}.
+   * NULL on v1-parity rows (v1_parity_mode=True path never populates this). */
+  term_breakdown?: Record<string, unknown> | null
 }
 
 // D-5 native disposition (2026-07-20, gate_run_2 finding 1): "the cap never
@@ -244,10 +259,31 @@ function capActiveSentences(rows: GocharaWindowRow[]): GocharaWindowRow[] {
   })
 }
 
-const SOURCE_CITATION =
-  'kala_gochara_windows (L3 Kāla, D-5 Lane G-4 ka_gochara_sweep writer) — ' +
-  'lambda_e via services/gochara_intensity (G-3), consuming gochara_resonance_map ' +
-  '(G-1) + gochara_grammar (G-2)'
+// W5.1 (GOCHARA-UTKARSA): SOURCE_CITATION is now generation-conditional.
+// For v3/g3_* rows the citation names the UTKARSA campaign's own engine;
+// for legacy v1 rows it names the original D-5 G-4 sweep. A response that
+// mixes both generations (AUTHORITATIVE_GENERATION_FILTER selects one at a
+// time, but the citation is set per-tool-call, not per-row) uses the
+// per-generation string for whichever generation the filter resolved to.
+// The filter guarantees all rows in one response share one generation.
+function buildSourceCitation(generation: string | null | undefined): string {
+  if (generation != null && (generation === 'g3_utkarsha' || generation.startsWith('g3_'))) {
+    return (
+      'kala_gochara_windows (L3 Kāla, GOCHARA-UTKARSA W3.4 ka_gochara_v3_century_materialize writer) — ' +
+      'lambda_v3 via services/gochara_v3 (bounded λ_v3 ∈ [0,1], W1.1), W4.4 calibrated weights, ' +
+      'consuming gochara_resonance_map (G-1); generation=' + generation
+    )
+  }
+  return (
+    'kala_gochara_windows (L3 Kāla, D-5 Lane G-4 ka_gochara_sweep writer) — ' +
+    'lambda_e via services/gochara_intensity (G-3), consuming gochara_resonance_map ' +
+    '(G-1) + gochara_grammar (G-2); generation=v1'
+  )
+}
+
+// Convenience: SOURCE_CITATION for legacy v1 rows (used as a static
+// default in the election_avoidance per-row citation that predates W5.1).
+const SOURCE_CITATION_V1 = buildSourceCitation(null)
 
 const ROW_COLUMNS = `
   id, chart_id, event_class, temporal_shape,
@@ -260,8 +296,14 @@ const ROW_COLUMNS = `
   valence, is_adverse,
   active_sentences, contributing_systems, suppression_state,
   peak_basis, calibration_state, source,
-  computed_at, continuity_state
+  computed_at, continuity_state,
+  generation, era_slice_key, term_breakdown
 `
+// W5.1 (GOCHARA-UTKARSA): generation, era_slice_key, and term_breakdown are
+// nullable columns present on kala_gochara_windows since migrations 527/556/559.
+// All three arrive as NULL for v1 rows written before those migrations — the
+// interface declares them optional-nullable and the serving code passes them
+// through without requiring them non-null, per §N.3 "honest tier over fabricated".
 
 // ADJUDICATION-6 (SHAD_DARSHANA_ADJUDICATIONS_NIGHT3_v1_0.md, migration 527):
 // GOCHARA-2.0 writes generation-stamped rows BESIDE v1, never over it — so
@@ -465,22 +507,28 @@ function notCoveredFor(domain: string | undefined, coverage: GocharaCoverage): G
 const ACTIVATION_DENSITY_CONTRACT = {
   max_digest_bytes: 20_000,
   paginated: false,
-  facets: ['event_class', 'temporal_shape', 'is_adverse'],
+  facets: ['event_class', 'temporal_shape', 'is_adverse', 'calibration_state', 'era_slice_key'],
   empty_reason: true,
+  // W5.1: calibration_state layering per §N.6 — empirically_calibrated is the
+  // dense layer; structural_prior is the structural layer. Reflected in the
+  // `facets` key on every response (computeWindowFacets — real detector).
+  density_layering: 'calibration_state:empirically_calibrated>structural_prior',
 } as const
 
 const FORECAST_DENSITY_CONTRACT = {
   max_digest_bytes: 40_000,
   paginated: true,
-  facets: ['event_class', 'temporal_shape', 'valence', 'is_adverse'],
+  facets: ['event_class', 'temporal_shape', 'valence', 'is_adverse', 'calibration_state', 'era_slice_key'],
   empty_reason: true,
+  density_layering: 'calibration_state:empirically_calibrated>structural_prior',
 } as const
 
 const ELECTION_AVOIDANCE_DENSITY_CONTRACT = {
   max_digest_bytes: 50_000,
   paginated: true,
-  facets: ['event_class', 'temporal_shape'],
+  facets: ['event_class', 'temporal_shape', 'calibration_state', 'era_slice_key'],
   empty_reason: true,
+  density_layering: 'calibration_state:empirically_calibrated>structural_prior',
 } as const
 
 // ── SATYA-ŚEṢA W3 — declared response-budget ceilings for this family ───────
@@ -543,6 +591,74 @@ function windowsSection(
 }
 
 // ══════════════════════════════════════════════════════════════════════════
+// W5.1 — §N.6 density facets: calibration_state layering + term_breakdown
+// ══════════════════════════════════════════════════════════════════════════
+//
+// Per §N.6: calibrated (empirically_calibrated) rows are the dense layer;
+// structural_prior rows are the structural layer. The facets key is a
+// machine-readable summary served on every response — it carries counts
+// by calibration_state and a boolean for term_breakdown presence so a
+// consumer can immediately distinguish which density tier the response
+// represents without scanning every row.
+//
+// I3 (W5.1): this is a real detector — it counts from the actual served
+// row set, never from a hand-maintained constant. A response with zero
+// empirically_calibrated rows will report calibrated_count=0 honestly.
+
+export interface GocharaWindowFacets {
+  /** Counts of served rows by calibration_state tier. */
+  calibration_state: {
+    empirically_calibrated: number
+    structural_prior: number
+    other: number
+  }
+  /** True iff at least one served row carries a non-null term_breakdown
+   * (W1.5 λ_v3 decomposition). Never true for v1-sweep rows. */
+  has_term_breakdown: boolean
+  /** Generation label(s) present in the served row set. 'mixed' if both
+   * v1 and g3_* rows appear (only possible if AUTHORITATIVE_GENERATION_FILTER
+   * somehow yields multiple — documented but structurally prevented by design). */
+  generation_tier: string
+}
+
+function computeWindowFacets(rows: GocharaWindowRow[]): GocharaWindowFacets {
+  let calibrated = 0
+  let structural = 0
+  let other = 0
+  let hasTermBreakdown = false
+  const generationSet = new Set<string>()
+
+  for (const row of rows) {
+    if (row.calibration_state === 'empirically_calibrated') {
+      calibrated++
+    } else if (row.calibration_state === 'structural_prior') {
+      structural++
+    } else {
+      other++
+    }
+    if (row.term_breakdown != null) hasTermBreakdown = true
+    const gen = row.generation ?? 'v1'
+    generationSet.add(gen)
+  }
+
+  const generations = Array.from(generationSet).sort()
+  const generationTier =
+    generations.length === 0 ? 'none' :
+    generations.length === 1 ? generations[0]! :
+    'mixed:' + generations.join('+')
+
+  return {
+    calibration_state: {
+      empirically_calibrated: calibrated,
+      structural_prior: structural,
+      other,
+    },
+    has_term_breakdown: hasTermBreakdown,
+    generation_tier: generationTier,
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
 // 1. gochara_activation_get — "is this configuration active right now?"
 // ══════════════════════════════════════════════════════════════════════════
 
@@ -574,9 +690,11 @@ export async function computeGocharaActivation(
   const { coverage, ok: coverageOk } = await computeGocharaCoverage(chartId, principal)
   const notCovered = notCoveredFor(domain, coverage)
 
+  // W5.1: source_citation is generation-conditional. Build with SOURCE_CITATION_V1
+  // as default; updated after query when first row's generation is known.
   const baseEnvelope = {
     source: 'gochara_activation_get',
-    source_citation: SOURCE_CITATION,
+    source_citation: SOURCE_CITATION_V1,
     chart_id: chartId,
     as_of_date: asOfDate,
     event_class_filter: eventClass ?? null,
@@ -617,12 +735,18 @@ export async function computeGocharaActivation(
   const { rows: rawRows, ok, error } = await queryRows(sql, params, principal)
   const rows = capActiveSentences(withPlateauDisclosure(rawRows))
 
+  // W5.1: compute facets (real detector per I3) and resolve generation-conditional citation.
+  const facets = computeWindowFacets(rows)
+  const resolvedCitation = buildSourceCitation(rawRows[0]?.generation ?? null)
+
   const content: Record<string, unknown> = {
     windows: rows,
+    facets,
     coverage,
     drill_pointers: [] as unknown[],
     provenance_envelope: {
       ...baseEnvelope,
+      source_citation: resolvedCitation,
       window_count: rows.length,
       backing_data_reachable: ok && coverageOk,
       empty_reason: rows.length === 0
@@ -716,9 +840,10 @@ export async function computeGocharaForecast(
   const { coverage, ok: coverageOk } = await computeGocharaCoverage(chartId, principal)
   const notCovered = notCoveredFor(domain, coverage)
 
+  // W5.1: source_citation is generation-conditional; default to v1 for not_covered path.
   const baseEnvelope = {
     source: 'gochara_forecast_get',
-    source_citation: SOURCE_CITATION,
+    source_citation: SOURCE_CITATION_V1,
     chart_id: chartId,
     date_range: dateRange,
     event_class_filter: eventClass ?? null,
@@ -769,12 +894,18 @@ export async function computeGocharaForecast(
   const byShape = { point: 0, interval: 0, chain: 0 } as Record<string, number>
   for (const r of rawRows) byShape[r.temporal_shape] = (byShape[r.temporal_shape] ?? 0) + 1
 
+  // W5.1: compute facets (real detector per I3) and resolve generation-conditional citation.
+  const facets = computeWindowFacets(rows)
+  const resolvedCitation = buildSourceCitation(rawRows[0]?.generation ?? null)
+
   const content: Record<string, unknown> = {
     windows: rows,
+    facets,
     coverage,
     drill_pointers: [] as unknown[],
     provenance_envelope: {
       ...baseEnvelope,
+      source_citation: resolvedCitation,
       window_count: rawRows.length,
       shape_breakdown: byShape,
       backing_data_reachable: ok && coverageOk,
@@ -919,9 +1050,10 @@ export async function computeGocharaElectionAvoidance(
   const { coverage, ok: coverageOk } = await computeGocharaCoverage(chartId, principal)
   const notCovered = notCoveredFor(domain, coverage)
 
+  // W5.1: source_citation is generation-conditional; default to v1 for not_covered path.
   const baseEnvelope = {
     source: 'gochara_election_avoidance_get',
-    source_citation: SOURCE_CITATION,
+    source_citation: SOURCE_CITATION_V1,
     chart_id: chartId,
     date_range: dateRange,
     event_class_filter: eventClass ?? null,
@@ -963,6 +1095,9 @@ export async function computeGocharaElectionAvoidance(
 
   const { rows, ok, error } = await queryRows(sql, params, principal)
 
+  // W5.1: resolve generation-conditional citation once, applied to envelope + per-row.
+  const resolvedCitation = buildSourceCitation(rows[0]?.generation ?? null)
+
   const avoidWindows = await Promise.all(
     rows.map(async (row) => {
       const planet = dominantGraha(row)
@@ -975,6 +1110,11 @@ export async function computeGocharaElectionAvoidance(
         window_end: row.window_end,
         peak_date: row.peak_date,
         milestone_id: row.milestone_id,
+        // W5.1: pass-through density facet columns from kala_gochara_windows.
+        // All nullable — NULL for v1 rows predating migration 556/559.
+        era_slice_key: row.era_slice_key ?? null,
+        generation: row.generation ?? null,
+        term_breakdown: row.term_breakdown ?? null,
         signed_intensity: row.signed_intensity,
         raw_intensity: row.raw_intensity,
         valence: row.valence,
@@ -1017,6 +1157,12 @@ export async function computeGocharaElectionAvoidance(
         // 5. confidence-honest
         confidence_disclosure: {
           calibration_state: row.calibration_state,
+          // W5.1: generation-tier carried in confidence disclosure so consumers
+          // can distinguish structural-prior v1 rows from potentially empirically-
+          // calibrated g3_* rows (the g3 calibration cycle — W4.4+W4.5 — can
+          // promote rows to 'empirically_calibrated').
+          generation_tier: row.generation ?? 'v1',
+          era_slice_key: row.era_slice_key ?? null,
           n_observations: null,
           control_delta: null,
           note:
@@ -1027,17 +1173,23 @@ export async function computeGocharaElectionAvoidance(
         contributing_systems_active: (row.contributing_systems ?? []).filter((s) => s.active).map((s) => s.system_id),
         active_sentences_count: row.active_sentences.length,
         peak_basis: row.peak_basis,
-        source_citation: SOURCE_CITATION,
+        // W5.1: generation-conditional per-row citation.
+        source_citation: buildSourceCitation(row.generation ?? null),
       }
     })
   )
 
+  // W5.1: compute facets (real detector per I3).
+  const facets = computeWindowFacets(rows)
+
   const content: Record<string, unknown> = {
     windows: avoidWindows,
+    facets,
     coverage,
     drill_pointers: [] as unknown[],
     provenance_envelope: {
       ...baseEnvelope,
+      source_citation: resolvedCitation,
       window_count: rows.length,
       backing_data_reachable: ok && coverageOk,
       empty_reason: rows.length === 0

@@ -1,0 +1,16 @@
+mechanism_id: w22_moorti_nirnaya
+wave: 2
+lane: W2.2
+description: "Moorti nirnaya quality modifier — svarṇa/rajata/tāmra/loha multiplier on overlapping ingress windows"
+citation_status: cited
+classical_citation: "Phaladeepika ch.27 — Moorti nirnaya; bg_transit_moorti 27 rows"
+v1_lineage:
+  replaces: "migration 401 claimed a consumer of kala_moorti_nirnaya that never existed"
+  v1_module: services/ka_gochara_sweep/writer.py
+  change_type: new
+  note: "v1 never consumed moorti quality; v3 applies 4-tier multiplier per ingress span"
+module_path: services/gochara_v3/mechanisms/w22_moorti_nirnaya.py
+admission_state: candidate
+ablation_evidence_link: null
+admission_ruling_id: null
+toggle_key: w22_moorti_nirnaya

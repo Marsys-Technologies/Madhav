@@ -2008,6 +2008,41 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     scope: 'per_chart', is_active: true, estimated_seconds: null,
     asset_kind: 'data',
   },
+  // ── GOCHARA-UTKARSA W3.4 — century-horizon heavy writer (migration 560) ────
+  {
+    asset_id: 'ka_gochara_v3_century_materialize',
+    layer: 'kala', sort_order: 108,
+    catalog_status: 'CURRENT',
+    sanskrit_name: 'Gochara Śatābdi Mātrika (v3)',
+    english_name: 'GOCHARA-UTKARSA Century Materialize (v3, decade slices)',
+    english_description: 'GOCHARA-UTKARSA W3.4 heavy writer: plan_substeps returns 60 substeps (6 event classes × 10 decade slices spanning birth-century 1984–2084). Each run_substep calls gochara_v3.interval_solver.find_threshold_crossings over the decade JD range, applies delta fingerprinting (MD5 of event_class+era_slice_key+ENGINE_VERSION+resonance_targets) for skip-on-unchanged semantics, and DELETE-then-INSERTs into kala_gochara_windows_v2 with era_slice_key=g3_{year_start}_{year_end}. I2: ZERO imports from gochara_grammar/*, gochara_intensity/*, or ka_gochara_sweep/*. I4: empty resonance targets → honest 0 rows, no fabrication.',
+    storage_type: 'postgres_table',
+    target_table: 'kala_gochara_windows_v2',
+    count_sql: "SELECT COUNT(*) FROM kala_gochara_windows_v2 WHERE chart_id=$1 AND generation LIKE 'g3_%'",
+    size_sql: null,
+    target_floor: 0,
+    expected_volume_formula: null,
+    expected_volume_inputs: null,
+    volume_explanation: 'GOCHARA-v3 century windows — count depends on active threshold-crossing intervals across 60 decade slices.',
+    // W5.2 DAG integration (migration 562): full depends_on set reflecting the
+    // v3 writer's true runtime inputs across ClassContext.fetch() + engine.py.
+    // ka_gochara_resonance — resonance targets (step 1, always required)
+    // ka_vedha_gochara     — kala_vedha_gochara (W1.3 quality_gates, wired)
+    // ka_moorti_nirnaya    — kala_moorti_nirnaya (W2.2 moorti modifier)
+    // ka_kota_chakra       — kala_kota_chakra (W2.5 kota-chakra ring modifier)
+    // ka_tithi_pravesha    — kala_tithi_pravesha (W2.7b annual tone)
+    // bg_sky_calendar      — bg_sky_events (W2.6 real eclipses)
+    depends_on: [
+      'ka_gochara_resonance',
+      'ka_vedha_gochara',
+      'ka_moorti_nirnaya',
+      'ka_kota_chakra',
+      'ka_tithi_pravesha',
+      'bg_sky_calendar',
+    ],
+    scope: 'per_chart', is_active: true, estimated_seconds: null,
+    asset_kind: 'data',
+  },
   // ── KALA K1 services (K1 wave — no stored rows; service_kind per mig 242) ──
   {
     asset_id: 'ka_graha_sancara',

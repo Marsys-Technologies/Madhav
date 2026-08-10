@@ -128,7 +128,7 @@ export const SHAD_DARSHANA_ITEM_REGISTRY: CensusItem[] = [
     // (PR #1087 3d61455a8); PR #1090 (e81fc2958) title names item 5. Sarvatobhadra grid
     // remains sentinel-row (ADJUDICATION-11) — substrate shipped; full closure IN-PROGRESS.
     disposition: 'IN-PROGRESS',
-    evidence: '3d61455a822bebb1d42ebd870e59df2bd647b66c (PR #1087); platform/python-sidecar/pipeline/orchestrator/writers/ka_vedha_gochara.py',
+    evidence: 'platform/python-sidecar/pipeline/orchestrator/writers/ka_vedha_gochara.py',
   },
   {
     id: '6',
@@ -342,7 +342,7 @@ export const SHAD_DARSHANA_ITEM_REGISTRY: CensusItem[] = [
     // CORRECTED (SAMPURTI L0a): was NOT-STARTED. PR #1025 (f19969c5b) title explicitly names
     // W4 item 26 as shipped; kala_upaya_diagnosis.ts ships in that merge.
     disposition: 'IN-PROGRESS',
-    evidence: 'f19969c5ba89a45084a1cc691d452395d9f88680 (PR #1025); platform-mcp/src/lib/kala_upaya_diagnosis.ts',
+    evidence: 'platform-mcp/src/lib/kala_upaya_diagnosis.ts',
   },
   {
     id: '27',
@@ -352,7 +352,7 @@ export const SHAD_DARSHANA_ITEM_REGISTRY: CensusItem[] = [
     // CORRECTED (SAMPURTI L0a): was NOT-STARTED. W2 Lane E (PR #947 638e5499e) ships
     // stage8_spec.py (kala_timeline_spec). W2 gate VERIFIED at d8208fb98.
     disposition: 'VERIFIED-FIXED',
-    evidence: '638e5499e9ed64505adc1994ad9cb360bc87dfc1 (PR #947); platform/python-sidecar/services/ka_kshetra/stage8_spec.py',
+    evidence: 'platform/python-sidecar/services/ka_kshetra/stage8_spec.py',
   },
   {
     id: '28',
@@ -578,7 +578,7 @@ export const SHAD_DARSHANA_ITEM_REGISTRY: CensusItem[] = [
     // CORRECTED (SAMPURTI L0a): was NOT-STARTED. W2 fin lane (PR #1088 9aaa3af7d) ships
     // story.ts + priority.ts; field_snapshot_id threading confirmed in W2 gate close.
     disposition: 'VERIFIED-FIXED',
-    evidence: '9aaa3af7dc5c68f89e2f0c849157d4824b2200ba (PR #1088); platform-mcp/src/tools/kala_views/story.ts',
+    evidence: 'platform-mcp/src/tools/kala_views/story.ts',
   },
   {
     id: 'E6',
@@ -588,7 +588,7 @@ export const SHAD_DARSHANA_ITEM_REGISTRY: CensusItem[] = [
     // CORRECTED (SAMPURTI L0a): was NOT-STARTED. W5 prep PR (PR #1055 567db1bb9) ships
     // all 6 E6 tools per ledger HB #88 (74ee84696): "ALL 6 E6 tools VERIFIED".
     disposition: 'VERIFIED-FIXED',
-    evidence: '567db1bb96b962fe7c5e4bf0eb4dec228f7f1470 (PR #1055); platform/src/lib/vidhi/registry_data.ts',
+    evidence: 'platform/src/lib/vidhi/registry_data.ts',
   },
   {
     id: 'E7',
