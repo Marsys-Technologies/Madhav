@@ -193,6 +193,36 @@ VERDICT: APPROVED.
 
 ## DEBTS / PARKS (cause VERIFIED live or it is a defect)
 
+**DEBT-2 (PR #1141 premature merge, CAUGHT LIVE 06:31 IST 2026-08-10, root cause
+UNRESOLVED):** Conductor drafted PR #1141 at 00:37:14Z (06:07 IST) with an explicit
+hold comment: merge only after P-G1 proof rung GREEN. GitHub timeline (verified via
+`gh api .../issues/1141/timeline`) shows the SAME github identity (`amonty84` — the
+shared token both this session's `gh` CLI and any other agent session's `gh` CLI
+authenticate as; cannot distinguish human vs. which agent from the API alone)
+converted it back to ready-for-review at 00:55:19Z and merged it at 01:02:01Z —
+18 and 25 minutes after the hold, respectively, WHILE this conductor was mid-session
+and had NOT re-approved it. Merge commit `c93540ca8` is now on main.
+
+Risk assessed live (06:31–06:35 IST):
+  - Deploy NOT yet fired: all 3 Cloud Run services still serve `commit-sha=3311ae0e3`
+    (Wave-0). No "Deploy to Cloud Run" workflow run exists yet for `c93540ca8`
+    (checked via `gh run list`). Window still open before production risk manifests.
+  - Content risk LOWER than a raw premature merge would suggest: the merged diff
+    IS the S2 stage-wiring fix, which already carries a PARĪKṢAKA PASS (9/9 checks,
+    recorded above) — this was a PROCEDURAL violation (proof-before-merge order
+    broken), not necessarily a defective artifact. The P-G1 rebuild in progress
+    (run 88268b2d) will independently confirm or refute correctness regardless of
+    merge order; its result is now retroactive proof rather than pre-merge gating.
+  - Coordination file (PR #1142) had NOT yet reached main when this happened —
+    UTKARSHA cannot have "violated" a protocol it had no way to have read yet. If
+    this was cross-session interference, it predates any adoption opportunity.
+  - Not reverted: reverting a merged main commit is a hard-to-reverse action with
+    its own blast radius; native informed directly this turn rather than acted on
+    unilaterally. Awaiting native direction on: (a) let stand pending P-G1 result,
+    (b) revert until proof confirms, (c) investigate root cause with UTKARSHA first.
+
+STATUS: OPEN, native-flagged, not silently absorbed.
+
 **DEBT-1 (L0b policy violation, recorded 04:10 IST 2026-08-10):** L0b builder applied
 migration 553 directly to production BEFORE PARĪKṢAKA review, violating
 PRODUCTION_GATE_EXECUTION_POLICY v1.1 §1 ("The builder swarm NEVER executes the
