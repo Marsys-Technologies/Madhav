@@ -54,7 +54,7 @@ Status: QUEUED | BUILDING | VERIFYING | PASS | FAIL(n) | BLOCKED | MERGED
 | W0.3 | 0 | [heavy] | Schema migration bundle | VERIFYING | gochara3/w03 | /Users/Dev/Vibe-Coding/Apps/utk-w03 | opus | none | 3 commits: Phase A writer scoping, Phase B migration 556, generation-aware guard tests. Clean branch. VERIFIER spawned. |
 | W0.4 | 0 | [heavy] | Batched-context scoring engine | VERIFYING | gochara3/w04 | /Users/Dev/Vibe-Coding/Apps/utk-w04 | opus | none | 3 commits: gochara_v3 package (context.py + engine.py), 3 test files (query-count, parity, speedup). Clean branch. VERIFIER spawned. |
 | W0.5 | 0 | [adj] | Campaign rulings (UTK-R1/R2/R3) | PASS | — | — | ADJUDICATOR | none | UTK-R1/R2/R3 issued + I6(a) migration approved. Rulings in §Rulings. |
-| I6a | 0 | [mech] | DB role migration (utkarsha_builder) | BUILDING | gochara3/i6a-role | /Users/Dev/Vibe-Coding/Apps/utk-i6a | sonnet | W0.5 PASS | Approved by ADJUDICATOR. Migration = 557 (NOT 556 — taken by W0.3 gochara schema). Worktree reattached session 2. Builder spawned. |
+| I6a | 0 | [mech] | DB role migration (utkarsha_builder) | VERIFYING | gochara3/i6a-role | /Users/Dev/Vibe-Coding/Apps/utk-i6a | sonnet | W0.5 PASS | Migration 557 written + pushed (SHA 4879a6882, session 5). Migration-guard self-review: PASS. Awaiting dedicated VERIFIER PASS before PR. |
 | W1.1 | 1 | [heavy] | Bounded λ_v3 core | QUEUED | — | — | opus | W0.4 PASS | Gate: W0.4 |
 | W1.2 | 1 | [heavy] | Direction restored | QUEUED | — | — | opus | W1.1 PASS | Gate: W1.1 |
 | W1.3 | 1 | [heavy] | Graded suppression | QUEUED | — | — | opus | W1.1 PASS | Gate: W1.1 |
@@ -169,4 +169,6 @@ Format: `WAVE N: DEPLOYED+SYNCED — revision <sha>, migrations applied through 
 
 - 2026-08-10 06:55 IST: 4 agents dispatched in parallel — VERIFIER(opus, W0.3+W0.4), builder(sonnet, W0.1-complete), builder(sonnet, W0.2-builds), builder(sonnet, I6a-557). All running background. Awaiting verdicts.
 
-CONDUCTOR-HEARTBEAT: 2026-08-10T01:25:00Z
+- 2026-08-10 06:57 IST: I6a DONE — migration 557 written and pushed (4879a6882). Migration-guard self-review PASS. I6a → VERIFYING. VERIFIER for W0.3/W0.4 still running; W0.1/W0.2 builders still running.
+
+CONDUCTOR-HEARTBEAT: 2026-08-10T01:27:00Z
