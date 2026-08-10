@@ -167,4 +167,6 @@ Format: `WAVE N: DEPLOYED+SYNCED — revision <sha>, migrations applied through 
 - 2026-08-10 06:52 IST: SALVAGE COMPLETE. W0.1: committed 829-line partial (seed.ts +19 assets including ka_gochara_sweep/resonance/v2_materialize, test guard helpers) → gochara3/w01 pushed. W0.2: committed 33-line partial (ka_vedha_gochara + ka_kota_chakra + sarvatobhadra fixes) → gochara3/w02 pushed. Both now have 1 commit on branch. Dispatching 5 agents in parallel: VERIFIER(W0.3+W0.4), builder(W0.1-complete), builder(W0.2-builds), builder(I6a-557).
 - 2026-08-10 06:52 IST: Lane table updated post-salvage: W0.1 now has committed work (1 commit).
 
-CONDUCTOR-HEARTBEAT: 2026-08-10T01:22:00Z
+- 2026-08-10 06:55 IST: 4 agents dispatched in parallel — VERIFIER(opus, W0.3+W0.4), builder(sonnet, W0.1-complete), builder(sonnet, W0.2-builds), builder(sonnet, I6a-557). All running background. Awaiting verdicts.
+
+CONDUCTOR-HEARTBEAT: 2026-08-10T01:25:00Z
