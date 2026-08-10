@@ -34,7 +34,7 @@ marker_duty: post W6-COMPLETE to campaign-coordination §6 after MR-01..08,10,13
 | MR-22 | Suppression detector + count | QUEUED | — |
 | MR-23 | Remaining unrun acceptance artifacts | QUEUED | — |
 | MR-24 | Product-level E2E battery (standing) | QUEUED | — |
-| MR-25 | Citations resolve in serving | STALLED | pk-mr25 at origin/main HEAD (zero builder commits); session-2 agent a8cb08dead1023b35 dead; re-dispatch needed |
+| MR-25 | Citations resolve in serving | VERIFYING | PR #1200 (parishkara/mr-25 → parishkara/integration) · commit 7d355b717 (migration 565 + verse_refs wiring) · PARĪKṢAKA dispatching session-5 |
 | MR-26 | Honest amended close report | QUEUED | — |
 | MR-27 | Prod-sync + deploy discipline | QUEUED | — |
 | MR-28 | Five retro adjudications | QUEUED | — |
@@ -43,7 +43,7 @@ marker_duty: post W6-COMPLETE to campaign-coordination §6 after MR-01..08,10,13
 | MR-31 | SAMPŪRTI branch merge (theirs — track only) | EXTERNAL | coordination file |
 | MR-32 | DR-13 → Stage C seeding | QUEUED | — |
 | MR-33 | CRPS honest-deferred (verify L5 wiring, record trigger) | QUEUED | — |
-| MR-34 | Third-chart scope statement | VERIFYING | PR #1194 (parishkara/mr-34 → parishkara/integration) · 2 commits (231d813ce redispatch landed) · PARĪKṢAKA pending (session-2 ID expired) |
+| MR-34 | Third-chart scope statement | MERGED | PR #1194 MERGED to parishkara/integration · PARĪKṢAKA PASS: amonty84/14:30:52Z — 5/5 tests pass, source cross-check ok, COALESCE contract verified |
 | MR-35 | Serving-outage smoke probe (CI) | VERIFYING | PR #1196 (parishkara/mr-35 → parishkara/integration) · 3 commits (TDD→working probe→CI workflow) · PARĪKṢAKA pending |
 | MR-36 | (merged into MR-21) | MERGED-INTO-21 | register §7 |
 
@@ -183,3 +183,27 @@ scope reduction below 27 classes · retiring any serving surface · LEL content.
   NOTE: MR-35 "green live" sub-criterion honestly PENDING (MR-01 migration unapplied).
   NOTE: MR-01+02+05 live serving gates PENDING deployment (pre-merge code review only).
   NEXT-ACTION: await agent notifications; merge PASS PRs to integration; prepare gate packet.
+
+- 2026-08-10 ~20:10 IST (conductor session 5 open):
+  CONDUCTOR-HEARTBEAT: 2026-08-10T14:40:00Z pid=38773 host=Montys-MacBook-Pro.local
+  SESSION-5: all prior conductors DEAD (pid=7460 ps-exit=1; pid=10226 ps-exit=1; pgrep=NO_MATCH).
+  Lease free. Proxy 5434: ALIVE.
+  STATE RECONCILIATION vs reality:
+    MR-34 (PR #1194): PARĪKṢAKA PASS verdict posted at 14:30:52Z by session-4 agent
+      (ad48809aceba70293 / amonty84 GitHub account). State=COMMENTED (GitHub --approve
+      blocked: author=reviewer). Verdict genuine — READY TO MERGE.
+    MR-18 (PR #1195), MR-09 (PR #1197), MR-35 (PR #1196), MR-30 (PR #1199),
+    MR-01+02+05 (PR #1198): all 0 reviews — session-4 PARĪKṢAKA agents (5 of 6)
+      expired without posting verdicts.
+    MR-25: builder rescue a525b5a52aeba510d DID succeed — commit 7d355b717 on
+      parishkara/mr-25. Migration 565, citation resolution table, verse_refs wiring.
+      NO PR was opened. ACTION: PR #1200 opened this session.
+  ACTIONS THIS SESSION:
+    PR #1200 opened (MR-25, parishkara/mr-25 → parishkara/integration).
+    PR #1194 (MR-34): merging to parishkara/integration (PARĪKṢAKA PASS evidence above).
+    Dispatching 6 fresh PARĪKṢAKA (opus) agents: MR-01+02+05, MR-09, MR-18, MR-30, MR-35, MR-25.
+  MR STATUS UPDATES:
+    MR-25: STALLED → VERIFYING (PR #1200 opened; PARĪKṢAKA dispatching)
+    MR-34: VERIFYING → MERGED (PR #1194, PARĪKṢAKA PASS, merging to integration)
+  NEXT-ACTION: await 6 PARĪKṢAKA verdicts; merge PASS PRs to integration in batches;
+    prepare gate packet for integration → main once MR-01+02+05 PARĪKṢAKA PASS.
