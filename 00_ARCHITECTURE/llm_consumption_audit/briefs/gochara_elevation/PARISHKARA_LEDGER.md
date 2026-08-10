@@ -13,11 +13,11 @@ marker_duty: post W6-COMPLETE to campaign-coordination §6 after MR-01..08,10,13
 | MR-01 | Schema parity (8 cols) → tools un-500 | MERGED | PR #1198 MERGED to parishkara/integration · PARĪKṢAKA PASS: migration 564 correct (8 nullable cols, IF NOT EXISTS, DO verify, DOWN path, false comment fixed) |
 | MR-02 | Coverage gate authority-aware | MERGED | combined in PR #1198 · PARĪKṢAKA PASS: substepAssetId switches v1↔3.0 per authority seam, substepSourceLabel honest |
 | MR-03 | Truthful '3.0' citation | VERIFYING | PR #1204 OPEN · PARĪKṢAKA a986ab61334781bb2 dispatched · if (generation==='3.0') branch before g3_* check; cites ka_gochara + gochara_v3; test_mr03_citation_branch.py |
-| MR-04 | Valence vocabulary contract | QUEUED | after MR-01+02+05 spine lands |
+| MR-04 | Valence vocabulary contract | BUILDING | builder a56c5ac8 dispatched · _VALENCE_MAP in ka_gochara.py (favourable→gain, adverse→loss) |
 | MR-05 | Corrected deprecation migration (FK-safe) | MERGED | combined in PR #1198 · PARĪKṢAKA PASS: FK chain confirmed (mig-169); step 0a/0b clean FK referrers before step 1 DELETE; sequencing correct |
 | MR-06 | Seed/542 durability + gen-3.0 protection | MERGED | PR #1202 MERGED to parishkara/integration · PARĪKṢAKA PASS: 36/36 tests, RETIRED guard, mig-566 gen-3.0 trigger, DOWN path, self-verify confirmed |
 | MR-07 | Cockpit truth (count_sql) | VERIFYING | PR #1203 OPEN · PARĪKṢAKA a4a80abdef87985d2 dispatched · ka_gochara_sweep count_sql scoped to AND generation='v1'; test_mr07_cockpit_count_sql.py |
-| MR-08 | Flip/rollback/probe tooling | QUEUED | after MR-30 scripts committed |
+| MR-08 | Flip/rollback/probe tooling | BUILDING | builder ab00584c dispatched · static W0.1 interface tests for flip_authority.py/rollback_authority.py/probe_gochara.py (committed by MR-30) |
 | MR-09 | Naming coherence + health + pointers | MERGED | PR #1197 MERGED · PARĪKṢAKA PASS: GocharaTransitService rename (alias kept), health probe JD-sanity check, discoverability guard, ph_muhurta docstring correct, 17 tests verified |
 | MR-10 | Promote 54 point rows | QUEUED | needs MR-01 cols first |
 | MR-11 | Resolution bar + hierarchy windows | QUEUED (ADJUDICATOR bar ruling first) | — |
@@ -344,4 +344,25 @@ scope reduction below 27 classes · retiring any serving surface · LEL content.
   NOTE: TS hotfix push (97240701a) triggered 4th CI re-run on PR #1201 (run 31403334441).
     All checks fresh-PENDING again; GATE-EXECUTOR watching latest run. Protocol: hold MR-03/07
     merges to integration until PR #1201 lands on main (to avoid further CI re-triggers).
-  NEXT-ACTION: await PARĪKṢAKA verdicts for MR-03/07; await GATE-EXECUTOR (PR #1201 → deploy → L-4).
+  GATE-EXECUTOR PUSHED SECOND HOTFIX (eeedab095): fix(MR-06): update kala asset count 24→23
+    after v2_materialize removal. Registry parity gate caught the stale count. PR #1201 HEAD
+    now eeedab095. CI re-triggered again.
+  PR #1201 CI STATUS (HEAD eeedab095, ~20:50 IST):
+    ONLY 2 CHECKS PENDING: Build Check (PR only) + Governance Gates
+    All other checks: SUCCESS or SKIPPED. No failures detected.
+    GATE-EXECUTOR monitoring; merge imminent once Build Check + Governance Gates complete.
+  NEXT WAVE DISPATCHED (MR-04, MR-08):
+    MR-04 (a56c5ac8499825eac, sonnet): valence vocab fix in ka_gochara.py
+      Worktree: /Users/Dev/Vibe-Coding/Apps/Madhav/pk-mr04 (off eeedab095)
+      Goal: _VALENCE_MAP {'favourable':'gain','adverse':'loss','mixed':'mixed'} in writer
+    MR-08 (ab00584c6db07e369, sonnet): flip/rollback/probe interface gate tests
+      Worktree: /Users/Dev/Vibe-Coding/Apps/Madhav/pk-mr08 (off eeedab095)
+      Goal: static W0.1 tests for existing flip_authority.py/rollback_authority.py/probe_gochara.py
+  ACTIVE AGENTS (5 concurrent):
+    GATE-EXECUTOR (a2c8c6190edff81a1): PR #1201 — 2 checks remaining, merge imminent
+    PARĪKṢAKA MR-03 (a986ab61334781bb2): reviewing PR #1204
+    PARĪKṢAKA MR-07 (a4a80abdef87985d2): reviewing PR #1203
+    MR-04 builder (a56c5ac8499825eac): RUNNING
+    MR-08 builder (ab00584c6db07e369): RUNNING
+  NEXT-ACTION: await GATE-EXECUTOR merge; await PARĪKṢAKA MR-03/07; await MR-04/08 PRs.
+    HOLD: do NOT merge MR-03/07/04/08 to integration until PR #1201 lands on main.
