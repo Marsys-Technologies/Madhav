@@ -94,6 +94,7 @@ from services.gochara_intensity.beta_priors import beta_for
 from pipeline.transit_search import _jd_to_ist_iso
 
 from .context import ClassContext, VedhaRow, MaleficScaleRow
+from .threshold import ThresholdConfig, compute_threshold_config, is_above_threshold
 
 logger = logging.getLogger(__name__)
 
@@ -1198,8 +1199,89 @@ def _check_planetary_return_from_context(
     return False, {}
 
 
+def evaluate_lambda_vector_with_threshold(
+    swe,
+    context: ClassContext,
+    jd_vector: np.ndarray,
+    *,
+    conn=None,
+    age_years: int = 42,
+    jd_thresh_start: Optional[float] = None,
+    jd_thresh_end: Optional[float] = None,
+    thresh_step_days: float = 7.0,
+    window_days_permission: float = 15.0,
+    window_days_activity: float = 5.0,
+    suppression_window_days: float = 3.0,
+    source: str = "v3_batch",
+    _lambda_distribution=None,
+) -> tuple[list[IntensityResult], ThresholdConfig]:
+    """W1.4: Evaluate λ_v3 for all JDs AND compute the self-normalizing threshold.
+
+    This is the W1.4 entry point. It:
+
+    1. Computes a ThresholdConfig ONCE via compute_threshold_config — the
+       percentile-based activation threshold derived from the chart's own
+       century-scale λ_v3 distribution and brahma_event_ontology base rates.
+    2. Evaluates evaluate_lambda_vector (unchanged) for all requested JDs.
+    3. Returns (results, threshold_config) so the caller can:
+         - gate window emission: is_above_threshold(r.raw_lambda, config)
+         - attach provenance to every window row: config.to_dict()
+
+    AC5 guarantee: v1_parity_mode=True is never passed here — this wrapper
+    operates exclusively in the v3 bounded-lambda path. Callers wanting
+    v1_parity_mode must call evaluate_lambda_vector directly (unchanged).
+
+    Parameters
+    ----------
+    swe                    Swiss Ephemeris handle.
+    context                ClassContext (pre-fetched).
+    jd_vector              JDs to evaluate.
+    conn                   DB connection for brahma_event_ontology read.
+    age_years              Native's age (default 42, native bracket 35–50).
+    jd_thresh_start        Start of century horizon for threshold distribution.
+    jd_thresh_end          End of century horizon.
+    thresh_step_days       Sampling step for the century distribution (days).
+    window_days_permission PERMISSION window (passed to evaluate_lambda_vector).
+    window_days_activity   Activity window (passed to evaluate_lambda_vector).
+    suppression_window_days Suppression window (passed to evaluate_lambda_vector).
+    source                 Provenance tag.
+    _lambda_distribution   Pre-computed distribution array for testing (skips
+                           the century evaluation when supplied).
+
+    Returns
+    -------
+    (results, threshold_config)
+        results           list[IntensityResult], one per JD in jd_vector,
+                          produced by evaluate_lambda_vector with v1_parity_mode=False.
+        threshold_config  ThresholdConfig with all W1.4 provenance fields.
+    """
+    # 1. Compute threshold config ONCE for this (chart × class).
+    threshold_config = compute_threshold_config(
+        swe, context,
+        conn=conn,
+        age_years=age_years,
+        jd_start=jd_thresh_start,
+        jd_end=jd_thresh_end,
+        step_days=thresh_step_days,
+        _lambda_distribution=_lambda_distribution,
+    )
+
+    # 2. Evaluate λ_v3 for all requested JDs (v3 path only, never v1_parity).
+    results = evaluate_lambda_vector(
+        swe, context, jd_vector,
+        window_days_permission=window_days_permission,
+        window_days_activity=window_days_activity,
+        suppression_window_days=suppression_window_days,
+        source=source,
+        v1_parity_mode=False,  # W1.4 operates on λ_v3 only — v1 path untouched
+    )
+
+    return results, threshold_config
+
+
 __all__ = [
     "evaluate_lambda_vector",
+    "evaluate_lambda_vector_with_threshold",
     "_compute_activity_v3",
     "_compute_signed_channels_v3",
     "_resolve_valence_v3",
