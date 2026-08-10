@@ -412,15 +412,52 @@ def row_to_params(row: PrimitiveRow) -> dict:
     }
 
 
+_BATCH_INSERT_SQL = """
+INSERT INTO kala_field_primitives (
+    chart_id, primitive_kind, subject, object_ref, t_start, t_end, envelope,
+    polarity, class_label, source_kind, source_table, source_pk,
+    source_fact_id, kinematics_ids
+) VALUES (
+    %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+)
+ON CONFLICT (chart_id, primitive_kind, subject, COALESCE(object_ref, ''), t_start)
+DO UPDATE SET
+    t_end = EXCLUDED.t_end,
+    envelope = EXCLUDED.envelope,
+    polarity = EXCLUDED.polarity,
+    class_label = EXCLUDED.class_label,
+    source_kind = EXCLUDED.source_kind,
+    source_table = EXCLUDED.source_table,
+    source_pk = EXCLUDED.source_pk,
+    source_fact_id = EXCLUDED.source_fact_id,
+    kinematics_ids = EXCLUDED.kinematics_ids,
+    computed_at = now()
+"""
+
+
 def write_primitive_rows(conn, rows: Sequence[PrimitiveRow]) -> int:
-    """Idempotent per-row upsert (natural key = chart_id, primitive_kind,
-    subject, object_ref, t_start). The coarser once-per-chart delete-then-
-    insert (§N.3) is orchestrated once in `ka_kshetra.plan_substeps` (Lane C)."""
-    n = 0
-    for r in rows:
-        conn.execute(UPSERT_SQL, row_to_params(r))
-        n += 1
-    return n
+    """Batch-inserts all rows via cursor.executemany() to avoid per-row round-trip
+    latency (L1f fix — same class as L1d stage3_clocks fix, SAMPURTI campaign).
+
+    §N.3: the once-per-chart DELETE runs once in plan_substeps before any substep;
+    the ON CONFLICT clause handles idempotent re-runs within the same substep."""
+    if not rows:
+        return 0
+    import json
+    params = [
+        [
+            r.chart_id, r.primitive_kind, r.subject, r.object_ref,
+            r.t_start, r.t_end,
+            json.dumps([{"t": t, "v": v} for t, v in r.envelope]),
+            r.polarity, r.class_label, r.source_kind, r.source_table,
+            r.source_pk, r.source_fact_id,
+            list(r.kinematics_ids) if r.kinematics_ids else [],
+        ]
+        for r in rows
+    ]
+    with conn.cursor() as cur:
+        cur.executemany(_BATCH_INSERT_SQL, params)
+    return len(rows)
 
 
 # ═════════════════════════════════════════════════════════════════════════════
