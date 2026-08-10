@@ -4,7 +4,7 @@ plan: GOCHARA_UTKARSHA_CAMPAIGN_PLAN_v1_0.md
 branch: utkarsha/campaign
 conductor_model: claude-sonnet-4-6
 launched: 2026-08-10
-last_updated: 2026-08-10 (session 3 — W0.1 VERIFYING)
+last_updated: 2026-08-10 (session 11 — W3.3 PASS, W3.4 BUILDING, W2.8/W2.9 in queue)
 
 ---
 
@@ -223,3 +223,5 @@ CONDUCTOR-HEARTBEAT: 2026-08-10T06:27:00Z pid=93857 host=Montys-MacBook-Pro.loca
 
 - 2026-08-10 17:37 IST: SESSION 11 CONTINUED (post-context-compact). Lock unblocked: zombie Cloud Run SAMPŪRTI P-G1 PID 1580084 (idle-in-transaction holding advisory lock `hashtext('482012f1-...')` = objid 3964081750) terminated via pg_terminate_backend. Native W0.2 orchestrator relaunched (run-id b19b70db). **W0.2 COMPLETE (both charts):** native: ka_kota_chakra=585, ka_tithi_pravesha=120, ka_moorti_nirnaya=72, ka_vedha_gochara=177, ka_gochara_v2_materialize=0 (honest empty); Abhinandan (from prior session): ka_kota_chakra=585, ka_tithi_pravesha=120, ka_moorti_nirnaya=72, ka_vedha_gochara=178, ka_gochara_v2_materialize=0. I6(b) rail intact (no v1 corpus mutation confirmed by prior session). Merge queue status resolved: W2.6 MERGED (06:22Z), W3.2 MERGED (06:31Z, PR#1169 18252a5f9), W3.1 MERGED (06:39Z, PR#1168 bfc09471e). W2.5 (#1161) confirmed in readonly merge queue (gh-readonly-queue branch present). W2.8 (#1166) + W2.9 (#1167): CI fully PASS (all 19 non-deploy checks green), confirmed "already queued". W3.3 (#1170): already in merge queue (push rejected by branch protection), CI 19/26 (7 skip = deploy checks, expected), VERIFIER (opus, a1b23a90) still running. W3.4 gate (W0.3 PASS + W3.2 PASS): **SATISFIED** — dispatching W3.4 builder.
 - 2026-08-10 12:30 IST: **W3.3 VERIFIER PASS** (opus, a86c06b1). 10/10 AC: RESOLUTION_TIERS order (era<month<day<muhurta) ✓; WindowResolutionRecord 7 fields exact ✓; assign_parent_window_ids pure function widest-wins ✓; build_era_windows duration>=365→era else month ✓; build_month_windows 30-day midpoint peak ✓; build_day_windows 1-day midpoint peak ✓; build_resolution_hierarchy era→month→day→assign_parents HierarchyResult ✓; I2 clean (no gochara_grammar/intensity/sweep imports) ✓; 15 DB-free tests ✓; ERA_BODIES arithmetic correct (computed constants correct, comment rounding noted as minor) ✓. PR #1170 in readonly merge queue — VERIFIER comment posted. W3.3 → PASS.
+
+CONDUCTOR-HEARTBEAT: 2026-08-10T07:05:00Z pid=40131 host=Montys-MacBook-Pro
