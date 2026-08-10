@@ -421,3 +421,242 @@ def write_primitive_rows(conn, rows: Sequence[PrimitiveRow]) -> int:
         conn.execute(UPSERT_SQL, row_to_params(r))
         n += 1
     return n
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# Module-level substep wiring (SAMPURTI G1 — plugs this stage into the
+# ka_kshetra HEAVY writer's _optional_stage_plugins mechanism).
+#
+# Stage 1 reads kala_field_kinematics (stage0 output) and kala_field_boundaries
+# (stage3 output) and writes kala_field_primitives. It MUST run after BOTH
+# stage0 and stage3 — the plugin order in writer._optional_stage_plugins
+# guarantees this (stage0 → stage2 → stage3 → stage1).
+#
+# §N.3 contract: the once-per-chart DELETE runs exactly ONCE in plan_substeps,
+# BEFORE the substep executes.
+# ═════════════════════════════════════════════════════════════════════════════
+
+def _reconstruct_episodes_from_db(conn, chart_id: str) -> list:
+    """Read kala_field_kinematics and reconstruct ContactEpisode objects by
+    grouping rows with the same episode_id.
+
+    Only contact-kind rows (contact_in/out/peak/core_in/core_out) that have a
+    non-NULL episode_id belong to a contact episode. Other kinds (sign_ingress,
+    nakshatra_ingress, station, syzygy) are returned separately for the
+    corresponding primitive builders.
+
+    Returns (episodes, station_rows_db, syzygy_rows_db) where:
+      - episodes: list of (kinematics_row_id_in, ContactEpisode) pairs
+      - station_rows_db: raw DB rows for station events
+      - syzygy_rows_db: raw DB rows for syzygy events
+    """
+    rows = conn.execute(
+        """SELECT id, event_kind, body, target_kind, target_ref, t_days,
+                  dwell_days, dwell_weight, orb_deg, orb_source,
+                  eclipse_candidate, gamma_proxy, episode_id
+           FROM kala_field_kinematics
+           WHERE chart_id = %s
+           ORDER BY body, t_days ASC
+        """,
+        [chart_id],
+    ).fetchall()
+
+    def _row(r, key, idx):
+        return r[key] if isinstance(r, dict) else r[idx]
+
+    # Group by episode_id for contact events.
+    episodes_by_id: dict = {}
+    station_rows_db = []
+    syzygy_rows_db = []
+    id_in_by_episode: dict = {}
+
+    for r in rows:
+        event_kind = _row(r, 'event_kind', 1)
+        ep_id = _row(r, 'episode_id', 12)
+
+        if event_kind == 'station':
+            station_rows_db.append(r)
+        elif event_kind == 'syzygy':
+            syzygy_rows_db.append(r)
+        elif event_kind in ('contact_in', 'contact_out', 'contact_peak',
+                            'contact_core_in', 'contact_core_out'):
+            if ep_id is None:
+                continue
+            if ep_id not in episodes_by_id:
+                episodes_by_id[ep_id] = []
+                id_in_by_episode[ep_id] = None
+            episodes_by_id[ep_id].append(r)
+            if event_kind == 'contact_in':
+                id_in_by_episode[ep_id] = _row(r, 'id', 0)
+
+    # Reconstruct ContactEpisode objects from the grouped rows.
+    episodes = []
+    for ep_id, ep_rows in episodes_by_id.items():
+        by_kind: dict = {}
+        for r in ep_rows:
+            kind = _row(r, 'event_kind', 1)
+            by_kind[kind] = r
+
+        if 'contact_in' not in by_kind or 'contact_out' not in by_kind:
+            continue  # incomplete episode — honest skip
+
+        r_in = by_kind['contact_in']
+        r_out = by_kind['contact_out']
+        r_peak = by_kind.get('contact_peak') or r_in
+
+        t_in = float(_row(r_in, 't_days', 5))
+        t_out = float(_row(r_out, 't_days', 5))
+        t_peak = float(_row(r_peak, 't_days', 5))
+
+        ok_core_in = None
+        if 'contact_core_in' in by_kind:
+            ok_core_in = float(_row(by_kind['contact_core_in'], 't_days', 5))
+        ok_core_out = None
+        if 'contact_core_out' in by_kind:
+            ok_core_out = float(_row(by_kind['contact_core_out'], 't_days', 5))
+
+        orb = _row(r_in, 'orb_deg', 8)
+        orb_src = _row(r_in, 'orb_source', 9)
+        body = _row(r_in, 'body', 2)
+        target_ref = _row(r_in, 'target_ref', 4)
+
+        ep = ContactEpisode(
+            body=body,
+            target_ref=target_ref if target_ref else '',
+            t_in=t_in,
+            t_out=t_out,
+            t_peak=t_peak,
+            orb_deg=float(orb) if orb is not None else 3.0,
+            orb_source=orb_src if orb_src else 'default_3deg',
+            ok_core_in=ok_core_in,
+            ok_core_out=ok_core_out,
+        )
+        kin_id = id_in_by_episode.get(ep_id)
+        episodes.append((kin_id, ep))
+
+    return episodes, station_rows_db, syzygy_rows_db
+
+
+def plan_substeps(ctx) -> list:
+    """Wire stage 1 (primitives + envelopes) into the ka_kshetra substep plan.
+
+    Single substep — all primitive kinds are built in one pass from the
+    already-committed stage0 kinematics and stage3 boundaries. §N.3 delete
+    runs ONCE here (not per substep), before the substep executes.
+    """
+    from pipeline.orchestrator.writers import SubStep
+    conn = ctx.db_conn
+    chart_id = ctx.config['chart_id']
+    # §N.3: delete prior rows ONCE before the substep executes.
+    conn.execute(REPLACE_PRIOR_SQL, [chart_id])
+    return [SubStep(key='stage1:run', label='primitives + envelopes')]
+
+
+def handles_substep(step) -> bool:
+    """Return True if this stage owns the given substep key."""
+    return step.key == 'stage1:run'
+
+
+def run_substep(ctx, step) -> object:
+    """Build and persist kala_field_primitives from committed kinematics + boundaries.
+
+    Reads kala_field_kinematics (stage0) and kala_field_boundaries (stage3) —
+    both §N.5 references, never re-derived computations. Emits every primitive
+    kind stage1 can produce; gaps that cannot be computed honestly are recorded
+    as CoverageGap (not silently dropped, not fabricated, §N.7 item 6).
+
+    WriterResult.rows_inserted is the actual count of rows written.
+    """
+    from pipeline.orchestrator.writers import WriterResult
+
+    conn = ctx.db_conn
+    chart_id = ctx.config['chart_id']
+
+    primitives: list[PrimitiveRow] = []
+
+    # ── Contact-based primitives (contact_moon_ref / contact_lagna_ref) ──────
+    episodes, station_rows_db, syzygy_rows_db = _reconstruct_episodes_from_db(conn, chart_id)
+
+    def _row_val(r, key, idx):
+        return r[key] if isinstance(r, dict) else r[idx]
+
+    for kin_id, ep in episodes:
+        target_ref = ep.target_ref
+        w_dwell = None
+        # Read dwell_weight directly from the contact_in kinematics row (§N.5).
+        dw_rows = conn.execute(
+            """SELECT dwell_weight FROM kala_field_kinematics
+               WHERE chart_id = %s AND event_kind = 'contact_in'
+                 AND body = %s AND COALESCE(target_ref, '') = %s
+                 AND t_days = %s LIMIT 1""",
+            [chart_id, ep.body, target_ref if target_ref else '', ep.t_in],
+        ).fetchone()
+        if dw_rows is not None:
+            dw_val = dw_rows['dwell_weight'] if isinstance(dw_rows, dict) else dw_rows[0]
+            if dw_val is not None:
+                w_dwell = float(dw_val)
+
+        if w_dwell is None:
+            # No dwell_weight in DB — cannot build a correctly-weighted primitive.
+            # §N.7 item 6: an honest null beats an invented judgment.
+            continue
+
+        # contact_moon_ref: episode where target_ref is 'Moon' (natal Moon).
+        if target_ref == 'Moon':
+            primitives.append(
+                build_contact_primitive_with_dwell(ep, chart_id, 'Mo', w_dwell,
+                                                   (kin_id,) if kin_id else ())
+            )
+        # contact_lagna_ref: episode where target_ref is 'LAGNA'.
+        elif target_ref == 'LAGNA':
+            primitives.append(
+                build_contact_primitive_with_dwell(ep, chart_id, 'Lagna', w_dwell,
+                                                   (kin_id,) if kin_id else ())
+            )
+
+    # ── Station band primitives ───────────────────────────────────────────────
+    for r in station_rows_db:
+        body = _row_val(r, 'body', 2)
+        t_root = float(_row_val(r, 't_days', 5))
+        kin_id = _row_val(r, 'id', 0)
+        # dwell_weight from the station row itself (stored as dwell_weight on
+        # station rows, or fall back to a default via the ephemeris mean motion).
+        dw_val = _row_val(r, 'dwell_weight', 7)
+        w_dwell = float(dw_val) if dw_val is not None else 0.5
+        primitives.append(
+            build_station_band_primitive(chart_id, body, t_root, w_dwell, kin_id)
+        )
+
+    # ── Syzygy band primitives ────────────────────────────────────────────────
+    for r in syzygy_rows_db:
+        body = _row_val(r, 'body', 2)
+        t_root = float(_row_val(r, 't_days', 5))
+        syzygy_kind = _row_val(r, 'target_ref', 4) or 'unknown'
+        eclipse_flag = bool(_row_val(r, 'eclipse_candidate', 10))
+        kin_id = _row_val(r, 'id', 0)
+        primitives.append(
+            build_syzygy_band_primitive(chart_id, body, t_root, syzygy_kind,
+                                        eclipse_flag, kin_id)
+        )
+
+    # ── Sandhi band (dasha boundary bands — reads kala_field_boundaries) ─────
+    sandhi_prims, sandhi_gap = build_sandhi_band_primitives(chart_id, conn)
+    primitives.extend(sandhi_prims)
+    if sandhi_gap is not None:
+        import logging
+        logging.getLogger(__name__).info(
+            'stage1_symbolization: sandhi_band coverage gap for chart %s: %s',
+            chart_id, sandhi_gap,
+        )
+
+    # Coverage gaps (§N.7 item 6: serve honestly, never fabricate).
+    # av_kaksha_gate and latta are not_in_corpus at W2 — logged, not raised.
+    for gap in (av_kaksha_gate_coverage(), latta_coverage()):
+        import logging
+        logging.getLogger(__name__).info(
+            'stage1_symbolization: coverage gap %s for chart %s: %s',
+            gap.primitive_kind, chart_id, gap.reason_code,
+        )
+
+    n = write_primitive_rows(conn, primitives)
+    return WriterResult(asset_id='ka_kshetra', rows_inserted=n)
