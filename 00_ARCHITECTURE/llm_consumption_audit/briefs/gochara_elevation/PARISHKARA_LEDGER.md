@@ -553,3 +553,58 @@ scope reduction below 27 classes · retiring any serving surface · LEL content.
     findings, PR numbers, and stash/lease state.
   NEXT-ACTION: report migration 563 bug to native for a fix decision; merge PR #1207 once green;
     hold PR #1208 for native go-ahead; do NOT attempt another deploy until 563 is fixed.
+
+- 2026-08-10 ~22:3x IST (interactive conductor — migration 563 fixed and EXECUTION-verified,
+  native GO on the full remaining chain, no further per-step pauses):
+  VERIFICATION-CLASS FINDING (native-directed, binding on this campaign going forward):
+    Migration 563 has now been PARĪKṢAKA prose-reviewed and PASSED once (MR-05, PR #1198) and
+    STILL shipped a live-deploy-failing bug. The fix for that bug was itself only proven correct
+    by building a throwaway DB and actually running it — prose review would have missed the
+    SECOND bug too (see below) exactly as it missed the first. Prose review checks whether the
+    SQL reads as correct; it does not check whether the SQL runs against the schema it claims to
+    run against. TWO independent misses on the same file is not bad luck, it's the review
+    method's structural blind spot for this class of defect (schema-contact: does this table
+    actually have this column, does this FK actually allow this write).
+    STANDING RULE, effective immediately, binding on every future migration in this campaign:
+    a migration does not get a PARĪKṢAKA PASS from reading the SQL. It gets PASS only after
+    someone actually RUNS it — against a schema that has the tables/columns/FKs it touches,
+    seeded with data shaped like whatever caused (or could cause) the failure being fixed.
+    Prose review remains useful for intent/idempotency/doc quality, but is no longer sufficient
+    on its own to close a migration-touching MR. This generalizes the same §N.8 Earned-Signal
+    principle CLAUDE.md already codifies for build-system status signals: "a status must be
+    computed by a detector that measures the specific claim it asserts" -- prose review was
+    asserting "this SQL executes cleanly" without a detector that could ever prove it false.
+  BUG SWEEP (native-directed: close the class, not the instance): every table/column reference
+    in migrations 563-566 cross-checked one at a time against live information_schema.columns +
+    pg_constraint. Only 563 had a defect; 564 (8 ADD COLUMNs, all self-verified via their own DO
+    block), 565 (asset_registry INSERT — all 20 columns confirmed present + asset_id confirmed
+    PRIMARY KEY for the ON CONFLICT clause), 566 (build_protected_assets + kala_gochara_windows
+    columns, all confirmed present) — clean.
+  BUG #2 (found only by executing past bug #1, never by review): step 2's rename
+    (`UPDATE asset_registry SET asset_id='ka_gochara' WHERE asset_id='ka_gochara_v2_materialize'`)
+    bare-renames a PK value FK-referenced (non-deferrable) by asset_throughput.asset_id and
+    asset_coefficients.{upstream,downstream}_asset_id (confirmed the COMPLETE referencing set
+    live via pg_constraint confrelid lookup — only these two tables). Production holds 2 LIVE
+    asset_throughput rows for ka_gochara_v2_materialize right now (both canonical charts) — this
+    would have failed FK 23503 in production exactly as reproduced in the throwaway DB. Fixed via
+    insert-new-row / repoint-children / delete-old-row instead of an in-place PK rename.
+  EXECUTION VERIFICATION (real run, not review): pg_dump --schema-only of asset_registry,
+    asset_throughput, asset_coefficients, build_protected_assets, kala_gochara_windows, charts
+    from live prod (via the existing read-only proxy) restored into a fresh postgres:16 container;
+    the 2 pre-existing guard trigger functions recreated; seeded the EXACT rows that caused both
+    live failures (global self-test throughput row, both charts' v2_materialize throughput rows,
+    coefficients rows referencing ka_gochara via both FK directions) plus extra coverage rows.
+    Ran 563(fixed)→564→565→566 in order: all green. Verified final state matches every claim in
+    all four files, INCLUDING a coefficients row that referenced v2_materialize indirectly (not
+    the literal 'ka_gochara' string) — proves the repoint logic generally, not just the two
+    originally-broken deletes. Re-ran all four a SECOND time: zero state change, confirming the
+    idempotency every file already claims in its own header comment.
+  PR #1209 opened (fix/migration-563-fk-safe-rename → main): both bugs, full verification writeup.
+    CI green, MERGING (native full GO, no further pause on this chain).
+  Docker throwaway container + temp schema dump cleaned up after verification.
+  NEXT-ACTION (native's explicit chain, no per-step pause): merge #1209 on green → merge #1207 on
+    green (already green, queued) → retry the deploy → full M5 verification (migrations 563-566
+    in _migrations_applied, ka_gochara_sweep RETIRED, ka_gochara CURRENT, all 3 gochara tools
+    un-500 on both charts via the deployed product) → merge PR #1208 once M5 verifies green →
+    dispatch MR-10/13/14/15 builders. W6-COMPLETE marker still waits for the FULL marker-gate set
+    (MR-01..08,10,13,14,15,24) — this session's work does not change that gate.
