@@ -604,5 +604,47 @@ Peak concurrency ≈ 9 builder worktrees (Wave 2). Waves 2 and 3 can overlap par
 - `CONDUCTOR_PROMPT.md` — the prompt the native pastes/launches (used by the script).
 - `run_conductor.sh` — the re-trigger loop (crash/API-drop resilient).
 - `LEDGER.md` — created by the conductor on first run; the campaign's single state file.
+- `.claude/worktrees/utkarsha-conductor-logs/watch.py` + `watch.sh` — read-only live
+  viewer (native session transcripts, not a script-captured log); lives outside any
+  tracked worktree, same convention as its proven predecessor.
 
-*End GOCHARA_UTKARSHA_CAMPAIGN_PLAN_v1_0.md v1.0*
+## §7 — Supervisor + resume architecture (v2.0, post-incident hardening)
+
+Native-directed rebuild (2026-08-10) after three real first-night incidents, done by
+investigating against the proven, battle-tested `run_overnight.sh` supervisor from the
+concurrent SAMPURTI/ṢAḌ-DARŚANA campaign and porting its architecture. Full incident
+account + fix rationale lives in the `run_conductor.sh` v2.0 and `CONDUCTOR_PROMPT.md`
+v2.0 commit messages (`utkarsha/campaign` branch) — this section is the durable
+pointer, not a duplicate.
+
+**Two stacked mechanisms, as designed by the native:** a supervisor that relaunches the
+work no matter why it stopped, and a resume protocol inside the work itself so each
+relaunch adopts exactly where the last left off instead of restarting or colliding.
+Neither alone suffices.
+
+**Supervisor (`run_conductor.sh`):** simple bash loop under a 12h wall-clock cap;
+launches the conductor with `env -u CLAUDECODE` + `< /dev/null` on stdin; a baseline
+content-hash of the ledger's terminal-marker path taken at supervisor start means a
+PRE-EXISTING marker can never be misread as this run's own completion; must be launched
+via `nohup caffeinate -i <path> </dev/null >/dev/null 2>&1 & disown` from a real
+terminal (never from inside another Claude Code session, and never as a plain
+foreground command whose life is tied to the launching terminal window).
+
+**Resume protocol (in `CONDUCTOR_PROMPT.md`, not the script):** the ledger is the only
+truth, read fresh every session, never trusted from the prompt's own text. A
+`CONDUCTOR-HEARTBEAT` lease (refreshed ≤10min, committed+pushed) is checked first, every
+session, before anything else — a fresh heartbeat (<15min) means exit immediately
+rather than risk two conductors on one branch. Resume means adopting live lanes and
+salvaging (commit+push) any dead builder's uncommitted worktree content, never
+redispatching merged work and never deleting uncommitted progress.
+
+**Deliberately not ported:** `run_overnight.sh` operates directly in the shared primary
+repo checkout; UTKARSHA's conductor instead runs from its own dedicated worktree
+(`.claude/worktrees/utkarsha-conductor`) — this asymmetry is intentional, not an
+oversight. It's what stopped this campaign's own SAMPURTI-collision incident (a foreign
+commit briefly landing on `utkarsha/campaign`, and a misplaced worktree, both from
+operating in that shared directory) — a failure mode specific to sharing a repo with
+another live autonomous campaign, which the proven pattern doesn't have to solve for.
+
+*End GOCHARA_UTKARSHA_CAMPAIGN_PLAN_v1_0.md v1.0 (§7 added 2026-08-10, no prior content
+changed)*
