@@ -4,7 +4,7 @@ plan: GOCHARA_UTKARSHA_CAMPAIGN_PLAN_v1_0.md
 branch: utkarsha/campaign
 conductor_model: claude-sonnet-4-6
 launched: 2026-08-10
-last_updated: 2026-08-10 (conductor restart — session 2 reconciliation)
+last_updated: 2026-08-10 (session 3 — W0.1 VERIFYING)
 
 ---
 
@@ -49,7 +49,7 @@ Status: QUEUED | BUILDING | VERIFYING | PASS | FAIL(n) | BLOCKED | MERGED
 
 | lane | wave | tag | title | status | branch | worktree | builder_model | deps | notes |
 |---|---|---|---|---|---|---|---|---|---|
-| W0.1 | 0 | [mech] | Registry & seed hygiene | BUILDING | gochara3/w01 | /Users/Dev/Vibe-Coding/Apps/utk-w01 | sonnet | none | Uncommitted: seed.ts (+3 assets), test_has_writer_completeness.py (+3-way guard). Still ~16 assets missing from seed. Re-spawned in session 2. |
+| W0.1 | 0 | [mech] | Registry & seed hygiene | VERIFYING | gochara3/w01 | /Users/Dev/Vibe-Coding/Apps/utk-w01 | sonnet | none | COMPLETE (session 3): seed has 0 gaps (127 ids, 120 writers + 5 seed-only-allowed), ka_kshetra 9 edges, 3-way guard passes, mutation test confirmed. SHA 6dfb45462 already on origin/gochara3/w01. |
 | W0.2 | 0 | [mech] | Baseline builds + error triage | BUILDING | gochara3/w02 | /Users/Dev/Vibe-Coding/Apps/utk-w02 | sonnet | none | Uncommitted: ka_vedha_gochara/writer.py + ka_kota_chakra/writer.py + sarvatobhadra.py (DB9 fixes). Actual builds not yet run. Re-spawned in session 2. |
 | W0.3 | 0 | [heavy] | Schema migration bundle | VERIFYING | gochara3/w03 | /Users/Dev/Vibe-Coding/Apps/utk-w03 | opus | none | 3 commits: Phase A writer scoping, Phase B migration 556, generation-aware guard tests. Clean branch. VERIFIER spawned. |
 | W0.4 | 0 | [heavy] | Batched-context scoring engine | VERIFYING | gochara3/w04 | /Users/Dev/Vibe-Coding/Apps/utk-w04 | opus | none | 3 commits: gochara_v3 package (context.py + engine.py), 3 test files (query-count, parity, speedup). Clean branch. VERIFIER spawned. |
