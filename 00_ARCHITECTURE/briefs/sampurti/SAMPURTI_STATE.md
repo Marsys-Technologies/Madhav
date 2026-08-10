@@ -14,7 +14,7 @@ conductor_session: SAMPURTI-CONDUCTOR-2026-08-10 (R4 — native relaunch 16:38 I
 
 # SAMPŪRTI CAMPAIGN LEDGER
 
-CONDUCTOR-HEARTBEAT: 2026-08-10T12:03+00:00 (SAMPURTI-CONDUCTOR-2026-08-10-R4) pid=68645 host=Dev-Mac [G12 PARĪKṢAKA (a579b755): verdict imminent (R1/R2/R3 PASS from stream). G14b PARĪKṢAKA (ad41d6a3): resolveEventClass verify stage. Incident: 2 phantom W02 build_runs cancelled + §6 LOG pushed (96eba88a1). W6-COMPLETE not yet seen. P-G1 deferred.]
+CONDUCTOR-HEARTBEAT: 2026-08-10T12:08+00:00 (SAMPURTI-CONDUCTOR-2026-08-10-R4) pid=68645 host=Dev-Mac [G12 PARĪKṢAKA (a579b755): OVERALL PASS R1–R7, 2 non-blocking findings, MERGE. G14b PARĪKṢAKA (ad41d6a3): OVERALL PASS R1–R8, 3 non-blocking findings, MERGE. Both PRs merging to sampurti/integration. W6-COMPLETE not yet seen. P-G1 deferred.]
 
 ## MODEL POLICY (BINDING — native directive 2026-08-10)
 
@@ -38,7 +38,7 @@ Sonnet/Opus respectively per the original charter and are unaffected.
 
 WAVE 0 — IGNITION. Status: COMPLETE (merged to main 3311ae0e3, deployed 31341882724).
 WAVE 1 — RC1 G1 WIRING. Status: L1b/L1c/L1d/L1e/L1f/L1g/L1h+L1i all MERGED to main. L1j MERGED to sampurti/integration (#1188, PARĪKṢAKA PASS). P-G1 deferred pending UTKARSHA W6-COMPLETE (R-COORD-2 extended).
-PARALLEL LANES (code-only, dispatched during W6 yield window): G12 PR #1191 OPEN (PARĪKṢAKA pending). G14b PR #1190 OPEN (PARĪKṢAKA pending). G13 DEFERRED: PA-4 requires bodha_cdlm_cells migration to 13 domains + CDLM regeneration; blocked until post-W6-COMPLETE rebuild.
+PARALLEL LANES (code-only, dispatched during W6 yield window): G12 PR #1191 PARĪKṢAKA PASS (R1–R7 all PASS, 2 non-blocking, MERGED to sampurti/integration). G14b PR #1190 PARĪKṢAKA PASS (R1–R8 all PASS, 3 non-blocking, MERGED to sampurti/integration). G13 DEFERRED: PA-4 requires bodha_cdlm_cells migration to 13 domains + CDLM regeneration; blocked until post-W6-COMPLETE rebuild.
 PA-0: G1_STAGE_IO_MAP_v1_0.md committed to sampurti/integration (04a2538b8).
 
 **R4 STATE (2026-08-10T11:45+00:00, conductor pid=68645):**
@@ -48,8 +48,8 @@ PA-0: G1_STAGE_IO_MAP_v1_0.md committed to sampurti/integration (04a2538b8).
 - L1h+L1i MERGED (#1187): vectorize EnvelopeIndex range check (stage4). DEPLOYED.
 - L1j MERGED to sampurti/integration (#1188, commit a68dbdf9e, 11:36 UTC). PARĪKṢAKA verdict: PASS all R1–R7 (sort invariant/bisect/state/coverage/equivalence/R13R16/regression). No blocking findings. Non-blocking: boundary-exact test gap (pre-existing, not introduced).
 - PA-0 compliance: G1_STAGE_IO_MAP_v1_0.md created + committed (04a2538b8). Documents stage 0→2→3→1→4 dependency order; confirms writer.py lines 333-336 implement correct order.
-- G12 PR #1191 OPEN: E8 non-elevations register + E6 honest_empty (NOW state_delta + STORY developmental_thesis) + timeline widget test. PARĪKṢAKA dispatched.
-- G14b PR #1190 OPEN: AHEAD auto-file (1029 adds, 32 tests). PARĪKṢAKA dispatched.
+- G12 PR #1191: PARĪKṢAKA OVERALL PASS (R1–R7). Non-blocking: C1 vacuous `threw||true` assertions; timeline golden assertions CI-skip (expect(threw||true) is crash-resistance doc, not behavioral); timeline_query previously orphaned. MERGED to sampurti/integration.
+- G14b PR #1190: PARĪKṢAKA OVERALL PASS (R1–R8). Non-blocking: no source_citation index (add in follow-up migration); PR description incorrectly states types.ts modified (actually ahead.ts); resolveEventClass order-dependence documented and tested. MERGED to sampurti/integration.
 - P-G1 deferred: ka_kshetra DAG depends on ka_gochara_sweep + ka_gochara_resonance and hazard.py
   cross-checks kala_gochara_windows (R-COORD-2 extension). Field rebuilds ONCE post-W6-COMPLETE on gen-3.0.
 - L-2 RELEASED on campaign-coordination (hygiene fix, push 87b0abf6f).
