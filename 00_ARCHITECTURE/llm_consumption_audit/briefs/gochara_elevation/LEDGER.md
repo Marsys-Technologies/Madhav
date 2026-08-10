@@ -50,7 +50,7 @@ Status: QUEUED | BUILDING | VERIFYING | PASS | FAIL(n) | BLOCKED | MERGED
 | lane | wave | tag | title | status | branch | worktree | builder_model | deps | notes |
 |---|---|---|---|---|---|---|---|---|---|
 | W0.1 | 0 | [mech] | Registry & seed hygiene | PASS | gochara3/w01 | /Users/Dev/Vibe-Coding/Apps/utk-w01 | sonnet | none | VERIFIER PASS (opus, session 6): 127 assets confirmed, 9 ka_kshetra edges, mutation test FAIL confirmed, scope clean. PR #1147 opened. |
-| W0.2 | 0 | [mech] | Baseline builds + error triage | VERIFYING | gochara3/w02 | /Users/Dev/Vibe-Coding/Apps/utk-w02 | sonnet | none | PR #1151 CI running (4811181bf). Governance Gates test fix committed (dict_row mocks). Builds still blocked on SAMPŪRTI L-2 expiry (12:00 IST). |
+| W0.2 | 0 | [mech] | Baseline builds + error triage | PASS | gochara3/w02 | /Users/Dev/Vibe-Coding/Apps/utk-w02 | sonnet | none | MERGED to main (PR #1151, 162c387a6). DB9 fixes in main. Orchestrator builds blocked on SAMPŪRTI L-2 (12:00 IST / 06:30 UTC). |
 | W0.3 | 0 | [heavy] | Schema migration bundle | MERGED | gochara3/w03 | /Users/Dev/Vibe-Coding/Apps/utk-w03 | opus | none | MERGED to main 2026-08-10T01:52 UTC (PR #1144). All CI green. |
 | W0.4 | 0 | [heavy] | Batched-context scoring engine | MERGED | gochara3/w04 | — (removed) | sonnet | none | MERGED to main 2026-08-10T02:04:23Z (PR #1145). Worktree removed. Deploy in progress (CI in_progress on main). |
 | W0.5 | 0 | [adj] | Campaign rulings (UTK-R1/R2/R3) | PASS | — | — | ADJUDICATOR | none | UTK-R1/R2/R3 issued + I6(a) migration approved. Rulings in §Rulings. |
@@ -193,4 +193,6 @@ CONDUCTOR-HEARTBEAT: 2026-08-10T02:51:11Z pid=94277 host=Montys-MacBook-Pro.loca
 - 2026-08-10 08:18 IST: PR #1149 (W1.1) MERGED at 02:48Z. λ_v3 bounded formula now in main. Worktree utk-w11 can be removed. PR #1146 (I6a) still in merge queue (no failures, BLOCKED=processing). PR #1151 (W0.2 fixes) CI still running. L-2 still ACTIVE (12:00 IST expiry).
 - 2026-08-10 08:57 IST: SESSION 8 (context-compact continuation). PR #1151 (W0.2) Governance Gates FAIL root-cause resolved: test_ka_vedha_gochara_writer.py TestFetchJanmaMoon + TestFetchSchoolTaggedVedhaPair passed plain tuples as fetchone_result, but writer uses dict_row cursor (DB9 fix) and accesses rows by column name — TypeError on tuple string index. Fixed 5 fetchone_result values: tuples → dicts keyed by SQL column names (fact_id/fact_value_num, cell_value/school_tag). Local run: 13/13 PASS. Commit 4811181bf pushed to gochara3/w02. CI re-running on PR #1151. Auto-merge enabled. PR #1146 (I6a) OPEN/UNKNOWN in queue.
 
-CONDUCTOR-HEARTBEAT: 2026-08-10T03:00:00Z pid=94277 host=Montys-MacBook-Pro.local
+- 2026-08-10 08:40 IST: PR #1151 (W0.2) ALL GREEN CI → MERGED (162c387a6). W0.2 lane → PASS. Orchestrator builds still blocked on L-2 (12:00 IST). PR #1146 (I6a) NOT in merge queue despite CI clean; root-cause: required checks "expected" for merge group. Rebased gochara3/i6a-role on latest main (2a19eb26a, now 1 commit ahead). Fresh CI triggered; will re-add to queue when CI passes. W1.2/W1.3/W1.4/W1.5 gate (W1.1 PASS) satisfied — standing by to dispatch when W0.2 merge confirmed.
+
+CONDUCTOR-HEARTBEAT: 2026-08-10T03:12:00Z pid=94277 host=Montys-MacBook-Pro.local
