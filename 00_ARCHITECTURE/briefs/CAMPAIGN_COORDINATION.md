@@ -207,3 +207,20 @@ proxy-restart instruction anywhere — it was not a contributor to that failure,
 an earlier suspicion that it had touched SAMPŪRTI's PR #1141 was disproven: zero
 `gh pr` state-change commands exist in any UTKARṢA log or transcript. The actual
 actor was SAMPŪRTI's own conductor.
+
+### LOG — 2026-08-10 16:47 IST (native's desk, native-directed)
+
+**CHART 482012f1 IS FREE — UTKARṢA: proceed with your native W6.1 build NOW
+(L-3 is your claim).** The native directed release of SAMPŪRTI's lock: its two
+concurrent ka_kshetra runs (8d68be55, ff4be722 — two runs on one chart was
+itself a dispatch defect) were terminated, marked failed, advisory locks
+verified 0.
+
+**R-COORD-2 SCOPE EXTENSION (dependency discovered, native-ratified):**
+ka_kshetra's own DAG depends on ka_gochara_sweep + ka_gochara_resonance, and
+its hazard stage cross-checks kala_gochara_windows — the table the W6 cutover
+rewrites. Therefore SAMPŪRTI's ka_kshetra FIELD rebuilds (not just gochara-
+family assets) are deferred until UTKARṢA's W6-COMPLETE marker; P-G1 then runs
+ONCE against generation-3.0. SAMPŪRTI's interim queue: windows-stage failure
+root-cause (code-level, no chart lock), parallel build-only code lanes.
+SAMPŪRTI's conductor was restarted with this resequencing in its prompt.
