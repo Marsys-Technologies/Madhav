@@ -12,12 +12,12 @@ marker_duty: post W6-COMPLETE to campaign-coordination §6 after MR-01..08,10,13
 |---|---|---|---|
 | MR-01 | Schema parity (8 cols) → tools un-500 | MERGED | PR #1198 MERGED to parishkara/integration · PARĪKṢAKA PASS: migration 564 correct (8 nullable cols, IF NOT EXISTS, DO verify, DOWN path, false comment fixed) |
 | MR-02 | Coverage gate authority-aware | MERGED | combined in PR #1198 · PARĪKṢAKA PASS: substepAssetId switches v1↔3.0 per authority seam, substepSourceLabel honest |
-| MR-03 | Truthful '3.0' citation | VERIFYING | PR #1204 OPEN · PARĪKṢAKA a2a52684 dispatched (fresh, post-compaction) · if (generation==='3.0') branch; test_mr03_citation_branch.py |
-| MR-04 | Valence vocabulary contract | VERIFYING | PR #1205 OPEN · PARĪKṢAKA ae3b3fd2 dispatched · _VALENCE_MAP in ka_gochara.py (favourable→gain, adverse→loss) |
+| MR-03 | Truthful '3.0' citation | MERGED | PR #1204 MERGED to parishkara/integration · PARĪKṢAKA PASS: explicit if(generation==='3.0') branch before g3_* check; 8 static tests; red→green confirmed |
+| MR-04 | Valence vocabulary contract | MERGED | PR #1205 MERGED to parishkara/integration · PARĪKṢAKA PASS: _VALENCE_MAP favourable→gain, adverse→loss; 4 static tests; red→green confirmed |
 | MR-05 | Corrected deprecation migration (FK-safe) | MERGED | combined in PR #1198 · PARĪKṢAKA PASS: FK chain confirmed (mig-169); step 0a/0b clean FK referrers before step 1 DELETE; sequencing correct |
 | MR-06 | Seed/542 durability + gen-3.0 protection | MERGED | PR #1202 MERGED to parishkara/integration · PARĪKṢAKA PASS: 36/36 tests, RETIRED guard, mig-566 gen-3.0 trigger, DOWN path, self-verify confirmed |
-| MR-07 | Cockpit truth (count_sql) | VERIFYING | PR #1203 OPEN · PARĪKṢAKA a04e8d64 dispatched (fresh, post-compaction) · count_sql AND generation='v1'; test_mr07_cockpit_count_sql.py |
-| MR-08 | Flip/rollback/probe tooling | VERIFYING | PR #1206 OPEN · PARĪKṢAKA a63441ed dispatched · static W0.1 tests for flip_authority.py/rollback_authority.py/probe_gochara.py |
+| MR-07 | Cockpit truth (count_sql) | MERGED | PR #1203 MERGED to parishkara/integration · PARĪKṢAKA PASS: AND generation='v1' scoping confirmed; 3 static tests; red→green confirmed |
+| MR-08 | Flip/rollback/probe tooling | MERGED | PR #1206 MERGED to parishkara/integration · PARĪKṢAKA PASS: flip/rollback/probe scripts verified; static interface tests; red→green confirmed |
 | MR-09 | Naming coherence + health + pointers | MERGED | PR #1197 MERGED · PARĪKṢAKA PASS: GocharaTransitService rename (alias kept), health probe JD-sanity check, discoverability guard, ph_muhurta docstring correct, 17 tests verified |
 | MR-10 | Promote 54 point rows | QUEUED | needs MR-01 cols first |
 | MR-11 | Resolution bar + hierarchy windows | QUEUED (ADJUDICATOR bar ruling first) | — |
@@ -414,3 +414,38 @@ scope reduction below 27 classes · retiring any serving surface · LEL content.
     PARĪKṢAKA MR-08 (a63441ed): reviewing PR #1206
   NEXT-ACTION: await GATE-EXECUTOR deploy verification + L-4 release; await PARĪKṢAKA verdicts;
     on PASS merge to integration; continue next wave (MR-10/13/14/15).
+
+- 2026-08-10 ~21:35 IST (conductor session 6 — 4 PARĪKṢAKA PASS; MR-03/04/07/08 merged to integration):
+  CONDUCTOR-HEARTBEAT: 2026-08-10T16:05:00Z pid=38773 host=Montys-MacBook-Pro.local
+  PARĪKṢAKA VERDICTS (all 4 PASS):
+    MR-07 (a04e8d64, PR #1203): PASS
+      TDD: red a889ffd17 (3 failing) → green e5b1b8328 ✓
+      Fix: ka_gochara_sweep count_sql AND generation='v1' in asset_registry_seed.ts ✓
+      Tests: test_mr07_cockpit_count_sql.py (3 static W0.1 tests) ✓
+    MR-03 (a2a52684, PR #1204): PASS
+      TDD: red 50a057fcc (8 tests, 5 failing) → green 06f462d98 ✓
+      Fix: explicit if (generation === '3.0') branch before g3_* in buildSourceCitation ✓
+      Tests: test_mr03_citation_branch.py (8 static W0.1 tests) ✓
+    MR-04 (ae3b3fd2, PR #1205): PASS
+      TDD: red 2fe4536f3 (4 tests, all failing) → green commit ✓
+      Fix: _VALENCE_MAP {'favourable':'gain','adverse':'loss','mixed':'mixed'} in ka_gochara.py ✓
+      Tests: 4 static W0.1 tests covering all 3 mappings + DB enum membership ✓
+    MR-08 (a63441ed, PR #1206): PASS
+      TDD: red c142fe562 → green ee8c8437b ✓
+      Scripts (from MR-30): flip_authority.py / rollback_authority.py / probe_gochara.py ✓
+      Tests: static interface gate tests for all 3 scripts ✓
+  MERGES (all squash-merged to parishkara/integration):
+    PR #1203 (MR-07): MERGED ✓
+    PR #1204 (MR-03): MERGED ✓
+    PR #1205 (MR-04): MERGED ✓
+    PR #1206 (MR-08): MERGED ✓
+  DEPLOY STATUS (awaiting GATE-EXECUTOR report):
+    Main branch CI: TAP ✅ | Ganga QG IN_PROGRESS (Unit Tests + Governance Gates running)
+    Deploy workflow: triggers on Ganga QG success (workflow_run trigger)
+    GATE-EXECUTOR (a2c8c6190edff81a1): monitoring Ganga QG → deploy → migration verify → L-4 release
+  CAMPAIGN PROGRESS:
+    MERGED to integration: MR-01, MR-02, MR-03, MR-04, MR-05, MR-06, MR-07, MR-08, MR-09,
+      MR-18, MR-25, MR-30, MR-34, MR-35 (all in wave-1 PR #1201, now on main)
+    MR-03, MR-04, MR-07, MR-08: now merged to integration (will ride next integration→main PR)
+    QUEUED for next wave: MR-10, MR-13, MR-14, MR-15 (corpus repair — promote point rows)
+  NEXT-ACTION: await GATE-EXECUTOR deploy verification + L-4 release; then dispatch next wave.
