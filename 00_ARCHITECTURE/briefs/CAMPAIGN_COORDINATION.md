@@ -61,7 +61,8 @@ cutover wave (its W6), UTKARṢA yields otherwise.
 | # | campaign | purpose | started (IST) | expiry (IST) | status |
 |---|---|---|---|---|---|
 | L-2 | SAMPŪRTI | P-G1 proof rebuild, chart 482012f1 (13-asset closure through newly wired ka_kshetra stages 0–3). Sole objective of its current run; Wave 2+ hard-blocked until GREEN. | 2026-08-10 07:15 | 2026-08-10 12:00 | **RELEASED** (2026-08-10 11:24 UTC — SAMPŪRTI-R4 conductor hygiene fix; all SAMPŪRTI P-G1 runs ended via coordination yield; P-G1 deferred to post-W6-COMPLETE per R-COORD-2 extension) |
-| L-3 | UTKARṢA | W6.1 century materialize on 482012f1 (ka_gochara_v3_century_materialize; bounded ≤20 min per plan). PRIORITY CLAIM under the §1 yield policy — UTKARṢA is in its W6 cutover wave (ledger 15:35 IST), during which SAMPŪRTI yields. Executes the moment SAMPŪRTI's in-flight run (8d68be55, started 16:06 IST) ends. | 2026-08-10 16:25 | 2026-08-10 18:30 | **ACTIVE** |
+| L-3 | UTKARṢA | W6.1 century materialize on 482012f1 (ka_gochara_v3_century_materialize; bounded ≤20 min per plan). PRIORITY CLAIM under the §1 yield policy — UTKARṢA is in its W6 cutover wave (ledger 15:35 IST), during which SAMPŪRTI yields. Executes the moment SAMPŪRTI's in-flight run (8d68be55, started 16:06 IST) ends. | 2026-08-10 16:25 | 2026-08-10 18:30 | **DEAD BY EXPIRY** (expiry 18:30 IST reached ~6 hrs ago; PARIṢKĀRA OVERRIDE per §1 at 20:10 IST) |
+| L-4 | PARIṢKĀRA | Merge parishkara/integration → main + deploy (migrations 563/564/565; schema parity, deprecation, citation resolution). GATE-EXECUTOR dispatched. | 2026-08-10 20:10 IST | 2026-08-10 21:30 IST | **ACTIVE** |
 
 **⚠ W6 YIELD WINDOW IS NOW IN EFFECT (native's desk, 16:25 IST, applying the
 already-adopted §1 yield policy — not a new rule).** SAMPŪRTI: your in-flight
