@@ -442,8 +442,6 @@ class TestFetchOrbDeg:
     def _make_conn(self, raise_on_select: bool = False, return_row: dict | None = None):
         """Minimal fake connection that tracks SAVEPOINT/ROLLBACK/RELEASE calls
         and optionally raises on the SELECT to simulate the missing-column error."""
-        from unittest.mock import MagicMock
-
         calls = []
 
         class FakeCursor:
