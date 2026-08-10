@@ -97,6 +97,16 @@ def _vedha_pairs_from_db(conn, nakshatra_id: int) -> Optional[int]:
     populated. Returns the paired nakshatra_id, or None if unreachable/empty
     (falls back to the algorithmic approximation)."""
     try:
+        # DB9c: wrap in a SAVEPOINT so a PostgreSQL error (e.g. table missing)
+        # does not leave the caller's transaction in InFailedSqlTransaction state.
+        # The Python-level except already caught the error; without this savepoint
+        # the DB-level abort silently propagates and kills all subsequent SQL in
+        # the same transaction — exactly what killed ka_vedha_gochara's DELETE
+        # at line 528 (the DELETE executed after this call returned None, but the
+        # connection was already in aborted state). This is not a logic change:
+        # the honest-degrade path (returning None) is identical; only the
+        # transaction-recovery discipline changes.
+        conn.execute("SAVEPOINT _vedha_db_probe")
         cur = conn.execute(
             """
             SELECT nakshatra_2_id FROM l1_sarvatobhadra_vedha WHERE nakshatra_1_id = %s
@@ -107,6 +117,7 @@ def _vedha_pairs_from_db(conn, nakshatra_id: int) -> Optional[int]:
             [nakshatra_id, nakshatra_id],
         )
         row = cur.fetchone()
+        conn.execute("RELEASE SAVEPOINT _vedha_db_probe")
         if row:
             return int(row[0] if not isinstance(row, dict) else row["nakshatra_2_id"])
     except Exception as exc:  # noqa: BLE001
@@ -117,6 +128,11 @@ def _vedha_pairs_from_db(conn, nakshatra_id: int) -> Optional[int]:
         # this alone produced 100+ log lines/sec, contributing to a real
         # writer_timeout_seconds=1800 substep timeout. Non-functional change
         # (log level only) -- the honest-degrade behavior itself is unchanged.
+        try:
+            conn.execute("ROLLBACK TO SAVEPOINT _vedha_db_probe")
+            conn.execute("RELEASE SAVEPOINT _vedha_db_probe")
+        except Exception:  # noqa: BLE001 -- savepoint may not exist if the error was pre-SAVEPOINT
+            pass
         logger.debug(
             "[sarvatobhadra] l1_sarvatobhadra_vedha unreachable/empty, falling back "
             "to algorithmic opposition rule: %s", exc,

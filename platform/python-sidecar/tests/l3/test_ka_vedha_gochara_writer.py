@@ -50,7 +50,8 @@ class TestFetchJanmaMoon:
         assert _fetch_janma_moon(conn, "chart-x") is None
 
     def test_null_value_returns_none(self):
-        conn = _FakeConnOne(fetchone_result=("fact123", None))
+        # dict_row: writer accesses row["fact_id"] / row["fact_value_num"] by name
+        conn = _FakeConnOne(fetchone_result={"fact_id": "fact123", "fact_value_num": None})
         assert _fetch_janma_moon(conn, "chart-x") is None
 
     def test_present_fact_derives_sign_and_nakshatra_idx(self):
@@ -58,7 +59,8 @@ class TestFetchJanmaMoon:
         # 0-indexed) and nak_idx 24 (Purva Bhadrapada) — the exact
         # FORENSIC-anchored value for chart 482012f1 (CLAUDE.md §B): "Moon =
         # Purva Bhadrapada" is one of the 7 FORENSIC birth anchors.
-        conn = _FakeConnOne(fetchone_result=("7cf5902c6bd63146", 327.055230133129))
+        # dict_row: writer accesses row["fact_id"] / row["fact_value_num"] by name
+        conn = _FakeConnOne(fetchone_result={"fact_id": "7cf5902c6bd63146", "fact_value_num": 327.055230133129})
         result = _fetch_janma_moon(conn, "482012f1-710e-4a25-994a-93821f5871aa")
         assert result == (10, 24, "7cf5902c6bd63146")
 
@@ -117,15 +119,18 @@ class TestFetchSchoolTaggedVedhaPair:
         assert _fetch_school_tagged_vedha_pair(conn, 1) is None
 
     def test_null_cell_value_returns_none(self):
-        conn = _FakeConnOne(fetchone_result=(None, "some_school"))
+        # dict_row: writer accesses row["cell_value"] / row["school_tag"] by name
+        conn = _FakeConnOne(fetchone_result={"cell_value": None, "school_tag": "some_school"})
         assert _fetch_school_tagged_vedha_pair(conn, 1) is None
 
     def test_populated_row_returns_pair_and_school_tag(self):
-        conn = _FakeConnOne(fetchone_result=("15", "test_school_v01"))
+        # dict_row: writer accesses row["cell_value"] / row["school_tag"] by name
+        conn = _FakeConnOne(fetchone_result={"cell_value": "15", "school_tag": "test_school_v01"})
         assert _fetch_school_tagged_vedha_pair(conn, 1) == (15, "test_school_v01")
 
     def test_malformed_cell_value_returns_none(self):
-        conn = _FakeConnOne(fetchone_result=("not_a_number", "test_school_v01"))
+        # dict_row: writer accesses row["cell_value"] / row["school_tag"] by name
+        conn = _FakeConnOne(fetchone_result={"cell_value": "not_a_number", "school_tag": "test_school_v01"})
         assert _fetch_school_tagged_vedha_pair(conn, 1) is None
 
 
