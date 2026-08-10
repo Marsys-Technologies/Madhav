@@ -15,7 +15,7 @@ marker_duty: post W6-COMPLETE to campaign-coordination §6 after MR-01..08,10,13
 | MR-03 | Truthful '3.0' citation | QUEUED | after MR-01+02+05 spine lands |
 | MR-04 | Valence vocabulary contract | QUEUED | after MR-01+02+05 spine lands |
 | MR-05 | Corrected deprecation migration (FK-safe) | MERGED | combined in PR #1198 · PARĪKṢAKA PASS: FK chain confirmed (mig-169); step 0a/0b clean FK referrers before step 1 DELETE; sequencing correct |
-| MR-06 | Seed/542 durability + gen-3.0 protection | QUEUED | after MR-05 |
+| MR-06 | Seed/542 durability + gen-3.0 protection | MERGED | PR #1202 MERGED to parishkara/integration · PARĪKṢAKA PASS: 36/36 tests, RETIRED guard, mig-566 gen-3.0 trigger, DOWN path, self-verify confirmed |
 | MR-07 | Cockpit truth (count_sql) | QUEUED | after MR-01+02+05 |
 | MR-08 | Flip/rollback/probe tooling | QUEUED | after MR-30 scripts committed |
 | MR-09 | Naming coherence + health + pointers | MERGED | PR #1197 MERGED · PARĪKṢAKA PASS: GocharaTransitService rename (alias kept), health probe JD-sanity check, discoverability guard, ph_muhurta docstring correct, 17 tests verified |
@@ -269,3 +269,21 @@ scope reduction below 27 classes · retiring any serving surface · LEL content.
       migration 566 (gen-3.0 BEFORE DELETE/UPDATE trigger on kala_gochara_windows),
       TDD test suite (36/36 green confirmed), ON-CONFLICT idempotency correctness.
   NEXT-ACTION: await GATE-EXECUTOR (PR #1201 merge + deploy + L-4 release); await PARĪKṢAKA for MR-06.
+
+- 2026-08-10 ~20:40 IST (conductor session 6 — MR-06 MERGED; next wave):
+  CONDUCTOR-HEARTBEAT: 2026-08-10T15:10:30Z pid=38773 host=Montys-MacBook-Pro.local
+  MR-06 CLOSED:
+    PARĪKṢAKA (af9dcf952538cf8e5, opus): PASS posted 15:09:27Z on PR #1202
+      All 9 criteria confirmed: RETIRED seed, v2_materialize absent, ka_gochara post-cutover
+      identity, CASE WHEN guard both fields, mig-566 trigger + DOWN path + self-verify, 36/36 PASS.
+    PR #1202 MERGED by PARĪKṢAKA: 15:10:08Z, commit f4c43e219
+      (parishkara/mr-06 → parishkara/integration, squash-merged by amonty84)
+  MR STATUS UPDATES:
+    MR-06: VERIFYING → MERGED (PR #1202, commit f4c43e219, PARĪKṢAKA PASS)
+  STALE NOTIFICATION: a0be560ddc03f3add (MR-30 session-5 PARĪKṢAKA) completed — MR-30 already MERGED.
+  GATE-EXECUTOR STATUS: PR #1201 Build Check still PENDING (Docker image build ~17 min).
+    22 PASS, 1 PENDING. GATE-EXECUTOR actively polling.
+  NEXT WAVE: MR-03 + MR-07 builders dispatching (unblocked by MR-01+02+05+06 merges)
+    MR-03: buildSourceCitation '3.0' branch (cites v3 materializer)
+    MR-07: count_sql cockpit truth (sweep: generation='v1' scoped; ka_gochara: generation='3.0')
+  NEXT-ACTION: await GATE-EXECUTOR (PR #1201); await MR-03/07 builders + PARĪKṢAKA verdicts.
