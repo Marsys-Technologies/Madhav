@@ -56,10 +56,10 @@ Status: QUEUED | BUILDING | VERIFYING | PASS | FAIL(n) | BLOCKED | MERGED
 | W0.5 | 0 | [adj] | Campaign rulings (UTK-R1/R2/R3) | PASS | — | — | ADJUDICATOR | none | UTK-R1/R2/R3 issued + I6(a) migration approved. Rulings in §Rulings. |
 | I6a | 0 | [mech] | DB role migration (utkarsha_builder) | VERIFYING | gochara3/i6a-role | /Users/Dev/Vibe-Coding/Apps/utk-i6a | sonnet | W0.5 PASS | Migration 557 written + pushed (SHA 4879a6882, session 5). Migration-guard (opus, independent, session 6): PASS. PR #1146 opened. Awaiting CI + VERIFIER PASS before merge. |
 | W1.1 | 1 | [heavy] | Bounded λ_v3 core | MERGED | gochara3/w11 | — (removed) | sonnet | W0.4 PASS | MERGED 02:48Z (PR #1149, 2d040d8e9). VERIFIER PASS (opus). |
-| W1.2 | 1 | [heavy] | Direction restored | VERIFYING | gochara3/w12 | /Users/Dev/Vibe-Coding/Apps/utk-w12 | sonnet | W1.1 PASS | PR #1152 open (31b9dfb36). _compute_signed_channels_v3 + _resolve_valence_v3. 30+ tests. CI running. |
-| W1.3 | 1 | [heavy] | Graded suppression | VERIFYING | gochara3/w13 | /Users/Dev/Vibe-Coding/Apps/utk-w13 | sonnet | W1.1 PASS | PR #1155 open. Vedha multiplicative gate on quality_gates. CI running. |
-| W1.4 | 1 | [heavy] | Self-normalizing thresholds | VERIFYING | gochara3/w14 | /Users/Dev/Vibe-Coding/Apps/utk-w14 | sonnet | W1.1 PASS | PR #1156 open. Percentile-based activation per chart×class. CI running. |
-| W1.5 | 1 | [mech] | λ decomposition + uncertainty output | VERIFYING | gochara3/w15 | /Users/Dev/Vibe-Coding/Apps/utk-w15 | sonnet | W1.1 PASS | PR #1154 open. term_breakdown JSONB + CI pair + migration. CI running. |
+| W1.2 | 1 | [heavy] | Direction restored | MERGED | gochara3/w12 | /Users/Dev/Vibe-Coding/Apps/utk-w12 | sonnet | W1.1 PASS | MERGED to main (PR #1152, 246bbcd69). _compute_signed_channels_v3 + _resolve_valence_v3. |
+| W1.3 | 1 | [heavy] | Graded suppression | VERIFYING | gochara3/w13 | /Users/Dev/Vibe-Coding/Apps/utk-w13 | sonnet | W1.1 PASS | PR #1155 open (71da20688 — rebased on main post-W1.2). Vedha multiplicative gate on quality_gates. Auto-merge enabled. CI running. |
+| W1.4 | 1 | [heavy] | Self-normalizing thresholds | VERIFYING | gochara3/w14 | /Users/Dev/Vibe-Coding/Apps/utk-w14 | sonnet | W1.1 PASS | PR #1156 open (628eb8e49 — rebased on main post-W1.2). Percentile-based activation per chart×class. Auto-merge enabled. CI running. |
+| W1.5 | 1 | [mech] | λ decomposition + uncertainty output | VERIFYING | gochara3/w15 | /Users/Dev/Vibe-Coding/Apps/utk-w15 | sonnet | W1.1 PASS | PR #1154 open (218c1c37b — fix b8a907e2c + rebase). term_breakdown JSONB + CI pair. Auto-merge enabled. CI running. |
 | W2.1 | 2 | [heavy] | Ashtakavarga gating, real | QUEUED | — | — | opus | W1.1 PASS | Parallel W2; needs W0.2 data |
 | W2.2 | 2 | [mech] | Moorti nirnaya modifier | QUEUED | — | — | sonnet | W1.1 PASS | Parallel W2; needs W0.2 data |
 | W2.3 | 2 | [mech] | Tara bala, alive | QUEUED | — | — | sonnet | W1.1 PASS | Parallel W2 |
@@ -200,3 +200,7 @@ CONDUCTOR-HEARTBEAT: 2026-08-10T02:51:11Z pid=94277 host=Montys-MacBook-Pro.loca
 - 2026-08-10 08:57 IST: W1.2/W1.3/W1.4/W1.5 builders ALL COMPLETE. PRs open: #1152 (W1.2), #1154 (W1.5), #1155 (W1.3), #1156 (W1.4). All CI running. PR #1146 (I6a) TAP-CI path fix committed (tap-ci.yml now includes migrations/**), TAP-6 now passes (31352540207); waiting for Build Check + Governance Gates to complete before re-queueing.
 
 CONDUCTOR-HEARTBEAT: 2026-08-10T03:30:00Z pid=94277 host=Montys-MacBook-Pro.local
+
+- 2026-08-10 09:09 IST: SESSION 9 (context-compact continuation). PR #1152 (W1.2) MERGED to main (246bbcd69). W1.2 → MERGED. W1.3/W1.4/W1.5 needed rebase after W1.2 merge. W1.5 (PR #1154) Governance Gates FAIL root-cause: _FakeIntensityResult in test_w2g_materialize.py missing W1.5 new fields (term_breakdown, lambda_v3_ci_low, lambda_v3_ci_high, ci_source) — fixed (commit b8a907e2c), pushed. W1.3 (PR #1155) had DIRTY merge state (engine.py conflict: W1.2 signed channels + W1.3 quality_gates both modified same function block) — merged both changes: 4b signed-channels + 4c valence + 4d vedha quality_gates, resolved note string, forced push (71da20688). W1.4 (PR #1156) DIRTY (engine.py __all__ conflict: W1.4 adds evaluate_lambda_vector_with_threshold function + __all__ entry) — merged both __all__ lists, resolved, pushed (628eb8e49). W1.5 rebased cleanly (218c1c37b). Auto-merge enabled on #1155/#1156/#1154; CI running. I6a (PR #1146) already in merge queue.
+
+CONDUCTOR-HEARTBEAT: 2026-08-10T03:48:36Z pid=94277 host=Montys-MacBook-Pro.local
