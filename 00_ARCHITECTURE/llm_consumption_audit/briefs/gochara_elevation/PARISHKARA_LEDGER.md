@@ -12,11 +12,11 @@ marker_duty: post W6-COMPLETE to campaign-coordination §6 after MR-01..08,10,13
 |---|---|---|---|
 | MR-01 | Schema parity (8 cols) → tools un-500 | MERGED | PR #1198 MERGED to parishkara/integration · PARĪKṢAKA PASS: migration 564 correct (8 nullable cols, IF NOT EXISTS, DO verify, DOWN path, false comment fixed) |
 | MR-02 | Coverage gate authority-aware | MERGED | combined in PR #1198 · PARĪKṢAKA PASS: substepAssetId switches v1↔3.0 per authority seam, substepSourceLabel honest |
-| MR-03 | Truthful '3.0' citation | QUEUED | after MR-01+02+05 spine lands |
+| MR-03 | Truthful '3.0' citation | VERIFYING | PR #1204 OPEN · PARĪKṢAKA a986ab61334781bb2 dispatched · if (generation==='3.0') branch before g3_* check; cites ka_gochara + gochara_v3; test_mr03_citation_branch.py |
 | MR-04 | Valence vocabulary contract | QUEUED | after MR-01+02+05 spine lands |
 | MR-05 | Corrected deprecation migration (FK-safe) | MERGED | combined in PR #1198 · PARĪKṢAKA PASS: FK chain confirmed (mig-169); step 0a/0b clean FK referrers before step 1 DELETE; sequencing correct |
 | MR-06 | Seed/542 durability + gen-3.0 protection | MERGED | PR #1202 MERGED to parishkara/integration · PARĪKṢAKA PASS: 36/36 tests, RETIRED guard, mig-566 gen-3.0 trigger, DOWN path, self-verify confirmed |
-| MR-07 | Cockpit truth (count_sql) | QUEUED | after MR-01+02+05 |
+| MR-07 | Cockpit truth (count_sql) | VERIFYING | PR #1203 OPEN · PARĪKṢAKA a4a80abdef87985d2 dispatched · ka_gochara_sweep count_sql scoped to AND generation='v1'; test_mr07_cockpit_count_sql.py |
 | MR-08 | Flip/rollback/probe tooling | QUEUED | after MR-30 scripts committed |
 | MR-09 | Naming coherence + health + pointers | MERGED | PR #1197 MERGED · PARĪKṢAKA PASS: GocharaTransitService rename (alias kept), health probe JD-sanity check, discoverability guard, ph_muhurta docstring correct, 17 tests verified |
 | MR-10 | Promote 54 point rows | QUEUED | needs MR-01 cols first |
@@ -302,3 +302,43 @@ scope reduction below 27 classes · retiring any serving surface · LEL content.
     MR-03 builder (a9ef4b27412450ecc): RUNNING
     MR-07 builder (afa7a6e584e582850): RUNNING
   NEXT-ACTION: await builder PRs; dispatch PARĪKṢAKA for each; await GATE-EXECUTOR.
+
+- 2026-08-10 ~20:47 IST (conductor session 6 — post-compaction #3, MR-03/07 BUILT; PR #1201 CI near-green):
+  CONDUCTOR-HEARTBEAT: 2026-08-10T15:17:00Z pid=38773 host=Montys-MacBook-Pro.local
+  CONTEXT-COMPACTION-RECOVERY: third compaction in session 6; resuming from ledger + git state.
+  MR-06 TypeScript HOTFIX (97240701a) — GATE-EXECUTOR pushed to parishkara/integration:
+    Commit: fix(MR-06): add 'RETIRED' to AssetDef.catalog_status type union
+    Author: PB-3 Bot (GATE-EXECUTOR identified TS failure, pushed fix autonomously)
+    Root cause: MR-06 (853fc3ce5) set ka_gochara_sweep catalog_status='RETIRED' but AssetDef
+      interface only accepted 'CURRENT' | 'DRAFT' — TS CI failed. Fix: added 'RETIRED' to union.
+    PR #1201 HEAD now: 97240701a (integration HEAD advanced past f4c43e219)
+  PR #1201 CI STATUS (on HEAD 97240701a):
+    TypeScript (src only): SUCCESS ✓
+    K1+W1, TAP-6, W0.6, Boot-time pointer, W0.6 census, Unit Tests (pending), Build Check (pending)
+    W2 specificity, DB Integration Tests, TAP-5/7/S-13, PRATIJÑĀ v4, Planner Regression: all ✓
+    ICR PR Gate, Secret Scan, Coverage, Naming Governance, Fact-Category Pinning: all ✓
+    Earned-Signal Gate, Registry Parity, Density Census: all ✓
+    PENDING: Build Check (PR only), Unit Tests, Governance Gates (in progress)
+    GATE-EXECUTOR: monitoring; will merge when all-green, then verify deploy + release L-4
+  MR-03 builder (a9ef4b27412450ecc): COMPLETED
+    PR #1204 OPEN: "MR-03: truthful '3.0' citation in buildSourceCitation"
+      parishkara/mr-03 → parishkara/integration
+      Commits: 50a057fcc (TDD red, 5 failing tests) + 06f462d98 (TDD green, fix)
+      Fix: explicit if (generation === '3.0') branch before g3_* check in register_gochara_windows.ts
+        cites ka_gochara + gochara_v3 engine + generation=3.0
+      Test: test_mr03_citation_branch.py (354 lines, ≥5 static W0.1 tests)
+  MR-07 builder (afa7a6e584e582850): COMPLETED
+    PR #1203 OPEN: "MR-07: cockpit truth — scope ka_gochara_sweep count_sql to generation='v1'"
+      parishkara/mr-07 → parishkara/integration
+      Commits: a889ffd17 (TDD red, 3 failing tests) + e5b1b8328 (TDD green, fix)
+      Fix: count_sql scoped to AND generation='v1' (sweep was RETIRED; only wrote v1; blind
+        count would double-count with post-cutover 3.0 rows from ka_gochara)
+      Test: test_mr07_cockpit_count_sql.py (3 static W0.1 tests)
+  MR STATUS UPDATES:
+    MR-03: QUEUED → VERIFYING (PR #1204, PARĪKṢAKA a986ab61334781bb2 dispatched)
+    MR-07: QUEUED → VERIFYING (PR #1203, PARĪKṢAKA a4a80abdef87985d2 dispatched)
+  ACTIVE AGENTS:
+    GATE-EXECUTOR (a2c8c6190edff81a1): RUNNING — PR #1201 pending 3 CI checks, will merge+deploy
+    PARĪKṢAKA MR-03 (a986ab61334781bb2, opus): RUNNING
+    PARĪKṢAKA MR-07 (a4a80abdef87985d2, opus): RUNNING
+  NEXT-ACTION: await PARĪKṢAKA verdicts for MR-03/07; await GATE-EXECUTOR (PR #1201 → deploy → L-4).
