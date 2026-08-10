@@ -12,12 +12,12 @@ marker_duty: post W6-COMPLETE to campaign-coordination §6 after MR-01..08,10,13
 |---|---|---|---|
 | MR-01 | Schema parity (8 cols) → tools un-500 | MERGED | PR #1198 MERGED to parishkara/integration · PARĪKṢAKA PASS: migration 564 correct (8 nullable cols, IF NOT EXISTS, DO verify, DOWN path, false comment fixed) |
 | MR-02 | Coverage gate authority-aware | MERGED | combined in PR #1198 · PARĪKṢAKA PASS: substepAssetId switches v1↔3.0 per authority seam, substepSourceLabel honest |
-| MR-03 | Truthful '3.0' citation | VERIFYING | PR #1204 OPEN · PARĪKṢAKA a986ab61334781bb2 dispatched · if (generation==='3.0') branch before g3_* check; cites ka_gochara + gochara_v3; test_mr03_citation_branch.py |
-| MR-04 | Valence vocabulary contract | BUILDING | builder a56c5ac8 dispatched · _VALENCE_MAP in ka_gochara.py (favourable→gain, adverse→loss) |
+| MR-03 | Truthful '3.0' citation | VERIFYING | PR #1204 OPEN · PARĪKṢAKA a2a52684 dispatched (fresh, post-compaction) · if (generation==='3.0') branch; test_mr03_citation_branch.py |
+| MR-04 | Valence vocabulary contract | VERIFYING | PR #1205 OPEN · PARĪKṢAKA ae3b3fd2 dispatched · _VALENCE_MAP in ka_gochara.py (favourable→gain, adverse→loss) |
 | MR-05 | Corrected deprecation migration (FK-safe) | MERGED | combined in PR #1198 · PARĪKṢAKA PASS: FK chain confirmed (mig-169); step 0a/0b clean FK referrers before step 1 DELETE; sequencing correct |
 | MR-06 | Seed/542 durability + gen-3.0 protection | MERGED | PR #1202 MERGED to parishkara/integration · PARĪKṢAKA PASS: 36/36 tests, RETIRED guard, mig-566 gen-3.0 trigger, DOWN path, self-verify confirmed |
-| MR-07 | Cockpit truth (count_sql) | VERIFYING | PR #1203 OPEN · PARĪKṢAKA a4a80abdef87985d2 dispatched · ka_gochara_sweep count_sql scoped to AND generation='v1'; test_mr07_cockpit_count_sql.py |
-| MR-08 | Flip/rollback/probe tooling | BUILDING | builder ab00584c dispatched · static W0.1 interface tests for flip_authority.py/rollback_authority.py/probe_gochara.py (committed by MR-30) |
+| MR-07 | Cockpit truth (count_sql) | VERIFYING | PR #1203 OPEN · PARĪKṢAKA a04e8d64 dispatched (fresh, post-compaction) · count_sql AND generation='v1'; test_mr07_cockpit_count_sql.py |
+| MR-08 | Flip/rollback/probe tooling | VERIFYING | PR #1206 OPEN · PARĪKṢAKA a63441ed dispatched · static W0.1 tests for flip_authority.py/rollback_authority.py/probe_gochara.py |
 | MR-09 | Naming coherence + health + pointers | MERGED | PR #1197 MERGED · PARĪKṢAKA PASS: GocharaTransitService rename (alias kept), health probe JD-sanity check, discoverability guard, ph_muhurta docstring correct, 17 tests verified |
 | MR-10 | Promote 54 point rows | QUEUED | needs MR-01 cols first |
 | MR-11 | Resolution bar + hierarchy windows | QUEUED (ADJUDICATOR bar ruling first) | — |
@@ -375,3 +375,42 @@ scope reduction below 27 classes · retiring any serving surface · LEL content.
     Expect all-green this run — all known failure modes now addressed.
   NEXT-ACTION: await GATE-EXECUTOR merge; await PARĪKṢAKA MR-03/07; await MR-04/08 PRs.
     HOLD: do NOT merge MR-03/07/04/08 to integration until PR #1201 lands on main.
+
+- 2026-08-10 ~21:30 IST (conductor session 6 — post-compaction #4, PR #1201 MERGED):
+  CONDUCTOR-HEARTBEAT: 2026-08-10T16:00:20Z pid=38773 host=Montys-MacBook-Pro.local
+  *** WAVE-1 MERGE EVENT ***
+  PR #1201 MERGED TO MAIN at 2026-08-10T16:00:03Z
+    Merge commit: 670d56c2f952161e60e5d3d7aedebf166625c545
+    Title: PARISHKARA wave-1: MR-01..09/18/25/30/34/35 (schema parity + serving restoration)
+    Merge queue CI run 31405904354: COMPLETED / success (all 15 jobs green, 1 skipped)
+    Note: Governance Gates was the last check to pass (completed ~15:57Z)
+  MAIN BRANCH CI (triggered by 670d56c2f):
+    TAP CI run 31406618141: COMPLETED / success ✅
+    ṢAḌ-DARŚANA Circularity Guard (run 31406614501): IN_PROGRESS
+    Ganga Quality Gate (run 31406614515): IN_PROGRESS
+  GATE-EXECUTOR (a2c8c6190edff81a1): still running, should detect merge + verify deploy + L-4
+  DEPLOY STATUS: pending verification from GATE-EXECUTOR (migrations 563/564/565 in _migrations_applied)
+  HOLD PROTOCOL UPDATE: PR #1201 has landed on main.
+    HOLD lifted: MR-03/07/04/08 PRs (#1204/1203/1205/1206) may now merge to parishkara/integration
+    once PARĪKṢAKA PASS verdicts are posted.
+  BUILDERS COMPLETED (while conductor was in compaction):
+    MR-04 builder: PR #1205 OPENED — "MR-04: valence vocabulary contract — map engine vocab to canonical DB enum"
+      parishkara/mr-04 → parishkara/integration
+    MR-08 builder: PR #1206 OPENED — "MR-08: versioned gochara flip/rollback/probe tooling — static interface gate"
+      parishkara/mr-08 → parishkara/integration
+  PARĪKṢAKA DISPATCH (4 concurrent, fresh post-compaction):
+    PARĪKṢAKA MR-07 (a04e8d64fa32a9861, opus): reviewing PR #1203
+    PARĪKṢAKA MR-03 (a2a52684771f7eb13, opus): reviewing PR #1204
+    PARĪKṢAKA MR-04 (ae3b3fd2a8e1ff99e, opus): reviewing PR #1205
+    PARĪKṢAKA MR-08 (a63441eddbbecf650, opus): reviewing PR #1206
+  MR STATUS UPDATES:
+    MR-04: BUILDING → VERIFYING (PR #1205 open)
+    MR-08: BUILDING → VERIFYING (PR #1206 open)
+  ACTIVE AGENTS:
+    GATE-EXECUTOR (a2c8c6190edff81a1): should detect merge + verify deploy
+    PARĪKṢAKA MR-07 (a04e8d64): reviewing PR #1203
+    PARĪKṢAKA MR-03 (a2a52684): reviewing PR #1204
+    PARĪKṢAKA MR-04 (ae3b3fd2): reviewing PR #1205
+    PARĪKṢAKA MR-08 (a63441ed): reviewing PR #1206
+  NEXT-ACTION: await GATE-EXECUTOR deploy verification + L-4 release; await PARĪKṢAKA verdicts;
+    on PASS merge to integration; continue next wave (MR-10/13/14/15).
