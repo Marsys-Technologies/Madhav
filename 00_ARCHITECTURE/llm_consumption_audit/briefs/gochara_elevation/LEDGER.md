@@ -4,7 +4,7 @@ plan: GOCHARA_UTKARSHA_CAMPAIGN_PLAN_v1_0.md
 branch: utkarsha/campaign
 conductor_model: claude-sonnet-4-6
 launched: 2026-08-10
-last_updated: 2026-08-10 (first launch)
+last_updated: 2026-08-10 (conductor restart — session 2 reconciliation)
 
 ---
 
@@ -37,7 +37,7 @@ Recorded at first launch for diff-comparison at every wave boundary.
 - `(asset_id='ka_gochara_sweep', chart_id='1c826d5a-41cb-4450-b4dc-59d440e5f75a')` — protected since 2026-08-06
 - `(asset_id='ka_gochara_sweep', chart_id='482012f1-710e-4a25-994a-93821f5871aa')` — protected since 2026-08-06
 
-**`protected_generations` column:** does NOT yet exist (added by W0.3 Phase B migration).
+**`protected_generations` column:** does NOT yet exist (added by W0.3 Phase B migration 556).
 
 **Latest migration applied:** `555_brahma_event_ontology_g9_reconcile.sql` (id=414, applied 2026-08-09).
 
@@ -49,11 +49,12 @@ Status: QUEUED | BUILDING | VERIFYING | PASS | FAIL(n) | BLOCKED | MERGED
 
 | lane | wave | tag | title | status | branch | worktree | builder_model | deps | notes |
 |---|---|---|---|---|---|---|---|---|---|
-| W0.1 | 0 | [mech] | Registry & seed hygiene | BUILDING | gochara3/w01 | /Users/Dev/Vibe-Coding/Apps/utk-w01 | sonnet | none | Parallel W0 |
-| W0.2 | 0 | [mech] | Baseline builds + error triage | BUILDING | gochara3/w02 | /Users/Dev/Vibe-Coding/Apps/utk-w02 | sonnet | none | Parallel W0; never rebuilds ka_gochara_sweep for protected charts |
-| W0.3 | 0 | [heavy] | Schema migration bundle | BUILDING | gochara3/w03 | /Users/Dev/Vibe-Coding/Apps/utk-w03 | opus | none | Parallel W0; two-phase deploy (Phase A writer PR, Phase B migration) |
-| W0.4 | 0 | [heavy] | Batched-context scoring engine | BUILDING | gochara3/w04 | /Users/Dev/Vibe-Coding/Apps/utk-w04 | opus | none | Parallel W0; long pole |
-| W0.5 | 0 | [adj] | Campaign rulings (UTK-R1/R2/R3) | BUILDING | — | — | ADJUDICATOR | none | ADJUDICATOR task in progress |
+| W0.1 | 0 | [mech] | Registry & seed hygiene | BUILDING | gochara3/w01 | /Users/Dev/Vibe-Coding/Apps/utk-w01 | sonnet | none | Uncommitted: seed.ts (+3 assets), test_has_writer_completeness.py (+3-way guard). Still ~16 assets missing from seed. Re-spawned in session 2. |
+| W0.2 | 0 | [mech] | Baseline builds + error triage | BUILDING | gochara3/w02 | /Users/Dev/Vibe-Coding/Apps/utk-w02 | sonnet | none | Uncommitted: ka_vedha_gochara/writer.py + ka_kota_chakra/writer.py + sarvatobhadra.py (DB9 fixes). Actual builds not yet run. Re-spawned in session 2. |
+| W0.3 | 0 | [heavy] | Schema migration bundle | VERIFYING | gochara3/w03 | /Users/Dev/Vibe-Coding/Apps/utk-w03 | opus | none | 3 commits: Phase A writer scoping, Phase B migration 556, generation-aware guard tests. Clean branch. VERIFIER spawned. |
+| W0.4 | 0 | [heavy] | Batched-context scoring engine | VERIFYING | gochara3/w04 | /Users/Dev/Vibe-Coding/Apps/utk-w04 | opus | none | 3 commits: gochara_v3 package (context.py + engine.py), 3 test files (query-count, parity, speedup). Clean branch. VERIFIER spawned. |
+| W0.5 | 0 | [adj] | Campaign rulings (UTK-R1/R2/R3) | PASS | — | — | ADJUDICATOR | none | UTK-R1/R2/R3 issued + I6(a) migration approved. Rulings in §Rulings. |
+| I6a | 0 | [mech] | DB role migration (utkarsha_builder) | BUILDING | gochara3/i6a-role | /Users/Dev/Vibe-Coding/Apps/utk-i6a | sonnet | W0.5 PASS | Approved by ADJUDICATOR. Migration = 557 (NOT 556 — taken by W0.3 gochara schema). Worktree reattached session 2. Builder spawned. |
 | W1.1 | 1 | [heavy] | Bounded λ_v3 core | QUEUED | — | — | opus | W0.4 PASS | Gate: W0.4 |
 | W1.2 | 1 | [heavy] | Direction restored | QUEUED | — | — | opus | W1.1 PASS | Gate: W1.1 |
 | W1.3 | 1 | [heavy] | Graded suppression | QUEUED | — | — | opus | W1.1 PASS | Gate: W1.1 |
@@ -92,15 +93,47 @@ Status: QUEUED | BUILDING | VERIFYING | PASS | FAIL(n) | BLOCKED | MERGED
 
 ## §Rulings
 
-*(No rulings yet — W0.5 ADJUDICATOR session pending)*
+**UTK-R1: W6 cutover mechanism — generation='3.0' rows in kala_gochara_windows + authority seam**
+- kala_gochara_windows is the production serving table; kala_gochara_windows_v2 is workbench/validation only.
+- generation='3.0' rows are INSERTed directly into kala_gochara_windows at W6 cutover. The INSERT path is ungated (no BEFORE INSERT trigger blocks it).
+- Per-chart authority flip via kala_gochara_authority table using the existing COALESCE pattern already live in three serving surfaces (register_gochara_windows.ts, reading_checklist.ts, mcp/db/query/route.ts). Table is currently empty — v1 authoritative by default.
+- Migration 540 guard amended: OLD.generation = ANY(protected_generations) so generation-3.0 DELETEs pass while v1 DELETEs still raise on protected charts. **Already implemented in W0.3 migration 556.**
+- Unique index on kala_gochara_windows now includes generation in natural key. **Already implemented in W0.3 migration 556.**
+- kala_gochara_windows_v2 stays as workbench only.
+- Evidence: ADJUDICATOR research of migrations 527, 540, 542; live serving surface code (three files); 2026-08-10 session 1.
 
-Ruling format: `UTK-R<N>: <topic> — <disposition>` with evidence link.
+**UTK-R2: Asset naming at W6.4 cutover — retire zero-row self-test, rename materialize writer**
+- ka_gochara (zero-row service self-test, services/ka_gochara/writer.py) → retired: DELETE from asset_registry.
+- ka_gochara_v2_materialize → renamed to ka_gochara: UPDATE asset_registry + writer @register decorator change.
+- ka_gochara_sweep: stays registered with catalog_status='RETIRED', is_active=false; data and protection remain permanently.
+- Jupiter transit self-test: absorbed as pre-flight check in renamed writer, or deleted — builder's discretion.
+- Migration: surgical (DELETE old ka_gochara row, UPDATE ka_gochara_v2_materialize → ka_gochara).
+- Evidence: ADJUDICATOR review of services/ka_gochara/writer.py, ka_gochara_v2_materialize.py, migration 542; 2026-08-10 session 1.
+
+**UTK-R3: Grammar-v3 register canonical format — YAML with v1_lineage load-bearing field**
+- Format: YAML file in services/gochara_v3/ (or campaign plan dir), loadable as Python dict at import.
+- Required fields per mechanism entry: mechanism_id, wave, lane, description, citation_status, classical_citation, v1_lineage {replaces, v1_module, change_type, note}, module_path, admission_state (candidate|admitted|structural-only|rejected), ablation_evidence_link, admission_ruling_id, toggle_key.
+- v1_lineage is load-bearing: required for W4.1 golden parity test + W6.2 no-loss coverage gate.
+- Wave-2 default admission_state = 'candidate'.
+- toggle_key enables ablation runner to mechanically disable/enable per mechanism.
+- Evidence: ADJUDICATOR review of citations.py, primitives.py, mechanisms.py; 2026-08-10 session 1.
+
+**I6(a): utkarsha_builder DB role — migration 557 (NOT 556 — number taken by W0.3 gochara schema)**
+- NOLOGIN, NOSUPERUSER, NOCREATEDB, NOCREATEROLE Postgres role.
+- NO DDL privileges. NO ability to SET app.allow_protected_sweep_rewrite GUC.
+- READ SELECT: 14+ tables (gochara_resonance_map, bg_gochara_arcs, ephemeris_daily, chart_facts, chart_dashas, public.charts, bg_transit_rules, bg_transit_engine, bg_transit_av_gates, brahma_event_ontology, kala_gochara_authority, kala_gochara_windows (READ only), build_protected_assets, plus kala_vedha_gochara, kala_moorti_nirnaya, kala_kota_chakra, kala_tithi_pravesha, bg_sky_calendar, bg_vedha_malefic_scale, bg_phaladeepika_latta, bg_kota_chakra_rings).
+- WRITE: kala_gochara_windows_v2 (INSERT/UPDATE/DELETE), kala_gochara_v2_build_state (INSERT ON CONFLICT UPDATE), kala_gochara_windows (INSERT only — NO DELETE, deferred to W5.4), build_substep_progress (upsert+replan), asset_registry (health UPDATE only).
+- Sequence grants: USAGE+SELECT on kala_gochara_windows_v2_id_seq and kala_gochara_windows_id_seq.
+- Idempotent via DO block (CREATE ROLE IF NOT EXISTS; GRANTs idempotent by definition).
+- Implementation: gochara3/i6a-role branch, worktree /Users/Dev/Vibe-Coding/Apps/utk-i6a.
+- Migration-guard agent review required before PR (I6(d)).
+- Evidence: ADJUDICATOR footprint audit of v2/v3 writer dependencies; 2026-08-10 session 1.
 
 ---
 
 ## §Wave Deployments
 
-*(No wave deployments yet)*
+*(No wave deployments yet — Wave 0 still in progress)*
 
 Format: `WAVE N: DEPLOYED+SYNCED — revision <sha>, migrations applied through <N>, I6(b) rail check: <PASS/drift>`
 
@@ -108,10 +141,22 @@ Format: `WAVE N: DEPLOYED+SYNCED — revision <sha>, migrations applied through 
 
 ## §I6(a) — DB Role Provisioning
 
-**Status: PENDING** — `utkarsha_builder` Postgres role not yet provisioned. Requires ADJUDICATOR-reviewed migration/grant before any builder connects to DB. Migration to be authored in W0.5 session and reviewed before PR.
+**Status: BUILDING** — Migration 557 (`557_utkarsha_builder_role.sql`) authored in gochara3/i6a-role branch. Pending migration-guard review + VERIFIER PASS + merge to main. Builders connect as this role only after the migration deploys.
+
+**Note:** Migration 556 is the W0.3 gochara generation schema (era_slice_key + protected_generations + generation-inclusive index + amended guard function). The utkarsha_builder role is migration **557**.
 
 ---
 
 ## §Event Log
 
-- 2026-08-10: FIRST LAUNCH. Branch `utkarsha/campaign` created from origin/main (rev 3311ae0e3). LEDGER.md initialized. I6(c) snapshot recorded. I6(b) rail baseline recorded. Latest migration: 555 (id=414). All 34 lanes seeded QUEUED. ADJUDICATOR/VERIFIER not yet spawned. Wave 0 dispatch pending.
+- 2026-08-10 05:10 IST: FIRST LAUNCH. Branch `utkarsha/campaign` created from origin/main (rev 3311ae0e3). LEDGER.md initialized. I6(c) snapshot recorded. I6(b) rail baseline recorded. Latest migration: 555 (id=414). All 34 lanes seeded QUEUED.
+- 2026-08-10 05:12 IST: Wave 0 worktrees provisioned: utk-w01, utk-w02, utk-w03, utk-w04. All W0.x lanes → BUILDING.
+- 2026-08-10 05:12–05:34 IST: Session 1 execution (builders dispatched, ADJUDICATOR spawned, partial work committed).
+  - ADJUDICATOR: UTK-R1/R2/R3 issued; I6(a) role design approved. W0.5 → PASS.
+  - W0.3 builder: Phase A (writer scoping) + Phase B (migration 556) + tests committed (3 commits). Branch clean.
+  - W0.4 builder: gochara_v3 package (context.py + engine.py + 3 test files) committed (3 commits). Branch clean.
+  - W0.1 builder: Partial — seed.ts (+3 assets) + test_has_writer_completeness.py (+3-way guard) UNCOMMITTED. ~16 assets still missing from seed.
+  - W0.2 builder: Partial — DB9 fixes (vedha_gochara + kota_chakra + sarvatobhadra) UNCOMMITTED. Builds not yet run.
+  - I6(a) branch gochara3/i6a-role created; worktree path broken. Migration 557 not yet written.
+  - LEDGER.md updates from session 1 NOT pushed (this ledger is the corrected version from session 2).
+- 2026-08-10 05:37 IST: SESSION 2 (conductor restart). Reconciliation complete. W0.3 → VERIFYING; W0.4 → VERIFYING; W0.1/W0.2 re-spawned; i6a-role worktree reattached; migration 557 builder spawned.
