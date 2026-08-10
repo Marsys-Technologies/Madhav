@@ -1086,28 +1086,37 @@ def compute_boundaries_for_system(
 
 def write_boundary_rows(chart_id: str, system_id: str, rows: list[BoundaryRow], conn: Any) -> int:
     """Idempotent per-chart write to `kala_field_boundaries`: delete-then-
-    insert scoped to (chart_id x system_id) — §N.3."""
+    insert scoped to (chart_id x system_id) — §N.3.
+
+    Batch-inserts all rows via cursor.executemany() to avoid per-row round-trip
+    latency on large systems (chara_karaka: ~262K rows → 22 min with single
+    inserts; batch reduces this to seconds — L1d fix, SAMPURTI campaign).
+    """
     conn.execute(
         "DELETE FROM kala_field_boundaries WHERE chart_id = %s AND system_id = %s",
         [chart_id, system_id],
     )
-    for r in rows:
-        conn.execute(
-            """
-            INSERT INTO kala_field_boundaries
-                (chart_id, system_id, level, lord, parent_lords, t_boundary,
-                 period_days, sigma_t_days, interval_lo, interval_hi,
-                 precision_state, dominant_uncertainty_source, sigma_t_source,
-                 source_table, source_pk)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'chart_dashas', %s)
-            """,
-            [
-                chart_id, r.system_id, r.level, r.lord, r.parent_lords, r.t_boundary,
-                r.period_days, r.sigma_t_days, r.interval_lo, r.interval_hi,
-                r.precision_state, r.dominant_uncertainty_source, r.sigma_t_source,
-                r.source_pk,
-            ],
-        )
+    if not rows:
+        return 0
+    sql = """
+        INSERT INTO kala_field_boundaries
+            (chart_id, system_id, level, lord, parent_lords, t_boundary,
+             period_days, sigma_t_days, interval_lo, interval_hi,
+             precision_state, dominant_uncertainty_source, sigma_t_source,
+             source_table, source_pk)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'chart_dashas', %s)
+    """
+    params = [
+        [
+            chart_id, r.system_id, r.level, r.lord, r.parent_lords, r.t_boundary,
+            r.period_days, r.sigma_t_days, r.interval_lo, r.interval_hi,
+            r.precision_state, r.dominant_uncertainty_source, r.sigma_t_source,
+            r.source_pk,
+        ]
+        for r in rows
+    ]
+    with conn.cursor() as cur:
+        cur.executemany(sql, params)
     return len(rows)
 
 

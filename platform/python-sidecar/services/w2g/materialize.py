@@ -266,6 +266,13 @@ def materialize_event_class(
             "peak_basis": PEAK_BASIS_V2,
         }
         row.update(_serialize_result(result))
+        # W1.5: wire λ decomposition + CI fields from IntensityResult onto the row.
+        # These are None on v1-parity rows (IntensityResult defaults) and
+        # populated on v3 rows by gochara_v3.engine._evaluate_single_from_context.
+        row["term_breakdown"] = result.term_breakdown
+        row["lambda_v3_ci_low"] = result.lambda_v3_ci_low
+        row["lambda_v3_ci_high"] = result.lambda_v3_ci_high
+        row["ci_source"] = result.ci_source
         rows.append(row)
 
     return MaterializeResult(
