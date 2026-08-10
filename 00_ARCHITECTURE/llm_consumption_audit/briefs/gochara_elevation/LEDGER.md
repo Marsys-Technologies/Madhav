@@ -51,8 +51,8 @@ Status: QUEUED | BUILDING | VERIFYING | PASS | FAIL(n) | BLOCKED | MERGED
 |---|---|---|---|---|---|---|---|---|---|
 | W0.1 | 0 | [mech] | Registry & seed hygiene | VERIFYING | gochara3/w01 | /Users/Dev/Vibe-Coding/Apps/utk-w01 | sonnet | none | COMPLETE (session 3): seed has 0 gaps (127 ids, 120 writers + 5 seed-only-allowed), ka_kshetra 9 edges, 3-way guard passes, mutation test confirmed. SHA 6dfb45462 already on origin/gochara3/w01. |
 | W0.2 | 0 | [mech] | Baseline builds + error triage | BUILDING | gochara3/w02 | /Users/Dev/Vibe-Coding/Apps/utk-w02 | sonnet | none | Uncommitted: ka_vedha_gochara/writer.py + ka_kota_chakra/writer.py + sarvatobhadra.py (DB9 fixes). Actual builds not yet run. Re-spawned in session 2. |
-| W0.3 | 0 | [heavy] | Schema migration bundle | PASS | gochara3/w03 | /Users/Dev/Vibe-Coding/Apps/utk-w03 | opus | none | VERIFIER PASS (session 5). Migration 556 correct, all 5 trigger tests, Phase A writer scoped. PR #1144 open — awaiting CI. |
-| W0.4 | 0 | [heavy] | Batched-context scoring engine | PASS | gochara3/w04 | /Users/Dev/Vibe-Coding/Apps/utk-w04 | opus | none | VERIFIER PASS (session 5). Zero DB calls structural proof, bounded fetch, GRAMMAR_VERSION present, I2 clean. PR #1145 open — awaiting CI. |
+| W0.3 | 0 | [heavy] | Schema migration bundle | MERGED | gochara3/w03 | /Users/Dev/Vibe-Coding/Apps/utk-w03 | opus | none | MERGED to main 2026-08-10T01:52 UTC (PR #1144). All CI green. |
+| W0.4 | 0 | [heavy] | Batched-context scoring engine | PASS | gochara3/w04 | /Users/Dev/Vibe-Coding/Apps/utk-w04 | opus | none | VERIFIER PASS. All CI green (19/19). PR #1145 in merge queue. |
 | W0.5 | 0 | [adj] | Campaign rulings (UTK-R1/R2/R3) | PASS | — | — | ADJUDICATOR | none | UTK-R1/R2/R3 issued + I6(a) migration approved. Rulings in §Rulings. |
 | I6a | 0 | [mech] | DB role migration (utkarsha_builder) | VERIFYING | gochara3/i6a-role | /Users/Dev/Vibe-Coding/Apps/utk-i6a | sonnet | W0.5 PASS | Migration 557 written + pushed (SHA 4879a6882, session 5). Migration-guard self-review: PASS. Awaiting dedicated VERIFIER PASS before PR. |
 | W1.1 | 1 | [heavy] | Bounded λ_v3 core | QUEUED | — | — | opus | W0.4 PASS | Gate: W0.4 |
@@ -175,5 +175,6 @@ Format: `WAVE N: DEPLOYED+SYNCED — revision <sha>, migrations applied through 
 - 2026-08-10 07:03 IST: PRs opened — W0.3: PR #1144, W0.4: PR #1145. Both awaiting CI. W0.1 VERIFIER dispatched in parallel.
 - 2026-08-10 07:12 IST: W0.4 CI fix — Fact-Category Pinning Gate failure on PR #1145 resolved. Added entry 33 to fact_category_pin_allowlist.json for gochara_v3/context.py _fetch_sade_sati_phases (full-row-list multi-row fetch, not D1 defect class — same shape as primitives.py:1043 entry). First attempt: pattern too long for 160-char snippet truncation. Corrected pattern (SHA e2ca1f213). Fact-Category Pinning Gate: PASS on run 31348023895. PR #1145 CI now clean — awaiting Build Check + DB Integration + Governance Gates.
 - 2026-08-10 07:18 IST: W0.2 builder ALIVE — committed fix for ka_vedha_gochara check constraint failure (SHA 11af082ca: populate grid_basis/grid_school_tag dedicated columns). Builder still running.
+- 2026-08-10 07:22 IST: PR #1144 (W0.3) MERGED to main at 01:52 UTC. PR #1145 (W0.4) all CI green (19/19 pass), added to merge queue. W0.1 VERIFIER (opus) dispatched — running. I6a migration-guard (opus) dispatched — running. W0.2 builder still running (last commit: 01:48 UTC ka_vedha_gochara fix). Lane table: W0.3 → MERGED, W0.4 → queued (CI PASS).
 
-CONDUCTOR-HEARTBEAT: 2026-08-10T01:49:01Z
+CONDUCTOR-HEARTBEAT: 2026-08-10T01:56:32Z
