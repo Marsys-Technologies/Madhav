@@ -2176,3 +2176,21 @@ cross-worktree hazard (stash is per-repo, not per-worktree — a concurrent stas
 swapped its WIP; recovered, foreign WIP preserved in stash, MR-11 builder warned to verify its
 uncommitted edits' integrity). Noted as an operational hazard for the close report: parallel
 builders in worktrees of ONE repo must not use git stash.
+
+## 2026-08-11 ~19:0x IST — TAP-6 LANDED on main with deploy GREEN (C3 complete); #1224 fix cycle done
+
+CONDUCTOR-HEARTBEAT: 2026-08-11T13:35:00Z pid=94797 host=Montys-MacBook-Pro.local
+
+- **TAP-6 (PR #1222): MERGED to main via merge queue, commit 0b7fd5d92.** C3 verification
+  complete: CI — Ganga Quality Gate SUCCESS + TAP CI SUCCESS + **Deploy to Cloud Run SUCCESS**
+  on the merge commit; workflow-only change (no migrations — tracker stays at 566, verified
+  earlier); live product call post-deploy (gochara_forecast_get, Abhinandan chart) returned
+  healthy gen-3.0 serving, backing_data_reachable=true. The C7 TAP-6 always-report item is
+  CLOSED: a REQUIRED check can never again be silently absent (PK-R-6 shape, single-job,
+  fail-closed polarity, mutation-hardened by adjudicator review).
+- **#1224 (MR-38/39) fix cycle complete** (commit f3b852467): F-1 kwargs-capture test (both
+  verifier mutations re-run RED), F-2 staging-template fold + mutation test, F-3 honest
+  row-shape-only scoping. 884 orchestrator tests pass. Same PARĪKṢAKA resumed for the
+  re-verdict per its own prescription.
+- 4 API-dropped agents all resumed and progressing (MR-23r, MR-11, MR-41/42 builders; #1225
+  verifier — which had already found a real MR-16 cross-lane collision to report).
