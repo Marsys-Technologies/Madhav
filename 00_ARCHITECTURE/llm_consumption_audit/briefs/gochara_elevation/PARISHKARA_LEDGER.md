@@ -2762,3 +2762,40 @@ _migrations_applied shows 568 + both new index defs confirmed live + production=
 driver's tracker-visibility gap (asset_throughput.state='building') → resume native rebuild
 from origin/main (idempotent — 7 classes + partial career_setback preserved) → Abhinandan →
 Phase D onward.
+
+## 2026-08-12 ~06:2x IST — CONDUCTOR SELF-ERROR: accidental concurrent-process collision, not a product bug
+
+CONDUCTOR-HEARTBEAT: 2026-08-12T00:52:00Z pid=94797 host=Montys-MacBook-Pro.local
+
+**Honest disclosure of a conductor-side operational mistake, caught before it caused any real
+harm.** After the migration-568 deploy verified, the first native-rebuild relaunch (bare
+`nohup ... &`) was mis-diagnosed as dead via a `ps aux | grep` check that returned a false
+negative — the process was in fact still alive and correctly working. Believing it dead, the
+conductor launched a SECOND rebuild attempt against the SAME chart via `run_in_background:true`
+(intended as the "properly tracked" replacement). Both processes then raced against the same
+270-substep plan; each independently resume-checked `childbirth::g3_2014_2024`, both saw it as
+not-yet-done, both attempted the identical insert — the second process lost the race and hit a
+genuine duplicate-key error, which its own STOP-and-report discipline correctly treated as
+fatal (exit code 2) rather than retrying blindly. **This looked EXACTLY like a new MR-44/45-
+class writer bug and was very nearly registered/dispatched as one** before a liveness re-check
+(`ps -ef` + confirming the DB was actively advancing in real time) revealed the true cause:
+this campaign's own hard rail ("never run two orchestrator builds on one chart concurrently")
+was violated by the conductor's own flawed dead-process diagnosis, not by any code defect.
+
+**No harm resulted** — the writer's idempotent delete-then-insert design meant the race produced
+a clean rejection, not corrupted data; the losing process self-terminated per its own no-hand-
+patch discipline exactly as designed. The one casualty is `phaseC_native_v3.log`'s reliability
+as a progress record — both processes wrote to the same path via `>` truncation, corrupting its
+content; the LIVE DATABASE (not the log) is the trustworthy progress signal from here.
+
+**Surviving process (PID 73011, the original, genuinely-alive one) confirmed healthy and
+actively progressing** — verified via two point-in-time row-count snapshots (272→282 rows,
+~65s apart) plus `ps -ef` showing exactly one matching process. Left running undisturbed; no
+new process launched. Corrective process discipline going forward: verify liveness via `ps -ef`
+(full command match, not a possibly-flaky piped grep) AND corroborate against live DB
+advancement before ever declaring a background rebuild dead; never reuse a log file path across
+launches without first confirming the prior process has genuinely exited.
+
+NEXT-ACTION: poll DB directly (not the corrupted log) for native completion (asset_throughput
+state='lit', 270/270 committed) → launch Abhinandan (single process, verified-dead-check first)
+→ Phase D onward.
