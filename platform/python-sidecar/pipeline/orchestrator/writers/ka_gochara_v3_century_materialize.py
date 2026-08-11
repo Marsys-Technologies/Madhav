@@ -310,6 +310,80 @@ def _query_fn(conn):
     return query
 
 
+
+# ---------------------------------------------------------------------------
+# Valence — honest per-event_class derivation (PARIṢKĀRA MR-13, F#1 fix)
+# ---------------------------------------------------------------------------
+#
+# PRIOR DEFECT: _build_row() hardcoded "valence": "favourable" for every
+# event_class it serves, including the adverse-natured health classes
+# (illness_acute, chronic_onset — canonical valence 'loss' per
+# brahma_event_ontology) and surgery (canonical valence 'neutral'). A
+# hardcoded favourable default standing in for a real per-class judgment is
+# exactly the dishonest-default pattern §N.7/§N.8 exist to close.
+#
+# FIX: read the canonical valence live from
+# brahma_event_ontology.evidence_requirements->>'valence' (migration 456) --
+# the SAME field services/gochara_intensity/valence.py::VALENCE_MAP and
+# services/gochara_grammar/event_class_scope.py transcribe, but read here via
+# a direct SQL query (never an import of those modules -- I2/AC6 forbids
+# importing gochara_intensity/gochara_grammar in this writer's code, not a
+# read of the shared ontology table this module already reads elsewhere via
+# fetch_base_rate_for_class/_fetch_resonance_targets).
+#
+# Fallback (live read fails / no row / ontology unreachable): a small,
+# explicitly documented map covering ONLY the 6 EVENT_CLASSES this writer
+# handles, transcribed from the same migration 456 values -- "live-preferred,
+# documented fallback, never silently invented" (identical discipline to
+# every sibling fetch_* in this codebase). An event_class this writer does
+# not know about at all degrades to 'neutral' (the codebase's own
+# established unknown-class convention, e.g.
+# gochara_intensity.valence.fetch_valence's own default) -- NEVER
+# 'favourable'/'gain', which would repeat the exact defect this fix removes.
+_VALENCE_FALLBACK: dict[str, str] = {
+    "career_advancement": "gain",
+    "major_gain": "gain",
+    "marriage": "neutral",
+    "illness_acute": "loss",
+    "chronic_onset": "loss",
+    "surgery": "neutral",
+}
+
+
+def _fetch_class_valence(conn, event_class: str) -> tuple[str, bool]:
+    """Return (valence, is_adverse) for `event_class`.
+
+    valence is one of the kala_gochara_windows schema's own vocabulary
+    values -- 'gain'|'loss'|'neutral'|'mixed' (migration 460) -- read
+    directly from brahma_event_ontology, no engine-vocab translation needed
+    (unlike ka_gochara.py's v1-engine _VALENCE_MAP, which translates a
+    DIFFERENT vocabulary). is_adverse is True iff valence == 'loss' --
+    matching gochara_intensity.valence.is_adverse's own sign rule for the
+    classes this writer serves (none of EVENT_CLASSES carry the
+    psychological_arc 'mixed'-override case).
+    """
+    try:
+        cur = conn.execute(
+            "SELECT evidence_requirements->>'valence' AS valence "
+            "FROM brahma_event_ontology WHERE event_class_id = %s",
+            [event_class],
+        )
+        row = cur.fetchone()
+        if row is not None:
+            v = row["valence"] if isinstance(row, dict) else row[0]
+            if v:
+                v = str(v)
+                return v, (v == "loss")
+    except Exception as exc:  # noqa: BLE001
+        logger.info(
+            "[%s] brahma_event_ontology valence read failed for "
+            "event_class=%s, falling back to documented fixture: %s",
+            ASSET_ID, event_class, exc,
+        )
+    v = _VALENCE_FALLBACK.get(event_class, "neutral")
+    return v, (v == "loss")
+
+
 def _fetch_resonance_targets(conn, chart_id: str, event_class: str) -> list[str]:
     """Fetch resonance target_refs for this (chart_id, event_class) pair.
 
@@ -456,12 +530,23 @@ def _build_row(
     event_class: str,
     boundary: IntervalBoundary,
     era_slice_key: str,
+    *,
+    valence: str,
+    is_adverse: bool,
     generation: str = GENERATION_V3,
 ) -> dict[str, Any]:
     """Convert one IntervalBoundary to a kala_gochara_windows(_v2) row dict.
 
     Parameters
     ----------
+    valence
+        REQUIRED -- the honest per-event_class valence
+        ('gain'|'loss'|'neutral'|'mixed'), from `_fetch_class_valence`.
+        No default: every caller must supply an honestly-derived value
+        rather than a fixed literal (PARIṢKĀRA MR-13 fix -- this parameter
+        used to be a hardcoded "favourable" string inside this function).
+    is_adverse
+        REQUIRED -- companion boolean from `_fetch_class_valence`.
     generation
         The generation label to stamp on the row.
         * GENERATION_V3 ('g3_utkarsha') → calibration row for kala_gochara_windows_v2
@@ -481,8 +566,8 @@ def _build_row(
         "is_irreversibility_milestone": False,
         "signed_intensity": round(float(boundary.peak_lambda), 6),
         "raw_intensity": round(float(boundary.peak_lambda), 6),
-        "valence": "favourable",        # structural prior; v3 engine refines at serving time
-        "is_adverse": False,
+        "valence": valence,
+        "is_adverse": is_adverse,
         "active_sentences": json.dumps([]),
         "contributing_systems": json.dumps([]),
         "suppression_state": json.dumps({}),
@@ -751,10 +836,20 @@ class GocharaV3CenturyMaterializeWriter(WriterBase):
                 [chart_id, event_class, era_slice_key],
             )
 
+        # Honest per-event_class valence (PARIṢKĀRA MR-13, F#1 fix): computed
+        # ONCE per substep (all boundaries in this substep share the same
+        # event_class) and passed to every _build_row call below -- never a
+        # hardcoded "favourable" literal.
+        class_valence, class_is_adverse = _fetch_class_valence(conn, event_class)
+
         inserted = 0
         for boundary in intervals:
             # (a) Insert into calibration/staging table.
-            row_v2 = _build_row(chart_id, event_class, boundary, era_slice_key, generation=GENERATION_V3)
+            row_v2 = _build_row(
+                chart_id, event_class, boundary, era_slice_key,
+                valence=class_valence, is_adverse=class_is_adverse,
+                generation=GENERATION_V3,
+            )
             try:
                 conn.execute(INSERT_SQL, row_v2)
                 inserted += 1
@@ -767,7 +862,11 @@ class GocharaV3CenturyMaterializeWriter(WriterBase):
 
             # (b) Insert into production table (generation='3.0').
             #     I1 mutation-guard invariant: row carries generation='3.0'.
-            row_prod = _build_row(chart_id, event_class, boundary, era_slice_key, generation=GENERATION_PROD)
+            row_prod = _build_row(
+                chart_id, event_class, boundary, era_slice_key,
+                valence=class_valence, is_adverse=class_is_adverse,
+                generation=GENERATION_PROD,
+            )
             try:
                 conn.execute(INSERT_PROD_SQL, row_prod)
             except Exception as exc:  # noqa: BLE001
@@ -842,4 +941,5 @@ __all__ = [
     "GocharaV3CenturyMaterializeWriter",
     "build_decade_slices",
     "compute_substep_fingerprint",
+    "_fetch_class_valence",
 ]
