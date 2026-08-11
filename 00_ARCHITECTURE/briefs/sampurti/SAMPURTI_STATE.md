@@ -761,3 +761,32 @@ CONDUCTOR-HEARTBEAT: 2026-08-12T21:55+05:30 pid=83428 [R9 — R0 corpus pin comp
 
 
 CONDUCTOR-HEARTBEAT: 2026-08-11T22:17+05:30 pid=98555 [R0 — CI re-run after smoke test path fix. Governance Gates failed: test_dag_edge_r0.py used bare relative paths (CWD=platform/python-sidecar/). Fixed to parents[3] anchor. Pushed 7b75dacf0. New CI run 31541719585.]
+
+## R0 GATE-EXECUTOR VERDICT — 2026-08-12 ~04:05 IST
+
+**GATE-EXECUTOR VERDICT: MERGE COMPLETE** (opus, all 12 floors)
+- PR: #1234 (sampurti/integration → main)
+- Merge commit: `d1dd5dd2ba6f0981864ba4fbaeca51d056e8ab6e`
+- Deploy run: https://github.com/Marsys-Technologies/Madhav/actions/runs/31543777661 — **success**
+- Migration 569 applied: CONFIRMED (deploy log: "Applied: 569_sampurti_r0_kshetra_dep_fix.sql" at 22:48:56 UTC)
+- PG-31 on main: CONFIRMED (COALESCE authority-seam filter at stage4_field.py:1025)
+- All 12 floors: PASS
+
+| Floor | Check | Result |
+|-------|-------|--------|
+| 1 | CI ALL COMPLETED SUCCESS | PASS — 21 pass, 12 skipping |
+| 2 | Migration 569 aboard + idempotent | PASS |
+| 3 | Rollback stated | PASS |
+| 4 | Seed consistency (no ka_gochara_sweep) | PASS |
+| 5 | PG-31 in packet (commit 4eabe824) | PASS |
+| 6 | _RESUME_VERSION = 3 | PASS |
+| 7 | RB-5/6/13 dispatch-config asserts | PASS |
+| 8 | MERGE | PASS — merged 22:37:45 UTC |
+| 9 | Deploy GREEN | PASS |
+| 10 | Migration 569 applied | PASS |
+| 11 | PG-31 on main | PASS |
+| 12 | production==main | PASS (SHA d1dd5dd2 matches) |
+
+**R0 COMPLETE. Hard blockers RB-1, RB-2, RB-3 lifted. Proceeding to R1.**
+
+CONDUCTOR-HEARTBEAT: 2026-08-12T04:08+05:30 pid=CONDUCTOR [R0 COMPLETE — gate packet merged d1dd5dd2, deploy green, migration 569 applied, PG-31 on main. L-8 lease releasing. R1 dispatch imminent.]
