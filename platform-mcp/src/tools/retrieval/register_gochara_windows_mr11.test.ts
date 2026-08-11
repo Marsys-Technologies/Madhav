@@ -45,6 +45,9 @@ const LAMBDA_V3_ARGMAX = 'gochara_lambda_v3_argmax'
 const LAMBDA_V3_COARSE_ARGMAX = 'gochara_lambda_v3_coarse_argmax'
 const LAMBDA_V3_MIDPOINT = 'gochara_lambda_v3_midpoint'
 const GOCHARA_LAMBDA_E_V1 = 'gochara_lambda_e_v1' // the v1 sweep's own citation
+// PK-R-8a (2026-08-11): mirrors services/gochara_v3/peak_basis_vocab.py's
+// ONTOLOGY_MILESTONE_OFFSET exactly.
+const ONTOLOGY_MILESTONE_OFFSET = 'ontology_milestone_offset'
 
 function makeRow(overrides: Partial<GocharaWindowRow> = {}): GocharaWindowRow {
   return {
@@ -181,12 +184,19 @@ describe('deriveResolutionDisclosure — R8.10 disclosed consequence (v1 rows)',
     expect(d.is_timing_window).toBe(true)
   })
 
-  it('a v1 CHAIN row (not point-shaped) is also CONTEXT under the same rule as interval', () => {
+  it('a v1 CHAIN row (not point-shaped) is also CONTEXT, but PK-R-8a gives it a MORE SPECIFIC reason than plain interval rows', () => {
+    // PK-R-8a (2026-08-11): a chain row short-circuits on its OWN clause
+    // BEFORE the generic resolution-tier fallback below -- a v1 chain row's
+    // legacy basis (GOCHARA_LAMBDA_E_V1, not ONTOLOGY_MILESTONE_OFFSET) is
+    // therefore reported as 'chain_basis_not_declared' (a more precise,
+    // chain-specific reason), not the generic 'resolution_unavailable' an
+    // earlier, pre-PK-R-8a version of this test expected.
     const d = deriveResolutionDisclosure(
       makeRow({ temporal_shape: 'chain', resolution: null, peak_basis: GOCHARA_LAMBDA_E_V1 })
     )
     expect(d.is_timing_window).toBe(false)
-    expect(d.timing_window_blocked_reason).toBe('resolution_unavailable')
+    expect(d.resolution_source).toBe('not_hierarchy_classified')
+    expect(d.timing_window_blocked_reason).toBe('chain_basis_not_declared')
   })
 })
 
@@ -503,5 +513,106 @@ describe('Migration 567 — parent_window_id + resolution on both gochara tables
     expect(codeOnly).not.toMatch(/\bINSERT\s+INTO\s+kala_gochara_windows/i)
     expect(codeOnly).not.toMatch(/\bDELETE\s+FROM\s+kala_gochara_windows/i)
     expect(codeOnly).not.toMatch(/\bUPDATE\s+kala_gochara_windows/i)
+  })
+})
+
+// ══════════════════════════════════════════════════════════════════════════
+// PK-R-8a (2026-08-11, ADJUDICATOR ruling) — the chain-basis question
+// ══════════════════════════════════════════════════════════════════════════
+//
+// A chain milestone's date is DECLARED by brahma_event_ontology's
+// milestone_template (episode_anchor_jd + typical_offset_days), never
+// LOCATED by a peak search — it earns is_timing_window through its OWN,
+// THIRD clause in the EARNED formula:
+//   is_timing_window =
+//     temporal_shape === 'point'
+//     || (temporal_shape === 'chain' && peak_basis === ONTOLOGY_MILESTONE_OFFSET
+//         && milestone_id != null)
+//     || (resolution IN {'month','day'} && peak_basis IN GENUINE_PEAK_BASES)
+// never through the resolution-tier clause (chain rows carry resolution=NULL
+// unconditionally — see ka_gochara_v3_century_materialize.py's run_substep
+// chain branch).
+
+describe('deriveResolutionDisclosure — PK-R-8a chain-basis clause', () => {
+  it('test_chain_rows_never_carry_argmax_basis: a chain row with the correct ONTOLOGY_MILESTONE_OFFSET basis and a real milestone_id earns is_timing_window=true, resolution=null, resolution_source=not_hierarchy_classified', () => {
+    const d = deriveResolutionDisclosure(
+      makeRow({
+        temporal_shape: 'chain', resolution: null,
+        peak_basis: ONTOLOGY_MILESTONE_OFFSET, milestone_id: 'first_revenue',
+      })
+    )
+    expect(d).toEqual({
+      resolution: null,
+      resolution_source: 'not_hierarchy_classified',
+      is_timing_window: true,
+      timing_window_blocked_reason: null,
+    })
+  })
+
+  it('test_chain_milestone_earns_timing_window: identical shape asserted a second, independent way (this IS the PK-R-8a deliverable)', () => {
+    const d = deriveResolutionDisclosure(
+      makeRow({
+        temporal_shape: 'chain', resolution: null,
+        peak_basis: ONTOLOGY_MILESTONE_OFFSET, milestone_id: 'ceremony',
+      })
+    )
+    expect(d.is_timing_window).toBe(true)
+    expect(d.resolution).toBeNull()
+    expect(d.resolution_source).toBe('not_hierarchy_classified')
+    expect(d.timing_window_blocked_reason).toBeNull()
+  })
+
+  it('test_chain_signal_has_a_real_negative_path: milestone_id=null blocks with chain_milestone_unanchored even though the basis is correctly declared', () => {
+    const d = deriveResolutionDisclosure(
+      makeRow({
+        temporal_shape: 'chain', resolution: null,
+        peak_basis: ONTOLOGY_MILESTONE_OFFSET, milestone_id: null,
+      })
+    )
+    expect(d.is_timing_window).toBe(false)
+    expect(d.timing_window_blocked_reason).toBe('chain_milestone_unanchored')
+  })
+
+  it('test_chain_signal_has_a_real_negative_path: a stray LAMBDA_V3_ARGMAX basis (the pre-PK-R-8a stamp) blocks with chain_basis_not_declared, even with a real milestone_id', () => {
+    const d = deriveResolutionDisclosure(
+      makeRow({
+        temporal_shape: 'chain', resolution: null,
+        peak_basis: LAMBDA_V3_ARGMAX, milestone_id: 'first_revenue',
+      })
+    )
+    expect(d.is_timing_window).toBe(false)
+    expect(d.timing_window_blocked_reason).toBe('chain_basis_not_declared')
+  })
+
+  it('test_chain_span_inference_cannot_grant_timing_window: a ZERO-SPAN chain row (window_start===window_end===peak_date, as every real chain row is) with the legacy v1 basis still reads false via the chain clause, never via a duration/span inference path', () => {
+    const d = deriveResolutionDisclosure(
+      makeRow({
+        temporal_shape: 'chain', resolution: null,
+        peak_basis: GOCHARA_LAMBDA_E_V1, milestone_id: 'engagement',
+        window_start: '2013-01-04', window_end: '2013-01-04', peak_date: '2013-01-04',
+      })
+    )
+    expect(d.is_timing_window).toBe(false)
+    // Distinguishes "the chain clause correctly said no" from "some other
+    // (e.g. duration-based) path granted true" -- the specific chain-basis
+    // reason is the proof this went through the RIGHT gate.
+    expect(d.timing_window_blocked_reason).toBe('chain_basis_not_declared')
+    expect(d.resolution_source).toBe('not_hierarchy_classified')
+  })
+
+  it('test_ontology_milestone_offset_not_in_genuine_peak_bases: a chain row with GENUINE_PEAK_BASES member LAMBDA_V3_ARGMAX is NOT granted true via the resolution-tier clause -- proves the chain short-circuit fires before that clause is ever reached', () => {
+    // If the chain short-circuit did NOT fire first, this row (resolution=
+    // null) would fall through to the generic "resolution is NULL and not
+    // point-shaped" branch and read 'resolution_unavailable' -- also false,
+    // but via the WRONG reason. The chain-specific reason is the proof the
+    // short-circuit is what actually fired.
+    const d = deriveResolutionDisclosure(
+      makeRow({
+        temporal_shape: 'chain', resolution: null,
+        peak_basis: LAMBDA_V3_ARGMAX, milestone_id: 'first_revenue',
+      })
+    )
+    expect(d.timing_window_blocked_reason).toBe('chain_basis_not_declared')
+    expect(d.timing_window_blocked_reason).not.toBe('resolution_unavailable')
   })
 })

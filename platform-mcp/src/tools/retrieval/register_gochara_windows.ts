@@ -311,57 +311,96 @@ function capActiveSentences(rows: GocharaWindowRow[]): GocharaWindowRow[] {
 // its Python counterpart.
 //
 // R8.10 DISCLOSED CONSEQUENCE: the pre-existing v1 sweep's 64 INTERVAL rows
-// (peak_basis='gochara_lambda_e_v1', mostly chart cb73cd3d) do NOT satisfy
-// EITHER clause — they are temporal_shape='interval' (not 'point') and carry
-// resolution=NULL (not 'month'/'day') — so they now serve
-// is_timing_window=false, timing_window_blocked_reason='resolution_
-// unavailable'. This is a RULED consequence of PK-R-8, not a bug: those 64
-// rows' peaks were never day-refined and the sweep never classified them
-// into the hierarchy. Their v1 POINT rows (54 of them) are UNAFFECTED — the
+// (peak_basis='gochara_lambda_e_v1', split 1c826d5a=33/482012f1=29/
+// cb73cd3d=2 -- corrected 2026-08-11, PARĪKṢAKA F-5; NOT "mostly cb73cd3d"
+// as an earlier draft of this PR claimed) do NOT satisfy EITHER clause —
+// they are temporal_shape='interval' (not 'point') and carry resolution=
+// NULL (not 'month'/'day') — so they now serve is_timing_window=false,
+// timing_window_blocked_reason='resolution_unavailable'. This is a RULED
+// consequence of PK-R-8, not a bug: those 64 rows' peaks were never
+// day-refined and the sweep never classified them into the hierarchy.
+// Their v1 POINT rows (54 of them) are UNAFFECTED — the
 // temporal_shape==='point' clause preserves them regardless of peak_basis.
+// The SAME consequence also lands on the 120 currently-SERVED
+// generation='3.0' interval rows on the two authoritative charts
+// (1c826d5a, 482012f1) — post-merge/pre-rebuild both canonical charts
+// serve ZERO interval-shaped timing windows, restored once the R2 rebuild
+// runs (ruled-correct interim, see PR #1229's R8.10 section).
 // Remedy path (if ever pursued): a future lane could earn v1's own basis
 // into GENUINE_PEAK_BASES by demonstrating v1's peak derivation is genuinely
 // day-precision — not done here, not assumed here.
+//
+// PK-R-8a (2026-08-11, ADJUDICATOR ruling, the chain-basis question PK-R-8
+// deferred): a chain milestone's date is DECLARED by brahma_event_
+// ontology's milestone_template (episode_anchor_jd + typical_offset_days),
+// never LOCATED by a peak search — it earns is_timing_window through its
+// OWN, THIRD clause (peak_basis===ONTOLOGY_MILESTONE_OFFSET AND a present
+// milestone_id), never through the resolution-tier clause above (chain rows
+// are stamped resolution=NULL by the writer -- see ka_gochara_v3_century_
+// materialize.py's run_substep chain branch). The chain clause is checked
+// via an EARLY SHORT-CIRCUIT on temporal_shape==='chain', BEFORE the
+// resolution==='month'/'day' branch below -- a chain row's zero-span
+// milestone date must never sneak through that door and get evaluated
+// against the resolution-tier formula (which was never designed for it and
+// could, on a stray legacy 'day' stamp, silently grant true for the wrong
+// reason).
 
 export type TimingWindowBlockedReason =
   | 'era_resolution'
   | 'peak_basis_not_argmax'
   | 'resolution_unavailable'
+  | 'chain_basis_not_declared'
+  | 'chain_milestone_unanchored'
   | null
 
-// Mirrors services/gochara_v3/peak_basis_vocab.py GENUINE_PEAK_BASES exactly.
+// Mirrors services/gochara_v3/peak_basis_vocab.py GENUINE_PEAK_BASES exactly
+// -- a LOCATED-extremum basis. ONTOLOGY_MILESTONE_OFFSET (PK-R-8a, a
+// DECLARED date) is deliberately NOT a member -- see the chain clause below.
 const GENUINE_PEAK_BASES: ReadonlySet<string> = new Set(['gochara_lambda_v3_argmax'])
+// PK-R-8a: mirrors services/gochara_v3/peak_basis_vocab.py's
+// ONTOLOGY_MILESTONE_OFFSET exactly.
+const ONTOLOGY_MILESTONE_OFFSET = 'ontology_milestone_offset'
 
 export interface ResolutionDisclosure {
   /** The row's own STORED `resolution` column ('era'|'month'|'day'|null) --
    * R8.9 no longer infers a label from date span; a NULL resolution on a
-   * non-point row is honestly reported as null, never guessed. */
+   * non-point, non-chain row is honestly reported as null, never guessed. */
   resolution: 'era' | 'month' | 'day' | null
   /** 'stored' -- a real resolution value (or a genuine point-shaped row) is
    * present. 'unavailable' -- resolution is NULL and the row is not
-   * point-shaped (R8.10's v1-interval-row case). */
-  resolution_source: 'stored' | 'unavailable'
-  /** R8.9 EARNED gate -- see the module section header for the exact
-   * two-clause formula. Never inferred from window_start/window_end span. */
+   * point-shaped (R8.10's v1-interval-row case). 'not_hierarchy_classified'
+   * (PK-R-8a) -- the row is chain-shaped; chain rows are never hierarchy-
+   * tier-classified at all (no era/month/day tier applies to a declared
+   * milestone date), distinct from 'unavailable' (which means "we don't
+   * know" rather than "this classification doesn't apply here"). */
+  resolution_source: 'stored' | 'unavailable' | 'not_hierarchy_classified'
+  /** EARNED gate (R8.9 + PK-R-8a's third clause) -- see the module section
+   * header for the exact three-clause formula. Never inferred from
+   * window_start/window_end span. */
   is_timing_window: boolean
-  /** R8.9: populated (non-null) whenever is_timing_window is false, naming
-   * WHY it was blocked -- 'era_resolution' (a decade-era row, PK-R-1
+  /** Populated (non-null) whenever is_timing_window is false, naming WHY it
+   * was blocked -- 'era_resolution' (a decade-era row, PK-R-1
    * context-only), 'peak_basis_not_argmax' (month/day resolution but the
-   * peak was never day-refined to a genuine argmax), or 'resolution_
-   * unavailable' (no stored resolution and not a point row -- R8.10's v1-row
-   * case). Null when is_timing_window is true. */
+   * peak was never day-refined to a genuine argmax), 'resolution_
+   * unavailable' (no stored resolution and not a point/chain row -- R8.10's
+   * v1-row case), 'chain_basis_not_declared' (PK-R-8a: a chain row whose
+   * peak_basis is anything other than ONTOLOGY_MILESTONE_OFFSET, including
+   * a stray LAMBDA_V3_ARGMAX), or 'chain_milestone_unanchored' (PK-R-8a: a
+   * chain row with the right basis but milestone_id is NULL -- the row
+   * cannot be pinned to a specific declared milestone). Null when
+   * is_timing_window is true. */
   timing_window_blocked_reason: TimingWindowBlockedReason
 }
 
 /**
  * Derive the honest, EARNED resolution disclosure for one served row
- * (PK-R-8 R8.9). Real detector: reads the row's OWN stored `resolution` and
- * `peak_basis` columns -- never infers a tier from window_start/window_end
- * span (R8.9 supersedes the pre-PK-R-8 duration-based inference this
- * function used to perform).
+ * (PK-R-8 R8.9 + PK-R-8a). Real detector: reads the row's OWN stored
+ * `resolution`, `peak_basis`, and (for chain rows) `milestone_id` columns
+ * -- never infers a tier from window_start/window_end span (R8.9 supersedes
+ * the pre-PK-R-8 duration-based inference this function used to perform).
  */
 export function deriveResolutionDisclosure(
-  row: Pick<GocharaWindowRow, 'resolution' | 'temporal_shape' | 'peak_basis'>
+  row: Pick<GocharaWindowRow, 'resolution' | 'temporal_shape' | 'peak_basis' | 'milestone_id'>
 ): ResolutionDisclosure {
   // PK-R-1's second floor: a dated point row is always a genuine timing
   // claim, regardless of resolution/peak_basis -- this is what preserves
@@ -372,6 +411,36 @@ export function deriveResolutionDisclosure(
         ? row.resolution
         : null,
       resolution_source: row.resolution ? 'stored' : 'unavailable',
+      is_timing_window: true,
+      timing_window_blocked_reason: null,
+    }
+  }
+
+  // PK-R-8a: chain rows short-circuit HERE, before the resolution==='month'/
+  // 'day' branch below -- a chain milestone's timing-window status is
+  // earned via its OWN clause (declared basis + anchored milestone_id),
+  // never via the resolution-tier formula (chain rows carry resolution=NULL
+  // unconditionally; see the writer's run_substep chain branch).
+  if (row.temporal_shape === 'chain') {
+    if (row.peak_basis !== ONTOLOGY_MILESTONE_OFFSET) {
+      return {
+        resolution: null,
+        resolution_source: 'not_hierarchy_classified',
+        is_timing_window: false,
+        timing_window_blocked_reason: 'chain_basis_not_declared',
+      }
+    }
+    if (row.milestone_id == null) {
+      return {
+        resolution: null,
+        resolution_source: 'not_hierarchy_classified',
+        is_timing_window: false,
+        timing_window_blocked_reason: 'chain_milestone_unanchored',
+      }
+    }
+    return {
+      resolution: null,
+      resolution_source: 'not_hierarchy_classified',
       is_timing_window: true,
       timing_window_blocked_reason: null,
     }

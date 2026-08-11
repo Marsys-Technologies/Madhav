@@ -1549,6 +1549,38 @@ def test_peak_basis_vocab_used_not_literal():
     assert "peak_basis_vocab.LAMBDA_V3_COARSE_ARGMAX" in src
 
 
+def test_ontology_milestone_offset_not_in_genuine_peak_bases():
+    """PK-R-8a (2026-08-11, ADJUDICATOR ruling, chain-basis question)
+    detector: ONTOLOGY_MILESTONE_OFFSET names a DECLARED date (episode_
+    anchor_jd + milestone_template[i].typical_offset_days), never a LOCATED
+    peak -- it must never join GENUINE_PEAK_BASES (that set stays exactly
+    {LAMBDA_V3_ARGMAX} and means "a located extremum"), and the writer must
+    reference the constant (not a bare literal) for its chain rows."""
+    assert mod.peak_basis_vocab.ONTOLOGY_MILESTONE_OFFSET not in mod.peak_basis_vocab.GENUINE_PEAK_BASES, (
+        "PK-R-8a VIOLATION: ONTOLOGY_MILESTONE_OFFSET must never be admitted "
+        "into GENUINE_PEAK_BASES -- a declared date is not a located peak."
+    )
+    assert mod.peak_basis_vocab.GENUINE_PEAK_BASES == frozenset({mod.peak_basis_vocab.LAMBDA_V3_ARGMAX}), (
+        "GENUINE_PEAK_BASES drifted from its PK-R-8/PK-R-8a-ruled single member."
+    )
+    assert mod.peak_basis_vocab.ONTOLOGY_MILESTONE_OFFSET in mod.peak_basis_vocab.ALL_BASES
+
+    vocab_src = inspect.getsource(mod.peak_basis_vocab)
+    assert "PK-R-8a" in vocab_src, (
+        "peak_basis_vocab.py must cite PK-R-8a as the ruling source for "
+        "ONTOLOGY_MILESTONE_OFFSET (recorded-evidence discipline, R8.9's "
+        "own 'a future lane that wants to add a basis here must cite the "
+        "evidence' convention)."
+    )
+
+    writer_src = inspect.getsource(mod)
+    assert "peak_basis_vocab.ONTOLOGY_MILESTONE_OFFSET" in writer_src, (
+        "PK-R-8a VIOLATION: the writer must reference the named "
+        "ONTOLOGY_MILESTONE_OFFSET constant for chain rows, never a bare "
+        "string literal."
+    )
+
+
 def test_build_row_requires_peak_basis_kwarg():
     """_build_row must not have a default for peak_basis -- every caller is
     forced to supply an honestly-derived value (no silent fallback to a

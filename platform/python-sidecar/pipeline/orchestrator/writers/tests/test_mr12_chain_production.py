@@ -634,3 +634,59 @@ class TestRunSubstepChainDispatch:
             if sql.strip().upper().startswith(("DELETE", "INSERT"))
         ]
         assert writes == []
+
+    def test_chain_rows_never_carry_argmax_basis(self, monkeypatch):
+        """PK-R-8a (2026-08-11, ADJUDICATOR ruling) detector: a chain row's
+        date is DECLARED by brahma_event_ontology's milestone_template
+        (episode_anchor_jd + typical_offset_days), not LOCATED by a peak
+        search -- LAMBDA_V3_ARGMAX means "a located extremum" and must
+        NEVER appear on a chain row. Every chain row (both the v2/staging
+        insert and the production insert) must carry peak_basis=
+        ONTOLOGY_MILESTONE_OFFSET and resolution=NULL (chain rows are not
+        hierarchy-tier-classified -- no era/month/day tier applies).
+
+        Verify by reverting run_substep's chain branch to its pre-PK-R-8a
+        stamp (`ms, "day", peak_basis_vocab.LAMBDA_V3_ARGMAX, None, None`)
+        -- this test must go RED."""
+        conn = _FakeConn(_ontology_responder(
+            event_class="business_launch",
+            temporal_shape="chain",
+            milestone_template=_BUSINESS_LAUNCH_TEMPLATE_RAW,
+            irreversibility_milestone="first_revenue",
+            targets=["Jupiter"],
+            stored_fp=None,
+        ))
+        ctx = _ctx(conn)
+        writer = GocharaV3CenturyMaterializeWriter()
+        steps = writer.plan_substeps(ctx)
+        step = next(s for s in steps if s.key.startswith("business_launch::"))
+
+        fake_boundary = IntervalBoundary(
+            enter_jd=2445736.5, exit_jd=2445736.5 + 200.0, peak_jd=2445736.5 + 90.0,
+            peak_lambda=0.6, era_slice_key=step.key.split("::", 1)[1],
+        )
+        monkeypatch.setattr(mod, "find_threshold_crossings", lambda *a, **k: [fake_boundary])
+        monkeypatch.setattr(mod, "score_chain_milestones", _fake_score_chain_milestones(3))
+        _patch_swe_and_context(monkeypatch)
+
+        result = writer.run_substep(ctx, step)
+        assert result.rows_inserted == 3
+
+        all_inserts = [
+            params for sql, params in conn.statements
+            if sql.strip().upper().startswith("INSERT INTO")
+            and "KALA_GOCHARA_WINDOWS" in sql.strip().upper()
+            and isinstance(params, dict)
+        ]
+        assert len(all_inserts) == 6, f"expected 3 v2 + 3 prod inserts, got {len(all_inserts)}"
+        for row in all_inserts:
+            assert row["peak_basis"] == mod.peak_basis_vocab.ONTOLOGY_MILESTONE_OFFSET, (
+                f"PK-R-8a VIOLATION: chain row peak_basis={row['peak_basis']!r}, "
+                f"expected ONTOLOGY_MILESTONE_OFFSET (never a located-peak basis "
+                f"like LAMBDA_V3_ARGMAX on a DECLARED chain milestone)."
+            )
+            assert row["resolution"] is None, (
+                f"PK-R-8a VIOLATION: chain row resolution={row['resolution']!r}, "
+                f"expected NULL -- chain rows are not hierarchy-tier-classified."
+            )
+            assert row["parent_window_id"] is None

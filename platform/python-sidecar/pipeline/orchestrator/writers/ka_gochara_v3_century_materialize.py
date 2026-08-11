@@ -920,19 +920,29 @@ def _build_chain_row(
     per BRIEF_D5 §3 / migration 460's column comment).
 
     peak_basis
-        REQUIRED (PK-R-8 R8.8, this lane's own extension of MR-12): each
-        milestone is evaluated at an EXACT, ontology-declared JD
+        REQUIRED. PK-R-8a (2026-08-11, ADJUDICATOR ruling, SUPERSEDES this
+        lane's original R8.8 extension which stamped LAMBDA_V3_ARGMAX here):
+        each milestone is evaluated at an EXACT, ontology-declared JD
         (episode_anchor_jd + typical_offset_days via score_chain_milestones)
-        -- a single deterministic evaluation, not a scan -- which run_substep
-        stamps LAMBDA_V3_ARGMAX (see run_substep's chain branch for the full
-        reasoning). No default: every caller supplies a named
-        peak_basis_vocab constant, never the retired bare literal.
+        -- the date was DECLARED by brahma_event_ontology, not LOCATED by a
+        peak search, so run_substep stamps peak_basis_vocab.
+        ONTOLOGY_MILESTONE_OFFSET, never LAMBDA_V3_ARGMAX (that constant
+        means "a located extremum", which no chain milestone ever is -- see
+        peak_basis_vocab.py's own PK-R-8a docstring section). No default:
+        every caller supplies a named peak_basis_vocab constant, never the
+        retired bare literal.
     resolution, parent_window_id
-        PARIṢKĀRA MR-11(b) (migration 567): run_substep stamps resolution=
-        'day' (a chain milestone is a genuinely single-dated claim) and
-        parent_window_id=None (chain rows are independent per-milestone,
-        no hierarchy parent) -- both accepted here as explicit parameters
-        (not derived in-body) matching `_build_row`'s own "every value this
+        PK-R-8a (2026-08-11, SUPERSEDES this lane's original resolution=
+        'day' stamp): run_substep now stamps resolution=None -- a chain row
+        is not hierarchy-tier-classified at all (no era/month/day tier to
+        assign it to; it earns is_timing_window through its OWN clause in
+        the EARNED formula, keyed on peak_basis===ONTOLOGY_MILESTONE_OFFSET
+        + a present milestone_id, never through the resolution-tier
+        disjunct -- see register_gochara_windows.ts's
+        deriveResolutionDisclosure). parent_window_id stays None (chain
+        rows are independent per-milestone, no hierarchy parent to resolve
+        regardless) -- both accepted here as explicit parameters (not
+        derived in-body) matching `_build_row`'s own "every value this
         function serves is an explicit parameter" discipline.
     coverage_quality
         PARIṢKĀRA MR-16/MR-12 parity: the SAME honest, LIVE-computed
@@ -1850,16 +1860,22 @@ class GocharaV3CenturyMaterializeWriter(WriterBase):
             # milestones, the boundary itself is never served as a row) is
             # expanded into one row per milestone_template entry.
             #
-            # PK-R-8 R8.8/R8.9 note (this lane's own extension of MR-12, not
-            # in the original MR-12 landing): each milestone is evaluated at
-            # an EXACT, ontology-declared JD (episode_anchor_jd + typical_
-            # offset_days) -- not a scan, a single deterministic evaluation.
-            # That is at least as precise as a day-refined argmax (R8.5), so
-            # chain rows are stamped resolution='day' + peak_basis=
-            # LAMBDA_V3_ARGMAX (earning is_timing_window=True under R8.9's
-            # second clause) -- distinct from a v1 CHAIN row (R8.10), whose
-            # peak was scored by a wholly different, non-day-precision
-            # engine and correctly stays blocked.
+            # PK-R-8a (2026-08-11, ADJUDICATOR ruling, SUPERSEDES this
+            # lane's own prior R8.8/R8.9 extension of MR-12 below): a chain
+            # milestone's date is DECLARED by brahma_event_ontology's
+            # milestone_template (episode_anchor_jd + typical_offset_days),
+            # not LOCATED by any peak search -- peak_basis=LAMBDA_V3_ARGMAX
+            # was the wrong vocabulary entry for that (ARGMAX means "a
+            # located extremum", which no chain milestone ever is). Chain
+            # rows now carry peak_basis=ONTOLOGY_MILESTONE_OFFSET (its own
+            # named basis, deliberately excluded from GENUINE_PEAK_BASES)
+            # and resolution=NULL (chain rows are not hierarchy-tier-
+            # classified at all -- no era/month/day tier, no parent_
+            # window_id). A chain milestone still earns is_timing_window via
+            # its OWN clause in the EARNED formula (temporal_shape==='chain'
+            # AND peak_basis===ONTOLOGY_MILESTONE_OFFSET AND milestone_id
+            # present), never by masquerading as a resolution-tier row --
+            # see register_gochara_windows.ts's deriveResolutionDisclosure.
             chain_episodes = find_threshold_crossings(
                 swe=swe, context=context,
                 start_jd=decade.start_jd, end_jd=decade.end_jd,
@@ -1874,7 +1890,7 @@ class GocharaV3CenturyMaterializeWriter(WriterBase):
                 )
                 for ms in milestone_scores:
                     insert_specs.append((
-                        ms, "day", peak_basis_vocab.LAMBDA_V3_ARGMAX, None, None,
+                        ms, None, peak_basis_vocab.ONTOLOGY_MILESTONE_OFFSET, None, None,
                     ))
             day_count = len(insert_specs)
         else:
