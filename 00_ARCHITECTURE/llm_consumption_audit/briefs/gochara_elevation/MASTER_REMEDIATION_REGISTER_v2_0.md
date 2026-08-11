@@ -808,6 +808,25 @@ carry a truthful, structured suppression_state; a unit test asserts the writer
 cannot emit the bare {} for a computed row. AT-PAR: §N.7-item-4 honesty on the
 production surface going forward.
 
+**MR-43 · Moon-referenced frame for `gochara_vedha_pair` (PK-R-9 IR-5 follow-on).**
+[spawned by PK-R-9 Q2, 2026-08-11] GAP: the gochara vedha corpus
+(bg_transit_rules, Phaladeepika Ch.26/BPHS Ch.29) is MOON-referenced; the
+primitive consumes LAGNA-framed bhava targets — a fixed 10-sign error for the
+native chart, and a wrong-frame uncancelled pair can RAISE λ (counts as
+activity). Interim state (this campaign): the primitive returns an EARNED
+empty gated on absent moon_sign_idx with a recorded reason citing this item.
+REMEDIATION: supply the natal-Moon frame by consuming
+ka_vedha_gochara/logic.py's house_from_moon/sign_from_house (never a
+reimplementation); wire moon_sign_idx from chart_facts through the context;
+un-gate the primitive. GATE: a constructed configuration matching a real
+bg_transit_rules row produces a correctly Moon-framed cancellation
+(sign pair verified against the sibling writer's own output for the same
+inputs); the earned-empty gate is removed only in the same PR that supplies
+the frame. AT-PAR: cancellation semantics become classically correct instead
+of honestly absent. Priority: non-blocking for this campaign's close (the
+honest empty is the ruled interim state); candidate for the first
+post-campaign hygiene lane.
+
 ## §7 — SOURCE → MR MAP (dedup audit)
 
 PG-1→MR-01 · PG-2→MR-05 · PG-3→MR-10 · PG-4→MR-04+13 · PG-5→MR-13 ·

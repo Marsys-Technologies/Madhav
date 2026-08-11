@@ -52,6 +52,7 @@ marker_duty: post W6-COMPLETE to campaign-coordination §6 after MR-01..08,10,13
 | MR-40 | ka_gochara cockpit count_sql orphaned by W5.4 UTK-R1 authority repoint | LIVE-FIXED, PR OPEN | found + live-fixed during MR-24's final re-run 2026-08-11; source-of-truth fix in PR #1216 (parishkara/mr-40-cockpit-gochara-authority -> parishkara/integration), not yet merged; live DB already correct (verified 89/85) |
 | MR-41 | Suppression reachability (vedha repoint + nakshatra anchor + reachability test + v3 wiring decision) | QUEUED (fix BEFORE R2 rebuild) | spawned by PK-R-5; register entry MR-41 |
 | MR-42 | v3 interval rows hardcode suppression_state={} | QUEUED (fix BEFORE R2 rebuild) | spawned by PK-R-5; register entry MR-42 |
+| MR-43 | Moon-referenced frame for gochara_vedha_pair | REGISTERED (non-blocking; earned-empty interim per PK-R-9) | spawned by PK-R-9 Q2/IR-5; candidate first post-campaign hygiene lane |
 
 ## RULINGS
 (ADJUDICATOR entries here, numbered PK-R1.. , with written rationale.
