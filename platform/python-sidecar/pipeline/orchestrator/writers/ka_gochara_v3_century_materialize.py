@@ -317,6 +317,12 @@ from services.gochara_v3.resolution_hierarchy import (
 # bare string literal (source-guarded, see test_peak_basis_vocab_used_not_
 # literal in this module's test suite).
 from services.gochara_v3 import peak_basis_vocab
+# PARIṢKĀRA MR-47 (ADJUDICATOR ruling PK-R-10): named shape_conformance
+# vocabulary — writers use these constants, never a bare string literal
+# (source-guarded, see test_shape_conformance_vocab_used_not_literal in this
+# module's test suite). See shape_conformance_vocab.py's own docstring for
+# the full PK-R-10 account of the defect this closes.
+from services.gochara_v3 import shape_conformance_vocab
 
 logger = logging.getLogger(__name__)
 
@@ -426,6 +432,9 @@ BUILD_STATE_TABLE = "kala_gochara_v2_build_state"
 # RETURNING id -- the writer must capture each inserted row's own bigint id
 # so a subsequently-inserted CHILD row (month under era, day under month) can
 # carry the correct parent_window_id. See run_substep's insert loop.
+# PARIṢKĀRA MR-47 (PK-R-10): +shape_conformance (migration 570) -- the
+# earned, explicit marker proving this row's temporal_shape was checked
+# against brahma_event_ontology at WRITE time. See shape_conformance_vocab.py.
 INSERT_SQL = f"""
     INSERT INTO {TABLE}
       (chart_id, event_class, temporal_shape,
@@ -435,7 +444,7 @@ INSERT_SQL = f"""
        active_sentences, contributing_systems, suppression_state,
        peak_basis, calibration_state, source, generation, era_slice_key,
        term_breakdown, lambda_v3_ci_low, lambda_v3_ci_high, ci_source,
-       resolution, parent_window_id)
+       resolution, parent_window_id, shape_conformance)
     VALUES
       (%(chart_id)s, %(event_class)s, %(temporal_shape)s,
        %(window_start)s, %(window_end)s, %(peak_date)s,
@@ -447,7 +456,7 @@ INSERT_SQL = f"""
        %(generation)s, %(era_slice_key)s,
        %(term_breakdown)s::jsonb, %(lambda_v3_ci_low)s, %(lambda_v3_ci_high)s,
        %(ci_source)s,
-       %(resolution)s, %(parent_window_id)s)
+       %(resolution)s, %(parent_window_id)s, %(shape_conformance)s)
     RETURNING id
 """
 
@@ -461,6 +470,8 @@ INSERT_SQL = f"""
 # REGISTER_v2_0.md MR-01/MR-14).
 # PARIṢKĀRA MR-11(b): same +resolution/+parent_window_id/RETURNING id as
 # INSERT_SQL above (migration 567 mirrors the columns onto both tables).
+# PARIṢKĀRA MR-47 (PK-R-10): +shape_conformance (migration 570), same as
+# INSERT_SQL above.
 INSERT_PROD_SQL = f"""
     INSERT INTO {PROD_TABLE}
       (chart_id, event_class, temporal_shape,
@@ -470,7 +481,7 @@ INSERT_PROD_SQL = f"""
        active_sentences, contributing_systems, suppression_state,
        peak_basis, calibration_state, source, generation, era_slice_key,
        term_breakdown, lambda_v3_ci_low, lambda_v3_ci_high, ci_source,
-       resolution, parent_window_id)
+       resolution, parent_window_id, shape_conformance)
     VALUES
       (%(chart_id)s, %(event_class)s, %(temporal_shape)s,
        %(window_start)s, %(window_end)s, %(peak_date)s,
@@ -482,7 +493,7 @@ INSERT_PROD_SQL = f"""
        %(generation)s, %(era_slice_key)s,
        %(term_breakdown)s::jsonb, %(lambda_v3_ci_low)s, %(lambda_v3_ci_high)s,
        %(ci_source)s,
-       %(resolution)s, %(parent_window_id)s)
+       %(resolution)s, %(parent_window_id)s, %(shape_conformance)s)
     -- W5.4 I1 invariant: generation='3.0' only; v1 rows are protected by DB trigger
     RETURNING id
 """
@@ -917,16 +928,31 @@ def _build_chain_row(
     resolution: Optional[str] = None,
     parent_window_id: Optional[int] = None,
     coverage_quality: Optional[dict] = None,
+    shape_conformance: str,
 ) -> dict[str, Any]:
     """Convert one MilestoneScore (gochara_v3.interval_solver) into a
     kala_gochara_windows(_v2) row dict — the chain-shape sibling of
     `_build_row`. Carries EXACTLY the same key set as `_build_row`'s
     returned dict (including the PARIṢKĀRA MR-11(b)/migration 567
-    `resolution`/`parent_window_id` keys — both required by INSERT_SQL/
-    INSERT_PROD_SQL's parameter binding), so it binds against the SAME
-    templates unchanged — no new DML statement is introduced, so the I1
-    mutation-guard's static source coverage (test_ka_gochara_v3_mutation_
-    guard.py) needs no update for chain support.
+    `resolution`/`parent_window_id` keys AND the MR-47/PK-R-10
+    `shape_conformance` key — all required by INSERT_SQL/INSERT_PROD_SQL's
+    parameter binding), so it binds against the SAME templates unchanged —
+    no new DML statement is introduced, so the I1 mutation-guard's static
+    source coverage (test_ka_gochara_v3_mutation_guard.py) needs no update
+    for chain support.
+
+    shape_conformance
+        REQUIRED (PARIṢKĀRA MR-47, PK-R-10). A chain row is NEVER an
+        envelope — whenever `run_substep` reaches this branch, the
+        ontology's own `temporal_shape` is genuinely 'chain' (that is what
+        routed this class here in the first place; see the R8.12 shape gate
+        in `run_substep`), so this row's stamped `temporal_shape='chain'`
+        always equals the ontology's declared shape. The caller therefore
+        always passes `shape_conformance_vocab.SHAPE_CONFORMANCE_ONTOLOGY_
+        MATCH` here — accepted as an explicit parameter (not hardcoded
+        in-body) for the same "every value this function serves is an
+        explicit parameter, never a re-derived assumption" discipline as
+        every other field on this row.
 
     window_start = window_end = peak_date = this milestone's own JD (a
     chain-shaped row is one independently-dateable sub-window per milestone,
@@ -1015,6 +1041,7 @@ def _build_chain_row(
         "ci_source": ci_source,
         "resolution": resolution,
         "parent_window_id": parent_window_id,
+        "shape_conformance": shape_conformance,
     }
 
 
@@ -1373,12 +1400,34 @@ def _build_row(
     resolution: Optional[str] = None,
     parent_window_id: Optional[int] = None,
     coverage_quality: Optional[dict] = None,
+    shape_conformance: str,
 ) -> dict[str, Any]:
     """Convert one IntervalBoundary/WindowResolutionRecord to a
     kala_gochara_windows(_v2) row dict.
 
     Parameters
     ----------
+    shape_conformance
+        REQUIRED (PARIṢKĀRA MR-47, ADJUDICATOR ruling PK-R-10) -- one of the
+        named constants in `services.gochara_v3.shape_conformance_vocab`
+        (SHAPE_CONFORMANCE_ONTOLOGY_MATCH for the real era⊃month⊃day
+        hierarchy branch, where this row's stamped `temporal_shape`
+        genuinely equals the class's ontology-declared shape;
+        SHAPE_CONFORMANCE_POINT_CLASS_ENVELOPE for the R8.12 flat-production
+        branch for point-canonical classes, where this row is honestly an
+        envelope wearing 'interval' as a storage convenience). No default --
+        every caller derives this from the SAME `class_shape` value
+        `run_substep` already fetched via `_fetch_event_class_temporal_
+        shape` for the R8.12 shape gate, never re-derived from a proxy (e.g.
+        `resolution IS NULL`) and never a bare string literal. This closes
+        the exact §N.7 item 3 defect PK-R-10 found: `temporal_shape` below
+        was ALWAYS hardcoded `'interval'` regardless of which branch built
+        this row, with nothing tracking whether that value was earned
+        (a genuine hierarchy row) or borrowed (a point-canonical envelope).
+        `temporal_shape` itself is UNCHANGED by this fix -- still stamped
+        `'interval'` here in every case (see the module's R8.12 docstring
+        section); `shape_conformance` is a NEW, additive field, not a
+        replacement.
     valence
         REQUIRED -- the honest per-event_class valence
         ('gain'|'loss'|'neutral'|'mixed'), from `_fetch_class_valence`.
@@ -1474,6 +1523,7 @@ def _build_row(
         "ci_source": ci_source,
         "resolution": resolution,
         "parent_window_id": parent_window_id,
+        "shape_conformance": shape_conformance,
     }
 
 
@@ -1718,6 +1768,26 @@ class GocharaV3CenturyMaterializeWriter(WriterBase):
         # classes.
         class_shape = _fetch_event_class_temporal_shape(conn, event_class)
         is_chain = class_shape == "chain"
+
+        # PARIṢKĀRA MR-47 (ADJUDICATOR ruling PK-R-10): derive shape_
+        # conformance from the SAME class_shape value fetched above -- never
+        # a proxy (e.g. resolution IS NULL), never a bare string literal.
+        # class_shape is constant for this entire run_substep call (only ONE
+        # of the interval/chain/flat-point branches below ever populates
+        # insert_specs), so ONE derivation here correctly covers every row
+        # this call builds:
+        #   'interval' branch -> real era⊃month⊃day hierarchy: the stored
+        #     temporal_shape genuinely equals the ontology's declared shape.
+        #   'chain' branch (_build_chain_row) -> genuinely chain-shaped,
+        #     never an envelope.
+        #   R8.12 flat-production (else) branch -> a point-canonical (or
+        #     lookup-failure-conservative-default) class's row: an honest
+        #     flat context envelope, not a genuine interval production.
+        if class_shape == "interval" or is_chain:
+            row_shape_conformance = shape_conformance_vocab.SHAPE_CONFORMANCE_ONTOLOGY_MATCH
+        else:
+            row_shape_conformance = shape_conformance_vocab.SHAPE_CONFORMANCE_POINT_CLASS_ENVELOPE
+
         chain_milestone_template: list[dict] = []
         if is_chain:
             _, _raw_milestone_template, _irreversibility_milestone = _fetch_class_shape(
@@ -2014,6 +2084,7 @@ class GocharaV3CenturyMaterializeWriter(WriterBase):
                     resolution=resolution,
                     parent_window_id=None,
                     coverage_quality=quality_note,
+                    shape_conformance=row_shape_conformance,
                 )
             else:
                 row_v2 = _build_row(
@@ -2028,6 +2099,7 @@ class GocharaV3CenturyMaterializeWriter(WriterBase):
                     resolution=resolution,
                     parent_window_id=v2_id_map.get(parent_key) if parent_key else None,
                     coverage_quality=quality_note,
+                    shape_conformance=row_shape_conformance,
                 )
             try:
                 cur = conn.execute(INSERT_SQL, row_v2)
@@ -2054,6 +2126,7 @@ class GocharaV3CenturyMaterializeWriter(WriterBase):
                     resolution=resolution,
                     parent_window_id=None,
                     coverage_quality=quality_note,
+                    shape_conformance=row_shape_conformance,
                 )
             else:
                 row_prod = _build_row(
@@ -2068,6 +2141,7 @@ class GocharaV3CenturyMaterializeWriter(WriterBase):
                     resolution=resolution,
                     parent_window_id=prod_id_map.get(parent_key) if parent_key else None,
                     coverage_quality=quality_note,
+                    shape_conformance=row_shape_conformance,
                 )
             try:
                 cur = conn.execute(INSERT_PROD_SQL, row_prod)

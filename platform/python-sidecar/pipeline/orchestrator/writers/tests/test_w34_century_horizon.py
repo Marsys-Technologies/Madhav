@@ -46,6 +46,9 @@ from pipeline.orchestrator.writers.ka_gochara_v3_century_materialize import (
     compute_substep_fingerprint,
 )
 from services.gochara_v3.resolution_hierarchy import HierarchyResult, WindowResolutionRecord
+from services.gochara_v3.shape_conformance_vocab import (
+    SHAPE_CONFORMANCE_ONTOLOGY_MATCH,
+)
 
 # PARIṢKĀRA MR-11(b): run_substep now calls build_resolution_hierarchy (not
 # find_threshold_crossings directly) — every test below that used to
@@ -561,6 +564,7 @@ def test_build_row_embeds_coverage_quality_in_suppression_state():
         valence="neutral", is_adverse=False,
         peak_basis=mod.peak_basis_vocab.LAMBDA_V3_COARSE_ARGMAX,
         coverage_quality=note,
+        shape_conformance=SHAPE_CONFORMANCE_ONTOLOGY_MATCH,
     )
     parsed = _json.loads(row["suppression_state"])
     assert parsed["coverage_quality"] == note
@@ -596,6 +600,7 @@ def test_build_row_suppression_state_honest_degrade_without_coverage_quality():
         "chart-x", "marriage", boundary, "g3_1984_1994",
         valence="neutral", is_adverse=False,
         peak_basis=mod.peak_basis_vocab.LAMBDA_V3_COARSE_ARGMAX,
+        shape_conformance=SHAPE_CONFORMANCE_ONTOLOGY_MATCH,
     )
     parsed = _json.loads(row["suppression_state"])
     assert parsed != {}
@@ -1804,6 +1809,7 @@ def test_build_row_writes_structured_suppression_state_not_bare_empty_dict():
         "g3_1984_1994", valence="gain", is_adverse=False,
         peak_basis=mod.peak_basis_vocab.LAMBDA_V3_COARSE_ARGMAX,
         term_breakdown=boundary.term_breakdown,
+        shape_conformance=SHAPE_CONFORMANCE_ONTOLOGY_MATCH,
     )
     decoded = _json.loads(row["suppression_state"])
     assert decoded != {}

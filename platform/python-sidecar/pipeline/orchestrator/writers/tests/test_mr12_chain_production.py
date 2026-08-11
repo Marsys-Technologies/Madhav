@@ -60,6 +60,9 @@ from pipeline.orchestrator.writers.ka_gochara_v3_century_materialize import (
     _normalize_milestone_template,
 )
 from services.gochara_v3.interval_solver import IntervalBoundary, MilestoneScore
+from services.gochara_v3.shape_conformance_vocab import (
+    SHAPE_CONFORMANCE_ONTOLOGY_MATCH,
+)
 from services.gochara_v3.threshold import ThresholdConfig
 
 
@@ -309,6 +312,7 @@ def test_build_chain_row_carries_milestone_fields():
         "482012f1-710e-4a25-994a-93821f5871aa", "business_launch", ms, "g3_1984_1994",
         valence="gain", is_adverse=False, generation=GENERATION_PROD,
         peak_basis=mod.peak_basis_vocab.LAMBDA_V3_ARGMAX,
+        shape_conformance=SHAPE_CONFORMANCE_ONTOLOGY_MATCH,
     )
     assert row["temporal_shape"] == "chain"
     assert row["milestone_id"] == "first_revenue"
@@ -332,6 +336,7 @@ def test_build_chain_row_same_key_set_as_interval_row():
         "chart", "career_advancement", boundary, "g3_1984_1994",
         valence="gain", is_adverse=False,
         peak_basis=mod.peak_basis_vocab.LAMBDA_V3_COARSE_ARGMAX,
+        shape_conformance=SHAPE_CONFORMANCE_ONTOLOGY_MATCH,
     )
     ms = MilestoneScore(
         milestone_id="m1", milestone_jd=2445737.0, lambda_v3=0.5,
@@ -342,6 +347,7 @@ def test_build_chain_row_same_key_set_as_interval_row():
         "chart", "business_launch", ms, "g3_1984_1994",
         valence="gain", is_adverse=False, generation=GENERATION_V3,
         peak_basis=mod.peak_basis_vocab.LAMBDA_V3_ARGMAX,
+        shape_conformance=SHAPE_CONFORMANCE_ONTOLOGY_MATCH,
     )
     assert set(interval_row.keys()) == set(chain_row.keys())
 
@@ -380,6 +386,7 @@ def test_build_chain_row_computed_suppression_state_carries_quality_gates_never_
         valence="gain", is_adverse=False, generation=GENERATION_PROD,
         peak_basis=mod.peak_basis_vocab.ONTOLOGY_MILESTONE_OFFSET,
         coverage_quality=coverage_note,
+        shape_conformance=SHAPE_CONFORMANCE_ONTOLOGY_MATCH,
     )
     parsed = json.loads(row["suppression_state"])
     assert parsed != {}
@@ -394,6 +401,7 @@ def test_build_chain_row_computed_suppression_state_carries_quality_gates_never_
         "482012f1-710e-4a25-994a-93821f5871aa", "business_launch", ms, "g3_1984_1994",
         valence="gain", is_adverse=False, generation=GENERATION_PROD,
         peak_basis=mod.peak_basis_vocab.ONTOLOGY_MILESTONE_OFFSET,
+        shape_conformance=SHAPE_CONFORMANCE_ONTOLOGY_MATCH,
     )
     parsed_no_coverage = json.loads(row_no_coverage["suppression_state"])
     assert parsed_no_coverage != {}
