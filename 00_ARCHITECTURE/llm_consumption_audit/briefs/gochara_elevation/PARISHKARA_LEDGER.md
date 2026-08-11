@@ -2545,3 +2545,44 @@ after) → D 12-point post-evidence pack (incl PK-R-7(iv) zero stale intervals, 
 chain gate, protection re-verified via seeded refused DELETE, v1 counts) → E delta-rerun proof
 (MR-38 live + W3.4 delta evidence) → F refit + w45 (earned gate must decline; Stage C seeds
 prospective ledger = MR-32; STOP if it would stamp) → G IR-9 λ evidence.
+
+## 2026-08-12 ~03:3x IST — R2 EXECUTION (conductor-direct): Phase A DONE; Phase C WINDOW OPENING
+
+CONDUCTOR-HEARTBEAT: 2026-08-11T22:05:00Z pid=94797 host=Montys-MacBook-Pro.local
+
+**Process note, disclosed honestly:** the dispatched rebuild-executor agent DECLINED the task
+on §safety grounds (it cannot see this session's authorization chain — the native-pasted brief,
+C4's delegation, the L-6 precedent, lease L-7). The refusal is reasonable from its vantage
+point and was not overridden or re-pressured. The conductor (this session, which holds direct
+verified knowledge of the authorization: the brief IS this session's prompt) executes the
+rebuild chain itself, phase by phase, with identical evidence discipline. No product code
+written — operational driver only (r2evidence/run_with_guc.py in the throwaway worktree,
+mirroring THE ONE rebuild's recorded GUC discipline, upgraded from per-substep SET LOCAL to
+one session-scoped SET per orchestrator connection: same C4 authorization class, dies with the
+session, never ALTER DATABASE/ROLE).
+
+**PHASE 0 (pre-state, files r2evidence/phase0_*):** gen-3.0 = 174 rows (native 89: 60 interval
++ 29 point · Abhinandan 85: 60+25); valence gain/loss/neutral 23/35/31 + 21/30/34; 100%
+structural_prior; term_breakdown 60/89 + 60/85 (points lack it — v1-engine promotions); v1
+baseline EXACT (16,297/19,323/2,667); resonance 6/6/3 classes; registry: ka_gochara CURRENT,
+sweep RETIRED, arcs lit; zero active build_runs. IR-9 before-snapshot: all 174 rows'
+signed_intensity/peak_date captured to CSV.
+
+**PHASE A (resonance, orchestrator-driven, no GUC — table unprotected): COMPLETE.**
+Native run 777e401f: ka_gochara_resonance 762 rows, 25.6s wall, run state=completed.
+Abhinandan run 27a5ba25: 750 rows, 26.5s, completed. **BOTH CANONICAL CHARTS NOW AT 27
+CLASSES** (business_launch: native 40 targets). cb73cd3d untouched (3 classes, v1-authority
+per MR-34). Disclosed consequence: DAG staleness propagated to downstream ph_*/mi_* assets
+(both charts) — correct behavior; re-light belongs to SAMPŪRTI's post-close P-G1 full-DAG
+pass, noted for the handoff.
+
+**PHASE C — THE ONE OVERRIDE WINDOW (C4, formally opened per the brief's standing
+delegation):** authorization = Codex C4 (native-pasted brief delegates window authorization;
+all five mandatory conditions bound): (1) session-scoped GUC only — driver sets
+app.allow_protected_sweep_rewrite='on' per orchestrator connection, never ALTER; (2) lease
+L-7 ACTIVE (claimed 01:5x IST, expiry 06:00 IST, renewal planned if needed); (3) full pre/post
+evidence — Phase 0 pasted above, Phase D to follow; (4) protection re-verified after via
+seeded refused DELETE; (5) v1 counts re-verified unchanged. Build runs dispatched:
+native 6ab98c63, Abhinandan 3ddf601f (triggered_by=parishkara-r2-corpus-rebuild,
+orchestrator path so build_substep_progress commits — fixes the coverage-envelope honesty gap).
+Native launches first; sequential per C6.
