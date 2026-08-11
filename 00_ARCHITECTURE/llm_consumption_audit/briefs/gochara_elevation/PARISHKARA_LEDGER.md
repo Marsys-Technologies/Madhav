@@ -2008,3 +2008,36 @@ NEXT-ACTION: dispatch R1 parallel lanes (a: MR-23 W1.2+W0.2 · b: MR-38+39 · c:
 always-report · d: MR-08 regex residual · e: MR-11 hierarchy CODE · f: MR-12 chains CODE ·
 g: MR-16 27-class CODE). Builders=sonnet, worktrees off origin/main, PRs → parishkara/
 integration (TAP-6 → main). ≤6 concurrent; lane d queued behind first free slot.
+
+## 2026-08-11 ~17:4x IST — R1 wave DISPATCHED (6 builders) + 2 PRATINIDHI rulings in flight
+
+CONDUCTOR-HEARTBEAT: 2026-08-11T12:12:00Z pid=94797 host=Montys-MacBook-Pro.local
+
+Dispatched concurrently (all builders=sonnet, fresh worktrees off origin/main, explicit model
+per charter):
+- lane a (pk-mr23r, parishkara/mr-23-remainder): MR-23 W1.2 adverse golden comparison + W0.2
+  honest-zero reasons → PR to integration.
+- lane b (pk-mr3839, parishkara/mr-38-39): MR-38 fingerprint folds writer version + gate test;
+  MR-39 session-scoped idle_in_transaction_session_timeout=0 at build connection setup (C6) +
+  scaled-down gate test → PR to integration.
+- lane c (pk-tap6, fix/tap6-always-report): TAP-6 always-report restructure → PR to MAIN
+  (authorized carve-in, C7; announced in coordination file; PRATINIDHI approves shape pre-merge).
+- lane e (pk-mr11h, parishkara/mr-11-hierarchy): MR-11(b) hierarchy CODE + migration 567
+  (claimed in coordination §2) + resolution facet serving, per PK-R-1 bar.
+- lane f (pk-mr12c, parishkara/mr-12-chains): MR-12 chain CODE, marriage first (columns already
+  exist — no migration).
+- lane g (pk-mr16, parishkara/mr-16-27class): MR-16 dynamic class consumption (kill hardcoded
+  6) + per-class honest quality notes + 27-class resonance readiness, per PK-R-2.
+ENGINE_VERSION conflict protocol: lanes e/f/g each set ENGINE_VERSION = "v3.1" (identical edit
+auto-merges); lane b folds the constant into the fingerprint computation without changing its
+value. Lane d (MR-08 regex residual) queued behind first free slot (≤6 builder cap).
+
+PRATINIDHI (opus, fresh per decision) dispatched for: PK-R-4 (R-COORD-4 gochara_* end-state —
+RETAIN is within delegated authority, retirement is not) and PK-R-5 (MR-22 0/54 suppression
+plausibility disposition per the item's own remediation text).
+
+Coordination file updated + pushed (commit on campaign-coordination): yield window LIFTED per
+C8 (no PA-5 re-field — recorded), migration 567 claimed, TAP-6 lane announced.
+
+NEXT-ACTION: await builder/PRATINIDHI completions; dispatch lane d on first free slot; then
+PARĪKṢAKA (opus, fresh per verdict) per completed lane; merge on green CI + PASS.
