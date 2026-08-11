@@ -195,6 +195,21 @@ export interface GocharaWindowRow {
    *  activity_terms: [{primitive, target_ref, orb_decay, target_weight, p_i}]}.
    * NULL on v1-parity rows (v1_parity_mode=True path never populates this). */
   term_breakdown?: Record<string, unknown> | null
+  // PARIṢKĀRA MR-11(b) (migration 567): hierarchy tier + parent linkage.
+  // Both nullable: NULL on every row written before migration 567 (the v1
+  // sweep corpus and every pre-MR-11(b) W3.4/W5.4 flat-interval v3 row).
+  /** Hierarchy tier this row was produced at -- 'era'|'month'|'day'
+   * (services/gochara_v3/resolution_hierarchy.py RESOLUTION_TIERS, muhurta
+   * tier not yet built). NULL for pre-migration-567 rows -- see
+   * `deriveResolutionDisclosure` for the honest serve-time handling of that
+   * NULL per PK-R-1 (a decade-era row must never be presented as a timing
+   * claim, stored or implied). */
+  resolution?: string | null
+  /** DB-assigned bigint `id` (in this SAME table) of this row's widest
+   * containing coarser-tier hierarchy window -- e.g. a month row's era
+   * parent. NULL for era-tier rows (no coarser parent) and for every row
+   * written before migration 567. */
+  parent_window_id?: number | null
 }
 
 // D-5 native disposition (2026-07-20, gate_run_2 finding 1): "the cap never
@@ -309,7 +324,8 @@ const ROW_COLUMNS = `
   active_sentences, contributing_systems, suppression_state,
   peak_basis, calibration_state, source,
   computed_at, continuity_state,
-  generation, era_slice_key, term_breakdown
+  generation, era_slice_key, term_breakdown,
+  resolution, parent_window_id
 `
 // W5.1 (GOCHARA-UTKARSA): generation and era_slice_key are nullable columns
 // present on kala_gochara_windows since migrations 527 and 556 respectively.
