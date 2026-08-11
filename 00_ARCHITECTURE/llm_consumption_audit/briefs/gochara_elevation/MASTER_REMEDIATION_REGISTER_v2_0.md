@@ -585,6 +585,26 @@ item may close as HONEST-DEFERRED with the trigger recorded — fake-closing
 it would repeat the campaign's central defect. AT-PAR: by-design deferral,
 same doctrine as L5 STRUCTURAL mode.
 
+**CLOSED — R4, 2026-08-12: end-to-end wiring independently verified, all
+three links real, none stubbed.** (1) Prediction filed: `brahma_
+prospective_ledger` — confirmed WORKING live this session (MR-48's own
+re-verification: 29 rows durably committed across both charts, honest
+`claim_shape` derivation, zero fabrication). (2) Outcome recordable:
+`mimamsa_outcome_record` (platform-mcp) — confirmed real and actively
+cross-referenced by `muhurta_finder.ts`'s own documented close-the-loop
+workflow ("Close this election by calling mimamsa_outcome_record with
+{chart_id, prediction_id, outcome, verdict}"), not a stub. (3) CRPS
+computable: `platform/scripts/audit/t0_retrodiction/lib/a3_scoring_harness/
+proper_scoring.ts` — a real, tested implementation (`proper_scoring.test.ts`
++ a dedicated wraparound-regression test), not vaporware. **Trigger
+condition recorded**: this item re-opens for a real CRPS run once ≥1
+`brahma_prospective_ledger` row for either canonical chart has a recorded
+outcome via `mimamsa_outcome_record` AND its observation_window has fully
+elapsed — until then, zero outcome-linked events exist by the honest nature
+of a forward-looking ledger seeded today, and no CRPS number can be
+computed without inventing one. GATE MET. AT-PAR MET (deferral is by
+design, matches L5's own sealed STRUCTURAL-mode doctrine exactly).
+
 **MR-34 · Third-chart consistency statement.** [net-new]
 GAP: cb73cd3d (2,667 v1 rows, 3 resonance classes, no authority row) sits
 silently on v1 with no recorded scope decision. REMEDIATION: record the
