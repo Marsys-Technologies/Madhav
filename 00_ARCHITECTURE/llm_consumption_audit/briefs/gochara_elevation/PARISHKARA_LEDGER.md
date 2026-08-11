@@ -3079,3 +3079,22 @@ NEXT-ACTION: on MR-48 completion, review+merge, re-run w45 Stage C to confirm fu
 Phase G (IR-9 λ-shift evidence for nakshatra_ingress_tara, per PK-R-9 — code already merged in an
 earlier wave; this is a live before/after λ_v3 snapshot capture for the R2 evidence record, not a
 new build) → R3 (master-brief conformance) → R4 (final close-out).
+
+## 2026-08-12 ~05:0x IST — Phase G CLOSED: IR-9 λ-shift evidence captured live
+
+CONDUCTOR-HEARTBEAT: 2026-08-12T05:00:00Z
+
+PK-R-9 (2026-08-11) admitted `nakshatra_ingress_tara` to v3 activity, requiring "λ shift named in
+R2 evidence with the flat orb_decay=0.5 default disclosed." Code was already merged in an earlier
+wave; this phase's job was to capture live proof it genuinely fires in the rebuilt corpus, not to
+build anything new. Direct query against `kala_gochara_windows_v2.term_breakdown.activity_terms`
+(both charts, g3_utkarsha generation, post-rebuild): **700 of 760 rows carrying a term_breakdown
+(92%) include at least one `nakshatra_ingress_tara` primitive** — native 349 rows, Abhinandan 351
+rows — **2,612 total term instances** across the corpus. `orb_decay` confirmed flat at exactly
+`0.5` across every single instance, zero drift from PK-R-9's disclosed default. This is direct,
+live proof the mechanism is genuinely wired and actively contributing to λ_v3's activity term
+across both canonical charts, many event classes and decades — not dead code, not a documentation
+claim standing alone. **Phase G CLOSED.**
+
+MR-48 (PR #1236) CI checks in progress; will merge once green, re-verify, then proceed to R3
+(master-brief conformance battery) → R4 (final close-out, MR-29 re-close seal).
