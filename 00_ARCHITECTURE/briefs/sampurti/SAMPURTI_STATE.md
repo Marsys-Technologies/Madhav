@@ -705,3 +705,57 @@ git -C /Users/Dev/Vibe-Coding/Apps/Madhav/.claude/worktrees/sampurti-conductor a
 CONDUCTOR-HEARTBEAT: 2026-08-12T21:21+05:30 pid=83428 [R9 — L-7 poll #3. PID 80517 ALIVE (17m33s CPU at 02:51 IST, ~49 min elapsed). Expecting completion ~03:00–03:30 IST.]
 
 CONDUCTOR-HEARTBEAT: 2026-08-12T21:35+05:30 pid=83428 [R9 — L-7 poll #4. PID 80517 ALIVE (23m08s CPU at 03:05 IST, ~63 min elapsed). Still waiting.]
+
+### R0 — CORPUS PROFILE PIN (RB-18, 2026-08-12 03:20–03:25 IST)
+
+**DB state verified before gate packet:**
+- Advisory locks: 0 ✓
+- Active build_runs: 0 ✓
+- Sweep corpus protection: native=16,297 v1 rows ✓, Abhinandan=19,323 v1 rows ✓
+
+**Registry states (R16, live DB):**
+- ka_gochara: CURRENT, is_active=true, depends_on={bg_gochara_arcs,ka_gochara_resonance} ✓
+- ka_gochara_sweep: RETIRED, is_active=false (deadlock-causing dep — migration 569 will remove it from ka_kshetra.depends_on) ✓
+- ka_gochara_resonance: CURRENT, is_active=true ✓
+- ka_kshetra: CURRENT, is_active=true, depends_on={ka_dasha_kala,**ka_gochara_sweep**,...} ← migration 569 removes this ✓
+- main HEAD at pin time: 68d1364ce (post-MR-45)
+
+**CORPUS PROFILE (RB-18 PIN — native chart 482012f1, generation='3.0'):**
+27 classes · 823 total rows · 634 intervals · 29 points · 160 chains
+Hierarchy rows: 70 era + 207 month + 207 day = 484 resolution-tagged; 339 null_res
+
+| event_class | total | intervals | points | chains | era | month | day | null |
+|---|---|---|---|---|---|---|---|---|
+| achievement_recognition | 10 | 10 | 0 | 0 | 0 | 0 | 0 | 10 |
+| bereavement | 10 | 10 | 0 | 0 | 0 | 0 | 0 | 10 |
+| birth_anchor | 10 | 10 | 0 | 0 | 0 | 0 | 0 | 10 |
+| business_launch | 30 | 0 | 0 | 30 | 0 | 0 | 0 | 30 |
+| career_advancement | 13 | 10 | 3 | 0 | 0 | 0 | 0 | 13 |
+| career_change | 30 | 0 | 0 | 30 | 0 | 0 | 0 | 30 |
+| career_entry | 10 | 10 | 0 | 0 | 0 | 0 | 0 | 10 |
+| career_setback | 70 | 70 | 0 | 0 | 10 | 30 | 30 | 0 |
+| childbirth | 10 | 10 | 0 | 0 | 0 | 0 | 0 | 10 |
+| chronic_onset | 10 | 10 | 0 | 0 | 0 | 0 | 0 | 10 |
+| education_milestone | 40 | 0 | 0 | 40 | 0 | 0 | 0 | 40 |
+| exam_outcome | 10 | 10 | 0 | 0 | 0 | 0 | 0 | 10 |
+| financial_deception | 70 | 70 | 0 | 0 | 10 | 30 | 30 | 0 |
+| foreign_settlement | 30 | 0 | 0 | 30 | 0 | 0 | 0 | 30 |
+| illness_acute | 25 | 10 | 15 | 0 | 0 | 0 | 0 | 25 |
+| major_gain | 10 | 10 | 0 | 0 | 0 | 0 | 0 | 10 |
+| major_loss | 70 | 70 | 0 | 0 | 10 | 30 | 30 | 0 |
+| marriage | 13 | 10 | 3 | 0 | 0 | 0 | 0 | 13 |
+| parental_event | 70 | 70 | 0 | 0 | 10 | 30 | 30 | 0 |
+| property_acquisition | 10 | 10 | 0 | 0 | 0 | 0 | 0 | 10 |
+| psychological_arc | 64 | 64 | 0 | 0 | 10 | 27 | 27 | 0 |
+| relocation | 70 | 70 | 0 | 0 | 10 | 30 | 30 | 0 |
+| romantic_start | 10 | 10 | 0 | 0 | 0 | 0 | 0 | 10 |
+| separation | 30 | 0 | 0 | 30 | 0 | 0 | 0 | 30 |
+| spiritual_turn | 70 | 70 | 0 | 0 | 10 | 30 | 30 | 0 |
+| surgery | 18 | 10 | 8 | 0 | 0 | 0 | 0 | 18 |
+| travel_event | 10 | 10 | 0 | 0 | 0 | 0 | 0 | 10 |
+
+**Abhinandan chart 1c826d5a gen-3.0:** 27 classes · 821 rows
+(Same 27 classes; minor per-class count differences from chart-specific hazard fits — expected)
+
+CONDUCTOR-HEARTBEAT: 2026-08-12T21:55+05:30 pid=83428 [R9 — R0 corpus pin complete. Opening gate packet PR.]
+
