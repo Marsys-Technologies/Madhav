@@ -1,8 +1,11 @@
-"""ka_gochara_v3_century_materialize — W3.4/W5.4/MR-16 Century horizon + slice receipts.
+"""ka_gochara_v3_century_materialize — W3.4/W5.4/MR-16/MR-11(b)/PK-R-8 Century
+horizon + slice receipts.
 
 GOCHARA-UTKARSA campaign, wave W3.4 (original) + W5.4 (writer repoint) +
 PARIṢKĀRA MR-16 (dynamic event-class discovery + honest per-class coverage
-notes) + PARIṢKĀRA MR-38 (fingerprint version fold).
+notes) + PARIṢKĀRA MR-38 (fingerprint version fold) + PARIṢKĀRA MR-11(b) /
+ADJUDICATOR ruling PK-R-8 (peak-anchored era⊃month⊃day hierarchy, resolution
+facet, shape gate).
 
 Gate: W0.3 PASS (generation schema + utkarsha_builder role in place) +
       W3.2 PASS (interval_solver root-solved threshold crossings) +
@@ -12,7 +15,48 @@ Gate: W0.3 PASS (generation schema + utkarsha_builder role in place) +
       MR-38 gate (test_mr38_fingerprint_version_fold.py): a synthetic
       writer-version (row-schema) bump forces cache invalidation and a real
       rewrite; re-running with no version change and no input change
-      correctly skips.
+      correctly skips +
+      PK-R-8 gate (test_w33_resolution_hierarchy.py R8.1-R8.7 detectors):
+      peak-anchoring replaces fixed-step tiling for month/day production.
+
+PARIṢKĀRA MR-11(b) / PK-R-8 — PEAK-ANCHORED HIERARCHY (era⊃month⊃day)
+-----------------------------------------------------------------------
+The W3.3 hierarchy producer (services/gochara_v3/resolution_hierarchy.py)
+was originally merged as CODE but never wired into a materializer — this
+writer is that wiring. ADJUDICATOR ruling PK-R-8 additionally REPLACED the
+original W3.3 fixed-step TILING design (30-day/1-day subdivision, midpoint-
+sampled "peak") with genuine PEAK-ANCHORING: a real local-maximum scan on the
+REUSED coarse series find_threshold_crossings already computes, admission
+gated on the era window's OWN P90 (never lambda_thresh), greedy retention
+with a minimum separation and a hard cap, and 1-day-resolution refinement of
+each retained peak to its TRUE argmax before that date is ever served as
+`peak_date`. See resolution_hierarchy.py's module docstring for the full
+R8.1-R8.6 account.
+
+R8.12 SHAPE GATE: the hierarchy (era/month/day tiers, `resolution` column
+populated) is produced ONLY for event classes whose brahma_event_ontology.
+temporal_shape is 'interval' or 'chain'. Point-canonical classes (marriage,
+career_advancement, illness_acute, surgery — confirmed live schema, 2026-08)
+get NO hierarchy tiers: this writer falls back to the PRE-MR-11(b) flat
+production (one row per find_threshold_crossings interval, `resolution`
+column NULL) for those classes — "all tiers inherit the class's ontology
+shape" (PK-R-7(iv)/BRIEF_D5 §3, both directions). See
+`_fetch_event_class_temporal_shape`.
+
+R8.8 PEAK_BASIS VOCABULARY: every row's `peak_basis` is now one of the three
+named constants in `services/gochara_v3/peak_basis_vocab.py` — never the
+retired bare literal `'gochara_lambda_v3'`. Era-tier (and shape-gated flat)
+rows, whose peak comes from interval_solver's 50-sample coarse dense scan,
+are stamped `LAMBDA_V3_COARSE_ARGMAX`; month/day-tier rows, whose peak is the
+day-refined true argmax (R8.5), are stamped `LAMBDA_V3_ARGMAX` — the ONLY
+basis that earns `is_timing_window=True` at serve time (register_gochara_
+windows.ts, R8.9).
+
+R8.13 PEAK ACCOUNTING: every substep's WriterResult.notes reports
+era_windows/peaks_scanned/peaks_admitted/peaks_retained/month_rows/day_rows,
+and a named zero_peaks_reason ('flat_lambda_curve'|'no_candidate_above_p90'|
+'era_window_too_short') whenever peaks_retained==0 — never a bare/undated
+"0 rows" note.
 
 MR-38 — FINGERPRINT VERSION FOLD (row-shape scope only)
 ----------------------------------------------------------
@@ -39,15 +83,15 @@ any writer change that ALTERS COMPUTED VALUES without adding/removing/
 renaming a column must still bump ENGINE_VERSION by hand. See the
 "Row-schema signature" section below for the full account.
 
-MR-16/MR-38 COMPOSITION NOTE: MR-16 bumped ENGINE_VERSION "v3.0" -> "v3.1"
-for its own scope/output-shape change (dynamic event-class discovery +
-coverage_quality note in suppression_state — see the MR-16 sections below).
-MR-38's row_schema_* fold and MR-16's ENGINE_VERSION bump are independent,
-composable inputs to the SAME hashed fingerprint payload — MR-16 does not
-need MR-38's fold (it bumped ENGINE_VERSION by hand, the standing rule
-MR-38's own SCOPE note above describes), and MR-38's fold does not need
-MR-16's bump (a future row-shape-only change auto-invalidates via the fold
-regardless of ENGINE_VERSION). ENGINE_VERSION remains "v3.1" post-merge.
+ENGINE_VERSION COMPOSITION NOTE: MR-16 bumped ENGINE_VERSION "v3.0" ->
+"v3.1" for its own scope/output-shape change (dynamic event-class discovery
++ coverage_quality note in suppression_state). PARIṢKĀRA MR-11(b)/PK-R-8's
+hierarchy rewrite (this same lane, pre-production — no v3.1-tagged row has
+ever been written to production under the OLD tiled-hierarchy shape) folds
+into that SAME "v3.1" bump rather than requiring a second one: no
+already-built corpus exists under a tiled-hierarchy v3.1 shape that a new
+bump would need to invalidate. MR-38's row_schema_* fold is an independent,
+composable input to the SAME hashed payload regardless.
 
 PURPOSE
 -------
@@ -80,6 +124,12 @@ chart with a GENUINELY EMPTY resonance map (the query runs and finds 0 rows
 retained as a documentation-only constant (the pre-MR-16 default/historical
 scope, PARIṢKĀRA MR-12's `business_launch` folded in — see EVENT_CLASSES'
 own comment) — it is NO LONGER read by `plan_substeps`.
+
+R8.11 CLASS SCOPE (PK-R-8): the hierarchy producer runs for EVERY class
+`_discover_event_classes` returns — there is no separate "LEL-represented
+classes" allowlist (that phrase is not machine-resolvable against any live
+table; ADJUDICATOR ruling confirms this). R8.12's shape gate (not a class
+allowlist) is the only thing that varies behavior per class.
 
 PARĪKṢAKA F1 (§N.8, post-merge fix): `_discover_event_classes` deliberately
 does NOT mirror ka_gochara_sweep's discovery method in one respect — it does
@@ -143,26 +193,32 @@ Key behaviours:
   2. run_substep — for each substep:
        a. Fetch resonance targets + compute the live coverage_quality note.
        b. Compute a delta fingerprint from (event_class, era_slice_key,
-          ENGINE_VERSION, resonance_targets) via MD5.
+          ENGINE_VERSION, resonance_targets, row-schema) via MD5.
        c. Check kala_gochara_v2_build_state for a matching stored fingerprint.
        d. If fingerprint unchanged AND rows exist: skip (honest no-op).
-       e. Else: call find_threshold_crossings from gochara_v3.interval_solver
-          over the decade JD range; DELETE-then-INSERT results into BOTH:
+       e. Else: fetch the class's ontology temporal_shape (R8.12 shape gate).
+          - 'interval'/'chain': build_resolution_hierarchy (peak-anchored
+            era⊃month⊃day, PK-R-8) over the decade JD range.
+          - 'point' (or lookup failure, conservative default): flat
+            find_threshold_crossings production, resolution=NULL (pre-
+            MR-11(b) shape, unchanged for these classes).
+          DELETE-then-INSERT results into BOTH:
             * kala_gochara_windows_v2 (calibration/staging surface, generation='g3_utkarsha')
             * kala_gochara_windows (production surface, generation='3.0') [W5.4 repoint]
        f. Upsert fingerprint to kala_gochara_v2_build_state.
-       g. Log wall-clock time per substep at DEBUG level (AC5 / first SLO
-          evidence point).
+       g. Log wall-clock time + peak accounting (R8.13) per substep at DEBUG.
   3. I2 constraint: ZERO imports from gochara_grammar/*, gochara_intensity/*,
-     or ka_gochara_sweep/*. All scoring comes from gochara_v3.interval_solver
-     and gochara_v3.engine (AC6). The dynamic event-class discovery query
-     (MR-16) is a plain SQL read against gochara_resonance_map — the same
-     table `_fetch_resonance_targets` already reads — not an import of any
-     forbidden module.
+     or ka_gochara_sweep/*. All scoring comes from gochara_v3.interval_solver,
+     gochara_v3.resolution_hierarchy, and gochara_v3.engine (AC6). The
+     dynamic event-class discovery query (MR-16) and the shape-gate query
+     (R8.12) are plain SQL reads against gochara_resonance_map/brahma_event_
+     ontology — the same tables `_fetch_resonance_targets`/`fetch_base_rate_
+     for_class` already read — not an import of any forbidden module.
   4. I4 constraint: empty resonance targets → honest 0 rows for that substep,
      no fabrication (AC7). An empty resonance MAP (no event_class rows at
      all for this chart) → honest 0-substep plan (MR-16, same I4 discipline
-     one level up).
+     one level up). Zero retained peaks (R8.13) → honest 0 month/day rows,
+     never a fallback fabrication.
 
 TABLES
 ------
@@ -214,6 +270,7 @@ import json
 import logging
 import re
 import time
+import uuid
 from dataclasses import dataclass
 from datetime import date, timedelta
 from typing import Any, Optional
@@ -232,6 +289,21 @@ from services.gochara_v3.interval_solver import (
 )
 from services.gochara_v3.threshold import ThresholdConfig, fetch_base_rate_for_class
 from services.gochara_v3.context import ClassContext
+# PARIṢKĀRA MR-11(b) / PK-R-8: the peak-anchored hierarchy producer
+# (era⊃month⊃day, parent_window_id, R8.1-R8.6) — see resolution_hierarchy.py
+# module docstring for the full account. build_resolution_hierarchy itself
+# calls find_threshold_crossings internally (era detection + reused coarse
+# series) — already covered by the I2 static-import-check above
+# (resolution_hierarchy.py is gochara_v3/*, not gochara_grammar/
+# gochara_intensity/ka_gochara_sweep).
+from services.gochara_v3.resolution_hierarchy import (
+    build_resolution_hierarchy,
+    WindowResolutionRecord,
+)
+# R8.8: named peak_basis vocabulary — writers use these constants, never a
+# bare string literal (source-guarded, see test_peak_basis_vocab_used_not_
+# literal in this module's test suite).
+from services.gochara_v3 import peak_basis_vocab
 
 logger = logging.getLogger(__name__)
 
@@ -257,23 +329,31 @@ GENERATION_PROD = "3.0"
 # fingerprint is stable across internal gochara_v3 refactors that do NOT
 # move window positions.
 #
-# v3.0 -> v3.1 composes THREE independent scope/shape changes landed
-# together (concurrent lanes) in the same PARIṢKĀRA wave (Codex C2: any
-# materializer output shape/scope change bumps ENGINE_VERSION):
+# v3.0 -> v3.1 composes FOUR independent scope/shape changes landed together
+# (concurrent lanes) in the same PARIṢKĀRA wave (Codex C2: any materializer
+# output shape/scope change bumps ENGINE_VERSION):
 #   (a) MR-16 — plan_substeps now discovers its event-class set dynamically
 #       from gochara_resonance_map instead of a hardcoded 6-class list, and
 #       every row carries a new coverage_quality note in suppression_state.
 #   (b) MR-12 — chain-shaped rows (temporal_shape='chain') are now possible
-#       for whatever event_class a substep is planned for; see the module
-#       docstring's "MR-12 — CHAIN PRODUCTION" section.
-#   (c) MR-42 (PK-R-5/PK-R-9, 2026-08-11) — `suppression_state` is now a
+#       for whatever event_class a substep is planned for; see
+#       `_fetch_class_shape`/`_build_chain_row` and the 'chain' branch of
+#       run_substep's shape gate.
+#   (c) PARIṢKĀRA MR-11(b) / ADJUDICATOR ruling PK-R-8 — peak-anchored
+#       era⊃month⊃day hierarchy (replacing the original W3.3 tiling design),
+#       resolution facet, R8.12 shape gate, R8.8 peak_basis vocabulary. This
+#       entire lane is pre-production (no v3.1-tagged row has ever been
+#       written under the OLD tiled-hierarchy shape PK-R-8 replaced), so
+#       there is no already-built corpus a second bump would need to
+#       invalidate.
+#   (d) MR-42 (PK-R-5/PK-R-9, 2026-08-11) — `suppression_state` is now a
 #       structured {"mechanism":..., "value":...} object forwarding the
 #       real quality_gates detail, never a bare {} placeholder -- see
 #       `_build_suppression_state`.
-# All three are delta-fingerprint-relevant per compute_substep_fingerprint's
+# All four are delta-fingerprint-relevant per compute_substep_fingerprint's
 # own "engine_version bumped when scoring logic OR output shape changes"
-# contract, even though existing point/interval classes' scoring is
-# byte-for-byte unchanged. One bump, not three — there is only one
+# contract, even though existing point-canonical classes' scoring is
+# byte-for-byte unchanged. One bump, not four — there is only one
 # ENGINE_VERSION value to compose into; every stored fingerprint must
 # invalidate and re-materialize under the new shape rather than being
 # silently skipped as "unchanged" by the fingerprint check in `run_substep`.
@@ -329,6 +409,10 @@ BUILD_STATE_TABLE = "kala_gochara_v2_build_state"
 # table; migration 564 mirrored them onto the production table) are now
 # populated from IntervalBoundary (see _build_row) instead of being silently
 # omitted — the prior defect this fix closes (register PG-6/PG-7).
+# PARIṢKĀRA MR-11(b): +resolution, +parent_window_id (migration 567) and
+# RETURNING id -- the writer must capture each inserted row's own bigint id
+# so a subsequently-inserted CHILD row (month under era, day under month) can
+# carry the correct parent_window_id. See run_substep's insert loop.
 INSERT_SQL = f"""
     INSERT INTO {TABLE}
       (chart_id, event_class, temporal_shape,
@@ -337,7 +421,8 @@ INSERT_SQL = f"""
        signed_intensity, raw_intensity, valence, is_adverse,
        active_sentences, contributing_systems, suppression_state,
        peak_basis, calibration_state, source, generation, era_slice_key,
-       term_breakdown, lambda_v3_ci_low, lambda_v3_ci_high, ci_source)
+       term_breakdown, lambda_v3_ci_low, lambda_v3_ci_high, ci_source,
+       resolution, parent_window_id)
     VALUES
       (%(chart_id)s, %(event_class)s, %(temporal_shape)s,
        %(window_start)s, %(window_end)s, %(peak_date)s,
@@ -348,7 +433,9 @@ INSERT_SQL = f"""
        %(peak_basis)s, %(calibration_state)s, %(source)s,
        %(generation)s, %(era_slice_key)s,
        %(term_breakdown)s::jsonb, %(lambda_v3_ci_low)s, %(lambda_v3_ci_high)s,
-       %(ci_source)s)
+       %(ci_source)s,
+       %(resolution)s, %(parent_window_id)s)
+    RETURNING id
 """
 
 # INSERT template for kala_gochara_windows (production, W5.4 repoint, UTK-R1).
@@ -359,6 +446,8 @@ INSERT_SQL = f"""
 # PARIṢKĀRA MR-14: same 4 W1.5 columns as INSERT_SQL above (migration 564
 # added them to this table, nullable, additive — see MASTER_REMEDIATION_
 # REGISTER_v2_0.md MR-01/MR-14).
+# PARIṢKĀRA MR-11(b): same +resolution/+parent_window_id/RETURNING id as
+# INSERT_SQL above (migration 567 mirrors the columns onto both tables).
 INSERT_PROD_SQL = f"""
     INSERT INTO {PROD_TABLE}
       (chart_id, event_class, temporal_shape,
@@ -367,7 +456,8 @@ INSERT_PROD_SQL = f"""
        signed_intensity, raw_intensity, valence, is_adverse,
        active_sentences, contributing_systems, suppression_state,
        peak_basis, calibration_state, source, generation, era_slice_key,
-       term_breakdown, lambda_v3_ci_low, lambda_v3_ci_high, ci_source)
+       term_breakdown, lambda_v3_ci_low, lambda_v3_ci_high, ci_source,
+       resolution, parent_window_id)
     VALUES
       (%(chart_id)s, %(event_class)s, %(temporal_shape)s,
        %(window_start)s, %(window_end)s, %(peak_date)s,
@@ -378,8 +468,10 @@ INSERT_PROD_SQL = f"""
        %(peak_basis)s, %(calibration_state)s, %(source)s,
        %(generation)s, %(era_slice_key)s,
        %(term_breakdown)s::jsonb, %(lambda_v3_ci_low)s, %(lambda_v3_ci_high)s,
-       %(ci_source)s)
+       %(ci_source)s,
+       %(resolution)s, %(parent_window_id)s)
     -- W5.4 I1 invariant: generation='3.0' only; v1 rows are protected by DB trigger
+    RETURNING id
 """
 
 
@@ -578,7 +670,6 @@ def _query_fn(conn):
         rows = cur.fetchall()
         return [dict(r) if not isinstance(r, dict) else r for r in rows]
     return query
-
 
 
 # ---------------------------------------------------------------------------
@@ -808,14 +899,18 @@ def _build_chain_row(
     *,
     valence: str,
     is_adverse: bool,
+    peak_basis: str,
     generation: str,
+    resolution: Optional[str] = None,
+    parent_window_id: Optional[int] = None,
     coverage_quality: Optional[dict] = None,
 ) -> dict[str, Any]:
     """Convert one MilestoneScore (gochara_v3.interval_solver) into a
     kala_gochara_windows(_v2) row dict — the chain-shape sibling of
-    `_build_row`. Carries EXACTLY the same key set (verified by
-    test_mr12_chain_production.py::test_build_chain_row_same_key_set_as_
-    interval_row), so it binds against the SAME INSERT_SQL/INSERT_PROD_SQL
+    `_build_row`. Carries EXACTLY the same key set as `_build_row`'s
+    returned dict (including the PARIṢKĀRA MR-11(b)/migration 567
+    `resolution`/`parent_window_id` keys — both required by INSERT_SQL/
+    INSERT_PROD_SQL's parameter binding), so it binds against the SAME
     templates unchanged — no new DML statement is introduced, so the I1
     mutation-guard's static source coverage (test_ka_gochara_v3_mutation_
     guard.py) needs no update for chain support.
@@ -824,6 +919,31 @@ def _build_chain_row(
     chain-shaped row is one independently-dateable sub-window per milestone,
     per BRIEF_D5 §3 / migration 460's column comment).
 
+    peak_basis
+        REQUIRED. PK-R-8a (2026-08-11, ADJUDICATOR ruling, SUPERSEDES this
+        lane's original R8.8 extension which stamped LAMBDA_V3_ARGMAX here):
+        each milestone is evaluated at an EXACT, ontology-declared JD
+        (episode_anchor_jd + typical_offset_days via score_chain_milestones)
+        -- the date was DECLARED by brahma_event_ontology, not LOCATED by a
+        peak search, so run_substep stamps peak_basis_vocab.
+        ONTOLOGY_MILESTONE_OFFSET, never LAMBDA_V3_ARGMAX (that constant
+        means "a located extremum", which no chain milestone ever is -- see
+        peak_basis_vocab.py's own PK-R-8a docstring section). No default:
+        every caller supplies a named peak_basis_vocab constant, never the
+        retired bare literal.
+    resolution, parent_window_id
+        PK-R-8a (2026-08-11, SUPERSEDES this lane's original resolution=
+        'day' stamp): run_substep now stamps resolution=None -- a chain row
+        is not hierarchy-tier-classified at all (no era/month/day tier to
+        assign it to; it earns is_timing_window through its OWN clause in
+        the EARNED formula, keyed on peak_basis===ONTOLOGY_MILESTONE_OFFSET
+        + a present milestone_id, never through the resolution-tier
+        disjunct -- see register_gochara_windows.ts's
+        deriveResolutionDisclosure). parent_window_id stays None (chain
+        rows are independent per-milestone, no hierarchy parent to resolve
+        regardless) -- both accepted here as explicit parameters (not
+        derived in-body) matching `_build_row`'s own "every value this
+        function serves is an explicit parameter" discipline.
     coverage_quality
         PARIṢKĀRA MR-16/MR-12 parity: the SAME honest, LIVE-computed
         per-event_class coverage-quality note `_build_row` now embeds under
@@ -871,7 +991,7 @@ def _build_chain_row(
         "active_sentences": json.dumps([]),
         "contributing_systems": json.dumps([]),
         "suppression_state": json.dumps(_build_suppression_state(term_breakdown, coverage_quality)),
-        "peak_basis": "gochara_lambda_v3",
+        "peak_basis": peak_basis,
         "calibration_state": "structural_prior",
         "source": "live",
         "generation": generation,
@@ -880,6 +1000,8 @@ def _build_chain_row(
         "lambda_v3_ci_low": ci_low,
         "lambda_v3_ci_high": ci_high,
         "ci_source": ci_source,
+        "resolution": resolution,
+        "parent_window_id": parent_window_id,
     }
 
 
@@ -925,6 +1047,10 @@ def _discover_event_classes(conn, chart_id: str) -> list[str]:
     returns [] here, which plan_substeps below turns into an honest
     0-substep plan (I4) — never a silent revert to EVENT_CLASSES.
 
+    R8.11 (PK-R-8): this IS the class scope for hierarchy production too —
+    every class this function returns is eligible for the peak-anchored
+    hierarchy (subject only to R8.12's shape gate, not a second allowlist).
+
     PARĪKṢAKA F1 (§N.8): DB errors PROPAGATE — this function does NOT catch
     and swallow exceptions the way ka_gochara_sweep's sibling does. The
     orchestrator's no-op-completion re-probe (asset_runner.py, the
@@ -952,6 +1078,45 @@ def _discover_event_classes(conn, chart_id: str) -> list[str]:
         [chart_id],
     )
     return [r["event_class"] for r in rows if r.get("event_class")]
+
+
+# ---------------------------------------------------------------------------
+# R8.12 SHAPE GATE — brahma_event_ontology.temporal_shape
+# ---------------------------------------------------------------------------
+
+def _fetch_event_class_temporal_shape(conn, event_class: str) -> str:
+    """Return brahma_event_ontology.temporal_shape ('point'|'interval'|
+    'chain') for `event_class` — the R8.12 SHAPE GATE input.
+
+    The peak-anchored hierarchy (era/month/day tiers, `resolution` column
+    populated) is produced ONLY for 'interval'/'chain' classes. Point-
+    canonical classes (marriage, career_advancement, illness_acute, surgery
+    — confirmed against live schema, 2026-08) get NO hierarchy tiers: this
+    writer falls back to the flat (pre-MR-11(b)) production for them — "all
+    tiers inherit the class's ontology shape" (PK-R-7(iv)/BRIEF_D5 §3, both
+    directions; ADJUDICATOR ruling PK-R-8 R8.12).
+
+    A lookup failure (DB error, or — should not happen, since gochara_
+    resonance_map.event_class carries an FK into brahma_event_ontology.
+    event_class_id, so any class _discover_event_classes returns already has
+    a guaranteed ontology row — no row found) degrades to 'point': the
+    CONSERVATIVE choice. Returning 'point' means "skip the hierarchy",
+    which is always the SAFER default when the class's canonical shape could
+    not be confirmed — it never risks stamping resolution tiers for a class
+    that might not warrant them.
+
+    Implemented as a thin wrapper over `_fetch_class_shape` (MR-12's own
+    superset fetch — shape + milestone_template + irreversibility_milestone)
+    so there is exactly ONE query implementation for
+    brahma_event_ontology.temporal_shape, never two independently-drifting
+    copies. `_fetch_class_shape`'s own fallback discipline (documented
+    `_SHAPE_FALLBACK`, degrading to 'interval' for an unknown class) differs
+    slightly from this function's 'point' conservative default for a
+    genuine DB-error path; both are honest, documented choices for their own
+    callers -- see each function's docstring for which applies when.
+    """
+    shape, _milestone_template, _irreversibility_milestone = _fetch_class_shape(conn, event_class)
+    return shape
 
 
 # ---------------------------------------------------------------------------
@@ -1186,14 +1351,18 @@ def _build_row(
     *,
     valence: str,
     is_adverse: bool,
+    peak_basis: str,
     generation: str = GENERATION_V3,
     term_breakdown: Optional[dict] = None,
     lambda_v3_ci_low: Optional[float] = None,
     lambda_v3_ci_high: Optional[float] = None,
     ci_source: Optional[str] = None,
+    resolution: Optional[str] = None,
+    parent_window_id: Optional[int] = None,
     coverage_quality: Optional[dict] = None,
 ) -> dict[str, Any]:
-    """Convert one IntervalBoundary to a kala_gochara_windows(_v2) row dict.
+    """Convert one IntervalBoundary/WindowResolutionRecord to a
+    kala_gochara_windows(_v2) row dict.
 
     Parameters
     ----------
@@ -1205,6 +1374,14 @@ def _build_row(
         used to be a hardcoded "favourable" string inside this function).
     is_adverse
         REQUIRED -- companion boolean from `_fetch_class_valence`.
+    peak_basis
+        REQUIRED (PK-R-8 R8.8) -- one of the named constants in
+        `services.gochara_v3.peak_basis_vocab` (LAMBDA_V3_ARGMAX for a
+        day-refined true peak on a month/day-tier row; LAMBDA_V3_COARSE_
+        ARGMAX for an era-tier or shape-gated-flat row's coarse dense-scan
+        peak). No default -- every caller must supply the correct basis for
+        the tier it is building; the retired bare literal
+        'gochara_lambda_v3' must never be passed here for a NEW row.
     generation
         The generation label to stamp on the row.
         * GENERATION_V3 ('g3_utkarsha') → calibration row for kala_gochara_windows_v2
@@ -1220,6 +1397,19 @@ def _build_row(
         function serves is an explicit parameter, not silently derived
         in-body." All default None (I4 honest degrade: a boundary whose peak
         evaluation failed carries None here, never a fabricated breakdown).
+    resolution
+        PARIṢKĀRA MR-11(b) (migration 567): the hierarchy tier this row was
+        produced at -- 'era'|'month'|'day', from
+        `WindowResolutionRecord.resolution_tier`. None for shape-gated flat
+        rows (R8.12, point-canonical classes) and for any caller with no
+        hierarchy classification for this row.
+    parent_window_id
+        PARIṢKĀRA MR-11(b) (migration 567): the DB-assigned bigint `id` of
+        this row's widest containing coarser-tier window IN THE SAME TABLE
+        (resolved by the caller via an id map keyed on the hierarchy's
+        internal UUID `window_id`, populated as parent rows are inserted
+        before their children — see run_substep). None for era-tier rows
+        (no coarser parent) and for any row whose parent failed to resolve.
     coverage_quality
         PARIṢKĀRA MR-16 fix (deliverable 2): the honest, LIVE-computed
         per-event_class coverage-quality note from `_coverage_quality_note`
@@ -1260,7 +1450,7 @@ def _build_row(
         "active_sentences": json.dumps([]),
         "contributing_systems": json.dumps([]),
         "suppression_state": json.dumps(_build_suppression_state(term_breakdown, coverage_quality)),
-        "peak_basis": "gochara_lambda_v3",
+        "peak_basis": peak_basis,
         "calibration_state": "structural_prior",
         "source": "live",
         "generation": generation,
@@ -1269,6 +1459,8 @@ def _build_row(
         "lambda_v3_ci_low": lambda_v3_ci_low,
         "lambda_v3_ci_high": lambda_v3_ci_high,
         "ci_source": ci_source,
+        "resolution": resolution,
+        "parent_window_id": parent_window_id,
     }
 
 
@@ -1308,6 +1500,10 @@ class GocharaV3CenturyMaterializeWriter(WriterBase):
         design (W3.4 spec). Whether a given discovered event_class turns out
         to be chain-shaped (PARIṢKĀRA MR-12) is decided per-substep, inside
         run_substep — plan_substeps itself is shape-agnostic.
+
+        R8.11: every discovered class is in scope for hierarchy production
+        (subject to R8.12's per-class shape gate at run_substep time) — there
+        is no separate class allowlist here.
 
         A chart with a GENUINELY EMPTY resonance map (the query runs and
         finds 0 rows — G-1 not yet run for it) honestly produces a
@@ -1363,14 +1559,17 @@ class GocharaV3CenturyMaterializeWriter(WriterBase):
              honest, LIVE coverage_quality note from that same fetch
              (MR-16 deliverable 2).
           3. If no targets: honest 0-row result (I4).
-          4. Compute delta fingerprint.
+          4. Compute delta fingerprint (MR-38: row-schema-folded).
           5. Check stored fingerprint — if unchanged and rows exist: skip.
-          6. call find_threshold_crossings over the decade JD range.
+          6. Fetch the class's ontology temporal_shape (R8.12 shape gate);
+             'interval'/'chain' -> build_resolution_hierarchy (peak-anchored,
+             PK-R-8); 'point' (or lookup failure) -> flat find_threshold_
+             crossings production, resolution=NULL (pre-MR-11(b) shape).
           7. DELETE-then-INSERT into kala_gochara_windows_v2 and
              kala_gochara_windows, every row carrying coverage_quality
-             inside suppression_state.
+             inside suppression_state and a named peak_basis (R8.8).
           8. Upsert fingerprint to kala_gochara_v2_build_state.
-          9. Log wall-clock time at DEBUG.
+          9. Log wall-clock time + peak accounting (R8.13) at DEBUG.
         """
         t0 = time.time()
         chart_id = ctx.config["chart_id"]
@@ -1458,13 +1657,11 @@ class GocharaV3CenturyMaterializeWriter(WriterBase):
                 ),
             )
 
-        # 6. Find threshold crossings over the decade JD range.
-        #    We need a ThresholdConfig to gate window emission.  For the
-        #    century build we use a structural-prior threshold: the v3 engine
-        #    is bounded in [0,1], so we gate at 0.0 (emit all active intervals)
-        #    as the honest structural prior before per-class calibration.
-        #    This is a deliberate design choice for W3.4 — the full
-        #    self-normalizing threshold (W1.4) is applied at serve time.
+        # 6. Structural-prior threshold: the v3 engine is bounded in [0,1],
+        #    so we gate at 0.0 (emit all active intervals) as the honest
+        #    structural prior before per-class calibration. This is a
+        #    deliberate design choice for W3.4 — the full self-normalizing
+        #    threshold (W1.4) is applied at serve time.
         #
         #    §N.8: fallback_used must be derived from a real DB lookup, not
         #    bound to a literal — the lookup result (True iff the class has no
@@ -1489,28 +1686,41 @@ class GocharaV3CenturyMaterializeWriter(WriterBase):
             sample_count=0,
         )
 
-        # PARIṢKĀRA MR-12: shape-aware dispatch. BRIEF_D5 §3 (BINDING) requires
-        # a served row's shape to mirror brahma_event_ontology.temporal_shape.
-        # is_chain gates the milestone-scoring path below; a chain-shaped
-        # class with no usable milestone_template degrades to an honest
-        # skip (I4), never a fabricated row.
-        _shape, _raw_milestone_template, _irreversibility_milestone = _fetch_class_shape(
-            conn, event_class,
-        )
-        is_chain = _shape == "chain"
+        # 6b. SHAPE GATE (PARIṢKĀRA MR-12 origin + PK-R-8 R8.12 generalization).
+        #     BRIEF_D5 §3 (BINDING): a served row's shape must mirror
+        #     brahma_event_ontology.temporal_shape.
+        #       'interval' -> peak-anchored era⊃month⊃day hierarchy (PK-R-8).
+        #       'chain'    -> one row per milestone_template entry
+        #                     (score_chain_milestones, MR-12).
+        #       'point' (or lookup failure, conservative default)
+        #                  -> flat find_threshold_crossings production,
+        #                     resolution=NULL (pre-MR-11(b) shape, unchanged).
+        # class_shape drives the branch below; _fetch_event_class_temporal_
+        # shape is the R8.12-named entry point (kept as a thin wrapper over
+        # _fetch_class_shape -- see its own docstring) so existing shape-gate
+        # tests that monkeypatch it by name keep working unchanged. Milestone
+        # template data (needed only for the 'chain' branch) is fetched
+        # separately via _fetch_class_shape below -- a second query only for
+        # chain-shaped classes, never for the much more common point/interval
+        # classes.
+        class_shape = _fetch_event_class_temporal_shape(conn, event_class)
+        is_chain = class_shape == "chain"
         chain_milestone_template: list[dict] = []
-        if is_chain and _raw_milestone_template:
-            chain_milestone_template = _normalize_milestone_template(
-                _raw_milestone_template, _irreversibility_milestone,
+        if is_chain:
+            _, _raw_milestone_template, _irreversibility_milestone = _fetch_class_shape(
+                conn, event_class,
             )
+            if _raw_milestone_template:
+                chain_milestone_template = _normalize_milestone_template(
+                    _raw_milestone_template, _irreversibility_milestone,
+                )
 
         if is_chain and not chain_milestone_template:
             # I4 honest gap: the ontology declares this class chain-shaped but
             # carries no usable milestone_template (or the live read failed
             # and no documented fallback template exists for this class).
-            # Mirrors the "no resonance targets" early-return above: return
-            # BEFORE any DELETE/INSERT is issued, no fingerprint upsert —
-            # never a fabricated row (I4).
+            # Return BEFORE any DELETE/INSERT is issued, no fingerprint
+            # upsert — never a fabricated row (I4).
             elapsed = time.time() - t0
             note = (
                 f"{substep_key}: skipped — event_class={event_class} is "
@@ -1578,54 +1788,159 @@ class GocharaV3CenturyMaterializeWriter(WriterBase):
             )
             av_gate_note = f"AV_GATE_DEGRADED: {av_gate_fetch_error}; "
 
-        intervals: list[IntervalBoundary] = find_threshold_crossings(
-            swe=swe,
-            context=context,
-            start_jd=decade.start_jd,
-            end_jd=decade.end_jd,
-            threshold_config=threshold_config,
-            coarse_step_days=7.0,
-        )
+        # Peak-accounting locals (R8.13) — populated by whichever branch runs.
+        era_count = 0
+        peaks_scanned = 0
+        peaks_admitted = 0
+        peaks_retained = 0
+        month_count = 0
+        day_count = 0
+        zero_peaks_reason: Optional[str] = None
+        chain_episode_count = 0
+
+        # insert_specs: uniform list of
+        #   (boundary_like, resolution_or_None, peak_basis, own_key, parent_key)
+        # in PARENT-BEFORE-CHILD order — the insert loop below captures each
+        # parent row's DB-assigned bigint id (RETURNING id) before any child
+        # row that must reference it via parent_window_id is inserted. Used
+        # by the 'interval' and 'point' branches; the 'chain' branch below
+        # builds its rows directly (a MilestoneScore is not a boundary-like
+        # object -- _build_chain_row has its own signature) but still shares
+        # the SAME insert loop's DB-write/id-capture MECHANICS by degenerating
+        # to (milestone, "day", LAMBDA_V3_ARGMAX, None, None) tuples paired
+        # with a _build_chain_row-shaped closure -- see the chain branch.
+        insert_specs: list[tuple[Any, Optional[str], str, Optional[str], Optional[str]]] = []
+
+        if class_shape == "interval":
+            # PARIṢKĀRA MR-11(b) / PK-R-8: build the full era⊃month⊃day
+            # PEAK-ANCHORED hierarchy for this decade slice. build_resolution_
+            # hierarchy calls find_threshold_crossings internally for era
+            # detection (root-solved threshold crossings, unchanged
+            # machinery) AND reuses that same coarse series for the peak scan
+            # (R8.2) — no re-sweep, no fixed-step tiling (R8.1).
+            hierarchy = build_resolution_hierarchy(
+                swe=swe,
+                context=context,
+                start_jd=decade.start_jd,
+                end_jd=decade.end_jd,
+                threshold_config=threshold_config,
+            )
+            # Derived from the actual list length, not hierarchy.era_window_
+            # count -- that field is a redundant summary set by build_
+            # resolution_hierarchy itself; a HierarchyResult constructed by
+            # hand (e.g. in a test fixture) without also setting it would
+            # otherwise silently report a stale/wrong count here.
+            era_count = len(hierarchy.era_windows)
+            peaks_scanned = hierarchy.peaks_scanned
+            peaks_admitted = hierarchy.peaks_admitted
+            peaks_retained = hierarchy.peaks_retained
+            month_count = len(hierarchy.month_windows)
+            day_count = len(hierarchy.day_windows)
+            zero_peaks_reason = hierarchy.zero_peaks_reason
+
+            for record in hierarchy.era_windows:
+                insert_specs.append((
+                    record, "era", peak_basis_vocab.LAMBDA_V3_COARSE_ARGMAX,
+                    record.window_id, record.parent_window_id,
+                ))
+            for record in hierarchy.month_windows:
+                insert_specs.append((
+                    record, "month", peak_basis_vocab.LAMBDA_V3_ARGMAX,
+                    record.window_id, record.parent_window_id,
+                ))
+            for record in hierarchy.day_windows:
+                insert_specs.append((
+                    record, "day", peak_basis_vocab.LAMBDA_V3_ARGMAX,
+                    record.window_id, record.parent_window_id,
+                ))
+        elif is_chain:
+            # PARIṢKĀRA MR-12: chain production. Each detected episode
+            # (IntervalBoundary from find_threshold_crossings, used here as
+            # the episode ANCHOR only -- its enter_jd seeds score_chain_
+            # milestones, the boundary itself is never served as a row) is
+            # expanded into one row per milestone_template entry.
+            #
+            # PK-R-8a (2026-08-11, ADJUDICATOR ruling, SUPERSEDES this
+            # lane's own prior R8.8/R8.9 extension of MR-12 below): a chain
+            # milestone's date is DECLARED by brahma_event_ontology's
+            # milestone_template (episode_anchor_jd + typical_offset_days),
+            # not LOCATED by any peak search -- peak_basis=LAMBDA_V3_ARGMAX
+            # was the wrong vocabulary entry for that (ARGMAX means "a
+            # located extremum", which no chain milestone ever is). Chain
+            # rows now carry peak_basis=ONTOLOGY_MILESTONE_OFFSET (its own
+            # named basis, deliberately excluded from GENUINE_PEAK_BASES)
+            # and resolution=NULL (chain rows are not hierarchy-tier-
+            # classified at all -- no era/month/day tier, no parent_
+            # window_id). A chain milestone still earns is_timing_window via
+            # its OWN clause in the EARNED formula (temporal_shape==='chain'
+            # AND peak_basis===ONTOLOGY_MILESTONE_OFFSET AND milestone_id
+            # present), never by masquerading as a resolution-tier row --
+            # see register_gochara_windows.ts's deriveResolutionDisclosure.
+            chain_episodes = find_threshold_crossings(
+                swe=swe, context=context,
+                start_jd=decade.start_jd, end_jd=decade.end_jd,
+                threshold_config=threshold_config, coarse_step_days=7.0,
+            )
+            chain_episode_count = len(chain_episodes)
+            era_count = chain_episode_count
+            for episode in chain_episodes:
+                milestone_scores = score_chain_milestones(
+                    swe, context, episode.enter_jd, chain_milestone_template,
+                    threshold_config,
+                )
+                for ms in milestone_scores:
+                    insert_specs.append((
+                        ms, None, peak_basis_vocab.ONTOLOGY_MILESTONE_OFFSET, None, None,
+                    ))
+            day_count = len(insert_specs)
+        else:
+            # R8.12 shape gate: point-canonical class — NO hierarchy tiers.
+            # Flat production identical in shape to the pre-MR-11(b) writer:
+            # one row per detected interval, resolution=NULL. The peak here
+            # is interval_solver's own 50-sample coarse dense scan
+            # (IntervalBoundary.peak_lambda) — LAMBDA_V3_COARSE_ARGMAX, never
+            # the day-refined ARGMAX basis (R8.8).
+            flat_intervals = find_threshold_crossings(
+                swe=swe, context=context,
+                start_jd=decade.start_jd, end_jd=decade.end_jd,
+                threshold_config=threshold_config, coarse_step_days=7.0,
+            )
+            era_count = len(flat_intervals)
+            for interval in flat_intervals:
+                insert_specs.append((
+                    interval, None, peak_basis_vocab.LAMBDA_V3_COARSE_ARGMAX,
+                    None, None,
+                ))
+
+        shape_gate_note = f"shape={class_shape}"
 
         if ctx.dry_run:
             elapsed = time.time() - t0
-            if is_chain:
-                would_produce = len(intervals) * len(chain_milestone_template)
-                logger.debug(
-                    "[%s] DRY RUN substep=%r chart=%s: %d chain episodes x %d "
-                    "milestones = %d rows would be served. wall_clock_s=%.3f",
-                    ASSET_ID, substep_key, chart_id, len(intervals),
-                    len(chain_milestone_template), would_produce, elapsed,
-                )
-                return WriterResult(
-                    asset_id=self.asset_id, rows_inserted=0,
-                    rows_skipped=would_produce,
-                    duration_seconds=elapsed,
-                    notes=(
-                        f"{av_gate_note}DRY RUN {substep_key}: chain-shaped, "
-                        f"{len(intervals)} episodes x {len(chain_milestone_template)} "
-                        f"milestones = {would_produce} rows would be served "
-                        f"in {decade.year_start}–{decade.year_end} — nothing written"
-                    ),
-                )
+            total_would_insert = len(insert_specs)
             logger.debug(
-                "[%s] DRY RUN substep=%r chart=%s: %d intervals would be served. "
-                "wall_clock_s=%.3f",
-                ASSET_ID, substep_key, chart_id, len(intervals), elapsed,
+                "[%s] DRY RUN substep=%r chart=%s: %s, %d rows "
+                "(era=%d month=%d day=%d) would be served. wall_clock_s=%.3f",
+                ASSET_ID, substep_key, chart_id, shape_gate_note, total_would_insert,
+                era_count, month_count, day_count, elapsed,
             )
             return WriterResult(
                 asset_id=self.asset_id, rows_inserted=0,
-                rows_skipped=len(intervals),
+                rows_skipped=total_would_insert,
                 duration_seconds=elapsed,
                 notes=(
-                    f"{av_gate_note}DRY RUN {substep_key}: {len(intervals)} intervals found "
-                    f"in {decade.year_start}–{decade.year_end} — nothing written"
+                    f"{av_gate_note}DRY RUN {substep_key}: {shape_gate_note}, "
+                    f"{total_would_insert} rows found (era={era_count} month={month_count} "
+                    f"day={day_count}) in {decade.year_start}–{decade.year_end} — nothing written"
                 ),
             )
 
         # 7. DELETE-then-INSERT (§N.3 replace-not-accrete).
         #    Scoped to (chart_id, event_class, generation, era_slice_key) so
         #    a resubmit of this decade slice does not touch other slices.
+        #    This scope covers ALL resolution tiers / chain rows for the
+        #    substep — a resubmit cleanly replaces era+month+day (or the
+        #    flat/chain rows) together, never leaving orphaned children from
+        #    a prior run.
         #
         #    W5.4 repoint (UTK-R1): write to BOTH tables.
         #      (a) kala_gochara_windows_v2 — calibration/staging (generation='g3_utkarsha')
@@ -1654,108 +1969,105 @@ class GocharaV3CenturyMaterializeWriter(WriterBase):
 
         # Honest per-event_class valence (PARIṢKĀRA MR-13, F#1 fix): computed
         # ONCE per substep (all boundaries in this substep share the same
-        # event_class) and passed to every _build_row call below -- never a
-        # hardcoded "favourable" literal.
+        # event_class) and passed to every _build_row/_build_chain_row call
+        # below -- never a hardcoded "favourable" literal.
         class_valence, class_is_adverse = _fetch_class_valence(conn, event_class)
 
-        inserted = 0
-        if is_chain:
-            # PARIṢKĀRA MR-12: chain production. Each detected episode
-            # (IntervalBoundary from find_threshold_crossings, reused here as
-            # the episode ANCHOR, not the final row) is expanded into one row
-            # per milestone_template entry via score_chain_milestones — the
-            # W3.2 machinery that has existed, tested in isolation, since
-            # before this fix but was never wired to a real caller.
-            #
-            # MR-16 parity: coverage_quality (the same quality_note every
-            # non-chain row on this substep carries) is passed to
-            # _build_chain_row too — a chain row is scored from the identical
-            # resonance-target fetch as its sibling rows for this substep, so
-            # it must carry the same honest coverage signal.
-            for boundary in intervals:
-                milestone_scores = score_chain_milestones(
-                    swe, context, boundary.enter_jd, chain_milestone_template,
-                    threshold_config,
-                )
-                for ms in milestone_scores:
-                    # (a) Insert into calibration/staging table.
-                    row_v2 = _build_chain_row(
-                        chart_id, event_class, ms, era_slice_key,
-                        valence=class_valence, is_adverse=class_is_adverse,
-                        generation=GENERATION_V3,
-                        coverage_quality=quality_note,
-                    )
-                    try:
-                        conn.execute(INSERT_SQL, row_v2)
-                        inserted += 1
-                    except Exception as exc:  # noqa: BLE001
-                        logger.warning(
-                            "[%s] substep=%r v2 chain row insert failed "
-                            "(milestone_id=%s, peak_date=%s): %s",
-                            ASSET_ID, substep_key, ms.milestone_id,
-                            _jd_to_date(ms.milestone_jd), exc,
-                        )
+        # PARIṢKĀRA MR-11(b): id maps from the hierarchy's own internal UUID
+        # window_id -> the DB-assigned bigint id this row received on INSERT,
+        # kept SEPARATELY per table (kala_gochara_windows_v2 and
+        # kala_gochara_windows have independent id sequences). A child
+        # record's parent key (a UUID) is looked up in the map for the table
+        # it is about to be inserted into; parent-before-child ordering
+        # (insert_specs above) guarantees the parent's id is already present
+        # by the time a child looks it up. A parent whose own INSERT failed
+        # (or whose fetchone() returned nothing, e.g. a stubbed responder in
+        # tests) simply leaves no entry — its children then honestly get
+        # parent_window_id=None rather than a fabricated id. (Chain rows
+        # never have a parent_key, so this map is unused for them.)
+        v2_id_map: dict[str, int] = {}
+        prod_id_map: dict[str, int] = {}
 
-                    # (b) Insert into production table (generation='3.0').
-                    #     I1 mutation-guard invariant: row carries generation='3.0'.
-                    row_prod = _build_chain_row(
-                        chart_id, event_class, ms, era_slice_key,
-                        valence=class_valence, is_adverse=class_is_adverse,
-                        generation=GENERATION_PROD,
-                        coverage_quality=quality_note,
-                    )
-                    try:
-                        conn.execute(INSERT_PROD_SQL, row_prod)
-                    except Exception as exc:  # noqa: BLE001
-                        logger.warning(
-                            "[%s] substep=%r prod chain row insert failed "
-                            "(milestone_id=%s, peak_date=%s): %s",
-                            ASSET_ID, substep_key, ms.milestone_id,
-                            _jd_to_date(ms.milestone_jd), exc,
-                        )
-        else:
-            for boundary in intervals:
-                # (a) Insert into calibration/staging table.
+        inserted = 0
+        for boundary, resolution, peak_basis, own_key, parent_key in insert_specs:
+            is_chain_row = is_chain and isinstance(boundary, MilestoneScore)
+
+            if is_chain_row:
+                row_v2 = _build_chain_row(
+                    chart_id, event_class, boundary, era_slice_key,
+                    valence=class_valence, is_adverse=class_is_adverse,
+                    generation=GENERATION_V3,
+                    peak_basis=peak_basis,
+                    resolution=resolution,
+                    parent_window_id=None,
+                    coverage_quality=quality_note,
+                )
+            else:
                 row_v2 = _build_row(
                     chart_id, event_class, boundary, era_slice_key,
                     valence=class_valence, is_adverse=class_is_adverse,
+                    peak_basis=peak_basis,
                     generation=GENERATION_V3,
                     term_breakdown=boundary.term_breakdown,
                     lambda_v3_ci_low=boundary.lambda_v3_ci_low,
                     lambda_v3_ci_high=boundary.lambda_v3_ci_high,
                     ci_source=boundary.ci_source,
+                    resolution=resolution,
+                    parent_window_id=v2_id_map.get(parent_key) if parent_key else None,
                     coverage_quality=quality_note,
                 )
-                try:
-                    conn.execute(INSERT_SQL, row_v2)
-                    inserted += 1
-                except Exception as exc:  # noqa: BLE001
-                    logger.warning(
-                        "[%s] substep=%r v2 row insert failed (peak_date=%s): %s",
-                        ASSET_ID, substep_key,
-                        _jd_to_date(boundary.peak_jd), exc,
-                    )
+            try:
+                cur = conn.execute(INSERT_SQL, row_v2)
+                returned = cur.fetchone()
+                if returned is not None:
+                    new_id = returned["id"] if isinstance(returned, dict) else returned[0]
+                    if own_key is not None:
+                        v2_id_map[own_key] = new_id
+                inserted += 1
+            except Exception as exc:  # noqa: BLE001
+                logger.warning(
+                    "[%s] substep=%r v2 row insert failed (resolution=%s): %s",
+                    ASSET_ID, substep_key, resolution, exc,
+                )
 
-                # (b) Insert into production table (generation='3.0').
-                #     I1 mutation-guard invariant: row carries generation='3.0'.
+            # (b) Insert into production table (generation='3.0').
+            #     I1 mutation-guard invariant: row carries generation='3.0'.
+            if is_chain_row:
+                row_prod = _build_chain_row(
+                    chart_id, event_class, boundary, era_slice_key,
+                    valence=class_valence, is_adverse=class_is_adverse,
+                    generation=GENERATION_PROD,
+                    peak_basis=peak_basis,
+                    resolution=resolution,
+                    parent_window_id=None,
+                    coverage_quality=quality_note,
+                )
+            else:
                 row_prod = _build_row(
                     chart_id, event_class, boundary, era_slice_key,
                     valence=class_valence, is_adverse=class_is_adverse,
+                    peak_basis=peak_basis,
                     generation=GENERATION_PROD,
                     term_breakdown=boundary.term_breakdown,
                     lambda_v3_ci_low=boundary.lambda_v3_ci_low,
                     lambda_v3_ci_high=boundary.lambda_v3_ci_high,
                     ci_source=boundary.ci_source,
+                    resolution=resolution,
+                    parent_window_id=prod_id_map.get(parent_key) if parent_key else None,
                     coverage_quality=quality_note,
                 )
-                try:
-                    conn.execute(INSERT_PROD_SQL, row_prod)
-                except Exception as exc:  # noqa: BLE001
-                    logger.warning(
-                        "[%s] substep=%r prod row insert failed (peak_date=%s): %s",
-                        ASSET_ID, substep_key,
-                        _jd_to_date(boundary.peak_jd), exc,
-                    )
+            try:
+                cur = conn.execute(INSERT_PROD_SQL, row_prod)
+                returned = cur.fetchone()
+                if returned is not None:
+                    new_id = returned["id"] if isinstance(returned, dict) else returned[0]
+                    if own_key is not None:
+                        prod_id_map[own_key] = new_id
+            except Exception as exc:  # noqa: BLE001
+                logger.warning(
+                    "[%s] substep=%r prod row insert failed (resolution=%s): %s",
+                    ASSET_ID, substep_key, resolution, exc,
+                )
 
         # 8. Upsert fingerprint.
         _upsert_build_state(
@@ -1768,18 +2080,32 @@ class GocharaV3CenturyMaterializeWriter(WriterBase):
             build_id=ctx.build_id,
         )
 
-        # 9. Log wall-clock time at DEBUG (AC5 — first SLO evidence point).
+        # 9. Log wall-clock time + peak accounting at DEBUG (AC5 / R8.13).
         elapsed = time.time() - t0
         logger.debug(
-            "[%s] substep=%r chart=%s: %d intervals inserted. wall_clock_s=%.3f",
-            ASSET_ID, substep_key, chart_id, inserted, elapsed,
+            "[%s] substep=%r chart=%s: %s, %d rows inserted "
+            "(era=%d peaks_scanned=%d peaks_admitted=%d peaks_retained=%d "
+            "month=%d day=%d). wall_clock_s=%.3f",
+            ASSET_ID, substep_key, chart_id, shape_gate_note, inserted,
+            era_count, peaks_scanned, peaks_admitted, peaks_retained,
+            month_count, day_count, elapsed,
+        )
+
+        # R8.13: WriterResult.notes carries the full peak-accounting report,
+        # and a NAMED zero_peaks_reason whenever peaks_retained==0 for a
+        # hierarchy-eligible class — never a bare/undifferentiated "0 rows".
+        zero_peaks_part = (
+            f", zero_peaks_reason={zero_peaks_reason}"
+            if class_shape == "interval" and peaks_retained == 0 and zero_peaks_reason
+            else ""
         )
 
         if is_chain:
             notes = (
-                f"{av_gate_note}{substep_key}: {len(intervals)} chain episodes found "
-                f"({len(chain_milestone_template)} milestones/episode, temporal_shape=chain), "
-                f"{inserted} rows inserted into {TABLE} (generation={GENERATION_V3}) "
+                f"{av_gate_note}{substep_key}: {shape_gate_note}, "
+                f"{chain_episode_count} chain episode(s) x "
+                f"{len(chain_milestone_template)} milestone(s) = {inserted} rows "
+                f"inserted into {TABLE} (generation={GENERATION_V3}) "
                 f"and {PROD_TABLE} (generation={GENERATION_PROD}), "
                 f"era_slice_key={era_slice_key}, "
                 f"fingerprint={fingerprint}, "
@@ -1788,7 +2114,10 @@ class GocharaV3CenturyMaterializeWriter(WriterBase):
             )
         else:
             notes = (
-                f"{av_gate_note}{substep_key}: {len(intervals)} intervals found, "
+                f"{av_gate_note}{substep_key}: {shape_gate_note}, "
+                f"era_windows={era_count}, peaks_scanned={peaks_scanned}, "
+                f"peaks_admitted={peaks_admitted}, peaks_retained={peaks_retained}, "
+                f"month_rows={month_count}, day_rows={day_count}{zero_peaks_part}, "
                 f"{inserted} rows inserted into {TABLE} (generation={GENERATION_V3}) "
                 f"and {PROD_TABLE} (generation={GENERATION_PROD}), "
                 f"era_slice_key={era_slice_key}, "
@@ -1849,4 +2178,5 @@ __all__ = [
     "_build_chain_row",
     "_discover_event_classes",
     "_coverage_quality_note",
+    "_fetch_event_class_temporal_shape",
 ]

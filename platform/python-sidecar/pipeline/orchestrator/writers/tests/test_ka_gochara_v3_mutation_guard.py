@@ -66,6 +66,27 @@ from pipeline.orchestrator.writers.ka_gochara_v3_century_materialize import (
     GocharaV3CenturyMaterializeWriter,
 )
 from pipeline.orchestrator.writers import ContextSpec
+from services.gochara_v3.resolution_hierarchy import HierarchyResult, WindowResolutionRecord
+
+# PARIṢKĀRA MR-11(b): run_substep now calls build_resolution_hierarchy (not
+# find_threshold_crossings directly). This fixture wraps a single
+# IntervalBoundary-shaped fake in a one-era-window HierarchyResult, matching
+# every downstream generation='3.0'/DML assertion these tests already make
+# (an era-tier window is still one row per table, same as the old flat model).
+def _single_era_hierarchy(*, enter_jd, exit_jd, peak_jd, peak_lambda) -> HierarchyResult:
+    era = WindowResolutionRecord(
+        window_id="mutation-guard-era-1",
+        parent_window_id=None,
+        resolution_tier="era",
+        enter_jd=enter_jd,
+        exit_jd=exit_jd,
+        peak_jd=peak_jd,
+        peak_lambda=peak_lambda,
+    )
+    return HierarchyResult(
+        era_windows=[era], month_windows=[], day_windows=[],
+        resolution_facet={"era": 1, "month": 0, "day": 0},
+    )
 
 # ---------------------------------------------------------------------------
 # Guard constants
@@ -527,18 +548,15 @@ def test_dryrun_fixture_only_writes_generation_30_rows(monkeypatch):
       1. At least one DML against the production table was issued.
       2. Every such statement carries generation='3.0' (in SQL literal or params).
     """
-    from services.gochara_v3.interval_solver import IntervalBoundary
-
     era_key = "g3_1984_1994"
-    fake_boundary = IntervalBoundary(
+    fake_hierarchy = _single_era_hierarchy(
         enter_jd=2445736.5 + 10.0,
         exit_jd=2445736.5 + 20.0,
         peak_jd=2445736.5 + 15.0,
         peak_lambda=0.65,
-        era_slice_key=era_key,
     )
 
-    monkeypatch.setattr(mod, "find_threshold_crossings", lambda *a, **k: [fake_boundary])
+    monkeypatch.setattr(mod, "build_resolution_hierarchy", lambda *a, **k: fake_hierarchy)
     monkeypatch.setattr(
         mod, "ClassContext",
         type("FakeClassContext", (), {"fetch": staticmethod(lambda **k: object())}),
@@ -606,18 +624,15 @@ def test_dryrun_fixture_no_generation_v1_rows(monkeypatch):
     This is the I1 invariant as a runtime test: the writer must never produce
     generation='v1' rows against kala_gochara_windows, regardless of chart ID.
     """
-    from services.gochara_v3.interval_solver import IntervalBoundary
-
     era_key = "g3_1984_1994"
-    fake_boundary = IntervalBoundary(
+    fake_hierarchy = _single_era_hierarchy(
         enter_jd=2445736.5 + 10.0,
         exit_jd=2445736.5 + 20.0,
         peak_jd=2445736.5 + 15.0,
         peak_lambda=0.65,
-        era_slice_key=era_key,
     )
 
-    monkeypatch.setattr(mod, "find_threshold_crossings", lambda *a, **k: [fake_boundary])
+    monkeypatch.setattr(mod, "build_resolution_hierarchy", lambda *a, **k: fake_hierarchy)
     monkeypatch.setattr(
         mod, "ClassContext",
         type("FakeClassContext", (), {"fetch": staticmethod(lambda **k: object())}),
