@@ -3,6 +3,46 @@
 # Grammar-v3 mechanism register: all 12 mechanisms (10 admitted + 2 structural-only)
 # finalized per ADJUDICATOR ruling UTK-R3 (W4.3 ablation + W4.4 weight fitting).
 #
+# PARIṢKĀRA MR-19 RE-ADJUDICATION (PRATINIDHI, 2026-08-11 — native-directed,
+# recorded here per the register's own convention, full rationale in
+# PARISHKARA_LEDGER.md "MR-19 re-adjudication" entry):
+#
+# UTK-R3 admitted all 10 `admitted` mechanisms below on an ablation run against
+# an EMPTY corpus — "cannot degrade v1 parity" was true only because there was
+# no data to degrade (a vacuous pass, not evidence). Post-repair (MR-13/14/15,
+# THE ONE authorized rebuild), the corpus is real (89/85 rows) and W4.4's real
+# refit ran against it — every one of these 10 mechanisms came back
+# `mechanism_not_wired` (w44_weight_fitting.py's MECHANISM_ENGINE_WIRED
+# registry: all False). This is NOT "ablated, measured near-zero effect" — it
+# is structurally stronger and more honest than that: none of these 10
+# mechanisms' compute() is actually INVOKED anywhere in engine.py's production
+# lambda_v3 formula. There is no code path for an ablation to exercise, so a
+# with-vs-without run is mathematically guaranteed to show delta=0 by
+# construction, not by measurement — running one now would be exactly the
+# "ablation theater against zero weights" this ruling is directed to avoid.
+#
+# RULING: `admission_state: admitted` / `weight_type: fitted` below currently
+# read as "this mechanism contributes a real, fitted weight in production
+# scoring." That claim is FALSE today and is hereby DEMOTED, not stripped —
+# the classical citation, code module, and unit test suite for each mechanism
+# remain real and are NOT discarded. Re-scoped status, effective this ruling:
+# DEFINED + CITED + CODED, NOT ENGINE-WIRED. No production contribution claim
+# may be made for these 10 until a dedicated future wave actually wires each
+# mechanism's compute() into engine.py's lambda_v3 path (flips its
+# MECHANISM_ENGINE_WIRED entry to True) — at which point a genuine ablation
+# becomes possible and this re-adjudication is superseded by real evidence.
+# The two `structural_only` mechanisms below (w28/w29) are UNAFFECTED — they
+# were never weight-fitted claims to begin with (modifier is always 1.0 by
+# design), so this finding does not apply to them.
+#
+# This YAML file is unchanged below (still I2-compliant read-only
+# documentation, still records UTK-R3's own original text verbatim — history
+# is not rewritten) — this header block is the additive correction. The
+# authoritative, LIVE, machine-checked source of the honest wiring state is
+# w44_weight_fitting.py's `MECHANISM_ENGINE_WIRED` dict, not this file; read
+# that dict, not `admission_state` here, when the question is "does this
+# mechanism currently contribute in production."
+#
 # Field semantics:
 #   toggle_key          — Python identifier that disables this mechanism when False
 #   admission_state     — "admitted" | "structural_only" (per UTK-R3 enum)
