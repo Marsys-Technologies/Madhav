@@ -3018,3 +3018,35 @@ MR-47 build corrected to base off origin/main (see prior entry) and re-dispatche
 
 NEXT-ACTION: on MR-47 completion, review+merge if evidence is real. Then Phase F (W4.4 refit +
 w45 post-fit, MR-32 Stage C) both charts.
+
+## 2026-08-12 ~04:4x IST — MR-47 built, independently re-verified, PR #1235 open
+
+CONDUCTOR-HEARTBEAT: 2026-08-12T04:40:00Z
+
+MR-47 builder (rebased correctly onto origin/main after the earlier topology correction) reports
+all 4 scope items + both required detectors complete: writer fix (shape_conformance kwarg
+replacing the hardcoded temporal_shape literal), migration 570 (additive, applied live,
+idempotent), serving fix (specific blocked_reason), live gate script + mutation-proof tests.
+**Independently re-verified myself, not taken on the builder's report alone**: column present on
+both tables (nullable text), 0 NULL/unclassified rows anywhere, backfill counts exact
+(130 point_class_context_envelope rows/chart = 13 classes × 10 decades, matching PK-R-10's own
+math on both canonical charts' g3_utkarsha corpus), live gate script re-run clean (0 mismatches,
+27/27 classes, both charts), 12/12 detector unit tests re-run pass including the 3 explicit
+mutation-proof cases, 108/108 writer-level tests re-run pass. Migration's `_migrations_applied`
+bookkeeping gap (it ran live, outside the normal migrate.ts deploy path, so that tracking table
+has no row yet) confirmed benign: ADD COLUMN IF NOT EXISTS + a guarded UPDATE are both genuinely
+idempotent, migrate.ts owns the INSERT into _migrations_applied itself (not the migration file),
+so the next normal deploy will safely no-op the DDL/DML and correctly backfill just the
+bookkeeping row.
+
+**Governance-incident cleanup**: the earlier shared-worktree collision had left a stray,
+INCOMPLETE ledger-file commit sitting underneath the builder's real work on
+`parishkara/mr-47-shape-conformance` (my own append-only fragment, not this file's real content
+— main never carries this file at all). Rebased it off cleanly (`git rebase --onto origin/main
+80c11d809 HEAD`), force-pushed with lease (solo branch, no other pusher), confirmed the resulting
+diff carries only the 11 real MR-47 files, zero ledger pollution. Also removed one empty stray
+`.tmp` file left in the shared worktree by an earlier botched heredoc.
+
+**PR #1235 opened against main**, full test-plan evidence in the PR body, CI checks running.
+
+NEXT-ACTION: merge #1235 once CI is green. Then Phase F (W4.4 refit + w45 post-fit).
