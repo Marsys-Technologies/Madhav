@@ -165,7 +165,7 @@ class TestFittedWeightsLoading:
     def test_all_toggle_keys_present_in_output(self):
         """Output dict always has all 10 admitted toggle_keys."""
         conn = _FakeConn(responder=lambda sql, params: [])
-        weights, _, _ = load_fitted_weights(conn)
+        weights, _, _, _ = load_fitted_weights(conn)
         assert set(weights.keys()) == ADMITTED_MECHANISM_IDS
 
     def test_fitted_weight_loaded_correctly(self):
@@ -178,13 +178,13 @@ class TestFittedWeightsLoading:
             return []
 
         conn = _FakeConn(responder=responder)
-        weights, _, _ = load_fitted_weights(conn)
+        weights, _, _, _ = load_fitted_weights(conn)
         assert abs(weights[target_key] - 0.123) < 1e-9
 
     def test_missing_toggle_key_falls_back_to_zero(self):
         """I4: a toggle_key absent from gochara_v3_calibration → 0.0."""
         conn = _FakeConn(responder=lambda sql, params: [])
-        weights, _, _ = load_fitted_weights(conn)
+        weights, _, _, _ = load_fitted_weights(conn)
         for tk in ADMITTED_MECHANISM_IDS:
             assert weights[tk] == 0.0, f"Expected 0.0 for missing key {tk}"
 
@@ -198,7 +198,7 @@ class TestFittedWeightsLoading:
             return []
 
         conn = _FakeConn(responder=responder)
-        weights, _, _ = load_fitted_weights(conn)
+        weights, _, _, _ = load_fitted_weights(conn)
         assert weights[target_key] == 0.0, "Negative weight must be clamped to 0.0"
 
     def test_fit_run_ids_collected(self):
@@ -211,7 +211,7 @@ class TestFittedWeightsLoading:
             return []
 
         conn = _FakeConn(responder=responder)
-        _, fit_run_ids, _ = load_fitted_weights(conn)
+        _, fit_run_ids, _, _ = load_fitted_weights(conn)
         assert "run-xyz" in fit_run_ids
 
     def test_dataset_hash_extracted_from_provenance(self):
@@ -228,7 +228,7 @@ class TestFittedWeightsLoading:
             return []
 
         conn = _FakeConn(responder=responder)
-        _, _, dataset_hash = load_fitted_weights(conn)
+        _, _, dataset_hash, _ = load_fitted_weights(conn)
         assert dataset_hash == "abc123"
 
     def test_db_error_on_one_key_falls_back_to_zero(self):
@@ -243,7 +243,7 @@ class TestFittedWeightsLoading:
 
         conn = _FakeConn(responder=responder)
         # Should not raise; all weights default to 0.0.
-        weights, _, _ = load_fitted_weights(conn)
+        weights, _, _, _ = load_fitted_weights(conn)
         assert all(v == 0.0 for v in weights.values())
 
 
@@ -447,6 +447,7 @@ class TestBuildReportShape:
         "rows_stamped_empirically_calibrated",
         "prospective_rows_seeded",
         "fit_run_ids_used",
+        "earned_fit_run_ids_used",
         "dataset_hash_linked",
     }
 
@@ -552,11 +553,12 @@ class TestHonestFallback:
     def test_empty_calibration_table_yields_zero_weights(self):
         """I4: all weights are 0.0 when table is empty."""
         conn = _FakeConn(responder=lambda sql, params: [])
-        weights, fit_run_ids, dataset_hash = load_fitted_weights(conn)
+        weights, fit_run_ids, dataset_hash, earned_fit_run_ids = load_fitted_weights(conn)
         assert all(v == 0.0 for v in weights.values()), (
             "All weights must be 0.0 when gochara_v3_calibration has no rows"
         )
         assert fit_run_ids == [], "No fit_run_ids when table is empty"
+        assert earned_fit_run_ids == [], "No earned_fit_run_ids when table is empty"
         assert dataset_hash is None
 
     def test_empty_calibration_skips_stamping(self):
@@ -574,12 +576,13 @@ class TestHonestFallback:
         assert all(v == 0.0 for v in report["fitted_weights"].values())
         assert report["rows_stamped_empirically_calibrated"] == 0
         assert report["fit_run_ids_used"] == []
+        assert report["earned_fit_run_ids_used"] == []
         assert report["dataset_hash_linked"] is None
 
     def test_no_fabrication_on_missing_keys(self):
         """I4: no weight is ever invented — missing always maps to 0.0, not a proxy."""
         conn = _FakeConn(responder=lambda sql, params: [])
-        weights, _, _ = load_fitted_weights(conn)
+        weights, _, _, _ = load_fitted_weights(conn)
         for tk in ADMITTED_MECHANISM_IDS:
             assert tk in weights
             assert weights[tk] == 0.0
@@ -595,3 +598,154 @@ class TestHonestFallback:
         assert result == 0
         updates = [s for s, _ in conn.statements if s.strip().upper().startswith("UPDATE")]
         assert not updates, "§N.8: UPDATE must not run when fit_run_ids is empty"
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 7. TestEarnedSignalGate — PARIṢKĀRA MR-37 regression suite
+# ═══════════════════════════════════════════════════════════════════════════
+
+class TestEarnedSignalGate:
+    """PARIṢKĀRA MR-37: the §N.8 gate must test EARNED signal (non-zero weight
+    from an engine-wired mechanism), not row existence. These tests reproduce
+    the exact proven exploit — a gochara_v3_calibration row exists for every
+    admitted toggle_key with weight_value=0.0 (today's REAL production state:
+    all 10 mechanisms are mechanism_not_wired, per MECHANISM_ENGINE_WIRED) —
+    and assert the fix refuses to stamp anything, where the pre-fix gate
+    (checking `fit_run_ids` row-existence alone) would have stamped.
+    """
+
+    def _all_zero_not_wired_responder(self, fit_run_id: str = "run-exploit"):
+        """Mimics the real production exploit fixture: every admitted
+        toggle_key has a gochara_v3_calibration row (fit_run_id present,
+        weight_value=0.0) — the exact shape a mechanism_not_wired W4.4 fit
+        writes. Row EXISTS; signal is NOT earned.
+        """
+        def responder(sql, params):
+            if TABLE_CALIBRATION in sql and params:
+                return [_make_calibration_row(params[0], 0.0, fit_run_id=fit_run_id)]
+            return []
+        return responder
+
+    def test_exploit_fixture_produces_nonempty_fit_run_ids(self):
+        """Sanity check: the exploit fixture DOES produce row-existence
+        (fit_run_ids non-empty) — proving the old row-existence-only gate
+        really would have passed this fixture.
+        """
+        conn = _FakeConn(responder=self._all_zero_not_wired_responder())
+        _, fit_run_ids, _, _ = load_fitted_weights(conn)
+        assert fit_run_ids != [], (
+            "Exploit fixture must produce non-empty fit_run_ids (row exists) — "
+            "otherwise this isn't testing the row-existence-vs-earned-signal gap"
+        )
+
+    def test_exploit_fixture_produces_empty_earned_fit_run_ids(self):
+        """The fix: the same fixture must NOT count as earned signal — all
+        weights are 0.0 (mechanism_not_wired's honest zero-delta), so
+        earned_fit_run_ids must be empty despite fit_run_ids being non-empty.
+        """
+        conn = _FakeConn(responder=self._all_zero_not_wired_responder())
+        _, fit_run_ids, _, earned_fit_run_ids = load_fitted_weights(conn)
+        assert fit_run_ids != [], "precondition: row-existence must be non-empty"
+        assert earned_fit_run_ids == [], (
+            "MR-37: an all-zero fit (mechanism_not_wired) must NOT be earned "
+            "signal, even though gochara_v3_calibration rows exist for it"
+        )
+
+    def test_exploit_end_to_end_refused_via_build_post_fit_report(self):
+        """THE regression test: the exact proven exploit, run through the full
+        build_post_fit_report path. Pre-fix, this fixture (120 rows' worth of
+        row-existing, all-zero, all-not-wired fit — the real production shape
+        that had already dishonestly stamped 107 staging rows once) would
+        have stamped every eligible structural_prior row
+        'empirically_calibrated'. Post-fix, it must stamp ZERO.
+        """
+        conn = _FakeConn(
+            responder=self._all_zero_not_wired_responder(),
+            rowcount_for_update=120,  # would return 120 if the UPDATE ran
+        )
+        report = build_post_fit_report(conn)
+        assert report["rows_stamped_empirically_calibrated"] == 0, (
+            "MR-37 REGRESSION: the proven exploit (row exists, weight=0.0, "
+            "mechanism not wired) must be refused — stamping 0 rows, not 120"
+        )
+        updates = [s for s, _ in conn.statements if s.strip().upper().startswith("UPDATE")]
+        assert updates == [], "No UPDATE may be issued for an unearned fit"
+
+    def test_wired_mechanism_with_nonzero_weight_is_earned(self):
+        """Positive case: a toggle_key that IS engine-wired AND has a
+        genuinely non-zero weight must count as earned signal — the gate
+        must not become impossible to pass, only impossible to fake.
+        """
+        target_key = "w21_av_gating"
+
+        def responder(sql, params):
+            if TABLE_CALIBRATION in sql and params and params[0] == target_key:
+                return [_make_calibration_row(target_key, 0.42, fit_run_id="run-earned")]
+            return []
+
+        conn = _FakeConn(responder=responder)
+        with patch.dict(mod.MECHANISM_ENGINE_WIRED, {target_key: True}):
+            _, _, _, earned_fit_run_ids = load_fitted_weights(conn)
+        assert "run-earned" in earned_fit_run_ids, (
+            "A wired mechanism with non-zero weight must be earned signal"
+        )
+
+    def test_wired_mechanism_with_zero_weight_is_not_earned(self):
+        """Weight=0.0 is never earned signal, even for a wired mechanism —
+        weight and wiring are both required, not either/or.
+        """
+        target_key = "w21_av_gating"
+
+        def responder(sql, params):
+            if TABLE_CALIBRATION in sql and params and params[0] == target_key:
+                return [_make_calibration_row(target_key, 0.0, fit_run_id="run-zero")]
+            return []
+
+        conn = _FakeConn(responder=responder)
+        with patch.dict(mod.MECHANISM_ENGINE_WIRED, {target_key: True}):
+            _, _, _, earned_fit_run_ids = load_fitted_weights(conn)
+        assert earned_fit_run_ids == [], "Zero weight is never earned, wired or not"
+
+    def test_unwired_mechanism_with_nonzero_weight_is_not_earned(self):
+        """A non-zero weight for a mechanism NOT wired into the engine is
+        never earned signal — guards against a future drift where the fit
+        computation stops honestly zeroing mechanism_not_wired deltas.
+        """
+        target_key = "w22_moorti_nirnaya"
+
+        def responder(sql, params):
+            if TABLE_CALIBRATION in sql and params and params[0] == target_key:
+                return [_make_calibration_row(target_key, 0.99, fit_run_id="run-drift")]
+            return []
+
+        conn = _FakeConn(responder=responder)
+        with patch.dict(mod.MECHANISM_ENGINE_WIRED, {target_key: False}):
+            _, _, _, earned_fit_run_ids = load_fitted_weights(conn)
+        assert earned_fit_run_ids == [], (
+            "A non-zero weight for an unwired mechanism must still be refused"
+        )
+
+    def test_unknown_toggle_key_defaults_wired_true(self):
+        """A toggle_key absent from MECHANISM_ENGINE_WIRED defaults wired=True
+        (matches w44's own `.get(key, True)` convention) — only mechanisms
+        POSITIVELY confirmed dormant are excluded, never an unknown one.
+        """
+        target_key = "w23_tara_bala"
+
+        def responder(sql, params):
+            if TABLE_CALIBRATION in sql and params and params[0] == target_key:
+                return [_make_calibration_row(target_key, 0.5, fit_run_id="run-default")]
+            return []
+
+        conn = _FakeConn(responder=responder)
+        with patch.dict(mod.MECHANISM_ENGINE_WIRED, {}, clear=False):
+            # Remove the key entirely to simulate "unknown to the registry".
+            saved = mod.MECHANISM_ENGINE_WIRED.pop(target_key, None)
+            try:
+                _, _, _, earned_fit_run_ids = load_fitted_weights(conn)
+            finally:
+                if saved is not None:
+                    mod.MECHANISM_ENGINE_WIRED[target_key] = saved
+        assert "run-default" in earned_fit_run_ids, (
+            "An unknown toggle_key must default to wired=True, not be silently excluded"
+        )

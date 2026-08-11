@@ -1,8 +1,14 @@
 #!/usr/bin/env python3
 """
-run_ka_gochara_v2_materialize.py — drive the ka_gochara_v2_materialize writer
+run_ka_gochara_v2_materialize.py — drive the ka_gochara writer (GOCHARA-2.0)
 against a live database for ONE chart, outside the orchestrator (a manual/
 measurement run, same discipline as scripts/run_w2g_bind_validations.py).
+
+NOTE (W6.4 UTK-R2 rename): this script was originally named for the writer
+it drives, which was called `ka_gochara_v2_materialize` until the W6.4
+native ruling renamed it to `ka_gochara` (retired the old self-test asset
+of the same name). The script filename is unchanged for stability; the
+writer it imports is `ka_gochara.KaGocharaWriter` (see import below).
 
 ṢAḌ-DARŚANA W2G (item 19), lane G REWORK. Mirrors
 `pipeline/orchestrator/asset_runner.py`'s real per-substep transaction
@@ -12,12 +18,13 @@ orchestrator — is the transaction owner for this direct-invocation path. The
 writer itself NEVER commits/rolls back/closes the connection (§N.2); this
 script is exactly the "someone else" the FROZEN contract assumes will.
 
-Writes ONLY to `kala_gochara_windows_v2` (the writer's own table) and
-`kala_gochara_v2_build_state` (delta-aware-invalidation bookkeeping, migration
-541, reused unchanged). Never touches `kala_gochara_windows` (v1, protected)
-and never sets `app.allow_protected_sweep_rewrite` — this script issues no SQL
-of its own beyond the SAVEPOINT/commit machinery; every data statement comes
-from the writer, which is independently tested never to reference either
+Writes ONLY to `kala_gochara_windows_v2` (the writer's own calibration/
+staging table) and `kala_gochara_v2_build_state` (delta-aware-invalidation
+bookkeeping, migration 541, reused unchanged). Never touches
+`kala_gochara_windows` (v1, protected) and never sets
+`app.allow_protected_sweep_rewrite` — this script issues no SQL of its own
+beyond the SAVEPOINT/commit machinery; every data statement comes from the
+writer, which is independently tested never to reference either
 (see `pipeline/orchestrator/writers/tests/test_ka_gochara_v2_materialize.py`).
 
 Usage:

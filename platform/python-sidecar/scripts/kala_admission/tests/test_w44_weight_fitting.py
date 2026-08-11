@@ -31,6 +31,7 @@ sys.path.insert(0, str(Path(__file__).parents[4]))  # platform/python-sidecar/
 
 from kala_admission.w44_weight_fitting import (  # noqa: E402
     ADMITTED_MECHANISM_IDS,
+    MECHANISM_ENGINE_WIRED,
     SHRINKAGE_PRIOR_K,
     STRUCTURAL_ONLY_IDS,
     GochaWindow,
@@ -40,6 +41,7 @@ from kala_admission.w44_weight_fitting import (  # noqa: E402
     apply_shrinkage,
     compute_dataset_hash,
     compute_hit_rate_from_windows,
+    compute_mechanism_weights,
     compute_pooled_delta,
     load_mechanism_registry,
 )
@@ -248,41 +250,114 @@ def _make_window(
 
 
 class TestAblateWindowIntensity:
-    """Verify _ablate_window_intensity returns correct (ablated_val, method)."""
+    """Verify _ablate_window_intensity returns correct (ablated_val, method).
+
+    NOTE (PARIṢKĀRA MR-14-matching, 2026-08-11): tests of the GENERIC proxy
+    fallback below deliberately use a toggle_key NOT in MECHANISM_ENGINE_WIRED
+    (e.g. "w99_hypothetical_wired") so they exercise the proxy-fraction
+    formula itself, independent of any specific admitted mechanism's wiring
+    status. `.get(toggle_key, True)` defaults an unlisted key to "wired",
+    matching the intent of these tests (a mechanism that DOES contribute to
+    signed_intensity but whose exact contribution isn't broken out this
+    window). Tests specific to the 10 admitted-but-confirmed-dormant
+    mechanisms live in their own section below.
+    """
 
     def test_term_breakdown_subtraction(self):
-        """When term_breakdown has the toggle_key, subtract its contribution."""
+        """When term_breakdown has the toggle_key, subtract its contribution.
+
+        Strategy 1 (literal key match) wins unconditionally, even for an
+        admitted mechanism whose MECHANISM_ENGINE_WIRED entry is False —
+        explicit per-row data always outranks the wiring-status default.
+        """
         w = _make_window(1.0, term_breakdown={"w21_av_gating": 0.3})
         ablated, method = _ablate_window_intensity(w, "w21_av_gating")
         assert abs(ablated - 0.7) < 1e-9
         assert method == "term_breakdown"
 
     def test_fallback_proxy_when_no_breakdown(self):
-        """When term_breakdown is None, use proxy fraction."""
+        """When term_breakdown is None and the mechanism IS wired, use proxy fraction."""
         w = _make_window(1.0, term_breakdown=None)
-        ablated, method = _ablate_window_intensity(w, "w21_av_gating")
+        ablated, method = _ablate_window_intensity(w, "w99_hypothetical_wired")
         assert method == "proxy_fraction"
         assert ablated < 1.0  # reduced
 
     def test_zero_intensity_returns_zero(self):
         """Window with intensity=0 -> ablated=0 (proxy_fraction method)."""
         w = _make_window(0.0, term_breakdown=None)
-        ablated, method = _ablate_window_intensity(w, "w21_av_gating")
+        ablated, method = _ablate_window_intensity(w, "w99_hypothetical_wired")
         assert ablated == 0.0
 
     def test_adverse_window_proxy_reduces_magnitude(self):
-        """Adverse (negative) window: proxy reduces magnitude toward 0."""
+        """Adverse (negative) window, mechanism wired: proxy reduces magnitude toward 0."""
         w = _make_window(-1.0, term_breakdown=None)
-        ablated, method = _ablate_window_intensity(w, "w21_av_gating")
+        ablated, method = _ablate_window_intensity(w, "w99_hypothetical_wired")
         assert method == "proxy_fraction"
         assert ablated > -1.0  # magnitude reduced toward 0
         assert ablated < 0.0   # still adverse
 
     def test_term_breakdown_missing_key_falls_back(self):
-        """term_breakdown present but without this toggle_key -> proxy fallback."""
+        """term_breakdown present but without this toggle_key, mechanism wired -> proxy fallback."""
         w = _make_window(1.0, term_breakdown={"some_other": 0.5})
-        ablated, method = _ablate_window_intensity(w, "w21_av_gating")
+        ablated, method = _ablate_window_intensity(w, "w99_hypothetical_wired")
         assert method == "proxy_fraction"
+
+
+class TestAblateWindowIntensityUnwiredMechanism:
+    """PARIṢKĀRA MR-14-matching (2026-08-11): a mechanism confirmed NOT wired
+    into services/gochara_v3/engine.py (MECHANISM_ENGINE_WIRED[toggle_key] is
+    False) must never silently fall back to the generic proxy heuristic when
+    no literal term_breakdown key matches — that would fabricate a plausible-
+    looking but meaningless per-mechanism delta (I3 violation). It must
+    report the honest, distinct "mechanism_not_wired" label instead, and the
+    window's intensity must be returned UNCHANGED (zero contribution)."""
+
+    def test_all_10_admitted_toggle_keys_are_currently_unwired(self):
+        """Regression guard: MECHANISM_ENGINE_WIRED must list all 10 admitted
+        toggle_keys, all False, until a future PR wires one in deliberately."""
+        assert set(MECHANISM_ENGINE_WIRED) == set(ADMITTED_MECHANISM_IDS)
+        assert all(v is False for v in MECHANISM_ENGINE_WIRED.values()), (
+            "A mechanism flipped to wired=True without updating this test "
+            "deliberately — see MECHANISM_ENGINE_WIRED's own comment for the "
+            "hand-off checklist before flipping an entry."
+        )
+
+    def test_unwired_mechanism_no_literal_match_returns_mechanism_not_wired(self):
+        w = _make_window(1.0, term_breakdown=None)
+        ablated, method = _ablate_window_intensity(w, "w21_av_gating")
+        assert method == "mechanism_not_wired"
+        assert ablated == 1.0, "unwired mechanism -> intensity unchanged, zero fabricated delta"
+
+    def test_unwired_mechanism_real_shaped_term_breakdown_returns_mechanism_not_wired(self):
+        """Even with a REAL production term_breakdown shape (not None), an
+        unwired mechanism's toggle_key never appears as a key anywhere in
+        it, so this must still resolve to the honest null, not a proxy."""
+        real_shape = {
+            "promise": 0.6, "permission": 0.5, "activity": 0.7,
+            "quality_gates": 1.0, "lambda_v3": 0.21,
+            "activity_terms": [{"primitive": "degree_contact", "target_ref": "graha:venus",
+                                 "orb_decay": 0.9, "target_weight": 0.8, "p_i": 0.72}],
+            "formula": "PROMISE × PERMISSION × activity × quality_gates",
+        }
+        w = _make_window(0.21, term_breakdown=real_shape)
+        ablated, method = _ablate_window_intensity(w, "w22_moorti_nirnaya")
+        assert method == "mechanism_not_wired"
+        assert ablated == 0.21
+
+    def test_literal_match_still_wins_over_unwired_status(self):
+        """Explicit per-row term_breakdown data always outranks the wiring
+        default — proves Strategy 1 is checked BEFORE the wiring gate."""
+        w = _make_window(1.0, term_breakdown={"w25_kota_chakra": 0.4})
+        ablated, method = _ablate_window_intensity(w, "w25_kota_chakra")
+        assert method == "term_breakdown"
+        assert abs(ablated - 0.6) < 1e-9
+
+    def test_all_10_admitted_toggle_keys_return_mechanism_not_wired_not_proxy(self):
+        w = _make_window(1.0, term_breakdown=None)
+        for toggle_key in ADMITTED_MECHANISM_IDS:
+            ablated, method = _ablate_window_intensity(w, toggle_key)
+            assert method == "mechanism_not_wired", f"toggle_key={toggle_key!r} got {method!r}"
+            assert ablated == 1.0
 
 
 class TestDetermineAblationMethod:
@@ -291,13 +366,85 @@ class TestDetermineAblationMethod:
     def test_empty_windows_returns_not_computable(self):
         assert _determine_ablation_method([], "w21_av_gating") == "ablation_not_computable"
 
-    def test_windows_without_breakdown_returns_proxy(self):
+    def test_windows_without_breakdown_returns_proxy_for_wired_mechanism(self):
         windows = [_make_window(1.0, term_breakdown=None)]
-        assert _determine_ablation_method(windows, "w21_av_gating") == "proxy_fraction"
+        assert _determine_ablation_method(windows, "w99_hypothetical_wired") == "proxy_fraction"
+
+    def test_windows_without_breakdown_returns_mechanism_not_wired_for_admitted_mechanism(self):
+        """PARIṢKĀRA MR-14-matching: an admitted-but-confirmed-dormant
+        mechanism reports the honest 'mechanism_not_wired' label instead of
+        the generic proxy — see TestAblateWindowIntensityUnwiredMechanism."""
+        windows = [_make_window(1.0, term_breakdown=None)]
+        assert _determine_ablation_method(windows, "w21_av_gating") == "mechanism_not_wired"
 
     def test_windows_with_matching_breakdown_returns_term_breakdown(self):
         windows = [_make_window(1.0, term_breakdown={"w21_av_gating": 0.2})]
         assert _determine_ablation_method(windows, "w21_av_gating") == "term_breakdown"
+
+    def test_ablation_method_term_breakdown_currently_unreachable_for_admitted_toggle_keys(self):
+        """PARIṢKĀRA MR-14 disclosed a key-matching gap; PARIṢKĀRA
+        MR-14-matching (2026-08-11, this PR) traced it one level deeper and
+        found the real root cause: the real W1.5 term_breakdown shape
+        produced by gochara_v3.engine (migration 564's own COMMENT ON
+        COLUMN; independently verified live via the prior MR's throwaway-DB
+        execute-to-verify run) is
+        {promise, permission, activity, quality_gates, lambda_v3,
+        activity_terms, formula} -- NONE of which are toggle_key strings --
+        AND, after tracing engine.py/context.py/every mechanism module,
+        NONE of the 10 admitted mechanisms' own compute() functions are
+        ever invoked in engine.py's production path at all (see
+        MECHANISM_ENGINE_WIRED's module-level comment for the full evidence
+        trail: mechanisms/__init__.py's own "dormant... NOT wired" docstring,
+        each module's own "NOT wired into engine.py" docstring, a zero-hit
+        grep for callers outside the mechanisms package, and ClassContext
+        lacking data fields for 9 of the 10 mechanisms' documented inputs).
+
+        This regression-locks that, even with term_breakdown honestly
+        populated (the PG-6/PG-7 defect the prior MR fixed) and even with
+        the wiring-aware matching fix in THIS MR, NONE of the 10 admitted
+        mechanisms' toggle_keys ever match a top-level key of a REAL
+        decomposition -- so `_determine_ablation_method` now reports the
+        distinct, honest 'mechanism_not_wired' for every one of them
+        (previously: a silent, generically-computed 'proxy_fraction' that
+        looked like real per-mechanism signal but wasn't). This is
+        DIFFERENT from the test above it
+        (`test_windows_with_matching_breakdown_returns_term_breakdown`),
+        which uses a synthetic/hypothetical shape ({"w21_av_gating": 0.2})
+        that never occurs in the live corpus -- that test proves the
+        function's OWN matching logic is correct in isolation; THIS test
+        proves that logic never actually fires against the real data shape,
+        AND that the fallback it hits is now honestly labeled. Wiring the 10
+        admitted mechanisms into a matching, toggle_key-keyed slot of the
+        served decomposition remains real, separate, larger work this MR
+        does not attempt -- not fixed here, only disclosed and locked in so
+        it is not silently rediscovered as a surprise in a future W4.4 fit.
+        """
+        real_shaped_term_breakdown = {
+            "promise": 0.6,
+            "permission": 0.5,
+            "activity": 0.7,
+            "quality_gates": 1.0,
+            "lambda_v3": 0.21,
+            "activity_terms": [
+                {"primitive": "degree_contact", "target_ref": "graha:venus",
+                 "orb_decay": 0.9, "target_weight": 0.8, "p_i": 0.72},
+            ],
+            "formula": "PROMISE × PERMISSION × activity × quality_gates",
+        }
+        windows = [_make_window(0.21, term_breakdown=real_shaped_term_breakdown)]
+        for toggle_key in ADMITTED_MECHANISM_IDS:
+            method = _determine_ablation_method(windows, toggle_key)
+            assert method == "mechanism_not_wired", (
+                f"expected 'mechanism_not_wired' for toggle_key={toggle_key!r} against "
+                f"a REAL-shaped term_breakdown (no top-level key ever matches an "
+                f"admitted toggle_key, and MECHANISM_ENGINE_WIRED confirms this "
+                f"mechanism is not invoked in engine.py), got {method!r} -- if this "
+                f"now returns 'term_breakdown', the mechanism-attribution wiring gap "
+                f"this finding describes has been closed (update MECHANISM_ENGINE_WIRED "
+                f"for that toggle_key) and this test should be updated to match, not "
+                f"silently left stale. If this returns 'proxy_fraction', the "
+                f"MECHANISM_ENGINE_WIRED gate regressed."
+            )
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -435,6 +582,208 @@ class TestComputeHitRateFromWindows:
         # 1.0 - 0.1 * 1.0 = 0.9
         assert abs(ablated - 0.9) < 1e-9
         assert method == "proxy_fraction"
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 4b. compute_mechanism_weights — END-TO-END GOLDEN TEST (real fit path)
+# ═══════════════════════════════════════════════════════════════════════════
+#
+# PARIṢKĀRA MR-14-matching (2026-08-11). This is the closure gate the
+# register amendment demands: not another isolated-link test (that pattern
+# has now shipped three undetected gaps in this exact chain — interval_solver
+# dropping term_breakdown, the writer never naming the columns, and this
+# matching bug), but a small SYNTHETIC corpus with KNOWN, hand-constructed
+# term_breakdown decompositions fed through `compute_mechanism_weights` —
+# the ACTUAL production Stage A(hit-rate)/B/C function `build_weight_fitting_
+# report` calls, not a re-implementation or a mock of it — asserting the
+# expected non-zero (or correctly-zero) per-mechanism weights come out, with
+# predicted magnitudes derived from the corpus construction, not just
+# "not NaN".
+#
+# Corpus design (4 synthetic TRAIN events, 7 years apart so no event's
+# +/-2.5-year scoring window overlaps another's; all pre-2020 TEST split):
+#   e1 (1990-06-01), e2 (1997-06-01): each gets ONE dedicated 21-day window
+#     of signed_intensity=1.0 whose term_breakdown carries a LITERAL
+#     "w21_av_gating": 1.0 entry — i.e. the mechanism's contribution equals
+#     the window's entire intensity. Ablating w21 zeroes these windows
+#     exactly, flipping both events from hit -> miss.
+#   e3 (2004-06-01), e4 (2011-06-01): each gets ONE dedicated 21-day window
+#     of signed_intensity=1.0 whose term_breakdown is the REAL production
+#     shape engine.py actually emits ({promise, permission, activity,
+#     quality_gates, lambda_v3, activity_terms, formula}) — no key for any
+#     admitted toggle_key. These stay hits regardless of which mechanism is
+#     being ablated (nothing in a real-shaped decomposition can legitimately
+#     be attributed to any of the 10 admitted mechanisms — see
+#     MECHANISM_ENGINE_WIRED's comment).
+#
+# All four windows are far enough apart (7-year event spacing against a
+# 5-year total scoring-window diameter) that each event's own hit/miss is
+# determined ONLY by its own window — verified by first computing
+# hit_rate_full (expected 1.0: all 4 events hit under the unablated corpus)
+# before asserting any ablation delta.
+
+def _spike_window(event_date: date, intensity: float, term_breakdown: dict) -> GochaWindow:
+    """A narrow (+/-10 day) synthetic window centered on one event, carrying
+    a hand-constructed term_breakdown. Narrow enough that it cannot bleed
+    into a neighbouring event's +/-45-day proximity check or +/-2.5-year
+    threshold-computation window at >=7-year event spacing."""
+    from datetime import timedelta
+    return GochaWindow(
+        event_class="finance",
+        window_start=event_date - timedelta(days=10),
+        window_end=event_date + timedelta(days=10),
+        signed_intensity=intensity,
+        term_breakdown=term_breakdown,
+    )
+
+
+_W21_MATCHING_TERM_BREAKDOWN = {
+    "w21_av_gating": 1.0,
+    "promise": 0.5, "permission": 0.5, "activity": 0.7, "quality_gates": 1.0,
+    "lambda_v3": 1.0, "activity_terms": [], "formula": "PROMISE × PERMISSION × activity × quality_gates",
+}
+
+_REAL_SHAPE_NO_MECHANISM_KEY_TERM_BREAKDOWN = {
+    "promise": 0.6, "permission": 0.5, "activity": 0.7, "quality_gates": 1.0,
+    "lambda_v3": 1.0,
+    "activity_terms": [{"primitive": "degree_contact", "target_ref": "graha:venus",
+                         "orb_decay": 0.9, "target_weight": 0.8, "p_i": 0.72}],
+    "formula": "PROMISE × PERMISSION × activity × quality_gates",
+}
+
+
+class TestComputeMechanismWeightsGoldenEndToEnd:
+    """End-to-end golden test: synthetic corpus -> compute_mechanism_weights
+    (the real production fit function) -> asserted per-mechanism weights."""
+
+    E1, E2, E3, E4 = (
+        date(1990, 6, 1), date(1997, 6, 1), date(2004, 6, 1), date(2011, 6, 1),
+    )
+
+    def _build_corpus(self):
+        native_windows = [
+            _spike_window(self.E1, 1.0, dict(_W21_MATCHING_TERM_BREAKDOWN)),
+            _spike_window(self.E2, 1.0, dict(_W21_MATCHING_TERM_BREAKDOWN)),
+            _spike_window(self.E3, 1.0, dict(_REAL_SHAPE_NO_MECHANISM_KEY_TERM_BREAKDOWN)),
+            _spike_window(self.E4, 1.0, dict(_REAL_SHAPE_NO_MECHANISM_KEY_TERM_BREAKDOWN)),
+        ]
+        native_train_pairs = [
+            ("golden-e1-w21", self.E1),
+            ("golden-e2-w21", self.E2),
+            ("golden-e3-real-shape", self.E3),
+            ("golden-e4-real-shape", self.E4),
+        ]
+        return native_windows, native_train_pairs
+
+    def test_corpus_construction_sanity_all_4_events_hit_unablated(self):
+        """Precondition check: before trusting any ablation delta, confirm
+        the unablated corpus scores all 4 synthetic events as hits (each
+        event's own spike clears its own zero-heavy-baseline threshold)."""
+        native_windows, native_train_pairs = self._build_corpus()
+        hit_rate, hit_count, scored = compute_hit_rate_from_windows(
+            native_windows, native_train_pairs, ablate=False,
+        )
+        assert scored == 4
+        assert hit_count == 4, "golden corpus must score all 4 synthetic events as hits when unablated"
+        assert hit_rate == 1.0
+
+    def test_golden_end_to_end_real_fit_path(self):
+        """THE golden test: real registry + synthetic corpus through the
+        REAL compute_mechanism_weights (identical to what build_weight_
+        fitting_report calls in production) -- asserts predicted, non-zero
+        magnitudes for the mechanism with a genuine literal-key match
+        (w21_av_gating), and honest, exactly-zero weights (via the new
+        'mechanism_not_wired' label, never a fabricated proxy) for every
+        other admitted mechanism, including w22_moorti_nirnaya whose
+        synthetic events (e3/e4) carry only the real, mechanism-key-free
+        production term_breakdown shape."""
+        # Real production mechanism registry — not a hand-rolled stand-in.
+        registry = load_mechanism_registry()
+        admitted_metas = [m for m in registry if m.mechanism_id in ADMITTED_MECHANISM_IDS]
+        assert len(admitted_metas) == 10
+
+        native_windows, native_train_pairs = self._build_corpus()
+        n_native = len(native_train_pairs)
+
+        mechanism_weights, hit_rate_full_native, hit_rate_full_abhinandan = compute_mechanism_weights(
+            admitted_metas=admitted_metas,
+            native_windows=native_windows,
+            abhinandan_windows=[],
+            native_train_pairs=native_train_pairs,
+            abhinandan_train_pairs=[],
+            n_native=n_native,
+            n_abhinandan=0,
+            abhinandan_available=False,
+        )
+
+        assert hit_rate_full_native == 1.0
+        # abhinandan unavailable -> native treated as prior (documented fallback)
+        assert hit_rate_full_abhinandan == hit_rate_full_native
+
+        by_toggle_key = {w.toggle_key: w for w in mechanism_weights}
+        assert set(by_toggle_key) == set(ADMITTED_MECHANISM_IDS)
+
+        # ── w21_av_gating: literal term_breakdown match on e1/e2's windows.
+        # Ablating w21 zeroes both spike windows exactly (contribution ==
+        # full intensity) -> e1, e2 flip hit -> miss; e3, e4 (real-shape,
+        # mechanism_not_wired -> UNCHANGED) stay hits.
+        # Predicted: hit_rate_ablated = 2/4 = 0.5 -> delta_native = 1.0 - 0.5 = 0.5.
+        w21 = by_toggle_key["w21_av_gating"]
+        assert w21.ablation_method == "term_breakdown"
+        assert abs(w21.delta_native - 0.5) < 1e-9, f"delta_native={w21.delta_native}"
+        assert abs(w21.delta_abhinandan - 0.5) < 1e-9  # abhinandan unavailable -> = delta_native
+        # Cross-check final_weight against the REAL pooling/shrinkage formula
+        # (already independently unit-tested above) applied to the delta we
+        # just predicted and verified -- not a second guess, the same math.
+        expected_pooled, expected_shrunk = compute_pooled_delta(
+            delta_native=0.5, delta_abhinandan=0.5, n_native=4, n_abhinandan=0,
+            prior_strength=SHRINKAGE_PRIOR_K,
+        )
+        assert abs(w21.pooled_delta - round(expected_pooled, 6)) < 1e-9
+        assert abs(w21.pooled_delta_shrunk - round(expected_shrunk, 6)) < 1e-9
+        assert w21.final_weight > 0.0, "w21_av_gating must earn a real, non-zero weight"
+        assert abs(w21.final_weight - round(max(0.0, expected_shrunk), 6)) < 1e-9
+        # Exact expected magnitude: 0.5 * 4/(4+3) = 2/7 ≈ 0.285714
+        assert abs(w21.final_weight - round(2.0 / 7.0, 6)) < 1e-6
+
+        # ── w22_moorti_nirnaya: admitted, but MECHANISM_ENGINE_WIRED confirms
+        # it is not invoked anywhere in engine.py. Its synthetic events
+        # (e3/e4) only ever carry the real, mechanism-key-free production
+        # shape -- no literal match is possible. Must resolve to the honest
+        # null, NOT a fabricated proxy_fraction delta.
+        w22 = by_toggle_key["w22_moorti_nirnaya"]
+        assert w22.ablation_method == "mechanism_not_wired"
+        assert w22.delta_native == 0.0
+        assert w22.delta_abhinandan == 0.0
+        assert w22.final_weight == 0.0
+
+        # ── Every other admitted mechanism: same honest-null treatment.
+        # None of their toggle_keys appear anywhere in this corpus, and all
+        # 10 are currently unwired -- every one of them must land on
+        # 'mechanism_not_wired' with an exactly-zero weight, never a
+        # generically-computed proxy that only LOOKS like real evidence.
+        for toggle_key in ADMITTED_MECHANISM_IDS:
+            if toggle_key == "w21_av_gating":
+                continue
+            w = by_toggle_key[toggle_key]
+            assert w.ablation_method == "mechanism_not_wired", (
+                f"{toggle_key}: expected 'mechanism_not_wired', got {w.ablation_method!r}"
+            )
+            assert w.final_weight == 0.0, f"{toggle_key}: expected zero weight, got {w.final_weight}"
+            assert w.delta_native == 0.0
+
+    def test_golden_corpus_literal_match_wins_even_when_corpus_also_has_unwired_rows(self):
+        """Regression guard for the precedence rule: mixing wired-attributable
+        rows (w21) and unwired-mechanism rows (w22-shape) in the SAME corpus
+        must not cause cross-contamination -- each mechanism's
+        ablation_method is judged on its own toggle_key's evidence only."""
+        native_windows, native_train_pairs = self._build_corpus()
+        assert _determine_ablation_method(native_windows, "w21_av_gating") == "term_breakdown"
+        assert _determine_ablation_method(native_windows, "w22_moorti_nirnaya") == "mechanism_not_wired"
+        for toggle_key in ADMITTED_MECHANISM_IDS:
+            if toggle_key == "w21_av_gating":
+                continue
+            assert _determine_ablation_method(native_windows, toggle_key) == "mechanism_not_wired"
 
 
 # ═══════════════════════════════════════════════════════════════════════════

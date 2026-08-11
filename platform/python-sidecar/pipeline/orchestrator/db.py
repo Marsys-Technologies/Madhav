@@ -1,4 +1,20 @@
-"""DB connection helper shared across orchestrator modules."""
+"""DB connection helper shared across orchestrator modules.
+
+PARIṢKĀRA MR-39: `connect()` below is the orchestrator's own build-session
+connection factory (used by `runner.py` and `global_runner.py`, the two
+entry points that drive real chart builds). It already carries the MR-39
+remediation — a SESSION-scoped `SET idle_in_transaction_session_timeout = 0`
+at connection setup (never `ALTER DATABASE`/`ALTER ROLE`) — landed prior to
+this campaign. MR-39 closed the remaining gap: several standalone
+build-runner scripts at the sidecar root (`run_heavy_writer_standalone.py`,
+`run_elev_beta_d_rebuild.py`, `run_elev_beta_integration_rebuild.py`) drove
+writer substeps via a bare `psycopg.connect()` that bypassed this factory
+entirely and therefore lacked the same protection; those now route through
+`connect()` below. `run_ka_sangam_prod.py` / `run_ph_pratikara_prod.py`
+needed to keep their own `prepare_threshold=None` pooler-compatibility flag
+so they were given the equivalent `SET` directly instead of being routed
+through this factory.
+"""
 from __future__ import annotations
 
 import os
