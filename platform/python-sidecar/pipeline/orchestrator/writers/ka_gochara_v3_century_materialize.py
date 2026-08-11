@@ -55,8 +55,21 @@ windows.ts, R8.9).
 R8.13 PEAK ACCOUNTING: every substep's WriterResult.notes reports
 era_windows/peaks_scanned/peaks_admitted/peaks_retained/month_rows/day_rows,
 and a named zero_peaks_reason ('flat_lambda_curve'|'no_candidate_above_p90'|
-'era_window_too_short') whenever peaks_retained==0 — never a bare/undated
-"0 rows" note.
+'era_window_too_short'|'lost_to_pooled_retention') whenever peaks_retained==0
+— never a bare/undated "0 rows" note. ROW-COUNT BOUND CORRECTION (MR-45,
+register MASTER_REMEDIATION_REGISTER_v2_0.md): the PK-R-8/MR-11 disclosure
+of "<=7 rows/substep (60-420/chart)" assumed exactly one era window per
+substep (test_w33_resolution_hierarchy.py's R8.7 anti-explosion bound of 7
+is a PER-ERA-WINDOW bound: 1 era + <=3 month + <=3 day). Production has
+confirmed >=2 era windows CAN occur in a single substep (chart 482012f1,
+career_setback::g3_2014_2024 — the real MR-44/MR-45 collision case). The
+honest per-substep bound, accounting for N_era era windows in one decade
+slice, is `N_era + 2*min(3*N_era, ceil(decade_days/90))` (each era window
+contributes at most 3 peaks per MAX_PEAKS_PER_ERA_WINDOW, but the pooled
+MIN_PEAK_SEPARATION_DAYS=90 retention (MR-44) additionally caps the total
+retainable peaks across the whole decade at ceil(decade_days/90); each
+retained peak contributes one month row + one day row, hence the factor of
+2; the leading N_era term is the era-tier rows themselves).
 
 MR-38 — FINGERPRINT VERSION FOLD (row-shape scope only)
 ----------------------------------------------------------
