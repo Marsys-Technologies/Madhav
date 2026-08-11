@@ -181,6 +181,20 @@ served resolution_breakdown instead. Full implementation requirements R8.1-R8.15
 with its named detector) + the R3 battery clauses H1-H9 (H6 peak-fidelity recomputation
 NOT waivable) recorded in the conductor session transcript and routed to the builder
 2026-08-11; PARĪKṢAKA re-verdict must check R8.1-R8.15 each.
+**PK-R-8a (2026-08-11) — chain-row basis amendment:** chain milestone rows carry the NEW
+`ONTOLOGY_MILESTONE_OFFSET='ontology_milestone_offset'` basis (recorded evidence: the date is
+episode_anchor + ontology-declared typical_offset_days, scored by score_chain_milestones AT
+that date — the date IS the claim, PK-R-1's dated-point floor generalized; DECLARED not
+LOCATED, never interchangeable with argmax and NOT added to GENUINE_PEAK_BASES).
+resolution=NULL with new resolution_source='not_hierarchy_classified' (chain rows are not
+hierarchy-produced; a 'day' row with no month parent would break H3). is_timing_window
+formula gains a chain clause: temporal_shape=='chain' AND basis==ONTOLOGY_MILESTONE_OFFSET
+AND milestone_id NOT NULL — with two new blocked_reasons ('chain_basis_not_declared',
+'chain_milestone_unanchored') giving the signal its previously-missing negative path; the
+span-inference fallback must short-circuit on chain shape (sole route). 5 detectors + R3
+battery clause H10 (chain rows verified on live forecast calls; H5/H6 scoped to EXCLUDE
+chain rows — recomputing λ around a declared milestone would test a claim this ruling does
+not make).
 
 **MR-12 · Produce chain rows (chain-canonical classes; `business_launch`
 first).** [PG-20a; recon W3.2]
