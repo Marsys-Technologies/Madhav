@@ -338,6 +338,26 @@ honest-zero detector) + published real-corpus firing count; if 0, an
 ADJUDICATOR disposition on plausibility. GATE: test green + count published.
 AT-PAR: the headline defect is measurably fixed or honestly explained.
 
+**DISPOSITION PK-R-5 (NATIVE-PRATINIDHI, 2026-08-11): DETECTION-GAP-FOUND.**
+The 0/54 is three separate claims with different verdicts: `kartari_pincer` =
+honest zero (live path; fires on 649/38,287 same-code-path corpus rows, 1.695%;
+P(0 in 54)≈0.40 — no signal); `vedha_cancellation` = STRUCTURALLY UNREACHABLE
+(`_fetch_vedha_rules` queries `bg_transit_rules WHERE rule_type='vedha'` — zero
+such rows exist; the real 33-row vedha corpus lives in `bg_transit_vedha`,
+never read → primitive early-returns [] on every call, forever);
+`sarvatobhadra_vedha` = STRUCTURALLY UNREACHABLE (`target_nakshatra_id` never
+populated by production enrichment — only a fixture builder sets it;
+`bg_sarvatobhadra_grid` empty → early-return []). Corpus census corroborates:
+0 vedha/sarvatobhadra sentences across all 38,461 rows; the seeded must-fire
+test hand-constructs sentences and proves only the arithmetic, not
+reachability. Also found: the v3 engine's own path never calls
+compute_suppression (engine.py:540 hardcodes suppression_v3=0.0; quality_gates
+is the v3 analogue). Fix scope spawned as MR-41; the interval-row
+suppression_state={} finding spawned as MR-42 (PRATINIDHI ruled it a named
+item, not a footnote). MR-22's own GATE stays MET (its detector + count were
+real); the CLAIM behind it ("suppression measurably fixed or honestly
+explained") is now honestly explained as a detection gap with a fix lane.
+
 **MR-23 · Remaining unrun acceptance artifacts.** [PG-26; recon W1.2/W1.4/
 W5.4/W0.2] GAP: W1.2 adverse-window-vs-v1 golden comparison never recorded;
 W1.4 tolerance band never ratified + thresholds shipped inert
@@ -645,6 +665,48 @@ marker-gate item, live state already correct and evidenced). See MR-38's
 ENGINE_VERSION standing rule for the related open question of whether an
 authority-surface repoint (not just an engine/writer code change) should
 also force a re-check of every cockpit entry referencing the old surface.
+
+**MR-41 · Suppression reachability: two of three mechanisms structurally
+unreachable.** [net-new, spawned by PK-R-5, 2026-08-11 close-out session]
+GAP: (a) `vedha_cancellation` dead-wired — `services/gochara_grammar/
+primitives.py:797` `_fetch_vedha_rules` reads `bg_transit_rules WHERE
+rule_type='vedha'` (0 rows ever seeded); the real vedha corpus is
+`bg_transit_vedha` (33 rows, different vocabulary), never read. (b)
+`sarvatobhadra_vedha` gated on `target_nakshatra_id`, which production
+enrichment never populates (only `build_fixture_targets` does);
+`bg_sarvatobhadra_grid` empty (by design until a school-keyed grid ingest —
+that part stays honestly deferred, the algorithmic fallback documented
+uncited_extension). (c) The v3 engine's production path never invokes
+compute_suppression (engine.py:540 hardcodes 0.0) — quality_gates is the v3
+suppression analogue; whether it subsumes the three v1 mechanisms or v3 needs
+its own wiring must be decided, not left implicit. (d) `nakshatra_ingress_tara`
+shares root cause (b) — wider blast radius than suppression alone.
+REMEDIATION: repoint `_fetch_vedha_rules` at `bg_transit_vedha` with a
+column-vocabulary adapter; resolve `target_nakshatra_id` in production
+enrichment for graha-anchored targets (bhava targets get a documented honest
+skip); add a REACHABILITY test (gather_configuration_sentences against a
+realistically-shaped chart asserts each primitive family CAN appear — not the
+arithmetic-only seeded test); record the v3 wiring decision explicitly.
+SEQUENCE: BEFORE the R2 corpus rebuild (same doctrine as MR-14 — fix before
+the rebuild, never a second override window after). GATE: reachability test
+green; a constructed vedha configuration produces a non-empty sentence through
+the REAL fetch path; post-rebuild corpus census shows the primitive families
+are producible (fired counts may honestly remain low — rarity is not a
+defect). AT-PAR: the founding v1 pathology (suppression that can never fire)
+is actually killed, not just measured.
+
+**MR-42 · v3 interval rows hardcode `suppression_state={}`.** [net-new,
+spawned by PK-R-5, 2026-08-11] GAP: `ka_gochara_v3_century_materialize.py:601`
+writes a literal empty object unconditionally on every interval row — no
+computation behind it; a reader cannot distinguish "nothing fired" from
+"nothing was asked." The real v3 suppression analogue (quality_gates detail)
+is computed and buried in term_breakdown. REMEDIATION: forward the actual
+quality-gates/vedha detail into `suppression_state` (or an explicit
+`{"mechanism":"quality_gates","value":...}` structure) so the field describes
+what actually ran; never an unconditional {}. GATE: post-rebuild interval rows
+carry a truthful, structured suppression_state; a unit test asserts the writer
+cannot emit the bare {} for a computed row. AT-PAR: §N.7-item-4 honesty on the
+production surface going forward.
 
 ## §7 — SOURCE → MR MAP (dedup audit)
 

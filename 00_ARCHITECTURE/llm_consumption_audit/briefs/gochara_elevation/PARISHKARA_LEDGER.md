@@ -31,7 +31,7 @@ marker_duty: post W6-COMPLETE to campaign-coordination §6 after MR-01..08,10,13
 | MR-19 | Ablations → re-adjudicated admissions | CLOSED | PRATINIDHI re-adjudication 2026-08-11: all 10 admitted mechanisms demoted (defined+cited+coded, NOT engine-wired) on the honest mechanism_not_wired evidence — no ablation theater run against zero weights. mechanism_register.yaml gains an additive correction block (UTK-R3 text preserved). See "MR-19 re-adjudication" ledger entry. |
 | MR-20 | Real no-loss gate (35,620 windows) | GATE MET, finding disclosed | mr20_no_loss_coverage_gate.py run live both charts 2026-08-11: unclassified=0 (2,448 divergences, both charts, all closed-vocabulary). Substantive finding: equivalence_rate <2% both charts, 92% of divergences are v1-only-needs-review — disclosed for ADJUDICATOR review, not self-adjudicated. See "MR-20: the real no-loss coverage gate" ledger entry. |
 | MR-21 | Quantitative evidence chain published | BLOCKED (yield window) | investigated 2026-08-11: all 4 required numbers genuinely need a large-scale production timing run, not evidence retrieval; THE ONE authorized rebuild's timing does NOT honestly substitute (different scope/criteria). Queued for post-yield-window resumption alongside MR-11(b)/MR-12. See "MR-21" ledger entry. |
-| MR-22 | Suppression detector + count | GATE MET, plausibility disclosed | seeded must-fire test (test_gochara_intensity.py) already exists, verified green 2026-08-11; real-corpus count published (0/54 point rows, both charts, all 3 mechanism types) — plausibility flagged for ADJUDICATOR, not self-certified. See "MR-22" ledger entry. |
+| MR-22 | Suppression detector + count | GATE MET; PK-R-5 DETECTION-GAP-FOUND (spawned MR-41/42) | seeded must-fire test (test_gochara_intensity.py) already exists, verified green 2026-08-11; real-corpus count published (0/54 point rows, both charts, all 3 mechanism types) — plausibility flagged for ADJUDICATOR, not self-certified. See "MR-22" ledger entry. |
 | MR-23 | Remaining unrun acceptance artifacts | PARTIAL — W5.4 CLOSED, W1.4 RULED (PK-R-3), W1.2/W0.2 OPEN | W5.4: bug found+fixed, 14/14 pass. W1.4 (PK-R-3): ruled-inert-with-trigger (lambda_thresh=0.0 stays, now a recorded decision with a named trigger condition, not a silent default). W1.2/W0.2 not attempted. |
 | MR-24 | Product-level E2E battery (standing) | CLOSED (FINAL, 2026-08-11 ~09:44 IST re-run against rebuilt corpus supersedes the earlier same-day pre-final-state pass) | Final re-run: 3 tools x 3 charts (482012f1 gen-3.0, 1c826d5a gen-3.0, cb73cd3d v1-authority) all backing_data_reachable=true; valence+calibration facet filters matched honest values; cockpit count_sql found FALSE (MR-40, new bug: cockpit pointed at the wrong table/generation after an undisclosed W5.4 UTK-R1 authority repoint), fixed live + source PR #1216 opened, RE-VERIFIED true (89/85); judgment_query(domain=health) served full gochara_sweep depth (17 windows); rollback+re-flip cycle on the NATIVE chart (482012f1) via committed MR-08 tooling, verified end-to-end live both directions. Full transcript in "MR-24 FINAL RE-RUN" ledger entry below. |
 | MR-25 | Citations resolve in serving | MERGED | PR #1200 MERGED · PARĪKṢAKA PASS (code review): mig-565 correct (14 rows: 4 resolved verified vs corpus, 10 CORPUS_GAP not silenced), B.3 compliant, live gate honestly deferred |
@@ -50,6 +50,8 @@ marker_duty: post W6-COMPLETE to campaign-coordination §6 after MR-01..08,10,13
 | MR-38 | ENGINE_VERSION not bumped by MR-13/14 (silent-no-op risk on future rebuilds) | QUEUED | register §MR-38, caught in throwaway-DB rehearsal before the real rebuild, resolved in-window only |
 | MR-39 | idle_in_transaction_session_timeout vs long substeps | QUEUED | register §MR-39, real orchestrator-wide fragility, misread as sandbox flakiness by 3 independent builder sessions this campaign |
 | MR-40 | ka_gochara cockpit count_sql orphaned by W5.4 UTK-R1 authority repoint | LIVE-FIXED, PR OPEN | found + live-fixed during MR-24's final re-run 2026-08-11; source-of-truth fix in PR #1216 (parishkara/mr-40-cockpit-gochara-authority -> parishkara/integration), not yet merged; live DB already correct (verified 89/85) |
+| MR-41 | Suppression reachability (vedha repoint + nakshatra anchor + reachability test + v3 wiring decision) | QUEUED (fix BEFORE R2 rebuild) | spawned by PK-R-5; register entry MR-41 |
+| MR-42 | v3 interval rows hardcode suppression_state={} | QUEUED (fix BEFORE R2 rebuild) | spawned by PK-R-5; register entry MR-42 |
 
 ## RULINGS
 (ADJUDICATOR entries here, numbered PK-R1.. , with written rationale.
@@ -83,8 +85,28 @@ precedence unchanged (FIELD authoritative where both bear on one claim; any goch
 bypassing the kala_gochara_authority seam is a G11 violation, not licensed here). Full delegate
 text preserved in this session's transcript; operative terms recorded here in full.
 
-**PK-R-5:** (reserved — MR-22 suppression plausibility disposition, in flight)
-**PK-R-6:** (reserved — TAP-6 restructure shape approval, in flight)
+**PK-R-5 (NATIVE-PRATINIDHI, 2026-08-11 ~18:0x IST) — MR-22 plausibility: DETECTION-GAP-FOUND.**
+The 0/54 splits into three verdicts: kartari = honest zero (live path, 1.695% base rate on the
+38,287-row same-path corpus, P(0 in 54)≈0.40); vedha_cancellation = STRUCTURALLY UNREACHABLE
+(reads bg_transit_rules rule_type='vedha', 0 rows ever; real corpus bg_transit_vedha 33 rows
+unread); sarvatobhadra_vedha = STRUCTURALLY UNREACHABLE (target_nakshatra_id never populated in
+production; grid empty). Corpus census: 0 vedha/SBC sentences in 38,461 rows; the seeded test
+proves arithmetic, not reachability. Also: v3 engine path never calls compute_suppression
+(engine.py:540 hardcodes 0.0; quality_gates is the v3 analogue) and nakshatra_ingress_tara shares
+the anchor root cause. Register amended: MR-22 disposition recorded; NEW ITEMS MR-41 (suppression
+reachability — fix BEFORE the R2 rebuild, MR-14 doctrine) + MR-42 (v3 interval rows hardcode
+suppression_state={} — forward real quality-gates detail). Full delegate text in session
+transcript; operative content in the register entries.
+
+**PK-R-6 (NATIVE-PRATINIDHI, 2026-08-11 ~18:0x IST) — TAP-6 restructure shape: CHANGES-REQUIRED.**
+Bars 1-5 verified PASS (required-check name byte-equal vs ruleset 20141220; grep step
+byte-identical; path list verbatim incl. the 2026-08-10 additions; merge_group/push/dispatch
+behavior preserved). BLOCKING F-1: `needs:` path can leave the REQUIRED job conclusion=skipped,
+and step polarity is fail-open (unknown relevance → green no-op — §N.8 class). Preferred fix:
+fold detection into tap6-method-audit as step 1 (no needs, no skip path). 3 advisories (diff
+fail-safe defaulting relevant=true, --no-renames, re-gate the two non-required jobs for CI
+economy). Routed to the builder; re-verification = the PR's own CI re-run (it touches
+.github/workflows/** so it exercises the relevant=true path for real).
 
 ## LOG
 - 2026-08-10 ~19:5x IST (native's desk): campaign home created — register
