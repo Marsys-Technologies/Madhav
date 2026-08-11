@@ -108,6 +108,12 @@ def test_every_real_sarvatobhadra_vedha_sentence_is_unconditionally_uncited():
         assert s.primitive == "sarvatobhadra_vedha"
         assert s.uncited_extension is True
         assert s.classical_citation is None
+        # PARĪKṢAKA F-1: this test's docstring advertises the SBC
+        # enforcement as MARKER-keyed (the PK-R-9a absent-source-
+        # substitution concept), not merely uncited_extension-keyed -- the
+        # marker itself must actually be asserted, or this test only
+        # proves the (necessary but insufficient) uncited_extension flag.
+        assert s.detail.get("vedha_pair_source") == "algorithmic_opposition_approximation"
 
 
 def test_real_sarvatobhadra_vedha_sentences_never_contribute_to_v3_activity():

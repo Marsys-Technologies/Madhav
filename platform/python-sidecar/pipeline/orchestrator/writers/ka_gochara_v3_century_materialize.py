@@ -835,6 +835,19 @@ def _build_chain_row(
         happened to come from the chain branch of run_substep. Default None
         (I4 degrade) only for callers/tests that predate this fix;
         run_substep always supplies it.
+
+    PARĪKṢAKA F-2 fix (2026-08-11): `suppression_state` is now built via
+    `_build_suppression_state(term_breakdown, coverage_quality)` -- the SAME
+    function `_build_row` uses -- instead of a standalone
+    `{"coverage_quality": ...} if ... else {}` dict. Before this fix, a
+    chain row's `suppression_state` (a) could be a bare `{}` (whenever
+    `coverage_quality` was omitted) and (b) NEVER carried the real
+    `quality_gates` mechanism/value MR-42 requires, even though that same
+    value is already sitting in `term_breakdown['quality_gates']` two lines
+    below (`milestone.intensity_result.term_breakdown`) -- the exact
+    §N.7-item-4 "flag/field with no real detector behind it" defect class
+    MR-42 was written to kill on the interval-row path, silently still
+    reachable via the chain-row path alone.
     """
     milestone_date = _jd_to_date(milestone.milestone_jd)
     ir = milestone.intensity_result
@@ -842,9 +855,6 @@ def _build_chain_row(
     ci_low = ir.lambda_v3_ci_low if ir is not None else None
     ci_high = ir.lambda_v3_ci_high if ir is not None else None
     ci_source = ir.ci_source if ir is not None else None
-    suppression_state = (
-        {"coverage_quality": coverage_quality} if coverage_quality is not None else {}
-    )
     return {
         "chart_id": chart_id,
         "event_class": event_class,
@@ -860,7 +870,7 @@ def _build_chain_row(
         "is_adverse": is_adverse,
         "active_sentences": json.dumps([]),
         "contributing_systems": json.dumps([]),
-        "suppression_state": json.dumps(suppression_state),
+        "suppression_state": json.dumps(_build_suppression_state(term_breakdown, coverage_quality)),
         "peak_basis": "gochara_lambda_v3",
         "calibration_state": "structural_prior",
         "source": "live",
