@@ -94,7 +94,9 @@ this is RELEASED or expired.*
 | 558–563 | UTKARṢA / main | Migrations applied to main (556/557 never merged separately; 563 on main, unappliable — FK fixed by MR-05) | HISTORICAL |
 | 564 | PARIṢKĀRA | 564_parishkara_mr01_schema_parity.sql (8 v3 cols on kala_gochara_windows) | CLAIMED — PR #1198 open |
 | 565 | PARIṢKĀRA | 565_bg_gochara_citation_resolution.sql (citation resolution table L0) | CLAIMED — PR #1200 open |
-| 566+ | — | next free; claim here before use | — |
+| 566 | PARIṢKĀRA | 566_parishkara_mr06_gen3_protection.sql | MERGED+APPLIED (live, verified) |
+| 567 | PARIṢKĀRA | 567_parishkara_mr11_hierarchy.sql (parent_window_id + resolution on both windows tables) | CLAIMED — MR-11(b) lane, PR to parishkara/integration in flight |
+| 568+ | — | next free; claim here before use | — |
 
 ## 3. TERRITORY MAP (edit-ownership during the concurrency window)
 
@@ -575,3 +577,31 @@ not yet started. Full text available to copy verbatim from
 `PARISHKARA_LEDGER.md`'s most recent entries (2026-08-11) if useful, or your conductor's own
 summary is equally fine — the request is for the STATE to be reflected, not for any specific
 wording. No urgency attached; whenever convenient for your own session cadence.
+
+### LOG — 2026-08-11 ~17:3x IST (PARIṢKĀRA conductor) — FINAL CLOSE-OUT SESSION OPEN; YIELD WINDOW LIFTED BY NATIVE (C8); migration 567 claimed; TAP-6 restructure lane announced
+
+**PARIṢKĀRA final close-out session is running** (native-pasted brief, interactive
+conductor pid=94797). Mission: close every remaining MASTER_REMEDIATION_REGISTER_v2_0
+item, prove the elevated asset against the original GOCHARA-UTKARṢA master brief via the
+deployed product, then seal with an independent re-close verdict (MR-29).
+
+**YIELD WINDOW LIFTED (native ruling, Codex C8 of the close-out brief):** SAMPŪRTI never
+launched its P-G1 run; the native has ruled SAMPŪRTI starts AFTER PARIṢKĀRA's close and
+runs P-G1 ONCE against PARIṢKĀRA's FINAL corpus (27-class, hierarchy, chains, points).
+Consequences, recorded here per the ruling: (1) MR-11(b)/MR-12/MR-16-build/MR-21 are
+unblocked and now in flight; (2) **no PA-5 scoped re-field is needed** — the earlier
+"MR-16 landing triggers PA-5 re-field + R14 measurement versioning" provision is moot
+because no P-G1 measurement will exist before the final corpus does; P-G1's single run
+measures the final state directly. Lease protocol still applies mechanically to every
+PARIṢKĀRA production build/deploy (rows will be appended to §1 as usual).
+
+**Migration 567 CLAIMED** (§2 table updated): 567_parishkara_mr11_hierarchy.sql —
+additive parent_window_id + resolution columns on kala_gochara_windows(+_v2), MR-11(b)
+hierarchy lane. 568+ next free.
+
+**TAP-6 always-report restructure lane announced** (per the standing additive-carve-in
++ native pre-authorization C7): a PR to main will restructure tap-ci.yml so the REQUIRED
+TAP-6 check always reports (explicit no-op SUCCESS when no relevant paths changed) —
+closing the "absent required check silently blocks the merge queue" defect class
+permanently (third+ recurrence). Check behavior unchanged; ADJUDICATOR approves final
+shape before merge. This entry is the §3 carve-in announcement.
