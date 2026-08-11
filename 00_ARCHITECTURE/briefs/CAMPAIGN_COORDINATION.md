@@ -97,7 +97,8 @@ this is RELEASED or expired.*
 | 565 | PARIṢKĀRA | 565_bg_gochara_citation_resolution.sql (citation resolution table L0) | CLAIMED — PR #1200 open |
 | 566 | PARIṢKĀRA | 566_parishkara_mr06_gen3_protection.sql | MERGED+APPLIED (live, verified) |
 | 567 | PARIṢKĀRA | 567_parishkara_mr11_hierarchy.sql (parent_window_id + resolution on both windows tables) | CLAIMED — MR-11(b) lane, PR to parishkara/integration in flight |
-| 568+ | — | next free; claim here before use | — |
+| 568 | PARIṢKĀRA | 568_parishkara_mr45_hierarchy_natkey.sql (add resolution to kala_gochara_windows[_v2] unique natural-key index — month/day self-collision fix, MR-45) | CLAIMED — builder dispatched |
+| 569+ | — | next free; claim here before use | — |
 
 ## 3. TERRITORY MAP (edit-ownership during the concurrency window)
 
