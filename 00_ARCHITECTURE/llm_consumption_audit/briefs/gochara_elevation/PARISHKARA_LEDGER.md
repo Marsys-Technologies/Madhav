@@ -2360,3 +2360,22 @@ vs gate-out); Q4 GRAMMAR_VERSION bump. Builder round follows the ruling.
 **#1226 (MR-16) round-3 complete** (5a5739b2d + merge e92420560): finding-A regex applied +
 M-H2b reproduced RED; integration merged in with the ruled conflict resolution; MR-38 responder
 stanza added (9/9, 14/14, 444/1-pre-existing). Final re-verdict in flight. PR MERGEABLE.
+
+## 2026-08-11 ~21:4x IST — PK-R-8 RULED: peak-anchored hierarchy; #1226 MERGED; #1225 rebasing
+
+CONDUCTOR-HEARTBEAT: 2026-08-11T16:15:00Z pid=94797 host=Montys-MacBook-Pro.local
+
+**PK-R-8 (hierarchy semantics) ruled and recorded** — register MR-11 entry amended with the
+operative text (peak-anchored subdivision, ≤3 day-refined argmax peaks/era admitted vs the
+window's own P90; tiling prohibited; peak_basis vocabulary with the argmax label reserved and
+era rows honestly re-labeled coarse; is_timing_window earned; shape gate = hierarchy only for
+interval-canonical classes; all-discovered-classes scope; honest-zero accounting; closed-form
+row bound 60-420/chart today, ≤1,890 at 27 classes). The adjudicator independently verified
+the verifier's arithmetic live AND found F2 extends one tier up (era peaks are 74-day-grid
+coarse argmax served as exact dates). R3 battery gains clauses H1-H9 for "hierarchy served"
+(H6 — live λ recomputation proving the peak was LOCATED — is not waivable). Routed to the
+MR-11 builder as one rework round (rebase first, R8.1-R8.15, F1/F4 mechanical fixes folded).
+
+**#1226 (MR-16): MERGED to parishkara/integration** (final PASS verdict, 3 rounds, all
+findings mutation-closed at head). **#1225 rebase dispatched** to the MR-12 builder (post-#1226
+semantics: keep dynamic discovery + chain wiring; chain rows must also carry coverage_quality).

@@ -154,6 +154,34 @@ serving surfaces should apply it now regardless of when the hierarchy build
 lands. AT-PAR gate: (a) MET, (b) queued post-yield-window, (c) CLOSED by
 this ruling.
 
+**PK-R-8 (NATIVE-PRATINIDHI, 2026-08-11) — MR-11(b) hierarchy-production semantics,
+BINDING:** era⊃month⊃day is produced by PEAK-ANCHORED SUBDIVISION ONLY — for each era
+window, month/day rows are emitted solely at genuine, DAY-REFINED local maxima of that
+window's own λ_v3 curve (≤3 per era window, admitted against the window's own P90 —
+self-normalizing, threshold-independent, so PK-R-3's inertness is routed around, not
+violated); uniform tiling PROHIBITED at every tier (the rejected alternative measured
+226,200 rows/chart vs ≤7 rows/substep under this ruling — 60-420/chart at today's scope,
+≤1,890 at 27 classes). peak_basis vocabulary (new module, named constants only):
+'gochara_lambda_v3_argmax' (day-refined true argmax — the ONLY basis that may serve
+is_timing_window=true by span) · 'gochara_lambda_v3_coarse_argmax' (era rows — corrects
+the newly-found one-tier-up F2: the 50-sample era peak has ~74-day granularity and today
+wears the plain label) · 'gochara_lambda_v3_midpoint' (defined, PROHIBITED on emitted
+rows) · bare legacy label RETIRED for new writes, history never rewritten.
+is_timing_window := point-shape OR (month/day resolution AND genuine-peak basis), with
+timing_window_blocked_reason served when false; consequence disclosed, not papered: the
+64 v1 interval rows flip to context-only (peak never argmax-located — a follow-on lane
+may EARN 'gochara_lambda_e_v1' a place in GENUINE_PEAK_BASES by demonstrating v1's peak
+derivation, never by assumption). Scope: ALL discovered classes (the "LEL-represented"
+phrase is not machine-resolvable — verified: mimamsa_event_provenance.event_class_id
+100% NULL — and is satisfied a fortiori); SHAPE GATE: hierarchy only for
+interval-canonical classes — point-canonical classes get point rows and NO hierarchy
+tiers (reinforces PK-R-7(iv)). Writer reports peak accounting incl. explicit
+zero_peaks_reason; row-count bound stated in closed form; count_sql UNCHANGED with a
+served resolution_breakdown instead. Full implementation requirements R8.1-R8.15 (each
+with its named detector) + the R3 battery clauses H1-H9 (H6 peak-fidelity recomputation
+NOT waivable) recorded in the conductor session transcript and routed to the builder
+2026-08-11; PARĪKṢAKA re-verdict must check R8.1-R8.15 each.
+
 **MR-12 · Produce chain rows (chain-canonical classes; `business_launch`
 first).** [PG-20a; recon W3.2]
 GAP: the served corpus has zero chain rows; the chain producer
