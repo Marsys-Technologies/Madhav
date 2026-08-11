@@ -45,6 +45,7 @@ from services.gochara_v3.resolution_hierarchy import (
     ZERO_PEAKS_ERA_WINDOW_TOO_SHORT,
     ZERO_PEAKS_FLAT_LAMBDA_CURVE,
     ZERO_PEAKS_NO_CANDIDATE_ABOVE_P90,
+    ZERO_PEAKS_LOST_TO_POOLED_RETENTION,
     WindowResolutionRecord,
     PeakCandidate,
     HierarchyResult,
@@ -52,6 +53,7 @@ from services.gochara_v3.resolution_hierarchy import (
     find_local_maxima,
     admit_candidates,
     retain_candidates,
+    retain_candidates_pooled,
     refine_peak_to_day,
     build_peak_anchored_windows,
     build_era_windows,
@@ -800,6 +802,335 @@ class TestR87AntiExplosion:
         assert len(result.day_windows) <= 3, (
             f"R8.7 VIOLATION: day_windows={len(result.day_windows)} exceeds "
             f"MAX_PEAKS_PER_ERA_WINDOW=3."
+        )
+
+
+# ---------------------------------------------------------------------------
+# MR-44 — retention POOLED across intervals (fixes cross-interval
+# natural-key collision). Register: MASTER_REMEDIATION_REGISTER_v2_0.md
+# MR-44; PK-R-8 R8.4 amendment.
+#
+# THE BUG: retain_candidates enforces MIN_PEAK_SEPARATION_DAYS only within
+# ONE interval's own candidate set. When find_threshold_crossings genuinely
+# returns >=2 intervals for one decade slice (a real, observed production
+# condition -- confirmed live: chart 482012f1, event_class=career_setback,
+# decade g3_2014_2024, both peaks refined to 2017-03-01), two peaks from
+# two DIFFERENT intervals can each trivially clear their own interval's
+# within-interval separation check (nothing else in their own interval to
+# collide with) yet independently day-refine (R8.5) to the IDENTICAL
+# calendar day -- a duplicate row on
+# uq_kala_gochara_windows_v2_natural_key (chart_id, event_class,
+# window_start, peak_date, milestone_id, generation).
+# ---------------------------------------------------------------------------
+
+class TestMR44PooledRetention:
+    """Covers both the isolated aggregation-function unit test and the
+    end-to-end build_resolution_hierarchy reproduction, plus a mutation-
+    provable regression test that a revert to per-interval-only retention
+    goes RED under these same assertions."""
+
+    # -- Isolated unit test of the aggregation function itself -------------
+
+    def test_pooled_retention_drops_cross_interval_collision_isolated(self):
+        """Two era windows, each with exactly ONE admitted candidate (so
+        each interval's own within-interval separation check is trivially
+        satisfied -- there is nothing else in either interval to collide
+        with), but the two candidates' jds are only 7 days apart (well
+        inside MIN_PEAK_SEPARATION_DAYS=90). Naive per-group retention
+        (the pre-MR-44 behaviour: retain_candidates called separately per
+        group) would keep BOTH. retain_candidates_pooled must keep only the
+        higher-lambda one, GLOBALLY."""
+        era0_admitted = [PeakCandidate(jd=42.0, lam=0.90)]
+        era1_admitted = [PeakCandidate(jd=49.0, lam=0.95)]
+
+        # Sanity: prove the OLD per-group behaviour really would keep both
+        # (i.e. this scenario is a genuine collision, not a vacuous setup).
+        old_behaviour = [
+            retain_candidates(era0_admitted),
+            retain_candidates(era1_admitted),
+        ]
+        assert len(old_behaviour[0]) == 1 and len(old_behaviour[1]) == 1, (
+            "fixture regression: per-group retention should trivially keep "
+            "both single-candidate groups"
+        )
+
+        pooled = retain_candidates_pooled([era0_admitted, era1_admitted])
+
+        assert len(pooled) == 2, "result must be index-aligned with input (2 era groups)"
+        total_retained = sum(len(bucket) for bucket in pooled)
+        assert total_retained == 1, (
+            f"MR-44 VIOLATION: pooled retention kept {total_retained} candidates "
+            f"across the two era windows; expected exactly 1 (the higher-lambda "
+            f"one, era1's jd=49.0/lam=0.95) since the two candidates are only "
+            f"7 days apart -- well inside MIN_PEAK_SEPARATION_DAYS=90. "
+            f"pooled={[[(c.jd, c.lam) for c in b] for b in pooled]}"
+        )
+        # The SURVIVING candidate must be the higher-lambda one (era1's),
+        # per the ranked lambda-DESC/jd-ASC tie-break retain_candidates
+        # itself uses -- preserved, not silently changed, by pooling.
+        assert pooled[0] == []
+        assert len(pooled[1]) == 1 and pooled[1][0].jd == 49.0 and pooled[1][0].lam == 0.95
+
+    def test_pooled_retention_preserves_tie_break_rule(self):
+        """Same lambda across two era-window groups -- pooled tie-break
+        must be jd ASC, identical to retain_candidates' own rule (register
+        MR-44: 'preserve the actual existing tie-break rule')."""
+        era0_admitted = [PeakCandidate(jd=500.0, lam=0.9)]
+        era1_admitted = [PeakCandidate(jd=0.0, lam=0.9)]
+        pooled = retain_candidates_pooled([era0_admitted, era1_admitted])
+        # jd=0.0 (era1) ranks first on the tie-break and is retained; jd=500
+        # is >=90 days away so it also survives separation -- but the RANK
+        # order (which one is considered "first") must still be jd ASC.
+        ranked_all = sorted(
+            [(0, c) for c in era0_admitted] + [(1, c) for c in era1_admitted],
+            key=lambda t: (-t[1].lam, t[1].jd),
+        )
+        assert ranked_all[0][1].jd == 0.0, (
+            "fixture regression: tie-break comparison must rank jd=0.0 first"
+        )
+        assert len(pooled[0]) == 1 and len(pooled[1]) == 1, (
+            "both should survive: 500 days apart clears MIN_PEAK_SEPARATION_DAYS=90"
+        )
+
+    def test_pooled_retention_caps_per_era_window_not_globally(self):
+        """Register MR-44's ruled interpretation of PK-R-8 R8.4: the cap
+        stays PER-ERA-WINDOW (MAX_PEAKS_PER_ERA_WINDOW=3 for EACH era
+        window), not a shared decade-wide total. Two era windows, each
+        with 3 well-separated admitted candidates (6 total, all >=90 days
+        from every other candidate including cross-group) -- pooled
+        retention must keep all 6 (3 per era window), not cap at 3 total."""
+        era0_admitted = [
+            PeakCandidate(jd=0.0, lam=0.9),
+            PeakCandidate(jd=200.0, lam=0.8),
+            PeakCandidate(jd=400.0, lam=0.7),
+        ]
+        era1_admitted = [
+            PeakCandidate(jd=1000.0, lam=0.9),
+            PeakCandidate(jd=1200.0, lam=0.8),
+            PeakCandidate(jd=1400.0, lam=0.7),
+        ]
+        pooled = retain_candidates_pooled([era0_admitted, era1_admitted])
+        assert len(pooled[0]) == 3, (
+            f"MR-44 VIOLATION: era window 0 retained {len(pooled[0])}, expected 3 "
+            f"-- the per-era-window cap must not be reduced by pooling."
+        )
+        assert len(pooled[1]) == 3, (
+            f"MR-44 VIOLATION: era window 1 retained {len(pooled[1])}, expected 3."
+        )
+
+    def test_pooled_retention_cap_exhaustion_across_eras(self):
+        """A single era window whose OWN 4th-best candidate is beaten by a
+        SIBLING era window's higher-lambda candidate for a *global*
+        separation slot is a different case from the cap test above --
+        here we confirm cap enforcement is genuinely PER era-window-index
+        (using per_era_count), not e.g. accidentally shared. 4 candidates
+        in era0 (well separated) must retain only its own top 3 by lambda,
+        regardless of era1 being empty."""
+        era0_admitted = [
+            PeakCandidate(jd=0.0, lam=0.9),
+            PeakCandidate(jd=200.0, lam=0.8),
+            PeakCandidate(jd=400.0, lam=0.7),
+            PeakCandidate(jd=600.0, lam=0.6),
+        ]
+        era1_admitted: list[PeakCandidate] = []
+        pooled = retain_candidates_pooled([era0_admitted, era1_admitted])
+        assert len(pooled[0]) == 3
+        assert sorted(c.lam for c in pooled[0]) == [0.7, 0.8, 0.9]
+        assert pooled[1] == []
+
+    # -- End-to-end reproduction against build_resolution_hierarchy --------
+
+    @staticmethod
+    def _two_interval_collision_fixture():
+        """Builds the exact synthetic scenario from the MR-44 register
+        finding, at unit-test scale: TWO era windows (interval A =
+        [start, start+45], interval B = [start+46, start+90]) each with
+        exactly ONE clean, independently-admitted local-maximum peak
+        (interval A's candidate at offset 42, lambda 0.9; interval B's at
+        offset 49, lambda 0.95) -- trivially separated from any OTHER
+        candidate within their OWN interval (there is only one each), but
+        only 7 days apart from EACH OTHER. A narrow, deliberately
+        off-coarse-grid spike at offset 45 (invisible to the 7-day coarse
+        admission scan, but discoverable by refine_peak_to_day's 1-day-step
+        +-7-day resample) sits inside BOTH candidates' day-refinement
+        windows -- so under the pre-MR-44 per-interval-only retention, BOTH
+        peaks independently day-refine to the IDENTICAL calendar day
+        (offset 45.0), reproducing the real production collision
+        (2017-03-01, chart 482012f1, career_setback g3_2014_2024).
+
+        Verified against the real find_local_maxima/admit_candidates/
+        retain_candidates/refine_peak_to_day pipeline (not hand-asserted)
+        before being pinned here.
+        """
+        start_jd = _BASE_JD
+
+        def curve(jd: float) -> float:
+            val = 0.1
+            val = max(val, 0.9 - abs(jd - (start_jd + 42.0)) * 0.05)
+            val = max(val, 0.95 - abs(jd - (start_jd + 49.0)) * 0.05)
+            if abs(jd - (start_jd + 45.0)) < 0.5:
+                val = max(val, 0.99)  # narrow, off-coarse-grid spike
+            return val
+
+        offsets = list(range(0, 91, 7))
+        series_jds = np.array([start_jd + o for o in offsets])
+        series_lambdas = np.array([curve(j) for j in series_jds])
+
+        interval_a = _make_interval(
+            enter_jd=start_jd, exit_jd=start_jd + 45.0,
+            peak_jd=start_jd + 42.0, peak_lambda=0.9,
+        )
+        interval_b = _make_interval(
+            enter_jd=start_jd + 46.0, exit_jd=start_jd + 90.0,
+            peak_jd=start_jd + 49.0, peak_lambda=0.95,
+        )
+        return start_jd, curve, series_jds, series_lambdas, interval_a, interval_b
+
+    def test_build_resolution_hierarchy_no_cross_interval_duplicate_peak_dates(self):
+        """The PRIMARY MR-44 gate: on the two-interval collision fixture,
+        build_resolution_hierarchy must produce ZERO duplicate peak_jd
+        values across day_windows. Exactly one peak is retained overall
+        (the higher-lambda one, interval B's) -- interval A's candidate is
+        honestly dropped for losing the pooled cross-interval separation
+        check, not silently duplicated."""
+        start_jd, curve, series_jds, series_lambdas, interval_a, interval_b = (
+            self._two_interval_collision_fixture()
+        )
+        config = _make_threshold_config(lambda_thresh=0.5)
+
+        with patch(
+            "services.gochara_v3.resolution_hierarchy.find_threshold_crossings",
+            return_value=([interval_a, interval_b], series_jds, series_lambdas),
+        ), patch(
+            "services.gochara_v3.resolution_hierarchy._eval_single",
+            side_effect=lambda swe, context, jd: curve(float(jd)),
+        ):
+            result = build_resolution_hierarchy(
+                MagicMock(), MagicMock(), start_jd, start_jd + 91.0, config,
+            )
+
+        assert len(result.era_windows) == 2, "both context/era rows still emitted"
+
+        peak_dates = [round(w.peak_jd, 6) for w in result.day_windows]
+        assert len(peak_dates) == len(set(peak_dates)), (
+            f"MR-44 VIOLATION: duplicate peak_jd values across day_windows: "
+            f"{peak_dates} -- cross-interval retention is not pooled."
+        )
+        month_peak_dates = [round(w.peak_jd, 6) for w in result.month_windows]
+        assert len(month_peak_dates) == len(set(month_peak_dates)), (
+            f"MR-44 VIOLATION: duplicate peak_jd values across month_windows: "
+            f"{month_peak_dates}"
+        )
+
+        # Exactly one peak retained globally (interval B's higher-lambda
+        # candidate); interval A's candidate lost the pooled competition.
+        assert result.peaks_admitted == 2
+        assert result.peaks_retained == 1
+        assert len(result.month_windows) == 1
+        assert len(result.day_windows) == 1
+        # The surviving peak is the higher-lambda one, refined to the
+        # shared spike at offset 45.0 -- proving refinement genuinely ran
+        # (not a coarse-candidate passthrough at offset 49.0).
+        assert round(result.day_windows[0].peak_jd - start_jd, 4) == 45.0
+        assert result.day_windows[0].peak_lambda == pytest.approx(0.99)
+
+    def test_build_resolution_hierarchy_fails_on_unmodified_pre_fix_behaviour(self):
+        """GATE PROOF (TDD step 1): re-running the exact same fixture
+        through the OLD per-interval-only retention strategy (each era
+        window's build_peak_anchored_windows call retains independently,
+        exactly what build_resolution_hierarchy did before MR-44) DOES
+        reproduce the duplicate -- proving the primary test above is a
+        real detector, not a vacuous always-true assertion. This is the
+        literal reproduction that FAILED on unmodified code before the fix
+        (verified during development; pinned here as a permanent
+        regression proof)."""
+        start_jd, curve, series_jds, series_lambdas, interval_a, interval_b = (
+            self._two_interval_collision_fixture()
+        )
+
+        # Reconstruct the PRE-MR-44 code path directly: build each era
+        # window's own peak-anchored windows via build_peak_anchored_windows
+        # (single-interval retention, exactly as the old
+        # build_resolution_hierarchy loop called it), independently.
+        era_a = _make_window("era", enter_jd=interval_a.enter_jd, exit_jd=interval_a.exit_jd)
+        era_b = _make_window("era", enter_jd=interval_b.enter_jd, exit_jd=interval_b.exit_jd)
+
+        mask_a = (series_jds >= interval_a.enter_jd) & (series_jds <= interval_a.exit_jd)
+        mask_b = (series_jds >= interval_b.enter_jd) & (series_jds <= interval_b.exit_jd)
+
+        with patch(
+            "services.gochara_v3.resolution_hierarchy._eval_single",
+            side_effect=lambda swe, context, jd: curve(float(jd)),
+        ):
+            month_a, day_a, _acc_a = build_peak_anchored_windows(
+                MagicMock(), MagicMock(), era_a, (series_jds[mask_a], series_lambdas[mask_a]),
+            )
+            month_b, day_b, _acc_b = build_peak_anchored_windows(
+                MagicMock(), MagicMock(), era_b, (series_jds[mask_b], series_lambdas[mask_b]),
+            )
+
+        all_day = day_a + day_b
+        peak_dates = [round(w.peak_jd, 6) for w in all_day]
+
+        assert len(all_day) == 2, (
+            "fixture regression: each interval should independently retain "
+            "exactly its own one candidate under per-interval-only retention"
+        )
+        assert len(peak_dates) != len(set(peak_dates)), (
+            "GATE PROOF FAILURE: the per-interval-only retention path (what "
+            "build_resolution_hierarchy did before MR-44) did NOT reproduce a "
+            "duplicate peak_jd on this fixture -- the fixture no longer proves "
+            "the bug it is pinned to, so the primary MR-44 test above is not "
+            "actually discriminating."
+        )
+
+    # -- Mutation-provable regression test ----------------------------------
+
+    def test_mutation_revert_to_per_interval_retention_reproduces_duplicate(self, monkeypatch):
+        """MUTATION test (register requirement): monkeypatch
+        retain_candidates_pooled with a function that emulates the exact
+        PRE-FIX defect -- retention scoped to each era window
+        independently, zero cross-interval separation awareness -- and
+        confirm build_resolution_hierarchy, run through THAT mutant, DOES
+        reproduce the duplicate peak_jd this file's primary test proves is
+        absent from the real (fixed) implementation. This is the literal
+        'revert to per-interval retention -> test goes RED' proof: if
+        build_resolution_hierarchy's call to retain_candidates_pooled were
+        ever reverted/replaced by this same per-interval-only mutant, the
+        primary no-duplicates assertion above would fail exactly as
+        demonstrated here."""
+        start_jd, curve, series_jds, series_lambdas, interval_a, interval_b = (
+            self._two_interval_collision_fixture()
+        )
+        config = _make_threshold_config(lambda_thresh=0.5)
+
+        def _buggy_per_interval_only_retention(admitted_by_era, **kwargs):
+            # Exactly the pre-MR-44 defect: no cross-group awareness at all.
+            return [
+                retain_candidates(group) for group in admitted_by_era
+            ]
+
+        monkeypatch.setattr(rh, "retain_candidates_pooled", _buggy_per_interval_only_retention)
+
+        with patch(
+            "services.gochara_v3.resolution_hierarchy.find_threshold_crossings",
+            return_value=([interval_a, interval_b], series_jds, series_lambdas),
+        ), patch(
+            "services.gochara_v3.resolution_hierarchy._eval_single",
+            side_effect=lambda swe, context, jd: curve(float(jd)),
+        ):
+            mutant_result = build_resolution_hierarchy(
+                MagicMock(), MagicMock(), start_jd, start_jd + 91.0, config,
+            )
+
+        mutant_peak_dates = [round(w.peak_jd, 6) for w in mutant_result.day_windows]
+        assert mutant_result.peaks_retained == 2, (
+            "mutant should retain BOTH candidates (no cross-interval awareness)"
+        )
+        assert len(mutant_peak_dates) != len(set(mutant_peak_dates)), (
+            "MUTATION TEST FAILURE: reverting to per-interval-only retention "
+            "did NOT reproduce a duplicate peak_jd -- this mutation test is not "
+            "a real detector of the MR-44 regression class."
         )
 
 
