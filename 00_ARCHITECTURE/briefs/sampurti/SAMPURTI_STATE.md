@@ -676,3 +676,26 @@ gochara_* serving surfaces (gochara_forecast_get, gochara_activation_get, gochar
 
 
 CONDUCTOR-HEARTBEAT: 2026-08-12T20:49+05:30 pid=83428 [R9 — L-7 yield window. PARIṢKĀRA rebuild PID 80517 ALIVE (6m22s CPU at 02:19 IST). Actions taken: REBASE_PLAN installed, coordination entry appended, merge origin/main→integration committed (clean, no conflicts), R0 prep builder dispatched (agent ac3705d9 — migration 569 RB-1 + _RESUME_VERSION RB-2 + seed update + test). Awaiting builder + L-7 release.]
+
+### R0 PREP COMPLETE (2026-08-12 02:21 IST — code-only, no DB)
+
+**Builder agent completed all four changes (ac3705d9):**
+- migration 569 (RB-1): `array_remove(depends_on, 'ka_gochara_sweep')` for ka_kshetra — idempotent, DOWN path in comments ✓
+- `_RESUME_VERSION = 3` (RB-2): writer.py line 135 bumped 2→3 ✓
+- asset_registry_seed.ts: 9→8 edges for ka_kshetra, `ka_gochara_sweep` removed ✓
+- test_dag_edge_r0.py: two smoke tests (migration SQL + seed absence assertion) ✓
+
+**COMMITTED (51e702dcd) and PUSHED to sampurti/integration. All R0 prep code is on-branch.**
+
+**sampurti/integration NOW CONTAINS (ready for gate packet):**
+- PG-31: load_legacy_crosscheck generation-blind fix (PR #1193, 4eabe824) ✓
+- L1j: PARĪKṢAKA-verified stage4 bisect fix (PR #1188, a68dbdf9e) ✓
+- G12: kala_dasha_sandhi_get registration (PR #1191, 682366d9d) ✓
+- G14b: ahead autofile (PR #1190, c2317eaec) ✓
+- Migration 569 (RB-1) + _RESUME_VERSION=3 (RB-2) ✓
+- main merged in (68d1364ce, no conflicts) ✓
+
+**BLOCKING: L-7 still ACTIVE (PID 80517 ALIVE, PARIṢKĀRA Abhinandan rebuild running since 02:02 IST). Gate packet PR cannot be raised until lease releases.**
+
+CONDUCTOR-HEARTBEAT: 2026-08-12T20:52+05:30 pid=83428 [R9 — R0 prep complete; all code staged; L-7 wait continues. Next: gate packet PR when L-7 releases.]
+
