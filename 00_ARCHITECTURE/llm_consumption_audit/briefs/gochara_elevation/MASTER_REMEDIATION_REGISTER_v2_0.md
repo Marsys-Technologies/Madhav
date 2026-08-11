@@ -396,6 +396,78 @@ else — no timed run, no 200-candidate bit-parity result. REMEDIATION +
 GATE: covered by MR-21's runs; listed separately so the register's PG→MR
 map drops nothing. Merged-into: MR-21.
 
+**MR-37 · w45's §N.8 calibration-stamping gate is unsound (row-existence,
+not earned-signal).** [net-new, found 2026-08-11 during THE authorized
+gen-3.0 rebuild, PARISHKARA_LEDGER 2026-08-11 ~14:3x IST entry, "Finding B"]
+GAP: `w45_post_fit_rebuild.py`'s gate to stamp `calibration_state=
+'empirically_calibrated'` is `if not fit_run_ids: return 0` — it checks
+that a calibration ROW EXISTS, not that a REAL (non-zero, wired-mechanism)
+WEIGHT WAS EARNED. `w44_weight_fitting.py` writes a row for every
+toggle_key regardless of method, so the gate PASSES even on an all-zero,
+`mechanism_not_wired` fit (confirmed live: the real W4.4 refit for both
+canonical charts produced `mechanism_not_wired` for all 10 admitted
+mechanisms — MR-14-matching's finding, since none of the Wave-2 mechanisms
+are actually wired into the engine — and w45's gate would still have
+stamped 120 rows `empirically_calibrated` had it been allowed to commit).
+**NOT HYPOTHETICAL:** `kala_gochara_windows_v2` (staging) was ALREADY
+sitting at 107 `empirically_calibrated` rows BEFORE the 2026-08-11 rebuild
+— this exact gate has already fired for real, at least once, dishonestly.
+REMEDIATION: the gate must test earned signal (a genuinely non-zero weight
+from an engine-wired mechanism, not merely "a fit_run_id row exists") —
+likely gating on `MECHANISM_ENGINE_WIRED` (added this session, w44) AND a
+non-zero fitted weight, not on row presence. Separately: disposition the
+107 pre-existing dishonestly-stamped staging rows (staging is unprotected,
+so a fix is mechanically simple once ruled — NATIVE RULING REQUIRED on
+disposition, per this campaign's standing rule that live-data corrections
+are never self-authorized). GATE: w45 re-run against a synthetic
+mechanism_not_wired-only fit correctly declines to stamp anything; the 107
+pre-existing staging rows are honestly restamped per native ruling. AT-PAR:
+closes the same §N.8 defect class as MR-13, one layer downstream (the
+writer was fixed; the POST-FIT stamper that runs after it was not).
+
+**MR-38 · ENGINE_VERSION not bumped by MR-13/14 — future rebuilds silently
+no-op.** [net-new, found 2026-08-11 during THE authorized gen-3.0 rebuild
+throwaway-DB rehearsal, PARISHKARA_LEDGER 2026-08-11 ~14:3x IST entry,
+"Finding A"] GAP: MR-13/14 changed the row shape the writer produces
+(honest per-class valence, populated `term_breakdown`, new CI fields)
+without bumping `ka_gochara_v3_century_materialize.py`'s `ENGINE_VERSION`
+(still `"v3.0"`). The writer's delta-skip logic fires when
+`stored_fingerprint == recomputed_fingerprint AND rows_exist` —
+recomputing fingerprints against live resonance targets showed a MATCH for
+120/120 substeps (both canonical charts), meaning the authorized rebuild
+would have reported success and written NOTHING had this not been caught
+in rehearsal first. RESOLVED for the one authorized run (delete the
+writer's own `kala_gochara_v2_build_state` cache row inside each
+substep's own transaction, atomic with the row write — build state, not
+protected corpus, so this needed no override). NOT fixed durably.
+REMEDIATION: bump `ENGINE_VERSION` (or fold row-shape/writer-version into
+the fingerprint computation itself) so a fingerprint match can only ever
+mean "the inputs AND the writer's output contract are both unchanged" —
+right now it only guarantees the former. GATE: a synthetic writer-version
+bump forces cache invalidation and a real rewrite; re-running with no
+version change and no input change correctly skips. AT-PAR: prevents this
+exact silent-no-op class recurring on the NEXT engine/writer change to
+this asset.
+
+**MR-39 · `idle_in_transaction_session_timeout=10min` vs long-running
+writer substeps — connection death misreported as environment flakiness.**
+[net-new, found 2026-08-11 during THE authorized gen-3.0 rebuild,
+PARISHKARA_LEDGER 2026-08-11 ~14:3x IST entry] GAP: the writer computes
+for minutes with no DB traffic while its transaction sits open (and the
+FROZEN orchestrator drives substeps as savepoints inside a transaction
+too); any substep whose compute exceeds the server's 10-minute
+`idle_in_transaction_session_timeout` gets killed and surfaces as
+"server closed the connection unexpectedly" / connection-lost — logged
+and treated as environment flakiness (three independent builder sessions
+this campaign hit variants of this and initially read it as a sandbox
+networking issue) rather than diagnosed as a timeout misconfiguration.
+REMEDIATION: either raise the timeout for the orchestrator's own DB role/
+session, or make long-compute substeps periodically touch the connection
+(a lightweight keepalive query) during pure-compute stretches, or both.
+GATE: a synthetic substep with a >10-minute no-traffic compute window
+completes without a connection-lost error. AT-PAR: closes a real
+orchestrator-wide operational fragility, not specific to gochara.
+
 ## §7 — SOURCE → MR MAP (dedup audit)
 
 PG-1→MR-01 · PG-2→MR-05 · PG-3→MR-10 · PG-4→MR-04+13 · PG-5→MR-13 ·

@@ -971,3 +971,201 @@ scope reduction below 27 classes · retiring any serving surface · LEL content.
   NEXT-ACTION: await the resumed agent's completion; expect it to finish Abhinandan's remaining
     24 rows, then proceed through point-row promotion, refit, stamping, and full Step 3 evidence
     exactly as originally briefed.
+
+- 2026-08-11 ~14:3x IST (interactive conductor -- THE ONE authorized rebuild COMPLETE, all 5
+  native mandatory conditions verified, full evidence below verbatim per condition #3):
+
+  OUTCOME: MR-13/14/15/10's live-data gates all CLOSE against this evidence. MR-14's terminal
+  calibration_state is honestly structural_prior (not empirically_calibrated) -- the branch the
+  amended MR-14 GATE explicitly admits as valid, per MR-14-matching's finding that the 10
+  admitted mechanisms are genuinely dormant. TWO NEW FINDINGS surfaced during execution, one
+  resolved in-window, one CRITICAL and left for native ruling (see "OPEN ITEMS" at the end).
+
+  Lease L-6 verified ACTIVE at 13:06 IST and rechecked before each write; all work finished
+  14:29 IST (window closed 15:00 -- comfortably inside). Ran deployed origin/main code, commit
+  b2fc39ee5 (PR #1215), from a dedicated throwaway worktree -- never the main checkout (which
+  was stale at 4e4d50546, pre-MR-13).
+
+  === 1. PRE-STATE EVIDENCE (verbatim) ===
+  kala_gochara_windows by (chart_id, generation, temporal_shape):
+    1c826d5a | 3.0 | interval |    60      482012f1 | 3.0 | interval |    60
+    1c826d5a | v1  | interval |    33      482012f1 | v1  | interval |    29
+    1c826d5a | v1  | point    | 19290      482012f1 | v1  | point    | 16268
+  valence, generation='3.0':  1c826d5a favourable 60/60 · 482012f1 favourable 60/60
+  calibration_state, gen='3.0': 1c826d5a empirically_calibrated 60/60 · 482012f1 same
+  term_breakdown non-NULL, gen 3.0: 1c826d5a 0/60 · 482012f1 0/60
+  v1 corpus (rollback baseline): 1c826d5a=19,323 · 482012f1=16,297 · cb73cd3d=2,667 -- MATCHED
+    the ledger's standing baseline exactly, no STOP condition triggered.
+  staging kala_gochara_windows_v2 point rows: 1c826d5a=25 (gain 1/loss 10/neutral 14, all
+    structural_prior) · 482012f1=29 (gain 3/loss 15/neutral 11, all structural_prior); both
+    charts also carry 60 g3_utkarsha interval rows in staging.
+
+  === 2. THROWAWAY-DB REHEARSAL (11/11 checks passed) ===
+  Disposable Docker Postgres 16, schema mirrored from live information_schema, migration 556+566
+  trigger functions installed, seeded with a realistic dishonest corpus + v1 baseline + staging
+  points. Used the REAL writer's INSERT_PROD_SQL/DELETE templates (imported, not retyped).
+  Verified: unauthorized DELETE refused / authorized succeeds under SET LOCAL; GUC does not
+  survive its transaction (fresh connection reads NULL); two writer passes leave exactly the
+  expected row count (replace-not-accrete, §N.3); term_breakdown persists through the real INSERT
+  template; v1 untouched; promotion SQL idempotent across 2 passes; protection still refuses
+  after all authorized work.
+
+  *** FINDING A (blocker, CAUGHT IN REHEARSAL, resolved before touching prod) ***
+  MR-13/14 changed the emitted row shape (valence, term_breakdown, CI fields) WITHOUT bumping
+  ENGINE_VERSION (still "v3.0"). The writer's delta-skip logic fires when
+  stored_fingerprint==recomputed_fingerprint AND rows_exist. Recomputed fingerprints with the
+  REAL compute_substep_fingerprint against live resonance targets: MATCHED stored for 120/120
+  substeps (both charts) -- the authorized rebuild would have reported success and changed
+  NOTHING. Exactly the §N.8 defect class this campaign exists to close, caught by the mandatory
+  rehearsal step before it could happen for real. RESOLVED for this run: delete the writer's own
+  cache row for a substep INSIDE that substep's own transaction, so cache and rows move
+  atomically (kala_gochara_v2_build_state is unprotected build state, not corpus; writer
+  re-upserts it in the same run). DURABLE FIX NEEDED (follow-up lane, not done here): bump
+  ENGINE_VERSION (or fold row-shape/writer version into the fingerprint) -- a fingerprint that
+  claims "nothing that would move a stored row changed" was FALSE here.
+
+  === 3. THE REAL REBUILD ===
+  GUC discipline: SET LOCAL app.allow_protected_sweep_rewrite='on' issued ONLY inside each
+    substep's own transaction. No ALTER DATABASE, no ALTER ROLE, no bare session SET, ever.
+
+  2a. WRITER-PATH REBUILD: real GocharaV3CenturyMaterializeWriter driven through its own
+    plan_substeps/run_substep, on ctx.db_conn, writer never committing itself. 120/120 substeps
+    rebuilt, 0 failures (after the interruption below was diagnosed and resolved). Per-class
+    valence now honestly derived from brahma_event_ontology, IDENTICAL logic both charts:
+    career_advancement=gain · major_gain=gain · marriage=neutral · illness_acute=loss(adverse) ·
+    chronic_onset=loss(adverse) · surgery=neutral. All 120 interval rows: structural_prior +
+    non-NULL term_breakdown.
+
+  INTERRUPTION #2 (diagnosed, not blind-retried): first pass completed 40/60 on native, then
+    substep 41 died ("server closed the connection unexpectedly"); 20 substeps failed. STOPPED
+    and assessed before acting further: 60/60 cells intact per chart, no partial rows, v1 exactly
+    unchanged, no orphaned locks -- per-substep atomicity held perfectly. Root-cause evidence:
+    chronic_onset/surgery are the LIGHTEST classes (19/17 resonance targets vs major_gain's 34,
+    which had just done 10 slices in ~2 min) -- ruled out compute-cost as cause.
+    pg_postmaster_start_time() showed NO server restart -- ruled out server-side kill. Confirmed
+    via re-run: the same substep took 12 seconds standalone. A second stall hit the same
+    long-lived connection; switching to a FRESH CONNECTION PER SUBSTEP cleared it completely
+    (20/20 in 3.5 min, ~10s each, zero failures). Matches the sandbox connectivity issue MR-14's
+    and MR-15's builders both independently reported earlier tonight -- now three independent
+    confirmations of the same environment condition.
+  Two honest self-corrections logged by the agent: (i) briefly set
+    idle_in_transaction_session_timeout=0 as hardening against this fault -- counterproductive
+    (removed the server-side reaper that had surfaced the wedge), reverted; (ii) one orphaned
+    backend from the FIRST interruption (already handled by the conductor mid-session, see the
+    prior ledger entry) held zero locks on kala_gochara_windows.
+  *** LATENT HAZARD FOR THE REGISTER (not fixed here) ***: server
+    idle_in_transaction_session_timeout=10min. The writer computes for minutes with NO DB traffic
+    while its transaction sits open, and the FROZEN orchestrator drives substeps as savepoints
+    inside a transaction too -- any substep whose compute exceeds 10 minutes gets killed as a
+    "connection lost", not surfaced as a computation error. Real orchestrator-wide fragility.
+
+  2b. MR-10 PROMOTION -- generation stamp '3.0', evidenced (not guessed):
+    482012f1: prior gen-3.0 point rows deleted=0, promoted=29 (gain 3/loss 15/neutral 11, all
+      structural_prior). 1c826d5a: promoted=25 (gain 1/loss 10/neutral 14, all structural_prior).
+      54 total, matching the register's figure exactly.
+    DECISION EVIDENCE: kala_gochara_authority.authoritative_generation='3.0' LIVE for both
+      charts; register_gochara_windows.ts's serving filter is
+      generation=COALESCE((SELECT authoritative_generation...),'v1') -- only gen-3.0 rows are
+      servable, so stamping '2.0' would have landed unservable rows and MR-10's GATE would not
+      close. Stamping '3.0' also brings them under migration 566 protection immediately
+      (confirmed in §5 below). Pre-checked live: zero natural-key collisions, no internal
+      duplicates; staging point rows carry era_slice_key IS NULL so the writer's era-scoped
+      DELETE can never clobber them. Rows promoted AS-IS -- nothing re-derived (they were already
+      honest).
+
+  2c. W4.4 REFIT (fit_run_id e98b6591-ad40-4adc-afcb-b1307433d8bf, dataset_hash 6f83d907...,
+    exit 0). ACTUAL output, all 10 admitted mechanisms, both charts:
+    w21_av_gating, w22_moorti_nirnaya, w23_tara_bala, w24_sade_sati, w25_kota_chakra,
+    w26_real_eclipses, w27_annual_stack, w27a_tajaka_year_lord, w27b_tithi_pravesha,
+    w27c_sudarshana -- ALL 0.0 / mechanism_not_wired (native_v3_windows=60,
+    abhinandan_v3_windows=0, n_train native=25/abhinandan=0). Exactly what MR-14-matching's
+    golden test predicted -- honest mechanism_not_wired, not fabricated proxy_fraction.
+
+  2d. CALIBRATION STAMPING -- AGENT DID NOT RUN w45_post_fit_rebuild.py. *** FINDING B,
+    CRITICAL, NOT SELF-DECIDED, NEEDS NATIVE RULING ***:
+    w45_post_fit_rebuild.py's §N.8 gate is `if not fit_run_ids: return 0` -- it checks that a
+    calibration ROW EXISTS, not that a REAL WEIGHT WAS EARNED. w44 writes a row for every
+    toggle_key regardless of method, so the gate PASSES on an all-zero, mechanism_not_wired fit.
+    The agent PROVED this rather than asserting it -- executed Stage B, inspected the result, and
+    ROLLED BACK before committing:
+      weights loaded: 10 · NON-ZERO weights: 0 · fit_run_ids: [the real run above]
+      gate evaluates to: PASS (would stamp) · rows it WOULD stamp empirically_calibrated: 120
+      ROLLED BACK -- nothing committed. staging calibration_state after rollback:
+      structural_prior x 120 (unchanged).
+    *** THIS IS NOT HYPOTHETICAL: staging (kala_gochara_windows_v2) was ALREADY sitting at 107
+    empirically_calibrated rows BEFORE tonight's rebuild -- meaning this exact unsound gate has
+    ALREADY fired for real, at least once, on the staging table, stamping rows that never earned
+    the tier. *** Running w45 tonight would have re-manufactured the SAME dishonest stamp the
+    rebuild just spent an authorized override window removing from prod. TERMINAL OUTCOME:
+    structural_prior, HONESTLY -- the branch the amended MR-14 GATE explicitly admits as valid
+    closure. w45 also targets kala_gochara_windows_v2 (staging), not prod, independently of this
+    defect.
+
+  === 4. POST-STATE EVIDENCE + DIFF (verbatim) ===
+  kala_gochara_windows by (chart_id, generation, temporal_shape), PRE -> POST:
+    1c826d5a 3.0 interval  60 -> 60 (rebuilt in place)   482012f1 same 60 -> 60
+    1c826d5a 3.0 point     -- -> 25 (NEW, MR-10)         482012f1 -- -> 29 (NEW, MR-10)
+    v1 rows (both charts): unchanged
+  valence, gen 3.0: PRE favourable 60/60 both charts ->
+    1c826d5a: gain 21 / loss 30 / neutral 34 · 482012f1: gain 23 / loss 35 / neutral 31 ->
+    ZERO favourable rows either chart.
+  calibration_state, gen 3.0: PRE empirically_calibrated 60/60 both ->
+    1c826d5a structural_prior 85 · 482012f1 structural_prior 89 -> ZERO empirically_calibrated
+    rows either chart. (85/89 = 60 rebuilt interval + 25/29 promoted point rows.)
+  term_breakdown, gen 3.0: PRE 0/60 both -> 1c826d5a 60/85 non-null · 482012f1 60/89 non-null
+    (the 60 interval rows all populated; the 25/29 promoted point rows correctly carry NULL --
+    honest, they predate W1.5 decomposition and nothing was fabricated for them).
+  v1 corpus: 19,323 / 16,297 / 2,667 -- IDENTICAL to PRE.
+  staging: unchanged as a source; its own g3_utkarsha rows now read 120x structural_prior
+    (informational, staging is unprotected).
+
+  GATE STATUS AGAINST THIS EVIDENCE: MR-13 CLOSED (zero favourable, zero
+  empirically_calibrated). MR-14 CLOSED on the honest structural_prior branch (term_breakdown
+  non-NULL + fit published, per the amended GATE's explicit "OR an honest recorded
+  insufficient-data conclusion" clause -- now more precisely "honest recorded mechanism-not-
+  wired conclusion", the same admitted terminal state). MR-15 CLOSED (AV gating live end to end,
+  zero AV_GATE_DEGRADED notes across all 120 substeps). MR-10 CLOSED (54 point rows promoted,
+  servable, correct shape distribution).
+
+  === 5. PROTECTION RE-VERIFICATION (verbatim, mandatory condition) ===
+  482012f1 row id=58763, DELETE attempted with NO override GUC:
+    "BUILD-PROTECTED: kala_gochara_windows row(s) for chart_id 482012f1-... (generation=3.0,
+    asset_id=ka_gochara) are protected -- DELETE is refused. Set
+    app.allow_protected_sweep_rewrite=on for this session to override (native decision required;
+    see build_protected_assets.reason for PARISHKARA MR-06 protection rationale)."
+    CONTEXT: PL/pgSQL function build_gen3_gochara_guard_row() line 24 at RAISE.
+    row still present after attempt: True.
+  1c826d5a row id=58823: identical refusal, row still present: True.
+  PROMOTED POINT row id=58883: also REFUSED -- protection inherited by the newly-promoted rows
+    as intended (confirms the '3.0' generation-stamp decision in 2b was correct for protection
+    coverage too).
+
+  === 6. V1 CORPUS RE-VERIFICATION (verbatim, mandatory condition) ===
+  1c826d5a v1_rows=19,323 expected=19,323 UNCHANGED. 482012f1 v1_rows=16,297 expected=16,297
+  UNCHANGED. cb73cd3d v1_rows=2,667 expected=2,667 UNCHANGED.
+
+  === 7. GUC LEAK CHECK (verbatim, mandatory condition) ===
+  Fresh connection (pid=1652448, user=amjis_app):
+    current_setting('app.allow_protected_sweep_rewrite', true) = None -- NULL. Nothing leaked
+    beyond the rebuild's own per-substep transactions.
+
+  === CLEANUP CONFIRMED === rehearsal container removed, throwaway worktree removed, no harness
+  processes or orphaned DB sessions left running. Agent wrote NO ledger/register entries and NO
+  code itself -- execution + evidence only, as briefed; this ledger entry and the register
+  amendment below are the conductor's, not the executor's.
+
+  *** OPEN ITEMS FOR NATIVE RULING (not self-decided) ***
+  1. Finding B (w45's stamping gate is unsound -- tests row-existence not earned-signal) needs a
+     native ruling on disposition: fix the gate (register a new MR item), and separately decide
+     what to do about the 107 pre-existing staging rows this same gate already dishonestly
+     stamped before tonight (staging is unprotected, so a fix is straightforward whenever ruled).
+  2. Finding A (ENGINE_VERSION/fingerprint gap) needs a follow-up register item so any FUTURE
+     rebuild doesn't silently no-op the same way this one almost did.
+  3. idle_in_transaction_session_timeout=10min vs long-running substeps -- a real orchestrator-
+     wide operational fragility, worth a register item or an infra-level fix.
+  NEXT-ACTION: register amended with Findings A/B as new open items (this session, right after
+    this ledger entry); verify MR-10/13/14/15 gates formally against this evidence (effectively
+    already done above, worth a live spot-check via the deployed product); MR-24 battery; THEN
+    W6-COMPLETE only if the full marker-gate set (MR-01..08,10,13,14,15,24) is genuinely green
+    -- native ruling on items 1-3 above does not block the marker (they're disclosed follow-ups,
+    not open marker-gate items), but should be flagged to the native before posting it.
