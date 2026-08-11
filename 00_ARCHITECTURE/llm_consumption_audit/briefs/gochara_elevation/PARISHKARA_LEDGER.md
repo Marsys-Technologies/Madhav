@@ -31,7 +31,7 @@ marker_duty: post W6-COMPLETE to campaign-coordination §6 after MR-01..08,10,13
 | MR-19 | Ablations → re-adjudicated admissions | CLOSED | PRATINIDHI re-adjudication 2026-08-11: all 10 admitted mechanisms demoted (defined+cited+coded, NOT engine-wired) on the honest mechanism_not_wired evidence — no ablation theater run against zero weights. mechanism_register.yaml gains an additive correction block (UTK-R3 text preserved). See "MR-19 re-adjudication" ledger entry. |
 | MR-20 | Real no-loss gate (35,620 windows) | GATE MET, finding disclosed | mr20_no_loss_coverage_gate.py run live both charts 2026-08-11: unclassified=0 (2,448 divergences, both charts, all closed-vocabulary). Substantive finding: equivalence_rate <2% both charts, 92% of divergences are v1-only-needs-review — disclosed for ADJUDICATOR review, not self-adjudicated. See "MR-20: the real no-loss coverage gate" ledger entry. |
 | MR-21 | Quantitative evidence chain published | QUEUED | — |
-| MR-22 | Suppression detector + count | QUEUED | — |
+| MR-22 | Suppression detector + count | GATE MET, plausibility disclosed | seeded must-fire test (test_gochara_intensity.py) already exists, verified green 2026-08-11; real-corpus count published (0/54 point rows, both charts, all 3 mechanism types) — plausibility flagged for ADJUDICATOR, not self-certified. See "MR-22" ledger entry. |
 | MR-23 | Remaining unrun acceptance artifacts | QUEUED | — |
 | MR-24 | Product-level E2E battery (standing) | CLOSED (FINAL, 2026-08-11 ~09:44 IST re-run against rebuilt corpus supersedes the earlier same-day pre-final-state pass) | Final re-run: 3 tools x 3 charts (482012f1 gen-3.0, 1c826d5a gen-3.0, cb73cd3d v1-authority) all backing_data_reachable=true; valence+calibration facet filters matched honest values; cockpit count_sql found FALSE (MR-40, new bug: cockpit pointed at the wrong table/generation after an undisclosed W5.4 UTK-R1 authority repoint), fixed live + source PR #1216 opened, RE-VERIFIED true (89/85); judgment_query(domain=health) served full gochara_sweep depth (17 windows); rollback+re-flip cycle on the NATIVE chart (482012f1) via committed MR-08 tooling, verified end-to-end live both directions. Full transcript in "MR-24 FINAL RE-RUN" ledger entry below. |
 | MR-25 | Citations resolve in serving | MERGED | PR #1200 MERGED · PARĪKṢAKA PASS (code review): mig-565 correct (14 rows: 4 resolved verified vs corpus, 10 CORPUS_GAP not silenced), B.3 compliant, live gate honestly deferred |
@@ -1666,3 +1666,37 @@ MR-20 register status: GATE (unclassified=0, published) — MET. The substantive
 finding is carried forward as a disclosed, non-blocking observation pending ADJUDICATOR
 review — not a new numbered MR (it is evidence FOR MR-16's existing open scope-completion
 gate, not a distinct defect).
+
+## 2026-08-11 — MR-22: suppression detector + real-corpus count, both parts satisfied
+
+**Seeded must-fire test (dead-vs-honest-zero detector) — already exists, verified green.**
+`tests/test_gochara_intensity.py::test_suppression_counts_cancellation_and_kartari` (seeded
+positive case — asserts the detector DOES count a real cancellation/kartari when the
+conditions are actually present) and `::test_suppression_zero_when_nothing_fires` (honest-zero
+counterpart) — both PASSED, run live this session (`pytest tests/test_gochara_intensity.py -k
+suppression`: 2 passed). This is exactly the dead-vs-honest-zero pairing MR-22 requires — a
+detector that can only ever report 0 would fail the must-fire test; it doesn't.
+
+**Real-corpus firing count — published, live query, both charts:**
+```
+total=174, empty_suppression=120 (all interval-shaped rows — suppression_state={} on
+  temporal_shape='interval'), kartari_fired=0, vedha_fired=0, sarvatobhadra_fired=0
+```
+Point-shaped rows (54/174) carry a real, non-trivial `suppression_state` structure (weights +
+counts fields populated, not `{}`) — the original GAP framing ("suppression_state empty on all
+rows") is now FALSE for point-shaped rows, still TRUE for interval-shaped rows (a distinct,
+disclosed, non-blocking observation — interval-shaped windows don't currently populate this
+field at all, worth a future named item if judged material). Real firing count across all 54
+point rows, both charts, all three mechanism types: **ZERO** — this is the "founding v1
+pathology (0 firings / 35,620) unmeasured post-fix" now genuinely MEASURED, not still unmeasured.
+
+**ADJUDICATOR disposition on plausibility (per MR-22's own REMEDIATION, "if 0...") — flagged,
+not self-certified.** A 0-count across 54 point-shaped rows (a still-small, young corpus,
+narrow 6-class scope per MR-16) is not self-evidently implausible — kartari pincer, vedha
+cancellation, and sarvatobhadra vedha are all relatively specific planetary configurations —
+but whether 0/54 is expected-rare or itself a detection gap is a judgment call this session
+does not make unilaterally, consistent with this campaign's standing practice. Disclosed for
+ADJUDICATOR/native review alongside MR-20's low-equivalence finding.
+
+MR-22 register status: GATE (test green + count published) — MET. Plausibility disposition
+carried forward as a disclosed, non-blocking observation, same treatment as MR-20.
