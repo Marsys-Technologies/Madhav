@@ -3098,3 +3098,22 @@ claim standing alone. **Phase G CLOSED.**
 
 MR-48 (PR #1236) CI checks in progress; will merge once green, re-verify, then proceed to R3
 (master-brief conformance battery) → R4 (final close-out, MR-29 re-close seal).
+
+## 2026-08-12 ~05:2x IST — MR-48 MERGED to main (PR #1236); R3 CLOSED; entering R4
+
+CONDUCTOR-HEARTBEAT: 2026-08-12T05:25:00Z
+
+PR #1236 merged via the merge queue. MR-48 CLOSED. Both MR-47 and MR-48 (both live-discovered
+during Phase F/R3 execution this session) are now on main, independently re-verified before
+merge each time, following the isolated-worktree lesson learned after the MR-47 collision.
+
+**R3 CLOSED**: MASTER_BRIEF_CONFORMANCE_REPORT_v1_0.md — 5/6 §5 criteria fully PASS on live
+evidence (generation='3.0' E2E-PROBE, 27-class/chain/hierarchy/suppression/direction/λ-bounds,
+noise floor genuinely computed+published, v1 intact+protected, prod==main+migrations verified),
+1 criterion (wall-clock) explicitly cross-referenced to R4's MR-21 by design. Found+registered
+MR-49 (coverage envelope under-claim, deferred) live during the E2E-PROBE itself — direct
+evidence the battery is doing real work.
+
+Proceeding to R4: MR-20 (no-loss coverage gate, 35,620 v1 rows), MR-21 (wall-clock ADJUDICATOR
+disposition + publish evidence chain), MR-33 (L5 loop wiring verification, HONEST-DEFERRED
+permitted by its own doctrine), close report v1.1, coordination handoff, hygiene, MR-29 re-close.
