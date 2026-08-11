@@ -28,7 +28,7 @@ marker_duty: post W6-COMPLETE to campaign-coordination §6 after MR-01..08,10,13
 | MR-16 | 27-class expansion (POST-MARKER only) | QUEUED | — |
 | MR-17 | ka_kshetra seam (SAMPŪRTI's — track only) | EXTERNAL | coordination file |
 | MR-18 | Validators generation stance | MERGED | PR #1195 MERGED · PARĪKṢAKA PASS (7/8 tests functional; mig-527 gate test vacuous pass noted as non-blocking finding; fix itself correct) |
-| MR-19 | Ablations → re-adjudicated admissions | QUEUED | — |
+| MR-19 | Ablations → re-adjudicated admissions | CLOSED | PRATINIDHI re-adjudication 2026-08-11: all 10 admitted mechanisms demoted (defined+cited+coded, NOT engine-wired) on the honest mechanism_not_wired evidence — no ablation theater run against zero weights. mechanism_register.yaml gains an additive correction block (UTK-R3 text preserved). See "MR-19 re-adjudication" ledger entry. |
 | MR-20 | Real no-loss gate (35,620 windows) | QUEUED | — |
 | MR-21 | Quantitative evidence chain published | QUEUED | — |
 | MR-22 | Suppression detector + count | QUEUED | — |
@@ -1495,3 +1495,85 @@ native's explicit instruction, after the marker and after MR-37's disposition, i
 Open, non-blocking, named residuals carried forward: MR-38's own GATE (synthetic version-bump
 test, not yet written), MR-39's own GATE (synthetic long-substep test, not yet written), PR
 #1216 (MR-40) and PR #1217 (MR-37) both open against `parishkara/integration`, not yet merged.
+
+## 2026-08-11 — MR-40 root-cause paragraph (native-requested)
+
+**What repointed it, and why the repoint was undisclosed.** `ka_gochara_v3_century_materialize.py`
+carries an in-code comment naming the repoint explicitly: "UTK-R1 ADJUDICATOR ruling (W5.4
+repoint to kala_gochara_windows generation='3.0')." W3.4 originally designed
+`kala_gochara_windows_v2` as the writer's ONLY target (`TABLE = "kala_gochara_windows_v2"`,
+still the writer's own comment: "Calibration/staging surface (W3.4 original target)"). At W5.4,
+the ADJUDICATOR ruled UTK-R1 — the writer would ALSO write to `kala_gochara_windows` with
+`generation='3.0'` as the real PRODUCTION serving surface, keeping the `_v2` write purely as a
+calibration/staging copy going forward (`PROD_TABLE = "kala_gochara_windows"`, "Production
+surface, W5.4 repoint, UTK-R1"). This is a real, deliberate, in-repo-documented ruling — not a
+mystery or an unauthorized change. The writer code, the migration history, and the original
+GOCHARA-UTKARṢA ledger all correctly reflect it.
+
+**The undisclosed part was narrower and more mundane than "who changed this": `asset_registry_seed.ts`'s
+`ka_gochara` cockpit entry (`target_table`/`count_sql`) was authored to the W3.4 pre-repoint
+design and was never updated when W5.4 UTK-R1 landed.** This is a cross-file consistency gap,
+not a hidden or silent code change — the repoint itself was fully ruled and documented in the
+one file that matters most (the writer). What went undisclosed was the SECOND-ORDER
+consequence: nobody re-checked every OTHER file that names `kala_gochara_windows_v2` as
+authoritative against the new ruling, so the cockpit entry quietly kept counting the surface
+W5.4 demoted to calibration-only. MR-06 (the PR that most recently touched this exact seed
+entry, 2026-08-10) inherited the stale W3.4-shaped value without re-deriving it against W5.4 —
+MR-06's own PARĪKṢAKA review verified the entry was INTERNALLY consistent (postgres_table,
+per_chart, generation='3.0' referenced) but had no mechanism to check it against the writer's
+OWN later ruling, since nothing cross-references "which table is CURRENTLY production" except
+by reading the writer's source comments directly. This is the general failure mode: a
+documented architecture decision, correctly recorded in the ONE authoritative place (the
+writer), with no propagation discipline to the several OTHER places (seed script, and
+potentially others not yet audited) that restate the same fact as a hardcoded value rather than
+deriving it. MR-38's ENGINE_VERSION standing rule (this session) partially addresses the
+sibling failure mode (writer output-shape changes not force-invalidating caches); this MR-40
+root cause is the same family one layer higher — an AUTHORITY-SURFACE change, not an
+output-shape change, with no equivalent propagation check yet. Not spawning a new MR for this
+broader propagation gap tonight (scope discipline) — noted here as the honest root cause the
+native asked for, available to fold into a future hygiene pass if judged worth a dedicated item.
+
+## 2026-08-11 — MR-19 re-adjudication (PRATINIDHI, native-directed): 10 mechanisms demoted honestly
+
+**Original admission (UTK-R3, W4.3):** all 10 mechanisms below admitted `admission_state:
+admitted` / `weight_type: fitted` on an ablation run against an EMPTY corpus. "Cannot degrade
+v1 parity" was true only because there was no data to degrade — a vacuous pass per MR-19's own
+GAP framing, not evidence.
+
+**Post-repair evidence (real, not theater):** the corpus is now real (89 native / 85
+Abhinandan rows, THE ONE authorized rebuild) and W4.4's real refit (`w44_weight_fitting.py`)
+ran against it end to end. Every one of the 10 admitted mechanisms came back
+`mechanism_not_wired` — confirmed via `MECHANISM_ENGINE_WIRED` (all 10 entries `False`) and
+independently via `compute_mechanism_weights`'s `_NO_SIGNAL_ABLATION_METHODS` short-circuit
+(delta forced to honest `0.0`, never computed via hit-rate comparison, MR-14-matching's own
+finding). This is stronger than "ablated, near-zero effect measured": none of these 10
+mechanisms' `compute()` is invoked anywhere in `engine.py`'s production `lambda_v3` formula —
+there is no code path for a with-vs-without ablation to exercise. Running one now would show
+`delta=0` by mathematical construction, not by measurement — exactly the "ablation theater
+against zero weights" this ruling was directed to avoid, and correctly NOT run.
+
+**RULING:** `admission_state: admitted` / `weight_type: fitted` currently read, in production
+terms, as "this mechanism contributes a real, fitted weight to gochara intensity scoring."
+That claim is FALSE today. DEMOTED (not stripped — citation, code module, and unit tests for
+all 10 remain real and undiscarded): re-scoped to DEFINED + CITED + CODED, NOT ENGINE-WIRED.
+No production-contribution claim may be made for these 10 mechanisms
+(`w21_av_gating`, `w22_moorti_nirnaya`, `w23_tara_bala`, `w24_sade_sati`, `w25_kota_chakra`,
+`w26_real_eclipses`, `w27_annual_stack`, `w27a_tajaka_year_lord`, `w27b_tithi_pravesha`,
+`w27c_sudarshana`) until a dedicated future wave actually wires each mechanism's `compute()`
+into `engine.py`'s `lambda_v3` path (flipping its `MECHANISM_ENGINE_WIRED` entry to `True`),
+at which point a genuine ablation becomes possible and this re-adjudication is superseded by
+real evidence, not before. The 2 `structural_only` mechanisms (`w28_bhava_degrees`,
+`w29_citation_resolution`) are UNAFFECTED — they were never weight-fitted claims (modifier
+always 1.0 by design).
+
+**Recorded (additive, non-destructive) in `mechanism_register.yaml`** — a header correction
+block, UTK-R3's original text left verbatim below it (history not rewritten, matching this
+campaign's established correction pattern from MR-13). The authoritative, LIVE, machine-checked
+source of the honest wiring state remains `w44_weight_fitting.py`'s `MECHANISM_ENGINE_WIRED`
+dict, not this YAML file — the YAML is documentation, the dict is the executable truth. PR to
+follow via the same lane-commit pattern as MR-37/MR-40.
+
+MR-19 register status: GATE met — "published ablation table" is satisfied honestly by
+disclosing there IS no ablation table to publish (the mechanisms are unablatable-by-
+construction today), "re-issued rulings in ledger" is this entry. AT-PAR restored: admissions
+now mean what I2 says they mean — no mechanism claims a fitted weight it never earned.
