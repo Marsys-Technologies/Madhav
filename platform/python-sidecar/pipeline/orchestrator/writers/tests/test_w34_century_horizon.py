@@ -1483,3 +1483,214 @@ def test_dry_run_reports_hierarchy_tier_counts_and_writes_nothing(monkeypatch):
         if sql.strip().upper().startswith(("DELETE", "INSERT"))
     ]
     assert writes == [], f"dry_run must issue zero DELETE/INSERT, got: {writes}"
+
+
+# ===========================================================================
+# PK-R-8 R8.8 — peak_basis vocabulary: named constants, never a literal
+# ===========================================================================
+
+
+def test_peak_basis_vocab_used_not_literal():
+    """R8.8 source guard: the writer's source must never assign the retired
+    bare literal (the exact `"peak_basis": "gochara_lambda...` dict-literal
+    shape the pre-R8.8 code used) -- this pattern does not appear anywhere in
+    the file, including its own prose, since the writer's docstrings refer to
+    the retired name in single-quoted prose form only ('gochara_lambda_v3'),
+    never as a peak_basis dict-literal assignment. And the writer must
+    reference the named vocab constants for both bases it emits."""
+    src = inspect.getsource(mod)
+
+    assert '"peak_basis": "gochara_lambda' not in src, (
+        "R8.8 VIOLATION: a bare peak_basis dict-literal string was found in "
+        "the writer's source -- must use peak_basis_vocab constants."
+    )
+    assert "peak_basis_vocab" in src
+    assert "peak_basis_vocab.LAMBDA_V3_ARGMAX" in src
+    assert "peak_basis_vocab.LAMBDA_V3_COARSE_ARGMAX" in src
+
+
+def test_build_row_requires_peak_basis_kwarg():
+    """_build_row must not have a default for peak_basis -- every caller is
+    forced to supply an honestly-derived value (no silent fallback to a
+    retired/wrong basis)."""
+    sig = inspect.signature(mod._build_row)
+    assert sig.parameters["peak_basis"].default is inspect.Parameter.empty
+
+
+def test_no_midpoint_basis_emitted(monkeypatch):
+    """Every row this writer inserts must carry a peak_basis from {ARGMAX,
+    COARSE_ARGMAX} -- LAMBDA_V3_MIDPOINT (defined for documentation only,
+    R8.8) must never appear on an emitted row."""
+    era = WindowResolutionRecord(
+        window_id="era-1", parent_window_id=None, resolution_tier="era",
+        enter_jd=2445736.5, exit_jd=2445736.5 + 500.0,
+        peak_jd=2445736.5 + 100.0, peak_lambda=0.9,
+    )
+    month = WindowResolutionRecord(
+        window_id="month-1", parent_window_id="era-1", resolution_tier="month",
+        enter_jd=2445736.5 + 10.0, exit_jd=2445736.5 + 40.0,
+        peak_jd=2445736.5 + 25.0, peak_lambda=0.8,
+    )
+    day = WindowResolutionRecord(
+        window_id="day-1", parent_window_id="month-1", resolution_tier="day",
+        enter_jd=2445736.5 + 15.0, exit_jd=2445736.5 + 16.0,
+        peak_jd=2445736.5 + 15.5, peak_lambda=0.75,
+    )
+    hierarchy = HierarchyResult(
+        era_windows=[era], month_windows=[month], day_windows=[day],
+        resolution_facet={"era": 1, "month": 1, "day": 1},
+    )
+    result, conn = _run_hierarchy_substep(monkeypatch, hierarchy)
+
+    v2_rows = _v2_inserts(conn)
+    assert len(v2_rows) == 3
+    for row in v2_rows:
+        assert row["peak_basis"] != mod.peak_basis_vocab.LAMBDA_V3_MIDPOINT, (
+            f"R8.8 VIOLATION: row carries the prohibited midpoint basis: {row}"
+        )
+        assert row["peak_basis"] in (
+            mod.peak_basis_vocab.LAMBDA_V3_ARGMAX,
+            mod.peak_basis_vocab.LAMBDA_V3_COARSE_ARGMAX,
+        )
+
+
+def test_era_rows_carry_coarse_label_month_day_carry_argmax(monkeypatch):
+    """Era-tier rows are stamped LAMBDA_V3_COARSE_ARGMAX (the era peak is a
+    50-sample coarse dense scan, not day-precision); month/day-tier rows are
+    stamped LAMBDA_V3_ARGMAX (the day-refined true argmax, R8.5). A writer
+    that stamped ARGMAX on an era row would over-claim day-precision on a
+    row whose peak was never day-refined -- this is exactly what this test
+    would catch (mutate the era branch to LAMBDA_V3_ARGMAX -> RED)."""
+    era = WindowResolutionRecord(
+        window_id="era-1", parent_window_id=None, resolution_tier="era",
+        enter_jd=2445736.5, exit_jd=2445736.5 + 500.0,
+        peak_jd=2445736.5 + 100.0, peak_lambda=0.9,
+    )
+    month = WindowResolutionRecord(
+        window_id="month-1", parent_window_id="era-1", resolution_tier="month",
+        enter_jd=2445736.5 + 10.0, exit_jd=2445736.5 + 40.0,
+        peak_jd=2445736.5 + 25.0, peak_lambda=0.8,
+    )
+    hierarchy = HierarchyResult(
+        era_windows=[era], month_windows=[month], day_windows=[],
+        resolution_facet={"era": 1, "month": 1, "day": 0},
+    )
+    result, conn = _run_hierarchy_substep(monkeypatch, hierarchy)
+
+    v2_rows = _v2_inserts(conn)
+    era_row = next(r for r in v2_rows if r["resolution"] == "era")
+    month_row = next(r for r in v2_rows if r["resolution"] == "month")
+
+    assert era_row["peak_basis"] == mod.peak_basis_vocab.LAMBDA_V3_COARSE_ARGMAX, (
+        f"R8.8 VIOLATION: era row must carry LAMBDA_V3_COARSE_ARGMAX, got {era_row['peak_basis']!r}"
+    )
+    assert month_row["peak_basis"] == mod.peak_basis_vocab.LAMBDA_V3_ARGMAX, (
+        f"R8.8 VIOLATION: month row must carry LAMBDA_V3_ARGMAX, got {month_row['peak_basis']!r}"
+    )
+
+
+def test_shape_gated_flat_rows_carry_coarse_label_and_null_resolution(monkeypatch):
+    """R8.12 shape-gated flat production (point-canonical classes): rows
+    carry resolution=NULL and peak_basis=LAMBDA_V3_COARSE_ARGMAX (the
+    IntervalBoundary peak is interval_solver's own 50-sample coarse scan,
+    never day-refined)."""
+    from services.gochara_v3.interval_solver import IntervalBoundary
+
+    targets = ["Venus"]
+    writer = GocharaV3CenturyMaterializeWriter()
+    conn_dummy = _FakeConn(_responder(targets=targets))
+    steps = writer.plan_substeps(_ctx(conn_dummy))
+    step = steps[0]  # career_advancement -- 'point' per live schema
+    ec, era_key = step.key.split("::", 1)
+
+    fake_boundary = IntervalBoundary(
+        enter_jd=2445736.5 + 10.0, exit_jd=2445736.5 + 20.0,
+        peak_jd=2445736.5 + 15.0, peak_lambda=0.72, era_slice_key=era_key,
+    )
+
+    conn = _FakeConn(_responder(targets=targets, stored_fp=None))
+    ctx = _ctx(conn)
+    # No _fetch_event_class_temporal_shape override -- default responder
+    # answers nothing for brahma_event_ontology, so the writer's own
+    # conservative fallback ('point') applies, matching career_advancement's
+    # real live-schema shape.
+    monkeypatch.setattr(mod, "find_threshold_crossings", lambda *a, **k: [fake_boundary])
+    monkeypatch.setattr(
+        mod, "ClassContext",
+        type("FakeClassContext", (), {"fetch": staticmethod(lambda **k: object())}),
+        raising=False,
+    )
+    try:
+        import swisseph  # noqa: F401
+    except ImportError:
+        import types, sys
+        sys.modules["swisseph"] = types.ModuleType("swisseph")
+
+    writer.run_substep(ctx, step)
+
+    v2_rows = _v2_inserts(conn)
+    assert len(v2_rows) == 1
+    assert v2_rows[0]["resolution"] is None
+    assert v2_rows[0]["parent_window_id"] is None
+    assert v2_rows[0]["peak_basis"] == mod.peak_basis_vocab.LAMBDA_V3_COARSE_ARGMAX
+
+
+# ===========================================================================
+# PK-R-8 R8.12 — shape gate: no hierarchy for point-canonical classes
+# ===========================================================================
+
+
+def test_no_hierarchy_for_point_canonical_classes(monkeypatch):
+    """R8.12 detector: running the writer for a point-canonical class
+    (marriage -- confirmed 'point' in live brahma_event_ontology schema)
+    must produce ZERO rows with a non-null resolution column, regardless of
+    how many find_threshold_crossings intervals are found. Removing the
+    shape gate (routing marriage through build_resolution_hierarchy like an
+    interval-shaped class) would turn this RED."""
+    from services.gochara_v3.interval_solver import IntervalBoundary
+
+    targets = ["Venus"]
+    writer = GocharaV3CenturyMaterializeWriter()
+    conn_dummy = _FakeConn(_responder(targets=targets, discovered_classes=["marriage"]))
+    steps = writer.plan_substeps(_ctx(conn_dummy))
+    step = next(s for s in steps if s.key.startswith("marriage::"))
+    ec, era_key = step.key.split("::", 1)
+
+    fake_boundaries = [
+        IntervalBoundary(
+            enter_jd=2445736.5 + 10.0, exit_jd=2445736.5 + 20.0,
+            peak_jd=2445736.5 + 15.0, peak_lambda=0.72, era_slice_key=era_key,
+        ),
+        IntervalBoundary(
+            enter_jd=2445736.5 + 100.0, exit_jd=2445736.5 + 900.0,
+            peak_jd=2445736.5 + 500.0, peak_lambda=0.81, era_slice_key=era_key,
+        ),
+    ]
+
+    conn = _FakeConn(_responder(targets=targets, stored_fp=None, discovered_classes=["marriage"]))
+    ctx = _ctx(conn)
+    # No shape override -- 'marriage' falls to the writer's own conservative
+    # default ('point'), which happens to match its real live-schema shape.
+    monkeypatch.setattr(mod, "find_threshold_crossings", lambda *a, **k: fake_boundaries)
+    monkeypatch.setattr(
+        mod, "ClassContext",
+        type("FakeClassContext", (), {"fetch": staticmethod(lambda **k: object())}),
+        raising=False,
+    )
+    try:
+        import swisseph  # noqa: F401
+    except ImportError:
+        import types, sys
+        sys.modules["swisseph"] = types.ModuleType("swisseph")
+
+    result = writer.run_substep(ctx, step)
+    assert result.rows_inserted == 2
+
+    v2_rows = _v2_inserts(conn)
+    assert len(v2_rows) == 2
+    for row in v2_rows:
+        assert row["resolution"] is None, (
+            f"R8.12 VIOLATION: point-canonical class produced a row with "
+            f"resolution={row['resolution']!r} -- hierarchy tiers must never "
+            f"be produced for a point-canonical class."
+        )
