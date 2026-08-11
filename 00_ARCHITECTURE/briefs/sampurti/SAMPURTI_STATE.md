@@ -803,3 +803,5 @@ CONDUCTOR-HEARTBEAT: 2026-08-12T04:08+05:30 pid=CONDUCTOR [R0 COMPLETE — gate 
 - ka_kshetra reset to dormant before dispatch
 
 CONDUCTOR-HEARTBEAT: 2026-08-12T04:15+05:30 pid=CONDUCTOR [R1 — Run 12 dispatched (43a038b2). Orchestrator launching now.]
+
+CONDUCTOR-HEARTBEAT: 2026-08-11T23:08+05:30 pid=25269 [R1 Run 12 — substep 92/534, stage4 field, 566k rows, no INSERT storm. PG-31 working. Career_setback LAW ZERO skip correct.]
