@@ -44,13 +44,21 @@ provenance comments) rather than a newly authored one:
      module constant -- this primitive's citation is literally whatever the
      live rule row says, per BRIEF_D5 §6's "inherited from the rules table's
      classical_citation via the target it fired on"). MR-41(a) (PK-R-5,
-     2026-08-11): the real, populated source is `bg_transit_vedha` (33 rows) --
-     `_fetch_vedha_rules` previously read `bg_transit_rules WHERE
-     rule_type='vedha'`, which has held 0 rows since it was written, so this
-     primitive returned [] on every production call ever made. See
-     `_fetch_vedha_rules`'s own docstring/comment for the column-vocabulary
-     adapter that repoints the read without changing this primitive's own
-     cancellation-scoring logic.
+     2026-08-11, CORRECTED by ADJUDICATOR ruling PK-R-9): the real, populated
+     source is `bg_transit_rules` itself (41 rows) -- the ORIGINAL defect was
+     never the table, it was the PREDICATE: `_fetch_vedha_rules` read `WHERE
+     rule_type='vedha'` (0 rows ever seeded under that literal), when the
+     live vedha-pair rows are seeded under `rule_type='favourable' AND
+     vedha_house IS NOT NULL` (confirmed live: 41 rows, matches
+     `ka_vedha_gochara/writer.py`'s own `_FETCH_VEDHA_RULES_SQL`, the
+     sibling writer already reading this exact same table+predicate
+     correctly). A PK-R-5-authored fix that repointed the read at a
+     DIFFERENT table (`bg_transit_vedha`) was REVERTED per PK-R-9 -- that
+     table is non-authoritative (see `platform-mcp` `query_transit_vedha.ts`
+     governance_note: 4 Venus disagreements + 8 missing rows vs.
+     `bg_transit_rules`'s own corpus) and its repoint mis-diagnosed a
+     predicate bug as a table-choice bug. See `_fetch_vedha_rules`'s own
+     docstring/comment for the corrected predicate.
   9. station_retro_loop         -> BPHS Ch.27 (Vakra; l0_reference.py).
   10. eclipse_degree            -> uncited_extension (no codebase-attested
      classical citation for eclipse-degree-to-natal-point contact was found in
@@ -801,44 +809,22 @@ def av_threshold_state(
 
 # ── #7 — gochara-vedha pairs ───────────────────────────────────────────────
 
-# MR-41(a) column-vocabulary adapter (PK-R-5, 2026-08-11): the real, populated
-# vedha corpus lives in `bg_transit_vedha` (33 rows, seeded 2026-06-17) --
-# `bg_transit_rules WHERE rule_type='vedha'` (the table this fetch used to
-# read) has held 0 rows since it was written, so `gochara_vedha_pair` returned
-# [] on every call ever made in production (corpus census: 0 vedha sentences
-# in 38,461 rows). `bg_transit_vedha`'s own column names differ from the
-# internal dict vocabulary `gochara_vedha_pair` (below) and this repo's
-# existing fixture tests already use (`graha`/`primary_house`/`phala`) --
-# this function now ADAPTS the real schema to that same internal vocabulary
-# at the query boundary, so `gochara_vedha_pair` itself needs ZERO changes:
-#   primary_graha         -> graha              (already lowercase; the
-#                                                 existing _normalize_graha()
-#                                                 call in gochara_vedha_pair
-#                                                 title-cases it, unchanged)
-#   primary_transit_house  -> primary_house
-#   classical_note         -> phala              (bg_transit_vedha's closest
-#                                                 equivalent to the short
-#                                                 "what it means" phrase
-#                                                 `phala` carried -- a fuller
-#                                                 sentence, same descriptive
-#                                                 role, never scored)
-#   vedha_house / classical_citation             -> unchanged names
-#   vedha_graha / vedha_type                     -> carried into `detail`
-#                                                 only (see below), NOT
-#                                                 consumed by the cancellation
-#                                                 occupancy check
-#
-# Honest scope note: `cancelled = len(occupants) > 0` in `gochara_vedha_pair`
-# is UNCHANGED by this repoint (no v1 SCORING semantics touched, per this
-# lane's I2 constraint) -- it treats ANY other graha occupying the vedha
-# house's sign as cancelling. Live census: 0/33 `bg_transit_vedha` rows
-# populate `vedha_graha` (every seeded row is a "when ANY planet transits the
-# vedha house" rule, matching each row's own `classical_note` text), so this
-# unmodified occupancy check already matches every live rule exactly. A
-# future vedha_graha-SCOPED row (cancels only for one specific graha) would
-# need that occupancy check extended to filter by `detail['vedha_graha']` --
-# deliberately NOT done in this lane since no live row exercises it and doing
-# so would be a scoring-semantics change, not a reachability fix.
+# MR-41(a) (PK-R-5, 2026-08-11; CORRECTED by ADJUDICATOR ruling PK-R-9,
+# 2026-08-11): the original defect was the PREDICATE, not the table.
+# `_fetch_vedha_rules` read `bg_transit_rules WHERE rule_type='vedha'` --
+# 0 rows have EVER been seeded under that literal. The live vedha-pair rows
+# ARE in `bg_transit_rules`, seeded under `rule_type='favourable' AND
+# vedha_house IS NOT NULL` (confirmed live: 41 rows). This is the exact same
+# table+predicate the sibling writer `ka_vedha_gochara/writer.py`'s own
+# `_FETCH_VEDHA_RULES_SQL` already reads correctly -- this fetch now matches
+# it. A PK-R-5-authored fix that repointed this read at `bg_transit_vedha`
+# (a DIFFERENT table) was REVERTED per PK-R-9: `bg_transit_vedha` is
+# RETIRED-IN-PLACE / non-authoritative (4 Venus-rule disagreements + 8 rows
+# missing vs. `bg_transit_rules`'s own corpus -- see `query_transit_vedha.ts`
+# governance_note), and repointing to it mis-diagnosed a predicate bug as a
+# table-choice bug. The column-vocabulary adapter that repoint required is
+# deleted -- native `graha`/`primary_house`/`phala` field names return
+# unchanged, matching every existing fixture test's own row shape.
 def _fetch_vedha_rules(conn, primary_house: Optional[str]) -> list[dict]:
     if conn is None:
         return []
@@ -848,10 +834,10 @@ def _fetch_vedha_rules(conn, primary_house: Optional[str]) -> list[dict]:
         with savepoint_scope(conn, "vedha_rules"):
             cur = conn.execute(
                 """
-                SELECT primary_graha, primary_transit_house, vedha_graha,
-                       vedha_house, vedha_type, classical_note, classical_citation
-                  FROM bg_transit_vedha
-                 WHERE (%s::int IS NULL OR primary_transit_house = %s::int)
+                SELECT graha, primary_house, vedha_house, phala, classical_citation
+                  FROM bg_transit_rules
+                 WHERE rule_type = 'favourable' AND vedha_house IS NOT NULL
+                   AND (%s::int IS NULL OR primary_house = %s::int)
                 """,
                 [primary_house, primary_house],
             )
@@ -860,27 +846,54 @@ def _fetch_vedha_rules(conn, primary_house: Optional[str]) -> list[dict]:
         # NOT cached: a transient read failure must remain retryable on the
         # next call (e.g. next grid day), never permanently frozen as "no
         # vedha rules" for the rest of this process's life.
-        logger.info("[gochara_vedha_pair] bg_transit_vedha read failed: %s", exc)
+        logger.info("[gochara_vedha_pair] bg_transit_rules read failed: %s", exc)
         return []
-    raw_keys = [
-        "primary_graha", "primary_transit_house", "vedha_graha",
-        "vedha_house", "vedha_type", "classical_note", "classical_citation",
-    ]
-    raw = [row if isinstance(row, dict) else dict(zip(raw_keys, row)) for row in rows]
-    result = [
-        {
-            "graha": r["primary_graha"],
-            "primary_house": r["primary_transit_house"],
-            "vedha_house": r["vedha_house"],
-            "phala": r.get("classical_note"),
-            "classical_citation": r.get("classical_citation"),
-            "vedha_graha": r.get("vedha_graha"),
-            "vedha_type": r.get("vedha_type"),
-        }
-        for r in raw
-    ]
+    keys = ["graha", "primary_house", "vedha_house", "phala", "classical_citation"]
+    result = [row if isinstance(row, dict) else dict(zip(keys, row)) for row in rows]
     _VEDHA_RULES_CACHE[primary_house] = result
     return result
+
+
+# MR-41(a) IR-4 (PK-R-9, 2026-08-11): `bg_transit_rules`'s primary_house/
+# vedha_house vocabulary is classically Moon-sign-relative (Chandra Lagna --
+# BPHS Ch.29 Gochara Phala is read from the Moon, not the Ascendant), but
+# `ResonanceTarget.target_ref` for a 'bhava' target is Lagna/Ascendant-
+# relative whole-sign house numbering. Converting between the two frames is
+# explicitly NOT implemented in this lane (that is follow-on lane MR-43's
+# job, registered by the conductor). Rather than silently apply a
+# Moon-frame rule to a Lagna-framed house number (a wrong-but-plausible-
+# looking answer), `gochara_vedha_pair` requires an explicit `moon_sign_idx`
+# argument naming the caller's Moon-frame anchor; when it is not supplied,
+# the primitive returns [] with this RECORDED, STRUCTURED reason -- an
+# EARNED empty, distinguishable (by a caller/test inspecting the reason,
+# not just the empty list) from "the corpus is empty" or "not a bhava
+# target." `moon_sign_idx`, when supplied, is currently used ONLY as this
+# caller-acknowledgment gate -- it is NOT yet consumed by the house-offset
+# arithmetic below (that arithmetic is still Lagna-framed, unchanged from
+# before this lane; MR-43 is where it gets actually reframed).
+_VEDHA_MOON_FRAME_GAP_REASON: dict = {
+    "reason": "lagna_vs_moon_frame_gap",
+    "detail": (
+        "gochara_vedha_pair's bg_transit_rules primary_house/vedha_house "
+        "vocabulary is Moon-sign-relative (Chandra Lagna, BPHS Ch.29); "
+        "ResonanceTarget.target_ref for a 'bhava' target is Lagna-relative. "
+        "No Lagna-vs-Moon conversion is implemented in this lane -- "
+        "moon_sign_idx must be supplied explicitly by the caller, or this "
+        "primitive honestly returns [] rather than silently misapplying a "
+        "Moon-frame rule to a Lagna-framed house number."
+    ),
+    "follow_on_lane": "MR-43",
+}
+
+
+def _gochara_vedha_pair_moon_frame_gap_reason(moon_sign_idx: Optional[int]) -> Optional[dict]:
+    """Returns the structured earned-empty reason when `moon_sign_idx` was
+    not supplied, else None. Factored out of `gochara_vedha_pair` so a test
+    can assert the reason's own content directly, independent of (and in
+    addition to) asserting the [] it also causes."""
+    if moon_sign_idx is not None:
+        return None
+    return _VEDHA_MOON_FRAME_GAP_REASON
 
 
 def gochara_vedha_pair(
@@ -892,17 +905,31 @@ def gochara_vedha_pair(
     conn=None,
     other_grahas: Optional[list[str]] = None,
     fixture_vedha_rows: Optional[list[dict]] = None,
+    moon_sign_idx: Optional[int] = None,
 ) -> list[ConfigurationSentence]:
-    """Primary/vedha house pair from `bg_transit_rules` (rule_type='vedha').
-    Implements the CANCELLATION check (not just detection, per the task
-    brief): at each primary-transit ingress event, checks whether ANY other
-    graha simultaneously occupies the vedha house's sign -- vedha cancels the
-    primary transit's effect only when both houses are simultaneously
-    occupied, per classical rule.
+    """Primary/vedha house pair from `bg_transit_rules` (rule_type=
+    'favourable', vedha_house IS NOT NULL). Implements the CANCELLATION
+    check (not just detection, per the task brief): at each primary-transit
+    ingress event, checks whether ANY other graha simultaneously occupies
+    the vedha house's sign -- vedha cancels the primary transit's effect
+    only when both houses are simultaneously occupied, per classical rule.
 
     `fixture_vedha_rows` lets a caller (test) inject rows matching the
-    `bg_transit_rules` row shape ({graha, vedha_house, phala,
-    classical_citation}) when no DB connection is available."""
+    `bg_transit_rules` row shape ({graha, primary_house, vedha_house, phala,
+    classical_citation}) when no DB connection is available.
+
+    `moon_sign_idx` -- REQUIRED to actually fire (PK-R-9 IR-4): without it
+    this primitive returns [] with a recorded, structured reason naming the
+    Lagna-vs-Moon frame gap -- see `_gochara_vedha_pair_moon_frame_gap_reason`
+    and follow-on lane MR-43. Not yet consumed by the arithmetic below when
+    supplied (see that helper's own comment)."""
+    gap_reason = _gochara_vedha_pair_moon_frame_gap_reason(moon_sign_idx)
+    if gap_reason is not None:
+        logger.debug(
+            "[gochara_vedha_pair] target_ref=%s earned-empty (no moon_sign_idx supplied): %s",
+            target.target_ref, gap_reason,
+        )
+        return []
     if not target.target_sign or target.target_type != "bhava":
         logger.debug("[gochara_vedha_pair] target_ref=%s not a bhava target with resolved sign; skipping.", target.target_ref)
         return []
@@ -956,14 +983,6 @@ def gochara_vedha_pair(
                     "phala": rule.get("phala"),
                     "cancelled": cancelled,
                     "cancelling_occupants": occupants,
-                    # MR-41(a): carried through from bg_transit_vedha for
-                    # auditability -- NOT consumed by the cancellation check
-                    # above (see _fetch_vedha_rules's column-vocabulary
-                    # adapter comment for why: 0/33 live rows populate
-                    # vedha_graha, so no live rule needs graha-scoped
-                    # cancellation yet).
-                    "vedha_graha": rule.get("vedha_graha"),
-                    "vedha_type": rule.get("vedha_type"),
                 },
             ))
     return sentences

@@ -17,6 +17,27 @@
  * NOT attempt to author a replacement migration for the missing DDL — per
  * the task brief, the anomaly is reported, not "fixed."
  *
+ * AUTHORITY RULING (ADJUDICATOR PK-R-9, 2026-08-11, IR-3): `bg_transit_vedha`
+ * is RETIRED-IN-PLACE / non-authoritative for computation. `bg_transit_rules`
+ * (rule_type='favourable', vedha_house IS NOT NULL — 41 rows) is the
+ * authoritative vedha-pair corpus; it is what `gochara_grammar.primitives.
+ * gochara_vedha_pair` and `ka_vedha_gochara/writer.py` both read (MR-41(a)).
+ * Confirmed live, this table disagrees with `bg_transit_rules` on 4 rows and
+ * is missing 8 rows entirely:
+ *   - 4 Venus vedha_house disagreements: primary_transit_house 4 (this
+ *     table says vedha_house=3, bg_transit_rules says 10), 5 (11 vs 9),
+ *     8 (9 vs 1), 9 (5 vs 2).
+ *   - 8 rows present in bg_transit_rules but ABSENT from this table
+ *     entirely: Rahu houses 3/6/11, Ketu houses 3/6/11 (this table carries
+ *     zero Rahu/Ketu rows at all), and Venus houses 11/12.
+ * This is an OPEN L0 reconciliation item, not resolved by this ruling —
+ * flagged here so a caller of THIS serving surface knows its rows are
+ * reference-only and may diverge from the authoritative corpus, not a
+ * silent, undisclosed discrepancy. This serving surface stays LIVE (it is
+ * NOT being retired/unwired) — only its status as a scoring/computation
+ * SOURCE is retired; it remains a legitimate, queryable classical reference
+ * table in its own right (33 rows, real, live).
+ *
  * SCOPE NOTE: read-only reference table, distinct from and does not touch
  * any kala_*-prefixed gochara serving code (frozen-as-found this campaign).
  *
@@ -88,7 +109,7 @@ export const queryTransitVedhaCapability: CapabilityDescriptor = {
             : {}),
           disclaimer: 'Classical vedha obstruction rules only — not a computed current-transit vedha verdict.',
           provenance: { tables: ['bg_transit_vedha'] },
-          governance_note: 'bg_transit_vedha has no CREATE TABLE migration anywhere in this repo (a documented governance anomaly) though the live table is real and queried here directly.',
+          governance_note: 'bg_transit_vedha has no CREATE TABLE migration anywhere in this repo (a documented governance anomaly) though the live table is real and queried here directly. AUTHORITY (PK-R-9): bg_transit_vedha is RETIRED-IN-PLACE / non-authoritative for computation -- bg_transit_rules (rule_type=favourable, vedha_house IS NOT NULL) is the authoritative vedha-pair corpus used by gochara_vedha_pair and ka_vedha_gochara/writer.py. This table disagrees with bg_transit_rules on 4 Venus rows (primary_transit_house 4: vedha_house 3 here vs 10; 5: 11 vs 9; 8: 9 vs 1; 9: 5 vs 2) and is missing 8 rows present in bg_transit_rules (Rahu houses 3/6/11, Ketu houses 3/6/11, Venus houses 11/12) -- an open L0 reconciliation item, not resolved here. This serving surface stays live as a reference-only table; only its authority as a computation source is retired.',
         },
         is_error: false,
       }
