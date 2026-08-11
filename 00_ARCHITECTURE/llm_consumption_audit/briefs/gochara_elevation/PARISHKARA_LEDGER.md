@@ -2269,3 +2269,34 @@ CONDUCTOR-HEARTBEAT: 2026-08-11T14:22:00Z pid=94797 host=Montys-MacBook-Pro.loca
   verified). #1225 awaiting the post-#1226 rebase only.
 - Residual added: migration 560's english_description ("60 substeps / 6 classes") goes stale
   when MR-16 lands — needs a future UPDATE migration (never edit an applied migration).
+
+## 2026-08-11 ~20:1x IST — ALL R1 BUILDERS COMPLETE; verdict/rebase train in motion
+
+CONDUCTOR-HEARTBEAT: 2026-08-11T14:45:00Z pid=94797 host=Montys-MacBook-Pro.local
+
+- **MR-11 (PR #1229): builder complete** — migration 567 (additive parent_window_id+resolution,
+  both tables, execute-to-verified on a throwaway PG incl. DOWN path), hierarchy production
+  wired (era⊃month⊃day, parent-before-child INSERT...RETURNING, two independent id maps),
+  PK-R-1 serving gates (deriveResolutionDisclosure, is_timing_window, context_only facet +
+  honest legacy-NULL inference), 24 new TS tests + extended py tests. Honest gaps disclosed:
+  month/day rows carry NULL term_breakdown/CI; month/day peak is step-midpoint not argmax;
+  no FK on parent_window_id (documented). PARĪKṢAKA dispatched (incl. the judgment call:
+  does a midpoint peak honestly satisfy PK-R-1's day-precision-peak bar as served?).
+- **#1226 (MR-16) fix cycle complete** (e1f67cd92): F1 swallow removed (DB failure propagates
+  to the orchestrator's conservative-incomplete guard; genuine empty still []), F2 real
+  detector (both surviving mutations now RED), advisory hunk-2 hardening applied
+  (_dml_target_table_or_raise — dissolves the #1221 conflict resolution question). Same
+  verifier resumed for re-verdict.
+- **THIRD shared-stash incident** (MR-11 builder, interleaved with MR-16's stash ops; recovered
+  with test-suite parity verified). The rule is now confirmed three ways: NO git stash in this
+  repo's multi-worktree setup — goes in the close report as a standing operational rule and
+  will be flagged to SAMPŪRTI in the handoff.
+- Merge-train plan (all remaining PRs touch the same writer): #1226 (on re-verdict PASS) →
+  MR-12 builder rebases #1225 → merge → #1228 (on verdict PASS, rebase) → #1229 (on verdict
+  PASS, rebase). Each rebase done by its own builder; conflicts resolved semantically
+  (dynamic discovery + chains + structured suppression_state + hierarchy all compose; the
+  ENGINE_VERSION v3.1 identical edit auto-merges).
+
+NEXT-ACTION: drive the merge train to completion → R2 (pinned gate packet, deploy GREEN,
+orchestrator-driven resonance rebuild incl. business_launch, ONE override window clearing
+stale interval rows per PK-R-7(iv), refit, w45 Stage C for MR-32).
