@@ -2842,3 +2842,33 @@ idempotent delete-then-insert design held throughout; the corpus is complete and
 NEXT-ACTION: launch Abhinandan (1c826d5a) with the promotion-fixed driver, single-process
 verified first. Then Phase D full evidence pack (both charts) → E delta-rerun → F refit+w45
 (MR-32) → G IR-9 λ evidence.
+
+## 2026-08-12 ~07:4x IST — ABHINANDAN CORPUS REBUILD COMPLETE (data); third driver bug found+fixed same session
+
+CONDUCTOR-HEARTBEAT: 2026-08-12T02:10:00Z pid=94797 host=Montys-MacBook-Pro.111local
+
+**Abhinandan (1c826d5a) DATA rebuild genuinely COMPLETE**, independently verified: 27/27 classes,
+10/10 decades each, both tables (796 staging / 821 production — same expected staging-vs-prod
+count pattern already seen on native). One real connection-lost event mid-run
+(career_change::g3_2034_2044) — handled correctly by the driver's own retry-with-fresh-
+connection logic, succeeded on attempt 2, no manual intervention needed. This is direct
+production evidence the MR-39 fix + this driver's resilience design both work as intended.
+
+**Third same-session driver bug, found immediately via the fix I'd just written:** the new
+promotion-verification code (added after native's silent-promotion-failure) itself had a bug —
+`row[0]` assumed a tuple result, but `db.connect()`'s row_factory is `dict_row`, so `fetchone()`
+returns a dict and `row[0]` raised `KeyError: 0` on all 3 verification attempts. The driver
+correctly refused to claim an unverified success (exit code 3, explicit honest-failure message)
+rather than repeating native's silent-lie — exactly the behavior the fix was built for, just
+tripped by its own bug on the very next use. Fixed (`row['state']`), re-ran the promotion pass
+(all-skip, since data was already complete) to get an honestly-verified 'lit' state.
+
+**Pattern across this rebuild session, disclosed for R4's close report:** three real defects
+found this session were in the CONDUCTOR's own tooling (process-liveness misdiagnosis; silent
+promotion-write failure; the fix for that having its own row-access bug) — none in the product
+code being rebuilt. Each was caught by direct independent verification against the database
+rather than trusting a log/print statement, which is the exact §N.8 discipline this campaign
+has applied to the product throughout, now demonstrably self-applied.
+
+NEXT-ACTION: confirm Abhinandan promotion pass (task b8i2mhobz) completes with a VERIFIED
+state='lit' this time. Then Phase D full evidence pack, BOTH charts.
