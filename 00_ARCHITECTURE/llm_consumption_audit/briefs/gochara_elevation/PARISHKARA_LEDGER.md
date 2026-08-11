@@ -2300,3 +2300,31 @@ CONDUCTOR-HEARTBEAT: 2026-08-11T14:45:00Z pid=94797 host=Montys-MacBook-Pro.loca
 NEXT-ACTION: drive the merge train to completion → R2 (pinned gate packet, deploy GREEN,
 orchestrator-driven resonance rebuild incl. business_launch, ONE override window clearing
 stale interval rows per PK-R-7(iv), refit, w45 Stage C for MR-32).
+
+## 2026-08-11 ~20:4x IST — #1229 FAIL(4): substantive hierarchy-design findings → PK-R-8 adjudication dispatched
+
+CONDUCTOR-HEARTBEAT: 2026-08-11T15:12:00Z pid=94797 host=Montys-MacBook-Pro.local
+
+**PR #1229 (MR-11 hierarchy) PARĪKṢAKA verdict: FAIL(4).** What held: migration 567 fully
+execute-to-verified (4/4 self-check mutations RED, DOWN path, idempotent); hierarchy mutations
+all RED (incl. the two-id-map cross-table detector); PK-R-1 serving-gate mutations RED; honest
+legacy-NULL inference. What failed:
+- F1 (staleness): branch 4 commits behind integration; removal of find_threshold_crossings
+  import breaks #1224's MR-38 monkeypatches on merge (verified red on trial merge).
+- F2 (SUBSTANTIVE, PK-R-1/§N.7): month-tier "day-precision peak" is a step-MIDPOINT sample
+  stamped with the same peak_basis as a genuine argmax; serving asserts is_timing_window=true
+  for a peak that was never located. Prose disclosure in the PR body ≠ a detector.
+- F3 (SUBSTANTIVE, undisclosed): against the real corpus shape (decade-spanning era windows,
+  threshold inert per PK-R-3) the tiling yields ~226,200 rows/chart (~2,500× today's 89),
+  ~452,400 INSERTs/chart dual-write — undisclosed operational explosion.
+- F3b (adjudication): day tier tiles EVERY calendar day → "every day is a timing window" —
+  PK-R-1's letter satisfied by uniform tiling, its intent (LOCATE windows) defeated.
+- F4: one "pre-existing failure" claim was wrong-baseline (vs main instead of integration) —
+  self-resolves on merge, but the habit produced F1.
+**PK-R-8 dispatched to NATIVE-PRATINIDHI** (opus, fresh): binding hierarchy-production
+semantics — peak-anchored subdivision vs honest-labeled tiling vs deferral; peak_basis
+vocabulary; is_timing_window earning; class scoping; disclosure requirements. Builder round
+follows the ruling (one round, before R2).
+Also noted from the verdict for R2/R4: migration 567 lives in platform/migrations/ while
+sibling gochara migrations 556-566 live in platform/supabase/migrations/ — functionally fine
+(migrate.ts reads both), recorded so the next author doesn't reclaim 567.
