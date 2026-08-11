@@ -473,6 +473,22 @@ version change and no input change correctly skips. AT-PAR: prevents this
 exact silent-no-op class recurring on the NEXT engine/writer change to
 this asset.
 
+**STANDING RULE (native-directed 2026-08-11, recorded here per MR-38 and
+generalized beyond it):** any writer edit that changes the SHAPE of its
+output — a new column populated, a changed value-computation, a new row
+category, anything that alters what a fingerprint-matched re-run would
+otherwise silently skip — MUST bump that writer's version constant (e.g.
+`ENGINE_VERSION`) in the SAME PR as the behavioral change. This is not
+scoped to `ka_gochara_v3_century_materialize.py` or to this campaign: it is
+a standing rule for every FROZEN-orchestrator writer with delta-skip/
+fingerprint-based idempotency (§N.3). A code reviewer (human or PARĪKṢAKA)
+checking a writer PR should treat "output shape changed, version constant
+unchanged" as a blocking finding, the same class as a missing test. This
+generalizes MR-38's specific catch (MR-13/14 changed row shape without
+bumping `ENGINE_VERSION`, caught only by rehearsal luck before it could
+silently no-op the authorized rebuild) into a rule that does not depend on
+rehearsal luck recurring next time.
+
 **MR-39 · `idle_in_transaction_session_timeout=10min` vs long-running
 writer substeps — connection death misreported as environment flakiness.**
 [net-new, found 2026-08-11 during THE authorized gen-3.0 rebuild,

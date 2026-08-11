@@ -1459,3 +1459,39 @@ and MR-24's final battery.
 
 MR-37 register status: register amended in the same push (MR-37 entry marked with this
 disposition; MR STATUS table updated below).
+
+## 2026-08-11 — Two cross-cutting findings filed (native-directed, post-marker, post-MR-37)
+
+**Finding 1 — `idle_in_transaction_session_timeout` fragility, filed to SAMPŪRTI.** Posted to
+`CAMPAIGN_COORDINATION.md` (`campaign-coordination` branch, commit `f10adf9f`), addressed to
+SAMPŪRTI specifically: their P-G1 orchestrator run is exposed to the same MR-39 mechanism
+(heavy `WriterBase` substeps computing for minutes with no DB traffic while the FROZEN
+orchestrator's transaction sits open around each savepoint; any substep exceeding the server's
+10-minute `idle_in_transaction_session_timeout` gets killed and surfaces client-side as a bare
+connection-lost error, not a distinguishable timeout). Flagged the resemblance to their own
+R-COORD-2 root-cause entry ("client-side connection hang after a server-side-successful
+INSERT," ruled out as gochara contention) as worth their own re-check, not asserted as
+identical. Recommendation: raise the timeout for the orchestrator's DB role/session, or add a
+keepalive query inside long pure-compute substeps, or both.
+
+**Finding 2 — ENGINE_VERSION standing rule.** Recorded in
+`MASTER_REMEDIATION_REGISTER_v2_0.md` immediately after MR-38 (its specific catch): any writer
+edit that changes output shape — new column, changed computation, new row category, anything a
+fingerprint-matched re-run would otherwise silently skip — MUST bump that writer's version
+constant in the SAME PR. Generalized beyond `ka_gochara_v3_century_materialize.py` to every
+FROZEN-orchestrator writer with delta-skip/fingerprint idempotency (§N.3). Framed as a
+reviewer-blocking-finding class, not dependent on rehearsal catching it by luck next time (MR-13/14
+was caught only because THE ONE rebuild happened to rehearse against a throwaway DB first).
+
+Both findings non-blocking, filed where they will be seen by their respective owners — per the
+native's explicit instruction, after the marker and after MR-37's disposition, in that order.
+
+**Session summary: all three parts of the native's standing instruction complete.**
+1. MR-24 final battery re-run: PASS (with MR-40 caught+fixed live). W6-COMPLETE posted.
+2. MR-37 disposition: (a) gate fixed + regression suite (PR #1217), (b) 107-row staging
+   restamp confirmed clean via real execution, (c) standing rule recorded. CLOSED.
+3. Two cross-cutting findings filed: SAMPŪRTI timeout finding (coordination file), ENGINE_VERSION
+   standing rule (register).
+Open, non-blocking, named residuals carried forward: MR-38's own GATE (synthetic version-bump
+test, not yet written), MR-39's own GATE (synthetic long-substep test, not yet written), PR
+#1216 (MR-40) and PR #1217 (MR-37) both open against `parishkara/integration`, not yet merged.
