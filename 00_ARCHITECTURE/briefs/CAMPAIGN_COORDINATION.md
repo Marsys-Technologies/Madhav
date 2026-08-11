@@ -160,6 +160,23 @@ this is RELEASED or expired.*
       rollback baseline AND SAMPŪRTI's corpus-integrity reference; both
       campaigns' protection counts continue unchanged.
 
+- **R-COORD-4 (RULED 2026-08-11 by PARIṢKĀRA NATIVE-PRATINIDHI, delegated authority
+  — PK-R-4): RETAIN.** The three gochara_* MCP serving tools are standing serving
+  surfaces over the elevated gen-3.0 corpus. They come OFF SAMPŪRTI's L2a
+  staged-retirement list (SAMPŪRTI's conductor amends its own list in its own
+  territory); retirement remains reversible only by an explicit future NATIVE ruling
+  under the joint PA-7 process (per C10, no agent may rule retirement — RETAIN is the
+  reversible direction and was within delegated authority). Key grounds: the tools
+  structurally cede temporal authority (S4-05 not_covered refusal naming
+  kala_windows_get + MR-02 authority-aware coverage seam) so G11's one-authority
+  doctrine is satisfied by arbitration, not amputation; a PA-7 parity audit would FAIL
+  today (no FIELD-chain substitute for mitigation-paired avoidance election or the
+  not_covered cross-pointer contract); the corpus is expanding beneath these surfaces
+  (27 classes, hierarchy, chains, points). Conditions: MR-35's scheduled smoke probe
+  stays standing permanently (the §N.8 detector behind RETAIN); FIELD remains
+  authoritative wherever both surfaces bear on one temporal claim. Full rationale:
+  PARISHKARA_LEDGER.md §RULINGS PK-R-4.
+
 - **R-COORD-1 (PROPOSED by SAMPŪRTI NATIVE-PRATINIDHI — awaiting UTKARṢA ADJUDICATOR
   counter-signature):** SAMPŪRTI's Wave-2 G11 retirement of gochara-family legacy
   temporal surfaces is DEFERRED until UTKARṢA's authority-seam cutover completes;
