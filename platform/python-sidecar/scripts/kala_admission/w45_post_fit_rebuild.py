@@ -15,7 +15,9 @@ and stored them in gochara_v3_calibration, this script:
   Stage B -- Calibration state stamper: UPDATE kala_gochara_windows_v2 SET
              calibration_state = 'empirically_calibrated' for rows belonging
              to either chart, era_slice_key LIKE 'g3_%', and currently at
-             'structural_prior'. §N.8: only executes when real fit rows exist.
+             'structural_prior'. §N.8: only executes when EARNED fit signal
+             exists (non-zero weight from an engine-wired mechanism, MR-37) —
+             a gochara_v3_calibration row merely existing is not sufficient.
 
   Stage C -- Prospective ledger seeding: top 20 forward g3 windows per chart
              (window_end >= today, signed_intensity DESC) → brahma_prospective_ledger
@@ -31,8 +33,16 @@ HONESTY CONSTRAINTS
 I2: ZERO imports from gochara_grammar/*, gochara_intensity/*, ka_gochara_sweep/*.
 I4: Empty gochara_v3_calibration → weights all 0.0, no fabrication.
 §N.4: Never edit applied migrations (migration 561 already exists — not touched).
-§N.8: calibration_state stamping only when at least one fit row exists for the
-      chart's era slice in gochara_v3_calibration.
+§N.8: calibration_state stamping only when at least one EARNED fit signal exists
+      — a genuinely non-zero weight from a toggle_key whose mechanism is actually
+      wired into engine.py's production path (MECHANISM_ENGINE_WIRED, w44). A
+      gochara_v3_calibration ROW existing is NOT earned signal by itself: w44
+      writes a row for every admitted toggle_key regardless of method, including
+      the honest mechanism_not_wired/ablation_not_computable zero-delta cases
+      (PARIṢKĀRA MR-37, 2026-08-11 — the original gate checked row presence
+      only and would have stamped 120 staging rows 'empirically_calibrated' off
+      an all-zero, all-not-wired fit; confirmed live: it already had, once, on
+      107 pre-existing staging rows before this fix).
 
 MODEL POLICY: builder (sonnet). Never spawns opus.
 
@@ -58,6 +68,12 @@ from datetime import date, datetime, timezone
 from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
+
+# PARIṢKĀRA MR-37 fix: the earned-signal gate needs to know which mechanisms
+# are actually wired into engine.py's production path (w44's own registry —
+# all 10 admitted mechanisms are False today). A toggle_key not present here
+# defaults wired=True, matching w44's own `.get(key, True)` convention.
+from kala_admission.w44_weight_fitting import MECHANISM_ENGINE_WIRED  # noqa: E402
 
 # ── Chart IDs ────────────────────────────────────────────────────────────────
 
@@ -115,19 +131,31 @@ MODEL_TAG = "gochara_v3_w45_builder"
 # Stage A — Load fitted weights
 # ═══════════════════════════════════════════════════════════════════════════
 
-def load_fitted_weights(conn: Any) -> tuple[dict[str, float], list[str], Optional[str]]:
+def load_fitted_weights(
+    conn: Any,
+) -> tuple[dict[str, float], list[str], Optional[str], list[str]]:
     """Load fitted weights from gochara_v3_calibration.
 
     For each toggle_key in ADMITTED_MECHANISM_IDS, SELECT the row with the
     highest fitted_at. Missing toggle_key → honest 0.0 (I4).
 
     Returns:
-        fitted_weights  dict[toggle_key, weight_value]  (all 10 keys present)
-        fit_run_ids     list of distinct fit_run_id UUIDs used (as strings)
-        dataset_hash    dataset_hash from the latest fit run, or None
+        fitted_weights      dict[toggle_key, weight_value]  (all 10 keys present)
+        fit_run_ids         list of distinct fit_run_id UUIDs seen (row EXISTS —
+                             reporting/audit only, NOT the §N.8 stamping gate)
+        dataset_hash        dataset_hash from the latest fit run, or None
+        earned_fit_run_ids  PARIṢKĀRA MR-37: subset of fit_run_ids that back at
+                             least one toggle_key with BOTH a genuinely non-zero
+                             weight AND MECHANISM_ENGINE_WIRED[toggle_key]=True —
+                             the actual §N.8 gate input for Stage B. A row
+                             existing (fit_run_ids) is necessary but NOT
+                             sufficient; w44 writes a row for every admitted
+                             toggle_key even on an honest all-zero
+                             mechanism_not_wired fit.
     """
     fitted_weights: dict[str, float] = {tk: 0.0 for tk in ADMITTED_MECHANISM_IDS}
     fit_run_ids_seen: list[str] = []
+    earned_fit_run_ids: list[str] = []
     dataset_hash: Optional[str] = None
 
     for toggle_key in sorted(ADMITTED_MECHANISM_IDS):
@@ -176,16 +204,34 @@ def load_fitted_weights(conn: Any) -> tuple[dict[str, float], list[str], Optiona
         if fit_run_id and fit_run_id not in fit_run_ids_seen:
             fit_run_ids_seen.append(fit_run_id)
 
+        # PARIṢKĀRA MR-37: earned signal requires BOTH a genuinely non-zero
+        # weight AND an engine-wired mechanism — row existence alone (the old
+        # gate's only check) is not earned signal. A toggle_key absent from
+        # MECHANISM_ENGINE_WIRED defaults wired=True (matches w44's own
+        # convention), so this only ever WITHHOLDS stamping for a mechanism
+        # positively confirmed dormant, never over-withholds for an unknown one.
+        is_wired = MECHANISM_ENGINE_WIRED.get(toggle_key, True)
+        if is_wired and fitted_weights[toggle_key] > 0.0:
+            if fit_run_id and fit_run_id not in earned_fit_run_ids:
+                earned_fit_run_ids.append(fit_run_id)
+        else:
+            logger.debug(
+                "[w45] Stage A: toggle_key=%s NOT earned (wired=%s, weight=%.6f) "
+                "— excluded from the §N.8 stamping gate.",
+                toggle_key, is_wired, fitted_weights[toggle_key],
+            )
+
         # Capture dataset_hash from the latest fit_provenance we encounter.
         if dataset_hash is None and isinstance(fit_prov, dict):
             dataset_hash = fit_prov.get("dataset_hash")
 
     logger.info(
-        "[w45] Stage A: loaded %d fitted weights; fit_run_ids=%s",
+        "[w45] Stage A: loaded %d fitted weights; fit_run_ids=%s; earned_fit_run_ids=%s",
         sum(1 for v in fitted_weights.values() if v > 0.0),
         fit_run_ids_seen,
+        earned_fit_run_ids,
     )
-    return fitted_weights, fit_run_ids_seen, dataset_hash
+    return fitted_weights, fit_run_ids_seen, dataset_hash, earned_fit_run_ids
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -200,16 +246,27 @@ def stamp_empirically_calibrated(conn: Any, fit_run_ids: list[str]) -> int:
       AND era_slice_key LIKE 'g3_%'
       AND calibration_state = 'structural_prior'
 
-    §N.8 gate: only executes when at least one fit row exists (fit_run_ids is
-    non-empty). If no fitted weights were found, returns 0 with a warning —
-    never stamps 'empirically_calibrated' for rows whose weights have not been
-    computed.
+    §N.8 gate: only executes when at least one EARNED fit signal exists (the
+    caller MUST pass `earned_fit_run_ids` from `load_fitted_weights`, NOT the
+    raw row-existence `fit_run_ids` — PARIṢKĀRA MR-37: a gochara_v3_calibration
+    row existing for a toggle_key is not itself earned signal, since w44 writes
+    one for every admitted mechanism regardless of method, including honest
+    all-zero mechanism_not_wired fits). The parameter is still named
+    `fit_run_ids` for call-site brevity, but semantically it must already be
+    signal-filtered before it reaches this function — this function's own gate
+    (`if not fit_run_ids`) only checks non-emptiness, not earned-ness; earned-
+    ness is the caller's responsibility (build_post_fit_report), by design,
+    per the test suite's own `test_n8_gate_is_inside_stamp_function_not_caller`
+    — the EMPTINESS check lives here, the EARNED-SIGNAL filtering lives in
+    Stage A. If no earned signal was found, returns 0 with a warning — never
+    stamps 'empirically_calibrated' for rows whose weights have not been
+    computed by an engine-wired mechanism.
 
     Returns count of rows updated.
     """
     if not fit_run_ids:
         logger.warning(
-            "[w45] Stage B: NO fit_run_ids found in %s — "
+            "[w45] Stage B: NO earned fit signal in %s — "
             "calibration_state stamping skipped (§N.8: no earned signal).",
             TABLE_CALIBRATION,
         )
@@ -436,13 +493,15 @@ def build_post_fit_report(conn: Any) -> dict:
 
     Returns dict with keys:
       harness, wave, fitted_weights, rows_stamped_empirically_calibrated,
-      prospective_rows_seeded, fit_run_ids_used, dataset_hash_linked
+      prospective_rows_seeded, fit_run_ids_used, earned_fit_run_ids_used,
+      dataset_hash_linked
     """
     # Stage A: load fitted weights.
-    fitted_weights, fit_run_ids, dataset_hash = load_fitted_weights(conn)
+    fitted_weights, fit_run_ids, dataset_hash, earned_fit_run_ids = load_fitted_weights(conn)
 
-    # Stage B: stamp empirically_calibrated (§N.8 gate inside the function).
-    rows_stamped = stamp_empirically_calibrated(conn, fit_run_ids)
+    # Stage B: stamp empirically_calibrated (§N.8 gate: PARIṢKĀRA MR-37 —
+    # pass the EARNED subset, not the raw row-existence fit_run_ids).
+    rows_stamped = stamp_empirically_calibrated(conn, earned_fit_run_ids)
 
     # Stage C: seed prospective ledger.
     rows_seeded = seed_prospective_ledger(conn)
@@ -455,6 +514,7 @@ def build_post_fit_report(conn: Any) -> dict:
         "rows_stamped_empirically_calibrated": rows_stamped,
         "prospective_rows_seeded": rows_seeded,
         "fit_run_ids_used": fit_run_ids,
+        "earned_fit_run_ids_used": earned_fit_run_ids,
         "dataset_hash_linked": dataset_hash,
     }
     return report

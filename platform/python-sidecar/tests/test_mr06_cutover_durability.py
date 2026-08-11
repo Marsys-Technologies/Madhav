@@ -17,7 +17,8 @@ REMEDIATION (what MR-06 implements):
      - ka_gochara_sweep: catalog_status='RETIRED', is_active=false
      - ka_gochara_v2_materialize: removed from seed
      - ka_gochara: catalog_status='CURRENT', is_active=true, storage_type='postgres_table',
-       target_table='kala_gochara_windows_v2', generation='3.0' count_sql
+       target_table='kala_gochara_windows', generation='3.0' count_sql
+       (PARIṢKĀRA MR-40, 2026-08-11: corrected from 'kala_gochara_windows_v2' — see note below)
   2. The ON-CONFLICT UPDATE clause in asset_registry_seed.ts guards against
      resurrecting a RETIRED asset: it does NOT overwrite catalog_status when
      the existing row is already RETIRED.
@@ -29,13 +30,27 @@ WHAT THESE TESTS VERIFY (all offline/static, no DB required):
   1. Seed ka_gochara_sweep entry declares catalog_status='RETIRED' and is_active=false.
   2. Seed does NOT contain an asset_id='ka_gochara_v2_materialize' entry.
   3. Seed ka_gochara entry is post-cutover: storage_type='postgres_table',
-     target_table='kala_gochara_windows_v2', count_sql references generation='3.0'.
+     target_table='kala_gochara_windows', count_sql references generation='3.0'
+     against that same table.
   4. The ON-CONFLICT UPDATE clause in asset_registry_seed.ts does NOT overwrite
      catalog_status unconditionally — it guards RETIRED rows.
   5. Migration 566 exists and contains a BEFORE DELETE trigger body that raises
      on generation='3.0' rows for protected charts.
   6. Mutation test: removing the CONFLICT guard text from the seed's update clause
      makes the guard-test fail (proves the guard test is not trivially passing).
+
+PARIṢKĀRA MR-40 correction (2026-08-11): test 3 originally asserted
+target_table='kala_gochara_windows_v2' — correct for W6.4's own cutover
+moment, but silently orphaned by a LATER, separate architecture change: the
+writer's own W5.4 UTK-R1 ADJUDICATOR repoint moved PRODUCTION authority to
+kala_gochara_windows generation='3.0' (kala_gochara_windows_v2 became a
+calibration/staging copy only, generation='g3_utkarsha'). This test locking
+in the pre-repoint value is exactly how MR-40's cockpit bug went
+undetected: the seed's count_sql/target_table were correct once, then wrong
+after a change nobody re-checked this test against. Updated to the
+post-repoint truth; see MR-40 in MASTER_REMEDIATION_REGISTER_v2_0.md for
+the full incident and PARISHKARA_LEDGER.md's "MR-24 FINAL RE-RUN" entry for
+live evidence (89/85 real rows, cockpit read 0 pre-fix).
 """
 from __future__ import annotations
 
@@ -155,10 +170,15 @@ def test_seed_ka_gochara_v2_materialize_absent():
 def test_seed_ka_gochara_is_post_cutover_materializer():
     """ka_gochara seed entry must reflect post-cutover per-chart materializer identity.
 
-    Post-cutover (W6.4, migration 563):
+    Post-cutover (W6.4, migration 563) AND post-W5.4-UTK-R1-repoint (MR-40,
+    2026-08-11 — see module docstring for the incident this test's own prior
+    version contributed to):
       - storage_type: 'postgres_table' (was 'service')
-      - target_table: 'kala_gochara_windows_v2' (was null)
-      - count_sql references generation='3.0' (authoritative generation)
+      - target_table: 'kala_gochara_windows' (the PRODUCTION authority surface
+        per the writer's W5.4 UTK-R1 repoint — NOT 'kala_gochara_windows_v2',
+        which is a calibration/staging copy only, generation='g3_utkarsha')
+      - count_sql references generation='3.0' AGAINST kala_gochara_windows
+        (the authoritative generation on the authoritative table)
       - scope: 'per_chart' (was 'global')
       - catalog_status: 'CURRENT'
       - is_active: true
@@ -175,15 +195,31 @@ def test_seed_ka_gochara_is_post_cutover_materializer():
         "ka_gochara seed entry must have storage_type: 'postgres_table' post-cutover "
         f"(found block: {block[:400]!r})"
     )
-    # Must target kala_gochara_windows_v2
-    assert re.search(r"target_table\s*:\s*['\"]kala_gochara_windows_v2['\"]", block), (
-        "ka_gochara seed entry must have target_table: 'kala_gochara_windows_v2' "
+    # Must target kala_gochara_windows (the production authority surface,
+    # MR-40) -- NOT kala_gochara_windows_v2, the calibration/staging copy.
+    assert re.search(r"target_table\s*:\s*['\"]kala_gochara_windows['\"]", block), (
+        "ka_gochara seed entry must have target_table: 'kala_gochara_windows' "
+        "(the W5.4 UTK-R1 production authority surface — MR-40) "
         f"(found block: {block[:400]!r})"
+    )
+    # Must NOT target the calibration/staging copy — this is the exact MR-40
+    # regression: a count_sql that reads kala_gochara_windows_v2 with
+    # generation='3.0' silently counts zero forever (that table never
+    # carries generation='3.0', only '2.0'/'g3_utkarsha').
+    assert not re.search(r"target_table\s*:\s*['\"]kala_gochara_windows_v2['\"]", block), (
+        "ka_gochara seed entry must NOT target kala_gochara_windows_v2 "
+        "(MR-40 regression: that table is calibration/staging only, never "
+        f"carries generation='3.0') (found block: {block[:400]!r})"
     )
     # count_sql must reference generation='3.0' (the authoritative generation)
     assert re.search(r"count_sql\s*:.*generation.*3\.0", block, re.DOTALL), (
         "ka_gochara seed count_sql must reference generation='3.0' "
         f"(found block: {block[:400]!r})"
+    )
+    # count_sql must query kala_gochara_windows, not the _v2 staging copy.
+    assert re.search(r"count_sql\s*:\s*[\"'].*FROM kala_gochara_windows\s", block), (
+        "ka_gochara seed count_sql must SELECT FROM kala_gochara_windows "
+        f"(the production authority table, not _v2) (found block: {block[:400]!r})"
     )
     # Must be per_chart scope
     assert re.search(r"scope\s*:\s*['\"]per_chart['\"]", block), (
