@@ -154,11 +154,51 @@ serving surfaces should apply it now regardless of when the hierarchy build
 lands. AT-PAR gate: (a) MET, (b) queued post-yield-window, (c) CLOSED by
 this ruling.
 
-**MR-12 · Produce chain rows (marriage first).** [PG-20a; recon W3.2]
-GAP: "first-ever marriage chain rows" is a stated success criterion; corpus
-has zero chains. REMEDIATION: run the chain producer for chain-canonical
-classes, both charts. GATE: chain rows with milestone_id +
-is_irreversibility_milestone served live. AT-PAR: yes.
+**MR-12 · Produce chain rows (chain-canonical classes; `business_launch`
+first).** [PG-20a; recon W3.2]
+GAP: the served corpus has zero chain rows; the chain producer
+(`services/gochara_v3/interval_solver.score_chain_milestones`) has existed and
+been unit-tested since W3.2 and was never called by any writer.
+**CORRECTION (PK-R-7, 2026-08-11, NATIVE-PRATINIDHI):** this entry's original
+"marriage first" framing is VOID against the binding ontology.
+`brahma_event_ontology` declares `marriage temporal_shape='point'` with no
+`milestone_template` (migration 456, created 2026-07-19 — 22 days *before*
+this campaign's plan was ratified), and its shape-data-consistency CHECK
+forbids a chain-shaped row without a ≥2-entry template; migration 460
+(BRIEF_D5 §3, BINDING) requires a served row's shape to mirror the ontology's.
+Marriage chains were unsatisfiable at the moment W3.2 was authored. The
+ontology is the authority; the brief line is the error.
+REMEDIATION, in order: (1) code wiring of the chain producer into
+`ka_gochara_v3_century_materialize` — merged, PR #1225; (2) a production
+`ka_gochara_resonance` run extending `gochara_resonance_map` to ≥1
+chain-canonical class, `business_launch` first (3-milestone template
+decision → registration → first_revenue, irreversibility='first_revenue',
+BRIEF_D4A Lane A-2's worked example) — today that map covers only the
+original 6 classes, business_launch=0; (3) a materializer re-run, both charts.
+**GATE (all clauses, on production rows only — synthetic/test fixtures count
+for nothing):** (i) `kala_gochara_windows` generation '3.0' serves >0 rows
+for ≥1 chain-canonical event_class, ≥2 rows per activation episode; (ii)
+every such row carries non-null milestone_id drawn from that class's
+ontology milestone_template, and is_irreversibility_milestone=true on exactly
+the ontology's declared irreversibility milestone and no other; (iii) both
+gochara_forecast_get and gochara_election_avoidance_get return those two
+fields on a live call; (iv) **shape fidelity holds in both directions:**
+every served gen-3.0 row's temporal_shape equals its class's ontology
+temporal_shape — in particular ZERO interval-shaped rows for point-canonical
+classes (as of 2026-08-11 there are 20 each for marriage,
+career_advancement, illness_acute, surgery; §N.3 delete-then-insert must
+clear them, not accrete around them); (v) marriage produces NO chain rows
+and is not part of this gate.
+**HONEST-GAP (carried, never closable by any agent):** "first-ever marriage
+chain rows." Cause: ontology authority — marriage is point-canonical by
+declaration and CHECK constraint. Trigger: a native-authorized
+brahma_event_ontology v2 declaring marriage chain-canonical with a real
+≥2-entry milestone template, conditioned (per the ontology's own note) on
+per-milestone marriage dates becoming available in the LEL — verified unmet
+2026-08-11 (live life_events: 0 chain-shaped events, 0 relationship-category
+milestone rows). Both enabling acts are native-only (LEL content per C10;
+ontology amendment per B.8/§L).
+AT-PAR: yes — mechanism at par, marriage scope honestly reduced and disclosed.
 
 **MR-13 · Honest valence + honest calibration tier on every row.** [PG-4,
 PG-5; recon F#1] GAP: all rows 'favourable' (incl. illness/surgery) +

@@ -21,7 +21,7 @@ marker_duty: post W6-COMPLETE to campaign-coordination §6 after MR-01..08,10,13
 | MR-09 | Naming coherence + health + pointers | MERGED | PR #1197 MERGED · PARĪKṢAKA PASS: GocharaTransitService rename (alias kept), health probe JD-sanity check, discoverability guard, ph_muhurta docstring correct, 17 tests verified |
 | MR-10 | Promote 54 point rows | CLOSED | PR #1215 (code lanes, no promotion logic needed — points already existed in staging) + THE authorized rebuild (2026-08-11 ~14:3x IST): 54 point rows promoted (29 native + 25 Abhinandan), generation='3.0' evidenced decision, protection inherited (seeded DELETE refused on a promoted row) |
 | MR-11 | Resolution bar + hierarchy windows | (a) MET, (c) RULED (PK-R-1), (b) BLOCKED (yield window) | PK-R-1 2026-08-11: month-resolution+day-peak OR dated point = minimum "window"; decade-era rows are context only. (a) confirmed live (54 point rows). (b) build queued post-yield-window. |
-| MR-12 | Chain rows (marriage first) | QUEUED | — |
+| MR-12 | Chain rows (chain-canonical; business_launch first per PK-R-7) | CODE MERGED-PENDING (PR #1225, verdict in flight); BUILD in R2 | PK-R-7: marriage-first VOID (ontology authority, brief erratum); gate re-scoped anti-vacuous incl. shape-fidelity clause (iv) — R2 must clear 80 stale interval rows for point-canonical classes |
 | MR-13 | Honest valence + calibration tier restamp | CLOSED | PR #1211 (code fix) + THE authorized rebuild: live gen-3.0 rows now zero 'favourable', zero 'empirically_calibrated', both charts, evidence pasted in ledger 2026-08-11 ~14:3x IST entry |
 | MR-14 | term_breakdown → rebuild → refit | CLOSED (honest structural_prior branch) | PR #1213+#1214 (code) + THE authorized rebuild: term_breakdown populated 120/120 interval rows both charts; real W4.4 fit run, honest mechanism_not_wired for all 10 admitted mechanisms (not fabricated proxy_fraction) — per MR-14-matching's finding the mechanisms are genuinely dormant. Spawned MR-37 (w45 stamping-gate defect) + MR-38 (ENGINE_VERSION gap) as new register items |
 | MR-15 | AV gating contributes (bhava_num) | CLOSED | PR #1212 (code fix, bhava_num→house_from_moon) + THE authorized rebuild: zero AV_GATE_DEGRADED notes across all 120 rebuilt substeps, both charts |
@@ -107,6 +107,24 @@ fold detection into tap6-method-audit as step 1 (no needs, no skip path). 3 advi
 fail-safe defaulting relevant=true, --no-renames, re-gate the two non-required jobs for CI
 economy). Routed to the builder; re-verification = the PR's own CI re-run (it touches
 .github/workflows/** so it exercises the relevant=true path for real).
+
+**PK-R-7 (NATIVE-PRATINIDHI, 2026-08-11 ~19:1x IST) — MR-12 marriage-chain divergence:
+ACCEPT-DIVERGENCE-AS-CORRECT, gate re-scoped with two binding additions.** The builder was
+right to refuse a marriage chain (ontology declares marriage point-shaped, CHECK-enforced,
+mig-456 created 2026-07-19 — 22 days BEFORE the campaign plan; the brief line is the error,
+graded UNSATISFIABLE-AS-WRITTEN, not a campaign shortfall). Additions the plain acceptance
+missed: (1) anti-vacuous gate — chain rows must exist in PRODUCTION (>0 rows, ≥2 per episode,
+milestone_id from the ontology template, irreversibility exactly as declared, served by both
+tools) with the ka_gochara_resonance business_launch extension as a named precondition; a
+green gate over zero rows is the §N.8 defect class. (2) Shape-fidelity BOTH directions: live
+gen-3.0 corpus currently violates BRIEF_D5 §3 with 20 interval-shaped rows EACH for marriage/
+career_advancement/illness_acute/surgery (all point-canonical) — R2's delete-then-insert must
+clear them. Marriage HONEST-GAP carried with native-only trigger (ontology v2 + LEL milestone
+dates, both barred to agents per C10/B.8). R3 scores "chains exist" only against production
+rows; the synthetic marriage fixture counts for nothing. R2 spine BOUND: resonance (incl.
+business_launch) BEFORE materializer; full replace so clause (iv) holds. Register MR-12 entry
+replaced with the ruling's exact text. Also recommends: master brief W3.2 line corrected in
+place at campaign close (erratum annotation).
 
 ## LOG
 - 2026-08-10 ~19:5x IST (native's desk): campaign home created — register
