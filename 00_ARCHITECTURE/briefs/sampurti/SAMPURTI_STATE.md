@@ -805,3 +805,5 @@ CONDUCTOR-HEARTBEAT: 2026-08-12T04:08+05:30 pid=CONDUCTOR [R0 COMPLETE — gate 
 CONDUCTOR-HEARTBEAT: 2026-08-12T04:15+05:30 pid=CONDUCTOR [R1 — Run 12 dispatched (43a038b2). Orchestrator launching now.]
 
 CONDUCTOR-HEARTBEAT: 2026-08-11T23:08+05:30 pid=25269 [R1 Run 12 — substep 92/534, stage4 field, 566k rows, no INSERT storm. PG-31 working. Career_setback LAW ZERO skip correct.]
+
+CONDUCTOR-HEARTBEAT: 2026-08-12T05:02+05:30 pid=CONDUCTOR [R1 Run 12b dispatched (26a44711) via nohup PID=32841. Run 12a (43a038b2) orphan-watchdog fired — background task killed the process; old run marked failed, lock cleared. 12b starting fresh from dormant. Expected completion ~05:20 IST. Stage0 kicking off.]
