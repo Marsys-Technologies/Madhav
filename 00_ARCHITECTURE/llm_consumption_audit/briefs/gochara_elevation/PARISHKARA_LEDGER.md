@@ -2970,3 +2970,23 @@ NEXT-ACTION: on Abhinandan Phase E completion, confirm the same PASS pattern (ch
 On MR-47 builder completion, review its branch, merge if the TDD+detector evidence is real and
 verified. Then proceed to Phase F (W4.4 refit + w45 post-fit, MR-32 Stage C) → Phase G (IR-9 λ
 evidence) → R3 (master-brief conformance battery) → R4 (final close-out + MR-29 re-close seal).
+
+## 2026-08-12 ~04:1x IST — governance note: parishkara/campaign confirmed documentation-only, not code
+
+MR-47's first builder dispatch correctly refused to fabricate code against `parishkara/campaign`
+after discovering that branch carries NO gochara-writer code at all (`ka_gochara_v3_century_
+materialize.py` absent; `register_gochara_windows.ts` present only as a stale 1112-line pre-R8
+copy with no `deriveResolutionDisclosure`; highest migration 546 vs main's 568) — 178 commits
+ahead / 53 behind `origin/main`, no common recent ancestor. Verified directly: `pk-r2rebuild`
+(where this session did all its live PK-R-10 code verification) IS an ancestor of current
+`origin/main` (fetched HEAD `d1dd5dd2b`, moved past an earlier `68d1364ce` the builder first saw
+— other campaigns land on main independently, expected) and DOES carry the real writer file,
+`register_gochara_windows.ts` at 1877 lines with `deriveResolutionDisclosure` exactly as cited,
+and migrations through 568. **Conclusion: `parishkara/campaign` is, and has been all session,
+a documentation-only governance branch (this register + ledger) — every actual code fix this
+campaign has produced (MR-44, MR-45, the C4 corpus rebuild, migration 568) was built and merged
+via SEPARATE branches directly against `origin/main`, never accumulated onto `campaign`.** This
+is the established, correct pattern, not a defect — but it means the register/ledger's own prose
+is the authoritative SPEC for a code task, never a stand-in for the code tree itself, and a
+builder must always be pointed at `origin/main` (or a fresh integration point off it) for any
+code change, never at `campaign`. Corrected instruction sent to the MR-47 builder; re-running now.
