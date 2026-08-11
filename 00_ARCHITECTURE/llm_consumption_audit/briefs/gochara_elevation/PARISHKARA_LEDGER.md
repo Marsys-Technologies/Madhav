@@ -2466,3 +2466,19 @@ CONDUCTOR-HEARTBEAT: 2026-08-11T18:55:00Z pid=94797 host=Montys-MacBook-Pro.loca
   F-6 (branch stale again post-#1228). Fix round routed (F-1/2/3/5/6 now; chain treatment on
   PK-R-8a). Also verified clean: migration 567 never edited post-apply-verification; count_sql
   untouched; both MR-12 composition bug fixes real.
+
+## 2026-08-12 ~01:0x IST — PK-R-8a implemented; #1229 final confirmation dispatched
+
+CONDUCTOR-HEARTBEAT: 2026-08-11T19:35:00Z pid=94797 host=Montys-MacBook-Pro.local
+
+PK-R-8a recorded in register (chain rows: ONTOLOGY_MILESTONE_OFFSET basis "declared not
+located", resolution NULL/'not_hierarchy_classified', three-clause is_timing_window with real
+negative paths keyed to milestone_id, chain short-circuit before span inference, H10 battery
+clause with H5/H6 scoped to exclude chains). #1229 builder implemented ALL fixes (F-1 honest
+eval bound ~887 vs old 15,521 — re-sweep mutation now RED; F-2 exact-equality + refinement
+call-spy — vacuous tolerance killed; F-3 full accounting detector + both missing zero-reasons
+asserted; F-5 corrected disclosure 33/29/2 + the zero-interval-timing-windows interim
+consequence; F-6 merge composed with MR-42 incl. a criss-crossed 458-line diff3 block spliced
+correctly) + PK-R-8a's six detectors, all mutation-verified RED/GREEN by the builder.
+MERGEABLE. Final focused PARĪKṢAKA confirmation dispatched (re-runs its own three killing
+mutations + PK-R-8a spots). This is the LAST lane before R2.
