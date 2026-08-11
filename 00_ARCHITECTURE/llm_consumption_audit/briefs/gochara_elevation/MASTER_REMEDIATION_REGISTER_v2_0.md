@@ -763,6 +763,38 @@ are producible (fired counts may honestly remain low — rarity is not a
 defect). AT-PAR: the founding v1 pathology (suppression that can never fire)
 is actually killed, not just measured.
 
+**PK-R-9 (NATIVE-PRATINIDHI, 2026-08-11) — MR-41 execution corrections, BINDING
+(amends this entry's own REMEDIATION):** the register's premise ("the real vedha
+corpus is bg_transit_vedha") was INCOMPLETE — two corpora exist and
+`bg_transit_rules WHERE rule_type='favourable' AND vedha_house IS NOT NULL`
+(41 rows, migration-tracked, per-row citations, already read by the production
+ka_vedha_gochara writer feeding v3's quality_gates) is AUTHORITATIVE; the
+original defect was the PREDICATE (rule_type='vedha', 0 rows ever), not the
+table. Q1: revert the bg_transit_vedha repoint, fix the predicate, delete the
+vocabulary adapter; bg_transit_vedha = RETIRED-IN-PLACE non-authoritative
+(governance_note on its serving surface; 4 Venus disagreements + 8 missing
+rows routed as an open L0 reconciliation item — deliberately NOT adjudicated
+without a classical corpus read). Q2: the vedha table is MOON-referenced;
+gochara_vedha_pair currently consumes LAGNA-framed targets (fixed 10-sign
+error for the native) and a wrong-frame pair can RAISE λ (uncancelled pairs
+count as activity) — the Moon conversion is a dedicated follow-on lane
+(consuming ka_vedha_gochara/logic.py's house_from_moon); until then the
+primitive returns an EARNED empty (gated on absent moon_sign_idx with a
+recorded reason naming the frame gap + the lane id). Q3 split: ADMIT
+nakshatra_ingress_tara to v3 activity (cited, ephemeris-only; λ shift named
+in R2 evidence with the flat orb_decay=0.5 default disclosed); GATE OUT
+sarvatobhadra_vedha (unconditionally uncited_extension, grid corpus empty,
+algorithmic-approximation only) until grid seeding + a future admission
+ruling; correct the two false comment blocks (the lane DOES change λ_v3 via
+tara; gochara_vedha_pair is conn=None-unreachable on v3, not
+parity-mode-gated). Q4: GRAMMAR_VERSION → "v1_mr41_2026_08" (exact string)
+after the code lands — the v2 surface's delta-skip otherwise asserts "grammar
+unchanged" forever (MR-38 standing-rule class). Full IR-1..IR-12 with named
+detectors in the conductor session transcript, routed to the builder
+2026-08-11; PARĪKṢAKA re-verdict must check each IR. Also NEW general
+invariant (IR-6 detector): no sentence carrying uncited_extension=True may
+contribute to activity — the class, not the instance.
+
 **MR-42 · v3 interval rows hardcode `suppression_state={}`.** [net-new,
 spawned by PK-R-5, 2026-08-11] GAP: `ka_gochara_v3_century_materialize.py:601`
 writes a literal empty object unconditionally on every interval row — no

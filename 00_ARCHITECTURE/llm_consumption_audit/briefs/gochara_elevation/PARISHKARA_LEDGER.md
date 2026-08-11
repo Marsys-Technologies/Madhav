@@ -2379,3 +2379,18 @@ MR-11 builder as one rework round (rebase first, R8.1-R8.15, F1/F4 mechanical fi
 **#1226 (MR-16): MERGED to parishkara/integration** (final PASS verdict, 3 rounds, all
 findings mutation-closed at head). **#1225 rebase dispatched** to the MR-12 builder (post-#1226
 semantics: keep dynamic discovery + chain wiring; chain rows must also carry coverage_quality).
+
+## 2026-08-11 ~22:0x IST — PK-R-9 RULED (vedha authority + frame + admissions); routed to builder
+
+CONDUCTOR-HEARTBEAT: 2026-08-11T16:40:00Z pid=94797 host=Montys-MacBook-Pro.local
+
+PK-R-9 recorded in the register (MR-41 entry amended in place, full IR-1..12 in transcript +
+builder dispatch). Highlights beyond the verifier's findings: the adjudicator independently
+found gochara_vedha_pair is conn=None-UNREACHABLE on the v3 path (so MR-41(a) is v1/v2-surface
+only — narrows Q3's blast radius); ruled the four Venus row disagreements DELIBERATELY
+unadjudicated (needs a Phaladeepika Ch.26 corpus read — guessing would be the B.10 violation);
+tara ADMITTED to v3 activity / SBC GATED OUT (uncited extension); GRAMMAR_VERSION bump ruled
+with a standing-guard detector (constant must change whenever gochara_grammar/gochara_intensity
+files change in one diff — closes the MR-38 class on the v2 surface). Builder round dispatched
+(IR-1..IR-12 incl. F1's drift-proof pattern-pin conversion for BOTH shifted allowlist entries;
+F6 withdrawn as moot). PARĪKṢAKA re-verdict will check each IR.
