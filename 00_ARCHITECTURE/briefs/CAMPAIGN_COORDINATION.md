@@ -452,3 +452,37 @@ review when picked up. Logged as a named residual in the PARIṢKĀRA ledger.
 Once #1210 merges, PRs #1207 and #1209 will be re-triggered (update-branch or empty commit,
 since the path filter reads each PR's own diffed files — the tap-ci.yml fix alone doesn't
 retroactively make TAP-6 report on their existing heads) so they can finally enter the queue.
+
+### LOG — 2026-08-11 ~05:2x IST (PARIṢKĀRA interactive conductor — MR-13 finding, native ruling on consolidated rebuild)
+
+**Disclosed known-dishonest serving window (native-directed, bounded debt, not silently
+carried):** `kala_gochara_windows` generation='3.0' rows (both canonical charts, 60 rows each,
+120 total) still serve `valence='favourable'` and `calibration_state='empirically_calibrated'`
+— known dishonest, root-caused to an out-of-band raw SQL UPDATE (not any writer in the repo).
+The writer-level fix is merged (PR #1211, `parishkara/mr-13` → `parishkara/integration`) but has
+NOT yet touched these live rows. `term_breakdown` is NULL on all 120. This window closes only
+when the below rebuild runs — full ledger detail in `PARISHKARA_LEDGER.md` (2026-08-11 ~05:2x
+IST entry). v1 corpus (the protected rollback baseline) is verified untouched throughout:
+482012f1=16,297 · 1c826d5a=19,323 · cb73cd3d=2,667 (third chart, informational).
+
+**Native ruling on how this closes:** no standalone restamp. ONE native-authorized,
+single-use, session-scoped `app.allow_protected_sweep_rewrite` override, run AFTER MR-14
+(term_breakdown engine/writer + refit) and MR-15 (AV-gating bhava_num fix) land as code —
+one writer-path rebuild of the gen-3.0 corpus delivers honest valence + honest
+calibration_state + populated term_breakdown + AV gating contribution in a single pass, folding
+in MR-10 (point-row promotion) if the fixed writer already emits point-shaped rows on rebuild
+(separate promotion inside the same window otherwise). The protected corpus (migration 566's
+own trigger — verified working correctly tonight, refused an unauthorized write exactly as
+designed) gets touched once, not three times. Mandatory conditions on that run: GUC
+session-scoped only (never ALTER DATABASE/ROLE), lease held for the window, full pre/post
+evidence pasted in the ledger (counts, valence + calibration_state distributions, term_breakdown
+non-null count, both charts), protection RE-VERIFIED after via a seeded unauthorized DELETE
+that must be refused, v1 corpus counts re-verified unchanged.
+
+Register corrected in place (`MASTER_REMEDIATION_REGISTER_v2_0.md` MR-13 entry): its writer
+pointer was wrong (`ka_gochara.py`, which never touches this table); real writer is
+`ka_gochara_v3_century_materialize.py`.
+
+L-5 lease (corpus repair MR-13→14→15→10) remains ACTIVE, scope unchanged by this update —
+sequencing within it revised to defer all live-corpus writes to the single authorized window
+above rather than per-MR restamps.
