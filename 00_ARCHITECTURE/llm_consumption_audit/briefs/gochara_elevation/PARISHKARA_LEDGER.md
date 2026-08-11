@@ -2244,3 +2244,28 @@ CONDUCTOR-HEARTBEAT: 2026-08-11T13:52:00Z pid=94797 host=Montys-MacBook-Pro.loca
 - **Second shared-stash incident** (MR-41/42 builder popped a foreign kala_views stash,
   recovered cleanly, re-stashed with recovery message). Pattern confirmed: parallel builders in
   one repo's worktrees MUST NOT use git stash — goes in the close report as an operational rule.
+
+## 2026-08-11 ~19:5x IST — #1227 PASS+MERGED; #1226 fix cycle; MR-12 F1 detector proven
+
+CONDUCTOR-HEARTBEAT: 2026-08-11T14:22:00Z pid=94797 host=Montys-MacBook-Pro.local
+
+- **#1227 (MR-23 remainder): PARĪKṢAKA PASS → MERGED to integration** (15 pass/1 skip CI).
+  Verifier re-derived everything: independent physics probe reproduced the 3-window/2-adverse
+  claim; 4/4 mutations killed INCLUDING an engine-level mutation (re-clamping negatives →
+  golden test RED — a real W1.2 direction detector); comparison numbers byte-identical on its
+  own live run (10,620 v1-adverse vs 65 v3-adverse; 13/13 valence agreement on matches); all
+  SIX W0.2 counts re-executed from live asset_registry count_sql — no zeros. **MR-23 now fully
+  CLOSED** (W5.4 earlier + W1.4=PK-R-3 + W1.2/W0.2 this lane). Non-blocking findings recorded:
+  N1 — services/gochara_v3/tests/ (408 tests incl. the new golden test) is collected by NO CI
+  workflow, pre-existing repo-wide gap → named residual for a CI-wiring lane; N2 — v1-side
+  assertions are I2-protection guards, not v1-math discovery (honest scope note); N3 — suite
+  count reconciled in the PR's favour.
+- **W0.2 verdict-level note:** the register GAP text ("honest-zero reason never given")
+  describes a stale state — live production has NO zero counts on any of the six W0.2 assets;
+  closure = the published counts table + this disclosure, not a fabricated reason for a zero
+  that no longer exists.
+- **MR-12 F1 detector: DONE, mutation-proven** (commit 18837dba5 — two-boolean fixture tests
+  go RED (undefined) when the field is dropped from row reconstruction; byte-exact restore
+  verified). #1225 awaiting the post-#1226 rebase only.
+- Residual added: migration 560's english_description ("60 substeps / 6 classes") goes stale
+  when MR-16 lands — needs a future UPDATE migration (never edit an applied migration).
