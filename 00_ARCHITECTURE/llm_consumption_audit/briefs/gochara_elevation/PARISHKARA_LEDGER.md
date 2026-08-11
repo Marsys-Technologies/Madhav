@@ -35,7 +35,7 @@ marker_duty: post W6-COMPLETE to campaign-coordination §6 after MR-01..08,10,13
 | MR-23 | Remaining unrun acceptance artifacts | PARTIAL — W5.4 CLOSED, W1.4 RULED (PK-R-3), W1.2/W0.2 OPEN | W5.4: bug found+fixed, 14/14 pass. W1.4 (PK-R-3): ruled-inert-with-trigger (lambda_thresh=0.0 stays, now a recorded decision with a named trigger condition, not a silent default). W1.2/W0.2 not attempted. |
 | MR-24 | Product-level E2E battery (standing) | CLOSED (FINAL, 2026-08-11 ~09:44 IST re-run against rebuilt corpus supersedes the earlier same-day pre-final-state pass) | Final re-run: 3 tools x 3 charts (482012f1 gen-3.0, 1c826d5a gen-3.0, cb73cd3d v1-authority) all backing_data_reachable=true; valence+calibration facet filters matched honest values; cockpit count_sql found FALSE (MR-40, new bug: cockpit pointed at the wrong table/generation after an undisclosed W5.4 UTK-R1 authority repoint), fixed live + source PR #1216 opened, RE-VERIFIED true (89/85); judgment_query(domain=health) served full gochara_sweep depth (17 windows); rollback+re-flip cycle on the NATIVE chart (482012f1) via committed MR-08 tooling, verified end-to-end live both directions. Full transcript in "MR-24 FINAL RE-RUN" ledger entry below. |
 | MR-25 | Citations resolve in serving | MERGED | PR #1200 MERGED · PARĪKṢAKA PASS (code review): mig-565 correct (14 rows: 4 resolved verified vs corpus, 10 CORPUS_GAP not silenced), B.3 compliant, live gate honestly deferred |
-| MR-26 | Honest amended close report | QUEUED | — |
+| MR-26 | Honest amended close report | CLOSED | GOCHARA_UTKARSHA_CLOSE_REPORT_v1_0.md written 2026-08-11, committed to parishkara/campaign. CURRENT_STATE update correctly requested via coordination file (SAMPŪRTI territory), not applied directly here -- caught before commit, self-corrected. |
 | MR-27 | Prod-sync + deploy discipline | PARTIAL | prod-sync dry-run verified clean (0 pending, migrations 557-563 confirmed applied); PROD_DATABASE_URL root-cause re-confirmed as intermittent flake, no code fix applicable; standing rule recorded. I6(b)/GUC-grep sub-item not investigated (undocumented term, not guessed). See "MR-27" ledger entry. |
 | MR-28 | Five retro adjudications | CLOSED | 2026-08-11, PRATINIDHI delegated authority: W1.4=PK-R-3 (inert-with-trigger); W6.1=honest-deferred (trigger: MR-21 timing data); W6.2 re-issued PASS(AC1+AC2)+AC3 honest-deferred, "CONDITIONAL_PASS" retired as non-vocabulary; W6.4 divergence gap closed by cross-ref to MR-20; 2026-06-26 ruling ruled SUPERSEDED (not violated) by UTK-R1/R2. See "MR-28" ledger entry. |
 | MR-29 | Ledger reconciliation + re-close verdict (LAST) | QUEUED | — |
@@ -1939,3 +1939,20 @@ MR-28 register status: CLOSED — all five adjudications issued (4 by PRATINIDHI
 native as PK-R-3), two (W1.4, W6.1) as honest-deferred-with-trigger rather than forced closures,
 consistent with this campaign's own doctrine that a gated, disclosed deferral is a valid
 terminal state.
+
+## 2026-08-11 — MR-26 CLOSED; territory self-correction on CURRENT_STATE
+
+`GOCHARA_UTKARSHA_CLOSE_REPORT_v1_0.md` written and committed — true wave outcomes, real bugs
+found+fixed this campaign, current verified production state, all rulings issued, and every
+genuinely open item disclosed (nothing hidden). Cross-links the register and ledger as the
+full evidence trail.
+
+**Process note, disclosed honestly:** initially drafted a direct edit to
+`CURRENT_STATE_v1_0.md` §2 to record this session's outcomes — caught before committing that
+this file is explicitly OUT of PARIṢKĀRA's territory per the campaign's own Alignment
+Protocol ("CURRENT_STATE/SESSION_LOG — SAMPŪRTI governance territory — remediation requests
+updates via [the coordination file], SAMPŪRTI's conductor applies them"). Reverted the direct
+edit (never committed) and posted the request to `CAMPAIGN_COORDINATION.md` instead (commit
+`5092dfb9`), per the established protocol. No unauthorized cross-territory write occurred.
+
+MR-26 register status: CLOSED.
