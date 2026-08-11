@@ -102,6 +102,72 @@ BOUNDS_END = date(2022, 6, 1)
 # Documented lower-bound proxy, not a true ablation.
 PROXY_ABLATION_FRACTION = 0.1
 
+# ── Engine-wiring status per admitted mechanism (PARIṢKĀRA MR-14-matching) ────
+#
+# Traced 2026-08-11 against services/gochara_v3/engine.py (the module that
+# ACTUALLY produces term_breakdown/signed_intensity for kala_gochara_windows_v2
+# rows). Records whether the mechanism's own
+# services/gochara_v3/mechanisms/<toggle_key>.py `compute()` is invoked
+# ANYWHERE in that production path.
+#
+# Finding: it is not. This is a DEEPER root cause than "toggle_keys don't
+# literally match term_breakdown's top-level keys" (the prior pass's
+# hypothesis, disproven here) -- the 10 admitted Wave-2 mechanisms are
+# entirely dormant, standalone modules that engine.py never calls, so there
+# is NO key under ANY name in term_breakdown, signed_intensity,
+# permission_detail, or quality_gates_detail that legitimately represents
+# any of their contributions. Evidence:
+#   (a) services/gochara_v3/mechanisms/__init__.py's own module docstring:
+#       "Dormant mechanism modules for Wave 2... NOT wired into engine.py
+#       yet... Admission into the live scoring path requires ablation
+#       evidence and a formal admission ruling."
+#   (b) each mechanism module says so explicitly, e.g. w21_av_gating.py:
+#       "This module is a CANDIDATE mechanism -- it is NOT wired into
+#       engine.py (that wiring is Wave 4 work)."
+#   (c) `grep -rn "gochara_v3.mechanisms" services/gochara_v3/*.py` (engine.py,
+#       context.py, interval_solver.py, threshold.py) returns ZERO hits --
+#       nothing outside services/gochara_v3/mechanisms/ itself imports them.
+#   (d) ClassContext (context.py) carries no data fields for 9 of the 10
+#       mechanisms' documented data sources (moorti rows, kota_chakra rings,
+#       sudarshana placements, tajaka year-lords, tithi_pravesha rows, real
+#       eclipse events, tara_bala's natal_moon_nakshatra_id passthrough).
+#       Only av_gate_rows exists -- and engine.py's own
+#       `_check_av_threshold_from_context` consumes it via a different
+#       (boolean, v1-legacy) computation than w21_av_gating.py's own SAV/BAV
+#       bindu modifier logic; the two are not the same computation.
+#   (e) every mechanism YAML in the registry is still `admission_state:
+#       candidate` -- none has ever been promoted past candidacy.
+#
+# A literal-key remap (e.g. aliasing w23_tara_bala to the pre-existing
+# 'nakshatra_ingress_tara' activity_terms primitive it is *meant* to
+# eventually enhance) was considered and REJECTED: the raw v1 primitive's
+# contribution is not the candidate mechanism's marginal effect (the
+# mechanism is a quality MODIFIER layered on top of the primitive, not the
+# primitive itself). Aliasing the two would misattribute the base primitive's
+# signal as if it were the mechanism's, which is exactly the fabrication I3
+# ("no weight is assumed, hardcoded, or fabricated") forbids.
+#
+# All 10 are correctly False today. Flip an entry to True only in the same
+# PR that actually wires that mechanism's compute() into engine.py's
+# production lambda_v3 path (Wave 4 work -- see MASTER_REMEDIATION_REGISTER
+# MR-14 amendment + this PR's report for the explicit hand-off). Any
+# toggle_key not present in this dict defaults to wired=True (`.get(key,
+# True)`) -- i.e. only mechanisms we have POSITIVELY confirmed are dormant
+# are excluded from term_breakdown/proxy attribution; everything else keeps
+# today's behaviour unchanged.
+MECHANISM_ENGINE_WIRED: dict[str, bool] = {
+    "w21_av_gating": False,
+    "w22_moorti_nirnaya": False,
+    "w23_tara_bala": False,
+    "w24_sade_sati": False,
+    "w25_kota_chakra": False,
+    "w26_real_eclipses": False,
+    "w27_annual_stack": False,
+    "w27a_tajaka_year_lord": False,
+    "w27b_tithi_pravesha": False,
+    "w27c_sudarshana": False,
+}
+
 
 # ═══════════════════════════════════════════════════════════════════════════
 # Data models
@@ -139,7 +205,7 @@ class MechanismWeight:
     pooled_delta: float
     pooled_delta_shrunk: float
     final_weight: float
-    ablation_method: str  # "term_breakdown" | "proxy_fraction" | "ablation_not_computable"
+    ablation_method: str  # "term_breakdown" | "proxy_fraction" | "ablation_not_computable" | "mechanism_not_wired"
     admitted: bool = True
     n_train_native: int = 0
     n_train_abhinandan: int = 0
@@ -264,9 +330,27 @@ def _ablate_window_intensity(
     Compute the 'without this mechanism' intensity for one window.
 
     Strategy 1 (preferred): if term_breakdown JSONB contains a key matching
-    toggle_key, subtract that contribution.
-    Strategy 2 (fallback): reduce by PROXY_ABLATION_FRACTION * abs(intensity).
-    Strategy 3 (honest null): if signed_intensity == 0, delta contribution is 0.
+    toggle_key, subtract that contribution. This is checked FIRST and wins
+    unconditionally when it fires -- an explicit, literal key written by
+    SOMETHING into this specific window's decomposition is real data,
+    regardless of this mechanism's general engine-wiring status recorded in
+    MECHANISM_ENGINE_WIRED (that registry is a *default*, not an override of
+    actual per-row evidence).
+
+    Strategy 2 (honest null): if no literal key match and MECHANISM_ENGINE_WIRED
+    says this toggle_key's mechanism is not invoked anywhere in
+    services/gochara_v3/engine.py's production path, there is no legitimate
+    signal to ablate -- return the window's intensity UNCHANGED (zero delta)
+    rather than fabricating a generic proxy reduction for a mechanism that
+    structurally cannot have contributed to this window's signed_intensity.
+
+    Strategy 3 (fallback proxy): mechanism IS wired (or its wiring status is
+    unknown -- see MECHANISM_ENGINE_WIRED's `.get(key, True)` default) but
+    this window's term_breakdown didn't carry a matching key (e.g. mechanism
+    inactive this window). Reduce by PROXY_ABLATION_FRACTION * abs(intensity)
+    -- documented lower-bound proxy, not a true ablation.
+
+    Strategy 4 (honest null): if signed_intensity == 0, delta contribution is 0.
 
     Returns (ablated_intensity, method_used).
     """
@@ -286,6 +370,14 @@ def _ablate_window_intensity(
                 return ablated, "term_breakdown"
             except (TypeError, ValueError):
                 pass
+
+    # No literal term_breakdown match on this window. Before falling back to
+    # the generic proxy heuristic, check whether this mechanism is even
+    # wired into the engine that produced this window's signed_intensity. A
+    # proxy fraction implies "a real effect exists, we just can't cleanly
+    # isolate it" -- untrue for a mechanism whose compute() never runs.
+    if not MECHANISM_ENGINE_WIRED.get(toggle_key, True):
+        return window.signed_intensity, "mechanism_not_wired"
 
     # Fallback: proxy fraction
     proxy_reduction = PROXY_ABLATION_FRACTION * abs(window.signed_intensity)
@@ -395,45 +487,67 @@ def _determine_ablation_method(
     Determine which ablation method will be used for this mechanism.
     Reports 'ablation_not_computable' if no windows are available.
 
-    PARIṢKĀRA MR-14 DISCLOSED FINDING (2026-08-11, does not change behaviour
-    here -- see below for why): the confirmed root cause of every all-zero/
-    degenerate W4.4 fit to date is that `term_breakdown` was NULL on 100% of
-    gen-3.0 rows (register PG-6/PG-7). That NULL-ness is now fixed at the
-    engine/writer level -- see `services/gochara_v3/interval_solver.py` and
-    `pipeline/orchestrator/writers/ka_gochara_v3_century_materialize.py`
-    (both fixed in this same PR).
+    PARIṢKĀRA MR-14 DISCLOSED FINDING (2026-08-11, PR #1213): the confirmed
+    root cause of every all-zero/degenerate W4.4 fit to date was that
+    `term_breakdown` was NULL on 100% of gen-3.0 rows (register PG-6/PG-7).
+    That NULL-ness is now fixed at the engine/writer level -- see
+    `services/gochara_v3/interval_solver.py` and
+    `pipeline/orchestrator/writers/ka_gochara_v3_century_materialize.py`.
 
-    Fixing that NULL-ness alone does NOT make this function's "term_breakdown"
-    method reachable for any of the 10 admitted mechanisms (ADMITTED_MECHANISM_IDS:
-    w21_av_gating, w22_moorti_nirnaya, ..., w27a/b/c). The `toggle_key in
-    w.term_breakdown` check above tests for LITERAL toggle-key strings as
-    TOP-LEVEL keys of the decomposition -- but the real W1.5 term_breakdown
-    shape (migration 564's own COMMENT ON COLUMN; verified live in this PR's
-    throwaway-DB execute-to-verify run) is
+    PARIṢKĀRA MR-14-MATCHING FINDING (2026-08-11, this PR, supersedes the
+    framing of the disclosure above): fixing term_breakdown's NULL-ness does
+    NOT make the "term_breakdown" method reachable for any of the 10
+    admitted mechanisms (ADMITTED_MECHANISM_IDS: w21_av_gating,
+    w22_moorti_nirnaya, ..., w27a/b/c) -- but the reason is DEEPER than "the
+    toggle_key strings don't literally match the decomposition's top-level
+    keys" (the prior pass's hypothesis). The real W1.5 term_breakdown shape
+    produced by `services/gochara_v3/engine.py` is
     `{promise, permission, activity, quality_gates, lambda_v3, activity_terms,
-    formula}`. None of those keys are toggle-key strings, and
-    `activity_terms[i]['primitive']` values are v1 primitive names
-    (`degree_contact`, `drishti_contact`, ...), not `w21_av_gating`-style
-    toggle keys either -- the 10 admitted Wave-2 mechanisms (AV gating,
-    moorti nirnaya, tara bala, sade sati grading, kota chakra, real eclipses,
-    the annual-stack trio) are separate systems layered via
-    `permission_detail['systems']`/quality_gates' vedha detail/other
-    per-mechanism plumbing, not activity-primitive contributions. So even
-    with term_breakdown now honestly populated, `has_term_breakdown` will
-    still evaluate False for every admitted toggle_key, and every fit will
-    still resolve to the `proxy_fraction` fallback below -- narrower than an
-    "all zero" fit (PROXY_ABLATION_FRACTION=0.1 is a real, non-zero, though
-    admittedly crude, per-mechanism delta once real corpus rows exist), but
-    still not the mechanism-attributed `term_breakdown` ablation the W1.5
-    output model was designed to make possible. Wiring each of the 10
-    admitted mechanisms' own contribution into a matching, toggle_key-keyed
-    slot of the served decomposition is a real, larger, separate piece of
-    work (touching `services/gochara_v3/context.py`, `engine.py`, and the 10
-    mechanism modules under `services/gochara_v3/mechanisms/`) that this
-    MR-14 lane does not attempt -- see the final report / register for the
-    explicit hand-off. `test_ablation_method_term_breakdown_currently_unreachable_for_admitted_toggle_keys`
-    in this module's test file locks in and documents this current state so
-    a future session re-discovers it as a known finding, not a surprise.
+    formula}` -- and after tracing engine.py, context.py, and every mechanism
+    module under `services/gochara_v3/mechanisms/`, NONE of the 10 admitted
+    mechanisms' own `compute()` functions are ever invoked anywhere in
+    engine.py's production lambda_v3 path. They are dormant, standalone
+    candidate modules (confirmed by `mechanisms/__init__.py`'s own docstring,
+    each module's own "NOT wired into engine.py" docstring, a zero-hit grep
+    for any import of them outside their own package, and ClassContext
+    lacking data fields for 9 of the 10 mechanisms' documented inputs -- see
+    MECHANISM_ENGINE_WIRED's own comment for the full evidence trail).
+
+    CONSEQUENCE: there is no key, under ANY name, anywhere in term_breakdown
+    (top-level or inside activity_terms) that legitimately represents any of
+    the 10 mechanisms' contributions -- not because of a naming mismatch
+    that remapping could fix, but because the computation that would produce
+    such a value never runs. Aliasing a toggle_key to a superficially-related
+    v1 primitive already present in activity_terms (e.g. w23_tara_bala <->
+    the 'nakshatra_ingress_tara' primitive it is meant to eventually enhance)
+    was considered and REJECTED: that would misattribute the primitive's raw
+    contribution as the candidate mechanism's marginal effect, a category
+    error and a fabrication under I3.
+
+    THE FIX (this function, this PR): `has_term_breakdown` still checks the
+    real decomposition's literal top-level keys first (unchanged, and still
+    correctly reachable the day any mechanism's contribution IS legitimately
+    written into a matching key -- see
+    `test_windows_with_matching_breakdown_returns_term_breakdown`). When no
+    literal match exists, this function now checks MECHANISM_ENGINE_WIRED
+    before falling back to `proxy_fraction`: a mechanism confirmed dormant
+    reports the distinct, honest `"mechanism_not_wired"` instead of a
+    fabricated proxy that would otherwise look like a real (if crude)
+    per-mechanism signal for a mechanism that structurally contributed
+    nothing. `build_weight_fitting_report` / `compute_mechanism_weights`
+    treat `"mechanism_not_wired"` the same as `"ablation_not_computable"`:
+    delta forced to an honest 0.0, never assumed or hardcoded (I3).
+
+    Wiring each of the 10 admitted mechanisms' own contribution into a
+    matching, toggle_key-keyed slot of the served decomposition remains
+    real, larger, separate work (touching `services/gochara_v3/context.py`,
+    `engine.py`, and the 10 mechanism modules) that this lane does not
+    attempt -- see the final report / register for the explicit hand-off.
+    `test_ablation_method_term_breakdown_currently_unreachable_for_admitted_toggle_keys`
+    in this module's test file locks in and documents this current state
+    (now asserting `"mechanism_not_wired"`, the honest label, rather than
+    `"proxy_fraction"`) so a future session re-discovers it as a known
+    finding, not a surprise.
     """
     if not windows:
         return "ablation_not_computable"
@@ -447,6 +561,8 @@ def _determine_ablation_method(
     )
     if has_term_breakdown:
         return "term_breakdown"
+    if not MECHANISM_ENGINE_WIRED.get(toggle_key, True):
+        return "mechanism_not_wired"
     return "proxy_fraction"
 
 
@@ -684,6 +800,152 @@ def store_calibration_results(
 
 
 # ═══════════════════════════════════════════════════════════════════════════
+# Pure fit core (DB-free) — Stages A(hit-rate)/B/C
+# ═══════════════════════════════════════════════════════════════════════════
+
+# Ablation methods that mean "no legitimate signal in this corpus for this
+# mechanism" — delta is forced to an honest 0.0 rather than computed via a
+# hit-rate comparison. "ablation_not_computable" (empty corpus) and
+# "mechanism_not_wired" (PARIṢKĀRA MR-14-matching: mechanism confirmed not
+# invoked anywhere in engine.py's production path) are DIFFERENT reasons —
+# both honest nulls, kept as distinct labels in ablation_method — sharing
+# only this delta=0.0 short-circuit so neither one fabricates a proxy signal.
+_NO_SIGNAL_ABLATION_METHODS = ("ablation_not_computable", "mechanism_not_wired")
+
+
+def compute_mechanism_weights(
+    admitted_metas: list[MechanismMeta],
+    native_windows: list[GochaWindow],
+    abhinandan_windows: list[GochaWindow],
+    native_train_pairs: list[tuple[str, date]],
+    abhinandan_train_pairs: list[tuple[str, date]],
+    n_native: int,
+    n_abhinandan: int,
+    abhinandan_available: bool,
+) -> tuple[list[MechanismWeight], float, float]:
+    """
+    Pure (DB-free) core of W4.4 Stages A(hit-rate)/B/C: compute per-mechanism
+    weights from already-loaded windows + events.
+
+    This IS the production fit computation — `build_weight_fitting_report`
+    calls this function directly after its own DB-bound loads (mechanism
+    registry YAML, live v3 windows, live TRAIN events); the PARIṢKĀRA
+    MR-14-matching golden test also calls this function directly with a
+    hand-constructed synthetic corpus, exercising the exact same code that
+    runs in production rather than a re-implementation or a mock of it.
+
+    Returns (mechanism_weights, hit_rate_full_native, hit_rate_full_abhinandan).
+    """
+    # Stage A: full hit_rate (all mechanisms included)
+    hit_rate_full_native, _, _ = compute_hit_rate_from_windows(
+        native_windows, native_train_pairs, ablate=False
+    )
+    if abhinandan_available:
+        hit_rate_full_abhinandan, _, _ = compute_hit_rate_from_windows(
+            abhinandan_windows, abhinandan_train_pairs, ablate=False
+        )
+    else:
+        hit_rate_full_abhinandan = hit_rate_full_native  # treat native as prior
+
+    logger.info("Stage A — hit_rate_full native=%.4f abhinandan=%.4f",
+                hit_rate_full_native, hit_rate_full_abhinandan)
+
+    # ── Stage B: Per-mechanism ablation ─────────────────────────────────────
+    mechanism_weights: list[MechanismWeight] = []
+
+    for meta in admitted_metas:
+        toggle_key = meta.toggle_key
+        logger.info("Stage B — ablating %s", toggle_key)
+
+        ablation_method_native = _determine_ablation_method(native_windows, toggle_key)
+        ablation_method_abhinandan = (
+            _determine_ablation_method(abhinandan_windows, toggle_key)
+            if abhinandan_available else "ablation_not_computable"
+        )
+
+        # If no windows at all -> honest delta=0
+        if not native_windows:
+            delta_native = 0.0
+            ablation_method = "ablation_not_computable"
+        else:
+            if ablation_method_native in _NO_SIGNAL_ABLATION_METHODS:
+                # I4/§N.8: cannot compute a real signal from this corpus for
+                # this mechanism — honest 0, never a fabricated proxy.
+                delta_native = 0.0
+                ablation_method = ablation_method_native
+            else:
+                hit_rate_without_native, _, _ = compute_hit_rate_from_windows(
+                    native_windows, native_train_pairs,
+                    toggle_key=toggle_key, ablate=True,
+                )
+                delta_native = hit_rate_full_native - hit_rate_without_native
+                ablation_method = ablation_method_native
+
+        if abhinandan_available and abhinandan_windows:
+            if ablation_method_abhinandan in _NO_SIGNAL_ABLATION_METHODS:
+                delta_abhinandan = 0.0
+                if ablation_method == "proxy_fraction":
+                    ablation_method = "proxy_fraction"
+            else:
+                hit_rate_without_abhinandan, _, _ = compute_hit_rate_from_windows(
+                    abhinandan_windows, abhinandan_train_pairs,
+                    toggle_key=toggle_key, ablate=True,
+                )
+                delta_abhinandan = hit_rate_full_abhinandan - hit_rate_without_abhinandan
+                if ablation_method_abhinandan == "term_breakdown" and ablation_method == "term_breakdown":
+                    ablation_method = "term_breakdown"
+                elif ablation_method not in _NO_SIGNAL_ABLATION_METHODS:
+                    ablation_method = "proxy_fraction"
+        else:
+            # Approximate: treat native delta as prior for abhinandan.
+            # (n_eff_abh, computed just below from the same abhinandan_available
+            # condition, is what actually reaches compute_pooled_delta as
+            # n_abhinandan=0 — weight 0 in pooling. A separate
+            # `n_effective_abhinandan = 0` local used to be assigned here and
+            # never read; removed as dead code, PARIṢKĀRA MR-14 cleanup.)
+            delta_abhinandan = delta_native
+
+        # ── Stage C: Cross-chart partial pooling + shrinkage ─────────────────
+        # When Abhinandan is unavailable, n_effective_abhinandan=0 means the
+        # pooled result equals delta_native (no actual pooling, native-only).
+        n_eff_abh = n_abhinandan if abhinandan_available else 0
+        pooled_delta, pooled_delta_shrunk = compute_pooled_delta(
+            delta_native=delta_native,
+            delta_abhinandan=delta_abhinandan,
+            n_native=n_native,
+            n_abhinandan=n_eff_abh,
+            prior_strength=SHRINKAGE_PRIOR_K,
+        )
+
+        # Non-negative weight: a mechanism that doesn't help pooled score gets 0
+        final_weight = max(0.0, pooled_delta_shrunk)
+
+        mechanism_weights.append(
+            MechanismWeight(
+                mechanism_id=meta.mechanism_id,
+                toggle_key=toggle_key,
+                delta_native=round(delta_native, 6),
+                delta_abhinandan=round(delta_abhinandan, 6),
+                pooled_delta=round(pooled_delta, 6),
+                pooled_delta_shrunk=round(pooled_delta_shrunk, 6),
+                final_weight=round(final_weight, 6),
+                ablation_method=ablation_method,
+                admitted=True,
+                n_train_native=n_native,
+                n_train_abhinandan=n_eff_abh,
+            )
+        )
+
+        logger.info(
+            "  %s: delta_native=%.4f delta_abh=%.4f pooled=%.4f shrunk=%.4f weight=%.4f method=%s",
+            toggle_key, delta_native, delta_abhinandan,
+            pooled_delta, pooled_delta_shrunk, final_weight, ablation_method,
+        )
+
+    return mechanism_weights, hit_rate_full_native, hit_rate_full_abhinandan
+
+
+# ═══════════════════════════════════════════════════════════════════════════
 # Main build function
 # ═══════════════════════════════════════════════════════════════════════════
 
@@ -695,6 +957,9 @@ def build_weight_fitting_report(conn: Any) -> dict:
       A -- Cross-chart baseline hit_rate (all mechanisms included)
       B -- Per-mechanism ablation (excluded one at a time)
       C -- Cross-chart partial pooling + shrinkage
+
+    Stages A(hit-rate)/B/C are delegated to `compute_mechanism_weights` (pure,
+    DB-free) — this function's own job is the DB-bound loading around it.
 
     Returns the full JSON report dict. Caller is responsible for printing/storing.
 
@@ -743,110 +1008,17 @@ def build_weight_fitting_report(conn: Any) -> dict:
     logger.info("Native v3 windows: %d rows", len(native_windows))
     logger.info("Abhinandan v3 windows: %d rows", len(abhinandan_windows))
 
-    # Stage A: full hit_rate (all mechanisms included)
-    hit_rate_full_native, _, _ = compute_hit_rate_from_windows(
-        native_windows, native_train_pairs, ablate=False
+    # ── Stages A(hit-rate)/B/C: delegate to the pure fit core ────────────────
+    mechanism_weights, hit_rate_full_native, hit_rate_full_abhinandan = compute_mechanism_weights(
+        admitted_metas=admitted_metas,
+        native_windows=native_windows,
+        abhinandan_windows=abhinandan_windows,
+        native_train_pairs=native_train_pairs,
+        abhinandan_train_pairs=abhinandan_train_pairs,
+        n_native=n_native,
+        n_abhinandan=n_abhinandan,
+        abhinandan_available=abhinandan_available,
     )
-    if abhinandan_available:
-        hit_rate_full_abhinandan, _, _ = compute_hit_rate_from_windows(
-            abhinandan_windows, abhinandan_train_pairs, ablate=False
-        )
-    else:
-        hit_rate_full_abhinandan = hit_rate_full_native  # treat native as prior
-
-    logger.info("Stage A — hit_rate_full native=%.4f abhinandan=%.4f",
-                hit_rate_full_native, hit_rate_full_abhinandan)
-
-    # ── Stage B: Per-mechanism ablation ─────────────────────────────────────
-    mechanism_weights: list[MechanismWeight] = []
-
-    for meta in admitted_metas:
-        toggle_key = meta.toggle_key
-        logger.info("Stage B — ablating %s", toggle_key)
-
-        ablation_method_native = _determine_ablation_method(native_windows, toggle_key)
-        ablation_method_abhinandan = (
-            _determine_ablation_method(abhinandan_windows, toggle_key)
-            if abhinandan_available else "ablation_not_computable"
-        )
-
-        # If no windows at all -> honest delta=0
-        if not native_windows:
-            delta_native = 0.0
-            ablation_method = "ablation_not_computable"
-        else:
-            if ablation_method_native == "ablation_not_computable":
-                # I4: cannot compute from corpus — honest 0
-                delta_native = 0.0
-                ablation_method = "ablation_not_computable"
-            else:
-                hit_rate_without_native, _, _ = compute_hit_rate_from_windows(
-                    native_windows, native_train_pairs,
-                    toggle_key=toggle_key, ablate=True,
-                )
-                delta_native = hit_rate_full_native - hit_rate_without_native
-                ablation_method = ablation_method_native
-
-        if abhinandan_available and abhinandan_windows:
-            if ablation_method_abhinandan == "ablation_not_computable":
-                delta_abhinandan = 0.0
-                if ablation_method == "proxy_fraction":
-                    ablation_method = "proxy_fraction"
-            else:
-                hit_rate_without_abhinandan, _, _ = compute_hit_rate_from_windows(
-                    abhinandan_windows, abhinandan_train_pairs,
-                    toggle_key=toggle_key, ablate=True,
-                )
-                delta_abhinandan = hit_rate_full_abhinandan - hit_rate_without_abhinandan
-                if ablation_method_abhinandan == "term_breakdown" and ablation_method == "term_breakdown":
-                    ablation_method = "term_breakdown"
-                elif ablation_method != "ablation_not_computable":
-                    ablation_method = "proxy_fraction"
-        else:
-            # Approximate: treat native delta as prior for abhinandan.
-            # (n_eff_abh, computed just below from the same abhinandan_available
-            # condition, is what actually reaches compute_pooled_delta as
-            # n_abhinandan=0 — weight 0 in pooling. A separate
-            # `n_effective_abhinandan = 0` local used to be assigned here and
-            # never read; removed as dead code, PARIṢKĀRA MR-14 cleanup.)
-            delta_abhinandan = delta_native
-
-        # ── Stage C: Cross-chart partial pooling + shrinkage ─────────────────
-        # When Abhinandan is unavailable, n_effective_abhinandan=0 means the
-        # pooled result equals delta_native (no actual pooling, native-only).
-        n_eff_abh = n_abhinandan if abhinandan_available else 0
-        pooled_delta, pooled_delta_shrunk = compute_pooled_delta(
-            delta_native=delta_native,
-            delta_abhinandan=delta_abhinandan,
-            n_native=n_native,
-            n_abhinandan=n_eff_abh,
-            prior_strength=SHRINKAGE_PRIOR_K,
-        )
-
-        # Non-negative weight: a mechanism that doesn't help pooled score gets 0
-        final_weight = max(0.0, pooled_delta_shrunk)
-
-        mechanism_weights.append(
-            MechanismWeight(
-                mechanism_id=meta.mechanism_id,
-                toggle_key=toggle_key,
-                delta_native=round(delta_native, 6),
-                delta_abhinandan=round(delta_abhinandan, 6),
-                pooled_delta=round(pooled_delta, 6),
-                pooled_delta_shrunk=round(pooled_delta_shrunk, 6),
-                final_weight=round(final_weight, 6),
-                ablation_method=ablation_method,
-                admitted=True,
-                n_train_native=n_native,
-                n_train_abhinandan=n_eff_abh,
-            )
-        )
-
-        logger.info(
-            "  %s: delta_native=%.4f delta_abh=%.4f pooled=%.4f shrunk=%.4f weight=%.4f method=%s",
-            toggle_key, delta_native, delta_abhinandan,
-            pooled_delta, pooled_delta_shrunk, final_weight, ablation_method,
-        )
 
     # ── Dataset hash for provenance ──────────────────────────────────────────
     dataset_hash = compute_dataset_hash(native_train_pairs, abhinandan_train_pairs)
