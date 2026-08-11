@@ -86,6 +86,26 @@ GENERATION_30_RE = re.compile(r"generation\s*=\s*'3\.0'|GENERATION_PROD")
 # DML verbs that constitute data-modifying statements.
 DML_VERB_RE = re.compile(r"\b(DELETE|INSERT|UPDATE)\b", re.IGNORECASE)
 
+# Pre-existing bug fix (found incidentally during MR-16): the runtime DML
+# filters below used to do a naive `PROD_TABLE in sql` substring check.
+# 'kala_gochara_windows' is a STRICT PREFIX of 'kala_gochara_windows_v2', so
+# that check over-matched every calibration/staging (TABLE) DML statement
+# too — the same over-match class test_mr13_valence_calibration_honesty.py's
+# `_inserts_for_table` already guards against for its own INSERT-only case.
+# This regex extracts the DML's actual target table name so callers can
+# compare it EXACTLY against PROD_TABLE.
+_DML_TABLE_NAME_RE = re.compile(
+    r"^\s*(?:DELETE\s+FROM|INSERT\s+INTO|UPDATE)\s+(\S+)", re.IGNORECASE,
+)
+
+
+def _dml_target_table(sql: str) -> str | None:
+    """Return the exact table name a DELETE/INSERT/UPDATE statement targets,
+    or None if `sql` is not a recognizable DML statement against a single
+    named table."""
+    m = _DML_TABLE_NAME_RE.match(sql.strip())
+    return m.group(1) if m else None
+
 # ---------------------------------------------------------------------------
 # Source helpers
 # ---------------------------------------------------------------------------
@@ -420,10 +440,18 @@ class _TrackingConn:
         raise AssertionError("writer called close() — forbidden by §N.2")
 
 
+_DISCOVERED_CLASSES = [
+    "career_advancement", "major_gain", "marriage",
+    "illness_acute", "chronic_onset", "surgery",
+]
+
+
 def _make_responder(targets=("Venus",), stored_fp=None, rows_exist=False):
     """Build a query responder for _TrackingConn."""
     def responder(sql: str, params=None):
         s = sql.lower()
+        if "gochara_resonance_map" in s and "distinct" in s and "target_ref" not in s:
+            return [{"event_class": ec} for ec in _DISCOVERED_CLASSES]
         if "gochara_resonance_map" in s and "target_ref" in s:
             return [{"target_ref": t} for t in targets]
         if "kala_gochara_v2_build_state" in s and sql.strip().upper().startswith("SELECT"):
@@ -491,12 +519,13 @@ def test_dryrun_fixture_only_writes_generation_30_rows(monkeypatch):
     step = next(s for s in steps if s.key == f"career_advancement::{era_key}")
     result = writer.run_substep(ctx, step)
 
-    # Collect DML statements whose SQL references the production table name
-    # (after f-string evaluation at runtime, the SQL contains the literal name).
+    # Collect DML statements whose SQL targets EXACTLY the production table
+    # name (not a substring match — kala_gochara_windows is a strict prefix
+    # of kala_gochara_windows_v2, so a naive `in` check over-matches the
+    # calibration/staging table's own DML; see _dml_target_table docstring).
     prod_dml = [
         (sql, params) for sql, params in conn.statements
-        if PROD_TABLE in sql  # runtime-evaluated SQL contains the literal table name
-        and sql.strip().upper().startswith(("DELETE", "INSERT", "UPDATE"))
+        if _dml_target_table(sql) == PROD_TABLE
     ]
 
     assert len(prod_dml) >= 1, (
@@ -564,9 +593,7 @@ def test_dryrun_fixture_no_generation_v1_rows(monkeypatch):
     v1_re = re.compile(r"generation\s*=\s*'v1'")
     v1_violations: list[tuple[str, object]] = []
     for sql, params in conn.statements:
-        if PROD_TABLE not in sql:
-            continue
-        if not sql.strip().upper().startswith(("DELETE", "INSERT", "UPDATE")):
+        if _dml_target_table(sql) != PROD_TABLE:
             continue
         has_v1_in_sql = bool(v1_re.search(sql))
         has_v1_in_params = isinstance(params, dict) and params.get("generation") == "v1"
