@@ -2864,12 +2864,13 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     //
     // W0.1 UPDATE (2026-08-10, GOCHARA-UTKARSA): Now that this file contains seed rows
     // for ka_gochara_sweep (sort_order 105) and ka_gochara_resonance (sort_order 104),
-    // the old `depends_on: []` rationale is resolved. The nine real edges from the live
-    // DB (migration 494 + migration 522) are now all represented in this file and can be
-    // declared here safely. Running this seed against prod will now correctly set
-    // ka_kshetra's depends_on to the full nine-edge set rather than narrowing it to [].
-    // Live DB value (verified 2026-08-10):
-    //   {ka_dasha_kala, ka_gochara_sweep, ka_gochara_resonance, ga_panchanga,
+    // the old `depends_on: []` rationale is resolved. The eight real edges from the live
+    // DB (migration 494 + migration 522; migration 569 drops ka_gochara_sweep per SAMPŪRTI R0)
+    // are now all represented in this file and can be declared here safely. Running this
+    // seed against prod will now correctly set ka_kshetra's depends_on to the eight-edge
+    // set rather than narrowing it to [].
+    // Live DB value (post migration 569):
+    //   {ka_dasha_kala, ka_gochara_resonance, ga_panchanga,
     //    bo_pratijna, bo_sangati, bo_upaya, bg_cohort, bg_class_lifetime_counts}
     asset_id: 'ka_kshetra',
     layer: 'kala', sort_order: 110,
@@ -2895,10 +2896,10 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     volume_explanation:
       'Log-linear hazard segments per event class over a 100-year horizon; set to the ' +
       'ACHIEVED count after the first build (§N.4 — floors are aspirational, never fabricated).',
-    // Nine real edges per live DB (migration 494 + migration 522).
-    // All nine are now represented by seed rows in this file (W0.1, 2026-08-10).
+    // Eight real edges per live DB (migration 494 + migration 522; migration 569 drops ka_gochara_sweep per SAMPŪRTI R0).
+    // All eight are now represented by seed rows in this file (W0.1, 2026-08-10).
     depends_on: [
-      'ka_dasha_kala', 'ka_gochara_sweep', 'ka_gochara_resonance',
+      'ka_dasha_kala', 'ka_gochara_resonance',
       'ga_panchanga', 'bo_pratijna', 'bo_sangati', 'bo_upaya',
       'bg_cohort', 'bg_class_lifetime_counts',
     ],
