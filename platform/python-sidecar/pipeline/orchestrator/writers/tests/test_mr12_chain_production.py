@@ -153,6 +153,14 @@ def _ontology_responder(
                 "milestone_template": json.dumps(milestone_template) if milestone_template is not None else None,
                 "irreversibility_milestone": irreversibility_milestone,
             }]
+        # MR-16: plan_substeps now discovers its event-class set dynamically
+        # via _discover_event_classes (DISTINCT event_class, no target_ref
+        # column) — must be checked BEFORE the target_ref branch below (both
+        # queries share the gochara_resonance_map table name). This fixture
+        # discovers exactly the one event_class this responder was built for,
+        # matching the single-class-per-test shape every test in this file uses.
+        if "gochara_resonance_map" in s and "distinct" in s and "event_class" in s and "target_ref" not in s:
+            return [{"event_class": event_class}]
         if "gochara_resonance_map" in s and "target_ref" in s:
             return [{"target_ref": t} for t in targets]
         if BUILD_STATE_TABLE in s and sql.strip().upper().startswith("SELECT"):
