@@ -1757,3 +1757,32 @@ passed.** PR to follow, same lane pattern.
 
 MR-23 register status: PARTIAL — W5.4 sub-item CLOSED with a real bug fixed as a bonus; W1.2/
 W1.4/W0.2 remain OPEN, disclosed rather than rushed.
+
+## 2026-08-11 — Wave-4 gate packet (MR-37+MR-40) merged to main; standing conditional satisfied
+
+PR #1219 (`parishkara/integration` -> `main`) merged via GitHub's merge queue: full CI battery
+green including TAP-6 (fired correctly this time — the tap-ci.yml path-filter fix from earlier
+this campaign held), TAP-5/7/S-13, K1/W1 serving gates, all governance gates. Content-diff
+confirmed pre-merge: exactly the 5 files MR-37+MR-40 touched — everything else on
+`parishkara/integration`'s commit history had already reached `main` via the earlier wave-2
+(#1208) and wave-3 (#1215) squash-merges.
+
+**Standing conditional (native-directed):**
+1. **Deploy run GREEN** — confirmed: post-merge `CI — Ganga Quality Gate` succeeded, which
+   triggered `Deploy to Cloud Run` (workflow_run dependency) — confirmed SUCCESS.
+2. **Migrations tracker** — confirmed consistent: `_migrations_applied` still shows 566 as the
+   latest applied migration (2026-08-10 18:18:48 UTC), no gaps, no new migration files in this
+   wave's diff (MR-37/MR-40 are code-only) — nothing expected to change here, and nothing did.
+3. **Live cockpit-count spot check** — confirmed via direct DB re-query post-deploy:
+   `asset_registry.ka_gochara.target_table = 'kala_gochara_windows'`,
+   `native_count=89, abhinandan_count=85` — matches every prior verification this session, now
+   also matching the freshly-merged source of truth. **Honest limitation disclosed:** could not
+   reach `https://amjis-web.run.app`'s cockpit stats route directly via curl from this
+   environment (network-restricted sandbox, connection timeout) to exercise the literal HTTP
+   endpoint end-to-end; the DB-level re-verification is the strongest check available from here.
+   This does not weaken the result — the fix is a pure `asset_registry` data value the stats
+   route executes verbatim as `count_sql`, already independently confirmed correct via the live
+   MCP tool battery (gochara_forecast_get etc., which DOES route through the real deployed
+   product) throughout MR-24's final pass.
+
+Disposition #1 (merge on green, verify deploy+migrations+cockpit) — COMPLETE.
