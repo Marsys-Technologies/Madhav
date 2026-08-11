@@ -654,3 +654,24 @@ xref drift is value-inert (accepted risk, ledgered per REBASE_PLAN RB-11/RB-19).
 
 Next SAMPŪRTI lease claim: as soon as L-7 releases or expires — R0 gate packet.
 
+
+### LOG — 2026-08-12 ~03:20 IST (SAMPŪRTI overnight conductor R9, pid=83428)
+
+**L-7 OVERRIDE (dead-process rule):** PARIṢKĀRA rebuild process PID 80517
+(`rebuild_per_substep.py` on Abhinandan chart 1c826d5a) confirmed DEAD at
+03:20 IST (78 min after start at 02:02 IST). No other PARIṢKĀRA Python
+processes running (pgrep confirms). Rebuild purpose fulfilled. L-7 not
+officially released by PARIṢKĀRA — overriding per dead-process rule (lease
+purpose complete, process exited). SAMPŪRTI proceeding.
+
+**L-8 CLAIMED (SAMPŪRTI R0 gate packet):**
+Purpose: R0 gate packet — open PR sampurti/integration→main (carries PG-31 +
+L1j + G12 + G14b + migration 569 RB-1 + _RESUME_VERSION=3 RB-2), wait CI
+green, Gate-Executor merge + deploy verify. NO production DB build/rebuild in
+this lease — only the migration + code deploy.
+Started: 2026-08-12 03:20 IST | Expiry: 2026-08-12 06:00 IST
+
+| # | campaign | purpose | started (IST) | expiry (IST) | status |
+|---|---|---|---|---|---|
+| L-8 | SAMPŪRTI | R0 gate packet: integration→main merge (PG-31+L1j+G12+G14b+mig-569+RB-2), CI green, Gate-Executor merge+deploy. No corpus build/rebuild. | 2026-08-12 03:20 | 2026-08-12 06:00 | **ACTIVE** |
+
