@@ -2482,3 +2482,22 @@ consequence; F-6 merge composed with MR-42 incl. a criss-crossed 458-line diff3 
 correctly) + PK-R-8a's six detectors, all mutation-verified RED/GREEN by the builder.
 MERGEABLE. Final focused PARĪKṢAKA confirmation dispatched (re-runs its own three killing
 mutations + PK-R-8a spots). This is the LAST lane before R2.
+
+## 2026-08-12 ~01:4x IST — #1229 FINAL PASS; R1 wave complete pending its merge
+
+CONDUCTOR-HEARTBEAT: 2026-08-11T20:10:00Z pid=94797 host=Montys-MacBook-Pro.local
+
+**#1229 (MR-11(b)/PK-R-8/PK-R-8a): FINAL PARĪKṢAKA PASS** at 249cfca8d — all three of the
+verifier's own killing mutations now RED (exact-equality refinement test + call-spy; full
+R8.13 accounting detectors incl. both previously-unasserted zero-reasons; honest eval bound
+887 with an anti-looseness self-guard); PK-R-8a chain-basis spot-mutations RED (argmax
+reversion, short-circuit removal); MR-42 composition on chain rows mutation-verified;
+disclosure corrected (33/29/2 + the zero-interval-timing-window interim). One D-1
+documentation correction (stale R8 table) applied by conductor as an authoritative
+POST-VERDICT CORRECTIONS section on the PR body (verifier: table-edit only, no re-verify
+needed — its PASS rests on the mutations). Merge-on-green watcher armed.
+
+**R1 lane scoreboard (all 9 lanes):** TAP-6 #1222→main ✓ · MR-08rx #1223 ✓ · MR-38/39 #1224 ✓
+· MR-12 #1225 ✓ · MR-16 #1226 ✓ · MR-23r #1227 ✓ · MR-41/42 #1228 ✓ · MR-11 #1229 (merging)
+· 9 PRATINIDHI rulings PK-R-4..9a · 14 PARĪKṢAKA verdict rounds, every FAIL closed by
+mutation-verified fixes, zero waved through.
