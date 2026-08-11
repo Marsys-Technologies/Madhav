@@ -2586,3 +2586,36 @@ seeded refused DELETE; (5) v1 counts re-verified unchanged. Build runs dispatche
 native 6ab98c63, Abhinandan 3ddf601f (triggered_by=parishkara-r2-corpus-rebuild,
 orchestrator path so build_substep_progress commits — fixes the coverage-envelope honesty gap).
 Native launches first; sequential per C6.
+
+## 2026-08-12 ~04:2x IST — Phase C: first orchestrator attempt hit TCP-drop; resilient driver running
+
+CONDUCTOR-HEARTBEAT: 2026-08-11T22:55:00Z pid=94797 host=Montys-MacBook-Pro.local
+
+**First Phase C attempt (full orchestrator path) FAILED at 19.5 min — the documented sandbox
+TCP-connection-drop fragility (MR-39's class), NOT a misconfiguration.** Verified db.connect
+DOES issue the real `SET idle_in_transaction_session_timeout=0` statement (MR-39 fix present +
+applying) + keepalives — the drop was a raw "server closed the connection unexpectedly" at the
+TCP layer, the same condition three builder sessions independently hit earlier this campaign.
+CRITICAL POSITIVE: the SATYA-DĪPA earned-signal guard did its job — asset_throughput.last_error
+recorded "orphan-watchdog: heartbeat went stale ... 0 substep(s) committed and 89 data rows
+present, but this route cannot prove the plan finished, so the asset was NOT promoted to 'lit'"
+— a partial build correctly refused promotion. v1 corpus intact; old gen-3.0 rows untouched
+(delete-then-insert is per-substep atomic; nothing committed = nothing lost).
+
+**Measured scale:** plan = 270 substeps/chart (27 classes × 10 decades); one substep = 14.7s
+(peak-anchoring hierarchy compute dominates) → ~66 min/chart single-threaded. Exceeds the
+~19-min connection lifetime, so the single-long-connection orchestrator path cannot complete
+here.
+
+**Resolution — resilient FRESH-CONNECTION-PER-SUBSTEP driver** (r2evidence/rebuild_per_substep.py
+in the throwaway worktree; the exact approach THE ONE rebuild found survives this environment).
+Each substep: own db.connect (keepalives + timeout=0) + C4 session-scoped GUC + SAVEPOINT +
+run_substep + commit; writes build_substep_progress HERE (the v3 writer doesn't — this makes the
+coverage envelope honest, closing that gap); one retry on connection-lost; honest promotion to
+'lit' ONLY if committed==total (mirrors the SATYA-DĪPA predicate); STOP-and-report on any
+non-connection error (no hand-patching). NO ALTER DATABASE/ROLE; GUC dies with each connection.
+Native rebuild LAUNCHED (background), substep 1/270 committed cleanly, ins=1, ETA ~66 min.
+
+NEXT-ACTION: poll native to completion → Abhinandan → Phase D 12-point evidence (PK-R-7(iv),
+chains, hierarchy bounds, protection seeded-DELETE refusal, v1 counts, fresh-connection GUC
+NULL) → E delta-rerun → F refit+w45 (MR-32) → G IR-9.
