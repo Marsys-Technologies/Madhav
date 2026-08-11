@@ -94,8 +94,23 @@ DML_VERB_RE = re.compile(r"\b(DELETE|INSERT|UPDATE)\b", re.IGNORECASE)
 # `_inserts_for_table` already guards against for its own INSERT-only case.
 # This regex extracts the DML's actual target table name so callers can
 # compare it EXACTLY against PROD_TABLE.
+#
+# PARĪKṢAKA round-2 FINDING A (regression vs #1221): the original `(\S+)`
+# capture is too permissive — it swallows a trailing `(` with no preceding
+# space (`INSERT INTO kala_gochara_windows(chart_id,` -> captures
+# 'kala_gochara_windows(chart_id,') and a schema-qualified name
+# (`DELETE FROM public.kala_gochara_windows` -> captures
+# 'public.kala_gochara_windows'). Both produce a non-None table string that
+# never equals the bare PROD_TABLE constant, so `_dml_target_table_or_raise`
+# never raises on them either — the row is silently treated as "not
+# PROD_TABLE" and skipped, exactly the silent-miss path the loud helper was
+# supposed to close. Tightened to capture ONLY a bare identifier (optionally
+# schema-qualified with a SINGLE `schema.` prefix, stripped by the
+# non-capturing group), anchored so trailing punctuation like `(` cannot
+# join the captured name. Verifier-tested exact fix.
 _DML_TABLE_NAME_RE = re.compile(
-    r"^\s*(?:DELETE\s+FROM|INSERT\s+INTO|UPDATE)\s+(\S+)", re.IGNORECASE,
+    r"^\s*(?:DELETE\s+FROM|INSERT\s+INTO|UPDATE)\s+(?:[A-Za-z_][\w$]*\.)?([A-Za-z_][\w$]*)",
+    re.IGNORECASE,
 )
 
 
