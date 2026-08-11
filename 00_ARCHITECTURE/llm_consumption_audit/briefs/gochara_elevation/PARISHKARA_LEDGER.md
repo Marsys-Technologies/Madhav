@@ -2696,3 +2696,31 @@ fix builder (migration 568 + reproduction test + zero_peaks_reason fix) → high
 verdict (same rigor — this is the actual gate) → merge → resume native rebuild (idempotent,
 decades 1-3 + partial career_setback already correct and need not be redone) → Abhinandan →
 Phase D onward.
+
+## 2026-08-12 ~05:5x IST — merge-sequencing correction: #1231 closed (superseded), #1232 carries both fixes
+
+CONDUCTOR-HEARTBEAT: 2026-08-12T00:16:00Z pid=94797 host=Montys-MacBook-Pro.local
+
+MR-45's builder correctly disclosed that #1231 (MR-44) had NOT yet merged when they branched
+(despite being told it had) and cherry-picked MR-44's fix commit cleanly onto their own branch
+to satisfy MR-45's dependency. By the time the conductor went to merge #1231, `parishkara/
+integration` had moved and #1231's branch (created from a stale base) showed CONFLICTING/DIRTY
+against real content differences (tap-ci.yml, migration 567, and others already landed via
+other merges) — not a real logic conflict, a stale-base artifact. Rather than fight a merge
+conflict for content that already exists cleanly elsewhere: **verified #1232's branch contains
+its OWN MR-44 commit (0edc4e395) cleanly rooted on the CURRENT integration head, plus its MR-45
+commit on top — confirmed via `git log origin/parishkara/integration..origin/parishkara/
+mr-45-hierarchy-natkey`, exactly 2 commits, no drift. Closed #1231 as superseded (disclosed in
+a PR comment), deleted its now-dead branch.** #1232 is now the single PR carrying both fixes.
+
+**High-stakes PARĪKṢAKA dispatched for #1232** — must independently execute-to-verify migration
+568 on its OWN throwaway DB (not accept the builder's transcript alone), reproduce the exact
+live incident values (chart 482012f1, career_setback, 2017-03-01) pre/post fix, verify NULL-
+resolution rows (interval/point/chain) still collide correctly on pre-568 semantics (protection
+not accidentally loosened), verify the zero-reason reachability fix adversarially, and answer
+explicitly: would the real substep now succeed. This is the direct gate for resuming R2c.
+
+NEXT-ACTION: on PASS — merge #1232 on green CI → apply migration 568 to PRODUCTION (execute-
+verify, not prose) → fix driver tracker-visibility gap → resume native rebuild from origin/
+parishkara/integration (idempotent; 7 classes + partial career_setback already correct) →
+Abhinandan → Phase D onward.
