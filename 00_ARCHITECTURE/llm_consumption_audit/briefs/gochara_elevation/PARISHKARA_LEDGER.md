@@ -19,12 +19,12 @@ marker_duty: post W6-COMPLETE to campaign-coordination §6 after MR-01..08,10,13
 | MR-07 | Cockpit truth (count_sql) | MERGED | PR #1203 MERGED to parishkara/integration · PARĪKṢAKA PASS: AND generation='v1' scoping confirmed; 3 static tests; red→green confirmed |
 | MR-08 | Flip/rollback/probe tooling | MERGED | PR #1206 MERGED to parishkara/integration · PARĪKṢAKA PASS: flip/rollback/probe scripts verified; static interface tests; red→green confirmed |
 | MR-09 | Naming coherence + health + pointers | MERGED | PR #1197 MERGED · PARĪKṢAKA PASS: GocharaTransitService rename (alias kept), health probe JD-sanity check, discoverability guard, ph_muhurta docstring correct, 17 tests verified |
-| MR-10 | Promote 54 point rows | QUEUED | needs MR-01 cols first |
+| MR-10 | Promote 54 point rows | CLOSED | PR #1215 (code lanes, no promotion logic needed — points already existed in staging) + THE authorized rebuild (2026-08-11 ~14:3x IST): 54 point rows promoted (29 native + 25 Abhinandan), generation='3.0' evidenced decision, protection inherited (seeded DELETE refused on a promoted row) |
 | MR-11 | Resolution bar + hierarchy windows | QUEUED (ADJUDICATOR bar ruling first) | — |
 | MR-12 | Chain rows (marriage first) | QUEUED | — |
-| MR-13 | Honest valence + calibration tier restamp | QUEUED | — |
-| MR-14 | term_breakdown → rebuild → refit | QUEUED | needs MR-01 cols |
-| MR-15 | AV gating contributes (bhava_num) | QUEUED | — |
+| MR-13 | Honest valence + calibration tier restamp | CLOSED | PR #1211 (code fix) + THE authorized rebuild: live gen-3.0 rows now zero 'favourable', zero 'empirically_calibrated', both charts, evidence pasted in ledger 2026-08-11 ~14:3x IST entry |
+| MR-14 | term_breakdown → rebuild → refit | CLOSED (honest structural_prior branch) | PR #1213+#1214 (code) + THE authorized rebuild: term_breakdown populated 120/120 interval rows both charts; real W4.4 fit run, honest mechanism_not_wired for all 10 admitted mechanisms (not fabricated proxy_fraction) — per MR-14-matching's finding the mechanisms are genuinely dormant. Spawned MR-37 (w45 stamping-gate defect) + MR-38 (ENGINE_VERSION gap) as new register items |
+| MR-15 | AV gating contributes (bhava_num) | CLOSED | PR #1212 (code fix, bhava_num→house_from_moon) + THE authorized rebuild: zero AV_GATE_DEGRADED notes across all 120 rebuilt substeps, both charts |
 | MR-16 | 27-class expansion (POST-MARKER only) | QUEUED | — |
 | MR-17 | ka_kshetra seam (SAMPŪRTI's — track only) | EXTERNAL | coordination file |
 | MR-18 | Validators generation stance | MERGED | PR #1195 MERGED · PARĪKṢAKA PASS (7/8 tests functional; mig-527 gate test vacuous pass noted as non-blocking finding; fix itself correct) |
@@ -46,6 +46,9 @@ marker_duty: post W6-COMPLETE to campaign-coordination §6 after MR-01..08,10,13
 | MR-34 | Third-chart scope statement | MERGED | PR #1194 MERGED to parishkara/integration · PARĪKṢAKA PASS: amonty84/14:30:52Z — 5/5 tests pass, source cross-check ok, COALESCE contract verified |
 | MR-35 | Serving-outage smoke probe (CI) | MERGED | PR #1196 MERGED · PARĪKṢAKA PASS: HTTP JSON-RPC probe, seeded failure exit=1 verified, Gate 3 (green live) honestly deferred (MR-01 pending deploy) |
 | MR-36 | (merged into MR-21) | MERGED-INTO-21 | register §7 |
+| MR-37 | w45 calibration-stamping gate unsound (row-existence not earned-signal) | QUEUED (native ruling needed on 107 pre-existing dishonest staging rows) | register §MR-37, found 2026-08-11 during THE authorized rebuild |
+| MR-38 | ENGINE_VERSION not bumped by MR-13/14 (silent-no-op risk on future rebuilds) | QUEUED | register §MR-38, caught in throwaway-DB rehearsal before the real rebuild, resolved in-window only |
+| MR-39 | idle_in_transaction_session_timeout vs long substeps | QUEUED | register §MR-39, real orchestrator-wide fragility, misread as sandbox flakiness by 3 independent builder sessions this campaign |
 
 ## RULINGS
 (ADJUDICATOR entries here, numbered PK-R1.. , with written rationale.
