@@ -2899,3 +2899,42 @@ driver log or a single read.
 **R2c (corpus rebuild) is COMPLETE for both charts.** Proceeding to Phase D: the full 12-point
 evidence pack across both charts (PK-R-7(iv) shape fidelity, business_launch chains,
 hierarchy bounds, honesty checks, protection re-verification, v1 baseline unchanged, GUC OFF).
+
+## 2026-08-12 ~03:4x IST — Phase D1 shape-fidelity finding root-caused, corrected, fix in flight (BOTH charts)
+
+CONDUCTOR-HEARTBEAT: 2026-08-12T03:40:00Z pid=94984(native)/95628(abhinandan)
+
+Phase D1 (PK-R-7(iv) shape fidelity) initially found 13 point-canonical classes serving
+temporal_shape='interval' rows plus a 2-class (chronic_onset/major_gain) hierarchy-path miss —
+registered as MR-46, native-ruling-required. Before dispatching that ruling, traced the root
+cause with direct SQL rather than trusting the aggregate count: 6 classes (career_advancement,
+chronic_onset, illness_acute, major_gain, marriage, surgery) carry rows stamped
+peak_basis='gochara_lambda_v3' — the RETIRED bare literal this writer's own docstring says can
+never be produced post-R8.8 (independently confirmed absent from source by the pk-mr11h
+verification pass). Timestamps on these rows predate the real rebuild window by ~9-10 hours;
+zero corresponding kala_gochara_v2_build_state fingerprint entries exist for them. Conclusion:
+my own conductor tooling's resume-check (rebuild_per_substep.py's already_done()) false-
+positived on these 6 classes' decades — it saw a stale pre-R8.8 row present at the key and
+skipped, believing it was already-correct current-shape output. This is the SAME defect class
+as the campaign's own §N.8 doctrine (a proxy — row presence — standing in for the real claim —
+current-engine output), just one layer up from the writer into my own rebuild driver.
+
+**Corrected finding**: only 9 of the 13 "point-canonical interval-shape" classes are genuine,
+freshly-confirmed R8.12-branch output — the real architectural gap MR-46's remediation options
+still apply to. The other 4 (career_advancement on Abhinandan only, illness_acute, marriage,
+surgery) plus both chronic_onset/major_gain were simply never rebuilt this pass — not a writer
+defect, a false-completion signal in my own tooling. MR-46 amended in place with this
+correction (commit a48aaf484, pushed to parishkara/campaign).
+
+FIX IN FLIGHT: `r2evidence/rebuild_stale_classes.py`, a targeted re-run of exactly these 6
+classes, both charts, bypassing my unsafe resume check and relying on the writer's OWN internal
+MR-38 fingerprint delta-skip — confirmed live to correctly distinguish genuinely-stale substeps
+(ran/rebuilt: chronic_onset now correctly shape=interval with real peak scans; illness_acute
+correctly shape=point) from the one already-fresh substep set (native's career_advancement,
+correctly no-opped "fingerprint unchanged" — proof the writer's own delta-skip is sound and only
+my proxy was the problem). Both charts running in parallel under Monitor watch (task bhxb19f5h),
+same C4 lease window (expiry 2026-08-12 06:00 IST, ample margin).
+
+NEXT-ACTION: on completion, re-verify Phase D1 (temporal_shape distribution both charts) against
+the corrected corpus, finalize MR-46's disposition evidence, then continue remaining Phase D
+checks (D5 reconciliation) before Phase E.
