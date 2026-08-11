@@ -178,6 +178,35 @@ restores 'empirically_calibrated' via the gated path. GATE: corpus
 term_breakdown non-NULL; fit output published — real weights OR an honest
 recorded insufficient-data conclusion (both are valid closures). AT-PAR:
 DR-14 ("weights LEARNED, never assumed") becomes dischargeable.
+AMENDMENT (2026-08-11, PARIṢKĀRA builder + native ruling — PARISHKARA_LEDGER
+2026-08-11 ~06:3x IST entry): a THIRD wiring gap found, in scope, not a new
+item. (1) term_breakdown-never-produced: the engine (services/gochara_v3/
+engine.py) was NEVER broken here — it always computed the full decomposition
+correctly; the actual break was two silent downstream drops (interval_solver
+reading only a bare raw_lambda float; the writer never naming the 4 columns
+in its INSERT templates) — fixed, PR #1213. (2) Abhinandan 0-row: NOT a bug
+— confirmed live, genuine LEL-intake gap (0 life_events rows for that
+chart), already correctly handled by the existing degrade path; one
+unrelated dead variable removed as disclosed cleanup. (3) THE THIRD GAP
+(why this GATE is still open): even with term_breakdown populated end to
+end, `_determine_ablation_method`'s literal key-matching against the 10
+admitted mechanism toggle_keys (w21_av_gating etc.) does not match the real
+decomposition shape ({promise, permission, activity, quality_gates,
+lambda_v3, activity_terms, formula}) — every fit silently falls back to
+proxy_fraction regardless of how populated the corpus is. Native ruling:
+this IS MR-14 scope ("make empirical calibration possible" is not satisfied
+by a fit that structurally cannot match any mechanism) — fix it before the
+rebuild, not after; a post-hoc restamp would mean a second override window
+on the protected corpus, already ruled out. GATE AMENDED: closure requires
+an END-TO-END golden test — a small synthetic corpus with KNOWN
+decompositions fed through the REAL fit path (not each link mocked in
+isolation, which is exactly how gaps (1)/(2)/(3) each shipped and sat
+undetected) — asserting expected non-zero per-mechanism weights actually
+come out. Both terminal outcomes of the LATER authorized rebuild still
+close this gate honestly: real weights from real signal → empirically_
+calibrated legitimately; genuinely insufficient signal from a small
+(174-row) corpus even with matching fixed → structural_prior, now actually
+honest rather than a predetermined null wearing an honest label.
 
 **MR-15 · AV gating actually contributes.** [PG-22; recon L266]
 GAP: flagship mechanism silently degraded during the only production build
