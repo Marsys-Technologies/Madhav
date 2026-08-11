@@ -275,7 +275,8 @@ function capActiveSentences(rows: GocharaWindowRow[]): GocharaWindowRow[] {
 }
 
 // ══════════════════════════════════════════════════════════════════════════
-// PARIṢKĀRA MR-11(b) — resolution-tier disclosure (migration 567)
+// PARIṢKĀRA MR-11(b) / ADJUDICATOR ruling PK-R-8 — resolution-tier disclosure
+// (migration 567) — R8.9/R8.10 EARNED is_timing_window
 // ══════════════════════════════════════════════════════════════════════════
 //
 // GOVERNING RULING — PK-R-1 (native, binding): "a 'window' served for timing
@@ -284,99 +285,127 @@ function capActiveSentences(rows: GocharaWindowRow[]): GocharaWindowRow[] {
 // not windows — they may serve, but only labeled at their own resolution,
 // never presented as the timing claim itself."
 //
-// Two row populations exist on kala_gochara_windows going forward:
-//   1. Rows written by the MR-11(b) hierarchy producer carry a STORED
-//      `resolution` ('era'|'month'|'day') — the writer's own honest
-//      classification, trusted as-is.
-//   2. Every row written before migration 567 (the entire v1 sweep corpus
-//      and every pre-MR-11(b) W3.4/W5.4 flat-interval v3 row) carries
-//      resolution=NULL. These are NEVER silently served as if genuinely
-//      month/day-resolved — `deriveResolutionDisclosure` infers an HONEST
-//      label from the row's own window_start/window_end SPAN (a real
-//      detector on data already in hand, never a fabricated tier), and
-//      marks it `resolution_source: 'implied_from_duration'` so a caller can
-//      always tell a writer-asserted tier from a serve-time inference.
+// PK-R-8 R8.9 SUPERSEDES this file's original duration-based "implied"
+// inference for legacy rows: is_timing_window is now EARNED, never guessed
+// from a span. A row earns is_timing_window=true iff:
+//   temporal_shape === 'point'                              (PK-R-1's second
+//                                                              floor — a dated
+//                                                              point row —
+//                                                              preserves the
+//                                                              v1 sweep's own
+//                                                              54 'gochara_
+//                                                              lambda_e_v1'
+//                                                              point rows)
+//   OR (resolution IN {'month','day'}
+//       AND peak_basis IN GENUINE_PEAK_BASES)                (a day-refined
+//                                                              true argmax,
+//                                                              R8.5 — the
+//                                                              ONLY basis
+//                                                              that earns
+//                                                              genuine
+//                                                              day-precision
+//                                                              trust)
+// GENUINE_PEAK_BASES mirrors services/gochara_v3/peak_basis_vocab.py's
+// GENUINE_PEAK_BASES exactly ({'gochara_lambda_v3_argmax'} today) —
+// extensible only by recorded evidence, never by adding a basis here without
+// its Python counterpart.
 //
-// `is_timing_window` is the PK-R-1 gate itself: false for any row whose
-// effective resolution (stored OR implied) is 'era' — the caller-visible
-// signal that this row is CONTEXT, not a timing claim, regardless of how
-// confident-looking its other fields (peak_date, signed_intensity) are.
+// R8.10 DISCLOSED CONSEQUENCE: the pre-existing v1 sweep's 64 INTERVAL rows
+// (peak_basis='gochara_lambda_e_v1', mostly chart cb73cd3d) do NOT satisfy
+// EITHER clause — they are temporal_shape='interval' (not 'point') and carry
+// resolution=NULL (not 'month'/'day') — so they now serve
+// is_timing_window=false, timing_window_blocked_reason='resolution_
+// unavailable'. This is a RULED consequence of PK-R-8, not a bug: those 64
+// rows' peaks were never day-refined and the sweep never classified them
+// into the hierarchy. Their v1 POINT rows (54 of them) are UNAFFECTED — the
+// temporal_shape==='point' clause preserves them regardless of peak_basis.
+// Remedy path (if ever pursued): a future lane could earn v1's own basis
+// into GENUINE_PEAK_BASES by demonstrating v1's peak derivation is genuinely
+// day-precision — not done here, not assumed here.
 
-const ERA_MIN_DAYS = 365
-const MONTH_MAX_DAYS = 31
-const MS_PER_DAY = 86_400_000
+export type TimingWindowBlockedReason =
+  | 'era_resolution'
+  | 'peak_basis_not_argmax'
+  | 'resolution_unavailable'
+  | null
+
+// Mirrors services/gochara_v3/peak_basis_vocab.py GENUINE_PEAK_BASES exactly.
+const GENUINE_PEAK_BASES: ReadonlySet<string> = new Set(['gochara_lambda_v3_argmax'])
 
 export interface ResolutionDisclosure {
-  /** Effective resolution tier -- the row's own stored `resolution` if
-   * present, else an honest duration-based inference. Null when neither a
-   * stored value nor a confident inference is available. */
+  /** The row's own STORED `resolution` column ('era'|'month'|'day'|null) --
+   * R8.9 no longer infers a label from date span; a NULL resolution on a
+   * non-point row is honestly reported as null, never guessed. */
   resolution: 'era' | 'month' | 'day' | null
-  /** 'stored' -- the writer's own MR-11(b) hierarchy classification (trusted
-   * as-is). 'implied_from_duration' -- this row predates migration 567;
-   * the label is inferred here, at serve time, from window_start/window_end
-   * span -- never conflated with a writer-asserted tier. 'unavailable' --
-   * neither a stored value nor a confident duration-based inference exists
-   * (a legacy row whose span falls in the ambiguous 32-364 day gap between
-   * the month and era thresholds). */
-  resolution_source: 'stored' | 'implied_from_duration' | 'unavailable'
-  /** PK-R-1 gate: false iff the effective resolution is 'era' (a decade-
-   * scale row) -- the row is CONTEXT, never a timing claim, no matter how
-   * precise its peak_date looks. True for month/day/point-shaped rows and
-   * for any row whose resolution could not be determined at all is treated
-   * as NOT a confirmed timing window either (honest default: unknown is
-   * not the same as "confirmed fine-grained"). */
+  /** 'stored' -- a real resolution value (or a genuine point-shaped row) is
+   * present. 'unavailable' -- resolution is NULL and the row is not
+   * point-shaped (R8.10's v1-interval-row case). */
+  resolution_source: 'stored' | 'unavailable'
+  /** R8.9 EARNED gate -- see the module section header for the exact
+   * two-clause formula. Never inferred from window_start/window_end span. */
   is_timing_window: boolean
+  /** R8.9: populated (non-null) whenever is_timing_window is false, naming
+   * WHY it was blocked -- 'era_resolution' (a decade-era row, PK-R-1
+   * context-only), 'peak_basis_not_argmax' (month/day resolution but the
+   * peak was never day-refined to a genuine argmax), or 'resolution_
+   * unavailable' (no stored resolution and not a point row -- R8.10's v1-row
+   * case). Null when is_timing_window is true. */
+  timing_window_blocked_reason: TimingWindowBlockedReason
 }
 
 /**
- * Derive the honest resolution disclosure for one served row. Real detector:
- * reads the row's OWN stored `resolution` column when present (migration
- * 567); for a NULL-resolution legacy row, infers a label from the actual
- * window_start/window_end span already on the row -- never a hand-waved
- * default, never silently promoted to "month" or "day" without the span
- * actually supporting it.
+ * Derive the honest, EARNED resolution disclosure for one served row
+ * (PK-R-8 R8.9). Real detector: reads the row's OWN stored `resolution` and
+ * `peak_basis` columns -- never infers a tier from window_start/window_end
+ * span (R8.9 supersedes the pre-PK-R-8 duration-based inference this
+ * function used to perform).
  */
 export function deriveResolutionDisclosure(
-  row: Pick<GocharaWindowRow, 'resolution' | 'temporal_shape' | 'window_start' | 'window_end'>
+  row: Pick<GocharaWindowRow, 'resolution' | 'temporal_shape' | 'peak_basis'>
 ): ResolutionDisclosure {
-  if (row.resolution === 'era' || row.resolution === 'month' || row.resolution === 'day') {
+  // PK-R-1's second floor: a dated point row is always a genuine timing
+  // claim, regardless of resolution/peak_basis -- this is what preserves
+  // the v1 sweep's 54 point rows (R8.9/R8.10).
+  if (row.temporal_shape === 'point') {
     return {
-      resolution: row.resolution,
-      resolution_source: 'stored',
-      is_timing_window: row.resolution !== 'era',
+      resolution: row.resolution === 'era' || row.resolution === 'month' || row.resolution === 'day'
+        ? row.resolution
+        : null,
+      resolution_source: row.resolution ? 'stored' : 'unavailable',
+      is_timing_window: true,
+      timing_window_blocked_reason: null,
     }
   }
 
-  // A point-shaped row is, by construction, a single dated claim -- PK-R-1's
-  // own second floor ("...or a dated point row"). This holds regardless of
-  // resolution-column state (point rows predate the hierarchy producer
-  // entirely) and regardless of chain vs point shape ambiguity below.
-  if (row.temporal_shape === 'point') {
-    return { resolution: 'day', resolution_source: 'implied_from_duration', is_timing_window: true }
+  if (row.resolution === 'era') {
+    return {
+      resolution: 'era',
+      resolution_source: 'stored',
+      is_timing_window: false,
+      timing_window_blocked_reason: 'era_resolution',
+    }
   }
 
-  const startMs = Date.parse(row.window_start)
-  const endMs = Date.parse(row.window_end)
-  if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs < startMs) {
-    return { resolution: null, resolution_source: 'unavailable', is_timing_window: false }
+  if (row.resolution === 'month' || row.resolution === 'day') {
+    const genuineBasis = row.peak_basis != null && GENUINE_PEAK_BASES.has(row.peak_basis)
+    return {
+      resolution: row.resolution,
+      resolution_source: 'stored',
+      is_timing_window: genuineBasis,
+      timing_window_blocked_reason: genuineBasis ? null : 'peak_basis_not_argmax',
+    }
   }
-  const durationDays = (endMs - startMs) / MS_PER_DAY
 
-  if (durationDays >= ERA_MIN_DAYS) {
-    // Exactly the PK-R-1 hazard case: a decade-era span with no stored
-    // classification. Implied 'era' -- CONTEXT, never a timing claim.
-    return { resolution: 'era', resolution_source: 'implied_from_duration', is_timing_window: false }
+  // resolution is NULL and the row is not point-shaped -- R8.10's v1-
+  // interval-row case (and any pre-hierarchy flat v3 row). Honest null,
+  // never guessed from date span (R8.9 supersedes the old duration-based
+  // inference entirely).
+  return {
+    resolution: null,
+    resolution_source: 'unavailable',
+    is_timing_window: false,
+    timing_window_blocked_reason: 'resolution_unavailable',
   }
-  if (durationDays <= 1) {
-    return { resolution: 'day', resolution_source: 'implied_from_duration', is_timing_window: true }
-  }
-  if (durationDays <= MONTH_MAX_DAYS) {
-    return { resolution: 'month', resolution_source: 'implied_from_duration', is_timing_window: true }
-  }
-  // 32-364 days: genuinely ambiguous under the coarse legacy (pre-hierarchy)
-  // shape -- neither confidently "month" nor "era". Honest null rather than
-  // guessing a tier the span does not clearly support (§N.7 item 6).
-  return { resolution: null, resolution_source: 'unavailable', is_timing_window: false }
 }
 
 function withResolutionDisclosure<T extends GocharaWindowRow>(
@@ -406,6 +435,27 @@ function summarizeResolutionDisclosure(
           'not timing windows (PK-R-1) -- see each row\'s resolution_disclosure.is_timing_window; ' +
           'do not read window_start/window_end/peak_date on these rows as a month/day-precision claim.',
   }
+}
+
+/**
+ * R8.15: provenance_envelope.resolution_breakdown — a page-level {era,
+ * month, day, unclassified} count of the served row set's STORED
+ * resolution column, distinct from (and simpler than) `facets.resolution`
+ * (which stays in `facets` per R8.15's explicit instruction: "'resolution'
+ * stays in facets"). `unclassified` names the same underlying population as
+ * facets.resolution.unavailable — a NULL-resolution, non-point row (R8.10).
+ */
+function computeResolutionBreakdown(
+  disclosures: ResolutionDisclosure[]
+): { era: number; month: number; day: number; unclassified: number } {
+  const breakdown = { era: 0, month: 0, day: 0, unclassified: 0 }
+  for (const d of disclosures) {
+    if (d.resolution === 'era') breakdown.era++
+    else if (d.resolution === 'month') breakdown.month++
+    else if (d.resolution === 'day') breakdown.day++
+    else breakdown.unclassified++
+  }
+  return breakdown
 }
 
 // W5.1 (GOCHARA-UTKARSA): SOURCE_CITATION is now generation-conditional.
@@ -972,21 +1022,17 @@ export interface GocharaWindowFacets {
    * v1 and g3_* rows appear (only possible if AUTHORITATIVE_GENERATION_FILTER
    * somehow yields multiple — documented but structurally prevented by design). */
   generation_tier: string
-  /** PARIṢKĀRA MR-11(b): resolution-tier breakdown of the served row set,
-   * computed via deriveResolutionDisclosure (real detector, per-row — never
-   * a hand-maintained count). era/month/day are the EFFECTIVE resolution
-   * (stored OR honestly implied from duration); stored_count/implied_count
-   * disclose how many of those came from each source, so a caller can tell
-   * "the writer classified this" from "we inferred it at serve time" in
-   * aggregate, not just per-row. unavailable = neither stored nor
-   * confidently implied (PK-R-1: never silently rounds into a tier). */
+  /** PARIṢKĀRA MR-11(b) / PK-R-8: resolution-tier breakdown of the served
+   * row set, computed via deriveResolutionDisclosure (real detector,
+   * per-row — never a hand-maintained count). era/month/day are the row's
+   * own STORED resolution (R8.9 no longer infers a tier from date span);
+   * unavailable = no stored resolution and not a point-shaped row (R8.10's
+   * v1-interval-row case). */
   resolution: {
     era: number
     month: number
     day: number
     unavailable: number
-    stored_count: number
-    implied_count: number
   }
 }
 
@@ -996,7 +1042,7 @@ function computeWindowFacets(rows: GocharaWindowRow[]): GocharaWindowFacets {
   let other = 0
   let hasTermBreakdown = false
   const generationSet = new Set<string>()
-  const resolutionFacet = { era: 0, month: 0, day: 0, unavailable: 0, stored_count: 0, implied_count: 0 }
+  const resolutionFacet = { era: 0, month: 0, day: 0, unavailable: 0 }
 
   for (const row of rows) {
     if (row.calibration_state === 'empirically_calibrated') {
@@ -1015,8 +1061,6 @@ function computeWindowFacets(rows: GocharaWindowRow[]): GocharaWindowFacets {
     else if (disclosure.resolution === 'month') resolutionFacet.month++
     else if (disclosure.resolution === 'day') resolutionFacet.day++
     else resolutionFacet.unavailable++
-    if (disclosure.resolution_source === 'stored') resolutionFacet.stored_count++
-    else if (disclosure.resolution_source === 'implied_from_duration') resolutionFacet.implied_count++
   }
 
   const generations = Array.from(generationSet).sort()
@@ -1151,6 +1195,7 @@ export async function computeGocharaActivation(
     resolution_disclosure: disclosures[i] ?? null,
   }))
   const { context_only_rows_in_page, context_only_note } = summarizeResolutionDisclosure(disclosures)
+  const resolution_breakdown = computeResolutionBreakdown(disclosures)
 
   const content: Record<string, unknown> = {
     windows: windowsWithDisclosure,
@@ -1165,6 +1210,7 @@ export async function computeGocharaActivation(
       citation_verse_refs_available: verseRefMap.size > 0,
       context_only_rows_in_page,
       context_only_note,
+      resolution_breakdown,
       empty_reason: rows.length === 0
         ? (ok
             ? 'no kala_gochara_windows row spans this date for this chart/event_class/domain filter — an honest zero-activation result, not a fabricated one'
@@ -1340,6 +1386,7 @@ export async function computeGocharaForecast(
     resolution_disclosure: disclosures[i] ?? null,
   }))
   const { context_only_rows_in_page, context_only_note } = summarizeResolutionDisclosure(disclosures)
+  const resolution_breakdown = computeResolutionBreakdown(disclosures)
 
   const content: Record<string, unknown> = {
     windows: windowsWithDisclosure,
@@ -1355,6 +1402,7 @@ export async function computeGocharaForecast(
       citation_verse_refs_available: verseRefMap.size > 0,
       context_only_rows_in_page,
       context_only_note,
+      resolution_breakdown,
       empty_reason: rawRows.length === 0
         ? (ok
             ? 'no kala_gochara_windows rows overlap this date_range/filter combination — honest zero result. ' +
@@ -1655,9 +1703,11 @@ export async function computeGocharaElectionAvoidance(
   // W5.1: compute facets (real detector per I3).
   const facets = computeWindowFacets(rows)
   // PARIṢKĀRA MR-11(b): page-level context-only summary (PK-R-1).
+  const electionAvoidanceDisclosures = rows.map((row) => deriveResolutionDisclosure(row))
   const { context_only_rows_in_page, context_only_note } = summarizeResolutionDisclosure(
-    rows.map((row) => deriveResolutionDisclosure(row))
+    electionAvoidanceDisclosures
   )
+  const resolution_breakdown = computeResolutionBreakdown(electionAvoidanceDisclosures)
 
   const content: Record<string, unknown> = {
     windows: avoidWindows,
@@ -1671,6 +1721,7 @@ export async function computeGocharaElectionAvoidance(
       backing_data_reachable: ok && coverageOk,
       context_only_rows_in_page,
       context_only_note,
+      resolution_breakdown,
       empty_reason: rows.length === 0
         ? (ok
             ? 'no adverse (is_adverse=true) kala_gochara_windows rows overlap this date_range/filter -- ' +
