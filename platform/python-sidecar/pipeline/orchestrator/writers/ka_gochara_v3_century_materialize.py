@@ -86,7 +86,7 @@ import logging
 import time
 from dataclasses import dataclass
 from datetime import date, timedelta
-from typing import Any
+from typing import Any, Optional
 
 from pipeline.orchestrator.writers import (
     ContextSpec,
@@ -159,6 +159,10 @@ PROD_TABLE = "kala_gochara_windows"
 BUILD_STATE_TABLE = "kala_gochara_v2_build_state"
 
 # INSERT template for kala_gochara_windows_v2 (calibration/staging).
+# PARIṢKĀRA MR-14: the 4 W1.5 λ-decomposition columns (migration 559 on this
+# table; migration 564 mirrored them onto the production table) are now
+# populated from IntervalBoundary (see _build_row) instead of being silently
+# omitted — the prior defect this fix closes (register PG-6/PG-7).
 INSERT_SQL = f"""
     INSERT INTO {TABLE}
       (chart_id, event_class, temporal_shape,
@@ -166,7 +170,8 @@ INSERT_SQL = f"""
        milestone_id, is_irreversibility_milestone,
        signed_intensity, raw_intensity, valence, is_adverse,
        active_sentences, contributing_systems, suppression_state,
-       peak_basis, calibration_state, source, generation, era_slice_key)
+       peak_basis, calibration_state, source, generation, era_slice_key,
+       term_breakdown, lambda_v3_ci_low, lambda_v3_ci_high, ci_source)
     VALUES
       (%(chart_id)s, %(event_class)s, %(temporal_shape)s,
        %(window_start)s, %(window_end)s, %(peak_date)s,
@@ -175,7 +180,9 @@ INSERT_SQL = f"""
        %(active_sentences)s::jsonb, %(contributing_systems)s::jsonb,
        %(suppression_state)s::jsonb,
        %(peak_basis)s, %(calibration_state)s, %(source)s,
-       %(generation)s, %(era_slice_key)s)
+       %(generation)s, %(era_slice_key)s,
+       %(term_breakdown)s::jsonb, %(lambda_v3_ci_low)s, %(lambda_v3_ci_high)s,
+       %(ci_source)s)
 """
 
 # INSERT template for kala_gochara_windows (production, W5.4 repoint, UTK-R1).
@@ -183,6 +190,9 @@ INSERT_SQL = f"""
 # mutation-guard test (test_ka_gochara_v3_mutation_guard.py).
 # I1 mutation-guard anchor: generation='3.0' (%(generation)s parameter always
 # bound to GENERATION_PROD='3.0'; literal here for static-source guard coverage).
+# PARIṢKĀRA MR-14: same 4 W1.5 columns as INSERT_SQL above (migration 564
+# added them to this table, nullable, additive — see MASTER_REMEDIATION_
+# REGISTER_v2_0.md MR-01/MR-14).
 INSERT_PROD_SQL = f"""
     INSERT INTO {PROD_TABLE}
       (chart_id, event_class, temporal_shape,
@@ -190,7 +200,8 @@ INSERT_PROD_SQL = f"""
        milestone_id, is_irreversibility_milestone,
        signed_intensity, raw_intensity, valence, is_adverse,
        active_sentences, contributing_systems, suppression_state,
-       peak_basis, calibration_state, source, generation, era_slice_key)
+       peak_basis, calibration_state, source, generation, era_slice_key,
+       term_breakdown, lambda_v3_ci_low, lambda_v3_ci_high, ci_source)
     VALUES
       (%(chart_id)s, %(event_class)s, %(temporal_shape)s,
        %(window_start)s, %(window_end)s, %(peak_date)s,
@@ -199,7 +210,9 @@ INSERT_PROD_SQL = f"""
        %(active_sentences)s::jsonb, %(contributing_systems)s::jsonb,
        %(suppression_state)s::jsonb,
        %(peak_basis)s, %(calibration_state)s, %(source)s,
-       %(generation)s, %(era_slice_key)s)
+       %(generation)s, %(era_slice_key)s,
+       %(term_breakdown)s::jsonb, %(lambda_v3_ci_low)s, %(lambda_v3_ci_high)s,
+       %(ci_source)s)
     -- W5.4 I1 invariant: generation='3.0' only; v1 rows are protected by DB trigger
 """
 
@@ -534,6 +547,10 @@ def _build_row(
     valence: str,
     is_adverse: bool,
     generation: str = GENERATION_V3,
+    term_breakdown: Optional[dict] = None,
+    lambda_v3_ci_low: Optional[float] = None,
+    lambda_v3_ci_high: Optional[float] = None,
+    ci_source: Optional[str] = None,
 ) -> dict[str, Any]:
     """Convert one IntervalBoundary to a kala_gochara_windows(_v2) row dict.
 
@@ -551,6 +568,17 @@ def _build_row(
         The generation label to stamp on the row.
         * GENERATION_V3 ('g3_utkarsha') → calibration row for kala_gochara_windows_v2
         * GENERATION_PROD ('3.0')       → production row for kala_gochara_windows
+    term_breakdown, lambda_v3_ci_low, lambda_v3_ci_high, ci_source
+        PARIṢKĀRA MR-14 fix (register PG-6/PG-7): the W1.5 λ decomposition +
+        structural-prior credible interval, sourced from
+        `IntervalBoundary.term_breakdown`/`.lambda_v3_ci_low`/`.lambda_v3_ci_high`/
+        `.ci_source` (populated by `interval_solver.find_threshold_crossings`
+        at the window's peak_jd). Callers pass `boundary.term_breakdown` etc.
+        explicitly rather than this function reaching into `boundary` itself,
+        matching the existing valence/is_adverse pattern of "every value this
+        function serves is an explicit parameter, not silently derived
+        in-body." All default None (I4 honest degrade: a boundary whose peak
+        evaluation failed carries None here, never a fabricated breakdown).
     """
     window_start = _jd_to_date(boundary.enter_jd)
     window_end = _jd_to_date(boundary.exit_jd)
@@ -576,6 +604,10 @@ def _build_row(
         "source": "live",
         "generation": generation,
         "era_slice_key": era_slice_key,
+        "term_breakdown": json.dumps(term_breakdown) if term_breakdown is not None else None,
+        "lambda_v3_ci_low": lambda_v3_ci_low,
+        "lambda_v3_ci_high": lambda_v3_ci_high,
+        "ci_source": ci_source,
     }
 
 
@@ -867,6 +899,10 @@ class GocharaV3CenturyMaterializeWriter(WriterBase):
                 chart_id, event_class, boundary, era_slice_key,
                 valence=class_valence, is_adverse=class_is_adverse,
                 generation=GENERATION_V3,
+                term_breakdown=boundary.term_breakdown,
+                lambda_v3_ci_low=boundary.lambda_v3_ci_low,
+                lambda_v3_ci_high=boundary.lambda_v3_ci_high,
+                ci_source=boundary.ci_source,
             )
             try:
                 conn.execute(INSERT_SQL, row_v2)
@@ -884,6 +920,10 @@ class GocharaV3CenturyMaterializeWriter(WriterBase):
                 chart_id, event_class, boundary, era_slice_key,
                 valence=class_valence, is_adverse=class_is_adverse,
                 generation=GENERATION_PROD,
+                term_breakdown=boundary.term_breakdown,
+                lambda_v3_ci_low=boundary.lambda_v3_ci_low,
+                lambda_v3_ci_high=boundary.lambda_v3_ci_high,
+                ci_source=boundary.ci_source,
             )
             try:
                 conn.execute(INSERT_PROD_SQL, row_prod)

@@ -394,6 +394,46 @@ def _determine_ablation_method(
     """
     Determine which ablation method will be used for this mechanism.
     Reports 'ablation_not_computable' if no windows are available.
+
+    PARIṢKĀRA MR-14 DISCLOSED FINDING (2026-08-11, does not change behaviour
+    here -- see below for why): the confirmed root cause of every all-zero/
+    degenerate W4.4 fit to date is that `term_breakdown` was NULL on 100% of
+    gen-3.0 rows (register PG-6/PG-7). That NULL-ness is now fixed at the
+    engine/writer level -- see `services/gochara_v3/interval_solver.py` and
+    `pipeline/orchestrator/writers/ka_gochara_v3_century_materialize.py`
+    (both fixed in this same PR).
+
+    Fixing that NULL-ness alone does NOT make this function's "term_breakdown"
+    method reachable for any of the 10 admitted mechanisms (ADMITTED_MECHANISM_IDS:
+    w21_av_gating, w22_moorti_nirnaya, ..., w27a/b/c). The `toggle_key in
+    w.term_breakdown` check above tests for LITERAL toggle-key strings as
+    TOP-LEVEL keys of the decomposition -- but the real W1.5 term_breakdown
+    shape (migration 564's own COMMENT ON COLUMN; verified live in this PR's
+    throwaway-DB execute-to-verify run) is
+    `{promise, permission, activity, quality_gates, lambda_v3, activity_terms,
+    formula}`. None of those keys are toggle-key strings, and
+    `activity_terms[i]['primitive']` values are v1 primitive names
+    (`degree_contact`, `drishti_contact`, ...), not `w21_av_gating`-style
+    toggle keys either -- the 10 admitted Wave-2 mechanisms (AV gating,
+    moorti nirnaya, tara bala, sade sati grading, kota chakra, real eclipses,
+    the annual-stack trio) are separate systems layered via
+    `permission_detail['systems']`/quality_gates' vedha detail/other
+    per-mechanism plumbing, not activity-primitive contributions. So even
+    with term_breakdown now honestly populated, `has_term_breakdown` will
+    still evaluate False for every admitted toggle_key, and every fit will
+    still resolve to the `proxy_fraction` fallback below -- narrower than an
+    "all zero" fit (PROXY_ABLATION_FRACTION=0.1 is a real, non-zero, though
+    admittedly crude, per-mechanism delta once real corpus rows exist), but
+    still not the mechanism-attributed `term_breakdown` ablation the W1.5
+    output model was designed to make possible. Wiring each of the 10
+    admitted mechanisms' own contribution into a matching, toggle_key-keyed
+    slot of the served decomposition is a real, larger, separate piece of
+    work (touching `services/gochara_v3/context.py`, `engine.py`, and the 10
+    mechanism modules under `services/gochara_v3/mechanisms/`) that this
+    MR-14 lane does not attempt -- see the final report / register for the
+    explicit hand-off. `test_ablation_method_term_breakdown_currently_unreachable_for_admitted_toggle_keys`
+    in this module's test file locks in and documents this current state so
+    a future session re-discovers it as a known finding, not a surprise.
     """
     if not windows:
         return "ablation_not_computable"
@@ -763,9 +803,13 @@ def build_weight_fitting_report(conn: Any) -> dict:
                 elif ablation_method != "ablation_not_computable":
                     ablation_method = "proxy_fraction"
         else:
-            # Approximate: treat native delta as prior for abhinandan
+            # Approximate: treat native delta as prior for abhinandan.
+            # (n_eff_abh, computed just below from the same abhinandan_available
+            # condition, is what actually reaches compute_pooled_delta as
+            # n_abhinandan=0 — weight 0 in pooling. A separate
+            # `n_effective_abhinandan = 0` local used to be assigned here and
+            # never read; removed as dead code, PARIṢKĀRA MR-14 cleanup.)
             delta_abhinandan = delta_native
-            n_effective_abhinandan = 0  # weight 0 in pooling
 
         # ── Stage C: Cross-chart partial pooling + shrinkage ─────────────────
         # When Abhinandan is unavailable, n_effective_abhinandan=0 means the
