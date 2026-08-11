@@ -2799,3 +2799,13 @@ launches without first confirming the prior process has genuinely exited.
 NEXT-ACTION: poll DB directly (not the corrupted log) for native completion (asset_throughput
 state='lit', 270/270 committed) → launch Abhinandan (single process, verified-dead-check first)
 → Phase D onward.
+
+## 2026-08-12 ~06:4x IST — native rebuild nearing completion
+
+CONDUCTOR-HEARTBEAT: 2026-08-12T00:41:00Z pid=94797 host=Montys-MacBook-Pro.local
+
+Native (482012f1) surviving process PID 73011 healthy, single-process confirmed, 770 rows
+committed, 25/27 classes fully done (10/10 decades each), 26th in progress, 27th not yet
+touched. No errors since the earlier self-inflicted collision was resolved. L-7 lease margin
+comfortable (~4.2h remaining). Holding — do not launch Abhinandan until native's
+asset_throughput.state='lit' confirms all 270/270 substeps committed.
