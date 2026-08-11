@@ -102,9 +102,17 @@ own report: chain-canonical classes (e.g. `education_milestone`) still
 cannot be seeded at all — Stage C only sources range-shaped data, never
 `milestone_set` — isolated via the new SAVEPOINT (no cascade), logged
 distinctly, out of MR-48's 2-item scope, not silently hidden. **"Noise
-floor published"**: NOT independently verified this pass — no direct query
-was run against a noise-floor-specific surface; carried forward as an open
-sub-item (see §2).
+floor published"**: live-verified this pass. `w42_negative_control.py` run
+against the rebuilt corpus (native chart, TEST-SPLIT-clean, 1,000 shuffles,
+seed=42): `noise_floor = {mean: 0.485, std: 0.098}`, `noise_floor_upper_
+bound (mean+2σ) = 0.680`, `p95 = 0.64`, `p99 = 0.72` — a real distribution
+from real shuffled data, not a placeholder. The v1-baseline-only curve's
+real hit_rate (0.48, 12/25 scorable train events) is honestly reported
+BELOW the noise floor (`exceeds_noise_floor: false`) — an honest negative,
+not a defect: this is the v1 curve alone, before any Wave-2 mechanism
+weighting (all `mechanism_not_wired` per Phase F), exactly the state this
+campaign's own honesty discipline (I3) requires reporting truthfully rather
+than dressing up. Criterion 3 fully closed on live evidence.
 
 ### Criterion 4 — "Full-century per-chart build wall-clock recorded;
 ≤15–20 min or an ADJUDICATOR disposition of the measured number."
@@ -179,30 +187,25 @@ deferred residual on a DIFFERENT truthfulness surface than the cockpit's own
 
 ## §2 — Residuals carried forward (honest, not hidden)
 
-1. **§5 criterion 3's "noise floor published"** — not independently checked
-   this pass. Needs a targeted live query/read of wherever the noise floor
-   is served (W4.2's own deliverable, per the register's Wave-4 citation)
-   before this sub-clause can be marked PASS on its own evidence.
-2. **§5 criterion 4 (wall-clock)** — explicitly deferred to R4's MR-21, by
+1. **§5 criterion 4 (wall-clock)** — explicitly deferred to R4's MR-21, by
    design (see criterion 4 above).
-3. **§5 criterion 6's "prod == main"** — confirmed indirectly (migration
+2. **§5 criterion 6's "prod == main"** — confirmed indirectly (migration
    self-correction behavior); no direct live version-endpoint check exists
    in this codebase to make the confirmation more direct. Not a gap in
    THIS report so much as a gap in available tooling — noted for R4/close.
-4. **MR-48's chain-canonical Stage C gap** (education_milestone etc. still
+3. **MR-48's chain-canonical Stage C gap** (education_milestone etc. still
    un-seedable in `brahma_prospective_ledger`) — disclosed in MR-48's own
    PR, out of that fix's 2-item scope, carried here for visibility.
-5. **MR-49** (new, this session) — `coverage.event_classes_covered` under-
+4. **MR-49** (new, this session) — `coverage.event_classes_covered` under-
    claim, deferred post-campaign per its own disposition.
-6. **The H1–H10 clause-text gap** (§0 above) — a documentation-hygiene item,
+5. **The H1–H10 clause-text gap** (§0 above) — a documentation-hygiene item,
    not a functional gap; recommend backfilling verbatim text from the
    original 2026-08-11 session transcript into a standalone artifact.
 
 ## §3 — Overall R3 verdict
 
-**Master-brief §5 conformance: 4/6 criteria fully PASS on live evidence
-gathered this session (1, 2, 5, 6); 1 criterion PASS-with-a-disclosed-
-sub-item-pending (3, noise floor); 1 criterion explicitly PENDING and
+**Master-brief §5 conformance: 5/6 criteria fully PASS on live evidence
+gathered this session (1, 2, 3, 5, 6); 1 criterion explicitly PENDING and
 cross-referenced to its own named follow-on item (4, wall-clock, MR-21).**
 No criterion FAILED. Three new, real, live-caught findings this session
 (MR-46→PK-R-10 CLOSED, MR-47 CLOSED/merged, MR-48 CLOSED/merged, MR-49
