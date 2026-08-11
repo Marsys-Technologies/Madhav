@@ -2724,3 +2724,41 @@ NEXT-ACTION: on PASS — merge #1232 on green CI → apply migration 568 to PROD
 verify, not prose) → fix driver tracker-visibility gap → resume native rebuild from origin/
 parishkara/integration (idempotent; 7 classes + partial career_setback already correct) →
 Abhinandan → Phase D onward.
+
+## 2026-08-12 ~06:1x IST — #1232 PASS+MERGED to integration; caught+avoided a tap-ci.yml regression risk; surgical packet #1233 to main
+
+CONDUCTOR-HEARTBEAT: 2026-08-12T00:42:00Z pid=94797 host=Montys-MacBook-Pro.local
+
+**PR #1232 (MR-44+45 bundled): PARĪKṢAKA PASS, merged to parishkara/integration.** Verifier
+independently re-executed migration 568 on its OWN throwaway DB (byte-identical baseline index
+defs to production), reproduced the EXACT live incident values (chart 482012f1, career_setback,
+2017-03-01) failing pre-fix and succeeding post-fix, confirmed genuine duplicates still reject,
+confirmed NULL-resolution (interval/point/chain) rows unaffected — protection not loosened,
+confirmed byte-identical DOWN restore + idempotent re-apply, added an extra mutation-check of
+the migration's OWN self-verification DO block (stripped the key columns → correctly raised).
+Independent corroboration from live data: the 9 already-written career_setback month/day pairs
+all peak on non-1st days — the build got exactly as far as its first month-boundary peak before
+halting, directly confirming the mechanism. Explicit conclusion: HIGH confidence the real
+substep now succeeds.
+
+**Caught before merging to main: `parishkara/integration`'s `tap-ci.yml` is STALE** — it
+predates the TAP-6 always-report restructure (PR #1222, merged directly to main, never synced
+back into integration). A normal integration→main gate packet right now would have silently
+REVERTED that fix on main back to the structurally-broken paths-filter approach — the exact
+defect class already fixed once this campaign. Caught via a routine content-diff check before
+opening the packet, not by CI (CI would not have caught a same-shape-different-behavior
+regression like this). **Resolved surgically**: cherry-picked ONLY the 4 intended files
+(migration 568 + resolution_hierarchy.py + writer docstring + test file) from integration onto
+a FRESH branch off current main, deliberately excluding tap-ci.yml. Tests re-run in isolation
+on the cherry-pick (46/46 green) before commit. **PR #1233 opened to main**, CI running.
+
+**Follow-up needed (not blocking, noted for R4 hygiene): `parishkara/integration` itself should
+get `main` merged back into it** so this staleness doesn't recur on the NEXT integration→main
+packet — every subsequent gate-packet dispatch from here should verify no stale-file regression
+risk exists (content-diff check, not just "CI green") before opening.
+
+NEXT-ACTION: on #1233 merge → deploy verification (C3: CI green + Deploy to Cloud Run green +
+_migrations_applied shows 568 + both new index defs confirmed live + production==main) → fix
+driver's tracker-visibility gap (asset_throughput.state='building') → resume native rebuild
+from origin/main (idempotent — 7 classes + partial career_setback preserved) → Abhinandan →
+Phase D onward.
