@@ -815,3 +815,31 @@ scope reduction below 27 classes · retiring any serving surface · LEL content.
   NEXT-ACTION: merge #1213 on green -- all three of MR-13/14/15's CODE now landed to
     parishkara/integration. Next: check whether the fixed writer emits point-shaped rows (MR-10
     fold-in question) before opening the pinned gate packet to main.
+  PR #1213 MERGED 2026-08-11T06:06:16Z.
+
+- 2026-08-11 ~06:1x IST (interactive conductor -- native ruling on the mechanism-matching gap:
+  OPTION B, fix before rebuild):
+  RATIONALE (native, recorded verbatim intent): the register's "honest insufficient-data
+    conclusion" GATE clause cannot be legitimately claimed when the insufficiency is a KNOWN,
+    FIXABLE wiring bug -- that would be a predetermined null wearing an honest label, exactly the
+    §N.8 violation class this campaign exists to close. A later restamp to fix it after the fact
+    would mean a SECOND override window on the protected corpus -- already ruled out (ONE window,
+    not two/three).
+  REGISTER AMENDED (MR-14 entry, this is IN-SCOPE not a new item): third wiring gap documented
+    alongside the two MR-14 already named; GATE amended to require an END-TO-END GOLDEN TEST
+    (synthetic corpus with KNOWN decompositions through the REAL fit path, asserting expected
+    non-zero per-mechanism weights) -- not another isolated-link test, since this exact chain has
+    now failed THREE times (migration 563's FK bug, the interval_solver/writer drop, now this)
+    with every prior verification checking one link at a time and the whole never run once.
+  MR-14-MATCHING BUILDER DISPATCHED (pk-mr14 worktree reset to fresh branch parishkara/mr-14-
+    matching off current integration tip, since #1213 already merged+closed): fix
+    _determine_ablation_method's key-matching against the real term_breakdown shape; build the
+    golden test. Explicit constraint carried forward: no live-corpus writes, synthetic/throwaway
+    data only for the golden test.
+  SEQUENCING CONFIRMED (native): matching lane merged -> pinned gate packet (MR-13+14+15+matching)
+    -> deploy+verify -> THE ONE authorized rebuild+fit, both charts. BOTH terminal fit outcomes
+    now close MR-14 honestly: real weights -> empirically_calibrated legitimately; genuinely
+    insufficient signal from 174 rows even with matching fixed -> structural_prior, actually
+    honest this time. Gate packet still held until this lane lands.
+  NEXT-ACTION: await MR-14-matching PR; verify (execution) and merge; then MR-10 fold-in check;
+    then the pinned gate packet.
