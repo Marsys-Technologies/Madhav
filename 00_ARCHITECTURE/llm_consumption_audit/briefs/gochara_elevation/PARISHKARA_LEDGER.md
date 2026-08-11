@@ -2328,3 +2328,35 @@ follows the ruling (one round, before R2).
 Also noted from the verdict for R2/R4: migration 567 lives in platform/migrations/ while
 sibling gochara migrations 556-566 live in platform/supabase/migrations/ — functionally fine
 (migrate.ts reads both), recorded so the next author doesn't reclaim 567.
+
+## 2026-08-11 ~21:1x IST — #1228 FAIL (deep I2 findings) → PK-R-9 dispatched; #1226 round-3 done
+
+CONDUCTOR-HEARTBEAT: 2026-08-11T15:45:00Z pid=94797 host=Montys-MacBook-Pro.local
+
+**PR #1228 (MR-41/42) PARĪKṢAKA verdict: FAIL** — the emphasized I2 audit earned its cost.
+What held: all 4 mandated mutations RED; nakshatra derivation frame-consistent (Lahiri both
+sides); v1 corpus untouched (16,297/19,323 re-verified); MR-42 genuinely fixes the live {}
+defect; scope clean; ENGINE_VERSION v3.1 is a real fingerprint input. Blocking findings:
+- F1: pin-lint allowlist line-drift (mechanical; the PR's docstring inserts shifted two
+  pre-existing allowlisted queries out of line-keyed match — CI genuinely red).
+- F2 (CLASSICAL): gochara_vedha_pair consumes LAGNA-resolved bhava targets but the vedha
+  corpus is MOON-referenced (the sibling ka_vedha_gochara/logic.py documents+implements
+  house_from_moon). For the native (Lagna Aries, Moon Aquarius) every cancellation lands on
+  the wrong sign pair. Honest [] beats confidently wrong.
+- F3 (AUTHORITY): TWO vedha corpora exist — bg_transit_rules favourable+vedha_house (41 rows,
+  migration-tracked, feeds production ka_vedha_gochara→quality_gates) vs bg_transit_vedha
+  (33 rows, NO migration, Rahu/Ketu missing, 4 Venus disagreements). Register premise was
+  incomplete; the repoint installed the weaker corpus as a second truth.
+- F4: MR-41(b) DOES change v3 production scoring (tara/SBC sentences enter the activity term,
+  orb_decay=0.5 default) — PR comment claims otherwise; needs adjudicated admission +
+  disclosure.
+- F5: GRAMMAR_VERSION "v1_frozen_2026_08" unbumped though gochara_grammar logic changed —
+  the exact MR-38 standing-rule defect class on the v2 surface.
+- F6 (§N.7): phala carries the cancellation note (role mismatch) into active_sentences.
+**PK-R-9 dispatched to NATIVE-PRATINIDHI**: Q1 authoritative vedha corpus + bg_transit_vedha
+disposition; Q2 Moon-vs-lagna reference; Q3 v3 activity-term admission (accept-with-disclosure
+vs gate-out); Q4 GRAMMAR_VERSION bump. Builder round follows the ruling.
+
+**#1226 (MR-16) round-3 complete** (5a5739b2d + merge e92420560): finding-A regex applied +
+M-H2b reproduced RED; integration merged in with the ruled conflict resolution; MR-38 responder
+stanza added (9/9, 14/14, 444/1-pre-existing). Final re-verdict in flight. PR MERGEABLE.
