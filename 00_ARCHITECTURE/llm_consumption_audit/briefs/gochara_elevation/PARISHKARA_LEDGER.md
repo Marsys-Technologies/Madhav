@@ -2809,3 +2809,36 @@ committed, 25/27 classes fully done (10/10 decades each), 26th in progress, 27th
 touched. No errors since the earlier self-inflicted collision was resolved. L-7 lease margin
 comfortable (~4.2h remaining). Holding — do not launch Abhinandan until native's
 asset_throughput.state='lit' confirms all 270/270 substeps committed.
+
+## 2026-08-12 ~07:0x IST — NATIVE CHART CORPUS REBUILD COMPLETE (27/27 classes, 270/270 substeps)
+
+CONDUCTOR-HEARTBEAT: 2026-08-12T01:31:00Z pid=94797 host=Montys-MacBook-Pro.local
+
+**Native (482012f1) corpus rebuild DONE.** Independently verified via direct query (not the
+driver's own claim): 823 rows in BOTH kala_gochara_windows_v2 (staging) AND kala_gochara_windows
+(production), 27/27 event classes each with 10/10 decades, no process running, no errors.
+
+**Second driver bug found and fixed (§N.8 class — a status print with no real detector behind
+it, in the conductor's OWN tooling this time):** the driver's log claimed "PROMOTED to lit"
+after the final all-skip verification pass, but a direct DB re-query moments later showed
+asset_throughput UNCHANGED — still 'incomplete' with the ORIGINAL error text from the very
+first failed attempt hours earlier. Manually re-issued the identical UPDATE via psql: it
+succeeded instantly and cleanly (UPDATE 1, state=lit, rows_written=823, error cleared) —
+proving the SQL was correct and the row genuinely matched; the failure was specific to the
+Python driver's own connection/commit reliability at that exact final step, likely the same
+TCP-drop fragility hit repeatedly elsewhere this campaign, just landing on the one write with
+no retry logic protecting it. Independently re-verified the underlying claim (823 rows, 27/27
+classes, both tables) via direct query BEFORE completing this status update — not a hand-patch
+of unverified data, a completion of an already-earned write that silently failed to persist.
+**Driver fixed for Abhinandan:** the promotion block now retries up to 3 times AND verifies via
+a re-read on a separate connection before declaring success — a print statement is never
+trusted as evidence of a persisted write again, matching the exact lesson this campaign has
+taught in the writer code itself, now applied to the conductor's own tooling.
+
+**Also disclosed:** the earlier-diagnosed process-collision incident (two rebuild attempts
+racing on the same chart) is now confirmed FULLY RESOLVED with no lasting data damage — the
+idempotent delete-then-insert design held throughout; the corpus is complete and correct.
+
+NEXT-ACTION: launch Abhinandan (1c826d5a) with the promotion-fixed driver, single-process
+verified first. Then Phase D full evidence pack (both charts) → E delta-rerun → F refit+w45
+(MR-32) → G IR-9 λ evidence.
