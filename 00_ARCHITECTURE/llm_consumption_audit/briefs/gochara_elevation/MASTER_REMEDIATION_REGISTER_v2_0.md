@@ -400,6 +400,13 @@ existence; commit to this directory; update CURRENT_STATE. GATE: file
 exists, cross-linked. AT-PAR: record integrity (honest record, not
 backdated fiction).
 
+**CLOSED (2026-08-11).** `GOCHARA_UTKARSHA_CLOSE_REPORT_v1_0.md` written and committed to this
+directory — true wave outcomes, real bugs found+fixed, current verified state, all rulings,
+every genuinely open item disclosed. `CURRENT_STATE` update correctly requested via
+`CAMPAIGN_COORDINATION.md` rather than edited directly — that file is SAMPŪRTI's territory per
+the Alignment Protocol; a direct edit was drafted, caught before commit, reverted, and
+re-routed through the correct channel (disclosed in the "MR-26 CLOSED" ledger entry).
+
 **MR-27 · Prod-sync + deploy discipline.** [PG-16; recon D#1/D#9]
 GAP: close claimed "prod-sync verified, migrations applied" 38 min after its
 deploy FAILED; migrations 557–563 never verified; PROD_DATABASE_URL error
