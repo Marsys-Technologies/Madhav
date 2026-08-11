@@ -765,7 +765,17 @@ class TestR87AntiExplosion:
         """Run the producer against a 3,647-day era window (a realistic
         decade-scale span) with lambda_thresh=0.0 (the writer's own
         structural-prior gate) -- total rows must stay <= 7 (1 era + <=3
-        month + <=3 day), day rows must stay <= 3 (F3/F3b + PK-R-8)."""
+        month + <=3 day), day rows must stay <= 3 (F3/F3b + PK-R-8).
+
+        SCOPE NOTE (MR-45 correction, register
+        MASTER_REMEDIATION_REGISTER_v2_0.md): this bound of 7 is PER ERA
+        WINDOW (this test constructs exactly one). It is NOT a per-substep
+        bound -- a single substep's build_resolution_hierarchy call can
+        return MULTIPLE era windows (production-confirmed: chart
+        482012f1, career_setback::g3_2014_2024), so the honest per-substep
+        bound is `N_era + 2*min(3*N_era, ceil(decade_days/90))`, not a flat
+        7. See ka_gochara_v3_century_materialize.py's R8.13 docstring
+        section for the corrected disclosure."""
         span_days = 3647.0
         start_jd = _BASE_JD
 
@@ -1131,6 +1141,393 @@ class TestMR44PooledRetention:
             "MUTATION TEST FAILURE: reverting to per-interval-only retention "
             "did NOT reproduce a duplicate peak_jd -- this mutation test is not "
             "a real detector of the MR-44 regression class."
+        )
+
+
+# ---------------------------------------------------------------------------
+# MR-45 — month-row/day-row SELF-collision on month-boundary peaks (the
+# REAL live-rebuild blocker). Register: MASTER_REMEDIATION_REGISTER_v2_0.md
+# MR-45; found by PARĪKṢAKA re-verdict on PR #1231/MR-44, recovering the
+# actual halt log from the R2 authorized corpus rebuild -- native chart
+# 482012f1, substep 74/270, career_setback::g3_2014_2024, peak refined to
+# 2017-03-01.
+#
+# THE BUG: uq_kala_gochara_windows_v2_natural_key (and its production-table
+# counterpart) is (chart_id, event_class, window_start, peak_date,
+# COALESCE(milestone_id,''), generation) -- resolution is NOT a key column
+# (migration 567 added the column but never folded it into either unique
+# index; fixed by migration 568, this same lane). _emit_retained_peaks sets
+# a MONTH row's window_start to the calendar-month start containing the
+# day-refined true peak, and a DAY row's window_start to that SAME
+# day-refined peak date; peak_date is identical on both rows (R8.5/R8.6).
+# Whenever a retained peak's day-refined date IS the 1st of a calendar
+# month, window_start == peak_date for BOTH rows -- every other pre-568 key
+# column is also identical between them (same era_window/call, milestone_id
+# always None here, same generation) -- so the two rows collide on an
+# identical pre-568 natural key. THIS is a DIFFERENT collision from MR-44's
+# (two peaks from two SIBLING era windows landing on the same date): this
+# is ONE peak's own month row vs. its own day row colliding with EACH
+# OTHER. MR-44's pooled-retention fix does not touch this at all.
+#
+# THE FIX (migration 568, this lane, execute-to-verified against a
+# throwaway Postgres mirroring live schema -- see this lane's PR
+# description for the full transcript): add resolution to both unique
+# indexes. This Python-level suite cannot close that fix itself (it is
+# schema-level) -- its job is to PROVE the writer's row shapes genuinely
+# collide on their pre-568 natural-key tuple whenever this condition holds,
+# i.e. that migration 568 is fixing a REAL defect, not a hypothetical one.
+# ---------------------------------------------------------------------------
+
+class TestMR45MonthDaySelfCollision:
+    """Covers (a) an isolated natural-key-tuple-equality proof that a
+    month row and day row for the SAME peak collide on the pre-568 key
+    whenever the day-refined date is a calendar-month-1st, and (b) an
+    end-to-end trace through the REAL build_resolution_hierarchy ->
+    _emit_retained_peaks code path confirming the writer genuinely
+    produces this exact shape for a real peak landing on a month
+    boundary -- not merely a hand-constructed WindowResolutionRecord
+    pair."""
+
+    # 2017-03-01, the exact live halt date (chart 482012f1, career_setback,
+    # g3_2014_2024) -- JD computed under the SAME epoch convention both
+    # resolution_hierarchy.py's _jd_to_pydate/_pydate_to_jd AND the writer's
+    # own _jd_to_date use (EPOCH_JD = 2440588.0 == 1970-01-01).
+    _MONTH_BOUNDARY_PEAK_JD = 2457814.0  # 2017-03-01
+
+    def test_month_and_day_row_natural_key_tuples_collide_isolated(self):
+        """(a) Isolated detector: hand-construct the month row and day row
+        WindowResolutionRecord pair _emit_retained_peaks produces for ONE
+        retained peak whose day-refined date is a calendar-month-1st, then
+        derive (window_start, peak_date) for each using the SAME
+        JD-to-date conversion the writer uses (_jd_to_date /
+        _jd_to_pydate -- both EPOCH_JD=2440588.0). Assert the two rows'
+        (window_start, peak_date) tuples are IDENTICAL -- proving that,
+        independent of any index/schema, the writer's own row shapes
+        collide on the pre-568 natural key whenever this condition holds
+        (chart_id, event_class, COALESCE(milestone_id,''), generation are
+        trivially identical too -- both rows come from the same writer
+        call for the same event_class/chart/milestone_id=None/generation)."""
+        peak_jd = self._MONTH_BOUNDARY_PEAK_JD
+        era_window = _make_window(
+            "era", enter_jd=peak_jd - 60.0, exit_jd=peak_jd + 60.0,
+        )
+
+        month_windows, day_windows = rh._emit_retained_peaks(
+            MagicMock(), MagicMock(), era_window,
+            [PeakCandidate(jd=peak_jd, lam=0.9)],
+        )
+        assert len(month_windows) == 1 and len(day_windows) == 1
+        month_row, day_row = month_windows[0], day_windows[0]
+
+        # Confirm this fixture genuinely landed on a month-1st (fixture
+        # sanity, not the defect assertion itself).
+        assert rh._jd_to_pydate(month_row.peak_jd).day == 1, (
+            "fixture regression: _MONTH_BOUNDARY_PEAK_JD must refine to a "
+            "calendar-month-1st for this test to exercise the real defect"
+        )
+
+        month_window_start = rh._jd_to_pydate(month_row.enter_jd)
+        month_peak_date = rh._jd_to_pydate(month_row.peak_jd)
+        day_window_start = rh._jd_to_pydate(day_row.enter_jd)
+        day_peak_date = rh._jd_to_pydate(day_row.peak_jd)
+
+        month_key_tuple = (month_window_start, month_peak_date)
+        day_key_tuple = (day_window_start, day_peak_date)
+
+        assert month_key_tuple == day_key_tuple, (
+            f"expected the month row and day row to collide on their "
+            f"pre-568 (window_start, peak_date) key tuple for a "
+            f"month-boundary peak -- month={month_key_tuple} "
+            f"day={day_key_tuple}"
+        )
+        # Both rows land on the exact live halt date.
+        assert month_window_start.isoformat() == "2017-03-01"
+        assert day_window_start.isoformat() == "2017-03-01"
+
+        # The ONE column migration 568 adds to the key DOES differ between
+        # the two rows -- this is what disambiguates them post-fix.
+        assert month_row.resolution_tier == "month"
+        assert day_row.resolution_tier == "day"
+        assert month_row.resolution_tier != day_row.resolution_tier
+
+    def test_real_writer_pipeline_produces_month_boundary_self_collision(self):
+        """(b) End-to-end trace through the REAL build_resolution_hierarchy
+        -> _scan_and_admit -> retain_candidates_pooled -> _emit_retained_
+        peaks pipeline (the actual production code path, not a
+        hand-constructed record) confirms a genuine peak whose coarse
+        candidate day-refines to a calendar-month-1st produces exactly
+        this colliding month/day row pair -- proving the writer really
+        does emit this shape under realistic conditions, not merely that
+        the shape is theoretically constructible."""
+        target_jd = self._MONTH_BOUNDARY_PEAK_JD
+        start_jd = target_jd - 60.0
+        end_jd = target_jd + 60.0
+
+        def curve(jd: float) -> float:
+            # Single clean peak exactly at target_jd, decreasing outward --
+            # the coarse (7-day-stride) scan admits the grid point nearest
+            # target_jd, and the ±7-day/1-day-step refinement (R8.5) then
+            # finds the TRUE argmax at target_jd itself.
+            return max(0.1, 0.9 - abs(jd - target_jd) * 0.05)
+
+        series_jds = np.arange(start_jd, end_jd, PEAK_SCAN_STRIDE_DAYS)
+        series_lambdas = np.array([curve(j) for j in series_jds])
+        interval = _make_interval(
+            enter_jd=start_jd, exit_jd=end_jd,
+            peak_jd=target_jd, peak_lambda=float(np.max(series_lambdas)),
+        )
+        config = _make_threshold_config(lambda_thresh=0.5)
+
+        with patch(
+            "services.gochara_v3.resolution_hierarchy.find_threshold_crossings",
+            return_value=([interval], series_jds, series_lambdas),
+        ), patch(
+            "services.gochara_v3.resolution_hierarchy._eval_single",
+            side_effect=lambda swe, context, jd: curve(float(jd)),
+        ):
+            result = build_resolution_hierarchy(
+                MagicMock(), MagicMock(), start_jd, end_jd, config,
+            )
+
+        assert result.peaks_retained == 1, (
+            "fixture regression: exactly one clean peak should be admitted "
+            "and retained"
+        )
+        assert len(result.month_windows) == 1 and len(result.day_windows) == 1
+
+        month_row = result.month_windows[0]
+        day_row = result.day_windows[0]
+
+        # The REAL pipeline's day-refinement genuinely converged on
+        # target_jd (not the coarse candidate) -- confirms the true argmax
+        # (R8.5) is what got stamped, matching the isolated fixture above.
+        assert round(month_row.peak_jd, 6) == round(target_jd, 6)
+        assert round(day_row.peak_jd, 6) == round(target_jd, 6)
+
+        month_window_start = rh._jd_to_pydate(month_row.enter_jd)
+        day_window_start = rh._jd_to_pydate(day_row.enter_jd)
+        peak_date = rh._jd_to_pydate(day_row.peak_jd)
+
+        assert month_window_start == peak_date == day_window_start, (
+            f"REAL production pipeline did not reproduce the month-boundary "
+            f"self-collision shape: month_window_start={month_window_start} "
+            f"peak_date={peak_date} day_window_start={day_window_start}"
+        )
+        assert month_window_start.isoformat() == "2017-03-01", (
+            "fixture regression: expected the exact live halt date"
+        )
+
+
+# ---------------------------------------------------------------------------
+# MR-45 — ZERO_PEAKS_LOST_TO_POOLED_RETENTION reachability (MR-44's sibling
+# finding, folded into the MR-45 lane per the register). GAP: the constant
+# was unreachable dead code -- retain_candidates_pooled always retains >=1
+# candidate globally whenever ANY era window admitted one, so the old
+# aggregate `total_retained == 0` gate that guarded emitting this reason
+# could never fire in the exact case the reason exists to name (one era
+# window's own candidate globally rejected while the pool as a whole still
+# retains something from a SIBLING era window). FIX: build_resolution_
+# hierarchy now reports per-era-window accounting directly via
+# HierarchyResult.era_window_accounting (index-aligned with era_windows),
+# independent of the aggregate zero_peaks_reason gate.
+# ---------------------------------------------------------------------------
+
+class TestMR45ZeroPeaksLostToPooledRetentionReachability:
+    def test_specific_era_reports_lost_to_pooled_retention_while_pool_nonzero(self):
+        """Adapted from the PARĪKṢAKA verifier's adversarial 3-interval
+        pattern: era0@low-lambda-peak, era1@high-lambda-peak-NEARBY (within
+        MIN_PEAK_SEPARATION_DAYS=90 of era0's peak, so era0's admitted
+        candidate loses the pooled retention competition to era1's), and
+        era2@far-away (well outside 90 days of both, retains cleanly and
+        independently). Overall total_retained > 0 (era1 + era2 survive),
+        so the OLD aggregate-only zero_peaks_reason stays None/absent for
+        the call as a whole -- but era0's OWN accounting entry must still
+        report ZERO_PEAKS_LOST_TO_POOLED_RETENTION as ITS reason, not
+        silently absent."""
+        start_jd = _BASE_JD
+
+        # era0: single admitted candidate, low lambda, at offset 0.
+        era0_jd = start_jd
+        era0_lam = 0.80
+        # era1: single admitted candidate, HIGH lambda, 20 days from era0's
+        # peak -- well inside MIN_PEAK_SEPARATION_DAYS=90, so whichever of
+        # {era0, era1} ranks lower on (lambda DESC, jd ASC) loses the
+        # pooled retention competition. era1's higher lambda wins; era0's
+        # candidate is rejected. (20, not a multiple of PEAK_SCAN_STRIDE_
+        # DAYS=7, deliberately breaks grid phase-alignment between era0's
+        # and era1's own explicit sample points below -- see the NOTE.)
+        era1_jd = start_jd + 20.0
+        era1_lam = 0.95
+        # era2: single admitted candidate, far away (600 days out) --
+        # >=90 days from both era0 and era1's peaks, retains independently
+        # and cleanly regardless of the era0/era1 competition.
+        era2_jd = start_jd + 600.0
+        era2_lam = 0.85
+
+        # NOTE: each era window's coarse sample points are EXPLICIT and
+        # DISJOINT from its siblings' (unlike a shared np.arange grid over
+        # overlapping [-20,+20] windows, which would let build_resolution_
+        # hierarchy's own interval-boundary MASKING pull era1's higher-
+        # lambda points into era0's "own" sliced series -- an artifact of
+        # this fixture's construction, not a real production condition;
+        # find_threshold_crossings' actual detected intervals never
+        # overlap in JD range). Each era's own 3-point sample sits entirely
+        # within that era's own interval bounds, with a real gap to its
+        # neighbour.
+        def curve0(jd: float) -> float:
+            return max(0.05, era0_lam - abs(jd - era0_jd) * 0.05)
+
+        def curve1(jd: float) -> float:
+            return max(0.05, era1_lam - abs(jd - era1_jd) * 0.05)
+
+        def curve2(jd: float) -> float:
+            return max(0.05, era2_lam - abs(jd - era2_jd) * 0.05)
+
+        jds0 = np.array([era0_jd - 10.0, era0_jd - 3.0, era0_jd + 4.0])
+        lambdas0 = np.array([curve0(j) for j in jds0])
+        jds1 = np.array([era1_jd - 10.0, era1_jd - 3.0, era1_jd + 4.0])
+        lambdas1 = np.array([curve1(j) for j in jds1])
+        jds2 = np.arange(era2_jd - 20.0, era2_jd + 20.0, PEAK_SCAN_STRIDE_DAYS)
+        lambdas2 = np.array([curve2(j) for j in jds2])
+
+        interval0 = _make_interval(enter_jd=era0_jd - 10.0, exit_jd=era0_jd + 4.0, peak_jd=era0_jd, peak_lambda=era0_lam)
+        interval1 = _make_interval(enter_jd=era1_jd - 10.0, exit_jd=era1_jd + 4.0, peak_jd=era1_jd, peak_lambda=era1_lam)
+        interval2 = _make_interval(enter_jd=era2_jd - 20.0, exit_jd=era2_jd + 20.0, peak_jd=era2_jd, peak_lambda=era2_lam)
+
+        # Fixture sanity: the three intervals' JD ranges must be genuinely
+        # disjoint, or build_resolution_hierarchy's own per-interval series
+        # masking would cross-contaminate them (defeating the fixture).
+        assert interval0.exit_jd < interval1.enter_jd < interval1.exit_jd < interval2.enter_jd, (
+            "fixture regression: era intervals must be disjoint JD ranges"
+        )
+
+        all_jds = np.concatenate([jds0, jds1, jds2])
+        all_lambdas = np.concatenate([lambdas0, lambdas1, lambdas2])
+        order = np.argsort(all_jds)
+        all_jds = all_jds[order]
+        all_lambdas = all_lambdas[order]
+
+        def eval_single(swe, context, jd):
+            jd = float(jd)
+            if abs(jd - era0_jd) <= 10.0:
+                return curve0(jd)
+            if abs(jd - era1_jd) <= 10.0:
+                return curve1(jd)
+            return curve2(jd)
+
+        config = _make_threshold_config(lambda_thresh=0.0)
+
+        with patch(
+            "services.gochara_v3.resolution_hierarchy.find_threshold_crossings",
+            return_value=([interval0, interval1, interval2], all_jds, all_lambdas),
+        ), patch(
+            "services.gochara_v3.resolution_hierarchy._eval_single",
+            side_effect=eval_single,
+        ):
+            result = build_resolution_hierarchy(
+                MagicMock(), MagicMock(), era0_jd - 10.0, era2_jd + 20.0, config,
+            )
+
+        assert len(result.era_windows) == 3, "fixture regression: expected 3 era windows"
+        assert len(result.era_window_accounting) == 3, (
+            "MR-45 VIOLATION: era_window_accounting must be index-aligned "
+            "with era_windows (one entry per era window)"
+        )
+
+        # The pool AS A WHOLE retained something (era1 + era2) -- the OLD
+        # aggregate gate (total_retained == 0) never fires here.
+        assert result.peaks_retained >= 2, (
+            f"fixture regression: expected era1 and era2 to both retain "
+            f"their own peaks; peaks_retained={result.peaks_retained}"
+        )
+        assert result.zero_peaks_reason is None, (
+            "fixture regression/gate proof: the AGGREGATE zero_peaks_reason "
+            "must stay None here (total_retained != 0) -- this is exactly "
+            "the condition under which the pre-MR-45 code silently dropped "
+            "era0's own rejection reason"
+        )
+
+        # era0 (index 0) is the one whose candidate lost the pooled
+        # competition to era1's higher-lambda, nearby peak -- its OWN
+        # accounting entry must name that loss explicitly.
+        era0_accounting = result.era_window_accounting[0]
+        assert era0_accounting.peaks_admitted >= 1, (
+            "fixture regression: era0's candidate must have cleared its "
+            "own P90 admission gate (the pooled-retention loss is the "
+            "failure mode under test, not an admission failure)"
+        )
+        assert era0_accounting.peaks_retained == 0, (
+            "fixture regression: era0's candidate must have been rejected "
+            "by pooled retention (lost to era1's nearby higher-lambda peak)"
+        )
+        assert era0_accounting.zero_peaks_reason == ZERO_PEAKS_LOST_TO_POOLED_RETENTION, (
+            f"MR-45 VIOLATION: era0 lost its admitted candidate to the pooled "
+            f"retention competition (era1's nearby higher-lambda peak) while "
+            f"the pool as a whole retained era1+era2's peaks, yet era0's own "
+            f"accounting reason is {era0_accounting.zero_peaks_reason!r}, not "
+            f"ZERO_PEAKS_LOST_TO_POOLED_RETENTION -- the dead-code defect is "
+            f"not fixed."
+        )
+
+        # era1 and era2 (the survivors) must each report a real retention,
+        # no zero_peaks_reason of their own.
+        era1_accounting = result.era_window_accounting[1]
+        era2_accounting = result.era_window_accounting[2]
+        assert era1_accounting.peaks_retained == 1 and era1_accounting.zero_peaks_reason is None
+        assert era2_accounting.peaks_retained == 1 and era2_accounting.zero_peaks_reason is None
+
+    def test_mutation_reverting_per_era_accounting_to_aggregate_only_loses_era0_reason(self):
+        """MUTATION test: proves era_window_accounting is a REAL, load-
+        bearing detector, not vacuous. Simulates the PRE-MR-45 behaviour
+        (only the aggregate zero_peaks_reason existed; no per-era-window
+        field) by asserting that reading ONLY the aggregate field on the
+        same fixture used above would have missed era0's rejection --
+        i.e. confirms the aggregate alone is NOT sufficient and the new
+        per-era field is what closes the gap."""
+        start_jd = _BASE_JD
+        era0_jd = start_jd
+        era0_lam = 0.80
+        era1_jd = start_jd + 14.0
+        era1_lam = 0.95
+
+        def curve(jd: float) -> float:
+            jd = float(jd)
+            v0 = max(0.05, era0_lam - abs(jd - era0_jd) * 0.05)
+            v1 = max(0.05, era1_lam - abs(jd - era1_jd) * 0.05)
+            return max(v0, v1)
+
+        jds = np.arange(era0_jd - 20.0, era1_jd + 20.0, PEAK_SCAN_STRIDE_DAYS)
+        lambdas = np.array([curve(j) for j in jds])
+        interval0 = _make_interval(enter_jd=era0_jd - 20.0, exit_jd=era0_jd + 5.0, peak_jd=era0_jd, peak_lambda=era0_lam)
+        interval1 = _make_interval(enter_jd=era1_jd - 5.0, exit_jd=era1_jd + 20.0, peak_jd=era1_jd, peak_lambda=era1_lam)
+        config = _make_threshold_config(lambda_thresh=0.0)
+
+        with patch(
+            "services.gochara_v3.resolution_hierarchy.find_threshold_crossings",
+            return_value=([interval0, interval1], jds, lambdas),
+        ), patch(
+            "services.gochara_v3.resolution_hierarchy._eval_single",
+            side_effect=lambda swe, context, jd: curve(jd),
+        ):
+            result = build_resolution_hierarchy(
+                MagicMock(), MagicMock(), era0_jd - 20.0, era1_jd + 20.0, config,
+            )
+
+        # Aggregate alone (the pre-MR-45 surface) is silent: total_retained
+        # is nonzero (era1 survives), so zero_peaks_reason is None.
+        assert result.peaks_retained >= 1
+        assert result.zero_peaks_reason is None, (
+            "fixture regression: aggregate must be None (pool nonzero)"
+        )
+        # But era0's own accounting entry is NOT silent -- this is the gap
+        # MR-45 closes.
+        assert result.era_window_accounting[0].zero_peaks_reason == (
+            ZERO_PEAKS_LOST_TO_POOLED_RETENTION
+        ), (
+            "MUTATION TEST FAILURE: era_window_accounting failed to surface "
+            "era0's pooled-retention loss even though the aggregate field "
+            "(simulating the pre-MR-45 code) stayed silent -- the per-era "
+            "field is not actually closing the reachability gap."
         )
 
 

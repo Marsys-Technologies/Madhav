@@ -58,7 +58,7 @@ from __future__ import annotations
 import datetime as _dt
 import logging
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional
 
 import numpy as np
@@ -219,7 +219,43 @@ class HierarchyResult:
                          that retained zero peaks. None when peaks were
                          retained, or when there were no era windows at all
                          to explain (a genuinely different, unrelated case
-                         from "scanned and found nothing").
+                         from "scanned and found nothing"). AGGREGATE ONLY —
+                         see `era_window_accounting` for the per-era-window
+                         reason MR-45 fixed the reachability of (a specific
+                         era window can lose the pooled retention
+                         competition even while the pool AS A WHOLE retains
+                         something from a SIBLING era window, in which case
+                         this aggregate field stays None/absent because
+                         `total_retained` across the whole call is nonzero
+                         — that per-era loss is still real and is reported
+                         via `era_window_accounting`, never silently
+                         dropped).
+    era_window_accounting  MR-45 fix: one `EraWindowAccounting` per era
+                         window, INDEX-ALIGNED with `era_windows`
+                         (`era_window_accounting[i]` describes
+                         `era_windows[i]`'s own scan/admission/retention
+                         outcome). Unlike `zero_peaks_reason` (an aggregate
+                         gated on the WHOLE call retaining zero peaks), each
+                         entry's own `zero_peaks_reason` is populated
+                         whenever THAT era window itself retained zero
+                         peaks — including `ZERO_PEAKS_LOST_TO_POOLED_
+                         RETENTION` for an era window whose admitted
+                         candidate(s) lost the cross-interval pooled
+                         retention competition (MR-44's `retain_candidates_
+                         pooled`) to a higher-λ peak from a SIBLING era
+                         window, even when that sibling's retention means
+                         the call's own `total_retained` (and therefore
+                         `zero_peaks_reason` above) is nonzero. This is the
+                         register's MR-45 fix for the finding that
+                         `ZERO_PEAKS_LOST_TO_POOLED_RETENTION` was
+                         unreachable dead code: `retain_candidates_pooled`
+                         always retains >=1 candidate globally whenever ANY
+                         era window admitted one, so the aggregate
+                         `total_retained == 0` gate could never fire in the
+                         exact case this reason exists to name (one era's
+                         own candidate globally rejected while the pool as
+                         a whole still retains something else). Empty list
+                         for calls with zero era windows.
     """
     era_windows: list[WindowResolutionRecord]
     month_windows: list[WindowResolutionRecord]
@@ -230,6 +266,7 @@ class HierarchyResult:
     peaks_admitted: int = 0
     peaks_retained: int = 0
     zero_peaks_reason: Optional[str] = None
+    era_window_accounting: list["EraWindowAccounting"] = field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------
@@ -911,7 +948,17 @@ def build_resolution_hierarchy(
     total_scanned = 0
     total_admitted = 0
     total_retained = 0
-    zero_reasons: list[str] = []
+    # MR-45: per-era-window accounting, INDEX-ALIGNED with era_windows —
+    # each era window's OWN outcome, computed independent of whatever the
+    # POOL as a whole retained. This is what makes ZERO_PEAKS_LOST_TO_
+    # POOLED_RETENTION reachable: the pre-MR-45 code only ever surfaced a
+    # zero_peaks_reason gated on total_retained==0 (the whole-call
+    # aggregate), which `retain_candidates_pooled` guarantees is nonzero
+    # whenever ANY era window admitted a candidate anywhere in the pool —
+    # so a SPECIFIC era window losing the pooled competition while a
+    # SIBLING era window's peak survives could never reach that aggregate
+    # gate. era_window_accounting reports it directly, per window, always.
+    era_window_accounting: list[EraWindowAccounting] = []
 
     for era_idx, era_record in enumerate(era_windows):
         peaks_scanned, peaks_admitted, pre_retention_reason = scan_meta[era_idx]
@@ -925,14 +972,32 @@ def build_resolution_hierarchy(
             month_rows, day_rows = _emit_retained_peaks(swe, context, era_record, retained)
             all_month.extend(month_rows)
             all_day.extend(day_rows)
+            era_window_accounting.append(
+                EraWindowAccounting(peaks_scanned, peaks_admitted, len(retained), None)
+            )
         elif pre_retention_reason is not None:
-            zero_reasons.append(pre_retention_reason)
+            era_window_accounting.append(
+                EraWindowAccounting(peaks_scanned, peaks_admitted, 0, pre_retention_reason)
+            )
         elif peaks_admitted > 0:
             # MR-44: this era window HAD admittable candidates but none
             # survived the POOLED cross-interval retention pass -- an
             # honest, distinct reason from "no candidate above P90" (see
             # ZERO_PEAKS_LOST_TO_POOLED_RETENTION's own docstring note).
-            zero_reasons.append(ZERO_PEAKS_LOST_TO_POOLED_RETENTION)
+            # MR-45: this is THIS era window's OWN accounting entry,
+            # reported regardless of whether a sibling era window's peak
+            # survived pooled retention (the fix for the dead-code finding).
+            era_window_accounting.append(
+                EraWindowAccounting(peaks_scanned, peaks_admitted, 0, ZERO_PEAKS_LOST_TO_POOLED_RETENTION)
+            )
+        else:
+            # Defensive: _scan_and_admit's own contract guarantees a
+            # pre_retention_reason whenever peaks_admitted == 0, so this
+            # branch is not expected to execute. An honest None rather than
+            # a fabricated reason if it ever does (§N.7 item 6).
+            era_window_accounting.append(
+                EraWindowAccounting(peaks_scanned, peaks_admitted, 0, None)
+            )
 
     resolution_facet: dict[str, int] = {
         "era": len(era_windows),
@@ -941,11 +1006,20 @@ def build_resolution_hierarchy(
     }
 
     overall_zero_reason: Optional[str] = None
-    if total_retained == 0 and zero_reasons:
-        # One era window's reason (the first) stands in for the aggregate —
-        # R8.13's WriterResult.notes reports this alongside era_windows so a
-        # reader with multiple era windows can see the count and reconcile.
-        overall_zero_reason = zero_reasons[0]
+    if total_retained == 0:
+        zero_reasons = [
+            acc.zero_peaks_reason for acc in era_window_accounting
+            if acc.zero_peaks_reason is not None
+        ]
+        if zero_reasons:
+            # One era window's reason (the first) stands in for the
+            # aggregate — R8.13's WriterResult.notes reports this alongside
+            # era_windows so a reader with multiple era windows can see the
+            # count and reconcile. Per-era-window reasons (including any
+            # ZERO_PEAKS_LOST_TO_POOLED_RETENTION entries) are ALWAYS
+            # available in full via era_window_accounting regardless of
+            # this aggregate gate — see that field's own docstring.
+            overall_zero_reason = zero_reasons[0]
 
     logger.info(
         "[resolution_hierarchy] build_resolution_hierarchy: "
@@ -965,6 +1039,7 @@ def build_resolution_hierarchy(
         peaks_admitted=total_admitted,
         peaks_retained=total_retained,
         zero_peaks_reason=overall_zero_reason,
+        era_window_accounting=era_window_accounting,
     )
 
 
