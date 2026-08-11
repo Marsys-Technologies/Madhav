@@ -699,3 +699,5 @@ CONDUCTOR-HEARTBEAT: 2026-08-12T20:49+05:30 pid=83428 [R9 — L-7 yield window. 
 
 CONDUCTOR-HEARTBEAT: 2026-08-12T20:52+05:30 pid=83428 [R9 — R0 prep complete; all code staged; L-7 wait continues. Next: gate packet PR when L-7 releases.]
 
+
+CONDUCTOR-HEARTBEAT: 2026-08-12T21:07+05:30 pid=83428 [R9 — L-7 poll #2. PARIṢKĀRA rebuild PID 80517 ALIVE (12m44s CPU at 02:37 IST, ~35 min elapsed). Gate packet ready on integration; awaiting L-7 release.]
