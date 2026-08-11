@@ -20,19 +20,19 @@ marker_duty: post W6-COMPLETE to campaign-coordination §6 after MR-01..08,10,13
 | MR-08 | Flip/rollback/probe tooling | MERGED | PR #1206 MERGED to parishkara/integration · PARĪKṢAKA PASS: flip/rollback/probe scripts verified; static interface tests; red→green confirmed |
 | MR-09 | Naming coherence + health + pointers | MERGED | PR #1197 MERGED · PARĪKṢAKA PASS: GocharaTransitService rename (alias kept), health probe JD-sanity check, discoverability guard, ph_muhurta docstring correct, 17 tests verified |
 | MR-10 | Promote 54 point rows | CLOSED | PR #1215 (code lanes, no promotion logic needed — points already existed in staging) + THE authorized rebuild (2026-08-11 ~14:3x IST): 54 point rows promoted (29 native + 25 Abhinandan), generation='3.0' evidenced decision, protection inherited (seeded DELETE refused on a promoted row) |
-| MR-11 | Resolution bar + hierarchy windows | QUEUED (ADJUDICATOR bar ruling first) | — |
+| MR-11 | Resolution bar + hierarchy windows | (a) MET, (c) RULED (PK-R-1), (b) BLOCKED (yield window) | PK-R-1 2026-08-11: month-resolution+day-peak OR dated point = minimum "window"; decade-era rows are context only. (a) confirmed live (54 point rows). (b) build queued post-yield-window. |
 | MR-12 | Chain rows (marriage first) | QUEUED | — |
 | MR-13 | Honest valence + calibration tier restamp | CLOSED | PR #1211 (code fix) + THE authorized rebuild: live gen-3.0 rows now zero 'favourable', zero 'empirically_calibrated', both charts, evidence pasted in ledger 2026-08-11 ~14:3x IST entry |
 | MR-14 | term_breakdown → rebuild → refit | CLOSED (honest structural_prior branch) | PR #1213+#1214 (code) + THE authorized rebuild: term_breakdown populated 120/120 interval rows both charts; real W4.4 fit run, honest mechanism_not_wired for all 10 admitted mechanisms (not fabricated proxy_fraction) — per MR-14-matching's finding the mechanisms are genuinely dormant. Spawned MR-37 (w45 stamping-gate defect) + MR-38 (ENGINE_VERSION gap) as new register items |
 | MR-15 | AV gating contributes (bhava_num) | CLOSED | PR #1212 (code fix, bhava_num→house_from_moon) + THE authorized rebuild: zero AV_GATE_DEGRADED notes across all 120 rebuilt substeps, both charts |
-| MR-16 | 27-class expansion (POST-MARKER only) | QUEUED | — |
+| MR-16 | 27-class expansion (POST-MARKER only) | RULED (PK-R-2: no reduction), BUILD BLOCKED (yield window) | PK-R-2 2026-08-11: 27 classes stands, no reduction. MR-20's low-equivalence finding attached as evidentiary context — argues FOR expansion (100% valence agreement when matched, gap is density not correctness). Build queued post-yield-window. |
 | MR-17 | ka_kshetra seam (SAMPŪRTI's — track only) | EXTERNAL | coordination file |
 | MR-18 | Validators generation stance | MERGED | PR #1195 MERGED · PARĪKṢAKA PASS (7/8 tests functional; mig-527 gate test vacuous pass noted as non-blocking finding; fix itself correct) |
 | MR-19 | Ablations → re-adjudicated admissions | CLOSED | PRATINIDHI re-adjudication 2026-08-11: all 10 admitted mechanisms demoted (defined+cited+coded, NOT engine-wired) on the honest mechanism_not_wired evidence — no ablation theater run against zero weights. mechanism_register.yaml gains an additive correction block (UTK-R3 text preserved). See "MR-19 re-adjudication" ledger entry. |
 | MR-20 | Real no-loss gate (35,620 windows) | GATE MET, finding disclosed | mr20_no_loss_coverage_gate.py run live both charts 2026-08-11: unclassified=0 (2,448 divergences, both charts, all closed-vocabulary). Substantive finding: equivalence_rate <2% both charts, 92% of divergences are v1-only-needs-review — disclosed for ADJUDICATOR review, not self-adjudicated. See "MR-20: the real no-loss coverage gate" ledger entry. |
 | MR-21 | Quantitative evidence chain published | BLOCKED (yield window) | investigated 2026-08-11: all 4 required numbers genuinely need a large-scale production timing run, not evidence retrieval; THE ONE authorized rebuild's timing does NOT honestly substitute (different scope/criteria). Queued for post-yield-window resumption alongside MR-11(b)/MR-12. See "MR-21" ledger entry. |
 | MR-22 | Suppression detector + count | GATE MET, plausibility disclosed | seeded must-fire test (test_gochara_intensity.py) already exists, verified green 2026-08-11; real-corpus count published (0/54 point rows, both charts, all 3 mechanism types) — plausibility flagged for ADJUDICATOR, not self-certified. See "MR-22" ledger entry. |
-| MR-23 | Remaining unrun acceptance artifacts | PARTIAL | W5.4 mutation test run live 2026-08-11: found + fixed a real substring-collision bug (same class as MR-40) in test_ka_gochara_v3_mutation_guard.py, 14/14 pass now. W1.2/W1.4 (native ruling likely needed)/W0.2 remain OPEN. See "MR-23" ledger entry. |
+| MR-23 | Remaining unrun acceptance artifacts | PARTIAL — W5.4 CLOSED, W1.4 RULED (PK-R-3), W1.2/W0.2 OPEN | W5.4: bug found+fixed, 14/14 pass. W1.4 (PK-R-3): ruled-inert-with-trigger (lambda_thresh=0.0 stays, now a recorded decision with a named trigger condition, not a silent default). W1.2/W0.2 not attempted. |
 | MR-24 | Product-level E2E battery (standing) | CLOSED (FINAL, 2026-08-11 ~09:44 IST re-run against rebuilt corpus supersedes the earlier same-day pre-final-state pass) | Final re-run: 3 tools x 3 charts (482012f1 gen-3.0, 1c826d5a gen-3.0, cb73cd3d v1-authority) all backing_data_reachable=true; valence+calibration facet filters matched honest values; cockpit count_sql found FALSE (MR-40, new bug: cockpit pointed at the wrong table/generation after an undisclosed W5.4 UTK-R1 authority repoint), fixed live + source PR #1216 opened, RE-VERIFIED true (89/85); judgment_query(domain=health) served full gochara_sweep depth (17 windows); rollback+re-flip cycle on the NATIVE chart (482012f1) via committed MR-08 tooling, verified end-to-end live both directions. Full transcript in "MR-24 FINAL RE-RUN" ledger entry below. |
 | MR-25 | Citations resolve in serving | MERGED | PR #1200 MERGED · PARĪKṢAKA PASS (code review): mig-565 correct (14 rows: 4 resolved verified vs corpus, 10 CORPUS_GAP not silenced), B.3 compliant, live gate honestly deferred |
 | MR-26 | Honest amended close report | QUEUED | — |
@@ -1786,3 +1786,40 @@ confirmed pre-merge: exactly the 5 files MR-37+MR-40 touched — everything else
    product) throughout MR-24's final pass.
 
 Disposition #1 (merge on green, verify deploy+migrations+cockpit) — COMPLETE.
+
+## 2026-08-11 — Three native rulings recorded (PK-R-1, PK-R-2, PK-R-3); PRs #1218/1220/1221 merged
+
+**PRs merged to `parishkara/integration`:** #1218 (MR-19 re-adjudication), #1220 (MR-20
+comparator script), #1221 (MR-23 W5.4 mutation-guard fix) — all green CI, native-authorized
+GO. No gate packet currently open to main, so these ride to `main` in the next pinned packet
+(no freeze conflict).
+
+**PK-R-1 (MR-11(c), serving resolution bar):** month-resolution+day-precision-peak OR a dated
+point row is the minimum a served "window" must carry for a timing decision; decade-era rows
+are context, never the timing claim, until MR-11(b)'s hierarchy build lands. Recorded in
+`MASTER_REMEDIATION_REGISTER_v2_0.md` MR-11 entry. Ruling effective immediately; build queued
+post-yield-window.
+
+**PK-R-2 (MR-16 scope):** NO reduction — 27 classes stands. Before recording, independently
+re-checked MR-20's finding for anything qualitatively different from the "coarse
+resolution + narrow scope" explanation, per the native's explicit instruction to flag if so:
+found none — in fact found a POSITIVE corroborating signal not previously called out: every
+single matched pair in MR-20's report agreed on valence/is_adverse (native 9/9, Abhinandan
+20/20, zero `genuine_2_0_bug_valence_mismatch` instances in either chart) — when v3 produces a
+window, it is correct; the gap is coverage density, not correctness. This strengthens rather
+than complicates the "argues FOR expansion" reading. MR-20's finding attached verbatim to the
+MR-16 register entry as this ruling's evidentiary context, per instruction.
+
+**PK-R-3 (W1.4 threshold ratification):** ruled-inert-with-trigger. `lambda_thresh=0.0`
+unchanged in value, now a recorded decision (not a silent default) with a named trigger: when a
+fit produces a non-zero weight from at least one genuinely engine-wired mechanism (the same
+earned-signal bar MR-37 restored to w45), PRATINIDHI ratifies the per-class implied-density
+tolerance band per the original W1.4 acceptance text, and only then do thresholds activate.
+
+**Cockpit HTTP spot-check limitation:** accepted as honestly disclosed, not blocking (native
+direction). Deferred: fold one literal HTTP hit on the cockpit stats route into the next
+MR-24-style battery run from a network-capable context (this session's sandbox cannot reach
+`amjis-web.run.app` directly — confirmed via curl timeout, not silently skipped).
+
+All three rulings are now the operative rule for any future session/agent touching these
+surfaces — not provisional, not pending further confirmation.

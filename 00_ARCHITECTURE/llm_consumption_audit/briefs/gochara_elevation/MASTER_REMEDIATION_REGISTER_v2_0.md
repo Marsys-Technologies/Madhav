@@ -138,6 +138,22 @@ constitutes an at-par "window"). GATE: sub-decade windows served for both
 charts + the recorded ruling. AT-PAR: only with (c) — an agent cannot
 self-certify this; that is by design.
 
+**PK-R-1 (native-directed, 2026-08-11) — serving resolution bar, RATIFIED:**
+a "window" served for timing decisions must be at MINIMUM a month-resolution
+span carrying a day-precision peak, or a dated point row. Decade-era rows
+alone are CONTEXT, not windows — they may serve, but only labeled at their
+own resolution, never presented as the timing claim itself. MR-11(b)'s
+hierarchy build (month/day rows for at least the LEL-represented classes,
+`parent_window_id` wired, resolution facet served) is what closes the
+remaining gap; until it lands, serving surfaces must not present decade-era
+rows as actionable windows. Sub-item (a) (MR-10's dated points) is already
+confirmed live (54 point rows, day-precision, both charts — see 2026-08-11
+"MR-11 + MR-12" ledger entry). Sub-item (b)'s BUILD waits for the yield
+window (SAMPŪRTI's P-G1); the RULING itself is effective immediately —
+serving surfaces should apply it now regardless of when the hierarchy build
+lands. AT-PAR gate: (a) MET, (b) queued post-yield-window, (c) CLOSED by
+this ruling.
+
 **MR-12 · Produce chain rows (marriage first).** [PG-20a; recon W3.2]
 GAP: "first-ever marriage chain rows" is a stated success criterion; corpus
 has zero chains. REMEDIATION: run the chain producer for chain-canonical
@@ -227,6 +243,47 @@ prod corpus classes = resonance-mapped classes (27, or ruling-recorded
 subset), per-class quality notes served. AT-PAR: this is the difference
 between "elevated" and "same scope, new engine."
 
+**PK-R-2 (native-directed, 2026-08-11) — scope ruling: NO REDUCTION.** 27
+classes stands as the target — the campaign's core promise and the default
+this register protects. MR-20's low-equivalence finding (attached verbatim
+below as this ruling's evidentiary context) does not show anything
+qualitatively different from "coarse v3 resolution + 6-class scope can't
+match fine v1 windows" — independently re-checked by this session before
+recording the ruling: in BOTH charts, every matched pair agreed on valence/
+is_adverse with zero exceptions (native 9/9, Abhinandan 20/20 —
+`genuine_2_0_bug_valence_mismatch` count is 0 on both), meaning when v3
+DOES produce a window it agrees with v1 100% of the time; the gap is
+coverage DENSITY, not correctness. This argues FOR the 27-class + hierarchy
++ point-row expansion, not against it — the equivalence gap is exactly what
+that expansion exists to close. Scope stands at 27 classes; the BUILD
+(ka_gochara_resonance rebuild + dynamic materializer consumption) waits for
+the yield window like MR-11(b)/MR-12/MR-21, but the RULING (no reduction)
+is effective now.
+
+**MR-20 finding, attached verbatim (PARISHKARA_LEDGER.md 2026-08-11, "MR-20:
+the real no-loss coverage gate" entry):**
+> Native (482012f1): v1_total=16,297, v3_total=89, v1_in_scope=1,146.
+> matched=9, equivalent=9, equivalence_rate=0.79%. Divergences (1,217
+> total, unclassified_count=0): unclassified_v1_only_needs_review=1,124,
+> v1_grid_artifact=17, unclassified_v2_only_needs_review=71,
+> v1_moon_undersampling_miss=5.
+>
+> Abhinandan (1c826d5a): v1_total=19,323, v3_total=85, v1_in_scope=1,186.
+> matched=20, equivalent=20, equivalence_rate=1.69%. Divergences (1,231
+> total, unclassified_count=0): unclassified_v1_only_needs_review=1,140,
+> v1_grid_artifact=28, unclassified_v2_only_needs_review=57,
+> v1_moon_undersampling_miss=6.
+>
+> GATE MET (unclassified=0, both charts, published). THE SUBSTANTIVE
+> FINDING: equivalence rate is very low (<2% both charts) — the
+> overwhelming majority of divergences (~92% of each chart's total) are
+> unclassified_v1_only_needs_review: v1 rows the current gen-3.0 corpus
+> does not reproduce, with no automatic grid-artifact or Moon-undersampling
+> evidence either way. Consistent with, and likely substantially explained
+> by, MR-16's own still-open finding (production materializer scoped to 6
+> event classes vs. v1's full breadth) plus the corpus's youth (89/85 rows
+> vs. v1's 16,297/19,323).
+
 ## GROUP D — SEAM INTEGRITY ACROSS ALL CONSUMERS
 
 **MR-17 · ka_kshetra cross-check seam-awareness (BLOCKS P-G1; SAMPŪRTI
@@ -289,6 +346,32 @@ reason never given. REMEDIATION: run the golden comparison; ratify the band
 + set/justify thresholds; actually perform the W5.4 mutation (predicate
 removed → guard fails → restore); record the W0.2 reason. GATE: each output
 pasted. AT-PAR: yes.
+
+**W5.4 sub-item CLOSED (2026-08-11):** mutation test run live, 13/14 passed
+initially, 1 genuine failure traced to a real substring-collision bug in the
+test's own DML collector (fixed, 14/14 now pass). Full evidence:
+PARISHKARA_LEDGER.md "MR-23" entry (2026-08-11), PR merged to
+`parishkara/integration`.
+
+**PK-R-3 (native-directed, 2026-08-11) — W1.4 threshold ratification,
+RULED-INERT-WITH-TRIGGER:** thresholds remain DELIBERATELY INERT
+(`lambda_thresh=0.0`) until a non-degenerate fit with real mechanism wiring
+exists. Same numeric value as today, but now a recorded DECISION with a
+named trigger, not a silent default — the §N.8 difference (a null that
+looks identical to an unearned default is not the same as an honest,
+disclosed null). Trigger condition, recorded: when a fit produces non-zero
+weights from at least one engine-wired mechanism (i.e. `MECHANISM_ENGINE_WIRED`
+flips at least one entry to `True` AND that mechanism's weight is genuinely
+non-zero — the same earned-signal bar MR-37 restored to w45's stamping gate),
+PRATINIDHI ratifies the per-class implied-density tolerance band per the
+original W1.4 acceptance text, and only then do thresholds activate. This
+sub-item of MR-23 closes as RULED-INERT-WITH-TRIGGER, not as a bare
+unresolved gap.
+
+**MR-23 remaining open sub-items: W1.2, W0.2.** Not attempted this session
+(W1.2 needs a golden-comparison run distinct from MR-20's coverage-gate
+comparator; W0.2's specific "honest-zero reason" was not identified with
+confidence in the time available — not guessed at).
 
 **MR-24 · The REAL product-level E2E battery (standing).** [PG-11; recon D#2–4;
 the native's "confirmed with successful testing"] GAP: the only "probe" was a
