@@ -2443,3 +2443,26 @@ CONDUCTOR-HEARTBEAT: 2026-08-11T18:25:00Z pid=94797 host=Montys-MacBook-Pro.loca
 - **#1229 (MR-11 PK-R-8 rework): re-verdict in flight** (per-R8.1-15 + composition audit of
   the chain/hierarchy merge, incl. the two real composition bugs the builder caught —
   _build_chain_row missing resolution/parent_window_id + retired peak_basis literal).
+
+## 2026-08-12 ~00:2x IST — #1228 MERGED (MR-41/42 code CLOSED); #1229 FAIL(6) → PK-R-8a + fix round
+
+CONDUCTOR-HEARTBEAT: 2026-08-11T18:55:00Z pid=94797 host=Montys-MacBook-Pro.local
+
+- **#1228 (MR-41/42): MERGED to integration** on green after final PASS. MR-41 CLOSED (PK-R-9/
+  9a interim state: vedha predicate fixed to the authoritative 41-row corpus, earned-empty
+  frame gate citing MR-43, tara admitted/SBC gated, GRAMMAR_VERSION bumped, pattern-pins);
+  MR-42 CLOSED (structured suppression_state on ALL row shapes incl. chains).
+- **#1229 (MR-11/PK-R-8): FAIL(6)** — implementation verified correct end-to-end; the failures
+  are EVIDENCE-null detectors: F-1 (reuse bound 20x slack — re-sweep mutation survives), F-2
+  (the ruling's own most-important detector vacuous: synthetic peak 0.7d from grid with 1.0d
+  tolerance — unrefined coarse value passes identically; refinement wiring wholly unguarded),
+  F-3 (R8.13 accounting has NO detector; PR-body evidence claim false — 2 of 3 zero-reasons
+  asserted nowhere), F-4 (chain rows stamp LAMBDA_V3_ARGMAX for an ontology-offset date that
+  was never argmax-located — sole mechanism of their is_timing_window=true; routed to
+  adjudicator as PK-R-8a: candidate = new ONTOLOGY_MILESTONE_OFFSET basis + formula extension
+  treating chain milestones as PK-R-1's dated-point floor), F-5 (v1-row disclosure numbers
+  wrong: actual 33/29/2 not "predominantly cb73cd3d"; the material consequence — both
+  canonical charts serve ZERO interval timing windows post-merge/pre-rebuild — undisdisclosed),
+  F-6 (branch stale again post-#1228). Fix round routed (F-1/2/3/5/6 now; chain treatment on
+  PK-R-8a). Also verified clean: migration 567 never edited post-apply-verification; count_sql
+  untouched; both MR-12 composition bug fixes real.
