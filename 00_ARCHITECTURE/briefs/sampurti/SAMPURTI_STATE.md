@@ -759,3 +759,5 @@ Hierarchy rows: 70 era + 207 month + 207 day = 484 resolution-tagged; 339 null_r
 
 CONDUCTOR-HEARTBEAT: 2026-08-12T21:55+05:30 pid=83428 [R9 — R0 corpus pin complete. Opening gate packet PR.]
 
+
+CONDUCTOR-HEARTBEAT: 2026-08-11T22:17+05:30 pid=98555 [R0 — CI re-run after smoke test path fix. Governance Gates failed: test_dag_edge_r0.py used bare relative paths (CWD=platform/python-sidecar/). Fixed to parents[3] anchor. Pushed 7b75dacf0. New CI run 31541719585.]
