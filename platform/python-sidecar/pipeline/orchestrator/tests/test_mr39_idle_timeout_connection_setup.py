@@ -52,7 +52,6 @@ To run layer (b):
 """
 from __future__ import annotations
 
-import inspect
 import os
 import re
 import time
@@ -132,12 +131,47 @@ def test_connect_issues_idle_timeout_set_statement(monkeypatch):
     )
 
 
-def test_connect_startup_option_also_present():
-    """Defense-in-depth: the libpq startup `options` parameter should also
-    request idle_in_transaction_session_timeout=0, in case a pooler forwards
-    startup options but strips a later SET (belt-and-suspenders, not either/or)."""
-    source = inspect.getsource(orchestrator_db.connect)
-    assert "idle_in_transaction_session_timeout" in source
+def test_connect_startup_option_also_present(monkeypatch):
+    """Defense-in-depth: the libpq startup `options` kwarg PASSED TO
+    psycopg.connect() must also request idle_in_transaction_session_timeout=0,
+    in case a pooler forwards startup options but strips a later SET
+    (belt-and-suspenders, not either/or).
+
+    PARĪKṢAKA F-1: the prior version of this test asserted
+    `"idle_in_transaction_session_timeout" in inspect.getsource(...)` — a
+    source-text grep that stays GREEN even if the `options=` kwarg is deleted
+    entirely (as long as some other line, including a comment or the explicit
+    SET string, still mentions the setting name) and even if BOTH the kwarg
+    and the SET line are deleted, because the docstring/comments around
+    `connect()` still name it. That is an unearned signal (§N.8): the
+    assertion does not measure the specific claim ("the startup option is
+    passed"), it measures "the substring appears somewhere in ~30 lines of
+    source including four paragraphs of comments." Fixed to capture the
+    ACTUAL kwargs passed to psycopg.connect() via a fake connect(), so only
+    the real keyword argument value can satisfy it.
+    """
+    fake_conn = _FakeConn()
+    captured_kwargs: dict = {}
+
+    def _fake_connect(*args, **kwargs):
+        captured_kwargs.update(kwargs)
+        return fake_conn
+
+    monkeypatch.setattr(orchestrator_db.psycopg, "connect", _fake_connect)
+    monkeypatch.setenv("DATABASE_URL", "postgresql://fake/fake")
+
+    orchestrator_db.connect()
+
+    assert "options" in captured_kwargs, (
+        "MR-39 GATE FAILED: db.connect() did not pass an 'options' kwarg to "
+        "psycopg.connect() at all — the libpq startup-option defense-in-depth "
+        f"layer is missing. kwargs passed: {captured_kwargs!r}"
+    )
+    assert "-c idle_in_transaction_session_timeout=0" in captured_kwargs["options"], (
+        f"MR-39 GATE FAILED: the 'options' kwarg passed to psycopg.connect() "
+        f"does not contain '-c idle_in_transaction_session_timeout=0'. "
+        f"Got: {captured_kwargs['options']!r}"
+    )
 
 
 @pytest.mark.parametrize(

@@ -11,18 +11,30 @@ Gate: W0.3 PASS (generation schema + utkarsha_builder role in place) +
       rewrite; re-running with no version change and no input change
       correctly skips.
 
-MR-38 — FINGERPRINT VERSION FOLD
----------------------------------
+MR-38 — FINGERPRINT VERSION FOLD (row-shape scope only)
+----------------------------------------------------------
 MR-13/14 changed the row shape this writer produces (added term_breakdown /
 lambda_v3_ci_low / lambda_v3_ci_high / ci_source) without bumping
 ENGINE_VERSION — the delta-skip (stored_fingerprint == recomputed_fingerprint
 AND rows_exist) would have silently no-opped an authorized rebuild had this
-not been caught in rehearsal. Fix: ROW_SCHEMA_COLUMNS (derived directly from
-INSERT_PROD_SQL, never a hand-maintained duplicate) is folded into
-compute_substep_fingerprint's hashed payload alongside engine_version, so any
-future row-shape change auto-invalidates every substep's fingerprint whether
-or not ENGINE_VERSION is bumped. See the "Row-schema signature" section below
-for the full account.
+not been caught in rehearsal. Fix: ROW_SCHEMA_COLUMNS (derived from
+INSERT_PROD_SQL) and STAGING_ROW_SCHEMA_COLUMNS (derived from INSERT_SQL,
+the calibration/staging INSERT executed every substep) — neither a
+hand-maintained duplicate — are both folded into compute_substep_fingerprint's
+hashed payload alongside engine_version, so any future ROW-SHAPE change to
+EITHER INSERT template auto-invalidates every substep's fingerprint whether
+or not ENGINE_VERSION is bumped.
+
+SCOPE (PARĪKṢAKA F-3): this fold covers ROW SHAPE only — which columns get
+written. It does NOT cover VALUE-COMPUTATION changes (e.g. MR-13's honest
+valence derivation, which changed what a column's VALUE is without changing
+the column LIST) — a fingerprint match after a value-computation-only change
+still means "unchanged" even though the writer would now compute a different
+value for the same inputs. The ENGINE_VERSION standing rule remains
+load-bearing for exactly that class of change, post-MR-38 same as before:
+any writer change that ALTERS COMPUTED VALUES without adding/removing/
+renaming a column must still bump ENGINE_VERSION by hand. See the
+"Row-schema signature" section below for the full account.
 
 PURPOSE
 -------
@@ -252,16 +264,30 @@ INSERT_PROD_SQL = f"""
 # the delta-skip fired and an authorized rebuild would have silently no-opped
 # (caught in rehearsal, not by any test).
 #
-# FIX: derive a row-schema signature directly from INSERT_PROD_SQL -- the
-# ACTUAL SQL template executed, not a hand-maintained duplicate list that
-# could itself drift -- and fold it into compute_substep_fingerprint's
-# payload alongside engine_version. Any future column addition/removal/rename
-# in INSERT_PROD_SQL automatically changes every substep's fingerprint, so a
-# fingerprint match can only ever mean "the inputs AND the writer's output
-# contract are both unchanged" -- no human has to remember to bump
-# ENGINE_VERSION for a row-shape change again. This is orthogonal to (and
-# composes cleanly with) any future ENGINE_VERSION bump: both are independent
-# inputs folded into the same hashed payload.
+# FIX: derive a row-schema signature directly from BOTH INSERT templates --
+# the ACTUAL SQL executed, not a hand-maintained duplicate list that could
+# itself drift -- and fold both into compute_substep_fingerprint's payload
+# alongside engine_version. Any future column addition/removal/rename in
+# EITHER template automatically changes every substep's fingerprint -- no
+# human has to remember to bump ENGINE_VERSION for a row-SHAPE change again.
+# This is orthogonal to (and composes cleanly with) any future ENGINE_VERSION
+# bump: all three are independent inputs folded into the same hashed payload.
+#
+# SCOPE (PARĪKṢAKA F-3, corrects an earlier overstated summary in this
+# module's top docstring): a fingerprint match means "the inputs AND the
+# writer's column LIST are unchanged" -- it does NOT mean "the writer's
+# value-computation logic is unchanged". A change that alters what VALUE a
+# column gets (e.g. MR-13's honest valence derivation) without adding,
+# removing, or renaming any column evades this fold entirely -- the
+# ENGINE_VERSION standing rule remains load-bearing for exactly that class of
+# change, same as before MR-38. MR-38 closes the row-shape gap only.
+#
+# Both INSERT_SQL (staging/calibration surface, kala_gochara_windows_v2 --
+# written every substep) and INSERT_PROD_SQL (production surface,
+# kala_gochara_windows -- W5.4 repoint) are covered: a staging-only column
+# change (INSERT_SQL edited without touching INSERT_PROD_SQL, or vice versa)
+# must also invalidate the fingerprint, since either template's row shape is
+# part of what this writer's "output contract" means.
 def _extract_insert_columns(insert_sql: str) -> tuple[str, ...]:
     """Parse the column list out of an ``INSERT INTO table (col1, col2, ...)``
     SQL template.
@@ -277,10 +303,11 @@ def _extract_insert_columns(insert_sql: str) -> tuple[str, ...]:
     return tuple(c for c in cols if c)
 
 
-# The writer's OUTPUT CONTRACT signature: the column list actually written by
-# INSERT_PROD_SQL (the production INSERT), derived from the SQL template
-# itself. Folded into every substep's fingerprint by
+# The writer's OUTPUT CONTRACT signature: the column lists actually written
+# by INSERT_SQL (staging) and INSERT_PROD_SQL (production), derived from the
+# SQL templates themselves. Both folded into every substep's fingerprint by
 # compute_substep_fingerprint (see the "Row-schema signature" note above).
+STAGING_ROW_SCHEMA_COLUMNS: tuple[str, ...] = _extract_insert_columns(INSERT_SQL)
 ROW_SCHEMA_COLUMNS: tuple[str, ...] = _extract_insert_columns(INSERT_PROD_SQL)
 
 
@@ -353,24 +380,37 @@ def compute_substep_fingerprint(
     """Compute a delta fingerprint for one (event_class, era_slice) substep.
 
     The fingerprint is an MD5 hex digest of a canonicalized JSON payload
-    covering the five inputs that, if changed, would require a rebuild:
+    covering the six inputs that, if changed, would require a rebuild:
       * event_class      — the class being scored.
       * era_slice_key    — the decade window.
-      * engine_version   — bumped when scoring logic changes.
+      * engine_version   — bumped when scoring logic OR VALUE-COMPUTATION
+                            changes (the standing rule for anything that is
+                            NOT a row-shape change — see SCOPE below).
       * resonance_targets — sorted list of target_ref strings for this chart×class.
-      * row_schema       — PARIṢKĀRA MR-38: the module's CURRENT
-                            ROW_SCHEMA_COLUMNS, read live from module scope
-                            (not accepted as a parameter — this is the fold:
-                            it is structurally impossible to compute a
-                            fingerprint that does not reflect the writer's
-                            CURRENT output contract). A row-shape change
-                            (e.g. the MR-13/14 column additions that landed
-                            without an ENGINE_VERSION bump) therefore
+      * row_schema_staging — PARIṢKĀRA MR-38: the module's CURRENT
+      * row_schema_prod     STAGING_ROW_SCHEMA_COLUMNS / ROW_SCHEMA_COLUMNS,
+                            read live from module scope (not accepted as
+                            parameters — this is the fold: it is structurally
+                            impossible to compute a fingerprint that does not
+                            reflect the writer's CURRENT column lists for
+                            BOTH the staging INSERT_SQL and the production
+                            INSERT_PROD_SQL). A row-SHAPE change to either
+                            template (e.g. the MR-13/14 column additions that
+                            landed without an ENGINE_VERSION bump) therefore
                             automatically invalidates every previously-stored
                             fingerprint, without depending on a human
-                            remembering to bump ENGINE_VERSION. See the
-                            "Row-schema signature" note near ROW_SCHEMA_COLUMNS'
-                            definition for the full defect this closes.
+                            remembering to bump ENGINE_VERSION for it. See
+                            the "Row-schema signature" note near
+                            ROW_SCHEMA_COLUMNS' definition for the full
+                            defect this closes.
+
+    SCOPE (PARĪKṢAKA F-3): the row_schema_* fold covers ROW SHAPE (which
+    columns exist) only. It does NOT cover VALUE-COMPUTATION changes — a
+    writer edit that changes what value a column gets, without adding,
+    removing, or renaming any column, still evades this fold and remains
+    covered ONLY by the ENGINE_VERSION standing rule, unchanged from before
+    MR-38. A fingerprint match means "the inputs and the writer's column
+    list are unchanged" — not "the writer's computed values are unchanged".
 
     Inputs are sorted so the fingerprint is stable across row-order changes.
 
@@ -384,7 +424,8 @@ def compute_substep_fingerprint(
             "era_slice_key": era_slice_key,
             "engine_version": engine_version,
             "resonance_targets": sorted(resonance_targets),
-            "row_schema": list(ROW_SCHEMA_COLUMNS),
+            "row_schema_staging": list(STAGING_ROW_SCHEMA_COLUMNS),
+            "row_schema_prod": list(ROW_SCHEMA_COLUMNS),
         },
         sort_keys=True,
     )
@@ -1078,6 +1119,7 @@ __all__ = [
     "PROD_TABLE",
     "TABLE",
     "ROW_SCHEMA_COLUMNS",
+    "STAGING_ROW_SCHEMA_COLUMNS",
     "GocharaV3CenturyMaterializeWriter",
     "build_decade_slices",
     "compute_substep_fingerprint",
