@@ -40,6 +40,12 @@ def main():
 
     conn = psycopg.connect(DB_URL, prepare_threshold=None)
     conn.autocommit = False
+    # PARIṢKĀRA MR-39: session-scoped SET (never ALTER DATABASE/ROLE) so this
+    # build session cannot be killed by the server-side idle-in-transaction
+    # timeout while the writer computes with no DB traffic in between.
+    with conn.cursor() as _mr39_cur:
+        _mr39_cur.execute("SET idle_in_transaction_session_timeout = 0")
+    conn.commit()
 
     ctx = ContextSpec(
         asset_id="ph_pratikara",
