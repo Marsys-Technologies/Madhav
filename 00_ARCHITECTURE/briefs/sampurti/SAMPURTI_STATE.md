@@ -790,3 +790,16 @@ CONDUCTOR-HEARTBEAT: 2026-08-11T22:17+05:30 pid=98555 [R0 — CI re-run after sm
 **R0 COMPLETE. Hard blockers RB-1, RB-2, RB-3 lifted. Proceeding to R1.**
 
 CONDUCTOR-HEARTBEAT: 2026-08-12T04:08+05:30 pid=CONDUCTOR [R0 COMPLETE — gate packet merged d1dd5dd2, deploy green, migration 569 applied, PG-31 on main. L-8 lease releasing. R1 dispatch imminent.]
+
+## R1 DISPATCH — 2026-08-12 ~04:15 IST
+
+**P-G1 Run 12 dispatched:**
+- run_id: `43a038b2-1d23-44d7-8b26-2560ecffad53`
+- chart_id: `482012f1-710e-4a25-994a-93821f5871aa`
+- asset: `ka_kshetra`
+- scope: `asset` (single-asset)
+- triggered_by: `sampurti-wave1-p-g1-ka-kshetra-proof`
+- pre-dispatch dep check: all 8 deps lit (6 per-chart, 2 global bg_* with chart_id=NULL)
+- ka_kshetra reset to dormant before dispatch
+
+CONDUCTOR-HEARTBEAT: 2026-08-12T04:15+05:30 pid=CONDUCTOR [R1 — Run 12 dispatched (43a038b2). Orchestrator launching now.]
