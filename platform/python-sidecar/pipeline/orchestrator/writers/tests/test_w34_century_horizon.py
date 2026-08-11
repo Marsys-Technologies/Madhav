@@ -554,10 +554,22 @@ def test_build_row_embeds_coverage_quality_in_suppression_state():
     assert parsed["coverage_quality"] == note
 
 
-def test_build_row_suppression_state_honest_empty_without_coverage_quality():
+def test_build_row_suppression_state_honest_degrade_without_coverage_quality():
     """Backward-compat / I4: omitting coverage_quality (pre-MR-16 call
-    sites, if any survive) must still produce a valid, honestly-empty
-    suppression_state — never raise, never fabricate a note."""
+    sites, if any survive) must still produce a valid suppression_state —
+    never raise, never fabricate a note.
+
+    UPDATED at rebase-merge time (PK-R-9, 2026-08-11): before MR-42 landed,
+    omitting coverage_quality produced a bare `{}`. MR-42's own GATE is
+    exactly that a computed row must NEVER carry a bare `{}` suppression_
+    state (see `_build_suppression_state`) -- so the honest-empty shape
+    this test now pins is the I4-degrade structured object (`term_breakdown`
+    is ALSO omitted in this call, so `_build_suppression_state` takes its
+    None-term_breakdown branch), not `{}`. `coverage_quality` omitted here
+    simply means the `coverage_quality` KEY is absent from that structured
+    object -- see the sibling
+    test_build_row_embeds_coverage_quality_in_suppression_state for the
+    present case."""
     from services.gochara_v3.interval_solver import IntervalBoundary
     import json as _json
 
@@ -572,7 +584,11 @@ def test_build_row_suppression_state_honest_empty_without_coverage_quality():
         "chart-x", "marriage", boundary, "g3_1984_1994",
         valence="neutral", is_adverse=False,
     )
-    assert _json.loads(row["suppression_state"]) == {}
+    parsed = _json.loads(row["suppression_state"])
+    assert parsed != {}
+    assert parsed["mechanism"] == "quality_gates"
+    assert parsed["value"] is None  # term_breakdown also omitted -> I4 degrade
+    assert "coverage_quality" not in parsed
 
 
 def test_run_substep_result_notes_carry_coverage_quality_tier(monkeypatch):
