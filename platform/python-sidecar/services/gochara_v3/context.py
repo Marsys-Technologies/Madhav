@@ -152,6 +152,13 @@ class ClassContext:
     # AV gate rows (pre-fetched for av_threshold PERMISSION generator)
     av_gate_rows: tuple[AVGateRow, ...] = ()
 
+    # Non-None when the av_gate_rows fetch itself failed (PARIṢKĀRA MR-15) —
+    # distinguishes "this chart genuinely has no AV data" (av_gate_rows==()
+    # and this stays None) from "the AV gate query is broken"
+    # (av_gate_rows==() and this carries the error). A calling writer folds
+    # this into WriterResult.notes so it is build-report visible.
+    av_gate_fetch_error: Optional[str] = None
+
     # Sade Sati phases (pre-fetched intervals)
     sade_sati_phases: tuple[dict, ...] = ()
 
@@ -217,7 +224,7 @@ class ClassContext:
         natal_facts = _fetch_natal_facts(conn, chart_id, ayanamsha_id)
 
         # 10. AV gate rows for av_threshold PERMISSION
-        av_gate_rows = _fetch_all_av_gate_rows(conn, targets)
+        av_gate_rows, av_gate_fetch_error = _fetch_all_av_gate_rows(conn, targets)
 
         # 11. Sade Sati phases (pre-fetch the intervals)
         sade_sati_phases = _fetch_sade_sati_phases(conn, chart_id, targets)
@@ -242,6 +249,7 @@ class ClassContext:
             weight_by_target_ref=weight_map,
             natal_facts=natal_facts,
             av_gate_rows=tuple(av_gate_rows),
+            av_gate_fetch_error=av_gate_fetch_error,
             sade_sati_phases=tuple(sade_sati_phases),
             vedha_rows=tuple(vedha_rows),
             malefic_scale=tuple(malefic_scale),
@@ -300,29 +308,48 @@ def _fetch_natal_facts(
 
 def _fetch_all_av_gate_rows(
     conn, targets: list[ResonanceTarget],
-) -> list[AVGateRow]:
-    """Pre-fetch AV gate rows for all bhava targets at once."""
+) -> tuple[list[AVGateRow], Optional[str]]:
+    """Pre-fetch AV gate rows for all bhava targets at once.
+
+    Returns (rows, error). ``error`` is None on success (including the
+    honest-empty case of no bhava targets); it is a non-empty message when
+    the fetch itself failed for any reason, so the caller (ClassContext.fetch)
+    can surface a genuinely broken AV gate query instead of it looking
+    identical to "this chart has no AV data" (PARIṢKĀRA MR-15 — the query
+    used to reference a nonexistent ``bhava_num`` column on
+    ``bg_transit_av_gates``; the real column is ``house_from_moon``,
+    migration 397_bg_transit_av_gates.sql. The resulting error was caught
+    and logged at INFO, indistinguishable from the honest-empty branch, so
+    AV gating ran silently disabled with zero build-report visibility).
+    """
     if conn is None:
-        return []
+        return [], None
     bhava_refs = [t.target_ref for t in targets if t.target_type == "bhava"]
     if not bhava_refs:
-        return []
+        return [], None
     try:
         with savepoint_scope(conn, "v3_av_gates"):
             cur = conn.execute(
                 """
-                SELECT bhava_num::text AS target_ref, graha, min_sav_score,
+                SELECT house_from_moon::text AS target_ref, graha, min_sav_score,
                        effect, classical_citation
                   FROM bg_transit_av_gates
                  WHERE gate_kind = 'sav_threshold'
-                   AND bhava_num::text = ANY(%s)
+                   AND house_from_moon::text = ANY(%s)
                 """,
                 [bhava_refs],
             )
             rows = cur.fetchall()
     except Exception as exc:  # noqa: BLE001
-        logger.info("[v3.context] av_gate_rows fetch failed: %s", exc)
-        return []
+        # LOUD by design (§N.8 Earned-Signal Principle): AV gating is a
+        # flagship gochara_v3 mechanism — a failure here must not be
+        # indistinguishable from "no AV data for this chart". ERROR (not
+        # INFO) so it appears in normal build-log filtering, AND the
+        # message is returned to the caller so it can be folded into the
+        # writer's WriterResult.notes (build-report visible).
+        error_msg = f"av_gate_rows fetch failed: {exc}"
+        logger.error("[v3.context] %s", error_msg)
+        return [], error_msg
 
     result = []
     for row in rows:
@@ -336,7 +363,7 @@ def _fetch_all_av_gate_rows(
             effect=d.get("effect"),
             classical_citation=d.get("classical_citation"),
         ))
-    return result
+    return result, None
 
 
 def _fetch_sade_sati_phases(

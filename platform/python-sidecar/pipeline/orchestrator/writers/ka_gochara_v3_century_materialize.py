@@ -86,7 +86,7 @@ import logging
 import time
 from dataclasses import dataclass
 from datetime import date, timedelta
-from typing import Any
+from typing import Any, Optional
 
 from pipeline.orchestrator.writers import (
     ContextSpec,
@@ -159,6 +159,10 @@ PROD_TABLE = "kala_gochara_windows"
 BUILD_STATE_TABLE = "kala_gochara_v2_build_state"
 
 # INSERT template for kala_gochara_windows_v2 (calibration/staging).
+# PARIṢKĀRA MR-14: the 4 W1.5 λ-decomposition columns (migration 559 on this
+# table; migration 564 mirrored them onto the production table) are now
+# populated from IntervalBoundary (see _build_row) instead of being silently
+# omitted — the prior defect this fix closes (register PG-6/PG-7).
 INSERT_SQL = f"""
     INSERT INTO {TABLE}
       (chart_id, event_class, temporal_shape,
@@ -166,7 +170,8 @@ INSERT_SQL = f"""
        milestone_id, is_irreversibility_milestone,
        signed_intensity, raw_intensity, valence, is_adverse,
        active_sentences, contributing_systems, suppression_state,
-       peak_basis, calibration_state, source, generation, era_slice_key)
+       peak_basis, calibration_state, source, generation, era_slice_key,
+       term_breakdown, lambda_v3_ci_low, lambda_v3_ci_high, ci_source)
     VALUES
       (%(chart_id)s, %(event_class)s, %(temporal_shape)s,
        %(window_start)s, %(window_end)s, %(peak_date)s,
@@ -175,7 +180,9 @@ INSERT_SQL = f"""
        %(active_sentences)s::jsonb, %(contributing_systems)s::jsonb,
        %(suppression_state)s::jsonb,
        %(peak_basis)s, %(calibration_state)s, %(source)s,
-       %(generation)s, %(era_slice_key)s)
+       %(generation)s, %(era_slice_key)s,
+       %(term_breakdown)s::jsonb, %(lambda_v3_ci_low)s, %(lambda_v3_ci_high)s,
+       %(ci_source)s)
 """
 
 # INSERT template for kala_gochara_windows (production, W5.4 repoint, UTK-R1).
@@ -183,6 +190,9 @@ INSERT_SQL = f"""
 # mutation-guard test (test_ka_gochara_v3_mutation_guard.py).
 # I1 mutation-guard anchor: generation='3.0' (%(generation)s parameter always
 # bound to GENERATION_PROD='3.0'; literal here for static-source guard coverage).
+# PARIṢKĀRA MR-14: same 4 W1.5 columns as INSERT_SQL above (migration 564
+# added them to this table, nullable, additive — see MASTER_REMEDIATION_
+# REGISTER_v2_0.md MR-01/MR-14).
 INSERT_PROD_SQL = f"""
     INSERT INTO {PROD_TABLE}
       (chart_id, event_class, temporal_shape,
@@ -190,7 +200,8 @@ INSERT_PROD_SQL = f"""
        milestone_id, is_irreversibility_milestone,
        signed_intensity, raw_intensity, valence, is_adverse,
        active_sentences, contributing_systems, suppression_state,
-       peak_basis, calibration_state, source, generation, era_slice_key)
+       peak_basis, calibration_state, source, generation, era_slice_key,
+       term_breakdown, lambda_v3_ci_low, lambda_v3_ci_high, ci_source)
     VALUES
       (%(chart_id)s, %(event_class)s, %(temporal_shape)s,
        %(window_start)s, %(window_end)s, %(peak_date)s,
@@ -199,7 +210,9 @@ INSERT_PROD_SQL = f"""
        %(active_sentences)s::jsonb, %(contributing_systems)s::jsonb,
        %(suppression_state)s::jsonb,
        %(peak_basis)s, %(calibration_state)s, %(source)s,
-       %(generation)s, %(era_slice_key)s)
+       %(generation)s, %(era_slice_key)s,
+       %(term_breakdown)s::jsonb, %(lambda_v3_ci_low)s, %(lambda_v3_ci_high)s,
+       %(ci_source)s)
     -- W5.4 I1 invariant: generation='3.0' only; v1 rows are protected by DB trigger
 """
 
@@ -308,6 +321,80 @@ def _query_fn(conn):
         rows = cur.fetchall()
         return [dict(r) if not isinstance(r, dict) else r for r in rows]
     return query
+
+
+
+# ---------------------------------------------------------------------------
+# Valence — honest per-event_class derivation (PARIṢKĀRA MR-13, F#1 fix)
+# ---------------------------------------------------------------------------
+#
+# PRIOR DEFECT: _build_row() hardcoded "valence": "favourable" for every
+# event_class it serves, including the adverse-natured health classes
+# (illness_acute, chronic_onset — canonical valence 'loss' per
+# brahma_event_ontology) and surgery (canonical valence 'neutral'). A
+# hardcoded favourable default standing in for a real per-class judgment is
+# exactly the dishonest-default pattern §N.7/§N.8 exist to close.
+#
+# FIX: read the canonical valence live from
+# brahma_event_ontology.evidence_requirements->>'valence' (migration 456) --
+# the SAME field services/gochara_intensity/valence.py::VALENCE_MAP and
+# services/gochara_grammar/event_class_scope.py transcribe, but read here via
+# a direct SQL query (never an import of those modules -- I2/AC6 forbids
+# importing gochara_intensity/gochara_grammar in this writer's code, not a
+# read of the shared ontology table this module already reads elsewhere via
+# fetch_base_rate_for_class/_fetch_resonance_targets).
+#
+# Fallback (live read fails / no row / ontology unreachable): a small,
+# explicitly documented map covering ONLY the 6 EVENT_CLASSES this writer
+# handles, transcribed from the same migration 456 values -- "live-preferred,
+# documented fallback, never silently invented" (identical discipline to
+# every sibling fetch_* in this codebase). An event_class this writer does
+# not know about at all degrades to 'neutral' (the codebase's own
+# established unknown-class convention, e.g.
+# gochara_intensity.valence.fetch_valence's own default) -- NEVER
+# 'favourable'/'gain', which would repeat the exact defect this fix removes.
+_VALENCE_FALLBACK: dict[str, str] = {
+    "career_advancement": "gain",
+    "major_gain": "gain",
+    "marriage": "neutral",
+    "illness_acute": "loss",
+    "chronic_onset": "loss",
+    "surgery": "neutral",
+}
+
+
+def _fetch_class_valence(conn, event_class: str) -> tuple[str, bool]:
+    """Return (valence, is_adverse) for `event_class`.
+
+    valence is one of the kala_gochara_windows schema's own vocabulary
+    values -- 'gain'|'loss'|'neutral'|'mixed' (migration 460) -- read
+    directly from brahma_event_ontology, no engine-vocab translation needed
+    (unlike ka_gochara.py's v1-engine _VALENCE_MAP, which translates a
+    DIFFERENT vocabulary). is_adverse is True iff valence == 'loss' --
+    matching gochara_intensity.valence.is_adverse's own sign rule for the
+    classes this writer serves (none of EVENT_CLASSES carry the
+    psychological_arc 'mixed'-override case).
+    """
+    try:
+        cur = conn.execute(
+            "SELECT evidence_requirements->>'valence' AS valence "
+            "FROM brahma_event_ontology WHERE event_class_id = %s",
+            [event_class],
+        )
+        row = cur.fetchone()
+        if row is not None:
+            v = row["valence"] if isinstance(row, dict) else row[0]
+            if v:
+                v = str(v)
+                return v, (v == "loss")
+    except Exception as exc:  # noqa: BLE001
+        logger.info(
+            "[%s] brahma_event_ontology valence read failed for "
+            "event_class=%s, falling back to documented fixture: %s",
+            ASSET_ID, event_class, exc,
+        )
+    v = _VALENCE_FALLBACK.get(event_class, "neutral")
+    return v, (v == "loss")
 
 
 def _fetch_resonance_targets(conn, chart_id: str, event_class: str) -> list[str]:
@@ -456,16 +543,42 @@ def _build_row(
     event_class: str,
     boundary: IntervalBoundary,
     era_slice_key: str,
+    *,
+    valence: str,
+    is_adverse: bool,
     generation: str = GENERATION_V3,
+    term_breakdown: Optional[dict] = None,
+    lambda_v3_ci_low: Optional[float] = None,
+    lambda_v3_ci_high: Optional[float] = None,
+    ci_source: Optional[str] = None,
 ) -> dict[str, Any]:
     """Convert one IntervalBoundary to a kala_gochara_windows(_v2) row dict.
 
     Parameters
     ----------
+    valence
+        REQUIRED -- the honest per-event_class valence
+        ('gain'|'loss'|'neutral'|'mixed'), from `_fetch_class_valence`.
+        No default: every caller must supply an honestly-derived value
+        rather than a fixed literal (PARIṢKĀRA MR-13 fix -- this parameter
+        used to be a hardcoded "favourable" string inside this function).
+    is_adverse
+        REQUIRED -- companion boolean from `_fetch_class_valence`.
     generation
         The generation label to stamp on the row.
         * GENERATION_V3 ('g3_utkarsha') → calibration row for kala_gochara_windows_v2
         * GENERATION_PROD ('3.0')       → production row for kala_gochara_windows
+    term_breakdown, lambda_v3_ci_low, lambda_v3_ci_high, ci_source
+        PARIṢKĀRA MR-14 fix (register PG-6/PG-7): the W1.5 λ decomposition +
+        structural-prior credible interval, sourced from
+        `IntervalBoundary.term_breakdown`/`.lambda_v3_ci_low`/`.lambda_v3_ci_high`/
+        `.ci_source` (populated by `interval_solver.find_threshold_crossings`
+        at the window's peak_jd). Callers pass `boundary.term_breakdown` etc.
+        explicitly rather than this function reaching into `boundary` itself,
+        matching the existing valence/is_adverse pattern of "every value this
+        function serves is an explicit parameter, not silently derived
+        in-body." All default None (I4 honest degrade: a boundary whose peak
+        evaluation failed carries None here, never a fabricated breakdown).
     """
     window_start = _jd_to_date(boundary.enter_jd)
     window_end = _jd_to_date(boundary.exit_jd)
@@ -481,8 +594,8 @@ def _build_row(
         "is_irreversibility_milestone": False,
         "signed_intensity": round(float(boundary.peak_lambda), 6),
         "raw_intensity": round(float(boundary.peak_lambda), 6),
-        "valence": "favourable",        # structural prior; v3 engine refines at serving time
-        "is_adverse": False,
+        "valence": valence,
+        "is_adverse": is_adverse,
         "active_sentences": json.dumps([]),
         "contributing_systems": json.dumps([]),
         "suppression_state": json.dumps({}),
@@ -491,6 +604,10 @@ def _build_row(
         "source": "live",
         "generation": generation,
         "era_slice_key": era_slice_key,
+        "term_breakdown": json.dumps(term_breakdown) if term_breakdown is not None else None,
+        "lambda_v3_ci_low": lambda_v3_ci_low,
+        "lambda_v3_ci_high": lambda_v3_ci_high,
+        "ci_source": ci_source,
     }
 
 
@@ -696,6 +813,24 @@ class GocharaV3CenturyMaterializeWriter(WriterBase):
                 ),
             )
 
+        # PARIṢKĀRA MR-15: AV (Ashtakavarga) gating is a flagship gochara_v3
+        # mechanism. A degraded av_gate_rows fetch inside ClassContext.fetch
+        # used to be indistinguishable from "this chart genuinely has no AV
+        # data" — swallowed at INFO with zero build-report visibility (the
+        # exact defect the only production build to date silently shipped
+        # with). getattr(..., None) is deliberate: existing tests stub
+        # ClassContext.fetch to return a bare object() with no attributes at
+        # all, and that must keep degrading gracefully, not raise.
+        av_gate_fetch_error = getattr(context, "av_gate_fetch_error", None)
+        av_gate_note = ""
+        if av_gate_fetch_error:
+            logger.error(
+                "[%s] substep=%r chart=%s: AV (Ashtakavarga) gating degraded "
+                "this substep — %s",
+                ASSET_ID, substep_key, chart_id, av_gate_fetch_error,
+            )
+            av_gate_note = f"AV_GATE_DEGRADED: {av_gate_fetch_error}; "
+
         intervals: list[IntervalBoundary] = find_threshold_crossings(
             swe=swe,
             context=context,
@@ -717,7 +852,7 @@ class GocharaV3CenturyMaterializeWriter(WriterBase):
                 rows_skipped=len(intervals),
                 duration_seconds=elapsed,
                 notes=(
-                    f"DRY RUN {substep_key}: {len(intervals)} intervals found "
+                    f"{av_gate_note}DRY RUN {substep_key}: {len(intervals)} intervals found "
                     f"in {decade.year_start}–{decade.year_end} — nothing written"
                 ),
             )
@@ -751,10 +886,24 @@ class GocharaV3CenturyMaterializeWriter(WriterBase):
                 [chart_id, event_class, era_slice_key],
             )
 
+        # Honest per-event_class valence (PARIṢKĀRA MR-13, F#1 fix): computed
+        # ONCE per substep (all boundaries in this substep share the same
+        # event_class) and passed to every _build_row call below -- never a
+        # hardcoded "favourable" literal.
+        class_valence, class_is_adverse = _fetch_class_valence(conn, event_class)
+
         inserted = 0
         for boundary in intervals:
             # (a) Insert into calibration/staging table.
-            row_v2 = _build_row(chart_id, event_class, boundary, era_slice_key, generation=GENERATION_V3)
+            row_v2 = _build_row(
+                chart_id, event_class, boundary, era_slice_key,
+                valence=class_valence, is_adverse=class_is_adverse,
+                generation=GENERATION_V3,
+                term_breakdown=boundary.term_breakdown,
+                lambda_v3_ci_low=boundary.lambda_v3_ci_low,
+                lambda_v3_ci_high=boundary.lambda_v3_ci_high,
+                ci_source=boundary.ci_source,
+            )
             try:
                 conn.execute(INSERT_SQL, row_v2)
                 inserted += 1
@@ -767,7 +916,15 @@ class GocharaV3CenturyMaterializeWriter(WriterBase):
 
             # (b) Insert into production table (generation='3.0').
             #     I1 mutation-guard invariant: row carries generation='3.0'.
-            row_prod = _build_row(chart_id, event_class, boundary, era_slice_key, generation=GENERATION_PROD)
+            row_prod = _build_row(
+                chart_id, event_class, boundary, era_slice_key,
+                valence=class_valence, is_adverse=class_is_adverse,
+                generation=GENERATION_PROD,
+                term_breakdown=boundary.term_breakdown,
+                lambda_v3_ci_low=boundary.lambda_v3_ci_low,
+                lambda_v3_ci_high=boundary.lambda_v3_ci_high,
+                ci_source=boundary.ci_source,
+            )
             try:
                 conn.execute(INSERT_PROD_SQL, row_prod)
             except Exception as exc:  # noqa: BLE001
@@ -800,7 +957,7 @@ class GocharaV3CenturyMaterializeWriter(WriterBase):
             rows_inserted=inserted,
             duration_seconds=elapsed,
             notes=(
-                f"{substep_key}: {len(intervals)} intervals found, "
+                f"{av_gate_note}{substep_key}: {len(intervals)} intervals found, "
                 f"{inserted} rows inserted into {TABLE} (generation={GENERATION_V3}) "
                 f"and {PROD_TABLE} (generation={GENERATION_PROD}), "
                 f"era_slice_key={era_slice_key}, "
@@ -842,4 +999,5 @@ __all__ = [
     "GocharaV3CenturyMaterializeWriter",
     "build_decade_slices",
     "compute_substep_fingerprint",
+    "_fetch_class_valence",
 ]
