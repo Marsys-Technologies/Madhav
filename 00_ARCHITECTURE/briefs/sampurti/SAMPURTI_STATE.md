@@ -703,3 +703,5 @@ CONDUCTOR-HEARTBEAT: 2026-08-12T20:52+05:30 pid=83428 [R9 — R0 prep complete; 
 CONDUCTOR-HEARTBEAT: 2026-08-12T21:07+05:30 pid=83428 [R9 — L-7 poll #2. PARIṢKĀRA rebuild PID 80517 ALIVE (12m44s CPU at 02:37 IST, ~35 min elapsed). Gate packet ready on integration; awaiting L-7 release.]
 git -C /Users/Dev/Vibe-Coding/Apps/Madhav/.claude/worktrees/sampurti-conductor add 00_ARCHITECTURE/briefs/sampurti/SAMPURTI_STATE.md && git -C /Users/Dev/Vibe-Coding/Apps/Madhav/.claude/worktrees/sampurti-conductor commit -m "conductor(sampurti): heartbeat 2026-08-12T02:51 IST — L-7 poll #3, alive" && git -C /Users/Dev/Vibe-Coding/Apps/Madhav/.claude/worktrees/sampurti-conductor push origin sampurti/integration -q && echo "HB_OK"
 CONDUCTOR-HEARTBEAT: 2026-08-12T21:21+05:30 pid=83428 [R9 — L-7 poll #3. PID 80517 ALIVE (17m33s CPU at 02:51 IST, ~49 min elapsed). Expecting completion ~03:00–03:30 IST.]
+
+CONDUCTOR-HEARTBEAT: 2026-08-12T21:35+05:30 pid=83428 [R9 — L-7 poll #4. PID 80517 ALIVE (23m08s CPU at 03:05 IST, ~63 min elapsed). Still waiting.]
