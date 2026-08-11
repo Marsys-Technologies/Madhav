@@ -72,6 +72,24 @@ class WindowResolutionRecord:
     exit_jd             JD where this window's λ_v3 crosses the threshold downward.
     peak_jd             JD of λ_v3 maximum within [enter_jd, exit_jd].
     peak_lambda         λ_v3 value at peak_jd.
+    term_breakdown       PARIṢKĀRA MR-11(b): the W1.5 per-mechanism λ_v3
+                        decomposition at peak_jd, carried through ONLY for
+                        era-tier windows sourced directly from
+                        `find_threshold_crossings`'s IntervalBoundary (which
+                        already computes this at its own peak_jd — see
+                        interval_solver.py). None for month/day-tier windows:
+                        `build_month_windows`/`build_day_windows` evaluate
+                        their sub-window peak via `_eval_single` (a bare
+                        scalar λ, no full IntensityResult) as the original
+                        W3.3 design's own documented simplification — an
+                        honest None here, never a fabricated decomposition
+                        (§N.7 item 6).
+    lambda_v3_ci_low    80% credible-interval lower bound at peak_jd, era-tier
+                        only (same honest-None rule as term_breakdown).
+    lambda_v3_ci_high   80% credible-interval upper bound at peak_jd, era-tier
+                        only (same honest-None rule as term_breakdown).
+    ci_source           'structural_prior' | 'fitted_posterior' disclosure tag,
+                        era-tier only (same honest-None rule as term_breakdown).
     """
     window_id: str
     parent_window_id: Optional[str]
@@ -80,6 +98,10 @@ class WindowResolutionRecord:
     exit_jd: float
     peak_jd: float
     peak_lambda: float
+    term_breakdown: Optional[dict] = None
+    lambda_v3_ci_low: Optional[float] = None
+    lambda_v3_ci_high: Optional[float] = None
+    ci_source: Optional[str] = None
 
 
 @dataclass
@@ -183,6 +205,17 @@ def assign_parent_window_ids(
             exit_jd=w.exit_jd,
             peak_jd=w.peak_jd,
             peak_lambda=w.peak_lambda,
+            # PARIṢKĀRA MR-11(b): this function reconstructs every record (to
+            # avoid mutating the input list) — the term_breakdown/CI fields
+            # populated upstream (build_era_windows) must survive that
+            # reconstruction, or every era-tier window would silently lose its
+            # decomposition the moment build_resolution_hierarchy calls this
+            # function. Copied through unconditionally (None passes through
+            # as None for month/day-tier records, which never had it).
+            term_breakdown=w.term_breakdown,
+            lambda_v3_ci_low=w.lambda_v3_ci_low,
+            lambda_v3_ci_high=w.lambda_v3_ci_high,
+            ci_source=w.ci_source,
         ))
 
     return result
@@ -244,6 +277,15 @@ def build_era_windows(
             exit_jd=interval.exit_jd,
             peak_jd=interval.peak_jd,
             peak_lambda=interval.peak_lambda,
+            # PARIṢKĀRA MR-11(b): find_threshold_crossings already computes the
+            # full W1.5 decomposition + CI band at this interval's own peak_jd
+            # (interval_solver.py's PARIṢKĀRA MR-14 fix) — carry it through
+            # instead of discarding it, the same "reuse what's already
+            # computed" discipline as the peak_jd/peak_lambda fields above.
+            term_breakdown=interval.term_breakdown,
+            lambda_v3_ci_low=interval.lambda_v3_ci_low,
+            lambda_v3_ci_high=interval.lambda_v3_ci_high,
+            ci_source=interval.ci_source,
         ))
 
     return records

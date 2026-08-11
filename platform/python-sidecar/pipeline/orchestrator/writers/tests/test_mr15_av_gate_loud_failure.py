@@ -35,8 +35,27 @@ from pipeline.orchestrator.writers.ka_gochara_v3_century_materialize import (
     ASSET_ID,
     GocharaV3CenturyMaterializeWriter,
 )
+from services.gochara_v3.resolution_hierarchy import HierarchyResult, WindowResolutionRecord
 
 CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
+
+
+# PARIṢKĀRA MR-11(b): run_substep now calls build_resolution_hierarchy (not
+# find_threshold_crossings directly). Wraps a single fake boundary in a
+# one-era-window HierarchyResult (mirrors test_ka_gochara_v3_mutation_guard.py's
+# helper of the same name/shape).
+def _single_era_hierarchy(*, enter_jd, exit_jd, peak_jd, peak_lambda) -> HierarchyResult:
+    era = WindowResolutionRecord(
+        window_id="mr15-era-1",
+        parent_window_id=None,
+        resolution_tier="era",
+        enter_jd=enter_jd, exit_jd=exit_jd,
+        peak_jd=peak_jd, peak_lambda=peak_lambda,
+    )
+    return HierarchyResult(
+        era_windows=[era], month_windows=[], day_windows=[],
+        resolution_facet={"era": 1, "month": 0, "day": 0},
+    )
 TABLE = "kala_gochara_windows_v2"
 
 
@@ -133,8 +152,6 @@ def _ensure_fake_swisseph():
 
 
 def _run_substep_with_av_gate_error(monkeypatch, error_message: str):
-    from services.gochara_v3.interval_solver import IntervalBoundary
-
     targets = ["Venus"]
     writer = GocharaV3CenturyMaterializeWriter()
     conn_dummy = _FakeConn(_responder(targets=targets))
@@ -142,18 +159,17 @@ def _run_substep_with_av_gate_error(monkeypatch, error_message: str):
     step = steps[0]
     ec, era_key = step.key.split("::", 1)
 
-    fake_boundary = IntervalBoundary(
+    fake_hierarchy = _single_era_hierarchy(
         enter_jd=2445736.5 + 10.0,
         exit_jd=2445736.5 + 20.0,
         peak_jd=2445736.5 + 15.0,
         peak_lambda=0.72,
-        era_slice_key=era_key,
     )
 
     conn = _FakeConn(_responder(targets=targets, stored_fp=None))
     ctx = _ctx(conn)
 
-    monkeypatch.setattr(mod, "find_threshold_crossings", lambda *a, **k: [fake_boundary])
+    monkeypatch.setattr(mod, "build_resolution_hierarchy", lambda *a, **k: fake_hierarchy)
     monkeypatch.setattr(
         mod, "ClassContext",
         type(
@@ -208,8 +224,6 @@ def test_run_substep_notes_unaffected_when_av_gate_fetch_succeeded(monkeypatch):
     """Sanity/non-regression: when av_gate_fetch_error is None (the normal,
     healthy path), the writer's notes must NOT claim a degradation that
     never happened."""
-    from services.gochara_v3.interval_solver import IntervalBoundary
-
     targets = ["Venus"]
     writer = GocharaV3CenturyMaterializeWriter()
     conn_dummy = _FakeConn(_responder(targets=targets))
@@ -217,18 +231,17 @@ def test_run_substep_notes_unaffected_when_av_gate_fetch_succeeded(monkeypatch):
     step = steps[0]
     ec, era_key = step.key.split("::", 1)
 
-    fake_boundary = IntervalBoundary(
+    fake_hierarchy = _single_era_hierarchy(
         enter_jd=2445736.5 + 10.0,
         exit_jd=2445736.5 + 20.0,
         peak_jd=2445736.5 + 15.0,
         peak_lambda=0.72,
-        era_slice_key=era_key,
     )
 
     conn = _FakeConn(_responder(targets=targets, stored_fp=None))
     ctx = _ctx(conn)
 
-    monkeypatch.setattr(mod, "find_threshold_crossings", lambda *a, **k: [fake_boundary])
+    monkeypatch.setattr(mod, "build_resolution_hierarchy", lambda *a, **k: fake_hierarchy)
     monkeypatch.setattr(
         mod, "ClassContext",
         type(
@@ -249,8 +262,6 @@ def test_run_substep_still_works_when_context_has_no_av_gate_fetch_error_attr(mo
     ClassContext.fetch to return a bare object() with NO attributes at all.
     The fix must use getattr(..., default) so it degrades gracefully
     instead of raising AttributeError on that stub."""
-    from services.gochara_v3.interval_solver import IntervalBoundary
-
     targets = ["Venus"]
     writer = GocharaV3CenturyMaterializeWriter()
     conn_dummy = _FakeConn(_responder(targets=targets))
@@ -258,18 +269,17 @@ def test_run_substep_still_works_when_context_has_no_av_gate_fetch_error_attr(mo
     step = steps[0]
     ec, era_key = step.key.split("::", 1)
 
-    fake_boundary = IntervalBoundary(
+    fake_hierarchy = _single_era_hierarchy(
         enter_jd=2445736.5 + 10.0,
         exit_jd=2445736.5 + 20.0,
         peak_jd=2445736.5 + 15.0,
         peak_lambda=0.72,
-        era_slice_key=era_key,
     )
 
     conn = _FakeConn(_responder(targets=targets, stored_fp=None))
     ctx = _ctx(conn)
 
-    monkeypatch.setattr(mod, "find_threshold_crossings", lambda *a, **k: [fake_boundary])
+    monkeypatch.setattr(mod, "build_resolution_hierarchy", lambda *a, **k: fake_hierarchy)
     monkeypatch.setattr(
         mod, "ClassContext",
         type("FakeClassContext", (), {"fetch": staticmethod(lambda **k: object())}),

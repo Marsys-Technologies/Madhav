@@ -97,9 +97,21 @@ from pipeline.orchestrator.writers import (
 )
 
 # gochara_v3 imports only (I2: no gochara_grammar/*, gochara_intensity/*, ka_gochara_sweep/*)
-from services.gochara_v3.interval_solver import find_threshold_crossings, IntervalBoundary
+from services.gochara_v3.interval_solver import IntervalBoundary
 from services.gochara_v3.threshold import ThresholdConfig, fetch_base_rate_for_class
 from services.gochara_v3.context import ClassContext
+# PARIṢKĀRA MR-11(b): the W3.3 hierarchy producer (era⊃month⊃day,
+# parent_window_id), already merged CODE and DB-free unit-tested
+# (services/gochara_v3/tests/test_w33_resolution_hierarchy.py) but never
+# wired into a materializer — this writer is that wiring. build_resolution_
+# hierarchy itself calls find_threshold_crossings internally (era tier) and
+# _eval_single (month/day tier midpoint sampling) — both already covered by
+# the I2 static-import-check above (resolution_hierarchy.py is gochara_v3/*,
+# not gochara_grammar/gochara_intensity/ka_gochara_sweep).
+from services.gochara_v3.resolution_hierarchy import (
+    build_resolution_hierarchy,
+    WindowResolutionRecord,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -123,7 +135,14 @@ GENERATION_PROD = "3.0"
 # exports GRAMMAR_VERSION; we use our own constant so this writer's
 # fingerprint is stable across internal gochara_v3 refactors that do NOT
 # move window positions.
-ENGINE_VERSION = "v3.0"
+# PARIṢKĀRA MR-11(b): bumped v3.0 -> v3.1 because this lane changes the
+# writer's OUTPUT SHAPE (era⊃month⊃day hierarchy rows with resolution +
+# parent_window_id replace the prior flat one-row-per-IntervalBoundary
+# output) — a stored fingerprint computed under v3.0 must not be read as
+# "unchanged" once this code ships, so every substep re-materializes at
+# least once. Exact string "v3.1" per Codex C2 (concurrent PARIṢKĀRA lanes
+# make the identical edit so git auto-merges cleanly on this line).
+ENGINE_VERSION = "v3.1"
 
 # The 6 event classes this writer handles (same as W0.2 materializer).
 EVENT_CLASSES = [
@@ -163,6 +182,10 @@ BUILD_STATE_TABLE = "kala_gochara_v2_build_state"
 # table; migration 564 mirrored them onto the production table) are now
 # populated from IntervalBoundary (see _build_row) instead of being silently
 # omitted — the prior defect this fix closes (register PG-6/PG-7).
+# PARIṢKĀRA MR-11(b): +resolution, +parent_window_id (migration 567) and
+# RETURNING id -- the writer must capture each inserted row's own bigint id
+# so a subsequently-inserted CHILD row (month under era, day under month) can
+# carry the correct parent_window_id. See _insert_hierarchy_row below.
 INSERT_SQL = f"""
     INSERT INTO {TABLE}
       (chart_id, event_class, temporal_shape,
@@ -171,7 +194,8 @@ INSERT_SQL = f"""
        signed_intensity, raw_intensity, valence, is_adverse,
        active_sentences, contributing_systems, suppression_state,
        peak_basis, calibration_state, source, generation, era_slice_key,
-       term_breakdown, lambda_v3_ci_low, lambda_v3_ci_high, ci_source)
+       term_breakdown, lambda_v3_ci_low, lambda_v3_ci_high, ci_source,
+       resolution, parent_window_id)
     VALUES
       (%(chart_id)s, %(event_class)s, %(temporal_shape)s,
        %(window_start)s, %(window_end)s, %(peak_date)s,
@@ -182,7 +206,9 @@ INSERT_SQL = f"""
        %(peak_basis)s, %(calibration_state)s, %(source)s,
        %(generation)s, %(era_slice_key)s,
        %(term_breakdown)s::jsonb, %(lambda_v3_ci_low)s, %(lambda_v3_ci_high)s,
-       %(ci_source)s)
+       %(ci_source)s,
+       %(resolution)s, %(parent_window_id)s)
+    RETURNING id
 """
 
 # INSERT template for kala_gochara_windows (production, W5.4 repoint, UTK-R1).
@@ -193,6 +219,8 @@ INSERT_SQL = f"""
 # PARIṢKĀRA MR-14: same 4 W1.5 columns as INSERT_SQL above (migration 564
 # added them to this table, nullable, additive — see MASTER_REMEDIATION_
 # REGISTER_v2_0.md MR-01/MR-14).
+# PARIṢKĀRA MR-11(b): same +resolution/+parent_window_id/RETURNING id as
+# INSERT_SQL above (migration 567 mirrors the columns onto both tables).
 INSERT_PROD_SQL = f"""
     INSERT INTO {PROD_TABLE}
       (chart_id, event_class, temporal_shape,
@@ -201,7 +229,8 @@ INSERT_PROD_SQL = f"""
        signed_intensity, raw_intensity, valence, is_adverse,
        active_sentences, contributing_systems, suppression_state,
        peak_basis, calibration_state, source, generation, era_slice_key,
-       term_breakdown, lambda_v3_ci_low, lambda_v3_ci_high, ci_source)
+       term_breakdown, lambda_v3_ci_low, lambda_v3_ci_high, ci_source,
+       resolution, parent_window_id)
     VALUES
       (%(chart_id)s, %(event_class)s, %(temporal_shape)s,
        %(window_start)s, %(window_end)s, %(peak_date)s,
@@ -212,8 +241,10 @@ INSERT_PROD_SQL = f"""
        %(peak_basis)s, %(calibration_state)s, %(source)s,
        %(generation)s, %(era_slice_key)s,
        %(term_breakdown)s::jsonb, %(lambda_v3_ci_low)s, %(lambda_v3_ci_high)s,
-       %(ci_source)s)
+       %(ci_source)s,
+       %(resolution)s, %(parent_window_id)s)
     -- W5.4 I1 invariant: generation='3.0' only; v1 rows are protected by DB trigger
+    RETURNING id
 """
 
 
@@ -551,8 +582,11 @@ def _build_row(
     lambda_v3_ci_low: Optional[float] = None,
     lambda_v3_ci_high: Optional[float] = None,
     ci_source: Optional[str] = None,
+    resolution: Optional[str] = None,
+    parent_window_id: Optional[int] = None,
 ) -> dict[str, Any]:
-    """Convert one IntervalBoundary to a kala_gochara_windows(_v2) row dict.
+    """Convert one IntervalBoundary/WindowResolutionRecord to a
+    kala_gochara_windows(_v2) row dict.
 
     Parameters
     ----------
@@ -579,6 +613,20 @@ def _build_row(
         function serves is an explicit parameter, not silently derived
         in-body." All default None (I4 honest degrade: a boundary whose peak
         evaluation failed carries None here, never a fabricated breakdown).
+    resolution
+        PARIṢKĀRA MR-11(b) (migration 567): the hierarchy tier this row was
+        produced at -- 'era'|'month'|'day', from
+        `WindowResolutionRecord.resolution_tier`. None when the caller has no
+        hierarchy classification for this row (kept optional rather than
+        required so this function stays usable for any future non-hierarchy
+        caller too).
+    parent_window_id
+        PARIṢKĀRA MR-11(b) (migration 567): the DB-assigned bigint `id` of
+        this row's widest containing coarser-tier window IN THE SAME TABLE
+        (resolved by the caller via an id map keyed on the hierarchy's
+        internal UUID `window_id`, populated as parent rows are inserted
+        before their children — see run_substep). None for era-tier rows
+        (no coarser parent) and for any row whose parent failed to resolve.
     """
     window_start = _jd_to_date(boundary.enter_jd)
     window_end = _jd_to_date(boundary.exit_jd)
@@ -608,6 +656,8 @@ def _build_row(
         "lambda_v3_ci_low": lambda_v3_ci_low,
         "lambda_v3_ci_high": lambda_v3_ci_high,
         "ci_source": ci_source,
+        "resolution": resolution,
+        "parent_window_id": parent_window_id,
     }
 
 
@@ -831,28 +881,51 @@ class GocharaV3CenturyMaterializeWriter(WriterBase):
             )
             av_gate_note = f"AV_GATE_DEGRADED: {av_gate_fetch_error}; "
 
-        intervals: list[IntervalBoundary] = find_threshold_crossings(
+        # 6. PARIṢKĀRA MR-11(b): build the full era⊃month⊃day hierarchy for
+        #    this decade slice instead of a flat find_threshold_crossings
+        #    call. build_resolution_hierarchy (services/gochara_v3/
+        #    resolution_hierarchy.py, the previously-unwired W3.3 lane) calls
+        #    find_threshold_crossings internally for the era tier (root-
+        #    solved threshold crossings, unchanged machinery) and reuses the
+        #    same coarse-sweep design for month/day subdivision — "peak =
+        #    analytic argmax per the original design" per this lane's brief.
+        #    coarse_step_days is NOT independently plumbed through here
+        #    (build_resolution_hierarchy uses find_threshold_crossings'
+        #    default of 7.0, identical to the value this writer passed
+        #    explicitly pre-MR-11(b)).
+        hierarchy = build_resolution_hierarchy(
             swe=swe,
             context=context,
             start_jd=decade.start_jd,
             end_jd=decade.end_jd,
             threshold_config=threshold_config,
-            coarse_step_days=7.0,
+        )
+        # Flatten in PARENT-BEFORE-CHILD order: era, then month, then day.
+        # This ordering is load-bearing — the insert loop below captures each
+        # parent row's DB-assigned bigint id (INSERT ... RETURNING id) before
+        # any child row that must reference it via parent_window_id is
+        # inserted (migration 567).
+        hierarchy_records: list[WindowResolutionRecord] = (
+            hierarchy.era_windows + hierarchy.month_windows + hierarchy.day_windows
         )
 
         if ctx.dry_run:
             elapsed = time.time() - t0
             logger.debug(
-                "[%s] DRY RUN substep=%r chart=%s: %d intervals would be served. "
-                "wall_clock_s=%.3f",
-                ASSET_ID, substep_key, chart_id, len(intervals), elapsed,
+                "[%s] DRY RUN substep=%r chart=%s: %d hierarchy windows "
+                "(era=%d month=%d day=%d) would be served. wall_clock_s=%.3f",
+                ASSET_ID, substep_key, chart_id, len(hierarchy_records),
+                len(hierarchy.era_windows), len(hierarchy.month_windows),
+                len(hierarchy.day_windows), elapsed,
             )
             return WriterResult(
                 asset_id=self.asset_id, rows_inserted=0,
-                rows_skipped=len(intervals),
+                rows_skipped=len(hierarchy_records),
                 duration_seconds=elapsed,
                 notes=(
-                    f"{av_gate_note}DRY RUN {substep_key}: {len(intervals)} intervals found "
+                    f"{av_gate_note}DRY RUN {substep_key}: {len(hierarchy_records)} hierarchy "
+                    f"windows found (era={len(hierarchy.era_windows)} "
+                    f"month={len(hierarchy.month_windows)} day={len(hierarchy.day_windows)}) "
                     f"in {decade.year_start}–{decade.year_end} — nothing written"
                 ),
             )
@@ -892,46 +965,72 @@ class GocharaV3CenturyMaterializeWriter(WriterBase):
         # hardcoded "favourable" literal.
         class_valence, class_is_adverse = _fetch_class_valence(conn, event_class)
 
+        # PARIṢKĀRA MR-11(b): id maps from the hierarchy's own internal UUID
+        # window_id -> the DB-assigned bigint id this row received on INSERT,
+        # kept SEPARATELY per table (kala_gochara_windows_v2 and
+        # kala_gochara_windows have independent id sequences). A child
+        # record's parent_window_id (a UUID) is looked up in the map for the
+        # table it is about to be inserted into; parent-before-child ordering
+        # (hierarchy_records above) guarantees the parent's id is already
+        # present by the time a child looks it up. A parent whose own INSERT
+        # failed (or whose fetchone() returned nothing, e.g. a stubbed
+        # responder in tests) simply leaves no entry — its children then
+        # honestly get parent_window_id=None rather than a fabricated id.
+        v2_id_map: dict[str, int] = {}
+        prod_id_map: dict[str, int] = {}
+
         inserted = 0
-        for boundary in intervals:
+        for record in hierarchy_records:
             # (a) Insert into calibration/staging table.
             row_v2 = _build_row(
-                chart_id, event_class, boundary, era_slice_key,
+                chart_id, event_class, record, era_slice_key,
                 valence=class_valence, is_adverse=class_is_adverse,
                 generation=GENERATION_V3,
-                term_breakdown=boundary.term_breakdown,
-                lambda_v3_ci_low=boundary.lambda_v3_ci_low,
-                lambda_v3_ci_high=boundary.lambda_v3_ci_high,
-                ci_source=boundary.ci_source,
+                term_breakdown=record.term_breakdown,
+                lambda_v3_ci_low=record.lambda_v3_ci_low,
+                lambda_v3_ci_high=record.lambda_v3_ci_high,
+                ci_source=record.ci_source,
+                resolution=record.resolution_tier,
+                parent_window_id=v2_id_map.get(record.parent_window_id),
             )
             try:
-                conn.execute(INSERT_SQL, row_v2)
+                cur = conn.execute(INSERT_SQL, row_v2)
+                returned = cur.fetchone()
+                if returned is not None:
+                    new_id = returned["id"] if isinstance(returned, dict) else returned[0]
+                    v2_id_map[record.window_id] = new_id
                 inserted += 1
             except Exception as exc:  # noqa: BLE001
                 logger.warning(
-                    "[%s] substep=%r v2 row insert failed (peak_date=%s): %s",
+                    "[%s] substep=%r v2 row insert failed (peak_date=%s, resolution=%s): %s",
                     ASSET_ID, substep_key,
-                    _jd_to_date(boundary.peak_jd), exc,
+                    _jd_to_date(record.peak_jd), record.resolution_tier, exc,
                 )
 
             # (b) Insert into production table (generation='3.0').
             #     I1 mutation-guard invariant: row carries generation='3.0'.
             row_prod = _build_row(
-                chart_id, event_class, boundary, era_slice_key,
+                chart_id, event_class, record, era_slice_key,
                 valence=class_valence, is_adverse=class_is_adverse,
                 generation=GENERATION_PROD,
-                term_breakdown=boundary.term_breakdown,
-                lambda_v3_ci_low=boundary.lambda_v3_ci_low,
-                lambda_v3_ci_high=boundary.lambda_v3_ci_high,
-                ci_source=boundary.ci_source,
+                term_breakdown=record.term_breakdown,
+                lambda_v3_ci_low=record.lambda_v3_ci_low,
+                lambda_v3_ci_high=record.lambda_v3_ci_high,
+                ci_source=record.ci_source,
+                resolution=record.resolution_tier,
+                parent_window_id=prod_id_map.get(record.parent_window_id),
             )
             try:
-                conn.execute(INSERT_PROD_SQL, row_prod)
+                cur = conn.execute(INSERT_PROD_SQL, row_prod)
+                returned = cur.fetchone()
+                if returned is not None:
+                    new_id = returned["id"] if isinstance(returned, dict) else returned[0]
+                    prod_id_map[record.window_id] = new_id
             except Exception as exc:  # noqa: BLE001
                 logger.warning(
-                    "[%s] substep=%r prod row insert failed (peak_date=%s): %s",
+                    "[%s] substep=%r prod row insert failed (peak_date=%s, resolution=%s): %s",
                     ASSET_ID, substep_key,
-                    _jd_to_date(boundary.peak_jd), exc,
+                    _jd_to_date(record.peak_jd), record.resolution_tier, exc,
                 )
 
         # 8. Upsert fingerprint.
@@ -948,8 +1047,11 @@ class GocharaV3CenturyMaterializeWriter(WriterBase):
         # 9. Log wall-clock time at DEBUG (AC5 — first SLO evidence point).
         elapsed = time.time() - t0
         logger.debug(
-            "[%s] substep=%r chart=%s: %d intervals inserted. wall_clock_s=%.3f",
-            ASSET_ID, substep_key, chart_id, inserted, elapsed,
+            "[%s] substep=%r chart=%s: %d hierarchy windows inserted "
+            "(era=%d month=%d day=%d). wall_clock_s=%.3f",
+            ASSET_ID, substep_key, chart_id, inserted,
+            len(hierarchy.era_windows), len(hierarchy.month_windows),
+            len(hierarchy.day_windows), elapsed,
         )
 
         return WriterResult(
@@ -957,10 +1059,13 @@ class GocharaV3CenturyMaterializeWriter(WriterBase):
             rows_inserted=inserted,
             duration_seconds=elapsed,
             notes=(
-                f"{av_gate_note}{substep_key}: {len(intervals)} intervals found, "
+                f"{av_gate_note}{substep_key}: {len(hierarchy_records)} hierarchy windows found "
+                f"(era={len(hierarchy.era_windows)} month={len(hierarchy.month_windows)} "
+                f"day={len(hierarchy.day_windows)}), "
                 f"{inserted} rows inserted into {TABLE} (generation={GENERATION_V3}) "
                 f"and {PROD_TABLE} (generation={GENERATION_PROD}), "
                 f"era_slice_key={era_slice_key}, "
+                f"resolution_facet={hierarchy.resolution_facet}, "
                 f"fingerprint={fingerprint}"
             ),
         )

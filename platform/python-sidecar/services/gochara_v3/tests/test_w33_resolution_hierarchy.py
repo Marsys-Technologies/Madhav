@@ -33,6 +33,8 @@ from services.gochara_v3.resolution_hierarchy import (
     HierarchyResult,
     assign_parent_window_ids,
     build_era_windows,
+    build_month_windows,
+    build_day_windows,
     build_resolution_hierarchy,
 )
 from services.gochara_v3.interval_solver import IntervalBoundary, ERA_SLICE_KEY_V3
@@ -87,6 +89,10 @@ def _make_interval(
     exit_jd: float,
     peak_jd: float = None,
     peak_lambda: float = 0.8,
+    term_breakdown: dict = None,
+    lambda_v3_ci_low: float = None,
+    lambda_v3_ci_high: float = None,
+    ci_source: str = None,
 ) -> IntervalBoundary:
     """Construct an IntervalBoundary fixture."""
     if peak_jd is None:
@@ -97,6 +103,10 @@ def _make_interval(
         peak_jd=peak_jd,
         peak_lambda=peak_lambda,
         era_slice_key=ERA_SLICE_KEY_V3,
+        term_breakdown=term_breakdown,
+        lambda_v3_ci_low=lambda_v3_ci_low,
+        lambda_v3_ci_high=lambda_v3_ci_high,
+        ci_source=ci_source,
     )
 
 
@@ -372,3 +382,129 @@ class TestResolutionFacetCounts:
         # Facet counts must be non-negative
         for tier, count in result.resolution_facet.items():
             assert count >= 0, f"facet count for {tier} must be >= 0, got {count}"
+
+
+# ---------------------------------------------------------------------------
+# PARIṢKĀRA MR-11(b) — term_breakdown/CI propagation for era-tier windows
+# ---------------------------------------------------------------------------
+
+class TestTermBreakdownPropagation:
+    """era-tier windows must carry through the IntervalBoundary decomposition
+    that find_threshold_crossings already computed; month/day-tier windows
+    (midpoint-only _eval_single evaluation) must carry an honest None, never
+    a fabricated decomposition (§N.7 item 6)."""
+
+    def test_build_era_windows_carries_term_breakdown(self):
+        """An era-length interval's term_breakdown/CI fields survive into the
+        WindowResolutionRecord instead of being silently dropped."""
+        breakdown = {"promise": 0.5, "permission": 0.6, "lambda_v3": 0.72}
+        long_interval = _make_interval(
+            enter_jd=0.0, exit_jd=500.0, peak_lambda=0.72,
+            term_breakdown=breakdown,
+            lambda_v3_ci_low=0.58, lambda_v3_ci_high=0.86,
+            ci_source="structural_prior",
+        )
+
+        with patch(
+            "services.gochara_v3.resolution_hierarchy.find_threshold_crossings",
+            return_value=[long_interval],
+        ):
+            windows = build_era_windows(
+                MagicMock(), MagicMock(), 0.0, 1000.0, _make_threshold_config(),
+            )
+
+        assert len(windows) == 1
+        assert windows[0].resolution_tier == "era"
+        assert windows[0].term_breakdown == breakdown
+        assert windows[0].lambda_v3_ci_low == 0.58
+        assert windows[0].lambda_v3_ci_high == 0.86
+        assert windows[0].ci_source == "structural_prior"
+
+    def test_build_era_windows_honest_none_when_interval_has_none(self):
+        """An interval whose peak evaluation failed (I4) carries None fields
+        through honestly — never fabricated."""
+        long_interval = _make_interval(enter_jd=0.0, exit_jd=500.0)  # all None by default
+
+        with patch(
+            "services.gochara_v3.resolution_hierarchy.find_threshold_crossings",
+            return_value=[long_interval],
+        ):
+            windows = build_era_windows(
+                MagicMock(), MagicMock(), 0.0, 1000.0, _make_threshold_config(),
+            )
+
+        assert windows[0].term_breakdown is None
+        assert windows[0].lambda_v3_ci_low is None
+        assert windows[0].lambda_v3_ci_high is None
+        assert windows[0].ci_source is None
+
+    def test_month_day_windows_carry_no_term_breakdown(self):
+        """build_month_windows/build_day_windows use scalar-only _eval_single
+        midpoint sampling — term_breakdown must be None, never fabricated
+        from a bare float."""
+        month_win = _make_window("month", enter_jd=0.0, exit_jd=30.0)
+
+        with patch(
+            "services.gochara_v3.resolution_hierarchy._eval_single",
+            return_value=0.65,
+        ):
+            days = build_day_windows(
+                MagicMock(), MagicMock(), [month_win], _make_threshold_config(),
+            )
+
+        assert len(days) > 0
+        for d in days:
+            assert d.term_breakdown is None
+            assert d.lambda_v3_ci_low is None
+            assert d.lambda_v3_ci_high is None
+            assert d.ci_source is None
+
+    def test_term_breakdown_survives_assign_parent_window_ids(self):
+        """assign_parent_window_ids reconstructs every record (to avoid
+        mutating input) — term_breakdown must survive that reconstruction,
+        not be silently dropped."""
+        breakdown = {"lambda_v3": 0.9}
+        era_win = _make_window(
+            "era", enter_jd=0.0, exit_jd=1000.0, peak_lambda=0.9,
+        )
+        era_win.term_breakdown = breakdown
+        era_win.lambda_v3_ci_low = 0.7
+        era_win.lambda_v3_ci_high = 1.0
+        era_win.ci_source = "structural_prior"
+        month_win = _make_window("month", enter_jd=10.0, exit_jd=40.0)
+
+        result = assign_parent_window_ids([era_win, month_win])
+        era_result = next(w for w in result if w.resolution_tier == "era")
+
+        assert era_result.term_breakdown == breakdown
+        assert era_result.lambda_v3_ci_low == 0.7
+        assert era_result.lambda_v3_ci_high == 1.0
+        assert era_result.ci_source == "structural_prior"
+
+    def test_end_to_end_hierarchy_preserves_era_term_breakdown(self):
+        """build_resolution_hierarchy end-to-end: the era window's
+        term_breakdown must still be present after both the month/day
+        subdivision pass and the final assign_parent_window_ids pass."""
+        breakdown = {"lambda_v3": 0.9, "activity": 0.8}
+        era_interval = _make_interval(
+            enter_jd=0.0, exit_jd=500.0, peak_lambda=0.9,
+            term_breakdown=breakdown, ci_source="structural_prior",
+        )
+
+        with patch(
+            "services.gochara_v3.resolution_hierarchy.find_threshold_crossings",
+            return_value=[era_interval],
+        ), patch(
+            "services.gochara_v3.resolution_hierarchy._eval_single",
+            return_value=0.8,
+        ):
+            result = build_resolution_hierarchy(
+                MagicMock(), MagicMock(), 0.0, 1000.0, _make_threshold_config(),
+            )
+
+        assert len(result.era_windows) == 1
+        assert result.era_windows[0].term_breakdown == breakdown
+        assert result.era_windows[0].ci_source == "structural_prior"
+        # Month/day windows subdividing this era window carry no decomposition.
+        for w in result.month_windows + result.day_windows:
+            assert w.term_breakdown is None

@@ -37,6 +37,7 @@ from pipeline.orchestrator.writers.ka_gochara_v3_century_materialize import (
     TABLE,
     GocharaV3CenturyMaterializeWriter,
 )
+from services.gochara_v3.resolution_hierarchy import HierarchyResult, WindowResolutionRecord
 
 # ---------------------------------------------------------------------------
 # Fake DB connection (mirrors test_mr13_valence_calibration_honesty.py)
@@ -148,7 +149,31 @@ def _responder(*, targets=("Venus",), stored_fp=None, rows_exist=False,
 
 
 def _patch_common(monkeypatch, boundaries):
-    monkeypatch.setattr(mod, "find_threshold_crossings", lambda *a, **k: boundaries)
+    # PARIṢKĀRA MR-11(b): run_substep now calls build_resolution_hierarchy
+    # (not find_threshold_crossings directly). Each fake boundary becomes an
+    # era-tier WindowResolutionRecord -- term_breakdown/CI/ci_source carry
+    # straight across (both dataclasses expose the same field names, and
+    # resolution_hierarchy.build_era_windows's own MR-11(b) fix propagates
+    # them from a real IntervalBoundary the same way this fixture does here).
+    era_windows = [
+        WindowResolutionRecord(
+            window_id=f"mr14-era-{i}",
+            parent_window_id=None,
+            resolution_tier="era",
+            enter_jd=b.enter_jd, exit_jd=b.exit_jd,
+            peak_jd=b.peak_jd, peak_lambda=b.peak_lambda,
+            term_breakdown=b.term_breakdown,
+            lambda_v3_ci_low=b.lambda_v3_ci_low,
+            lambda_v3_ci_high=b.lambda_v3_ci_high,
+            ci_source=b.ci_source,
+        )
+        for i, b in enumerate(boundaries)
+    ]
+    fake_hierarchy = HierarchyResult(
+        era_windows=era_windows, month_windows=[], day_windows=[],
+        resolution_facet={"era": len(era_windows), "month": 0, "day": 0},
+    )
+    monkeypatch.setattr(mod, "build_resolution_hierarchy", lambda *a, **k: fake_hierarchy)
     monkeypatch.setattr(
         mod, "ClassContext",
         type("FakeClassContext", (), {"fetch": staticmethod(lambda **k: object())}),

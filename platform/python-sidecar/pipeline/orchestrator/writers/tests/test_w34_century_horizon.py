@@ -45,6 +45,17 @@ from pipeline.orchestrator.writers.ka_gochara_v3_century_materialize import (
     build_decade_slices,
     compute_substep_fingerprint,
 )
+from services.gochara_v3.resolution_hierarchy import HierarchyResult, WindowResolutionRecord
+
+# PARIṢKĀRA MR-11(b): run_substep now calls build_resolution_hierarchy (not
+# find_threshold_crossings directly) — every test below that used to
+# monkeypatch mod.find_threshold_crossings now monkeypatches
+# mod.build_resolution_hierarchy instead, returning a HierarchyResult. This
+# constant is the "found nothing" case (mirrors the old `lambda *a,**k: []`).
+_EMPTY_HIERARCHY = HierarchyResult(
+    era_windows=[], month_windows=[], day_windows=[],
+    resolution_facet={"era": 0, "month": 0, "day": 0},
+)
 
 
 # ---------------------------------------------------------------------------
@@ -501,24 +512,24 @@ def test_unchanged_fingerprint_skips_recompute(monkeypatch):
     conn = _FakeConn(_responder(targets=targets, stored_fp=expected_fp, rows_exist=True))
     ctx = _ctx(conn)
 
-    # Monkeypatch find_threshold_crossings to detect if it was called.
+    # Monkeypatch build_resolution_hierarchy to detect if it was called.
     called = []
     monkeypatch.setattr(
-        mod, "find_threshold_crossings",
-        lambda *a, **k: called.append(1) or [],
+        mod, "build_resolution_hierarchy",
+        lambda *a, **k: called.append(1) or _EMPTY_HIERARCHY,
     )
 
     result = writer.run_substep(ctx, step)
 
     assert called == [], (
-        "find_threshold_crossings must NOT be called when fingerprint unchanged"
+        "build_resolution_hierarchy must NOT be called when fingerprint unchanged"
     )
     assert result.rows_inserted == 0
     assert "skip" in result.notes.lower() or "unchanged" in result.notes.lower()
 
 
 def test_changed_fingerprint_triggers_recompute(monkeypatch):
-    """AC4: if stored fingerprint differs, find_threshold_crossings is called."""
+    """AC4: if stored fingerprint differs, build_resolution_hierarchy is called."""
     targets = ["Venus"]
     writer = GocharaV3CenturyMaterializeWriter()
     conn_dummy = _FakeConn(_responder(targets=targets))
@@ -531,8 +542,8 @@ def test_changed_fingerprint_triggers_recompute(monkeypatch):
 
     called = []
     monkeypatch.setattr(
-        mod, "find_threshold_crossings",
-        lambda *a, **k: called.append(1) or [],
+        mod, "build_resolution_hierarchy",
+        lambda *a, **k: called.append(1) or _EMPTY_HIERARCHY,
     )
     # Also monkeypatch ClassContext.fetch so it doesn't need a real DB.
     monkeypatch.setattr(
@@ -552,12 +563,12 @@ def test_changed_fingerprint_triggers_recompute(monkeypatch):
     result = writer.run_substep(ctx, step)
 
     assert called == [1], (
-        "find_threshold_crossings MUST be called when fingerprint changed"
+        "build_resolution_hierarchy MUST be called when fingerprint changed"
     )
 
 
 def test_no_stored_fingerprint_triggers_recompute(monkeypatch):
-    """AC4: when there is no stored fingerprint, find_threshold_crossings is called."""
+    """AC4: when there is no stored fingerprint, build_resolution_hierarchy is called."""
     targets = ["Venus"]
     writer = GocharaV3CenturyMaterializeWriter()
     conn_dummy = _FakeConn(_responder(targets=targets))
@@ -570,8 +581,8 @@ def test_no_stored_fingerprint_triggers_recompute(monkeypatch):
 
     called = []
     monkeypatch.setattr(
-        mod, "find_threshold_crossings",
-        lambda *a, **k: called.append(1) or [],
+        mod, "build_resolution_hierarchy",
+        lambda *a, **k: called.append(1) or _EMPTY_HIERARCHY,
     )
     monkeypatch.setattr(
         mod, "ClassContext",
@@ -596,8 +607,6 @@ def test_no_stored_fingerprint_triggers_recompute(monkeypatch):
 
 def test_run_substep_inserts_correct_era_slice_key(monkeypatch):
     """AC3: rows inserted into kala_gochara_windows_v2 carry the correct era_slice_key."""
-    from services.gochara_v3.interval_solver import IntervalBoundary
-
     targets = ["Venus"]
     writer = GocharaV3CenturyMaterializeWriter()
     conn_dummy = _FakeConn(_responder(targets=targets))
@@ -606,20 +615,26 @@ def test_run_substep_inserts_correct_era_slice_key(monkeypatch):
     step = steps[0]
     ec, era_key = step.key.split("::", 1)
 
-    fake_boundary = IntervalBoundary(
+    fake_era_window = WindowResolutionRecord(
+        window_id="era-uuid-1",
+        parent_window_id=None,
+        resolution_tier="era",
         enter_jd=2445736.5 + 10.0,
-        exit_jd=2445736.5 + 20.0,
+        exit_jd=2445736.5 + 400.0,
         peak_jd=2445736.5 + 15.0,
         peak_lambda=0.72,
-        era_slice_key=era_key,
+    )
+    fake_hierarchy = HierarchyResult(
+        era_windows=[fake_era_window], month_windows=[], day_windows=[],
+        resolution_facet={"era": 1, "month": 0, "day": 0},
     )
 
     conn = _FakeConn(_responder(targets=targets, stored_fp=None))
     ctx = _ctx(conn)
 
     monkeypatch.setattr(
-        mod, "find_threshold_crossings",
-        lambda *a, **k: [fake_boundary],
+        mod, "build_resolution_hierarchy",
+        lambda *a, **k: fake_hierarchy,
     )
     monkeypatch.setattr(
         mod, "ClassContext",
@@ -636,7 +651,7 @@ def test_run_substep_inserts_correct_era_slice_key(monkeypatch):
     result = writer.run_substep(ctx, step)
     assert result.rows_inserted == 1
 
-    # Verify the INSERT SQL carries the expected era_slice_key.
+    # Verify the INSERT SQL carries the expected era_slice_key + resolution.
     inserts = [
         params for sql, params in conn.statements
         if sql.strip().upper().startswith("INSERT INTO KALA_GOCHARA_WINDOWS_V2")
@@ -647,13 +662,18 @@ def test_run_substep_inserts_correct_era_slice_key(monkeypatch):
         f"era_slice_key in INSERT: {inserts[0]['era_slice_key']!r} != {era_key!r}"
     )
     assert inserts[0]["generation"] == GENERATION_V3
+    assert inserts[0]["resolution"] == "era", (
+        f"PARIṢKĀRA MR-11(b): era-tier window must carry resolution='era', "
+        f"got {inserts[0]['resolution']!r}"
+    )
+    assert inserts[0]["parent_window_id"] is None, (
+        "an era-tier window has no coarser parent -- parent_window_id must be None"
+    )
 
 
 def test_run_substep_delete_is_scoped_to_era_slice(monkeypatch):
     """AC3: the DELETE before INSERT is scoped to (chart_id, event_class,
     generation, era_slice_key) — it must not touch other slices."""
-    from services.gochara_v3.interval_solver import IntervalBoundary
-
     targets = ["Venus"]
     writer = GocharaV3CenturyMaterializeWriter()
     conn_dummy = _FakeConn(_responder(targets=targets))
@@ -664,7 +684,7 @@ def test_run_substep_delete_is_scoped_to_era_slice(monkeypatch):
     conn = _FakeConn(_responder(targets=targets, stored_fp=None))
     ctx = _ctx(conn)
 
-    monkeypatch.setattr(mod, "find_threshold_crossings", lambda *a, **k: [])
+    monkeypatch.setattr(mod, "build_resolution_hierarchy", lambda *a, **k: _EMPTY_HIERARCHY)
     monkeypatch.setattr(
         mod, "ClassContext",
         type("FakeClassContext", (), {"fetch": staticmethod(lambda **k: object())}),
@@ -712,7 +732,7 @@ def test_wall_clock_time_logged_at_debug(monkeypatch, caplog):
     conn = _FakeConn(_responder(targets=targets, stored_fp=None))
     ctx = _ctx(conn)
 
-    monkeypatch.setattr(mod, "find_threshold_crossings", lambda *a, **k: [])
+    monkeypatch.setattr(mod, "build_resolution_hierarchy", lambda *a, **k: _EMPTY_HIERARCHY)
     monkeypatch.setattr(
         mod, "ClassContext",
         type("FakeClassContext", (), {"fetch": staticmethod(lambda **k: object())}),
@@ -767,7 +787,7 @@ def test_writer_never_calls_commit_or_rollback(monkeypatch):
     conn = _FakeConn(_responder(targets=targets, stored_fp=None))
     ctx = _ctx(conn)
 
-    monkeypatch.setattr(mod, "find_threshold_crossings", lambda *a, **k: [])
+    monkeypatch.setattr(mod, "build_resolution_hierarchy", lambda *a, **k: _EMPTY_HIERARCHY)
     monkeypatch.setattr(
         mod, "ClassContext",
         type("FakeClassContext", (), {"fetch": staticmethod(lambda **k: object())}),
@@ -781,7 +801,7 @@ def test_writer_never_calls_commit_or_rollback(monkeypatch):
 
     # If commit/rollback/close are called, _FakeConn raises AssertionError.
     result = writer.run_substep(ctx, step)
-    assert result.rows_inserted == 0  # no rows (find_threshold_crossings returns [])
+    assert result.rows_inserted == 0  # no rows (build_resolution_hierarchy returns empty)
 
 
 def test_generation_constant():
@@ -813,3 +833,225 @@ def test_prod_table_constant():
 def test_generation_prod_constant():
     """W5.4 repoint: production generation label is '3.0'."""
     assert GENERATION_PROD == "3.0"
+
+
+# ===========================================================================
+# PARIṢKĀRA MR-11(b) — hierarchy wiring (era⊃month⊃day, parent_window_id,
+# resolution). Written for the previously-unwired W3.3 resolution_hierarchy
+# code, now called from run_substep via build_resolution_hierarchy.
+# ===========================================================================
+
+
+def test_engine_version_is_v3_1():
+    """Codex C2: this lane changes writer OUTPUT SHAPE (hierarchy rows
+    replace flat interval rows) -> ENGINE_VERSION must be bumped to the
+    exact string 'v3.1' (concurrent PARIṢKĀRA lanes make the identical
+    edit so git auto-merges)."""
+    assert ENGINE_VERSION == "v3.1"
+
+
+def _returning_id_responder(*, targets=("Venus",), stored_fp=None, rows_exist=False):
+    """Like _responder, but INSERT ... RETURNING id statements get an
+    incrementing fake bigint id back — the mechanism run_substep needs to
+    resolve parent_window_id for child hierarchy rows."""
+    counter = {"n": 0}
+
+    def responder(sql: str, params=None) -> list[dict]:
+        s = sql.lower()
+        if "gochara_resonance_map" in s and "target_ref" in s:
+            return [{"target_ref": t} for t in targets]
+        if BUILD_STATE_TABLE in s and sql.strip().upper().startswith("SELECT"):
+            if stored_fp is None:
+                return []
+            return [{"class_fingerprint": stored_fp}]
+        if TABLE in s and "limit 1" in s:
+            return [{"1": 1}] if rows_exist else []
+        if sql.strip().upper().startswith("INSERT") and "RETURNING ID" in sql.upper():
+            counter["n"] += 1
+            return [{"id": counter["n"]}]
+        return []
+
+    return responder
+
+
+def _run_hierarchy_substep(monkeypatch, hierarchy: HierarchyResult):
+    """Shared setup: run the first substep with `hierarchy` as the mocked
+    build_resolution_hierarchy result, using the RETURNING-id-aware
+    responder. Returns (writer_result, conn)."""
+    targets = ["Venus"]
+    writer = GocharaV3CenturyMaterializeWriter()
+    conn_dummy = _FakeConn(_returning_id_responder(targets=targets))
+    steps = writer.plan_substeps(_ctx(conn_dummy))
+    step = steps[0]
+
+    conn = _FakeConn(_returning_id_responder(targets=targets, stored_fp=None))
+    ctx = _ctx(conn)
+
+    monkeypatch.setattr(mod, "build_resolution_hierarchy", lambda *a, **k: hierarchy)
+    monkeypatch.setattr(
+        mod, "ClassContext",
+        type("FakeClassContext", (), {"fetch": staticmethod(lambda **k: object())}),
+        raising=False,
+    )
+    try:
+        import swisseph  # noqa: F401
+    except ImportError:
+        import types, sys
+        sys.modules["swisseph"] = types.ModuleType("swisseph")
+
+    result = writer.run_substep(ctx, step)
+    return result, conn
+
+
+def _v2_inserts(conn):
+    return [
+        params for sql, params in conn.statements
+        if sql.strip().upper().startswith("INSERT INTO KALA_GOCHARA_WINDOWS_V2")
+        and isinstance(params, dict)
+    ]
+
+
+def _prod_inserts(conn):
+    # PROD_TABLE ('kala_gochara_windows') must NOT match the _v2 table --
+    # anchor on the table name being immediately followed by whitespace.
+    return [
+        params for sql, params in conn.statements
+        if re.match(r"INSERT INTO KALA_GOCHARA_WINDOWS\s", sql.strip().upper())
+        and isinstance(params, dict)
+    ]
+
+
+def test_era_month_day_all_three_resolutions_persisted(monkeypatch):
+    """A hierarchy with one window at each tier produces 3 v2 + 3 prod rows,
+    each carrying its own resolution_tier as the `resolution` column."""
+    era = WindowResolutionRecord(
+        window_id="era-1", parent_window_id=None, resolution_tier="era",
+        enter_jd=2445736.5, exit_jd=2445736.5 + 500.0,
+        peak_jd=2445736.5 + 100.0, peak_lambda=0.9,
+    )
+    month = WindowResolutionRecord(
+        window_id="month-1", parent_window_id="era-1", resolution_tier="month",
+        enter_jd=2445736.5 + 10.0, exit_jd=2445736.5 + 40.0,
+        peak_jd=2445736.5 + 25.0, peak_lambda=0.8,
+    )
+    day = WindowResolutionRecord(
+        window_id="day-1", parent_window_id="month-1", resolution_tier="day",
+        enter_jd=2445736.5 + 15.0, exit_jd=2445736.5 + 16.0,
+        peak_jd=2445736.5 + 15.5, peak_lambda=0.75,
+    )
+    hierarchy = HierarchyResult(
+        era_windows=[era], month_windows=[month], day_windows=[day],
+        resolution_facet={"era": 1, "month": 1, "day": 1},
+    )
+
+    result, conn = _run_hierarchy_substep(monkeypatch, hierarchy)
+
+    assert result.rows_inserted == 3
+    v2_rows = _v2_inserts(conn)
+    assert len(v2_rows) == 3
+    resolutions = [r["resolution"] for r in v2_rows]
+    assert resolutions == ["era", "month", "day"], (
+        "hierarchy rows must be inserted parent-tier-first: era, then month, then day"
+    )
+
+
+def test_parent_window_id_resolved_to_db_assigned_bigint(monkeypatch):
+    """A month window's parent_window_id (in BOTH kala_gochara_windows_v2
+    and kala_gochara_windows) must resolve to the DB-assigned bigint `id`
+    the era row received on its own INSERT ... RETURNING id -- never the
+    hierarchy's internal UUID window_id, and never fabricated."""
+    era = WindowResolutionRecord(
+        window_id="era-uuid", parent_window_id=None, resolution_tier="era",
+        enter_jd=2445736.5, exit_jd=2445736.5 + 500.0,
+        peak_jd=2445736.5 + 100.0, peak_lambda=0.9,
+    )
+    month = WindowResolutionRecord(
+        window_id="month-uuid", parent_window_id="era-uuid", resolution_tier="month",
+        enter_jd=2445736.5 + 10.0, exit_jd=2445736.5 + 40.0,
+        peak_jd=2445736.5 + 25.0, peak_lambda=0.8,
+    )
+    hierarchy = HierarchyResult(
+        era_windows=[era], month_windows=[month], day_windows=[],
+        resolution_facet={"era": 1, "month": 1, "day": 0},
+    )
+
+    result, conn = _run_hierarchy_substep(monkeypatch, hierarchy)
+
+    v2_rows = _v2_inserts(conn)
+    prod_rows = _prod_inserts(conn)
+    assert len(v2_rows) == 2 and len(prod_rows) == 2
+
+    era_v2, month_v2 = v2_rows[0], v2_rows[1]
+    era_prod, month_prod = prod_rows[0], prod_rows[1]
+
+    # The era row (no parent) carries parent_window_id=None on both tables.
+    assert era_v2["parent_window_id"] is None
+    assert era_prod["parent_window_id"] is None
+
+    # The month row's parent_window_id must be an int (the RETURNING id from
+    # the era row's own INSERT into the SAME table) -- never the string UUID
+    # "era-uuid" the hierarchy used internally.
+    assert isinstance(month_v2["parent_window_id"], int), (
+        f"expected a resolved bigint id, got {month_v2['parent_window_id']!r}"
+    )
+    assert isinstance(month_prod["parent_window_id"], int), (
+        f"expected a resolved bigint id, got {month_prod['parent_window_id']!r}"
+    )
+    # v2 and prod tables have INDEPENDENT id sequences in production -- the
+    # writer must not cross-wire a v2-table id into the prod-table row (or
+    # vice versa). With the fake responder's shared counter, era_v2 gets id=1
+    # (first INSERT...RETURNING id call) and era_prod gets id=2 (second) --
+    # month_v2's parent must equal era_v2's OWN id, month_prod's parent must
+    # equal era_prod's OWN id.
+    assert month_v2["parent_window_id"] != month_prod["parent_window_id"], (
+        "v2-table and prod-table parent linkage must be resolved independently "
+        "(separate id sequences) -- they must not collapse to the same id here"
+    )
+
+
+def test_dry_run_reports_hierarchy_tier_counts_and_writes_nothing(monkeypatch):
+    """dry_run=True must report era/month/day counts and issue zero writes."""
+    era = WindowResolutionRecord(
+        window_id="era-1", parent_window_id=None, resolution_tier="era",
+        enter_jd=2445736.5, exit_jd=2445736.5 + 500.0,
+        peak_jd=2445736.5 + 100.0, peak_lambda=0.9,
+    )
+    hierarchy = HierarchyResult(
+        era_windows=[era], month_windows=[], day_windows=[],
+        resolution_facet={"era": 1, "month": 0, "day": 0},
+    )
+
+    targets = ["Venus"]
+    writer = GocharaV3CenturyMaterializeWriter()
+    conn_dummy = _FakeConn(_returning_id_responder(targets=targets))
+    steps = writer.plan_substeps(_ctx(conn_dummy))
+    step = steps[0]
+
+    conn = _FakeConn(_returning_id_responder(targets=targets, stored_fp=None))
+    ctx = ContextSpec(
+        asset_id=ASSET_ID, build_id="test-build-w34", db_conn=conn,
+        config={"chart_id": "482012f1-710e-4a25-994a-93821f5871aa"},
+        dry_run=True,
+    )
+
+    monkeypatch.setattr(mod, "build_resolution_hierarchy", lambda *a, **k: hierarchy)
+    monkeypatch.setattr(
+        mod, "ClassContext",
+        type("FakeClassContext", (), {"fetch": staticmethod(lambda **k: object())}),
+        raising=False,
+    )
+    try:
+        import swisseph  # noqa: F401
+    except ImportError:
+        import types, sys
+        sys.modules["swisseph"] = types.ModuleType("swisseph")
+
+    result = writer.run_substep(ctx, step)
+
+    assert result.rows_inserted == 0
+    assert "era=1" in result.notes and "month=0" in result.notes and "day=0" in result.notes
+    writes = [
+        (sql, params) for sql, params in conn.statements
+        if sql.strip().upper().startswith(("DELETE", "INSERT"))
+    ]
+    assert writes == [], f"dry_run must issue zero DELETE/INSERT, got: {writes}"
