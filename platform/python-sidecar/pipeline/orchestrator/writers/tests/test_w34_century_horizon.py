@@ -1902,3 +1902,131 @@ def test_no_hierarchy_for_point_canonical_classes(monkeypatch):
             f"resolution={row['resolution']!r} -- hierarchy tiers must never "
             f"be produced for a point-canonical class."
         )
+
+
+# ===========================================================================
+# PARĪKṢAKA F-3 (2026-08-11) — R8.13 peak-accounting has a real detector
+# ===========================================================================
+#
+# GAP: R8.13 requires WriterResult.notes to carry the full production
+# peak-accounting string (era_windows/peaks_scanned/peaks_admitted/
+# peaks_retained/month_rows/day_rows) plus a NAMED zero_peaks_reason
+# whenever peaks_retained==0 -- but before this fix, nothing in the test
+# suite actually parsed `result.notes` and asserted on those fields, and
+# ZERO_PEAKS_NO_CANDIDATE_ABOVE_P90 / ZERO_PEAKS_ERA_WINDOW_TOO_SHORT were
+# asserted NOWHERE (only ZERO_PEAKS_FLAT_LAMBDA_CURVE's sibling constant
+# existed in the module, with no test exercising either of these two
+# specifically). Fixed: three tests below (a) pin every one of R8.13's six
+# named fields in `notes` from HierarchyResult counters that are DELIBERATELY
+# distinct from list lengths (so a `notes` string built from re-deriving
+# len(...) rather than the real counters would still be caught wrong), and
+# (b) exercise the two previously-unasserted zero_peaks_reason causes with
+# separate, distinct test cases.
+
+from services.gochara_v3.resolution_hierarchy import (  # noqa: E402
+    EraWindowAccounting,
+    ZERO_PEAKS_ERA_WINDOW_TOO_SHORT,
+    ZERO_PEAKS_NO_CANDIDATE_ABOVE_P90,
+)
+
+
+def test_writer_notes_carry_full_r813_peak_accounting_string(monkeypatch):
+    """R8.13 detector: WriterResult.notes must report era_windows,
+    peaks_scanned, peaks_admitted, peaks_retained, month_rows, day_rows as
+    explicit `key=value` substrings, sourced from HierarchyResult's own
+    counters (NOT re-derived from len(month_windows)/len(day_windows) alone
+    -- peaks_scanned/peaks_admitted have no corresponding list length at
+    all, so a notes string that omitted them would still show 1 era /
+    1 month / 1 day but silently drop the scan-funnel accounting)."""
+    era = WindowResolutionRecord(
+        window_id="era-1", parent_window_id=None, resolution_tier="era",
+        enter_jd=2445736.5, exit_jd=2445736.5 + 500.0,
+        peak_jd=2445736.5 + 100.0, peak_lambda=0.9,
+    )
+    month = WindowResolutionRecord(
+        window_id="month-1", parent_window_id="era-1", resolution_tier="month",
+        enter_jd=2445736.5 + 10.0, exit_jd=2445736.5 + 40.0,
+        peak_jd=2445736.5 + 25.0, peak_lambda=0.8,
+    )
+    day = WindowResolutionRecord(
+        window_id="day-1", parent_window_id="month-1", resolution_tier="day",
+        enter_jd=2445736.5 + 15.0, exit_jd=2445736.5 + 16.0,
+        peak_jd=2445736.5 + 15.5, peak_lambda=0.75,
+    )
+    hierarchy = HierarchyResult(
+        era_windows=[era], month_windows=[month], day_windows=[day],
+        resolution_facet={"era": 1, "month": 1, "day": 1},
+        # Deliberately distinct from the 1/1/1 list lengths above, so the
+        # test can tell "notes reports the real funnel counters" apart from
+        # "notes just re-derived len(...) three times".
+        peaks_scanned=7, peaks_admitted=4, peaks_retained=1,
+    )
+
+    result, conn = _run_hierarchy_substep(monkeypatch, hierarchy)
+
+    assert "era_windows=1" in result.notes, result.notes
+    assert "peaks_scanned=7" in result.notes, result.notes
+    assert "peaks_admitted=4" in result.notes, result.notes
+    assert "peaks_retained=1" in result.notes, result.notes
+    assert "month_rows=1" in result.notes, result.notes
+    assert "day_rows=1" in result.notes, result.notes
+
+
+def test_writer_notes_report_zero_peaks_no_candidate_above_p90(monkeypatch):
+    """R8.13 detector: ZERO_PEAKS_NO_CANDIDATE_ABOVE_P90 (candidates were
+    found by the local-maxima scan but none cleared the era window's own
+    P90 admission threshold) must appear verbatim in WriterResult.notes as
+    `zero_peaks_reason=no_candidate_above_p90` -- this exact reason constant
+    was asserted NOWHERE in the suite before this fix."""
+    era = WindowResolutionRecord(
+        window_id="era-1", parent_window_id=None, resolution_tier="era",
+        enter_jd=2445736.5, exit_jd=2445736.5 + 500.0,
+        peak_jd=2445736.5 + 100.0, peak_lambda=0.9,
+    )
+    hierarchy = HierarchyResult(
+        era_windows=[era], month_windows=[], day_windows=[],
+        resolution_facet={"era": 1, "month": 0, "day": 0},
+        peaks_scanned=4, peaks_admitted=0, peaks_retained=0,
+        zero_peaks_reason=ZERO_PEAKS_NO_CANDIDATE_ABOVE_P90,
+    )
+
+    result, conn = _run_hierarchy_substep(monkeypatch, hierarchy)
+
+    assert f"zero_peaks_reason={ZERO_PEAKS_NO_CANDIDATE_ABOVE_P90}" in result.notes, result.notes
+    assert "peaks_scanned=4" in result.notes, result.notes
+    assert "peaks_admitted=0" in result.notes, result.notes
+    assert "peaks_retained=0" in result.notes, result.notes
+    assert "month_rows=0" in result.notes, result.notes
+    assert "day_rows=0" in result.notes, result.notes
+
+
+def test_writer_notes_report_zero_peaks_era_window_too_short(monkeypatch):
+    """R8.13 detector: ZERO_PEAKS_ERA_WINDOW_TOO_SHORT (the era window's own
+    reused coarse-series slice had <3 points -- interior-point local-max
+    detection cannot run at all) must appear verbatim in WriterResult.notes
+    as `zero_peaks_reason=era_window_too_short` -- this exact reason
+    constant, distinct from NO_CANDIDATE_ABOVE_P90 above, was ALSO asserted
+    NOWHERE before this fix."""
+    era = WindowResolutionRecord(
+        window_id="era-1", parent_window_id=None, resolution_tier="era",
+        enter_jd=2445736.5, exit_jd=2445736.5 + 500.0,
+        peak_jd=2445736.5 + 100.0, peak_lambda=0.9,
+    )
+    hierarchy = HierarchyResult(
+        era_windows=[era], month_windows=[], day_windows=[],
+        resolution_facet={"era": 1, "month": 0, "day": 0},
+        # peaks_scanned=0 (era window too short to even find candidates) --
+        # distinct funnel shape from the NO_CANDIDATE_ABOVE_P90 case above,
+        # which scans some candidates but admits none.
+        peaks_scanned=0, peaks_admitted=0, peaks_retained=0,
+        zero_peaks_reason=ZERO_PEAKS_ERA_WINDOW_TOO_SHORT,
+    )
+
+    result, conn = _run_hierarchy_substep(monkeypatch, hierarchy)
+
+    assert f"zero_peaks_reason={ZERO_PEAKS_ERA_WINDOW_TOO_SHORT}" in result.notes, result.notes
+    assert "peaks_scanned=0" in result.notes, result.notes
+    assert ZERO_PEAKS_ERA_WINDOW_TOO_SHORT != ZERO_PEAKS_NO_CANDIDATE_ABOVE_P90, (
+        "fixture sanity: the two zero_peaks_reason constants exercised by "
+        "these two tests must actually be distinct strings"
+    )

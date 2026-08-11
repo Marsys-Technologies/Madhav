@@ -73,6 +73,36 @@ from services.gochara_v3.threshold import ThresholdConfig
 _BASE_JD = 2445736.5  # 1984-02-05 (native birth date, same anchor the writer uses)
 
 
+def _honest_eval_bound(span_days: float, era_window_count: int, peaks_retained: int) -> float:
+    """PARĪKṢAKA F-1 (2026-08-11): the honest _eval_single call-count bound
+    for one build_resolution_hierarchy call, replacing the old vacuous
+    `span/7 + 15000` (see test_peak_scan_reuses_coarse_series' own
+    docstring for the full rationale). Three named, documented components —
+    none of them re-implement interval_solver's own bisection/dense-scan
+    logic, they just budget generously for it:
+      1. ONE full-range coarse sweep (ceil(span/PEAK_SCAN_STRIDE_DAYS) + 5
+         slack for arange-edge rounding) — the single pass find_threshold_
+         crossings itself makes, which R8.2 requires downstream peak-
+         anchoring to REUSE rather than re-sweep.
+      2. `_BISECT_AND_DENSE_SCAN_BUDGET` (100) per era window — covers each
+         interval's own enter/exit bisection (~15 iterations x 2 crossings,
+         generous given interval_solver's 0.1-day tolerance over a 7-day
+         coarse step) plus its 50-sample dense peak scan plus slack.
+      3. `_REFINEMENT_BUDGET` (20) per retained peak — refine_peak_to_day's
+         own exact cost is 16 calls (int(round(2*7/1))+2); budgeted with
+         slack.
+    """
+    import math
+    _BISECT_AND_DENSE_SCAN_BUDGET = 100
+    _REFINEMENT_BUDGET = 20
+    _COARSE_SWEEP_SLACK = 5
+    return (
+        math.ceil(span_days / PEAK_SCAN_STRIDE_DAYS) + _COARSE_SWEEP_SLACK
+        + era_window_count * _BISECT_AND_DENSE_SCAN_BUDGET
+        + peaks_retained * _REFINEMENT_BUDGET
+    )
+
+
 def _make_threshold_config(lambda_thresh: float = 0.5) -> ThresholdConfig:
     return ThresholdConfig(
         percentile_used=0.90,
@@ -199,7 +229,40 @@ class TestR82PeakScanReusesSeries:
     def test_peak_scan_reuses_coarse_series(self, monkeypatch):
         """R8.2: total _eval_single calls across one build_resolution_
         hierarchy call stay within the reused-series bound — proof that
-        peak-anchoring does not re-sweep the era window."""
+        peak-anchoring does not re-sweep the era window.
+
+        PARĪKṢAKA F-1 (2026-08-11): the original bound was `span/7 + 15000`
+        — at this test's span (3,650d) that's ~15,521, roughly 20x the real
+        observed cost (~762 calls), so loose it would pass unchanged even
+        under a per-era-window full re-sweep. Tightened to HONEST arithmetic
+        built from this module's own named constants (no re-derivation of
+        interval_solver's exact bisection/dense-scan cost — that would just
+        be a second implementation of the thing under test — instead a
+        documented, generous-but-far-tighter-than-15000 per-unit budget):
+          coarse sweep   ceil(span / PEAK_SCAN_STRIDE_DAYS) + slack — the
+                         one full-range coarse pass find_threshold_crossings
+                         itself makes (R8.2's own "reuse this, don't re-sweep
+                         it" series).
+          per era window _BISECT_AND_DENSE_SCAN_BUDGET — covers each
+                         interval's enter/exit bisection (interval_solver's
+                         own _BISECT_TOL_DAYS=0.1 tolerance over a 7-day
+                         coarse step converges in ~7 iterations; budgeted at
+                         15 x2 crossings = 30) plus its 50-sample dense peak
+                         scan (interval_solver's own _PEAK_SAMPLE_COUNT) plus
+                         slack for _eval_single_full's own peak read — a
+                         documented 100, comfortably above the ~80 actually
+                         observed per era window in this fixture.
+          per retained
+          peak           _REFINEMENT_BUDGET — refine_peak_to_day's own EXACT
+                         cost is int(round(2*DAY_REFINEMENT_HALF_WINDOW_DAYS/
+                         DAY_REFINEMENT_STEP_DAYS)) + 2 == 16 calls; budgeted
+                         at 20 for slack.
+        At this test's span (3,650d, 3 era windows, 3 retained peaks) this
+        formula evaluates to ~887 — the real observed count (762) clears it
+        with a ~16% margin, not a ~20x one, so a per-era-window re-sweep
+        (which would add roughly one more full-span coarse pass PER era
+        window, ~521 calls each — see test_peak_scan_detects_resweep_
+        mutation below) blows straight through it."""
         from services.gochara_v3 import interval_solver as isolver
 
         call_count = {"n": 0}
@@ -222,28 +285,50 @@ class TestR82PeakScanReusesSeries:
         config = _make_threshold_config(lambda_thresh=0.5)
         result = build_resolution_hierarchy(MagicMock(), MagicMock(), start_jd, start_jd + span_days, config)
 
-        bound = (span_days / PEAK_SCAN_STRIDE_DAYS) + 15000
+        bound = _honest_eval_bound(span_days, result.era_window_count, result.peaks_retained)
         assert call_count["n"] <= bound, (
             f"R8.2 VIOLATION: {call_count['n']} eval calls exceeds the reused-series "
             f"bound {bound} — peak-anchoring appears to be re-sweeping instead of "
             f"reusing the coarse series."
         )
-        # Sanity: this scenario is non-trivial (real windows were produced).
+        # Sanity: this scenario is non-trivial (real windows were produced),
+        # and the bound is genuinely tight (not another 15000-style no-op) —
+        # observed count must clear >=50% of the bound's slack margin, or
+        # the fixture itself has drifted loose again.
         assert result.era_window_count >= 1
+        assert call_count["n"] >= bound * 0.5, (
+            f"fixture regression: observed count {call_count['n']} is suspiciously "
+            f"far below bound {bound} — the bound may have drifted loose again"
+        )
 
     def test_peak_scan_detects_resweep_mutation(self, monkeypatch):
         """Companion RED case: a hypothetical implementation that re-sweeps
         the FULL requested range once per era window (instead of reusing the
-        already-computed series) blows the same bound formula this file's
+        already-computed series) blows the SAME tightened bound this file's
         primary detector checks — proving that formula is a real detector,
-        not a vacuous always-true bound."""
+        not a vacuous always-true bound.
+
+        PARĪKṢAKA F-1 (2026-08-11): the original companion test used an
+        artificial 200,000-day span specifically chosen so that span/7 alone
+        (~28,571) already dwarfed the old loose bound's fixed +15000 slack —
+        i.e. it proved the OLD bound's arithmetic could be exceeded at an
+        unrealistic scale, not that it discriminates at a REAL production
+        span. Fixed: this test now uses the SAME realistic span (3,650d) and
+        SAME curve as the primary detector above, so it exercises the exact
+        bound formula and scenario the primary test uses — proving the
+        TIGHTENED bound (not some other, looser one) is what catches the
+        mutation."""
         from services.gochara_v3 import interval_solver as isolver
 
         call_count = {"n": 0}
-        span_days = 200000.0  # large enough that span/7 alone approaches 15K
+        span_days = 3650.0  # SAME span as the primary detector, on purpose
+        start_jd = _BASE_JD
 
         def curve(jd: float) -> float:
-            return 0.95 if 100.0 <= jd <= 110.0 else 0.1
+            val = 0.3
+            for center in (start_jd + 500.0, start_jd + 1800.0, start_jd + 3000.0):
+                val = max(val, 0.95 - abs(jd - center) * 0.01)
+            return val
 
         def counting_eval(swe, context, jd):
             call_count["n"] += 1
@@ -254,25 +339,34 @@ class TestR82PeakScanReusesSeries:
 
         config = _make_threshold_config(lambda_thresh=0.5)
 
-        # First, the REAL (reuse-based) call — establishes the honest count.
+        # First, the REAL (reuse-based) call — establishes the honest count
+        # AND the era_window_count a per-era-window re-sweep bug would loop
+        # over.
         call_count["n"] = 0
-        build_resolution_hierarchy(MagicMock(), MagicMock(), 0.0, span_days, config)
+        honest_result = build_resolution_hierarchy(
+            MagicMock(), MagicMock(), start_jd, start_jd + span_days, config,
+        )
         honest_count = call_count["n"]
 
-        # Now simulate the mutation: a second, REDUNDANT full coarse sweep
-        # over the same range (what a re-sweep bug would add).
+        # Now simulate the mutation literally: what a "re-sweep instead of
+        # reuse" bug would do is call find_threshold_crossings AGAIN, once
+        # per era window, over the FULL requested range (the exact defect
+        # R8.2 exists to prevent).
         call_count["n"] = 0
-        isolver.find_threshold_crossings(
-            MagicMock(), MagicMock(), 0.0, span_days, config,
-            coarse_step_days=PEAK_SCAN_STRIDE_DAYS,
-        )
+        for _ in range(honest_result.era_window_count):
+            isolver.find_threshold_crossings(
+                MagicMock(), MagicMock(), start_jd, start_jd + span_days, config,
+                coarse_step_days=PEAK_SCAN_STRIDE_DAYS,
+            )
         redundant_resweep_cost = call_count["n"]
         mutated_total = honest_count + redundant_resweep_cost
 
-        bound = (span_days / PEAK_SCAN_STRIDE_DAYS) + 15000
+        bound = _honest_eval_bound(
+            span_days, honest_result.era_window_count, honest_result.peaks_retained,
+        )
         assert mutated_total > bound, (
-            "R8.2 detector is not tight enough to catch a full re-sweep at this "
-            f"span: honest={honest_count} + resweep={redundant_resweep_cost} = "
+            "R8.2 detector is not tight enough to catch a per-era-window re-sweep at "
+            f"this span: honest={honest_count} + resweep={redundant_resweep_cost} = "
             f"{mutated_total} did not exceed bound={bound}"
         )
 
@@ -321,15 +415,27 @@ class TestR83Admission:
 
     def test_admission_is_threshold_independent(self):
         """Identical retained sets across lambda_thresh in {0.0, 0.3, 0.9}
-        when the underlying curve stays comfortably above all three (so
-        interval DETECTION is also unaffected) — proves admission never
-        consults the external threshold."""
+        proves admission never consults the external threshold.
+
+        Verifier note (2026-08-11, cheap fix): the original curve had a
+        baseline of 0.85 with peaks to 0.98 — EVERY point in the series
+        (not just the two local-maxima candidates) already cleared all
+        three tested lambda_thresh values, so a hypothetical mutant that
+        wired `lam >= lambda_thresh` into admission could never have
+        produced a different retained set at any of the three thresholds —
+        the assertion was structurally incapable of discriminating. Fixed:
+        the curve now has a LOW baseline (0.05) and two peaks of differing
+        height — one at 0.95 (clears all three thresholds) and one at 0.25
+        (clears lambda_thresh=0.0, but falls BELOW both 0.3 and 0.9) — so a
+        threshold-gated mutant would retain the 0.25 peak only at
+        lambda_thresh=0.0 and drop it at 0.3/0.9, producing three DIFFERENT
+        result sets instead of one identical set."""
         start_jd = _BASE_JD
 
         def curve(jd: float) -> float:
-            val = 0.85
-            for center in (start_jd + 200.0, start_jd + 600.0):
-                val = max(val, 0.98 - abs(jd - center) * 0.01)
+            val = 0.05
+            val = max(val, 0.95 - abs(jd - (start_jd + 200.0)) * 0.05)
+            val = max(val, 0.25 - abs(jd - (start_jd + 600.0)) * 0.02)
             return val
 
         results = {}
@@ -483,16 +589,46 @@ class TestR85DayRefinement:
 
     def test_month_and_day_rows_carry_refined_peak_not_coarse_candidate(self):
         """End-to-end: build_peak_anchored_windows' month AND day rows carry
-        peak_jd_true (refined), never the coarse candidate.jd."""
+        peak_jd_true (refined), never the coarse candidate.jd.
+
+        PARĪKṢAKA F-2 (2026-08-11): the original version of this test placed
+        the true peak only 0.7d off the nearest 7-day coarse-grid point,
+        with an assertion tolerance of 1.0d -- so the UNREFINED coarse
+        candidate.jd (203.0) would ALSO satisfy `abs(peak_jd - true_peak) <=
+        1.0`, making the test pass whether or not refine_peak_to_day ever
+        ran. Fixed two ways:
+          1. true_peak is now 2.0d off the 7-day grid (grid points 203.0 and
+             210.0 straddle it; the nearer one, 203.0, is 2.0d away) AND
+             landed exactly on an integer day, so refine_peak_to_day's
+             1-day-step re-sample hits it EXACTLY -- the assertion below is
+             an exact equality, not a tolerance a coarse hit could sneak
+             under.
+          2. A second phase monkeypatches refine_peak_to_day itself with a
+             call-recording spy returning a SENTINEL (peak_jd, peak_lambda)
+             pair that cannot arise from the real curve -- proving the
+             month/day rows' peak_jd is LITERALLY the refine_peak_to_day
+             return value, not independently derived from the coarse
+             candidate elsewhere in build_peak_anchored_windows.
+        """
         start_jd = _BASE_JD
         era = _make_window("era", enter_jd=start_jd, exit_jd=start_jd + 800.0)
-        true_peak = start_jd + 203.7  # off the 7-day grid
+        true_peak = start_jd + 205.0  # exactly 2.0d off the 203.0 grid point
 
         def curve(jd: float) -> float:
             return max(0.1, 0.95 - abs(jd - true_peak) * 0.03)
 
         jds = np.arange(start_jd, start_jd + 800.0, PEAK_SCAN_STRIDE_DAYS)
         lambdas = np.array([curve(jd) for jd in jds])
+
+        # Sanity-check the fixture's own premise: the coarse grid point
+        # nearest true_peak is >=2.0d away (i.e. genuinely off-grid), so a
+        # test that only checked "close to true_peak" without exactness
+        # could not be satisfied by the coarse candidate alone.
+        nearest_grid_jd = min(jds, key=lambda jd: abs(jd - true_peak))
+        assert abs(nearest_grid_jd - true_peak) >= 2.0, (
+            "fixture regression: coarse grid point drifted within 2.0d of "
+            "true_peak, which would make this test vacuous again"
+        )
 
         with patch(
             "services.gochara_v3.resolution_hierarchy._eval_single",
@@ -503,11 +639,56 @@ class TestR85DayRefinement:
             )
 
         assert len(month_rows) == 1 and len(day_rows) == 1
-        # The coarse candidate would have been at the nearest 7-day grid
-        # point to true_peak -- the refined peak must land close to the
-        # true off-grid peak.
-        assert abs(month_rows[0].peak_jd - true_peak) <= 1.0
+        # Exact equality (not a >=2.0d-slack tolerance a coarse hit could
+        # satisfy): refine_peak_to_day's 1-day-step re-sample lands exactly
+        # on the integer-day true_peak.
+        assert month_rows[0].peak_jd == true_peak, (
+            f"R8.5 VIOLATION: month row peak_jd={month_rows[0].peak_jd} != "
+            f"true_peak={true_peak} -- refinement did not find the true "
+            f"off-grid maximum (or the coarse candidate.jd leaked through)."
+        )
+        assert day_rows[0].peak_jd == true_peak
         assert month_rows[0].peak_jd == day_rows[0].peak_jd
+
+        # --- wiring assertion: peak_jd is LITERALLY refine_peak_to_day's
+        # return value, proven via a call-recording spy + sentinel that the
+        # real curve could never produce. ---
+        calls = []
+        # Far outside [start_jd, start_jd + 800] (the era span) and nowhere
+        # near true_peak or any coarse-grid point, but still a valid
+        # calendar date (near-epoch JDs like true_peak's own OverflowError
+        # under _jd_to_pydate for wildly out-of-range values).
+        sentinel_jd, sentinel_lambda = start_jd + 12345.6789, 0.123456
+
+        def _spy(swe, context, candidate_jd, **kwargs):
+            calls.append(candidate_jd)
+            return sentinel_jd, sentinel_lambda
+
+        with patch(
+            "services.gochara_v3.resolution_hierarchy._eval_single",
+            side_effect=lambda swe, context, jd: curve(float(jd)),
+        ), patch(
+            "services.gochara_v3.resolution_hierarchy.refine_peak_to_day",
+            side_effect=_spy,
+        ):
+            month_rows2, day_rows2, _acc2 = build_peak_anchored_windows(
+                MagicMock(), MagicMock(), era, (jds, lambdas),
+            )
+
+        assert len(calls) >= 1, (
+            "R8.5 WIRING VIOLATION: build_peak_anchored_windows retained a "
+            "peak but never called refine_peak_to_day at all."
+        )
+        assert len(month_rows2) == 1 and len(day_rows2) == 1
+        assert month_rows2[0].peak_jd == sentinel_jd, (
+            f"R8.5 WIRING VIOLATION: month row peak_jd={month_rows2[0].peak_jd} "
+            f"did not come through refine_peak_to_day (expected sentinel "
+            f"{sentinel_jd}) -- build_peak_anchored_windows is not calling "
+            f"the refinement function it claims to."
+        )
+        assert day_rows2[0].peak_jd == sentinel_jd
+        assert month_rows2[0].peak_lambda == sentinel_lambda
+        assert day_rows2[0].peak_lambda == sentinel_lambda
 
 
 # ---------------------------------------------------------------------------
