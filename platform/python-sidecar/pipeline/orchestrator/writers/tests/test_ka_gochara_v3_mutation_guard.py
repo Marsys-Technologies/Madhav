@@ -563,7 +563,13 @@ def test_dryrun_fixture_only_writes_generation_30_rows(monkeypatch):
     # of kala_gochara_windows_v2, so a naive `in` check over-matches the
     # calibration/staging table's own DML; see _dml_target_table docstring).
     # _dml_target_table_or_raise (not the bare helper) so an unparseable DML
-    # statement is a loud test failure, never a silent miss.
+    # statement is a loud test failure, never a silent miss. Supersedes
+    # #1221's word-boundary-regex approach (PARĪKṢAKA round-2 Finding B
+    # conflict-resolution ruling: _dml_target_table_or_raise + Finding A's
+    # tightened regex wins both hunks) — the anchored table-name extraction
+    # catches formatting-based smuggling (no-space-paren, schema-qualified
+    # names) that a bare `\bPROD_TABLE\b` substring search does not
+    # distinguish from a genuinely different table reference.
     prod_dml = [
         (sql, params) for sql, params in conn.statements
         if _dml_target_table_or_raise(sql) == PROD_TABLE
@@ -633,6 +639,9 @@ def test_dryrun_fixture_no_generation_v1_rows(monkeypatch):
     # No DML against PROD_TABLE should produce generation='v1'.
     # _dml_target_table_or_raise: an unparseable DML statement here is a
     # loud test failure (guard coverage gap), never a silent `continue`.
+    # Supersedes #1221's word-boundary regex (Finding B ruling — see
+    # test_dryrun_fixture_only_writes_generation_30_rows above for the full
+    # rationale).
     v1_re = re.compile(r"generation\s*=\s*'v1'")
     v1_violations: list[tuple[str, object]] = []
     for sql, params in conn.statements:
