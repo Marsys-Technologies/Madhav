@@ -883,3 +883,54 @@ scope reduction below 27 classes · retiring any serving surface · LEL content.
     item when that work is taken up, NOT fixed here.
   NEXT-ACTION: merge #1214 on green -- all of MR-13/14(+matching)/15's CODE lands to integration.
     Then: MR-10 fold-in check, pinned gate packet, deploy+verify, THE ONE authorized rebuild.
+  PR #1214 MERGED 2026-08-11T06:51:11Z.
+
+- 2026-08-11 ~07:0x-13:0x IST (interactive conductor -- MR-10 fold-in resolved, wave-3 gate
+  packet landed+deployed, lease renewed, THE ONE rebuild dispatched):
+  MR-10 FOLD-IN: fixed writer does NOT emit point-shaped rows (exhaustive grep across engine +
+    writer: zero point-shape logic anywhere; _build_row() hardcodes temporal_shape='interval').
+    BUT the 54 point rows already exist, complete and honest, in staging (kala_gochara_windows_v2):
+    29 native + 25 Abhinandan = 54 exactly matching the register's figure. Already correctly
+    stamped (valence varies per class -- gain/loss/neutral, never blanket favourable;
+    calibration_state already structural_prior for all 54; term_breakdown NULL, consistent with
+    predating W1.5). These rows never carried the MR-13 defect -- came from a different, already-
+    honest process. Conclusion: MR-10 is a simple PROMOTION (copy already-correct staging rows to
+    prod), not new engine/writer work -- runs inside the same authorized window per the native's
+    own contingency plan.
+  WAVE-3 GATE PACKET: PR #1215 (parishkara/integration -> main, pinned @ 2d21b29) -- MR-13+14+
+    14matching+15, all code, zero live-data writes. CI green (TAP-6 fired cleanly this time, no
+    repeat of the earlier merge-queue deadlock). MERGED 2026-08-11T07:07:17Z. Deploy auto-
+    triggered (run 31468173259) and SUCCEEDED cleanly -- Build&Deploy Web/Sidecar/Pipeline all
+    green. M5-style sanity: both charts' gochara_activation_get called live post-deploy -- one
+    transient connection-layer error on the first call (immediately post-deploy MCP hiccup,
+    confirmed transient via clean retry), otherwise both charts healthy, backing_data_reachable=
+    true, no regression. Live data still shows the disclosed favourable/empirically_calibrated
+    state as expected -- code landed, data not yet touched.
+  LEASE RENEWAL: L-5 (expiry 09:00 IST) found EXPIRED by real wall-clock time (12:5x IST) when
+    checked before the rebuild step -- the code-fix phase (MR-13/14/14matching/15 + gate packet +
+    deploy) took longer in real time than the original estimate. No protected-corpus write
+    happened under the expired window. Renewed as L-6 (12:5x-15:00 IST) in the coordination file
+    BEFORE dispatching the rebuild, per the mandatory "lease held for the window" condition.
+    Checked coordination file for SAMPŪRTI activity in the gap: none since this campaign's last
+    write -- no conflict.
+  THE ONE AUTHORIZED REBUILD -- DISPATCHED (opus, GATE-EXECUTOR role, full brief covering all 5
+    native mandatory conditions): required reading (this ledger, the amended register, the L-6
+    lease) -> Step 0 pre-state evidence capture (both charts: counts by generation/shape, valence
+    dist, calibration_state dist, term_breakdown non-null count, v1 corpus baseline cross-check)
+    -> Step 1 MANDATORY throwaway-DB rehearsal of the full sequence before touching prod -> Step 2
+    the real rebuild: 2a writer-path rebuild for both charts (SET LOCAL GUC, transaction-scoped,
+    never ALTER DATABASE/ROLE) using the real GocharaV3CenturyMaterializeWriter class directly
+    (not reimplemented), 2b MR-10 point-row promotion from staging with an evidenced generation-
+    stamp decision, 2c real W4.4 refit both charts (expect but verify mechanism_not_wired per
+    MR-14-matching's finding), 2d calibration stamping via the EXISTING w45_post_fit_rebuild.py
+    gated mechanism (found this session: platform/python-sidecar/scripts/kala_admission/
+    w45_post_fit_rebuild.py -- "post-fit rebuild -- empirically_calibrated stamping" per its own
+    history) -- explicitly instructed NOT to hand-roll an UPDATE, that would repeat the exact
+    out-of-band-SQL failure this whole rebuild exists to fix -> Step 3 post-state evidence + diff,
+    protection re-verification (seeded unauthorized DELETE must be refused), v1 corpus re-check,
+    GUC-leak check (fresh connection must show GUC unset). Agent instructed to STOP and report
+    rather than improvise if anything goes wrong -- one-shot window, caution over speed.
+  NEXT-ACTION: await the rebuild agent's full evidence report; paste verbatim into this ledger
+    per the mandatory conditions; verify MR-10/13/14/15 gates against the rebuilt corpus; then
+    MR-24 battery; then W6-COMPLETE only if the full marker-gate set (MR-01..08,10,13,14,15,24)
+    is genuinely green.
