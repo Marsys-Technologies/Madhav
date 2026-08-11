@@ -843,3 +843,43 @@ scope reduction below 27 classes · retiring any serving surface · LEL content.
     honest this time. Gate packet still held until this lane lands.
   NEXT-ACTION: await MR-14-matching PR; verify (execution) and merge; then MR-10 fold-in check;
     then the pinned gate packet.
+
+- 2026-08-11 ~06:5x IST (interactive conductor -- MR-14-matching landed, DEEPER finding than
+  expected: the mechanisms are not mismatched, they are DORMANT):
+  MR-14-MATCHING RESULT (PR #1214, parishkara/mr-14-matching -> parishkara/integration): the
+    "key-matching bug" hypothesis from PR #1213's disclosure was TRUE but SHALLOW. Traced
+    services/gochara_v3/engine.py, context.py, and every module under
+    services/gochara_v3/mechanisms/: all 10 admitted Wave-2 mechanisms (w21_av_gating ..
+    w27c_sudarshana) are NEVER INVOKED by the production engine -- confirmed via (i)
+    mechanisms/__init__.py's own docstring ("Dormant... NOT wired into engine.py yet"), (ii)
+    each module's own matching docstring, (iii) zero-hit grep for callers outside their own
+    package, (iv) ClassContext missing the input data fields 9 of the 10 mechanisms would need,
+    (v) every mechanism YAML still admission_state='candidate'. There is no key under ANY name
+    that could legitimately represent these mechanisms in term_breakdown, because the
+    computation that would produce one never runs. This is a genuine structural/design-state
+    fact (Wave-4 engine wiring never done), not a naming bug.
+  FIX: added MECHANISM_ENGINE_WIRED (explicit, auditable, all False today, full evidence trail
+    in comments) checked BEFORE the proxy_fraction fallback. A dormant mechanism now reports the
+    honest, DISTINCT status 'mechanism_not_wired' (delta forced to 0.0, never fabricated) instead
+    of the generically-computed non-zero proxy_fraction that LOOKED like real signal but
+    structurally could not be. A literal term_breakdown key match still wins unconditionally when
+    present (forward-compatible with eventual Wave-4 wiring).
+  GOLDEN TEST (execution-verified, real fit path, not mocked): extracted compute_mechanism_
+    weights (pure, DB-free) so prod and test call IDENTICAL code. Synthetic 4-event corpus: 2
+    events hand-constructed with a literal w21_av_gating match, 2 with the real production shape
+    and no mechanism key. Hand-predicted w21_av_gating final_weight = 2/7 ~= 0.285714 (ablating
+    flips 2 of 4 hit->miss), all other 9 mechanisms = exactly 0.0. Ran it: passed first try,
+    matched hand-derivation exactly. Confirmed genuine red->green (new tests fail to import
+    against pre-fix source).
+  *** WHAT THIS MEANS FOR THE UPCOMING REBUILD (revised expectation, not a new decision needed --
+    this fulfills the native's Option B ruling, doesn't change it) ***: the fit will now almost
+    certainly report 'mechanism_not_wired' for all 10 admitted mechanisms -- correctly and
+    honestly -- rather than fake proxy_fraction signal. structural_prior is the highly likely real
+    terminal outcome for MR-14, not from insufficient DATA (174 rows) but from the Wave-4 engine
+    wiring genuinely not existing yet. This is exactly the honest-outcome protection the native's
+    ruling was for -- now KNOWN near-certain rather than merely possible, and provably correct
+    (golden-tested) rather than guessed. empirically_calibrated realistically requires a FUTURE,
+    separate Wave-4 mechanism-wiring effort -- out of this campaign's scope, worth a new register
+    item when that work is taken up, NOT fixed here.
+  NEXT-ACTION: merge #1214 on green -- all of MR-13/14(+matching)/15's CODE lands to integration.
+    Then: MR-10 fold-in check, pinned gate packet, deploy+verify, THE ONE authorized rebuild.
