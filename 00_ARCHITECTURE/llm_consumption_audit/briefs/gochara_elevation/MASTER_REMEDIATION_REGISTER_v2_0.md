@@ -1186,6 +1186,58 @@ post-campaign, gated on a non-degenerate W4.4 fit (Phase F) so any future
 point row earns its `is_timing_window=true` rather than inheriting it for
 free. MR-46 CLOSED by this ruling; MR-47 OPEN, scoped, unblocked.
 
+**MR-48 · `w45_post_fit_rebuild.py` Stage C hardcodes `claim_shape="interval"`
+for every `brahma_prospective_ledger` row — same defect class as MR-46/47,
+different file; caught live by the DR-13/DIS.026 enforcement trigger.**
+[net-new, found 2026-08-12 during Phase F live execution, first real run of
+Stage C against a corpus containing genuine chain-canonical prospective
+candidates]
+GAP: `scripts/kala_admission/w45_post_fit_rebuild.py`'s Stage C INSERT into
+`brahma_prospective_ledger` (~line 459) passes the bare literal `"interval"`
+as `claim_shape` for every row it seeds, regardless of the source window's
+actual `event_class`/shape — never derived from `brahma_event_ontology` or
+even from the source row's own `temporal_shape`. This is the identical
+§N.7 item 3 defect class PK-R-10/MR-47 just fixed in the writer, independently
+present in this separate script. It had never been caught before because
+Stage C had never previously run against a corpus with real chain-canonical
+top-20-forward candidates (this session's dynamic 27-class corpus rebuild,
+via MR-16's `_discover_event_classes`, is what first produced them).
+**Confirmed live** (Phase F execution, 2026-08-12, both charts): the
+`brahma_prospective_ledger_enforce_shape()` DB trigger correctly REFUSED an
+INSERT for `chart=1c826d5a…, event_class=education_milestone` — "claim_shape
+'interval' does not match event_class 'education_milestone' canonical shape
+'chain' (DR-13/DIS.026 event-shape symmetry)" — proving the protective
+trigger is working exactly as designed; no bad row was written. **Compounding
+defect, same run:** the script issues all of one chart's Stage C inserts on a
+SINGLE transaction/cursor with no per-row `SAVEPOINT`; once the trigger
+aborted that one insert, Postgres correctly refused every subsequent
+statement on the same connection ("current transaction is aborted") —
+cascading 8 further, otherwise-VALID `psychological_arc` inserts (genuinely
+interval-canonical, `claim_shape='interval'` would have been correct for
+them) into silent, collateral `except`-swallowed failures logged as generic
+"INSERT failed" warnings indistinguishable from the real defect. Result this
+run: `prospective_rows_seeded: 24` — an honest but under-counted total, not
+a fabricated one (I4 held: nothing false was written), but Stage C's
+MR-32-closing coverage goal was not fully met on the Abhinandan chart this
+pass. **The core Phase F gate is UNAFFECTED and PASSED**: Stage B correctly
+reported `rows_stamped_empirically_calibrated: 0` (§N.8 earned-signal gate,
+MR-37's fix, re-confirmed live — zero mechanisms wired, zero weight, exactly
+the honest expected state) — this MR-48 finding is scoped entirely to Stage
+C's row-seeding completeness/correctness, not the calibration-stamping gate
+Phase F exists to prove. FIX (small, same shape as MR-47): (1) derive
+`claim_shape` from the source row's own `event_class` via a live
+`brahma_event_ontology` join (or reuse `shape_conformance_check.py`'s
+`expected_shape_conformance`'s underlying ontology lookup — never a
+hand-typed class list, same discipline as MR-47/PK-R-10) instead of the bare
+literal; (2) wrap each row's Stage C INSERT in its own `SAVEPOINT`/`RELEASE`
+(or a fresh connection per row, matching this session's own rebuild-driver
+pattern) so one row's legitimate rejection cannot collateral-damage
+unrelated valid rows in the same run. GATE: fix merged + Stage C re-run both
+charts, full top-20 forward-window coverage confirmed with zero
+trigger-rejections on any genuinely-shaped row, zero collateral cascade
+failures. Not required to re-open MR-46/47 or Phase D/E — those closed
+correctly on their own evidence.
+
 ## §7 — SOURCE → MR MAP (dedup audit)
 
 PG-1→MR-01 · PG-2→MR-05 · PG-3→MR-10 · PG-4→MR-04+13 · PG-5→MR-13 ·
