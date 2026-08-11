@@ -30,7 +30,7 @@ marker_duty: post W6-COMPLETE to campaign-coordination §6 after MR-01..08,10,13
 | MR-18 | Validators generation stance | MERGED | PR #1195 MERGED · PARĪKṢAKA PASS (7/8 tests functional; mig-527 gate test vacuous pass noted as non-blocking finding; fix itself correct) |
 | MR-19 | Ablations → re-adjudicated admissions | CLOSED | PRATINIDHI re-adjudication 2026-08-11: all 10 admitted mechanisms demoted (defined+cited+coded, NOT engine-wired) on the honest mechanism_not_wired evidence — no ablation theater run against zero weights. mechanism_register.yaml gains an additive correction block (UTK-R3 text preserved). See "MR-19 re-adjudication" ledger entry. |
 | MR-20 | Real no-loss gate (35,620 windows) | GATE MET, finding disclosed | mr20_no_loss_coverage_gate.py run live both charts 2026-08-11: unclassified=0 (2,448 divergences, both charts, all closed-vocabulary). Substantive finding: equivalence_rate <2% both charts, 92% of divergences are v1-only-needs-review — disclosed for ADJUDICATOR review, not self-adjudicated. See "MR-20: the real no-loss coverage gate" ledger entry. |
-| MR-21 | Quantitative evidence chain published | QUEUED | — |
+| MR-21 | Quantitative evidence chain published | BLOCKED (yield window) | investigated 2026-08-11: all 4 required numbers genuinely need a large-scale production timing run, not evidence retrieval; THE ONE authorized rebuild's timing does NOT honestly substitute (different scope/criteria). Queued for post-yield-window resumption alongside MR-11(b)/MR-12. See "MR-21" ledger entry. |
 | MR-22 | Suppression detector + count | GATE MET, plausibility disclosed | seeded must-fire test (test_gochara_intensity.py) already exists, verified green 2026-08-11; real-corpus count published (0/54 point rows, both charts, all 3 mechanism types) — plausibility flagged for ADJUDICATOR, not self-certified. See "MR-22" ledger entry. |
 | MR-23 | Remaining unrun acceptance artifacts | QUEUED | — |
 | MR-24 | Product-level E2E battery (standing) | CLOSED (FINAL, 2026-08-11 ~09:44 IST re-run against rebuilt corpus supersedes the earlier same-day pre-final-state pass) | Final re-run: 3 tools x 3 charts (482012f1 gen-3.0, 1c826d5a gen-3.0, cb73cd3d v1-authority) all backing_data_reachable=true; valence+calibration facet filters matched honest values; cockpit count_sql found FALSE (MR-40, new bug: cockpit pointed at the wrong table/generation after an undisclosed W5.4 UTK-R1 authority repoint), fixed live + source PR #1216 opened, RE-VERIFIED true (89/85); judgment_query(domain=health) served full gochara_sweep depth (17 windows); rollback+re-flip cycle on the NATIVE chart (482012f1) via committed MR-08 tooling, verified end-to-end live both directions. Full transcript in "MR-24 FINAL RE-RUN" ledger entry below. |
@@ -1700,3 +1700,27 @@ ADJUDICATOR/native review alongside MR-20's low-equivalence finding.
 
 MR-22 register status: GATE (test green + count published) — MET. Plausibility disposition
 carried forward as a disclosed, non-blocking observation, same treatment as MR-20.
+
+## 2026-08-11 — MR-21: correctly BLOCKED on the yield window (not attempted, not faked)
+
+Investigated before running anything, per this campaign's standing discipline: MR-21's four
+required numbers (W0.4 ≥50x speedup + 200-candidate bit-parity; W3.4 century wall-clock +
+delta-rerun proof; W4.2 noise floor with CIs; W6.1 native wall-clock + interrupt disposition)
+are not recorded anywhere in the repo — confirmed via grep across the gochara_elevation brief
+directory (only the campaign PLAN doc's acceptance-criteria prose mentions these terms; no
+close report or ledger entry has ever recorded the actual achieved numbers). This matches the
+GAP's own framing ("every required number absent") — genuinely still true.
+
+Checked whether THE ONE authorized rebuild (run earlier today, before the yield window began)
+could honestly stand in for any of these: it cannot. That rebuild was a small, precisely-scoped
+PARIṢKĀRA repair (~174 rows, both charts, targeted at MR-10/13/14/15's specific gates) — a
+different operation, different scope, and different acceptance criteria than W3.4's original
+century-wall-clock or W6.1's native-wall-clock-with-interrupt-disposition definitions. Citing
+its timing against those specific criteria would misrepresent what was actually measured — not
+attempted.
+
+**Disposition: MR-21 remains OPEN, correctly BLOCKED.** All four sub-items require either a
+genuine large-scale production timing run (barred by the active YIELD WINDOW) or a careful
+reconstruction this session cannot responsibly claim to have done accurately from existing
+artifacts. Queued to resume once SAMPŪRTI's P-G1 lease is RELEASED, alongside MR-11(b) and
+MR-12.
