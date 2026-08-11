@@ -232,11 +232,25 @@ def test_plan_substeps_each_has_key_and_label():
 
 
 def test_plan_substeps_60_total():
-    """AC2: exactly 6 event_classes × 10 decade_slices = 60 substeps."""
+    """AC2: exactly len(EVENT_CLASSES) × 10 decade_slices substeps.
+
+    PARIṢKĀRA MR-12: EVENT_CLASSES gained 'business_launch' (the first
+    genuinely chain-canonical class), so this is now 7 × 10 = 70, not the
+    original W3.4 baseline of 60 (6 × 10). The count is derived from
+    len(EVENT_CLASSES) rather than a re-hardcoded literal so this test
+    documents the relationship instead of re-drifting the next time
+    EVENT_CLASSES changes.
+    """
     conn = _FakeConn()
     steps = GocharaV3CenturyMaterializeWriter().plan_substeps(_ctx(conn))
-    assert len(steps) == 60, (
-        f"Expected 60 substeps (6 classes × 10 decades), got {len(steps)}"
+    expected = len(EVENT_CLASSES) * DECADE_COUNT
+    assert expected == 70, (
+        f"MR-12 sanity: expected len(EVENT_CLASSES) * DECADE_COUNT == 70 "
+        f"(7 classes x 10 decades), got {expected}"
+    )
+    assert len(steps) == expected, (
+        f"Expected {expected} substeps ({len(EVENT_CLASSES)} classes × "
+        f"{DECADE_COUNT} decades), got {len(steps)}"
     )
 
 
@@ -790,7 +804,10 @@ def test_generation_constant():
 
 
 def test_event_classes_constant():
-    """6 expected event classes are defined."""
+    """The original 6 W3.4 event classes plus MR-12's business_launch
+    addition (the first genuinely chain-canonical class this writer
+    produces rows for — see ka_gochara_v3_century_materialize.py's
+    _SHAPE_FALLBACK docstring for why business_launch, not marriage)."""
     expected = {
         "career_advancement",
         "major_gain",
@@ -798,6 +815,7 @@ def test_event_classes_constant():
         "illness_acute",
         "chronic_onset",
         "surgery",
+        "business_launch",
     }
     assert set(EVENT_CLASSES) == expected
 

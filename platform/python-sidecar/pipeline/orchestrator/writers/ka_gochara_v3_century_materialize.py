@@ -10,12 +10,14 @@ PURPOSE
 -------
 Extends the W0.2/W2G materializer concept to a CENTURY-SCALE HEAVY writer
 using the gochara_v3 engine (not v1's gochara_intensity grammar). The
-unit of work is one (event_class × decade_era_slice) pair — 60 substeps
-for 6 event classes × 10 decade slices spanning the native's century from
-birth (1984-02-05 to 2084-02-05).
+unit of work is one (event_class × decade_era_slice) pair — 70 substeps
+for 7 event classes × 10 decade slices spanning the native's century from
+birth (1984-02-05 to 2084-02-05). (PARIṢKĀRA MR-12: EVENT_CLASSES gained
+'business_launch', the first genuinely chain-canonical class this writer
+produces temporal_shape='chain' rows for — was 60/6 pre-MR-12.)
 
 Key behaviours:
-  1. plan_substeps — returns 60 SubStep objects, one per
+  1. plan_substeps — returns len(EVENT_CLASSES) x 10 SubStep objects, one per
      (event_class, decade_slice). substep_key = '{event_class}::{era_slice_key}'.
   2. run_substep — for each substep:
        a. Compute a delta fingerprint from (event_class, era_slice_key,
@@ -97,7 +99,9 @@ from pipeline.orchestrator.writers import (
 )
 
 # gochara_v3 imports only (I2: no gochara_grammar/*, gochara_intensity/*, ka_gochara_sweep/*)
-from services.gochara_v3.interval_solver import find_threshold_crossings, IntervalBoundary
+from services.gochara_v3.interval_solver import (
+    find_threshold_crossings, score_chain_milestones, IntervalBoundary, MilestoneScore,
+)
 from services.gochara_v3.threshold import ThresholdConfig, fetch_base_rate_for_class
 from services.gochara_v3.context import ClassContext
 
@@ -123,9 +127,18 @@ GENERATION_PROD = "3.0"
 # exports GRAMMAR_VERSION; we use our own constant so this writer's
 # fingerprint is stable across internal gochara_v3 refactors that do NOT
 # move window positions.
-ENGINE_VERSION = "v3.0"
+# PARIṢKĀRA MR-12 (Codex C2): bumped v3.0 -> v3.1 because this writer's
+# output SHAPE changed (chain-shaped rows are now possible for
+# temporal_shape='chain' classes) -- a delta-fingerprint-relevant change per
+# compute_substep_fingerprint's own "engine_version bumped when scoring logic
+# changes" contract, even though existing point/interval classes' scoring is
+# byte-for-byte unchanged.
+ENGINE_VERSION = "v3.1"
 
-# The 6 event classes this writer handles (same as W0.2 materializer).
+# The event classes this writer handles (same 6 as W0.2 materializer, plus
+# MR-12's business_launch addition -- see _fetch_class_shape/_SHAPE_FALLBACK
+# below for why business_launch, not marriage, is the first genuinely
+# chain-canonical class this writer produces chain rows for).
 EVENT_CLASSES = [
     "career_advancement",
     "major_gain",
@@ -133,6 +146,7 @@ EVENT_CLASSES = [
     "illness_acute",
     "chronic_onset",
     "surgery",
+    "business_launch",
 ]
 
 # Julian Day for 1984-02-05 00:00 UTC (native birth date).
@@ -397,6 +411,209 @@ def _fetch_class_valence(conn, event_class: str) -> tuple[str, bool]:
     return v, (v == "loss")
 
 
+# ---------------------------------------------------------------------------
+# Temporal shape + milestone_template (PARIṢKĀRA MR-12: chain production
+# wiring) — honest per-event_class derivation, same "live-preferred,
+# documented fallback" discipline as _fetch_class_valence above.
+# ---------------------------------------------------------------------------
+#
+# BRIEF_D5 §3 (migration 460, BINDING): a served row's shape MUST mirror its
+# event_class's brahma_event_ontology.temporal_shape -- point/interval/chain,
+# never more temporal precision than the ontology declares. This writer was
+# already shape-aware for point/interval (both stamped "interval" pre-MR-12,
+# unchanged by this fix -- point-row production is a separate, already-closed
+# lane, MR-10/MR-11); MR-12 is the first time this writer reads the ontology's
+# 'chain' branch and produces milestone_template-shaped output.
+#
+# HONEST FINDING (MR-12, 2026-08-11 session): the register item's "marriage
+# first" framing does NOT match the live ontology. brahma_event_ontology
+# (migration 456) declares marriage temporal_shape='point' explicitly, with
+# its own note: "a future v2 could split into a chain (engagement -> ceremony
+# -> registration) if per-milestone dates become available." It is not a
+# chain today, and brahma_event_ontology's own CHECK constraint (migration
+# 456, brahma_event_ontology_shape_data_consistency_check) forbids storing a
+# chain-shaped row without a real milestone_template of >=2 entries -- so
+# marriage cannot honestly produce chain rows without either fabricating an
+# ontology override (B.10 violation) or a native-ruled ontology amendment
+# (out of this CODE-ONLY session's authority). See PARISHKARA_LEDGER.md
+# "MR-12" entry (parishkara/campaign branch) for the full account.
+#
+# 'business_launch' is the first GENUINELY chain-canonical class this writer
+# is wired to produce rows for: temporal_shape='chain', 3-milestone template
+# (decision -> registration -> first_revenue), irreversibility_milestone=
+# 'first_revenue' -- BRIEF_D4A Lane A-2's own worked example (migration 456).
+_SHAPE_FALLBACK: dict[str, dict[str, Any]] = {
+    "career_advancement": {
+        "temporal_shape": "point", "milestone_template": None, "irreversibility_milestone": None,
+    },
+    "major_gain": {
+        "temporal_shape": "interval", "milestone_template": None, "irreversibility_milestone": None,
+    },
+    "marriage": {
+        # Matches live brahma_event_ontology (migration 456) — NOT 'chain'.
+        "temporal_shape": "point", "milestone_template": None, "irreversibility_milestone": None,
+    },
+    "illness_acute": {
+        "temporal_shape": "point", "milestone_template": None, "irreversibility_milestone": None,
+    },
+    "chronic_onset": {
+        "temporal_shape": "interval", "milestone_template": None, "irreversibility_milestone": None,
+    },
+    "surgery": {
+        "temporal_shape": "point", "milestone_template": None, "irreversibility_milestone": None,
+    },
+    "business_launch": {
+        "temporal_shape": "chain",
+        "milestone_template": [
+            {"milestone_id": "decision", "name_en": "Decision to found/launch",
+             "typical_offset_days_from_first": 0},
+            {"milestone_id": "registration", "name_en": "Legal/business registration",
+             "typical_offset_days_from_first": 45},
+            {"milestone_id": "first_revenue", "name_en": "First revenue booked",
+             "typical_offset_days_from_first": 120},
+        ],
+        "irreversibility_milestone": "first_revenue",
+    },
+}
+
+
+def _fetch_class_shape(
+    conn, event_class: str,
+) -> tuple[str, Optional[list[dict]], Optional[str]]:
+    """Return (temporal_shape, milestone_template, irreversibility_milestone)
+    for `event_class`.
+
+    Live-reads brahma_event_ontology; falls back to `_SHAPE_FALLBACK` (honest,
+    documented fixture) on any DB-shape surprise, identical discipline to
+    `_fetch_class_valence`. An event_class absent from BOTH the live table and
+    the fallback degrades to temporal_shape='interval' (this writer's
+    pre-MR-12 universal behavior) with no milestone_template -- NEVER
+    invented as 'chain' (I4: a shape this writer cannot honestly support is
+    never guessed into existence).
+
+    milestone_template is returned in the RAW ontology shape
+    ({milestone_id, name_en, typical_offset_days_from_first}) — see
+    `_normalize_milestone_template` for the adapter into
+    `score_chain_milestones`'s expected per-entry shape.
+    """
+    try:
+        cur = conn.execute(
+            "SELECT temporal_shape, milestone_template, irreversibility_milestone "
+            "FROM brahma_event_ontology WHERE event_class_id = %s",
+            [event_class],
+        )
+        row = cur.fetchone()
+        if row is not None:
+            d = row if isinstance(row, dict) else dict(
+                zip(["temporal_shape", "milestone_template", "irreversibility_milestone"], row)
+            )
+            shape = d.get("temporal_shape")
+            if shape:
+                template = d.get("milestone_template")
+                if isinstance(template, str):
+                    try:
+                        template = json.loads(template)
+                    except Exception:  # noqa: BLE001
+                        template = None
+                return str(shape), template, d.get("irreversibility_milestone")
+    except Exception as exc:  # noqa: BLE001
+        logger.info(
+            "[%s] brahma_event_ontology shape read failed for event_class=%s, "
+            "falling back to documented fixture: %s",
+            ASSET_ID, event_class, exc,
+        )
+    fallback = _SHAPE_FALLBACK.get(event_class)
+    if fallback is None:
+        return "interval", None, None
+    return fallback["temporal_shape"], fallback["milestone_template"], fallback["irreversibility_milestone"]
+
+
+def _normalize_milestone_template(
+    raw_template: list[dict], irreversibility_milestone: Optional[str],
+) -> list[dict]:
+    """Adapt brahma_event_ontology's milestone_template entry shape
+    ({milestone_id, name_en, typical_offset_days_from_first}) into
+    `gochara_v3.interval_solver.score_chain_milestones`'s expected per-entry
+    shape ({milestone_id, typical_offset_days, is_irreversibility_milestone}).
+
+    The ontology does NOT carry an is_irreversibility_milestone flag per
+    milestone-entry — it names the ONE irreversibility milestone_id (if any)
+    at the ontology-row level (the `irreversibility_milestone` column). This
+    adapter is the exact wiring gap MR-12 was scoped to find and close:
+    score_chain_milestones has existed, tested in isolation
+    (test_w32_interval_solver.py), since W3.2 — nothing ever translated real
+    ontology JSON into the shape it expects before this fix.
+    """
+    return [
+        {
+            "milestone_id": entry.get("milestone_id"),
+            "typical_offset_days": entry.get("typical_offset_days_from_first", 0.0),
+            "is_irreversibility_milestone": (
+                entry.get("milestone_id") is not None
+                and entry.get("milestone_id") == irreversibility_milestone
+            ),
+        }
+        for entry in raw_template
+    ]
+
+
+def _build_chain_row(
+    chart_id: str,
+    event_class: str,
+    milestone: MilestoneScore,
+    era_slice_key: str,
+    *,
+    valence: str,
+    is_adverse: bool,
+    generation: str,
+) -> dict[str, Any]:
+    """Convert one MilestoneScore (gochara_v3.interval_solver) into a
+    kala_gochara_windows(_v2) row dict — the chain-shape sibling of
+    `_build_row`. Carries EXACTLY the same key set (verified by
+    test_mr12_chain_production.py::test_build_chain_row_same_key_set_as_
+    interval_row), so it binds against the SAME INSERT_SQL/INSERT_PROD_SQL
+    templates unchanged — no new DML statement is introduced, so the I1
+    mutation-guard's static source coverage (test_ka_gochara_v3_mutation_
+    guard.py) needs no update for chain support.
+
+    window_start = window_end = peak_date = this milestone's own JD (a
+    chain-shaped row is one independently-dateable sub-window per milestone,
+    per BRIEF_D5 §3 / migration 460's column comment).
+    """
+    milestone_date = _jd_to_date(milestone.milestone_jd)
+    ir = milestone.intensity_result
+    term_breakdown = ir.term_breakdown if ir is not None else None
+    ci_low = ir.lambda_v3_ci_low if ir is not None else None
+    ci_high = ir.lambda_v3_ci_high if ir is not None else None
+    ci_source = ir.ci_source if ir is not None else None
+    return {
+        "chart_id": chart_id,
+        "event_class": event_class,
+        "temporal_shape": "chain",
+        "window_start": milestone_date,
+        "window_end": milestone_date,
+        "peak_date": milestone_date,
+        "milestone_id": milestone.milestone_id,
+        "is_irreversibility_milestone": milestone.is_irreversibility_milestone,
+        "signed_intensity": round(float(milestone.lambda_v3), 6),
+        "raw_intensity": round(float(milestone.lambda_v3), 6),
+        "valence": valence,
+        "is_adverse": is_adverse,
+        "active_sentences": json.dumps([]),
+        "contributing_systems": json.dumps([]),
+        "suppression_state": json.dumps({}),
+        "peak_basis": "gochara_lambda_v3",
+        "calibration_state": "structural_prior",
+        "source": "live",
+        "generation": generation,
+        "era_slice_key": era_slice_key,
+        "term_breakdown": json.dumps(term_breakdown) if term_breakdown is not None else None,
+        "lambda_v3_ci_low": ci_low,
+        "lambda_v3_ci_high": ci_high,
+        "ci_source": ci_source,
+    }
+
+
 def _fetch_resonance_targets(conn, chart_id: str, event_class: str) -> list[str]:
     """Fetch resonance target_refs for this (chart_id, event_class) pair.
 
@@ -630,13 +847,13 @@ class GocharaV3CenturyMaterializeWriter(WriterBase):
     # ------------------------------------------------------------------
 
     def plan_substeps(self, ctx: ContextSpec) -> list[SubStep]:
-        """Return 60 SubStep objects: 6 event_classes × 10 decade slices.
+        """Return len(EVENT_CLASSES) x 10 SubStep objects (70 as of MR-12).
 
         Each SubStep has:
           key   = '{event_class}::{era_slice_key}'  e.g. 'marriage::g3_1984_1994'
           label = human-readable description
 
-        The plan is STATIC — it does not query the DB. The 6 event classes
+        The plan is STATIC — it does not query the DB. The event classes
         and 10 decade slices are fixed by the campaign spec. An empty
         resonance-target set for a given substep is handled honestly in
         run_substep (I4: 0 rows, not a plan failure).
@@ -778,6 +995,42 @@ class GocharaV3CenturyMaterializeWriter(WriterBase):
             sample_count=0,
         )
 
+        # PARIṢKĀRA MR-12: shape-aware dispatch. BRIEF_D5 §3 (BINDING) requires
+        # a served row's shape to mirror brahma_event_ontology.temporal_shape.
+        # is_chain gates the milestone-scoring path below; a chain-shaped
+        # class with no usable milestone_template degrades to an honest
+        # skip (I4), never a fabricated row.
+        _shape, _raw_milestone_template, _irreversibility_milestone = _fetch_class_shape(
+            conn, event_class,
+        )
+        is_chain = _shape == "chain"
+        chain_milestone_template: list[dict] = []
+        if is_chain and _raw_milestone_template:
+            chain_milestone_template = _normalize_milestone_template(
+                _raw_milestone_template, _irreversibility_milestone,
+            )
+
+        if is_chain and not chain_milestone_template:
+            # I4 honest gap: the ontology declares this class chain-shaped but
+            # carries no usable milestone_template (or the live read failed
+            # and no documented fallback template exists for this class).
+            # Mirrors the "no resonance targets" early-return above: return
+            # BEFORE any DELETE/INSERT is issued, no fingerprint upsert —
+            # never a fabricated row (I4).
+            elapsed = time.time() - t0
+            note = (
+                f"{substep_key}: skipped — event_class={event_class} is "
+                f"chain-shaped (brahma_event_ontology.temporal_shape='chain') "
+                f"but milestone_template is empty/unavailable — honest gap "
+                f"(I4), no rows fabricated"
+            )
+            logger.warning("[%s] %s", ASSET_ID, note)
+            return WriterResult(
+                asset_id=self.asset_id, rows_inserted=0,
+                duration_seconds=elapsed,
+                notes=note,
+            )
+
         # Import swisseph lazily (matches pattern in existing writers).
         try:
             import swisseph as swe  # type: ignore[import]
@@ -842,6 +1095,25 @@ class GocharaV3CenturyMaterializeWriter(WriterBase):
 
         if ctx.dry_run:
             elapsed = time.time() - t0
+            if is_chain:
+                would_produce = len(intervals) * len(chain_milestone_template)
+                logger.debug(
+                    "[%s] DRY RUN substep=%r chart=%s: %d chain episodes x %d "
+                    "milestones = %d rows would be served. wall_clock_s=%.3f",
+                    ASSET_ID, substep_key, chart_id, len(intervals),
+                    len(chain_milestone_template), would_produce, elapsed,
+                )
+                return WriterResult(
+                    asset_id=self.asset_id, rows_inserted=0,
+                    rows_skipped=would_produce,
+                    duration_seconds=elapsed,
+                    notes=(
+                        f"{av_gate_note}DRY RUN {substep_key}: chain-shaped, "
+                        f"{len(intervals)} episodes x {len(chain_milestone_template)} "
+                        f"milestones = {would_produce} rows would be served "
+                        f"in {decade.year_start}–{decade.year_end} — nothing written"
+                    ),
+                )
             logger.debug(
                 "[%s] DRY RUN substep=%r chart=%s: %d intervals would be served. "
                 "wall_clock_s=%.3f",
@@ -893,46 +1165,93 @@ class GocharaV3CenturyMaterializeWriter(WriterBase):
         class_valence, class_is_adverse = _fetch_class_valence(conn, event_class)
 
         inserted = 0
-        for boundary in intervals:
-            # (a) Insert into calibration/staging table.
-            row_v2 = _build_row(
-                chart_id, event_class, boundary, era_slice_key,
-                valence=class_valence, is_adverse=class_is_adverse,
-                generation=GENERATION_V3,
-                term_breakdown=boundary.term_breakdown,
-                lambda_v3_ci_low=boundary.lambda_v3_ci_low,
-                lambda_v3_ci_high=boundary.lambda_v3_ci_high,
-                ci_source=boundary.ci_source,
-            )
-            try:
-                conn.execute(INSERT_SQL, row_v2)
-                inserted += 1
-            except Exception as exc:  # noqa: BLE001
-                logger.warning(
-                    "[%s] substep=%r v2 row insert failed (peak_date=%s): %s",
-                    ASSET_ID, substep_key,
-                    _jd_to_date(boundary.peak_jd), exc,
+        if is_chain:
+            # PARIṢKĀRA MR-12: chain production. Each detected episode
+            # (IntervalBoundary from find_threshold_crossings, reused here as
+            # the episode ANCHOR, not the final row) is expanded into one row
+            # per milestone_template entry via score_chain_milestones — the
+            # W3.2 machinery that has existed, tested in isolation, since
+            # before this fix but was never wired to a real caller.
+            for boundary in intervals:
+                milestone_scores = score_chain_milestones(
+                    swe, context, boundary.enter_jd, chain_milestone_template,
+                    threshold_config,
                 )
+                for ms in milestone_scores:
+                    # (a) Insert into calibration/staging table.
+                    row_v2 = _build_chain_row(
+                        chart_id, event_class, ms, era_slice_key,
+                        valence=class_valence, is_adverse=class_is_adverse,
+                        generation=GENERATION_V3,
+                    )
+                    try:
+                        conn.execute(INSERT_SQL, row_v2)
+                        inserted += 1
+                    except Exception as exc:  # noqa: BLE001
+                        logger.warning(
+                            "[%s] substep=%r v2 chain row insert failed "
+                            "(milestone_id=%s, peak_date=%s): %s",
+                            ASSET_ID, substep_key, ms.milestone_id,
+                            _jd_to_date(ms.milestone_jd), exc,
+                        )
 
-            # (b) Insert into production table (generation='3.0').
-            #     I1 mutation-guard invariant: row carries generation='3.0'.
-            row_prod = _build_row(
-                chart_id, event_class, boundary, era_slice_key,
-                valence=class_valence, is_adverse=class_is_adverse,
-                generation=GENERATION_PROD,
-                term_breakdown=boundary.term_breakdown,
-                lambda_v3_ci_low=boundary.lambda_v3_ci_low,
-                lambda_v3_ci_high=boundary.lambda_v3_ci_high,
-                ci_source=boundary.ci_source,
-            )
-            try:
-                conn.execute(INSERT_PROD_SQL, row_prod)
-            except Exception as exc:  # noqa: BLE001
-                logger.warning(
-                    "[%s] substep=%r prod row insert failed (peak_date=%s): %s",
-                    ASSET_ID, substep_key,
-                    _jd_to_date(boundary.peak_jd), exc,
+                    # (b) Insert into production table (generation='3.0').
+                    #     I1 mutation-guard invariant: row carries generation='3.0'.
+                    row_prod = _build_chain_row(
+                        chart_id, event_class, ms, era_slice_key,
+                        valence=class_valence, is_adverse=class_is_adverse,
+                        generation=GENERATION_PROD,
+                    )
+                    try:
+                        conn.execute(INSERT_PROD_SQL, row_prod)
+                    except Exception as exc:  # noqa: BLE001
+                        logger.warning(
+                            "[%s] substep=%r prod chain row insert failed "
+                            "(milestone_id=%s, peak_date=%s): %s",
+                            ASSET_ID, substep_key, ms.milestone_id,
+                            _jd_to_date(ms.milestone_jd), exc,
+                        )
+        else:
+            for boundary in intervals:
+                # (a) Insert into calibration/staging table.
+                row_v2 = _build_row(
+                    chart_id, event_class, boundary, era_slice_key,
+                    valence=class_valence, is_adverse=class_is_adverse,
+                    generation=GENERATION_V3,
+                    term_breakdown=boundary.term_breakdown,
+                    lambda_v3_ci_low=boundary.lambda_v3_ci_low,
+                    lambda_v3_ci_high=boundary.lambda_v3_ci_high,
+                    ci_source=boundary.ci_source,
                 )
+                try:
+                    conn.execute(INSERT_SQL, row_v2)
+                    inserted += 1
+                except Exception as exc:  # noqa: BLE001
+                    logger.warning(
+                        "[%s] substep=%r v2 row insert failed (peak_date=%s): %s",
+                        ASSET_ID, substep_key,
+                        _jd_to_date(boundary.peak_jd), exc,
+                    )
+
+                # (b) Insert into production table (generation='3.0').
+                #     I1 mutation-guard invariant: row carries generation='3.0'.
+                row_prod = _build_row(
+                    chart_id, event_class, boundary, era_slice_key,
+                    valence=class_valence, is_adverse=class_is_adverse,
+                    generation=GENERATION_PROD,
+                    term_breakdown=boundary.term_breakdown,
+                    lambda_v3_ci_low=boundary.lambda_v3_ci_low,
+                    lambda_v3_ci_high=boundary.lambda_v3_ci_high,
+                    ci_source=boundary.ci_source,
+                )
+                try:
+                    conn.execute(INSERT_PROD_SQL, row_prod)
+                except Exception as exc:  # noqa: BLE001
+                    logger.warning(
+                        "[%s] substep=%r prod row insert failed (peak_date=%s): %s",
+                        ASSET_ID, substep_key,
+                        _jd_to_date(boundary.peak_jd), exc,
+                    )
 
         # 8. Upsert fingerprint.
         _upsert_build_state(
@@ -952,17 +1271,29 @@ class GocharaV3CenturyMaterializeWriter(WriterBase):
             ASSET_ID, substep_key, chart_id, inserted, elapsed,
         )
 
-        return WriterResult(
-            asset_id=self.asset_id,
-            rows_inserted=inserted,
-            duration_seconds=elapsed,
-            notes=(
+        if is_chain:
+            notes = (
+                f"{av_gate_note}{substep_key}: {len(intervals)} chain episodes found "
+                f"({len(chain_milestone_template)} milestones/episode, temporal_shape=chain), "
+                f"{inserted} rows inserted into {TABLE} (generation={GENERATION_V3}) "
+                f"and {PROD_TABLE} (generation={GENERATION_PROD}), "
+                f"era_slice_key={era_slice_key}, "
+                f"fingerprint={fingerprint}"
+            )
+        else:
+            notes = (
                 f"{av_gate_note}{substep_key}: {len(intervals)} intervals found, "
                 f"{inserted} rows inserted into {TABLE} (generation={GENERATION_V3}) "
                 f"and {PROD_TABLE} (generation={GENERATION_PROD}), "
                 f"era_slice_key={era_slice_key}, "
                 f"fingerprint={fingerprint}"
-            ),
+            )
+
+        return WriterResult(
+            asset_id=self.asset_id,
+            rows_inserted=inserted,
+            duration_seconds=elapsed,
+            notes=notes,
         )
 
     # ------------------------------------------------------------------
@@ -970,7 +1301,7 @@ class GocharaV3CenturyMaterializeWriter(WriterBase):
     # ------------------------------------------------------------------
 
     def run(self, ctx: ContextSpec) -> WriterResult:
-        """CLI path: drive all 60 substeps sequentially."""
+        """CLI path: drive all substeps (len(EVENT_CLASSES) x 10) sequentially."""
         t0 = time.time()
         total_inserted = 0
         notes: list[str] = []
@@ -1000,4 +1331,7 @@ __all__ = [
     "build_decade_slices",
     "compute_substep_fingerprint",
     "_fetch_class_valence",
+    "_fetch_class_shape",
+    "_normalize_milestone_template",
+    "_build_chain_row",
 ]
