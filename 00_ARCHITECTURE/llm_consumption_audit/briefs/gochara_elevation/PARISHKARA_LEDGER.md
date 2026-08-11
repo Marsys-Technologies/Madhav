@@ -3050,3 +3050,32 @@ diff carries only the 11 real MR-47 files, zero ledger pollution. Also removed o
 **PR #1235 opened against main**, full test-plan evidence in the PR body, CI checks running.
 
 NEXT-ACTION: merge #1235 once CI is green. Then Phase F (W4.4 refit + w45 post-fit).
+
+## 2026-08-12 ~04:5x IST — MR-47 MERGED to main (PR #1235); Phase F run, MR-48 found+registered+dispatched
+
+CONDUCTOR-HEARTBEAT: 2026-08-12T04:53:00Z
+
+PR #1235 merged cleanly via the merge queue (all required checks green). MR-47 CLOSED.
+
+**Phase F executed, core gate PASS**: W4.4 ran clean (honest report: all 10 Wave-2 mechanisms
+`mechanism_not_wired` — a pre-existing, already-disclosed labeling state from an earlier wave, not
+a new defect; Abhinandan train-events genuinely unavailable in DB, honestly flagged
+`abhinandan_events_not_available_in_db: true`, not hidden). w45 Stage B correctly reported
+`rows_stamped_empirically_calibrated: 0` — §N.8 earned-signal gate (MR-37's fix) verified live,
+exactly the required honest result given zero wired mechanisms. **Phase F's core gate: PASS.**
+
+w45 Stage C surfaced a genuinely NEW defect (MR-48, registered + pushed): `claim_shape` hardcoded
+to the literal `"interval"` for every `brahma_prospective_ledger` row regardless of the source
+row's real event_class — same defect class as MR-46/47, different file, never caught before
+because Stage C had never run against a corpus with real chain-canonical forward candidates until
+this session's dynamic 27-class rebuild. Caught live by the DB's own `brahma_prospective_ledger_
+enforce_shape()` trigger (refused an `education_milestone` insert correctly) — no bad data
+written — but the missing per-row SAVEPOINT let that rejection cascade-poison 8 unrelated, valid
+`psychological_arc` inserts. Fix dispatched to an ISOLATED worktree this time (lesson from the
+MR-47 collision applied: `isolation:"worktree"` on the Agent call, never sharing the conductor's
+own directory again).
+
+NEXT-ACTION: on MR-48 completion, review+merge, re-run w45 Stage C to confirm full coverage. Then
+Phase G (IR-9 λ-shift evidence for nakshatra_ingress_tara, per PK-R-9 — code already merged in an
+earlier wave; this is a live before/after λ_v3 snapshot capture for the R2 evidence record, not a
+new build) → R3 (master-brief conformance) → R4 (final close-out).
