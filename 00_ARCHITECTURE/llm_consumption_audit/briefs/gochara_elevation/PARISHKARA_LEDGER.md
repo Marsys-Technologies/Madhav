@@ -36,7 +36,7 @@ marker_duty: post W6-COMPLETE to campaign-coordination §6 after MR-01..08,10,13
 | MR-24 | Product-level E2E battery (standing) | CLOSED (FINAL, 2026-08-11 ~09:44 IST re-run against rebuilt corpus supersedes the earlier same-day pre-final-state pass) | Final re-run: 3 tools x 3 charts (482012f1 gen-3.0, 1c826d5a gen-3.0, cb73cd3d v1-authority) all backing_data_reachable=true; valence+calibration facet filters matched honest values; cockpit count_sql found FALSE (MR-40, new bug: cockpit pointed at the wrong table/generation after an undisclosed W5.4 UTK-R1 authority repoint), fixed live + source PR #1216 opened, RE-VERIFIED true (89/85); judgment_query(domain=health) served full gochara_sweep depth (17 windows); rollback+re-flip cycle on the NATIVE chart (482012f1) via committed MR-08 tooling, verified end-to-end live both directions. Full transcript in "MR-24 FINAL RE-RUN" ledger entry below. |
 | MR-25 | Citations resolve in serving | MERGED | PR #1200 MERGED · PARĪKṢAKA PASS (code review): mig-565 correct (14 rows: 4 resolved verified vs corpus, 10 CORPUS_GAP not silenced), B.3 compliant, live gate honestly deferred |
 | MR-26 | Honest amended close report | QUEUED | — |
-| MR-27 | Prod-sync + deploy discipline | QUEUED | — |
+| MR-27 | Prod-sync + deploy discipline | PARTIAL | prod-sync dry-run verified clean (0 pending, migrations 557-563 confirmed applied); PROD_DATABASE_URL root-cause re-confirmed as intermittent flake, no code fix applicable; standing rule recorded. I6(b)/GUC-grep sub-item not investigated (undocumented term, not guessed). See "MR-27" ledger entry. |
 | MR-28 | Five retro adjudications | QUEUED | — |
 | MR-29 | Ledger reconciliation + re-close verdict (LAST) | QUEUED | — |
 | MR-30 | Hygiene (w61 scripts FIRST, worktrees, docstrings) | MERGED | PR #1199 MERGED · PARĪKṢAKA PASS: probe_gochara.py uses urllib HTTP (not psycopg), 24 stale worktrees removed, docstring corrected |
@@ -1823,3 +1823,40 @@ MR-24-style battery run from a network-capable context (this session's sandbox c
 
 All three rulings are now the operative rule for any future session/agent touching these
 surfaces — not provisional, not pending further confirmation.
+
+## 2026-08-11 — MR-27: prod-sync + deploy discipline, verified
+
+**Migrations 557-563 verified applied (previously "never verified"):** live query,
+`_migrations_applied` for the range 557-563 shows all 7 present, sequential, no gaps
+(applied 2026-08-10 09:19-18:18 UTC). Confirmed migration 563 lives at `platform/migrations/`
+(not `platform/supabase/migrations/`, the historical split TAP-6's own path-filter fix
+addressed earlier this campaign) — file exists, correctly discovered by `migrate.ts`.
+
+**Full prod-sync dry-run** (`DATABASE_URL=<prod> npx tsx scripts/migrate.ts --dry-run`, run
+against a clean `origin/main` checkout, not a stale branch): **zero migrations pending** —
+"Dry run — would apply:" printed with nothing following. All sha256 mismatches surfaced are
+PRE-EXISTING, already-disclosed historical entries (DVA Ruling 73 / addendum), none in the
+557-566 range — no new drift. **deployed == main, migrations tracker complete** — confirmed,
+not assumed.
+
+**PROD_DATABASE_URL error path — root-caused earlier this campaign (2026-08-10 ~22:1x IST
+entry), re-confirmed still correctly diagnosed:** intermittent `workflow_run` secret-resolution
+flake — secret valid+populated throughout (`gh secret list`), identical step succeeded earlier
+the same day with zero config changes, no GitHub Environments configured (env-scoping ruled
+out). Conclusion at the time: NOT a `deploy.yml` defect — no in-repo fix exists for a
+transient GitHub Actions secret-resolution flake. Every deploy since (including tonight's
+wave-4 deploy, confirmed GREEN) has resolved the secret cleanly — consistent with the
+intermittent-flake diagnosis, not a recurring defect. This closes honestly as
+ROOT-CAUSED/NO-CODE-FIX-APPLICABLE, not as an open gap.
+
+**I6(b) rail checks + close-time GUC grep — NOT investigated this pass.** Could not locate a
+documented definition of "I6(b)" in the gochara_elevation brief directory in the time
+available; not guessed at rather than fabricated.
+
+**Standing rule (recorded, already tonight's own practice):** campaign close gates on deploy
+conclusion GREEN — every gate-packet merge to `main` this campaign (wave-2, wave-3, wave-4)
+has been followed by an explicit deploy-green verification before being called complete; this
+entry makes that practice an explicit, named rule rather than an implicit habit.
+
+MR-27 register status: PARTIAL — prod-sync record and PROD_DATABASE_URL root-cause both CLOSED
+with fresh live evidence; I6(b)/GUC-grep sub-item remains OPEN, disclosed not guessed.
