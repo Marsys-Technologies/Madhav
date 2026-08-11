@@ -1111,6 +1111,81 @@ charts. **STATUS: ready for NATIVE-PRATINIDHI adjudication as originally
 scoped** (disposition (a) accept-and-correct-PK-R-7(iv)-text vs (b)
 build-genuine-point-production) — no further data investigation blocks it.
 
+**PK-R-10 (NATIVE-PRATINIDHI, 2026-08-12) — MR-46 point-canonical shape
+label, BINDING: (c), neither (a) nor (b) as originally framed.**
+
+**(b) rejected on the merits, not on cost.** `deriveResolutionDisclosure`
+(`register_gochara_windows.ts:408-416`) returns `is_timing_window: true`
+UNCONDITIONALLY for `temporal_shape==='point'` — independently re-verified
+by direct source read, this session. Producing genuine point rows for these
+13 classes would mint ~260 new day-precision timing claims on both charts at
+`calibration_state='structural_prior'` (also independently confirmed
+hardcoded for every row `_build_row` emits, line 1454) with W4.4 unrefit —
+an unearned epistemic escalation.
+
+**(a) rejected as written.** Today's honest gating is real but INCIDENTAL:
+these rows fall through the generic `resolution IS NULL` fallback branch,
+which knows nothing about point-canonicity specifically, while `_build_row`
+(line 1440, independently re-verified by direct source read, this session)
+hardcodes `"temporal_shape": "interval"` as a wrapper-local literal for
+EVERY row it builds — including the R8.12 flat/point-canonical branch —
+never reading the `class_shape` value `run_substep` already fetched and has
+in scope. This is precisely the §N.7 item 3 defect class ("no wrapper-local
+constant may shadow an L1-computed value"). §N.8's own test — "what code
+path would have to fail for this signal to read false?" — has no answer
+here: nothing currently checks stored-shape-vs-ontology-shape agreement at
+all. The stored label IS false under migration 460's binding vocabulary, but
+relabeling it to `'point'` would be the WORSE lie (460 reserves `'point'`
+for `window_start=window_end=peak_date`) and would silently auto-flip the
+serving formula into (b)'s unearned-claim problem. The truthful fix is the
+envelope shape PLUS an earned, explicit marker — not a different shape word,
+and not silent reliance on an accidental fallback branch.
+
+**PK-R-7(iv), corrected text** (supersedes the original absolute — which was
+satisfiable only by (b)'s unearned day-precision production):
+> (iv) Shape fidelity holds in both directions — at the serving boundary AND
+> by explicit marking in storage (AMENDED by PK-R-10, 2026-08-12, on MR-46
+> evidence). Every served gen-3.0 row of an interval- or chain-canonical
+> class carries `temporal_shape` equal to its class's ontology shape. For
+> point-canonical classes the R8.12 gate stands — a flat threshold-crossing
+> ENVELOPE (span-shaped, `resolution=NULL`, no hierarchy tiers, no
+> day-refined peak search) — which may NOT wear `temporal_shape='point'`.
+> Such a row conforms iff BOTH: (1) it carries stored `shape_conformance=
+> 'point_class_context_envelope'`, derived from `brahma_event_ontology` at
+> WRITE time, never inferred at read time; and (2) it serves
+> `is_timing_window=false` under a point-class-specific `blocked_reason`.
+> ZERO unmarked interval-shaped rows for point-canonical classes; zero
+> point-canonical rows served as timing claims. Genuine point rows
+> (`window_start=window_end`, day-located peak) remain the only rows earning
+> `is_timing_window=true` by shape — for these 13 classes, today solely
+> MR-10's 54 v1-promoted rows.
+
+**MR-47 (follow-up, registered by this ruling, exact scope):**
+1. Writer (`_build_row`/`run_substep`): stop hardcoding the literal; pass an
+   explicit `shape_conformance` value (named-constant vocabulary —
+   `{'ontology_match', 'point_class_context_envelope'}`, never a bare
+   string) derived from the `class_shape` already fetched.
+2. Migration: `shape_conformance` column on `kala_gochara_windows` +
+   `kala_gochara_windows_v2`, BACKFILLED via a JOIN against
+   `brahma_event_ontology` (a tracked derivation from the authority — a
+   hand-typed class list is PROHIBITED, same discipline as MR-13's
+   out-of-band-fix precedent this fixes forward from). No corpus rebuild
+   required for the backfill itself.
+3. Serving (`register_gochara_windows.ts`): point-class branch gets its own
+   `timing_window_blocked_reason='point_class_context_envelope'`.
+4. Detectors, BOTH required before this closes: (i) a live query, both
+   charts × 27 classes, asserting zero `shape_conformance` mismatch against
+   a live `brahma_event_ontology` join; (ii) a mutation-proof test (flip a
+   fixture row's `temporal_shape` to `'point'` and assert the check fails) —
+   per §N.8, a passing detector with no code path that could produce a
+   different answer is not a real detector.
+**GATE:** items 1–4 merged and both detectors run live before MR-47 closes.
+Genuine point-row production for these 13 classes (the deferred core of
+option (b)) is explicitly OUT OF SCOPE for this campaign — deferred
+post-campaign, gated on a non-degenerate W4.4 fit (Phase F) so any future
+point row earns its `is_timing_window=true` rather than inheriting it for
+free. MR-46 CLOSED by this ruling; MR-47 OPEN, scoped, unblocked.
+
 ## §7 — SOURCE → MR MAP (dedup audit)
 
 PG-1→MR-01 · PG-2→MR-05 · PG-3→MR-10 · PG-4→MR-04+13 · PG-5→MR-13 ·
