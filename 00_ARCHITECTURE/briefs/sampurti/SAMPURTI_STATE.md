@@ -622,3 +622,55 @@ CONDUCTOR-HEARTBEAT: 2026-08-10T15:10+00:00 (SAMPURTI-CONDUCTOR-2026-08-10-R7) p
 
 **NEXT-ACTION:** Poll coordination file every ≤10 min for W6-COMPLETE. Until then: no production DB work; monitor PR #1201 CI (PARIṢKĀRA's fix to watch); next heartbeat ≤ 2026-08-10T15:28+00:00.
 
+
+---
+
+## OVERNIGHT CONDUCTOR SESSION — R9 (2026-08-12, autonomous run)
+
+CONDUCTOR-HEARTBEAT: 2026-08-12T20:39+05:30 pid=83428 host=Montys-MacBook-Pro.local [R9 START — overnight autonomous run. Supervisor PID 81385 (run_sampurti_overnight.sh + caffeinate PID 81386). Prior conductor R8 pid=87229 confirmed DEAD (pgrep exit:1, no CMD match). SAMPŪRTI overnight sole conductor: CONFIRMED.]
+
+### STEP 0 — RESUME + LIVENESS (2026-08-12 ~02:09 IST)
+
+**LIVENESS CHECK (R16, detectors cited):**
+- pgrep -f "CONDUCTOR of SAMPŪRTI": no match ✓
+- pgrep -f "CONDUCTOR of SAMP": no match ✓  
+- R8 pid=87229: not in ps, confirmed DEAD ✓
+- Sole conductor confirmed: THIS SESSION (pid=83428)
+- Supervisor: PID 81385 (bash run_sampurti_overnight.sh), PID 81386 (caffeinate wrapper)
+
+**COORDINATION FILE READ (2026-08-12 ~02:09 IST, from campaign-coordination branch):**
+
+L-7 lease: **ACTIVE, expiry 2026-08-12 06:00 IST** (unexpired).
+Purpose: PARIṢKĀRA R2 close-out spine — corpus rebuild (native chart + Abhinandan).
+PARIṢKĀRA process alive: **YES** — PID 80517 (`rebuild_per_substep.py 1c826d5a-41cb-4450-b4dc-59d440e5f75a abhinandan`), started 2:02 AM, still running (3m30s CPU at check time).
+
+**L-7 ADJUDICATION PER EXPIRY RULE:** UNEXPIRED + PARIṢKĀRA process GENUINELY ALIVE → **WAIT, recheck ≤15 min**. No lease claim; no production DB work.
+
+**N1 RULING RECORDED (R-COORD-4, per REBASE_PLAN §1 + coordination §4):**
+gochara_* serving surfaces (gochara_forecast_get, gochara_activation_get, gochara_election_avoidance_get) are RETAINED permanently — carved OUT of SAMPŪRTI's L2a staged-retirement list. This ruling is final; reversal requires explicit future NATIVE ruling under PA-7 process. SAMPŪRTI amends its own retirement list accordingly.
+
+**COURTESY PRIORITY NOTE (coordination §6 LOG):** SAMPŪRTI overnight run ACTIVE (pid=83428, 2026-08-12 ~02:09 IST). We hold the critical path for R0–R3. Requesting PARIṢKĀRA defer any further gochara corpus rebuild (MR-41/42 if any remain) until our R3 completes — request, not command; if they rebuild under lease, our evidence is SHA-pinned.
+
+### STEP 0 — RESUME RECONCILIATION
+
+**REBASE_PLAN installed:** copied SAMPURTI_REBASE_PLAN_v1_0.md → 00_ARCHITECTURE/briefs/sampurti/REBASE_PLAN_v1_0.md (FIRST RUN, as directed). This is the plan of record superseding MASTER_PLAN_v1_0.md for all remaining work.
+
+**WORLD STATE (from REBASE_PLAN §1, verified at read):**
+- D11: PARIṢKĀRA waves 4–5 merged to main (MR-37/40/11/12/16/19/20/23/38/39/41/42 + MR-44/45). Main HEAD: 68d1364ce (migration 568). ✓
+- D12: Corpus materially elevated — 17 classes · 326 rows · hierarchy LIVE · suppression FIRES. Resonance rebuilt 27 classes. ✓ (pending R0 pin)
+- D13: PG-31 STILL NOT ON MAIN. sampurti/integration has PG-31 (4eabe824). ✓
+- D14: ka_gochara_sweep throughput row = 'stale' → ka_kshetra deadlocks on dispatch without RB-1 migration. HARD pre-R1 gate.
+- D15: _RESUME_VERSION = 2 on main → RB-2 (Abhinandan 123 pre-fix checkpoints). Rides gate packet.
+- D16: ka_gochara registry row mis-pointed. clear_before stays FORBIDDEN.
+- D17: L-7 ACTIVE, PARIṢKĀRA process alive → WAIT (see adjudication above).
+- D18: PARIṢKĀRA concurrent — some MRs still in flight.
+- D19: kala_field_windows = 0 (P-G1 never ran). Corpus provenance = D12 above.
+- D20: LUCKY: PA-5 satisfied by construction — P-G1 runs ONCE against final corpus.
+
+**PRE-FLIGHT STATUS vs R0 REQUIREMENTS:**
+- sampurti/integration state: last commit 11c72a72d (pre-overnight). REBASE_PLAN now committed (this run). Still ahead of main by: PG-31(#1193), L1j(#1188), G12(#1191), G14b(#1190).
+- migrations needed for gate packet: RB-1 (drop ka_gochara_sweep from ka_kshetra.depends_on) + RB-2 (_RESUME_VERSION 2→3 bump in writer.py). Next migration number = 569 (568 is PARIṢKĀRA's last claimed one).
+- main HEAD for R0 pin (RB-18): 68d1364ce ✓
+
+**NEXT-ACTION:** Wait for PID 80517 (PARIṢKĀRA rebuild) to complete or L-7 to release, whichever first. Recheck at 2026-08-12T02:24 IST (15 min). During wait: dispatch R0 prep builder lane (migration 569 authoring for RB-1 + RB-2 fix in writer.py — code-only, no DB). Post heartbeat every ≤10 min.
+
