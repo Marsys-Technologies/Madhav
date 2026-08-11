@@ -856,6 +856,44 @@ of honestly absent. Priority: non-blocking for this campaign's close (the
 honest empty is the ruled interim state); candidate for the first
 post-campaign hygiene lane.
 
+**MR-44 · Hierarchy peak retention has no cross-interval separation —
+duplicate natural-key collision at real-data scale.** [net-new, found
+2026-08-11 during the R2 authorized corpus rebuild, conductor-direct
+execution, native chart, substep 74/270 (career_setback::g3_2014_2024)]
+GAP: `build_resolution_hierarchy` (services/gochara_v3/resolution_hierarchy.py)
+loops over every `interval` `find_threshold_crossings` detects within one
+decade slice and calls `build_peak_anchored_windows` independently per
+interval. `retain_candidates`'s `MIN_PEAK_SEPARATION_DAYS=90` enforcement is
+scoped to ONE interval's own candidate set only — never checked across
+`all_month`/`all_day` when a decade genuinely splits into ≥2 intervals (a
+real, observed condition at production scale — not the inert threshold;
+decades 1-3 for this same class produced exactly 1 interval each, decade 4
+produced ≥2). Two peaks from two different intervals independently refined
+(R8.5) to the identical calendar day (2017-03-01), producing a duplicate row
+on `uq_kala_gochara_windows_v2_natural_key`
+(chart_id, event_class, window_start, peak_date, milestone_id, generation) —
+the writer's own DELETE-then-INSERT scoping (per era_slice_key) never
+touches the colliding sibling since both belong to the SAME substep/decade.
+The rebuild's resilient driver correctly STOPPED rather than hand-patching
+(§N.8/no-retry-past-a-real-error discipline held); v1 corpus unaffected;
+transaction aborted cleanly, no partial/corrupt row persisted.
+REMEDIATION: `build_resolution_hierarchy` must deduplicate/separate retained
+peaks ACROSS all intervals in one decade before emitting rows — either (a)
+pool all intervals' admitted candidates into ONE retention pass (rank by λ
+across the whole decade, apply MIN_PEAK_SEPARATION_DAYS globally, cap at
+MAX_PEAKS_PER_ERA_WINDOW per era window as before) or (b) post-hoc dedupe
+`all_month`/`all_day` by exact peak_date before returning, keeping the
+higher-λ row and recording the dropped duplicate honestly in
+WriterResult.notes. GATE: a reproduction test with two synthetic intervals
+whose independent within-interval-separated peaks refine to the same
+calendar day must currently FAIL (proving the bug), then PASS after the fix
+with zero duplicate peak_dates in the aggregated output; the real
+career_setback::g3_2014_2024 substep for chart 482012f1 must complete
+cleanly end-to-end after the fix (re-run as part of R2's resumed rebuild).
+AT-PAR: closes the exact defect class this campaign's own doctrine predicts
+(real-scale rebuild finds what synthetic unit fixtures cannot) — same
+family as MR-37/38/39/40/41/42, one layer deeper in the hierarchy code.
+
 ## §7 — SOURCE → MR MAP (dedup audit)
 
 PG-1→MR-01 · PG-2→MR-05 · PG-3→MR-10 · PG-4→MR-04+13 · PG-5→MR-13 ·

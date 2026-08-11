@@ -2619,3 +2619,38 @@ Native rebuild LAUNCHED (background), substep 1/270 committed cleanly, ins=1, ET
 NEXT-ACTION: poll native to completion → Abhinandan → Phase D 12-point evidence (PK-R-7(iv),
 chains, hierarchy bounds, protection seeded-DELETE refusal, v1 counts, fresh-connection GUC
 NULL) → E delta-rerun → F refit+w45 (MR-32) → G IR-9.
+
+## 2026-08-12 ~04:5x IST — MR-44 FOUND (real corpus rebuild): hierarchy cross-interval peak collision
+
+CONDUCTOR-HEARTBEAT: 2026-08-11T23:16:00Z pid=94797 host=Montys-MacBook-Pro.local
+
+**Native corpus rebuild STOPPED CLEANLY at substep 74/270** (career_setback::g3_2014_2024) —
+a genuine writer bug, not an environment fault, not my driver's fault. Root cause:
+build_resolution_hierarchy loops over every interval find_threshold_crossings detects within
+one decade and runs retain_candidates (90-day min-separation) independently PER INTERVAL —
+never across intervals in the same decade. This decade genuinely split into ≥2 intervals (a
+real data condition, not the inert threshold — decades 1-3 for the same class each produced
+exactly 1); two peaks from different intervals independently refined to the identical calendar
+day (2017-03-01), colliding on uq_kala_gochara_windows_v2_natural_key. The resilient driver's
+STOP-and-report discipline held exactly as designed: transaction aborted cleanly, no
+hand-patch attempted, no corrupt/partial row persisted, v1 baseline untouched. **Registered as
+MR-44** (register entry: cross-interval retention pooling or post-hoc dedup, with a
+reproduction test + the real substep as the gate).
+
+**Honest current corpus state (native, mid-rebuild):** 7/27 classes fully rebuilt with real
+peak-anchored hierarchy data (era+month+day, genuine λ, genuine dates — spot-verified live);
+1/27 (career_setback) partial (3/10 decades); 19/27 untouched. Abhinandan: not started.
+
+**Separate tooling gap, also disclosed:** the resilient driver never updated build_runs or set
+asset_throughput to a live 'building' state mid-run, so the Nirmāṇa cockpit correctly showed
+nothing in progress even while real work was landing — caught by the native's own direct
+verification question mid-session. Will fix alongside the MR-44 dispatch (driver v2 sets
+asset_throughput.state='building' at start + per-substep heartbeat is already correct).
+
+**L-7 lease checked: plenty of margin (expiry 06:00 IST, current ~22:46 IST / 17:16 UTC) — no
+renewal needed yet.**
+
+NEXT-ACTION: dispatch MR-44 fix builder (TDD: reproduce the collision synthetically first) →
+PARĪKṢAKA verification (mutation: reintroduce cross-interval blindness → must reproduce the
+collision) → merge → resume native rebuild from substep 74 (idempotent, earlier decades
+untouched) → Abhinandan → Phase D onward.
