@@ -536,12 +536,48 @@ def _evaluate_single_from_context(
         ),
     }
 
-    # suppression field is 0.0 in v3 (quality_gates is the W1.3 suppression mechanism)
+    # ── MR-41(c) v3 SUPPRESSION WIRING DECISION (PK-R-5, 2026-08-11, recorded
+    # per this lane's explicit-decision requirement) ──────────────────────────
+    # `quality_gates` (computed above at line ~493) IS the v3-native suppression
+    # mechanism, in production use on every W1.1 bounded-lambda_v3 evaluation
+    # (the branch this code is in -- v1_parity_mode=False, the default/served
+    # path). It reads its own, ALREADY-POPULATED corpus (`kala_vedha_gochara`
+    # rows, pre-fetched into `ClassContext`) -- entirely independent of the
+    # three v1 suppression mechanisms below and NOT affected by MR-41(a)/(b)'s
+    # bg_transit_vedha / target_nakshatra_id repoints.
+    #
+    # `compute_suppression` (gochara_intensity/suppression.py,
+    # SUPPRESSION_WEIGHTS = vedha_cancellation + sarvatobhadra_vedha +
+    # kartari_pincer) is the v1 mechanism MR-41 restored reachability for. It
+    # is called ONLY inside the `v1_parity_mode` branch above (line ~402) --
+    # i.e. it remains v1-PARITY-MODE-ONLY: exercised for golden-test
+    # comparison against the v1 engine, never on the v3 production path. This
+    # lane deliberately does NOT wire it into the W1.1 formula alongside (or
+    # instead of) quality_gates -- doing so would change v3 SCORING semantics
+    # (a new subtracted term in `raw_lambda`), which is out of this lane's I2
+    # scope. The chosen minimal, honest fix: keep quality_gates as the v3
+    # mechanism (documented here), and make the field BELOW (`suppression_v3`,
+    # and downstream the writer's `suppression_state` column, MR-42) report
+    # truthfully what ran, rather than an unconditional placeholder.
+    #
+    # suppression field is 0.0 in v3 (quality_gates is the W1.3 suppression
+    # mechanism, reported separately via quality_gates/quality_gates_detail
+    # above and forwarded into detail below) -- kept at 0.0 (not None) only
+    # for IntensityResult schema compatibility with v1's numeric suppression
+    # field; MR-42's writer fix reads quality_gates_detail (via
+    # x_t_detail_compat), not this placeholder, when populating a truthful
+    # suppression_state on interval rows.
     suppression_v3 = 0.0
     suppression_detail_v3 = {
         "note": "v3 formula uses quality_gates for vedha suppression (W1.3); "
-                "suppression field is kept at 0.0 for schema compatibility with v1.",
+                "suppression field is kept at 0.0 for schema compatibility with v1. "
+                "quality_gates is the v3-native suppression mechanism (see MR-41(c) "
+                "wiring-decision comment above); the v1 vedha_cancellation/"
+                "sarvatobhadra_vedha/kartari_pincer mechanisms in "
+                "gochara_intensity.suppression.compute_suppression remain "
+                "v1-parity-mode-only and are not consulted on this path.",
         "calibration_state": "structural_prior",
+        "mechanism": "quality_gates",
     }
 
     # ── W1.5 λ decomposition output ──────────────────────────────────────────

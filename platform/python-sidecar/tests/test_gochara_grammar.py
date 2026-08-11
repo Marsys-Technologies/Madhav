@@ -1151,7 +1151,7 @@ class _CountingConn:
             if self.fail_kakshya:
                 raise RuntimeError("simulated transient failure")
             return _FakeCursor(self.kakshya_rows)
-        if "bg_transit_rules" in s:
+        if "bg_transit_vedha" in s:
             self.vedha_queries += 1
             if self.fail_vedha:
                 raise RuntimeError("simulated transient failure")
@@ -1177,8 +1177,14 @@ def test_kakshya_boundaries_and_vedha_rules_are_memoized_per_key():
             {"fact_subject": "Moon.0", "fact_key": "start_deg", "fact_value_text": None, "fact_value_num": 30.0},
             {"fact_subject": "Moon.0", "fact_key": "lord", "fact_value_text": "Saturn", "fact_value_num": None},
         ],
-        vedha_rows=[{"graha": "saturn", "primary_house": 4, "vedha_house": 10,
-                     "phala": "x", "classical_citation": "TEST"}],
+        # MR-41(a): row shape updated to bg_transit_vedha's real columns
+        # (was bg_transit_rules's graha/primary_house/phala before the
+        # repoint) -- `_fetch_vedha_rules`'s adapter maps these back onto the
+        # same internal graha/primary_house/phala vocabulary the caching
+        # assertions below still exercise.
+        vedha_rows=[{"primary_graha": "saturn", "primary_transit_house": 4,
+                     "vedha_graha": None, "vedha_house": 10, "vedha_type": "house_pair",
+                     "classical_note": "x", "classical_citation": "TEST"}],
     )
 
     first = P._fetch_kakshya_boundaries(conn, CHART_ID, "Moon")
@@ -1217,3 +1223,121 @@ def test_kakshya_and_vedha_read_failures_are_never_cached():
     assert P._fetch_vedha_rules(conn, "4") == []
     assert P._fetch_vedha_rules(conn, "4") == []
     assert conn.vedha_queries == 2, "a failed read must retry on the next call, not be cached as empty"
+
+
+# ── MR-41 suppression-reachability tests (PK-R-5, 2026-08-11) ──────────────
+#
+# MR-41(a)/(b) fix two structurally-unreachable primitive families (before
+# these fixes, gochara_vedha_pair returned [] on EVERY production call ever
+# made -- 0 vedha sentences in a 38,461-row corpus census -- and
+# sarvatobhadra_vedha/nakshatra_ingress_tara were silenced for every
+# graha-anchored target because target_nakshatra_id was never populated in
+# production enrichment). The two tests below are the reachability proofs:
+# deliverable #1 (a constructed vedha configuration reaches a non-empty
+# sentence through the REAL `_fetch_vedha_rules` DB fetch path, not the
+# `fixture_vedha_rows` injection param `test_primitive_7_...` above
+# exercises) and deliverable #3 (`gather_configuration_sentences` -- the
+# real gather list, real primitives, fixture DB rows -- against a
+# realistically-shaped chart context proves every X(t) primitive family,
+# including the three previously-unreachable ones, CAN appear).
+
+def test_mr41a_gochara_vedha_pair_fires_through_real_bg_transit_vedha_fetch_path():
+    """MR-41(a) reachability proof: a constructed bg_transit_vedha-shaped
+    row, read through the REAL `_fetch_vedha_rules` DB fetch path (mocking
+    only the DB row content via `_CountingConn`, not the fetch logic),
+    produces a non-empty `gochara_vedha_pair` sentence. Before the repoint
+    this was structurally impossible in production."""
+    P.clear_primitive_read_caches()
+    conn = _CountingConn(
+        vedha_rows=[{
+            "primary_graha": "saturn", "primary_transit_house": 10,
+            "vedha_graha": None, "vedha_house": 4, "vedha_type": "house_pair",
+            "classical_note": "When any planet transits 4th, it nullifies Saturn-10 benefit",
+            "classical_citation": "BPHS Ch.29; Phaladeepika Ch.26",
+        }],
+    )
+    target = ResonanceTarget(
+        chart_id=CHART_ID, event_class="career_advancement", target_type="bhava",
+        target_ref="10", weight=0.8, classical_citation="TEST FIXTURE",
+        target_sign="Capricorn",
+    )
+    start_jd, end_jd = _jd(2018, 1, 1), _jd(2022, 1, 1)
+
+    sentences = P.gochara_vedha_pair(swe, CHART_ID, target, start_jd, end_jd, conn=conn)
+
+    assert conn.vedha_queries == 1, "must have gone through the real bg_transit_vedha fetch path"
+    assert len(sentences) >= 1
+    s = sentences[0]
+    assert s.primitive == "gochara_vedha_pair"
+    assert s.transit_planet == "Saturn"  # _normalize_graha("saturn") -> "Saturn"
+    assert s.classical_citation == "BPHS Ch.29; Phaladeepika Ch.26"
+    assert "cancelled" in s.detail
+    assert s.detail["vedha_house"] == 4
+
+
+def test_mr41_reachability_gather_configuration_sentences_all_families_can_fire():
+    """MR-41 reachability test (not arithmetic-only): runs
+    `gather_configuration_sentences` -- the REAL gather list, REAL
+    primitives, fixture DB rows -- against realistically-shaped
+    chart-context targets (a bhava target, plus a graha-anchored target
+    with target_longitude_deg/target_sign/target_nakshatra_id ALL resolved,
+    exactly as MR-41(b)'s `enrich_target` now produces) and asserts EACH
+    primitive family `gather_configuration_sentences` wires in -- including
+    the families MR-41 found structurally unreachable (gochara_vedha_pair
+    via the bg_transit_vedha repoint; sarvatobhadra_vedha and
+    nakshatra_ingress_tara via the resolved nakshatra anchor) -- is CAPABLE
+    of appearing in the gathered sentence pool. Fired COUNTS are not
+    asserted (rarity is not a defect per MR-41's own GATE wording) -- only
+    that each family is reachable at all."""
+    from services.gochara_intensity import configuration_activity as CA
+
+    P.clear_primitive_read_caches()
+    conn = _CountingConn(
+        vedha_rows=[{
+            "primary_graha": "saturn", "primary_transit_house": 10,
+            "vedha_graha": None, "vedha_house": 4, "vedha_type": "house_pair",
+            "classical_note": "When any planet transits 4th, it nullifies Saturn-10 benefit",
+            "classical_citation": "BPHS Ch.29; Phaladeepika Ch.26",
+        }],
+    )
+
+    # bhava target -- drives sign_ingress, kakshya_cell_crossing (equal-
+    # eighths fallback, since conn's kakshya_rows is empty), gochara_vedha_pair.
+    bhava_target = ResonanceTarget(
+        chart_id=CHART_ID, event_class="career_advancement", target_type="bhava",
+        target_ref="10", weight=0.8, classical_citation="TEST FIXTURE",
+        target_sign="Capricorn",
+    )
+    # Graha-anchored target with a FULLY resolved anchor (longitude + sign +
+    # nakshatra_id) -- exactly the shape MR-41(b)'s enrich_target now
+    # produces for a karaka/dasha_lord_portfolio target. Drives
+    # degree_contact, drishti_contact, station_retro_loop, eclipse_degree,
+    # nakshatra_ingress_tara, sarvatobhadra_vedha.
+    graha_target = _target_at_planet_position(
+        "Saturn", 2020, 6, 15, event_class="career_advancement",
+        target_type="karaka", target_ref="Saturn", natal_planet="Saturn",
+    )
+
+    start_jd, end_jd = _jd(2015, 1, 1), _jd(2025, 1, 1)
+    all_sentences = CA.gather_configuration_sentences(
+        swe, conn, CHART_ID, [bhava_target, graha_target], start_jd, end_jd,
+    )
+    fired_primitives = {s.primitive for s in all_sentences}
+
+    expected_families = {
+        "degree_contact", "drishti_contact", "sign_ingress",
+        "nakshatra_ingress_tara", "kakshya_cell_crossing", "station_retro_loop",
+        "eclipse_degree", "gochara_vedha_pair", "sarvatobhadra_vedha",
+    }
+    missing = expected_families - fired_primitives
+    assert not missing, (
+        f"primitive families structurally unreachable through the real gather "
+        f"path: {sorted(missing)} (fired: {sorted(fired_primitives)})"
+    )
+
+    # The MR-41 headline defects, asserted explicitly (not just via the set
+    # membership above) so a future regression in any of them shows up as
+    # its own named failure, not a generic "missing" diff.
+    assert "gochara_vedha_pair" in fired_primitives, "MR-41(a): bg_transit_vedha repoint must make this reachable"
+    assert "sarvatobhadra_vedha" in fired_primitives, "MR-41(b): resolved target_nakshatra_id must make this reachable"
+    assert "nakshatra_ingress_tara" in fired_primitives, "MR-41(b): resolved target_nakshatra_id must make this reachable"
