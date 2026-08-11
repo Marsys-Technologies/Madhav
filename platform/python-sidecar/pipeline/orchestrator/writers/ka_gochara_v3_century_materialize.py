@@ -26,19 +26,29 @@ production scope identical to v1's."
 
 FIX: `plan_substeps` now discovers its event-class set LIVE, per chart, via
 `_discover_event_classes` — `SELECT DISTINCT event_class FROM
-gochara_resonance_map WHERE chart_id = %s` — mirroring
-`ka_gochara_sweep.KaGocharaSweepWriter._discover_event_classes` exactly (same
-table, same query shape, so the two writers' substep plans always agree on
-which classes a chart has coverage for). `ka_gochara_resonance` (G-1) is the
-single upstream authority for which event classes a chart has targets for; as
-G-1's coverage grows for a chart (today: 6 classes for the two canonical
-charts, pending the R2-window resonance rebuild to reach up to 27), this
-writer's substep plan grows with it on the NEXT build — no code change
-required. A chart with an empty resonance map (G-1 not yet built/run for it)
-honestly produces a ZERO-substep plan (I4) — this writer never invents a
-class to plan for. `EVENT_CLASSES` is retained as a documentation-only
-constant (the pre-MR-16 default/historical scope) — it is NO LONGER read by
-`plan_substeps`.
+gochara_resonance_map WHERE chart_id = %s` — matching
+`ka_gochara_sweep.KaGocharaSweepWriter._discover_event_classes`'s table and
+query shape, so the two writers' substep plans always agree on which classes
+a chart has coverage for. `ka_gochara_resonance` (G-1) is the single
+upstream authority for which event classes a chart has targets for; as G-1's
+coverage grows for a chart (today: 6 classes for the two canonical charts,
+pending the R2-window resonance rebuild to reach up to 27), this writer's
+substep plan grows with it on the NEXT build — no code change required. A
+chart with a GENUINELY EMPTY resonance map (the query runs and finds 0 rows
+— G-1 not yet built/run for it) honestly produces a ZERO-substep plan (I4)
+— this writer never invents a class to plan for. `EVENT_CLASSES` is
+retained as a documentation-only constant (the pre-MR-16 default/historical
+scope) — it is NO LONGER read by `plan_substeps`.
+
+PARĪKṢAKA F1 (§N.8, post-merge fix): `_discover_event_classes` deliberately
+does NOT mirror ka_gochara_sweep's discovery method in one respect — it does
+NOT catch and swallow DB errors into an empty list. See its own docstring
+for the full rationale; in short, the orchestrator's SATYA-DĪPA no-op-
+completion re-probe (`asset_runner.py`) treats an exception from
+`plan_substeps` as "conservatively incomplete" and a `[]` return as
+"genuinely done" — swallowing a query failure into `[]` here would make a
+transient DB error indistinguishable from an honestly empty resonance map
+and could promote a FAILED build to `state='lit'`.
 
 The decade-slice dimension (`DECADE_SLICES`, 10 fixed slices spanning
 birth→birth+100y) is unaffected — it is chart-agnostic and class-agnostic by
@@ -500,32 +510,40 @@ def _discover_event_classes(conn, chart_id: str) -> list[str]:
     """DISTINCT event_class values gochara_resonance_map holds for this
     chart, ascending.
 
-    Mirrors ka_gochara_sweep.KaGocharaSweepWriter._discover_event_classes
-    exactly (same table, same query shape, same "honest empty on any
-    failure" discipline) so the two writers' substep plans always agree on
+    Mirrors ka_gochara_sweep.KaGocharaSweepWriter._discover_event_classes in
+    table + query shape, so the two writers' substep plans always agree on
     which classes a chart has coverage for. NEVER a hardcoded fallback list
-    (MR-16 fix) — an unreachable DB or a chart with no resonance-map rows at
-    all degrades to an empty list, which plan_substeps below turns into an
-    honest 0-substep plan (I4), never a silent revert to EVENT_CLASSES.
+    (MR-16 fix): a chart with genuinely zero gochara_resonance_map rows
+    returns [] here, which plan_substeps below turns into an honest
+    0-substep plan (I4) — never a silent revert to EVENT_CLASSES.
+
+    PARĪKṢAKA F1 (§N.8): DB errors PROPAGATE — this function does NOT catch
+    and swallow exceptions the way ka_gochara_sweep's sibling does. The
+    orchestrator's no-op-completion re-probe (asset_runner.py, the
+    SATYA-DĪPA fix) calls `writer.plan_substeps(ctx)` inside a
+    SAVEPOINT + try/except that conservatively sets `plan_complete=False`
+    on ANY exception — a deliberate fail-closed design. A `_discover_event_
+    classes` that swallowed its own query failure and returned [] would be
+    INDISTINGUISHABLE, from that re-probe's point of view, from "this chart
+    genuinely has an empty resonance map" — `remaining_count=0` ->
+    `plan_complete=True` -> the asset gets promoted to 'lit' on top of a
+    FAILED query, exactly the D-1.6/SATYA-DĪPA defect class one level
+    deeper. Letting the exception propagate here means the orchestrator's
+    own except-clause does its job (fails closed); catching it here would
+    blind that mechanism. Only a QUERY THAT RUNS AND FINDS ZERO ROWS
+    produces the honest empty list — a query that never ran to completion
+    is not that, and must not be reported as if it were.
 
     I2: this is a plain SQL read against gochara_resonance_map — the exact
     same table _fetch_resonance_targets above already reads — not an import
     of gochara_grammar/gochara_intensity/ka_gochara_sweep.
     """
-    try:
-        rows = _query_fn(conn)(
-            "SELECT DISTINCT event_class FROM gochara_resonance_map "
-            "WHERE chart_id = %s ORDER BY event_class",
-            [chart_id],
-        )
-        return [r["event_class"] for r in rows if r.get("event_class")]
-    except Exception as exc:  # noqa: BLE001
-        logger.warning(
-            "[%s] could not discover event_classes for chart=%s: %s "
-            "— honest empty plan (I4).",
-            ASSET_ID, chart_id, exc,
-        )
-        return []
+    rows = _query_fn(conn)(
+        "SELECT DISTINCT event_class FROM gochara_resonance_map "
+        "WHERE chart_id = %s ORDER BY event_class",
+        [chart_id],
+    )
+    return [r["event_class"] for r in rows if r.get("event_class")]
 
 
 # ---------------------------------------------------------------------------
@@ -818,14 +836,23 @@ class GocharaV3CenturyMaterializeWriter(WriterBase):
         century grid (DECADE_SLICES) — chart-agnostic and class-agnostic by
         design (W3.4 spec).
 
-        A chart with an EMPTY resonance map (G-1 not yet run for it) honestly
-        produces a ZERO-substep plan here (I4 at the plan level, mirroring
+        A chart with a GENUINELY EMPTY resonance map (the query runs and
+        finds 0 rows — G-1 not yet run for it) honestly produces a
+        ZERO-substep plan here (I4 at the plan level, mirroring
         ka_gochara_sweep's own no-targets-no-substeps discipline) — this
         writer never invents a class to plan for. A per-substep empty
         resonance-TARGET set (a discovered class with rows for OTHER classes
         but somehow none for itself — not expected, but handled the same way
         as always) remains a run_substep-level I4 0-row result, not a plan
         failure.
+
+        A DB error during discovery is NOT caught here — `_discover_event_
+        classes` lets it propagate (PARĪKṢAKA F1), and this method does not
+        add its own try/except around that call. The orchestrator's
+        no-op-completion re-probe relies on exactly this: it wraps its own
+        `plan_substeps(ctx)` call in a try/except and treats any exception
+        as "conservatively incomplete," which only works if this method
+        does not swallow the error first.
         """
         chart_id = ctx.config["chart_id"]
         conn = ctx.db_conn

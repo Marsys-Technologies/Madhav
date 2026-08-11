@@ -106,6 +106,30 @@ def _dml_target_table(sql: str) -> str | None:
     m = _DML_TABLE_NAME_RE.match(sql.strip())
     return m.group(1) if m else None
 
+
+def _dml_target_table_or_raise(sql: str) -> str | None:
+    """Same as `_dml_target_table`, but LOUD (not silent) on an unparseable
+    DML statement — advisory from the PR #1221 conflict-resolution note: a
+    caller that `continue`s past a statement whose table this regex could
+    not extract has a silent-miss path — the guard would trivially pass on
+    a future writer edit whose SQL formatting the regex no longer matches,
+    the exact "guard that always passes regardless of content" failure mode
+    §N.8 exists to close. A statement that does NOT match ANY DML verb
+    (SELECT, etc.) is legitimately not a DML target and returns None
+    quietly, same as before — only a DELETE/INSERT/UPDATE statement whose
+    table this regex fails to parse raises.
+    """
+    if not DML_VERB_RE.search(sql):
+        return None
+    table = _dml_target_table(sql)
+    if table is None:
+        raise AssertionError(
+            f"Guard could not parse the target table of a DML statement — "
+            f"this is a gap in the guard's own coverage, not a pass. "
+            f"SQL: {sql!r}"
+        )
+    return table
+
 # ---------------------------------------------------------------------------
 # Source helpers
 # ---------------------------------------------------------------------------
@@ -523,9 +547,11 @@ def test_dryrun_fixture_only_writes_generation_30_rows(monkeypatch):
     # name (not a substring match — kala_gochara_windows is a strict prefix
     # of kala_gochara_windows_v2, so a naive `in` check over-matches the
     # calibration/staging table's own DML; see _dml_target_table docstring).
+    # _dml_target_table_or_raise (not the bare helper) so an unparseable DML
+    # statement is a loud test failure, never a silent miss.
     prod_dml = [
         (sql, params) for sql, params in conn.statements
-        if _dml_target_table(sql) == PROD_TABLE
+        if _dml_target_table_or_raise(sql) == PROD_TABLE
     ]
 
     assert len(prod_dml) >= 1, (
@@ -590,10 +616,12 @@ def test_dryrun_fixture_no_generation_v1_rows(monkeypatch):
     writer.run_substep(ctx, step)
 
     # No DML against PROD_TABLE should produce generation='v1'.
+    # _dml_target_table_or_raise: an unparseable DML statement here is a
+    # loud test failure (guard coverage gap), never a silent `continue`.
     v1_re = re.compile(r"generation\s*=\s*'v1'")
     v1_violations: list[tuple[str, object]] = []
     for sql, params in conn.statements:
-        if _dml_target_table(sql) != PROD_TABLE:
+        if _dml_target_table_or_raise(sql) != PROD_TABLE:
             continue
         has_v1_in_sql = bool(v1_re.search(sql))
         has_v1_in_params = isinstance(params, dict) and params.get("generation") == "v1"

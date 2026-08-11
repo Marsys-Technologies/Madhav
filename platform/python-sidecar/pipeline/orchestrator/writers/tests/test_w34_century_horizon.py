@@ -415,18 +415,50 @@ def test_discover_event_classes_is_distinct_and_ordered():
     )
 
 
-def test_discover_event_classes_db_failure_degrades_to_empty_not_hardcoded_list():
-    """A DB error during discovery must degrade to an honest empty list —
-    NEVER a silent fallback to EVENT_CLASSES (that would be the exact
-    hardcoded-6 defect this fix removes, just relocated to an error path)."""
+def test_discover_event_classes_genuine_empty_query_still_returns_empty_list():
+    """PARĪKṢAKA F1 anti-fallback invariant, unchanged: a query that RUNS
+    SUCCESSFULLY and finds zero rows (the honest "G-1 hasn't built this
+    chart yet" case) must still return [] — never a fallback to
+    EVENT_CLASSES (the exact hardcoded-6 defect this fix removes)."""
+    conn = _FakeConn(_responder(discovered_classes=[]))
+    result = mod._discover_event_classes(conn, "482012f1-710e-4a25-994a-93821f5871aa")
+    assert result == [], (
+        f"_discover_event_classes must return [] for a genuinely empty "
+        f"resonance map, got {result}"
+    )
+
+
+def test_discover_event_classes_db_failure_propagates(monkeypatch):
+    """PARĪKṢAKA F1 (MATERIAL): a DB error during discovery must PROPAGATE,
+    never be swallowed into an empty list. The orchestrator's own
+    no-op-completion re-probe (asset_runner.py:625-645, the SATYA-DĪPA fix)
+    wraps its `plan_substeps(ctx)` call in a try/except that treats ANY
+    exception as "conservatively incomplete" (fail-closed) and a `[]`
+    result as "genuinely done" — swallowing the error here would make a
+    transient query failure indistinguishable from an honestly empty
+    resonance map and could promote a FAILED build to state='lit'
+    (remaining_count=0 -> plan_complete=True). See _discover_event_classes'
+    own docstring for the full rationale."""
     def _raising_responder(sql, params=None):
         raise RuntimeError("simulated connection failure")
 
     conn = _FakeConn(_raising_responder)
-    result = mod._discover_event_classes(conn, "482012f1-710e-4a25-994a-93821f5871aa")
-    assert result == [], (
-        f"_discover_event_classes must degrade to [] on DB failure, got {result}"
-    )
+    with pytest.raises(RuntimeError, match="simulated connection failure"):
+        mod._discover_event_classes(conn, "482012f1-710e-4a25-994a-93821f5871aa")
+
+
+def test_plan_substeps_propagates_discovery_db_failure():
+    """PARĪKṢAKA F1: the exception must propagate all the way OUT of
+    plan_substeps too — plan_substeps must not add its own try/except
+    around the _discover_event_classes call that would re-introduce the
+    swallow one level up."""
+    def _raising_responder(sql, params=None):
+        raise RuntimeError("simulated connection failure")
+
+    conn = _FakeConn(_raising_responder)
+    writer = GocharaV3CenturyMaterializeWriter()
+    with pytest.raises(RuntimeError, match="simulated connection failure"):
+        writer.plan_substeps(_ctx(conn))
 
 
 def test_event_classes_constant_no_longer_drives_plan_substeps():
@@ -563,6 +595,106 @@ def test_run_substep_result_notes_carry_coverage_quality_tier(monkeypatch):
     assert "coverage_quality=" in result.notes, (
         f"Expected coverage_quality tier in WriterResult.notes, got: {result.notes!r}"
     )
+
+
+_INSERT_TABLE_RE_F2 = re.compile(r"INSERT\s+INTO\s+(\S+)", re.IGNORECASE)
+
+
+def _prod_insert_params(statements: list[tuple[str, object]]) -> list[dict]:
+    """INSERT params whose SQL targets EXACTLY PROD_TABLE (not TABLE, the
+    calibration/staging table — kala_gochara_windows is a strict prefix of
+    kala_gochara_windows_v2, so a naive substring/startswith check
+    over-matches; mirrors test_mr13/test_mr14's _inserts_for_table and the
+    _dml_target_table fix in test_ka_gochara_v3_mutation_guard.py)."""
+    out = []
+    for sql, params in statements:
+        if not isinstance(params, dict):
+            continue
+        m = _INSERT_TABLE_RE_F2.match(sql.strip())
+        if m and m.group(1).lower() == PROD_TABLE.lower():
+            out.append(params)
+    return out
+
+
+def test_run_substep_coverage_quality_target_count_matches_actual_targets(monkeypatch):
+    """PARĪKṢAKA F2 (real detector, replaces the substring-only check above):
+    the SERVED ROW's own suppression_state.coverage_quality.target_count —
+    not just the presence of the substring 'coverage_quality=' somewhere in
+    WriterResult.notes — must equal the ACTUAL number of resonance targets
+    this substep fetched.
+
+    This is a real detector for two defects the notes-substring test
+    (test_run_substep_result_notes_carry_coverage_quality_tier, above)
+    provably CANNOT catch, because a mutated run_substep can still emit a
+    notes string containing 'coverage_quality=' while the row itself is
+    wrong:
+      (i)  coverage_quality=None passed to both _build_row call sites
+           -> suppression_state has no 'coverage_quality' key at all.
+      (ii) a HARDCODED note (e.g. {"tier": "rich", "target_count": 99})
+           used at both _build_row call sites regardless of the actual
+           fetch -> the notes text still says "coverage_quality=rich
+           (99 target(s))" (a literal, well-formed substring match) but
+           the row's target_count never reflects reality.
+
+    Two DIFFERENT target-list sizes are exercised so a single hardcoded
+    constant cannot coincidentally satisfy both — the classic "one example
+    isn't a mutation-proof detector" trap.
+    """
+    from services.gochara_v3.interval_solver import IntervalBoundary
+    import json as _json
+
+    for targets in (["Venus"], ["Venus", "Jupiter", "Mars", "Saturn"]):
+        writer = GocharaV3CenturyMaterializeWriter()
+        conn_dummy = _FakeConn(_responder(targets=targets))
+        steps = writer.plan_substeps(_ctx(conn_dummy))
+        step = steps[0]
+        ec, era_key = step.key.split("::", 1)
+
+        fake_boundary = IntervalBoundary(
+            enter_jd=2445736.5 + 10.0,
+            exit_jd=2445736.5 + 20.0,
+            peak_jd=2445736.5 + 15.0,
+            peak_lambda=0.72,
+            era_slice_key=era_key,
+        )
+
+        conn = _FakeConn(_responder(targets=targets, stored_fp=None))
+        ctx = _ctx(conn)
+        monkeypatch.setattr(mod, "find_threshold_crossings", lambda *a, **k: [fake_boundary])
+        monkeypatch.setattr(
+            mod, "ClassContext",
+            type("FakeClassContext", (), {"fetch": staticmethod(lambda **k: object())}),
+            raising=False,
+        )
+        try:
+            import swisseph  # noqa: F401
+        except ImportError:
+            import types, sys
+            sys.modules["swisseph"] = types.ModuleType("swisseph")
+
+        result = writer.run_substep(ctx, step)
+        assert result.rows_inserted == 1, f"targets={targets}"
+
+        prod_rows = _prod_insert_params(conn.statements)
+        assert len(prod_rows) == 1, (
+            f"Expected exactly 1 production INSERT for targets={targets}, "
+            f"got {len(prod_rows)}"
+        )
+        row = prod_rows[0]
+
+        suppression_state = _json.loads(row["suppression_state"])
+        assert "coverage_quality" in suppression_state, (
+            f"suppression_state is missing 'coverage_quality' for targets="
+            f"{targets} — coverage_quality=None was passed to _build_row "
+            f"(mutation i: the note was dropped, not computed)"
+        )
+        actual_target_count = suppression_state["coverage_quality"]["target_count"]
+        assert actual_target_count == len(targets), (
+            f"coverage_quality.target_count={actual_target_count} for "
+            f"targets={targets} (expected {len(targets)}) — the note does "
+            f"not reflect the actual fetch; a hardcoded/stale value is "
+            f"being used (mutation ii)"
+        )
 
 
 # ===========================================================================
