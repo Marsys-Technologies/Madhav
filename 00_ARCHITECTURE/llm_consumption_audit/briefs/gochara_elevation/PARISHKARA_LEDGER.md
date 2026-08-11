@@ -32,7 +32,7 @@ marker_duty: post W6-COMPLETE to campaign-coordination §6 after MR-01..08,10,13
 | MR-20 | Real no-loss gate (35,620 windows) | GATE MET, finding disclosed | mr20_no_loss_coverage_gate.py run live both charts 2026-08-11: unclassified=0 (2,448 divergences, both charts, all closed-vocabulary). Substantive finding: equivalence_rate <2% both charts, 92% of divergences are v1-only-needs-review — disclosed for ADJUDICATOR review, not self-adjudicated. See "MR-20: the real no-loss coverage gate" ledger entry. |
 | MR-21 | Quantitative evidence chain published | BLOCKED (yield window) | investigated 2026-08-11: all 4 required numbers genuinely need a large-scale production timing run, not evidence retrieval; THE ONE authorized rebuild's timing does NOT honestly substitute (different scope/criteria). Queued for post-yield-window resumption alongside MR-11(b)/MR-12. See "MR-21" ledger entry. |
 | MR-22 | Suppression detector + count | GATE MET, plausibility disclosed | seeded must-fire test (test_gochara_intensity.py) already exists, verified green 2026-08-11; real-corpus count published (0/54 point rows, both charts, all 3 mechanism types) — plausibility flagged for ADJUDICATOR, not self-certified. See "MR-22" ledger entry. |
-| MR-23 | Remaining unrun acceptance artifacts | QUEUED | — |
+| MR-23 | Remaining unrun acceptance artifacts | PARTIAL | W5.4 mutation test run live 2026-08-11: found + fixed a real substring-collision bug (same class as MR-40) in test_ka_gochara_v3_mutation_guard.py, 14/14 pass now. W1.2/W1.4 (native ruling likely needed)/W0.2 remain OPEN. See "MR-23" ledger entry. |
 | MR-24 | Product-level E2E battery (standing) | CLOSED (FINAL, 2026-08-11 ~09:44 IST re-run against rebuilt corpus supersedes the earlier same-day pre-final-state pass) | Final re-run: 3 tools x 3 charts (482012f1 gen-3.0, 1c826d5a gen-3.0, cb73cd3d v1-authority) all backing_data_reachable=true; valence+calibration facet filters matched honest values; cockpit count_sql found FALSE (MR-40, new bug: cockpit pointed at the wrong table/generation after an undisclosed W5.4 UTK-R1 authority repoint), fixed live + source PR #1216 opened, RE-VERIFIED true (89/85); judgment_query(domain=health) served full gochara_sweep depth (17 windows); rollback+re-flip cycle on the NATIVE chart (482012f1) via committed MR-08 tooling, verified end-to-end live both directions. Full transcript in "MR-24 FINAL RE-RUN" ledger entry below. |
 | MR-25 | Citations resolve in serving | MERGED | PR #1200 MERGED · PARĪKṢAKA PASS (code review): mig-565 correct (14 rows: 4 resolved verified vs corpus, 10 CORPUS_GAP not silenced), B.3 compliant, live gate honestly deferred |
 | MR-26 | Honest amended close report | QUEUED | — |
@@ -1724,3 +1724,36 @@ genuine large-scale production timing run (barred by the active YIELD WINDOW) or
 reconstruction this session cannot responsibly claim to have done accurately from existing
 artifacts. Queued to resume once SAMPŪRTI's P-G1 lease is RELEASED, alongside MR-11(b) and
 MR-12.
+
+## 2026-08-11 — MR-23: W5.4 mutation test run + real bug found and fixed; 3 sub-items remain open
+
+**W5.4 mutation test — DONE, and found a real bug in the process.** The test file
+(`pipeline/orchestrator/writers/tests/test_ka_gochara_v3_mutation_guard.py`) already
+implements the full "predicate removed → guard fails → restore" discipline MR-23 asks for
+(Group 2: `test_guard_detects_delete/insert_referencing_prod_table_without_generation`,
+monkeypatch-injects a bad DML into the writer's apparent source, asserts the guard catches it;
+pytest's monkeypatch fixture auto-restores on teardown). Run live: **13/14 passed, 1 FAILED**
+(`test_dryrun_fixture_only_writes_generation_30_rows`) — genuine, not a fixture/mock issue.
+Root cause: the collector used `if PROD_TABLE in sql` (raw substring), and `PROD_TABLE`
+("kala_gochara_windows") is itself a literal substring of "kala_gochara_windows_v2" — the
+correct calibration-surface DML (generation='g3_utkarsha', to `kala_gochara_windows_v2`) was
+being misdetected as a production-table statement, then flagged as a false violation for not
+carrying generation='3.0' (it correctly carries 'g3_utkarsha' — a different, non-production
+surface). Same defect class as MR-40 (table-name substring/orphaning confusion), found this
+time in test code rather than a seed script. FIXED: word-boundary regex (`\b...\b` — '_' is a
+`\w` character in Python regex, so there is no boundary between "windows" and "_v2", correctly
+excluding the calibration table) in both `test_dryrun_fixture_only_writes_generation_30_rows`
+and the same-pattern `test_dryrun_fixture_no_generation_v1_rows` (dormant there — no false
+violation yet, but same incorrect categorization, fixed for consistency). Re-run: **14/14
+passed.** PR to follow, same lane pattern.
+
+**3 sub-items remain open, correctly not forced:**
+- W1.2 (adverse-window-vs-v1 golden comparison) and W1.4 (tolerance-band ratification +
+  threshold justification) — not attempted this pass; W1.4 in particular looks like it needs
+  a native ruling (setting/justifying a threshold value), same class as MR-11(c) — not
+  self-certifiable.
+- W0.2 (honest-zero reason for the original baseline census) — the specific zero this refers
+  to was not identified with confidence in the time available; not guessed at.
+
+MR-23 register status: PARTIAL — W5.4 sub-item CLOSED with a real bug fixed as a bonus; W1.2/
+W1.4/W0.2 remain OPEN, disclosed rather than rushed.
