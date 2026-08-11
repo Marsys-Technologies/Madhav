@@ -554,10 +554,22 @@ def test_build_row_embeds_coverage_quality_in_suppression_state():
     assert parsed["coverage_quality"] == note
 
 
-def test_build_row_suppression_state_honest_empty_without_coverage_quality():
+def test_build_row_suppression_state_honest_degrade_without_coverage_quality():
     """Backward-compat / I4: omitting coverage_quality (pre-MR-16 call
-    sites, if any survive) must still produce a valid, honestly-empty
-    suppression_state — never raise, never fabricate a note."""
+    sites, if any survive) must still produce a valid suppression_state —
+    never raise, never fabricate a note.
+
+    UPDATED at rebase-merge time (PK-R-9, 2026-08-11): before MR-42 landed,
+    omitting coverage_quality produced a bare `{}`. MR-42's own GATE is
+    exactly that a computed row must NEVER carry a bare `{}` suppression_
+    state (see `_build_suppression_state`) -- so the honest-empty shape
+    this test now pins is the I4-degrade structured object (`term_breakdown`
+    is ALSO omitted in this call, so `_build_suppression_state` takes its
+    None-term_breakdown branch), not `{}`. `coverage_quality` omitted here
+    simply means the `coverage_quality` KEY is absent from that structured
+    object -- see the sibling
+    test_build_row_embeds_coverage_quality_in_suppression_state for the
+    present case."""
     from services.gochara_v3.interval_solver import IntervalBoundary
     import json as _json
 
@@ -572,7 +584,11 @@ def test_build_row_suppression_state_honest_empty_without_coverage_quality():
         "chart-x", "marriage", boundary, "g3_1984_1994",
         valence="neutral", is_adverse=False,
     )
-    assert _json.loads(row["suppression_state"]) == {}
+    parsed = _json.loads(row["suppression_state"])
+    assert parsed != {}
+    assert parsed["mechanism"] == "quality_gates"
+    assert parsed["value"] is None  # term_breakdown also omitted -> I4 degrade
+    assert "coverage_quality" not in parsed
 
 
 def test_run_substep_result_notes_carry_coverage_quality_tier(monkeypatch):
@@ -1238,3 +1254,172 @@ def test_prod_table_constant():
 def test_generation_prod_constant():
     """W5.4 repoint: production generation label is '3.0'."""
     assert GENERATION_PROD == "3.0"
+
+
+# ===========================================================================
+# MR-42 — truthful suppression_state (PK-R-5, 2026-08-11)
+# ===========================================================================
+#
+# GAP: `_build_row` used to write `"suppression_state": json.dumps({})`
+# unconditionally on every interval row -- no computation behind it, a
+# reader could not distinguish "nothing fired" from "nothing was asked",
+# even though the real v3 suppression detail (quality_gates) was already
+# computed and sitting in `boundary.term_breakdown['quality_gates']` a few
+# lines away. Fix: `_build_suppression_state` forwards that real value into
+# a structured `{"mechanism": "quality_gates", "value": ..., "note": ...}`
+# object -- GATE: post-rebuild interval rows carry a truthful, structured
+# suppression_state; a unit test asserts the writer cannot emit the bare {}
+# for a computed row.
+
+
+def test_engine_version_bumped_to_v3_1():
+    """MR-42 (Codex C2 convention): ENGINE_VERSION bumped v3.0 -> v3.1
+    because this writer's OUTPUT SHAPE changed (suppression_state is no
+    longer an unconditional {}) -- every stored fingerprint must invalidate
+    under the new engine version rather than being silently skipped as
+    'unchanged' by the fingerprint check."""
+    assert ENGINE_VERSION == "v3.1"
+
+
+def test_build_suppression_state_never_bare_empty_dict_for_a_computed_row():
+    """THE core MR-42 regression guard: for ANY term_breakdown a computed
+    row could plausibly carry (quality_gates present at any value,
+    including the 'nothing fired' 1.0 case, or even a term_breakdown that
+    is missing the quality_gates key entirely), `_build_suppression_state`
+    must never return a bare `{}` -- it always names the mechanism."""
+    from pipeline.orchestrator.writers.ka_gochara_v3_century_materialize import (
+        _build_suppression_state,
+    )
+
+    computed_term_breakdowns = [
+        {"promise": 0.8, "permission": 0.6, "activity": 0.5, "quality_gates": 1.0,
+         "lambda_v3": 0.24, "activity_terms": [], "formula": "x"},
+        {"promise": 0.8, "permission": 0.6, "activity": 0.5, "quality_gates": 0.15,
+         "lambda_v3": 0.036, "activity_terms": [{"a": 1}], "formula": "x"},
+        {"promise": 0.0, "permission": 0.0, "activity": 0.0},  # honest degrade: no quality_gates key
+        {},  # pathological empty-but-not-None term_breakdown
+    ]
+    for tb in computed_term_breakdowns:
+        state = _build_suppression_state(tb)
+        assert state != {}, f"_build_suppression_state must never return bare {{}} for a computed row, got {{}} for input {tb!r}"
+        assert state.get("mechanism") == "quality_gates"
+        assert "value" in state
+
+    # I4 honest-degrade case (peak evaluation failed, term_breakdown is None
+    # itself, not merely missing a key) -- STILL not a bare {}: the reader
+    # can tell "we tried and couldn't" (value=None + note) apart from
+    # "we checked, nothing fired" (value=1.0).
+    degraded_state = _build_suppression_state(None)
+    assert degraded_state != {}
+    assert degraded_state["mechanism"] == "quality_gates"
+    assert degraded_state["value"] is None
+    assert "note" in degraded_state and degraded_state["note"]
+
+
+def test_build_suppression_state_forwards_real_quality_gates_value():
+    """The forwarded value is the REAL quality_gates figure already computed
+    by the engine (via term_breakdown), not a re-derived or fabricated one."""
+    from pipeline.orchestrator.writers.ka_gochara_v3_century_materialize import (
+        _build_suppression_state,
+    )
+
+    tb = {"promise": 0.9, "permission": 0.7, "activity": 0.6, "quality_gates": 0.42,
+          "lambda_v3": 0.2268, "activity_terms": [], "formula": "PROMISE x PERMISSION x activity x quality_gates"}
+    state = _build_suppression_state(tb)
+    assert state["value"] == 0.42
+
+
+def test_build_row_writes_structured_suppression_state_not_bare_empty_dict():
+    """`_build_row` (the actual row-construction function every INSERT goes
+    through) must serialize a structured suppression_state, sourced from
+    `term_breakdown`, never the old bare `json.dumps({})`."""
+    import json as _json
+    from services.gochara_v3.interval_solver import IntervalBoundary
+    from pipeline.orchestrator.writers.ka_gochara_v3_century_materialize import _build_row
+
+    boundary = IntervalBoundary(
+        enter_jd=2445736.5 + 10.0,
+        exit_jd=2445736.5 + 20.0,
+        peak_jd=2445736.5 + 15.0,
+        peak_lambda=0.55,
+        era_slice_key="g3_1984_1994",
+        term_breakdown={
+            "promise": 0.8, "permission": 0.6, "activity": 0.5, "quality_gates": 0.72,
+            "lambda_v3": 0.55, "activity_terms": [], "formula": "x",
+        },
+    )
+    row = _build_row(
+        "482012f1-710e-4a25-994a-93821f5871aa", "career_advancement", boundary,
+        "g3_1984_1994", valence="gain", is_adverse=False,
+        term_breakdown=boundary.term_breakdown,
+    )
+    decoded = _json.loads(row["suppression_state"])
+    assert decoded != {}
+    assert decoded["mechanism"] == "quality_gates"
+    assert decoded["value"] == 0.72
+
+
+def test_run_substep_inserted_rows_carry_truthful_suppression_state(monkeypatch):
+    """End-to-end (writer-level) proof: a real `run_substep` call, with a
+    fake `find_threshold_crossings` returning a boundary that carries a
+    computed `term_breakdown`, must produce INSERT statements (both the
+    calibration/staging v2 row and the production row) whose
+    `suppression_state` param decodes to a structured, non-empty object --
+    never the pre-MR-42 bare `{}`."""
+    import json as _json
+    from services.gochara_v3.interval_solver import IntervalBoundary
+
+    targets = ["Venus"]
+    writer = GocharaV3CenturyMaterializeWriter()
+    conn_dummy = _FakeConn(_responder(targets=targets))
+    steps = writer.plan_substeps(_ctx(conn_dummy))
+    step = steps[0]
+    ec, era_key = step.key.split("::", 1)
+
+    fake_boundary = IntervalBoundary(
+        enter_jd=2445736.5 + 10.0,
+        exit_jd=2445736.5 + 20.0,
+        peak_jd=2445736.5 + 15.0,
+        peak_lambda=0.61,
+        era_slice_key=era_key,
+        term_breakdown={
+            "promise": 0.9, "permission": 0.5, "activity": 0.7, "quality_gates": 0.85,
+            "lambda_v3": 0.61, "activity_terms": [], "formula": "x",
+        },
+    )
+
+    conn = _FakeConn(_responder(targets=targets, stored_fp=None))
+    ctx = _ctx(conn)
+
+    monkeypatch.setattr(mod, "find_threshold_crossings", lambda *a, **k: [fake_boundary])
+    monkeypatch.setattr(
+        mod, "ClassContext",
+        type("FakeClassContext", (), {"fetch": staticmethod(lambda **k: object())}),
+        raising=False,
+    )
+    try:
+        import swisseph  # noqa: F401
+    except ImportError:
+        import types, sys
+        sys.modules["swisseph"] = types.ModuleType("swisseph")
+
+    result = writer.run_substep(ctx, step)
+    # NOTE: rows_inserted only counts the v2 (calibration/staging) insert
+    # loop's success counter (see `inserted += 1` in run_substep) -- the
+    # prod-table insert is a second, separately-tried statement that does
+    # not increment this same counter. Both INSERTs still land (asserted
+    # below via conn.statements), this assertion just pins the counter's
+    # own documented scope rather than assuming it double-counts.
+    assert result.rows_inserted == 1
+
+    inserts = [
+        params for sql, params in conn.statements
+        if sql.strip().upper().startswith("INSERT INTO")
+        and isinstance(params, dict) and "suppression_state" in params
+    ]
+    assert len(inserts) == 2, f"Expected 2 INSERTs (v2 + prod) carrying suppression_state, got {len(inserts)}"
+    for params in inserts:
+        decoded = _json.loads(params["suppression_state"])
+        assert decoded != {}, f"suppression_state must never be bare {{}} for a computed row, got {params['suppression_state']!r}"
+        assert decoded["mechanism"] == "quality_gates"
+        assert decoded["value"] == 0.85
