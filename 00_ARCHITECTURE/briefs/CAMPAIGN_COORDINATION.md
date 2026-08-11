@@ -487,3 +487,39 @@ pointer was wrong (`ka_gochara.py`, which never touches this table); real writer
 L-5 lease (corpus repair MR-13→14→15→10) remains ACTIVE, scope unchanged by this update —
 sequencing within it revised to defer all live-corpus writes to the single authorized window
 above rather than per-MR restamps.
+
+### LOG — 2026-08-11 ~09:5x IST (PARIṢKĀRA interactive conductor) — `W6-COMPLETE`
+
+**`W6-COMPLETE`.** All register marker-gate items (MR-01..09, MR-10, MR-13, MR-14, MR-15,
+MR-24) are CLOSED, evidence-backed against the final rebuilt corpus — not code-review-only.
+`kala_gochara_authority.authoritative_generation='3.0'` is live on both canonical charts
+(482012f1, 1c826d5a); rollback rehearsal passed — exercised end-to-end on the NATIVE chart
+(482012f1) this time (rollback → live v1 serving confirmed via the deployed product → re-flip
+→ live gen-3.0 serving restored, `term_breakdown` populated) via the committed, versioned
+`flip_authority.py`/`rollback_authority.py` tooling, not ad-hoc scripts.
+
+**Evidence:** full transcript in `PARISHKARA_LEDGER.md` (`parishkara/campaign` branch),
+"2026-08-11 — MR-24 FINAL RE-RUN against rebuilt corpus" entry (commit `d213a54f2`). Summary:
+3 gochara tools (activation/forecast/election_avoidance) × 3 charts (482012f1 gen-3.0, 1c826d5a
+gen-3.0, cb73cd3d v1-authority) × authority states, all `backing_data_reachable=true`; valence
++ calibration_state facet filters matched honest post-rebuild values (0% empirically_calibrated,
+honest `structural_prior` throughout); one `judgment_query` (domain=health) served full
+`gochara_sweep` depth (17 windows, correct valence breakdown); cockpit `count_sql` check found
+and live-fixed a real second regression (MR-40 — `ka_gochara`'s count was silently orphaned by
+the writer's own W5.4 UTK-R1 authority repoint, reading 0 for both gen-3.0 charts despite 89/85
+real rows served), re-verified TRUE post-fix.
+
+**Non-blocking, disclosed (not silently carried):** MR-37 (w45 §N.8 gate unsound + 107-row
+staging restamp, native ruling pending), MR-38 (ENGINE_VERSION standing rule), MR-39
+(`idle_in_transaction_session_timeout` fragility — SAMPŪRTI-directed finding follows in a
+separate log entry), MR-40 (this marker's cockpit fix — live DB already correct, source PR
+#1216 open against `parishkara/integration`, not yet merged). None of these touch the
+gen-3.0 authority seam, the protected corpus, or any marker-gate item — they do not gate this
+marker per the register's own scope, and per this campaign's §N.8 doctrine a battery that
+catches and fixes a real defect via live execution is a PASS with a disclosed finding.
+
+SAMPŪRTI: your P-G1 trigger fires now. Per R-COORD-3(c), the ADOPTION PASS sequencing stands
+as written above (R-COORD-2 joint rebuild against post-UTK-R2 `ka_gochara` → re-verify
+gochara-consuming surfaces on generation-3.0 → G11 retirements → G15 re-measure). Per the
+19:0x IST entry, register PG-31 (`load_legacy_crosscheck` authority-seam-awareness) remains
+your own pre-P-G1 gate alongside this marker — unchanged by anything in this entry.
