@@ -2938,3 +2938,35 @@ same C4 lease window (expiry 2026-08-12 06:00 IST, ample margin).
 NEXT-ACTION: on completion, re-verify Phase D1 (temporal_shape distribution both charts) against
 the corrected corpus, finalize MR-46's disposition evidence, then continue remaining Phase D
 checks (D5 reconciliation) before Phase E.
+
+## 2026-08-12 ~04:0x IST — MR-46 closed via PK-R-10; Phase E native PASS; Abhinandan Phase E + MR-47 build in flight
+
+CONDUCTOR-HEARTBEAT: 2026-08-12T04:05:00Z
+
+Post stale-class fix re-verification: zero retired-literal rows remain on either chart,
+chronic_onset/major_gain now correctly produce full hierarchies, D5 peak_basis/ontology-shape
+reconciliation clean across all 27 classes both charts. Dispatched NATIVE-PRATINIDHI for MR-46's
+architectural disposition; ruling PK-R-10 landed a genuinely sharper third option than either of
+the two I framed — independently re-verified both of its key code claims against source before
+recording as binding: `_build_row` does hardcode `temporal_shape="interval"` as a wrapper-local
+literal (line 1440, never reads the already-fetched `class_shape`), and
+`deriveResolutionDisclosure` does unconditionally return `is_timing_window=true` for any
+`temporal_shape='point'` row with zero calibration gate (register_gochara_windows.ts:408-416).
+Building genuine point rows now (option b) would have minted ~260 unearned day-precision timing
+claims. PK-R-10 corrects PK-R-7(iv)'s text to require an explicit `shape_conformance` marker
+rather than either silently-incidental gating or unearned point production. MR-46 CLOSED, MR-47
+registered as its scoped, gated follow-up (writer fix + additive migration + serving branch + 2
+required detectors, no corpus rebuild needed) — dispatched to a BUILDER agent, running in
+background.
+
+**Phase E (MR-38 delta-rerun live gate) — native chart: PASS.** Full 270/270 substep re-dispatch,
+zero resume-check shortcuts used (relied entirely on the writer's own internal fingerprint
+delta-skip), 270/270 skipped, 0 rows changed. Independently re-verified via exact pre/post
+row-count + id-set MD5 checksum match on both kala_gochara_windows_v2 and kala_gochara_windows
+(native: v2 914 rows/67f4a288..., prod 943 rows/fd858f52..., byte-identical before and after).
+Abhinandan's Phase E run launched, in flight.
+
+NEXT-ACTION: on Abhinandan Phase E completion, confirm the same PASS pattern (checksum match).
+On MR-47 builder completion, review its branch, merge if the TDD+detector evidence is real and
+verified. Then proceed to Phase F (W4.4 refit + w45 post-fit, MR-32 Stage C) → Phase G (IR-9 λ
+evidence) → R3 (master-brief conformance battery) → R4 (final close-out + MR-29 re-close seal).
