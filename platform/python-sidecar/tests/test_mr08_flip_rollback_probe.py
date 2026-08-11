@@ -133,15 +133,38 @@ def test_rollback_authority_is_chart_agnostic():
 
     # Verify the WHERE clause uses a parameter placeholder (%s), not a
     # literal UUID.  We look for the DELETE ... WHERE pattern.
+    #
+    # PARIṢKĀRA MR-08 regex-residual fix (2026-08-11): the original pattern
+    # used a lazy-DOTALL `.*?` between "kala_gochara_authority" and "WHERE
+    # chart_id = %s". With DOTALL, `.` matches newlines too, so the lazy
+    # wildcard was free to cross straight through the end of the DELETE's
+    # own SQL string, past the closing `cur.execute(...)` call, and pick up
+    # an unrelated "WHERE chart_id = %s" belonging to a DIFFERENT statement
+    # later in the file (e.g. the verify-deletion SELECT) — the match was
+    # never actually anchored to the DELETE statement it claims to test.
+    # Mutation-verified: stripping the WHERE clause from the DELETE itself
+    # (an unscoped delete-all) still let the old pattern find a later,
+    # unrelated "WHERE chart_id = %s" and wrongly PASS.
+    #
+    # Fix: drop DOTALL and restrict the gap to characters that cannot leave
+    # the enclosing Python string literal (exclude `"` / `'`). This forces
+    # the WHERE clause to be found within the SAME quoted SQL string as the
+    # DELETE, not merely somewhere later in the file. (Same "\b / \w-aware
+    # anchoring, not raw substring/wildcard" discipline as the precedent
+    # word-boundary fix in test_ka_gochara_v3_mutation_guard.py — here the
+    # anchor is the string-literal boundary rather than \b, since the defect
+    # is statement-crossing, not token-substring collision.)
     delete_block_match = re.search(
-        r"DELETE\s+FROM\s+kala_gochara_authority\b.*?WHERE\s+chart_id\s*=\s*%s",
+        r"DELETE\s+FROM\s+kala_gochara_authority\b[^\"']*?WHERE\s+chart_id\s*=\s*%s",
         source,
-        re.IGNORECASE | re.DOTALL,
+        re.IGNORECASE,
     )
     assert delete_block_match is not None, (
         "rollback_authority.py must DELETE FROM kala_gochara_authority "
-        "WHERE chart_id = %s (parameterized, not hardcoded). "
-        "Pattern 'DELETE FROM kala_gochara_authority ... WHERE chart_id = %s' not found."
+        "WHERE chart_id = %s (parameterized, not hardcoded), with the WHERE "
+        "clause inside the SAME SQL string as the DELETE. "
+        "Pattern 'DELETE FROM kala_gochara_authority ... WHERE chart_id = %s' "
+        "not found within a single statement."
     )
 
 
