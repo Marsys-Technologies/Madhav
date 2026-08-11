@@ -56,6 +56,36 @@ marker_duty: post W6-COMPLETE to campaign-coordination §6 after MR-01..08,10,13
 PARKED-FOR-NATIVE list maintained here — never decided by agents:
 scope reduction below 27 classes · retiring any serving surface · LEL content.)
 
+**PK-R-1 (native, 2026-08-11):** MR-11(c) serving-resolution bar — recorded in register MR-11 entry.
+**PK-R-2 (native, 2026-08-11):** MR-16 scope — 27 classes, NO reduction — recorded in register MR-16 entry.
+**PK-R-3 (native, 2026-08-11):** W1.4 thresholds RULED-INERT-WITH-TRIGGER — recorded in register MR-23 entry.
+
+**PK-R-4 (NATIVE-PRATINIDHI, 2026-08-11 ~17:5x IST) — R-COORD-4: RETAIN.** The three gochara_*
+MCP serving tools (gochara_forecast_get / gochara_activation_get / gochara_election_avoidance_get)
+are standing serving surfaces over the elevated gen-3.0 corpus — removed from SAMPŪRTI's L2a
+staged-retirement list as default trajectory, not merely deferred; retirement remains reversible
+only by an explicit future native ruling under joint PA-7. Rationale (delegate's own, evidence-
+verified): (1) G11's "one authority" is a claim-arbitration doctrine, not a tool-count doctrine —
+all three tools already structurally cede temporal authority via the S4-05 not_covered refusal
+(naming kala_windows_get) and the authority-aware MR-02 coverage seam; a surface that cedes
+authority is not a second authority, it is a distinct input modality (R-COORD-4(a)'s own frame).
+(2) PA-7 could not be satisfied today: nothing in the FIELD chain demonstrates mitigation-paired,
+falsifier-bearing avoidance election (dr16_properties) or the not_covered cross-pointer contract —
+a parity audit would honestly FAIL, so retirement is unavailable on the merits regardless of
+preference. (3) The corpus is EXPANDING beneath these surfaces (PK-R-2 27 classes, MR-11
+hierarchy, MR-12 chains, MR-10 points) — retiring the reader tools now would strand the
+campaign's own deliverable; RETAIN costs nothing if wrong, RETIRE is irreversible. Conditions:
+C10 respected (nothing retired by this ruling); reversible under joint PA-7 with both delegates
+signing; gochara_* comes OFF the L2a list (not "deferred indefinitely"); MR-35 smoke probe stays
+standing permanently (the §N.8 detector behind RETAIN — if ever retired, probe retires in the
+same PR as the tombstone, never before); MR-24's battery remains the parity instrument; authority
+precedence unchanged (FIELD authoritative where both bear on one claim; any gochara answer
+bypassing the kala_gochara_authority seam is a G11 violation, not licensed here). Full delegate
+text preserved in this session's transcript; operative terms recorded here in full.
+
+**PK-R-5:** (reserved — MR-22 suppression plausibility disposition, in flight)
+**PK-R-6:** (reserved — TAP-6 restructure shape approval, in flight)
+
 ## LOG
 - 2026-08-10 ~19:5x IST (native's desk): campaign home created — register
   v2.1 as plan of record, prompt + supervisor authored, branch
