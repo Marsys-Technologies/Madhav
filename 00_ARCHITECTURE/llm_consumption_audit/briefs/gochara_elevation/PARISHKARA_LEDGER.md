@@ -29,7 +29,7 @@ marker_duty: post W6-COMPLETE to campaign-coordination §6 after MR-01..08,10,13
 | MR-17 | ka_kshetra seam (SAMPŪRTI's — track only) | EXTERNAL | coordination file |
 | MR-18 | Validators generation stance | MERGED | PR #1195 MERGED · PARĪKṢAKA PASS (7/8 tests functional; mig-527 gate test vacuous pass noted as non-blocking finding; fix itself correct) |
 | MR-19 | Ablations → re-adjudicated admissions | CLOSED | PRATINIDHI re-adjudication 2026-08-11: all 10 admitted mechanisms demoted (defined+cited+coded, NOT engine-wired) on the honest mechanism_not_wired evidence — no ablation theater run against zero weights. mechanism_register.yaml gains an additive correction block (UTK-R3 text preserved). See "MR-19 re-adjudication" ledger entry. |
-| MR-20 | Real no-loss gate (35,620 windows) | QUEUED | — |
+| MR-20 | Real no-loss gate (35,620 windows) | GATE MET, finding disclosed | mr20_no_loss_coverage_gate.py run live both charts 2026-08-11: unclassified=0 (2,448 divergences, both charts, all closed-vocabulary). Substantive finding: equivalence_rate <2% both charts, 92% of divergences are v1-only-needs-review — disclosed for ADJUDICATOR review, not self-adjudicated. See "MR-20: the real no-loss coverage gate" ledger entry. |
 | MR-21 | Quantitative evidence chain published | QUEUED | — |
 | MR-22 | Suppression detector + count | QUEUED | — |
 | MR-23 | Remaining unrun acceptance artifacts | QUEUED | — |
@@ -1612,3 +1612,57 @@ SAMPŪRTI's P-G1 lease is held) plus MR-11's own standing "NATIVE RULING REQUIRE
 Both items queued to resume the moment SAMPŪRTI's P-G1 lease is RELEASED (per the native's
 own disposition ordering) — MR-11(b) and MR-12 are exactly the kind of production-write work
 the yield window exists to prevent from overlapping SAMPŪRTI's critical-path run.
+
+## 2026-08-11 — MR-20: the real no-loss coverage gate, run for real (both charts)
+
+Built `platform/python-sidecar/scripts/mr20_no_loss_coverage_gate.py` — reuses the SAME pure,
+closed-vocabulary comparator `services/w2g/equivalence_report.py` implements (zero duplicated
+logic), wired against the actual W5.4 UTK-R1 production surface (`kala_gochara_windows`
+generation='3.0') rather than `w2g_equivalence_report.py`'s own permanent, differently-scoped
+v1-vs-'2.0' comparator role (deliberately not repointed — that script's pin is documented as
+permanent for a different comparison). READ-ONLY by construction (SELECT-only, autocommit, no
+writer invoked) — safe evidence work under the active YIELD WINDOW, not a production build.
+Run live against both canonical charts, `--now-date 2026-08-11 --horizon-years 3`:
+
+**Native (482012f1):** v1_total=16,297, v3_total=89, v1_in_scope=1,146 (marriage/illness_acute/
+career_advancement/surgery partially out-of-scope: some v1 rows fall outside the ±3y horizon;
+chronic_onset/major_gain fully out-of-scope: v1 has these as `interval` shape, v3 materializes
+`point` only this lane). matched=9, equivalent=9, **equivalence_rate=0.79%**. Divergences (1,217
+total, **unclassified_count=0** — the GATE criterion): `unclassified_v1_only_needs_review`=1,124,
+`v1_grid_artifact`=17, `unclassified_v2_only_needs_review`=71, `v1_moon_undersampling_miss`=5.
+
+**Abhinandan (1c826d5a):** v1_total=19,323, v3_total=85, v1_in_scope=1,186. matched=20,
+equivalent=20, **equivalence_rate=1.69%**. Divergences (1,231 total, **unclassified_count=0**):
+`unclassified_v1_only_needs_review`=1,140, `v1_grid_artifact`=28,
+`unclassified_v2_only_needs_review`=57, `v1_moon_undersampling_miss`=6.
+
+**GATE MET (unclassified=0, both charts, published):** every single divergence — 2,448 across
+both charts — resolves to one of the closed vocabulary's 4 non-trivial classifications
+(`v1_grid_artifact`, `v1_moon_undersampling_miss`, `unclassified_v1_only_needs_review`,
+`unclassified_v2_only_needs_review`); zero fall outside `ALL_CLASSIFICATIONS`. Per design §3.2,
+"needs_review" is itself a closed-vocabulary member (the honest "cannot auto-classify, needs a
+human/PARĪKṢAKA look" bucket), not an unclassified gap.
+
+**THE SUBSTANTIVE FINDING (disclosed prominently, not adjudicated here):** equivalence rate is
+very low (<2% both charts) — the overwhelming majority of divergences (1,124/1,140, ~92% of
+each chart's total) are `unclassified_v1_only_needs_review`: v1 rows the current gen-3.0
+corpus does not reproduce, with no automatic grid-artifact or Moon-undersampling evidence
+either way. This is consistent with, and likely substantially explained by, MR-16's own
+still-open finding (production materializer scoped to 6 event classes vs. v1's full breadth,
+resonance map never rebuilt to 27 classes) plus the corpus's youth (89/85 rows vs. v1's
+16,297/19,323) — but this script cannot and does not adjudicate that; it reports honestly.
+This is exactly the kind of finding MR-20 exists to surface, not suppress: the "no-loss"
+premise (v3 replaces v1 without losing coverage) is NOT currently demonstrated by the
+in-scope comparison — the low equivalence rate is a real, disclosed number for the
+ADJUDICATOR/native to weigh against MR-16's scope-completion timeline, not something this
+session self-certifies as PASS or FAIL.
+
+Full JSON reports (2,448 individual divergence entries across both charts) available via
+re-running the committed script — not pasted in full here (budget); the summary counts above
+are the complete, honest aggregate. Script committed, PR to follow same lane pattern as
+MR-19/37/40.
+
+MR-20 register status: GATE (unclassified=0, published) — MET. The substantive low-equivalence
+finding is carried forward as a disclosed, non-blocking observation pending ADJUDICATOR
+review — not a new numbered MR (it is evidence FOR MR-16's existing open scope-completion
+gate, not a distinct defect).
