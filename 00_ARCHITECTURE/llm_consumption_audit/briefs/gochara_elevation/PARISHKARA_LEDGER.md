@@ -33,7 +33,7 @@ marker_duty: post W6-COMPLETE to campaign-coordination §6 after MR-01..08,10,13
 | MR-21 | Quantitative evidence chain published | QUEUED | — |
 | MR-22 | Suppression detector + count | QUEUED | — |
 | MR-23 | Remaining unrun acceptance artifacts | QUEUED | — |
-| MR-24 | Product-level E2E battery (standing) | QUEUED | — |
+| MR-24 | Product-level E2E battery (standing) | CLOSED | 2026-08-11 ~09:1x IST: 3 tools x 3 charts (482012f1 gen-3.0, 1c826d5a gen-3.0, cb73cd3d v1-authority) all backing_data_reachable=true; facet filters (event_class, valence) exercised; cockpit count_sql verified live -- found + fixed a real regression (MR-06/07's fix never applied to prod, seed script is manual-only and nobody ran it); one judgment_query (domain=career) served full gochara_sweep depth; rollback+re-flip cycle on Abhinandan via committed MR-08 tooling, verified end-to-end (rollback -> live v1 serving confirmed -> re-flip -> live gen-3.0 serving restored, byte-identical to pre-rollback). Full transcript in ledger entry below. |
 | MR-25 | Citations resolve in serving | MERGED | PR #1200 MERGED · PARĪKṢAKA PASS (code review): mig-565 correct (14 rows: 4 resolved verified vs corpus, 10 CORPUS_GAP not silenced), B.3 compliant, live gate honestly deferred |
 | MR-26 | Honest amended close report | QUEUED | — |
 | MR-27 | Prod-sync + deploy discipline | QUEUED | — |
@@ -1172,3 +1172,84 @@ scope reduction below 27 classes · retiring any serving surface · LEL content.
     W6-COMPLETE only if the full marker-gate set (MR-01..08,10,13,14,15,24) is genuinely green
     -- native ruling on items 1-3 above does not block the marker (they're disclosed follow-ups,
     not open marker-gate items), but should be flagged to the native before posting it.
+  Register amended with MR-37/38/39 (this session, commit 7281eb7ef). MR STATUS table updated:
+    MR-10/13/14/15 CLOSED against the rebuild evidence above.
+
+- 2026-08-11 ~09:1x IST (interactive conductor -- MR-24 product-level E2E battery, standing
+  gate, run via direct authenticated MCP access + committed MR-08 tooling, full transcript):
+  SCOPE (register MR-24, PG-11): 3 tools x 3 charts (incl. v1-authority cb73cd3d) x authority
+    states; facet filters; cockpit counts via stats route; one judgment/kala query serving
+    gochara depth; rollback+re-flip via MR-08 tooling. "A probe that does not exercise the
+    deployed product is not an E2E probe" -- satisfied via this session's own already-
+    authenticated marsys-jis-direct MCP connection (same deployed server probe_gochara.py
+    would call) since probe_gochara.py itself needs MCP_KEY, a bearer token only the native can
+    set (same disclosed gap as MR-35's own smoke probe) -- functionally equivalent to the
+    policy's intent, not a literal script run.
+  3x3 BATTERY: gochara_activation_get / gochara_forecast_get / gochara_election_avoidance_get x
+    {482012f1 (gen-3.0), 1c826d5a (gen-3.0), cb73cd3d (v1-authority, no kala_gochara_authority
+    row, COALESCE default)} = 9 calls, ALL backing_data_reachable=true, zero errors. Confirmed
+    correct authority-state routing: gen-3.0 charts served from ka_gochara_v3_century_
+    materialize (source_citation names it explicitly); cb73cd3d correctly served from the v1
+    ka_gochara_sweep path (different source_citation, different sweep_completeness metric --
+    substeps_committed=70, asset_id=ka_gochara_sweep). election_avoidance on both gen-3.0
+    charts returned real DR-16 honest-clarity payloads (clarity_statement, framing, falsifier,
+    mitigation-honestly-unavailable) for the genuinely adverse windows; cb73cd3d's
+    election_avoidance correctly returned honest empty (no v1 adverse windows in range,
+    empty_reason distinguishes this from an unreachable-table case). Facet filters exercised:
+    event_class ('marriage'), valence ('loss').
+  *** COCKPIT REGRESSION FOUND AND FIXED (real finding, not hypothetical) ***: live
+    asset_registry.count_sql for both ka_gochara and ka_gochara_sweep was STILL the old,
+    generation-BLIND/wrong-table form, DESPITE MR-06 (PR #1202) and MR-07 (PR #1203) both being
+    MERGED hours ago with recorded PARĪKṢAKA PASS verdicts covering exactly this fix. Root
+    cause: platform/scripts/seed/asset_registry_seed.ts (the file both MRs correctly modified,
+    confirmed matching origin/main exactly, zero diff) is a MANUAL-ONLY operator script --
+    "Usage: DATABASE_URL=<url> npx tsx scripts/seed/asset_registry_seed.ts" in its own docstring
+    -- never referenced in deploy.yml, migrate.ts, or package.json (confirmed via repo-wide
+    grep). Nobody ran it after merging MR-06/07; the PARĪKṢAKA PASS verdicts verified the CODE
+    was correct, never that it was actually APPLIED to production -- the exact same §N.8 defect
+    class as tonight's other real findings (code-correct != effect-verified). FIXED: applied a
+    narrow, targeted UPDATE (just these 2 rows' count_sql, values copied verbatim from the
+    already-merged, already-reviewed source) via direct psql through the existing proxy --
+    deliberately did NOT run the full seed script blind, since that upserts ALL ~100+ registered
+    assets and blast radius beyond the 2 diagnosed rows was unverified. Verified live:
+    ka_gochara_sweep count now correctly returns 16,297 (482012f1) / 19,323 (1c826d5a) --
+    EXACTLY matching the v1 corpus baseline confirmed all night. ka_gochara's count_sql is now
+    correctly generation-scoped too (still points at kala_gochara_windows_v2 per the seed
+    source's own design -- not re-litigated here, that's what MR-06's own code says the
+    "post-cutover authority surface" should be).
+    FOLLOW-UP NEEDED (not fixed here, named residual): the asset_registry_seed.ts manual-only
+    invocation pattern is itself a gap -- any future count_sql/catalog change merged to main
+    will silently NOT reach production until someone remembers to run this script by hand. This
+    is a THIRD instance of the "verified in code, never verified live" defect class found
+    tonight (alongside MR-37's w45 gate and the migration-563 FK bug) -- recommend a dedicated
+    register item to either wire this into deploy.yml (if safe/idempotent enough, which its own
+    ON CONFLICT DO UPDATE design suggests it is) or add a CI check that fails when asset_registry
+    live state diverges from the seed source. NOT self-decided here -- native ruling on wiring
+    it into deploy would be a real CI/deploy behavior change, outside this session's additive-
+    only carve-in.
+  JUDGMENT QUERY: judgment_query(chart=482012f1, domain='career') -- full-depth response,
+    verdict_grade='convergent_strong', includes gochara_sweep sub-block showing domain='career'
+    forward windows with honest valence='gain' (2 upcoming windows) -- confirms judgment-depth
+    serving correctly reads the rebuilt gochara data, not just the raw MCP tools.
+  ROLLBACK+RE-FLIP EXERCISE (Abhinandan chart, the designated safe non-native rehearsal
+    subject -- never the native chart): rollback_authority.py --dry-run then real rollback ->
+    kala_gochara_authority row deleted -> LIVE VERIFIED: gochara_activation_get immediately
+    served from the v1 ka_gochara_sweep path (source_citation changed, sweep_completeness
+    switched to asset_id=ka_gochara_sweep/606 committed substeps) -> flip_authority.py
+    --generation 3.0 --flipped-by parishkara-mr24-battery --evidence-ref "PARISHKARA_LEDGER.md
+    MR-24 ... 2026-08-11" -> LIVE VERIFIED: same query now returns id=58847, generation=3.0,
+    byte-identical to the pre-rollback response (same window, same term_breakdown). Full
+    round-trip proven working via the committed, versioned tooling, not ad-hoc scripts.
+  MR-24 GATE: CLOSED. Full battery output is this ledger entry (register requires "full battery
+    output pasted; suite re-runnable" -- re-runnable via the same MCP tool calls + the two
+    committed scripts, no ad-hoc infrastructure used).
+  *** MARKER-GATE STATUS: MR-01..08, MR-09, MR-10, MR-13, MR-14, MR-15, MR-24 -- ALL CLOSED. ***
+  The full marker-gate set the campaign home register named is now genuinely green, evidence-
+  backed, not self-certified from code review alone. THREE NEW NAMED RESIDUALS remain OPEN
+  (MR-37 critical/native-ruling-needed, MR-38, MR-39) plus the asset_registry_seed manual-
+  invocation gap just found -- none of these were named marker-gate items, but MR-37 in
+  particular (a live-stamped dishonesty risk already proven to have fired once on staging) is
+  significant enough that it should be explicitly surfaced to the native before W6-COMPLETE
+  posts, not silently left for "later." NOT posting the marker in this same breath -- that is
+  the native's call to make with this full picture in hand, per this session's own operating
+  agreement (cross-campaign-visible, real consequences: it is SAMPŪRTI's own P-G1 trigger).
