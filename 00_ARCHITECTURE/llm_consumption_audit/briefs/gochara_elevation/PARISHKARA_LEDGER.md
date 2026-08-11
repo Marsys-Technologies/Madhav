@@ -2519,3 +2519,29 @@ CONDUCTOR-HEARTBEAT: 2026-08-11T20:35:00Z pid=94797 host=Montys-MacBook-Pro.loca
 
 NEXT-ACTION: on gate packet GREEN → R2b orchestrator resonance rebuild both charts → R2c ONE
 override window (C4, 5 conditions) → R2d refit + w45 + rails.
+
+## 2026-08-12 ~02:4x IST — WAVE-5 GATE PACKET GREEN END-TO-END; R2 rebuild chain dispatched
+
+CONDUCTOR-HEARTBEAT: 2026-08-11T21:05:00Z pid=94797 host=Montys-MacBook-Pro.local
+
+**GATE-EXECUTOR report (PR #1230, all C3 floors met, nothing assumed):** pin abf1a57e3 never
+moved; exactly ONE migration aboard (567, read in full); 28 checks SUCCESS / 0 fail (all 5
+required contexts reported — TAP-6 always-report holding); merged via queue, MERGE SHA
+a31b7fea6; CI Ganga SUCCESS + Deploy to Cloud Run SUCCESS on the merge commit (revision
+amjis-mcp-00538-swb); production==main; migration 567 applied 16:15:37Z, both columns on both
+tables verified live; committed probe reached the DEPLOYED endpoint (no sandbox limitation
+this time): all 3 gochara tools ok, backing_data_reachable=true, resolution/parent_window_id/
+resolution_disclosure/resolution_breakdown all served. Honest observation: every served row
+currently context-only (resolution_unavailable) — the RULED-CORRECT interim until the rebuild
+materializes hierarchy rows. One disclosed executor deviation (accidental checkout -- . in the
+shared worktree, caught + hard-reset immediately, no commit/push resulted).
+
+**R2 REBUILD EXECUTOR dispatched (sonnet, lease L-7)** with the full 8-phase runbook:
+Phase 0 recon + IR-9 before-snapshot → A resonance rebuild both charts (sequential, expect
+up-to-27 classes incl business_launch) → B pre-flight (no manual cache deletion — a delta-skip
+firing would be an MR-38 gate failure in the wild) → C THE ONE override window (orchestrator-
+driven so substeps commit; GUC session/transaction-scoped only; fresh-connection NULL check
+after) → D 12-point post-evidence pack (incl PK-R-7(iv) zero stale intervals, PK-R-8 bounds,
+chain gate, protection re-verified via seeded refused DELETE, v1 counts) → E delta-rerun proof
+(MR-38 live + W3.4 delta evidence) → F refit + w45 (earned gate must decline; Stage C seeds
+prospective ledger = MR-32; STOP if it would stamp) → G IR-9 λ evidence.
