@@ -934,3 +934,40 @@ scope reduction below 27 classes · retiring any serving surface · LEL content.
     per the mandatory conditions; verify MR-10/13/14/15 gates against the rebuilt corpus; then
     MR-24 battery; then W6-COMPLETE only if the full marker-gate set (MR-01..08,10,13,14,15,24)
     is genuinely green.
+
+- 2026-08-11 ~08:5x IST (interactive conductor -- rebuild agent hit a mid-execution API
+  connection failure; diagnosed read-only before resuming, one orphaned connection cleaned up):
+  INCIDENT: the rebuild agent's own API connection dropped mid-run ("the stall has recurred
+    (Abhinandan substep 32)" -- its last words before the harness reported "Connection closed
+    mid-response"). This is a session/API-layer failure, not a code defect in the rebuild logic
+    itself.
+  READ-ONLY DIAGNOSIS PERFORMED BEFORE TOUCHING ANYTHING (native chart, Abhinandan chart, v1
+    corpus, pg_stat_activity, pg_locks -- all read-only queries):
+    482012f1 (native): FULLY rebuilt, clean. 60/60 rows: calibration_state=structural_prior,
+      term_breakdown populated, valence split exactly 20 gain / 20 loss / 20 neutral -- the
+      honest per-class distribution MR-13's fix was supposed to produce, now live.
+    1c826d5a (Abhinandan): PARTIAL. First read: 31/60 honest, 29/60 still old
+      (favourable/empirically_calibrated, term_breakdown NULL). Second read ~2 min later: 36/60
+      honest -- some substep work was still landing independently after the agent process died,
+      confirming the writer's per-substep commit design is working (each substep is its own
+      delete-then-insert transaction, not one giant one).
+    v1 corpus: UNCHANGED both reads -- 482012f1=16,297, 1c826d5a=19,323, cb73cd3d=2,667. Protected
+      rollback baseline safe throughout the incident.
+    ORPHANED CONNECTION (pid 1652007): left "idle in transaction" on a SAVEPOINT
+      (safe_v3_resonance_targets_...) from the dead process. pg_locks showed ONLY AccessShareLocks
+      on read tables (brahma_event_ontology, gochara_resonance_map, chart_facts, bg_transit_av_
+      gates, etc.) plus RowExclusiveLock on kala_gochara_v2_build_state (a tracking table) --
+      CRITICALLY, ZERO locks on kala_gochara_windows itself, meaning it died while preparing a
+      substep's read-side inputs, before ever reaching that table's write for that substep. Cross-
+      checked pg_locks for blocking chains: none -- this connection was not blocking anything.
+      Terminated via pg_terminate_backend(1652007) so Postgres could roll back its uncommitted
+      work cleanly (correct: nothing committed = nothing lost, transactional safety held).
+      Re-verified after termination: zero active/orphaned connections remain, state stable.
+  RESUMED the same rebuild agent (full context preserved) with an explicit status brief: native
+    complete/don't redo, Abhinandan at 36/60/continue via the same idempotent writer path, orphan
+    connection already cleaned up, note (don't fight) any recurrence of the connection-stall
+    environment issue MR-14/MR-15's builders also independently hit this session. Same
+    stop-and-report-if-uncertain instruction as the original brief.
+  NEXT-ACTION: await the resumed agent's completion; expect it to finish Abhinandan's remaining
+    24 rows, then proceed through point-row promotion, refit, stamping, and full Step 3 evidence
+    exactly as originally briefed.
