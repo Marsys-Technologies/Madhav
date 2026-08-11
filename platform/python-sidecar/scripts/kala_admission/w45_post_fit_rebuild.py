@@ -103,10 +103,30 @@ GENERATION_V3 = "g3_utkarsha"
 TABLE_WINDOWS = "kala_gochara_windows_v2"
 TABLE_CALIBRATION = "gochara_v3_calibration"
 TABLE_LEDGER = "brahma_prospective_ledger"
+TABLE_EVENT_ONTOLOGY = "brahma_event_ontology"
 
 # Calibration state values (bridged from lel_calibration.py vocabulary)
 STATE_STRUCTURAL_PRIOR = "structural_prior"
 STATE_EMPIRICALLY_CALIBRATED = "empirically_calibrated"
+
+# ── claim_shape vocabulary (named constants, never a bare literal) ───────────
+# PARIṢKĀRA MR-48 fix: Stage C previously hardcoded the bare literal
+# "interval" as claim_shape for EVERY brahma_prospective_ledger row it
+# seeded, regardless of the source row's actual event_class -- the identical
+# §N.7 item 3 defect ("no wrapper-local constant may shadow an L1-computed
+# value") MR-47/PK-R-10 fixed in ka_gochara_v3_century_materialize.py,
+# independently present in this separate script. claim_shape must be
+# honestly derived, per row, from a LIVE brahma_event_ontology lookup --
+# never a hand-typed class list (PK-R-7(iv); same discipline as MR-47).
+# These three values are exactly the set the brahma_prospective_ledger table
+# CHECK constraint and the brahma_prospective_ledger_enforce_shape() trigger
+# (migration 458, DR-13/DIS.026 event-shape symmetry) already enforce.
+CLAIM_SHAPE_POINT = "point"
+CLAIM_SHAPE_INTERVAL = "interval"
+CLAIM_SHAPE_CHAIN = "chain"
+ALL_CLAIM_SHAPES: frozenset[str] = frozenset(
+    {CLAIM_SHAPE_POINT, CLAIM_SHAPE_INTERVAL, CLAIM_SHAPE_CHAIN}
+)
 
 # Prospective ledger seeding: top N forward windows per chart.
 PROSPECTIVE_TOP_N = 20
@@ -327,6 +347,163 @@ def _build_falsifier(event_class: str) -> str:
     )
 
 
+def _fetch_event_class_claim_shape(conn: Any, event_class: str) -> Optional[str]:
+    """Live lookup of brahma_event_ontology.temporal_shape for event_class.
+
+    PARIṢKĀRA MR-48 fix (item 1): this is the honest replacement for Stage
+    C's previous hardcoded `claim_shape="interval"` literal. The value
+    returned here ('point'/'interval'/'chain') is exactly what the
+    brahma_prospective_ledger_enforce_shape() trigger (migration 458,
+    DR-13/DIS.026) independently re-derives and checks at INSERT time --
+    deriving it the same way here means the trigger should never have
+    anything to reject for a row this function successfully classified.
+
+    Never a hand-typed class list (PK-R-7(iv); MR-47/PK-R-10 precedent):
+    this is a live, per-event_class DB read against the ontology authority
+    table, run fresh for every distinct event_class Stage C encounters.
+
+    Returns None (an honest degrade, I4 -- never fabricate a shape) if:
+      - the query itself raises (DB error), or
+      - no brahma_event_ontology row exists for event_class, or
+      - the stored temporal_shape is not one of the three known values.
+    Callers MUST skip the row rather than guess when this returns None.
+    """
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                f"SELECT temporal_shape FROM {TABLE_EVENT_ONTOLOGY} "
+                f"WHERE event_class_id = %s",
+                (event_class,),
+            )
+            row = cur.fetchone()
+    except Exception as exc:
+        logger.warning(
+            "[w45] Stage C: could not query %s for event_class=%s: %s — "
+            "honest skip, no fabricated claim_shape (I4)",
+            TABLE_EVENT_ONTOLOGY, event_class, exc,
+        )
+        return None
+
+    if row is None:
+        logger.warning(
+            "[w45] Stage C: no %s row for event_class=%s — honest skip, "
+            "no fabricated claim_shape (I4)",
+            TABLE_EVENT_ONTOLOGY, event_class,
+        )
+        return None
+
+    if isinstance(row, dict):
+        shape = row.get("temporal_shape")
+    else:
+        shape = row[0]
+
+    if shape not in ALL_CLAIM_SHAPES:
+        logger.warning(
+            "[w45] Stage C: event_class=%s has unrecognized temporal_shape=%r "
+            "(expected one of %s) — honest skip, no fabricated claim_shape (I4)",
+            event_class, shape, sorted(ALL_CLAIM_SHAPES),
+        )
+        return None
+
+    return str(shape)
+
+
+_STAGE_C_SAVEPOINT = "w45_stage_c_row_sp"
+
+
+def _insert_ledger_row_with_savepoint(
+    conn: Any,
+    *,
+    chart_id: str,
+    claim: str,
+    event_class: str,
+    claim_shape: str,
+    window_start: date,
+    window_end: date,
+    confidence: float,
+    falsifier: str,
+) -> None:
+    """INSERT one brahma_prospective_ledger row inside its own SAVEPOINT.
+
+    PARIṢKĀRA MR-48 fix (item 2): Stage C previously issued every row's
+    INSERT on the SAME shared cursor/transaction with no per-row isolation.
+    A single legitimate rejection (e.g. the shape-enforcement trigger, or
+    any other constraint) aborted the WHOLE Postgres transaction, cascading
+    into "current transaction is aborted" failures for every subsequent,
+    otherwise-VALID row in the same chart's batch -- confirmed live
+    2026-08-12: one education_milestone shape-mismatch rejection collateral-
+    damaged 8 genuinely-valid psychological_arc inserts, all logged
+    identically as generic "INSERT failed" warnings, indistinguishable from
+    the real defect.
+
+    Wrapping each row's INSERT in its own SAVEPOINT / RELEASE SAVEPOINT (with
+    ROLLBACK TO SAVEPOINT on failure) isolates one row's rejection from every
+    other row in the same run -- the same pattern
+    ka_gochara_v3_century_materialize.py's run_substep already uses per
+    sub-step, for the identical reason. The caller's connection is never
+    committed or rolled back here (§N.2) -- only the savepoint is managed.
+
+    Raises whatever exception the INSERT raised (after issuing ROLLBACK TO
+    SAVEPOINT so the connection remains usable for the next row) -- the
+    caller is responsible for catching it and logging/counting the failure.
+    """
+    with conn.cursor() as cur:
+        cur.execute(f"SAVEPOINT {_STAGE_C_SAVEPOINT}")
+
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                f"""
+                INSERT INTO {TABLE_LEDGER} (
+                    chart_id,
+                    claim,
+                    event_class,
+                    claim_shape,
+                    observation_window,
+                    model,
+                    formula_version,
+                    confidence,
+                    falsifier,
+                    as_of,
+                    generator_class,
+                    filed_by,
+                    filing_method,
+                    source_citation
+                ) VALUES (
+                    %s, %s, %s, %s,
+                    daterange(%s, %s),
+                    %s, %s, %s, %s,
+                    NOW(),
+                    'engine',
+                    %s,
+                    'explicit_filing_tool',
+                    %s
+                )
+                """,
+                (
+                    chart_id,
+                    claim,
+                    event_class,
+                    claim_shape,
+                    window_start,
+                    window_end,
+                    MODEL_TAG,
+                    FORMULA_VERSION,
+                    confidence,
+                    falsifier,
+                    FILED_BY,
+                    SOURCE_CITATION,
+                ),
+            )
+    except Exception:
+        with conn.cursor() as cur:
+            cur.execute(f"ROLLBACK TO SAVEPOINT {_STAGE_C_SAVEPOINT}")
+        raise
+
+    with conn.cursor() as cur:
+        cur.execute(f"RELEASE SAVEPOINT {_STAGE_C_SAVEPOINT}")
+
+
 def _window_already_filed(conn: Any, chart_id: str, event_class: str, window_start: date, window_end: date) -> bool:
     """Check whether a brahma_prospective_ledger row already exists for this window."""
     try:
@@ -363,6 +540,14 @@ def seed_prospective_ledger(conn: Any, today: Optional[date] = None) -> int:
         today = date.today()
 
     total_seeded = 0
+
+    # PARIṢKĀRA MR-48: claim_shape is derived live from brahma_event_ontology
+    # per event_class (never hardcoded). Cached across rows/charts within
+    # this single call — the same event_class recurs across the top-N
+    # windows for both charts, and its ontology-declared shape cannot change
+    # mid-run, so re-querying it per row would be pure waste, not a
+    # correctness concern either way.
+    claim_shape_cache: dict[str, Optional[str]] = {}
 
     for chart_id in CHART_IDS:
         # Fetch top PROSPECTIVE_TOP_N forward g3 windows by signed_intensity DESC.
@@ -418,64 +603,55 @@ def seed_prospective_ledger(conn: Any, today: Optional[date] = None) -> int:
                 )
                 continue
 
+            # PARIṢKĀRA MR-48 fix (item 1): claim_shape is honestly derived
+            # from brahma_event_ontology.temporal_shape for THIS event_class
+            # — never the old hardcoded "interval" literal. A class with no
+            # resolvable ontology shape is skipped (I4: no fabrication),
+            # never guessed.
+            if event_class not in claim_shape_cache:
+                claim_shape_cache[event_class] = _fetch_event_class_claim_shape(conn, event_class)
+            claim_shape = claim_shape_cache[event_class]
+
+            if claim_shape is None:
+                logger.warning(
+                    "[w45] Stage C: skipping chart=%s event_class=%s window=%s–%s "
+                    "— could not derive claim_shape from %s (I4, no fabrication)",
+                    chart_id, event_class, window_start, window_end, TABLE_EVENT_ONTOLOGY,
+                )
+                continue
+
             claim = _build_claim(event_class, window_start, window_end, signed_intensity)
             falsifier = _build_falsifier(event_class)
             confidence = _build_confidence(signed_intensity)
 
+            # PARIṢKĀRA MR-48 fix (item 2): each row's INSERT is isolated in
+            # its own SAVEPOINT so one row's legitimate rejection cannot
+            # cascade into "current transaction is aborted" collateral
+            # failures for unrelated, otherwise-valid rows later in this
+            # same chart's batch (see _insert_ledger_row_with_savepoint).
             try:
-                with conn.cursor() as cur:
-                    cur.execute(
-                        f"""
-                        INSERT INTO {TABLE_LEDGER} (
-                            chart_id,
-                            claim,
-                            event_class,
-                            claim_shape,
-                            observation_window,
-                            model,
-                            formula_version,
-                            confidence,
-                            falsifier,
-                            as_of,
-                            generator_class,
-                            filed_by,
-                            filing_method,
-                            source_citation
-                        ) VALUES (
-                            %s, %s, %s, %s,
-                            daterange(%s, %s),
-                            %s, %s, %s, %s,
-                            NOW(),
-                            'engine',
-                            %s,
-                            'explicit_filing_tool',
-                            %s
-                        )
-                        """,
-                        (
-                            chart_id,
-                            claim,
-                            event_class,
-                            "interval",
-                            window_start,
-                            window_end,
-                            MODEL_TAG,
-                            FORMULA_VERSION,
-                            confidence,
-                            falsifier,
-                            FILED_BY,
-                            SOURCE_CITATION,
-                        ),
-                    )
+                _insert_ledger_row_with_savepoint(
+                    conn,
+                    chart_id=chart_id,
+                    claim=claim,
+                    event_class=event_class,
+                    claim_shape=claim_shape,
+                    window_start=window_start,
+                    window_end=window_end,
+                    confidence=confidence,
+                    falsifier=falsifier,
+                )
                 total_seeded += 1
                 logger.debug(
-                    "[w45] Stage C: seeded chart=%s event_class=%s window=%s–%s confidence=%.3f",
-                    chart_id, event_class, window_start, window_end, confidence,
+                    "[w45] Stage C: seeded chart=%s event_class=%s claim_shape=%s "
+                    "window=%s–%s confidence=%.3f",
+                    chart_id, event_class, claim_shape, window_start, window_end, confidence,
                 )
             except Exception as exc:
                 logger.warning(
-                    "[w45] Stage C: INSERT failed for chart=%s event_class=%s window=%s–%s: %s",
-                    chart_id, event_class, window_start, window_end, exc,
+                    "[w45] Stage C: INSERT failed for chart=%s event_class=%s claim_shape=%s "
+                    "window=%s–%s (isolated via SAVEPOINT — no cascade to other rows): %s",
+                    chart_id, event_class, claim_shape, window_start, window_end, exc,
                 )
 
     logger.info("[w45] Stage C: %d prospective rows seeded.", total_seeded)
@@ -583,13 +759,18 @@ if __name__ == "__main__":
 
 __all__ = [
     "ADMITTED_MECHANISM_IDS",
+    "ALL_CLAIM_SHAPES",
     "CHART_IDS",
+    "CLAIM_SHAPE_CHAIN",
+    "CLAIM_SHAPE_INTERVAL",
+    "CLAIM_SHAPE_POINT",
     "FORMULA_VERSION",
     "GENERATION_V3",
     "NATIVE_CHART_ID",
     "ABHINANDAN_CHART_ID",
     "STATE_EMPIRICALLY_CALIBRATED",
     "STATE_STRUCTURAL_PRIOR",
+    "TABLE_EVENT_ONTOLOGY",
     "build_post_fit_report",
     "load_fitted_weights",
     "seed_prospective_ledger",
