@@ -208,7 +208,8 @@ def find_threshold_crossings(
     *,
     coarse_step_days: float = 7.0,
     bisect_tol_days: float = _BISECT_TOL_DAYS,
-) -> list[IntervalBoundary]:
+    return_series: bool = False,
+):
     """Find all intervals where lambda_v3 is above the activation threshold.
 
     Algorithm
@@ -233,22 +234,43 @@ def find_threshold_crossings(
     threshold_config  ThresholdConfig from W1.4 (carries lambda_thresh).
     coarse_step_days  Coarse grid spacing in days (default 7 = weekly).
     bisect_tol_days   Bisection convergence tolerance in days (default 0.1).
+    return_series     PARIṢKĀRA MR-11(b)/PK-R-8 (R8.2): when True, ALSO
+                      return the (jd_series, lambdas) coarse-sweep arrays
+                      this function already computes in step 1 below, as
+                      `(intervals, jd_series, lambdas)`. Default False
+                      preserves the original `list[IntervalBoundary]`-only
+                      return for every pre-existing caller (test_w32/mr14/
+                      mr23 and others call this positionally/without this
+                      kwarg and must see byte-identical behavior). This flag
+                      exists so `resolution_hierarchy.build_resolution_
+                      hierarchy` can REUSE this exact coarse sweep for its
+                      peak-anchoring scan (R8.2) instead of re-sweeping —
+                      the series is computed once, here, regardless of which
+                      return shape the caller asked for.
 
     Returns
     -------
-    list[IntervalBoundary] — one entry per detected above-threshold interval,
-    sorted by enter_jd. Empty list when lambda is always below the threshold.
+    If return_series is False (default): list[IntervalBoundary] — one entry
+    per detected above-threshold interval, sorted by enter_jd. Empty list
+    when lambda is always below the threshold.
+    If return_series is True: (intervals, jd_series, lambdas) — the same
+    list plus the raw numpy coarse-sweep arrays (both empty arrays if the
+    range/step produced no samples).
     """
     if end_jd <= start_jd:
         logger.debug(
             "[gochara_v3.interval_solver] find_threshold_crossings: "
             "end_jd (%.4f) <= start_jd (%.4f) — returning []", end_jd, start_jd,
         )
+        if return_series:
+            return [], np.array([]), np.array([])
         return []
 
     # 1. Coarse sweep
     jd_series = np.arange(start_jd, end_jd, coarse_step_days)
     if len(jd_series) == 0:
+        if return_series:
+            return [], jd_series, np.array([])
         return []
 
     # Evaluate lambda at all coarse points
@@ -342,6 +364,8 @@ def find_threshold_crossings(
 
         i = j  # continue scanning after this segment
 
+    if return_series:
+        return intervals, jd_series, lambdas
     return intervals
 
 

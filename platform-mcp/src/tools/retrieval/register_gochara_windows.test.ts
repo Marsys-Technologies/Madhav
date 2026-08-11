@@ -10,8 +10,18 @@
  * POST ${PLATFORM_URL}/api/mcp/db/query — the MCP server holds no direct DB
  * connection — so the integration run requires a reachable platform, not a raw
  * DATABASE_URL).
+ *
+ * PARĪKṢAKA F1 fix (PR #1225, MR-12): `computeGocharaElectionAvoidance`'s
+ * is_irreversibility_milestone serving fix had no output-asserting test — the
+ * field appeared in `makeRow` fixtures (used only by the pure `dominantGraha`/
+ * `derivePlateauDisclosure` tests above) but nothing ever exercised the real
+ * per-row-object-construction code path and checked the field survived onto
+ * the SERVED window. The `computeGocharaElectionAvoidance — MR-12 ...`
+ * describe block below mocks `global.fetch` (same pattern as
+ * `kala_views/priority.test.ts`) so that code path runs end-to-end without a
+ * live DB.
  */
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import {
   dominantGraha,
   derivePlateauDisclosure,
@@ -21,6 +31,9 @@ import {
   type GocharaWindowRow,
 } from './register_gochara_windows.js'
 import type { Principal } from '../../types.js'
+
+const CHART_ID = '482012f1-710e-4a25-994a-93821f5871aa'
+const TEST_PRINCIPAL: Principal = { user_uid: 'integration-test', key_id: 'integration-test', role: 'super_admin' }
 
 function makeRow(overrides: Partial<GocharaWindowRow> = {}): GocharaWindowRow {
   return {
@@ -124,6 +137,99 @@ describe('dominantGraha', () => {
   })
 })
 
+// ── computeGocharaElectionAvoidance — MR-12 F1 output-assertion fix ────────
+// Mocks global.fetch to intercept the platformQuery(sql, params, principal)
+// round trips this function makes, so the REAL per-row-object-construction
+// code (register_gochara_windows.ts lines building `avoidWindows`) runs
+// end-to-end without a live DB. This is the detector PARĪKṢAKA's F1 finding
+// asked for: the previous test suite verified the fix only by inspection
+// (the field appeared in unrelated fixtures), and reverting the fix left the
+// suite green.
+describe('computeGocharaElectionAvoidance — MR-12 is_irreversibility_milestone serving', () => {
+  const CHAIN_ROW = {
+    id: 99,
+    chart_id: CHART_ID,
+    event_class: 'business_launch',
+    temporal_shape: 'chain',
+    window_start: '2026-05-01',
+    window_end: '2026-05-01',
+    peak_date: '2026-05-01',
+    milestone_id: 'first_revenue',
+    is_irreversibility_milestone: true,
+    signed_intensity: -0.4,
+    raw_intensity: 0.4,
+    valence: 'loss',
+    is_adverse: true,
+    active_sentences: [] as unknown[],
+    contributing_systems: [] as unknown[],
+    suppression_state: {},
+    peak_basis: 'gochara_lambda_v3',
+    calibration_state: 'structural_prior',
+    source: 'live',
+    computed_at: '2026-05-01T00:00:00Z',
+    continuity_state: null,
+    generation: '3.0',
+    era_slice_key: 'g3_2024_2034',
+    term_breakdown: null,
+  }
+
+  function mockFetchServing(row: Record<string, unknown>) {
+    global.fetch = vi.fn(async (url: unknown, opts: unknown) => {
+      const urlStr = String(url)
+      if (urlStr.includes('/api/mcp/db/query')) {
+        const body = JSON.parse((opts as { body: string }).body) as { sql?: string }
+        const sql = body.sql ?? ''
+        // The main SELECT (computeGocharaElectionAvoidance's own query) is the
+        // only one that reads FROM kala_gochara_windows filtered on is_adverse.
+        // computeGocharaCoverage's 4 queries (kala_gochara_authority,
+        // gochara_resonance_map, brahma_event_ontology, build_substep_progress)
+        // and any brahma_remedy_corpus lookup all fall through to honest-empty —
+        // this test's assertion does not depend on their contents (no `domain`
+        // filter is passed, so notCoveredFor short-circuits to null regardless;
+        // dominantGraha(row) returns null for an empty contributing_systems,
+        // so fetchMitigation never queries brahma_remedy_corpus at all).
+        if (sql.includes('FROM kala_gochara_windows') && sql.includes('is_adverse')) {
+          return { ok: true, json: async () => ({ rows: [row] }) }
+        }
+        return { ok: true, json: async () => ({ rows: [] }) }
+      }
+      return { ok: false, status: 500, text: async () => 'unexpected fetch call in test' }
+    }) as unknown as typeof fetch
+  }
+
+  it('a chain-shaped adverse window serves is_irreversibility_milestone=true for its irreversibility milestone', async () => {
+    mockFetchServing(CHAIN_ROW)
+
+    const result = (await computeGocharaElectionAvoidance(
+      CHART_ID,
+      { start: '2020-01-01', end: '2030-01-01' },
+      undefined,
+      50,
+      TEST_PRINCIPAL
+    )) as { windows: Array<Record<string, unknown>> }
+
+    expect(result.windows).toHaveLength(1)
+    expect(result.windows[0]?.['milestone_id']).toBe('first_revenue')
+    expect(result.windows[0]?.['is_irreversibility_milestone']).toBe(true)
+  })
+
+  it('a non-irreversibility chain milestone serves is_irreversibility_milestone=false (not just truthy-field-present)', async () => {
+    mockFetchServing({ ...CHAIN_ROW, milestone_id: 'decision', is_irreversibility_milestone: false })
+
+    const result = (await computeGocharaElectionAvoidance(
+      CHART_ID,
+      { start: '2020-01-01', end: '2030-01-01' },
+      undefined,
+      50,
+      TEST_PRINCIPAL
+    )) as { windows: Array<Record<string, unknown>> }
+
+    expect(result.windows).toHaveLength(1)
+    expect(result.windows[0]?.['milestone_id']).toBe('decision')
+    expect(result.windows[0]?.['is_irreversibility_milestone']).toBe(false)
+  })
+})
+
 // §N.6 density_contract presence is asserted directly on each tool's
 // provenance_envelope in the live-integration checks below (the contract
 // consts are module-private; the served INVARIANT — every response carries
@@ -134,9 +240,6 @@ describe('dominantGraha', () => {
 // (the MCP server holds no direct DB connection), so the integration run needs a
 // reachable platform (PLATFORM_URL + MCP_INTERNAL_TOKEN) and a valid principal — not a
 // raw DATABASE_URL DSN.
-
-const CHART_ID = '482012f1-710e-4a25-994a-93821f5871aa'
-const TEST_PRINCIPAL: Principal = { user_uid: 'integration-test', key_id: 'integration-test', role: 'super_admin' }
 
 const describeIntegration = process.env['RUN_DB_INTEGRATION'] === '1' ? describe : describe.skip
 

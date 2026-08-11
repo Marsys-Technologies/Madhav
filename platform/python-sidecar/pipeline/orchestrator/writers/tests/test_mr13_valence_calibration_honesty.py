@@ -55,6 +55,7 @@ from pipeline.orchestrator.writers.ka_gochara_v3_century_materialize import (
     TABLE,
     GocharaV3CenturyMaterializeWriter,
 )
+from services.gochara_v3.resolution_hierarchy import HierarchyResult, WindowResolutionRecord
 
 # ---------------------------------------------------------------------------
 # Fake DB connection (mirrors test_w34_century_horizon.py's fixture)
@@ -110,6 +111,13 @@ class _FakeConn:
 
 BUILD_STATE_TABLE = "kala_gochara_v2_build_state"
 
+# MR-16: default discovered event classes for plan_substeps' discovery query
+# — the 6 classes this file parametrizes over.
+_DISCOVERED_CLASSES = [
+    "career_advancement", "major_gain", "marriage",
+    "illness_acute", "chronic_onset", "surgery",
+]
+
 
 def _ctx(conn, chart_id="482012f1-710e-4a25-994a-93821f5871aa") -> ContextSpec:
     return ContextSpec(
@@ -138,6 +146,8 @@ def _responder(
 
     def responder(sql: str, params=None) -> list[dict]:
         s = sql.lower()
+        if "gochara_resonance_map" in s and "distinct" in s and "target_ref" not in s:
+            return [{"event_class": ec} for ec in _DISCOVERED_CLASSES]
         if "gochara_resonance_map" in s and "target_ref" in s:
             return [{"target_ref": t} for t in targets]
         if BUILD_STATE_TABLE in s and sql.strip().upper().startswith("SELECT"):
@@ -156,7 +166,24 @@ def _responder(
 
 
 def _patch_common(monkeypatch, boundaries):
-    monkeypatch.setattr(mod, "find_threshold_crossings", lambda *a, **k: boundaries)
+    # PARIṢKĀRA MR-11(b): run_substep now calls build_resolution_hierarchy
+    # (not find_threshold_crossings directly) — wrap each fake boundary
+    # (era-tier, no coarser parent) into a HierarchyResult.
+    era_windows = [
+        WindowResolutionRecord(
+            window_id=f"mr13-era-{i}",
+            parent_window_id=None,
+            resolution_tier="era",
+            enter_jd=b.enter_jd, exit_jd=b.exit_jd,
+            peak_jd=b.peak_jd, peak_lambda=b.peak_lambda,
+        )
+        for i, b in enumerate(boundaries)
+    ]
+    fake_hierarchy = HierarchyResult(
+        era_windows=era_windows, month_windows=[], day_windows=[],
+        resolution_facet={"era": len(era_windows), "month": 0, "day": 0},
+    )
+    monkeypatch.setattr(mod, "build_resolution_hierarchy", lambda *a, **k: fake_hierarchy)
     monkeypatch.setattr(
         mod, "ClassContext",
         type("FakeClassContext", (), {"fetch": staticmethod(lambda **k: object())}),

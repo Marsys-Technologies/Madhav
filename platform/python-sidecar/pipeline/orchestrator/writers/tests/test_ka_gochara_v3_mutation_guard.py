@@ -66,6 +66,27 @@ from pipeline.orchestrator.writers.ka_gochara_v3_century_materialize import (
     GocharaV3CenturyMaterializeWriter,
 )
 from pipeline.orchestrator.writers import ContextSpec
+from services.gochara_v3.resolution_hierarchy import HierarchyResult, WindowResolutionRecord
+
+# PARIṢKĀRA MR-11(b): run_substep now calls build_resolution_hierarchy (not
+# find_threshold_crossings directly). This fixture wraps a single
+# IntervalBoundary-shaped fake in a one-era-window HierarchyResult, matching
+# every downstream generation='3.0'/DML assertion these tests already make
+# (an era-tier window is still one row per table, same as the old flat model).
+def _single_era_hierarchy(*, enter_jd, exit_jd, peak_jd, peak_lambda) -> HierarchyResult:
+    era = WindowResolutionRecord(
+        window_id="mutation-guard-era-1",
+        parent_window_id=None,
+        resolution_tier="era",
+        enter_jd=enter_jd,
+        exit_jd=exit_jd,
+        peak_jd=peak_jd,
+        peak_lambda=peak_lambda,
+    )
+    return HierarchyResult(
+        era_windows=[era], month_windows=[], day_windows=[],
+        resolution_facet={"era": 1, "month": 0, "day": 0},
+    )
 
 # ---------------------------------------------------------------------------
 # Guard constants
@@ -85,6 +106,65 @@ GENERATION_30_RE = re.compile(r"generation\s*=\s*'3\.0'|GENERATION_PROD")
 
 # DML verbs that constitute data-modifying statements.
 DML_VERB_RE = re.compile(r"\b(DELETE|INSERT|UPDATE)\b", re.IGNORECASE)
+
+# Pre-existing bug fix (found incidentally during MR-16): the runtime DML
+# filters below used to do a naive `PROD_TABLE in sql` substring check.
+# 'kala_gochara_windows' is a STRICT PREFIX of 'kala_gochara_windows_v2', so
+# that check over-matched every calibration/staging (TABLE) DML statement
+# too — the same over-match class test_mr13_valence_calibration_honesty.py's
+# `_inserts_for_table` already guards against for its own INSERT-only case.
+# This regex extracts the DML's actual target table name so callers can
+# compare it EXACTLY against PROD_TABLE.
+#
+# PARĪKṢAKA round-2 FINDING A (regression vs #1221): the original `(\S+)`
+# capture is too permissive — it swallows a trailing `(` with no preceding
+# space (`INSERT INTO kala_gochara_windows(chart_id,` -> captures
+# 'kala_gochara_windows(chart_id,') and a schema-qualified name
+# (`DELETE FROM public.kala_gochara_windows` -> captures
+# 'public.kala_gochara_windows'). Both produce a non-None table string that
+# never equals the bare PROD_TABLE constant, so `_dml_target_table_or_raise`
+# never raises on them either — the row is silently treated as "not
+# PROD_TABLE" and skipped, exactly the silent-miss path the loud helper was
+# supposed to close. Tightened to capture ONLY a bare identifier (optionally
+# schema-qualified with a SINGLE `schema.` prefix, stripped by the
+# non-capturing group), anchored so trailing punctuation like `(` cannot
+# join the captured name. Verifier-tested exact fix.
+_DML_TABLE_NAME_RE = re.compile(
+    r"^\s*(?:DELETE\s+FROM|INSERT\s+INTO|UPDATE)\s+(?:[A-Za-z_][\w$]*\.)?([A-Za-z_][\w$]*)",
+    re.IGNORECASE,
+)
+
+
+def _dml_target_table(sql: str) -> str | None:
+    """Return the exact table name a DELETE/INSERT/UPDATE statement targets,
+    or None if `sql` is not a recognizable DML statement against a single
+    named table."""
+    m = _DML_TABLE_NAME_RE.match(sql.strip())
+    return m.group(1) if m else None
+
+
+def _dml_target_table_or_raise(sql: str) -> str | None:
+    """Same as `_dml_target_table`, but LOUD (not silent) on an unparseable
+    DML statement — advisory from the PR #1221 conflict-resolution note: a
+    caller that `continue`s past a statement whose table this regex could
+    not extract has a silent-miss path — the guard would trivially pass on
+    a future writer edit whose SQL formatting the regex no longer matches,
+    the exact "guard that always passes regardless of content" failure mode
+    §N.8 exists to close. A statement that does NOT match ANY DML verb
+    (SELECT, etc.) is legitimately not a DML target and returns None
+    quietly, same as before — only a DELETE/INSERT/UPDATE statement whose
+    table this regex fails to parse raises.
+    """
+    if not DML_VERB_RE.search(sql):
+        return None
+    table = _dml_target_table(sql)
+    if table is None:
+        raise AssertionError(
+            f"Guard could not parse the target table of a DML statement — "
+            f"this is a gap in the guard's own coverage, not a pass. "
+            f"SQL: {sql!r}"
+        )
+    return table
 
 # ---------------------------------------------------------------------------
 # Source helpers
@@ -420,10 +500,18 @@ class _TrackingConn:
         raise AssertionError("writer called close() — forbidden by §N.2")
 
 
+_DISCOVERED_CLASSES = [
+    "career_advancement", "major_gain", "marriage",
+    "illness_acute", "chronic_onset", "surgery",
+]
+
+
 def _make_responder(targets=("Venus",), stored_fp=None, rows_exist=False):
     """Build a query responder for _TrackingConn."""
     def responder(sql: str, params=None):
         s = sql.lower()
+        if "gochara_resonance_map" in s and "distinct" in s and "target_ref" not in s:
+            return [{"event_class": ec} for ec in _DISCOVERED_CLASSES]
         if "gochara_resonance_map" in s and "target_ref" in s:
             return [{"target_ref": t} for t in targets]
         if "kala_gochara_v2_build_state" in s and sql.strip().upper().startswith("SELECT"):
@@ -460,18 +548,15 @@ def test_dryrun_fixture_only_writes_generation_30_rows(monkeypatch):
       1. At least one DML against the production table was issued.
       2. Every such statement carries generation='3.0' (in SQL literal or params).
     """
-    from services.gochara_v3.interval_solver import IntervalBoundary
-
     era_key = "g3_1984_1994"
-    fake_boundary = IntervalBoundary(
+    fake_hierarchy = _single_era_hierarchy(
         enter_jd=2445736.5 + 10.0,
         exit_jd=2445736.5 + 20.0,
         peak_jd=2445736.5 + 15.0,
         peak_lambda=0.65,
-        era_slice_key=era_key,
     )
 
-    monkeypatch.setattr(mod, "find_threshold_crossings", lambda *a, **k: [fake_boundary])
+    monkeypatch.setattr(mod, "build_resolution_hierarchy", lambda *a, **k: fake_hierarchy)
     monkeypatch.setattr(
         mod, "ClassContext",
         type("FakeClassContext", (), {"fetch": staticmethod(lambda **k: object())}),
@@ -491,12 +576,21 @@ def test_dryrun_fixture_only_writes_generation_30_rows(monkeypatch):
     step = next(s for s in steps if s.key == f"career_advancement::{era_key}")
     result = writer.run_substep(ctx, step)
 
-    # Collect DML statements whose SQL references the production table name
-    # (after f-string evaluation at runtime, the SQL contains the literal name).
+    # Collect DML statements whose SQL targets EXACTLY the production table
+    # name (not a substring match — kala_gochara_windows is a strict prefix
+    # of kala_gochara_windows_v2, so a naive `in` check over-matches the
+    # calibration/staging table's own DML; see _dml_target_table docstring).
+    # _dml_target_table_or_raise (not the bare helper) so an unparseable DML
+    # statement is a loud test failure, never a silent miss. Supersedes
+    # #1221's word-boundary-regex approach (PARĪKṢAKA round-2 Finding B
+    # conflict-resolution ruling: _dml_target_table_or_raise + Finding A's
+    # tightened regex wins both hunks) — the anchored table-name extraction
+    # catches formatting-based smuggling (no-space-paren, schema-qualified
+    # names) that a bare `\bPROD_TABLE\b` substring search does not
+    # distinguish from a genuinely different table reference.
     prod_dml = [
         (sql, params) for sql, params in conn.statements
-        if PROD_TABLE in sql  # runtime-evaluated SQL contains the literal table name
-        and sql.strip().upper().startswith(("DELETE", "INSERT", "UPDATE"))
+        if _dml_target_table_or_raise(sql) == PROD_TABLE
     ]
 
     assert len(prod_dml) >= 1, (
@@ -530,18 +624,15 @@ def test_dryrun_fixture_no_generation_v1_rows(monkeypatch):
     This is the I1 invariant as a runtime test: the writer must never produce
     generation='v1' rows against kala_gochara_windows, regardless of chart ID.
     """
-    from services.gochara_v3.interval_solver import IntervalBoundary
-
     era_key = "g3_1984_1994"
-    fake_boundary = IntervalBoundary(
+    fake_hierarchy = _single_era_hierarchy(
         enter_jd=2445736.5 + 10.0,
         exit_jd=2445736.5 + 20.0,
         peak_jd=2445736.5 + 15.0,
         peak_lambda=0.65,
-        era_slice_key=era_key,
     )
 
-    monkeypatch.setattr(mod, "find_threshold_crossings", lambda *a, **k: [fake_boundary])
+    monkeypatch.setattr(mod, "build_resolution_hierarchy", lambda *a, **k: fake_hierarchy)
     monkeypatch.setattr(
         mod, "ClassContext",
         type("FakeClassContext", (), {"fetch": staticmethod(lambda **k: object())}),
@@ -561,12 +652,15 @@ def test_dryrun_fixture_no_generation_v1_rows(monkeypatch):
     writer.run_substep(ctx, step)
 
     # No DML against PROD_TABLE should produce generation='v1'.
+    # _dml_target_table_or_raise: an unparseable DML statement here is a
+    # loud test failure (guard coverage gap), never a silent `continue`.
+    # Supersedes #1221's word-boundary regex (Finding B ruling — see
+    # test_dryrun_fixture_only_writes_generation_30_rows above for the full
+    # rationale).
     v1_re = re.compile(r"generation\s*=\s*'v1'")
     v1_violations: list[tuple[str, object]] = []
     for sql, params in conn.statements:
-        if PROD_TABLE not in sql:
-            continue
-        if not sql.strip().upper().startswith(("DELETE", "INSERT", "UPDATE")):
+        if _dml_target_table_or_raise(sql) != PROD_TABLE:
             continue
         has_v1_in_sql = bool(v1_re.search(sql))
         has_v1_in_params = isinstance(params, dict) and params.get("generation") == "v1"

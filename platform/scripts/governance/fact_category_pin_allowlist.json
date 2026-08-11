@@ -156,15 +156,15 @@
     },
     {
       "file": "platform/python-sidecar/services/gochara_grammar/primitives.py",
-      "line": 622,
-      "pattern": null,
-      "justification": "PRE-EXISTING, not in this wave's scope. `_fetch_kakshya_boundaries`: rows are nested `by_subject[fact_subject][fact_key] = value` — full (subject, key) structure preserved, no cross-key collision despite no WHERE-level fact_key pin."
+      "line": null,
+      "pattern": "fact_category = 'ashtakavarga_kakshya_boundary'",
+      "justification": "PRE-EXISTING, not in this wave's scope. `_fetch_kakshya_boundaries`: rows are nested `by_subject[fact_subject][fact_key] = value` — full (subject, key) structure preserved, no cross-key collision despite no WHERE-level fact_key pin. [PK-R-9 IR-11 (F1), 2026-08-11: line-pinned entry (line 622) had DRIFTED (this lane's own MR-41(a) predicate-fix edits to this same file shifted the function to a new line — confirmed live via check_fact_category_pinning.py --json before this fix: the violation reported at line 637, not 622) and was silently failing to match. Converted line->pattern per the schema's own guidance (\"pattern is for cases where line drift is expected\") and per the sibling gochara_v3/context.py entry's existing pattern-based convention below, so a future line shift in this actively-edited file does not silently reintroduce a false non-allowlisted failure."
     },
     {
       "file": "platform/python-sidecar/services/gochara_grammar/primitives.py",
-      "line": 1043,
-      "pattern": null,
-      "justification": "PRE-EXISTING, not in this wave's scope. `_fetch_sade_sati_rows` returns the full row list (subject, key, text, num, citation) unmodified for the caller to interpret; no reduction/collapse happens in this function."
+      "line": null,
+      "pattern": "citation_human FROM chart_facts WHERE chart_id = %s AND fact_category IN \\('sade_sati_cycle'",
+      "justification": "PRE-EXISTING, not in this wave's scope. `_fetch_sade_sati_rows` returns the full row list (subject, key, text, num, citation) unmodified for the caller to interpret; no reduction/collapse happens in this function. [PK-R-9 IR-11 (F1), 2026-08-11: line-pinned entry (line 1043) had DRIFTED for the same reason as the sibling _fetch_kakshya_boundaries entry above (this lane's own MR-41(a) edits to this file) and was silently failing to match -- confirmed live: the violation reported at line 1130, not 1043. Converted line->pattern; the pattern's leading 'citation_human FROM chart_facts' column list distinguishes this from the shape-similar sade_sati query in services/gochara_v3/context.py (which selects a DIFFERENT column list — fact_key, fact_value_text, fact_value_num, fact_subject, fact_category, no citation_human — and carries its own ORDER BY) — no cross-file ambiguity regardless, since _matches_entry checks `file` before `pattern`.]"
     },
     {
       "file": "platform/python-sidecar/services/kala_permission/permission.py",

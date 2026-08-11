@@ -41,15 +41,31 @@ target, could never fire against live data).
 Resolution coverage (documented, NOT exhaustive -- an honest scope choice):
   - `target_type in ('karaka', 'dasha_lord_portfolio')` where `target_ref`
     names a graha: resolves via that graha's own `graha_position` row
-    (longitude_sidereal, sign). This is the full anchor a target needs.
+    (longitude_sidereal, sign) AND, as of MR-41(b) (PK-R-5, 2026-08-11),
+    `target_nakshatra_id` -- derived deterministically from that SAME
+    resolved longitude (27 equal divisions; see `_nakshatra_id_from_
+    longitude` below), no new DB read. Before MR-41(b), `target_nakshatra_id`
+    was never populated anywhere in production enrichment (only
+    `resonance_map.build_fixture_targets`'s synthetic fixture rows carried
+    one) -- silencing `nakshatra_ingress_tara` and `sarvatobhadra_vedha`
+    (gochara_grammar/primitives.py + sarvatobhadra.py) for EVERY
+    graha-anchored target, since both primitives honestly return [] when
+    `target.target_nakshatra_id is None`. This is the full anchor a
+    graha-anchored target needs.
   - `target_type == 'bhava'`: resolves `target_sign` ONLY, via LAGNA's
     `graha_sign_attributes.sign_num` + whole-sign house offset (the same
     whole-sign convention `gochara_grammar.primitives._offset_sign` uses
-    internally) -- `target_longitude_deg` is left unresolved (a bhava is a
-    30-degree span, not a point; primitives needing an exact degree for a
-    bhava target -- degree_contact, station_retro_loop, eclipse_degree,
-    planetary_return -- honestly skip it; sign_ingress/av_threshold_state,
-    which only need `target_sign`, work fully).
+    internally) -- `target_longitude_deg` AND `target_nakshatra_id` are left
+    unresolved (a bhava is a 30-degree span, not a point -- there is no
+    single natal DEGREE to derive either an exact longitude or a nakshatra
+    from, only a sign; MR-41(b) confirmed this is a structural gap, not a
+    missed lookup, and deliberately does NOT invent a point anchor -- e.g.
+    from a house cusp -- to manufacture one). Primitives needing an exact
+    degree or a nakshatra for a bhava target -- degree_contact,
+    station_retro_loop, eclipse_degree, planetary_return,
+    nakshatra_ingress_tara, sarvatobhadra_vedha -- honestly skip it;
+    sign_ingress/av_threshold_state/kakshya_cell_crossing/gochara_vedha_pair,
+    which only need `target_sign`, work fully.
   - `target_type in ('lord', 'sensitive_degree', 'arudha',
     'mechanism_node', 'yoga_constituent')`: NOT resolved here (would
     require house-lord derivation, sensitive-degree fact-category lookups,
@@ -75,6 +91,23 @@ SIGNS = [
 ]
 
 _GRAHA_NAMES = {"Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn", "Rahu", "Ketu"}
+
+# MR-41(b) (PK-R-5, 2026-08-11): 27 equal 13°20' divisions, the SAME
+# floor(longitude / (360/27)) + 1 convention this codebase already uses in
+# several places (services.gochara_v3.mechanisms.w23_tara_bala.
+# _longitude_to_nakshatra_index; ga_writers.ga_nakshatra_compute.
+# _nakshatra_0based; tests/test_gochara_grammar.py's own
+# _target_at_planet_position fixture helper) -- reimplemented locally here
+# (rather than importing one of those, which live in unrelated packages/are
+# private helpers of a different layer) to keep this module's own dependency
+# footprint unchanged; the formula itself is not novel.
+NAKSHATRA_ARC_DEG = 360.0 / 27.0
+
+
+def _nakshatra_id_from_longitude(longitude_deg: float) -> int:
+    """1-based nakshatra id (1=Ashwini..27=Revati) from a sidereal longitude."""
+    idx = int((longitude_deg % 360.0) / NAKSHATRA_ARC_DEG) + 1
+    return max(1, min(27, idx))
 
 # Full Title-case graha name (this package's/G-2's vocabulary everywhere
 # else) -> live chart_facts.fact_subject abbreviation. See module docstring
@@ -137,10 +170,22 @@ def enrich_target(
         fact_subject = GRAHA_TO_FACT_SUBJECT[graha_ref]
         pos = _fetch_graha_position(conn, target.chart_id, fact_subject, ayanamsha_id)
         if pos:
+            resolved_lon = pos.get("longitude_deg", target.target_longitude_deg)
+            # MR-41(b): derive target_nakshatra_id from the SAME longitude
+            # just resolved above -- deterministic, no new DB read. Falls
+            # back to whatever the target already carried (normally None)
+            # only in the honest degrade case where this graha_position row
+            # had a sign but no longitude_sidereal value.
+            resolved_nak_id = (
+                _nakshatra_id_from_longitude(resolved_lon)
+                if resolved_lon is not None
+                else target.target_nakshatra_id
+            )
             return replace(
                 target,
-                target_longitude_deg=pos.get("longitude_deg", target.target_longitude_deg),
+                target_longitude_deg=resolved_lon,
                 target_sign=pos.get("sign", target.target_sign),
+                target_nakshatra_id=resolved_nak_id,
                 natal_planet=graha_ref,
             )
         return target
@@ -154,6 +199,20 @@ def enrich_target(
         if lagna_pos and lagna_pos.get("sign"):
             lagna_sign_idx = SIGNS.index(lagna_pos["sign"])
             bhava_sign = SIGNS[(lagna_sign_idx + (house_num - 1)) % 12]
+            # MR-41(b) honest skip: target_nakshatra_id (and
+            # target_longitude_deg, already left unresolved above this
+            # branch) is deliberately NOT populated for bhava targets. A
+            # bhava is a 30-degree house span with no single natal DEGREE to
+            # derive a point nakshatra from -- only a sign. This is a
+            # structural gap (there is no anchor to resolve), not a missed
+            # lookup, so no `skipped_reason` field is fabricated on
+            # ResonanceTarget (its dataclass shape does not carry one, and
+            # adding one is out of this lane's I2-authorized scope); the
+            # honest skip is this comment plus the module docstring's
+            # "target_type == 'bhava'" resolution-coverage note.
+            # nakshatra_ingress_tara / sarvatobhadra_vedha already degrade
+            # honestly (empty result, not a crash) when target_nakshatra_id
+            # is None -- see each primitive's own docstring.
             return replace(target, target_sign=bhava_sign)
         return target
 
@@ -164,4 +223,4 @@ def enrich_targets(conn, targets: list[ResonanceTarget], ayanamsha_id: str = "la
     return [enrich_target(conn, t, ayanamsha_id=ayanamsha_id) for t in targets]
 
 
-__all__ = ["enrich_target", "enrich_targets", "SIGNS"]
+__all__ = ["enrich_target", "enrich_targets", "SIGNS", "NAKSHATRA_ARC_DEG", "_nakshatra_id_from_longitude"]
