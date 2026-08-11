@@ -676,3 +676,11 @@ Started: 2026-08-12 03:20 IST | Expiry: 2026-08-12 06:00 IST
 |---|---|---|---|---|---|
 | L-8 | SAMPŪRTI | R0 gate packet: integration→main merge (PG-31+L1j+G12+G14b+mig-569+RB-2), CI green, Gate-Executor merge+deploy. No corpus build/rebuild. | 2026-08-12 03:20 | 2026-08-12 06:00 | **ACTIVE** |
 
+
+### 2026-08-12 04:08 IST — SAMPŪRTI L-8 LEASE RELEASED
+
+SAMPŪRTI R0 gate packet merged (PR #1234, d1dd5dd2). Deploy green. Migration 569 applied.
+L-8 lease (SAMPŪRTI, 03:20–06:00 IST) is hereby released — R0 complete.
+
+R1 dispatch imminent: single-asset ka_kshetra build, chart 482012f1, port 5433.
+DB writes resume under new per-dispatch lease model (no standing lease for R1+).
