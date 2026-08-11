@@ -2654,3 +2654,45 @@ NEXT-ACTION: dispatch MR-44 fix builder (TDD: reproduce the collision synthetica
 PARĪKṢAKA verification (mutation: reintroduce cross-interval blindness → must reproduce the
 collision) → merge → resume native rebuild from substep 74 (idempotent, earlier decades
 untouched) → Abhinandan → Phase D onward.
+
+## 2026-08-12 ~05:2x IST — MR-44 verdict FAIL(deeper finding): wrong root cause, real one found + registered as MR-45
+
+CONDUCTOR-HEARTBEAT: 2026-08-11T23:46:00Z pid=94797 host=Montys-MacBook-Pro.local
+
+**PARĪKṢAKA re-verdict on PR #1231 (MR-44): FAIL — but the pooled-retention fix itself is REAL
+and CORRECT, just not what stopped the live rebuild.** The verifier recovered the actual halt
+log (phaseC_native_v2.log) and found the failing row was resolution='day' with
+window_start==peak_date==2017-03-01 — the FIRST OF A MONTH. Insert order era→month→day means
+the month row for THAT SAME peak was already committed when the day row collided — no second
+interval needed. Root cause: `resolution` was never added to
+uq_kala_gochara_windows_v2_natural_key (migration 567 added the column, never threaded it into
+uniqueness) — a month row and a day row for the identical retained peak share a natural key
+whenever the refined date lands on a calendar month boundary (~1-in-30 peaks; already hit 9
+times in the corpus career_setback alone produced before halting). Deterministically reproduced
+on the fixed branch's own code at the exact live date.
+
+**Disposition: MR-44 stays CLOSED for its own real, independently-verified scope** (pooled
+retention: tie-break byte-identical to the original over 3,000 randomized trials; adversarial
+3-interval cases including chain-rejection and cap-accounting all correct; 20,000-trial global-
+separation + cap-never-violated sweep; row counts provably never increase — the disclosed bound
+actually tightens). PR #1231 to be merged as a real, valuable, independently-verified fix — just
+not sufficient alone. **MR-45 registered** for the actual blocker: migration 568 claimed
+(add resolution to both unique indexes, COALESCE'd like milestone_id already is) +
+reproduction test pinned at the exact live failure shape + THE REAL SUBSTEP must complete
+end-to-end (not just a synthetic proxy — this campaign's own standing rule). Sibling finding
+folded in: MR-44's ZERO_PEAKS_LOST_TO_POOLED_RETENTION constant is unreachable dead code
+(total_retained==0 gate never fires when a per-era rejection matters) — fix in the same PR.
+Non-blocking disclosure residual: PK-R-8's ≤7-rows/substep bound assumed 1 era/substep;
+production confirms ≥2 occur — honest bound is N_era + 2·min(3·N_era, ⌈decade_days/90⌉).
+
+**This is the second time in one rebuild that the campaign's own default-REFUTED PARĪKṢAKA
+discipline caught a wrong-but-plausible root-cause diagnosis before it reached production** —
+first with the initial builder's cross-interval theory (real bug, wrong incident), now
+correctly separated from the actual blocker. Recorded as a positive data point for R3/R4's
+close-out: the verification discipline is doing exactly the job it exists for.
+
+NEXT-ACTION: merge #1231 (MR-44, real fix, independently verified) on green CI → dispatch MR-45
+fix builder (migration 568 + reproduction test + zero_peaks_reason fix) → high-stakes PARĪKṢAKA
+verdict (same rigor — this is the actual gate) → merge → resume native rebuild (idempotent,
+decades 1-3 + partial career_setback already correct and need not be redone) → Abhinandan →
+Phase D onward.

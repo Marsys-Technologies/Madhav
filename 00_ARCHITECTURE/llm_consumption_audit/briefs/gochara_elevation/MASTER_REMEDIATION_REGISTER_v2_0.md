@@ -894,6 +894,81 @@ AT-PAR: closes the exact defect class this campaign's own doctrine predicts
 (real-scale rebuild finds what synthetic unit fixtures cannot) — same
 family as MR-37/38/39/40/41/42, one layer deeper in the hierarchy code.
 
+**CORRECTION (PARĪKṢAKA re-verdict, 2026-08-11) — this item's stated root
+cause was NOT what actually halted the live rebuild.** The fix above (pooled
+cross-interval retention) is REAL, CORRECT, and independently verified
+(20,000+ randomized multi-era trials, zero global-separation violations,
+zero cap violations, row counts provably never increase vs. the pre-fix
+per-interval bound) — it closes a genuine defect class and is KEPT/MERGED.
+But the verifier recovered the actual halt log and found the failing row was
+`resolution='day'` with `window_start == peak_date == 2017-03-01` — the
+FIRST OF A MONTH. Insert order is era→month→day, so the month row for that
+SAME peak (not a second interval's peak) was already in place when the day
+row collided — a single retained peak whose day-refined date lands on a
+calendar month boundary makes its own month-row and day-row share an
+identical natural key, because `resolution` was never added to
+`uq_kala_gochara_windows_v2_natural_key` (migration 567 added the column,
+never threaded it into uniqueness). Reproduced deterministically on the
+fixed branch's own code at the exact live failure date. The REAL blocking
+defect is registered separately as **MR-45**. This item stays CLOSED for its
+own (real, verified) scope; MR-45 is the actual rebuild-resume gate.
+
+**MR-45 · Hierarchy month-row/day-row natural-key self-collision on
+month-boundary peaks — the actual live rebuild blocker.** [net-new, found
+2026-08-11 by PARĪKṢAKA re-verdict on PR #1231/MR-44, recovering and
+correctly re-reading the real halt log from the R2 authorized corpus
+rebuild — native chart, substep 74/270, career_setback::g3_2014_2024]
+GAP: `uq_kala_gochara_windows_v2_natural_key` (and its production-table
+counterpart on `kala_gochara_windows`) is
+`(chart_id, event_class, window_start, peak_date, COALESCE(milestone_id,''),
+generation)` — `resolution` is NOT a key column. `_emit_retained_peaks`
+(resolution_hierarchy.py) sets a month row's `window_start` to the calendar
+month start and a day row's `window_start` to the day-refined `peak_jd`
+itself; `_build_row` sets `peak_date` from the same `peak_jd` on BOTH rows.
+Whenever a retained peak's refined date falls on the 1st of a calendar
+month, `window_start == peak_date` for BOTH its month row and its day row —
+identical natural keys, insert order era→month→day means the month row is
+already committed when the day row collides. Deterministic given migration
+567's schema, not a rare edge case: roughly 1-in-30 retained peaks (~9 of
+career_setback's first 27 peaks in the live corpus already hit this
+pattern). No second interval or cross-decade condition required — MR-44's
+fix does not touch this. REMEDIATION: add `resolution` to both unique
+indexes (`kala_gochara_windows_v2` and `kala_gochara_windows`), COALESCE'd
+for NULL-resolution rows (interval/point/chain) exactly as `milestone_id`
+already is — migration 568
+(568_parishkara_mr45_hierarchy_natkey.sql, additive index replacement,
+execute-to-verified per C1 on a throwaway DB before/after any prod
+application). Also close the sibling finding from the same re-verdict:
+`ZERO_PEAKS_LOST_TO_POOLED_RETENTION` (MR-44's new constant) is currently
+UNREACHABLE dead code — `retain_candidates_pooled` always retains ≥1
+candidate whenever any was admitted, so the `total_retained==0` gate that
+guards emitting this reason never fires when it would be informative (a
+per-era-window rejection while the pool as a whole still retains
+something). Fix: surface per-era-window rejection reasons directly rather
+than gating on the pool-wide total, and add a test asserting it is actually
+emitted on a constructed 3-interval case where one era's own candidate is
+globally rejected. GATE: (a) migration 568 executed-and-verified (self-check
+DO block, DOWN path, idempotent re-run) — a month-boundary peak's month+day
+rows now insert successfully with distinct natural keys; (b) a reproduction
+test pinned at the EXACT live failure shape (event_class=career_setback-like,
+peak refining to a calendar month-1st) passes post-fix and is proven to fail
+pre-fix; (c) the REAL substep (career_setback::g3_2014_2024, chart 482012f1)
+completes end-to-end as part of the resumed R2 rebuild — this is the
+register's own standing rule (a migration verdict requires execution, not
+prose; a corpus-rebuild gate requires the real substep, not only a
+synthetic proxy) and is the actual unblock condition SAMPŪRTI/the campaign
+close is waiting on; (d) ZERO_PEAKS_LOST_TO_POOLED_RETENTION reachable +
+tested. AT-PAR: this is a second, independent instance of the same "escaped
+the synthetic-fixture net, caught only at real-data scale" pattern MR-44
+itself instantiates — found by the disciplined default-REFUTED re-verdict
+this campaign's own PARĪKṢAKA protocol exists to run, not by the first
+fix's own author. Disclosed non-blocking residual from the same review: the
+PK-R-8/MR-11 row-count disclosure (≤7 rows/substep, 60-420/chart) assumed
+one era window per substep; production has now confirmed ≥2 occur (this
+exact substep) — the honest bound is
+`N_era + 2·min(3·N_era, ⌈decade_days/90⌉)`; correct the disclosure text as
+part of this fix or a named follow-up, conductor's call.
+
 ## §7 — SOURCE → MR MAP (dedup audit)
 
 PG-1→MR-01 · PG-2→MR-05 · PG-3→MR-10 · PG-4→MR-04+13 · PG-5→MR-13 ·
