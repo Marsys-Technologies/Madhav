@@ -416,6 +416,25 @@ dispositions, and the contradicted 2026-06-26 ruling. REMEDIATION: issue all
 five via the delegated adjudicator (or native), recorded in ledger §Rulings.
 GATE: five rulings present. AT-PAR: the delegation model's integrity.
 
+**CLOSED (2026-08-11, PRATINIDHI delegated authority + native PK-R-3).** All
+five issued: (1) W1.4 = PK-R-3, ruled-inert-with-trigger (see MR-23 entry
+above); (2) W6.1 SLO/interrupt = HONEST-DEFERRED, trigger = MR-21's timing
+data (cannot honestly adjudicate numbers that don't exist yet); (3) W6.2
+overall gate RE-ISSUED as `PASS (AC1+AC2) + AC3 HONEST-DEFERRED` —
+"CONDITIONAL_PASS" retired as a non-vocabulary term never validly coined;
+AC1/AC2 re-affirmed PASS on evidence now STRONGER than the original verdict
+had (MR-13/14/15/19's since-completed work), AC3 stays deferred per L5's own
+calibration-loop doctrine; (4) W6.4 divergence dispositions CLOSED by
+cross-reference to MR-20's live equivalence run (the §3.5 post-cutover
+battery W2G's own module deferred at build time, now genuinely run against
+the live post-cutover corpus); (5) the 2026-06-26 nirmana-build-tracker-
+hardening ruling vs. migration 563 conflict is ruled a SUPERSESSION (UTK-R1/
+R2 are later, more specific rulings on the identical question) not a
+violation — the campaign has operated on UTK-R1/R2's basis throughout
+without incident; this ruling is the missing explicit record of that
+supersession, not a change to anything live. Full rationale for all five:
+PARISHKARA_LEDGER.md "MR-28" entry.
+
 **MR-29 · Ledger reconciliation + a real close verdict.** [PG-25; recon F#12–13
 + internal inconsistencies] GAP: W6.5 has NO VERIFIER verdict (by the
 campaign's own rule the close lane is not done); lane table 6 lanes stale;

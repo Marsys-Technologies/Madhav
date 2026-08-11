@@ -37,7 +37,7 @@ marker_duty: post W6-COMPLETE to campaign-coordination §6 after MR-01..08,10,13
 | MR-25 | Citations resolve in serving | MERGED | PR #1200 MERGED · PARĪKṢAKA PASS (code review): mig-565 correct (14 rows: 4 resolved verified vs corpus, 10 CORPUS_GAP not silenced), B.3 compliant, live gate honestly deferred |
 | MR-26 | Honest amended close report | QUEUED | — |
 | MR-27 | Prod-sync + deploy discipline | PARTIAL | prod-sync dry-run verified clean (0 pending, migrations 557-563 confirmed applied); PROD_DATABASE_URL root-cause re-confirmed as intermittent flake, no code fix applicable; standing rule recorded. I6(b)/GUC-grep sub-item not investigated (undocumented term, not guessed). See "MR-27" ledger entry. |
-| MR-28 | Five retro adjudications | QUEUED | — |
+| MR-28 | Five retro adjudications | CLOSED | 2026-08-11, PRATINIDHI delegated authority: W1.4=PK-R-3 (inert-with-trigger); W6.1=honest-deferred (trigger: MR-21 timing data); W6.2 re-issued PASS(AC1+AC2)+AC3 honest-deferred, "CONDITIONAL_PASS" retired as non-vocabulary; W6.4 divergence gap closed by cross-ref to MR-20; 2026-06-26 ruling ruled SUPERSEDED (not violated) by UTK-R1/R2. See "MR-28" ledger entry. |
 | MR-29 | Ledger reconciliation + re-close verdict (LAST) | QUEUED | — |
 | MR-30 | Hygiene (w61 scripts FIRST, worktrees, docstrings) | MERGED | PR #1199 MERGED · PARĪKṢAKA PASS: probe_gochara.py uses urllib HTTP (not psycopg), 24 stale worktrees removed, docstring corrected |
 | MR-31 | SAMPŪRTI branch merge (theirs — track only) | EXTERNAL | coordination file |
@@ -1860,3 +1860,82 @@ entry makes that practice an explicit, named rule rather than an implicit habit.
 
 MR-27 register status: PARTIAL — prod-sync record and PROD_DATABASE_URL root-cause both CLOSED
 with fresh live evidence; I6(b)/GUC-grep sub-item remains OPEN, disclosed not guessed.
+
+## 2026-08-11 — MR-28: the five skipped adjudications, issued (PRATINIDHI, delegated authority)
+
+Exercising the delegated adjudicator authority the native explicitly granted this session
+("issue all five via the delegated adjudicator (or native)"). Four rulings below; the fifth
+(W1.4) is PK-R-3, already recorded above — cross-referenced here for completeness.
+
+**1. W1.4 tolerance band — PK-R-3 (native-directed), see above. RULED-INERT-WITH-TRIGGER.**
+
+**2. W6.1 SLO miss / interrupt disposition — HONEST-DEFERRED, trigger recorded.** GAP: no
+ADJUDICATOR ever disposed of the original W6.1 build's SLO miss / interrupt. Blocked from full
+resolution today: the underlying wall-clock numbers themselves are MR-21's own open item,
+correctly BLOCKED on the yield window (see "MR-21" ledger entry). RULING: this adjudication
+cannot honestly issue a disposition on numbers that do not yet exist. Closes as
+HONEST-DEFERRED — trigger: when MR-21's W6.1 native-wall-clock + interrupt data is actually run
+(post-yield-window), PRATINIDHI or the native disposes of the SLO miss on that evidence, not
+before. This is the same doctrine as W1.4/MR-33 — an honest, gated deferral, not a silent gap.
+
+**3. W6.2 overall gate — RE-ISSUED in closed vocabulary: PASS (AC1, AC2) + AC3 HONEST-DEFERRED;
+"CONDITIONAL_PASS" retired as a non-vocabulary term.** The original VERIFIER (opus,
+a0f6ddb6464498d4f, 2026-08-10 17:15 IST) self-issued "CONDITIONAL_PASS" — a verdict outside the
+plan's closed PASS/FAIL vocabulary (UTK-PG-24's own finding). Re-examined on the FULL evidence
+now available, including this remediation campaign's own findings since that verdict:
+  - **AC1 (no-loss coverage):** the original PASS covered "all 6 event_classes present, no
+    novel/dropped classes" — a shape check, still true, but this campaign's own MR-20 has since
+    run the REAL no-loss coverage gate the original plan actually specified (35,620-window
+    equivalence protocol) and found a <2% equivalence rate — AC1's ORIGINAL narrow criterion
+    (class presence) still PASSES; the deeper no-loss CLAIM it was standing in for does not yet
+    hold at full strength (see PK-R-2 / MR-16, ruled: this argues for the 27-class + hierarchy
+    expansion, not a re-grade of AC1's own narrower, already-honest criterion). AC1 RE-AFFIRMED
+    PASS on its own stated terms; the deeper equivalence question is now MR-16/MR-20's, not
+    AC1's, to own.
+  - **AC2 (mechanism soundness):** the original PASS cited "10 admitted toggle_keys with
+    honest-zero weights (§N.8 compliant)" — this campaign's own MR-13/14/15/19 work has SINCE
+    substantiated this far more rigorously than the original verdict could have known: the
+    honest-zero weights are now traced to a specific, confirmed root cause
+    (`mechanism_not_wired`, MR-19's re-adjudication) rather than merely observed. AC2 RE-AFFIRMED
+    PASS, now on stronger evidence than it originally had.
+  - **AC3 (directional empirical):** DEFERRED then, DEFERRED now — no outcome-linked event data
+    exists yet. This is a valid terminal state per this campaign's own doctrine (§N.4/MR-33's
+    precedent, same as L5's STRUCTURAL-mode seal) — not a blocker, not something to force.
+  - **RE-ISSUED VERDICT: W6.2 = PASS (AC1 + AC2, both re-affirmed on now-stronger evidence) with
+    AC3 HONEST-DEFERRED** (trigger: outcome-linked event accumulation, per L5's calibration-loop
+    doctrine). "CONDITIONAL_PASS" is retired — it never should have been coined; PASS-with-a-
+    disclosed-deferred-sub-criterion is representable in the existing vocabulary and this
+    ruling uses it instead of inventing a third state.
+
+**4. W6.4 divergence dispositions — CLOSED, satisfied by MR-20's equivalence run.** The W2G
+comparator's own §3.5 ("post-cutover full regression battery") was explicitly deferred at
+build time ("this lane does not cut over... there is no 'post-cutover' state yet to battery-
+test"). That state now exists (W5.4 UTK-R1's production repoint, live since before this
+campaign began). This session's MR-20 work — `mr20_no_loss_coverage_gate.py`, run live against
+both charts post-cutover — IS the post-cutover divergence battery §3.5 deferred: every
+divergence between v1 and the live production gen-3.0 corpus is now classified via the closed
+vocabulary (2,448 divergences, `unclassified_count=0` both charts). RULING: W6.4's divergence-
+disposition gap is CLOSED by cross-reference to MR-20's published results (2026-08-11 "MR-20:
+the real no-loss coverage gate" ledger entry) — no separate battery needed; the same evidence
+serves both.
+
+**5. The 2026-06-26 contradicted ruling — SUPERSEDED, not violated; supersession now recorded.**
+The 2026-06-26 nirmana-build-tracker-hardening ruling said "do NOT add a `writers/ka_gochara.py`
+adapter and do NOT delete the sweep's seed rows." Migration 563 (UTK-R2, W6.4) did rename
+`ka_gochara_v2_materialize` → `ka_gochara` and retire the sweep — surface-contradicting the
+letter of the earlier ruling. RULING: this is a SUPERSESSION, not a violation — UTK-R1 (W5.4
+production repoint) and UTK-R2 (W6.4 cutover) are LATER, MORE SPECIFIC architectural rulings
+that directly addressed the exact naming/retirement question the 2026-06-26 ruling had opined
+on earlier, with the benefit of the full W5-W6 design that didn't exist yet in June. Standard
+precedence: a later, more specific ruling on the same question supersedes an earlier, more
+general one — this is not in dispute architecturally (the campaign has operated on UTK-R1/R2's
+basis throughout, including this entire remediation campaign, without incident). What was
+missing was simply the EXPLICIT RECORD that supersession had occurred, rather than an implicit
+"the later work just happened to go a different direction." This entry is that explicit record.
+No code or naming change follows from this ruling — it ratifies what is already live and
+working.
+
+MR-28 register status: CLOSED — all five adjudications issued (4 by PRATINIDHI this entry, 1 by
+native as PK-R-3), two (W1.4, W6.1) as honest-deferred-with-trigger rather than forced closures,
+consistent with this campaign's own doctrine that a gated, disclosed deferral is a valid
+terminal state.
