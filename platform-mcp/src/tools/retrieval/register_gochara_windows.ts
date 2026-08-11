@@ -210,6 +210,18 @@ export interface GocharaWindowRow {
    * parent. NULL for era-tier rows (no coarser parent) and for every row
    * written before migration 567. */
   parent_window_id?: number | null
+  // PARIṢKĀRA MR-47 (ADJUDICATOR ruling PK-R-10, migration 570): the
+  // earned, explicit marker proving this row's temporal_shape was checked
+  // against brahma_event_ontology at WRITE time. 'ontology_match' -- the
+  // stored temporal_shape genuinely equals the ontology's declared shape.
+  // 'point_class_context_envelope' -- the R8.12 flat-production branch for a
+  // point-canonical class: this row is honestly an envelope
+  // (temporal_shape='interval', resolution=NULL), never a genuine interval
+  // production. NULL for every row written before migration 570 (an honest
+  // gap, not backfilled/unclassifiable per that migration's own CASE logic).
+  /** See `deriveResolutionDisclosure`'s point-class-envelope branch for the
+   * honest, class-specific `timing_window_blocked_reason` this field earns. */
+  shape_conformance?: 'ontology_match' | 'point_class_context_envelope' | null
 }
 
 // D-5 native disposition (2026-07-20, gate_run_2 finding 1): "the cap never
@@ -351,6 +363,7 @@ export type TimingWindowBlockedReason =
   | 'resolution_unavailable'
   | 'chain_basis_not_declared'
   | 'chain_milestone_unanchored'
+  | 'point_class_context_envelope'
   | null
 
 // Mirrors services/gochara_v3/peak_basis_vocab.py GENUINE_PEAK_BASES exactly
@@ -385,10 +398,14 @@ export interface ResolutionDisclosure {
    * unavailable' (no stored resolution and not a point/chain row -- R8.10's
    * v1-row case), 'chain_basis_not_declared' (PK-R-8a: a chain row whose
    * peak_basis is anything other than ONTOLOGY_MILESTONE_OFFSET, including
-   * a stray LAMBDA_V3_ARGMAX), or 'chain_milestone_unanchored' (PK-R-8a: a
+   * a stray LAMBDA_V3_ARGMAX), 'chain_milestone_unanchored' (PK-R-8a: a
    * chain row with the right basis but milestone_id is NULL -- the row
-   * cannot be pinned to a specific declared milestone). Null when
-   * is_timing_window is true. */
+   * cannot be pinned to a specific declared milestone), or (PARIṢKĀRA MR-47,
+   * PK-R-10) 'point_class_context_envelope' -- a class-specific refinement
+   * of 'resolution_unavailable' for rows whose stored `shape_conformance`
+   * (migration 570) is earned-marked as the R8.12 flat envelope for a
+   * point-canonical class, rather than the generic "we don't know why"
+   * reason. Null when is_timing_window is true. */
   timing_window_blocked_reason: TimingWindowBlockedReason
 }
 
@@ -400,7 +417,7 @@ export interface ResolutionDisclosure {
  * the pre-PK-R-8 duration-based inference this function used to perform).
  */
 export function deriveResolutionDisclosure(
-  row: Pick<GocharaWindowRow, 'resolution' | 'temporal_shape' | 'peak_basis' | 'milestone_id'>
+  row: Pick<GocharaWindowRow, 'resolution' | 'temporal_shape' | 'peak_basis' | 'milestone_id' | 'shape_conformance'>
 ): ResolutionDisclosure {
   // PK-R-1's second floor: a dated point row is always a genuine timing
   // claim, regardless of resolution/peak_basis -- this is what preserves
@@ -469,6 +486,25 @@ export function deriveResolutionDisclosure(
   // interval-row case (and any pre-hierarchy flat v3 row). Honest null,
   // never guessed from date span (R8.9 supersedes the old duration-based
   // inference entirely).
+  //
+  // PARIṢKĀRA MR-47 (PK-R-10): before this fix, EVERY row landing here fell
+  // through to the SAME generic 'resolution_unavailable' reason, whether it
+  // was a genuinely unclassified legacy row or the R8.12 flat-production
+  // envelope for a point-canonical class -- an accidental gate, not an
+  // earned one (see PK-R-10's own finding: "these rows fall through the
+  // generic resolution IS NULL fallback branch, which knows nothing about
+  // point-canonicity specifically"). A row whose stored `shape_conformance`
+  // (migration 570) is earned-marked as the point-class envelope now gets
+  // its own, class-specific reason instead of the generic fallback.
+  if (row.shape_conformance === 'point_class_context_envelope') {
+    return {
+      resolution: null,
+      resolution_source: 'unavailable',
+      is_timing_window: false,
+      timing_window_blocked_reason: 'point_class_context_envelope',
+    }
+  }
+
   return {
     resolution: null,
     resolution_source: 'unavailable',
@@ -578,7 +614,7 @@ const ROW_COLUMNS = `
   peak_basis, calibration_state, source,
   computed_at, continuity_state,
   generation, era_slice_key, term_breakdown,
-  resolution, parent_window_id
+  resolution, parent_window_id, shape_conformance
 `
 // W5.1 (GOCHARA-UTKARSA): generation and era_slice_key are nullable columns
 // present on kala_gochara_windows since migrations 527 and 556 respectively.
