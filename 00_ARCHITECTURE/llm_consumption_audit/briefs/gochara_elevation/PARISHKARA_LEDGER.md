@@ -2395,3 +2395,17 @@ with a standing-guard detector (constant must change whenever gochara_grammar/go
 files change in one diff — closes the MR-38 class on the v2 surface). Builder round dispatched
 (IR-1..IR-12 incl. F1's drift-proof pattern-pin conversion for BOTH shifted allowlist entries;
 F6 withdrawn as moot). PARĪKṢAKA re-verdict will check each IR.
+
+## 2026-08-11 ~22:4x IST — #1225 rebased+MERGEABLE (merge-on-green armed); two reworks running
+
+CONDUCTOR-HEARTBEAT: 2026-08-11T17:15:00Z pid=94797 host=Montys-MacBook-Pro.local
+
+- #1225 (MR-12): semantic merge with integration complete — dynamic discovery + MR-38 folds +
+  chain wiring composed; business_launch in doc-only list; chain rows now ALSO carry the MR-16
+  coverage_quality note (threaded through _build_chain_row, parity test green); 99/99 named
+  files + 883/3-pre-existing broader; TS 38/3 + tsc clean. MERGEABLE; merge-on-green watcher
+  armed. (Lane verdict was PASS pre-rebase; rebase is merge-train mechanics — the composed
+  writer is re-exercised end-to-end by the #1229 verifier and the R2/R3 batteries.)
+- #1228 rework (PK-R-9 IR-1..12) and #1229 rework (PK-R-8 R8.1..15) both in progress; each
+  gets a fresh per-IR/per-R verdict before merge. Two API-stall resumes this hour (MR-11 mid
+  rewrite, MR-12 mid suite) — both recovered with zero loss (checkpoint discipline held).
