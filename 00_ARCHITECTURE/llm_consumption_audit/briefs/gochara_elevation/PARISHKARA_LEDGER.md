@@ -2212,3 +2212,35 @@ CONDUCTOR-HEARTBEAT: 2026-08-11T13:35:00Z pid=94797 host=Montys-MacBook-Pro.loca
   re-verdict per its own prescription.
 - 4 API-dropped agents all resumed and progressing (MR-23r, MR-11, MR-41/42 builders; #1225
   verifier — which had already found a real MR-16 cross-lane collision to report).
+
+## 2026-08-11 ~19:2x IST — verdict + merge wave: #1224 MERGED; #1225 PASS; #1227 open; #1228 open
+
+CONDUCTOR-HEARTBEAT: 2026-08-11T13:52:00Z pid=94797 host=Montys-MacBook-Pro.local
+
+- **#1224 (MR-38/39): re-verdict PASS** — all five verifier mutations independently re-run RED→
+  GREEN correctly (F-1 kwargs capture inverts on mutation; F-2 staging fold live at the real-SQL
+  level; F-3 scoping honest); live throwaway-Postgres kill/survive re-observed on the new head;
+  884 passed. **MERGED to parishkara/integration** (15/15 CI green). MR-38 + MR-39 GATES met —
+  both items CLOSED pending only the gate packet ride to main.
+- **#1225 (MR-12): PASS** with F1 (TS serving fix needs its one-line detector — routed to
+  builder, in progress) and F2 (real semantic collision with #1226's dynamic discovery:
+  business_launch unreachable until the resonance rebuild — mitigated by R2 spine order +
+  loud-failing dispatch tests; rebase-after-#1226 planned). Verifier independently confirmed the
+  ontology finding, adapter correctness vs live JSON, all mandated mutations killed, I4
+  honest-gap detector live at two layers.
+- **#1227 (MR-23 remainder) open** — W1.2 golden test + live comparison (native 4,294 v1-adverse
+  vs 35 v3-adverse, 6/6 valence agreement on matches; Abhinandan 6,326/30, 7/7; 13/13 total)
+  + W0.2 finding: NO zeros exist for any of the six assets today (gap text stale — the original
+  baseline builds populated all six; counts published in PR). Side-finding for R2: ka_gochara
+  asset_throughput reads dormant/0 despite 89/85 served rows — same root as the coverage
+  envelope's substeps_committed=0 (THE ONE rebuild ran outside the orchestrator). R2's
+  orchestrator-driven rebuild is the fix for both. Verdict in flight.
+- **#1228 (MR-41/42) open** — vedha repoint to bg_transit_vedha (33 rows) via vocabulary
+  adapter; deterministic nakshatra derivation for graha-anchored targets (bhava = honest skip);
+  v3 wiring decision recorded (quality_gates is v3-native; v1 trio stays parity-mode-only);
+  suppression_state now structured {mechanism, value, note}, never bare {}; ENGINE_VERSION
+  v3.1. 340 tests green; 2 v1-parity failures confirmed pre-existing at base. Verdict in
+  flight with I2 semantic audit emphasized (v1-file surgical edits).
+- **Second shared-stash incident** (MR-41/42 builder popped a foreign kala_views stash,
+  recovered cleanly, re-stashed with recovery message). Pattern confirmed: parallel builders in
+  one repo's worktrees MUST NOT use git stash — goes in the close report as an operational rule.
