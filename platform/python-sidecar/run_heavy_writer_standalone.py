@@ -84,7 +84,7 @@ def main() -> None:
     # Add the sidecar root to sys.path so imports resolve.
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-    import psycopg
+    from pipeline.orchestrator.db import connect as _orchestrator_connect
     from pipeline.orchestrator.writers import discover_all
     from pipeline.orchestrator.asset_runner import _run_data_writer
 
@@ -96,7 +96,18 @@ def main() -> None:
     run_id = str(uuid.uuid4())
     logger.info("Starting standalone run: asset=%s chart=%s run_id=%s", asset_id, CHART_ID, run_id)
 
-    conn = psycopg.connect(database_url, row_factory=psycopg.rows.dict_row)
+    # PARIṢKĀRA MR-39: route through the orchestrator's own connection
+    # factory (pipeline.orchestrator.db.connect) instead of a bare
+    # psycopg.connect(). ga_dashas (~90 min, 36 substeps) and ga_sensitive
+    # (~30 min, 5 substeps) are exactly the "long-running writer substep with
+    # no DB traffic in between" scenario MR-39 targets — connect() sets
+    # idle_in_transaction_session_timeout=0 for this session (both via the
+    # libpq startup option and a defense-in-depth explicit SET, since a
+    # Cloud SQL Auth Proxy / pooler may not forward the startup option), so
+    # a substep's CPU-heavy compute window can never be killed by the
+    # server-side idle-in-transaction timeout independent of TCP keepalive
+    # health.
+    conn = _orchestrator_connect()
     conn.autocommit = False
     cur = conn.cursor()
 
