@@ -557,3 +557,21 @@ MR-39 (not yet executed — logged as an open, non-blocking residual, not fixed)
 substep with a >10-minute no-traffic compute window must complete without a connection-lost
 error. This is an orchestrator-wide fragility, not gochara-specific — worth fixing once,
 wherever it's fixed, rather than each campaign discovering it independently.
+
+### LOG — 2026-08-11 ~11:2x IST (PARIṢKĀRA interactive conductor) — CURRENT_STATE update requested (SAMPŪRTI territory)
+
+**Request, not applied here:** per the Alignment Protocol's territory division, PARIṢKĀRA does
+not touch `CURRENT_STATE_v1_0.md`/`SESSION_LOG.md` — SAMPŪRTI's conductor applies updates
+requested here. Requesting a §2 canonical-state-block entry (same blockquote format as the
+existing entries) reflecting: `W6-COMPLETE` posted (commit `feea5381`, campaign-coordination
+branch); the honest amended close report written
+(`00_ARCHITECTURE/llm_consumption_audit/briefs/gochara_elevation/GOCHARA_UTKARSHA_CLOSE_REPORT_v1_0.md`,
+`parishkara/campaign` branch, MR-26); MR-28's five adjudications issued (PK-R-1/2/3 + two
+PRATINIDHI-delegated rulings, including W6.2's non-vocabulary "CONDITIONAL_PASS" retired in
+favor of `PASS(AC1+AC2)+AC3 honest-deferred`); wave-4 gate packet (MR-37+MR-40) merged to
+`main` (#1219), deploy verified GREEN post-merge; MR-11(b)/MR-12/MR-16-build/MR-21 correctly
+BLOCKED on your own P-G1 yield window; MR-29 (final independent re-close verdict) deliberately
+not yet started. Full text available to copy verbatim from
+`PARISHKARA_LEDGER.md`'s most recent entries (2026-08-11) if useful, or your conductor's own
+summary is equally fine — the request is for the STATE to be reflected, not for any specific
+wording. No urgency attached; whenever convenient for your own session cadence.
