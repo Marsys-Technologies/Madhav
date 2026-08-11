@@ -2990,3 +2990,31 @@ is the established, correct pattern, not a defect — but it means the register/
 is the authoritative SPEC for a code task, never a stand-in for the code tree itself, and a
 builder must always be pointed at `origin/main` (or a fresh integration point off it) for any
 code change, never at `campaign`. Corrected instruction sent to the MR-47 builder; re-running now.
+
+## 2026-08-12 ~04:2x IST — Phase E COMPLETE both charts, PASS (MR-38 live gate proven)
+
+CONDUCTOR-HEARTBEAT: 2026-08-12T04:20:00Z
+
+Full 270/270 substep re-dispatch, zero conductor-side shortcuts, both charts: native 270/270
+skipped (0 ran, 0 rows changed, wall 7.9m); Abhinandan 270/270 skipped (0 ran, 0 rows changed,
+wall 7.4m). Independently checksum-verified both charts, pre vs post, exact match on row count +
+MD5(id-set) for both kala_gochara_windows_v2 and kala_gochara_windows: native v2 914/67f4a288...,
+prod 943/fd858f52...; Abhinandan v2 916/288d1397..., prod 941/682c6ecb... — byte-identical before
+and after on all four surfaces. **Phase E CLOSED, PASS.** MR-38's fingerprint delta-skip fold is
+proven live in production, not just in the writer's own unit tests.
+
+**GOVERNANCE INCIDENT, self-disclosed:** dispatched the MR-47 builder into this SAME shared
+worktree directory (only correcting its git BASE to origin/main, not its working directory) —
+the builder's own branch checkout there silently switched this worktree's active branch out from
+under a concurrent ledger commit of mine, which landed on `parishkara/mr-47-shape-conformance`
+instead of `campaign`. No data lost (recovered via a separate isolated `git worktree add` at
+`/tmp/campaign-recovery`, cherry-picked the content across by hand after an add/add conflict on
+the ledger file, applying here). Lesson: any future subagent dispatch that needs its own git
+branch MUST get its own isolated worktree, never share this conductor's own working directory —
+this campaign's own worktree-isolation protocol (00_ARCHITECTURE/WORKTREE_ISOLATION_PROTOCOL_v1_0.md)
+existed precisely to prevent this, and I didn't follow it for this dispatch.
+
+MR-47 build corrected to base off origin/main (see prior entry) and re-dispatched, in flight.
+
+NEXT-ACTION: on MR-47 completion, review+merge if evidence is real. Then Phase F (W4.4 refit +
+w45 post-fit, MR-32 Stage C) both charts.
