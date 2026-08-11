@@ -730,3 +730,36 @@ scope reduction below 27 classes · retiring any serving surface · LEL content.
     one authorized window) → MR-15 (same constraint) → pinned gate packet → main → deploy →
     M5-style verify → lease + THE ONE authorized rebuild with full evidence → verify MR-10/13/14/15
     on rebuilt corpus → MR-24 battery → THEN W6-COMPLETE.
+
+- 2026-08-11 ~06:0x IST (interactive conductor — MR-15 landed, real bug + real CI gap found):
+  MR-15 BUILDER RESULT (PR #1212, parishkara/mr-15 → parishkara/integration): real bug found +
+    fixed, execution-verified against live schema, not prose. Root cause:
+    services/gochara_v3/context.py::_fetch_all_av_gate_rows queried bg_transit_av_gates for a
+    'bhava_num' column that never existed on that table — the real column (confirmed live via
+    information_schema.columns, matches migration 397's DDL) is 'house_from_moon'. Reproduced
+    the exact live error read-only (SELECT bhava_num -> "column does not exist"), then proved the
+    fix read-only (SELECT house_from_moon -> 6 rows matching migration 397's seed: Jupiter houses
+    2/5/9/11, Saturn houses 1/11). Failure silencing fixed: _fetch_all_av_gate_rows now returns
+    (rows, error) instead of swallowing at INFO; a real error surfaces as ERROR-level log AND
+    'AV_GATE_DEGRADED: <error>' prepended to WriterResult.notes — the field the orchestrator's
+    build report is actually built from (§N.8: a detector that measures the specific claim, not a
+    log line an operator would never see). TDD red(10 failing)->green; full gochara_v3 suite
+    (461 tests) + writer's own suites re-run, zero new failures (bisected via git-stash to confirm
+    the 3 pre-existing failures are unrelated). No writes to kala_gochara_windows/_v2; constraint
+    honored.
+  CI-GAP FINDING (named residual, not fixed in this lane, worth prioritizing): neither
+    services/gochara_v3/tests/ NOR pipeline/orchestrator/writers/tests/ is collected by CI --
+    ci.yml's only python-sidecar pytest invocation scopes to 'tests/ bodha_writers/__tests__'
+    positionally, excluding both directories entirely. This is plausibly WHY the bhava_num defect
+    shipped and sat undetected through the only production build that ran it -- even the writer's
+    own dedicated test suite never gated a CI run. Recommend a follow-up lane to add these paths
+    to CI's pytest invocation; this is a REAL scope gap (test files exist, pass, and are just never
+    run in CI), a sibling finding to the TAP-6 trigger-coverage class from earlier tonight but on
+    the test-collection axis instead of the workflow-trigger axis.
+  PROCESS NOTE: MR-15's builder could not find MASTER_REMEDIATION_REGISTER_v2_0.md or this ledger
+    inside its own pk-mr15 worktree (expected -- those files live only on parishkara/campaign,
+    not on lane branches off parishkara/integration) and flagged this honestly rather than fabricate
+    confirmation of the spec/ruling it was told to follow. Correct, cautious behavior; future
+    builder dispatches should note explicitly that campaign-governance files are NOT expected to be
+    present in lane worktrees, to avoid this (harmless) confusion recurring.
+  NEXT-ACTION: merge #1212 on green; await MR-14.
