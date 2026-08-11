@@ -132,7 +132,7 @@ SEGMENT_INDEX_DECADE_STRIDE = 1_000_000
 #: older writer build is treated as a different build and replanned in full
 #: (the `ka_sangam` / `ka_gochara_sweep` convention).
 #: v2 — stages 6 / 6.5 / 8 joined the plan and the content hash.
-_RESUME_VERSION = 2
+_RESUME_VERSION = 3
 
 #: §6.2's row budget K. The design's own worked example ("the budget spends
 #: itself across 15 *different* things") is the source of the number; it is a

@@ -1765,6 +1765,21 @@ export async function computeKalaNow(
             : `ka_tithi_pravesha has not built this chart, or ${asOfDate} falls outside the `
               + 'built 120-year praveśa-year horizon — honest empty, not fabricated.',
         ),
+    // E6 per-view elevation for NOW: state_delta — field diff against previous inflection point.
+    // KALA_SUPREME_ELEVATION_v1_0.md §6: NOW elevation = "state_delta: what changed since the
+    // last significant configuration (field diff against previous inflection point)."
+    // SHAD_DARSHANA_CLOSE_v1_0.md §2 E6 disposition: VERIFIED-FIXED (lite); the state_delta
+    // sub-elevation is the W3 depth portion — requires kala_field_windows / kala_field_provenance
+    // rows per chart (P-G1 field-build must complete first). Not yet wired. G12 R26.
+    honestEmptyCoverage(
+      'state_delta',
+      'E6 per-view elevation for NOW (KALA_SUPREME_ELEVATION_v1_0.md §6): the field diff ' +
+      'against the previous inflection point (what changed since the last significant ' +
+      'configuration) is not yet computed. Requires ka_kshetra field provenance rows ' +
+      '(kala_field_windows / kala_field_provenance) for this chart — P-G1 field-build ' +
+      'must complete first. SHAD_DARSHANA_CLOSE_v1_0.md §2 E6 disposition: VERIFIED-FIXED ' +
+      '(lite); state_delta is the W3 depth remainder, not yet built.',
+    ),
   ]
 
   const drillPointers: DrillPointerLike[] = [
