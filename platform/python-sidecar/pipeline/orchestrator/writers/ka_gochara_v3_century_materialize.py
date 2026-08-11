@@ -781,6 +781,24 @@ class GocharaV3CenturyMaterializeWriter(WriterBase):
                 ),
             )
 
+        # PARIṢKĀRA MR-15: AV (Ashtakavarga) gating is a flagship gochara_v3
+        # mechanism. A degraded av_gate_rows fetch inside ClassContext.fetch
+        # used to be indistinguishable from "this chart genuinely has no AV
+        # data" — swallowed at INFO with zero build-report visibility (the
+        # exact defect the only production build to date silently shipped
+        # with). getattr(..., None) is deliberate: existing tests stub
+        # ClassContext.fetch to return a bare object() with no attributes at
+        # all, and that must keep degrading gracefully, not raise.
+        av_gate_fetch_error = getattr(context, "av_gate_fetch_error", None)
+        av_gate_note = ""
+        if av_gate_fetch_error:
+            logger.error(
+                "[%s] substep=%r chart=%s: AV (Ashtakavarga) gating degraded "
+                "this substep — %s",
+                ASSET_ID, substep_key, chart_id, av_gate_fetch_error,
+            )
+            av_gate_note = f"AV_GATE_DEGRADED: {av_gate_fetch_error}; "
+
         intervals: list[IntervalBoundary] = find_threshold_crossings(
             swe=swe,
             context=context,
@@ -802,7 +820,7 @@ class GocharaV3CenturyMaterializeWriter(WriterBase):
                 rows_skipped=len(intervals),
                 duration_seconds=elapsed,
                 notes=(
-                    f"DRY RUN {substep_key}: {len(intervals)} intervals found "
+                    f"{av_gate_note}DRY RUN {substep_key}: {len(intervals)} intervals found "
                     f"in {decade.year_start}–{decade.year_end} — nothing written"
                 ),
             )
@@ -899,7 +917,7 @@ class GocharaV3CenturyMaterializeWriter(WriterBase):
             rows_inserted=inserted,
             duration_seconds=elapsed,
             notes=(
-                f"{substep_key}: {len(intervals)} intervals found, "
+                f"{av_gate_note}{substep_key}: {len(intervals)} intervals found, "
                 f"{inserted} rows inserted into {TABLE} (generation={GENERATION_V3}) "
                 f"and {PROD_TABLE} (generation={GENERATION_PROD}), "
                 f"era_slice_key={era_slice_key}, "
