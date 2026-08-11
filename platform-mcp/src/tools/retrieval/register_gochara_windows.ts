@@ -274,6 +274,140 @@ function capActiveSentences(rows: GocharaWindowRow[]): GocharaWindowRow[] {
   })
 }
 
+// ══════════════════════════════════════════════════════════════════════════
+// PARIṢKĀRA MR-11(b) — resolution-tier disclosure (migration 567)
+// ══════════════════════════════════════════════════════════════════════════
+//
+// GOVERNING RULING — PK-R-1 (native, binding): "a 'window' served for timing
+// decisions must be at MINIMUM a month-resolution span carrying a day-
+// precision peak, or a dated point row. Decade-era rows alone are CONTEXT,
+// not windows — they may serve, but only labeled at their own resolution,
+// never presented as the timing claim itself."
+//
+// Two row populations exist on kala_gochara_windows going forward:
+//   1. Rows written by the MR-11(b) hierarchy producer carry a STORED
+//      `resolution` ('era'|'month'|'day') — the writer's own honest
+//      classification, trusted as-is.
+//   2. Every row written before migration 567 (the entire v1 sweep corpus
+//      and every pre-MR-11(b) W3.4/W5.4 flat-interval v3 row) carries
+//      resolution=NULL. These are NEVER silently served as if genuinely
+//      month/day-resolved — `deriveResolutionDisclosure` infers an HONEST
+//      label from the row's own window_start/window_end SPAN (a real
+//      detector on data already in hand, never a fabricated tier), and
+//      marks it `resolution_source: 'implied_from_duration'` so a caller can
+//      always tell a writer-asserted tier from a serve-time inference.
+//
+// `is_timing_window` is the PK-R-1 gate itself: false for any row whose
+// effective resolution (stored OR implied) is 'era' — the caller-visible
+// signal that this row is CONTEXT, not a timing claim, regardless of how
+// confident-looking its other fields (peak_date, signed_intensity) are.
+
+const ERA_MIN_DAYS = 365
+const MONTH_MAX_DAYS = 31
+const MS_PER_DAY = 86_400_000
+
+export interface ResolutionDisclosure {
+  /** Effective resolution tier -- the row's own stored `resolution` if
+   * present, else an honest duration-based inference. Null when neither a
+   * stored value nor a confident inference is available. */
+  resolution: 'era' | 'month' | 'day' | null
+  /** 'stored' -- the writer's own MR-11(b) hierarchy classification (trusted
+   * as-is). 'implied_from_duration' -- this row predates migration 567;
+   * the label is inferred here, at serve time, from window_start/window_end
+   * span -- never conflated with a writer-asserted tier. 'unavailable' --
+   * neither a stored value nor a confident duration-based inference exists
+   * (a legacy row whose span falls in the ambiguous 32-364 day gap between
+   * the month and era thresholds). */
+  resolution_source: 'stored' | 'implied_from_duration' | 'unavailable'
+  /** PK-R-1 gate: false iff the effective resolution is 'era' (a decade-
+   * scale row) -- the row is CONTEXT, never a timing claim, no matter how
+   * precise its peak_date looks. True for month/day/point-shaped rows and
+   * for any row whose resolution could not be determined at all is treated
+   * as NOT a confirmed timing window either (honest default: unknown is
+   * not the same as "confirmed fine-grained"). */
+  is_timing_window: boolean
+}
+
+/**
+ * Derive the honest resolution disclosure for one served row. Real detector:
+ * reads the row's OWN stored `resolution` column when present (migration
+ * 567); for a NULL-resolution legacy row, infers a label from the actual
+ * window_start/window_end span already on the row -- never a hand-waved
+ * default, never silently promoted to "month" or "day" without the span
+ * actually supporting it.
+ */
+export function deriveResolutionDisclosure(
+  row: Pick<GocharaWindowRow, 'resolution' | 'temporal_shape' | 'window_start' | 'window_end'>
+): ResolutionDisclosure {
+  if (row.resolution === 'era' || row.resolution === 'month' || row.resolution === 'day') {
+    return {
+      resolution: row.resolution,
+      resolution_source: 'stored',
+      is_timing_window: row.resolution !== 'era',
+    }
+  }
+
+  // A point-shaped row is, by construction, a single dated claim -- PK-R-1's
+  // own second floor ("...or a dated point row"). This holds regardless of
+  // resolution-column state (point rows predate the hierarchy producer
+  // entirely) and regardless of chain vs point shape ambiguity below.
+  if (row.temporal_shape === 'point') {
+    return { resolution: 'day', resolution_source: 'implied_from_duration', is_timing_window: true }
+  }
+
+  const startMs = Date.parse(row.window_start)
+  const endMs = Date.parse(row.window_end)
+  if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs < startMs) {
+    return { resolution: null, resolution_source: 'unavailable', is_timing_window: false }
+  }
+  const durationDays = (endMs - startMs) / MS_PER_DAY
+
+  if (durationDays >= ERA_MIN_DAYS) {
+    // Exactly the PK-R-1 hazard case: a decade-era span with no stored
+    // classification. Implied 'era' -- CONTEXT, never a timing claim.
+    return { resolution: 'era', resolution_source: 'implied_from_duration', is_timing_window: false }
+  }
+  if (durationDays <= 1) {
+    return { resolution: 'day', resolution_source: 'implied_from_duration', is_timing_window: true }
+  }
+  if (durationDays <= MONTH_MAX_DAYS) {
+    return { resolution: 'month', resolution_source: 'implied_from_duration', is_timing_window: true }
+  }
+  // 32-364 days: genuinely ambiguous under the coarse legacy (pre-hierarchy)
+  // shape -- neither confidently "month" nor "era". Honest null rather than
+  // guessing a tier the span does not clearly support (§N.7 item 6).
+  return { resolution: null, resolution_source: 'unavailable', is_timing_window: false }
+}
+
+function withResolutionDisclosure<T extends GocharaWindowRow>(
+  rows: T[]
+): Array<T & { resolution_disclosure: ResolutionDisclosure }> {
+  return rows.map((row) => ({ ...row, resolution_disclosure: deriveResolutionDisclosure(row) }))
+}
+
+/**
+ * §N.6-style page-level summary: how many served rows are CONTEXT-only
+ * (is_timing_window===false) vs genuine timing windows. Mirrors the
+ * catalog_only_rows_in_page/catalog_only_note pattern this file's sibling
+ * tools already use for the confirmed-vs-catalog distinction -- the same
+ * "never let a caller read the raw row count as N confirmed timing windows"
+ * discipline, applied to the era-context-vs-timing-window axis.
+ */
+function summarizeResolutionDisclosure(
+  disclosures: ResolutionDisclosure[]
+): { context_only_rows_in_page: number; context_only_note: string | null } {
+  const contextOnly = disclosures.filter((d) => !d.is_timing_window).length
+  return {
+    context_only_rows_in_page: contextOnly,
+    context_only_note:
+      contextOnly === 0
+        ? null
+        : `${contextOnly} of ${disclosures.length} served row(s) are era-scale/unresolved CONTEXT, ` +
+          'not timing windows (PK-R-1) -- see each row\'s resolution_disclosure.is_timing_window; ' +
+          'do not read window_start/window_end/peak_date on these rows as a month/day-precision claim.',
+  }
+}
+
 // W5.1 (GOCHARA-UTKARSA): SOURCE_CITATION is now generation-conditional.
 // For v3/g3_* rows the citation names the UTKARSA campaign's own engine;
 // for legacy v1 rows it names the original D-5 G-4 sweep. A response that
@@ -724,7 +858,9 @@ function notCoveredFor(domain: string | undefined, coverage: GocharaCoverage): G
 const ACTIVATION_DENSITY_CONTRACT = {
   max_digest_bytes: 20_000,
   paginated: false,
-  facets: ['event_class', 'temporal_shape', 'is_adverse', 'calibration_state', 'era_slice_key'],
+  // PARIṢKĀRA MR-11(b): 'resolution' added — see facets.resolution
+  // (computeWindowFacets) + the resolution filter param on this tool.
+  facets: ['event_class', 'temporal_shape', 'is_adverse', 'calibration_state', 'era_slice_key', 'resolution'],
   empty_reason: true,
   // W5.1: calibration_state layering per §N.6 — empirically_calibrated is the
   // dense layer; structural_prior is the structural layer. Reflected in the
@@ -735,7 +871,7 @@ const ACTIVATION_DENSITY_CONTRACT = {
 const FORECAST_DENSITY_CONTRACT = {
   max_digest_bytes: 40_000,
   paginated: true,
-  facets: ['event_class', 'temporal_shape', 'valence', 'is_adverse', 'calibration_state', 'era_slice_key'],
+  facets: ['event_class', 'temporal_shape', 'valence', 'is_adverse', 'calibration_state', 'era_slice_key', 'resolution'],
   empty_reason: true,
   density_layering: 'calibration_state:empirically_calibrated>structural_prior',
 } as const
@@ -743,7 +879,7 @@ const FORECAST_DENSITY_CONTRACT = {
 const ELECTION_AVOIDANCE_DENSITY_CONTRACT = {
   max_digest_bytes: 50_000,
   paginated: true,
-  facets: ['event_class', 'temporal_shape', 'calibration_state', 'era_slice_key'],
+  facets: ['event_class', 'temporal_shape', 'calibration_state', 'era_slice_key', 'resolution'],
   empty_reason: true,
   density_layering: 'calibration_state:empirically_calibrated>structural_prior',
 } as const
@@ -836,6 +972,22 @@ export interface GocharaWindowFacets {
    * v1 and g3_* rows appear (only possible if AUTHORITATIVE_GENERATION_FILTER
    * somehow yields multiple — documented but structurally prevented by design). */
   generation_tier: string
+  /** PARIṢKĀRA MR-11(b): resolution-tier breakdown of the served row set,
+   * computed via deriveResolutionDisclosure (real detector, per-row — never
+   * a hand-maintained count). era/month/day are the EFFECTIVE resolution
+   * (stored OR honestly implied from duration); stored_count/implied_count
+   * disclose how many of those came from each source, so a caller can tell
+   * "the writer classified this" from "we inferred it at serve time" in
+   * aggregate, not just per-row. unavailable = neither stored nor
+   * confidently implied (PK-R-1: never silently rounds into a tier). */
+  resolution: {
+    era: number
+    month: number
+    day: number
+    unavailable: number
+    stored_count: number
+    implied_count: number
+  }
 }
 
 function computeWindowFacets(rows: GocharaWindowRow[]): GocharaWindowFacets {
@@ -844,6 +996,7 @@ function computeWindowFacets(rows: GocharaWindowRow[]): GocharaWindowFacets {
   let other = 0
   let hasTermBreakdown = false
   const generationSet = new Set<string>()
+  const resolutionFacet = { era: 0, month: 0, day: 0, unavailable: 0, stored_count: 0, implied_count: 0 }
 
   for (const row of rows) {
     if (row.calibration_state === 'empirically_calibrated') {
@@ -856,6 +1009,14 @@ function computeWindowFacets(rows: GocharaWindowRow[]): GocharaWindowFacets {
     if (row.term_breakdown != null) hasTermBreakdown = true
     const gen = row.generation ?? 'v1'
     generationSet.add(gen)
+
+    const disclosure = deriveResolutionDisclosure(row)
+    if (disclosure.resolution === 'era') resolutionFacet.era++
+    else if (disclosure.resolution === 'month') resolutionFacet.month++
+    else if (disclosure.resolution === 'day') resolutionFacet.day++
+    else resolutionFacet.unavailable++
+    if (disclosure.resolution_source === 'stored') resolutionFacet.stored_count++
+    else if (disclosure.resolution_source === 'implied_from_duration') resolutionFacet.implied_count++
   }
 
   const generations = Array.from(generationSet).sort()
@@ -872,12 +1033,25 @@ function computeWindowFacets(rows: GocharaWindowRow[]): GocharaWindowFacets {
     },
     has_term_breakdown: hasTermBreakdown,
     generation_tier: generationTier,
+    resolution: resolutionFacet,
   }
 }
 
 // ══════════════════════════════════════════════════════════════════════════
 // 1. gochara_activation_get — "is this configuration active right now?"
 // ══════════════════════════════════════════════════════════════════════════
+
+// PARIṢKĀRA MR-11(b): shared resolution-tier facet filter, identical across
+// all three tools. Matches ONLY the row's STORED `resolution` column
+// (migration 567) — never an implied/inferred label — so a caller who
+// filters resolution="month" gets exactly the writer-asserted month-tier
+// rows, never a legacy row this serving layer merely guessed was month-length.
+const RESOLUTION_FILTER_DESCRIPTION =
+  'Filter to one hierarchy resolution tier: "era" | "month" | "day" (PARIṢKĀRA MR-11(b), migration ' +
+  '567). Matches ONLY rows the writer itself stamped with this tier — never a row whose resolution ' +
+  'this serving layer merely inferred from its date span (see each row\'s resolution_disclosure). ' +
+  'Default: all tiers, including legacy rows that predate the hierarchy producer.'
+const ResolutionFilterSchema = z.enum(['era', 'month', 'day']).optional().describe(RESOLUTION_FILTER_DESCRIPTION)
 
 const ActivationInputSchema = z.object({
   chart_id: z.string().uuid().describe('UUID of the chart. Required — no default chart.'),
@@ -895,6 +1069,7 @@ const ActivationInputSchema = z.object({
         'not cover the domain for this chart, the response returns a `not_covered` refusal naming ' +
         'the capable instrument (kala_windows_get) instead of a misleading empty scan.'
     ),
+  resolution: ResolutionFilterSchema,
 })
 
 export async function computeGocharaActivation(
@@ -902,7 +1077,8 @@ export async function computeGocharaActivation(
   asOfDate: string,
   principal: Principal,
   eventClass?: string,
-  domain?: string
+  domain?: string,
+  resolution?: string
 ): Promise<Record<string, unknown>> {
   const { coverage, ok: coverageOk } = await computeGocharaCoverage(chartId, principal)
   const notCovered = notCoveredFor(domain, coverage)
@@ -916,6 +1092,7 @@ export async function computeGocharaActivation(
     as_of_date: asOfDate,
     event_class_filter: eventClass ?? null,
     domain_filter: domain ?? null,
+    resolution_filter: resolution ?? null,
     computed_at: new Date().toISOString(),
     density_contract: ACTIVATION_DENSITY_CONTRACT,
   }
@@ -947,6 +1124,10 @@ export async function computeGocharaActivation(
     params.push(domain)
     sql += ` AND EXISTS (SELECT 1 FROM brahma_event_ontology eo WHERE eo.event_class_id = kala_gochara_windows.event_class AND eo.domain = $${params.length})`
   }
+  if (resolution) {
+    params.push(resolution)
+    sql += ` AND resolution = $${params.length}`
+  }
   sql += ' ORDER BY signed_intensity DESC'
 
   const { rows: rawRows, ok, error } = await queryRows(sql, params, principal)
@@ -961,9 +1142,18 @@ export async function computeGocharaActivation(
   const citationStrings = extractCitationStrings(rows)
   const verseRefMap = await fetchVerseRefs(citationStrings, principal)
   const enrichedWindows = enrichWindowsWithVerseRefs(rows as unknown as Array<{ active_sentences: unknown[] }>, rows, verseRefMap)
+  // PARIṢKĀRA MR-11(b): attach resolution_disclosure to every served window
+  // (PK-R-1 — a decade-era row must be labeled as CONTEXT, never presented
+  // as a timing claim, stored or implied).
+  const disclosures = rows.map((row) => deriveResolutionDisclosure(row))
+  const windowsWithDisclosure = enrichedWindows.map((window, i) => ({
+    ...window,
+    resolution_disclosure: disclosures[i] ?? null,
+  }))
+  const { context_only_rows_in_page, context_only_note } = summarizeResolutionDisclosure(disclosures)
 
   const content: Record<string, unknown> = {
-    windows: enrichedWindows,
+    windows: windowsWithDisclosure,
     facets,
     coverage,
     drill_pointers: [] as unknown[],
@@ -973,6 +1163,8 @@ export async function computeGocharaActivation(
       window_count: rows.length,
       backing_data_reachable: ok && coverageOk,
       citation_verse_refs_available: verseRefMap.size > 0,
+      context_only_rows_in_page,
+      context_only_note,
       empty_reason: rows.length === 0
         ? (ok
             ? 'no kala_gochara_windows row spans this date for this chart/event_class/domain filter — an honest zero-activation result, not a fabricated one'
@@ -1002,6 +1194,11 @@ export function registerGocharaActivationTool(server: McpServer, principal: Prin
       'returns a `not_covered` refusal (with a cross_pointer to kala_windows_get) instead of a ' +
       'misleading empty. An honest empty `windows` array is distinguished from an unreachable ' +
       'table via provenance_envelope.empty_reason — never silently substituted.\n\n' +
+      'RESOLUTION (PARIṢKĀRA MR-11(b)): every window carries `resolution_disclosure` — ' +
+      '{resolution, resolution_source, is_timing_window}. Per PK-R-1 (native ruling), a decade-era ' +
+      'row (is_timing_window=false) is CONTEXT, never a genuine timing claim, no matter how precise ' +
+      'its peak_date looks — check is_timing_window before treating a row as a scheduling signal. ' +
+      'Filter with `resolution` ("era"|"month"|"day") to select only writer-asserted tiers.\n\n' +
       'Requires: chart_id (UUID).',
     ActivationInputSchema.shape,
     async (params) => {
@@ -1012,7 +1209,9 @@ export function registerGocharaActivationTool(server: McpServer, principal: Prin
       }
       const asOf = input.as_of_date ?? new Date().toISOString().slice(0, 10)
       try {
-        const result = await computeGocharaActivation(input.chart_id, asOf, principal, input.event_class, input.domain)
+        const result = await computeGocharaActivation(
+          input.chart_id, asOf, principal, input.event_class, input.domain, input.resolution
+        )
         return { content: [{ type: 'text' as const, text: JSON.stringify(result) }] }
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err)
@@ -1050,6 +1249,7 @@ const ForecastInputSchema = z.object({
         'silence on health as an all-clear.'
     ),
   limit: z.number().int().min(1).max(500).default(100),
+  resolution: ResolutionFilterSchema,
 })
 
 export async function computeGocharaForecast(
@@ -1059,7 +1259,8 @@ export async function computeGocharaForecast(
   valence: string | undefined,
   limit: number,
   principal: Principal,
-  domain?: string
+  domain?: string,
+  resolution?: string
 ): Promise<Record<string, unknown>> {
   const { coverage, ok: coverageOk } = await computeGocharaCoverage(chartId, principal)
   const notCovered = notCoveredFor(domain, coverage)
@@ -1073,6 +1274,7 @@ export async function computeGocharaForecast(
     event_class_filter: eventClass ?? null,
     valence_filter: valence ?? null,
     domain_filter: domain ?? null,
+    resolution_filter: resolution ?? null,
     computed_at: new Date().toISOString(),
     density_contract: FORECAST_DENSITY_CONTRACT,
   }
@@ -1109,6 +1311,10 @@ export async function computeGocharaForecast(
     params.push(domain)
     sql += ` AND EXISTS (SELECT 1 FROM brahma_event_ontology eo WHERE eo.event_class_id = kala_gochara_windows.event_class AND eo.domain = $${params.length})`
   }
+  if (resolution) {
+    params.push(resolution)
+    sql += ` AND resolution = $${params.length}`
+  }
   params.push(limit)
   sql += ` ORDER BY window_start ASC, signed_intensity DESC LIMIT $${params.length}`
 
@@ -1127,9 +1333,16 @@ export async function computeGocharaForecast(
   const citationStrings = extractCitationStrings(rows)
   const verseRefMap = await fetchVerseRefs(citationStrings, principal)
   const enrichedWindows = enrichWindowsWithVerseRefs(rows as unknown as Array<{ active_sentences: unknown[] }>, rows, verseRefMap)
+  // PARIṢKĀRA MR-11(b): resolution_disclosure per served window (PK-R-1).
+  const disclosures = rows.map((row) => deriveResolutionDisclosure(row))
+  const windowsWithDisclosure = enrichedWindows.map((window, i) => ({
+    ...window,
+    resolution_disclosure: disclosures[i] ?? null,
+  }))
+  const { context_only_rows_in_page, context_only_note } = summarizeResolutionDisclosure(disclosures)
 
   const content: Record<string, unknown> = {
-    windows: enrichedWindows,
+    windows: windowsWithDisclosure,
     facets,
     coverage,
     drill_pointers: [] as unknown[],
@@ -1140,6 +1353,8 @@ export async function computeGocharaForecast(
       shape_breakdown: byShape,
       backing_data_reachable: ok && coverageOk,
       citation_verse_refs_available: verseRefMap.size > 0,
+      context_only_rows_in_page,
+      context_only_note,
       empty_reason: rawRows.length === 0
         ? (ok
             ? 'no kala_gochara_windows rows overlap this date_range/filter combination — honest zero result. ' +
@@ -1173,6 +1388,11 @@ export function registerGocharaForecastTool(server: McpServer, principal: Princi
       'health is absent from coverage) — pass `domain` to get an explicit `not_covered` refusal with a ' +
       'cross_pointer to the capable instrument (kala_windows_get) instead of relying on silence.\n\n' +
       'Output: { windows: [...], coverage: {...}, provenance_envelope: { shape_breakdown, empty_reason, ... } }.\n\n' +
+      'RESOLUTION (PARIṢKĀRA MR-11(b)): every window carries `resolution_disclosure` — ' +
+      '{resolution, resolution_source, is_timing_window}. Per PK-R-1 (native ruling), a decade-era ' +
+      'row (is_timing_window=false) is CONTEXT, never a genuine timing claim — check ' +
+      'is_timing_window before treating a forecast row as an actionable date. Filter with ' +
+      '`resolution` ("era"|"month"|"day") to select only writer-asserted tiers.\n\n' +
       'Requires: chart_id (UUID), date_range {start, end}.',
     ForecastInputSchema.shape,
     async (params) => {
@@ -1189,7 +1409,8 @@ export function registerGocharaForecastTool(server: McpServer, principal: Princi
           input.valence,
           input.limit,
           principal,
-          input.domain
+          input.domain,
+          input.resolution
         )
         return { content: [{ type: 'text' as const, text: JSON.stringify(result) }] }
       } catch (err) {
@@ -1243,6 +1464,7 @@ const ElectionAvoidanceInputSchema = z.object({
         'the capable instrument (kala_windows_get) instead of a misleading empty scan.'
     ),
   limit: z.number().int().min(1).max(200).default(50),
+  resolution: ResolutionFilterSchema,
 })
 
 export function dominantGraha(row: GocharaWindowRow): string | null {
@@ -1276,7 +1498,8 @@ export async function computeGocharaElectionAvoidance(
   eventClass: string | undefined,
   limit: number,
   principal: Principal,
-  domain?: string
+  domain?: string,
+  resolution?: string
 ): Promise<Record<string, unknown>> {
   const { coverage, ok: coverageOk } = await computeGocharaCoverage(chartId, principal)
   const notCovered = notCoveredFor(domain, coverage)
@@ -1289,6 +1512,7 @@ export async function computeGocharaElectionAvoidance(
     date_range: dateRange,
     event_class_filter: eventClass ?? null,
     domain_filter: domain ?? null,
+    resolution_filter: resolution ?? null,
     computed_at: new Date().toISOString(),
     dr16_properties: ['honest_clarity', 'probabilistic_never_fatalistic', 'falsifier_bearing', 'mitigation_paired', 'confidence_honest'],
     density_contract: ELECTION_AVOIDANCE_DENSITY_CONTRACT,
@@ -1321,6 +1545,10 @@ export async function computeGocharaElectionAvoidance(
     params.push(domain)
     sql += ` AND EXISTS (SELECT 1 FROM brahma_event_ontology eo WHERE eo.event_class_id = kala_gochara_windows.event_class AND eo.domain = $${params.length})`
   }
+  if (resolution) {
+    params.push(resolution)
+    sql += ` AND resolution = $${params.length}`
+  }
   params.push(limit)
   sql += ` ORDER BY signed_intensity ASC LIMIT $${params.length}`  // most-negative first
 
@@ -1334,6 +1562,9 @@ export async function computeGocharaElectionAvoidance(
       const planet = dominantGraha(row)
       const mitigation = await fetchMitigation(planet, principal)
       const plateauDisclosure = derivePlateauDisclosure(row)
+      // PARIṢKĀRA MR-11(b): PK-R-1 gate — a decade-era adverse row must be
+      // disclosed as CONTEXT, never presented as an election date to avoid.
+      const resolutionDisclosure = deriveResolutionDisclosure(row)
       return {
         event_class: row.event_class,
         temporal_shape: row.temporal_shape,
@@ -1346,6 +1577,10 @@ export async function computeGocharaElectionAvoidance(
         era_slice_key: row.era_slice_key ?? null,
         generation: row.generation ?? null,
         term_breakdown: row.term_breakdown ?? null,
+        // PARIṢKĀRA MR-11(b) (migration 567).
+        resolution: row.resolution ?? null,
+        parent_window_id: row.parent_window_id ?? null,
+        resolution_disclosure: resolutionDisclosure,
         signed_intensity: row.signed_intensity,
         raw_intensity: row.raw_intensity,
         valence: row.valence,
@@ -1358,7 +1593,14 @@ export async function computeGocharaElectionAvoidance(
           `(${row.temporal_shape}-shaped) over ${row.window_start}..${row.window_end}, ` +
           `raw magnitude ${row.raw_intensity.toFixed(4)}. This is a probabilistic signal from a ` +
           `structural-prior model, not a certainty and not a fatalistic prediction.` +
-          (plateauDisclosure ? ` PLATEAU NOTICE: ${plateauDisclosure.note}.` : ''),
+          (plateauDisclosure ? ` PLATEAU NOTICE: ${plateauDisclosure.note}.` : '') +
+          // PARIṢKĀRA MR-11(b), PK-R-1 (native ruling): a decade-era span
+          // must never read as an election-avoidance date recommendation.
+          (!resolutionDisclosure.is_timing_window
+            ? ` CONTEXT ONLY (PK-R-1): this is a ${resolutionDisclosure.resolution ?? 'coarse'}-scale ` +
+              `span, not a month/day-resolution timing window — do not treat ${row.window_start}..` +
+              `${row.window_end} as specific dates to avoid; see resolution_disclosure.`
+            : ''),
         // 2. probabilistic, never fatalistic
         framing: {
           probabilistic: true,
@@ -1412,6 +1654,10 @@ export async function computeGocharaElectionAvoidance(
 
   // W5.1: compute facets (real detector per I3).
   const facets = computeWindowFacets(rows)
+  // PARIṢKĀRA MR-11(b): page-level context-only summary (PK-R-1).
+  const { context_only_rows_in_page, context_only_note } = summarizeResolutionDisclosure(
+    rows.map((row) => deriveResolutionDisclosure(row))
+  )
 
   const content: Record<string, unknown> = {
     windows: avoidWindows,
@@ -1423,6 +1669,8 @@ export async function computeGocharaElectionAvoidance(
       source_citation: resolvedCitation,
       window_count: rows.length,
       backing_data_reachable: ok && coverageOk,
+      context_only_rows_in_page,
+      context_only_note,
       empty_reason: rows.length === 0
         ? (ok
             ? 'no adverse (is_adverse=true) kala_gochara_windows rows overlap this date_range/filter -- ' +
@@ -1457,6 +1705,11 @@ export function registerGocharaElectionAvoidanceTool(server: McpServer, principa
       're-pointed to this table by this lane (see register_gochara_windows.ts module docstring / ' +
       'this lane\'s close report for the full reasoning) — use this tool directly for the signed-field ' +
       'election-avoidance view in the interim.\n\n' +
+      'RESOLUTION (PARIṢKĀRA MR-11(b), PK-R-1 native ruling): a decade-era adverse row is CONTEXT, ' +
+      'never a genuine date-to-avoid — every window carries `resolution_disclosure.is_timing_window` ' +
+      '(false for era-scale rows) and clarity_statement appends an explicit CONTEXT ONLY caveat for ' +
+      'them; do not surface an is_timing_window=false row as a specific election date to avoid. ' +
+      'Filter with `resolution` ("era"|"month"|"day") to select only writer-asserted tiers.\n\n' +
       'Requires: chart_id (UUID), date_range {start, end}.',
     ElectionAvoidanceInputSchema.shape,
     async (params) => {
@@ -1472,7 +1725,8 @@ export function registerGocharaElectionAvoidanceTool(server: McpServer, principa
           input.event_class,
           input.limit,
           principal,
-          input.domain
+          input.domain,
+          input.resolution
         )
         return { content: [{ type: 'text' as const, text: JSON.stringify(result) }] }
       } catch (err) {
