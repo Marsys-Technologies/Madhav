@@ -2093,3 +2093,38 @@ C8 (no PA-5 re-field — recorded), migration 567 claimed, TAP-6 lane announced.
 
 NEXT-ACTION: await builder/PRATINIDHI completions; dispatch lane d on first free slot; then
 PARĪKṢAKA (opus, fresh per verdict) per completed lane; merge on green CI + PASS.
+
+## 2026-08-11 ~18:2x IST — R1 progress: 2 lanes merged/queued, 2 verdicts, integration synced
+
+CONDUCTOR-HEARTBEAT: 2026-08-11T12:52:00Z pid=94797 host=Montys-MacBook-Pro.local
+
+- **Integration synced with main** (conductor merge-train): clean ort merge of origin/main into
+  parishkara/integration (zero conflicts), pushed — lane PRs off main now merge cleanly.
+  Root-caused en route: a CONFLICTING PR gets no merge ref, so pull_request CI can never fire
+  (why #1223 initially showed zero checks) — resolved by the sync + update-branch.
+- **Lane d (MR-08 regex residual): PR #1223 MERGED to integration.** PARĪKṢAKA PASS
+  (default-refuted, own mutation run: old regex wrongly PASSED on an unscoped DELETE — matched
+  from the dry-run log string through to the verify-SELECT's WHERE; new regex fails the mutation,
+  passes real code; 118 passed/6 skipped reproduced; 15/15 CI checks green). Two named residuals
+  recorded, non-blocking: (i) case-E bypass — a future edit logging the executed SQL verbatim
+  (with %s) could re-green the guard while the real DELETE is unscoped (source-text lint
+  limitation, disclosed); (ii) doc nit — the fix's comment credits dropping DOTALL but the
+  anchoring comes entirely from the [^"'] quote-exclusion class. MR-08 residual CLOSED.
+- **TAP-6 (PR #1222): PK-R-6 F-1 + all 3 advisories applied** — single-job shape (detection is
+  step 1 of tap6-method-audit itself; no needs, no skip path; fail-closed polarity: real grep on
+  relevant != 'false'; --no-renames; diff fail-safe defaults relevant=true; non-required jobs
+  re-gated for CI economy, never coupled to TAP-6's verdict). Verified live on the PR's own CI:
+  TAP-6 SUCCESS with the real-grep path exercised. 18/18 checks green → QUEUED to main via merge
+  queue (PK-R-6's stated re-verification condition met). Deploy verification per C3 follows merge.
+- **Lane b (MR-38+39): PR #1224 open**, PARĪKṢAKA verdict in flight. Builder evidence: fingerprint
+  now folds ROW_SCHEMA_COLUMNS derived from INSERT_PROD_SQL itself; MR-39's real gap was three
+  standalone runner scripts bypassing the already-fixed db.connect() factory — routed through it;
+  scaled-timeout kill demo run against a real throwaway Postgres (2s timeout kill demonstrated,
+  fixed session survives). 881 orchestrator tests passed; 2 pre-existing failures confirmed on
+  origin/main baseline (one is the W5.4 substring defect already fixed on integration via #1221).
+- **Lane MR-41+42 dispatched** (pk-mr4142, parishkara/mr-41-42-suppression, off integration):
+  vedha repoint to bg_transit_vedha + nakshatra anchor resolution + reachability test + truthful
+  v3 suppression_state + ENGINE_VERSION v3.1. Must merge BEFORE the R2 rebuild (MR-14 doctrine).
+
+NEXT-ACTION: on #1222 merge → C3 deploy verification; adopt remaining lane completions (mr23r,
+mr11h, mr12c, mr16, mr4142) → PARĪKṢAKA each → merge on green; then R2 gate packet.
