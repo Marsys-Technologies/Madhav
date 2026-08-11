@@ -2427,3 +2427,19 @@ CONDUCTOR-HEARTBEAT: 2026-08-11T17:45:00Z pid=94797 host=Montys-MacBook-Pro.loca
   admission ruling), guard that degree_contact/eclipse_degree keep contributing. Register
   amended; 3-test delta routed to the #1228 builder.
 - Fourth shared-stash incident (same recovery pattern, zero loss). The no-stash rule is final.
+
+## 2026-08-11 ~23:5x IST — #1228 FINAL PASS (merge-on-green armed); #1229 re-verdict running
+
+CONDUCTOR-HEARTBEAT: 2026-08-11T18:25:00Z pid=94797 host=Montys-MacBook-Pro.local
+
+- **#1228 (MR-41/42): FINAL PARĪKṢAKA PASS** at 26ee94f88 — F-1 marker assertion executes on
+  9 real sentences and goes RED under a source-marker mutation; F-2 chain-row fix
+  mutation-proven (bare-{} revert → KeyError RED; the quality_gates value now survives even
+  without a coverage note — the previously-uncovered half). 392 passed / 2 byte-identical
+  pre-existing parity failures. Non-blocking carry-forwards recorded (O-2 earned-empty is
+  logger-recorded not return-structured; O-3 net-zero production λ from MR-41(a) pending
+  MR-43). Merge-on-green watcher armed. On merge: MR-41 CLOSED (per PK-R-9/9a interim state),
+  MR-42 CLOSED.
+- **#1229 (MR-11 PK-R-8 rework): re-verdict in flight** (per-R8.1-15 + composition audit of
+  the chain/hierarchy merge, incl. the two real composition bugs the builder caught —
+  _build_chain_row missing resolution/parent_window_id + retired peak_basis literal).
