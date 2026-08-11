@@ -51,6 +51,18 @@ test suite) bans `"peak_basis": "gochara_lambda` (and the v1 'gochara_
 lambda_e_v1' literal is exempt — that is the untouched v1 engine's own
 citation, not this module's vocabulary) as a literal inside
 ka_gochara_v3_century_materialize.py.
+
+A FOURTH BASIS (PK-R-8a, 2026-08-11, ADJUDICATOR ruling on the chain-basis
+question deferred by PK-R-8 R8.8's original three): chain-shaped rows
+(temporal_shape='chain', see `_build_chain_row`) are neither a located
+day-refined argmax nor a coarse era scan — their date is DECLARED by
+`brahma_event_ontology`'s milestone_template, not LOCATED by any peak
+search. See ONTOLOGY_MILESTONE_OFFSET below for the full rationale. It is
+intentionally excluded from GENUINE_PEAK_BASES (that set stays exactly
+{LAMBDA_V3_ARGMAX} and means "located extremum") — a chain row earns its
+own, differently-derived timing-window status (see
+register_gochara_windows.ts's deriveResolutionDisclosure chain
+short-circuit), never by masquerading as a located peak.
 """
 from __future__ import annotations
 
@@ -69,12 +81,22 @@ LAMBDA_V3_COARSE_ARGMAX: str = "gochara_lambda_v3_coarse_argmax"
 # produce this shape of "peak".
 LAMBDA_V3_MIDPOINT: str = "gochara_lambda_v3_midpoint"
 
+# PK-R-8a (2026-08-11, ADJUDICATOR ruling, chain-basis question): the date
+# is episode_anchor_jd + milestone_template[i].typical_offset_days, declared
+# by brahma_event_ontology and scored by interval_solver.score_chain_
+# milestones at that exact date. The date IS the timing claim (PK-R-1's
+# dated-point floor, generalized to a declared milestone sequence). It was
+# DECLARED, not LOCATED — no peak search ran, and none is owed. Never
+# interchangeable with LAMBDA_V3_ARGMAX.
+ONTOLOGY_MILESTONE_OFFSET: str = "ontology_milestone_offset"
+
 # The complete set of bases this module knows about, for membership checks
 # (e.g. "is this basis one of ours at all, vs. a v1-engine or unknown tag").
 ALL_BASES: frozenset[str] = frozenset({
     LAMBDA_V3_ARGMAX,
     LAMBDA_V3_COARSE_ARGMAX,
     LAMBDA_V3_MIDPOINT,
+    ONTOLOGY_MILESTONE_OFFSET,
 })
 
 # R8.9: the bases a served row's peak_basis must be IN for is_timing_window
@@ -90,6 +112,7 @@ __all__ = [
     "LAMBDA_V3_ARGMAX",
     "LAMBDA_V3_COARSE_ARGMAX",
     "LAMBDA_V3_MIDPOINT",
+    "ONTOLOGY_MILESTONE_OFFSET",
     "ALL_BASES",
     "GENUINE_PEAK_BASES",
 ]

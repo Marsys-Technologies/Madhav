@@ -329,9 +329,9 @@ GENERATION_PROD = "3.0"
 # fingerprint is stable across internal gochara_v3 refactors that do NOT
 # move window positions.
 #
-# v3.0 -> v3.1 composes THREE independent scope/shape changes landed together
-# in the same PARIṢKĀRA wave (Codex C2: any materializer output shape/scope
-# change bumps ENGINE_VERSION):
+# v3.0 -> v3.1 composes FOUR independent scope/shape changes landed together
+# (concurrent lanes) in the same PARIṢKĀRA wave (Codex C2: any materializer
+# output shape/scope change bumps ENGINE_VERSION):
 #   (a) MR-16 — plan_substeps now discovers its event-class set dynamically
 #       from gochara_resonance_map instead of a hardcoded 6-class list, and
 #       every row carries a new coverage_quality note in suppression_state.
@@ -346,11 +346,19 @@ GENERATION_PROD = "3.0"
 #       written under the OLD tiled-hierarchy shape PK-R-8 replaced), so
 #       there is no already-built corpus a second bump would need to
 #       invalidate.
-# All three are delta-fingerprint-relevant per compute_substep_fingerprint's
+#   (d) MR-42 (PK-R-5/PK-R-9, 2026-08-11) — `suppression_state` is now a
+#       structured {"mechanism":..., "value":...} object forwarding the
+#       real quality_gates detail, never a bare {} placeholder -- see
+#       `_build_suppression_state`.
+# All four are delta-fingerprint-relevant per compute_substep_fingerprint's
 # own "engine_version bumped when scoring logic OR output shape changes"
 # contract, even though existing point-canonical classes' scoring is
-# byte-for-byte unchanged. One bump, not three — there is only one
-# ENGINE_VERSION value to compose into.
+# byte-for-byte unchanged. One bump, not four — there is only one
+# ENGINE_VERSION value to compose into; every stored fingerprint must
+# invalidate and re-materialize under the new shape rather than being
+# silently skipped as "unchanged" by the fingerprint check in `run_substep`.
+# Per Codex C2 convention: exactly this string, so concurrent lanes making
+# the identical bump auto-merge cleanly.
 ENGINE_VERSION = "v3.1"
 
 # DOCUMENTATION-ONLY as of PARIṢKĀRA MR-16 — the pre-MR-16 hardcoded 6-class
@@ -937,6 +945,19 @@ def _build_chain_row(
         happened to come from the chain branch of run_substep. Default None
         (I4 degrade) only for callers/tests that predate this fix;
         run_substep always supplies it.
+
+    PARĪKṢAKA F-2 fix (2026-08-11): `suppression_state` is now built via
+    `_build_suppression_state(term_breakdown, coverage_quality)` -- the SAME
+    function `_build_row` uses -- instead of a standalone
+    `{"coverage_quality": ...} if ... else {}` dict. Before this fix, a
+    chain row's `suppression_state` (a) could be a bare `{}` (whenever
+    `coverage_quality` was omitted) and (b) NEVER carried the real
+    `quality_gates` mechanism/value MR-42 requires, even though that same
+    value is already sitting in `term_breakdown['quality_gates']` two lines
+    below (`milestone.intensity_result.term_breakdown`) -- the exact
+    §N.7-item-4 "flag/field with no real detector behind it" defect class
+    MR-42 was written to kill on the interval-row path, silently still
+    reachable via the chain-row path alone.
     """
     milestone_date = _jd_to_date(milestone.milestone_jd)
     ir = milestone.intensity_result
@@ -944,9 +965,6 @@ def _build_chain_row(
     ci_low = ir.lambda_v3_ci_low if ir is not None else None
     ci_high = ir.lambda_v3_ci_high if ir is not None else None
     ci_source = ir.ci_source if ir is not None else None
-    suppression_state = (
-        {"coverage_quality": coverage_quality} if coverage_quality is not None else {}
-    )
     return {
         "chart_id": chart_id,
         "event_class": event_class,
@@ -962,7 +980,7 @@ def _build_chain_row(
         "is_adverse": is_adverse,
         "active_sentences": json.dumps([]),
         "contributing_systems": json.dumps([]),
-        "suppression_state": json.dumps(suppression_state),
+        "suppression_state": json.dumps(_build_suppression_state(term_breakdown, coverage_quality)),
         "peak_basis": peak_basis,
         "calibration_state": "structural_prior",
         "source": "live",
@@ -1258,6 +1276,63 @@ def _jd_to_date(jd: float) -> date:
     return date(1970, 1, 1) + timedelta(days=days_since_epoch)
 
 
+def _build_suppression_state(
+    term_breakdown: Optional[dict], coverage_quality: Optional[dict] = None,
+) -> dict[str, Any]:
+    """MR-42 (PK-R-5, 2026-08-11): the row's `suppression_state` column used
+    to be an unconditional `json.dumps({})` regardless of whether anything
+    was actually computed -- a reader could not tell "nothing fired" from
+    "nothing was asked" (the whole computation's own suppression detail was
+    silently dropped, even though it was already computed and buried in
+    `term_breakdown['quality_gates']` a few lines away).
+
+    `quality_gates` is the v3-native suppression mechanism (see engine.py's
+    MR-41(c) wiring-decision comment) -- 1.0 in (0,1] when no
+    `kala_vedha_gochara` vedha rows overlapped the evaluation window,
+    <1.0 when one or more did. This function ALWAYS returns a structured
+    object naming that mechanism, so `suppression_state={}` never appears on
+    a row this writer actually computed a peak for:
+
+      * `term_breakdown` present (the normal computed-row case): forwards
+        the real `quality_gates` scalar this same `term_breakdown` already
+        carries (no new computation, no new DB read -- W1.5's own value).
+      * `term_breakdown` is None (I4 honest degrade: peak evaluation
+        failed at this boundary's peak_jd): still names the mechanism, with
+        `value: None` and an explicit `note` -- distinguishable from a
+        computed `quality_gates == 1.0` ("checked, nothing fired") by a
+        reader inspecting `value`, never collapsed to the same bare `{}`
+        either case used to produce.
+
+    `coverage_quality` (MR-16, folded in here at REBASE MERGE time so the
+    two concurrent lanes' additions to this SAME field compose rather than
+    one silently overwriting the other): when supplied, embedded under the
+    `coverage_quality` key alongside `mechanism`/`value`/`note` above --
+    the same shape `_build_row`'s own (pre-MR-42) `coverage_quality` branch
+    used to build standalone, now folded into the always-structured object
+    this function returns.
+    """
+    if term_breakdown is None:
+        state = {
+            "mechanism": "quality_gates",
+            "value": None,
+            "note": "peak evaluation failed at this boundary's peak_jd (I4 honest degrade) "
+                    "-- quality_gates was never computed for this row, not evaluated to a "
+                    "value of 0/1.",
+        }
+    else:
+        state = {
+            "mechanism": "quality_gates",
+            "value": term_breakdown.get("quality_gates"),
+            "note": "v3-native suppression mechanism (see gochara_v3/engine.py's MR-41(c) "
+                    "wiring-decision comment); the v1 vedha_cancellation/sarvatobhadra_vedha/"
+                    "kartari_pincer mechanisms remain v1-parity-mode-only and are not consulted "
+                    "on this (v3 production) path.",
+        }
+    if coverage_quality is not None:
+        state["coverage_quality"] = coverage_quality
+    return state
+
+
 def _build_row(
     chart_id: str,
     event_class: str,
@@ -1335,14 +1410,20 @@ def _build_row(
         coverage was for this class, at build time -- never invented, never
         silently omitted for a thin class. Default None (I4 degrade) only
         for callers/tests that predate this fix; `run_substep` always
-        supplies it.
+        supplies it. REBASE MERGE NOTE (PK-R-9, 2026-08-11): folded into
+        `_build_suppression_state` below (see that function's own
+        `coverage_quality` parameter) rather than built standalone here, so
+        this concurrent MR-16 addition and MR-42's structured
+        {"mechanism":...} object compose in the SAME `suppression_state`
+        field instead of one silently overwriting the other.
+        `term_breakdown` is ALSO now the source for `suppression_state`
+        (MR-42, PK-R-5/PK-R-9 -- see `_build_suppression_state`) -- no new
+        parameter added for that half, the same value this docstring
+        already documents just gets used a second time.
     """
     window_start = _jd_to_date(boundary.enter_jd)
     window_end = _jd_to_date(boundary.exit_jd)
     peak_date = _jd_to_date(boundary.peak_jd)
-    suppression_state = (
-        {"coverage_quality": coverage_quality} if coverage_quality is not None else {}
-    )
     return {
         "chart_id": chart_id,
         "event_class": event_class,
@@ -1358,7 +1439,7 @@ def _build_row(
         "is_adverse": is_adverse,
         "active_sentences": json.dumps([]),
         "contributing_systems": json.dumps([]),
-        "suppression_state": json.dumps(suppression_state),
+        "suppression_state": json.dumps(_build_suppression_state(term_breakdown, coverage_quality)),
         "peak_basis": peak_basis,
         "calibration_state": "structural_prior",
         "source": "live",

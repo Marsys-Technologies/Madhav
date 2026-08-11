@@ -346,6 +346,62 @@ def test_build_chain_row_same_key_set_as_interval_row():
     assert set(interval_row.keys()) == set(chain_row.keys())
 
 
+def test_build_chain_row_computed_suppression_state_carries_quality_gates_never_bare_empty():
+    """PARĪKṢAKA F-2 (2026-08-11): a computed chain row's suppression_state
+    must carry the SAME truthful, structured quality_gates mechanism MR-42
+    guarantees for interval rows (`_build_row`) -- never a bare `{}`. Before
+    this fix, `_build_chain_row` built `suppression_state` from a
+    standalone `{"coverage_quality": ...} if coverage_quality else {}` dict
+    that (a) could be bare `{}` whenever coverage_quality was omitted and
+    (b) NEVER forwarded the real `quality_gates` value already sitting in
+    `milestone.intensity_result.term_breakdown` -- the exact §N.7-item-4
+    defect MR-42 was written to kill, silently still reachable via the
+    chain-row path alone. `_build_chain_row` now routes through the SAME
+    `_build_suppression_state(term_breakdown, coverage_quality)` `_build_row`
+    uses."""
+    import types
+
+    fake_intensity_result = types.SimpleNamespace(
+        term_breakdown={
+            "promise": 0.8, "permission": 0.6, "activity": 0.55, "quality_gates": 0.72,
+            "lambda_v3": 0.2376, "activity_terms": [], "formula": "x",
+        },
+        lambda_v3_ci_low=0.19, lambda_v3_ci_high=0.28, ci_source="structural_prior",
+    )
+    ms = MilestoneScore(
+        milestone_id="first_revenue", milestone_jd=2445736.5 + 120.0, lambda_v3=0.2376,
+        is_above_threshold=True, is_irreversibility_milestone=True,
+        intensity_result=fake_intensity_result,
+    )
+    coverage_note = {"tier": "rich", "target_count": 5, "note": "business_launch: 5 targets"}
+
+    row = _build_chain_row(
+        "482012f1-710e-4a25-994a-93821f5871aa", "business_launch", ms, "g3_1984_1994",
+        valence="gain", is_adverse=False, generation=GENERATION_PROD,
+        peak_basis=mod.peak_basis_vocab.ONTOLOGY_MILESTONE_OFFSET,
+        coverage_quality=coverage_note,
+    )
+    parsed = json.loads(row["suppression_state"])
+    assert parsed != {}
+    assert parsed["mechanism"] == "quality_gates"
+    assert parsed["value"] == 0.72
+    assert parsed["coverage_quality"] == coverage_note
+
+    # Same computed-row guarantee holds even without a coverage_quality note
+    # (the I4-degrade-shaped object, per _build_suppression_state) -- still
+    # never bare {}.
+    row_no_coverage = _build_chain_row(
+        "482012f1-710e-4a25-994a-93821f5871aa", "business_launch", ms, "g3_1984_1994",
+        valence="gain", is_adverse=False, generation=GENERATION_PROD,
+        peak_basis=mod.peak_basis_vocab.ONTOLOGY_MILESTONE_OFFSET,
+    )
+    parsed_no_coverage = json.loads(row_no_coverage["suppression_state"])
+    assert parsed_no_coverage != {}
+    assert parsed_no_coverage["mechanism"] == "quality_gates"
+    assert parsed_no_coverage["value"] == 0.72
+    assert "coverage_quality" not in parsed_no_coverage
+
+
 # ===========================================================================
 # run_substep — chain dispatch, end-to-end (fixture-only, no real DB)
 # ===========================================================================
