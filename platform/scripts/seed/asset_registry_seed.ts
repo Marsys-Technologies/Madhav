@@ -1929,20 +1929,31 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     // the renamed per-chart materializer — NOT the old service.
     // If this entry were left as the old service definition, a re-seed would
     // overwrite the DB's renamed materializer row with stale service data.
+    //
+    // PARIṢKĀRA MR-24 fix (2026-08-11): the writer (ka_gochara_v3_century_materialize.py)
+    // documents a later W5.4 UTK-R1 ADJUDICATOR repoint — kala_gochara_windows with
+    // generation='3.0' is the PRODUCTION authority surface; kala_gochara_windows_v2
+    // (generation='g3_utkarsha') is only a calibration/staging copy. This entry (and the
+    // MR-06 fix that preceded it) never caught up to that repoint: count_sql filtered
+    // kala_gochara_windows_v2 for generation='3.0', a combination that table never carries
+    // (its rows are tagged '2.0' or 'g3_utkarsha'), so the cockpit silently read 0 for both
+    // gen-3.0 charts despite 89/85 real, honestly-tiered rows being served in production.
+    // Found by MR-24's live battery (real execution against the deployed product), not by
+    // code review — the exact defect class this campaign's doctrine (§N.8) exists to catch.
     asset_id: 'ka_gochara',
     layer: 'kala', sort_order: 107,
     catalog_status: 'CURRENT',
     sanskrit_name: 'Gochara Puraḥ-Sañcalana Cakra (2.0, satyapana)',
     english_name: 'Gochara V3 Per-Chart Materializer',
-    english_description: 'Primary per-chart gochara window materializer (GOCHARA-UTKARSA). Renamed from ka_gochara_v2_materialize at W6.4 cutover (UTK-R2, migration 563). Joins bg_gochara_arcs against gochara_resonance_map and scores via gochara_intensity grammar. Writes kala_gochara_windows_v2 with generation=\'3.0\'. This is the post-cutover authority surface for kala_gochara_windows_v2.',
+    english_description: 'Primary per-chart gochara window materializer (GOCHARA-UTKARSA). Renamed from ka_gochara_v2_materialize at W6.4 cutover (UTK-R2, migration 563). Joins bg_gochara_arcs against gochara_resonance_map and scores via gochara_intensity grammar. Writes kala_gochara_windows with generation=\'3.0\' (W5.4 UTK-R1 production repoint) and kala_gochara_windows_v2 with generation=\'g3_utkarsha\' as a calibration/staging copy. kala_gochara_windows generation=\'3.0\' is the post-cutover PRODUCTION authority surface.',
     storage_type: 'postgres_table',
-    target_table: 'kala_gochara_windows_v2',
-    count_sql: "SELECT COUNT(*) FROM kala_gochara_windows_v2 WHERE chart_id=$1 AND generation='3.0'",
+    target_table: 'kala_gochara_windows',
+    count_sql: "SELECT COUNT(*) FROM kala_gochara_windows WHERE chart_id=$1 AND generation='3.0'",
     size_sql: null,
     target_floor: 0,
     expected_volume_formula: null,
     expected_volume_inputs: null,
-    volume_explanation: 'Per-chart gochara materialization (generation=3.0). Post-cutover authority surface.',
+    volume_explanation: 'Per-chart gochara materialization (generation=3.0), counted from the production surface (kala_gochara_windows) per the W5.4 UTK-R1 repoint — not the g3_utkarsha calibration copy in kala_gochara_windows_v2.',
     depends_on: ['bg_gochara_arcs', 'ka_gochara_resonance'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
     asset_kind: 'data',
