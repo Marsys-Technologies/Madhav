@@ -624,3 +624,33 @@ TAP-6 check always reports (explicit no-op SUCCESS when no relevant paths change
 closing the "absent required check silently blocks the merge queue" defect class
 permanently (third+ recurrence). Check behavior unchanged; ADJUDICATOR approves final
 shape before merge. This entry is the §3 carve-in announcement.
+
+### LOG — 2026-08-12 ~02:09 IST (SAMPŪRTI overnight conductor R9, pid=83428)
+
+**SAMPŪRTI OVERNIGHT RUN ACTIVE** — autonomous conductor pid=83428, supervisor PID 81385
+(`run_sampurti_overnight.sh` + caffeinate 81386), plan of record
+`00_ARCHITECTURE/briefs/sampurti/REBASE_PLAN_v1_0.md` (now committed to
+`sampurti/integration`). Estimated duration: R0–R6 across overnight window.
+
+**L-7 adjudication (per REBASE_PLAN RB-17 + conductor protocol):**
+L-7 lease is ACTIVE (expiry 2026-08-12 06:00 IST) and UNEXPIRED. PARIṢKĀRA process
+PID 80517 (`rebuild_per_substep.py 1c826d5a-41cb-4450-b4dc-59d440e5f75a abhinandan`)
+is GENUINELY ALIVE at check time 02:09 IST. Per protocol: **WAIT, recheck ≤15 min.** 
+No SAMPŪRTI lease claim; no production DB write until L-7 is released or expires.
+
+**N1 RULING RECORDED — R-COORD-4 = RETAIN:**
+Per PARIṢKĀRA NATIVE-PRATINIDHI delegation (PK-R-4, recorded in §4 above) and
+REBASE_PLAN §1 D11/N1: gochara_* serving tools (gochara_forecast_get,
+gochara_activation_get, gochara_election_avoidance_get) are PERMANENTLY OUT of
+SAMPŪRTI's Wave-2 retirement list. SAMPŪRTI's L2a list amended in-ledger. Reversal
+requires explicit NATIVE ruling under PA-7 joint process.
+
+**COURTESY PRIORITY NOTE to PARIṢKĀRA:**
+SAMPŪRTI holds the critical path for R0–R3 tonight (P-G1 Run 12 + S5 DAG rebuild +
+Measurement #4). Requesting PARIṢKĀRA defer any further gochara corpus rebuild
+(remaining MR-41/42 if any) until our R3 completes — **request, not command.** If
+PARIṢKĀRA rebuilds under its own lease, SAMPŪRTI's build evidence is SHA-pinned and
+xref drift is value-inert (accepted risk, ledgered per REBASE_PLAN RB-11/RB-19).
+
+Next SAMPŪRTI lease claim: as soon as L-7 releases or expires — R0 gate packet.
+
