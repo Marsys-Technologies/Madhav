@@ -1077,13 +1077,39 @@ confirmed live, `chronic_onset` now correctly produces `shape=interval` with
 real `build_resolution_hierarchy` peak scans) from the one already-fresh
 substep set (native's `career_advancement`, correctly no-opped as
 "fingerprint unchanged" — proving the writer's own delta-skip is sound; only
-the CONDUCTOR's naive row-presence proxy was unsafe). Re-verification against
-the corrected corpus to follow before this entry's remediation-options
-disposition is finalized. This is itself a clean instance of this
-campaign's own recurring pattern (MR-44 side-finding, the 3 prior
-conductor-tooling bugs this session): a completion signal that checked a
-proxy (row presence) instead of the real claim (current-engine output) —
+the CONDUCTOR's naive row-presence proxy was unsafe). This is itself a clean
+instance of this campaign's own recurring pattern (MR-44 side-finding, the 3
+prior conductor-tooling bugs this session): a completion signal that checked
+a proxy (row presence) instead of the real claim (current-engine output) —
 §N.8, one layer up from the writer into the rebuild driver itself.
+
+**RE-VERIFICATION (2026-08-12, both stale-fix runs completed clean, 60/60
+substeps each, 170+180 rows): CLOSES both open threads.**
+(1) `SELECT count(*) FROM kala_gochara_windows_v2 WHERE peak_basis=
+'gochara_lambda_v3'` → **0**, both charts — the retired literal is now fully
+purged from the g3_utkarsha generation. (2) `chronic_onset`/`major_gain` now
+each produce the FULL, correct era⊃month⊃day hierarchy (10 era + 30 month +
+30 day = 70 rows/class/chart, `peak_basis` correctly split coarse_argmax
+(era) / argmax (month+day)) — byte-identical shape pattern to the 7
+already-correct interval-canonical classes. **The "hierarchy-path miss" was
+never a writer defect at all** — fully explained and closed by the resume-
+check root cause above; no further investigation needed, no writer change
+required. (3) `career_advancement`/`illness_acute`/`marriage`/`surgery` now
+show genuine, freshly-confirmed `temporal_shape='interval'`, `resolution=
+NULL`, `peak_basis='gochara_lambda_v3_coarse_argmax'` output (10 rows/
+class/chart) — the R8.12 else-branch, running for real this time. **Net
+effect on the ORIGINAL finding's headline count: all 13 of the originally-
+flagged point-canonical classes are confirmed producing interval-shaped
+rows** — the same number as first reported, but now for the RIGHT reason
+(genuine current-engine R8.12 output across the board, not 9 genuine + 4
+stale-artifact false positives). The architectural finding this entry exists
+to raise — R8.12's flat-envelope fallback vs PK-R-7(iv)'s literal text,
+mitigated by the deployed serving layer's honest `is_timing_window=false`
+gating (verified live via `gochara_forecast_get`) — stands, confirmed
+against a now fully clean, fully rebuilt, zero-stale-row corpus on both
+charts. **STATUS: ready for NATIVE-PRATINIDHI adjudication as originally
+scoped** (disposition (a) accept-and-correct-PK-R-7(iv)-text vs (b)
+build-genuine-point-production) — no further data investigation blocks it.
 
 ## §7 — SOURCE → MR MAP (dedup audit)
 
