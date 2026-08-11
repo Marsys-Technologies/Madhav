@@ -763,3 +763,55 @@ scope reduction below 27 classes · retiring any serving surface · LEL content.
     builder dispatches should note explicitly that campaign-governance files are NOT expected to be
     present in lane worktrees, to avoid this (harmless) confusion recurring.
   NEXT-ACTION: merge #1212 on green; await MR-14.
+
+- 2026-08-11 ~06:3x IST (interactive conductor — MR-14 landed after one stall+resume, real fix +
+  an important new disclosed gap):
+  MR-14 BUILDER STALLED once (600s no-progress, mid "commit the W4.4 changes and clean up") —
+    resumed via SendMessage with full context rather than reconstructing blind; it picked up
+    cleanly (its TDD red/green for the engine fix was already safely committed before the stall).
+  MR-14 RESULT (PR #1213, parishkara/mr-14 → parishkara/integration): the v3 engine
+    (services/gochara_v3/engine.py) already computed the full W1.5 term_breakdown decomposition
+    correctly on every IntensityResult -- NOT broken, proven by the pre-existing
+    test_lambda_decomposition.py suite (left untouched). Real defect was two downstream wiring
+    gaps: (1) interval_solver.py::find_threshold_crossings only ever read a bare raw_lambda float
+    (_eval_single), discarding the decomposition that _eval_single_full would have returned --
+    fixed by adding one _eval_single_full call per detected interval at peak_jd, carrying 4 new
+    fields onto IntervalBoundary; (2) ka_gochara_v3_century_materialize.py::_build_row() never
+    read those fields and neither INSERT_SQL nor INSERT_PROD_SQL named the columns -- fixed by
+    threading them through as explicit kwargs (mirrors MR-13's valence pattern) and naming the
+    columns in both INSERT templates.
+  ABHINANDAN 0-ROW: honestly reported as NOT a bug (matches this session's standing "honest null
+    beats invented fix" discipline) -- live query confirmed life_events has 0 rows for that chart
+    (genuine LEL-intake gap, not a code defect); load_abhinandan_train_events() already correctly
+    degrades to the documented "treat native as prior" path. One dead variable
+    (n_effective_abhinandan) found nearby and removed as disclosed minor cleanup, not conflated
+    with "the bug."
+  *** IMPORTANT NEW FINDING, NOT YET RESOLVED, AFFECTS THE UPCOMING REBUILD'S EXPECTED OUTCOME ***
+    Even with term_breakdown now correctly populated, NONE of the 10 admitted mechanism
+    toggle_keys (w21_av_gating etc.) will match _determine_ablation_method's literal key-matching
+    against the REAL decomposition shape ({promise, permission, activity, quality_gates,
+    lambda_v3, activity_terms, formula}) -- W4.4 fits will still silently fall back to
+    proxy_fraction for all 10 mechanisms post-rebuild, just against a populated corpus instead of
+    an all-NULL one. This is a THIRD wiring gap (register only named two: term_breakdown-never-
+    produced and the Abhinandan bug) between "term_breakdown exists" and "a real fit can use it."
+    Documented in code + locked in with a regression test; NOT fixed (correctly out of MR-14's
+    scope -- this is mechanism-wiring redesign, a new lane, not this one). PRACTICAL IMPLICATION:
+    the one authorized rebuild should NOT be assumed to produce a real non-degenerate fit just
+    because term_breakdown will be non-NULL afterward -- the register's own MR-14 GATE anticipated
+    exactly this ("real weights OR an honest recorded insufficient-data conclusion -- both valid
+    closures"); this finding means the honest-insufficient-data branch is now the LIKELY outcome
+    of the rebuild's fit step unless a follow-up mechanism-matching fix lands first. Recommend:
+    either (a) accept structural_prior surviving the rebuild as the honest MR-14 closure and open
+    a NEW register item for the mechanism-matching gap, or (b) native decides to fix the matching
+    gap before the rebuild so it has a real chance at empirically_calibrated. Native ruling needed
+    on which -- not self-decided here.
+  VERIFICATION (execution, not review): ran the real unmodified writer against a disposable local
+    Docker Postgres (schema mirrored from live information_schema via read-only queries), a real
+    fixture-built ClassContext, genuine swisseph-computed lambda_v3 curve. Confirmed:
+    term_breakdown written with all 7 required keys, formula identity holds exactly, forced re-run
+    confirmed delete-then-insert replace-not-accrete (§N.3). Never touched staging/prod; container
+    torn down after. Full regression suite: 865 passed, 66 skipped, 4 pre-existing unrelated
+    failures (byte-identical on pre-fix tree, confirmed not caused by this change).
+  NEXT-ACTION: merge #1213 on green -- all three of MR-13/14/15's CODE now landed to
+    parishkara/integration. Next: check whether the fixed writer emits point-shaped rows (MR-10
+    fold-in question) before opening the pinned gate packet to main.
