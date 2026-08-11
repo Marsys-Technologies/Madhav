@@ -425,6 +425,30 @@ pre-existing staging rows are honestly restamped per native ruling. AT-PAR:
 closes the same §N.8 defect class as MR-13, one layer downstream (the
 writer was fixed; the POST-FIT stamper that runs after it was not).
 
+**DISPOSITION (native-ruled 2026-08-11, executed same day, PARISHKARA_LEDGER
+"MR-37 disposition" entry — CLOSED, PR pending merge):**
+(a) `load_fitted_weights()` now returns `earned_fit_run_ids` — toggle_keys
+with a non-zero weight AND `MECHANISM_ENGINE_WIRED=True`; the stamping gate
+consumes this, not raw row-existence. `TestEarnedSignalGate` (7 tests)
+reproduces the exact exploit end-to-end via `build_post_fit_report` and
+asserts it is refused. 167/167 kala_admission tests pass. PR #1217
+(`parishkara/mr-37-w45-earned-signal-gate` → `parishkara/integration`).
+(b) Live pre-check found the 107 rows NO LONGER dishonest — already
+overwritten to `structural_prior` as a side effect of THE ONE authorized
+rebuild's delete-then-insert on the same staging table (verified via
+`computed_at` matching the rebuild window). Committed, dry-run-capable
+`restamp_dishonest_staging_calibration.py` still written and run for real
+per native instruction: 0 rows affected, confirmed clean. No GUC override
+used (staging is unprotected).
+(c) Standing rule recorded (ledger): nothing consumes staging
+`calibration_state` as trustworthy until PR #1217 is merged AND
+`restamp_dishonest_staging_calibration.py --dry-run` confirms 0 dishonest
+rows. Does not apply to the protected production surface
+(`kala_gochara_windows`), independently verified honest throughout.
+Non-blocking for the W6-COMPLETE marker (posted before this disposition;
+neither (a) nor (b) touches the gen-3.0 authority seam or any marker-gate
+item).
+
 **MR-38 · ENGINE_VERSION not bumped by MR-13/14 — future rebuilds silently
 no-op.** [net-new, found 2026-08-11 during THE authorized gen-3.0 rebuild
 throwaway-DB rehearsal, PARISHKARA_LEDGER 2026-08-11 ~14:3x IST entry,

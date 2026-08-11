@@ -46,7 +46,7 @@ marker_duty: post W6-COMPLETE to campaign-coordination §6 after MR-01..08,10,13
 | MR-34 | Third-chart scope statement | MERGED | PR #1194 MERGED to parishkara/integration · PARĪKṢAKA PASS: amonty84/14:30:52Z — 5/5 tests pass, source cross-check ok, COALESCE contract verified |
 | MR-35 | Serving-outage smoke probe (CI) | MERGED | PR #1196 MERGED · PARĪKṢAKA PASS: HTTP JSON-RPC probe, seeded failure exit=1 verified, Gate 3 (green live) honestly deferred (MR-01 pending deploy) |
 | MR-36 | (merged into MR-21) | MERGED-INTO-21 | register §7 |
-| MR-37 | w45 calibration-stamping gate unsound (row-existence not earned-signal) | QUEUED (native ruling needed on 107 pre-existing dishonest staging rows) | register §MR-37, found 2026-08-11 during THE authorized rebuild |
+| MR-37 | w45 calibration-stamping gate unsound (row-existence not earned-signal) | CLOSED (PR pending merge) | native-ruled + executed 2026-08-11: gate fixed + 7-test regression suite (PR #1217, parishkara/mr-37-w45-earned-signal-gate -> parishkara/integration, not yet merged), 107-row staging disposition confirmed already-clean via committed restamp script (0 rows affected, real execution), standing rule recorded — see "MR-37 disposition" ledger entry |
 | MR-38 | ENGINE_VERSION not bumped by MR-13/14 (silent-no-op risk on future rebuilds) | QUEUED | register §MR-38, caught in throwaway-DB rehearsal before the real rebuild, resolved in-window only |
 | MR-39 | idle_in_transaction_session_timeout vs long substeps | QUEUED | register §MR-39, real orchestrator-wide fragility, misread as sandbox flakiness by 3 independent builder sessions this campaign |
 | MR-40 | ka_gochara cockpit count_sql orphaned by W5.4 UTK-R1 authority repoint | LIVE-FIXED, PR OPEN | found + live-fixed during MR-24's final re-run 2026-08-11; source-of-truth fix in PR #1216 (parishkara/mr-40-cockpit-gochara-authority -> parishkara/integration), not yet merged; live DB already correct (verified 89/85) |
@@ -1378,3 +1378,84 @@ staging restamp), MR-38 (ENGINE_VERSION standing rule), MR-39 (idle_in_transacti
 finding for SAMPŪRTI), and MR-40 (this entry's cockpit fix, PR open not yet merged) all remain
 OPEN as named, non-blocking residuals — explicitly disclosed to the native, not silently
 deferred.
+
+## 2026-08-11 — MR-37 disposition (native-ruled, executed): (a) gate fix, (b) restamp, (c) standing rule
+
+Native ruling received verbatim this session on all three parts of MR-37's disposition,
+non-blocking for the W6-COMPLETE marker (already posted). Executed in full:
+
+**MR-37(a) — w45's §N.8 gate fixed to test earned signal, not row existence.**
+`w45_post_fit_rebuild.py`'s `load_fitted_weights()` now also returns `earned_fit_run_ids`:
+only toggle_keys with BOTH a genuinely non-zero weight AND
+`MECHANISM_ENGINE_WIRED[toggle_key]=True` (w44's own registry — all 10 admitted mechanisms
+are `False` today, per PARIṢKĀRA MR-14-matching). `build_post_fit_report()` now passes this
+earned subset to `stamp_empirically_calibrated`, not the raw row-existence `fit_run_ids`.
+New `TestEarnedSignalGate` regression suite (7 tests) added, including THE required test:
+`test_exploit_end_to_end_refused_via_build_post_fit_report` reproduces the exact proven
+exploit — a `gochara_v3_calibration` row exists for every admitted toggle_key with
+`weight_value=0.0` (today's real production shape, confirmed live: `mechanism_not_wired`
+forces `delta_native`/`delta_abhinandan` to an honest `0.0` in `w44`'s
+`compute_mechanism_weights`) — driven through the full `build_post_fit_report` path with a
+fake connection that WOULD return rowcount=120 if the UPDATE ran, and asserts it does not
+(`rows_stamped_empirically_calibrated == 0`, zero UPDATE statements issued). Also covers:
+wired+nonzero → earned (positive case, gate is not impossible to pass); wired+zero → not
+earned; unwired+nonzero → not earned (drift guard); unknown toggle_key → defaults wired=True
+(matches w44's own `.get(key, True)` convention, so an unrecognized key is never silently
+excluded). `167/167` `kala_admission` tests pass. PR #1217
+(`parishkara/mr-37-w45-earned-signal-gate` → `parishkara/integration`), open, not yet merged.
+
+**MR-37(b) — 107 pre-existing dishonest staging rows: disposition.**
+Live pre-check (before writing any restamp tooling) found ZERO rows currently
+`empirically_calibrated` anywhere in `kala_gochara_windows_v2`:
+```
+calibration_state | count |              min              |              max
+-------------------+-------+-------------------------------+-------------------------------
+ structural_prior  |   174 | 2026-08-06 16:55:23.383372+00 | 2026-08-11 08:57:34.578001+00
+```
+All 174 rows (both charts × generation `2.0`/`g3_utkarsha`) are honestly `structural_prior`;
+`max(computed_at)` (08:57:34) matches THE ONE authorized rebuild's own execution window
+earlier today. Root cause of the resolution: the rebuild ran the real writer
+(`ka_gochara_v3_century_materialize.py`) against both canonical charts; per §N.3 (per-chart
+delete-then-insert, never accrete) its pass on `kala_gochara_windows_v2` (the calibration/
+staging write target) DELETE-then-INSERTed all 120 `g3_utkarsha` rows from scratch, and every
+freshly-inserted row starts at `calibration_state='structural_prior'` (the writer's own
+default — only w45's post-fit stamper ever sets `empirically_calibrated`, and w45 was not run
+against this table by anyone in this campaign after the rebuild). This incidentally already
+overwrote the 107 dishonest rows as a side effect.
+Per the native's explicit instruction, the committed, audited restamp script was still
+written and run for real (not skipped on the strength of the pre-check alone — §N.8: an
+honest zero-rows-affected result from a real detector is not the same as never running the
+check): `platform/python-sidecar/scripts/kala_admission/restamp_dishonest_staging_calibration.py`
+(dry-run-capable, full pre/post census, scoped to `chart_id IN (native, abhinandan) AND
+era_slice_key LIKE 'g3_%' AND calibration_state='empirically_calibrated'`). staging
+(`kala_gochara_windows_v2`) is unprotected — no `app.allow_protected_sweep_rewrite` override
+used or needed. Live execution:
+```
+$ python3 restamp_dishonest_staging_calibration.py --dry-run
+[restamp] PRE-STATE census: 'structural_prior': 174
+[restamp] Scoped target (empirically_calibrated, g3_%, native+abhinandan): 0 row(s)
+[restamp] DRY RUN -- would UPDATE 0 row(s)
+
+$ python3 restamp_dishonest_staging_calibration.py
+[restamp] PRE-STATE census: 'structural_prior': 174
+[restamp] Scoped target: 0 row(s)
+[restamp] POST-STATE census: 'structural_prior': 174
+RESTAMP COMPLETE: 0 row(s) restamped 'structural_prior'.
+```
+Disposition: CLOSED. The 107 rows named in the original finding no longer exist in dishonest
+form — verified live, not assumed — and the tooling to restamp any recurrence is now
+committed, tested, and proven to run cleanly against production.
+
+**MR-37(c) — standing rule recorded.** Nothing may ever consume staging (`kala_gochara_windows_v2`)
+`calibration_state` as if it were a verified/trustworthy signal until both (a) and (b) are
+true. As of this entry both ARE true (gate fixed + PR open, 107-row disposition confirmed
+clean) — but the rule is recorded here as a standing gate for any FUTURE session that reads
+staging `calibration_state`: verify PR #1217 (or its successor) is merged, and re-run
+`restamp_dishonest_staging_calibration.py --dry-run` to confirm 0 dishonest rows, before
+trusting any `empirically_calibrated` value read from `kala_gochara_windows_v2`. This rule
+does not apply to `kala_gochara_windows` (the protected production surface) — that table's
+own generation='3.0' honesty was independently verified throughout THE ONE authorized rebuild
+and MR-24's final battery.
+
+MR-37 register status: register amended in the same push (MR-37 entry marked with this
+disposition; MR STATUS table updated below).
