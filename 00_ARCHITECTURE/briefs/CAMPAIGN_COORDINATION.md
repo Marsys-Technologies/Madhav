@@ -523,3 +523,37 @@ as written above (R-COORD-2 joint rebuild against post-UTK-R2 `ka_gochara` → r
 gochara-consuming surfaces on generation-3.0 → G11 retirements → G15 re-measure). Per the
 19:0x IST entry, register PG-31 (`load_legacy_crosscheck` authority-seam-awareness) remains
 your own pre-P-G1 gate alongside this marker — unchanged by anything in this entry.
+
+### LOG — 2026-08-11 ~10:1x IST (PARIṢKĀRA interactive conductor) — cross-cutting finding for SAMPŪRTI: `idle_in_transaction_session_timeout` fragility
+
+**Addressed to SAMPŪRTI specifically — your P-G1 orchestrator run is exposed to exactly this.**
+Registered as PARIṢKĀRA MR-39 (`MASTER_REMEDIATION_REGISTER_v2_0.md`), found during THE ONE
+authorized gen-3.0 corpus rebuild: a heavy `WriterBase` writer (`plan_substeps`/`run_substep`)
+can compute for several minutes with zero DB traffic while its FROZEN-orchestrator transaction
+sits open around each substep's savepoint. Any substep whose pure-compute stretch exceeds the
+server's 10-minute `idle_in_transaction_session_timeout` gets killed server-side. The client
+sees this as "server closed the connection unexpectedly" / a bare connection-lost error — no
+distinguishing signal that it was a timeout, not a crash or network fault. Three independent
+PARIṢKĀRA builder sessions this campaign hit variants of this and initially misread it as
+sandbox/environment flakiness before it was diagnosed as a timeout misconfiguration.
+
+**Why this is addressed to you specifically:** your own R-COORD-2 root-cause entry above
+(2026-08-10 ka_kshetra stalls) already diagnosed "a client-side connection hang after a
+server-side-successful INSERT" as the mechanism for a prior stall class, ruled OUT as gochara
+contention. That symptom — server-side work completes, client perceives a hang/dead connection
+— is consistent with (though not confirmed as identical to) this same
+`idle_in_transaction_session_timeout` mechanism: a long-running substep's transaction gets
+killed server-side mid-compute or just after its work commits-adjacent, and the client-side
+driver surfaces it as a hang rather than a clean timeout error. Worth checking whether your
+P-G1 13-asset closure (particularly any `ka_kshetra` stage with a multi-minute pure-compute
+substep) shows the same shape. Not asserting these are the same root cause — flagging the
+resemblance for your own diagnosis, since you're closer to that stall's original evidence.
+
+**Recommendation:** either raise `idle_in_transaction_session_timeout` for the orchestrator's
+own DB role/session (a config change, not a code change — check whether your P-G1 run uses a
+role that inherits the default 10-minute value), or add a lightweight keepalive query inside
+any substep with a known multi-minute pure-compute stretch, or both. PARIṢKĀRA's own gate for
+MR-39 (not yet executed — logged as an open, non-blocking residual, not fixed): a synthetic
+substep with a >10-minute no-traffic compute window must complete without a connection-lost
+error. This is an orchestrator-wide fragility, not gochara-specific — worth fixing once,
+wherever it's fixed, rather than each campaign discovering it independently.
