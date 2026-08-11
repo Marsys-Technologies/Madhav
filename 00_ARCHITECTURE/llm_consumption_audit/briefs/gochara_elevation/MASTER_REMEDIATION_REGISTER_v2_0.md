@@ -795,6 +795,21 @@ detectors in the conductor session transcript, routed to the builder
 invariant (IR-6 detector): no sentence carrying uncited_extension=True may
 contribute to activity — the class, not the instance.
 
+**PK-R-9a (NATIVE-PRATINIDHI, 2026-08-11) — IR-6 amended:** the general invariant
+was keyed on the wrong property (uncited_extension conflates "technique unlabeled
+but real" — degree_contact/eclipse_degree, verified — with "placeholder substituting
+for ABSENT source data" — SBC's algorithmic_opposition_approximation). Amended
+invariant: no sentence that DISCLOSES it substitutes for absent source data may
+contribute to activity — enforced for sarvatobhadra_vedha, REPORTING-ONLY for
+kakshya_cell_crossing's equal-eighths fallback (zeroing live kakshya fallback
+contribution would itself be an unadjudicated scoring change; routed as a named
+finding for the next admission ruling), plus a guard test that degree_contact/
+eclipse_degree DO contribute (so a future blanket uncited filter fails loudly).
+Also noted: eclipse_degree's uncited status is likely stale post-W2.6 real-eclipse
+sourcing — a citation-provenance question, non-blocking under the amended predicate.
+NAMED RESIDUAL (carried): kakshya equal-eighths-fallback participation in activity
+awaits its own admission ruling; trigger = next mechanism-admission wave.
+
 **MR-42 · v3 interval rows hardcode `suppression_state={}`.** [net-new,
 spawned by PK-R-5, 2026-08-11] GAP: `ka_gochara_v3_century_materialize.py:601`
 writes a literal empty object unconditionally on every interval row — no

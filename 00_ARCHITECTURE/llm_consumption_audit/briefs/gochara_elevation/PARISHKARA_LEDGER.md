@@ -2409,3 +2409,21 @@ CONDUCTOR-HEARTBEAT: 2026-08-11T17:15:00Z pid=94797 host=Montys-MacBook-Pro.loca
 - #1228 rework (PK-R-9 IR-1..12) and #1229 rework (PK-R-8 R8.1..15) both in progress; each
   gets a fresh per-IR/per-R verdict before merge. Two API-stall resumes this hour (MR-11 mid
   rewrite, MR-12 mid suite) — both recovered with zero loss (checkpoint discipline held).
+
+## 2026-08-11 ~23:0x IST — #1225 MERGED; #1228 rework done; PK-R-9a issued and routed
+
+CONDUCTOR-HEARTBEAT: 2026-08-11T17:45:00Z pid=94797 host=Montys-MacBook-Pro.local
+
+- **#1225 (MR-12): MERGED to integration** on green CI post-rebase (semantic composition:
+  dynamic discovery + chain wiring + coverage_quality on chain rows).
+- **#1228 rework complete** — IR-1..12 implemented (vedha predicate fix + 41-row live check,
+  adapter deleted, governance_note authority ruling, earned-empty gate citing MR-43, SBC out /
+  tara in, docstring retractions, GRAMMAR_VERSION=v1_mr41_2026_08, pattern-pins drift-proofed);
+  builder honestly ROUTED BACK the IR-6 blanket invariant (degree_contact/eclipse_degree also
+  uncited — blanket filter would gut activity). Fresh PARĪKṢAKA re-verdict in flight.
+- **PK-R-9a issued** (adjudicator, self-correcting its own IR-6): invariant re-keyed to
+  absent-source-substitution disclosure markers — enforced on SBC, reporting-only on kakshya's
+  equal-eighths fallback (new NAMED RESIDUAL: kakshya fallback participation awaits its own
+  admission ruling), guard that degree_contact/eclipse_degree keep contributing. Register
+  amended; 3-test delta routed to the #1228 builder.
+- Fourth shared-stash incident (same recovery pattern, zero loss). The no-stash rule is final.
