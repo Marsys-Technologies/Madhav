@@ -1577,3 +1577,38 @@ MR-19 register status: GATE met — "published ablation table" is satisfied hone
 disclosing there IS no ablation table to publish (the mechanisms are unablatable-by-
 construction today), "re-issued rulings in ledger" is this entry. AT-PAR restored: admissions
 now mean what I2 says they mean — no mechanism claims a fitted weight it never earned.
+
+## 2026-08-11 — MR-11 + MR-12: honest status, both correctly BLOCKED (not closed)
+
+Investigated live, under the active YIELD WINDOW (no production builds/rebuilds while
+SAMPŪRTI's P-G1 lease is held) plus MR-11's own standing "NATIVE RULING REQUIRED" gate.
+
+**MR-11 (temporal resolution):**
+- **(a) MR-10 restores dated points — CONFIRMED SATISFIED.** Live: 54 point-shaped
+  gen-3.0 rows across both charts, day-precision (`window_start=window_end`, single
+  timestamp), 37 distinct days spanning 2023-09-24 to 2029-07-24. Sub-decade resolution is
+  genuinely being served today, not just claimed.
+- **(b) hierarchy windows (era⊃month⊃day, parent_window_id) — BLOCKED, worse than the
+  original GAP text implied.** `information_schema.columns` for `kala_gochara_windows`
+  confirms `parent_window_id` does not exist as a column at all (checked live, not assumed) —
+  this is not "code merged, zero rows," it is "the schema for this feature was never
+  migrated into the live table." Producing hierarchy rows would require both a schema
+  migration AND a producer run against the corpus — a production build/write action,
+  explicitly barred by the current YIELD WINDOW. Not attempted.
+- **(c) NATIVE RULING REQUIRED (serving resolution bar) — cannot be self-certified,** by the
+  register's own explicit design ("an agent cannot self-certify this"). Not ruled here.
+- **Disposition: MR-11 remains OPEN, sub-item (a) verifiably CLOSED, (b) and (c) correctly
+  deferred** — (b) to post-yield-window production work, (c) to the native. No fake progress
+  recorded.
+
+**MR-12 (chain rows, marriage first):**
+- Live: `temporal_shape` distribution on gen-3.0 rows (both charts) is `interval`(120) +
+  `point`(54) — **zero `chain`-shaped rows**, `milestone_id` null on all 174 rows. The GAP
+  ("corpus has zero chains") is confirmed still fully true post-rebuild.
+- REMEDIATION ("run the chain producer for chain-canonical classes, both charts") is a
+  production write action — explicitly barred by the current YIELD WINDOW.
+- **Disposition: MR-12 remains OPEN, correctly BLOCKED on the yield window.** Not attempted.
+
+Both items queued to resume the moment SAMPŪRTI's P-G1 lease is RELEASED (per the native's
+own disposition ordering) — MR-11(b) and MR-12 are exactly the kind of production-write work
+the yield window exists to prevent from overlapping SAMPŪRTI's critical-path run.
