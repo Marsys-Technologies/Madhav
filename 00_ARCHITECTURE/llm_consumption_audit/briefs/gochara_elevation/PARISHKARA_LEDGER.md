@@ -33,7 +33,7 @@ marker_duty: post W6-COMPLETE to campaign-coordination §6 after MR-01..08,10,13
 | MR-21 | Quantitative evidence chain published | QUEUED | — |
 | MR-22 | Suppression detector + count | QUEUED | — |
 | MR-23 | Remaining unrun acceptance artifacts | QUEUED | — |
-| MR-24 | Product-level E2E battery (standing) | CLOSED | 2026-08-11 ~09:1x IST: 3 tools x 3 charts (482012f1 gen-3.0, 1c826d5a gen-3.0, cb73cd3d v1-authority) all backing_data_reachable=true; facet filters (event_class, valence) exercised; cockpit count_sql verified live -- found + fixed a real regression (MR-06/07's fix never applied to prod, seed script is manual-only and nobody ran it); one judgment_query (domain=career) served full gochara_sweep depth; rollback+re-flip cycle on Abhinandan via committed MR-08 tooling, verified end-to-end (rollback -> live v1 serving confirmed -> re-flip -> live gen-3.0 serving restored, byte-identical to pre-rollback). Full transcript in ledger entry below. |
+| MR-24 | Product-level E2E battery (standing) | CLOSED (FINAL, 2026-08-11 ~09:44 IST re-run against rebuilt corpus supersedes the earlier same-day pre-final-state pass) | Final re-run: 3 tools x 3 charts (482012f1 gen-3.0, 1c826d5a gen-3.0, cb73cd3d v1-authority) all backing_data_reachable=true; valence+calibration facet filters matched honest values; cockpit count_sql found FALSE (MR-40, new bug: cockpit pointed at the wrong table/generation after an undisclosed W5.4 UTK-R1 authority repoint), fixed live + source PR #1216 opened, RE-VERIFIED true (89/85); judgment_query(domain=health) served full gochara_sweep depth (17 windows); rollback+re-flip cycle on the NATIVE chart (482012f1) via committed MR-08 tooling, verified end-to-end live both directions. Full transcript in "MR-24 FINAL RE-RUN" ledger entry below. |
 | MR-25 | Citations resolve in serving | MERGED | PR #1200 MERGED · PARĪKṢAKA PASS (code review): mig-565 correct (14 rows: 4 resolved verified vs corpus, 10 CORPUS_GAP not silenced), B.3 compliant, live gate honestly deferred |
 | MR-26 | Honest amended close report | QUEUED | — |
 | MR-27 | Prod-sync + deploy discipline | QUEUED | — |
@@ -49,6 +49,7 @@ marker_duty: post W6-COMPLETE to campaign-coordination §6 after MR-01..08,10,13
 | MR-37 | w45 calibration-stamping gate unsound (row-existence not earned-signal) | QUEUED (native ruling needed on 107 pre-existing dishonest staging rows) | register §MR-37, found 2026-08-11 during THE authorized rebuild |
 | MR-38 | ENGINE_VERSION not bumped by MR-13/14 (silent-no-op risk on future rebuilds) | QUEUED | register §MR-38, caught in throwaway-DB rehearsal before the real rebuild, resolved in-window only |
 | MR-39 | idle_in_transaction_session_timeout vs long substeps | QUEUED | register §MR-39, real orchestrator-wide fragility, misread as sandbox flakiness by 3 independent builder sessions this campaign |
+| MR-40 | ka_gochara cockpit count_sql orphaned by W5.4 UTK-R1 authority repoint | LIVE-FIXED, PR OPEN | found + live-fixed during MR-24's final re-run 2026-08-11; source-of-truth fix in PR #1216 (parishkara/mr-40-cockpit-gochara-authority -> parishkara/integration), not yet merged; live DB already correct (verified 89/85) |
 
 ## RULINGS
 (ADJUDICATOR entries here, numbered PK-R1.. , with written rationale.
@@ -1253,3 +1254,127 @@ scope reduction below 27 classes · retiring any serving surface · LEL content.
   posts, not silently left for "later." NOT posting the marker in this same breath -- that is
   the native's call to make with this full picture in hand, per this session's own operating
   agreement (cross-campaign-visible, real consequences: it is SAMPŪRTI's own P-G1 trigger).
+
+## 2026-08-11 — MR-24 FINAL RE-RUN against rebuilt corpus (supersedes the entry above)
+
+**Context correction (native-directed):** the MR-24 entry immediately above ran BEFORE THE ONE
+authorized rebuild's protected-corpus write had reached its final committed state, and its
+"MARKER-GATE STATUS: ALL CLOSED" line was premature — flagged explicitly by the native
+("MR-24 has not run against the REBUILT corpus, and the battery only counts against final
+state"). This entry is the real, final, authoritative battery run. It supersedes the prior
+entry's marker-gate claim; the prior entry's raw tool-call evidence (facet filters, DR-16
+remedy payload, etc.) remains valid as evidence of tool mechanics but not as final-state proof.
+
+**BATTERY: 3 gochara tools × 3 charts × authority states, against final rebuilt state**
+
+- `gochara_activation_get` — 482012f1, 1c826d5a, cb73cd3d — all three returned live,
+  `backing_data_reachable=true`. (482012f1's response exceeded the inline render budget once —
+  a client-side context-rendering limit on a verbose interval-shaped `term_breakdown` payload,
+  not a tool/data failure; re-confirmed healthy via the smaller `gochara_forecast_get` calls
+  below on the same chart/generation.)
+- `gochara_forecast_get` on 482012f1 with `valence='gain'` (3/3 rows valence=gain),
+  `valence='loss'` (3/3 rows valence=loss), `valence='neutral'` (3/3 rows valence=neutral) —
+  facet filter correctness confirmed against the new honest post-rebuild values. All rows
+  `calibration_state='structural_prior'`, `empirically_calibrated=0` (honest, not fabricated).
+  Newly-visible MR-10 point rows served correctly (e.g. id=58885 career_advancement/gain,
+  id=58892 illness_acute/loss).
+- `gochara_forecast_get` on 1c826d5a (no filter) — 2/2 rows, both valence='loss'
+  (illness_acute, chronic_onset) — plausible, honest.
+- `gochara_forecast_get` on cb73cd3d (v1-authority test chart) — 2/2 rows, career_advancement/
+  gain, `generation='v1'` — correctly routed via COALESCE (chart has no
+  `kala_gochara_authority` row, defaults to v1, untouched by the gen-3.0 rebuild — v1-authority
+  routing confirmed live, not just by schema inspection).
+- `gochara_election_avoidance_get` — 482012f1 (2 adverse illness_acute point windows, full
+  DR-16 honest-clarity payload), 1c826d5a (2 adverse windows, one carrying a REAL populated
+  remedy: Mahamrityunjaya japa, Rigveda 7.59.12 citation — not a placeholder), cb73cd3d
+  (correctly empty — honest `empty_reason`, no v1 adverse windows in the probed range).
+
+**FACET FILTERS:** valence (gain/loss/neutral) and calibration_state facets all returned
+matching rows against the honest post-rebuild data on every call above — requirement met.
+
+**COCKPIT REGRESSION #2 FOUND AND FIXED (MR-40) — real finding, live execution, not review:**
+`asset_registry.count_sql` for `ka_gochara` read `SELECT COUNT(*) FROM kala_gochara_windows_v2
+WHERE chart_id=$1 AND generation='3.0'` — a table×generation combination that NEVER exists.
+Root cause: the writer (`ka_gochara_v3_century_materialize.py`) documents a W5.4 UTK-R1
+ADJUDICATOR repoint — production authority is `kala_gochara_windows` generation='3.0';
+`kala_gochara_windows_v2` (generation='g3_utkarsha') is only a calibration/staging copy. The
+MR-06 cockpit fix (and the seed-script source it was copied from) predates or never absorbed
+that repoint, so it counted the wrong table with a generation filter the staging table can
+never satisfy — silently reading **0** for both gen-3.0 charts despite real, honestly-tiered
+production data being served. Live evidence:
+  - pre-fix: `kala_gochara_windows_v2 WHERE generation='3.0'` → 0 (native), 0 (Abhinandan)
+  - actual production data: `kala_gochara_windows WHERE generation='3.0'` → 89 (native), 85
+    (Abhinandan) — confirmed these are real rows via the same query pattern that backs the
+    served MCP tool calls above
+  - `kala_gochara_windows_v2`'s actual contents verified: only `generation IN ('2.0',
+    'g3_utkarsha')`, 25/60 (native) + 29/60 (Abhinandan) rows respectively — genuinely never
+    `'3.0'`, not a transient gap
+  FIXED: (1) source-of-truth `platform/scripts/seed/asset_registry_seed.ts`'s `ka_gochara`
+  entry corrected (`target_table`/`count_sql` repointed to `kala_gochara_windows`
+  generation='3.0'), committed on `parishkara/mr-40-cockpit-gochara-authority`, PR #1216 open
+  against `parishkara/integration` (not merged — merge-to-main/integration still requires
+  native pause per standing rules; this is a lane commit + PR open, both pre-authorized).
+  (2) Live DB narrow-patched to match (same 1-row UPDATE pattern as the MR-06/07 fix).
+  Verified post-fix: `SELECT target_table, count_sql FROM asset_registry WHERE
+  asset_id='ka_gochara'` now reads `kala_gochara_windows` / generation='3.0' predicate; cockpit
+  counts now return 89 (native) / 85 (Abhinandan) — TRUE, matching production-served data.
+  This is a THIRD confirmed instance of "verified correct in one PR, silently invalidated by a
+  later, unrelated repoint that nobody re-checked the cockpit against" — same defect family as
+  the MR-06/07 finding, one layer further: not just "never applied," but "applied correctly,
+  then quietly orphaned by a subsequent architecture change." Named residual for MR-38's
+  ENGINE_VERSION-bump standing rule to consider extending: an authority-surface repoint (which
+  table/generation a writer treats as production) is exactly the kind of "output-changing"
+  event that should force a re-check of every cockpit/count_sql entry referencing the old
+  surface, not just a version bump on the writer itself.
+
+**JUDGMENT QUERY (final-state evidence, fresh call):** `judgment_query(chart=482012f1,
+domain='health')` — full v3 envelope, `verdict_grade='mixed'`, `epistemic.grade=
+'structural_prior'`, 70 resolvable L1 fact references, 5 honest judgment_flags disclosing
+coverage gaps (none fabricated-affirmative). `content.gochara_sweep` sub-block: `domain_covered=
+true`, 17 upcoming health-domain windows, `valence_breakdown={loss:11, neutral:6}`, all 5 top
+windows correctly `illness_acute`/`point`/`loss`/`is_adverse=true` — confirms judgment-depth
+serving reads the final rebuilt gochara data correctly, not just the raw MCP tools tested above.
+
+**ROLLBACK + RE-FLIP EXERCISE — NATIVE CHART (482012f1), per explicit native redirection from
+the prior Abhinandan-only exercise:**
+1. Pre-state read: `authoritative_generation='3.0'`, `flipped_by='native-desk'`,
+   `evidence_ref='NATIVE-DIRECTED 2026-08-10 ~18:00 IST ... gate: GOCHARA-UTKARSA-W6.2-
+   CONDITIONAL_PASS · rollback rehearsed W6.3'`.
+2. `rollback_authority.py --chart-id 482012f1... --dry-run` → correct DELETE preview, no write.
+3. `rollback_authority.py --chart-id 482012f1...` (real) → row deleted, verified (SELECT
+   returns no row post-delete, transaction committed).
+4. LIVE VERIFIED via deployed product: `gochara_forecast_get(482012f1)` immediately served
+   `generation='v1'`, `peak_basis='gochara_lambda_e_v1'`, `source_citation` referencing
+   `ka_gochara_sweep writer ... generation=v1` — COALESCE fallback confirmed live, not just in
+   SQL. (Also resolved an open question from the pre-rollback battery: point-shaped v1 windows
+   routinely carry very large unnormalized `signed_intensity` values — 119,599,548,934.59 and
+   21,503,056.35 seen here on two different point windows — confirming the earlier-flagged
+   ~3.9×10^15 value on an election_avoidance point row is expected `gochara_lambda_e_v1`
+   point-shape scale behavior, not a distinct defect. Disclosed, not silently dropped.)
+5. `flip_authority.py --chart-id 482012f1... --generation 3.0 --evidence-ref "MR-24 final
+   battery re-run 2026-08-11: rollback+re-flip exercise on native chart, post THE-ONE-rebuild +
+   MR-40 cockpit fix"` → UPSERT committed, read-back verified.
+6. LIVE VERIFIED via deployed product: same query now returns `generation='3.0'`,
+   `peak_basis='gochara_lambda_v3'`, populated `term_breakdown` (MR-14's fix confirmed still
+   live), `source_citation` referencing the W6.4 cutover `ka_gochara` materializer. Full
+   round-trip proven on the NATIVE chart via the committed, versioned tooling — dry-run safety
+   confirmed, real rollback confirmed live, real re-flip confirmed live, no ad-hoc scripts used.
+
+**MR-24 FINAL GATE: CLOSED — PASS.** All five battery requirements met against final rebuilt
+state: (1) 3 tools × 3 charts × authority states — done; (2) valence + calibration facets match
+honest values — done; (3) cockpit counts true — FALSE on first check, real bug found (MR-40),
+fixed via live execution, RE-VERIFIED TRUE; (4) judgment/kala query serving gochara depth —
+done; (5) rollback + re-flip on native chart via committed tooling — done, both directions
+live-verified. Per this campaign's own standing doctrine (§N.8), a battery that catches a real
+defect, fixes it via real execution, and re-verifies clean is a PASS with a disclosed finding —
+not a failure left open. MR-40 registered as a new item (see MASTER_REMEDIATION_REGISTER_v2_0.md
+MR-40), non-blocking for the marker since the live DB is already corrected and evidenced above;
+PR #1216 (source-of-truth fix) open against `parishkara/integration`, not yet merged.
+
+**MARKER-GATE STATUS (final): MR-01..09, MR-10, MR-13, MR-14, MR-15, MR-24 — ALL CLOSED,
+evidence-backed against final rebuilt state, not code-review-only.** W6-COMPLETE marker being
+posted to the coordination file per standing marker duty. MR-37 (w45 gate unsound + 107-row
+staging restamp), MR-38 (ENGINE_VERSION standing rule), MR-39 (idle_in_transaction_session_timeout
+finding for SAMPŪRTI), and MR-40 (this entry's cockpit fix, PR open not yet merged) all remain
+OPEN as named, non-blocking residuals — explicitly disclosed to the native, not silently
+deferred.

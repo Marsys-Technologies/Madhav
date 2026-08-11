@@ -468,6 +468,35 @@ GATE: a synthetic substep with a >10-minute no-traffic compute window
 completes without a connection-lost error. AT-PAR: closes a real
 orchestrator-wide operational fragility, not specific to gochara.
 
+**MR-40 · `ka_gochara` cockpit `count_sql` orphaned by the W5.4 UTK-R1
+authority repoint — cockpit read 0 for both gen-3.0 charts.**
+[net-new, found 2026-08-11 during MR-24's final battery re-run against the
+rebuilt corpus, PARISHKARA_LEDGER 2026-08-11 "MR-24 FINAL RE-RUN" entry]
+GAP: `asset_registry_seed.ts`'s `ka_gochara` entry (`count_sql`/
+`target_table`) counted `kala_gochara_windows_v2 WHERE generation='3.0'` —
+a table×generation combination the writer's own W5.4 UTK-R1 ADJUDICATOR
+repoint moved off of (production authority is `kala_gochara_windows`
+generation='3.0'; `kala_gochara_windows_v2` generation='g3_utkarsha' is
+calibration/staging only, confirmed live: it holds only '2.0' and
+'g3_utkarsha' rows, never '3.0'). The MR-06 cockpit fix (PR #1202) was
+itself correct for its own moment but was silently orphaned by this later,
+unrelated repoint — a third instance of the "verified correct, never
+re-checked against a later change" defect family this campaign has now
+found (alongside the migration-563 FK bug and the asset_registry_seed
+manual-invocation gap). REMEDIATION: (1) source fixed —
+`asset_registry_seed.ts`'s `ka_gochara` entry repointed to
+`kala_gochara_windows` generation='3.0', PR #1216
+(`parishkara/mr-40-cockpit-gochara-authority` → `parishkara/integration`,
+open, not yet merged); (2) live DB narrow-patched to match, verified
+89 (482012f1) / 85 (1c826d5a) — TRUE, matching production-served data.
+GATE: cockpit count for `ka_gochara` on a gen-3.0 chart matches a direct
+`kala_gochara_windows WHERE generation='3.0'` count. AT-PAR: closed live;
+PR merge to `parishkara/integration` still pending (non-blocking — not a
+marker-gate item, live state already correct and evidenced). See MR-38's
+ENGINE_VERSION standing rule for the related open question of whether an
+authority-surface repoint (not just an engine/writer code change) should
+also force a re-check of every cockpit entry referencing the old surface.
+
 ## §7 — SOURCE → MR MAP (dedup audit)
 
 PG-1→MR-01 · PG-2→MR-05 · PG-3→MR-10 · PG-4→MR-04+13 · PG-5→MR-13 ·
