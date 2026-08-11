@@ -493,9 +493,19 @@ def test_dryrun_fixture_only_writes_generation_30_rows(monkeypatch):
 
     # Collect DML statements whose SQL references the production table name
     # (after f-string evaluation at runtime, the SQL contains the literal name).
+    # PARIṢKĀRA MR-23 fix (2026-08-11): `PROD_TABLE in sql` is a raw substring
+    # check, and PROD_TABLE ("kala_gochara_windows") is itself a literal
+    # substring of "kala_gochara_windows_v2" -- the calibration/staging
+    # table's own DML was being misdetected as a production-table statement,
+    # then flagged as a false violation for correctly carrying
+    # generation='g3_utkarsha' instead of '3.0'. A regex word-boundary check
+    # (\b...\b) correctly excludes the _v2 table, since '_' is a \w
+    # character in Python regex -- there is no word boundary between
+    # "windows" and "_v2".
+    _prod_table_word_re = re.compile(rf"\b{re.escape(PROD_TABLE)}\b")
     prod_dml = [
         (sql, params) for sql, params in conn.statements
-        if PROD_TABLE in sql  # runtime-evaluated SQL contains the literal table name
+        if _prod_table_word_re.search(sql)
         and sql.strip().upper().startswith(("DELETE", "INSERT", "UPDATE"))
     ]
 
@@ -561,10 +571,14 @@ def test_dryrun_fixture_no_generation_v1_rows(monkeypatch):
     writer.run_substep(ctx, step)
 
     # No DML against PROD_TABLE should produce generation='v1'.
+    # PARIṢKĀRA MR-23 fix (2026-08-11): same word-boundary fix as
+    # test_dryrun_fixture_only_writes_generation_30_rows -- a raw substring
+    # check would also match the calibration table (kala_gochara_windows_v2).
     v1_re = re.compile(r"generation\s*=\s*'v1'")
+    prod_table_word_re = re.compile(rf"\b{re.escape(PROD_TABLE)}\b")
     v1_violations: list[tuple[str, object]] = []
     for sql, params in conn.statements:
-        if PROD_TABLE not in sql:
+        if not prod_table_word_re.search(sql):
             continue
         if not sql.strip().upper().startswith(("DELETE", "INSERT", "UPDATE")):
             continue
