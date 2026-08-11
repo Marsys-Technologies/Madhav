@@ -969,6 +969,122 @@ exact substep) — the honest bound is
 `N_era + 2·min(3·N_era, ⌈decade_days/90⌉)`; correct the disclosure text as
 part of this fix or a named follow-up, conductor's call.
 
+**MR-46 · Point-canonical classes served with `temporal_shape='interval'` — label
+mismatch vs ontology, SAFELY GATED by existing serving discipline, native ruling
+needed on the architectural disposition.** [net-new, found 2026-08-12 during R2
+Phase D evidence pack, direct corpus inspection both charts post-rebuild]
+GAP: `ka_gochara_v3_century_materialize.py`'s `run_substep` has three branches:
+`class_shape=='interval'` → peak-anchored hierarchy; `is_chain` → chain
+production; `else` (explicitly commented "R8.12 shape gate: point-canonical
+class — NO hierarchy tiers") → flat `find_threshold_crossings` production,
+`resolution=NULL`, **but the row is still built with `temporal_shape='interval'`**
+— this writer has NEVER produced genuinely point-shaped output (single-day,
+`window_start=window_end`) for any class; that has always come from a
+SEPARATE mechanism (MR-10's promotion of v1-engine rows, `peak_basis=
+'gochara_lambda_e_v1'`, 54 rows total, both charts, untouched and correct
+throughout this rebuild). R8.12's own verified test only checked "zero rows
+with non-null resolution" (i.e., no HIERARCHY tiers) — it never checked "zero
+interval-shaped rows," so this passed the #1229 PARĪKṢAKA's own adversarial
+review while leaving PK-R-7(iv)'s EXPLICIT text ("zero interval-shaped rows
+for point-canonical classes") unsatisfied. Confirmed live, both charts: 13
+point-canonical classes (achievement_recognition, bereavement, birth_anchor,
+career_advancement, career_entry, childbirth, exam_outcome, illness_acute,
+marriage, property_acquisition, romantic_start, surgery, travel_event) × 10
+decades = 130 interval rows/chart from this rebuild, ADDITIONAL to (not
+replacing) the pre-existing correct point rows. **Separately, and by a
+different mechanism:** `chronic_onset`/`major_gain` (genuinely
+interval-canonical per ontology, confirmed via both the live table AND the
+writer's own `_SHAPE_FALLBACK` fixture — both agree 'interval') ALSO produced
+zero hierarchy rows this rebuild, 100% flat/NULL-resolution, on both charts —
+the OTHER 7 interval-canonical classes (career_setback, financial_deception,
+major_loss, parental_event, psychological_arc, relocation, spiritual_turn)
+correctly produced ONLY era/month/day hierarchy rows with zero redundant flat
+rows. Root cause for these 2 specific classes NOT YET DIAGNOSED (both shape
+lookups agree 'interval', so it is not a shape-dispatch bug — plausibly an
+honest zero-peaks-admitted outcome specific to these classes' λ curves on
+these charts, OR a genuine hierarchy-path bug distinct from the 13-class
+finding; requires investigation before disposition).
+**MITIGATING EVIDENCE (verified live via the deployed product,
+gochara_forecast_get, chart 482012f1, event_class=marriage):** the serving
+layer ALREADY correctly excludes these rows from being presented as timing
+claims — `resolution_disclosure: {is_timing_window: false,
+timing_window_blocked_reason: "resolution_unavailable"}`, plus an explicit
+`context_only_note`: "served row(s) are era-scale/unresolved CONTEXT, not
+timing windows (PK-R-1)... do not read window_start/window_end/peak_date on
+these rows as a month/day-precision claim." No consumer respecting the
+existing PK-R-1/is_timing_window discipline can mistake these rows for real
+timing claims — this is a DATA-LABEL consistency gap (temporal_shape doesn't
+match ontology), not a served-falsehood gap (§N.7/§N.8 are not violated at
+the serving boundary). REMEDIATION options, NATIVE RULING REQUIRED (an
+architecture disposition, not a mechanical fix — parallels MR-12's marriage-
+chain divergence): (a) accept the "interval envelope + separate point-row
+promotion + serving-layer honest gating" as the permanent, intended
+architecture for point-canonical classes — correct PK-R-7(iv)'s text to match
+(shape fidelity requirement narrows to "no row may be presented as a timing
+claim inconsistent with its class's true shape," which is ALREADY satisfied);
+or (b) build genuine point-row production into this writer for point-
+canonical classes, retiring the flat-interval-envelope fallback for them,
+and re-run affected substeps under a new authorized window. Separately:
+diagnose chronic_onset/major_gain's hierarchy-path miss (investigation, not
+yet a ruling question) before disposition. GATE: native/adjudicator ruling
+recorded; if (b), a fix + reproduction test + re-verified live corpus; if
+(a), PK-R-7(iv)'s text corrected in place with this finding's evidence cited.
+AT-PAR: closes the gap between what R8.12 was VERIFIED to do and what
+PK-R-7(iv) was RULED to require — same "escaped verification, caught only at
+real-data scale" pattern as MR-44/45, one layer higher (a ruling-vs-
+implementation gap, not a pure code bug).
+
+**MR-46 CORRECTION (2026-08-12, same session, pre-adjudication) — the "13
+point-canonical classes" and "chronic_onset/major_gain hierarchy-path miss"
+findings above OVERSTATE the writer-code defect. Root cause was NOT a code
+gap in the R8.12 shape gate for most of these classes — it was a false
+positive in the CONDUCTOR'S OWN resume-check tooling** (`rebuild_per_substep.
+py`'s `already_done()`, which treated the mere PRESENCE of a row at a decade
+key as proof the current writer had rebuilt it — true only when delete-then-
+insert actually ran under the CURRENT engine). Direct SQL evidence: 6 classes
+— `career_advancement`, `chronic_onset`, `illness_acute`, `major_gain`,
+`marriage`, `surgery` — carry rows stamped `peak_basis='gochara_lambda_v3'`,
+the RETIRED bare literal this writer's own module docstring says can never
+be produced post-R8.8 (independently confirmed absent from source by the
+pk-mr11h verification pass, 2026-08-11 19:33 IST: "no bare gochara_lambda_v3
+literals in peak_basis assignments"). These rows' timestamps (2026-08-11
+~07:38–08:57 UTC, both charts) predate the real rebuild window
+(~17:17–21:39 UTC) by ~9-10 hours and carry ZERO corresponding
+`kala_gochara_v2_build_state` fingerprint entries — conclusive proof they
+were never touched by ANY pass of this session's writer execution; they are
+leftovers from a build era that predates R8.8/R8.12/MR-11(b) entirely. The
+resume-check saw these old rows present at the decade key and skipped,
+believing (wrongly) they were already-correct current-shape output.
+**Consequence for the original finding: only 9 of the 13 "point-canonical
+interval-shape" classes (achievement_recognition, bereavement, birth_anchor,
+career_entry, childbirth, exam_outcome, property_acquisition, romantic_start,
+travel_event) are genuine, freshly-confirmed R8.12-branch output — the real,
+live architectural gap the rest of this entry's analysis (mitigating
+serving-layer evidence, remediation options (a)/(b), native-ruling
+requirement) still applies to unchanged. The other 4 (career_advancement*,
+illness_acute, marriage, surgery) and BOTH of the "chronic_onset/major_gain
+hierarchy-path miss" classes were simply never rebuilt this pass — not a
+writer defect at all, a false-completion signal in the conductor's own
+tooling** (*career_advancement was stale only on the Abhinandan chart; the
+native chart's copy was already genuinely fresh from an earlier real pass).
+FIX APPLIED (2026-08-12, same C4 lease window, `r2evidence/
+rebuild_stale_classes.py`): a targeted re-run of exactly these 6 classes,
+both charts, bypassing the conductor's unsafe resume check entirely and
+relying instead on the writer's OWN internal MR-38 fingerprint delta-skip
+(`kala_gochara_v2_build_state.class_fingerprint` vs recomputed) — which
+correctly distinguished the genuinely-stale substeps (ran and rebuilt them:
+confirmed live, `chronic_onset` now correctly produces `shape=interval` with
+real `build_resolution_hierarchy` peak scans) from the one already-fresh
+substep set (native's `career_advancement`, correctly no-opped as
+"fingerprint unchanged" — proving the writer's own delta-skip is sound; only
+the CONDUCTOR's naive row-presence proxy was unsafe). Re-verification against
+the corrected corpus to follow before this entry's remediation-options
+disposition is finalized. This is itself a clean instance of this
+campaign's own recurring pattern (MR-44 side-finding, the 3 prior
+conductor-tooling bugs this session): a completion signal that checked a
+proxy (row presence) instead of the real claim (current-engine output) —
+§N.8, one layer up from the writer into the rebuild driver itself.
+
 ## §7 — SOURCE → MR MAP (dedup audit)
 
 PG-1→MR-01 · PG-2→MR-05 · PG-3→MR-10 · PG-4→MR-04+13 · PG-5→MR-13 ·
