@@ -93,6 +93,12 @@ class _FakeConn:
 
 BUILD_STATE_TABLE = "kala_gochara_v2_build_state"
 
+# MR-16: default discovered event classes for plan_substeps' discovery query.
+_DISCOVERED_CLASSES = [
+    "career_advancement", "major_gain", "marriage",
+    "illness_acute", "chronic_onset", "surgery",
+]
+
 ONTOLOGY_VALENCE_FIXTURE = {
     "career_advancement": "gain",
     "major_gain": "gain",
@@ -131,6 +137,8 @@ def _responder(*, targets=("Venus",), stored_fp=None, rows_exist=False,
 
     def responder(sql: str, params=None) -> list[dict]:
         s = sql.lower()
+        if "gochara_resonance_map" in s and "distinct" in s and "target_ref" not in s:
+            return [{"event_class": ec} for ec in _DISCOVERED_CLASSES]
         if "gochara_resonance_map" in s and "target_ref" in s:
             return [{"target_ref": t} for t in targets]
         if BUILD_STATE_TABLE in s and sql.strip().upper().startswith("SELECT"):
@@ -174,6 +182,13 @@ def _patch_common(monkeypatch, boundaries):
         resolution_facet={"era": len(era_windows), "month": 0, "day": 0},
     )
     monkeypatch.setattr(mod, "build_resolution_hierarchy", lambda *a, **k: fake_hierarchy)
+    # R8.12 shape gate: this file exercises "marriage" (a 'point'-canonical
+    # class per live brahma_event_ontology schema), which would otherwise
+    # route through the flat find_threshold_crossings path instead of
+    # build_resolution_hierarchy -- force 'interval' so the mock above is
+    # actually reached (this file's own scope is term_breakdown propagation
+    # through the hierarchy path, not the shape gate itself).
+    monkeypatch.setattr(mod, "_fetch_event_class_temporal_shape", lambda *a, **k: "interval")
     monkeypatch.setattr(
         mod, "ClassContext",
         type("FakeClassContext", (), {"fetch": staticmethod(lambda **k: object())}),

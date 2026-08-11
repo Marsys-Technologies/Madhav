@@ -117,9 +117,17 @@ def _ctx(conn, **extra_config) -> ContextSpec:
     )
 
 
+_DISCOVERED_CLASSES = [
+    "career_advancement", "major_gain", "marriage",
+    "illness_acute", "chronic_onset", "surgery",
+]
+
+
 def _responder(*, targets=("Venus",), stored_fp=None, rows_exist=False):
     def responder(sql: str, params=None) -> list[dict]:
         s = sql.lower()
+        if "gochara_resonance_map" in s and "distinct" in s and "target_ref" not in s:
+            return [{"event_class": ec} for ec in _DISCOVERED_CLASSES]
         if "gochara_resonance_map" in s and "target_ref" in s:
             return [{"target_ref": t} for t in targets]
         if "kala_gochara_v2_build_state" in s and sql.strip().upper().startswith("SELECT"):

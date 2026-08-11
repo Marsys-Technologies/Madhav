@@ -1,39 +1,197 @@
-"""ka_gochara_v3_century_materialize — W3.4/W5.4 Century horizon + slice receipts.
+"""ka_gochara_v3_century_materialize — W3.4/W5.4/MR-16/MR-11(b)/PK-R-8 Century
+horizon + slice receipts.
 
-GOCHARA-UTKARSA campaign, wave W3.4 (original) + W5.4 (writer repoint).
+GOCHARA-UTKARSA campaign, wave W3.4 (original) + W5.4 (writer repoint) +
+PARIṢKĀRA MR-16 (dynamic event-class discovery + honest per-class coverage
+notes) + PARIṢKĀRA MR-38 (fingerprint version fold) + PARIṢKĀRA MR-11(b) /
+ADJUDICATOR ruling PK-R-8 (peak-anchored era⊃month⊃day hierarchy, resolution
+facet, shape gate).
 
 Gate: W0.3 PASS (generation schema + utkarsha_builder role in place) +
       W3.2 PASS (interval_solver root-solved threshold crossings) +
-      UTK-R1 ADJUDICATOR ruling (W5.4 repoint to kala_gochara_windows generation='3.0').
+      UTK-R1 ADJUDICATOR ruling (W5.4 repoint to kala_gochara_windows generation='3.0') +
+      W3.1 PASS (ka_gochara_resonance derives up to 27 canonical event classes;
+      see services/ka_gochara_resonance/writer.py + its 92/92 test suite) +
+      MR-38 gate (test_mr38_fingerprint_version_fold.py): a synthetic
+      writer-version (row-schema) bump forces cache invalidation and a real
+      rewrite; re-running with no version change and no input change
+      correctly skips +
+      PK-R-8 gate (test_w33_resolution_hierarchy.py R8.1-R8.7 detectors):
+      peak-anchoring replaces fixed-step tiling for month/day production.
+
+PARIṢKĀRA MR-11(b) / PK-R-8 — PEAK-ANCHORED HIERARCHY (era⊃month⊃day)
+-----------------------------------------------------------------------
+The W3.3 hierarchy producer (services/gochara_v3/resolution_hierarchy.py)
+was originally merged as CODE but never wired into a materializer — this
+writer is that wiring. ADJUDICATOR ruling PK-R-8 additionally REPLACED the
+original W3.3 fixed-step TILING design (30-day/1-day subdivision, midpoint-
+sampled "peak") with genuine PEAK-ANCHORING: a real local-maximum scan on the
+REUSED coarse series find_threshold_crossings already computes, admission
+gated on the era window's OWN P90 (never lambda_thresh), greedy retention
+with a minimum separation and a hard cap, and 1-day-resolution refinement of
+each retained peak to its TRUE argmax before that date is ever served as
+`peak_date`. See resolution_hierarchy.py's module docstring for the full
+R8.1-R8.6 account.
+
+R8.12 SHAPE GATE: the hierarchy (era/month/day tiers, `resolution` column
+populated) is produced ONLY for event classes whose brahma_event_ontology.
+temporal_shape is 'interval' or 'chain'. Point-canonical classes (marriage,
+career_advancement, illness_acute, surgery — confirmed live schema, 2026-08)
+get NO hierarchy tiers: this writer falls back to the PRE-MR-11(b) flat
+production (one row per find_threshold_crossings interval, `resolution`
+column NULL) for those classes — "all tiers inherit the class's ontology
+shape" (PK-R-7(iv)/BRIEF_D5 §3, both directions). See
+`_fetch_event_class_temporal_shape`.
+
+R8.8 PEAK_BASIS VOCABULARY: every row's `peak_basis` is now one of the three
+named constants in `services/gochara_v3/peak_basis_vocab.py` — never the
+retired bare literal `'gochara_lambda_v3'`. Era-tier (and shape-gated flat)
+rows, whose peak comes from interval_solver's 50-sample coarse dense scan,
+are stamped `LAMBDA_V3_COARSE_ARGMAX`; month/day-tier rows, whose peak is the
+day-refined true argmax (R8.5), are stamped `LAMBDA_V3_ARGMAX` — the ONLY
+basis that earns `is_timing_window=True` at serve time (register_gochara_
+windows.ts, R8.9).
+
+R8.13 PEAK ACCOUNTING: every substep's WriterResult.notes reports
+era_windows/peaks_scanned/peaks_admitted/peaks_retained/month_rows/day_rows,
+and a named zero_peaks_reason ('flat_lambda_curve'|'no_candidate_above_p90'|
+'era_window_too_short') whenever peaks_retained==0 — never a bare/undated
+"0 rows" note.
+
+MR-38 — FINGERPRINT VERSION FOLD (row-shape scope only)
+----------------------------------------------------------
+MR-13/14 changed the row shape this writer produces (added term_breakdown /
+lambda_v3_ci_low / lambda_v3_ci_high / ci_source) without bumping
+ENGINE_VERSION — the delta-skip (stored_fingerprint == recomputed_fingerprint
+AND rows_exist) would have silently no-opped an authorized rebuild had this
+not been caught in rehearsal. Fix: ROW_SCHEMA_COLUMNS (derived from
+INSERT_PROD_SQL) and STAGING_ROW_SCHEMA_COLUMNS (derived from INSERT_SQL,
+the calibration/staging INSERT executed every substep) — neither a
+hand-maintained duplicate — are both folded into compute_substep_fingerprint's
+hashed payload alongside engine_version, so any future ROW-SHAPE change to
+EITHER INSERT template auto-invalidates every substep's fingerprint whether
+or not ENGINE_VERSION is bumped.
+
+SCOPE (PARĪKṢAKA F-3): this fold covers ROW SHAPE only — which columns get
+written. It does NOT cover VALUE-COMPUTATION changes (e.g. MR-13's honest
+valence derivation, which changed what a column's VALUE is without changing
+the column LIST) — a fingerprint match after a value-computation-only change
+still means "unchanged" even though the writer would now compute a different
+value for the same inputs. The ENGINE_VERSION standing rule remains
+load-bearing for exactly that class of change, post-MR-38 same as before:
+any writer change that ALTERS COMPUTED VALUES without adding/removing/
+renaming a column must still bump ENGINE_VERSION by hand. See the
+"Row-schema signature" section below for the full account.
+
+ENGINE_VERSION COMPOSITION NOTE: MR-16 bumped ENGINE_VERSION "v3.0" ->
+"v3.1" for its own scope/output-shape change (dynamic event-class discovery
++ coverage_quality note in suppression_state). PARIṢKĀRA MR-11(b)/PK-R-8's
+hierarchy rewrite (this same lane, pre-production — no v3.1-tagged row has
+ever been written to production under the OLD tiled-hierarchy shape) folds
+into that SAME "v3.1" bump rather than requiring a second one: no
+already-built corpus exists under a tiled-hierarchy v3.1 shape that a new
+bump would need to invalidate. MR-38's row_schema_* fold is an independent,
+composable input to the SAME hashed payload regardless.
 
 PURPOSE
 -------
 Extends the W0.2/W2G materializer concept to a CENTURY-SCALE HEAVY writer
 using the gochara_v3 engine (not v1's gochara_intensity grammar). The
-unit of work is one (event_class × decade_era_slice) pair — 60 substeps
-for 6 event classes × 10 decade slices spanning the native's century from
-birth (1984-02-05 to 2084-02-05).
+unit of work is one (event_class × decade_era_slice) pair.
+
+MR-16 FIX — DYNAMIC EVENT-CLASS DISCOVERY (kills the hardcoded 6)
+-------------------------------------------------------------------
+Before this fix, `plan_substeps` iterated a hardcoded 6-item `EVENT_CLASSES`
+list, so this writer's production scope could never exceed 6 classes even
+after `ka_gochara_resonance` (G-1) derived resonance targets for up to 27
+canonical `brahma_event_ontology` classes (W3.1). The register's MR-16 gap:
+"materializer hardcodes 6 classes; 27-class resonance map never rebuilt;
+production scope identical to v1's."
+
+FIX: `plan_substeps` now discovers its event-class set LIVE, per chart, via
+`_discover_event_classes` — `SELECT DISTINCT event_class FROM
+gochara_resonance_map WHERE chart_id = %s` — matching
+`ka_gochara_sweep.KaGocharaSweepWriter._discover_event_classes`'s table and
+query shape, so the two writers' substep plans always agree on which classes
+a chart has coverage for. `ka_gochara_resonance` (G-1) is the single
+upstream authority for which event classes a chart has targets for; as G-1's
+coverage grows for a chart (today: 6 classes for the two canonical charts,
+pending the R2-window resonance rebuild to reach up to 27), this writer's
+substep plan grows with it on the NEXT build — no code change required. A
+chart with a GENUINELY EMPTY resonance map (the query runs and finds 0 rows
+— G-1 not yet built/run for it) honestly produces a ZERO-substep plan (I4)
+— this writer never invents a class to plan for. `EVENT_CLASSES` is
+retained as a documentation-only constant (the pre-MR-16 default/historical
+scope) — it is NO LONGER read by `plan_substeps`.
+
+R8.11 CLASS SCOPE (PK-R-8): the hierarchy producer runs for EVERY class
+`_discover_event_classes` returns — there is no separate "LEL-represented
+classes" allowlist (that phrase is not machine-resolvable against any live
+table; ADJUDICATOR ruling confirms this). R8.12's shape gate (not a class
+allowlist) is the only thing that varies behavior per class.
+
+PARĪKṢAKA F1 (§N.8, post-merge fix): `_discover_event_classes` deliberately
+does NOT mirror ka_gochara_sweep's discovery method in one respect — it does
+NOT catch and swallow DB errors into an empty list. See its own docstring
+for the full rationale; in short, the orchestrator's SATYA-DĪPA no-op-
+completion re-probe (`asset_runner.py`) treats an exception from
+`plan_substeps` as "conservatively incomplete" and a `[]` return as
+"genuinely done" — swallowing a query failure into `[]` here would make a
+transient DB error indistinguishable from an honestly empty resonance map
+and could promote a FAILED build to `state='lit'`.
+
+The decade-slice dimension (`DECADE_SLICES`, 10 fixed slices spanning
+birth→birth+100y) is unaffected — it is chart-agnostic and class-agnostic by
+design (W3.4 spec), so it stays a module constant.
+
+MR-16 FIX — HONEST PER-CLASS COVERAGE-QUALITY NOTES
+-------------------------------------------------------
+Per §N.6/§N.7 (never flatten confirmed and thin/sparse data into one
+undifferentiated list; an honest null beats an invented judgment), every row
+this writer emits now carries a LIVE-computed `coverage_quality` note inside
+its `suppression_state` JSONB column — `{"tier": ..., "target_count": N,
+"note": "..."}` — derived from the ACTUAL resonance-target count this
+substep fetched (`_coverage_quality_note`), never a static/hand-authored
+label. A class whose `gochara_resonance_map` targets are sparse (a "thin
+map", per W3.1's design note: "classes with weak signature_model get honest
+thin maps + a per-class quality note, never invented targets") is served
+honestly as `tier="thin"`, not silently presented as equally strong as a
+rich class. The same note is also folded into `WriterResult.notes` (the
+per-substep build report) for build-time/SSE-log visibility.
 
 Key behaviours:
-  1. plan_substeps — returns 60 SubStep objects, one per
-     (event_class, decade_slice). substep_key = '{event_class}::{era_slice_key}'.
+  1. plan_substeps — returns one SubStep per (event_class, decade_slice) pair,
+     for whatever event_class values gochara_resonance_map holds for this
+     chart (dynamic, MR-16). substep_key = '{event_class}::{era_slice_key}'.
   2. run_substep — for each substep:
-       a. Compute a delta fingerprint from (event_class, era_slice_key,
-          ENGINE_VERSION, resonance_targets) via MD5.
-       b. Check kala_gochara_v2_build_state for a matching stored fingerprint.
-       c. If fingerprint unchanged AND rows exist: skip (honest no-op).
-       d. Else: call find_threshold_crossings from gochara_v3.interval_solver
-          over the decade JD range; DELETE-then-INSERT results into BOTH:
+       a. Fetch resonance targets + compute the live coverage_quality note.
+       b. Compute a delta fingerprint from (event_class, era_slice_key,
+          ENGINE_VERSION, resonance_targets, row-schema) via MD5.
+       c. Check kala_gochara_v2_build_state for a matching stored fingerprint.
+       d. If fingerprint unchanged AND rows exist: skip (honest no-op).
+       e. Else: fetch the class's ontology temporal_shape (R8.12 shape gate).
+          - 'interval'/'chain': build_resolution_hierarchy (peak-anchored
+            era⊃month⊃day, PK-R-8) over the decade JD range.
+          - 'point' (or lookup failure, conservative default): flat
+            find_threshold_crossings production, resolution=NULL (pre-
+            MR-11(b) shape, unchanged for these classes).
+          DELETE-then-INSERT results into BOTH:
             * kala_gochara_windows_v2 (calibration/staging surface, generation='g3_utkarsha')
             * kala_gochara_windows (production surface, generation='3.0') [W5.4 repoint]
-       e. Upsert fingerprint to kala_gochara_v2_build_state.
-       f. Log wall-clock time per substep at DEBUG level (AC5 / first SLO
-          evidence point).
+       f. Upsert fingerprint to kala_gochara_v2_build_state.
+       g. Log wall-clock time + peak accounting (R8.13) per substep at DEBUG.
   3. I2 constraint: ZERO imports from gochara_grammar/*, gochara_intensity/*,
-     or ka_gochara_sweep/*. All scoring comes from gochara_v3.interval_solver
-     and gochara_v3.engine (AC6).
+     or ka_gochara_sweep/*. All scoring comes from gochara_v3.interval_solver,
+     gochara_v3.resolution_hierarchy, and gochara_v3.engine (AC6). The
+     dynamic event-class discovery query (MR-16) and the shape-gate query
+     (R8.12) are plain SQL reads against gochara_resonance_map/brahma_event_
+     ontology — the same tables `_fetch_resonance_targets`/`fetch_base_rate_
+     for_class` already read — not an import of any forbidden module.
   4. I4 constraint: empty resonance targets → honest 0 rows for that substep,
-     no fabrication (AC7).
+     no fabrication (AC7). An empty resonance MAP (no event_class rows at
+     all for this chart) → honest 0-substep plan (MR-16, same I4 discipline
+     one level up). Zero retained peaks (R8.13) → honest 0 month/day rows,
+     never a fallback fabrication.
 
 TABLES
 ------
@@ -83,7 +241,9 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import re
 import time
+import uuid
 from dataclasses import dataclass
 from datetime import date, timedelta
 from typing import Any, Optional
@@ -97,21 +257,24 @@ from pipeline.orchestrator.writers import (
 )
 
 # gochara_v3 imports only (I2: no gochara_grammar/*, gochara_intensity/*, ka_gochara_sweep/*)
-from services.gochara_v3.interval_solver import IntervalBoundary
+from services.gochara_v3.interval_solver import IntervalBoundary, find_threshold_crossings
 from services.gochara_v3.threshold import ThresholdConfig, fetch_base_rate_for_class
 from services.gochara_v3.context import ClassContext
-# PARIṢKĀRA MR-11(b): the W3.3 hierarchy producer (era⊃month⊃day,
-# parent_window_id), already merged CODE and DB-free unit-tested
-# (services/gochara_v3/tests/test_w33_resolution_hierarchy.py) but never
-# wired into a materializer — this writer is that wiring. build_resolution_
-# hierarchy itself calls find_threshold_crossings internally (era tier) and
-# _eval_single (month/day tier midpoint sampling) — both already covered by
-# the I2 static-import-check above (resolution_hierarchy.py is gochara_v3/*,
-# not gochara_grammar/gochara_intensity/ka_gochara_sweep).
+# PARIṢKĀRA MR-11(b) / PK-R-8: the peak-anchored hierarchy producer
+# (era⊃month⊃day, parent_window_id, R8.1-R8.6) — see resolution_hierarchy.py
+# module docstring for the full account. build_resolution_hierarchy itself
+# calls find_threshold_crossings internally (era detection + reused coarse
+# series) — already covered by the I2 static-import-check above
+# (resolution_hierarchy.py is gochara_v3/*, not gochara_grammar/
+# gochara_intensity/ka_gochara_sweep).
 from services.gochara_v3.resolution_hierarchy import (
     build_resolution_hierarchy,
     WindowResolutionRecord,
 )
+# R8.8: named peak_basis vocabulary — writers use these constants, never a
+# bare string literal (source-guarded, see test_peak_basis_vocab_used_not_
+# literal in this module's test suite).
+from services.gochara_v3 import peak_basis_vocab
 
 logger = logging.getLogger(__name__)
 
@@ -131,20 +294,34 @@ GENERATION_V3 = "g3_utkarsha"
 GENERATION_PROD = "3.0"
 
 # Engine version for fingerprinting.  Bumped whenever the scoring engine
-# changes in a way that would move a stored window.  gochara_v3/__init__.py
+# changes in a way that would move a stored window, OR (Codex C2) whenever
+# the materializer's output shape/scope changes.  gochara_v3/__init__.py
 # exports GRAMMAR_VERSION; we use our own constant so this writer's
 # fingerprint is stable across internal gochara_v3 refactors that do NOT
 # move window positions.
-# PARIṢKĀRA MR-11(b): bumped v3.0 -> v3.1 because this lane changes the
-# writer's OUTPUT SHAPE (era⊃month⊃day hierarchy rows with resolution +
-# parent_window_id replace the prior flat one-row-per-IntervalBoundary
-# output) — a stored fingerprint computed under v3.0 must not be read as
-# "unchanged" once this code ships, so every substep re-materializes at
-# least once. Exact string "v3.1" per Codex C2 (concurrent PARIṢKĀRA lanes
-# make the identical edit so git auto-merges cleanly on this line).
+#
+# v3.0 -> v3.1 (PARIṢKĀRA MR-16, Codex C2): the writer's SCOPE changed —
+# plan_substeps now discovers its event-class set dynamically from
+# gochara_resonance_map instead of a hardcoded 6-class list, and every row
+# carries a new coverage_quality note in suppression_state. PARIṢKĀRA
+# MR-11(b)/PK-R-8's peak-anchored hierarchy rewrite (era⊃month⊃day,
+# resolution facet, shape gate, peak_basis vocabulary) folds into this SAME
+# v3.1 bump — this entire lane is pre-production (no v3.1-tagged row has
+# ever been written under the OLD tiled-hierarchy shape this ruling
+# replaced), so there is no already-built corpus a second bump would need
+# to invalidate. Both are, regardless, a materializer output shape/scope
+# change per Codex C2, so every substep's fingerprint changes and a rebuild
+# re-derives every row honestly under the new scope (never silently reusing
+# a pre-v3.1 row under the new coverage/hierarchy regime).
 ENGINE_VERSION = "v3.1"
 
-# The 6 event classes this writer handles (same as W0.2 materializer).
+# DOCUMENTATION-ONLY as of PARIṢKĀRA MR-16 — the pre-MR-16 hardcoded 6-class
+# scope (3 legacy + 3 health/adverse; see event_class_scope.SWEEP_EVENT_CLASSES
+# for the sibling ka_gochara_sweep copy of this same historical set). NO
+# LONGER read by plan_substeps, which now discovers its event-class set live
+# from gochara_resonance_map (see _discover_event_classes below) — this is
+# the "kill the hardcoded 6" fix. Retained only as a documented historical
+# reference / test fixture default, never as a fallback plan.
 EVENT_CLASSES = [
     "career_advancement",
     "major_gain",
@@ -185,7 +362,7 @@ BUILD_STATE_TABLE = "kala_gochara_v2_build_state"
 # PARIṢKĀRA MR-11(b): +resolution, +parent_window_id (migration 567) and
 # RETURNING id -- the writer must capture each inserted row's own bigint id
 # so a subsequently-inserted CHILD row (month under era, day under month) can
-# carry the correct parent_window_id. See _insert_hierarchy_row below.
+# carry the correct parent_window_id. See run_substep's insert loop.
 INSERT_SQL = f"""
     INSERT INTO {TABLE}
       (chart_id, event_class, temporal_shape,
@@ -246,6 +423,69 @@ INSERT_PROD_SQL = f"""
     -- W5.4 I1 invariant: generation='3.0' only; v1 rows are protected by DB trigger
     RETURNING id
 """
+
+
+# ---------------------------------------------------------------------------
+# Row-schema signature (PARIṢKĀRA MR-38)
+# ---------------------------------------------------------------------------
+#
+# PRIOR DEFECT: MR-13/14 added the term_breakdown / lambda_v3_ci_low /
+# lambda_v3_ci_high / ci_source columns to INSERT_SQL, INSERT_PROD_SQL, and
+# _build_row -- a real change to the writer's OUTPUT CONTRACT -- WITHOUT
+# bumping ENGINE_VERSION (whose documented purpose is narrower: "bumped
+# whenever the scoring engine changes in a way that would move a stored
+# window", not "bumped whenever the row shape changes"). Because
+# compute_substep_fingerprint's only inputs were (event_class, era_slice_key,
+# engine_version, resonance_targets), a chart already built under the OLD row
+# shape recomputed the IDENTICAL fingerprint after the MR-13/14 code change --
+# the delta-skip fired and an authorized rebuild would have silently no-opped
+# (caught in rehearsal, not by any test).
+#
+# FIX: derive a row-schema signature directly from BOTH INSERT templates --
+# the ACTUAL SQL executed, not a hand-maintained duplicate list that could
+# itself drift -- and fold both into compute_substep_fingerprint's payload
+# alongside engine_version. Any future column addition/removal/rename in
+# EITHER template automatically changes every substep's fingerprint -- no
+# human has to remember to bump ENGINE_VERSION for a row-SHAPE change again.
+# This is orthogonal to (and composes cleanly with) any future ENGINE_VERSION
+# bump: all three are independent inputs folded into the same hashed payload.
+#
+# SCOPE (PARĪKṢAKA F-3, corrects an earlier overstated summary in this
+# module's top docstring): a fingerprint match means "the inputs AND the
+# writer's column LIST are unchanged" -- it does NOT mean "the writer's
+# value-computation logic is unchanged". A change that alters what VALUE a
+# column gets (e.g. MR-13's honest valence derivation) without adding,
+# removing, or renaming any column evades this fold entirely -- the
+# ENGINE_VERSION standing rule remains load-bearing for exactly that class of
+# change, same as before MR-38. MR-38 closes the row-shape gap only.
+#
+# Both INSERT_SQL (staging/calibration surface, kala_gochara_windows_v2 --
+# written every substep) and INSERT_PROD_SQL (production surface,
+# kala_gochara_windows -- W5.4 repoint) are covered: a staging-only column
+# change (INSERT_SQL edited without touching INSERT_PROD_SQL, or vice versa)
+# must also invalidate the fingerprint, since either template's row shape is
+# part of what this writer's "output contract" means.
+def _extract_insert_columns(insert_sql: str) -> tuple[str, ...]:
+    """Parse the column list out of an ``INSERT INTO table (col1, col2, ...)``
+    SQL template.
+
+    Self-describing on purpose: sourced from the SQL actually executed, so
+    this signature cannot silently drift from the writer's real output
+    contract the way a hand-maintained duplicate list could.
+    """
+    match = re.search(r"INSERT INTO\s+\S+\s*\(([^)]*)\)", insert_sql)
+    if not match:
+        return ()
+    cols = [c.strip() for c in match.group(1).split(",")]
+    return tuple(c for c in cols if c)
+
+
+# The writer's OUTPUT CONTRACT signature: the column lists actually written
+# by INSERT_SQL (staging) and INSERT_PROD_SQL (production), derived from the
+# SQL templates themselves. Both folded into every substep's fingerprint by
+# compute_substep_fingerprint (see the "Row-schema signature" note above).
+STAGING_ROW_SCHEMA_COLUMNS: tuple[str, ...] = _extract_insert_columns(INSERT_SQL)
+ROW_SCHEMA_COLUMNS: tuple[str, ...] = _extract_insert_columns(INSERT_PROD_SQL)
 
 
 # ---------------------------------------------------------------------------
@@ -317,11 +557,37 @@ def compute_substep_fingerprint(
     """Compute a delta fingerprint for one (event_class, era_slice) substep.
 
     The fingerprint is an MD5 hex digest of a canonicalized JSON payload
-    covering the four inputs that, if changed, would require a rebuild:
+    covering the six inputs that, if changed, would require a rebuild:
       * event_class      — the class being scored.
       * era_slice_key    — the decade window.
-      * engine_version   — bumped when scoring logic changes.
+      * engine_version   — bumped when scoring logic OR VALUE-COMPUTATION
+                            changes (the standing rule for anything that is
+                            NOT a row-shape change — see SCOPE below).
       * resonance_targets — sorted list of target_ref strings for this chart×class.
+      * row_schema_staging — PARIṢKĀRA MR-38: the module's CURRENT
+      * row_schema_prod     STAGING_ROW_SCHEMA_COLUMNS / ROW_SCHEMA_COLUMNS,
+                            read live from module scope (not accepted as
+                            parameters — this is the fold: it is structurally
+                            impossible to compute a fingerprint that does not
+                            reflect the writer's CURRENT column lists for
+                            BOTH the staging INSERT_SQL and the production
+                            INSERT_PROD_SQL). A row-SHAPE change to either
+                            template (e.g. the MR-13/14 column additions that
+                            landed without an ENGINE_VERSION bump) therefore
+                            automatically invalidates every previously-stored
+                            fingerprint, without depending on a human
+                            remembering to bump ENGINE_VERSION for it. See
+                            the "Row-schema signature" note near
+                            ROW_SCHEMA_COLUMNS' definition for the full
+                            defect this closes.
+
+    SCOPE (PARĪKṢAKA F-3): the row_schema_* fold covers ROW SHAPE (which
+    columns exist) only. It does NOT cover VALUE-COMPUTATION changes — a
+    writer edit that changes what value a column gets, without adding,
+    removing, or renaming any column, still evades this fold and remains
+    covered ONLY by the ENGINE_VERSION standing rule, unchanged from before
+    MR-38. A fingerprint match means "the inputs and the writer's column
+    list are unchanged" — not "the writer's computed values are unchanged".
 
     Inputs are sorted so the fingerprint is stable across row-order changes.
 
@@ -335,6 +601,8 @@ def compute_substep_fingerprint(
             "era_slice_key": era_slice_key,
             "engine_version": engine_version,
             "resonance_targets": sorted(resonance_targets),
+            "row_schema_staging": list(STAGING_ROW_SCHEMA_COLUMNS),
+            "row_schema_prod": list(ROW_SCHEMA_COLUMNS),
         },
         sort_keys=True,
     )
@@ -352,7 +620,6 @@ def _query_fn(conn):
         rows = cur.fetchall()
         return [dict(r) if not isinstance(r, dict) else r for r in rows]
     return query
-
 
 
 # ---------------------------------------------------------------------------
@@ -453,6 +720,152 @@ def _fetch_resonance_targets(conn, chart_id: str, event_class: str) -> list[str]
             ASSET_ID, chart_id, event_class, exc,
         )
         return []
+
+
+# ---------------------------------------------------------------------------
+# Dynamic event-class discovery (PARIṢKĀRA MR-16 — kills the hardcoded 6)
+# ---------------------------------------------------------------------------
+
+def _discover_event_classes(conn, chart_id: str) -> list[str]:
+    """DISTINCT event_class values gochara_resonance_map holds for this
+    chart, ascending.
+
+    Mirrors ka_gochara_sweep.KaGocharaSweepWriter._discover_event_classes in
+    table + query shape, so the two writers' substep plans always agree on
+    which classes a chart has coverage for. NEVER a hardcoded fallback list
+    (MR-16 fix): a chart with genuinely zero gochara_resonance_map rows
+    returns [] here, which plan_substeps below turns into an honest
+    0-substep plan (I4) — never a silent revert to EVENT_CLASSES.
+
+    R8.11 (PK-R-8): this IS the class scope for hierarchy production too —
+    every class this function returns is eligible for the peak-anchored
+    hierarchy (subject only to R8.12's shape gate, not a second allowlist).
+
+    PARĪKṢAKA F1 (§N.8): DB errors PROPAGATE — this function does NOT catch
+    and swallow exceptions the way ka_gochara_sweep's sibling does. The
+    orchestrator's no-op-completion re-probe (asset_runner.py, the
+    SATYA-DĪPA fix) calls `writer.plan_substeps(ctx)` inside a
+    SAVEPOINT + try/except that conservatively sets `plan_complete=False`
+    on ANY exception — a deliberate fail-closed design. A `_discover_event_
+    classes` that swallowed its own query failure and returned [] would be
+    INDISTINGUISHABLE, from that re-probe's point of view, from "this chart
+    genuinely has an empty resonance map" — `remaining_count=0` ->
+    `plan_complete=True` -> the asset gets promoted to 'lit' on top of a
+    FAILED query, exactly the D-1.6/SATYA-DĪPA defect class one level
+    deeper. Letting the exception propagate here means the orchestrator's
+    own except-clause does its job (fails closed); catching it here would
+    blind that mechanism. Only a QUERY THAT RUNS AND FINDS ZERO ROWS
+    produces the honest empty list — a query that never ran to completion
+    is not that, and must not be reported as if it were.
+
+    I2: this is a plain SQL read against gochara_resonance_map — the exact
+    same table _fetch_resonance_targets above already reads — not an import
+    of gochara_grammar/gochara_intensity/ka_gochara_sweep.
+    """
+    rows = _query_fn(conn)(
+        "SELECT DISTINCT event_class FROM gochara_resonance_map "
+        "WHERE chart_id = %s ORDER BY event_class",
+        [chart_id],
+    )
+    return [r["event_class"] for r in rows if r.get("event_class")]
+
+
+# ---------------------------------------------------------------------------
+# R8.12 SHAPE GATE — brahma_event_ontology.temporal_shape
+# ---------------------------------------------------------------------------
+
+def _fetch_event_class_temporal_shape(conn, event_class: str) -> str:
+    """Return brahma_event_ontology.temporal_shape ('point'|'interval'|
+    'chain') for `event_class` — the R8.12 SHAPE GATE input.
+
+    The peak-anchored hierarchy (era/month/day tiers, `resolution` column
+    populated) is produced ONLY for 'interval'/'chain' classes. Point-
+    canonical classes (marriage, career_advancement, illness_acute, surgery
+    — confirmed against live schema, 2026-08) get NO hierarchy tiers: this
+    writer falls back to the flat (pre-MR-11(b)) production for them — "all
+    tiers inherit the class's ontology shape" (PK-R-7(iv)/BRIEF_D5 §3, both
+    directions; ADJUDICATOR ruling PK-R-8 R8.12).
+
+    A lookup failure (DB error, or — should not happen, since gochara_
+    resonance_map.event_class carries an FK into brahma_event_ontology.
+    event_class_id, so any class _discover_event_classes returns already has
+    a guaranteed ontology row — no row found) degrades to 'point': the
+    CONSERVATIVE choice. Returning 'point' means "skip the hierarchy",
+    which is always the SAFER default when the class's canonical shape could
+    not be confirmed — it never risks stamping resolution tiers for a class
+    that might not warrant them.
+    """
+    try:
+        cur = conn.execute(
+            "SELECT temporal_shape FROM brahma_event_ontology WHERE event_class_id = %s",
+            [event_class],
+        )
+        row = cur.fetchone()
+        if row is not None:
+            shape = row["temporal_shape"] if isinstance(row, dict) else row[0]
+            if shape:
+                return str(shape)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(
+            "[%s] brahma_event_ontology temporal_shape read failed for "
+            "event_class=%s: %s — honest conservative fallback to 'point' "
+            "(R8.12 shape gate: hierarchy production skipped for this substep).",
+            ASSET_ID, event_class, exc,
+        )
+    return "point"
+
+
+# ---------------------------------------------------------------------------
+# Honest per-class coverage-quality note (PARIṢKĀRA MR-16)
+# ---------------------------------------------------------------------------
+
+# Tier boundaries for the LIVE target-count signal. Deliberately coarse and
+# documented here (not hidden inside the function) — these are a serving
+# convenience label, never a claim of statistical significance. The honest
+# quantity is target_count itself; tier is a human-readable bucket over it.
+_COVERAGE_QUALITY_THIN_MAX = 2
+_COVERAGE_QUALITY_MODERATE_MAX = 5
+
+
+def _coverage_quality_note(event_class: str, target_refs: list[str]) -> dict[str, Any]:
+    """Honest, LIVE-computed per-event_class coverage-quality note.
+
+    §N.7 item 4 / §N.8: a quality label needs a real detector behind it, or
+    it is null, not green. Rather than importing/duplicating a static,
+    hand-authored "rich_model"/"thin_model" narrative string maintained
+    elsewhere (services/ka_gochara_resonance/writer.py's
+    COVERAGE_QUALITY_NOTES — itself documentation, not live data), this note
+    is derived from the ACTUAL resonance-target count `run_substep` just
+    fetched for (chart_id, event_class) via `_fetch_resonance_targets` — the
+    real detector for "how much resonance-map coverage does THIS chart have
+    for THIS class, right now." A class with a genuinely thin
+    `signature_model` mechanically produces few targets and is honestly
+    labeled 'thin' here; a class this writer has never seen before (a new
+    W3.1 class with no resonance rows yet) is honestly 'empty', never
+    silently promoted to look as strong as a rich class (I4 / §N.6).
+
+    Returns a dict suitable for embedding under suppression_state's
+    "coverage_quality" key: {"tier", "target_count", "note"}.
+    """
+    n = len(target_refs)
+    if n == 0:
+        tier = "empty"
+    elif n <= _COVERAGE_QUALITY_THIN_MAX:
+        tier = "thin"
+    elif n <= _COVERAGE_QUALITY_MODERATE_MAX:
+        tier = "moderate"
+    else:
+        tier = "rich"
+    return {
+        "tier": tier,
+        "target_count": n,
+        "note": (
+            f"{event_class}: {n} resonance target(s) in gochara_resonance_map "
+            f"backed this window ({tier} coverage). Never an invented target — "
+            f"a thin/empty tier honestly reports sparse classical-prior "
+            f"coverage for this class, not an error."
+        ),
+    }
 
 
 def _stored_fingerprint(query, chart_id: str, substep_key: str) -> str | None:
@@ -577,6 +990,7 @@ def _build_row(
     *,
     valence: str,
     is_adverse: bool,
+    peak_basis: str,
     generation: str = GENERATION_V3,
     term_breakdown: Optional[dict] = None,
     lambda_v3_ci_low: Optional[float] = None,
@@ -584,6 +998,7 @@ def _build_row(
     ci_source: Optional[str] = None,
     resolution: Optional[str] = None,
     parent_window_id: Optional[int] = None,
+    coverage_quality: Optional[dict] = None,
 ) -> dict[str, Any]:
     """Convert one IntervalBoundary/WindowResolutionRecord to a
     kala_gochara_windows(_v2) row dict.
@@ -598,6 +1013,14 @@ def _build_row(
         used to be a hardcoded "favourable" string inside this function).
     is_adverse
         REQUIRED -- companion boolean from `_fetch_class_valence`.
+    peak_basis
+        REQUIRED (PK-R-8 R8.8) -- one of the named constants in
+        `services.gochara_v3.peak_basis_vocab` (LAMBDA_V3_ARGMAX for a
+        day-refined true peak on a month/day-tier row; LAMBDA_V3_COARSE_
+        ARGMAX for an era-tier or shape-gated-flat row's coarse dense-scan
+        peak). No default -- every caller must supply the correct basis for
+        the tier it is building; the retired bare literal
+        'gochara_lambda_v3' must never be passed here for a NEW row.
     generation
         The generation label to stamp on the row.
         * GENERATION_V3 ('g3_utkarsha') → calibration row for kala_gochara_windows_v2
@@ -616,10 +1039,9 @@ def _build_row(
     resolution
         PARIṢKĀRA MR-11(b) (migration 567): the hierarchy tier this row was
         produced at -- 'era'|'month'|'day', from
-        `WindowResolutionRecord.resolution_tier`. None when the caller has no
-        hierarchy classification for this row (kept optional rather than
-        required so this function stays usable for any future non-hierarchy
-        caller too).
+        `WindowResolutionRecord.resolution_tier`. None for shape-gated flat
+        rows (R8.12, point-canonical classes) and for any caller with no
+        hierarchy classification for this row.
     parent_window_id
         PARIṢKĀRA MR-11(b) (migration 567): the DB-assigned bigint `id` of
         this row's widest containing coarser-tier window IN THE SAME TABLE
@@ -627,10 +1049,24 @@ def _build_row(
         internal UUID `window_id`, populated as parent rows are inserted
         before their children — see run_substep). None for era-tier rows
         (no coarser parent) and for any row whose parent failed to resolve.
+    coverage_quality
+        PARIṢKĀRA MR-16 fix (deliverable 2): the honest, LIVE-computed
+        per-event_class coverage-quality note from `_coverage_quality_note`
+        (`{"tier", "target_count", "note"}`), embedded under
+        `suppression_state["coverage_quality"]` so a consumer reading the
+        served row (register_gochara_windows.ts passes `suppression_state`
+        through opaquely) can see how thin/rich this chart's resonance-map
+        coverage was for this class, at build time -- never invented, never
+        silently omitted for a thin class. Default None (I4 degrade) only
+        for callers/tests that predate this fix; `run_substep` always
+        supplies it.
     """
     window_start = _jd_to_date(boundary.enter_jd)
     window_end = _jd_to_date(boundary.exit_jd)
     peak_date = _jd_to_date(boundary.peak_jd)
+    suppression_state = (
+        {"coverage_quality": coverage_quality} if coverage_quality is not None else {}
+    )
     return {
         "chart_id": chart_id,
         "event_class": event_class,
@@ -646,8 +1082,8 @@ def _build_row(
         "is_adverse": is_adverse,
         "active_sentences": json.dumps([]),
         "contributing_systems": json.dumps([]),
-        "suppression_state": json.dumps({}),
-        "peak_basis": "gochara_lambda_v3",
+        "suppression_state": json.dumps(suppression_state),
+        "peak_basis": peak_basis,
         "calibration_state": "structural_prior",
         "source": "live",
         "generation": generation,
@@ -680,19 +1116,58 @@ class GocharaV3CenturyMaterializeWriter(WriterBase):
     # ------------------------------------------------------------------
 
     def plan_substeps(self, ctx: ContextSpec) -> list[SubStep]:
-        """Return 60 SubStep objects: 6 event_classes × 10 decade slices.
+        """Return one SubStep per (event_class, decade_slice) pair.
 
         Each SubStep has:
           key   = '{event_class}::{era_slice_key}'  e.g. 'marriage::g3_1984_1994'
           label = human-readable description
 
-        The plan is STATIC — it does not query the DB. The 6 event classes
-        and 10 decade slices are fixed by the campaign spec. An empty
-        resonance-target set for a given substep is handled honestly in
-        run_substep (I4: 0 rows, not a plan failure).
+        PARIṢKĀRA MR-16: event_class now ranges DYNAMICALLY over whatever
+        `gochara_resonance_map` holds for this chart (`_discover_event_classes`)
+        — NEVER the hardcoded `EVENT_CLASSES` list (that constant is
+        documentation-only as of this fix; see module docstring). The plan is
+        no longer static: it issues one DISTINCT-event_class read against
+        gochara_resonance_map, the same table `_fetch_resonance_targets`
+        already reads per-substep. decade_slice stays the fixed 10-slice
+        century grid (DECADE_SLICES) — chart-agnostic and class-agnostic by
+        design (W3.4 spec).
+
+        R8.11: every discovered class is in scope for hierarchy production
+        (subject to R8.12's per-class shape gate at run_substep time) — there
+        is no separate class allowlist here.
+
+        A chart with a GENUINELY EMPTY resonance map (the query runs and
+        finds 0 rows — G-1 not yet run for it) honestly produces a
+        ZERO-substep plan here (I4 at the plan level, mirroring
+        ka_gochara_sweep's own no-targets-no-substeps discipline) — this
+        writer never invents a class to plan for. A per-substep empty
+        resonance-TARGET set (a discovered class with rows for OTHER classes
+        but somehow none for itself — not expected, but handled the same way
+        as always) remains a run_substep-level I4 0-row result, not a plan
+        failure.
+
+        A DB error during discovery is NOT caught here — `_discover_event_
+        classes` lets it propagate (PARĪKṢAKA F1), and this method does not
+        add its own try/except around that call. The orchestrator's
+        no-op-completion re-probe relies on exactly this: it wraps its own
+        `plan_substeps(ctx)` call in a try/except and treats any exception
+        as "conservatively incomplete," which only works if this method
+        does not swallow the error first.
         """
+        chart_id = ctx.config["chart_id"]
+        conn = ctx.db_conn
+        event_classes = _discover_event_classes(conn, chart_id)
+
+        if not event_classes:
+            logger.info(
+                "[%s] no populated gochara_resonance_map event_classes for "
+                "chart=%s — honest empty plan, zero substeps (MR-16 I4).",
+                ASSET_ID, chart_id,
+            )
+            return []
+
         steps: list[SubStep] = []
-        for event_class in EVENT_CLASSES:
+        for event_class in event_classes:
             for decade in DECADE_SLICES:
                 key = f"{event_class}::{decade.era_slice_key}"
                 label = (
@@ -711,14 +1186,21 @@ class GocharaV3CenturyMaterializeWriter(WriterBase):
 
         Steps:
           1. Parse substep_key → (event_class, era_slice_key, decade).
-          2. Fetch resonance targets for this chart×class.
+          2. Fetch resonance targets for this chart×class; compute the
+             honest, LIVE coverage_quality note from that same fetch
+             (MR-16 deliverable 2).
           3. If no targets: honest 0-row result (I4).
-          4. Compute delta fingerprint.
+          4. Compute delta fingerprint (MR-38: row-schema-folded).
           5. Check stored fingerprint — if unchanged and rows exist: skip.
-          6. call find_threshold_crossings over the decade JD range.
-          7. DELETE-then-INSERT into kala_gochara_windows_v2.
+          6. Fetch the class's ontology temporal_shape (R8.12 shape gate);
+             'interval'/'chain' -> build_resolution_hierarchy (peak-anchored,
+             PK-R-8); 'point' (or lookup failure) -> flat find_threshold_
+             crossings production, resolution=NULL (pre-MR-11(b) shape).
+          7. DELETE-then-INSERT into kala_gochara_windows_v2 and
+             kala_gochara_windows, every row carrying coverage_quality
+             inside suppression_state and a named peak_basis (R8.8).
           8. Upsert fingerprint to kala_gochara_v2_build_state.
-          9. Log wall-clock time at DEBUG.
+          9. Log wall-clock time + peak accounting (R8.13) at DEBUG.
         """
         t0 = time.time()
         chart_id = ctx.config["chart_id"]
@@ -756,6 +1238,14 @@ class GocharaV3CenturyMaterializeWriter(WriterBase):
         # 2. Fetch resonance targets.
         target_refs = _fetch_resonance_targets(conn, chart_id, event_class)
 
+        # 2b. PARIṢKĀRA MR-16 deliverable 2: the honest, LIVE per-class
+        #     coverage-quality note, computed from the SAME target_refs
+        #     fetch above (never a static/hand-authored label). Computed
+        #     unconditionally (including the I4 empty-targets branch below,
+        #     where it is honestly tier='empty') so every WriterResult.notes
+        #     carries a real coverage signal, not just the row-level ones.
+        quality_note = _coverage_quality_note(event_class, target_refs)
+
         # 3. I4: empty resonance targets → honest 0 rows.
         if not target_refs:
             elapsed = time.time() - t0
@@ -769,7 +1259,8 @@ class GocharaV3CenturyMaterializeWriter(WriterBase):
                 duration_seconds=elapsed,
                 notes=(
                     f"{substep_key}: honest empty — no resonance targets for "
-                    f"chart={chart_id} event_class={event_class} (I4)"
+                    f"chart={chart_id} event_class={event_class} (I4) "
+                    f"[coverage_quality={quality_note['tier']}]"
                 ),
             )
 
@@ -797,13 +1288,11 @@ class GocharaV3CenturyMaterializeWriter(WriterBase):
                 ),
             )
 
-        # 6. Find threshold crossings over the decade JD range.
-        #    We need a ThresholdConfig to gate window emission.  For the
-        #    century build we use a structural-prior threshold: the v3 engine
-        #    is bounded in [0,1], so we gate at 0.0 (emit all active intervals)
-        #    as the honest structural prior before per-class calibration.
-        #    This is a deliberate design choice for W3.4 — the full
-        #    self-normalizing threshold (W1.4) is applied at serve time.
+        # 6. Structural-prior threshold: the v3 engine is bounded in [0,1],
+        #    so we gate at 0.0 (emit all active intervals) as the honest
+        #    structural prior before per-class calibration. This is a
+        #    deliberate design choice for W3.4 — the full self-normalizing
+        #    threshold (W1.4) is applied at serve time.
         #
         #    §N.8: fallback_used must be derived from a real DB lookup, not
         #    bound to a literal — the lookup result (True iff the class has no
@@ -881,58 +1370,119 @@ class GocharaV3CenturyMaterializeWriter(WriterBase):
             )
             av_gate_note = f"AV_GATE_DEGRADED: {av_gate_fetch_error}; "
 
-        # 6. PARIṢKĀRA MR-11(b): build the full era⊃month⊃day hierarchy for
-        #    this decade slice instead of a flat find_threshold_crossings
-        #    call. build_resolution_hierarchy (services/gochara_v3/
-        #    resolution_hierarchy.py, the previously-unwired W3.3 lane) calls
-        #    find_threshold_crossings internally for the era tier (root-
-        #    solved threshold crossings, unchanged machinery) and reuses the
-        #    same coarse-sweep design for month/day subdivision — "peak =
-        #    analytic argmax per the original design" per this lane's brief.
-        #    coarse_step_days is NOT independently plumbed through here
-        #    (build_resolution_hierarchy uses find_threshold_crossings'
-        #    default of 7.0, identical to the value this writer passed
-        #    explicitly pre-MR-11(b)).
-        hierarchy = build_resolution_hierarchy(
-            swe=swe,
-            context=context,
-            start_jd=decade.start_jd,
-            end_jd=decade.end_jd,
-            threshold_config=threshold_config,
-        )
-        # Flatten in PARENT-BEFORE-CHILD order: era, then month, then day.
-        # This ordering is load-bearing — the insert loop below captures each
-        # parent row's DB-assigned bigint id (INSERT ... RETURNING id) before
-        # any child row that must reference it via parent_window_id is
-        # inserted (migration 567).
-        hierarchy_records: list[WindowResolutionRecord] = (
-            hierarchy.era_windows + hierarchy.month_windows + hierarchy.day_windows
+        # 6b. R8.12 SHAPE GATE: fetch the class's ontology temporal_shape.
+        #     'interval'/'chain' -> peak-anchored hierarchy (PK-R-8).
+        #     'point' (or lookup failure) -> flat find_threshold_crossings
+        #     production, resolution=NULL (pre-MR-11(b) shape, unchanged).
+        class_shape = _fetch_event_class_temporal_shape(conn, event_class)
+
+        # Peak-accounting locals (R8.13) — populated by whichever branch runs.
+        era_count = 0
+        peaks_scanned = 0
+        peaks_admitted = 0
+        peaks_retained = 0
+        month_count = 0
+        day_count = 0
+        zero_peaks_reason: Optional[str] = None
+
+        # insert_specs: uniform list of
+        #   (boundary_like, resolution_or_None, peak_basis, own_key, parent_key)
+        # in PARENT-BEFORE-CHILD order — the insert loop below captures each
+        # parent row's DB-assigned bigint id (RETURNING id) before any child
+        # row that must reference it via parent_window_id is inserted.
+        insert_specs: list[tuple[Any, Optional[str], str, Optional[str], Optional[str]]] = []
+
+        if class_shape in ("interval", "chain"):
+            # PARIṢKĀRA MR-11(b) / PK-R-8: build the full era⊃month⊃day
+            # PEAK-ANCHORED hierarchy for this decade slice. build_resolution_
+            # hierarchy calls find_threshold_crossings internally for era
+            # detection (root-solved threshold crossings, unchanged
+            # machinery) AND reuses that same coarse series for the peak scan
+            # (R8.2) — no re-sweep, no fixed-step tiling (R8.1).
+            hierarchy = build_resolution_hierarchy(
+                swe=swe,
+                context=context,
+                start_jd=decade.start_jd,
+                end_jd=decade.end_jd,
+                threshold_config=threshold_config,
+            )
+            # Derived from the actual list length, not hierarchy.era_window_
+            # count -- that field is a redundant summary set by build_
+            # resolution_hierarchy itself; a HierarchyResult constructed by
+            # hand (e.g. in a test fixture) without also setting it would
+            # otherwise silently report a stale/wrong count here.
+            era_count = len(hierarchy.era_windows)
+            peaks_scanned = hierarchy.peaks_scanned
+            peaks_admitted = hierarchy.peaks_admitted
+            peaks_retained = hierarchy.peaks_retained
+            month_count = len(hierarchy.month_windows)
+            day_count = len(hierarchy.day_windows)
+            zero_peaks_reason = hierarchy.zero_peaks_reason
+
+            for record in hierarchy.era_windows:
+                insert_specs.append((
+                    record, "era", peak_basis_vocab.LAMBDA_V3_COARSE_ARGMAX,
+                    record.window_id, record.parent_window_id,
+                ))
+            for record in hierarchy.month_windows:
+                insert_specs.append((
+                    record, "month", peak_basis_vocab.LAMBDA_V3_ARGMAX,
+                    record.window_id, record.parent_window_id,
+                ))
+            for record in hierarchy.day_windows:
+                insert_specs.append((
+                    record, "day", peak_basis_vocab.LAMBDA_V3_ARGMAX,
+                    record.window_id, record.parent_window_id,
+                ))
+        else:
+            # R8.12 shape gate: point-canonical class — NO hierarchy tiers.
+            # Flat production identical in shape to the pre-MR-11(b) writer:
+            # one row per detected interval, resolution=NULL. The peak here
+            # is interval_solver's own 50-sample coarse dense scan
+            # (IntervalBoundary.peak_lambda) — LAMBDA_V3_COARSE_ARGMAX, never
+            # the day-refined ARGMAX basis (R8.8).
+            flat_intervals = find_threshold_crossings(
+                swe=swe, context=context,
+                start_jd=decade.start_jd, end_jd=decade.end_jd,
+                threshold_config=threshold_config, coarse_step_days=7.0,
+            )
+            era_count = len(flat_intervals)
+            for interval in flat_intervals:
+                insert_specs.append((
+                    interval, None, peak_basis_vocab.LAMBDA_V3_COARSE_ARGMAX,
+                    None, None,
+                ))
+
+        shape_gate_note = (
+            f"shape={class_shape} "
+            f"({'hierarchy' if class_shape in ('interval', 'chain') else 'flat, no hierarchy (R8.12)'})"
         )
 
         if ctx.dry_run:
             elapsed = time.time() - t0
             logger.debug(
-                "[%s] DRY RUN substep=%r chart=%s: %d hierarchy windows "
+                "[%s] DRY RUN substep=%r chart=%s: %s, %d rows "
                 "(era=%d month=%d day=%d) would be served. wall_clock_s=%.3f",
-                ASSET_ID, substep_key, chart_id, len(hierarchy_records),
-                len(hierarchy.era_windows), len(hierarchy.month_windows),
-                len(hierarchy.day_windows), elapsed,
+                ASSET_ID, substep_key, chart_id, shape_gate_note, len(insert_specs),
+                era_count, month_count, day_count, elapsed,
             )
             return WriterResult(
                 asset_id=self.asset_id, rows_inserted=0,
-                rows_skipped=len(hierarchy_records),
+                rows_skipped=len(insert_specs),
                 duration_seconds=elapsed,
                 notes=(
-                    f"{av_gate_note}DRY RUN {substep_key}: {len(hierarchy_records)} hierarchy "
-                    f"windows found (era={len(hierarchy.era_windows)} "
-                    f"month={len(hierarchy.month_windows)} day={len(hierarchy.day_windows)}) "
-                    f"in {decade.year_start}–{decade.year_end} — nothing written"
+                    f"{av_gate_note}DRY RUN {substep_key}: {shape_gate_note}, "
+                    f"{len(insert_specs)} rows found (era={era_count} month={month_count} "
+                    f"day={day_count}) in {decade.year_start}–{decade.year_end} — nothing written"
                 ),
             )
 
         # 7. DELETE-then-INSERT (§N.3 replace-not-accrete).
         #    Scoped to (chart_id, event_class, generation, era_slice_key) so
         #    a resubmit of this decade slice does not touch other slices.
+        #    This scope covers ALL resolution tiers for the substep — a
+        #    resubmit cleanly replaces era+month+day (or the flat rows)
+        #    together, never leaving orphaned children from a prior run.
         #
         #    W5.4 repoint (UTK-R1): write to BOTH tables.
         #      (a) kala_gochara_windows_v2 — calibration/staging (generation='g3_utkarsha')
@@ -969,68 +1519,74 @@ class GocharaV3CenturyMaterializeWriter(WriterBase):
         # window_id -> the DB-assigned bigint id this row received on INSERT,
         # kept SEPARATELY per table (kala_gochara_windows_v2 and
         # kala_gochara_windows have independent id sequences). A child
-        # record's parent_window_id (a UUID) is looked up in the map for the
-        # table it is about to be inserted into; parent-before-child ordering
-        # (hierarchy_records above) guarantees the parent's id is already
-        # present by the time a child looks it up. A parent whose own INSERT
-        # failed (or whose fetchone() returned nothing, e.g. a stubbed
-        # responder in tests) simply leaves no entry — its children then
-        # honestly get parent_window_id=None rather than a fabricated id.
+        # record's parent key (a UUID) is looked up in the map for the table
+        # it is about to be inserted into; parent-before-child ordering
+        # (insert_specs above) guarantees the parent's id is already present
+        # by the time a child looks it up. A parent whose own INSERT failed
+        # (or whose fetchone() returned nothing, e.g. a stubbed responder in
+        # tests) simply leaves no entry — its children then honestly get
+        # parent_window_id=None rather than a fabricated id.
         v2_id_map: dict[str, int] = {}
         prod_id_map: dict[str, int] = {}
 
         inserted = 0
-        for record in hierarchy_records:
+        for boundary, resolution, peak_basis, own_key, parent_key in insert_specs:
             # (a) Insert into calibration/staging table.
             row_v2 = _build_row(
-                chart_id, event_class, record, era_slice_key,
+                chart_id, event_class, boundary, era_slice_key,
                 valence=class_valence, is_adverse=class_is_adverse,
+                peak_basis=peak_basis,
                 generation=GENERATION_V3,
-                term_breakdown=record.term_breakdown,
-                lambda_v3_ci_low=record.lambda_v3_ci_low,
-                lambda_v3_ci_high=record.lambda_v3_ci_high,
-                ci_source=record.ci_source,
-                resolution=record.resolution_tier,
-                parent_window_id=v2_id_map.get(record.parent_window_id),
+                term_breakdown=boundary.term_breakdown,
+                lambda_v3_ci_low=boundary.lambda_v3_ci_low,
+                lambda_v3_ci_high=boundary.lambda_v3_ci_high,
+                ci_source=boundary.ci_source,
+                resolution=resolution,
+                parent_window_id=v2_id_map.get(parent_key) if parent_key else None,
+                coverage_quality=quality_note,
             )
             try:
                 cur = conn.execute(INSERT_SQL, row_v2)
                 returned = cur.fetchone()
                 if returned is not None:
                     new_id = returned["id"] if isinstance(returned, dict) else returned[0]
-                    v2_id_map[record.window_id] = new_id
+                    if own_key is not None:
+                        v2_id_map[own_key] = new_id
                 inserted += 1
             except Exception as exc:  # noqa: BLE001
                 logger.warning(
                     "[%s] substep=%r v2 row insert failed (peak_date=%s, resolution=%s): %s",
                     ASSET_ID, substep_key,
-                    _jd_to_date(record.peak_jd), record.resolution_tier, exc,
+                    _jd_to_date(boundary.peak_jd), resolution, exc,
                 )
 
             # (b) Insert into production table (generation='3.0').
             #     I1 mutation-guard invariant: row carries generation='3.0'.
             row_prod = _build_row(
-                chart_id, event_class, record, era_slice_key,
+                chart_id, event_class, boundary, era_slice_key,
                 valence=class_valence, is_adverse=class_is_adverse,
+                peak_basis=peak_basis,
                 generation=GENERATION_PROD,
-                term_breakdown=record.term_breakdown,
-                lambda_v3_ci_low=record.lambda_v3_ci_low,
-                lambda_v3_ci_high=record.lambda_v3_ci_high,
-                ci_source=record.ci_source,
-                resolution=record.resolution_tier,
-                parent_window_id=prod_id_map.get(record.parent_window_id),
+                term_breakdown=boundary.term_breakdown,
+                lambda_v3_ci_low=boundary.lambda_v3_ci_low,
+                lambda_v3_ci_high=boundary.lambda_v3_ci_high,
+                ci_source=boundary.ci_source,
+                resolution=resolution,
+                parent_window_id=prod_id_map.get(parent_key) if parent_key else None,
+                coverage_quality=quality_note,
             )
             try:
                 cur = conn.execute(INSERT_PROD_SQL, row_prod)
                 returned = cur.fetchone()
                 if returned is not None:
                     new_id = returned["id"] if isinstance(returned, dict) else returned[0]
-                    prod_id_map[record.window_id] = new_id
+                    if own_key is not None:
+                        prod_id_map[own_key] = new_id
             except Exception as exc:  # noqa: BLE001
                 logger.warning(
                     "[%s] substep=%r prod row insert failed (peak_date=%s, resolution=%s): %s",
                     ASSET_ID, substep_key,
-                    _jd_to_date(record.peak_jd), record.resolution_tier, exc,
+                    _jd_to_date(boundary.peak_jd), resolution, exc,
                 )
 
         # 8. Upsert fingerprint.
@@ -1044,14 +1600,24 @@ class GocharaV3CenturyMaterializeWriter(WriterBase):
             build_id=ctx.build_id,
         )
 
-        # 9. Log wall-clock time at DEBUG (AC5 — first SLO evidence point).
+        # 9. Log wall-clock time + peak accounting at DEBUG (AC5 / R8.13).
         elapsed = time.time() - t0
         logger.debug(
-            "[%s] substep=%r chart=%s: %d hierarchy windows inserted "
-            "(era=%d month=%d day=%d). wall_clock_s=%.3f",
-            ASSET_ID, substep_key, chart_id, inserted,
-            len(hierarchy.era_windows), len(hierarchy.month_windows),
-            len(hierarchy.day_windows), elapsed,
+            "[%s] substep=%r chart=%s: %s, %d rows inserted "
+            "(era=%d peaks_scanned=%d peaks_admitted=%d peaks_retained=%d "
+            "month=%d day=%d). wall_clock_s=%.3f",
+            ASSET_ID, substep_key, chart_id, shape_gate_note, inserted,
+            era_count, peaks_scanned, peaks_admitted, peaks_retained,
+            month_count, day_count, elapsed,
+        )
+
+        # R8.13: WriterResult.notes carries the full peak-accounting report,
+        # and a NAMED zero_peaks_reason whenever peaks_retained==0 for a
+        # hierarchy-eligible class — never a bare/undifferentiated "0 rows".
+        zero_peaks_part = (
+            f", zero_peaks_reason={zero_peaks_reason}"
+            if class_shape in ("interval", "chain") and peaks_retained == 0 and zero_peaks_reason
+            else ""
         )
 
         return WriterResult(
@@ -1059,14 +1625,16 @@ class GocharaV3CenturyMaterializeWriter(WriterBase):
             rows_inserted=inserted,
             duration_seconds=elapsed,
             notes=(
-                f"{av_gate_note}{substep_key}: {len(hierarchy_records)} hierarchy windows found "
-                f"(era={len(hierarchy.era_windows)} month={len(hierarchy.month_windows)} "
-                f"day={len(hierarchy.day_windows)}), "
+                f"{av_gate_note}{substep_key}: {shape_gate_note}, "
+                f"era_windows={era_count}, peaks_scanned={peaks_scanned}, "
+                f"peaks_admitted={peaks_admitted}, peaks_retained={peaks_retained}, "
+                f"month_rows={month_count}, day_rows={day_count}{zero_peaks_part}, "
                 f"{inserted} rows inserted into {TABLE} (generation={GENERATION_V3}) "
                 f"and {PROD_TABLE} (generation={GENERATION_PROD}), "
                 f"era_slice_key={era_slice_key}, "
-                f"resolution_facet={hierarchy.resolution_facet}, "
-                f"fingerprint={fingerprint}"
+                f"fingerprint={fingerprint}, "
+                f"coverage_quality={quality_note['tier']} "
+                f"({quality_note['target_count']} target(s))"
             ),
         )
 
@@ -1075,7 +1643,8 @@ class GocharaV3CenturyMaterializeWriter(WriterBase):
     # ------------------------------------------------------------------
 
     def run(self, ctx: ContextSpec) -> WriterResult:
-        """CLI path: drive all 60 substeps sequentially."""
+        """CLI path: drive all substeps sequentially (count depends on the
+        chart's live gochara_resonance_map coverage — MR-16 dynamic plan)."""
         t0 = time.time()
         total_inserted = 0
         notes: list[str] = []
@@ -1101,8 +1670,13 @@ __all__ = [
     "GENERATION_PROD",
     "PROD_TABLE",
     "TABLE",
+    "ROW_SCHEMA_COLUMNS",
+    "STAGING_ROW_SCHEMA_COLUMNS",
     "GocharaV3CenturyMaterializeWriter",
     "build_decade_slices",
     "compute_substep_fingerprint",
     "_fetch_class_valence",
+    "_discover_event_classes",
+    "_coverage_quality_note",
+    "_fetch_event_class_temporal_shape",
 ]

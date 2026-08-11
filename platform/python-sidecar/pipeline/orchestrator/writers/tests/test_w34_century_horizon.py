@@ -146,15 +146,31 @@ def _ctx(conn, **extra_config) -> ContextSpec:
     )
 
 
+# MR-16: the default discovered-classes set for _responder — matches the
+# historical EVENT_CLASSES 6-class scope so every pre-MR-16 test in this file
+# (which assumed a static 60-substep plan) keeps working unchanged when it
+# doesn't care about dynamic discovery itself. Tests that specifically
+# exercise the new dynamic behaviour pass their own `discovered_classes`.
+_DEFAULT_DISCOVERED_CLASSES = list(EVENT_CLASSES)
+
+
 def _responder(
     *,
     targets: list[str] = ("Venus",),
     stored_fp: str | None = None,
     rows_exist: bool = False,
+    discovered_classes: list[str] | None = None,
 ):
     """Build a query responder for _FakeConn."""
+    classes = _DEFAULT_DISCOVERED_CLASSES if discovered_classes is None else discovered_classes
+
     def responder(sql: str, params=None) -> list[dict]:
         s = sql.lower()
+        # MR-16: the dynamic event-class discovery query — DISTINCT
+        # event_class, no target_ref column — must be checked BEFORE the
+        # target_ref branch below (the two queries share the table name).
+        if "gochara_resonance_map" in s and "distinct" in s and "event_class" in s and "target_ref" not in s:
+            return [{"event_class": ec} for ec in classes]
         if "gochara_resonance_map" in s and "target_ref" in s:
             return [{"target_ref": t} for t in targets]
         if BUILD_STATE_TABLE in s and sql.strip().upper().startswith("SELECT"):
@@ -219,13 +235,14 @@ def test_writer_production_table_is_kala_gochara_windows():
 
 
 # ===========================================================================
-# AC1 + AC2 — plan_substeps structure and 60-substep century plan
+# AC1 + AC2 — plan_substeps structure (event_class set = whatever
+# gochara_resonance_map holds for this chart; DEFAULT fixture = historical 6)
 # ===========================================================================
 
 
 def test_plan_substeps_returns_list_of_substeps():
     """AC1: plan_substeps returns a non-empty list."""
-    conn = _FakeConn()  # plan_substeps is static — no DB queries
+    conn = _FakeConn(_responder())
     steps = GocharaV3CenturyMaterializeWriter().plan_substeps(_ctx(conn))
     assert isinstance(steps, list)
     assert len(steps) > 0
@@ -233,7 +250,7 @@ def test_plan_substeps_returns_list_of_substeps():
 
 def test_plan_substeps_each_has_key_and_label():
     """AC1: each SubStep has a non-empty .key and .label."""
-    conn = _FakeConn()
+    conn = _FakeConn(_responder())
     steps = GocharaV3CenturyMaterializeWriter().plan_substeps(_ctx(conn))
     for step in steps:
         assert hasattr(step, "key"), "SubStep must have .key"
@@ -243,8 +260,10 @@ def test_plan_substeps_each_has_key_and_label():
 
 
 def test_plan_substeps_60_total():
-    """AC2: exactly 6 event_classes × 10 decade_slices = 60 substeps."""
-    conn = _FakeConn()
+    """AC2: exactly 6 event_classes × 10 decade_slices = 60 substeps, when
+    the chart's resonance map holds the historical 6-class set (today's live
+    state for the two canonical charts, pre-R2-rebuild)."""
+    conn = _FakeConn(_responder())
     steps = GocharaV3CenturyMaterializeWriter().plan_substeps(_ctx(conn))
     assert len(steps) == 60, (
         f"Expected 60 substeps (6 classes × 10 decades), got {len(steps)}"
@@ -252,8 +271,8 @@ def test_plan_substeps_60_total():
 
 
 def test_plan_substeps_covers_all_event_classes():
-    """AC2: every event_class appears in the plan."""
-    conn = _FakeConn()
+    """AC2: every DISCOVERED event_class appears in the plan."""
+    conn = _FakeConn(_responder())
     steps = GocharaV3CenturyMaterializeWriter().plan_substeps(_ctx(conn))
     keys_found = {s.key.split("::", 1)[0] for s in steps}
     assert keys_found == set(EVENT_CLASSES), (
@@ -263,7 +282,7 @@ def test_plan_substeps_covers_all_event_classes():
 
 def test_plan_substeps_covers_all_decade_slices():
     """AC2: every decade slice appears in the plan."""
-    conn = _FakeConn()
+    conn = _FakeConn(_responder())
     steps = GocharaV3CenturyMaterializeWriter().plan_substeps(_ctx(conn))
     era_keys_found = {s.key.split("::", 1)[1] for s in steps if "::" in s.key}
     expected_era_keys = {d.era_slice_key for d in DECADE_SLICES}
@@ -274,7 +293,7 @@ def test_plan_substeps_covers_all_decade_slices():
 
 def test_plan_substeps_each_class_has_10_decades():
     """AC2: each event class has exactly 10 substeps (one per decade)."""
-    conn = _FakeConn()
+    conn = _FakeConn(_responder())
     steps = GocharaV3CenturyMaterializeWriter().plan_substeps(_ctx(conn))
     from collections import Counter
     class_counts = Counter(s.key.split("::", 1)[0] for s in steps)
@@ -286,7 +305,7 @@ def test_plan_substeps_each_class_has_10_decades():
 
 def test_plan_substeps_no_duplicate_keys():
     """AC2: all substep keys are unique."""
-    conn = _FakeConn()
+    conn = _FakeConn(_responder())
     steps = GocharaV3CenturyMaterializeWriter().plan_substeps(_ctx(conn))
     keys = [s.key for s in steps]
     assert len(keys) == len(set(keys)), "Duplicate substep keys found"
@@ -294,7 +313,7 @@ def test_plan_substeps_no_duplicate_keys():
 
 def test_plan_substeps_key_format():
     """AC2: substep_key format is '{event_class}::{era_slice_key}'."""
-    conn = _FakeConn()
+    conn = _FakeConn(_responder())
     steps = GocharaV3CenturyMaterializeWriter().plan_substeps(_ctx(conn))
     for step in steps:
         assert "::" in step.key, (
@@ -304,6 +323,390 @@ def test_plan_substeps_key_format():
         assert ec in EVENT_CLASSES, f"Unknown event_class {ec!r} in substep_key"
         assert era_key.startswith("g3_"), (
             f"era_slice_key must start with 'g3_', got {era_key!r}"
+        )
+
+
+# ===========================================================================
+# MR-16 — dynamic event-class discovery (kills the hardcoded 6)
+# ===========================================================================
+#
+# TDD discipline: these tests are RED against the pre-MR-16 writer (whose
+# plan_substeps ignored the DB entirely and always iterated the hardcoded
+# EVENT_CLASSES list); GREEN once plan_substeps discovers its event-class
+# set live from gochara_resonance_map via _discover_event_classes.
+
+
+def test_plan_substeps_class_set_follows_resonance_map_not_hardcoded_list():
+    """Core MR-16 assertion: a fixture resonance map with a DIFFERENT class
+    set than EVENT_CLASSES (some overlapping, some entirely new W3.1 classes
+    never in the hardcoded 6) produces a plan over EXACTLY that set — never
+    silently substituting/falling back to EVENT_CLASSES."""
+    custom_classes = ["career_entry", "romantic_start", "bereavement"]
+    conn = _FakeConn(_responder(discovered_classes=custom_classes))
+    steps = GocharaV3CenturyMaterializeWriter().plan_substeps(_ctx(conn))
+
+    keys_found = {s.key.split("::", 1)[0] for s in steps}
+    assert keys_found == set(custom_classes), (
+        f"plan_substeps must follow the discovered resonance-map classes "
+        f"exactly, got {keys_found}, expected {set(custom_classes)}"
+    )
+    # None of the hardcoded EVENT_CLASSES leaked in — proves there is no
+    # silent fallback/union with the historical list.
+    assert not (keys_found & set(EVENT_CLASSES) - set(custom_classes)), (
+        "plan_substeps leaked a hardcoded EVENT_CLASSES member that was "
+        "not in the fixture's discovered set — a fallback is still active"
+    )
+
+
+def test_plan_substeps_class_count_scales_with_resonance_map_n_classes():
+    """N classes discovered -> N × 10 decade substeps, for several N —
+    proves the substep COUNT is driven by live discovery, not a fixed 6."""
+    for n_classes, classes in (
+        (1, ["marriage"]),
+        (3, ["marriage", "major_gain", "career_advancement"]),
+        (9, [f"custom_class_{i}" for i in range(9)]),
+        (27, [f"class_{i}" for i in range(27)]),  # full W3.1 ceiling
+    ):
+        conn = _FakeConn(_responder(discovered_classes=classes))
+        steps = GocharaV3CenturyMaterializeWriter().plan_substeps(_ctx(conn))
+        assert len(steps) == n_classes * 10, (
+            f"discovered {n_classes} classes -> expected {n_classes * 10} "
+            f"substeps (× 10 decades), got {len(steps)}"
+        )
+
+
+def test_plan_substeps_empty_resonance_map_is_honest_zero_substeps():
+    """I4 at the plan level (MR-16): a chart with NO gochara_resonance_map
+    rows at all produces a ZERO-substep plan — never a fallback to
+    EVENT_CLASSES (which would silently plan 60 substeps for a chart G-1
+    has not been run for yet)."""
+    conn = _FakeConn(_responder(discovered_classes=[]))
+    steps = GocharaV3CenturyMaterializeWriter().plan_substeps(_ctx(conn))
+    assert steps == [], (
+        f"Expected zero substeps for an empty resonance map, got {len(steps)}: "
+        f"{[s.key for s in steps]}"
+    )
+
+
+def test_plan_substeps_does_not_query_target_ref_at_plan_time():
+    """plan_substeps' discovery query is a DISTINCT event_class read — it
+    must not also issue the per-class target_ref fetch (that happens later,
+    per-substep, inside run_substep) — keeps the plan-time query cheap (one
+    query total, not one per event_class)."""
+    responder_calls: list[str] = []
+
+    def _tracking_responder(sql, params=None):
+        responder_calls.append(sql)
+        return [{"event_class": ec} for ec in ("marriage", "major_gain")]
+
+    conn = _FakeConn(_tracking_responder)
+    GocharaV3CenturyMaterializeWriter().plan_substeps(_ctx(conn))
+
+    target_ref_queries = [s for s in responder_calls if "target_ref" in s.lower()]
+    assert target_ref_queries == [], (
+        f"plan_substeps must not fetch target_ref (per-substep concern), "
+        f"issued: {target_ref_queries}"
+    )
+
+
+def test_discover_event_classes_is_distinct_and_ordered():
+    """_discover_event_classes issues a DISTINCT ... ORDER BY event_class
+    query (ascending, matching ka_gochara_sweep's sibling implementation) —
+    a static-source guard so a future edit can't silently drop ORDER BY/
+    DISTINCT and reintroduce nondeterministic substep ordering."""
+    source = inspect.getsource(mod._discover_event_classes)
+    assert "DISTINCT" in source.upper(), (
+        "_discover_event_classes must use SELECT DISTINCT event_class"
+    )
+    assert "ORDER BY" in source.upper(), (
+        "_discover_event_classes must use ORDER BY for deterministic ordering"
+    )
+    assert "gochara_resonance_map" in source, (
+        "_discover_event_classes must read from gochara_resonance_map"
+    )
+
+
+def test_discover_event_classes_genuine_empty_query_still_returns_empty_list():
+    """PARĪKṢAKA F1 anti-fallback invariant, unchanged: a query that RUNS
+    SUCCESSFULLY and finds zero rows (the honest "G-1 hasn't built this
+    chart yet" case) must still return [] — never a fallback to
+    EVENT_CLASSES (the exact hardcoded-6 defect this fix removes)."""
+    conn = _FakeConn(_responder(discovered_classes=[]))
+    result = mod._discover_event_classes(conn, "482012f1-710e-4a25-994a-93821f5871aa")
+    assert result == [], (
+        f"_discover_event_classes must return [] for a genuinely empty "
+        f"resonance map, got {result}"
+    )
+
+
+def test_discover_event_classes_db_failure_propagates(monkeypatch):
+    """PARĪKṢAKA F1 (MATERIAL): a DB error during discovery must PROPAGATE,
+    never be swallowed into an empty list. The orchestrator's own
+    no-op-completion re-probe (asset_runner.py:625-645, the SATYA-DĪPA fix)
+    wraps its `plan_substeps(ctx)` call in a try/except that treats ANY
+    exception as "conservatively incomplete" (fail-closed) and a `[]`
+    result as "genuinely done" — swallowing the error here would make a
+    transient query failure indistinguishable from an honestly empty
+    resonance map and could promote a FAILED build to state='lit'
+    (remaining_count=0 -> plan_complete=True). See _discover_event_classes'
+    own docstring for the full rationale."""
+    def _raising_responder(sql, params=None):
+        raise RuntimeError("simulated connection failure")
+
+    conn = _FakeConn(_raising_responder)
+    with pytest.raises(RuntimeError, match="simulated connection failure"):
+        mod._discover_event_classes(conn, "482012f1-710e-4a25-994a-93821f5871aa")
+
+
+def test_plan_substeps_propagates_discovery_db_failure():
+    """PARĪKṢAKA F1: the exception must propagate all the way OUT of
+    plan_substeps too — plan_substeps must not add its own try/except
+    around the _discover_event_classes call that would re-introduce the
+    swallow one level up."""
+    def _raising_responder(sql, params=None):
+        raise RuntimeError("simulated connection failure")
+
+    conn = _FakeConn(_raising_responder)
+    writer = GocharaV3CenturyMaterializeWriter()
+    with pytest.raises(RuntimeError, match="simulated connection failure"):
+        writer.plan_substeps(_ctx(conn))
+
+
+def test_event_classes_constant_no_longer_drives_plan_substeps():
+    """Regression lock: even though EVENT_CLASSES the constant still exists
+    (documentation-only, MR-16), plan_substeps must NOT reference it as a
+    fallback or default anywhere in its own EXECUTABLE code (the docstring
+    legitimately explains the historical constant by name)."""
+    fn = GocharaV3CenturyMaterializeWriter.plan_substeps
+    source = inspect.getsource(fn)
+    # Strip the function's own leading docstring (its first triple-quoted
+    # string) — it legitimately names EVENT_CLASSES for documentation; the
+    # invariant under test is about EXECUTABLE code only.
+    code_only = re.sub(r'""".*?"""', "", source, count=1, flags=re.DOTALL)
+    assert "EVENT_CLASSES" not in code_only, (
+        "plan_substeps must not reference the hardcoded EVENT_CLASSES "
+        f"constant in its executable code (MR-16 kill-the-hardcoded-6 fix). "
+        f"Code:\n{code_only}"
+    )
+
+
+# ===========================================================================
+# MR-16 — honest per-class coverage-quality note
+# ===========================================================================
+
+
+def test_coverage_quality_note_tiers_by_live_target_count():
+    """_coverage_quality_note buckets tier from the ACTUAL target_refs count
+    passed in — never a static per-class label."""
+    empty = mod._coverage_quality_note("marriage", [])
+    thin = mod._coverage_quality_note("marriage", ["Venus"])
+    moderate = mod._coverage_quality_note("marriage", ["Venus", "Jupiter", "7", "2"])
+    rich = mod._coverage_quality_note("marriage", ["a", "b", "c", "d", "e", "f", "g"])
+
+    assert empty["tier"] == "empty" and empty["target_count"] == 0
+    assert thin["tier"] == "thin" and thin["target_count"] == 1
+    assert moderate["tier"] == "moderate" and moderate["target_count"] == 4
+    assert rich["tier"] == "rich" and rich["target_count"] == 7
+    for note in (empty, thin, moderate, rich):
+        assert "marriage" in note["note"]
+
+
+def test_coverage_quality_note_never_invents_targets():
+    """The note's target_count must always equal len(target_refs) exactly —
+    it must never round up, pad, or otherwise invent coverage that was not
+    actually fetched (I4)."""
+    for refs in ([], ["Venus"], ["Venus", "Jupiter", "Mars"]):
+        note = mod._coverage_quality_note("illness_acute", refs)
+        assert note["target_count"] == len(refs)
+
+
+def test_build_row_embeds_coverage_quality_in_suppression_state():
+    """_build_row, given a coverage_quality note, serializes it under
+    suppression_state['coverage_quality'] — the served, opaque-pass-through
+    JSONB channel register_gochara_windows.ts already carries through to
+    callers unmodified."""
+    from services.gochara_v3.interval_solver import IntervalBoundary
+    import json as _json
+
+    boundary = IntervalBoundary(
+        enter_jd=2445736.5 + 10.0,
+        exit_jd=2445736.5 + 20.0,
+        peak_jd=2445736.5 + 15.0,
+        peak_lambda=0.5,
+        era_slice_key="g3_1984_1994",
+    )
+    note = {"tier": "thin", "target_count": 1, "note": "marriage: 1 target"}
+    row = mod._build_row(
+        "chart-x", "marriage", boundary, "g3_1984_1994",
+        valence="neutral", is_adverse=False,
+        peak_basis=mod.peak_basis_vocab.LAMBDA_V3_COARSE_ARGMAX,
+        coverage_quality=note,
+    )
+    parsed = _json.loads(row["suppression_state"])
+    assert parsed["coverage_quality"] == note
+
+
+def test_build_row_suppression_state_honest_empty_without_coverage_quality():
+    """Backward-compat / I4: omitting coverage_quality (pre-MR-16 call
+    sites, if any survive) must still produce a valid, honestly-empty
+    suppression_state — never raise, never fabricate a note."""
+    from services.gochara_v3.interval_solver import IntervalBoundary
+    import json as _json
+
+    boundary = IntervalBoundary(
+        enter_jd=2445736.5 + 10.0,
+        exit_jd=2445736.5 + 20.0,
+        peak_jd=2445736.5 + 15.0,
+        peak_lambda=0.5,
+        era_slice_key="g3_1984_1994",
+    )
+    row = mod._build_row(
+        "chart-x", "marriage", boundary, "g3_1984_1994",
+        valence="neutral", is_adverse=False,
+        peak_basis=mod.peak_basis_vocab.LAMBDA_V3_COARSE_ARGMAX,
+    )
+    assert _json.loads(row["suppression_state"]) == {}
+
+
+def test_run_substep_result_notes_carry_coverage_quality_tier(monkeypatch):
+    """The per-substep build report (WriterResult.notes) — the ONLY
+    orchestrator-visible surface for a heavy writer's free-text output —
+    carries the coverage_quality tier, so a build-log/SSE consumer can see
+    it without querying the row directly."""
+    from services.gochara_v3.interval_solver import IntervalBoundary
+
+    targets = ["Venus"]
+    writer = GocharaV3CenturyMaterializeWriter()
+    conn_dummy = _FakeConn(_responder(targets=targets))
+    steps = writer.plan_substeps(_ctx(conn_dummy))
+    step = steps[0]
+    ec, era_key = step.key.split("::", 1)
+
+    fake_boundary = IntervalBoundary(
+        enter_jd=2445736.5 + 10.0,
+        exit_jd=2445736.5 + 20.0,
+        peak_jd=2445736.5 + 15.0,
+        peak_lambda=0.72,
+        era_slice_key=era_key,
+    )
+
+    conn = _FakeConn(_responder(targets=targets, stored_fp=None))
+    ctx = _ctx(conn)
+    monkeypatch.setattr(mod, "find_threshold_crossings", lambda *a, **k: [fake_boundary])
+    monkeypatch.setattr(
+        mod, "ClassContext",
+        type("FakeClassContext", (), {"fetch": staticmethod(lambda **k: object())}),
+        raising=False,
+    )
+    try:
+        import swisseph  # noqa: F401
+    except ImportError:
+        import types, sys
+        sys.modules["swisseph"] = types.ModuleType("swisseph")
+
+    result = writer.run_substep(ctx, step)
+    assert "coverage_quality=" in result.notes, (
+        f"Expected coverage_quality tier in WriterResult.notes, got: {result.notes!r}"
+    )
+
+
+_INSERT_TABLE_RE_F2 = re.compile(r"INSERT\s+INTO\s+(\S+)", re.IGNORECASE)
+
+
+def _prod_insert_params(statements: list[tuple[str, object]]) -> list[dict]:
+    """INSERT params whose SQL targets EXACTLY PROD_TABLE (not TABLE, the
+    calibration/staging table — kala_gochara_windows is a strict prefix of
+    kala_gochara_windows_v2, so a naive substring/startswith check
+    over-matches; mirrors test_mr13/test_mr14's _inserts_for_table and the
+    _dml_target_table fix in test_ka_gochara_v3_mutation_guard.py)."""
+    out = []
+    for sql, params in statements:
+        if not isinstance(params, dict):
+            continue
+        m = _INSERT_TABLE_RE_F2.match(sql.strip())
+        if m and m.group(1).lower() == PROD_TABLE.lower():
+            out.append(params)
+    return out
+
+
+def test_run_substep_coverage_quality_target_count_matches_actual_targets(monkeypatch):
+    """PARĪKṢAKA F2 (real detector, replaces the substring-only check above):
+    the SERVED ROW's own suppression_state.coverage_quality.target_count —
+    not just the presence of the substring 'coverage_quality=' somewhere in
+    WriterResult.notes — must equal the ACTUAL number of resonance targets
+    this substep fetched.
+
+    This is a real detector for two defects the notes-substring test
+    (test_run_substep_result_notes_carry_coverage_quality_tier, above)
+    provably CANNOT catch, because a mutated run_substep can still emit a
+    notes string containing 'coverage_quality=' while the row itself is
+    wrong:
+      (i)  coverage_quality=None passed to both _build_row call sites
+           -> suppression_state has no 'coverage_quality' key at all.
+      (ii) a HARDCODED note (e.g. {"tier": "rich", "target_count": 99})
+           used at both _build_row call sites regardless of the actual
+           fetch -> the notes text still says "coverage_quality=rich
+           (99 target(s))" (a literal, well-formed substring match) but
+           the row's target_count never reflects reality.
+
+    Two DIFFERENT target-list sizes are exercised so a single hardcoded
+    constant cannot coincidentally satisfy both — the classic "one example
+    isn't a mutation-proof detector" trap.
+    """
+    from services.gochara_v3.interval_solver import IntervalBoundary
+    import json as _json
+
+    for targets in (["Venus"], ["Venus", "Jupiter", "Mars", "Saturn"]):
+        writer = GocharaV3CenturyMaterializeWriter()
+        conn_dummy = _FakeConn(_responder(targets=targets))
+        steps = writer.plan_substeps(_ctx(conn_dummy))
+        step = steps[0]
+        ec, era_key = step.key.split("::", 1)
+
+        fake_boundary = IntervalBoundary(
+            enter_jd=2445736.5 + 10.0,
+            exit_jd=2445736.5 + 20.0,
+            peak_jd=2445736.5 + 15.0,
+            peak_lambda=0.72,
+            era_slice_key=era_key,
+        )
+
+        conn = _FakeConn(_responder(targets=targets, stored_fp=None))
+        ctx = _ctx(conn)
+        monkeypatch.setattr(mod, "find_threshold_crossings", lambda *a, **k: [fake_boundary])
+        monkeypatch.setattr(
+            mod, "ClassContext",
+            type("FakeClassContext", (), {"fetch": staticmethod(lambda **k: object())}),
+            raising=False,
+        )
+        try:
+            import swisseph  # noqa: F401
+        except ImportError:
+            import types, sys
+            sys.modules["swisseph"] = types.ModuleType("swisseph")
+
+        result = writer.run_substep(ctx, step)
+        assert result.rows_inserted == 1, f"targets={targets}"
+
+        prod_rows = _prod_insert_params(conn.statements)
+        assert len(prod_rows) == 1, (
+            f"Expected exactly 1 production INSERT for targets={targets}, "
+            f"got {len(prod_rows)}"
+        )
+        row = prod_rows[0]
+
+        suppression_state = _json.loads(row["suppression_state"])
+        assert "coverage_quality" in suppression_state, (
+            f"suppression_state is missing 'coverage_quality' for targets="
+            f"{targets} — coverage_quality=None was passed to _build_row "
+            f"(mutation i: the note was dropped, not computed)"
+        )
+        actual_target_count = suppression_state["coverage_quality"]["target_count"]
+        assert actual_target_count == len(targets), (
+            f"coverage_quality.target_count={actual_target_count} for "
+            f"targets={targets} (expected {len(targets)}) — the note does "
+            f"not reflect the actual fetch; a hardcoded/stale value is "
+            f"being used (mutation ii)"
         )
 
 
@@ -545,6 +948,12 @@ def test_changed_fingerprint_triggers_recompute(monkeypatch):
         mod, "build_resolution_hierarchy",
         lambda *a, **k: called.append(1) or _EMPTY_HIERARCHY,
     )
+    # R8.12 shape gate: force 'interval' so this substep's class routes
+    # through build_resolution_hierarchy (not the point-canonical flat path)
+    # — the default discovered class (career_advancement) is 'point' per
+    # live schema and would otherwise bypass build_resolution_hierarchy
+    # entirely, making this test's monkeypatch a no-op.
+    monkeypatch.setattr(mod, "_fetch_event_class_temporal_shape", lambda *a, **k: "interval")
     # Also monkeypatch ClassContext.fetch so it doesn't need a real DB.
     monkeypatch.setattr(
         mod, "ClassContext",
@@ -584,6 +993,7 @@ def test_no_stored_fingerprint_triggers_recompute(monkeypatch):
         mod, "build_resolution_hierarchy",
         lambda *a, **k: called.append(1) or _EMPTY_HIERARCHY,
     )
+    monkeypatch.setattr(mod, "_fetch_event_class_temporal_shape", lambda *a, **k: "interval")
     monkeypatch.setattr(
         mod, "ClassContext",
         type("FakeClassContext", (), {"fetch": staticmethod(lambda **k: object())}),
@@ -636,6 +1046,7 @@ def test_run_substep_inserts_correct_era_slice_key(monkeypatch):
         mod, "build_resolution_hierarchy",
         lambda *a, **k: fake_hierarchy,
     )
+    monkeypatch.setattr(mod, "_fetch_event_class_temporal_shape", lambda *a, **k: "interval")
     monkeypatch.setattr(
         mod, "ClassContext",
         type("FakeClassContext", (), {"fetch": staticmethod(lambda **k: object())}),
@@ -788,6 +1199,7 @@ def test_writer_never_calls_commit_or_rollback(monkeypatch):
     ctx = _ctx(conn)
 
     monkeypatch.setattr(mod, "build_resolution_hierarchy", lambda *a, **k: _EMPTY_HIERARCHY)
+    monkeypatch.setattr(mod, "_fetch_event_class_temporal_shape", lambda *a, **k: "interval")
     monkeypatch.setattr(
         mod, "ClassContext",
         type("FakeClassContext", (), {"fetch": staticmethod(lambda **k: object())}),
@@ -850,14 +1262,25 @@ def test_engine_version_is_v3_1():
     assert ENGINE_VERSION == "v3.1"
 
 
-def _returning_id_responder(*, targets=("Venus",), stored_fp=None, rows_exist=False):
+def _returning_id_responder(
+    *, targets=("Venus",), stored_fp=None, rows_exist=False,
+    discovered_classes: list[str] | None = None,
+):
     """Like _responder, but INSERT ... RETURNING id statements get an
     incrementing fake bigint id back — the mechanism run_substep needs to
-    resolve parent_window_id for child hierarchy rows."""
+    resolve parent_window_id for child hierarchy rows.
+
+    MR-16 compatibility: also answers the dynamic event-class discovery
+    query (DISTINCT event_class, no target_ref) — without this, plan_substeps
+    sees an empty resonance map and returns a 0-substep plan (I4), which
+    would make every caller's `steps[0]` raise IndexError."""
+    classes = _DEFAULT_DISCOVERED_CLASSES if discovered_classes is None else discovered_classes
     counter = {"n": 0}
 
     def responder(sql: str, params=None) -> list[dict]:
         s = sql.lower()
+        if "gochara_resonance_map" in s and "distinct" in s and "event_class" in s and "target_ref" not in s:
+            return [{"event_class": ec} for ec in classes]
         if "gochara_resonance_map" in s and "target_ref" in s:
             return [{"target_ref": t} for t in targets]
         if BUILD_STATE_TABLE in s and sql.strip().upper().startswith("SELECT"):
@@ -888,6 +1311,10 @@ def _run_hierarchy_substep(monkeypatch, hierarchy: HierarchyResult):
     ctx = _ctx(conn)
 
     monkeypatch.setattr(mod, "build_resolution_hierarchy", lambda *a, **k: hierarchy)
+    # R8.12 shape gate: force 'interval' so the default discovered class
+    # (career_advancement, 'point' per live schema) still routes through
+    # build_resolution_hierarchy for these hierarchy-focused tests.
+    monkeypatch.setattr(mod, "_fetch_event_class_temporal_shape", lambda *a, **k: "interval")
     monkeypatch.setattr(
         mod, "ClassContext",
         type("FakeClassContext", (), {"fetch": staticmethod(lambda **k: object())}),
@@ -1035,6 +1462,7 @@ def test_dry_run_reports_hierarchy_tier_counts_and_writes_nothing(monkeypatch):
     )
 
     monkeypatch.setattr(mod, "build_resolution_hierarchy", lambda *a, **k: hierarchy)
+    monkeypatch.setattr(mod, "_fetch_event_class_temporal_shape", lambda *a, **k: "interval")
     monkeypatch.setattr(
         mod, "ClassContext",
         type("FakeClassContext", (), {"fetch": staticmethod(lambda **k: object())}),
