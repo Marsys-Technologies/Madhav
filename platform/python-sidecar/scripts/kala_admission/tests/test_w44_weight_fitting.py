@@ -299,6 +299,56 @@ class TestDetermineAblationMethod:
         windows = [_make_window(1.0, term_breakdown={"w21_av_gating": 0.2})]
         assert _determine_ablation_method(windows, "w21_av_gating") == "term_breakdown"
 
+    def test_ablation_method_term_breakdown_currently_unreachable_for_admitted_toggle_keys(self):
+        """PARIṢKĀRA MR-14 disclosed finding (see _determine_ablation_method's
+        own docstring for the full account): the real W1.5 term_breakdown
+        shape produced by gochara_v3.engine (migration 564's own COMMENT ON
+        COLUMN; independently verified live via this MR's throwaway-DB
+        execute-to-verify run) is
+        {promise, permission, activity, quality_gates, lambda_v3,
+        activity_terms, formula} -- NONE of which are toggle_key strings.
+
+        This regression-locks that, even with term_breakdown honestly
+        populated (the PG-6/PG-7 defect this MR fixes), NONE of the 10
+        admitted mechanisms' toggle_keys ever match a top-level key of a
+        REAL decomposition, so `_determine_ablation_method` still falls back
+        to 'proxy_fraction' for every one of them. This is DIFFERENT from
+        the test right above it (`test_windows_with_matching_breakdown_
+        returns_term_breakdown`), which uses a synthetic/hypothetical
+        shape ({"w21_av_gating": 0.2}) that never occurs in the live
+        corpus -- that test proves the function's OWN matching logic is
+        correct in isolation; THIS test proves that logic never actually
+        fires against the real data shape. Wiring the 10 admitted
+        mechanisms into a matching, toggle_key-keyed slot of the served
+        decomposition is real, separate, larger work this MR does not
+        attempt -- not fixed here, only disclosed and locked in so it is
+        not silently rediscovered as a surprise in a future W4.4 fit.
+        """
+        real_shaped_term_breakdown = {
+            "promise": 0.6,
+            "permission": 0.5,
+            "activity": 0.7,
+            "quality_gates": 1.0,
+            "lambda_v3": 0.21,
+            "activity_terms": [
+                {"primitive": "degree_contact", "target_ref": "graha:venus",
+                 "orb_decay": 0.9, "target_weight": 0.8, "p_i": 0.72},
+            ],
+            "formula": "PROMISE × PERMISSION × activity × quality_gates",
+        }
+        windows = [_make_window(0.21, term_breakdown=real_shaped_term_breakdown)]
+        for toggle_key in ADMITTED_MECHANISM_IDS:
+            method = _determine_ablation_method(windows, toggle_key)
+            assert method == "proxy_fraction", (
+                f"expected 'proxy_fraction' for toggle_key={toggle_key!r} against "
+                f"a REAL-shaped term_breakdown (no top-level key ever matches an "
+                f"admitted toggle_key), got {method!r} -- if this now returns "
+                f"'term_breakdown', the mechanism-attribution wiring gap this "
+                f"finding describes has been closed and this test (and its "
+                f"disclosure comment on _determine_ablation_method) should be "
+                f"updated to match, not silently left stale."
+            )
+
 
 # ═══════════════════════════════════════════════════════════════════════════
 # 4. compute_hit_rate_from_windows — mock corpus + ablation delta
