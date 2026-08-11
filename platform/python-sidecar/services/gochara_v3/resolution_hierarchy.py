@@ -25,6 +25,23 @@ tiling design (fixed 30-day/1-day step subdivision with a midpoint-sampled
         own λ distribution). A flat/constant series admits nothing.
   R8.4  Retention: rank (λ DESC, jd ASC), greedy-retain enforcing
         MIN_PEAK_SEPARATION_DAYS, capped at MAX_PEAKS_PER_ERA_WINDOW.
+        MR-44 AMENDMENT (2026-08-11, register MASTER_REMEDIATION_
+        REGISTER_v2_0.md): when one decade slice genuinely produces
+        MULTIPLE era windows (find_threshold_crossings returning >=2
+        intervals — a real, observed production condition), retention now
+        runs ONCE, POOLED, across ALL of that call's era windows —
+        MIN_PEAK_SEPARATION_DAYS is enforced GLOBALLY, never per-interval
+        only. Rationale: two peaks admitted from two DIFFERENT era windows
+        could each trivially clear their own interval's within-interval
+        separation check (nothing else in that interval to collide with)
+        yet independently day-refine (R8.5) to the IDENTICAL calendar
+        date — a duplicate row on uq_kala_gochara_windows_v2_natural_key
+        (chart_id, event_class, window_start, peak_date, milestone_id,
+        generation). MAX_PEAKS_PER_ERA_WINDOW stays a PER-ERA-WINDOW cap
+        (register MR-44's ruled interpretation of PK-R-8 R8.4: "cap at
+        MAX_PEAKS_PER_ERA_WINDOW per era window as before") — only the
+        SEPARATION check widens to global scope. See
+        retain_candidates_pooled.
   R8.5  Day refinement: each retained candidate is re-sampled at 1-day
         resolution over a ±7-day window around it; the TRUE argmax (not
         the coarse candidate) is what peak_date is stamped with, on BOTH
@@ -96,6 +113,17 @@ DAY_REFINEMENT_STEP_DAYS: float = 1.0
 ZERO_PEAKS_ERA_WINDOW_TOO_SHORT = "era_window_too_short"
 ZERO_PEAKS_FLAT_LAMBDA_CURVE = "flat_lambda_curve"
 ZERO_PEAKS_NO_CANDIDATE_ABOVE_P90 = "no_candidate_above_p90"
+# MR-44: an era window admitted >=1 candidate (cleared its own P90) but
+# retained ZERO after the POOLED cross-interval retention pass — every
+# admitted candidate either fell within MIN_PEAK_SEPARATION_DAYS of a
+# higher-lambda peak retained from a SIBLING era window in the same
+# build_resolution_hierarchy call, or the per-era MAX_PEAKS_PER_ERA_WINDOW
+# cap was exhausted by that window's own higher-ranked candidates first.
+# Distinct from ZERO_PEAKS_NO_CANDIDATE_ABOVE_P90 (that reason means
+# admission itself found nothing; this one means admission succeeded but
+# the candidate lost the pooled retention competition) — §N.8: a real,
+# distinguishable detector, not a proxy folded into an existing reason.
+ZERO_PEAKS_LOST_TO_POOLED_RETENTION = "lost_to_pooled_retention"
 
 
 # ---------------------------------------------------------------------------
@@ -401,6 +429,85 @@ def retain_candidates(
 
 
 # ---------------------------------------------------------------------------
+# MR-44 fix — R8.4 amendment: retention POOLED across all era windows in one
+# build_resolution_hierarchy call, so MIN_PEAK_SEPARATION_DAYS is enforced
+# GLOBALLY (not just within each interval's own candidate set).
+# ---------------------------------------------------------------------------
+
+def retain_candidates_pooled(
+    admitted_by_era: list[list[PeakCandidate]],
+    *,
+    max_peaks_per_era: int = MAX_PEAKS_PER_ERA_WINDOW,
+    min_separation_days: float = MIN_PEAK_SEPARATION_DAYS,
+) -> list[list[PeakCandidate]]:
+    """Pool admitted candidates from MULTIPLE era windows into ONE
+    retention pass (MR-44 fix; register `MASTER_REMEDIATION_REGISTER_v2_0.md`
+    MR-44, PK-R-8 R8.4 amendment).
+
+    THE BUG THIS CLOSES: `retain_candidates` (above) enforces
+    MIN_PEAK_SEPARATION_DAYS only within the ONE candidate set it is
+    handed. When `find_threshold_crossings` genuinely returns >=2 intervals
+    for a single decade slice (a real, observed production condition — not
+    a threshold artifact) and each interval's `build_peak_anchored_windows`
+    call retains independently, two peaks from two DIFFERENT era windows
+    can each trivially pass their own within-interval separation check
+    (there was nothing else in their own interval to collide with) yet
+    land, after independent day-refinement (R8.5), on the IDENTICAL
+    calendar day — producing a duplicate row on the writer's natural key
+    (chart_id, event_class, window_start, peak_date, milestone_id,
+    generation). Observed live: chart 482012f1, event_class=career_setback,
+    decade g3_2014_2024, two intervals' peaks both refined to 2017-03-01.
+
+    THE FIX: rank ALL candidates from ALL era windows TOGETHER using the
+    exact same tie-break `retain_candidates` uses (λ DESC, jd ASC), then
+    greedily retain enforcing MIN_PEAK_SEPARATION_DAYS across the WHOLE
+    pooled set — while still capping each INDIVIDUAL era window's own
+    retained count at `max_peaks_per_era` (register MR-44's ruled
+    interpretation of PK-R-8 R8.4: option (a), "cap at
+    MAX_PEAKS_PER_ERA_WINDOW per era window as before" — the cap is
+    per-window; only the separation check widens to global scope).
+
+    Parameters
+    ----------
+    admitted_by_era     One list of P90-admitted PeakCandidates per era
+                        window, in era-window order (index-aligned with the
+                        caller's own era_windows list — index i's retained
+                        subset is returned at result[i]).
+
+    Returns
+    -------
+    A list, index-aligned with `admitted_by_era`, of each era window's own
+    RETAINED subset (sorted jd ASCENDING within each era window, mirroring
+    `retain_candidates`' own stable emission order). An era window whose
+    candidates all lost the pooled competition gets an empty list — never
+    a fallback fabrication.
+    """
+    tagged: list[tuple[int, PeakCandidate]] = [
+        (era_idx, c)
+        for era_idx, candidates in enumerate(admitted_by_era)
+        for c in candidates
+    ]
+
+    ranked = sorted(tagged, key=lambda t: (-t[1].lam, t[1].jd))
+
+    retained: list[tuple[int, PeakCandidate]] = []
+    per_era_count: dict[int, int] = {}
+    for era_idx, c in ranked:
+        if per_era_count.get(era_idx, 0) >= max_peaks_per_era:
+            continue
+        if all(abs(c.jd - r.jd) >= min_separation_days for _, r in retained):
+            retained.append((era_idx, c))
+            per_era_count[era_idx] = per_era_count.get(era_idx, 0) + 1
+
+    result: list[list[PeakCandidate]] = [[] for _ in admitted_by_era]
+    for era_idx, c in retained:
+        result[era_idx].append(c)
+    for bucket in result:
+        bucket.sort(key=lambda c: c.jd)
+    return result
+
+
+# ---------------------------------------------------------------------------
 # R8.5 — day refinement: 1-day-resolution argmax over [c-7d, c+7d]
 # ---------------------------------------------------------------------------
 
@@ -492,46 +599,33 @@ def _calendar_month_bounds_jd(peak_jd: float) -> tuple[float, float]:
 # R8.1/R8.2-R8.6 — build_peak_anchored_windows: replaces the tilers
 # ---------------------------------------------------------------------------
 
-def build_peak_anchored_windows(
-    swe,
-    context,
-    era_window: WindowResolutionRecord,
+def _scan_and_admit(
     coarse_series: tuple[np.ndarray, np.ndarray],
-    *,
-    max_peaks: int = MAX_PEAKS_PER_ERA_WINDOW,
-    min_separation_days: float = MIN_PEAK_SEPARATION_DAYS,
-) -> tuple[list[WindowResolutionRecord], list[WindowResolutionRecord], EraWindowAccounting]:
-    """Build peak-anchored month + day children for ONE era window (PK-R-8).
+) -> tuple[list[PeakCandidate], int, int, Optional[str]]:
+    """R8.2/R8.3: local-maximum scan + P90 admission for ONE era window's
+    sliced series.
 
-    No fixed-step subdivision anywhere (R8.1) — every candidate comes from
-    a genuine local-maximum scan (R8.2) of `coarse_series`, the SLICE of the
-    already-computed find_threshold_crossings coarse series covering
-    [era_window.enter_jd, era_window.exit_jd] (reused, not re-swept).
-
-    Parameters
-    ----------
-    swe, context        Needed ONLY for the day-refinement re-sample (R8.5) —
-                        the coarse scan itself makes zero evaluate_lambda_
-                        vector calls (it reuses `coarse_series`).
-    era_window          The era-tier WindowResolutionRecord this call anchors
-                        peaks within (used for parent_window_id + clipping).
-    coarse_series       (jds, lambdas) — the reused coarse-sweep slice for
-                        this era window's own JD span.
-    max_peaks, min_separation_days
-                        R8.4 retention parameters (module defaults; kept as
-                        parameters for testability).
+    Factored out of `build_peak_anchored_windows` (MR-44) so that
+    `build_resolution_hierarchy`'s pooled-retention path (which needs each
+    era window's admitted candidates BEFORE any retention decision is made)
+    and `build_peak_anchored_windows`'s own single-interval path share
+    IDENTICAL scan+admission logic — no drift between the two call sites.
 
     Returns
     -------
-    (month_windows, day_windows, accounting) — exactly one month row and one
-    day row per RETAINED peak (R8.6); zero peaks retained -> both lists
-    empty, no fallback fabrication.
+    (admitted, peaks_scanned, peaks_admitted, zero_reason) — `zero_reason`
+    is populated (and `admitted` is `[]`) for the three ADMISSION-stage zero
+    causes (era window too short to scan, flat curve, no candidate clears
+    P90); it is `None` when >=1 candidate was admitted. Retention-caused
+    zero (MR-44: an admitted candidate that loses the POOLED cross-interval
+    retention competition) is a separate, later-diagnosed case the caller
+    alone can determine, since only the caller sees the pooled outcome.
     """
     jds, lambdas = coarse_series
 
     if len(jds) < 3:
         # R8.13: can't run interior-point local-max detection with <3 points.
-        return [], [], EraWindowAccounting(0, 0, 0, ZERO_PEAKS_ERA_WINDOW_TOO_SHORT)
+        return [], 0, 0, ZERO_PEAKS_ERA_WINDOW_TOO_SHORT
 
     candidates = find_local_maxima(jds, lambdas)
     peaks_scanned = len(candidates)
@@ -542,11 +636,28 @@ def build_peak_anchored_windows(
     if peaks_admitted == 0:
         lo, hi = float(np.min(lambdas)), float(np.max(lambdas))
         reason = ZERO_PEAKS_FLAT_LAMBDA_CURVE if hi <= lo else ZERO_PEAKS_NO_CANDIDATE_ABOVE_P90
-        return [], [], EraWindowAccounting(peaks_scanned, 0, 0, reason)
+        return [], peaks_scanned, 0, reason
 
-    retained = retain_candidates(admitted, max_peaks=max_peaks, min_separation_days=min_separation_days)
-    peaks_retained = len(retained)
+    return admitted, peaks_scanned, peaks_admitted, None
 
+
+def _emit_retained_peaks(
+    swe,
+    context,
+    era_window: WindowResolutionRecord,
+    retained: list[PeakCandidate],
+) -> tuple[list[WindowResolutionRecord], list[WindowResolutionRecord]]:
+    """R8.5/R8.6: day-refine each RETAINED candidate and emit exactly one
+    month row + one day row per peak, parented to `era_window`.
+
+    Factored out of `build_peak_anchored_windows` (MR-44) so that
+    `build_resolution_hierarchy` can call it directly with a POOLED
+    (cross-interval) retained set instead of a per-interval one, without
+    duplicating the day-refinement/row-construction logic. `retained` is
+    assumed to already reflect whatever retention policy the caller applied
+    (single-interval `retain_candidates` or pooled `retain_candidates_
+    pooled`) — this function makes no retention decisions of its own.
+    """
     month_windows: list[WindowResolutionRecord] = []
     day_windows: list[WindowResolutionRecord] = []
 
@@ -577,6 +688,64 @@ def build_peak_anchored_windows(
             peak_jd=peak_jd_true,
             peak_lambda=peak_lambda_true,
         ))
+
+    return month_windows, day_windows
+
+
+def build_peak_anchored_windows(
+    swe,
+    context,
+    era_window: WindowResolutionRecord,
+    coarse_series: tuple[np.ndarray, np.ndarray],
+    *,
+    max_peaks: int = MAX_PEAKS_PER_ERA_WINDOW,
+    min_separation_days: float = MIN_PEAK_SEPARATION_DAYS,
+) -> tuple[list[WindowResolutionRecord], list[WindowResolutionRecord], EraWindowAccounting]:
+    """Build peak-anchored month + day children for ONE era window (PK-R-8).
+
+    No fixed-step subdivision anywhere (R8.1) — every candidate comes from
+    a genuine local-maximum scan (R8.2) of `coarse_series`, the SLICE of the
+    already-computed find_threshold_crossings coarse series covering
+    [era_window.enter_jd, era_window.exit_jd] (reused, not re-swept).
+
+    NOTE (MR-44): this function's own `retain_candidates` call is scoped to
+    THIS era window's candidates only — it is the right behaviour for a
+    caller anchoring exactly ONE era window in isolation (as this function's
+    own direct callers/tests do). `build_resolution_hierarchy` (the
+    multi-interval top-level entry) does NOT call this function for its
+    retention step — it pools ALL era windows' admitted candidates via
+    `retain_candidates_pooled` first (closing the MR-44 cross-interval
+    duplicate-peak defect), then calls `_emit_retained_peaks` directly with
+    each era window's POOLED-retained subset. See `build_resolution_
+    hierarchy` and `retain_candidates_pooled` for the full rationale.
+
+    Parameters
+    ----------
+    swe, context        Needed ONLY for the day-refinement re-sample (R8.5) —
+                        the coarse scan itself makes zero evaluate_lambda_
+                        vector calls (it reuses `coarse_series`).
+    era_window          The era-tier WindowResolutionRecord this call anchors
+                        peaks within (used for parent_window_id + clipping).
+    coarse_series       (jds, lambdas) — the reused coarse-sweep slice for
+                        this era window's own JD span.
+    max_peaks, min_separation_days
+                        R8.4 retention parameters (module defaults; kept as
+                        parameters for testability).
+
+    Returns
+    -------
+    (month_windows, day_windows, accounting) — exactly one month row and one
+    day row per RETAINED peak (R8.6); zero peaks retained -> both lists
+    empty, no fallback fabrication.
+    """
+    admitted, peaks_scanned, peaks_admitted, zero_reason = _scan_and_admit(coarse_series)
+    if zero_reason is not None:
+        return [], [], EraWindowAccounting(peaks_scanned, peaks_admitted, 0, zero_reason)
+
+    retained = retain_candidates(admitted, max_peaks=max_peaks, min_separation_days=min_separation_days)
+    peaks_retained = len(retained)
+
+    month_windows, day_windows = _emit_retained_peaks(swe, context, era_window, retained)
 
     return month_windows, day_windows, EraWindowAccounting(
         peaks_scanned, peaks_admitted, peaks_retained, None,
@@ -657,9 +826,17 @@ def build_resolution_hierarchy(
     2. Each detected interval becomes exactly one era-tier
        WindowResolutionRecord.
     3. For each era window, slice the reused series to its own JD span and
-       run build_peak_anchored_windows on that slice (R8.1-R8.6) — no
-       re-sweep, no tiling.
-    4. Aggregate peak accounting across all era windows for the caller's
+       run the R8.2/R8.3 scan+admission (_scan_and_admit) on that slice —
+       no re-sweep, no tiling.
+    4. MR-44 FIX: retain ONCE across ALL era windows in this call, POOLED
+       (`retain_candidates_pooled`) — MIN_PEAK_SEPARATION_DAYS is enforced
+       GLOBALLY across the whole decade, not just within each interval's
+       own candidate set (R8.4 amendment; see module docstring + `retain_
+       candidates_pooled`'s own docstring for the full defect this closes).
+       MAX_PEAKS_PER_ERA_WINDOW remains a PER-ERA-WINDOW cap.
+    5. For each era window, day-refine (R8.5) + emit (R8.6) its own POOLED-
+       retained subset via `_emit_retained_peaks`.
+    6. Aggregate peak accounting across all era windows for the caller's
        WriterResult.notes (R8.13).
 
     I4: empty/sparse inputs → honest empty HierarchyResult with 0 counts.
@@ -682,13 +859,11 @@ def build_resolution_hierarchy(
     )
 
     era_windows: list[WindowResolutionRecord] = []
-    all_month: list[WindowResolutionRecord] = []
-    all_day: list[WindowResolutionRecord] = []
-
-    total_scanned = 0
-    total_admitted = 0
-    total_retained = 0
-    zero_reasons: list[str] = []
+    # Index-aligned with era_windows: each era window's own admitted
+    # candidates + pre-retention scan/admission accounting (MR-44 — the
+    # scan+admission stage stays per-era-window; only retention pools).
+    admitted_by_era: list[list[PeakCandidate]] = []
+    scan_meta: list[tuple[int, int, Optional[str]]] = []  # (scanned, admitted, zero_reason)
 
     for interval in intervals:
         era_record = WindowResolutionRecord(
@@ -716,17 +891,48 @@ def build_resolution_hierarchy(
             sliced_jds = np.array([])
             sliced_lambdas = np.array([])
 
-        month_rows, day_rows, acc = build_peak_anchored_windows(
-            swe, context, era_record, (sliced_jds, sliced_lambdas),
+        admitted, peaks_scanned, peaks_admitted, zero_reason = _scan_and_admit(
+            (sliced_jds, sliced_lambdas),
         )
-        all_month.extend(month_rows)
-        all_day.extend(day_rows)
+        admitted_by_era.append(admitted)
+        scan_meta.append((peaks_scanned, peaks_admitted, zero_reason))
 
-        total_scanned += acc.peaks_scanned
-        total_admitted += acc.peaks_admitted
-        total_retained += acc.peaks_retained
-        if acc.zero_peaks_reason is not None:
-            zero_reasons.append(acc.zero_peaks_reason)
+    # MR-44 fix: ONE pooled retention pass across ALL era windows in this
+    # call — MIN_PEAK_SEPARATION_DAYS enforced globally; MAX_PEAKS_PER_ERA_
+    # WINDOW still capped per era window. For a single-era-window call this
+    # is exactly equivalent to calling retain_candidates on that one
+    # window's admitted set (no behavioural change from before MR-44 in the
+    # common single-interval case).
+    retained_by_era = retain_candidates_pooled(admitted_by_era)
+
+    all_month: list[WindowResolutionRecord] = []
+    all_day: list[WindowResolutionRecord] = []
+
+    total_scanned = 0
+    total_admitted = 0
+    total_retained = 0
+    zero_reasons: list[str] = []
+
+    for era_idx, era_record in enumerate(era_windows):
+        peaks_scanned, peaks_admitted, pre_retention_reason = scan_meta[era_idx]
+        retained = retained_by_era[era_idx]
+
+        total_scanned += peaks_scanned
+        total_admitted += peaks_admitted
+        total_retained += len(retained)
+
+        if retained:
+            month_rows, day_rows = _emit_retained_peaks(swe, context, era_record, retained)
+            all_month.extend(month_rows)
+            all_day.extend(day_rows)
+        elif pre_retention_reason is not None:
+            zero_reasons.append(pre_retention_reason)
+        elif peaks_admitted > 0:
+            # MR-44: this era window HAD admittable candidates but none
+            # survived the POOLED cross-interval retention pass -- an
+            # honest, distinct reason from "no candidate above P90" (see
+            # ZERO_PEAKS_LOST_TO_POOLED_RETENTION's own docstring note).
+            zero_reasons.append(ZERO_PEAKS_LOST_TO_POOLED_RETENTION)
 
     resolution_facet: dict[str, int] = {
         "era": len(era_windows),
@@ -774,6 +980,7 @@ __all__ = [
     "ZERO_PEAKS_ERA_WINDOW_TOO_SHORT",
     "ZERO_PEAKS_FLAT_LAMBDA_CURVE",
     "ZERO_PEAKS_NO_CANDIDATE_ABOVE_P90",
+    "ZERO_PEAKS_LOST_TO_POOLED_RETENTION",
     "WindowResolutionRecord",
     "PeakCandidate",
     "EraWindowAccounting",
@@ -782,6 +989,7 @@ __all__ = [
     "find_local_maxima",
     "admit_candidates",
     "retain_candidates",
+    "retain_candidates_pooled",
     "refine_peak_to_day",
     "build_peak_anchored_windows",
     "build_era_windows",
