@@ -1956,3 +1956,24 @@ edit (never committed) and posted the request to `CAMPAIGN_COORDINATION.md` inst
 `5092dfb9`), per the established protocol. No unauthorized cross-territory write occurred.
 
 MR-26 register status: CLOSED.
+
+## 2026-08-11 ~17:1x IST — FINAL CLOSE-OUT SESSION OPEN (PARIṢKĀRA, native-pasted brief)
+
+CONDUCTOR-HEARTBEAT: 2026-08-11T11:45:00Z pid=94797 host=Montys-MacBook-Pro.local
+
+Lease step 0 (liveness, not timestamp): prior heartbeat pid=38773 → `ps -p 38773` = dead;
+`pgrep -f "CONDUCTOR of PARIṢKĀRA"` = no matches. Both checks recorded — lease genuinely free,
+claimed by this session (interactive, Claude Code plugin, pid=94797 = the CLI process).
+
+Governing brief: the native-pasted FINAL AUTONOMOUS CLOSE-OUT brief (this session's prompt) —
+Standing Rulings Codex C1–C10 recorded as law; NO HUMAN GATES (questions route to
+NATIVE-PRATINIDHI). Headline state changes it carries:
+- **C8: YIELD WINDOW LIFTED by the native.** SAMPŪRTI never launched; it starts AFTER this
+  campaign's close and runs P-G1 once against the FINAL corpus. MR-11(b)/MR-12/MR-16-build/
+  MR-21 are hereby UNBLOCKED. No PA-5 re-field needed (to be recorded in coordination file).
+- Mission: close EVERY remaining register item/residual, then a master-brief conformance
+  battery (R3) against GOCHARA_UTKARSHA_CAMPAIGN_PLAN_v1_0.md §Goal/§5 via the DEPLOYED
+  product, then MR-29 independent re-close verdict LAST.
+
+NEXT-ACTION: R0 reconcile (PRs #1216..#1221 + gate packet state, MR-38/39 test existence,
+MR-27 I6(b) rail-check + GUC grep, mid-flight lanes) → R1 parallel lane wave.
