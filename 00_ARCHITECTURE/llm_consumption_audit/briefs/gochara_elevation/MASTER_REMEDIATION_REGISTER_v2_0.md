@@ -1238,6 +1238,40 @@ trigger-rejections on any genuinely-shaped row, zero collateral cascade
 failures. Not required to re-open MR-46/47 or Phase D/E — those closed
 correctly on their own evidence.
 
+**MR-49 · `gochara_forecast_get`'s served `coverage.event_classes_covered`
+reads `[]` (all 27 classes listed under `event_classes_targeted_not_swept`)
+despite the tool genuinely serving real, current generation='3.0' rows —
+a coverage-envelope under-claim, fails safe, DEFERRED post-campaign.**
+[net-new, found 2026-08-12 during R3 §5-criterion-1 E2E-PROBE, live MCP call
+against the deployed product] GAP: a live `gochara_forecast_get` call (chart
+482012f1, 2026-2030 range) correctly returned 10 real windows, confirmed
+`generation='3.0'` on every row (§5 criterion 1's core claim holds) — but
+the response's `coverage.event_classes_covered` is an empty array and
+`coverage.event_classes_targeted_not_swept` lists all 27 discovered classes,
+as if nothing had ever been built. This is the same pattern already
+disclosed earlier in this campaign for the `asset_throughput`/cockpit
+surface (dormant/rows_written=0 despite a genuinely complete served table)
+— plausibly the SAME root cause one layer over: this session's own
+`kala_gochara_v2_build_state`/`build_substep_progress` fingerprint-tracking
+tables are sparse (many substeps completed via legitimate resume-skips or
+the writer's own internal delta-skip, which never re-populate a "swept"
+marker), and `coverage.event_classes_covered` likely derives from THAT
+tracking surface rather than from the served table's own live content.
+SEVERITY: fails SAFE — an under-claim (nothing looks covered) can only cause
+a caller to over-escalate to a fuller sweep or a `not_covered` refusal, never
+to present absent data as present; no false timing claim results. Does NOT
+block R2's core deliverable (correct, current data being served) and is not
+required to re-open Phase D/E/F/G or MR-46/47/48. REMEDIATION (not built
+this session — deferred, same disposition as MR-43): trace exactly what
+`coverage.event_classes_covered`'s computation reads (`register_gochara_
+windows.ts` or its caller) and repoint it at a live content check
+(`SELECT DISTINCT event_class FROM kala_gochara_windows WHERE chart_id=...
+AND generation='3.0'`) rather than a build-tracking-table proxy — the same
+§N.8 "proxy standing in for the real claim" defect class as MR-46/47/48,
+one more instance of the same lesson. GATE: repoint verified live, both
+charts, `event_classes_covered` matches the served table's real distinct
+classes with zero manual class list.
+
 ## §7 — SOURCE → MR MAP (dedup audit)
 
 PG-1→MR-01 · PG-2→MR-05 · PG-3→MR-10 · PG-4→MR-04+13 · PG-5→MR-13 ·
