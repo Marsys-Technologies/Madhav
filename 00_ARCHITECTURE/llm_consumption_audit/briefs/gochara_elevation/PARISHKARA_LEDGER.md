@@ -2501,3 +2501,21 @@ needed — its PASS rests on the mutations). Merge-on-green watcher armed.
 · MR-12 #1225 ✓ · MR-16 #1226 ✓ · MR-23r #1227 ✓ · MR-41/42 #1228 ✓ · MR-11 #1229 (merging)
 · 9 PRATINIDHI rulings PK-R-4..9a · 14 PARĪKṢAKA verdict rounds, every FAIL closed by
 mutation-verified fixes, zero waved through.
+
+## 2026-08-12 ~02:0x IST — R1 COMPLETE (all 9 lanes merged); R2 begun: L-7 claimed, gate packet dispatched
+
+CONDUCTOR-HEARTBEAT: 2026-08-11T20:35:00Z pid=94797 host=Montys-MacBook-Pro.local
+
+**#1229 MERGED** — R1 wave fully complete. R2 spine begun:
+- Coordination re-fetched: L-6 RELEASED, no SAMPŪRTI lease, no live SAMPŪRTI process.
+  **L-7 CLAIMED** (campaign-coordination pushed): R2 close-out spine — gate packet + deploy +
+  resonance rebuild + ONE override window + refit; expiry 06:00 IST.
+- **GATE-EXECUTOR (opus, fresh) dispatched**: wave-5 FINAL packet parishkara/integration →
+  main, PINNED at abf1a57e3 (10 lane merges; exactly one migration aboard: 567,
+  execute-to-verified twice; rollback statement included; integration FROZEN until packet
+  merge). C3 floors: checks COMPLETED-SUCCESS, merge via queue, deploy GREEN on the merge
+  commit, _migrations_applied shows 567, columns live, production==main, one live product
+  call (or honest sandbox limitation + committed-probe DB checks).
+
+NEXT-ACTION: on gate packet GREEN → R2b orchestrator resonance rebuild both charts → R2c ONE
+override window (C4, 5 conditions) → R2d refit + w45 + rails.
