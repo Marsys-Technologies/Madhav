@@ -674,3 +674,5 @@ gochara_* serving surfaces (gochara_forecast_get, gochara_activation_get, gochar
 
 **NEXT-ACTION:** Wait for PID 80517 (PARIṢKĀRA rebuild) to complete or L-7 to release, whichever first. Recheck at 2026-08-12T02:24 IST (15 min). During wait: dispatch R0 prep builder lane (migration 569 authoring for RB-1 + RB-2 fix in writer.py — code-only, no DB). Post heartbeat every ≤10 min.
 
+
+CONDUCTOR-HEARTBEAT: 2026-08-12T20:49+05:30 pid=83428 [R9 — L-7 yield window. PARIṢKĀRA rebuild PID 80517 ALIVE (6m22s CPU at 02:19 IST). Actions taken: REBASE_PLAN installed, coordination entry appended, merge origin/main→integration committed (clean, no conflicts), R0 prep builder dispatched (agent ac3705d9 — migration 569 RB-1 + _RESUME_VERSION RB-2 + seed update + test). Awaiting builder + L-7 release.]
