@@ -1977,3 +1977,34 @@ NATIVE-PRATINIDHI). Headline state changes it carries:
 
 NEXT-ACTION: R0 reconcile (PRs #1216..#1221 + gate packet state, MR-38/39 test existence,
 MR-27 I6(b) rail-check + GUC grep, mid-flight lanes) → R1 parallel lane wave.
+
+## 2026-08-11 ~17:2x IST — R0 RECONCILE complete (adopt, never redo)
+
+1. **PR states verified via gh:** #1216 (MR-40), #1217 (MR-37), #1218 (MR-19), #1220 (MR-20),
+   #1221 (MR-23 W5.4) all MERGED to `parishkara/integration`; #1219 (wave-4 packet: MR-37+40)
+   MERGED to `main` with deploy GREEN (prior entry). `origin/parishkara/integration` is exactly
+   3 commits ahead of `origin/main` (#1218/#1220/#1221 — mutation-guard test fix, mr20 script,
+   mechanism_register.yaml correction). They ride the next pinned gate packet (R2). MR-37 and
+   MR-40 register statuses upgraded: PR-merge condition now satisfied → both fully CLOSED.
+2. **MR-38/39 regression tests: MISSING, confirmed** (grep over origin/main tests; writer
+   `ENGINE_VERSION` still `"v3.0"`). → R1 lane dispatched.
+3. **MR-27 final sub-item CLOSED with live evidence (this session, port 5434):**
+   - I6(b) rail check: v1 counts EXACT — 482012f1=16,297 · 1c826d5a=19,323 · cb73cd3d=2,667;
+     protect triggers `trg_kala_gochara_windows_protect_row/_gen3_row/_truncate` all present,
+     enabled ('O'); `build_protected_assets`: {v1} under ka_gochara_sweep (by design) + {3.0}
+     under ka_gochara, both charts.
+   - GUC grep: ledger contains EXACTLY ONE authorized use (`SET LOCAL` inside THE ONE rebuild's
+     substep transactions, L-6 lease window, ledger line ~1032); fresh-connection read NOW:
+     `current_setting('app.allow_protected_sweep_rewrite', true)` = NULL. PASS per Codex C4/
+     brief definition. **MR-27 → CLOSED.**
+4. **No mid-flight lanes:** all 16 stale pk-* worktrees have zero uncommitted changes (salvage
+   trivially clean; removal deferred to R4 hygiene). No live builder/conductor processes.
+5. **Schema recon for R1 briefs:** `kala_gochara_windows` already carries `milestone_id` +
+   `is_irreversibility_milestone` (MR-12 needs NO migration); `parent_window_id`/`resolution`
+   absent → MR-11 claims migration 567. `gochara_resonance_map`: 148/145 rows, 6 classes
+   (both canonical charts); 77 rows / 3 classes (cb73cd3d). Latest applied migration = 566.
+
+NEXT-ACTION: dispatch R1 parallel lanes (a: MR-23 W1.2+W0.2 · b: MR-38+39 · c: TAP-6
+always-report · d: MR-08 regex residual · e: MR-11 hierarchy CODE · f: MR-12 chains CODE ·
+g: MR-16 27-class CODE). Builders=sonnet, worktrees off origin/main, PRs → parishkara/
+integration (TAP-6 → main). ≤6 concurrent; lane d queued behind first free slot.
