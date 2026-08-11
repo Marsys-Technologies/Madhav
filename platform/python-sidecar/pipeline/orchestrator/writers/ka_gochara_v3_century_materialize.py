@@ -122,7 +122,8 @@ chart with a GENUINELY EMPTY resonance map (the query runs and finds 0 rows
 — G-1 not yet built/run for it) honestly produces a ZERO-substep plan (I4)
 — this writer never invents a class to plan for. `EVENT_CLASSES` is
 retained as a documentation-only constant (the pre-MR-16 default/historical
-scope) — it is NO LONGER read by `plan_substeps`.
+scope, PARIṢKĀRA MR-12's `business_launch` folded in — see EVENT_CLASSES'
+own comment) — it is NO LONGER read by `plan_substeps`.
 
 R8.11 CLASS SCOPE (PK-R-8): the hierarchy producer runs for EVERY class
 `_discover_event_classes` returns — there is no separate "LEL-represented
@@ -158,6 +159,32 @@ thin maps + a per-class quality note, never invented targets") is served
 honestly as `tier="thin"`, not silently presented as equally strong as a
 rich class. The same note is also folded into `WriterResult.notes` (the
 per-substep build report) for build-time/SSE-log visibility.
+
+MR-12 — CHAIN PRODUCTION (temporal_shape='chain')
+-------------------------------------------------------
+Wires `gochara_v3.interval_solver.score_chain_milestones` (existed, tested
+in isolation since W3.2, never called by a real writer before MR-12) into
+`run_substep`: for whatever event_class a substep is planned for, this
+writer reads its `temporal_shape` live from `brahma_event_ontology`
+(`_fetch_class_shape`) and, when it is `'chain'`, expands each detected
+episode (`find_threshold_crossings`'s boundaries, reused here as episode
+ANCHORS rather than final rows) into one row per `milestone_template` entry
+via `score_chain_milestones` — `_build_chain_row` is the chain-shape sibling
+of `_build_row`, carrying the SAME column set (including MR-16's
+`coverage_quality` — see `_build_chain_row`'s own docstring), so no new DML
+is introduced and the I1 mutation-guard needs no update for chain support.
+`_normalize_milestone_template` adapts the ontology's
+`{milestone_id, name_en, typical_offset_days_from_first}` per-entry shape
+into `score_chain_milestones`'s expected
+`{milestone_id, typical_offset_days, is_irreversibility_milestone}` shape —
+the actual missing wire this MR closed.
+
+HONEST FINDING: `marriage` is `temporal_shape='point'` in the live ontology
+(migration 456), NOT `'chain'` — despite the originating register item's
+"marriage first" framing. `business_launch` (chain, 3-milestone template,
+`irreversibility_milestone='first_revenue'`) is the first GENUINELY
+chain-canonical class this writer produces chain rows for. See
+`_SHAPE_FALLBACK`'s docstring for the full account.
 
 Key behaviours:
   1. plan_substeps — returns one SubStep per (event_class, decade_slice) pair,
@@ -257,7 +284,9 @@ from pipeline.orchestrator.writers import (
 )
 
 # gochara_v3 imports only (I2: no gochara_grammar/*, gochara_intensity/*, ka_gochara_sweep/*)
-from services.gochara_v3.interval_solver import IntervalBoundary, find_threshold_crossings
+from services.gochara_v3.interval_solver import (
+    find_threshold_crossings, score_chain_milestones, IntervalBoundary, MilestoneScore,
+)
 from services.gochara_v3.threshold import ThresholdConfig, fetch_base_rate_for_class
 from services.gochara_v3.context import ClassContext
 # PARIṢKĀRA MR-11(b) / PK-R-8: the peak-anchored hierarchy producer
@@ -300,27 +329,39 @@ GENERATION_PROD = "3.0"
 # fingerprint is stable across internal gochara_v3 refactors that do NOT
 # move window positions.
 #
-# v3.0 -> v3.1 (PARIṢKĀRA MR-16, Codex C2): the writer's SCOPE changed —
-# plan_substeps now discovers its event-class set dynamically from
-# gochara_resonance_map instead of a hardcoded 6-class list, and every row
-# carries a new coverage_quality note in suppression_state. PARIṢKĀRA
-# MR-11(b)/PK-R-8's peak-anchored hierarchy rewrite (era⊃month⊃day,
-# resolution facet, shape gate, peak_basis vocabulary) folds into this SAME
-# v3.1 bump — this entire lane is pre-production (no v3.1-tagged row has
-# ever been written under the OLD tiled-hierarchy shape this ruling
-# replaced), so there is no already-built corpus a second bump would need
-# to invalidate. Both are, regardless, a materializer output shape/scope
-# change per Codex C2, so every substep's fingerprint changes and a rebuild
-# re-derives every row honestly under the new scope (never silently reusing
-# a pre-v3.1 row under the new coverage/hierarchy regime).
+# v3.0 -> v3.1 composes THREE independent scope/shape changes landed together
+# in the same PARIṢKĀRA wave (Codex C2: any materializer output shape/scope
+# change bumps ENGINE_VERSION):
+#   (a) MR-16 — plan_substeps now discovers its event-class set dynamically
+#       from gochara_resonance_map instead of a hardcoded 6-class list, and
+#       every row carries a new coverage_quality note in suppression_state.
+#   (b) MR-12 — chain-shaped rows (temporal_shape='chain') are now possible
+#       for whatever event_class a substep is planned for; see
+#       `_fetch_class_shape`/`_build_chain_row` and the 'chain' branch of
+#       run_substep's shape gate.
+#   (c) PARIṢKĀRA MR-11(b) / ADJUDICATOR ruling PK-R-8 — peak-anchored
+#       era⊃month⊃day hierarchy (replacing the original W3.3 tiling design),
+#       resolution facet, R8.12 shape gate, R8.8 peak_basis vocabulary. This
+#       entire lane is pre-production (no v3.1-tagged row has ever been
+#       written under the OLD tiled-hierarchy shape PK-R-8 replaced), so
+#       there is no already-built corpus a second bump would need to
+#       invalidate.
+# All three are delta-fingerprint-relevant per compute_substep_fingerprint's
+# own "engine_version bumped when scoring logic OR output shape changes"
+# contract, even though existing point-canonical classes' scoring is
+# byte-for-byte unchanged. One bump, not three — there is only one
+# ENGINE_VERSION value to compose into.
 ENGINE_VERSION = "v3.1"
 
 # DOCUMENTATION-ONLY as of PARIṢKĀRA MR-16 — the pre-MR-16 hardcoded 6-class
 # scope (3 legacy + 3 health/adverse; see event_class_scope.SWEEP_EVENT_CLASSES
-# for the sibling ka_gochara_sweep copy of this same historical set). NO
-# LONGER read by plan_substeps, which now discovers its event-class set live
-# from gochara_resonance_map (see _discover_event_classes below) — this is
-# the "kill the hardcoded 6" fix. Retained only as a documented historical
+# for the sibling ka_gochara_sweep copy of this same historical set), plus
+# MR-12's business_launch addition (see _fetch_class_shape/_SHAPE_FALLBACK
+# below for why business_launch, not marriage, is the first genuinely
+# chain-canonical class this writer produces chain rows for). NO LONGER read
+# by plan_substeps, which now discovers its event-class set live from
+# gochara_resonance_map (see _discover_event_classes below) — this is the
+# "kill the hardcoded 6" fix. Retained only as a documented historical
 # reference / test fixture default, never as a fallback plan.
 EVENT_CLASSES = [
     "career_advancement",
@@ -329,6 +370,7 @@ EVENT_CLASSES = [
     "illness_acute",
     "chronic_onset",
     "surgery",
+    "business_launch",
 ]
 
 # Julian Day for 1984-02-05 00:00 UTC (native birth date).
@@ -695,6 +737,246 @@ def _fetch_class_valence(conn, event_class: str) -> tuple[str, bool]:
     return v, (v == "loss")
 
 
+# ---------------------------------------------------------------------------
+# Temporal shape + milestone_template (PARIṢKĀRA MR-12: chain production
+# wiring) — honest per-event_class derivation, same "live-preferred,
+# documented fallback" discipline as _fetch_class_valence above.
+# ---------------------------------------------------------------------------
+#
+# BRIEF_D5 §3 (migration 460, BINDING): a served row's shape MUST mirror its
+# event_class's brahma_event_ontology.temporal_shape -- point/interval/chain,
+# never more temporal precision than the ontology declares. This writer was
+# already shape-aware for point/interval (both stamped "interval" pre-MR-12,
+# unchanged by this fix -- point-row production is a separate, already-closed
+# lane, MR-10/MR-11); MR-12 is the first time this writer reads the ontology's
+# 'chain' branch and produces milestone_template-shaped output.
+#
+# HONEST FINDING (MR-12, 2026-08-11 session): the register item's "marriage
+# first" framing does NOT match the live ontology. brahma_event_ontology
+# (migration 456) declares marriage temporal_shape='point' explicitly, with
+# its own note: "a future v2 could split into a chain (engagement -> ceremony
+# -> registration) if per-milestone dates become available." It is not a
+# chain today, and brahma_event_ontology's own CHECK constraint (migration
+# 456, brahma_event_ontology_shape_data_consistency_check) forbids storing a
+# chain-shaped row without a real milestone_template of >=2 entries -- so
+# marriage cannot honestly produce chain rows without either fabricating an
+# ontology override (B.10 violation) or a native-ruled ontology amendment
+# (out of this CODE-ONLY session's authority). See PARISHKARA_LEDGER.md
+# "MR-12" entry (parishkara/campaign branch) for the full account.
+#
+# 'business_launch' is the first GENUINELY chain-canonical class this writer
+# is wired to produce rows for: temporal_shape='chain', 3-milestone template
+# (decision -> registration -> first_revenue), irreversibility_milestone=
+# 'first_revenue' -- BRIEF_D4A Lane A-2's own worked example (migration 456).
+_SHAPE_FALLBACK: dict[str, dict[str, Any]] = {
+    "career_advancement": {
+        "temporal_shape": "point", "milestone_template": None, "irreversibility_milestone": None,
+    },
+    "major_gain": {
+        "temporal_shape": "interval", "milestone_template": None, "irreversibility_milestone": None,
+    },
+    "marriage": {
+        # Matches live brahma_event_ontology (migration 456) — NOT 'chain'.
+        "temporal_shape": "point", "milestone_template": None, "irreversibility_milestone": None,
+    },
+    "illness_acute": {
+        "temporal_shape": "point", "milestone_template": None, "irreversibility_milestone": None,
+    },
+    "chronic_onset": {
+        "temporal_shape": "interval", "milestone_template": None, "irreversibility_milestone": None,
+    },
+    "surgery": {
+        "temporal_shape": "point", "milestone_template": None, "irreversibility_milestone": None,
+    },
+    "business_launch": {
+        "temporal_shape": "chain",
+        "milestone_template": [
+            {"milestone_id": "decision", "name_en": "Decision to found/launch",
+             "typical_offset_days_from_first": 0},
+            {"milestone_id": "registration", "name_en": "Legal/business registration",
+             "typical_offset_days_from_first": 45},
+            {"milestone_id": "first_revenue", "name_en": "First revenue booked",
+             "typical_offset_days_from_first": 120},
+        ],
+        "irreversibility_milestone": "first_revenue",
+    },
+}
+
+
+def _fetch_class_shape(
+    conn, event_class: str,
+) -> tuple[str, Optional[list[dict]], Optional[str]]:
+    """Return (temporal_shape, milestone_template, irreversibility_milestone)
+    for `event_class`.
+
+    Live-reads brahma_event_ontology; falls back to `_SHAPE_FALLBACK` (honest,
+    documented fixture) on any DB-shape surprise, identical discipline to
+    `_fetch_class_valence`. An event_class absent from BOTH the live table and
+    the fallback degrades to temporal_shape='interval' (this writer's
+    pre-MR-12 universal behavior) with no milestone_template -- NEVER
+    invented as 'chain' (I4: a shape this writer cannot honestly support is
+    never guessed into existence).
+
+    milestone_template is returned in the RAW ontology shape
+    ({milestone_id, name_en, typical_offset_days_from_first}) — see
+    `_normalize_milestone_template` for the adapter into
+    `score_chain_milestones`'s expected per-entry shape.
+    """
+    try:
+        cur = conn.execute(
+            "SELECT temporal_shape, milestone_template, irreversibility_milestone "
+            "FROM brahma_event_ontology WHERE event_class_id = %s",
+            [event_class],
+        )
+        row = cur.fetchone()
+        if row is not None:
+            d = row if isinstance(row, dict) else dict(
+                zip(["temporal_shape", "milestone_template", "irreversibility_milestone"], row)
+            )
+            shape = d.get("temporal_shape")
+            if shape:
+                template = d.get("milestone_template")
+                if isinstance(template, str):
+                    try:
+                        template = json.loads(template)
+                    except Exception:  # noqa: BLE001
+                        template = None
+                return str(shape), template, d.get("irreversibility_milestone")
+    except Exception as exc:  # noqa: BLE001
+        logger.info(
+            "[%s] brahma_event_ontology shape read failed for event_class=%s, "
+            "falling back to documented fixture: %s",
+            ASSET_ID, event_class, exc,
+        )
+    fallback = _SHAPE_FALLBACK.get(event_class)
+    if fallback is None:
+        return "interval", None, None
+    return fallback["temporal_shape"], fallback["milestone_template"], fallback["irreversibility_milestone"]
+
+
+def _normalize_milestone_template(
+    raw_template: list[dict], irreversibility_milestone: Optional[str],
+) -> list[dict]:
+    """Adapt brahma_event_ontology's milestone_template entry shape
+    ({milestone_id, name_en, typical_offset_days_from_first}) into
+    `gochara_v3.interval_solver.score_chain_milestones`'s expected per-entry
+    shape ({milestone_id, typical_offset_days, is_irreversibility_milestone}).
+
+    The ontology does NOT carry an is_irreversibility_milestone flag per
+    milestone-entry — it names the ONE irreversibility milestone_id (if any)
+    at the ontology-row level (the `irreversibility_milestone` column). This
+    adapter is the exact wiring gap MR-12 was scoped to find and close:
+    score_chain_milestones has existed, tested in isolation
+    (test_w32_interval_solver.py), since W3.2 — nothing ever translated real
+    ontology JSON into the shape it expects before this fix.
+    """
+    return [
+        {
+            "milestone_id": entry.get("milestone_id"),
+            "typical_offset_days": entry.get("typical_offset_days_from_first", 0.0),
+            "is_irreversibility_milestone": (
+                entry.get("milestone_id") is not None
+                and entry.get("milestone_id") == irreversibility_milestone
+            ),
+        }
+        for entry in raw_template
+    ]
+
+
+def _build_chain_row(
+    chart_id: str,
+    event_class: str,
+    milestone: MilestoneScore,
+    era_slice_key: str,
+    *,
+    valence: str,
+    is_adverse: bool,
+    peak_basis: str,
+    generation: str,
+    resolution: Optional[str] = None,
+    parent_window_id: Optional[int] = None,
+    coverage_quality: Optional[dict] = None,
+) -> dict[str, Any]:
+    """Convert one MilestoneScore (gochara_v3.interval_solver) into a
+    kala_gochara_windows(_v2) row dict — the chain-shape sibling of
+    `_build_row`. Carries EXACTLY the same key set as `_build_row`'s
+    returned dict (including the PARIṢKĀRA MR-11(b)/migration 567
+    `resolution`/`parent_window_id` keys — both required by INSERT_SQL/
+    INSERT_PROD_SQL's parameter binding), so it binds against the SAME
+    templates unchanged — no new DML statement is introduced, so the I1
+    mutation-guard's static source coverage (test_ka_gochara_v3_mutation_
+    guard.py) needs no update for chain support.
+
+    window_start = window_end = peak_date = this milestone's own JD (a
+    chain-shaped row is one independently-dateable sub-window per milestone,
+    per BRIEF_D5 §3 / migration 460's column comment).
+
+    peak_basis
+        REQUIRED (PK-R-8 R8.8, this lane's own extension of MR-12): each
+        milestone is evaluated at an EXACT, ontology-declared JD
+        (episode_anchor_jd + typical_offset_days via score_chain_milestones)
+        -- a single deterministic evaluation, not a scan -- which run_substep
+        stamps LAMBDA_V3_ARGMAX (see run_substep's chain branch for the full
+        reasoning). No default: every caller supplies a named
+        peak_basis_vocab constant, never the retired bare literal.
+    resolution, parent_window_id
+        PARIṢKĀRA MR-11(b) (migration 567): run_substep stamps resolution=
+        'day' (a chain milestone is a genuinely single-dated claim) and
+        parent_window_id=None (chain rows are independent per-milestone,
+        no hierarchy parent) -- both accepted here as explicit parameters
+        (not derived in-body) matching `_build_row`'s own "every value this
+        function serves is an explicit parameter" discipline.
+    coverage_quality
+        PARIṢKĀRA MR-16/MR-12 parity: the SAME honest, LIVE-computed
+        per-event_class coverage-quality note `_build_row` now embeds under
+        `suppression_state["coverage_quality"]` (see `_build_row`'s own
+        docstring). A chain row is scored from the identical resonance-target
+        fetch as its sibling interval/point rows for the same substep, so it
+        must carry the same coverage signal — a caller reading a chain row's
+        suppression_state must not see a silent gap just because the row
+        happened to come from the chain branch of run_substep. Default None
+        (I4 degrade) only for callers/tests that predate this fix;
+        run_substep always supplies it.
+    """
+    milestone_date = _jd_to_date(milestone.milestone_jd)
+    ir = milestone.intensity_result
+    term_breakdown = ir.term_breakdown if ir is not None else None
+    ci_low = ir.lambda_v3_ci_low if ir is not None else None
+    ci_high = ir.lambda_v3_ci_high if ir is not None else None
+    ci_source = ir.ci_source if ir is not None else None
+    suppression_state = (
+        {"coverage_quality": coverage_quality} if coverage_quality is not None else {}
+    )
+    return {
+        "chart_id": chart_id,
+        "event_class": event_class,
+        "temporal_shape": "chain",
+        "window_start": milestone_date,
+        "window_end": milestone_date,
+        "peak_date": milestone_date,
+        "milestone_id": milestone.milestone_id,
+        "is_irreversibility_milestone": milestone.is_irreversibility_milestone,
+        "signed_intensity": round(float(milestone.lambda_v3), 6),
+        "raw_intensity": round(float(milestone.lambda_v3), 6),
+        "valence": valence,
+        "is_adverse": is_adverse,
+        "active_sentences": json.dumps([]),
+        "contributing_systems": json.dumps([]),
+        "suppression_state": json.dumps(suppression_state),
+        "peak_basis": peak_basis,
+        "calibration_state": "structural_prior",
+        "source": "live",
+        "generation": generation,
+        "era_slice_key": era_slice_key,
+        "term_breakdown": json.dumps(term_breakdown) if term_breakdown is not None else None,
+        "lambda_v3_ci_low": ci_low,
+        "lambda_v3_ci_high": ci_high,
+        "ci_source": ci_source,
+        "resolution": resolution,
+        "parent_window_id": parent_window_id,
+    }
+
+
 def _fetch_resonance_targets(conn, chart_id: str, event_class: str) -> list[str]:
     """Fetch resonance target_refs for this (chart_id, event_class) pair.
 
@@ -794,25 +1076,19 @@ def _fetch_event_class_temporal_shape(conn, event_class: str) -> str:
     which is always the SAFER default when the class's canonical shape could
     not be confirmed — it never risks stamping resolution tiers for a class
     that might not warrant them.
+
+    Implemented as a thin wrapper over `_fetch_class_shape` (MR-12's own
+    superset fetch — shape + milestone_template + irreversibility_milestone)
+    so there is exactly ONE query implementation for
+    brahma_event_ontology.temporal_shape, never two independently-drifting
+    copies. `_fetch_class_shape`'s own fallback discipline (documented
+    `_SHAPE_FALLBACK`, degrading to 'interval' for an unknown class) differs
+    slightly from this function's 'point' conservative default for a
+    genuine DB-error path; both are honest, documented choices for their own
+    callers -- see each function's docstring for which applies when.
     """
-    try:
-        cur = conn.execute(
-            "SELECT temporal_shape FROM brahma_event_ontology WHERE event_class_id = %s",
-            [event_class],
-        )
-        row = cur.fetchone()
-        if row is not None:
-            shape = row["temporal_shape"] if isinstance(row, dict) else row[0]
-            if shape:
-                return str(shape)
-    except Exception as exc:  # noqa: BLE001
-        logger.warning(
-            "[%s] brahma_event_ontology temporal_shape read failed for "
-            "event_class=%s: %s — honest conservative fallback to 'point' "
-            "(R8.12 shape gate: hierarchy production skipped for this substep).",
-            ASSET_ID, event_class, exc,
-        )
-    return "point"
+    shape, _milestone_template, _irreversibility_milestone = _fetch_class_shape(conn, event_class)
+    return shape
 
 
 # ---------------------------------------------------------------------------
@@ -1130,7 +1406,9 @@ class GocharaV3CenturyMaterializeWriter(WriterBase):
         gochara_resonance_map, the same table `_fetch_resonance_targets`
         already reads per-substep. decade_slice stays the fixed 10-slice
         century grid (DECADE_SLICES) — chart-agnostic and class-agnostic by
-        design (W3.4 spec).
+        design (W3.4 spec). Whether a given discovered event_class turns out
+        to be chain-shaped (PARIṢKĀRA MR-12) is decided per-substep, inside
+        run_substep — plan_substeps itself is shape-agnostic.
 
         R8.11: every discovered class is in scope for hierarchy production
         (subject to R8.12's per-class shape gate at run_substep time) — there
@@ -1317,6 +1595,55 @@ class GocharaV3CenturyMaterializeWriter(WriterBase):
             sample_count=0,
         )
 
+        # 6b. SHAPE GATE (PARIṢKĀRA MR-12 origin + PK-R-8 R8.12 generalization).
+        #     BRIEF_D5 §3 (BINDING): a served row's shape must mirror
+        #     brahma_event_ontology.temporal_shape.
+        #       'interval' -> peak-anchored era⊃month⊃day hierarchy (PK-R-8).
+        #       'chain'    -> one row per milestone_template entry
+        #                     (score_chain_milestones, MR-12).
+        #       'point' (or lookup failure, conservative default)
+        #                  -> flat find_threshold_crossings production,
+        #                     resolution=NULL (pre-MR-11(b) shape, unchanged).
+        # class_shape drives the branch below; _fetch_event_class_temporal_
+        # shape is the R8.12-named entry point (kept as a thin wrapper over
+        # _fetch_class_shape -- see its own docstring) so existing shape-gate
+        # tests that monkeypatch it by name keep working unchanged. Milestone
+        # template data (needed only for the 'chain' branch) is fetched
+        # separately via _fetch_class_shape below -- a second query only for
+        # chain-shaped classes, never for the much more common point/interval
+        # classes.
+        class_shape = _fetch_event_class_temporal_shape(conn, event_class)
+        is_chain = class_shape == "chain"
+        chain_milestone_template: list[dict] = []
+        if is_chain:
+            _, _raw_milestone_template, _irreversibility_milestone = _fetch_class_shape(
+                conn, event_class,
+            )
+            if _raw_milestone_template:
+                chain_milestone_template = _normalize_milestone_template(
+                    _raw_milestone_template, _irreversibility_milestone,
+                )
+
+        if is_chain and not chain_milestone_template:
+            # I4 honest gap: the ontology declares this class chain-shaped but
+            # carries no usable milestone_template (or the live read failed
+            # and no documented fallback template exists for this class).
+            # Return BEFORE any DELETE/INSERT is issued, no fingerprint
+            # upsert — never a fabricated row (I4).
+            elapsed = time.time() - t0
+            note = (
+                f"{substep_key}: skipped — event_class={event_class} is "
+                f"chain-shaped (brahma_event_ontology.temporal_shape='chain') "
+                f"but milestone_template is empty/unavailable — honest gap "
+                f"(I4), no rows fabricated"
+            )
+            logger.warning("[%s] %s", ASSET_ID, note)
+            return WriterResult(
+                asset_id=self.asset_id, rows_inserted=0,
+                duration_seconds=elapsed,
+                notes=note,
+            )
+
         # Import swisseph lazily (matches pattern in existing writers).
         try:
             import swisseph as swe  # type: ignore[import]
@@ -1370,12 +1697,6 @@ class GocharaV3CenturyMaterializeWriter(WriterBase):
             )
             av_gate_note = f"AV_GATE_DEGRADED: {av_gate_fetch_error}; "
 
-        # 6b. R8.12 SHAPE GATE: fetch the class's ontology temporal_shape.
-        #     'interval'/'chain' -> peak-anchored hierarchy (PK-R-8).
-        #     'point' (or lookup failure) -> flat find_threshold_crossings
-        #     production, resolution=NULL (pre-MR-11(b) shape, unchanged).
-        class_shape = _fetch_event_class_temporal_shape(conn, event_class)
-
         # Peak-accounting locals (R8.13) — populated by whichever branch runs.
         era_count = 0
         peaks_scanned = 0
@@ -1384,15 +1705,22 @@ class GocharaV3CenturyMaterializeWriter(WriterBase):
         month_count = 0
         day_count = 0
         zero_peaks_reason: Optional[str] = None
+        chain_episode_count = 0
 
         # insert_specs: uniform list of
         #   (boundary_like, resolution_or_None, peak_basis, own_key, parent_key)
         # in PARENT-BEFORE-CHILD order — the insert loop below captures each
         # parent row's DB-assigned bigint id (RETURNING id) before any child
-        # row that must reference it via parent_window_id is inserted.
+        # row that must reference it via parent_window_id is inserted. Used
+        # by the 'interval' and 'point' branches; the 'chain' branch below
+        # builds its rows directly (a MilestoneScore is not a boundary-like
+        # object -- _build_chain_row has its own signature) but still shares
+        # the SAME insert loop's DB-write/id-capture MECHANICS by degenerating
+        # to (milestone, "day", LAMBDA_V3_ARGMAX, None, None) tuples paired
+        # with a _build_chain_row-shaped closure -- see the chain branch.
         insert_specs: list[tuple[Any, Optional[str], str, Optional[str], Optional[str]]] = []
 
-        if class_shape in ("interval", "chain"):
+        if class_shape == "interval":
             # PARIṢKĀRA MR-11(b) / PK-R-8: build the full era⊃month⊃day
             # PEAK-ANCHORED hierarchy for this decade slice. build_resolution_
             # hierarchy calls find_threshold_crossings internally for era
@@ -1434,6 +1762,40 @@ class GocharaV3CenturyMaterializeWriter(WriterBase):
                     record, "day", peak_basis_vocab.LAMBDA_V3_ARGMAX,
                     record.window_id, record.parent_window_id,
                 ))
+        elif is_chain:
+            # PARIṢKĀRA MR-12: chain production. Each detected episode
+            # (IntervalBoundary from find_threshold_crossings, used here as
+            # the episode ANCHOR only -- its enter_jd seeds score_chain_
+            # milestones, the boundary itself is never served as a row) is
+            # expanded into one row per milestone_template entry.
+            #
+            # PK-R-8 R8.8/R8.9 note (this lane's own extension of MR-12, not
+            # in the original MR-12 landing): each milestone is evaluated at
+            # an EXACT, ontology-declared JD (episode_anchor_jd + typical_
+            # offset_days) -- not a scan, a single deterministic evaluation.
+            # That is at least as precise as a day-refined argmax (R8.5), so
+            # chain rows are stamped resolution='day' + peak_basis=
+            # LAMBDA_V3_ARGMAX (earning is_timing_window=True under R8.9's
+            # second clause) -- distinct from a v1 CHAIN row (R8.10), whose
+            # peak was scored by a wholly different, non-day-precision
+            # engine and correctly stays blocked.
+            chain_episodes = find_threshold_crossings(
+                swe=swe, context=context,
+                start_jd=decade.start_jd, end_jd=decade.end_jd,
+                threshold_config=threshold_config, coarse_step_days=7.0,
+            )
+            chain_episode_count = len(chain_episodes)
+            era_count = chain_episode_count
+            for episode in chain_episodes:
+                milestone_scores = score_chain_milestones(
+                    swe, context, episode.enter_jd, chain_milestone_template,
+                    threshold_config,
+                )
+                for ms in milestone_scores:
+                    insert_specs.append((
+                        ms, "day", peak_basis_vocab.LAMBDA_V3_ARGMAX, None, None,
+                    ))
+            day_count = len(insert_specs)
         else:
             # R8.12 shape gate: point-canonical class — NO hierarchy tiers.
             # Flat production identical in shape to the pre-MR-11(b) writer:
@@ -1453,26 +1815,24 @@ class GocharaV3CenturyMaterializeWriter(WriterBase):
                     None, None,
                 ))
 
-        shape_gate_note = (
-            f"shape={class_shape} "
-            f"({'hierarchy' if class_shape in ('interval', 'chain') else 'flat, no hierarchy (R8.12)'})"
-        )
+        shape_gate_note = f"shape={class_shape}"
 
         if ctx.dry_run:
             elapsed = time.time() - t0
+            total_would_insert = len(insert_specs)
             logger.debug(
                 "[%s] DRY RUN substep=%r chart=%s: %s, %d rows "
                 "(era=%d month=%d day=%d) would be served. wall_clock_s=%.3f",
-                ASSET_ID, substep_key, chart_id, shape_gate_note, len(insert_specs),
+                ASSET_ID, substep_key, chart_id, shape_gate_note, total_would_insert,
                 era_count, month_count, day_count, elapsed,
             )
             return WriterResult(
                 asset_id=self.asset_id, rows_inserted=0,
-                rows_skipped=len(insert_specs),
+                rows_skipped=total_would_insert,
                 duration_seconds=elapsed,
                 notes=(
                     f"{av_gate_note}DRY RUN {substep_key}: {shape_gate_note}, "
-                    f"{len(insert_specs)} rows found (era={era_count} month={month_count} "
+                    f"{total_would_insert} rows found (era={era_count} month={month_count} "
                     f"day={day_count}) in {decade.year_start}–{decade.year_end} — nothing written"
                 ),
             )
@@ -1480,9 +1840,10 @@ class GocharaV3CenturyMaterializeWriter(WriterBase):
         # 7. DELETE-then-INSERT (§N.3 replace-not-accrete).
         #    Scoped to (chart_id, event_class, generation, era_slice_key) so
         #    a resubmit of this decade slice does not touch other slices.
-        #    This scope covers ALL resolution tiers for the substep — a
-        #    resubmit cleanly replaces era+month+day (or the flat rows)
-        #    together, never leaving orphaned children from a prior run.
+        #    This scope covers ALL resolution tiers / chain rows for the
+        #    substep — a resubmit cleanly replaces era+month+day (or the
+        #    flat/chain rows) together, never leaving orphaned children from
+        #    a prior run.
         #
         #    W5.4 repoint (UTK-R1): write to BOTH tables.
         #      (a) kala_gochara_windows_v2 — calibration/staging (generation='g3_utkarsha')
@@ -1511,8 +1872,8 @@ class GocharaV3CenturyMaterializeWriter(WriterBase):
 
         # Honest per-event_class valence (PARIṢKĀRA MR-13, F#1 fix): computed
         # ONCE per substep (all boundaries in this substep share the same
-        # event_class) and passed to every _build_row call below -- never a
-        # hardcoded "favourable" literal.
+        # event_class) and passed to every _build_row/_build_chain_row call
+        # below -- never a hardcoded "favourable" literal.
         class_valence, class_is_adverse = _fetch_class_valence(conn, event_class)
 
         # PARIṢKĀRA MR-11(b): id maps from the hierarchy's own internal UUID
@@ -1525,26 +1886,39 @@ class GocharaV3CenturyMaterializeWriter(WriterBase):
         # by the time a child looks it up. A parent whose own INSERT failed
         # (or whose fetchone() returned nothing, e.g. a stubbed responder in
         # tests) simply leaves no entry — its children then honestly get
-        # parent_window_id=None rather than a fabricated id.
+        # parent_window_id=None rather than a fabricated id. (Chain rows
+        # never have a parent_key, so this map is unused for them.)
         v2_id_map: dict[str, int] = {}
         prod_id_map: dict[str, int] = {}
 
         inserted = 0
         for boundary, resolution, peak_basis, own_key, parent_key in insert_specs:
-            # (a) Insert into calibration/staging table.
-            row_v2 = _build_row(
-                chart_id, event_class, boundary, era_slice_key,
-                valence=class_valence, is_adverse=class_is_adverse,
-                peak_basis=peak_basis,
-                generation=GENERATION_V3,
-                term_breakdown=boundary.term_breakdown,
-                lambda_v3_ci_low=boundary.lambda_v3_ci_low,
-                lambda_v3_ci_high=boundary.lambda_v3_ci_high,
-                ci_source=boundary.ci_source,
-                resolution=resolution,
-                parent_window_id=v2_id_map.get(parent_key) if parent_key else None,
-                coverage_quality=quality_note,
-            )
+            is_chain_row = is_chain and isinstance(boundary, MilestoneScore)
+
+            if is_chain_row:
+                row_v2 = _build_chain_row(
+                    chart_id, event_class, boundary, era_slice_key,
+                    valence=class_valence, is_adverse=class_is_adverse,
+                    generation=GENERATION_V3,
+                    peak_basis=peak_basis,
+                    resolution=resolution,
+                    parent_window_id=None,
+                    coverage_quality=quality_note,
+                )
+            else:
+                row_v2 = _build_row(
+                    chart_id, event_class, boundary, era_slice_key,
+                    valence=class_valence, is_adverse=class_is_adverse,
+                    peak_basis=peak_basis,
+                    generation=GENERATION_V3,
+                    term_breakdown=boundary.term_breakdown,
+                    lambda_v3_ci_low=boundary.lambda_v3_ci_low,
+                    lambda_v3_ci_high=boundary.lambda_v3_ci_high,
+                    ci_source=boundary.ci_source,
+                    resolution=resolution,
+                    parent_window_id=v2_id_map.get(parent_key) if parent_key else None,
+                    coverage_quality=quality_note,
+                )
             try:
                 cur = conn.execute(INSERT_SQL, row_v2)
                 returned = cur.fetchone()
@@ -1555,26 +1929,36 @@ class GocharaV3CenturyMaterializeWriter(WriterBase):
                 inserted += 1
             except Exception as exc:  # noqa: BLE001
                 logger.warning(
-                    "[%s] substep=%r v2 row insert failed (peak_date=%s, resolution=%s): %s",
-                    ASSET_ID, substep_key,
-                    _jd_to_date(boundary.peak_jd), resolution, exc,
+                    "[%s] substep=%r v2 row insert failed (resolution=%s): %s",
+                    ASSET_ID, substep_key, resolution, exc,
                 )
 
             # (b) Insert into production table (generation='3.0').
             #     I1 mutation-guard invariant: row carries generation='3.0'.
-            row_prod = _build_row(
-                chart_id, event_class, boundary, era_slice_key,
-                valence=class_valence, is_adverse=class_is_adverse,
-                peak_basis=peak_basis,
-                generation=GENERATION_PROD,
-                term_breakdown=boundary.term_breakdown,
-                lambda_v3_ci_low=boundary.lambda_v3_ci_low,
-                lambda_v3_ci_high=boundary.lambda_v3_ci_high,
-                ci_source=boundary.ci_source,
-                resolution=resolution,
-                parent_window_id=prod_id_map.get(parent_key) if parent_key else None,
-                coverage_quality=quality_note,
-            )
+            if is_chain_row:
+                row_prod = _build_chain_row(
+                    chart_id, event_class, boundary, era_slice_key,
+                    valence=class_valence, is_adverse=class_is_adverse,
+                    generation=GENERATION_PROD,
+                    peak_basis=peak_basis,
+                    resolution=resolution,
+                    parent_window_id=None,
+                    coverage_quality=quality_note,
+                )
+            else:
+                row_prod = _build_row(
+                    chart_id, event_class, boundary, era_slice_key,
+                    valence=class_valence, is_adverse=class_is_adverse,
+                    peak_basis=peak_basis,
+                    generation=GENERATION_PROD,
+                    term_breakdown=boundary.term_breakdown,
+                    lambda_v3_ci_low=boundary.lambda_v3_ci_low,
+                    lambda_v3_ci_high=boundary.lambda_v3_ci_high,
+                    ci_source=boundary.ci_source,
+                    resolution=resolution,
+                    parent_window_id=prod_id_map.get(parent_key) if parent_key else None,
+                    coverage_quality=quality_note,
+                )
             try:
                 cur = conn.execute(INSERT_PROD_SQL, row_prod)
                 returned = cur.fetchone()
@@ -1584,9 +1968,8 @@ class GocharaV3CenturyMaterializeWriter(WriterBase):
                         prod_id_map[own_key] = new_id
             except Exception as exc:  # noqa: BLE001
                 logger.warning(
-                    "[%s] substep=%r prod row insert failed (peak_date=%s, resolution=%s): %s",
-                    ASSET_ID, substep_key,
-                    _jd_to_date(boundary.peak_jd), resolution, exc,
+                    "[%s] substep=%r prod row insert failed (resolution=%s): %s",
+                    ASSET_ID, substep_key, resolution, exc,
                 )
 
         # 8. Upsert fingerprint.
@@ -1616,15 +1999,24 @@ class GocharaV3CenturyMaterializeWriter(WriterBase):
         # hierarchy-eligible class — never a bare/undifferentiated "0 rows".
         zero_peaks_part = (
             f", zero_peaks_reason={zero_peaks_reason}"
-            if class_shape in ("interval", "chain") and peaks_retained == 0 and zero_peaks_reason
+            if class_shape == "interval" and peaks_retained == 0 and zero_peaks_reason
             else ""
         )
 
-        return WriterResult(
-            asset_id=self.asset_id,
-            rows_inserted=inserted,
-            duration_seconds=elapsed,
-            notes=(
+        if is_chain:
+            notes = (
+                f"{av_gate_note}{substep_key}: {shape_gate_note}, "
+                f"{chain_episode_count} chain episode(s) x "
+                f"{len(chain_milestone_template)} milestone(s) = {inserted} rows "
+                f"inserted into {TABLE} (generation={GENERATION_V3}) "
+                f"and {PROD_TABLE} (generation={GENERATION_PROD}), "
+                f"era_slice_key={era_slice_key}, "
+                f"fingerprint={fingerprint}, "
+                f"coverage_quality={quality_note['tier']} "
+                f"({quality_note['target_count']} target(s))"
+            )
+        else:
+            notes = (
                 f"{av_gate_note}{substep_key}: {shape_gate_note}, "
                 f"era_windows={era_count}, peaks_scanned={peaks_scanned}, "
                 f"peaks_admitted={peaks_admitted}, peaks_retained={peaks_retained}, "
@@ -1635,7 +2027,13 @@ class GocharaV3CenturyMaterializeWriter(WriterBase):
                 f"fingerprint={fingerprint}, "
                 f"coverage_quality={quality_note['tier']} "
                 f"({quality_note['target_count']} target(s))"
-            ),
+            )
+
+        return WriterResult(
+            asset_id=self.asset_id,
+            rows_inserted=inserted,
+            duration_seconds=elapsed,
+            notes=notes,
         )
 
     # ------------------------------------------------------------------
@@ -1644,7 +2042,9 @@ class GocharaV3CenturyMaterializeWriter(WriterBase):
 
     def run(self, ctx: ContextSpec) -> WriterResult:
         """CLI path: drive all substeps sequentially (count depends on the
-        chart's live gochara_resonance_map coverage — MR-16 dynamic plan)."""
+        chart's live gochara_resonance_map coverage — MR-16 dynamic plan;
+        any chain-shaped classes among them are dispatched per MR-12 inside
+        run_substep)."""
         t0 = time.time()
         total_inserted = 0
         notes: list[str] = []
@@ -1676,6 +2076,9 @@ __all__ = [
     "build_decade_slices",
     "compute_substep_fingerprint",
     "_fetch_class_valence",
+    "_fetch_class_shape",
+    "_normalize_milestone_template",
+    "_build_chain_row",
     "_discover_event_classes",
     "_coverage_quality_note",
     "_fetch_event_class_temporal_shape",

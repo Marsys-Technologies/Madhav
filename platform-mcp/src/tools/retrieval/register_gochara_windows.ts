@@ -1620,6 +1620,14 @@ export async function computeGocharaElectionAvoidance(
         window_end: row.window_end,
         peak_date: row.peak_date,
         milestone_id: row.milestone_id,
+        // MR-12 (PARIṢKĀRA): is_irreversibility_milestone was selected in
+        // ROW_COLUMNS but dropped when this object was reconstructed
+        // field-by-field (unlike gochara_forecast_get's windows, which spread
+        // the full row and so already served it). Additive fix — chain-shaped
+        // adverse windows (a future chain-canonical adverse class) now carry
+        // the same milestone_id + is_irreversibility_milestone pair here that
+        // gochara_forecast_get already serves.
+        is_irreversibility_milestone: row.is_irreversibility_milestone,
         // W5.1: pass-through density facet columns from kala_gochara_windows.
         // All nullable — NULL for v1 rows predating migration 556/559.
         era_slice_key: row.era_slice_key ?? null,
