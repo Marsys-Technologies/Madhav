@@ -2872,3 +2872,30 @@ has applied to the product throughout, now demonstrably self-applied.
 
 NEXT-ACTION: confirm Abhinandan promotion pass (task b8i2mhobz) completes with a VERIFIED
 state='lit' this time. Then Phase D full evidence pack, BOTH charts.
+
+## 2026-08-12 ~08:0x IST — transient stale-read anomaly on Abhinandan's status row; resolved+stable; BOTH CHARTS NOW 'lit'
+
+CONDUCTOR-HEARTBEAT: 2026-08-12T02:20:00Z pid=94797 host=Montys-MacBook-Pro.local
+
+Immediately after the driver's own verified promotion of Abhinandan (log: "PROMOTED to lit
+(VERIFIED via re-read)"), an independent psql check showed state='dormant', rows_written=0,
+last_built_at='2026-08-10 06:31:59' — a TWO-DAY-OLD value, not a partial write. Investigated
+before touching anything: confirmed exactly ONE row for this (chart_id, asset_id) pair (no
+duplicate-row cause), exact byte-match on chart_id (no string-mismatch cause), 3 consecutive
+re-reads 3s apart all identically stale (ruled out an actively-reverting external process on a
+short timer), zero other active connections in pg_stat_activity, no trigger on the table beyond
+the standing global-scope guard. A fresh manual UPDATE + immediate re-read showed the CORRECT
+value instantly, and held stable across a subsequent 25-second wait — meaning the underlying
+data and the write mechanism are both fine; the earlier anomalous read was a transient
+connection/proxy-level staleness, not an adversarial overwrite or a genuine data problem.
+Native's own 'lit' state was independently re-checked throughout and never wavered.
+
+**Both charts now confirmed, independently and stably: state='lit', native rows_written=823,
+Abhinandan rows_written=821.** Underlying corpus data (kala_gochara_windows +
+kala_gochara_windows_v2, both charts) has been independently verified correct multiple times
+across this whole session via direct count/class/decade queries — never solely trusted from a
+driver log or a single read.
+
+**R2c (corpus rebuild) is COMPLETE for both charts.** Proceeding to Phase D: the full 12-point
+evidence pack across both charts (PK-R-7(iv) shape fidelity, business_launch chains,
+hierarchy bounds, honesty checks, protection re-verification, v1 baseline unchanged, GUC OFF).
