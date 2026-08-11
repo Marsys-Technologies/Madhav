@@ -2128,3 +2128,36 @@ CONDUCTOR-HEARTBEAT: 2026-08-11T12:52:00Z pid=94797 host=Montys-MacBook-Pro.loca
 
 NEXT-ACTION: on #1222 merge → C3 deploy verification; adopt remaining lane completions (mr23r,
 mr11h, mr12c, mr16, mr4142) → PARĪKṢAKA each → merge on green; then R2 gate packet.
+
+## 2026-08-11 ~18:3x IST — MR-12 lane done with a MAJOR honest finding; #1224 fix cycle; verdicts in flight
+
+CONDUCTOR-HEARTBEAT: 2026-08-11T13:05:00Z pid=94797 host=Montys-MacBook-Pro.local
+
+- **MR-12 (PR #1225, chains): builder's critical finding — "marriage first" contradicts the
+  binding ontology.** brahma_event_ontology declares marriage temporal_shape='point' (mig-456,
+  confirmed live), mig-460 BINDS served shape to ontology shape, and the CHECK constraint forbids
+  chain rows without a real milestone_template. A literal marriage-chain implementation would
+  fabricate an ontology override (B.10 violation). Builder instead wired the never-called W3.2
+  chain machinery (score_chain_milestones) into the materializer for business_launch (real
+  3-milestone template, BRIEF_D4A worked example; irreversibility=first_revenue), proved the
+  mechanism class-agnostic via a marked-synthetic marriage fixture, left marriage untouched.
+  Chain-canonical classes live today: business_launch, career_change, education_milestone,
+  foreign_settlement, separation. Also fixed additively: gochara_election_avoidance_get dropped
+  is_irreversibility_milestone during row reconstruction. ENGINE_VERSION v3.0→v3.1 (C2).
+  Disclosed production gap: gochara_resonance_map has ZERO business_launch rows today → R2 must
+  run ka_gochara_resonance BEFORE the materializer (already the R2 spine order).
+  → PRATINIDHI dispatched for PK-R-7 (divergence disposition: register/brief said "marriage
+  first"; ontology authority says otherwise) — binds R2 scope + R3 conformance mapping.
+  → PARĪKṢAKA dispatched for PR #1225.
+- **#1224 (MR-38/39): PARĪKṢAKA FAIL routed back to builder** — F-1 blocking (§N.8 unearned
+  signal in test_connect_startup_option_also_present: green on comment text under both
+  mutations), F-2 (staging INSERT template not folded into fingerprint), F-3 (docstring/PR
+  overstates fold as covering output contract; it covers row SHAPE — ENGINE_VERSION standing
+  rule remains load-bearing for value changes). O-1/O-2 disclosed (full-rewrite-on-next-build is
+  intended for R2; SET statement_timeout=0 inheritance disclosed). Fix cycle running; fresh
+  re-verify on completion. Verifier's independent evidence: both register GATEs genuinely met
+  (incl. live throwaway-Postgres kill/survive demo) — failure is confined to lane-introduced
+  test code.
+
+NEXT-ACTION: adopt lane completions (mr23r, mr11h, mr16, mr4142, mr3839-fix) → verdicts →
+merges; #1222 deploy check on merge; PK-R-7 recording; then R2 gate packet.
