@@ -1,11 +1,14 @@
-"""ka_gochara_v3_century_materialize — W3.4/W5.4 Century horizon + slice receipts.
+"""ka_gochara_v3_century_materialize — W3.4/W5.4/MR-16 Century horizon + slice receipts.
 
 GOCHARA-UTKARSA campaign, wave W3.4 (original) + W5.4 (writer repoint) +
-PARIṢKĀRA MR-38 (fingerprint version fold).
+PARIṢKĀRA MR-16 (dynamic event-class discovery + honest per-class coverage
+notes) + PARIṢKĀRA MR-38 (fingerprint version fold).
 
 Gate: W0.3 PASS (generation schema + utkarsha_builder role in place) +
       W3.2 PASS (interval_solver root-solved threshold crossings) +
       UTK-R1 ADJUDICATOR ruling (W5.4 repoint to kala_gochara_windows generation='3.0') +
+      W3.1 PASS (ka_gochara_resonance derives up to 27 canonical event classes;
+      see services/ka_gochara_resonance/writer.py + its 92/92 test suite) +
       MR-38 gate (test_mr38_fingerprint_version_fold.py): a synthetic
       writer-version (row-schema) bump forces cache invalidation and a real
       rewrite; re-running with no version change and no input change
@@ -36,34 +39,103 @@ any writer change that ALTERS COMPUTED VALUES without adding/removing/
 renaming a column must still bump ENGINE_VERSION by hand. See the
 "Row-schema signature" section below for the full account.
 
+MR-16/MR-38 COMPOSITION NOTE: MR-16 bumped ENGINE_VERSION "v3.0" -> "v3.1"
+for its own scope/output-shape change (dynamic event-class discovery +
+coverage_quality note in suppression_state — see the MR-16 sections below).
+MR-38's row_schema_* fold and MR-16's ENGINE_VERSION bump are independent,
+composable inputs to the SAME hashed fingerprint payload — MR-16 does not
+need MR-38's fold (it bumped ENGINE_VERSION by hand, the standing rule
+MR-38's own SCOPE note above describes), and MR-38's fold does not need
+MR-16's bump (a future row-shape-only change auto-invalidates via the fold
+regardless of ENGINE_VERSION). ENGINE_VERSION remains "v3.1" post-merge.
+
 PURPOSE
 -------
 Extends the W0.2/W2G materializer concept to a CENTURY-SCALE HEAVY writer
 using the gochara_v3 engine (not v1's gochara_intensity grammar). The
-unit of work is one (event_class × decade_era_slice) pair — 60 substeps
-for 6 event classes × 10 decade slices spanning the native's century from
-birth (1984-02-05 to 2084-02-05).
+unit of work is one (event_class × decade_era_slice) pair.
+
+MR-16 FIX — DYNAMIC EVENT-CLASS DISCOVERY (kills the hardcoded 6)
+-------------------------------------------------------------------
+Before this fix, `plan_substeps` iterated a hardcoded 6-item `EVENT_CLASSES`
+list, so this writer's production scope could never exceed 6 classes even
+after `ka_gochara_resonance` (G-1) derived resonance targets for up to 27
+canonical `brahma_event_ontology` classes (W3.1). The register's MR-16 gap:
+"materializer hardcodes 6 classes; 27-class resonance map never rebuilt;
+production scope identical to v1's."
+
+FIX: `plan_substeps` now discovers its event-class set LIVE, per chart, via
+`_discover_event_classes` — `SELECT DISTINCT event_class FROM
+gochara_resonance_map WHERE chart_id = %s` — matching
+`ka_gochara_sweep.KaGocharaSweepWriter._discover_event_classes`'s table and
+query shape, so the two writers' substep plans always agree on which classes
+a chart has coverage for. `ka_gochara_resonance` (G-1) is the single
+upstream authority for which event classes a chart has targets for; as G-1's
+coverage grows for a chart (today: 6 classes for the two canonical charts,
+pending the R2-window resonance rebuild to reach up to 27), this writer's
+substep plan grows with it on the NEXT build — no code change required. A
+chart with a GENUINELY EMPTY resonance map (the query runs and finds 0 rows
+— G-1 not yet built/run for it) honestly produces a ZERO-substep plan (I4)
+— this writer never invents a class to plan for. `EVENT_CLASSES` is
+retained as a documentation-only constant (the pre-MR-16 default/historical
+scope) — it is NO LONGER read by `plan_substeps`.
+
+PARĪKṢAKA F1 (§N.8, post-merge fix): `_discover_event_classes` deliberately
+does NOT mirror ka_gochara_sweep's discovery method in one respect — it does
+NOT catch and swallow DB errors into an empty list. See its own docstring
+for the full rationale; in short, the orchestrator's SATYA-DĪPA no-op-
+completion re-probe (`asset_runner.py`) treats an exception from
+`plan_substeps` as "conservatively incomplete" and a `[]` return as
+"genuinely done" — swallowing a query failure into `[]` here would make a
+transient DB error indistinguishable from an honestly empty resonance map
+and could promote a FAILED build to `state='lit'`.
+
+The decade-slice dimension (`DECADE_SLICES`, 10 fixed slices spanning
+birth→birth+100y) is unaffected — it is chart-agnostic and class-agnostic by
+design (W3.4 spec), so it stays a module constant.
+
+MR-16 FIX — HONEST PER-CLASS COVERAGE-QUALITY NOTES
+-------------------------------------------------------
+Per §N.6/§N.7 (never flatten confirmed and thin/sparse data into one
+undifferentiated list; an honest null beats an invented judgment), every row
+this writer emits now carries a LIVE-computed `coverage_quality` note inside
+its `suppression_state` JSONB column — `{"tier": ..., "target_count": N,
+"note": "..."}` — derived from the ACTUAL resonance-target count this
+substep fetched (`_coverage_quality_note`), never a static/hand-authored
+label. A class whose `gochara_resonance_map` targets are sparse (a "thin
+map", per W3.1's design note: "classes with weak signature_model get honest
+thin maps + a per-class quality note, never invented targets") is served
+honestly as `tier="thin"`, not silently presented as equally strong as a
+rich class. The same note is also folded into `WriterResult.notes` (the
+per-substep build report) for build-time/SSE-log visibility.
 
 Key behaviours:
-  1. plan_substeps — returns 60 SubStep objects, one per
-     (event_class, decade_slice). substep_key = '{event_class}::{era_slice_key}'.
+  1. plan_substeps — returns one SubStep per (event_class, decade_slice) pair,
+     for whatever event_class values gochara_resonance_map holds for this
+     chart (dynamic, MR-16). substep_key = '{event_class}::{era_slice_key}'.
   2. run_substep — for each substep:
-       a. Compute a delta fingerprint from (event_class, era_slice_key,
+       a. Fetch resonance targets + compute the live coverage_quality note.
+       b. Compute a delta fingerprint from (event_class, era_slice_key,
           ENGINE_VERSION, resonance_targets) via MD5.
-       b. Check kala_gochara_v2_build_state for a matching stored fingerprint.
-       c. If fingerprint unchanged AND rows exist: skip (honest no-op).
-       d. Else: call find_threshold_crossings from gochara_v3.interval_solver
+       c. Check kala_gochara_v2_build_state for a matching stored fingerprint.
+       d. If fingerprint unchanged AND rows exist: skip (honest no-op).
+       e. Else: call find_threshold_crossings from gochara_v3.interval_solver
           over the decade JD range; DELETE-then-INSERT results into BOTH:
             * kala_gochara_windows_v2 (calibration/staging surface, generation='g3_utkarsha')
             * kala_gochara_windows (production surface, generation='3.0') [W5.4 repoint]
-       e. Upsert fingerprint to kala_gochara_v2_build_state.
-       f. Log wall-clock time per substep at DEBUG level (AC5 / first SLO
+       f. Upsert fingerprint to kala_gochara_v2_build_state.
+       g. Log wall-clock time per substep at DEBUG level (AC5 / first SLO
           evidence point).
   3. I2 constraint: ZERO imports from gochara_grammar/*, gochara_intensity/*,
      or ka_gochara_sweep/*. All scoring comes from gochara_v3.interval_solver
-     and gochara_v3.engine (AC6).
+     and gochara_v3.engine (AC6). The dynamic event-class discovery query
+     (MR-16) is a plain SQL read against gochara_resonance_map — the same
+     table `_fetch_resonance_targets` already reads — not an import of any
+     forbidden module.
   4. I4 constraint: empty resonance targets → honest 0 rows for that substep,
-     no fabrication (AC7).
+     no fabrication (AC7). An empty resonance MAP (no event_class rows at
+     all for this chart) → honest 0-substep plan (MR-16, same I4 discipline
+     one level up).
 
 TABLES
 ------
@@ -150,13 +222,29 @@ GENERATION_V3 = "g3_utkarsha"
 GENERATION_PROD = "3.0"
 
 # Engine version for fingerprinting.  Bumped whenever the scoring engine
-# changes in a way that would move a stored window.  gochara_v3/__init__.py
+# changes in a way that would move a stored window, OR (Codex C2) whenever
+# the materializer's output shape/scope changes.  gochara_v3/__init__.py
 # exports GRAMMAR_VERSION; we use our own constant so this writer's
 # fingerprint is stable across internal gochara_v3 refactors that do NOT
 # move window positions.
-ENGINE_VERSION = "v3.0"
+#
+# v3.0 -> v3.1 (PARIṢKĀRA MR-16, Codex C2): the writer's SCOPE changed —
+# plan_substeps now discovers its event-class set dynamically from
+# gochara_resonance_map instead of a hardcoded 6-class list, and every row
+# carries a new coverage_quality note in suppression_state. Both are a
+# materializer output shape/scope change per Codex C2, so every substep's
+# fingerprint changes and a rebuild re-derives every row honestly under the
+# new scope (never silently reusing a v3.0-era row under the new coverage
+# regime).
+ENGINE_VERSION = "v3.1"
 
-# The 6 event classes this writer handles (same as W0.2 materializer).
+# DOCUMENTATION-ONLY as of PARIṢKĀRA MR-16 — the pre-MR-16 hardcoded 6-class
+# scope (3 legacy + 3 health/adverse; see event_class_scope.SWEEP_EVENT_CLASSES
+# for the sibling ka_gochara_sweep copy of this same historical set). NO
+# LONGER read by plan_substeps, which now discovers its event-class set live
+# from gochara_resonance_map (see _discover_event_classes below) — this is
+# the "kill the hardcoded 6" fix. Retained only as a documented historical
+# reference / test fixture default, never as a fallback plan.
 EVENT_CLASSES = [
     "career_advancement",
     "major_gain",
@@ -546,6 +634,103 @@ def _fetch_resonance_targets(conn, chart_id: str, event_class: str) -> list[str]
         return []
 
 
+# ---------------------------------------------------------------------------
+# Dynamic event-class discovery (PARIṢKĀRA MR-16 — kills the hardcoded 6)
+# ---------------------------------------------------------------------------
+
+def _discover_event_classes(conn, chart_id: str) -> list[str]:
+    """DISTINCT event_class values gochara_resonance_map holds for this
+    chart, ascending.
+
+    Mirrors ka_gochara_sweep.KaGocharaSweepWriter._discover_event_classes in
+    table + query shape, so the two writers' substep plans always agree on
+    which classes a chart has coverage for. NEVER a hardcoded fallback list
+    (MR-16 fix): a chart with genuinely zero gochara_resonance_map rows
+    returns [] here, which plan_substeps below turns into an honest
+    0-substep plan (I4) — never a silent revert to EVENT_CLASSES.
+
+    PARĪKṢAKA F1 (§N.8): DB errors PROPAGATE — this function does NOT catch
+    and swallow exceptions the way ka_gochara_sweep's sibling does. The
+    orchestrator's no-op-completion re-probe (asset_runner.py, the
+    SATYA-DĪPA fix) calls `writer.plan_substeps(ctx)` inside a
+    SAVEPOINT + try/except that conservatively sets `plan_complete=False`
+    on ANY exception — a deliberate fail-closed design. A `_discover_event_
+    classes` that swallowed its own query failure and returned [] would be
+    INDISTINGUISHABLE, from that re-probe's point of view, from "this chart
+    genuinely has an empty resonance map" — `remaining_count=0` ->
+    `plan_complete=True` -> the asset gets promoted to 'lit' on top of a
+    FAILED query, exactly the D-1.6/SATYA-DĪPA defect class one level
+    deeper. Letting the exception propagate here means the orchestrator's
+    own except-clause does its job (fails closed); catching it here would
+    blind that mechanism. Only a QUERY THAT RUNS AND FINDS ZERO ROWS
+    produces the honest empty list — a query that never ran to completion
+    is not that, and must not be reported as if it were.
+
+    I2: this is a plain SQL read against gochara_resonance_map — the exact
+    same table _fetch_resonance_targets above already reads — not an import
+    of gochara_grammar/gochara_intensity/ka_gochara_sweep.
+    """
+    rows = _query_fn(conn)(
+        "SELECT DISTINCT event_class FROM gochara_resonance_map "
+        "WHERE chart_id = %s ORDER BY event_class",
+        [chart_id],
+    )
+    return [r["event_class"] for r in rows if r.get("event_class")]
+
+
+# ---------------------------------------------------------------------------
+# Honest per-class coverage-quality note (PARIṢKĀRA MR-16)
+# ---------------------------------------------------------------------------
+
+# Tier boundaries for the LIVE target-count signal. Deliberately coarse and
+# documented here (not hidden inside the function) — these are a serving
+# convenience label, never a claim of statistical significance. The honest
+# quantity is target_count itself; tier is a human-readable bucket over it.
+_COVERAGE_QUALITY_THIN_MAX = 2
+_COVERAGE_QUALITY_MODERATE_MAX = 5
+
+
+def _coverage_quality_note(event_class: str, target_refs: list[str]) -> dict[str, Any]:
+    """Honest, LIVE-computed per-event_class coverage-quality note.
+
+    §N.7 item 4 / §N.8: a quality label needs a real detector behind it, or
+    it is null, not green. Rather than importing/duplicating a static,
+    hand-authored "rich_model"/"thin_model" narrative string maintained
+    elsewhere (services/ka_gochara_resonance/writer.py's
+    COVERAGE_QUALITY_NOTES — itself documentation, not live data), this note
+    is derived from the ACTUAL resonance-target count `run_substep` just
+    fetched for (chart_id, event_class) via `_fetch_resonance_targets` — the
+    real detector for "how much resonance-map coverage does THIS chart have
+    for THIS class, right now." A class with a genuinely thin
+    `signature_model` mechanically produces few targets and is honestly
+    labeled 'thin' here; a class this writer has never seen before (a new
+    W3.1 class with no resonance rows yet) is honestly 'empty', never
+    silently promoted to look as strong as a rich class (I4 / §N.6).
+
+    Returns a dict suitable for embedding under suppression_state's
+    "coverage_quality" key: {"tier", "target_count", "note"}.
+    """
+    n = len(target_refs)
+    if n == 0:
+        tier = "empty"
+    elif n <= _COVERAGE_QUALITY_THIN_MAX:
+        tier = "thin"
+    elif n <= _COVERAGE_QUALITY_MODERATE_MAX:
+        tier = "moderate"
+    else:
+        tier = "rich"
+    return {
+        "tier": tier,
+        "target_count": n,
+        "note": (
+            f"{event_class}: {n} resonance target(s) in gochara_resonance_map "
+            f"backed this window ({tier} coverage). Never an invented target — "
+            f"a thin/empty tier honestly reports sparse classical-prior "
+            f"coverage for this class, not an error."
+        ),
+    }
+
+
 def _stored_fingerprint(query, chart_id: str, substep_key: str) -> str | None:
     """Return the stored fingerprint for this substep, or None if absent."""
     rows = query(
@@ -673,6 +858,7 @@ def _build_row(
     lambda_v3_ci_low: Optional[float] = None,
     lambda_v3_ci_high: Optional[float] = None,
     ci_source: Optional[str] = None,
+    coverage_quality: Optional[dict] = None,
 ) -> dict[str, Any]:
     """Convert one IntervalBoundary to a kala_gochara_windows(_v2) row dict.
 
@@ -701,10 +887,24 @@ def _build_row(
         function serves is an explicit parameter, not silently derived
         in-body." All default None (I4 honest degrade: a boundary whose peak
         evaluation failed carries None here, never a fabricated breakdown).
+    coverage_quality
+        PARIṢKĀRA MR-16 fix (deliverable 2): the honest, LIVE-computed
+        per-event_class coverage-quality note from `_coverage_quality_note`
+        (`{"tier", "target_count", "note"}`), embedded under
+        `suppression_state["coverage_quality"]` so a consumer reading the
+        served row (register_gochara_windows.ts passes `suppression_state`
+        through opaquely) can see how thin/rich this chart's resonance-map
+        coverage was for this class, at build time -- never invented, never
+        silently omitted for a thin class. Default None (I4 degrade) only
+        for callers/tests that predate this fix; `run_substep` always
+        supplies it.
     """
     window_start = _jd_to_date(boundary.enter_jd)
     window_end = _jd_to_date(boundary.exit_jd)
     peak_date = _jd_to_date(boundary.peak_jd)
+    suppression_state = (
+        {"coverage_quality": coverage_quality} if coverage_quality is not None else {}
+    )
     return {
         "chart_id": chart_id,
         "event_class": event_class,
@@ -720,7 +920,7 @@ def _build_row(
         "is_adverse": is_adverse,
         "active_sentences": json.dumps([]),
         "contributing_systems": json.dumps([]),
-        "suppression_state": json.dumps({}),
+        "suppression_state": json.dumps(suppression_state),
         "peak_basis": "gochara_lambda_v3",
         "calibration_state": "structural_prior",
         "source": "live",
@@ -752,19 +952,54 @@ class GocharaV3CenturyMaterializeWriter(WriterBase):
     # ------------------------------------------------------------------
 
     def plan_substeps(self, ctx: ContextSpec) -> list[SubStep]:
-        """Return 60 SubStep objects: 6 event_classes × 10 decade slices.
+        """Return one SubStep per (event_class, decade_slice) pair.
 
         Each SubStep has:
           key   = '{event_class}::{era_slice_key}'  e.g. 'marriage::g3_1984_1994'
           label = human-readable description
 
-        The plan is STATIC — it does not query the DB. The 6 event classes
-        and 10 decade slices are fixed by the campaign spec. An empty
-        resonance-target set for a given substep is handled honestly in
-        run_substep (I4: 0 rows, not a plan failure).
+        PARIṢKĀRA MR-16: event_class now ranges DYNAMICALLY over whatever
+        `gochara_resonance_map` holds for this chart (`_discover_event_classes`)
+        — NEVER the hardcoded `EVENT_CLASSES` list (that constant is
+        documentation-only as of this fix; see module docstring). The plan is
+        no longer static: it issues one DISTINCT-event_class read against
+        gochara_resonance_map, the same table `_fetch_resonance_targets`
+        already reads per-substep. decade_slice stays the fixed 10-slice
+        century grid (DECADE_SLICES) — chart-agnostic and class-agnostic by
+        design (W3.4 spec).
+
+        A chart with a GENUINELY EMPTY resonance map (the query runs and
+        finds 0 rows — G-1 not yet run for it) honestly produces a
+        ZERO-substep plan here (I4 at the plan level, mirroring
+        ka_gochara_sweep's own no-targets-no-substeps discipline) — this
+        writer never invents a class to plan for. A per-substep empty
+        resonance-TARGET set (a discovered class with rows for OTHER classes
+        but somehow none for itself — not expected, but handled the same way
+        as always) remains a run_substep-level I4 0-row result, not a plan
+        failure.
+
+        A DB error during discovery is NOT caught here — `_discover_event_
+        classes` lets it propagate (PARĪKṢAKA F1), and this method does not
+        add its own try/except around that call. The orchestrator's
+        no-op-completion re-probe relies on exactly this: it wraps its own
+        `plan_substeps(ctx)` call in a try/except and treats any exception
+        as "conservatively incomplete," which only works if this method
+        does not swallow the error first.
         """
+        chart_id = ctx.config["chart_id"]
+        conn = ctx.db_conn
+        event_classes = _discover_event_classes(conn, chart_id)
+
+        if not event_classes:
+            logger.info(
+                "[%s] no populated gochara_resonance_map event_classes for "
+                "chart=%s — honest empty plan, zero substeps (MR-16 I4).",
+                ASSET_ID, chart_id,
+            )
+            return []
+
         steps: list[SubStep] = []
-        for event_class in EVENT_CLASSES:
+        for event_class in event_classes:
             for decade in DECADE_SLICES:
                 key = f"{event_class}::{decade.era_slice_key}"
                 label = (
@@ -783,12 +1018,16 @@ class GocharaV3CenturyMaterializeWriter(WriterBase):
 
         Steps:
           1. Parse substep_key → (event_class, era_slice_key, decade).
-          2. Fetch resonance targets for this chart×class.
+          2. Fetch resonance targets for this chart×class; compute the
+             honest, LIVE coverage_quality note from that same fetch
+             (MR-16 deliverable 2).
           3. If no targets: honest 0-row result (I4).
           4. Compute delta fingerprint.
           5. Check stored fingerprint — if unchanged and rows exist: skip.
           6. call find_threshold_crossings over the decade JD range.
-          7. DELETE-then-INSERT into kala_gochara_windows_v2.
+          7. DELETE-then-INSERT into kala_gochara_windows_v2 and
+             kala_gochara_windows, every row carrying coverage_quality
+             inside suppression_state.
           8. Upsert fingerprint to kala_gochara_v2_build_state.
           9. Log wall-clock time at DEBUG.
         """
@@ -828,6 +1067,14 @@ class GocharaV3CenturyMaterializeWriter(WriterBase):
         # 2. Fetch resonance targets.
         target_refs = _fetch_resonance_targets(conn, chart_id, event_class)
 
+        # 2b. PARIṢKĀRA MR-16 deliverable 2: the honest, LIVE per-class
+        #     coverage-quality note, computed from the SAME target_refs
+        #     fetch above (never a static/hand-authored label). Computed
+        #     unconditionally (including the I4 empty-targets branch below,
+        #     where it is honestly tier='empty') so every WriterResult.notes
+        #     carries a real coverage signal, not just the row-level ones.
+        quality_note = _coverage_quality_note(event_class, target_refs)
+
         # 3. I4: empty resonance targets → honest 0 rows.
         if not target_refs:
             elapsed = time.time() - t0
@@ -841,7 +1088,8 @@ class GocharaV3CenturyMaterializeWriter(WriterBase):
                 duration_seconds=elapsed,
                 notes=(
                     f"{substep_key}: honest empty — no resonance targets for "
-                    f"chart={chart_id} event_class={event_class} (I4)"
+                    f"chart={chart_id} event_class={event_class} (I4) "
+                    f"[coverage_quality={quality_note['tier']}]"
                 ),
             )
 
@@ -1025,6 +1273,7 @@ class GocharaV3CenturyMaterializeWriter(WriterBase):
                 lambda_v3_ci_low=boundary.lambda_v3_ci_low,
                 lambda_v3_ci_high=boundary.lambda_v3_ci_high,
                 ci_source=boundary.ci_source,
+                coverage_quality=quality_note,
             )
             try:
                 conn.execute(INSERT_SQL, row_v2)
@@ -1046,6 +1295,7 @@ class GocharaV3CenturyMaterializeWriter(WriterBase):
                 lambda_v3_ci_low=boundary.lambda_v3_ci_low,
                 lambda_v3_ci_high=boundary.lambda_v3_ci_high,
                 ci_source=boundary.ci_source,
+                coverage_quality=quality_note,
             )
             try:
                 conn.execute(INSERT_PROD_SQL, row_prod)
@@ -1083,7 +1333,9 @@ class GocharaV3CenturyMaterializeWriter(WriterBase):
                 f"{inserted} rows inserted into {TABLE} (generation={GENERATION_V3}) "
                 f"and {PROD_TABLE} (generation={GENERATION_PROD}), "
                 f"era_slice_key={era_slice_key}, "
-                f"fingerprint={fingerprint}"
+                f"fingerprint={fingerprint}, "
+                f"coverage_quality={quality_note['tier']} "
+                f"({quality_note['target_count']} target(s))"
             ),
         )
 
@@ -1092,7 +1344,8 @@ class GocharaV3CenturyMaterializeWriter(WriterBase):
     # ------------------------------------------------------------------
 
     def run(self, ctx: ContextSpec) -> WriterResult:
-        """CLI path: drive all 60 substeps sequentially."""
+        """CLI path: drive all substeps sequentially (count depends on the
+        chart's live gochara_resonance_map coverage — MR-16 dynamic plan)."""
         t0 = time.time()
         total_inserted = 0
         notes: list[str] = []
@@ -1124,4 +1377,6 @@ __all__ = [
     "build_decade_slices",
     "compute_substep_fingerprint",
     "_fetch_class_valence",
+    "_discover_event_classes",
+    "_coverage_quality_note",
 ]
