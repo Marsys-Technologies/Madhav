@@ -152,6 +152,22 @@ calibration_state='structural_prior' until a real fit; valence derived per
 class/direction or NULL — never a default. GATE: zero 'favourable' rows;
 zero 'empirically_calibrated' rows until MR-14's fit; density facets
 truthful. AT-PAR: §N.7/§N.8 honesty restored on served output.
+CORRECTION (2026-08-11, PARIṢKĀRA builder + native ruling): this entry's
+"§N.8-gated writer path" pointed at `ka_gochara.py` — that writer never
+touches `kala_gochara_windows`. The real writer is
+`platform/python-sidecar/pipeline/orchestrator/writers/
+ka_gochara_v3_century_materialize.py` (`GocharaV3CenturyMaterializeWriter.
+_build_row()`). Confirmed live: that writer's `calibration_state` was
+ALREADY correctly coded `'structural_prior'` — only `valence` was
+hardcoded `'favourable'` for every event_class there. The live
+`'empirically_calibrated'` stamp on all 120 gen-3.0 rows (both charts) came
+from an out-of-band raw SQL UPDATE, not from any writer in this repo — a
+narrower root cause than this entry's "stamped ... against an all-zero fit"
+framing implied. Code fix merged (PR #1211); the GATE above does not close
+on the code merge alone — closes only when a native-authorized, single-use,
+session-scoped writer-path rebuild (folded into MR-14/15/10, PARISHKARA_LEDGER
+2026-08-11 ~05:2x IST entry) actually restamps the live rows and the honest
+result is verified against both charts.
 
 **MR-14 · Make empirical calibration possible, then earn the tier.** [PG-6,
 PG-7; recon W1.5/W4.4] GAP: term_breakdown never produced anywhere (root

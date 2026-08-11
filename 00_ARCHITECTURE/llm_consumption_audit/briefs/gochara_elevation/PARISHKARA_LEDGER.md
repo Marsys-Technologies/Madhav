@@ -678,3 +678,55 @@ scope reduction below 27 classes · retiring any serving surface · LEL content.
     failure permitted" per its own gate); then MR-15 (bhava_num fix, rebuilds alongside MR-14);
     then MR-10 (promote 54 point rows + rebuild, last per §8 ordering). W6-COMPLETE marker still
     gated on the full set (MR-01..08,10,13,14,15,24) — none of tonight's work posts it early.
+
+- 2026-08-11 ~05:2x IST (interactive conductor — MR-13 builder found the real bug, blocked
+  correctly on the live restamp, native ruled ONE consolidated rebuild instead):
+  MR-13 BUILDER RESULT: register's writer pointer was WRONG (pointed at ka_gochara.py, which
+    never touches kala_gochara_windows) — real writer is
+    platform/python-sidecar/pipeline/orchestrator/writers/ka_gochara_v3_century_materialize.py
+    (GocharaV3CenturyMaterializeWriter._build_row()). Register corrected in place with a note
+    (see MASTER_REMEDIATION_REGISTER_v2_0.md MR-13 entry) — this is exactly the audit-trail
+    correction class the campaign exists to make.
+    Real defect found + fixed (TDD, 17/17 green, PR #1211 MERGED to parishkara/integration
+    2026-08-11T05:20:25Z): _build_row() hardcoded valence='favourable' for EVERY event_class,
+    including illness_acute/chronic_onset (canonical 'loss' per brahma_event_ontology) and
+    surgery (canonical 'neutral'). Fixed via _fetch_class_valence(): live ontology lookup,
+    honest documented fallback, never a guess. calibration_state was ALREADY correctly coded
+    'structural_prior' in this writer — the live 'empirically_calibrated' stamp came from an
+    OUT-OF-BAND raw SQL UPDATE with no writer or fit behind it (narrower, more precise finding
+    than the register's original framing).
+    BLOCKED (correctly, no self-authorization): live restamp hit migration 566's own gen-3.0
+    protection trigger (app.allow_protected_sweep_rewrite='on' required, native decision per the
+    migration's own text). Builder attempted, was refused, verified DB untouched, stopped and
+    reported rather than finding a workaround.
+  NATIVE RULING (binding, supersedes this session's earlier MR-13-alone dispatch plan):
+    NO standalone restamp — won't fix an out-of-band-SQL defect with more out-of-band SQL.
+    ONE authorized app.allow_protected_sweep_rewrite override, single-use, SESSION-SCOPED to the
+    rebuild connection(s) only (never ALTER DATABASE/ROLE, never left on), scoped to a FULL
+    writer-path rebuild of the gen-3.0 corpus for both charts, run AFTER MR-14 and MR-15 land —
+    one rebuild delivers honest valence + honest structural_prior + populated term_breakdown +
+    AV gating in a single pass; the protected corpus gets touched once, not three times.
+    MANDATORY CONDITIONS on that run (all, no exceptions): (1) GUC session-scoped only; (2) lease
+    held in coordination file for the rebuild window; (3) full evidence pasted here — pre/post
+    row counts, valence distribution, calibration_state distribution, term_breakdown non-null
+    count, BOTH charts; (4) protection RE-VERIFIED after — a seeded unauthorized DELETE of a
+    gen-3.0 row must be refused post-run, output pasted; (5) v1 corpus counts re-verified
+    untouched. MR-10 folds in if the fixed writer already emits point-shaped rows on rebuild;
+    otherwise point-row promotion runs inside the SAME override window — one window, not two.
+  DISCLOSED DEBT — HONEST BASELINE (live-queried 2026-08-11T05:2xZ, this is the "before" state
+    the eventual rebuild must move FROM and its evidence must be diffed AGAINST):
+    generation='3.0' rows: 60 per chart (482012f1: 60, 1c826d5a: 60) — 100% still
+      valence='favourable', 100% still calibration_state='empirically_calibrated' (dishonest;
+      PR #1211's fix is merged to the WRITER but has not yet touched these live rows — that is
+      this disclosure's whole point), term_breakdown NULL on all 120 rows (0/120 non-null).
+    v1 corpus (untouched, protected, the rollback baseline): 482012f1=16,297 · 1c826d5a=19,323 ·
+      cb73cd3d=2,667 (third chart, not a MR-13 target, recorded for completeness). These are the
+      EXACT figures the post-rebuild verification must reproduce unchanged.
+    MR-13's GATE DOES NOT CLOSE on the code merge alone — it closes only when the rebuild lands
+    and this baseline is shown to have honestly changed (favourable/empirically_calibrated counts
+    drop to their true honest values) with the v1 numbers above unchanged. Until then this serving
+    window is KNOWN-DISHONEST and disclosed, not silently carried.
+  NEXT-ACTION: dispatch MR-14 (code + TDD only — NO live-corpus writes, that's reserved for the
+    one authorized window) → MR-15 (same constraint) → pinned gate packet → main → deploy →
+    M5-style verify → lease + THE ONE authorized rebuild with full evidence → verify MR-10/13/14/15
+    on rebuilt corpus → MR-24 battery → THEN W6-COMPLETE.
