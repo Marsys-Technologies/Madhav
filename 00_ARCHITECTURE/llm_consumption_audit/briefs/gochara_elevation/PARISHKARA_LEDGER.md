@@ -647,3 +647,34 @@ scope reduction below 27 classes · retiring any serving surface · LEL content.
   NEXT-ACTION: merge #1210 on green → re-trigger #1207 and #1209 (path filter reads each PR's
     own diffed files; the tap-ci.yml fix alone does not retroactively make TAP-6 report on
     their existing heads) → resume the deploy/M5/gate-packet/corpus-repair chain as before.
+
+- 2026-08-11 ~04:5x IST (interactive conductor — full chain landed, M5 GREEN, corpus-repair wave
+  opened):
+  MERGE SEQUENCE COMPLETE: #1210 (TAP-6 coverage) → #1207 (ci.yml allowlist) → #1209 (migration
+    563, both bugs fixed+execution-verified) → real deploy (commit 800bd3eed) SUCCEEDED
+    18:15:26Z. #1208 (MR-03/04/07/08) hit a genuine merge conflict on migration 563 (integration
+    branch still carried the pre-fix MR-05 version; main had the verified fix) — resolved by
+    taking main's version in full (verified identical via diff), pushed to parishkara/integration
+    (4e4d50546), #1208 re-verified green (TAP-6 already covered its own files, no new gap) and
+    MERGED 2026-08-11T04:51:11Z. integration and main now content-identical.
+  M5 FULL VERIFICATION — GREEN: migrations 563/564/565/566 all in _migrations_applied.
+    asset_registry: ka_gochara=CURRENT/per_chart, ka_gochara_sweep=RETIRED/inactive,
+    ka_gochara_v2_materialize absent (renamed). Live product calls (not just DB queries): all 3
+    gochara tools × both canonical charts (482012f1, 1c826d5a) = 6 calls, ALL succeeded,
+    backing_data_reachable=true, generation=3.0, empirically_calibrated facets present, honest
+    empty_reason on the (correctly empty) election-avoidance calls. MR-35 smoke probe's 2
+    post-deploy failures are NOT a regression — pre-existing disclosed gap (MARSYS_MCP_URL repo
+    secret never configured natively; probe fails loudly by design rather than false-green).
+  LEASE: L-4 RELEASED (scope complete). L-5 CLAIMED (2026-08-11 04:5x–09:00 IST): corpus repair
+    MR-13→14→15→10, sequenced per register §8 line 379 (not parallel — MR-10/14/15 all build on
+    MR-13's honest-stamping fix; dispatching MR-10 before MR-13 would just re-propagate the
+    'favourable'/'empirically_calibrated' defect into newly-promoted rows).
+  MR-13 BUILDER DISPATCHED (sonnet, background, pk-mr13 worktree, branch parishkara/mr-13 off
+    current integration tip): honest valence + calibration_state restamp per register PG-4/PG-5.
+    Execute-to-verify instruction included explicitly (restamp must be proven against real rows,
+    not just unit tests). MR-14/15/10 queued behind it, not yet dispatched.
+  NEXT-ACTION: await MR-13 PR; verify (execution, not prose) and merge to integration; dispatch
+    MR-14 (term_breakdown engine/writer + rebuild + refit — largest remaining lane, "honest
+    failure permitted" per its own gate); then MR-15 (bhava_num fix, rebuilds alongside MR-14);
+    then MR-10 (promote 54 point rows + rebuild, last per §8 ordering). W6-COMPLETE marker still
+    gated on the full set (MR-01..08,10,13,14,15,24) — none of tonight's work posts it early.
