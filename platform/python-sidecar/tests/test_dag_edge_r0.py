@@ -15,10 +15,10 @@ def test_migration_569_removes_retired_gochara_sweep_dep_from_kshetra():
     ka_kshetra.depends_on. Verify the SQL text contains the correct terms.
     """
     import pathlib
-    migration = pathlib.Path("platform/migrations/569_sampurti_r0_kshetra_dep_fix.sql")
+    _REPO = pathlib.Path(__file__).resolve().parents[3]
+    migration = _REPO / "platform" / "migrations" / "569_sampurti_r0_kshetra_dep_fix.sql"
     assert migration.exists(), (
-        "Migration 569 not found — R0 gate packet not yet committed. "
-        "Run from the repository root."
+        "Migration 569 not found — R0 gate packet not yet committed."
     )
     content = migration.read_text()
     assert "ka_gochara_sweep" in content, "Migration must reference ka_gochara_sweep"
@@ -34,8 +34,9 @@ def test_seed_does_not_declare_gochara_sweep_dep_for_kshetra():
     every runSeed() call, undoing migration 569's fix.
     """
     import pathlib, re
-    seed = pathlib.Path("platform/scripts/seed/asset_registry_seed.ts")
-    assert seed.exists(), "Seed file not found — run from repo root"
+    _REPO = pathlib.Path(__file__).resolve().parents[3]
+    seed = _REPO / "platform" / "scripts" / "seed" / "asset_registry_seed.ts"
+    assert seed.exists(), "Seed file not found — check REPO root derivation"
     content = seed.read_text()
     # Find the ka_kshetra block's depends_on array
     # Look for asset_id: 'ka_kshetra' then the depends_on array that follows
