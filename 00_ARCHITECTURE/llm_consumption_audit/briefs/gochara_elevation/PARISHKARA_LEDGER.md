@@ -2161,3 +2161,18 @@ CONDUCTOR-HEARTBEAT: 2026-08-11T13:05:00Z pid=94797 host=Montys-MacBook-Pro.loca
 
 NEXT-ACTION: adopt lane completions (mr23r, mr11h, mr16, mr4142, mr3839-fix) → verdicts →
 merges; #1222 deploy check on merge; PK-R-7 recording; then R2 gate packet.
+
+## 2026-08-11 ~18:5x IST — API-blip wave: 4 agents dropped mid-flight, all resumed with context
+
+CONDUCTOR-HEARTBEAT: 2026-08-11T13:25:00Z pid=94797 host=Montys-MacBook-Pro.local
+
+A provider-side connection blip killed 4 background agents near-simultaneously (MR-23r builder
+just before PR-open, both W1.2 commits already pushed; MR-41/42 builder mid-test-writing; MR-11
+builder mid-serving-edit, migration-567 commit safe; PARĪKṢAKA on #1225 mid-verification, having
+already found a real MR-16 cross-lane collision). All four salvage-checked (no lost pushes) and
+resumed via transcript-context resume — nothing redone, nothing lost. MR-16 lane (PR #1226)
+completed pre-blip; PARĪKṢAKA dispatched for it. MR-16 builder disclosed a shared-git-stash
+cross-worktree hazard (stash is per-repo, not per-worktree — a concurrent stash op briefly
+swapped its WIP; recovered, foreign WIP preserved in stash, MR-11 builder warned to verify its
+uncommitted edits' integrity). Noted as an operational hazard for the close report: parallel
+builders in worktrees of ONE repo must not use git stash.
