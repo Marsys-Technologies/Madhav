@@ -1,10 +1,28 @@
 """ka_gochara_v3_century_materialize — W3.4/W5.4 Century horizon + slice receipts.
 
-GOCHARA-UTKARSA campaign, wave W3.4 (original) + W5.4 (writer repoint).
+GOCHARA-UTKARSA campaign, wave W3.4 (original) + W5.4 (writer repoint) +
+PARIṢKĀRA MR-38 (fingerprint version fold).
 
 Gate: W0.3 PASS (generation schema + utkarsha_builder role in place) +
       W3.2 PASS (interval_solver root-solved threshold crossings) +
-      UTK-R1 ADJUDICATOR ruling (W5.4 repoint to kala_gochara_windows generation='3.0').
+      UTK-R1 ADJUDICATOR ruling (W5.4 repoint to kala_gochara_windows generation='3.0') +
+      MR-38 gate (test_mr38_fingerprint_version_fold.py): a synthetic
+      writer-version (row-schema) bump forces cache invalidation and a real
+      rewrite; re-running with no version change and no input change
+      correctly skips.
+
+MR-38 — FINGERPRINT VERSION FOLD
+---------------------------------
+MR-13/14 changed the row shape this writer produces (added term_breakdown /
+lambda_v3_ci_low / lambda_v3_ci_high / ci_source) without bumping
+ENGINE_VERSION — the delta-skip (stored_fingerprint == recomputed_fingerprint
+AND rows_exist) would have silently no-opped an authorized rebuild had this
+not been caught in rehearsal. Fix: ROW_SCHEMA_COLUMNS (derived directly from
+INSERT_PROD_SQL, never a hand-maintained duplicate) is folded into
+compute_substep_fingerprint's hashed payload alongside engine_version, so any
+future row-shape change auto-invalidates every substep's fingerprint whether
+or not ENGINE_VERSION is bumped. See the "Row-schema signature" section below
+for the full account.
 
 PURPOSE
 -------
@@ -83,6 +101,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import re
 import time
 from dataclasses import dataclass
 from datetime import date, timedelta
@@ -218,6 +237,54 @@ INSERT_PROD_SQL = f"""
 
 
 # ---------------------------------------------------------------------------
+# Row-schema signature (PARIṢKĀRA MR-38)
+# ---------------------------------------------------------------------------
+#
+# PRIOR DEFECT: MR-13/14 added the term_breakdown / lambda_v3_ci_low /
+# lambda_v3_ci_high / ci_source columns to INSERT_SQL, INSERT_PROD_SQL, and
+# _build_row -- a real change to the writer's OUTPUT CONTRACT -- WITHOUT
+# bumping ENGINE_VERSION (whose documented purpose is narrower: "bumped
+# whenever the scoring engine changes in a way that would move a stored
+# window", not "bumped whenever the row shape changes"). Because
+# compute_substep_fingerprint's only inputs were (event_class, era_slice_key,
+# engine_version, resonance_targets), a chart already built under the OLD row
+# shape recomputed the IDENTICAL fingerprint after the MR-13/14 code change --
+# the delta-skip fired and an authorized rebuild would have silently no-opped
+# (caught in rehearsal, not by any test).
+#
+# FIX: derive a row-schema signature directly from INSERT_PROD_SQL -- the
+# ACTUAL SQL template executed, not a hand-maintained duplicate list that
+# could itself drift -- and fold it into compute_substep_fingerprint's
+# payload alongside engine_version. Any future column addition/removal/rename
+# in INSERT_PROD_SQL automatically changes every substep's fingerprint, so a
+# fingerprint match can only ever mean "the inputs AND the writer's output
+# contract are both unchanged" -- no human has to remember to bump
+# ENGINE_VERSION for a row-shape change again. This is orthogonal to (and
+# composes cleanly with) any future ENGINE_VERSION bump: both are independent
+# inputs folded into the same hashed payload.
+def _extract_insert_columns(insert_sql: str) -> tuple[str, ...]:
+    """Parse the column list out of an ``INSERT INTO table (col1, col2, ...)``
+    SQL template.
+
+    Self-describing on purpose: sourced from the SQL actually executed, so
+    this signature cannot silently drift from the writer's real output
+    contract the way a hand-maintained duplicate list could.
+    """
+    match = re.search(r"INSERT INTO\s+\S+\s*\(([^)]*)\)", insert_sql)
+    if not match:
+        return ()
+    cols = [c.strip() for c in match.group(1).split(",")]
+    return tuple(c for c in cols if c)
+
+
+# The writer's OUTPUT CONTRACT signature: the column list actually written by
+# INSERT_PROD_SQL (the production INSERT), derived from the SQL template
+# itself. Folded into every substep's fingerprint by
+# compute_substep_fingerprint (see the "Row-schema signature" note above).
+ROW_SCHEMA_COLUMNS: tuple[str, ...] = _extract_insert_columns(INSERT_PROD_SQL)
+
+
+# ---------------------------------------------------------------------------
 # Decade-slice helpers
 # ---------------------------------------------------------------------------
 
@@ -286,11 +353,24 @@ def compute_substep_fingerprint(
     """Compute a delta fingerprint for one (event_class, era_slice) substep.
 
     The fingerprint is an MD5 hex digest of a canonicalized JSON payload
-    covering the four inputs that, if changed, would require a rebuild:
+    covering the five inputs that, if changed, would require a rebuild:
       * event_class      — the class being scored.
       * era_slice_key    — the decade window.
       * engine_version   — bumped when scoring logic changes.
       * resonance_targets — sorted list of target_ref strings for this chart×class.
+      * row_schema       — PARIṢKĀRA MR-38: the module's CURRENT
+                            ROW_SCHEMA_COLUMNS, read live from module scope
+                            (not accepted as a parameter — this is the fold:
+                            it is structurally impossible to compute a
+                            fingerprint that does not reflect the writer's
+                            CURRENT output contract). A row-shape change
+                            (e.g. the MR-13/14 column additions that landed
+                            without an ENGINE_VERSION bump) therefore
+                            automatically invalidates every previously-stored
+                            fingerprint, without depending on a human
+                            remembering to bump ENGINE_VERSION. See the
+                            "Row-schema signature" note near ROW_SCHEMA_COLUMNS'
+                            definition for the full defect this closes.
 
     Inputs are sorted so the fingerprint is stable across row-order changes.
 
@@ -304,6 +384,7 @@ def compute_substep_fingerprint(
             "era_slice_key": era_slice_key,
             "engine_version": engine_version,
             "resonance_targets": sorted(resonance_targets),
+            "row_schema": list(ROW_SCHEMA_COLUMNS),
         },
         sort_keys=True,
     )
@@ -996,6 +1077,7 @@ __all__ = [
     "GENERATION_PROD",
     "PROD_TABLE",
     "TABLE",
+    "ROW_SCHEMA_COLUMNS",
     "GocharaV3CenturyMaterializeWriter",
     "build_decade_slices",
     "compute_substep_fingerprint",
