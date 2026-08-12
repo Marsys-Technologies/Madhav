@@ -16,6 +16,8 @@ CONDUCTOR-HEARTBEAT: 2026-08-12T20:33:32Z pid=61698 host=Montys-MacBook-Pro.loca
 [BUILDERS: C3 tests passing (19/19) staging commit; C2 implementing buildNestedHierarchy (11/11 failing→in progress); C5 writing §8 test suite; C1 resolving node_modules in worktree]
 CONDUCTOR-HEARTBEAT: 2026-08-12T20:43:00Z pid=61698 host=Montys-MacBook-Pro.local session=γ
 [ALL-4-BUILDERS-COMPLETE: C1 PR#1249 22/22 ✓ | C2 PR#1247 22/22 ✓ | C3 PR#1245 19/19 ✓ | C5 PR#1246 37/37 ✓ — dispatching C4]
+CONDUCTOR-HEARTBEAT: 2026-08-12T20:52:18Z pid=61698 host=Montys-MacBook-Pro.local session=γ
+[C4-IN-FLIGHT: builder agent adf0585fcdfb49a2a active (now.ts+explain.ts); PRs #1245/#1246/#1247/#1249 in merge queue; coordination: FIELD-INTEGRATED NOT YET (α in P3); C4/C5 activation waiting]
 
 ## STEP-0 STATE (2026-08-13 01:50 IST launch)
 
