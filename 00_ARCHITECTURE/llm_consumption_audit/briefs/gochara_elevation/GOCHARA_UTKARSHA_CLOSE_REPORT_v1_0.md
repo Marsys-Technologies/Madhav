@@ -1,7 +1,9 @@
 ---
 artifact: GOCHARA_UTKARSHA_CLOSE_REPORT_v1_0.md
 version: 1.0
-status: CURRENT
+status: SUPERSEDED — see GOCHARA_UTKARSHA_CLOSE_REPORT_v1_1.md (2026-08-12) for the
+  current close record. Retained in place as an honest historical record of the
+  2026-08-11 state; do not edit further.
 produced_by: PARIṢKĀRA interactive conductor session, 2026-08-11
 role: >
   The honest, amended close of the GOCHARA-UTKARṢA campaign (gochara transit-prediction
