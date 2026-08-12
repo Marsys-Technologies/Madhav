@@ -171,6 +171,7 @@ NEXT-ACTION: Await B2 CI green, then dispatch PARĪKṢAKA for B2.
 
 CONDUCTOR-HEARTBEAT: 2026-08-12T21:37:00Z pid=59044 host=Montys-MacBook-Pro.local session=β [B2 PARĪKṢAKA VERIFIED (8/8); CI green 19/26; PR #1251 in merge queue; dispatching B3 builder]
 CONDUCTOR-HEARTBEAT: 2026-08-12T21:45:00Z pid=59044 host=Montys-MacBook-Pro.local session=β [B3 builder dispatched (ac60918f99b37a0aa); scope: Lattā→quality_gates; B2 in merge queue; monitoring B3]
+CONDUCTOR-HEARTBEAT: 2026-08-12T21:52:00Z pid=59044 host=Montys-MacBook-Pro.local session=β [B3 TDD red committed (843828e19); builder writing spec commit; B2 still in merge queue]
 
 ### 2026-08-13 03:07 IST — B2 COMPLETE (PARĪKṢAKA VERIFIED)
 
