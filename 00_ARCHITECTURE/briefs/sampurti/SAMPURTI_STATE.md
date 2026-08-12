@@ -1329,4 +1329,40 @@ CONDUCTOR-HEARTBEAT: 2026-08-13T04:25+05:30 (CONDUCTOR of SAMPŪRTI-α) [P2 COMP
 β L-9 expiry 06:30 IST; if expires without YANTRA-CORPUS-READY, α evaluates based on
 current corpus state (ka_gochara_resonance already lit).
 
+---
+
+## Heartbeat: 2026-08-13T04:41+05:30 — A1 PR #1254 created; A2 script ready; waiting β
+
+CONDUCTOR-HEARTBEAT: 2026-08-13T04:41+05:30 (CONDUCTOR of SAMPŪRTI-α) [P3 in flight — A1 PR open, A2 ready]
+
+**A1 pin — COMPLETE (awaiting review)**:
+- Branch: `sampurti/a1-gochara-corpus-pin` → PR #1254 → `sampurti/integration`
+- Commit: e35477253 (A1 pin) + 2b642a58b (A2 dispatch script)
+- Implementation: `_gochara_corpus_pin(conn, chart_id)` added to `KaKshetraWriter`
+  - `gochara_generation`: COALESCE(kala_gochara_authority.authoritative_generation, 'v1')
+  - `gochara_calibration_state`: dominant calibration_state from kala_gochara_windows for that generation
+  - `gochara_corpus_digest`: md5(count(*)||max(computed_at)||max(id)) from gochara_resonance_map
+- Spread into config_pin → baked into field_snapshot_id (SHA256) → corpus change = new snapshot = fresh re-field
+- Tests: `TestA1GochaCorpusPin` 7/7 PASS; full test_writer.py 58/58 PASS
+- fake_db.py: 3 new handlers (kala_gochara_authority/AS gen guard, calibration_state aggregate, resonance_map md5)
+
+**A2 dispatch script — READY** (gated on A1 merged + YANTRA-CORPUS-READY):
+- Script: `platform/scripts/dispatch_sampurti_r3_chart1_full.py` (committed to PR #1254 branch)
+- Exclusions: ka_gochara, ka_gochara_v3_century_materialize, ka_gochara_resonance,
+  ka_vedha_gochara, ka_kota_chakra, ka_gochara_sweep
+- Enforces ka_gochara_resonance = lit before creating run (β gate)
+
+**β status** (04:41 IST):
+- No YANTRA-CORPUS-READY in coordination (last commit: 5b3170950 α's FIELD-BASELINE-DONE)
+- L-9 lease: ~1h49m remaining (expiry 06:30 IST = 01:00 UTC)
+- ka_gochara_resonance already LIT on native chart — A2 can technically run post-A1-merge
+  even if β's gochara_v3_century_materialize is still failing (that's ka_gochara_sweep territory, excluded)
+
+**Gates blocking A2 execution**:
+1. PR #1254 PARĪKṢAKA review + merge to sampurti/integration
+2. sampurti/integration deploy to production (A1 code must be live)
+3. YANTRA-CORPUS-READY from β (OR L-9 expires and α evaluates corpus state directly)
+
+**Next**: Monitor PR #1254 CI + await β signal. Once both clear:
+  python3 platform/scripts/dispatch_sampurti_r3_chart1_full.py → run full orchestrator
 
