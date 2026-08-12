@@ -1103,3 +1103,41 @@ bg_synthetic_cohort / bg_class_priors)
 **Next**: R2 — full-DAG stale asset rebuild for both charts (482012f1, 1c826d5a),
 excluding 5 gochara assets: {ka_gochara, ka_gochara_v3_century_materialize,
 ka_gochara_resonance, ka_vedha_gochara, ka_kota_chakra}. clear_before=FALSE.
+
+---
+
+## Heartbeat: 2026-08-12T16:10+00:00 — R2 chart1 COMPLETE, all ka_* LIT
+
+**Phase**: R2 — Full-DAG rebuild, chart 1 (482012f1, Abhisek Mohanty)
+
+**Status**: COMPLETE — all 12 non-gochara ka_* assets LIT for chart 482012f1
+
+**Runs used**:
+- Run 84790929 (dispatch_sampurti_r2_chart1.py, 46 assets): cloud-sql-proxy DROP
+  mid-run during ka_sangam (~13 min); partial completions preserved
+- Run efebbbbf (33 assets re-dispatch): second proxy drop during ka_kalasutra (~7.5
+  min) and bo_samskara; ka_taranga + ka_vighnakara completed
+- Run f37bfd55 (targeted 5 ka_* assets only, fresh proxy restart): COMPLETE — all
+  5 remaining ka_* assets built successfully (ka_kalasutra → ka_kala_darshana →
+  ka_tulana + ka_bhavishya_lekha + ka_jivana_parva)
+
+**LIT ka_* assets (chart 482012f1, complete)**:
+ka_avadhi, ka_bhavishya_lekha, ka_dasha_kala, ka_gochara, ka_gochara_resonance,
+ka_jivana_parva, ka_kala_darshana, ka_kalasutra, ka_kshetra, ka_moorti_nirnaya,
+ka_sangam, ka_sudarshana_varsha, ka_taranga, ka_tithi_pravesha, ka_tulana,
+ka_vighnakara, ka_yojaka (17 ka_* assets, includes 2 pre-existing gochara assets)
+
+**Non-lit assets (pre-existing bugs, outside SAMPŪRTI scope)**:
+- bo_samskara (error): `savepoint "row_sp" does not exist` — pre-existing savepoint bug
+- bo_anveshana, bo_chart_gestalt, bo_pramana_mapa, bo_samvada: BLOCKED by bo_samskara
+- ph_*/mi_* chain (25 assets): BLOCKED by bo_samskara cascade
+- mi_bhara (error): `float() argument must be string or NoneType` — separate bug
+- ka_gochara_sweep (error): no writer registered (RETIRED by mig-563)
+
+**Total lit assets (chart 482012f1)**: 54 / 83
+
+**Key finding**: cloud-sql-proxy drops connections after ~8 min of sustained heavy
+writes. Fix: kill + restart proxy for fresh connections before each heavy run.
+
+**Next**: R2 chart2 — dispatch_sampurti_r2_chart2_kshetra.py for chart 1c826d5a
+(Abhinandan Mohanty). Multiple runs expected (same 3-run pattern as chart1 ka_kshetra).
