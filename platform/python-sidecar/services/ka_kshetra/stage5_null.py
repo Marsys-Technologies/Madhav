@@ -240,11 +240,14 @@ def replicate_evaluator(ev: FieldEvaluator, delta: float) -> FieldEvaluator:
 # the cumulative hazard on a 1-day grid; sub-day (SD/PrD) precision in the
 # segmentation produces no benefit because the grid step is already coarser.
 #
-# Omitting SD/PrD boundaries reduces breakpoints from ~165K to ~1K (MD/AD/PD
-# level boundaries + envelope knots + kinematics roots). This cuts build_segments
-# cost from ~15s to ~0.1s per replicate: the block time drops from 8 minutes to
-# ~3 seconds. The 0.95-quantile statistic over 256 × 36K grid points is robust
-# to the coarser intra-interval approximation.
+# Omitting SD/PrD boundaries AND envelope knots reduces breakpoints from ~165K
+# to ~819 (MD/AD/PD level boundaries + kinematics roots only). This resolves
+# two bottlenecks: (a) build_segments cost falls from ~15s to ~0.07s/replicate;
+# (b) cumulative_on_grid and lambda_at are O(N_grid × N_segments/2) — with
+# 36K segments (L1g part 2's downsampled envelope), that was still 7.1 min per
+# block; with 819 segments it is ~12s per block, well clear of the 9-min limit.
+# build_segments' adaptive quadrature (max_depth=6) resolves intra-interval
+# transit peaks to sub-day precision — sufficient for null statistics.
 #
 # The real-build segments (stored in kala_field, loaded for find_windows) are
 # computed with the full fine-grained breakpoints and are unaffected by this fix.
@@ -253,23 +256,26 @@ _NULL_COARSE_LEVELS: frozenset[str] = frozenset({'MD', 'AD', 'PD'})
 
 
 def _null_breakpoints(ev: FieldEvaluator) -> list[float]:
-    """Breakpoints for null replicates: coarse daśā levels + envelope knots.
+    """Breakpoints for null replicates: coarse daśā levels only (MD/AD/PD).
 
-    Excludes SD/PrD boundaries (the 160K+ fine-grained periods). Envelope knots
-    are kept (they change per replicate) but downsampled to one per grid-step day:
-    sub-day precision adds no value when cumulative_on_grid evaluates on a 1-day
-    grid. Childbirth has ~200K envelope knots; this reduces to ~36K, bringing
-    block time from ~9.6 min (connection-timeout territory) to ~1.7 min.
+    Envelope knots are intentionally EXCLUDED. Even at 1-day downsampling they
+    produce ~36K segments for childbirth, which makes cumulative_on_grid O(N²)
+    (36,525 grid-steps × 18K avg linear scan = 6.7s/replicate × 32 = 7.1 min
+    per block). With ladder-only breakpoints (~819 segments) the linear scan is
+    fast: 36,525 × 409 × 10ns = 0.15s/replicate, total ≈ 12s per block.
+
+    Correctness: build_segments' adaptive quadrature (max_depth=6) resolves
+    transit-contact peaks within each 10–30-day ladder interval to sub-day
+    resolution. Precision loss is acceptable for the null distribution — small
+    inaccuracies average out over 256 replicates and the conservative direction
+    (slightly lower q_threshold) matches the docstring's intent.
+
     Clips to [0, horizon_days].
     """
     pts: set[float] = {0.0, ev.horizon_days}
-    # Envelope knots: at most one per grid-step day (L1g part 2).
-    env_sorted = sorted(ev.envelopes.breakpoints())
-    last = -math.inf
-    for t in env_sorted:
-        if t - last >= 1.0:  # 1 day = the cumulative_on_grid grid step
-            pts.add(t)
-            last = t
+    # Ladder: MD/AD/PD only (skip SD/PrD which add 160K+ intervals; skip
+    # envelope knots which cause O(N²) cumulative_on_grid for classes like
+    # childbirth).
     for periods in ev.ladder.values():
         for p in periods:
             if p.level in _NULL_COARSE_LEVELS:
