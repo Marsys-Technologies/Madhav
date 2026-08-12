@@ -1223,3 +1223,42 @@ CONDUCTOR-HEARTBEAT: 2026-08-13T02:25+05:30 (CONDUCTOR of SAMPŪRTI-α) pid=7327
 CONDUCTOR-HEARTBEAT: 2026-08-13T02:45+05:30 (CONDUCTOR of SAMPŪRTI-α) pid=73276 [Run 6 — index 401/456, relocation:8 done (48 min). Pace steady: 2.5 min/block. Separation starting, surgery after. All 4 slow classes will complete by ~91 min. Stage6/7 has ~29 min window. May complete or timeout at start of stage6/7. Watcher handles restart.]
 
 CONDUCTOR-HEARTBEAT: 2026-08-13T02:55+05:30 (CONDUCTOR of SAMPŪRTI-α) pid=73276 [Run 6 — index 418/456, separation:7 done (68 min). Surgery starts at ~72 min. Stage6/7 at ~95 min with ~25 min remaining. May fit if stage6/7 <25 min; watcher catches timeout.]
+
+CONDUCTOR-HEARTBEAT: 2026-08-13T03:56+05:30 (CONDUCTOR of SAMPŪRTI-α) [Run 6 COMPLETE — ka_kshetra LIT. 456/456 substeps, 837,992 rows, ended_at 2026-08-12T22:26:30Z. Stage6/7/8+snapshot completed within the 2-hour window. kala_field_windows=7,650 rows for chart2.]
+
+---
+
+## Heartbeat: 2026-08-13T04:02+05:30 — R2 chart2 COMPLETE; R2 DONE
+
+**Phase**: R2 complete for both charts
+
+**Status**: R2 COMPLETE — all SAMPŪRTI-scope assets lit for both charts
+
+### R2 chart2 (1c826d5a, Abhinandan Mohanty) — COMPLETE
+
+**Run 6** (80886c05): COMPLETE at 22:26:30 UTC (2026-08-12), 111 min from dispatch.
+- 456/456 substeps committed; asset_throughput state = `lit`
+- rows_written = 837,992; kala_field_windows = 7,650
+- Fingerprint resume from 79 pre-committed substeps (marriage:1 + earlier) worked correctly
+- Stage6/7/8 + snapshot completed inside the 2-hour window (contrary to projection at 68-min checkpoint)
+
+**Full-DAG stale-asset check** (post-kshetra): 2 non-lit assets with writers found:
+- `ka_gochara_sweep` (error, 1705 rows): gochara-adjacent asset — outside SAMPŪRTI scope; same error on chart1; not in the 5-exclusion list but CAMPAIGN_COORDINATION binding: no SAMPŪRTI lane touches gochara.
+- `mi_bhara` (error, 0 rows): pre-existing bug `float() argument must be string or NoneType` — same error on chart1 and chart2; outside SAMPŪRTI scope.
+
+**Conclusion**: No SAMPŪRTI-scope assets remain stale for chart2. Full-DAG dispatch not needed.
+
+### R2 Summary (both charts)
+
+| Chart | ID | ka_kshetra rows | kala_field_windows | SAMPŪRTI-scope |
+|-------|-----|-----------------|-------------------|----------------|
+| chart1 | 482012f1 | 837,992 | 7,650 | All lit |
+| chart2 | 1c826d5a | 837,992 | 7,650 | All lit |
+
+**Pre-existing bugs (both charts, outside scope)**:
+- `ka_gochara_sweep` (error): gochara asset, PARIṢKĀRA territory
+- `mi_bhara` (error): float conversion bug, separate L5 defect
+- `bo_samskara` (error on chart1): savepoint bug, blocks cascade of ph_*/mi_* on chart1
+
+**Next**: R3 — Measurement #4 (R14-versioned) + FIELD-BASELINE-DONE coordination marker
+
