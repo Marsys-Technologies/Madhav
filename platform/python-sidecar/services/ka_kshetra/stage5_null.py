@@ -231,13 +231,13 @@ def replicate_evaluator(ev: FieldEvaluator, delta: float) -> FieldEvaluator:
     )
 
 
-# ── L1g + L1h + L1k: null-replicate performance fixes ───────────────────────
+# ── L1g + L1h + L1k + L1n: null-replicate performance fixes ─────────────────
 #
 # L1g (coarse breakpoints): build_segments() calls ln_lambda once per interval.
 # The daśā ladder has 165K+ periods (mostly SD/PrD) → 165K+ intervals — at
 # ~30μs per ln_lambda call that is 15 seconds per replicate, ~8 min per block.
 # Omitting SD/PrD boundaries AND envelope knots reduces breakpoints from ~165K
-# to ~819 (MD/AD/PD + kinematics roots).
+# to ~819 (MD/AD/PD boundaries only; kinematics roots excluded by L1n).
 #
 # L1h (pointer-advance): the real kala_field event classes (childbirth etc.)
 # have 425K+ stored segments, meaning the 819-interval ln_lambda function is
@@ -270,6 +270,21 @@ def replicate_evaluator(ev: FieldEvaluator, delta: float) -> FieldEvaluator:
 # 256 replicates. The conservative direction (slightly lower q_threshold from
 # missing sub-interval peaks) is consistent with the module's upper-bound intent.
 #
+# L1n (exclude kinematics breakpoints from null): kala_field_kinematics holds
+# 120,377 Brent roots (planet direction/station events). These were included via
+# pts.update(ev.extra_breakpoints) in _null_breakpoints. The L1g/L1k analysis
+# assumed ~819 breakpoints (MD/AD/PD boundaries only) but extra_breakpoints
+# inflated that to ~121K intervals → 121K × 3 = ~363K evaluations per replicate
+# × 88μs = ~32s/replicate × 32 = ~17 min/block — the same wall that existed
+# before L1k. Kinematics roots improve real-build precision (stage4 ln_lambda
+# sampling) but are unnecessary for the NULL distribution, which only needs a
+# coarse background approximation that averages out over 256 replicates.
+# Removing extra_breakpoints from _null_breakpoints restores the intended ~819
+# intervals → ~2,457 unique evaluations × 88μs = ~216ms/replicate × 32 = ~7s.
+#
+# After L1g+L1h+L1k+L1n: ~819 intervals × 3 evaluations × 32 replicates ×
+# 88μs ≈ 7s per block — well within the 12s target.
+#
 # Skipped-class nulls (career_setback etc.) never reach this because they raise
 # ClassSkipped before computing segments. The real-build segments (stored in
 # kala_field) are unaffected by any of these fixes.
@@ -287,11 +302,13 @@ _NULL_MAX_DEPTH: int = 1
 def _null_breakpoints(ev: FieldEvaluator) -> list[float]:
     """Breakpoints for null replicates: coarse daśā levels only (MD/AD/PD).
 
-    Envelope knots are intentionally EXCLUDED. Even at 1-day downsampling they
-    produce ~36K segments for childbirth, causing O(N²) cumulative_on_grid
-    (L1g motivation). With ladder-only breakpoints (~819 breakpoints → 818
-    intervals), the null-replicate cost is dominated by ln_lambda evaluation
-    cost in build_segments, addressed by L1k memoisation + max_depth cap.
+    Envelope knots and kinematics roots are intentionally EXCLUDED. Envelope
+    knots produce ~36K segments for childbirth → O(N²) cumulative_on_grid
+    (L1g). Kinematics roots (extra_breakpoints) add 120K+ kala_field_kinematics
+    Brent roots → ~121K intervals → ~17 min/block even with L1k memoisation
+    (L1n). With ladder-only breakpoints (~819 breakpoints → 818 intervals),
+    the null-replicate cost is dominated by ln_lambda evaluation cost in
+    build_segments, addressed by L1k memoisation + max_depth cap.
 
     Correctness: each MD/AD/PD interval spans ~10–30 days. With max_depth=1
     the null replicates resolve each to 2 sub-segments (~15 days). Precision
@@ -311,7 +328,8 @@ def _null_breakpoints(ev: FieldEvaluator) -> list[float]:
             if p.level in _NULL_COARSE_LEVELS:
                 pts.add(p.t_start)
                 pts.add(p.t_end)
-    pts.update(ev.extra_breakpoints)
+    # L1n: extra_breakpoints (120K+ kala_field_kinematics roots) intentionally
+    # EXCLUDED — they inflate intervals from ~819 to ~121K, undoing L1k's gain.
     return sorted(t for t in pts if math.isfinite(t) and 0.0 <= t <= ev.horizon_days)
 
 
