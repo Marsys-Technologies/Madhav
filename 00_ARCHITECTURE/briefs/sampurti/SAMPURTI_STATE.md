@@ -974,3 +974,51 @@ Estimated Run 16 total: 80-100 minutes for all 474 substeps.
   Monitor carefully through remaining slow classes.
 
 **Next**: Monitor through stage6/7 → lit state → R2 (chart 1c826d5a).
+
+## HEARTBEAT 2026-08-12T13:15+00:00 — Run 25 TIMEOUT, Run 26 launched
+
+**Run 25 result: FAILED — writer_timeout_seconds=7200 exceeded**
+
+Run 25 died at 18:42:24 IST (exactly 2h after 16:42 launch):
+```
+TIMEOUT: asset_id=ka_kshetra exceeded writer_timeout_seconds=7200
+```
+
+**Position at death**: separation:3 (index 432/474 = 91%)
+- All 8 childbirth blocks ✓ (confirmed fast finalize via L1o)
+- All 8 foreign_settlement blocks ✓
+- All 8 marriage blocks ✓ (finalize: 658K→700K rows)
+- All 8 relocation blocks ✓ (finalize: 700K→806K rows, +106K rows)
+- All 8 romantic_start blocks ✓ (no rows, fast)
+- Separation blocks 1-3 ✓ (99 total committed in build_substep_progress)
+- Remaining: separation blocks 4-8 + finalize, spiritual_turn, surgery 1-8, travel_event, stage6/7
+
+**Root cause — SYSTEMIC**: The 6 slow event classes (425K kala_field rows each) take
+~24 min each (8 blocks × 3 min/block). Total stage5 for all 6 slow classes:
+~144 min. Plus stages 0-4 (~18 min) + stage6/7 (~30-60 min) = 192-222 min > 7200s.
+
+The writer_timeout is an orchestrator-managed value. FROZEN contract means we cannot
+change it from the writer side. This is a build-time issue, not a correctness issue.
+The fingerprint-based resumption is the only mitigation path.
+
+**Run 26** (run_id: 9331cf85, PID 86352, launched 18:44 IST):
+- Resumed from 96/534 committed substeps (fingerprint matching across runs)
+  NOTE: Run 26 plan has 534 total substeps vs Run 25's 474 — likely due to the
+  dynamic substep plan generating differently (stage6/7 substeps included in total).
+  The 96 committed includes the 99 from DB but fingerprint-matching is strict.
+- Stages 0-3 re-ran quickly (upserts, data already exists, ~2 min total)
+- Expected remaining: ~60-70 min (separation 5 blocks + surgery 8 blocks + fast + stage6/7)
+- Expected to complete WITHIN 7200s ✓ (60-70 min << 2 hours)
+
+**L1o fix status**: CONFIRMED WORKING (stage5finalize:childbirth completed in seconds).
+The 2-hour timeout is independent of the L1o fix — it's the null-block iteration overhead
+across 6 slow event classes, not the finalize itself.
+
+**Systemic note**: Each run can only do ~2 hours of work before timing out. The full
+ka_kshetra build requires ~3-4 hours (stages 0-4 + null blocks for 6 slow classes × 24 min
+each). Fingerprint resumption allows completion across 2 runs:
+- Run 25: stages 0-4 + fast classes + childbirth + foreign_settlement + marriage +
+  relocation + romantic_start + separation:1-3 (99 substeps, 2 hours exactly)
+- Run 26: stages 0-4 (re-run, fast) + separation:4-8 + surgery + remaining → complete
+
+**Next**: Monitor Run 26 through separation completion → surgery → stage6/7 → lit state.
