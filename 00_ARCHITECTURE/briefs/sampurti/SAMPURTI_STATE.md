@@ -1390,5 +1390,12 @@ CONDUCTOR-HEARTBEAT: 2026-08-13T04:50+05:30 (CONDUCTOR of SAMPŪRTI-α) [P3 in f
 - ka_gochara_resonance = LIT on native chart — A2 gate satisfied
 - ka_gochara_v3_century_materialize (run a5a229b6) still in progress — excluded from A2
 
-**Orchestrator start**: about to execute run e24e06c1
+**Orchestrator start**: Cloud Run execution brahma-build-pipeline-job-59lbq dispatched.
+
+**DEFERRAL**: execution 59lbq exited with code 3 — chart 482012f1 locked by β's run a5a229b6.
+- β's PID 64519 running locally at 100% CPU, finalizing ka_gochara_v3_century_materialize
+- All 270 substeps complete (from R3 yesterday); β is in post-substep finalization (~50 min elapsed)
+- Advisory lock PID 1767299 idle-in-transaction in Cloud SQL (polling loop between substeps)
+- Our run e24e06c1 remains in `planned` state — will be re-executed once β releases the lock
+- Background watcher PID 79685 polling every 60s → will auto-re-dispatch Cloud Run once β state ≠ running
 
