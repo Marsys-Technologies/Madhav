@@ -1494,3 +1494,36 @@ Expected chain after A2': ka_gochara → ka_sangam → ka_kalasutra → ka_kala_
 AND: ka_kshetra gets new snapshot_id (A1 gochara pin deployed) → fresh post-β field
 → enables Measurement #5 (post-β corpus, gochara-pinned field)
 
+---
+
+## Heartbeat: 2026-08-13T06:00+05:30 — Context resumed; state re-verified; holding for gate packet
+
+CONDUCTOR-HEARTBEAT: 2026-08-13T06:00+05:30 (CONDUCTOR of SAMPŪRTI-α) [context-resumption check]
+
+### LIVE STATE RE-VERIFICATION
+
+| Asset | State | Rows | Notes |
+|---|---|---|---|
+| ka_kshetra | lit | 566,545 | Checkpoint-resume (pre-β snapshot, A1 not yet deployed) |
+| ka_gochara | stale | 823 | ROOT CAUSE — unblocks ka_sangam once A2' runs |
+| ka_gochara_resonance | lit | 762 | β complete |
+| ka_gochara_v3_century_materialize | lit | 914 | β complete |
+| ka_sangam | error | 9,566 | BLOCKED: upstream ka_gochara did not complete |
+| ka_kalasutra | error | 335,403 | BLOCKED: cascade from ka_sangam |
+| ka_vighnakara | error | 613 | BLOCKED: cascade from ka_gochara + ka_sangam |
+| bo_samskara | lit | 50,104 | ✅ |
+| bo_anveshana | lit | 3,774 | ✅ |
+| mi_bhara | error | 0 | Pre-existing bug: `float(r["w_start"])` → NoneType; out of A2' scope |
+
+### HOLDING STATE
+
+- P-G1 GREEN: ✅ verified (previous heartbeat 05:30 IST)
+- A1 deployment gap: ✅ documented (code on integration, not in Cloud Run container)
+- A2' plan: ✅ documented (exclude {ka_gochara_v3_century_materialize, ka_gochara_resonance, ka_gochara_sweep}; include ka_gochara)
+- Gate packet: awaiting native authorization. Once authorized:
+  1. `gh pr create --base main --head sampurti/integration`
+  2. PARĪKṢAKA review + merge
+  3. Container deploy (Cloud Run rebuilds from new main)
+  4. A2' dispatch
+
+No autonomous action taken this heartbeat — confirmed hold state is correct.
