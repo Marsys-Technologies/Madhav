@@ -231,6 +231,50 @@ def replicate_evaluator(ev: FieldEvaluator, delta: float) -> FieldEvaluator:
     )
 
 
+# ── L1g: coarse breakpoints for null replicates ──────────────────────────────
+#
+# build_segments() calls ln_lambda once per breakpoint interval. The daśā
+# ladder for this chart has 165K+ periods (mostly SD/PrD) which produce 165K+
+# intervals — at ~30μs per ln_lambda call that is 15 seconds per replicate,
+# making each block of 32 replicates take ~8 minutes. The null test only needs
+# the cumulative hazard on a 1-day grid; sub-day (SD/PrD) precision in the
+# segmentation produces no benefit because the grid step is already coarser.
+#
+# Omitting SD/PrD boundaries reduces breakpoints from ~165K to ~1K (MD/AD/PD
+# level boundaries + envelope knots + kinematics roots). This cuts build_segments
+# cost from ~15s to ~0.1s per replicate: the block time drops from 8 minutes to
+# ~3 seconds. The 0.95-quantile statistic over 256 × 36K grid points is robust
+# to the coarser intra-interval approximation.
+#
+# The real-build segments (stored in kala_field, loaded for find_windows) are
+# computed with the full fine-grained breakpoints and are unaffected by this fix.
+
+_NULL_COARSE_LEVELS: frozenset[str] = frozenset({'MD', 'AD', 'PD'})
+
+
+def _null_breakpoints(ev: FieldEvaluator) -> list[float]:
+    """Breakpoints for null replicates: coarse daśā levels + envelope knots.
+
+    Excludes SD/PrD boundaries (the 160K+ fine-grained periods). Envelope knots
+    are kept because they change per replicate (circular shift moves transit
+    contacts in time). Clips to [0, horizon_days].
+    """
+    pts: set[float] = {0.0, ev.horizon_days}
+    pts.update(ev.envelopes.breakpoints())
+    for periods in ev.ladder.values():
+        for p in periods:
+            if p.level in _NULL_COARSE_LEVELS:
+                pts.add(p.t_start)
+                pts.add(p.t_end)
+    pts.update(ev.extra_breakpoints)
+    return sorted(t for t in pts if math.isfinite(t) and 0.0 <= t <= ev.horizon_days)
+
+
+def _null_build_segments(ev: FieldEvaluator) -> list[Segment]:
+    """Build segments for a null replicate using coarse breakpoints (L1g)."""
+    return integrator.build_segments(_null_breakpoints(ev), ev.ln_lambda)
+
+
 def cumulative_on_grid(
     segments: Sequence[Segment],
     horizon_days: float,
@@ -276,7 +320,7 @@ def replicate_stats(
 ) -> dict[int, float]:
     """M_r(L) for every duration bucket, for ONE replicate."""
     if segments is None:
-        segments = replicate_evaluator(ev, delta).build_segments()
+        segments = _null_build_segments(replicate_evaluator(ev, delta))
     cum = cumulative_on_grid(segments, horizon_days, grid_step)
     return {int(b): sliding_window_max(cum, int(b)) for b in buckets}
 
@@ -322,7 +366,7 @@ def run_null(
                                          grid_step=grid_step)
     for r in range(lo, hi):
         rep = replicate_evaluator(ev, grid[r])
-        segs = rep.build_segments()
+        segs = _null_build_segments(rep)  # L1g: coarse breakpoints (MD/AD/PD only)
         acc.add_replicate(
             index=r,
             stats=replicate_stats(rep, 0.0, horizon_days, buckets=buckets,
