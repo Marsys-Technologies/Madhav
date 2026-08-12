@@ -1454,3 +1454,43 @@ Content on `sampurti/integration` not yet on `main` (20+ commits):
 **Gate packet requires native authorization before execution.**
 No integration→main PR exists yet. Awaiting native direction.
 
+---
+
+## Heartbeat: 2026-08-13T05:45+05:30 — R3 complete; ka_gochara gap; A2' plan
+
+CONDUCTOR-HEARTBEAT: 2026-08-13T05:45+05:30 (CONDUCTOR of SAMPŪRTI-α) [R3 post-mortem complete]
+
+### R3 RESULTS (run e24e06c1, exec 64k4f, 9m04s — SUCCEEDED with partial assets)
+
+| Asset | Result | Notes |
+|---|---|---|
+| ka_kshetra | ✅ lit 566,545 | Checkpoint-resume (old snapshot — A1 not in container) |
+| bo_samskara | ✅ lit 40,092 | Freshly rebuilt |
+| bo_anveshana | ✅ lit 3,747 | Freshly rebuilt |
+| bo_chart_gestalt | ✅ lit 5 | Freshly rebuilt |
+| bo_pramana_mapa | ✅ lit 1 | Freshly rebuilt |
+| bo_samvada | ✅ lit 1 | Freshly rebuilt |
+| ka_sangam | ❌ BLOCKED — upstream: ka_gochara (stale) | |
+| ka_kalasutra/ka_vighnakara/etc. | ❌ BLOCKED — cascade from ka_sangam | |
+| mi_*/ph_* | ❌ pre-existing errors | Separate scope |
+
+### ROOT CAUSE: ka_gochara STALE (A2 dispatch-exclusion gap)
+
+β's rebuild of ka_gochara_resonance cascaded `stale` to ka_gochara (823 rows, stale).
+A2 dispatch script incorrectly included ka_gochara in GOCHARA_EXCLUSIONS.
+Result: ka_sangam permanently blocked; all downstream ka_* + ph_*/mi_* cascade blocked.
+
+**Coordination §3 allows α to RUN (not edit) gochara writers in a full-DAG rebuild.**
+ka_gochara is STALE (not error) — will rebuild cleanly once run.
+
+### A2' PLAN (after gate packet + container deploy)
+
+Revised exclusions: `{ka_gochara_v3_century_materialize, ka_gochara_resonance, ka_gochara_sweep}`
+- ka_gochara INCLUDED (α may run it per §3; stale → clean rebuild)
+- ka_gochara_sweep excluded (error, pre-existing, unrelated to A2 scope)
+
+Expected chain after A2': ka_gochara → ka_sangam → ka_kalasutra → ka_kala_darshana →
+  ka_vighnakara → ka_bhavishya_lekha / ka_jivana_parva / ka_tulana / ka_taranga
+AND: ka_kshetra gets new snapshot_id (A1 gochara pin deployed) → fresh post-β field
+→ enables Measurement #5 (post-β corpus, gochara-pinned field)
+
