@@ -134,3 +134,5 @@ CONDUCTOR-HEARTBEAT: 2026-08-12T22:09:18Z pid=$$ host=Montys-MacBook-Pro.local s
 [G-γ1 PASS: all 4 facets confirmed via deployed MCP — term_breakdown_summary ✓ citation_verse_refs ✓ nested_hierarchy.roots=3 ✓ coverage_quality.tier=thin ✓; FIELD-INTEGRATED watching for G-P4]
 CONDUCTOR-HEARTBEAT: 2026-08-12T22:13:54Z pid=$$ host=Montys-MacBook-Pro.local session=γ
 [STATUS: G-γ1 PASS committed to coordination (3b7ba6baf); α at R6 chart2 separation:7 — FIELD-INTEGRATED still several hours away; G-P4 blocked; watching coordination]
+CONDUCTOR-HEARTBEAT: 2026-08-12T22:35:40Z pid=$$ host=Montys-MacBook-Pro.local session=γ
+[STATUS: G-γ1 PASS ✓ (recorded); all 5 C-lanes merged + deployed; α at R2 COMPLETE (chart2 ka_kshetra LIT, 7,650 kala_field_windows) but FIELD-INTEGRATED blocked on: R3 (measurement #4) + YANTRA-CORPUS-READY from β (B5 lease claimed) + P3 full re-field (kala_gochara_windows field_window_id enrichment) + G-P3b gate; γ polling coordination branch; G-P4 gate blocked]
