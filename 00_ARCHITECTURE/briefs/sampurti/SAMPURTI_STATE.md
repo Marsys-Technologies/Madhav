@@ -809,3 +809,18 @@ CONDUCTOR-HEARTBEAT: 2026-08-11T23:08+05:30 pid=25269 [R1 Run 12 — substep 92/
 CONDUCTOR-HEARTBEAT: 2026-08-12T05:02+05:30 pid=CONDUCTOR [R1 Run 12b dispatched (26a44711) via nohup PID=32841. Run 12a (43a038b2) orphan-watchdog fired — background task killed the process; old run marked failed, lock cleared. 12b starting fresh from dormant. Expected completion ~05:20 IST. Stage0 kicking off.]
 
 CONDUCTOR-HEARTBEAT: 2026-08-12T06:30+05:30 pid=CONDUCTOR [R1 diagnosis: Run 12b confirmed L1j active but hung on stage4:childbirth:0 — root cause L1e: _run_stage4 called cur.execute() per segment (one DB round-trip per row). 40–80K segs/decade × 7ms/round-trip = 5–10 min/decade. Same defect class as L1d (stage3 single→batch). L1e fix: PR #1239 sampurti/l1e-stage4-batch, executemany() batch. CI in progress — transient Checkout failure on Fact-Category Pinning Gate (infra, not code); rerun queued post-run. Run 13 dispatched but accidentally killed by SIGUSR1 (macOS terminates Python on SIGUSR1). All other CI checks GREEN.]
+
+## R1 RUN 14 — 2026-08-12 ~07:17 IST
+
+**L1e FIX CONFIRMED GREEN:**
+- run_id: `1a598e4c-6e6f-44a7-96b9-9d6555406dee`
+- PR #1239 merged (1826db3a) — executemany batch insert for stage4 + FakeCursor.executemany added
+- Deploy green on 1826db3a (Build & Deploy Sidecar: success)
+- childbirth:0 completed at index 93/534 with rows_written=647,441 (wrote 80,896 rows vs. hanging)
+- childbirth:1 completed: 728,643 rows
+- childbirth:2 completed: 811,783 rows
+- childbirth:3 completed: 853,857 rows
+- childbirth:4 completed: 880,386 rows
+- childbirth:5 completed: 906,024 rows
+- Processing ~60-90 seconds per decade (vs. multi-hour hang = 5-10 min/decade × IO wait)
+- Hard blocker lifted. Run 14 proceeding through all 27 classes.
