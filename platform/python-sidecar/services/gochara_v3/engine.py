@@ -209,6 +209,9 @@ _VEDHA_NO_SCALE_ROW_FACTOR: float = 0.70
 # Factor for a vedha row with malefic_count=0 (an obstruction is active but
 # entirely from benefic planets — mildest suppression)
 _VEDHA_ZERO_MALEFIC_FACTOR: float = 0.85
+# B3 Lattā effective malefic count (structural prior — Phaladeepika PG338-339 severity;
+# Ketu absent from classical source).
+_LATTA_EFFECTIVE_MALEFIC_COUNT: int = 3
 
 
 def _suppression_factor_for_grade(effect_grade: str) -> float:
@@ -277,6 +280,7 @@ def _compute_quality_gates_from_context(
 
         # This vedha overlaps the evaluation window.
         detail = vrow.detail
+        # B3: vedha_kind='latta' rows use _LATTA_EFFECTIVE_MALEFIC_COUNT — see effect commit.
         malefic_count = detail.get("malefic_count", 0)
         try:
             malefic_count = int(malefic_count)
