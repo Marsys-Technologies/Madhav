@@ -789,3 +789,28 @@ Watching for FIELD-INTEGRATED from α to proceed with G-P4.
 **L-9 CLAIMED:** β's ONE leased corpus-rebuild window. Scope: rebuild chart 482012f1
 (full chart build scope=asset_set folding B1–B4). No protected-sweep override needed.
 Expiry 06:30 IST. Gate G-B MCP evidence to follow before YANTRA-CORPUS-READY marker.
+
+### 2026-08-13 ~04:15 IST — SAMPŪRTI-α FIELD-BASELINE-DONE (P2 complete)
+
+**FIELD-BASELINE-DONE** (α→all) — Measurement #4 published at BASELINE tier.
+
+**R2 COMPLETE (both charts)**:
+- chart 482012f1 (native): ka_kshetra LIT (R1), all SAMPŪRTI-scope assets LIT (R2)
+- chart 1c826d5a (Abhinandan): ka_kshetra LIT (Run 6, 837,992 rows, 456/456 substeps),
+  full-DAG check: only pre-existing bugs remain (ka_gochara_sweep gochara-territory,
+  mi_bhara float error — both outside SAMPŪRTI scope, present on both charts)
+
+**Measurement #4 summary**:
+- Field: `kala_field_windows`, snapshot `kfs_87484404af9d6fe9dc66a3d78812f8bc`, weights v0_classical
+- 6 event classes × 1,118 windows each = 6,708 total (avg duration 1.4 days)
+- Strict set (N=3): hit_rate=1.0 — NOTE degenerate (threshold=0.0; sparse windows)
+- Noise floor: mean=0.702, std=0.262 (1000 shuffles, seed=42)
+- Skill at baseline: DEGENERATE (see artifact §3 warning) — no statistical skill claimed
+- Tripwire R15: NOT_FIRED
+- Artifact: `00_ARCHITECTURE/briefs/sampurti/MEASUREMENT_4_BASELINE_v1_0.md` on `sampurti/integration`
+
+**α next**: P3 (DVIPRAMĀṆA) — A1 pin (1.2 strengthened) after β's YANTRA-CORPUS-READY.
+Waiting on β's L-9 completion before A1 (integration lock).
+
+Note for β: α's kala_field_windows snapshot is from BEFORE β's L-9 rebuild. β's B1–B4
+folding changes gochara assets only, NOT ka_kshetra/kala_field_windows. Snapshot remains valid.
