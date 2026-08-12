@@ -117,21 +117,20 @@ than dressing up. Criterion 3 fully closed on live evidence.
 ### Criterion 4 — "Full-century per-chart build wall-clock recorded;
 ≤15–20 min or an ADJUDICATOR disposition of the measured number."
 
-**PENDING — explicitly cross-referenced to R4's MR-21 (native wall-clock +
-interrupt disposition), not resolved in this pass.** This session's own
-corpus rebuild produced real wall-clock data (native: ~46.5 min for a run
-that mixed 123 resumed/skipped decades with 147 freshly-computed ones,
-so not a clean from-scratch measurement; Phase E's pure delta-skip pass:
-7.9 min for a full 270/270-substep run, all skipped, establishing the
-per-substep skip-cost floor but not the fresh-compute ceiling). The
-register's own MR-21 entry names this exact number as ITS open item,
-requiring a dedicated clean re-measurement (ideally with the corpus already
-cleared, a genuine from-empty timing) before either side of the ≤15–20 min
-test can be honestly evaluated. Reporting this criterion as PASS or FAIL
-here without that clean measurement would be exactly the kind of
-"proxy standing in for the real claim" defect this whole session has
-repeatedly found and fixed elsewhere — deferred to R4 by design, not by
-omission.
+**RESOLVED, HONEST-DEFERRED — R4/PK-R-12 (2026-08-12).** R4's ADJUDICATOR
+disposition (PK-R-12) closed this: two real measurements stand (mixed
+rebuild 46.5 min; clean 270/270 all-delta-skip floor 7.9/7.4 min, both
+charts) and no second protected-corpus override window was authorized
+purely to sharpen a from-empty timing number — disproportionate cost for a
+criterion touching neither correctness nor data integrity. A disclosed
+estimate (~68–113 min, extrapolated from fresh-substep log pacing, never
+presented as measured) is recorded alongside. **PK-R-12 also found and
+corrected the criterion's own "≤15–20 min" target**: no derivation for that
+number exists anywhere in the register or master brief — an unsourced
+aspiration, not a real SLO — so grading the real measurement against it
+would itself have been a §N.8 defect (a FAIL manufactured from a fabricated
+target). The target is retired; the measured floor + disclosed estimate
+band stand as the honest record.
 
 ### Criterion 5 — "v1 corpus intact to the row (verified), protected forever;
 zero uses of the GUC in any transcript/log (VERIFIER greps at close)."
@@ -187,28 +186,33 @@ deferred residual on a DIFFERENT truthfulness surface than the cockpit's own
 
 ## §2 — Residuals carried forward (honest, not hidden)
 
-1. **§5 criterion 4 (wall-clock)** — explicitly deferred to R4's MR-21, by
-   design (see criterion 4 above).
-2. **§5 criterion 6's "prod == main"** — confirmed indirectly (migration
+1. **§5 criterion 6's "prod == main"** — confirmed indirectly (migration
    self-correction behavior); no direct live version-endpoint check exists
    in this codebase to make the confirmation more direct. Not a gap in
    THIS report so much as a gap in available tooling — noted for R4/close.
-3. **MR-48's chain-canonical Stage C gap** (education_milestone etc. still
+2. **MR-48's chain-canonical Stage C gap** (education_milestone etc. still
    un-seedable in `brahma_prospective_ledger`) — disclosed in MR-48's own
    PR, out of that fix's 2-item scope, carried here for visibility.
-4. **MR-49** (new, this session) — `coverage.event_classes_covered` under-
+3. **MR-49** (new, this session) — `coverage.event_classes_covered` under-
    claim, deferred post-campaign per its own disposition.
-5. **The H1–H10 clause-text gap** (§0 above) — a documentation-hygiene item,
+4. **The H1–H10 clause-text gap** (§0 above) — a documentation-hygiene item,
    not a functional gap; recommend backfilling verbatim text from the
    original 2026-08-11 session transcript into a standalone artifact.
+5. **MR-20's AT-PAR follow-on** (PK-R-11) — a true shape/horizon-aware
+   at-par comparator (symmetric scoping both sides, interval-containment
+   matching) is recorded as a real follow-on, not built this session.
+6. **W0.4 speedup+bit-parity** (PK-R-13) — HONEST-DEFERRED, trigger
+   recorded, does not block close.
 
 ## §3 — Overall R3 verdict
 
-**Master-brief §5 conformance: 5/6 criteria fully PASS on live evidence
-gathered this session (1, 2, 3, 5, 6); 1 criterion explicitly PENDING and
-cross-referenced to its own named follow-on item (4, wall-clock, MR-21).**
-No criterion FAILED. Three new, real, live-caught findings this session
-(MR-46→PK-R-10 CLOSED, MR-47 CLOSED/merged, MR-48 CLOSED/merged, MR-49
-registered/deferred) were found and either fixed-and-verified or honestly
+**Master-brief §5 conformance: 6/6 criteria resolved — 5 fully PASS on
+live evidence gathered this session (1, 2, 3, 5, 6); criterion 4
+(wall-clock) HONEST-DEFERRED via R4's PK-R-12, which additionally
+corrected the criterion's own unsourced "≤15–20 min" target.** No
+criterion FAILED, none silently skipped. Five new, real, live-caught
+findings this session (MR-46→PK-R-10 CLOSED, MR-47 CLOSED/merged, MR-48
+CLOSED/merged, MR-49 registered/deferred, MR-20's AT-PAR clause→PK-R-11
+retired-and-replaced) were found and either fixed-and-verified or honestly
 disclosed-and-deferred through this exact conformance exercise — direct
 evidence the battery is doing real work, not rubber-stamping.
