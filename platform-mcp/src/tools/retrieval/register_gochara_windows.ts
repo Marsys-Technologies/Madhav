@@ -1614,7 +1614,7 @@ export async function computeGocharaForecast(
   const resolution_breakdown = computeResolutionBreakdown(disclosures)
 
   // C2: build era⊃month⊃day hierarchy from the enriched windows.
-  const nested_hierarchy = buildNestedHierarchy(windowsWithDisclosure as ServedWindow[])
+  const nested_hierarchy = buildNestedHierarchy(windowsWithDisclosure as unknown as ServedWindow[])
 
   const content: Record<string, unknown> = {
     windows: windowsWithDisclosure,
