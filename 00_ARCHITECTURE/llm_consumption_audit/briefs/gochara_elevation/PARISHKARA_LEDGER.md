@@ -3163,3 +3163,29 @@ campaigns' own active worktrees, not PARIṢKĀRA's to touch).
 (L-7 corrected+released), worktree/branch hygiene done. Only MR-29 remains** — a fresh,
 independent, default-REFUTED opus re-close verdict over the ENTIRE campaign, the
 campaign's own final, LAST item by design (never run until everything else closes).
+
+## 2026-08-12 ~06:0x IST — MR-29 closed, CURRENT_STATE fix corrected + properly landed on main (PR #1237)
+
+CONDUCTOR-HEARTBEAT: 2026-08-12T06:00:00Z
+
+MR-29 (fresh independent re-close verdict) returned CONFIRMED on substance after genuinely
+adversarial re-verification of every load-bearing claim against live primary evidence. Found
+one real defect: the register itself still said "MR-47 OPEN" and had no MR-48 closure entry,
+despite both being described as closed elsewhere -- a live registry-disagreement, exactly the
+defect class this campaign exists to catch, now caught in its own governance surface. Fixed:
+proper closure entries added for both, with gate evidence pasted, including an honest
+disclosure of MR-48's own gate-literalism gap rather than silently treating it as satisfied.
+
+Attempted to record the campaign's close in `CURRENT_STATE_v1_0.md` (the project-wide "you are
+here" pointer) directly on the `parishkara/campaign` worktree's stale copy -- caught my own
+mistake before pushing anything broken: that copy had drifted from `origin/main`'s real current
+state (SAMPŪRTI had independently, legitimately claimed "v6.58" for its own Wave 0 close since
+the campaign branch's copy was cloned -- a genuine cross-campaign version-number collision, not
+a conflict of substance). Also discovered GOCHARA-UTKARṢA's own original "flawlessly closed"
+claim never actually reached `main` at all -- it lived only on the now-defunct campaign branch,
+so there was nothing on main to literally supersede, only a gap to fill. Corrected: rebuilt the
+entry fresh off `origin/main`, inserted as v6.59 above SAMPŪRTI's real v6.58 without touching it,
+opened PR #1237.
+
+**MR-29 CLOSED. R4 fully complete pending PR #1237's merge.** Once merged, the campaign is
+ready to seal CAMPAIGN-STATUS: COMPLETE with no outstanding blocking items.
