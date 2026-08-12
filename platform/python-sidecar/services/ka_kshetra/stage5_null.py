@@ -231,26 +231,26 @@ def replicate_evaluator(ev: FieldEvaluator, delta: float) -> FieldEvaluator:
     )
 
 
-# ── L1g: coarse breakpoints for null replicates ──────────────────────────────
+# ── L1g + L1h: null-replicate performance fixes ──────────────────────────────
 #
-# build_segments() calls ln_lambda once per breakpoint interval. The daśā
-# ladder for this chart has 165K+ periods (mostly SD/PrD) which produce 165K+
-# intervals — at ~30μs per ln_lambda call that is 15 seconds per replicate,
-# making each block of 32 replicates take ~8 minutes. The null test only needs
-# the cumulative hazard on a 1-day grid; sub-day (SD/PrD) precision in the
-# segmentation produces no benefit because the grid step is already coarser.
-#
+# L1g (coarse breakpoints): build_segments() calls ln_lambda once per interval.
+# The daśā ladder has 165K+ periods (mostly SD/PrD) → 165K+ intervals — at
+# ~30μs per ln_lambda call that is 15 seconds per replicate, ~8 min per block.
 # Omitting SD/PrD boundaries AND envelope knots reduces breakpoints from ~165K
-# to ~819 (MD/AD/PD level boundaries + kinematics roots only). This resolves
-# two bottlenecks: (a) build_segments cost falls from ~15s to ~0.07s/replicate;
-# (b) cumulative_on_grid and lambda_at are O(N_grid × N_segments/2) — with
-# 36K segments (L1g part 2's downsampled envelope), that was still 7.1 min per
-# block; with 819 segments it is ~12s per block, well clear of the 9-min limit.
-# build_segments' adaptive quadrature (max_depth=6) resolves intra-interval
-# transit peaks to sub-day precision — sufficient for null statistics.
+# to ~819 (MD/AD/PD + kinematics roots). build_segments' adaptive quadrature
+# (max_depth=6) resolves intra-interval transit peaks — sufficient for nulls.
 #
-# The real-build segments (stored in kala_field, loaded for find_windows) are
-# computed with the full fine-grained breakpoints and are unaffected by this fix.
+# L1h (pointer-advance): the real kala_field event classes (childbirth etc.)
+# have 425K+ stored segments, meaning the 819-interval ln_lambda function is
+# highly curved. Adaptive refinement maxes out at depth 6 → 819 × 64 ≈ 52K
+# null segments per replicate. cumulative_on_grid()'s prior loop called
+# integrator.integrate() — restarting a linear scan from seg 0 each grid step —
+# O(N_grid × N_seg) = 36525 × 52K ≈ 950M ops per replicate → 7+ min/block.
+# Skipped-class nulls (career_setback etc.) never reach this because they raise
+# ClassSkipped before computing segments. Pointer-advance in cumulative_on_grid
+# and _lambda_grid_fast gives O(N_grid + N_seg) ≈ 89K → sub-second.
+#
+# The real-build segments (stored in kala_field) are unaffected by either fix.
 
 _NULL_COARSE_LEVELS: frozenset[str] = frozenset({'MD', 'AD', 'PD'})
 
@@ -295,18 +295,41 @@ def cumulative_on_grid(
     horizon_days: float,
     grid_step: float = 1.0,
 ) -> list[float]:
-    """Λ(0, t) at every grid point, computed with the EXACT segment integral.
+    """Λ(0, t) at every grid point: O(N_grid + N_seg) pointer-advance.
 
     Returned as a cumulative array so the sliding-window maximum below is O(N)
     per bucket instead of O(N·L): Λ(t, t+L) = cum[t+L] − cum[t]. The integral is
     exact per step, so the cumulative is exact up to floating-point summation
     (which is precisely why `_EXCEEDANCE_REL_TOL` exists — see its comment).
+
+    L1h: prior version called integrator.integrate(segments, k*gs, (k+1)*gs) for
+    every grid step, restarting the linear scan from segment 0 each time —
+    O(N_grid × N_seg) total. With ~52K null segments (L1g's 819 coarse intervals
+    × max-depth-6 adaptive refinement for high-curvature classes like childbirth)
+    and 36525 grid steps, that was 950M operations per replicate → 7+ min/block.
+    Pointer-advance: O(N_grid + N_seg) ≈ 89K operations → sub-second.
     """
     n = int(round(horizon_days / grid_step))
     cum = [0.0] * (n + 1)
+    if not segments:
+        return cum
     running = 0.0
+    n_segs = len(segments)
+    j = 0  # pointer: first segment that might overlap [a, b)
     for k in range(n):
-        running += integrator.integrate(segments, k * grid_step, (k + 1) * grid_step)
+        a = k * grid_step
+        b = a + grid_step
+        # Advance j past segments that end at or before a (no overlap with [a, b))
+        while j < n_segs and segments[j].t_end <= a:
+            j += 1
+        # Sum contributions from all segments overlapping [a, b) without moving j
+        i = j
+        while i < n_segs and segments[i].t_start < b:
+            u = max(a, segments[i].t_start)
+            v = min(b, segments[i].t_end)
+            if v > u:
+                running += integrator.segment_integral(segments[i], u, v)
+            i += 1
         cum[k + 1] = running
     return cum
 
@@ -350,6 +373,36 @@ class NullResult:
     max_stats: dict[int, list[float]] = field(default_factory=dict)
 
 
+def _lambda_grid_fast(
+    segments: Sequence[Segment],
+    horizon_days: float,
+    grid_step: float = 1.0,
+) -> list[float]:
+    """λ at every grid point: O(N_grid + N_seg) pointer-advance.
+
+    Replaces N_grid individual integrator.lambda_at(segs, t) calls, each of
+    which scans segs linearly from index 0. With 52K null segments and 36525
+    grid steps that was 950M comparisons per replicate; pointer-advance over the
+    sequential grid reduces this to O(N_grid + N_seg) ≈ 89K.
+    """
+    n = int(round(horizon_days / grid_step))
+    if not segments:
+        return [0.0] * n
+    n_segs = len(segments)
+    vals = [0.0] * n
+    j = 0  # pointer into segments
+    for k in range(n):
+        t = k * grid_step
+        # Advance j past segments that end at or before t
+        while j < n_segs and segments[j].t_end <= t:
+            j += 1
+        if j < n_segs:
+            seg = segments[j]
+            if seg.t_start <= t < seg.t_end:
+                vals[k] = integrator.segment_lambda(seg, t)
+    return vals
+
+
 def run_null(
     ev: FieldEvaluator,
     horizon_days: float,
@@ -386,10 +439,7 @@ def run_null(
             index=r,
             stats=replicate_stats(rep, 0.0, horizon_days, buckets=buckets,
                                   grid_step=grid_step, segments=segs),
-            lambda_grid=(
-                integrator.lambda_at(segs, k * grid_step)
-                for k in range(int(round(horizon_days / grid_step)))
-            ),
+            lambda_grid=_lambda_grid_fast(segs, horizon_days, grid_step),  # L1h
         )
     return acc.finalize()
 
