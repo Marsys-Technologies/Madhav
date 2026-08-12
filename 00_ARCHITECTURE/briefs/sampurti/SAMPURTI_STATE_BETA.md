@@ -57,7 +57,7 @@ B1 → B2 → B3 → B4 → B5 (sequential within β; per mechanism before next)
 
 | Lane | Scope | Branch | Status | PARĪKṢAKA | Evidence |
 |---|---|---|---|---|---|
-| B1 | Wire w23_tara_bala into engine.py production λ; blind-spec commit first; unit+parity suites | sampurti/β-b1-tara-bala | NOT-STARTED | — | — |
+| B1 | Wire w23_tara_bala into engine.py production λ; blind-spec commit first; unit+parity suites | sampurti/β-b1-tara-bala | VERIFIED-MERGE-QUEUED | VERIFIED (8/8 checks) | PR #1248 in merge queue; CI green; PARĪKṢAKA VERIFIED |
 | B2 | w30_nodal_drishti (Rahu/Ketu 5/7/9; L1 constants verbatim; "later tradition" hedge preserved) | sampurti/β-b2-nodal-drishti | NOT-STARTED | — | — |
 | B3 | Lattā → quality_gates (existing malefic-scale path; Ketu absence disclosed) | sampurti/β-b3-latta | NOT-STARTED | — | — |
 | B4 | Resonance tokenizer fix (qualifier tokens; "maraka lords" compound) + rebuild resonance | sampurti/β-b4-resonance-tokenizer | NOT-STARTED | — | — |
@@ -67,7 +67,7 @@ B1 → B2 → B3 → B4 → B5 (sequential within β; per mechanism before next)
 
 | Mechanism | Pre-wire baseline λ (native chart 482012f1) | Post-wire delta | Ablation verdict |
 |---|---|---|---|
-| w23_tara_bala | TBD | TBD | PENDING |
+| w23_tara_bala | λ mean=0.197083 (business_launch, 52 JDs, 2026) | delta mean=−0.008025 (−4.1%); tara mods range [0.70,1.20] std=0.183 | POSITIVE (genuine firing) |
 | w30_nodal_drishti | TBD | TBD | PENDING |
 | Lattā (B3) | TBD | TBD | PENDING |
 
@@ -112,6 +112,8 @@ CONDUCTOR-HEARTBEAT: 2026-08-12T20:31:00Z pid=59044 host=Montys-MacBook-Pro.loca
 
 CONDUCTOR-HEARTBEAT: 2026-08-12T20:48:00Z pid=59044 host=Montys-MacBook-Pro.local session=β [B1 builder RUNNING (agent a6c394e35b57daf1a) — writing parity test; read ClassContext+NatalFacts schema; TDD failing test phase; context resumption after compaction]
 
+CONDUCTOR-HEARTBEAT: 2026-08-12T21:10:00Z pid=59044 host=Montys-MacBook-Pro.local session=β [B1 COMPLETE — PR #1248 in merge queue; PARĪKṢAKA VERIFIED (8/8); ablation: delta=−4.1%; proceeding to B2 builder dispatch]
+
 ### 2026-08-13 02:18 IST — B1 BUILDER IN PROGRESS
 
 B1 builder (agent a6c394e35b57daf1a) dispatched to worktree sm-b-b1-tara-bala.
@@ -119,3 +121,28 @@ Status: actively writing test_w23_engine_parity.py (TDD phase).
 Builder has read: ClassContext, NatalFacts, evaluate_lambda_vector, _evaluate_single_from_context.
 Next builder step: blind-spec commit → effect commit → PR.
 Conductor: monitoring; will dispatch PARĪKṢAKA after builder completes and PR is open.
+
+### 2026-08-13 02:40 IST — B1 COMPLETE (PARĪKṢAKA VERIFIED)
+
+**B1 DONE:** PR #1248 [SM-β] w23_tara_bala wiring — in merge queue (CI green, PARĪKṢAKA VERIFIED).
+
+**PARĪKṢAKA verdict (all 8 checks PASS):**
+1. Blind-spec commit order: PASS — spec (a23cd2b24) before effect (9160efcde) ✓
+2. Spec commit content: PASS — import + constant + formula comment; NO effect code ✓
+3. Effect placement: PASS — after activity, before quality_gates; formula updated ✓
+4. I2 compliance: PASS — no gochara_grammar files touched ✓
+5. Transit longitude source: PASS — swe.calc_ut(t_jd, swe.MOON, swe.FLG_SIDEREAL) ✓
+6. Parity test: PASS — AC-E1/E2/E3 + _FakeSwe deterministic stub ✓
+7. Modifier values: PASS — TARA_MODIFIERS verbatim from Muhurta Chintamani ✓
+8. CI green: PASS — all 19 non-skipped checks pass ✓
+
+**ABLATION (w23_tara_bala, business_launch, 52 JDs, 2026):**
+- Baseline (disabled): mean λ = 0.197083
+- Wired (enabled):     mean λ = 0.189058
+- Delta: mean = −0.008025 (−4.1%); std = 0.043282
+- Tara modifiers: mean=0.968, std=0.183, range=[0.70, 1.20]; all 9 taras firing ✓
+- Note: psycopg2/psycopg3 incompatibility in _fetch_natal_facts (pre-existing, not B1's bug);
+  ablation measured with manually-supplied NatalFacts via psycopg3 connection.
+
+NEXT-ACTION: Dispatch B2 builder (w30_nodal_drishti, Rahu/Ketu 5/7/9 aspects).
+B2 branches off origin/main (parallel to B1 merge queue); β-b2-nodal-drishti branch.
