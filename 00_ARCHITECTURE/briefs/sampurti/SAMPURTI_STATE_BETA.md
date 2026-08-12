@@ -107,3 +107,5 @@ NEXT-ACTION: Dispatch B1 builder (sampurti/β-b1-tara-bala off origin/main).
 Builder: wire w23_tara_bala into engine.py production λ.
 Sequence: (1) blind-spec commit (parameter definitions, toggle key, formula location)
 BEFORE effect code; (2) effect code + unit tests + parity suite; (3) PR → main titled [SM-β].
+
+CONDUCTOR-HEARTBEAT: 2026-08-12T20:31:00Z pid=59044 host=Montys-MacBook-Pro.local session=β [B1 design complete: Moon-transit tara modifier, multiplicative into activity; swe.calc_ut(t_jd, swe.MOON, swe.FLG_SIDEREAL) for transit lon; dispatching builder now]
