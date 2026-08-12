@@ -849,3 +849,25 @@ Dispatch Run 16 fresh (full reset) with L1e+L1f+L1g all applied locally.
 Estimated Run 16 total: 80-100 minutes for all 474 substeps.
 
 **Action**: Kill PID 19421, dispatch Run 16.
+
+## HEARTBEAT 2026-08-12T08:30+00:00 — Run 22 stage5:childbirth blocks 1-5 committed
+
+**Context**: Continuation of overnight session after context compaction.
+
+**L1n fix** (PR #1243, commit af5867d02) merged + deployed:
+- Removed `pts.update(ev.extra_breakpoints)` from `_null_breakpoints` in stage5_null.py
+- 120,377 kinematics Brent roots no longer inflate null breakpoints from ~819 → ~121K
+- Observed ~3 min/block (vs predicted 7s — remaining bottleneck: EnvelopeIndex.circular_shift 166K-primitive Python loop × 32 replicates + FieldEvaluator.__init__ ladder re-sort per replicate)
+- ~3 min/block is still 5-6× better than pre-L1n ~17+ min/block
+
+**Run 22 status** (PID 55021, run_id: 1c6e818b-90c1-4275-9937-c4b39073755f):
+- All event classes SKIPPED (no_class_prior_row) except childbirth
+- stage5:childbirth block 1 → committed (index 295)
+- stage5:childbirth block 2 → committed (index 296)
+- stage5:childbirth block 3 → committed (index 297)
+- stage5:childbirth block 4 → committed (index 298)
+- stage5:childbirth block 5 → committed (index 299)
+- Block 6 currently in progress (~14:00 IST)
+- Remaining: blocks 6-8 + finalize → ~9 minutes
+
+**Next**: After R1 completes → R2 (S5 full-DAG both charts sequential per REBASE_PLAN §4 R2).
