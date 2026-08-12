@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.57
+version: 6.59
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,52 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.59 (2026-08-12, PARIṢKĀRA CAMPAIGN CLOSE — genuine, MR-29-verified close of the
+    GOCHARA-UTKARṢA transit-prediction elevation): GOCHARA-UTKARṢA (v1 daily-grid gochara
+    sweep → v3 arc-solved engine) declared itself closed on its own campaign branch
+    2026-08-10, "flawlessly integrated, confirmed by successful testing" — that claim was
+    never merged to main and was, independently, FALSE at the time: a native-directed
+    post-close audit (POST_CLOSE_GAP_REGISTER_v1_0.md, 33 gaps, 6 SEV-1) found production
+    tools 500ing, calibration data dishonestly stamped, valence hardcoded, ablations never
+    run against real data, and several required numbers simply absent. PARIṢKĀRA — a
+    dedicated remediation campaign — was chartered to close every one of those 33 gaps for
+    real, via live execution against production-shaped environments, tracked as a 49-item
+    register (`00_ARCHITECTURE/llm_consumption_audit/briefs/gochara_elevation/
+    MASTER_REMEDIATION_REGISTER_v2_0.md`, documentation-only branch `parishkara/campaign`
+    — the register/ledger narrative lives there; all actual code/migrations landed on
+    `main` via ordinary PRs, same as any other campaign) in a single continuously-appended,
+    evidence-pasted ledger (`PARISHKARA_LEDGER.md`, same branch). This entry is that
+    campaign's own genuine close, sealed only after a fresh, independent, default-REFUTED
+    re-close verdict (MR-29) confirmed every load-bearing claim against primary evidence —
+    live DB queries, live MCP calls, fresh test re-runs, git history — not narrative.
+    Production state (verified live, 2026-08-12, both canonical charts):
+    `kala_gochara_windows` gen='3.0' rows=943 (native)/941 (Abhinandan) — the full 27-class
+    century build; `kala_gochara_windows_v2` gen='g3_utkarsha' rows=914/916, full
+    peak-anchored era⊃month⊃day hierarchy + chain rows + honestly-marked point-class
+    envelopes (`shape_conformance`, zero NULLs anywhere); v1 corpus intact and unchanged
+    (native=16297, Abhinandan=19323, cb73cd3d=2667 — the I1 protection invariant HOLDS);
+    calibration honestly `structural_prior` (zero out-of-band dishonest
+    `empirically_calibrated` stamps — the §N.8 earned-signal gate, MR-37's fix,
+    live-reconfirmed: 0 rows stamped, given zero Wave-2 mechanisms are engine-wired yet, an
+    honest negative not a defect); `brahma_prospective_ledger` genuinely auto-seeding (29
+    rows, MR-48's fix); noise floor genuinely computed and published (W4.2, real
+    1000-shuffle distribution). Two real production-writer defects were found and fixed in
+    this close pass alone (MR-46→MR-47 PR #1235, MR-48 PR #1236 — both independently
+    re-verified live before and after merge, both found by live execution not review), plus
+    a live-caught registry-bookkeeping defect (MR-47/48 initially lacked proper register
+    closure entries despite being described as closed elsewhere — fixed same-session,
+    MR-29's own finding). Full account:
+    `00_ARCHITECTURE/llm_consumption_audit/briefs/gochara_elevation/
+    GOCHARA_UTKARSHA_CLOSE_REPORT_v1_1.md` and `MASTER_BRIEF_CONFORMANCE_REPORT_v1_0.md`
+    (both on `parishkara/campaign`; 6/6 master-brief §5 criteria resolved). Known, honestly
+    disclosed residuals carried forward (none silently closed): MR-23's W1.2/W0.2, MR-27's
+    I6(b), MR-39's synthetic timeout test, MR-21's wall-clock + W0.4 speedup
+    (HONEST-DEFERRED, triggers recorded), MR-33's CRPS (HONEST-DEFERRED, L5 loop wiring
+    independently verified end-to-end, trigger recorded), MR-48's chain-canonical Stage C
+    seeding gap, MR-49's coverage-envelope under-claim (fails safe). GOCHARA-UTKARṢA
+    CAMPAIGN STATUS: COMPLETE. Main HEAD at close: `a8f6c2052` (merge of PR #1236).
+    last_session_id: PARISHKARA-CONDUCTOR-R2-R3-R4-2026-08-12.
+    predecessor_session: SAMPURTI-CONDUCTOR-2026-08-10.
   - v6.58 (2026-08-10, SAMPURTI Wave 0 COMPLETE): Wave 0 of SAMPURTI Gap Remediation fully
     closed. PR #1138 (sampurti/integration → main) merged via merge queue @ merge commit
     3311ae0e3 (2026-08-09T23:18Z). All 6 lanes landed: L0a (G16 record repair + citation gate
