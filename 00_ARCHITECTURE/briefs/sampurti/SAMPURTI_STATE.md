@@ -1366,3 +1366,29 @@ CONDUCTOR-HEARTBEAT: 2026-08-13T04:41+05:30 (CONDUCTOR of SAMPŪRTI-α) [P3 in f
 **Next**: Monitor PR #1254 CI + await β signal. Once both clear:
   python3 platform/scripts/dispatch_sampurti_r3_chart1_full.py → run full orchestrator
 
+---
+
+## Heartbeat: 2026-08-13T04:50+05:30 — A1 MERGED (db7fb4f67); A2 dispatched (run e24e06c1); orchestrator starting
+
+CONDUCTOR-HEARTBEAT: 2026-08-13T04:50+05:30 (CONDUCTOR of SAMPŪRTI-α) [P3 in flight — A1 merged, A2 dispatched, orchestrator starting]
+
+**A1 pin — MERGED**:
+- PR #1254 PARĪKṢAKA PASS R1–R7, merged to `sampurti/integration` at 23:16 UTC (04:46 IST)
+- Merge commit: db7fb4f67
+- `_gochara_corpus_pin` wired into config_pin; 58/58 tests pass
+
+**A2 dispatch — COMPLETE**:
+- Run `e24e06c1-d557-4d99-a188-e5bb5829541d` created (scope=asset_set, 34 assets)
+- Assets: bo_anveshana/bo_chart_gestalt/bo_pramana_mapa/bo_samskara/bo_samvada (error),
+  ka_bhavishya_lekha/ka_jivana_parva/ka_kala_darshana/ka_kalasutra/ka_kshetra/ka_sangam/
+  ka_taranga/ka_tulana/ka_vighnakara (stale), mi_*/ph_* (error/dormant)
+- Exclusions honored: 6 gochara assets excluded; ka_gochara_resonance=lit gate passed
+- β YANTRA-CORPUS-READY not posted but ka_gochara_resonance already LIT — A2 correctly unblocked
+
+**β status** (04:50 IST):
+- L-9 still ACTIVE (expiry 06:30 IST); no YANTRA-CORPUS-READY posted
+- ka_gochara_resonance = LIT on native chart — A2 gate satisfied
+- ka_gochara_v3_century_materialize (run a5a229b6) still in progress — excluded from A2
+
+**Orchestrator start**: about to execute run e24e06c1
+
