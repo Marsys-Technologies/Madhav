@@ -1434,6 +1434,95 @@ const ForecastInputSchema = z.object({
   resolution: ResolutionFilterSchema,
 })
 
+// ── C2: nested era⊃month⊃day hierarchy (SAMPŪRTI-γ C2) ──────────────────────
+
+/** Enriched window type: GocharaWindowRow with resolution_disclosure attached
+ * (produced by the `withResolutionDisclosure` helper above). */
+export type ServedWindow = GocharaWindowRow & { resolution_disclosure: unknown }
+
+/** A node in the era⊃month⊃day hierarchy tree. */
+export interface HierarchyNode {
+  /** 'era', 'month', 'day', or null for legacy rows. */
+  resolution: string | null
+  /** The enriched window this node represents. */
+  window: ServedWindow
+  /** Sub-windows: month children of an era node, day children of a month node. */
+  children: HierarchyNode[]
+}
+
+/** Nested hierarchy result returned inside `computeGocharaForecast`'s response. */
+export interface NestedHierarchyResult {
+  roots: HierarchyNode[]
+  legacy_flat: ServedWindow[]
+  coverage_note: string
+}
+
+/**
+ * Build an era⊃month⊃day hierarchy from a flat array of ServedWindows.
+ *
+ * Rules (per SAMPŪRTI-γ C2 spec):
+ * - resolution='era' (or parent_window_id=null with non-null resolution): era roots.
+ * - resolution='month': child of the era identified by parent_window_id.
+ * - resolution='day': child of the month identified by parent_window_id.
+ * - resolution=null: legacy (pre-migration-567) — goes into legacy_flat, not the tree.
+ * - A window whose parent_window_id points to a non-present id: defensive fallback
+ *   to legacy_flat (never silently dropped, never incorrectly promoted to root).
+ */
+export function buildNestedHierarchy(windows: ServedWindow[]): NestedHierarchyResult {
+  // Build id→window map for O(1) parent lookup.
+  const byId = new Map<number, ServedWindow>()
+  for (const w of windows) {
+    byId.set(w.id, w)
+  }
+
+  // Build id→HierarchyNode map so we can attach children.
+  const nodeById = new Map<number, HierarchyNode>()
+  for (const w of windows) {
+    nodeById.set(w.id, { resolution: w.resolution ?? null, window: w, children: [] })
+  }
+
+  const roots: HierarchyNode[] = []
+  const legacy_flat: ServedWindow[] = []
+
+  for (const w of windows) {
+    const res = w.resolution ?? null
+
+    // Legacy: resolution is null → flat list, not in tree.
+    if (res === null) {
+      legacy_flat.push(w)
+      continue
+    }
+
+    const node = nodeById.get(w.id) as HierarchyNode
+
+    // Era roots: resolution='era' or no parent.
+    if (res === 'era' || w.parent_window_id == null) {
+      roots.push(node)
+      continue
+    }
+
+    // Month/day: must attach to their parent node.
+    const parentNode = nodeById.get(w.parent_window_id)
+    if (!parentNode) {
+      // Defensive: parent not present in this page → legacy_flat.
+      legacy_flat.push(w)
+      // Remove from roots in case it was accidentally added; remove from nodeById
+      // so no child can attach to it either.
+      nodeById.delete(w.id)
+      continue
+    }
+    parentNode.children.push(node)
+  }
+
+  const nestedCount = windows.length - legacy_flat.length
+  const coverage_note =
+    `${nestedCount} window${nestedCount === 1 ? '' : 's'} organized in era⊃month⊃day hierarchy; ` +
+    `${legacy_flat.length} legacy row${legacy_flat.length === 1 ? '' : 's'} (resolution=null, pre-migration-567) ` +
+    `served flat — hierarchy requires resolution column (migration 567)`
+
+  return { roots, legacy_flat, coverage_note }
+}
+
 export async function computeGocharaForecast(
   chartId: string,
   dateRange: { start: string; end: string },
@@ -1524,8 +1613,12 @@ export async function computeGocharaForecast(
   const { context_only_rows_in_page, context_only_note } = summarizeResolutionDisclosure(disclosures)
   const resolution_breakdown = computeResolutionBreakdown(disclosures)
 
+  // C2: build era⊃month⊃day hierarchy from the enriched windows.
+  const nested_hierarchy = buildNestedHierarchy(windowsWithDisclosure as ServedWindow[])
+
   const content: Record<string, unknown> = {
     windows: windowsWithDisclosure,
+    nested_hierarchy,
     facets,
     coverage,
     drill_pointers: [] as unknown[],
