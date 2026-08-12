@@ -92,6 +92,8 @@ import { callPlatformWrites } from '../client.js'
 // ── §11 governance: the one sanctioned write action ──────────────────────────────────
 
 export const AHEAD_AUTOFILE_FORMULA_VERSION = 'ahead_autofile_v1'
+/** FM-17: C5 bumps formula version when SM_GAMMA_C5_ENABLED enriches authority_basis. */
+export const AHEAD_AUTOFILE_FORMULA_VERSION_V2 = 'ahead_autofile_v2'
 export const AHEAD_AUTOFILE_MODEL = 'kala_ahead_get'
 /** Structural-prior confidence — no empirical calibration yet (R14 discipline). */
 export const AHEAD_AUTOFILE_CONFIDENCE = 0.50
@@ -195,6 +197,68 @@ async function platformQueryExists(sourceCitation: string, principal: Principal)
   }
 }
 
+// ── §C5 — SM_GAMMA_C5_ENABLED: field_window_id + authority_basis re-keying ────────────
+//
+// When SM_GAMMA_C5_ENABLED=true, after class resolution and before the idempotency check,
+// we query kala_field_windows for a row whose date range overlaps the served window and
+// whose event_class matches. If found, we enrich `authority_basis` with an item-44 entry
+// "field_window/<window_id>@<peak_date>" and store `field_window_id` in the filed entry's
+// metadata. The source_citation is bumped to v2 (FM-17: output-changing edit → new version).
+//
+// When the flag is off OR no matching row is found, this block is a no-op and the
+// existing v1 behavior is preserved exactly. No fabricated field_window reference is ever
+// stored; the only honest outcome when no row matches is to proceed with baseline behavior.
+
+/** Row shape returned by the kala_field_windows overlap query. */
+interface FieldWindowRow {
+  window_id: string
+  peak_date: string
+  lambda_peak: number
+}
+
+/**
+ * C5: query kala_field_windows for the best-matching field window overlapping the served
+ * window. Returns null if no match (honest no-op). NEVER throws — failures are treated as
+ * no-match (the same conservative approach as platformQueryExists).
+ */
+async function queryFieldWindow(
+  chartId: string,
+  eventClass: string,
+  windowStart: string,
+  windowEnd: string,
+  principal: Principal,
+): Promise<FieldWindowRow | null> {
+  const sql =
+    'SELECT window_id, peak_date, lambda_peak ' +
+    'FROM kala_field_windows ' +
+    'WHERE chart_id = $1 AND event_class = $2 ' +
+    '  AND window_start <= $3 AND window_end >= $4 ' +
+    'ORDER BY lambda_peak DESC LIMIT 1'
+  try {
+    const res = await fetch(`${PLATFORM_URL}/api/mcp/db/query`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-MCP-Internal-Token': MCP_INTERNAL_TOKEN,
+        'X-MCP-User': principal.user_uid,
+        'X-MCP-Key-Id': principal.key_id,
+      },
+      body: JSON.stringify({ sql, params: [chartId, eventClass, windowStart, windowEnd] }),
+      signal: AbortSignal.timeout(8_000),
+    })
+    if (!res.ok) return null
+    const data = (await res.json()) as { rows?: FieldWindowRow[] }
+    if (!Array.isArray(data.rows) || data.rows.length === 0) return null
+    const row = data.rows[0]
+    if (typeof row?.window_id !== 'string' || typeof row?.peak_date !== 'string') return null
+    return row
+  } catch {
+    // Conservative: treat any error as no-match. Never block the filing on a non-critical
+    // enrichment query.
+    return null
+  }
+}
+
 // ── Types ──────────────────────────────────────────────────────────────────────────────
 
 /** A window eligible for auto-filing. Matches the `WindowFamily` shape in ahead.ts. */
@@ -250,6 +314,25 @@ export function buildSourceCitation(
   windowEnd: string,
 ): string {
   return `ahead_autofile:v1:${chartId.toLowerCase()}:${eventClass.toLowerCase()}:${windowStart}:${windowEnd}`
+}
+
+/**
+ * FM-17: C5 version of buildSourceCitation — used when SM_GAMMA_C5_ENABLED=true.
+ *
+ * Format: `ahead_autofile:v2:<chart_id>:<event_class>:<window_start>:<window_end>`
+ *
+ * The `v2:` prefix ensures that C5-enriched rows (carrying field_window provenance) are
+ * distinct citations from baseline v1 rows, so the ledger records WHICH formula + enrichment
+ * produced WHICH claim. An earlier v1 row for the same window coexists alongside the v2 row
+ * without ambiguity (both are honest, each traceable to the formula version that produced it).
+ */
+export function buildSourceCitationV2(
+  chartId: string,
+  eventClass: string,
+  windowStart: string,
+  windowEnd: string,
+): string {
+  return `ahead_autofile:v2:${chartId.toLowerCase()}:${eventClass.toLowerCase()}:${windowStart}:${windowEnd}`
 }
 
 /**
@@ -340,7 +423,26 @@ export async function autofileAheadWindows(
     }
 
     const eventClass = resolution
-    const sourceCitation = buildSourceCitation(chartId, eventClass, windowStart, windowEnd)
+
+    // ── SM_GAMMA_C5_ENABLED: field_window enrichment (behind flag; default off) ────────
+    const c5Enabled = process.env['SM_GAMMA_C5_ENABLED'] === 'true'
+    let fieldWindowId: string | null = null
+    let extraAuthorityBasis: string[] = []
+
+    if (c5Enabled) {
+      const fieldRow = await queryFieldWindow(chartId, eventClass, windowStart, windowEnd, principal)
+      if (fieldRow !== null) {
+        fieldWindowId = fieldRow.window_id
+        // item-44 format: "field_window/<window_id>@<peak_date>"
+        extraAuthorityBasis = [`field_window/${fieldRow.window_id}@${fieldRow.peak_date}`]
+      }
+      // When no match: honest no-op — no fabricated reference, proceed with baseline.
+    }
+
+    // FM-17: v2 citation when C5 is enabled (output-changing formula → new version constant).
+    const sourceCitation = c5Enabled
+      ? buildSourceCitationV2(chartId, eventClass, windowStart, windowEnd)
+      : buildSourceCitation(chartId, eventClass, windowStart, windowEnd)
 
     // Idempotency check: skip if this exact window was already filed.
     const alreadyExists = await platformQueryExists(sourceCitation, principal)
@@ -354,8 +456,17 @@ export async function autofileAheadWindows(
       continue
     }
 
+    // Derive authority_basis from the window's factor keys (dasha/kala activation basis).
+    // C5 appends field_window provenance when a match was found.
+    const baseAuthorityBasis: string[] = []
+    const wAny = win as Record<string, unknown>
+    if (typeof wAny['factor_family'] === 'string') baseAuthorityBasis.push(wAny['factor_family'])
+    if (typeof wAny['factor_key'] === 'string') baseAuthorityBasis.push(wAny['factor_key'])
+    if (typeof wAny['start_utc'] === 'string') baseAuthorityBasis.push(wAny['start_utc'])
+    const authorityBasis = [...baseAuthorityBasis, ...extraAuthorityBasis]
+
     // File the prospective entry.
-    const entry = {
+    const entry: Record<string, unknown> = {
       claim: `AHEAD window for event class '${eventClass}' served by kala_ahead_get: ` +
         `elevated temporal activation in the window [${windowStart}, ${windowEnd}].`,
       event_class: eventClass,
@@ -363,12 +474,14 @@ export async function autofileAheadWindows(
       window_start: windowStart,
       window_end: windowEnd,
       model: AHEAD_AUTOFILE_MODEL,
-      formula_version: AHEAD_AUTOFILE_FORMULA_VERSION,
+      formula_version: c5Enabled ? AHEAD_AUTOFILE_FORMULA_VERSION_V2 : AHEAD_AUTOFILE_FORMULA_VERSION,
       confidence: AHEAD_AUTOFILE_CONFIDENCE,
       falsifier: buildFalsifier(eventClass, windowStart, windowEnd),
       generator_class: 'engine',
       source_citation: sourceCitation,
       // filed_by intentionally OMITTED — stamped server-side from the resolved principal.
+      ...(authorityBasis.length > 0 ? { authority_basis: authorityBasis } : {}),
+      ...(c5Enabled ? { field_window_id: fieldWindowId } : {}),
     }
 
     let callResult: { status: number; envelope: { ok: boolean; result?: unknown; error?: { message?: string } } }
