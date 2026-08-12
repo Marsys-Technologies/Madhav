@@ -271,4 +271,23 @@ CONDUCTOR-HEARTBEAT: 2026-08-12T22:08:00Z pid=59044 host=Montys-MacBook-Pro.loca
 
 **B1-B4 ALL VERIFIED-MERGE-QUEUED.** All ablations complete. Gate G-B checklist ready for B5.
 
-NEXT-ACTION: Monitor merge queue for B3+B4 merge to main. Once both merged, execute B5 leased corpus-rebuild.
+NEXT-ACTION: Monitor B5 corpus rebuild (run 19c86f8f). ka_gochara_v3_century_materialize building now.
+
+### 2026-08-13 04:00 IST — B5 CORPUS REBUILD IN PROGRESS (L-9 lease active)
+
+**Lease L-9 claimed** in campaign-coordination (coord commit 686856ca6).
+**B5 run-id (r2, action=rebuild):** 19c86f8f-f3d0-454c-908b-714db03e18b4
+**Plan:** ka_kota_chakra + ka_gochara_resonance + ka_gochara_v3_century_materialize
+
+**R1 run (fad79fc0, action=build):** FAILED — ka_gochara_resonance skipped (lit from old code);
+  ka_gochara_v3_century_materialize BLOCKED by ka_kota_chakra (dormant, not seeded).
+  Root cause: action='build' skips lit assets; need action='rebuild' + full dep set.
+
+**R2 run (19c86f8f, action=rebuild):** RUNNING
+- ka_kota_chakra: LIT (588 rows, rebuilt ~03:54 IST)
+- ka_gochara_resonance: LIT (762 rows, rebuilt ~03:54 IST with B4 lord tokenizer fix)
+- ka_gochara_v3_century_materialize: BUILDING (started ~03:54 IST)
+  → B1 (w23_tara_bala tara modifier) + B2 (w30 nodal drishti) + B3 (Lattā 0.35 suppression)
+  → Uses updated ka_gochara_resonance (B4 clean lord tokens)
+
+**Pre-rebuild baseline:** gen-3.0 count = 943 windows (482012f1)
