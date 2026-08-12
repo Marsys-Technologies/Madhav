@@ -1292,7 +1292,32 @@ Genuine point-row production for these 13 classes (the deferred core of
 option (b)) is explicitly OUT OF SCOPE for this campaign — deferred
 post-campaign, gated on a non-degenerate W4.4 fit (Phase F) so any future
 point row earns its `is_timing_window=true` rather than inheriting it for
-free. MR-46 CLOSED by this ruling; MR-47 OPEN, scoped, unblocked.
+free. MR-46 CLOSED by this ruling; MR-47 scoped, unblocked, dispatched.
+
+**MR-47 — CLOSED, R4 2026-08-12 (MR-29 independent re-verification).** PR #1235
+MERGED (2026-08-11T23:23:21Z, merge `65def90e`, 11 files) — content confirmed
+matching this ruling's scope on `origin/main`, not aspirational: `_build_row`/
+`_build_chain_row` both take a required keyword-only `shape_conformance: str`
+(no default) sourced from `services/gochara_v3/shape_conformance_vocab.py`'s
+named constants; `temporal_shape` itself is unchanged (still `'interval'` for
+the envelope branch, correct per this ruling's own text — the envelope may
+not wear `'point'`; the earned marker, not a relabel, is the fix).
+**Text-precision note** (MR-29 flag, non-blocking): scope item 1's phrasing
+above ("stop hardcoding the literal") can read as if the `'interval'` literal
+itself was removed — it was not, and should not have been; only the missing
+`shape_conformance` classification was added. Detector (i) (live
+cross-corpus mismatch check) re-run independently, both this session and by
+MR-29: **0 mismatches, 27/27 classes, both charts**, gen-3.0 and
+`g3_utkarsha`. Detector (ii) (mutation-proof unit tests): 23/23 passed,
+independently re-run by MR-29 on a fresh `origin/main` checkout, mutation
+cases included. Migration 570 confirmed applied (`_migrations_applied`,
+real timestamp `2026-08-11T23:34:00Z`), corpus backfill confirmed zero
+NULLs, both tables, all generations. **Scope note**: the writer-side fix
+(`_build_row`'s new `shape_conformance` parameter) has not yet executed in
+a live production build — the current corpus's `shape_conformance` values
+were populated by migration 570's ontology-JOIN backfill, which is exactly
+what PK-R-10 item 2 authorized (a tracked derivation from the authority, no
+corpus rebuild required) — not a gap, the intended path. GATE MET.
 
 **MR-48 · `w45_post_fit_rebuild.py` Stage C hardcodes `claim_shape="interval"`
 for every `brahma_prospective_ledger` row — same defect class as MR-46/47,
@@ -1345,6 +1370,35 @@ charts, full top-20 forward-window coverage confirmed with zero
 trigger-rejections on any genuinely-shaped row, zero collateral cascade
 failures. Not required to re-open MR-46/47 or Phase D/E — those closed
 correctly on their own evidence.
+
+**MR-48 — CLOSED, R4 2026-08-12 (MR-29 independent re-verification).** PR
+#1236 MERGED (2026-08-11T23:54:03Z, merge `a8f6c205`, 2 files) — content
+confirmed matching this ruling's scope on `origin/main`:
+`_fetch_event_class_claim_shape()` (live ontology lookup, honest skip on
+failure/unknown shape, no fabrication) and
+`_insert_ledger_row_with_savepoint()` (per-row `SAVEPOINT`/`ROLLBACK TO
+SAVEPOINT`/`RELEASE SAVEPOINT`, `ctx.db_conn` never committed by the
+script — §N.2 respected). Detector re-run independently by MR-29:
+`brahma_prospective_ledger` carries 36 rows total, **0** `claim_shape`-vs-
+ontology mismatches; the 29 rows this session's own fix-verification wrote
+(`2026-08-11T23:34:13Z`) match precisely, including Abhinandan's
+previously-cascade-killed `psychological_arc` (8 rows, now seeding
+correctly). **Honest gate-literalism note (MR-29 flag, disclosed not
+papered-over):** this fix's own GATE text above calls for "Stage C re-run
+both charts, full top-20 forward-window coverage confirmed... zero
+collateral cascade failures" AFTER the merge — the live verification run
+that produced the 29-row evidence above ran at 23:34:13Z, 20 minutes
+BEFORE PR #1236 actually merged (23:54:03Z), and no fresh post-merge Stage
+C run has been performed since. The verified 29-row state is real and
+correct (it ran the identical merged code, pre-merge, from the feature
+branch) but the GATE's literal "re-run after merge" clause is not
+separately discharged — recorded honestly rather than silently treated as
+satisfied. The chain-canonical Stage C data-sourcing gap (`education_
+milestone` etc., disclosed in PR #1236's own body and in
+`MASTER_BRIEF_CONFORMANCE_REPORT_v1_0.md` §2) remains open, unchanged,
+correctly out of this fix's 2-item scope. GATE MET on substance; the
+literal post-merge-re-run formality is a paperwork gap, not a functional
+one — no further code or data action required.
 
 **MR-49 · `gochara_forecast_get`'s served `coverage.event_classes_covered`
 reads `[]` (all 27 classes listed under `event_classes_targeted_not_swept`)
