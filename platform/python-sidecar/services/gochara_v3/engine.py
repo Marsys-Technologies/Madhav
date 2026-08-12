@@ -280,7 +280,44 @@ def _compute_quality_gates_from_context(
 
         # This vedha overlaps the evaluation window.
         detail = vrow.detail
-        # B3: vedha_kind='latta' rows use _LATTA_EFFECTIVE_MALEFIC_COUNT — see effect commit.
+
+        # --- B3: Lattā-specific grade path ---
+        # Lattā (Phaladeepika PG338-339, Slokas 42-44): a janma-nakṣatra hit.
+        # All kala_vedha_gochara rows with vedha_kind='latta' are janma-nakṣatra hits
+        # (the ka_vedha_gochara writer only stores rows when latta_nak==janma_nak).
+        # Ketu: not defined in Phaladeepika — graha='Ketu'/'Rahu' rows do not appear
+        # in kala_vedha_gochara by construction (Ketu absent, disclosed).
+        # Severity: "Ruin of every business" / "A great loss" → effective_malefic_count=3
+        # (killing grade) as structural prior; refines via L5 calibration.
+        if vrow.vedha_kind == "latta":
+            if scale_by_count:
+                scale_row = scale_by_count.get(
+                    _LATTA_EFFECTIVE_MALEFIC_COUNT,
+                    scale_by_count.get(max(scale_by_count)),
+                )
+                effect_grade = scale_row.effect_grade if scale_row else "unknown"
+                suppression_factor = _suppression_factor_for_grade(effect_grade)
+                scale_citation = scale_row.source_citation if scale_row else None
+            else:
+                suppression_factor = _VEDHA_NO_SCALE_ROW_FACTOR
+                effect_grade = "unknown_no_scale_table"
+                scale_citation = None
+            product *= suppression_factor
+            fired_vedha.append({
+                "vedha_kind": vrow.vedha_kind,
+                "graha": vrow.graha,
+                "window_start": vrow.window_start,
+                "window_end": vrow.window_end,
+                "malefic_count": _LATTA_EFFECTIVE_MALEFIC_COUNT,
+                "malefic_obstructing_grahas": [],
+                "effect_grade": effect_grade,
+                "suppression_factor": round(suppression_factor, 6),
+                "classical_citation": vrow.classical_citation,
+                "scale_citation": scale_citation,
+            })
+            continue  # skip the regular malefic_count path below
+        # --- end B3 Lattā path ---
+
         malefic_count = detail.get("malefic_count", 0)
         try:
             malefic_count = int(malefic_count)
