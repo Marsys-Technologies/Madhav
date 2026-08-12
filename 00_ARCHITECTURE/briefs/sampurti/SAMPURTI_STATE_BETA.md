@@ -109,3 +109,13 @@ Sequence: (1) blind-spec commit (parameter definitions, toggle key, formula loca
 BEFORE effect code; (2) effect code + unit tests + parity suite; (3) PR → main titled [SM-β].
 
 CONDUCTOR-HEARTBEAT: 2026-08-12T20:31:00Z pid=59044 host=Montys-MacBook-Pro.local session=β [B1 design complete: Moon-transit tara modifier, multiplicative into activity; swe.calc_ut(t_jd, swe.MOON, swe.FLG_SIDEREAL) for transit lon; dispatching builder now]
+
+CONDUCTOR-HEARTBEAT: 2026-08-12T20:48:00Z pid=59044 host=Montys-MacBook-Pro.local session=β [B1 builder RUNNING (agent a6c394e35b57daf1a) — writing parity test; read ClassContext+NatalFacts schema; TDD failing test phase; context resumption after compaction]
+
+### 2026-08-13 02:18 IST — B1 BUILDER IN PROGRESS
+
+B1 builder (agent a6c394e35b57daf1a) dispatched to worktree sm-b-b1-tara-bala.
+Status: actively writing test_w23_engine_parity.py (TDD phase).
+Builder has read: ClassContext, NatalFacts, evaluate_lambda_vector, _evaluate_single_from_context.
+Next builder step: blind-spec commit → effect commit → PR.
+Conductor: monitoring; will dispatch PARĪKṢAKA after builder completes and PR is open.
