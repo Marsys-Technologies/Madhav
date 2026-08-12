@@ -758,9 +758,16 @@ export async function fetchVerseRefs(
 
 /**
  * Add `citation_verse_refs` to each served window object.
- * citation_verse_refs carries only 'resolved' rows (confirmed corpus chunks)
- * to avoid serving CORPUS_GAP stub rows as if they were live verse refs.
- * The raw row count (including unresolved) is disclosed in the provenance.
+ * citation_verse_refs is a COMPLETE list of all citation strings found in
+ * active_sentences, with each entry carrying its resolution status:
+ *   - 'resolved': confirmed corpus chunk (chunk_id is a real FK into
+ *     classical_text_chunks, not a CORPUS_GAP stub)
+ *   - 'unresolved': honest corpus gap — either the verseRefMap has an
+ *     explicit unresolved row from bg_gochara_citation_resolution, OR the
+ *     citation string has no entry in the table at all (CORPUS_GAP stub
+ *     synthesised on the fly).
+ * C1 change: the previous implementation only included resolved entries.
+ * Callers that want only confirmed verse refs should filter on status='resolved'.
  */
 export function enrichWindowsWithVerseRefs<T extends { active_sentences: unknown[] }>(
   windows: T[],
@@ -776,26 +783,79 @@ export function enrichWindowsWithVerseRefs<T extends { active_sentences: unknown
     // Collect all citation strings for this row's active_sentences.
     const citations = extractCitationStrings([row])
 
-    // Gather only resolved entries (status='resolved', chunk_id not starting with CORPUS_GAP:).
-    const resolved: CitationVerseRef[] = []
+    // Build the complete list: resolved entries from verseRefMap, then any
+    // unresolved entries (explicit from the map or corpus-gap stubs for
+    // strings that have no entry in bg_gochara_citation_resolution at all).
+    const allRefs: CitationVerseRef[] = []
+    let resolvedCount = 0
     for (const cit of citations) {
-      const refs = verseRefMap.get(cit) ?? []
-      for (const ref of refs) {
-        if (ref.status === 'resolved' && !ref.chunk_id.startsWith('CORPUS_GAP:')) {
-          resolved.push(ref)
+      const refs = verseRefMap.get(cit)
+      if (refs && refs.length > 0) {
+        // Entry exists in bg_gochara_citation_resolution — include all rows
+        // (may be resolved, unresolved, or mixed) with their honest status.
+        for (const ref of refs) {
+          allRefs.push(ref)
+          if (ref.status === 'resolved' && !ref.chunk_id.startsWith('CORPUS_GAP:')) {
+            resolvedCount++
+          }
         }
+      } else {
+        // No entry in bg_gochara_citation_resolution at all — synthesise an
+        // honest corpus-gap stub using the established CORPUS_GAP: prefix
+        // pattern so callers can distinguish "not looked up" from "looked up
+        // and found nothing" (both are unresolved, but the chunk_id tells
+        // which kind of gap this is).
+        allRefs.push({
+          citation_string: cit,
+          chunk_id: `CORPUS_GAP:${cit}`,
+          text_id: 'unknown',
+          verse_ref: 'unresolved',
+          status: 'unresolved',
+        })
       }
     }
 
     const note =
       citations.size === 0
         ? null
-        : resolved.length > 0
-          ? `${resolved.length} citation(s) resolved to verse_refs from bg_gochara_citation_resolution (migration 565)`
+        : resolvedCount > 0
+          ? `${resolvedCount} citation(s) resolved to verse_refs from bg_gochara_citation_resolution (migration 565)`
           : `${citations.size} citation string(s) found in active_sentences but none resolved to corpus chunks yet — see bg_gochara_citation_resolution for honest gap catalog`
 
-    return { ...window, citation_verse_refs: resolved, citation_resolution_note: note }
+    return { ...window, citation_verse_refs: allRefs, citation_resolution_note: note }
   })
+}
+
+/**
+ * Build a concise human-readable summary string from a λ_v3 term_breakdown
+ * object. Returns null if term_breakdown is null/undefined (honest gap — the
+ * row predates migration 564 or was written on the v1-parity path).
+ *
+ * Format: "λ_v3={lambda_v3:.2f} (promise={promise:.2f} × permission={permission:.2f} × activity={activity:.2f})"
+ * Only keys present in the object are included in the product list.
+ * If lambda_v3 is absent, the prefix reads "λ_v3=?".
+ *
+ * C1 addition: exported so callers and tests can use it directly.
+ */
+export function buildTermBreakdownSummary(
+  termBreakdown: Record<string, unknown> | null | undefined
+): string | null {
+  if (termBreakdown == null) return null
+
+  const lv3 = termBreakdown['lambda_v3']
+  const prefix = typeof lv3 === 'number' ? `λ_v3=${lv3.toFixed(2)}` : 'λ_v3=?'
+
+  const FACTOR_KEYS = ['promise', 'permission', 'activity'] as const
+  const parts: string[] = []
+  for (const key of FACTOR_KEYS) {
+    const val = termBreakdown[key]
+    if (typeof val === 'number') {
+      parts.push(`${key}=${val.toFixed(2)}`)
+    }
+  }
+
+  if (parts.length === 0) return prefix
+  return `${prefix} (${parts.join(' × ')})`
 }
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -1606,9 +1666,12 @@ export async function computeGocharaForecast(
   const enrichedWindows = enrichWindowsWithVerseRefs(rows as unknown as Array<{ active_sentences: unknown[] }>, rows, verseRefMap)
   // PARIṢKĀRA MR-11(b): resolution_disclosure per served window (PK-R-1).
   const disclosures = rows.map((row) => deriveResolutionDisclosure(row))
+  // C1: attach term_breakdown_summary (human-readable λ_v3 decomposition) and
+  // resolution_disclosure to every served window before budget assembly.
   const windowsWithDisclosure = enrichedWindows.map((window, i) => ({
     ...window,
     resolution_disclosure: disclosures[i] ?? null,
+    term_breakdown_summary: buildTermBreakdownSummary(rows[i]?.term_breakdown ?? null),
   }))
   const { context_only_rows_in_page, context_only_note } = summarizeResolutionDisclosure(disclosures)
   const resolution_breakdown = computeResolutionBreakdown(disclosures)
