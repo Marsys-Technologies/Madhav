@@ -58,7 +58,7 @@ B1 → B2 → B3 → B4 → B5 (sequential within β; per mechanism before next)
 | Lane | Scope | Branch | Status | PARĪKṢAKA | Evidence |
 |---|---|---|---|---|---|
 | B1 | Wire w23_tara_bala into engine.py production λ; blind-spec commit first; unit+parity suites | sampurti/β-b1-tara-bala | VERIFIED-MERGE-QUEUED | VERIFIED (8/8 checks) | PR #1248 in merge queue; CI green; PARĪKṢAKA VERIFIED |
-| B2 | w30_nodal_drishti (Rahu/Ketu 5/7/9; L1 constants verbatim; "later tradition" hedge preserved) | sampurti/β-b2-nodal-drishti | CI-AWAITING-PARĪKṢAKA | — | PR #1251 open; rebase on B1 complete; CI 17/26 green; ablation POSITIVE |
+| B2 | w30_nodal_drishti (Rahu/Ketu 5/7/9; L1 constants verbatim; "later tradition" hedge preserved) | sampurti/β-b2-nodal-drishti | VERIFIED-MERGE-QUEUED | VERIFIED (8/8 checks) | PR #1251 in merge queue; CI 19/26 green (7 skip); PARĪKṢAKA VERIFIED |
 | B3 | Lattā → quality_gates (existing malefic-scale path; Ketu absence disclosed) | sampurti/β-b3-latta | NOT-STARTED | — | — |
 | B4 | Resonance tokenizer fix (qualifier tokens; "maraka lords" compound) + rebuild resonance | sampurti/β-b4-resonance-tokenizer | NOT-STARTED | — | — |
 | B5 | ONE leased corpus-rebuild window folding B1-B4; PARIṢKĀRA L-6 evidence template; w43 ablation per mechanism; honest w44 refit (non-zero now possible; stamps ONLY via w45 §N.8 gate) | sampurti/β-b5-corpus-rebuild | NOT-STARTED | — | — |
@@ -168,3 +168,22 @@ Commit chain: TDD test → blind-spec → mechanism → effect. Force-pushed. CI
 - Ablation verdict: POSITIVE (genuine firing)
 
 NEXT-ACTION: Await B2 CI green, then dispatch PARĪKṢAKA for B2.
+
+CONDUCTOR-HEARTBEAT: 2026-08-12T21:37:00Z pid=59044 host=Montys-MacBook-Pro.local session=β [B2 PARĪKṢAKA VERIFIED (8/8); CI green 19/26; PR #1251 in merge queue; dispatching B3 builder]
+
+### 2026-08-13 03:07 IST — B2 COMPLETE (PARĪKṢAKA VERIFIED)
+
+**B2 DONE:** PR #1251 [SM-β] w30_nodal_drishti — in merge queue (CI green 19/26, PARĪKṢAKA VERIFIED 8/8).
+
+**PARĪKṢAKA verdict (all 8 checks PASS):**
+1. Blind-spec commit order: PASS — spec (b9b5ff2b5) before effect (242b8630c) ✓
+2. Spec commit content: PASS — import + constant + formula comment; NO effect code ✓
+3. Effect placement: PASS — tara_modifier AND w30_modifier both in formula + term_breakdown ✓
+4. I2 compliance: PASS — only 3 files: engine.py, mechanism, test ✓
+5. Rahu transit source: PASS — swe.calc_ut(t_jd, swe.MEAN_NODE, swe.FLG_SIDEREAL) ✓
+6. Parity test: PASS — AC-E1/E2/E3/E4 + _mock_swe_for_rahu_longitude deterministic stub ✓
+7. Classical hedge: PASS — "later tradition"; NOT original BPHS; ASPECT_MODIFIERS 5/9=1.05 7=0.95; geometric mean ✓
+8. CI green: PASS — 19/26 SUCCESS (7 SKIPPED); no FAILURE ✓
+
+NEXT-ACTION: Dispatch B3 builder (Lattā → quality_gates, existing malefic-scale path, Ketu absence disclosed).
+B3 branches off origin/main (after B1 merge; B2 in queue). Branch: sampurti/β-b3-latta.
