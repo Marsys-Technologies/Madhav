@@ -176,9 +176,45 @@ class FakeCursor:
             self._rows = [{'t_days': v} for v in sorted(
                 {r['t_days'] for r in t.get('kala_field_kinematics', [])})]
             return
+        if 'FROM kala_gochara_authority' in s and 'AS gen' in s:
+            # A1 pin: SELECT COALESCE((SELECT authoritative_generation ...), 'v1') AS gen
+            # (not the legacy crosscheck's subquery, which also references this table)
+            rows = [r for r in t.get('kala_gochara_authority', [])
+                    if str(r.get('chart_id')) == str(params[0])]
+            self._rows = [{'gen': rows[0]['authoritative_generation'] if rows else 'v1'}]
+            return
+        if 'calibration_state' in s and 'COUNT(*)' in s and 'FROM kala_gochara_windows' in s:
+            # A1 pin: SELECT calibration_state, COUNT(*) AS n FROM kala_gochara_windows
+            #         WHERE chart_id=%s AND generation=%s GROUP BY calibration_state ...
+            chart_id, generation = params[0], params[1]
+            matching = [r for r in t.get('kala_gochara_windows', [])
+                        if str(r.get('chart_id')) == str(chart_id)
+                        and r.get('generation', 'v1') == generation]
+            if not matching:
+                self._rows = []
+            else:
+                from collections import Counter
+                counts = Counter(r.get('calibration_state', 'structural_prior')
+                                 for r in matching)
+                top = counts.most_common(1)[0]
+                self._rows = [{'calibration_state': top[0], 'n': top[1]}]
+            return
         if 'FROM kala_gochara_windows' in s:
             self._rows = [dict(r) for r in t.get('kala_gochara_windows', [])
                           if r.get('event_class') == params[1]]
+            return
+        if 'FROM gochara_resonance_map' in s and 'md5' in s:
+            # A1 pin: SELECT md5(COUNT(*)::text || '|' || ...) AS digest
+            rows = [r for r in t.get('gochara_resonance_map', [])
+                    if str(r.get('chart_id')) == str(params[0])]
+            import hashlib
+            digest_input = (f"{len(rows)}|"
+                            + (max((str(r.get('computed_at', '')) for r in rows), default=''))
+                            + '|'
+                            + (str(max((r.get('id', 0) for r in rows), default=''))
+                               if rows else ''))
+            self._rows = [{'digest': hashlib.md5(digest_input.encode()).hexdigest()
+                           if rows else 'digest_unavailable'}]
             return
         if 'FROM chart_facts' in s and "fact_category = 'lagna'" in s:
             self._rows = [dict(r) for r in t.get('chart_facts', [])

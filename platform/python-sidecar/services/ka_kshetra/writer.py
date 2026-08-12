@@ -235,6 +235,7 @@ class KaKshetraWriter(WriterBase):
                 'null_quantile': S5.Q_QUANTILE,
                 'duration_buckets': list(S5.DURATION_BUCKETS),
                 'precision_regime': 'day_grade',
+                **self._gochara_corpus_pin(conn, self._chart_id),  # A1 pin
             },
         )
         self._snapshot_id = self._pins.field_snapshot_id
@@ -1692,6 +1693,72 @@ class KaKshetraWriter(WriterBase):
         except Exception:
             pass
         return 'corpus_pin_unavailable'
+
+    @staticmethod
+    def _gochara_corpus_pin(conn, chart_id) -> dict:
+        """Three-field gochara corpus pin for config_pin (A1 pin).
+
+        Captures which generation of kala_gochara_windows is served, the dominant
+        calibration tier of those windows, and a content fingerprint of the
+        gochara_resonance_map rows for this chart.
+
+        All three are unavailable-safe: an absent row produces an explicit sentinel
+        so the field hash still changes if any component later becomes available —
+        never a blank that two distinct corpus states would share.
+        """
+        generation = 'v1'
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT COALESCE("
+                    "  (SELECT authoritative_generation FROM kala_gochara_authority"
+                    "   WHERE chart_id = %s), 'v1') AS gen",
+                    (chart_id,),
+                )
+                rows = S4._rows(cur)
+            if rows and rows[0]['gen']:
+                generation = str(rows[0]['gen'])
+        except Exception:
+            pass
+
+        calibration_state = 'no_windows'
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT calibration_state, COUNT(*) AS n"
+                    " FROM kala_gochara_windows"
+                    " WHERE chart_id = %s AND generation = %s"
+                    " GROUP BY calibration_state ORDER BY n DESC LIMIT 1",
+                    (chart_id, generation),
+                )
+                rows = S4._rows(cur)
+            if rows and rows[0]['calibration_state']:
+                calibration_state = str(rows[0]['calibration_state'])
+        except Exception:
+            pass
+
+        digest = 'digest_unavailable'
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT md5("
+                    "  COALESCE(COUNT(*)::text, '0') || '|'"
+                    "  || COALESCE(MAX(computed_at)::text, '') || '|'"
+                    "  || COALESCE(MAX(id)::text, '')) AS digest"
+                    " FROM gochara_resonance_map WHERE chart_id = %s",
+                    (chart_id,),
+                )
+                rows = S4._rows(cur)
+            if rows and rows[0]['digest']:
+                digest = str(rows[0]['digest'])
+        except Exception:
+            pass
+
+        return {
+            'gochara_generation': generation,
+            'gochara_calibration_state': calibration_state,
+            'gochara_corpus_digest': digest,
+        }
 
     @staticmethod
     def _discover_event_classes(conn, chart_id) -> list[str]:
