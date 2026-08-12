@@ -375,6 +375,9 @@ describe('computeGocharaCoverage — C3 coverage_quality field', () => {
     mockCoverageFetch(makeClassRows(classes), classes)
     const { coverage } = await computeGocharaCoverage(CHART_ID, TEST_PRINCIPAL)
     expect(coverage.coverage_quality.reason).toContain('rich')
+  })
+})
+
 // ── buildNestedHierarchy — C2 era⊃month⊃day nesting ───────────────────────
 describe('buildNestedHierarchy', () => {
   it('returns empty roots and empty legacy_flat for an empty input', () => {
