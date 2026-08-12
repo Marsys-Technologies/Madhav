@@ -1176,3 +1176,26 @@ build_substep_progress keyed on (chart_id, asset_id, substep_key) persists.
 
 **Expected**: ka_kshetra lit after 1-2 more proxy-restart cycles; then
 dispatch_sampurti_r2_chart2_full.py.
+
+
+---
+
+## CONDUCTOR SESSION — 2026-08-13 ~01:50 IST (R10 fresh start)
+
+CONDUCTOR-HEARTBEAT: 2026-08-13T2026-08-12T20:26:33+00:00+00:00 (CONDUCTOR of SAMPŪRTI-α) pid=72080 host=Montys-MacBook-Pro.local [R10 START — fresh session. Prior R9 conductor (pid=83428) confirmed DEAD (pgrep exit:1, no CMD match). Sole conductor: CONFIRMED.]
+
+### STEP 0 — RECONCILIATION (2026-08-13 ~01:49 IST)
+
+**LIVENESS:** No competing SAMPŪRTI conductors. Port 5433 open (proxy PID 52849).
+**HYGIENE:** Advisory locks = 0. No active/planned build runs. Proxy alive.
+**COORDINATION:** CAMPAIGN_COORDINATION.md read from origin/campaign-coordination. PARISHKARA L-7 properly released. No active leases from any campaign. Safe to proceed.
+**RECONCILE (adopt, never redo):**
+- R0 COMPLETE: gate packet d1dd5dd2 merged, migration 569 applied, PG-31 on main ✓
+- R1 COMPLETE: chart1 482012f1 ka_kshetra LIT — 6,708 field windows, 4 clocked classes (childbirth, foreign_settlement, marriage, relocation) ✓
+- R2 chart1 COMPLETE: all 17 ka_* assets LIT for 482012f1 ✓  
+- R2 chart2 IN PROGRESS: ka_kshetra (1c826d5a) state=incomplete, 79 substeps committed (last: stage5:marriage:1 at 19:48 UTC). kala_field=2,412,882 rows; kala_field_windows=2,550 rows. Run 4 (bb53ba1e) timed out 19:15 UTC; Run 5 (efee302f) failed 20:05 UTC (likely proxy drop). Watch loop (/tmp/watch_and_loop.sh) died. Both runs have no last_error logged.
+- R9 heartbeat at 00:05 UTC said "Run 4 active" — this was stale (run had ended 4.75h earlier at 19:15 UTC). Run 5 dispatched and failed after that heartbeat. Self-error logged (FM-08 violation).
+- Non-lit chart2 assets (pre-existing bugs outside SAMPŪRTI scope): bo_samskara (savepoint error), mi_bhara (float error), cascade blocks on ph_*/mi_* — same as chart1.
+
+**NEXT-ACTION:** Restart proxy fresh → dispatch Run 6 for chart2 ka_kshetra → nohup'd orchestrator. Expected resumption from marriage:2 (fingerprint match from committed 79 substeps). ~2-4 more runs to complete (surgery + separation remaining, proxy-drop pattern).
+
