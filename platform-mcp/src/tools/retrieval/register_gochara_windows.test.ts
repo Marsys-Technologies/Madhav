@@ -32,9 +32,11 @@ import {
   type GocharaWindowRow,
   type GocharaCoverage,
   buildNestedHierarchy,
-  type GocharaWindowRow,
   type HierarchyNode,
   type ServedWindow,
+  enrichWindowsWithVerseRefs,
+  buildTermBreakdownSummary,
+  type CitationVerseRef,
 } from './register_gochara_windows.js'
 import type { Principal } from '../../types.js'
 
@@ -559,6 +561,196 @@ describe('computeGocharaForecast — nested_hierarchy in response', () => {
     expect(result.nested_hierarchy.roots).toHaveLength(0)
     expect(result.nested_hierarchy.legacy_flat).toHaveLength(1)
     expect(result.nested_hierarchy.legacy_flat[0]?.id).toBe(5)
+  })
+})
+
+// ── enrichWindowsWithVerseRefs — C1: complete citation_verse_refs (incl. unresolved) ─
+describe('enrichWindowsWithVerseRefs — complete citation_verse_refs (C1)', () => {
+  function makeWindowWithCitations(citations: string[]): GocharaWindowRow {
+    return makeRow({
+      active_sentences: citations.map((c) => ({ classical_citation: c, text: 'some sentence' })),
+    })
+  }
+
+  it('includes unresolved entries from verseRefMap (status=unresolved preserved)', () => {
+    const row = makeWindowWithCitations(['BPHS Ch.29 v.5'])
+    const verseRefMap = new Map<string, CitationVerseRef[]>([
+      [
+        'BPHS Ch.29 v.5',
+        [
+          {
+            citation_string: 'BPHS Ch.29 v.5',
+            chunk_id: 'CORPUS_GAP:BPHS Ch.29 v.5',
+            text_id: 'unknown',
+            verse_ref: 'unresolved',
+            status: 'unresolved',
+          },
+        ],
+      ],
+    ])
+    const [enriched] = enrichWindowsWithVerseRefs([row], [row], verseRefMap)
+    expect(enriched).toBeDefined()
+    expect(enriched!.citation_verse_refs).toHaveLength(1)
+    expect(enriched!.citation_verse_refs[0]!.status).toBe('unresolved')
+    expect(enriched!.citation_verse_refs[0]!.citation_string).toBe('BPHS Ch.29 v.5')
+  })
+
+  it('includes both resolved and unresolved entries when both exist for different citations', () => {
+    const row = makeWindowWithCitations(['BPHS Ch.29 v.5', 'Jataka Parijata 3.12'])
+    const verseRefMap = new Map<string, CitationVerseRef[]>([
+      [
+        'BPHS Ch.29 v.5',
+        [{ citation_string: 'BPHS Ch.29 v.5', chunk_id: 'CORPUS_GAP:BPHS Ch.29 v.5', text_id: 'unknown', verse_ref: 'unresolved', status: 'unresolved' }],
+      ],
+      [
+        'Jataka Parijata 3.12',
+        [{ citation_string: 'Jataka Parijata 3.12', chunk_id: 'chunk-001', text_id: 'jp', verse_ref: '3.12', status: 'resolved' }],
+      ],
+    ])
+    const [enriched] = enrichWindowsWithVerseRefs([row], [row], verseRefMap)
+    expect(enriched!.citation_verse_refs).toHaveLength(2)
+    const statuses = enriched!.citation_verse_refs.map((r) => r.status).sort()
+    expect(statuses).toEqual(['resolved', 'unresolved'])
+  })
+
+  it('creates a corpus-gap unresolved entry for a citation with NO verseRefMap entry at all', () => {
+    const row = makeWindowWithCitations(['Unknown Text 5.3'])
+    // verseRefMap has no entry for 'Unknown Text 5.3'
+    const verseRefMap = new Map<string, CitationVerseRef[]>()
+    const [enriched] = enrichWindowsWithVerseRefs([row], [row], verseRefMap)
+    expect(enriched!.citation_verse_refs).toHaveLength(1)
+    const entry = enriched!.citation_verse_refs[0]!
+    expect(entry.status).toBe('unresolved')
+    expect(entry.citation_string).toBe('Unknown Text 5.3')
+    expect(entry.chunk_id).toBe('CORPUS_GAP:Unknown Text 5.3')
+    expect(entry.text_id).toBe('unknown')
+    expect(entry.verse_ref).toBe('unresolved')
+  })
+
+  it('returns empty array for a row with no citation strings (unchanged behaviour)', () => {
+    const row = makeRow({ active_sentences: [] })
+    const verseRefMap = new Map<string, CitationVerseRef[]>()
+    const [enriched] = enrichWindowsWithVerseRefs([row], [row], verseRefMap)
+    expect(enriched!.citation_verse_refs).toEqual([])
+  })
+})
+
+// ── buildTermBreakdownSummary — C1 ────────────────────────────────────────────
+describe('buildTermBreakdownSummary (C1)', () => {
+  it('returns null for null input', () => {
+    expect(buildTermBreakdownSummary(null)).toBeNull()
+  })
+
+  it('returns null for undefined input', () => {
+    expect(buildTermBreakdownSummary(undefined)).toBeNull()
+  })
+
+  it('builds the human-readable summary string for a full term_breakdown object', () => {
+    const td = { promise: 0.82, permission: 0.61, activity: 0.73, lambda_v3: 0.50 }
+    const result = buildTermBreakdownSummary(td)
+    expect(result).toBe('λ_v3=0.50 (promise=0.82 × permission=0.61 × activity=0.73)')
+  })
+
+  it('uses λ_v3=? when lambda_v3 is missing', () => {
+    const td = { promise: 0.82, permission: 0.61, activity: 0.73 }
+    const result = buildTermBreakdownSummary(td)
+    expect(result).toContain('λ_v3=?')
+  })
+
+  it('omits a factor from the product list when it is missing from the object', () => {
+    const td = { promise: 0.82, lambda_v3: 0.50 }
+    const result = buildTermBreakdownSummary(td)
+    expect(result).not.toContain('permission=')
+    expect(result).not.toContain('activity=')
+    expect(result).toContain('promise=0.82')
+  })
+})
+
+// ── computeGocharaForecast — C1: term_breakdown_summary on served windows ─────
+describe('computeGocharaForecast — C1 term_breakdown_summary', () => {
+  const FORECAST_ROW = {
+    id: 42,
+    chart_id: CHART_ID,
+    event_class: 'career_advancement',
+    temporal_shape: 'interval' as const,
+    window_start: '2026-01-01',
+    window_end: '2026-06-30',
+    peak_date: '2026-03-15',
+    milestone_id: null,
+    is_irreversibility_milestone: false,
+    signed_intensity: 0.6,
+    raw_intensity: 0.6,
+    valence: 'gain' as const,
+    is_adverse: false,
+    active_sentences: [] as unknown[],
+    contributing_systems: [] as unknown[],
+    suppression_state: {},
+    peak_basis: 'gochara_lambda_v3',
+    calibration_state: 'structural_prior',
+    source: 'live' as const,
+    computed_at: '2026-01-01T00:00:00Z',
+    continuity_state: null,
+    generation: 'g3_utkarsha',
+    era_slice_key: 'g3_2024_2034',
+    term_breakdown: { promise: 0.82, permission: 0.61, activity: 0.73, lambda_v3: 0.50 },
+  }
+
+  function mockFetchForecast(row: Record<string, unknown>) {
+    // Mirror the exact pattern used by computeGocharaElectionAvoidance tests above:
+    // intercept /api/mcp/db/query, return the fixture row for the main
+    // kala_gochara_windows SELECT (identified by containing window_start/window_end
+    // range params — unique to the forecast query), and empty rows for all
+    // coverage/authority support queries.
+    global.fetch = vi.fn(async (url: unknown, opts: unknown) => {
+      const urlStr = String(url)
+      if (urlStr.includes('/api/mcp/db/query')) {
+        const body = JSON.parse((opts as { body: string }).body) as { sql?: string }
+        const sql = body.sql ?? ''
+        // The forecast main query is the only one that references both
+        // kala_gochara_windows and the window_start/window_end range clause.
+        // All coverage sub-queries (kala_gochara_authority, gochara_resonance_map,
+        // brahma_event_ontology, build_substep_progress) don't reference that table.
+        if (sql.includes('FROM kala_gochara_windows') && sql.includes('window_start')) {
+          return { ok: true, json: async () => ({ rows: [row] }) }
+        }
+        return { ok: true, json: async () => ({ rows: [] }) }
+      }
+      return { ok: false, status: 500, text: async () => 'unexpected fetch in test' }
+    }) as unknown as typeof fetch
+  }
+
+  it('served windows include term_breakdown_summary computed from term_breakdown', async () => {
+    mockFetchForecast(FORECAST_ROW)
+
+    const result = (await computeGocharaForecast(
+      CHART_ID,
+      { start: '2026-01-01', end: '2026-12-31' },
+      undefined,
+      undefined,
+      50,
+      TEST_PRINCIPAL,
+    )) as { windows: Array<Record<string, unknown>> }
+
+    expect(result.windows).toHaveLength(1)
+    expect(result.windows[0]!['term_breakdown_summary']).toBe(
+      'λ_v3=0.50 (promise=0.82 × permission=0.61 × activity=0.73)',
+    )
+  })
+
+  it('term_breakdown_summary is null when term_breakdown is null', async () => {
+    mockFetchForecast({ ...FORECAST_ROW, term_breakdown: null })
+
+    const result = (await computeGocharaForecast(
+      CHART_ID,
+      { start: '2026-01-01', end: '2026-12-31' },
+      undefined,
+      undefined,
+      50,
+      TEST_PRINCIPAL,
+    )) as { windows: Array<Record<string, unknown>> }
+
+    expect(result.windows).toHaveLength(1)
+    expect(result.windows[0]!['term_breakdown_summary']).toBeNull()
   })
 })
 
