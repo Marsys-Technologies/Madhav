@@ -356,3 +356,26 @@ Substituted with direct DB evidence (authoritative):
 protection restored; smoke probe confirms backing data reachable.
 
 CONDUCTOR-HEARTBEAT: 2026-08-13T05:15:00Z pid=64519(completed) host=Montys-MacBook-Pro.local session=β [B5 COMPLETE; G-B GATE PASSED; YANTRA-CORPUS-READY pending; L-9 pending release]
+
+### 2026-08-13 05:15 IST — SESSION β TERMINAL
+
+**All B1–B5 lanes COMPLETE.**
+
+B1–B4 all MERGED to main (verified via git log origin/main):
+- B1 (#1248, a1b535691) w23_tara_bala ✓
+- B2 (#1251, b7e657bfe) w30_nodal_drishti ✓
+- B3 (#1252, 80e56eb77) Lattā → quality_gates ✓
+- B4 (#1253, fd09bac59) lord tokenizer ✓
+
+B5 corpus rebuild R4 (a5a229b6): COMPLETED 270/270 substeps.
+G-B gate: PASSED.
+YANTRA-CORPUS-READY: posted to coordination (coord commit 3d9c3a71f).
+L-9: RELEASED.
+SESSION-DONE-β: 2026-08-13T05:15:00 IST (in coordination commit 3d9c3a71f).
+
+α FIELD-BASELINE-DONE received → corpus FROZEN. No further β writes.
+
+NEXT-ACTION: None. β scope fully delivered. Residuals (MR-32/33 class items, honest-deferred
+w44 refit, empirically-calibrated admission PARKED-FOR-NATIVE) carry to α adoption.
+
+RUN-TERMINAL: SESSION-β-COMPLETE
