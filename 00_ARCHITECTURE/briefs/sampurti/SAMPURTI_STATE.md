@@ -1217,3 +1217,5 @@ CONDUCTOR-HEARTBEAT: 2026-08-13T01:57+05:30 (CONDUCTOR of SAMPŪRTI-α) pid=7327
 CONDUCTOR-HEARTBEAT: 2026-08-13T02:04+05:30 (CONDUCTOR of SAMPŪRTI-α) pid=73276 [Run 6 — index 357/456, stage5 fast classes clearing. Stage0-4 completed (fingerprint fast). Slow classes ahead: marriage:2-8 + relocation + separation + surgery. ETA lit: ~2+ hours (likely requires Run 7 after this).]
 
 CONDUCTOR-HEARTBEAT: 2026-08-13T02:15+05:30 (CONDUCTOR of SAMPŪRTI-α) pid=73276 [Run 6 — index 362/456, stage5:marriage:5 committed. 18 min elapsed. Pace: ~2.5 min/block (faster than chart1 ~3 min). Remaining: marriage:6-8 + relocation + separation + surgery + stage6/7. ETA surgery done ~03:35 IST; may time out before stage6/7.]
+
+CONDUCTOR-HEARTBEAT: 2026-08-13T02:25+05:30 (CONDUCTOR of SAMPŪRTI-α) pid=73276 [Run 6 — index 393/456, psychological_arc finalize done. rows=590,190. Marriage fully done (+53K windows). 28 min elapsed, 92 min remaining. Relocation slow class starting. Projection: all 4 slow classes commit by ~88 min mark; stage6/7 runs out of budget (~28 min remaining) → Run 7 for stage6/7+snapshot. Watcher PID 1980 will auto-restart.]
