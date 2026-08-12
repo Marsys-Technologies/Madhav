@@ -14,6 +14,8 @@ CONDUCTOR-HEARTBEAT: 2026-08-12T20:26:10Z pid=61698 host=Montys-MacBook-Pro.loca
 [STEP-0 OPEN: liveness clean (no prior γ conductor), coordination fetched, reconcile complete]
 CONDUCTOR-HEARTBEAT: 2026-08-12T20:33:32Z pid=61698 host=Montys-MacBook-Pro.local session=γ
 [BUILDERS: C3 tests passing (19/19) staging commit; C2 implementing buildNestedHierarchy (11/11 failing→in progress); C5 writing §8 test suite; C1 resolving node_modules in worktree]
+CONDUCTOR-HEARTBEAT: 2026-08-12T20:43:00Z pid=61698 host=Montys-MacBook-Pro.local session=γ
+[ALL-4-BUILDERS-COMPLETE: C1 PR#1249 22/22 ✓ | C2 PR#1247 22/22 ✓ | C3 PR#1245 19/19 ✓ | C5 PR#1246 37/37 ✓ — dispatching C4]
 
 ## STEP-0 STATE (2026-08-13 01:50 IST launch)
 
@@ -47,11 +49,11 @@ CONDUCTOR-HEARTBEAT: 2026-08-12T20:33:32Z pid=61698 host=Montys-MacBook-Pro.loca
 
 | Lane | Title | Status | Evidence |
 |------|-------|--------|----------|
-| C1 | term_breakdown + citation_verse_refs per-window WHY (honest unresolved preserved) | PENDING | — |
-| C2 | era⊃month⊃day NESTED hierarchy serving via parent_window_id | PENDING | — |
-| C3 | coverage_quality.tier first-class facet (thin ≠ rich silence) | PENDING | — |
-| C4 | Unified NOW/AHEAD narrative (field+gochara, dual-ref, behind flag) | PENDING (build behind flag; activate on FIELD-INTEGRATED) | — |
-| C5 | AHEAD auto-file re-key → field window_id + authority_basis (behind flag) | PENDING (build behind flag; activate on FIELD-INTEGRATED) | — |
+| C1 | term_breakdown + citation_verse_refs per-window WHY (honest unresolved preserved) | PR-OPEN | PR #1249, 22/22 tests pass, branch sampurti/γ-c1-term-breakdown |
+| C2 | era⊃month⊃day NESTED hierarchy serving via parent_window_id | PR-OPEN | PR #1247, 22/22 tests pass, branch sampurti/γ-c2-hierarchy |
+| C3 | coverage_quality.tier first-class facet (thin ≠ rich silence) | PR-OPEN | PR #1245, 19/19 tests pass, branch sampurti/γ-c3-coverage-tier |
+| C4 | Unified NOW/AHEAD narrative (field+gochara, dual-ref, behind flag) | IN-PROGRESS | dispatching now |
+| C5 | AHEAD auto-file re-key → field window_id + authority_basis (behind flag) | PR-OPEN | PR #1246, 37/37 tests pass, branch sampurti/γ-c5-ahead-rekey |
 
 ## GATE STATUS
 
@@ -89,3 +91,13 @@ Four parallel builders launched. Status at T+7 min:
 - **C2** (aba8105f156fe339e): Tests written (11 new failing — `buildNestedHierarchy is not a function`). Confirmed TDD fail. Now implementing `ServedWindow`, `HierarchyNode` types + `buildNestedHierarchy()` function in `register_gochara_windows.ts`.
 - **C5** (a9108aa16a61a735e): Writing §8 test suite (4 test groups: C5.1 flag-OFF v1 citation, C5.2 flag-ON+match→field_window_id+v2, C5.3 flag-ON+no-match→honest no-op, C5.4 no kala_field_windows query when off). Hit file-not-read guard, now resolving.
 - **C1** (a8117a8a10a5d586f): Hit vitest/node_modules missing in worktree. Resolving via worktree `npm install` or path correction.
+
+### 2026-08-13 02:14 IST — All builders complete; C4 dispatched
+
+All 4 parallel builders committed, pushed, and opened PRs:
+- **C1** PR #1249: `buildTermBreakdownSummary` + `enrichWindowsWithVerseRefs` (incl. unresolved). 22/22 tests pass.
+- **C2** PR #1247: `buildNestedHierarchy` + `ServedWindow`/`HierarchyNode` types wired into `computeGocharaForecast`. 22/22 tests pass.
+- **C3** PR #1245: `coverage_quality.tier` on `GocharaCoverage` interface + `computeGocharaCoverage` computation. 19/19 tests pass.
+- **C5** PR #1246: `queryFieldWindow` + `buildSourceCitationV2` + `autofileAheadWindows` enrichment (behind `SM_GAMMA_C5_ENABLED`). 37/37 tests pass.
+
+C4 builder dispatched now (unified NOW/AHEAD narrative behind `SM_GAMMA_C4_ENABLED`).
