@@ -1295,3 +1295,38 @@ CONDUCTOR-HEARTBEAT: 2026-08-13T03:56+05:30 (CONDUCTOR of SAMPŪRTI-α) [Run 6 C
 **Next**: P3 DVIPRAMĀṆA — A1 pin (1.2 strengthened form) after YANTRA-CORPUS-READY from β.
   A1 is the first integration commit on sampurti/integration.
 
+---
+
+## Heartbeat: 2026-08-13T04:25+05:30 — WAITING β YANTRA-CORPUS-READY; native chart cascade-stale
+
+CONDUCTOR-HEARTBEAT: 2026-08-13T04:25+05:30 (CONDUCTOR of SAMPŪRTI-α) [P2 COMPLETE. Waiting β L-9.]
+
+**β build status** (native chart 482012f1):
+- Run a5a229b6: still RUNNING — plan=[ka_gochara_v3_century_materialize] (single asset)
+- Previous 3 runs (fad79fc0, 19c86f8f, 8844e0f2) all failed on gochara_v3_century_materialize
+- ka_gochara_resonance: LIT (completed in earlier β sub-run)
+
+**Native chart (482012f1) cascade-stale finding**:
+- `ka_gochara_resonance` rebuilt by β → orchestrator set downstream assets to STALE
+- ka_kshetra.depends_on includes ka_gochara_resonance → ka_kshetra now STALE (rows=678,755)
+- Full cascade: 37 non-lit assets (ka_* stale, mi_*/ph_* error from bo_samskara cascade)
+- ka_kshetra stale is EXPECTED and CORRECT — A2 re-field will rebuild it with new resonance
+
+**A1 pin (after YANTRA-CORPUS-READY)**:
+- Code change: add `{gochara_generation, gochara_calibration_state, gochara_corpus_digest}`
+  to config_pin in ka_kshetra hazard/stage4 (or writer)
+- Corpus digest = md5(count(*) || max(computed_at) || max(id)) for ka_gochara_resonance rows
+- Snapshot: must use POST-β resonance data (not pre-β stale snapshot)
+- Full builder lane: TDD failing-test-first, PR→main
+
+**A2 (after A1 merged)**:
+- dispatch_sampurti_r3_chart1_full.py: full-DAG rebuild for native chart (all stale ka_*/bo_*/mi_*/ph_*)
+  excluding 5 gochara + ka_gochara_sweep
+- Expected: same proxy-drop pattern as R2; multiple runs required
+- Measurement #4 snapshot was PRE-β — after A2, the new ka_kshetra build will reflect B1-B4 improvements
+
+**Waiting action**: Poll coordination file for YANTRA-CORPUS-READY from β.
+β L-9 expiry 06:30 IST; if expires without YANTRA-CORPUS-READY, α evaluates based on
+current corpus state (ka_gochara_resonance already lit).
+
+
