@@ -187,8 +187,14 @@ class FakeCursor:
             return
         if 'FROM chart_facts' in s:
             wanted = set(params[1])
-            self._rows = [{'n': len({r['fact_id'] for r in t.get('chart_facts', [])
-                                     if r['fact_id'] in wanted})}]
+            resolved = {r['fact_id'] for r in t.get('chart_facts', [])
+                        if r['fact_id'] in wanted}
+            if 'COUNT' in s:
+                # _citation_resolution shape: SELECT COUNT(DISTINCT fact_id) AS n
+                self._rows = [{'n': len(resolved)}]
+            else:
+                # _write_windows_batch shape: SELECT DISTINCT fact_id
+                self._rows = [{'fact_id': fid} for fid in sorted(resolved)]
             return
         if 'FROM kala_field_salience' in s:
             self._rows = [dict(r) for r in t.get('kala_field_salience', [])]
