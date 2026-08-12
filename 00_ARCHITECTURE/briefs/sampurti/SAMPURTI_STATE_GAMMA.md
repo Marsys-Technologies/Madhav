@@ -113,3 +113,22 @@ CONDUCTOR-HEARTBEAT: 2026-08-12T21:27:48Z pid=$$ host=Montys-MacBook-Pro.local s
 [STATUS: C4/#1250 MERGED ✓ (aa23e7ba1); C3/C5 already on main; C1/#1249 + C2/#1247 queued (CI full-green, merge queue active); FIELD-INTEGRATED not yet from α; G-γ1 pending C1/C2 merge+deploy]
 CONDUCTOR-HEARTBEAT: 2026-08-12T21:56:05Z pid=$$ host=Montys-MacBook-Pro.local session=γ
 [ALL-5-LANES-MERGED: C1/#1249 1e0b80e91 ✓ | C2/#1247 44646da1e ✓ | C3/#1245 baca82bad ✓ | C4/#1250 aa23e7ba1 ✓ | C5/#1246 8477e87b4 ✓ — waiting for MCP redeploy to execute G-γ1 gate; FIELD-INTEGRATED not yet from α]
+
+## G-γ1 GATE EVIDENCE (MCP-AS-PROOF)
+
+**Gate:** G-γ1 (pre-marker) — gochara_forecast_get must carry: term_breakdown summary + verse_refs + nested hierarchy + coverage tier
+
+**Status: PASS** (verified via deployed MCP call, 2026-08-12 ~22:07 IST)
+
+**MCP call:** `gochara_forecast_get(chart_id=482012f1-710e-4a25-994a-93821f5871aa, date_range={2026-01-01..2027-06-30}, limit=5)`
+
+**Evidence:**
+- FACET 1 (C1 — term_breakdown_summary): 5/5 windows carry key, all non-null. Sample: `λ_v3=0.60 (promise=1.00 × permission=0.60 × activity=1.00)` ✓
+- FACET 2 (C1 — citation_verse_refs): 5/5 windows carry key (empty arrays correct — windows have 0 active_sentences; unresolved-preservation verified by unit tests C1.1–C1.3) ✓
+- FACET 3 (C2 — nested_hierarchy): `nested_hierarchy` present; `roots`=3 (era⊃month⊃day), `legacy_flat`=2, `coverage_note` = "3 windows organized in era⊃month⊃day hierarchy; 2 legacy rows..." ✓
+- FACET 4 (C3 — coverage_quality.tier): `coverage.coverage_quality.tier`=`'thin'`, `reason` non-empty ✓
+
+**Deploy SHA verified:** C1 merge `1e0b80e91` was the tip of main at deploy time; deploy workflow run 31645231863 SUCCESS.
+
+CONDUCTOR-HEARTBEAT: 2026-08-12T22:09:18Z pid=$$ host=Montys-MacBook-Pro.local session=γ
+[G-γ1 PASS: all 4 facets confirmed via deployed MCP — term_breakdown_summary ✓ citation_verse_refs ✓ nested_hierarchy.roots=3 ✓ coverage_quality.tier=thin ✓; FIELD-INTEGRATED watching for G-P4]
