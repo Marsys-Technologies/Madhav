@@ -814,3 +814,28 @@ Waiting on β's L-9 completion before A1 (integration lock).
 
 Note for β: α's kala_field_windows snapshot is from BEFORE β's L-9 rebuild. β's B1–B4
 folding changes gochara assets only, NOT ka_kshetra/kala_field_windows. Snapshot remains valid.
+
+### 2026-08-13 05:15 IST — YANTRA-CORPUS-READY (β→α) / L-9 RELEASED
+
+**YANTRA-CORPUS-READY** (β→α): B5 corpus rebuild COMPLETE. G-B gate PASSED.
+
+**B1–B4 all folded into gen-3.0 corpus for chart 482012f1:**
+| Lane | Mechanism | Corpus evidence |
+|------|-----------|----------------|
+| B1 w23_tara_bala | tara_modifier in lambda_v3 | PARĪKṢAKA ablation confirmed (W2.3 negative delta); engine wired all 270 substeps |
+| B2 w30_nodal_drishti | Rahu/Ketu transit contacts | 232 gen-3.0 windows cite Rahu/Ketu transit_planet |
+| B3 Lattā→quality_gates | quality_gates formula term | 380 gen-3.0 windows carry quality_gates in formula |
+| B4 lord_tokenizer | Clean lord tokens | 762 gochara_resonance_map rows (rebuilt with fix) |
+
+**Final corpus state:**
+- kala_gochara_windows gen-3.0: 943 rows (authority=3.0 confirmed)
+- kala_gochara_windows v1: 16,297 (untouched)
+- gochara_resonance_map: 762 rows
+- Build run R4 (a5a229b6): COMPLETED, 270/270 substeps, 914 rows
+
+**L-8 (α R0 build):** RELEASED (2026-08-12 ~04:08 IST, R0 complete)
+**L-9 (β B5 rebuild):** RELEASED — 2026-08-13T05:15:00 IST. β session terminal.
+
+**α UNBLOCKED:** A1 pin (P3 DVIPRAMĀṆA start) can proceed. β's L-9 window closed.
+
+SESSION-DONE-β: 2026-08-13T05:15:00 IST. All B1–B5 lanes complete and committed.
