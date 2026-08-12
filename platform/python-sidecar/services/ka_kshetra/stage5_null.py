@@ -231,14 +231,13 @@ def replicate_evaluator(ev: FieldEvaluator, delta: float) -> FieldEvaluator:
     )
 
 
-# ── L1g + L1h: null-replicate performance fixes ──────────────────────────────
+# ── L1g + L1h + L1k: null-replicate performance fixes ───────────────────────
 #
 # L1g (coarse breakpoints): build_segments() calls ln_lambda once per interval.
 # The daśā ladder has 165K+ periods (mostly SD/PrD) → 165K+ intervals — at
 # ~30μs per ln_lambda call that is 15 seconds per replicate, ~8 min per block.
 # Omitting SD/PrD boundaries AND envelope knots reduces breakpoints from ~165K
-# to ~819 (MD/AD/PD + kinematics roots). build_segments' adaptive quadrature
-# (max_depth=6) resolves intra-interval transit peaks — sufficient for nulls.
+# to ~819 (MD/AD/PD + kinematics roots).
 #
 # L1h (pointer-advance): the real kala_field event classes (childbirth etc.)
 # have 425K+ stored segments, meaning the 819-interval ln_lambda function is
@@ -246,29 +245,60 @@ def replicate_evaluator(ev: FieldEvaluator, delta: float) -> FieldEvaluator:
 # null segments per replicate. cumulative_on_grid()'s prior loop called
 # integrator.integrate() — restarting a linear scan from seg 0 each grid step —
 # O(N_grid × N_seg) = 36525 × 52K ≈ 950M ops per replicate → 7+ min/block.
-# Skipped-class nulls (career_setback etc.) never reach this because they raise
-# ClassSkipped before computing segments. Pointer-advance in cumulative_on_grid
-# and _lambda_grid_fast gives O(N_grid + N_seg) ≈ 89K → sub-second.
+# Pointer-advance in cumulative_on_grid and _lambda_grid_fast gives
+# O(N_grid + N_seg) ≈ 89K → sub-second.
 #
-# The real-build segments (stored in kala_field) are unaffected by either fix.
+# L1k (memoize + max_depth cap): L1h fixed the cumulative_on_grid bottleneck
+# but _null_build_segments remained slow. kala_field_primitives has 166K rows
+# for this chart, so EnvelopeIndex._sup_t0/_sup_t1 arrays are 166K elements.
+# Every covariates_at(t) call does np.where(...) on 166K floats (~100μs).
+# integrator._refine evaluates ln_lambda at t0, t1, AND tm — with no
+# memoization, adjacent intervals re-evaluate their shared endpoints. At depth 6:
+# 818 intervals × 381 calls = 311K ln_lambda evaluations per replicate ×
+# ~100μs = 31s/replicate × 32 = 990s ≈ 16 min/block.
+#
+# Fix: wrap ln_lambda in a per-replicate dict cache (eliminating re-evaluation of
+# shared endpoints) and cap null-replicate max_depth at _NULL_MAX_DEPTH=2.
+# Unique evaluations: 818 × 5 ≈ 6,545 per replicate; at 100μs = 655ms ×
+# 32 = 21s/block (vs. 16 min). With max_depth=1: 818 × 3 ≈ 3,273 unique ×
+# 100μs = 327ms × 32 = 10s/block — well within the 12s target.
+#
+# Precision impact: max_depth=1 resolves each ~30-day dasha interval into 2
+# sub-segments (~15 days each). Transit-contact peaks shorter than ~15 days are
+# approximated by the linear interpolant rather than sampled exactly. For the
+# null distribution this is acceptable — small inaccuracies average out over
+# 256 replicates. The conservative direction (slightly lower q_threshold from
+# missing sub-interval peaks) is consistent with the module's upper-bound intent.
+#
+# Skipped-class nulls (career_setback etc.) never reach this because they raise
+# ClassSkipped before computing segments. The real-build segments (stored in
+# kala_field) are unaffected by any of these fixes.
 
 _NULL_COARSE_LEVELS: frozenset[str] = frozenset({'MD', 'AD', 'PD'})
+
+#: Adaptive-refinement depth cap for null replicates (L1k).
+#: max_depth=1 → 2 sub-segments per MD/AD/PD interval; unique ln_lambda
+#: evaluations ≈ 818 × 3 = 3,273 per replicate → ~10s per block at 100μs/call.
+#: Reduce to 0 (no refinement, 818 flat segments) only if blocks still exceed
+#: writer_timeout_seconds. Do not raise max_depth above 2 without profiling.
+_NULL_MAX_DEPTH: int = 1
 
 
 def _null_breakpoints(ev: FieldEvaluator) -> list[float]:
     """Breakpoints for null replicates: coarse daśā levels only (MD/AD/PD).
 
     Envelope knots are intentionally EXCLUDED. Even at 1-day downsampling they
-    produce ~36K segments for childbirth, which makes cumulative_on_grid O(N²)
-    (36,525 grid-steps × 18K avg linear scan = 6.7s/replicate × 32 = 7.1 min
-    per block). With ladder-only breakpoints (~819 segments) the linear scan is
-    fast: 36,525 × 409 × 10ns = 0.15s/replicate, total ≈ 12s per block.
+    produce ~36K segments for childbirth, causing O(N²) cumulative_on_grid
+    (L1g motivation). With ladder-only breakpoints (~819 breakpoints → 818
+    intervals), the null-replicate cost is dominated by ln_lambda evaluation
+    cost in build_segments, addressed by L1k memoisation + max_depth cap.
 
-    Correctness: build_segments' adaptive quadrature (max_depth=6) resolves
-    transit-contact peaks within each 10–30-day ladder interval to sub-day
-    resolution. Precision loss is acceptable for the null distribution — small
-    inaccuracies average out over 256 replicates and the conservative direction
-    (slightly lower q_threshold) matches the docstring's intent.
+    Correctness: each MD/AD/PD interval spans ~10–30 days. With max_depth=1
+    the null replicates resolve each to 2 sub-segments (~15 days). Precision
+    loss is acceptable for the null distribution — inaccuracies average out
+    over 256 replicates and the conservative direction (slightly lower
+    q_threshold when sub-interval peaks are under-sampled) matches the module's
+    upper-bound intent (see module docstring §p-value).
 
     Clips to [0, horizon_days].
     """
@@ -286,8 +316,29 @@ def _null_breakpoints(ev: FieldEvaluator) -> list[float]:
 
 
 def _null_build_segments(ev: FieldEvaluator) -> list[Segment]:
-    """Build segments for a null replicate using coarse breakpoints (L1g)."""
-    return integrator.build_segments(_null_breakpoints(ev), ev.ln_lambda)
+    """Build segments for a null replicate: coarse breakpoints (L1g) +
+    memoised ln_lambda + capped max_depth (L1k).
+
+    integrator._refine evaluates ln_lambda at BOTH endpoints and the midpoint
+    on every recursive call. Without memoisation, adjacent intervals re-evaluate
+    their shared endpoints, and each recursive level doubles the evaluation count
+    — 818 intervals × 381 calls (depth 6) = 311K per replicate. With 166K
+    primitives in the chart's EnvelopeIndex, each call takes ~100μs via
+    np.where over 166K-element arrays → 31s/replicate → hours/block.
+
+    L1k: per-replicate dict cache eliminates shared-endpoint re-evaluation.
+    _NULL_MAX_DEPTH=1 caps the refinement tree: 818 intervals → ≈3,273 unique
+    evaluations × ~100μs ≈ 327ms/replicate × 32 = 10s/block.
+    """
+    cache: dict[float, float] = {}
+
+    def _ln_lambda_cached(t: float) -> float:
+        if t not in cache:
+            cache[t] = ev.ln_lambda(t)
+        return cache[t]
+
+    return integrator.build_segments(_null_breakpoints(ev), _ln_lambda_cached,
+                                     max_depth=_NULL_MAX_DEPTH)
 
 
 def cumulative_on_grid(
