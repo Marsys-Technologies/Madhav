@@ -1295,6 +1295,166 @@ export interface JanmaResonanceResult {
 
 // ── Core compute (exported for tests — mirrors computeKalaTemporalBundle's shape) ──
 
+// ── SM-γ C4: GocharaNarrativeBlock ────────────────────────────────────────────
+// Added behind SM_GAMMA_C4_ENABLED env flag (C4.1). All fields come from
+// existing substrate: moon_primary from computeGocharaDualReference (already
+// run above); active_windows from gochara_forecast_get (callRegistryCapability,
+// same pattern as every other sub-call in this file). No new DB query, no new
+// computation (§N.5 / B.10).
+
+export interface GocharaNarrativeMoonPrimary {
+  description: string
+  house_from_lagna: number | null
+  house_from_moon: number | null
+  current_sign: string | null
+  is_retrograde: boolean | null
+}
+
+export interface GocharaNarrativeWindow {
+  event_class: string
+  window_start: string
+  window_end: string
+  peak_date: string
+  valence: string
+  signed_intensity: number
+  coverage_tier: 'thin' | 'moderate' | 'rich' | null
+}
+
+export interface GocharaNarrativeBlock {
+  moon_primary: GocharaNarrativeMoonPrimary
+  active_windows: GocharaNarrativeWindow[]
+  field_gochara_alignment: 'aligned' | 'divergent' | 'insufficient_data'
+  narrative_tier: 'rich' | 'moderate' | 'thin'
+}
+
+/** Derives the coverage_tier from calibration_state — mirrors the Serving Density Principle
+ *  (§N.6): 'calibrated' → 'rich', 'provisional' → 'moderate', else 'thin'. Never fabricated. */
+function deriveCoverageTier(
+  calibrationState: unknown,
+): 'thin' | 'moderate' | 'rich' | null {
+  if (typeof calibrationState !== 'string') return null
+  if (calibrationState === 'calibrated') return 'rich'
+  if (calibrationState === 'provisional') return 'moderate'
+  if (calibrationState === 'uncalibrated') return 'thin'
+  return null
+}
+
+/** Gain-aligned house numbers from Lagna (classical upachaya + dhana houses for gain/income) */
+const GAIN_ALIGNED_HOUSES = new Set([1, 2, 5, 9, 10, 11])
+/** Loss-aligned house numbers from Lagna (dushtana + maraka houses) */
+const LOSS_ALIGNED_HOUSES = new Set([6, 8, 12])
+
+/** Returns true when the Moon's house-from-Lagna is semantically aligned with the dominant
+ *  valence of the active gochara windows (e.g. Moon in 11th (gains) + gain-valence windows). */
+function isAligned(houseFromLagna: number | null, dominantValence: string | null): boolean {
+  if (houseFromLagna == null || dominantValence == null) return false
+  if (dominantValence === 'gain' && GAIN_ALIGNED_HOUSES.has(houseFromLagna)) return true
+  if (dominantValence === 'loss' && LOSS_ALIGNED_HOUSES.has(houseFromLagna)) return true
+  return false
+}
+
+/** Fetches current-date gochara forecast windows for the given chart via callRegistryCapability.
+ *  Returns an empty array (never throws) on any failure — the narrative block uses
+ *  `field_gochara_alignment = 'insufficient_data'` in that case. */
+async function fetchGocharaForecastWindows(
+  chartId: string,
+  asOfDate: string,
+  principal: Principal,
+): Promise<GocharaNarrativeWindow[]> {
+  // A ±90-day window around asOfDate captures windows active "now" without fetching
+  // multi-year history. Mirrors gochara_forecast_get's own overlap semantics:
+  // window_end >= start AND window_start <= end.
+  const startDate = asOfDate
+  const endParsed = new Date(`${asOfDate}T00:00:00Z`)
+  endParsed.setUTCDate(endParsed.getUTCDate() + 90)
+  const endDate = endParsed.toISOString().slice(0, 10)
+
+  const resp = await callRegistryCapability(
+    'marsys://tool/L4/gochara_forecast_get',
+    {
+      chart_id: chartId,
+      date_range: { start: startDate, end: endDate },
+      limit: 20,
+    },
+    principal,
+  )
+  if (!resp.ok || !resp.content) return []
+  const rawWindows = (resp.content['windows'] as Array<Record<string, unknown>> | undefined) ?? []
+  return rawWindows
+    .filter((w) => typeof w['event_class'] === 'string')
+    .map((w) => ({
+      event_class: String(w['event_class']),
+      window_start: typeof w['window_start'] === 'string' ? String(w['window_start']) : asOfDate,
+      window_end: typeof w['window_end'] === 'string' ? String(w['window_end']) : asOfDate,
+      peak_date: typeof w['peak_date'] === 'string' ? String(w['peak_date']) : asOfDate,
+      valence: typeof w['valence'] === 'string' ? String(w['valence']) : 'neutral',
+      signed_intensity: typeof w['signed_intensity'] === 'number' ? (w['signed_intensity'] as number) : 0,
+      coverage_tier: deriveCoverageTier(w['calibration_state']),
+    }))
+}
+
+/** Builds the SM-γ C4 GocharaNarrativeBlock. Called only when SM_GAMMA_C4_ENABLED is on.
+ *  Sources: gocharaDual (already computed above for item 8) + live gochara forecast fetch.
+ *  Never throws — returns a minimal `insufficient_data` block on any missing piece. */
+async function buildGocharaNarrativeBlock(
+  chartId: string,
+  asOfDate: string,
+  gocharaDual: { rows: GocharaDualReferenceRow[]; rowsWithTransitData: number },
+  natalRefSigns: NatalReferenceSigns,
+  principal: Principal,
+): Promise<GocharaNarrativeBlock> {
+  // Moon row from the already-computed dual-reference (no second transit fetch needed).
+  const moonRow = gocharaDual.rows.find((r) => r.planet === 'Moon') ?? null
+  const moonTransitAvailable = moonRow != null && moonRow.transit_sign_number != null
+
+  // moon_primary — sourced entirely from the dual-reference already in scope (§N.5).
+  const moonPrimary: GocharaNarrativeMoonPrimary = {
+    description: moonTransitAvailable && moonRow
+      ? `Moon in ${moonRow.transit_sign_name ?? 'unknown'} transiting ` +
+        `${moonRow.house_from_lagna != null ? `house ${moonRow.house_from_lagna} from Lagna` : 'unknown house'}`
+      : '',
+    house_from_lagna: moonRow?.house_from_lagna ?? null,
+    house_from_moon: moonTransitAvailable ? 1 : null,  // Moon from itself is always house 1
+    current_sign: moonRow?.transit_sign_name ?? null,
+    is_retrograde: moonRow?.is_retrograde ?? null,
+  }
+
+  // Active gochara windows — fetched via callRegistryCapability (no new DB query).
+  const activeWindows = await fetchGocharaForecastWindows(chartId, asOfDate, principal)
+
+  // field_gochara_alignment — requires both Moon transit and at least one window.
+  let fieldGocharaAlignment: 'aligned' | 'divergent' | 'insufficient_data'
+  if (!moonTransitAvailable || activeWindows.length === 0) {
+    fieldGocharaAlignment = 'insufficient_data'
+  } else {
+    // Dominant valence: most-common valence across active windows.
+    const valenceCounts: Record<string, number> = {}
+    for (const w of activeWindows) {
+      valenceCounts[w.valence] = (valenceCounts[w.valence] ?? 0) + 1
+    }
+    const dominantValence = Object.entries(valenceCounts)
+      .sort((a, b) => b[1] - a[1])[0]?.[0] ?? null
+    fieldGocharaAlignment = isAligned(moonPrimary.house_from_lagna, dominantValence) ? 'aligned' : 'divergent'
+  }
+
+  // narrative_tier — driven by Moon transit quality + window count.
+  let narrativeTier: 'rich' | 'moderate' | 'thin'
+  if (moonTransitAvailable && activeWindows.length >= 2) {
+    narrativeTier = 'rich'
+  } else if (moonTransitAvailable && activeWindows.length >= 1) {
+    narrativeTier = 'moderate'
+  } else {
+    narrativeTier = 'thin'
+  }
+
+  return {
+    moon_primary: moonPrimary,
+    active_windows: activeWindows,
+    field_gochara_alignment: fieldGocharaAlignment,
+    narrative_tier: narrativeTier,
+  }
+}
+
 export interface KalaNowResult {
   tool: 'kala_now_get'
   chart_id: string
@@ -1336,6 +1496,8 @@ export interface KalaNowResult {
   // Item 13 (wave W3): current Tithi-Praveśa (lunar-return annual chart) praveśa year.
   tithi_pravesha: TithiPraveshaYearNow | null
   drill_pointers: DrillPointerLike[]
+  // SM-γ C4.1: unified NOW narrative (flag-guarded — absent when SM_GAMMA_C4_ENABLED is off).
+  gochara_narrative?: GocharaNarrativeBlock
   provenance_envelope: {
     source: string
     assets: string[]
@@ -1575,6 +1737,8 @@ export async function computeKalaNow(
   // Item 24-lite and item 1-lite are both independent of natalRefSigns but are batched
   // alongside them (same await point) rather than the earlier Promise.all, purely to keep
   // each lane's diff additive and low-conflict against sibling W1 lanes editing the same file.
+  const C4_ENABLED = process.env['SM_GAMMA_C4_ENABLED'] === 'true' || process.env['SM_GAMMA_C4_ENABLED'] === '1'
+
   const [gocharaDual, dashaLordCondition, sukshmaBoundaryUncertainty, dashaSandhi] = await Promise.all([
     computeGocharaDualReference(asOfDate, natalRefSigns, principal),
     computeDashaLordTransitCondition(chartId, ayanamshaId, asOfDate, asOfDate, natalRefSigns.lagna_sign_number, principal),
@@ -1791,6 +1955,11 @@ export async function computeKalaNow(
   // W2 (E5): the real field snapshot read — served id, or an honest marker; never a stub.
   const fieldSnapshot = await resolveFieldSnapshot(chartId, principal)
 
+  // SM-γ C4.1: build the unified NOW narrative block when flag is on.
+  const gocharaNarrative: GocharaNarrativeBlock | undefined = C4_ENABLED
+    ? await buildGocharaNarrativeBlock(chartId, asOfDate, gocharaDual, natalRefSigns, principal)
+    : undefined
+
   const envelope = makeKalaEnvelope({
     reading,
     questionFrame: args.question_frame ?? null,
@@ -1801,8 +1970,8 @@ export async function computeKalaNow(
     calibrationMaturity: noLelCalibrationMaturity(),
   })
 
-  return {
-    tool: 'kala_now_get',
+  const baseResult = {
+    tool: 'kala_now_get' as const,
     chart_id: chartId,
     as_of_date: asOfDate,
     ...envelope,
@@ -1860,6 +2029,12 @@ export async function computeKalaNow(
       tithi_pravesha_reachable: tithiPraveshaNow.reachable,
     },
   }
+
+  // SM-γ C4.1: conditionally add gochara_narrative (flag-guarded — zero footprint when off).
+  if (C4_ENABLED && gocharaNarrative !== undefined) {
+    return { ...baseResult, gochara_narrative: gocharaNarrative }
+  }
+  return baseResult
 }
 
 // ── Input schema + registration ─────────────────────────────────────────────────

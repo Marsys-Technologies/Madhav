@@ -408,6 +408,144 @@ export function applyKpVoiceToReading(reading: ArgumentReading, voice: KpSchoolV
   return reading
 }
 
+// ── SM-γ C4.2: A5 gochara-agreement facet ────────────────────────────────────
+// Added behind SM_GAMMA_C4_ENABLED env flag. Fetches gochara windows for the
+// event_class being explained (using callKalaRegistryCap, same pattern as KP
+// voice above) and assesses whether gochara concurs with or dissents from the
+// PACT chain verdict. No new DB query, no new computation (§N.5 / B.10).
+
+export interface A5GocharaAgreement {
+  agreement: 'concurs' | 'dissents' | 'insufficient_data'
+  gochara_windows_active: number
+  dominant_valence: 'gain' | 'loss' | 'neutral' | null
+  /** Human-readable agreement note, ≤120 chars (§N.8: never fabricated when empty). */
+  note: string
+}
+
+/** Maps a PACT status to its chain outcome polarity for agreement logic.
+ *  `positive` = chain complete/active (delivery possible); `negative` = denied/blocked. */
+function pactStatusPolarity(status: string): 'positive' | 'negative' | 'unknown' {
+  if (status === 'chain_complete' || status === 'chain_pending_activation') return 'positive'
+  if (
+    status === 'denied_at_promise' ||
+    status === 'denied_at_confirmation' ||
+    status === 'denied_at_activation'
+  )
+    return 'negative'
+  return 'unknown'
+}
+
+/** Derives the dominant valence from an array of gochara window objects (whatever the
+ *  underlying tool returns in `windows`). Never throws. */
+function dominantValenceFromWindows(
+  windows: Array<Record<string, unknown>>,
+): 'gain' | 'loss' | 'neutral' | null {
+  if (windows.length === 0) return null
+  const counts: Record<string, number> = {}
+  for (const w of windows) {
+    const v = typeof w['valence'] === 'string' ? w['valence'] : 'neutral'
+    counts[v] = (counts[v] ?? 0) + 1
+  }
+  const top = Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0]
+  if (top === 'gain' || top === 'loss' || top === 'neutral') return top
+  return null
+}
+
+/** Fetches gochara windows for a domain/bhava, using a ±180-day window around today.
+ *  Returns empty array (never throws) on any failure — A5 then reports `insufficient_data`. */
+async function fetchA5GocharaWindows(
+  chartId: string,
+  domain: string | undefined,
+  bhava: number | null | undefined,
+  principal: Principal,
+): Promise<Array<Record<string, unknown>>> {
+  const today = new Date().toISOString().slice(0, 10)
+  const endParsed = new Date(`${today}T00:00:00Z`)
+  endParsed.setUTCDate(endParsed.getUTCDate() + 180)
+  const endDate = endParsed.toISOString().slice(0, 10)
+
+  const args: Record<string, unknown> = {
+    chart_id: chartId,
+    date_range: { start: today, end: endDate },
+    limit: 20,
+  }
+  // If we have a domain, pass it as a filter hint; otherwise leave unfiltered.
+  if (domain) args['domain'] = domain
+
+  const raw = await callKalaRegistryCap(
+    'marsys://tool/L4/gochara_forecast_get',
+    args,
+    principal,
+  )
+  const payload = unwrapKalaPayload(raw)
+  const windows = (payload['windows'] as Array<Record<string, unknown>> | undefined) ?? []
+  return windows
+}
+
+/** Builds the A5 gochara-agreement facet from the PACT verdict and gochara windows.
+ *  Agreement logic (§N.8: never a default-positive; only `concurs` when evidence is present):
+ *  - `concurs`: windows found AND dominant valence MATCHES the PACT chain polarity
+ *    (positive PACT + gain windows, OR negative PACT + loss windows).
+ *  - `dissents`: windows found AND dominant valence CONTRADICTS the PACT chain polarity.
+ *  - `insufficient_data`: no windows, or gochara fetch failed, or polarity unknown. */
+async function buildA5GocharaAgreement(
+  chartId: string,
+  pactStatus: string,
+  domain: string | undefined,
+  bhava: number | null | undefined,
+  principal: Principal,
+): Promise<A5GocharaAgreement> {
+  let windows: Array<Record<string, unknown>> = []
+  try {
+    windows = await fetchA5GocharaWindows(chartId, domain, bhava, principal)
+  } catch {
+    // Fetch failure → insufficient_data, never thrown
+  }
+
+  if (windows.length === 0) {
+    return {
+      agreement: 'insufficient_data',
+      gochara_windows_active: 0,
+      dominant_valence: null,
+      note: 'No active gochara windows found for this domain/period.',
+    }
+  }
+
+  const domValence = dominantValenceFromWindows(windows)
+  const pactPolarity = pactStatusPolarity(pactStatus)
+
+  let agreement: 'concurs' | 'dissents' | 'insufficient_data'
+  if (pactPolarity === 'unknown' || domValence == null) {
+    agreement = 'insufficient_data'
+  } else if (
+    (pactPolarity === 'positive' && domValence === 'gain') ||
+    (pactPolarity === 'negative' && domValence === 'loss')
+  ) {
+    agreement = 'concurs'
+  } else if (
+    (pactPolarity === 'positive' && domValence === 'loss') ||
+    (pactPolarity === 'negative' && domValence === 'gain')
+  ) {
+    agreement = 'dissents'
+  } else {
+    agreement = 'insufficient_data'
+  }
+
+  const noteBase = agreement === 'concurs'
+    ? `Gochara ${domValence} windows align with PACT ${pactStatus}.`
+    : agreement === 'dissents'
+      ? `Gochara ${domValence} windows diverge from PACT ${pactStatus}.`
+      : `Gochara valence (${domValence ?? 'n/a'}) inconclusive for PACT ${pactStatus}.`
+  const note = noteBase.slice(0, 120)
+
+  return {
+    agreement,
+    gochara_windows_active: windows.length,
+    dominant_valence: domValence,
+    note,
+  }
+}
+
 export function registerKalaExplainTool(server: McpServer, principal: Principal): void {
   server.tool(
     TOOL_NAME,
@@ -561,7 +699,19 @@ export function registerKalaExplainTool(server: McpServer, principal: Principal)
           calibrationMaturity: noLelCalibrationMaturity(),
         })
 
-        const content = {
+        // SM-γ C4.2: A5 gochara-agreement facet (flag-guarded).
+        const C4_ENABLED = process.env['SM_GAMMA_C4_ENABLED'] === 'true' || process.env['SM_GAMMA_C4_ENABLED'] === '1'
+        const a5GocharaAgreement: A5GocharaAgreement | undefined = C4_ENABLED
+          ? await buildA5GocharaAgreement(
+              chart_id,
+              String(pactStatus),
+              domain as string | undefined,
+              resolvedBhava,
+              principal,
+            )
+          : undefined
+
+        const baseContent = {
           ok: true as const,
           tool: TOOL_NAME,
           chart_id,
@@ -578,6 +728,10 @@ export function registerKalaExplainTool(server: McpServer, principal: Principal)
           fact_id_refs: factIdRefs,
           pact_drill_pointers: pactDrillPointers,
         }
+
+        const content = C4_ENABLED && a5GocharaAgreement !== undefined
+          ? { ...baseContent, a5_gochara_agreement: a5GocharaAgreement }
+          : baseContent
 
         return kalaBudgetedDualOutput(content, TOOL_NAME)
       } catch (err) {
