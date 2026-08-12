@@ -59,7 +59,7 @@ B1 → B2 → B3 → B4 → B5 (sequential within β; per mechanism before next)
 |---|---|---|---|---|---|
 | B1 | Wire w23_tara_bala into engine.py production λ; blind-spec commit first; unit+parity suites | sampurti/β-b1-tara-bala | VERIFIED-MERGE-QUEUED | VERIFIED (8/8 checks) | PR #1248 in merge queue; CI green; PARĪKṢAKA VERIFIED |
 | B2 | w30_nodal_drishti (Rahu/Ketu 5/7/9; L1 constants verbatim; "later tradition" hedge preserved) | sampurti/β-b2-nodal-drishti | VERIFIED-MERGE-QUEUED | VERIFIED (8/8 checks) | PR #1251 in merge queue; CI 19/26 green (7 skip); PARĪKṢAKA VERIFIED |
-| B3 | Lattā → quality_gates (existing malefic-scale path; Ketu absence disclosed) | sampurti/β-b3-latta | NOT-STARTED | — | — |
+| B3 | Lattā → quality_gates (existing malefic-scale path; Ketu absence disclosed) | sampurti/β-b3-latta | CI-AWAITING-PARĪKṢAKA | — | PR #1252 open; CI running; ablation POSITIVE (-3.89% on latta JDs) |
 | B4 | Resonance tokenizer fix (qualifier tokens; "maraka lords" compound) + rebuild resonance | sampurti/β-b4-resonance-tokenizer | NOT-STARTED | — | — |
 | B5 | ONE leased corpus-rebuild window folding B1-B4; PARIṢKĀRA L-6 evidence template; w43 ablation per mechanism; honest w44 refit (non-zero now possible; stamps ONLY via w45 §N.8 gate) | sampurti/β-b5-corpus-rebuild | NOT-STARTED | — | — |
 
@@ -69,7 +69,7 @@ B1 → B2 → B3 → B4 → B5 (sequential within β; per mechanism before next)
 |---|---|---|---|
 | w23_tara_bala | λ mean=0.197083 (business_launch, 52 JDs, 2026) | delta mean=−0.008025 (−4.1%); tara mods range [0.70,1.20] std=0.183 | POSITIVE (genuine firing) |
 | w30_nodal_drishti | modifier baseline=1.000000 (disabled; business_launch, 52 JDs, 2026) | delta mean=+0.001268 (+0.13%); range=[0.9500,1.0241] std=0.035; 52/52 JDs fire; Rahu in Aquarius/Capricorn | POSITIVE (genuine firing) |
-| Lattā (B3) | TBD | TBD | PENDING |
+| Lattā (B3) | quality_gates baseline from latta: mean=0.988462 (factor=0.85/hit; 4/52 JDs affected) | After B3: mean=0.950000 (factor=0.35/hit); delta=−0.038 (−3.89%); latta grade 'killing'→WORST_SUPPRESSION=0.35 | POSITIVE (genuine improvement; classically appropriate severity) |
 
 ## GATE G-B EVIDENCE CHECKLIST
 
@@ -172,6 +172,7 @@ NEXT-ACTION: Await B2 CI green, then dispatch PARĪKṢAKA for B2.
 CONDUCTOR-HEARTBEAT: 2026-08-12T21:37:00Z pid=59044 host=Montys-MacBook-Pro.local session=β [B2 PARĪKṢAKA VERIFIED (8/8); CI green 19/26; PR #1251 in merge queue; dispatching B3 builder]
 CONDUCTOR-HEARTBEAT: 2026-08-12T21:45:00Z pid=59044 host=Montys-MacBook-Pro.local session=β [B3 builder dispatched (ac60918f99b37a0aa); scope: Lattā→quality_gates; B2 in merge queue; monitoring B3]
 CONDUCTOR-HEARTBEAT: 2026-08-12T21:52:00Z pid=59044 host=Montys-MacBook-Pro.local session=β [B3 TDD red committed (843828e19); builder writing spec commit; B2 still in merge queue]
+CONDUCTOR-HEARTBEAT: 2026-08-12T22:02:00Z pid=59044 host=Montys-MacBook-Pro.local session=β [B3 PR #1252 open; ablation POSITIVE (−3.89%); PARĪKṢAKA dispatched (abef42b2075703b9d); B2 still in queue]
 
 ### 2026-08-13 03:07 IST — B2 COMPLETE (PARĪKṢAKA VERIFIED)
 
@@ -189,3 +190,23 @@ CONDUCTOR-HEARTBEAT: 2026-08-12T21:52:00Z pid=59044 host=Montys-MacBook-Pro.loca
 
 NEXT-ACTION: Dispatch B3 builder (Lattā → quality_gates, existing malefic-scale path, Ketu absence disclosed).
 B3 branches off origin/main (after B1 merge; B2 in queue). Branch: sampurti/β-b3-latta.
+
+### 2026-08-13 03:32 IST — B3 PR OPEN, ABLATION DONE
+
+**B3 BUILDER COMPLETE:** PR #1252 [SM-β] Lattā vedha → quality_gates malefic-scale path.
+Commit chain: TDD red (843828e19) → blind-spec (bb0aca25b) → effect (1d979b476).
+Effect: `if vrow.vedha_kind == "latta":` branch in `_compute_quality_gates_from_context`;
+`_LATTA_EFFECTIVE_MALEFIC_COUNT=3`; `continue` to skip regular path; Ketu disclosed.
+Formula: UNCHANGED.
+
+**B3 ABLATION (Lattā quality_gates, 52 weekly JDs, 2026):**
+- Baseline (before B3): latta rows get factor=0.85 (malefic_count=0 path); 4/52 JDs affected
+  → quality_gates mean from latta = 0.988462
+- After B3: latta rows get factor=0.35 (killing grade → _VEDHA_WORST_SUPPRESSION); 4/52 JDs affected
+  → quality_gates mean from latta = 0.950000
+- Delta: mean = −0.038462 (−3.89%)
+- Note: DB grade "killing" (malefic_count=3) normalizes to key "killing" not in _VEDHA_GRADE_SUPPRESSION
+  → falls to _VEDHA_WORST_SUPPRESSION=0.35 — classically appropriate ("Ruin of every business")
+- Verdict: POSITIVE (genuine improvement; latta now properly severe)
+
+PARĪKṢAKA dispatched (abef42b2075703b9d). Awaiting CI + PARĪKṢAKA verdict.
