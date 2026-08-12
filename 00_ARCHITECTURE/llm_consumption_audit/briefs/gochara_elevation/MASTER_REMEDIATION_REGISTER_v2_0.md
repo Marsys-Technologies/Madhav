@@ -1434,6 +1434,55 @@ one more instance of the same lesson. GATE: repoint verified live, both
 charts, `event_classes_covered` matches the served table's real distinct
 classes with zero manual class list.
 
+**MR-29 · Fresh, independent, default-REFUTED re-close verdict over the
+entire campaign (PARĪKṢAKA).** [the campaign's own final, LAST item —
+deliberately not run until every other MR above was closed or honestly-
+deferred-with-trigger, per v1.0's own close report]
+
+**VERDICT: CONFIRMED on substance.** Dispatched to a fresh agent with zero
+prior context on this campaign, a fresh `origin/main` checkout, live DB
+access, live MCP access, and explicit instruction to default to REFUTED
+and independently re-verify every load-bearing claim against primary
+evidence, not the conductor's own narrative. Every claim it re-checked
+reproduced: corpus row counts (943/941 gen-3.0, 914/916 g3_utkarsha,
+16,297/19,323/2,667 v1 baseline, exact match, both charts); zero retired
+`peak_basis` literals; zero `shape_conformance` NULLs across 40,000+ rows;
+PRs #1235/#1236 genuinely merged with content matching the register (not
+aspirational — spot-checked the actual shipped source, not the ruling
+text); PK-R-10's and PK-R-11's cited code-defect claims re-confirmed
+against CURRENT `origin/main` source; migrations 567/568/570 all present
+in `_migrations_applied` with real timestamps; MR-47's 23 detector tests
+and MR-48's 57 tests independently re-run fresh, all passing; live
+`gochara_forecast_get` E2E-PROBE reproduced generation='3.0' serving with
+the class-specific `point_class_context_envelope` blocked_reason (not the
+generic fallback) genuinely present; every honest-gap/deferred item (MR-23
+W1.2/W0.2, MR-27 I6(b), MR-39's synthetic test, MR-21's wall-clock/W0.4,
+MR-33, MR-49, MR-48's chain-canonical gap) confirmed genuinely disclosed as
+open in the register text, none silently treated as closed elsewhere.
+
+**Found and required before seal**: the register itself still read "MR-47
+OPEN, scoped, unblocked" and carried no MR-48 closure entry at all, despite
+the ledger/close-report/conformance-report all describing both as closed —
+a live GA.1/B.8 registry-disagreement, caught in this campaign's own
+governance surface by the exact discipline this campaign exists to apply
+elsewhere. **Fixed same-session**: proper closure entries added for both
+(above, with gate evidence pasted), including an honest disclosure of
+MR-48's own gate-literalism gap (the coverage-gate's "re-run after merge"
+clause was not literally re-discharged post-merge — the verified run
+predates the merge timestamp by 20 minutes) rather than silently treating
+it as satisfied.
+
+**Disclosed, out-of-scope FYI** (not a PARIṢKĀRA finding, not fixed, not
+this campaign's to fix): a full writer-test sweep on fresh main surfaced
+one pre-existing, unrelated failure — `test_bo_pratijna_v4_engine.py` (L2
+Bodha rubric weights, last touched by PR #1128) — a red gate on `main`
+outside this campaign's entire surface. Named here only so it is not lost;
+no action taken.
+
+**GATE MET.** No code, data, ruling, or build was re-opened by this
+verdict — only the register's own closure bookkeeping needed a fix, now
+applied. CAMPAIGN-STATUS: COMPLETE may be sealed on this basis.
+
 ## §7 — SOURCE → MR MAP (dedup audit)
 
 PG-1→MR-01 · PG-2→MR-05 · PG-3→MR-10 · PG-4→MR-04+13 · PG-5→MR-13 ·
