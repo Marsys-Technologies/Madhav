@@ -517,6 +517,22 @@ def _evaluate_single_from_context(
         class_is_adverse=context.is_adverse,
     )
 
+    # 4d-pre. W2.3 tara bala: Moon's transit nakshatra vs natal Moon nakshatra modifier.
+    # One swe.calc_ut call per JD (Moon position only); zero DB access.
+    # Moon's nakshatra changes ~once per day — cost is negligible per evaluation.
+    _tara_moon_lon: float | None = None
+    try:
+        _tara_moon_pos, _ = swe.calc_ut(t_jd, swe.MOON, swe.FLG_SIDEREAL)
+        _tara_moon_lon = float(_tara_moon_pos[0])
+    except Exception:
+        pass  # honest skip: modifier defaults to 1.0 via mechanism
+    _tara_result = _w23.compute(
+        context, t_jd,
+        enabled=_W23_TARA_BALA_ENABLED,
+        transit_body_longitude_deg=_tara_moon_lon,
+    )
+    tara_modifier = _tara_result.modifier
+
     # 4d. quality_gates: W1.3 vedha-based multiplicative suppression gate.
     #     Looks up kala_vedha_gochara rows (pre-fetched in context) that
     #     overlap the evaluation window and multiplies their suppression factors.
@@ -528,7 +544,7 @@ def _evaluate_single_from_context(
     )
 
     # 5. Assemble lambda_v3 — bounded [0,1] by construction
-    raw_lambda = promise * permission * activity * quality_gates
+    raw_lambda = promise * permission * activity * tara_modifier * quality_gates
 
     # Clamp for floating-point edge cases (should be impossible, but defensive)
     raw_lambda = max(0.0, min(1.0, raw_lambda))
@@ -550,9 +566,17 @@ def _evaluate_single_from_context(
     x_t_compat = activity  # activity IS the v3 replacement for X(t)
     x_t_detail_compat = {
         **activity_detail,
-        "formula": "lambda_v3 = PROMISE * PERMISSION * activity * quality_gates",
+        "formula": "lambda_v3 = PROMISE * PERMISSION * activity * tara_modifier * quality_gates",
         "v3_mode": True,
         "term_breakdown": term_breakdown,
+        "tara_modifier": round(tara_modifier, 8),
+        "tara_detail": {
+            "tara_name": _tara_result.tara_name,
+            "tara_position": _tara_result.tara_position,
+            "skipped": _tara_result.skipped,
+            "skip_reason": _tara_result.skip_reason,
+            "mechanism_id": _tara_result.mechanism_id,
+        },
         "quality_gates": quality_gates,
         "quality_gates_detail": quality_gates_detail,
         # W1.2 signed-channel fields
@@ -654,10 +678,11 @@ def _evaluate_single_from_context(
         "promise": round(promise, 8),
         "permission": round(permission, 8),
         "activity": round(activity, 8),
+        "tara_modifier": round(tara_modifier, 8),
         "quality_gates": round(quality_gates, 8),
         "lambda_v3": round(raw_lambda, 8),
         "activity_terms": x_t_detail_compat.get("contributions", []),
-        "formula": "PROMISE × PERMISSION × activity × quality_gates",
+        "formula": "PROMISE × PERMISSION × activity × tara_modifier × quality_gates",
     }
 
     # W1.5 credible interval — structural_prior: ±20% band, clamped to [0,1].
