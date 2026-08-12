@@ -199,6 +199,8 @@ def lambda_at(segments: Sequence[Segment], t: float) -> float:
 def _segment_containing(segments: Sequence[Segment], t: float) -> Optional[Segment]:
     found: Optional[Segment] = None
     for seg in segments:
+        if seg.t_start > t:
+            break               # L1f: segments sorted by t_start; no later segment can contain t
         if seg.t_start <= t < seg.t_end:
             return seg
         if t == seg.t_end:
@@ -247,6 +249,8 @@ def integrate(segments: Sequence[Segment], a: float, b: float) -> float:
         return 0.0
     total = 0.0
     for seg in segments:
+        if seg.t_start >= b:
+            break               # L1f: segments sorted by t_start; no later segment overlaps [a, b)
         u = max(a, seg.t_start)
         v = min(b, seg.t_end)
         if v > u:
@@ -338,6 +342,8 @@ def _peak_over(segments: Sequence[Segment], a: float, b: float) -> tuple[float, 
     best_t = a
     best_v = -math.inf
     for seg in segments:
+        if seg.t_start > b:
+            break               # L1f: segments sorted; no later segment overlaps [a, b]
         u = max(a, seg.t_start)
         v = min(b, seg.t_end)
         if v < u:
