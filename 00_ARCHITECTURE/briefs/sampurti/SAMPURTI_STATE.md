@@ -906,3 +906,71 @@ Estimated Run 16 total: 80-100 minutes for all 474 substeps.
 - Only finalize substep needs to execute — expected < 5 min end-to-end
 
 **Next**: Monitor PR #1244 CI → merge → deploy → launch Run 23 → confirm finalize success.
+
+## HEARTBEAT 2026-08-12T12:27+00:00 — Run 25 in progress, L1o confirmed working
+
+**Context**: Context compaction again mid-session. Run 25 progressing through stage5 slow null classes.
+
+**Since last heartbeat**:
+
+**PR #1244 merged** — L1o batch finalize fix landed on main, deployed to Cloud Run (10:01–10:09 UTC).
+
+**Run 23** (post-deploy validation):
+- Started with fresh dispatch
+- Crashed at stage1_symbolization: `psycopg.Pipeline [BAD]` — transient cloud-sql-proxy connection reset
+- Not systematic: repeated network hiccup, not a code bug
+
+**Run 24** (re-dispatch after Run 23 failure):
+- Completed all 8 stage5:childbirth null blocks (indices 295–302)
+- Crashed at stage5:childbirth:7→8 transition (block 8 committed, then connection died)
+- Root cause: 8 blocks × ~3 min/block = 24+ min elapsed → `idle_in_transaction_session_timeout = 10min`
+  killed the signal-check connection BETWEEN blocks (during the check_signals() call)
+- ALL 8 blocks confirmed committed in DB (68 total substeps in build_substep_progress)
+- NOTE: idle_in_transaction risk is NOT in the finalize (fixed by L1o) but in the null-block
+  iteration loop — the signal-check connection stays idle-in-transaction while stage5 iterates
+
+**Run 25** (current — run_id: 38faf14c, PID 71284, started 16:42 IST):
+- Stages 0/2/3/1/4 completed normally
+- stage5finalize for fast classes (birth_anchor, career_*, etc.): instant (0 rows — no priors fired)
+- stage5:childbirth null blocks (all 8): completed ~16:42–17:14 IST (~3 min/block)
+  - NOTE: fingerprints changed with L1o code, so all 8 blocks re-ran from scratch
+- **stage5finalize:childbirth: COMPLETED (index 303)** — rows jumped 566,545 → 601,213
+  - L1o fix CONFIRMED: finalize completed in seconds, not 30+ minutes
+- stage5finalize:foreign_settlement: COMPLETED (index 348) — rows jumped to 658,241
+  - foreign_settlement also has 425,971 kala_field rows → slow class
+- stage5finalize:major_gain: COMPLETED (366), major_loss: COMPLETED (375)
+  - These ran fast (instant) — confirmed NOT slow-class despite having priors
+  - Only the 6 classes with 425,971 kala_field segments are slow:
+    childbirth ✓, foreign_settlement ✓, marriage (in progress), relocation, separation, surgery
+- Current position: stage5:marriage block 4/8 (index 379), time 17:52 IST
+
+**6 slow event classes** (425,971 kala_field segments each, ~24 min/class):
+- childbirth ✓ DONE
+- foreign_settlement ✓ DONE
+- marriage — in progress (~4 blocks remaining)
+- relocation — pending
+- separation — pending
+- surgery — pending
+
+**Projected completion** (all times IST):
+- marriage finalize: ~18:04
+- parental/property/psychological fast classes: ~18:04–18:19
+- relocation (slow): ~18:19–18:43
+- romantic_start fast: ~18:43–18:48
+- separation (slow): ~18:48–19:12
+- spiritual_turn fast: ~19:12–19:17
+- surgery (slow): ~19:17–19:41
+- travel_event fast: ~19:41–19:46
+- stage6/7: ~19:46–20:30
+
+**idle_in_transaction analysis**:
+- Each null block is a self-contained substep (commits within 10min ✓)
+- The Run 24 crash was at the signal-check call BETWEEN block 8 commit and block 8 log event
+- Run 25: no crash so far through blocks 1-4 of marriage — the 10-min window resets per commit
+- HYPOTHESIS: Run 24 crash was because the TOTAL elapsed time since the last signal-check connection
+  query exceeded 10 min, not per-block timing. The signal-check connection was established at
+  run start and had no activity for >10 min during the early fast-class bursts.
+  Run 25 may be healthy because the block-by-block cadence is keeping it active.
+  Monitor carefully through remaining slow classes.
+
+**Next**: Monitor through stage6/7 → lit state → R2 (chart 1c826d5a).
