@@ -3189,3 +3189,39 @@ opened PR #1237.
 
 **MR-29 CLOSED. R4 fully complete pending PR #1237's merge.** Once merged, the campaign is
 ready to seal CAMPAIGN-STATUS: COMPLETE with no outstanding blocking items.
+
+## 2026-08-12 ~06:1x IST — CAMPAIGN STATUS: COMPLETE
+
+CONDUCTOR-HEARTBEAT: 2026-08-12T06:15:00Z
+
+PR #1237 MERGED (2026-08-12T00:43:52Z). `CURRENT_STATE_v1_0.md` v6.59 independently
+re-verified live on `origin/main` after merge: `version: 6.59`, PARIṢKĀRA's genuine close
+entry present, inserted above SAMPŪRTI's own v6.58 without disturbing it. Temp worktree +
+branch cleaned up.
+
+**Full R2→R4 arc, this session:**
+- R2: gate packet merged, 27-class resonance rebuild, full protected-corpus override
+  window (both charts) — MR-44 + MR-45 + 3 conductor-tooling bugs found and fixed live.
+- Phase D: 12-point evidence pack — MR-46 investigated, root-caused to a conductor
+  resume-check bug (fixed), architecturally disposed by PK-R-10 → MR-47 (built, merged,
+  PR #1235) → MR-48 live-caught during MR-47's own verification (built, merged, PR #1236).
+- Phase E: MR-38's delta-skip fold proven live in production, both charts, checksum-verified.
+- Phase F/G: W4.4/w45 honest refit; IR-9 (nakshatra_ingress_tara) live evidence captured.
+- R3: MASTER_BRIEF_CONFORMANCE_REPORT_v1_0.md — 6/6 §5 criteria resolved; MR-49 found live.
+- R4: MR-20 (PK-R-11, AT-PAR claim retired as a comparator-scope artifact, replaced with an
+  earned true claim) + MR-21 (PK-R-12/13, wall-clock + W0.4 HONEST-DEFERRED, the master
+  brief's own unsourced target corrected) + MR-33 (L5 loop wiring verified end-to-end)
+  CLOSED; GOCHARA_UTKARSHA_CLOSE_REPORT_v1_1.md authored (v1.0 marked SUPERSEDED);
+  cross-session L-7 lease record corrected + released; 27 stale worktrees + branches
+  cleaned up; MR-29 (fresh, independent, default-REFUTED re-close verdict) CONFIRMED on
+  substance, catching and fixing one real registry-closure defect in the process; final
+  CURRENT_STATE pointer landed on main via PR #1237.
+
+**Nine real defects found this session, all by live execution against production-shaped
+data, none by review alone**: MR-44, MR-45, 3 conductor-tooling bugs, MR-46/47, MR-48, and
+the MR-47/48 registry-closure gap MR-29 caught in this campaign's own governance surface.
+Every closed claim independently re-verified — by the conductor mid-session, and again by
+a fresh, context-free adversarial verifier at the very end. Every open item honestly
+disclosed with a recorded trigger, none silently dropped.
+
+**PARIṢKĀRA — CAMPAIGN STATUS: COMPLETE.**
