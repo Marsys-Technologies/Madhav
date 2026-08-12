@@ -3145,3 +3145,21 @@ in place.
 
 NEXT-ACTION: worktree/branch hygiene, then MR-29 — a fresh, independent, default-REFUTED
 re-close verdict over the entire campaign, sealing CAMPAIGN-STATUS: COMPLETE only on PASS.
+
+## 2026-08-12 ~05:5x IST — worktree/branch hygiene complete; only MR-29 remains
+
+CONDUCTOR-HEARTBEAT: 2026-08-12T05:55:00Z
+
+Cleaned up 27 stale worktrees (26 pk-mr* + 1 completed agent worktree) and all their
+corresponding local + remote branches, after independently confirming each via `gh pr
+list` (24 MERGED, 1 CLOSED-as-superseded [mr-44, content landed via #1232], 1 confirmed
+folded-in via ledger history [mr-10]) rather than trusting worktree names alone. Main
+repo dir was already detached HEAD throughout, so nothing active was disturbed. Left
+untouched: pk-r2rebuild (own active scratch space, not a stale branch worktree),
+sampurti-conductor/utkarsha-conductor/utk-audit/utk-w61/wt-integration (other
+campaigns' own active worktrees, not PARIṢKĀRA's to touch).
+
+**R4 status: MR-20/21/33 CLOSED, close report v1.1 done, coordination handoff done
+(L-7 corrected+released), worktree/branch hygiene done. Only MR-29 remains** — a fresh,
+independent, default-REFUTED opus re-close verdict over the ENTIRE campaign, the
+campaign's own final, LAST item by design (never run until everything else closes).
