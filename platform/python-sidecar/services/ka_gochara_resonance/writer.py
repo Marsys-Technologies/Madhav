@@ -49,6 +49,7 @@ Contract adherence (FROZEN orchestrator contract, ORCHESTRATOR_CONVERGENCE_CLOSE
 from __future__ import annotations
 
 import logging
+import re as _re
 from typing import Any, Iterable
 
 from brahmagyan.graha_vocabulary import norm_graha
@@ -201,6 +202,11 @@ _KARAKA_FACT_SUBJECT: dict[str, str] = {
 }
 
 _SENSITIVE_DEGREE_KEYS = ("mrityu_bhaga", "gandanta", "kartari", "pushkara")
+
+# B4: lord tokenizer — extracts clean NL refs (e.g. '10L') from compound
+# or qualified strings (e.g. '10L afflicted', 'maraka lords (2L/7L)').
+# See effect commit for _build_lord_rows usage.
+_LORD_TOKEN_RE: "_re.Pattern[str]" = _re.compile(r'\d+L')
 
 
 # ── Pure row-building helpers (DB-free, unit-testable) ───────────────────────
