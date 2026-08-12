@@ -747,3 +747,13 @@ Three-session SAMPŪRTI (α/β/γ) supervisor launched 2026-08-13 01:50 IST.
 
 **MARKERS γ watches:**
 - FIELD-INTEGRATED (α→γ): unblocks C4/C5 activation
+
+### LOG — 2026-08-13 ~01:57 IST (SAMPŪRTI-β YANTRA conductor, pid=59044)
+
+**SAMPŪRTI-β (YANTRA) SESSION OPEN** — proxy 5434 UP (pid=72369).
+Step 0: advisory locks=0, no phantom build_runs, liveness CLEAN.
+Ledger created: `sampurti/yantra` → `SAMPURTI_STATE_BETA.md`.
+Scope W-B: B1 (w23_tara_bala) → B2 (w30_nodal_drishti) → B3 (Lattā) → B4 (resonance tokenizer) → B5 (leased rebuild + gate G-B + YANTRA-CORPUS-READY).
+No lease needed for B1-B4 (code+tests only). Lease before B5.
+Starting B1 builder dispatch now.
+
