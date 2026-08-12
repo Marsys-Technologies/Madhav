@@ -400,6 +400,22 @@ class KaKshetraWriter(WriterBase):
 
     # ── stage 4 ──────────────────────────────────────────────────────────────
 
+    # SQL constant shared by the batch (_run_stage4) and single-row (_insert_segment) paths.
+    _KALA_FIELD_INSERT_SQL = """INSERT INTO kala_field (
+                   chart_id, event_class, segment_index, t_start, t_end, alpha, gamma,
+                   lambda_start, lambda_end, integral_days,
+                   promise_term, clock_term_start, modifier_term_start,
+                   suppression_term_start, signed_obstruction_start,
+                   refinement_depth, refinement_exhausted, refinement_residual,
+                   weights_version, x_schema_version, field_snapshot_id)
+               VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+               ON CONFLICT (chart_id, event_class, segment_index) DO UPDATE SET
+                   t_start = EXCLUDED.t_start, t_end = EXCLUDED.t_end,
+                   alpha = EXCLUDED.alpha, gamma = EXCLUDED.gamma,
+                   lambda_start = EXCLUDED.lambda_start, lambda_end = EXCLUDED.lambda_end,
+                   integral_days = EXCLUDED.integral_days,
+                   computed_at = now()"""
+
     def _run_stage4(self, conn, event_class: str, decade: int, step: SubStep) -> WriterResult:
         try:
             cctx = self._class_context(conn, event_class)
@@ -417,44 +433,41 @@ class KaKshetraWriter(WriterBase):
         if self._dry_run:
             return WriterResult(asset_id=ASSET_ID, rows_inserted=len(segments))
 
-        rows = 0
-        with conn.cursor() as cur:
-            for local, seg in enumerate(segments):
-                terms = ev.terms_at(seg.t_start)
-                self._insert_segment(cur, event_class,
-                                     decade * SEGMENT_INDEX_DECADE_STRIDE + local,
-                                     seg, terms)
-                rows += 1
-        self._record_substep(conn, step.key, rows)
-        return WriterResult(asset_id=ASSET_ID, rows_inserted=rows)
+        # L1e: separate computation from DB writes — batch all segment rows into a
+        # single executemany call rather than one cur.execute() per segment.
+        # Stage4 produces 40–80K segments per decade; at ~7ms per round-trip through
+        # the Cloud SQL proxy, individual inserts took 5–10 min per decade.
+        # executemany sends one batch, matching stage3's L1d pattern (which cut
+        # chara_karaka boundaries from 22 min to seconds).
+        params_list = [
+            self._segment_row(event_class,
+                              decade * SEGMENT_INDEX_DECADE_STRIDE + local,
+                              seg, ev.terms_at(seg.t_start))
+            for local, seg in enumerate(segments)
+        ]
+        if params_list:
+            with conn.cursor() as cur:
+                cur.executemany(self._KALA_FIELD_INSERT_SQL, params_list)
+        self._record_substep(conn, step.key, len(params_list))
+        return WriterResult(asset_id=ASSET_ID, rows_inserted=len(params_list))
+
+    def _segment_row(self, event_class: str, segment_index: int,
+                     seg: Segment, terms: hazard.HazardTerms) -> tuple:
+        """Return the params tuple for one kala_field row (shared by batch and single paths)."""
+        lam_start = math.exp(seg.alpha)
+        lam_end = math.exp(seg.alpha + seg.gamma * (seg.t_end - seg.t_start))
+        return (self._chart_id, event_class, segment_index, seg.t_start, seg.t_end,
+                seg.alpha, seg.gamma, lam_start, lam_end,
+                integrator.segment_integral(seg, seg.t_start, seg.t_end),
+                terms.promise_term, terms.clock_term, terms.modifier_term,
+                terms.suppression_term, terms.signed_obstruction,
+                seg.refinement_depth, seg.refinement_exhausted, seg.refinement_residual,
+                self._weights_version, hazard.X_SCHEMA_VERSION, self._snapshot_id)
 
     def _insert_segment(self, cur, event_class: str, segment_index: int,
                         seg: Segment, terms: hazard.HazardTerms) -> None:
-        lam_start = math.exp(seg.alpha)
-        lam_end = math.exp(seg.alpha + seg.gamma * (seg.t_end - seg.t_start))
-        cur.execute(
-            """INSERT INTO kala_field (
-                   chart_id, event_class, segment_index, t_start, t_end, alpha, gamma,
-                   lambda_start, lambda_end, integral_days,
-                   promise_term, clock_term_start, modifier_term_start,
-                   suppression_term_start, signed_obstruction_start,
-                   refinement_depth, refinement_exhausted, refinement_residual,
-                   weights_version, x_schema_version, field_snapshot_id)
-               VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
-               ON CONFLICT (chart_id, event_class, segment_index) DO UPDATE SET
-                   t_start = EXCLUDED.t_start, t_end = EXCLUDED.t_end,
-                   alpha = EXCLUDED.alpha, gamma = EXCLUDED.gamma,
-                   lambda_start = EXCLUDED.lambda_start, lambda_end = EXCLUDED.lambda_end,
-                   integral_days = EXCLUDED.integral_days,
-                   computed_at = now()""",
-            (self._chart_id, event_class, segment_index, seg.t_start, seg.t_end,
-             seg.alpha, seg.gamma, lam_start, lam_end,
-             integrator.segment_integral(seg, seg.t_start, seg.t_end),
-             terms.promise_term, terms.clock_term, terms.modifier_term,
-             terms.suppression_term, terms.signed_obstruction,
-             seg.refinement_depth, seg.refinement_exhausted, seg.refinement_residual,
-             self._weights_version, hazard.X_SCHEMA_VERSION, self._snapshot_id),
-        )
+        cur.execute(self._KALA_FIELD_INSERT_SQL,
+                    self._segment_row(event_class, segment_index, seg, terms))
 
     # ── stage 5 ──────────────────────────────────────────────────────────────
 
