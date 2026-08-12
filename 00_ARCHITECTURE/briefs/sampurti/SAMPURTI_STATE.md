@@ -1399,3 +1399,58 @@ CONDUCTOR-HEARTBEAT: 2026-08-13T04:50+05:30 (CONDUCTOR of SAMPŪRTI-α) [P3 in f
 - Our run e24e06c1 remains in `planned` state — will be re-executed once β releases the lock
 - Background watcher PID 79685 polling every 60s → will auto-re-dispatch Cloud Run once β state ≠ running
 
+---
+
+## Heartbeat: 2026-08-13T05:30+05:30 — P-G1 GREEN declared; A1 deployment gap; A2 no-op finding
+
+CONDUCTOR-HEARTBEAT: 2026-08-13T05:30+05:30 (CONDUCTOR of SAMPŪRTI-α) [P3 live data diagnosis]
+
+### P-G1 GREEN DECLARATION (live detector output — required by HARD BLOCK §)
+
+Live query on chart1 `482012f1-710e-4a25-994a-93821f5871aa` (2026-08-13T00:00 UTC):
+
+| criterion | PA-1 requirement | live measurement | verdict |
+|---|---|---|---|
+| kala_field_clocks | >0 clocks | 8 total, 6 applicable | ✅ |
+| applicable clock quality | non-null, non-zero | vimshottari=1.0, yogini=1.0, naisargika=1.0, mudda=1.0, kalachakra=1.0, chara_karaka=0.839 | ✅ |
+| kala_field_windows | >1 per clocked class | 6 event classes × 1,118 windows = 6,708 total | ✅ |
+| windowed fraction | ≈≤20% of horizon | avg_duration=1.4d × 1,118 / ~10,950d ≈ 14% | ✅ |
+| windows track events | qualitative — Measurement #4 | hit_rate=1.0 (N=3, strict) | ✅ |
+| ka_kshetra state | lit | state=lit, rows=566,545 | ✅ |
+| snapshot | present | kfs_87484404af9d6fe9dc66a3d78812f8bc | ✅ |
+
+**P-G1 RESULT: GREEN. Hard block condition is MET. Gate packet unblocked.**
+
+Applicable clocks: chara_karaka / kalachakra / mudda / naisargika / vimshottari / yogini
+Excluded: ashtottari (not_computed), vimshottari_kp (excluded_by_condition)
+
+### A1 DEPLOYMENT GAP (critical finding)
+
+A1 pin code (commit db7fb4f67) is on `sampurti/integration` but NOT on `main`.
+Cloud Run container was built from `main` → A2 run used OLD code without gochara pin fields.
+
+**Consequence**: A2's ka_kshetra rebuild was a checkpoint-resume NO-OP:
+- Same config_pin as R2 (no gochara fields) → same snapshot_id `kfs_87484404af9d6fe9dc66a3d78812f8bc`
+- Writer found all 534 substeps already committed → re-confirmed existing field data
+- Snapshot `kfs_87484404af9d6fe9dc66a3d78812f8bc` does NOT contain gochara_generation,
+  gochara_calibration_state, or gochara_corpus_digest fields
+- ka_kshetra field data reflects PRE-β resonance corpus (R2 computation, not post-β)
+
+**Fix path**:
+1. Gate packet: `sampurti/integration` → `main` (P-G1 GREEN now satisfied)
+2. Deploy new container with A1 code
+3. A2' (re-dispatch ka_kshetra): will compute NEW snapshot_id with gochara pin → fresh field
+
+### GATE PACKET STATUS
+
+P-G1 GREEN ✅ → HARD BLOCK LIFTED ✅
+
+Content on `sampurti/integration` not yet on `main` (20+ commits):
+- G12 (PR #1191), G14b (#1190), PG-31 (#1193), L1j (#1188)
+- A1 pin (db7fb4f67)
+- PA-0 stage I/O map (04a2538b8)
+- Conductor heartbeats (harmless — docs-only)
+
+**Gate packet requires native authorization before execution.**
+No integration→main PR exists yet. Awaiting native direction.
+
