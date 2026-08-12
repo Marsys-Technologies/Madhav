@@ -552,10 +552,9 @@ class KaKshetraWriter(WriterBase):
         sigma_t = self._sigma_t_days(conn)
         legacy = S4.load_legacy_crosscheck(conn, self._chart_id, event_class)
 
-        for w in windows:
-            rows += self._write_window(conn, ev, event_class, segments, w, result,
-                                       adrishta, ayanamsha_ids, sigma_t, legacy,
-                                       cctx.temporal_shape)
+        rows += self._write_windows_batch(conn, ev, event_class, segments, windows, result,
+                                          adrishta, ayanamsha_ids, sigma_t, legacy,
+                                          cctx.temporal_shape)
 
         if not self._dry_run:
             self._record_substep(conn, step.key, rows)
@@ -655,6 +654,141 @@ class KaKshetraWriter(WriterBase):
                      e.source_fact_id, wid),
                 )
         return 1 + len(edges)
+
+    def _write_windows_batch(self, conn, ev, event_class, segments, windows, null_result,
+                              adrishta, ayanamsha_ids, sigma_t, legacy,
+                              temporal_shape: str) -> int:
+        """L1o: batch-insert all windows + provenance in two executemany calls.
+
+        Per-window _write_window does one cur.execute per edge (~37 edges/window
+        × thousands of windows) — hundreds of thousands of round-trips causing
+        30+ min finalize → idle_in_transaction timeout kills the signal-check
+        connection. Two executemany calls reduce this to seconds.
+        """
+        if self._dry_run:
+            return len(windows)
+        if not windows:
+            return 0
+
+        # ── Phase 1: pure CPU — compute all per-window values (no DB I/O) ─────
+        prepared: list[tuple] = []   # (wid, w, edges, bucket, p, robustness)
+        for w in windows:
+            wid = integrator.window_id(
+                str(self._chart_id), event_class, w.t_start, w.t_end,
+                self._weights_version, hazard.X_SCHEMA_VERSION,
+            )
+            terms = ev.terms_at(w.t_peak)
+            edges: list[ProvenanceEdge] = list(terms.edges)
+            for r in ev.promise.routes:
+                edges.append(hazard.identity_edge(
+                    'route', f'route:rank{r.route_rank}', 'l3_row',
+                    source_table='kala_field_routes',
+                    source_pk=str(r.path_edge_ids[0]) if r.path_edge_ids else None,
+                ))
+            for row in legacy:
+                agreement = 'agree' if self._legacy_overlaps(row, w) else 'diverge'
+                edges.append(hazard.identity_edge(
+                    'gate', f'gate:legacy_sweep_xref:{row["id"]}:{agreement}', 'l3_row',
+                    source_table='kala_gochara_windows', source_pk=str(row['id']),
+                ))
+            S4.assert_provenance_reconciles(edges, w.lambda_peak, target_id=wid)
+
+            bucket = S5.select_bucket(w.duration_days)
+            p = S5.null_p(null_result.max_stats.get(bucket, []), w.expected_count)
+            robustness = RobustnessVector(
+                ayanamsha_robust=S5.ayanamsha_robust(ayanamsha_ids),
+                birth_time_robust=S5.birth_time_robust(
+                    segments, w.t_peak, null_result.q_threshold or 0.0, sigma_t,
+                ),
+                system_concurrent=S5.system_concurrent(ev, w.t_peak),
+                null_exceeding=S5.null_exceeding(p),
+                authority_clean=None,   # filled after batch citation query below
+            )
+            prepared.append((wid, w, edges, bucket, p, robustness))
+
+        # ── Phase 2: ONE citation query covering all windows ──────────────────
+        all_fact_ids = sorted({
+            e.source_fact_id
+            for _, _, edges, _, _, _ in prepared
+            for e in edges
+            if e.source_fact_id
+        })
+        resolved_set: set[str] = set()
+        if all_fact_ids:
+            with conn.cursor() as cur:
+                cur.execute(
+                    'SELECT DISTINCT fact_id FROM chart_facts '
+                    'WHERE chart_id = %s AND fact_id = ANY(%s)',
+                    (self._chart_id, all_fact_ids),
+                )
+                resolved_set = {r['fact_id'] for r in S4._rows(cur)}
+
+        # ── Phase 3: build insert param lists ────────────────────────────────
+        window_params: list[tuple] = []
+        prov_params: list[tuple] = []
+        for wid, w, edges, bucket, p, robustness in prepared:
+            cited = sum(1 for e in edges if e.source_fact_id)
+            resolved = sum(1 for e in edges if e.source_fact_id in resolved_set)
+            robustness.authority_clean = S5.authority_clean(cited, resolved)
+            window_params.append((
+                self._chart_id, wid, event_class, w.t_start, w.t_end,
+                self._as_date(w.t_start), self._as_date(w.t_end),
+                self._as_date(w.t_peak), w.t_peak, w.lambda_peak,
+                w.expected_count, w.duration_days,
+                hazard.promise_state(ev.promise.p),
+                temporal_shape, 'day_grade',
+                p, null_result.replicates, S5.null_resolution(null_result.replicates),
+                robustness.null_exceeding,
+                json.dumps(robustness.as_json()),
+                robustness.confidence_tier(), robustness.weakest_link(), adrishta,
+                self._weights_version, hazard.X_SCHEMA_VERSION, self._snapshot_id,
+            ))
+            for e in edges:
+                prov_params.append((
+                    self._chart_id, self._snapshot_id, 'window', wid,
+                    e.term_role, e.term_key, e.term_value, e.log_contribution,
+                    e.weight_id, e.weight_value, self._weights_version,
+                    e.source_kind, e.source_table, e.source_pk, e.source_fact_id, wid,
+                ))
+
+        # ── Phase 4: TWO executemany calls (was N×~37 individual inserts) ─────
+        with conn.cursor() as cur:
+            cur.executemany(
+                """INSERT INTO kala_field_windows (
+                       chart_id, window_id, event_class, t_start, t_end,
+                       window_start, window_end, peak_date, t_peak, lambda_peak,
+                       expected_count, duration_days, promise_state, temporal_shape,
+                       precision_regime, null_p, null_R, null_resolution, null_exceeding,
+                       robustness, confidence_tier, weakest_link, adrishta_residual,
+                       weights_version, x_schema_version, field_snapshot_id)
+                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,
+                           %s::jsonb,%s,%s,%s,%s,%s,%s)
+                   ON CONFLICT (chart_id, window_id) DO UPDATE SET
+                       lambda_peak = EXCLUDED.lambda_peak,
+                       expected_count = EXCLUDED.expected_count,
+                       null_p = EXCLUDED.null_p,
+                       robustness = EXCLUDED.robustness,
+                       confidence_tier = EXCLUDED.confidence_tier,
+                       weakest_link = EXCLUDED.weakest_link,
+                       adrishta_residual = EXCLUDED.adrishta_residual,
+                       computed_at = now()""",
+                window_params,
+            )
+            cur.executemany(
+                """INSERT INTO kala_field_provenance (
+                       chart_id, field_snapshot_id, target_kind, target_id,
+                       term_role, term_key, term_value, log_contribution,
+                       weight_id, weight_value, weights_version,
+                       source_kind, source_table, source_pk, source_fact_id,
+                       authority_basis)
+                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                   ON CONFLICT (chart_id, field_snapshot_id, target_kind,
+                                target_id, term_key)
+                   DO UPDATE SET term_value = EXCLUDED.term_value,
+                                 log_contribution = EXCLUDED.log_contribution""",
+                prov_params,
+            )
+        return len(window_params) + len(prov_params)
 
     # ── stage 6 · salience vector + submodular selection (§6.1/§6.2) ─────────
 
