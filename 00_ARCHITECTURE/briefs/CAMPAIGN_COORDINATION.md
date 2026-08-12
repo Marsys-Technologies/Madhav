@@ -674,7 +674,8 @@ Started: 2026-08-12 03:20 IST | Expiry: 2026-08-12 06:00 IST
 
 | # | campaign | purpose | started (IST) | expiry (IST) | status |
 |---|---|---|---|---|---|
-| L-8 | SAMPŪRTI | R0 gate packet: integration→main merge (PG-31+L1j+G12+G14b+mig-569+RB-2), CI green, Gate-Executor merge+deploy. No corpus build/rebuild. | 2026-08-12 03:20 | 2026-08-12 06:00 | **ACTIVE** |
+| L-8 | SAMPŪRTI | R0 gate packet: integration→main merge (PG-31+L1j+G12+G14b+mig-569+RB-2), CI green, Gate-Executor merge+deploy. No corpus build/rebuild. | 2026-08-12 03:20 | 2026-08-12 06:00 | **RELEASED** (2026-08-12 04:08 IST — R0 complete) |
+| L-9 | SAMPŪRTI-β | B5 corpus rebuild: ka_gochara_resonance + full chart rebuild for 482012f1, folding B1–B4 (w23_tara_bala, w30_nodal_drishti, Lattā quality_gates, lord tokenizer). No protected-sweep override. Gate G-B MCP proofs to follow. | 2026-08-13 04:00 | 2026-08-13 06:30 | **ACTIVE** |
 
 
 ### 2026-08-12 04:08 IST — SAMPŪRTI L-8 LEASE RELEASED
@@ -776,3 +777,15 @@ MCP gate evidence (chart 482012f1, gochara_forecast_get 2026-01-01..2027-06-30):
 - coverage_quality.tier='thin', reason non-empty ✓
 
 Watching for FIELD-INTEGRATED from α to proceed with G-P4.
+
+### 2026-08-13 ~04:00 IST — SAMPŪRTI-β L-9 LEASE CLAIMED (B5 corpus rebuild)
+
+**B4 MERGED** to main at 2026-08-12T22:12:48Z (commit fd09bac59). B1–B4 all on main:
+- B1: w23_tara_bala → engine.py (#1248, a1b535691)
+- B2: w30_nodal_drishti (#1251, b7e657bfe)
+- B3: Lattā → quality_gates (#1252, 80e56eb77)
+- B4: lord tokenizer (#1253, fd09bac59)
+
+**L-9 CLAIMED:** β's ONE leased corpus-rebuild window. Scope: rebuild chart 482012f1
+(full chart build scope=asset_set folding B1–B4). No protected-sweep override needed.
+Expiry 06:30 IST. Gate G-B MCP evidence to follow before YANTRA-CORPUS-READY marker.
