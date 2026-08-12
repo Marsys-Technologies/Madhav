@@ -95,8 +95,18 @@ from pipeline.transit_search import _jd_to_ist_iso
 
 from .context import ClassContext, VedhaRow, MaleficScaleRow
 from .threshold import ThresholdConfig, compute_threshold_config, is_above_threshold
+from services.gochara_v3.mechanisms import w23_tara_bala as _w23  # W2.3 tara bala
 
 logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# W2.3 tara bala: enabled flag. When True, Moon's transit nakshatra vs natal Moon
+# nakshatra produces a multiplicative modifier on activity. Source: Muhurta Chintamani
+# Tara bala chapter; BPHS nakshatra transit quality.
+# Formula with wiring: lambda_v3 = PROMISE * PERMISSION * activity * tara_modifier * quality_gates
+# tara_modifier in (0, 2]; modifier is 1.0 when Moon nakshatra data unavailable (honest skip).
+# ---------------------------------------------------------------------------
+_W23_TARA_BALA_ENABLED: bool = True
 
 # ---------------------------------------------------------------------------
 # W1.1 constants
@@ -466,7 +476,9 @@ def _evaluate_single_from_context(
         )
 
     # ── W1.1 bounded lambda_v3 path ─────────────────────────────────────────
-    # Formula: lambda_v3 = PROMISE * PERMISSION * activity * quality_gates
+    # Formula: lambda_v3 = PROMISE * PERMISSION * activity * tara_modifier * quality_gates
+    # tara_modifier (W2.3): Moon's transit nak vs natal Moon nak multiplicative factor.
+    #   Computed in [0.70, 1.20] per the 9-Tara schedule; 1.0 when mechanism disabled or data absent.
     # Invariant: all terms in [0,1] => result in [0,1]
 
     # 4a. activity in [0,1]: noisy-OR over per-sentence orb-decayed strengths,
