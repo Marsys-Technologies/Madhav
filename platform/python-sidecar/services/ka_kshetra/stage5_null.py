@@ -231,23 +231,105 @@ def replicate_evaluator(ev: FieldEvaluator, delta: float) -> FieldEvaluator:
     )
 
 
+# ── L1g + L1h: null-replicate performance fixes ──────────────────────────────
+#
+# L1g (coarse breakpoints): build_segments() calls ln_lambda once per interval.
+# The daśā ladder has 165K+ periods (mostly SD/PrD) → 165K+ intervals — at
+# ~30μs per ln_lambda call that is 15 seconds per replicate, ~8 min per block.
+# Omitting SD/PrD boundaries AND envelope knots reduces breakpoints from ~165K
+# to ~819 (MD/AD/PD + kinematics roots). build_segments' adaptive quadrature
+# (max_depth=6) resolves intra-interval transit peaks — sufficient for nulls.
+#
+# L1h (pointer-advance): the real kala_field event classes (childbirth etc.)
+# have 425K+ stored segments, meaning the 819-interval ln_lambda function is
+# highly curved. Adaptive refinement maxes out at depth 6 → 819 × 64 ≈ 52K
+# null segments per replicate. cumulative_on_grid()'s prior loop called
+# integrator.integrate() — restarting a linear scan from seg 0 each grid step —
+# O(N_grid × N_seg) = 36525 × 52K ≈ 950M ops per replicate → 7+ min/block.
+# Skipped-class nulls (career_setback etc.) never reach this because they raise
+# ClassSkipped before computing segments. Pointer-advance in cumulative_on_grid
+# and _lambda_grid_fast gives O(N_grid + N_seg) ≈ 89K → sub-second.
+#
+# The real-build segments (stored in kala_field) are unaffected by either fix.
+
+_NULL_COARSE_LEVELS: frozenset[str] = frozenset({'MD', 'AD', 'PD'})
+
+
+def _null_breakpoints(ev: FieldEvaluator) -> list[float]:
+    """Breakpoints for null replicates: coarse daśā levels only (MD/AD/PD).
+
+    Envelope knots are intentionally EXCLUDED. Even at 1-day downsampling they
+    produce ~36K segments for childbirth, which makes cumulative_on_grid O(N²)
+    (36,525 grid-steps × 18K avg linear scan = 6.7s/replicate × 32 = 7.1 min
+    per block). With ladder-only breakpoints (~819 segments) the linear scan is
+    fast: 36,525 × 409 × 10ns = 0.15s/replicate, total ≈ 12s per block.
+
+    Correctness: build_segments' adaptive quadrature (max_depth=6) resolves
+    transit-contact peaks within each 10–30-day ladder interval to sub-day
+    resolution. Precision loss is acceptable for the null distribution — small
+    inaccuracies average out over 256 replicates and the conservative direction
+    (slightly lower q_threshold) matches the docstring's intent.
+
+    Clips to [0, horizon_days].
+    """
+    pts: set[float] = {0.0, ev.horizon_days}
+    # Ladder: MD/AD/PD only (skip SD/PrD which add 160K+ intervals; skip
+    # envelope knots which cause O(N²) cumulative_on_grid for classes like
+    # childbirth).
+    for periods in ev.ladder.values():
+        for p in periods:
+            if p.level in _NULL_COARSE_LEVELS:
+                pts.add(p.t_start)
+                pts.add(p.t_end)
+    pts.update(ev.extra_breakpoints)
+    return sorted(t for t in pts if math.isfinite(t) and 0.0 <= t <= ev.horizon_days)
+
+
+def _null_build_segments(ev: FieldEvaluator) -> list[Segment]:
+    """Build segments for a null replicate using coarse breakpoints (L1g)."""
+    return integrator.build_segments(_null_breakpoints(ev), ev.ln_lambda)
+
+
 def cumulative_on_grid(
     segments: Sequence[Segment],
     horizon_days: float,
     grid_step: float = 1.0,
 ) -> list[float]:
-    """Λ(0, t) at every grid point, computed with the EXACT segment integral.
+    """Λ(0, t) at every grid point: O(N_grid + N_seg) pointer-advance.
 
     Returned as a cumulative array so the sliding-window maximum below is O(N)
     per bucket instead of O(N·L): Λ(t, t+L) = cum[t+L] − cum[t]. The integral is
     exact per step, so the cumulative is exact up to floating-point summation
     (which is precisely why `_EXCEEDANCE_REL_TOL` exists — see its comment).
+
+    L1h: prior version called integrator.integrate(segments, k*gs, (k+1)*gs) for
+    every grid step, restarting the linear scan from segment 0 each time —
+    O(N_grid × N_seg) total. With ~52K null segments (L1g's 819 coarse intervals
+    × max-depth-6 adaptive refinement for high-curvature classes like childbirth)
+    and 36525 grid steps, that was 950M operations per replicate → 7+ min/block.
+    Pointer-advance: O(N_grid + N_seg) ≈ 89K operations → sub-second.
     """
     n = int(round(horizon_days / grid_step))
     cum = [0.0] * (n + 1)
+    if not segments:
+        return cum
     running = 0.0
+    n_segs = len(segments)
+    j = 0  # pointer: first segment that might overlap [a, b)
     for k in range(n):
-        running += integrator.integrate(segments, k * grid_step, (k + 1) * grid_step)
+        a = k * grid_step
+        b = a + grid_step
+        # Advance j past segments that end at or before a (no overlap with [a, b))
+        while j < n_segs and segments[j].t_end <= a:
+            j += 1
+        # Sum contributions from all segments overlapping [a, b) without moving j
+        i = j
+        while i < n_segs and segments[i].t_start < b:
+            u = max(a, segments[i].t_start)
+            v = min(b, segments[i].t_end)
+            if v > u:
+                running += integrator.segment_integral(segments[i], u, v)
+            i += 1
         cum[k + 1] = running
     return cum
 
@@ -276,7 +358,7 @@ def replicate_stats(
 ) -> dict[int, float]:
     """M_r(L) for every duration bucket, for ONE replicate."""
     if segments is None:
-        segments = replicate_evaluator(ev, delta).build_segments()
+        segments = _null_build_segments(replicate_evaluator(ev, delta))
     cum = cumulative_on_grid(segments, horizon_days, grid_step)
     return {int(b): sliding_window_max(cum, int(b)) for b in buckets}
 
@@ -289,6 +371,36 @@ class NullResult:
     shift_grid_step: float
     q_threshold: Optional[float]
     max_stats: dict[int, list[float]] = field(default_factory=dict)
+
+
+def _lambda_grid_fast(
+    segments: Sequence[Segment],
+    horizon_days: float,
+    grid_step: float = 1.0,
+) -> list[float]:
+    """λ at every grid point: O(N_grid + N_seg) pointer-advance.
+
+    Replaces N_grid individual integrator.lambda_at(segs, t) calls, each of
+    which scans segs linearly from index 0. With 52K null segments and 36525
+    grid steps that was 950M comparisons per replicate; pointer-advance over the
+    sequential grid reduces this to O(N_grid + N_seg) ≈ 89K.
+    """
+    n = int(round(horizon_days / grid_step))
+    if not segments:
+        return [0.0] * n
+    n_segs = len(segments)
+    vals = [0.0] * n
+    j = 0  # pointer into segments
+    for k in range(n):
+        t = k * grid_step
+        # Advance j past segments that end at or before t
+        while j < n_segs and segments[j].t_end <= t:
+            j += 1
+        if j < n_segs:
+            seg = segments[j]
+            if seg.t_start <= t < seg.t_end:
+                vals[k] = integrator.segment_lambda(seg, t)
+    return vals
 
 
 def run_null(
@@ -322,15 +434,12 @@ def run_null(
                                          grid_step=grid_step)
     for r in range(lo, hi):
         rep = replicate_evaluator(ev, grid[r])
-        segs = rep.build_segments()
+        segs = _null_build_segments(rep)  # L1g: coarse breakpoints (MD/AD/PD only)
         acc.add_replicate(
             index=r,
             stats=replicate_stats(rep, 0.0, horizon_days, buckets=buckets,
                                   grid_step=grid_step, segments=segs),
-            lambda_grid=(
-                integrator.lambda_at(segs, k * grid_step)
-                for k in range(int(round(horizon_days / grid_step)))
-            ),
+            lambda_grid=_lambda_grid_fast(segs, horizon_days, grid_step),  # L1h
         )
     return acc.finalize()
 
