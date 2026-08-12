@@ -550,8 +550,15 @@ def _evaluate_single_from_context(
         context, eval_start_iso, eval_end_iso,
     )
 
+    # 4e. W3.0 nodal drishti: Rahu/Ketu 5/7/9 aspect modifier (later tradition —
+    #     not in original BPHS; attested in later Parashari commentaries).
+    #     Computes Rahu/Ketu transit signs via swe.calc_ut at t_jd (no DB access).
+    #     modifier=1.0 when disabled or no natal target signs are aspected.
+    _w30_result = _w30.compute(context, t_jd, swe=swe, enabled=_W30_NODAL_DRISHTI_ENABLED)
+    w30_modifier = _w30_result.modifier
+
     # 5. Assemble lambda_v3 — bounded [0,1] by construction
-    raw_lambda = promise * permission * activity * tara_modifier * quality_gates
+    raw_lambda = promise * permission * activity * tara_modifier * w30_modifier * quality_gates
 
     # Clamp for floating-point edge cases (should be impossible, but defensive)
     raw_lambda = max(0.0, min(1.0, raw_lambda))
@@ -573,7 +580,7 @@ def _evaluate_single_from_context(
     x_t_compat = activity  # activity IS the v3 replacement for X(t)
     x_t_detail_compat = {
         **activity_detail,
-        "formula": "lambda_v3 = PROMISE * PERMISSION * activity * tara_modifier * quality_gates",
+        "formula": "lambda_v3 = PROMISE * PERMISSION * activity * tara_modifier * w30_modifier * quality_gates",
         "v3_mode": True,
         "term_breakdown": term_breakdown,
         "tara_modifier": round(tara_modifier, 8),
@@ -586,6 +593,16 @@ def _evaluate_single_from_context(
         },
         "quality_gates": quality_gates,
         "quality_gates_detail": quality_gates_detail,
+        # W3.0 nodal drishti fields
+        "w30_modifier": round(w30_modifier, 8),
+        "w30_detail": {
+            "rahu_sign": _w30_result.rahu_sign,
+            "ketu_sign": _w30_result.ketu_sign,
+            "aspected_signs": list(_w30_result.aspected_sign_indices),
+            "skipped": _w30_result.skipped,
+            "skip_reason": _w30_result.skip_reason,
+            "mechanism_id": _w30_result.mechanism_id,
+        },
         # W1.2 signed-channel fields
         "signed_channels": signed_channel_detail,
         "valence_v3": v3_valence,
@@ -595,6 +612,7 @@ def _evaluate_single_from_context(
             "valence derived from net evidence sign. "
             "W1.1/W1.3 bounded lambda_v3: activity replaces exp(beta*X); "
             "quality_gates is W1.3 vedha suppression (multiplicative; 1.0 when no vedha). "
+            "W3.0 nodal drishti: Rahu/Ketu 5/7/9 aspect modifier (later tradition). "
             "activity=noisy_OR over orb-decayed sentence contributions in [0,1]. "
             "exp_term=1.0 (no exponential in v3 formula)."
         ),
@@ -686,10 +704,11 @@ def _evaluate_single_from_context(
         "permission": round(permission, 8),
         "activity": round(activity, 8),
         "tara_modifier": round(tara_modifier, 8),
+        "w30_modifier": round(w30_modifier, 8),
         "quality_gates": round(quality_gates, 8),
         "lambda_v3": round(raw_lambda, 8),
         "activity_terms": x_t_detail_compat.get("contributions", []),
-        "formula": "PROMISE × PERMISSION × activity × tara_modifier × quality_gates",
+        "formula": "PROMISE × PERMISSION × activity × tara_modifier × w30_modifier × quality_gates",
     }
 
     # W1.5 credible interval — structural_prior: ±20% band, clamped to [0,1].
