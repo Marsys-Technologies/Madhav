@@ -3117,3 +3117,31 @@ evidence the battery is doing real work.
 Proceeding to R4: MR-20 (no-loss coverage gate, 35,620 v1 rows), MR-21 (wall-clock ADJUDICATOR
 disposition + publish evidence chain), MR-33 (L5 loop wiring verification, HONEST-DEFERRED
 permitted by its own doctrine), close report v1.1, coordination handoff, hygiene, MR-29 re-close.
+
+## 2026-08-12 ~05:3x IST — cross-session note: L-7 correction + explicit release; MR-20/21/33/close-report v1.1 done
+
+CONDUCTOR-HEARTBEAT: 2026-08-12T05:35:00Z
+
+Discovered, reading `campaign-coordination` branch: SAMPŪRTI's overnight conductor
+declared L-7 dead-by-process-exit at 03:20 IST and proceeded (their own L-8 lease,
+migration+deploy only, no corpus writes, released 04:08 IST) — but PARIṢKĀRA continued
+substantial, actively-authorized work under L-7 for nearly two more hours after that
+point (the MR-46 investigation → MR-47/48 fixes, Phase E/F/G, R3, R4's MR-20/21/33).
+Corrected the record on `campaign-coordination` (commit 0e5373d4f): factual, not
+accusatory — same process-liveness heuristic limitation PARIṢKĀRA caught in its own
+tooling earlier this session, now surfaced one layer up in cross-campaign coordination.
+No actual harm found (SAMPŪRTI's concurrent window never touched gochara tables).
+L-7 now explicitly, properly released.
+
+**MR-20 CLOSED (PK-R-11)**: gate MET, AT-PAR claim retired as an unsupportable
+comparator-scope artifact (independently verified: `scope_v1_rows` scopes v1 only,
+v3 unscoped), replaced with an earned zero-valence-disagreement claim over the
+comparable subset. **MR-21 CLOSED** (PK-R-12 wall-clock HONEST-DEFERRED + the master
+brief's own unsourced 15-20min target retired; PK-R-13 W0.4 HONEST-DEFERRED). **MR-33
+CLOSED**: L5 loop wiring independently verified end-to-end (file/record/compute all
+real), HONEST-DEFERRED trigger recorded. **GOCHARA_UTKARSHA_CLOSE_REPORT_v1_1.md**
+authored, resolving every item v1.0's own §6 disclosed as open; v1.0 marked SUPERSEDED
+in place.
+
+NEXT-ACTION: worktree/branch hygiene, then MR-29 — a fresh, independent, default-REFUTED
+re-close verdict over the entire campaign, sealing CAMPAIGN-STATUS: COMPLETE only on PASS.
