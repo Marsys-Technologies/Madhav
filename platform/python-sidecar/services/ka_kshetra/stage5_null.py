@@ -256,11 +256,20 @@ def _null_breakpoints(ev: FieldEvaluator) -> list[float]:
     """Breakpoints for null replicates: coarse daśā levels + envelope knots.
 
     Excludes SD/PrD boundaries (the 160K+ fine-grained periods). Envelope knots
-    are kept because they change per replicate (circular shift moves transit
-    contacts in time). Clips to [0, horizon_days].
+    are kept (they change per replicate) but downsampled to one per grid-step day:
+    sub-day precision adds no value when cumulative_on_grid evaluates on a 1-day
+    grid. Childbirth has ~200K envelope knots; this reduces to ~36K, bringing
+    block time from ~9.6 min (connection-timeout territory) to ~1.7 min.
+    Clips to [0, horizon_days].
     """
     pts: set[float] = {0.0, ev.horizon_days}
-    pts.update(ev.envelopes.breakpoints())
+    # Envelope knots: at most one per grid-step day (L1g part 2).
+    env_sorted = sorted(ev.envelopes.breakpoints())
+    last = -math.inf
+    for t in env_sorted:
+        if t - last >= 1.0:  # 1 day = the cumulative_on_grid grid step
+            pts.add(t)
+            last = t
     for periods in ev.ladder.values():
         for p in periods:
             if p.level in _NULL_COARSE_LEVELS:
