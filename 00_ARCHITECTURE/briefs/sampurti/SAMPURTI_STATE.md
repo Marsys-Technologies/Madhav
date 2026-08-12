@@ -824,3 +824,28 @@ CONDUCTOR-HEARTBEAT: 2026-08-12T06:30+05:30 pid=CONDUCTOR [R1 diagnosis: Run 12b
 - childbirth:5 completed: 906,024 rows
 - Processing ~60-90 seconds per decade (vs. multi-hour hang = 5-10 min/decade × IO wait)
 - Hard blocker lifted. Run 14 proceeding through all 27 classes.
+
+## HEARTBEAT 2026-08-12T08:30+00:00 — L1g applied, killing Run 15, dispatching Run 16
+
+**L1f validation**: PARTIAL. L1f (early break in integrate/segment_containing/peak_over) 
+eliminated cumulative_on_grid as bottleneck but exposed the NEXT bottleneck: 
+build_segments() itself, called once per null replicate.
+
+**Root cause of stage5:childbirth:1 hang** (10+ minutes, index 295):
+- build_segments() iterates ALL breakpoints, including 165K+ SD/PrD daśā periods  
+- 165K intervals × 3 ln_lambda calls × ~30μs = 15s per replicate
+- 32 replicates per block × 15s = 8 minutes per block
+- 8 blocks × 8 minutes = 64 minutes for childbirth stage5 alone
+- Without fix: would not complete within overnight window
+
+**L1g fix** (commit b9b72b294, PR #1240):
+- _null_breakpoints() excludes SD/PrD levels from null replicate build_segments
+- MD/AD/PD + envelope knots + extras remain (~1K breakpoints vs 165K)
+- Expected: ~0.1s per replicate → ~3s per block → ~24s for all childbirth stage5 blocks
+- Applied to local stage5_null.py; PR #1240 pushed with L1g commit
+
+**Decision**: Kill Run 15 (PID 19421, stuck at stage5:childbirth:1 for 10+ min).
+Dispatch Run 16 fresh (full reset) with L1e+L1f+L1g all applied locally.
+Estimated Run 16 total: 80-100 minutes for all 474 substeps.
+
+**Action**: Kill PID 19421, dispatch Run 16.
