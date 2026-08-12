@@ -58,7 +58,7 @@ B1 → B2 → B3 → B4 → B5 (sequential within β; per mechanism before next)
 | Lane | Scope | Branch | Status | PARĪKṢAKA | Evidence |
 |---|---|---|---|---|---|
 | B1 | Wire w23_tara_bala into engine.py production λ; blind-spec commit first; unit+parity suites | sampurti/β-b1-tara-bala | VERIFIED-MERGE-QUEUED | VERIFIED (8/8 checks) | PR #1248 in merge queue; CI green; PARĪKṢAKA VERIFIED |
-| B2 | w30_nodal_drishti (Rahu/Ketu 5/7/9; L1 constants verbatim; "later tradition" hedge preserved) | sampurti/β-b2-nodal-drishti | NOT-STARTED | — | — |
+| B2 | w30_nodal_drishti (Rahu/Ketu 5/7/9; L1 constants verbatim; "later tradition" hedge preserved) | sampurti/β-b2-nodal-drishti | CI-AWAITING-PARĪKṢAKA | — | PR #1251 open; rebase on B1 complete; CI 17/26 green; ablation POSITIVE |
 | B3 | Lattā → quality_gates (existing malefic-scale path; Ketu absence disclosed) | sampurti/β-b3-latta | NOT-STARTED | — | — |
 | B4 | Resonance tokenizer fix (qualifier tokens; "maraka lords" compound) + rebuild resonance | sampurti/β-b4-resonance-tokenizer | NOT-STARTED | — | — |
 | B5 | ONE leased corpus-rebuild window folding B1-B4; PARIṢKĀRA L-6 evidence template; w43 ablation per mechanism; honest w44 refit (non-zero now possible; stamps ONLY via w45 §N.8 gate) | sampurti/β-b5-corpus-rebuild | NOT-STARTED | — | — |
@@ -68,7 +68,7 @@ B1 → B2 → B3 → B4 → B5 (sequential within β; per mechanism before next)
 | Mechanism | Pre-wire baseline λ (native chart 482012f1) | Post-wire delta | Ablation verdict |
 |---|---|---|---|
 | w23_tara_bala | λ mean=0.197083 (business_launch, 52 JDs, 2026) | delta mean=−0.008025 (−4.1%); tara mods range [0.70,1.20] std=0.183 | POSITIVE (genuine firing) |
-| w30_nodal_drishti | TBD | TBD | PENDING |
+| w30_nodal_drishti | modifier baseline=1.000000 (disabled; business_launch, 52 JDs, 2026) | delta mean=+0.001268 (+0.13%); range=[0.9500,1.0241] std=0.035; 52/52 JDs fire; Rahu in Aquarius/Capricorn | POSITIVE (genuine firing) |
 | Lattā (B3) | TBD | TBD | PENDING |
 
 ## GATE G-B EVIDENCE CHECKLIST
@@ -148,3 +148,23 @@ Conductor: monitoring; will dispatch PARĪKṢAKA after builder completes and PR
 
 NEXT-ACTION: Dispatch B2 builder (w30_nodal_drishti, Rahu/Ketu 5/7/9 aspects).
 B2 branches off origin/main (parallel to B1 merge queue); β-b2-nodal-drishti branch.
+
+CONDUCTOR-HEARTBEAT: 2026-08-12T21:29:53Z pid=59044 host=Montys-MacBook-Pro.local session=β [B2 rebase complete (on B1 chain); force-pushed; CI 17/26 green; ablation POSITIVE (+0.13%, 52/52 JDs fire); awaiting CI green then PARĪKṢAKA]
+
+### 2026-08-13 02:59 IST — B2 REBASE COMPLETE + ABLATION DONE
+
+**B2 REBASE:** PR #1251 rebased onto post-B1-merge main (a1b535691). Three merge conflicts resolved
+(raw_lambda formula, formula string, term_breakdown dict) to include BOTH tara_modifier AND w30_modifier.
+Commit chain: TDD test → blind-spec → mechanism → effect. Force-pushed. CI running (17/26 green).
+
+**B2 ABLATION (w30_nodal_drishti, business_launch, 52 weekly JDs, 2026):**
+- Baseline (disabled): modifier = 1.000000 (always)
+- Wired (enabled):     modifier mean = 1.001268
+- Delta: mean = +0.001268 (+0.13%); std = 0.034512
+- Modifier range: [0.9500, 1.0241]; 52/52 JDs have modifier ≠ 1.0
+- Rahu signs during 2026: Aquarius and Capricorn (slow-moving node)
+- 7 enriched resonance targets with target_sign; Capricorn=3, Aquarius=1, others
+- Net slightly positive: 5th/9th trine targets (1.05) slightly outweigh 7th opposition (0.95)
+- Ablation verdict: POSITIVE (genuine firing)
+
+NEXT-ACTION: Await B2 CI green, then dispatch PARĪKṢAKA for B2.
