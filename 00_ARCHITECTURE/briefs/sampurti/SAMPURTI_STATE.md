@@ -1022,3 +1022,41 @@ each). Fingerprint resumption allows completion across 2 runs:
 - Run 26: stages 0-4 (re-run, fast) + separation:4-8 + surgery + remaining → complete
 
 **Next**: Monitor Run 26 through separation completion → surgery → stage6/7 → lit state.
+
+## HEARTBEAT 2026-08-12T14:02+00:00 — Run 26 cloud-sql-proxy drop, Run 27 active
+
+**Run 26 result: FAILED — psycopg.OperationalError (cloud-sql-proxy drop)**
+
+Run 26 crashed at 19:26:56 IST at stage5:separation:5:
+```
+consuming input failed: server closed the connection unexpectedly
+```
+This is the same transient cloud-sql-proxy drop that killed Run 23.
+101 substeps now committed (separation:1-5 added vs Run 25's 99).
+
+**Emerging pattern — multi-run completion**:
+Each dispatch resets asset_throughput to dormant. The writer:
+1. Clears kala_field_null/kala_field_windows/kala_field_provenance (delete-then-insert)
+2. Fingerprints for stages 0-4: MATCH (upsert data identical) → skipped fast
+3. Fingerprints for stage5 slow NULL blocks that were committed in previous run
+   AND whose kala_field base data matches: behavior varies (see note)
+4. stage5finalize for previously-committed classes: MATCH → skipped, data intact ✓
+5. Only the slow null blocks for the CURRENT INCOMPLETE class re-run
+
+**Key finding**: stage5finalize data from prior runs PERSISTS across dispatches
+(finalize fingerprints match = skip, existing rows stay). Only the null blocks
+for the currently-being-processed slow class re-run from scratch each dispatch.
+
+Progress ledger:
+- Run 25 (38faf14c): timed out at 2h, separation:3 committed (99 total)
+- Run 26 (9331cf85): dropped at separation:5 (101 total)
+- Run 27 (bd30fc51, PID 92274, launched 19:31 IST): active
+
+**Run 27 expected**:
+- Re-run stages 0-4 (fast, ~10 min), re-run separation:1-5 (~15 min)
+- NEW WORK: separation:6-8 (9 min) + surgery:1-8 (24 min) + stage6/7
+- Total: ~60-70 min → completion by ~20:30-21:00 IST
+- RISK: another cloud-sql-proxy drop (recurring issue, ~30% per run)
+
+**Next**: Monitor Run 27. If it drops again, dispatch Run 28 immediately.
+Surgery completion is the last remaining obstacle before stage6/7 and lit state.
