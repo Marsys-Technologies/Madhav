@@ -58,9 +58,9 @@ B1 → B2 → B3 → B4 → B5 (sequential within β; per mechanism before next)
 | Lane | Scope | Branch | Status | PARĪKṢAKA | Evidence |
 |---|---|---|---|---|---|
 | B1 | Wire w23_tara_bala into engine.py production λ; blind-spec commit first; unit+parity suites | sampurti/β-b1-tara-bala | VERIFIED-MERGE-QUEUED | VERIFIED (8/8 checks) | PR #1248 in merge queue; CI green; PARĪKṢAKA VERIFIED |
-| B2 | w30_nodal_drishti (Rahu/Ketu 5/7/9; L1 constants verbatim; "later tradition" hedge preserved) | sampurti/β-b2-nodal-drishti | VERIFIED-MERGE-QUEUED | VERIFIED (8/8 checks) | PR #1251 in merge queue; CI 19/26 green (7 skip); PARĪKṢAKA VERIFIED |
-| B3 | Lattā → quality_gates (existing malefic-scale path; Ketu absence disclosed) | sampurti/β-b3-latta | CI-AWAITING-PARĪKṢAKA | — | PR #1252 open; CI running; ablation POSITIVE (-3.89% on latta JDs) |
-| B4 | Resonance tokenizer fix (qualifier tokens; "maraka lords" compound) + rebuild resonance | sampurti/β-b4-resonance-tokenizer | NOT-STARTED | — | — |
+| B2 | w30_nodal_drishti (Rahu/Ketu 5/7/9; L1 constants verbatim; "later tradition" hedge preserved) | sampurti/β-b2-nodal-drishti | MERGED | VERIFIED (8/8 checks) | PR #1251 MERGED (commit b7e657bfe, 2026-08-12T21:44Z); CI 19/26 green (7 skip); PARĪKṢAKA VERIFIED |
+| B3 | Lattā → quality_gates (existing malefic-scale path; Ketu absence disclosed) | sampurti/β-b3-latta | VERIFIED-MERGE-QUEUED | VERIFIED (8/8 checks) | PR #1252 in merge queue; CI 19/26 green (7 skip); PARĪKṢAKA VERIFIED (8/8) |
+| B4 | Resonance tokenizer fix (qualifier tokens; "maraka lords" compound) + rebuild resonance | sampurti/β-b4-resonance-tokenizer | BUILDING | — | Builder agent a316ec36521dabdb9 dispatched; branch sampurti/β-b4-resonance-tokenizer |
 | B5 | ONE leased corpus-rebuild window folding B1-B4; PARIṢKĀRA L-6 evidence template; w43 ablation per mechanism; honest w44 refit (non-zero now possible; stamps ONLY via w45 §N.8 gate) | sampurti/β-b5-corpus-rebuild | NOT-STARTED | — | — |
 
 ## ABLATION REGISTER (per B1→B4; required before B5)
@@ -210,3 +210,27 @@ Formula: UNCHANGED.
 - Verdict: POSITIVE (genuine improvement; latta now properly severe)
 
 PARĪKṢAKA dispatched (abef42b2075703b9d). Awaiting CI + PARĪKṢAKA verdict.
+
+### 2026-08-13 03:22 IST — B2 MERGED / B3 PARĪKṢAKA VERIFIED / B4 DISPATCHED
+
+**B2 MERGED:** PR #1251 merged to main at 2026-08-12T21:44:25Z. Commit: b7e657bfe.
+main HEAD (post-B2): b7e657bfe. B1 (a1b535691) + B2 (b7e657bfe) both in production main.
+
+**B3 PARĪKṢAKA VERIFIED (8/8):**
+1. Blind-spec commit order: PASS — test (843828e19) → spec (bb0aca25b) → effect (1d979b476) ✓
+2. Spec commit content: PASS — _LATTA_EFFECTIVE_MALEFIC_COUNT: int = 3 + placeholder comment only ✓
+3. Effect placement: PASS — latta branch with continue in _compute_quality_gates_from_context ✓
+4. I2 compliance: PASS — only engine.py + test file modified; no gochara_grammar/* ✓
+5. Ketu absence disclosed: PASS — explicit inline comment in latta code path ✓
+6. Parity test coverage: PASS — AC-E1/E2/E3/E4 passing; TDD commit first ✓
+7. continue statement: PASS — `continue` before regular malefic_count path; mutual exclusion ✓
+8. CI green: PASS — 19 SUCCESS, 7 SKIPPED, 0 FAILURE ✓
+
+PR #1252 in merge queue (already queued).
+
+**B4 DISPATCHED:** Builder agent a316ec36521dabdb9 dispatched for resonance tokenizer fix.
+Scope: `_build_lord_rows` in ka_gochara_resonance/writer.py; `re.findall(r'\d+L', ref)` tokenizer;
+`_LORD_TOKEN_RE` constant. TDD → spec → effect discipline. Branch: sampurti/β-b4-resonance-tokenizer.
+Affected event classes: career_setback, separation, bereavement, major_loss, financial_deception.
+
+CONDUCTOR-HEARTBEAT: 2026-08-12T21:52:00Z pid=59044 host=Montys-MacBook-Pro.local session=β [B3 VERIFIED (8/8); PR #1252 in merge queue; B4 builder dispatched (a316ec36521dabdb9); awaiting B4 completion]
