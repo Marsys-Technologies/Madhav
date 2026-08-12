@@ -233,6 +233,13 @@ class FakeCursor:
     def fetchone(self) -> Optional[dict]:
         return self._rows[0] if self._rows else None
 
+    def executemany(self, sql: str, params_seq) -> None:
+        """Batch insert — delegate to execute() for each param tuple.
+        Added by L1e fix (stage4 batch-insert pattern matching stage3 L1d).
+        """
+        for params in params_seq:
+            self.execute(sql, params)
+
 
 class FakeConn:
     """An in-memory connection. `executed` records every statement, which is what
