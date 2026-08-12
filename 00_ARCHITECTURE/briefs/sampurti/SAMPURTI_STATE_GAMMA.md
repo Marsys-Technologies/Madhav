@@ -12,6 +12,8 @@ status: LIVE — attempt 1 (supervisor launched 2026-08-13 01:50 IST)
 
 CONDUCTOR-HEARTBEAT: 2026-08-12T20:26:10Z pid=61698 host=Montys-MacBook-Pro.local session=γ
 [STEP-0 OPEN: liveness clean (no prior γ conductor), coordination fetched, reconcile complete]
+CONDUCTOR-HEARTBEAT: 2026-08-12T20:33:32Z pid=61698 host=Montys-MacBook-Pro.local session=γ
+[BUILDERS: C3 tests passing (19/19) staging commit; C2 implementing buildNestedHierarchy (11/11 failing→in progress); C5 writing §8 test suite; C1 resolving node_modules in worktree]
 
 ## STEP-0 STATE (2026-08-13 01:50 IST launch)
 
@@ -79,3 +81,11 @@ Post session-open line to campaign-coordination.
 ### 2026-08-13 01:50 IST — γ attempt 1 OPEN
 
 STEP-0 complete. Reconcile clean. No prior γ ledger (first run). Sibling sessions α and β confirmed live. Posting session-open line to coordination. Dispatching C1/C2/C3/C5 builders in parallel; C4 behind flag.
+
+### 2026-08-13 02:03 IST — Builder dispatch status
+
+Four parallel builders launched. Status at T+7 min:
+- **C3** (a292b05c3b35f0846): Tests written (8 new failing), implemented `coverage_quality` on `GocharaCoverage` interface + computation in `computeGocharaCoverage`. All 19 tests PASS. Staging files for commit.
+- **C2** (aba8105f156fe339e): Tests written (11 new failing — `buildNestedHierarchy is not a function`). Confirmed TDD fail. Now implementing `ServedWindow`, `HierarchyNode` types + `buildNestedHierarchy()` function in `register_gochara_windows.ts`.
+- **C5** (a9108aa16a61a735e): Writing §8 test suite (4 test groups: C5.1 flag-OFF v1 citation, C5.2 flag-ON+match→field_window_id+v2, C5.3 flag-ON+no-match→honest no-op, C5.4 no kala_field_windows query when off). Hit file-not-read guard, now resolving.
+- **C1** (a8117a8a10a5d586f): Hit vitest/node_modules missing in worktree. Resolving via worktree `npm install` or path correction.
