@@ -580,3 +580,224 @@ describe('AUTOFILE_WITHHOLD_EVENT_CLASSES — must match intervention_filing.ts 
     expect(AUTOFILE_WITHHOLD_EVENT_CLASSES.size).toBeGreaterThan(0)
   })
 })
+
+// ── §8 — SM_GAMMA_C5_ENABLED: field_window_id + authority_basis re-keying ────────────
+//
+// Four tests per the C5 spec:
+//   C5.1 — flag OFF: source_citation is v1, no kala_field_windows query issued
+//   C5.2 — flag ON + match found: authority_basis gains "field_window/<id>@<date>",
+//           source_citation is v2, field_window_id present in filed entry
+//   C5.3 — flag ON + no match: authority_basis unchanged (honest no-op), no fabrication
+//   C5.4 — flag OFF: platformQuery is never called with kala_field_windows
+
+import {
+  buildSourceCitationV2,
+  AHEAD_AUTOFILE_FORMULA_VERSION_V2,
+} from './ahead_autofile.js'
+
+describe('SM_GAMMA_C5_ENABLED — C5.1: flag OFF → v1 citation, no kala_field_windows query', () => {
+  it('when SM_GAMMA_C5_ENABLED is unset, source_citation uses v1 prefix', async () => {
+    delete process.env['SM_GAMMA_C5_ENABLED']
+
+    const fetchSpy = mockFetchBothSuccess('pred-c5-off-001')
+    vi.stubGlobal('fetch', fetchSpy)
+
+    const result = await autofileAheadWindows(
+      CHART_ID,
+      [makeWindow({ signature_classes: ['career_advancement'] })],
+      PRINCIPAL,
+    )
+
+    expect(result.filed_count).toBe(1)
+    const filed = result.outcomes[0]
+    expect(filed.kind).toBe('filed')
+    if (filed.kind === 'filed') {
+      expect(filed.source_citation).toMatch(/^ahead_autofile:v1:/)
+    }
+  })
+
+  it('when SM_GAMMA_C5_ENABLED=false, source_citation uses v1 prefix', async () => {
+    process.env['SM_GAMMA_C5_ENABLED'] = 'false'
+
+    const fetchSpy = mockFetchBothSuccess('pred-c5-false-001')
+    vi.stubGlobal('fetch', fetchSpy)
+
+    const result = await autofileAheadWindows(
+      CHART_ID,
+      [makeWindow({ signature_classes: ['career_advancement'] })],
+      PRINCIPAL,
+    )
+
+    expect(result.filed_count).toBe(1)
+    const filed = result.outcomes[0]
+    expect(filed.kind).toBe('filed')
+    if (filed.kind === 'filed') {
+      expect(filed.source_citation).toMatch(/^ahead_autofile:v1:/)
+    }
+
+    delete process.env['SM_GAMMA_C5_ENABLED']
+  })
+})
+
+describe('SM_GAMMA_C5_ENABLED — C5.4: flag OFF → kala_field_windows query never issued', () => {
+  it('when flag is off, no fetch call references kala_field_windows in the SQL body', async () => {
+    delete process.env['SM_GAMMA_C5_ENABLED']
+
+    const fetchSpy = mockFetchBothSuccess('pred-c5-nofetch')
+    vi.stubGlobal('fetch', fetchSpy)
+
+    await autofileAheadWindows(
+      CHART_ID,
+      [makeWindow({ signature_classes: ['career_advancement'] })],
+      PRINCIPAL,
+    )
+
+    const allBodies = fetchSpy.mock.calls.map((c) => {
+      try { return JSON.stringify(JSON.parse(String((c[1] as RequestInit | undefined)?.body ?? '{}'))) }
+      catch { return '' }
+    })
+    for (const b of allBodies) {
+      expect(b).not.toContain('kala_field_windows')
+    }
+  })
+})
+
+describe('SM_GAMMA_C5_ENABLED — C5.2: flag ON + field window match → enriched authority_basis + v2 citation', () => {
+  it('authority_basis includes "field_window/<id>@<date>" when a matching kala_field_windows row is found', async () => {
+    process.env['SM_GAMMA_C5_ENABLED'] = 'true'
+
+    const FIELD_WINDOW_ID = 'fw-abc-123'
+    const PEAK_DATE = '2027-04-15'
+
+    let capturedWriteBody: Record<string, unknown> | null = null
+
+    const fetchSpy = vi.fn(async (url: string, init?: RequestInit) => {
+      const rawBody = String(init?.body ?? '{}')
+      const body = JSON.parse(rawBody) as Record<string, unknown>
+
+      if (String(url).includes('/api/mcp/db/query')) {
+        const sql = String(body['sql'] ?? '')
+        // kala_field_windows query → return a matching row
+        if (sql.includes('kala_field_windows')) {
+          return {
+            ok: true,
+            json: async () => ({
+              rows: [{ window_id: FIELD_WINDOW_ID, peak_date: PEAK_DATE, lambda_peak: 0.85 }],
+            }),
+            text: async () => '',
+          }
+        }
+        // brahma_prospective_ledger existence check → no existing row
+        return { ok: true, json: async () => ({ rows: [] }), text: async () => '' }
+      }
+
+      if (String(url).includes('/api/mcp/writes/prospective_ledger_file')) {
+        capturedWriteBody = body
+        return {
+          ok: true, status: 200,
+          json: async () => ({
+            ok: true, trace_id: 'tc5-2',
+            epistemics: { surgical: true, confidence_band: 'medium', horizon_days: 14, falsifier: 'x' },
+            result: { prediction: { prediction_id: 'pred-c5-match-001' } },
+            citations: [], plan: null, predictions_logged: [], synthesis_audit: null, suggested_followups: [],
+          }),
+          text: async () => '',
+        }
+      }
+      throw new Error(`Unexpected fetch call: ${url}`)
+    })
+    vi.stubGlobal('fetch', fetchSpy)
+
+    const result = await autofileAheadWindows(
+      CHART_ID,
+      [makeWindow({ signature_classes: ['career_advancement'] })],
+      PRINCIPAL,
+    )
+
+    expect(result.filed_count).toBe(1)
+
+    // source_citation must be v2 when C5 is enabled
+    const filed = result.outcomes[0]
+    expect(filed.kind).toBe('filed')
+    if (filed.kind === 'filed') {
+      expect(filed.source_citation).toMatch(/^ahead_autofile:v2:/)
+    }
+
+    // The filed entry must carry the enriched authority_basis
+    expect(capturedWriteBody).not.toBeNull()
+    const entry = (capturedWriteBody as { entry?: Record<string, unknown> })?.entry ?? {}
+    const authorityBasis = entry['authority_basis'] as string[] | undefined
+    expect(Array.isArray(authorityBasis)).toBe(true)
+    expect(authorityBasis).toContain(`field_window/${FIELD_WINDOW_ID}@${PEAK_DATE}`)
+
+    // field_window_id must also be present in the entry metadata
+    expect(entry['field_window_id']).toBe(FIELD_WINDOW_ID)
+
+    delete process.env['SM_GAMMA_C5_ENABLED']
+  })
+})
+
+describe('SM_GAMMA_C5_ENABLED — C5.3: flag ON + no field window match → honest no-op, no fabrication', () => {
+  it('authority_basis contains no field_window reference when no kala_field_windows row is found', async () => {
+    process.env['SM_GAMMA_C5_ENABLED'] = 'true'
+
+    let capturedWriteBody: Record<string, unknown> | null = null
+
+    const fetchSpy = vi.fn(async (url: string, init?: RequestInit) => {
+      const rawBody = String(init?.body ?? '{}')
+      const body = JSON.parse(rawBody) as Record<string, unknown>
+
+      if (String(url).includes('/api/mcp/db/query')) {
+        const sql = String(body['sql'] ?? '')
+        if (sql.includes('kala_field_windows')) {
+          // No matching row
+          return { ok: true, json: async () => ({ rows: [] }), text: async () => '' }
+        }
+        // Existence check → no existing row
+        return { ok: true, json: async () => ({ rows: [] }), text: async () => '' }
+      }
+
+      if (String(url).includes('/api/mcp/writes/prospective_ledger_file')) {
+        capturedWriteBody = body
+        return {
+          ok: true, status: 200,
+          json: async () => ({
+            ok: true, trace_id: 'tc5-3',
+            epistemics: { surgical: true, confidence_band: 'medium', horizon_days: 14, falsifier: 'x' },
+            result: { prediction: { prediction_id: 'pred-c5-nomatch-001' } },
+            citations: [], plan: null, predictions_logged: [], synthesis_audit: null, suggested_followups: [],
+          }),
+          text: async () => '',
+        }
+      }
+      throw new Error(`Unexpected fetch call: ${url}`)
+    })
+    vi.stubGlobal('fetch', fetchSpy)
+
+    const result = await autofileAheadWindows(
+      CHART_ID,
+      [makeWindow({ signature_classes: ['career_advancement'] })],
+      PRINCIPAL,
+    )
+
+    expect(result.filed_count).toBe(1)
+
+    // The filed entry must NOT contain a fabricated field_window reference
+    expect(capturedWriteBody).not.toBeNull()
+    const entry = (capturedWriteBody as { entry?: Record<string, unknown> })?.entry ?? {}
+    const authorityBasis = entry['authority_basis'] as string[] | undefined
+
+    if (Array.isArray(authorityBasis)) {
+      for (const ab of authorityBasis) {
+        expect(String(ab)).not.toMatch(/^field_window\//)
+      }
+    }
+
+    // field_window_id must be null (not fabricated)
+    if ('field_window_id' in entry) {
+      expect(entry['field_window_id']).toBeNull()
+    }
+
+    delete process.env['SM_GAMMA_C5_ENABLED']
+  })
+})
