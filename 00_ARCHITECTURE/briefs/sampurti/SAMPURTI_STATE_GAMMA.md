@@ -140,3 +140,5 @@ CONDUCTOR-HEARTBEAT: 2026-08-12T22:56:39Z pid=$$ host=Montys-MacBook-Pro.local s
 [FIELD-BASELINE-DONE posted by α (5b3170950) — corpus frozen for P3 window; watching for YANTRA-CORPUS-READY from β (B5 building) then FIELD-INTEGRATED from α; G-P4 still blocked]
 CONDUCTOR-HEARTBEAT: 2026-08-12T23:27:16Z pid=$$ host=Montys-MacBook-Pro.local session=γ
 [WATCHING: no new coordination markers; β B5 corpus rebuild (ka_gochara_v3_century_materialize) still running; α waiting for YANTRA-CORPUS-READY; FIELD-INTEGRATED blocked]
+CONDUCTOR-HEARTBEAT: 2026-08-12T23:47:37Z pid=$$ host=Montys-MacBook-Pro.local session=γ
+[YANTRA-CORPUS-READY posted by β (3d9c3a71f) — α now cleared to start P3 field re-integration; watching for FIELD-INTEGRATED]
