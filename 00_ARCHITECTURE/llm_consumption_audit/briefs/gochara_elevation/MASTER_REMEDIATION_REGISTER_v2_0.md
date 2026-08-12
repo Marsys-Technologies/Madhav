@@ -406,12 +406,100 @@ protocol; publish counts per classification label. GATE: published table,
 unclassified=0. AT-PAR: this IS the proof the replacement loses nothing —
 the at-par certificate itself.
 
+**PK-R-11 (NATIVE-PRATINIDHI, 2026-08-12) — MR-20 AT-PAR clause, BINDING:
+gate MET, AT-PAR claim RETIRED (not weakened) as unsupportable by this
+instrument.** Re-run live against the fully-rebuilt corpus, both charts:
+native `v1_in_scope=1147, v2=943, matched=9, rate=0.78%, divergences=2072
+(unclassified_v1_only_needs_review=1125, v1_grid_artifact=17,
+unclassified_v2_only_needs_review=925, v1_moon_undersampling_miss=5),
+unclassified=0`; Abhinandan `1186/941, matched=20, rate=1.69%, divergences=
+2087 (1140/29/913/5), unclassified=0`. **GATE `unclassified=0`: MET, both
+charts, published — real.** But the AT-PAR text ("this IS the proof the
+replacement loses nothing") is arithmetically unreachable by this specific
+comparator, independent of corpus quality — verified by direct source read:
+`scope_v1_rows` (`services/w2g/equivalence_report.py` lines ~195-224) scopes
+**v1 only** to `temporal_shape=='point'` + horizon + attempted-class;
+`build_equivalence_report` (~line 438) passes the v3 side through
+**completely unscoped**. Live: gen-3.0 is 97% interval/chain by design
+(independently re-confirmed: native 754 interval/160 chain/**29 point**;
+Abhinandan 756/160/**25 point**) and 857/860 rows fall outside the 6-year
+horizon — both facts force the vast majority of gen-3.0 rows into
+`v2_only`/`v1_only` buckets BY CONSTRUCTION, not because anything was lost.
+Direct row inspection: v1 `marriage` = 308 single-day rows in six years
+(≈weekly), 100% `valence='neutral'`, `signed_intensity` unnormalized
+(2.1e6–5.7e10) — the pre-threshold-gate sweep grid PK-R-8's quality-gating
+exists specifically to suppress; v3 `marriage` = 13 rows/century (10
+peak-anchored eras + 3 threshold-passing points). Certifying "loses
+nothing" from a denominator that counts suppressed sub-threshold sweep
+rows as candidate losses is exactly §N.8's defect (a PASS whose detector
+measures a proxy, not the claim) — so the claim is RETIRED, not merely
+softened. **Earned replacement claim, true and evidence-backed:** across
+the only structurally comparable subset (v3 `point` × v1 `point`,
+in-horizon, same class), matched pairs carry **zero valence disagreements
+on either chart** (`genuine_2_0_bug_valence_mismatch=0`, both runs) — a
+NO-CONTRADICTION certificate over the comparable subset, not an at-par
+certificate over everything. **MR-20 CLOSED** on this corrected basis. A
+true shape/horizon-aware at-par comparator (scope BOTH sides symmetrically,
+interval-containment matching for the 97% of rows that are interval/chain)
+is recorded as a real follow-on, not a blocker.
+
 **MR-21 · Publish the quantitative evidence chain.** [PG-23; recon F#6,7,9 +
 W6.1] GAP: every required number absent — W0.4 ≥50× speedup + 200-candidate
 bit-parity; W3.4 century wall-clock + delta-rerun proof; W4.2 noise floor
 (+CIs); W6.1 native wall-clock + interrupt disposition. REMEDIATION: run and
 publish each; ADJUDICATOR disposes the SLO result. GATE: numbers pasted in
 this register's close-out. AT-PAR: every comparative claim gains its anchor.
+
+**Numbers published, R4 2026-08-12:**
+- **W4.2 noise floor (+CIs)**: live, native chart, 1000 shuffles seed=42 —
+  `mean=0.485, std=0.098, ci_2sigma=[0.290, 0.680], p95=0.64, p99=0.72`;
+  real hit_rate `0.48` (12/25 scorable) honestly reported BELOW the floor
+  (`exceeds_noise_floor=false`) — an honest negative from real data (the
+  v1-baseline-only curve, before Wave-2 weighting), not a placeholder.
+- **W3.4 century wall-clock + delta-rerun proof**: delta-rerun PASS, both
+  charts, checksum-verified byte-identical pre/post (Phase E, this
+  session). Century wall-clock: see PK-R-12 below.
+
+**PK-R-12 (NATIVE-PRATINIDHI, 2026-08-12) — MR-21 wall-clock sub-item,
+BINDING: HONEST-DEFERRED with method disclosed; the ≤15–20 min §5 target
+is itself CORRECTED as never-derived.** No second protected-corpus override
+window authorized to sharpen this number — disproportionate cost (emptying
+and rebuilding a protected corpus a second time) for a criterion touching
+neither correctness nor data integrity, and C4's lease was for rebuild+
+refit, not benchmarking. Two real measurements stand: mixed rebuild (123
+resumed + 147 fresh decades) **46.5 min**, steady per-substep pacing, no
+stalls; clean 270/270 all-delta-skip floor **7.9 min native / 7.4 min
+Abhinandan** (Phase E) — the everything-already-computed floor, not a
+from-scratch ceiling, and itself standing proof MR-38's fold works.
+**Disclosed estimate** (method named, never presented as measured):
+interval-canonical substeps ran ~15–25s during the mixed run's fresh
+portions per log timestamps; × 270 ⇒ **~68–113 min** extrapolated. **The
+≤15–20 min target itself is RETIRED**: no derivation for it exists anywhere
+in this register or the master brief — an unsourced aspiration; grading a
+real measurement against a fabricated target is its own §N.8 defect.
+Superseded by the measured floor (7.4–7.9 min delta) + the disclosed
+estimate band. Trigger to re-open: any future from-empty century rebuild
+undertaken for its own reasons must record wall-clock; no dedicated
+benchmark window authorized for this alone.
+
+**PK-R-13 (NATIVE-PRATINIDHI, 2026-08-12) — MR-21's W0.4 sub-item
+(≥50× speedup + 200-candidate bit-parity), BINDING: HONEST-DEFERRED, same
+terminal-state doctrine as MR-33, does NOT block R4 close.** Confirmed
+never measured in any session (register + ledger search, no partial
+evidence). Requires standing up the retired pre-v3 engine and running 200
+candidates through both engines — a dedicated benchmark lane, not a check,
+outside L-7's rebuild+refit lease. **Trigger to re-open**: (a) the pre-v3
+engine is restored to runnable state for any reason, or (b) a v3
+performance regression is suspected and needs a baseline. A historical
+performance claim about a superseded engine, touching no correctness or
+data-integrity surface — asserting it unmeasured, honestly, is the correct
+close, not a blocker.
+
+**MR-21 fully CLOSED** on this basis: W4.2 published, W3.4 delta-rerun
+published (PASS), W3.4/W6.1 century wall-clock HONEST-DEFERRED (PK-R-12),
+W0.4 HONEST-DEFERRED (PK-R-13) — every required number either published or
+honestly, non-blockingly deferred with a recorded trigger, none silently
+absent.
 
 **MR-22 · Suppression: detector + real-corpus count.** [PG-10; recon F#8]
 GAP: suppression_state empty on all rows; founding v1 pathology (0 firings /
