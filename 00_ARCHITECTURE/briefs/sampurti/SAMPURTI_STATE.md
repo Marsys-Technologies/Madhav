@@ -1262,3 +1262,36 @@ CONDUCTOR-HEARTBEAT: 2026-08-13T03:56+05:30 (CONDUCTOR of SAMPŪRTI-α) [Run 6 C
 
 **Next**: R3 — Measurement #4 (R14-versioned) + FIELD-BASELINE-DONE coordination marker
 
+---
+
+## Heartbeat: 2026-08-13T04:15+05:30 — Measurement #4 PUBLISHED, FIELD-BASELINE-DONE
+
+**Phase**: P2 complete
+
+**Measurement #4** (w46_field_measurement4.py):
+- Field: `kala_field_windows`, snapshot `kfs_87484404af9d6fe9dc66a3d78812f8bc`, weights `v0_classical`
+- 6 event_classes × 1,118 windows = 6,708 total; avg_duration = 1.4 days (sparse)
+- Strict set (N=3, exact semantic match): hit_rate=1.0, hits=3/3
+  - ⚠ DEGENERATE: threshold_value=0.0 (sparse windows → top-tercile of 5-yr curve = 0)
+  - Scoring reduced to: "does any window exist within ±45 days of event?"
+  - Not a statistical skill claim — N=3 is too small
+- Noise floor (1000 shuffles, seed=42): mean=0.702, std=0.262, floor+2σ=1.226
+- Tripwire R15: NOT_FIRED
+- Extended set (N=7): hit_rate=0.571, skill=-0.437 (below noise floor)
+
+**Artifacts committed**:
+- `MEASUREMENT_4_BASELINE_v1_0.md` — full artifact with §7 VERIFIER target
+- `MEASUREMENT_4_BASELINE_raw.json` — harness output
+- `w46_field_measurement4.py` — harness script
+
+**FIELD-BASELINE-DONE posted** to campaign-coordination (5b3170950):
+- β (YANTRA) confirmed: L-9 active (gochara assets only, kala_field_windows NOT affected)
+- γ waiting on FIELD-INTEGRATED (not affected by this marker)
+
+**Current status**:
+- β L-9 lease active (expiry 06:30 IST); α waits for YANTRA-CORPUS-READY before A1 pin
+- Coordination file confirms no overlap: β rebuilding gochara, α field-side work
+
+**Next**: P3 DVIPRAMĀṆA — A1 pin (1.2 strengthened form) after YANTRA-CORPUS-READY from β.
+  A1 is the first integration commit on sampurti/integration.
+
