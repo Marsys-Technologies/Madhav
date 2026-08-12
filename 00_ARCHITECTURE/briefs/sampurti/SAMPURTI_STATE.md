@@ -1213,3 +1213,5 @@ CONDUCTOR-HEARTBEAT: 2026-08-13T01:57+05:30 (CONDUCTOR of SAMPŪRTI-α) pid=7327
 - Expected to advance: stage0-4 fast (fingerprint match) → resume at stage5:marriage:2
 
 **NEXT-ACTION:** Monitor until marriage:2+ through surgery complete + lit state.
+
+CONDUCTOR-HEARTBEAT: 2026-08-13T02:04+05:30 (CONDUCTOR of SAMPŪRTI-α) pid=73276 [Run 6 — index 357/456, stage5 fast classes clearing. Stage0-4 completed (fingerprint fast). Slow classes ahead: marriage:2-8 + relocation + separation + surgery. ETA lit: ~2+ hours (likely requires Run 7 after this).]
