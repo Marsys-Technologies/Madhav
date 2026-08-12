@@ -1060,3 +1060,46 @@ Progress ledger:
 
 **Next**: Monitor Run 27. If it drops again, dispatch Run 28 immediately.
 Surgery completion is the last remaining obstacle before stage6/7 and lit state.
+
+## HEARTBEAT 2026-08-12T15:17+00:00 — R1 COMPLETE: ka_kshetra LIT ✓
+
+**Run 27 result: SUCCESS — ka_kshetra reached `lit` state at 20:47:08 IST**
+
+Run 27 (bd30fc51, PID 92274, started 19:31 IST) completed all 438 planned substeps
+and the snapshot step, reaching `lit` state within the 2h timeout window (buffer: ~44 min).
+
+**Final DB state (verified live)**:
+- `asset_throughput.state` = **lit** ✓
+- `kala_field`: 2,555,826 rows
+- `kala_field_windows`: 6,708 rows (4 clocked event classes × ~1,118 windows each)
+- `kala_field_salience`: 6,708 rows (one per window)
+- `kala_field_snapshots`: 1 row (content hash computed)
+- `kala_insights`: 383 rows (7 non-LEL insight types)
+- `kala_timeline_spec`: 6 rows (now / ahead / elect / story / priority / explain)
+
+**L1o fix confirmed in this run**: stage5finalize for each slow event class completed
+in seconds (batch executemany). Without L1o, each finalize would have taken 30+ min
+and the 2h timeout would have fired before reaching stage6.
+
+**Event classes with field windows (clocked)**:
+childbirth, foreign_settlement, marriage, relocation (4 of 27)
+
+**Event classes skipped (no bg_class_priors row — LAW ZERO)**:
+major_gain, major_loss, parental_event, property_acquisition, psychological_arc,
+romantic_start, spiritual_turn, travel_event (23 classes = not yet populated in
+bg_synthetic_cohort / bg_class_priors)
+
+**P-G1 rung criteria confirmed**:
+- Non-zero clocks: ✓ (4 event classes with actual field windows)
+- Many windows per clocked class: ✓ (~1,118 per class)
+- Windowed fraction tiny vs century: ✓ (max 27 days, avg 1.5 days)
+- Compression computable: ✓ (salience vector + submodular selection complete)
+
+**Multi-run completion arc**:
+- Run 25 (38faf14c): 2h TIMEOUT at separation:3
+- Run 26 (9331cf85): cloud-sql-proxy DROP at separation:5
+- Run 27 (bd30fc51): COMPLETE — surgery + stage6 + stage65 + stage8 ×6 + snapshot
+
+**Next**: R2 — full-DAG stale asset rebuild for both charts (482012f1, 1c826d5a),
+excluding 5 gochara assets: {ka_gochara, ka_gochara_v3_century_materialize,
+ka_gochara_resonance, ka_vedha_gochara, ka_kota_chakra}. clear_before=FALSE.
