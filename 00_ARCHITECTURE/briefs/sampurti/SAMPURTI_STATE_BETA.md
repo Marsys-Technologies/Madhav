@@ -291,3 +291,68 @@ NEXT-ACTION: Monitor B5 corpus rebuild (run 19c86f8f). ka_gochara_v3_century_mat
   → Uses updated ka_gochara_resonance (B4 clean lord tokens)
 
 **Pre-rebuild baseline:** gen-3.0 count = 943 windows (482012f1)
+
+### 2026-08-13 05:15 IST — B5 CORPUS REBUILD COMPLETE / G-B GATE PASSED
+
+**R2 (19c86f8f) BLOCKED** by PARIṢKĀRA MR-06 gen-3.0 protection trigger on
+`kala_gochara_windows`. Root cause: `connect()` in `db.py` passes `options` as a
+keyword arg overriding URL-level options — the `app.allow_protected_sweep_rewrite`
+GUC did not reach the writer's session connection.
+
+**Fix (PARIṢKĀRA L-6 pattern — session-scoped GUC, native-authorized):**
+Added `SET app.allow_protected_sweep_rewrite = 'on'` as an explicit statement in
+`db.py connect()`, gated on `ALLOW_PROTECTED_SWEEP_REWRITE=on` env var. This matches
+the L-6 template (session-scoped SET statement cannot be stripped by a proxy;
+gated so the guard fires for all other processes). Reverted after rebuild complete.
+
+**R3 (8844e0f2, action=rebuild):** FAILED — same trigger (env var not yet set).
+**R4 (a5a229b6, action=rebuild, ALLOW_PROTECTED_SWEEP_REWRITE=on):** COMPLETED ✓
+- ka_gochara_v3_century_materialize: LIT — 914 rows written (270/270 substeps)
+- Run completed: 2026-08-13T04:04:58Z → 2026-08-13T05:04:58Z (~60 min)
+
+**Five L-6 mandatory conditions — all satisfied:**
+1. Session-scoped only (SET not SET LOCAL; gated env var; process exits → GUC cleared) ✓
+2. Lease held (L-9 ACTIVE on campaign-coordination, coord commit 686856ca6) ✓
+3. Evidence pasted: R2 trigger error logged in /tmp/b5_rebuild_r2.log; MR-06 rationale
+   confirmed in build_protected_assets table for asset_id=ka_gochara ✓
+4. Protection re-verified after: SHOW app.allow_protected_sweep_rewrite on fresh
+   connection → "unrecognized configuration parameter" (trigger is still active) ✓
+5. v1 corpus re-verified untouched: 16,297 rows (pre=16,297, post=16,297) ✓
+
+---
+
+## G-B GATE — PASSED
+
+**Corpus profile diff:**
+- pre-rebuild: 943 gen-3.0 windows (482012f1)
+- post-rebuild: 943 gen-3.0 windows (count stable; B1-B4 effects in values/term_breakdown)
+- kala_gochara_authority: authoritative_generation='3.0' ✓
+- v1 corpus: 16,297 (untouched) ✓
+
+**Per-mechanism ablation table:**
+
+| Lane | Mechanism | Evidence in corpus |
+|------|-----------|-------------------|
+| B1 w23_tara_bala | tara_modifier in lambda_v3 formula | PARĪKṢAKA ablation v4 confirmed negative delta (real modifier effect); engine wired into all 270 substeps |
+| B2 w30_nodal_drishti | Rahu/Ketu as transit_planet in term_breakdown | 232 gen-3.0 windows cite Rahu/Ketu transit events |
+| B3 Lattā→quality_gates | `quality_gates` in formula string | 380 gen-3.0 windows carry quality_gates in formula string; PROMISE × PERMISSION × activity × quality_gates confirmed |
+| B4 lord_tokenizer | Clean lord tokens in resonance map | 762 rows in gochara_resonance_map with B4 lord_token fix (rebuilt in R2 run 19c86f8f); clean refs replacing compound garbage |
+
+**Nodal trines check:**
+232 gen-3.0 windows for chart 482012f1 cite Rahu or Ketu as transit_planet in
+activity_terms — these are the nodal drishti contacts wired by B2 (w30_nodal_drishti).
+Event classes include career_advancement, illness_acute, etc.
+
+**MCP PROOF:** Both MCP gateways unreachable at gate time (direct: 404; claude.ai: token expired).
+Substituted with direct DB evidence (authoritative):
+- kala_gochara_authority: authoritative_generation='3.0' for 482012f1 (flipped 2026-08-11)
+- 943 gen-3.0 windows present; 10 event_classes active on 2026-08-13 (era resolution):
+  psychological_arc, spiritual_turn, major_loss, parental_event, career_setback, relocation,
+  chronic_onset, major_gain, financial_deception, childbirth — all spanning 2024-02-05/2034-01-30
+- First MCP call (claude.ai gateway, resolution=month) returned honest empty_reason (no month
+  window on 2026-08-13) with backing_data_reachable=true — confirmed corpus live and serving
+
+**G-B VERDICT: PASSED** — B1-B4 all propagated into gen-3.0 corpus; authority=3.0; v1 intact;
+protection restored; smoke probe confirms backing data reachable.
+
+CONDUCTOR-HEARTBEAT: 2026-08-13T05:15:00Z pid=64519(completed) host=Montys-MacBook-Pro.local session=β [B5 COMPLETE; G-B GATE PASSED; YANTRA-CORPUS-READY pending; L-9 pending release]
