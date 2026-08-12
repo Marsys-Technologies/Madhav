@@ -1199,3 +1199,17 @@ CONDUCTOR-HEARTBEAT: 2026-08-13T2026-08-12T20:26:33+00:00+00:00 (CONDUCTOR of SA
 
 **NEXT-ACTION:** Restart proxy fresh → dispatch Run 6 for chart2 ka_kshetra → nohup'd orchestrator. Expected resumption from marriage:2 (fingerprint match from committed 79 substeps). ~2-4 more runs to complete (surgery + separation remaining, proxy-drop pattern).
 
+
+## RUN 6 DISPATCH — 2026-08-13 ~01:57 IST (R10, chart2 ka_kshetra)
+
+CONDUCTOR-HEARTBEAT: 2026-08-13T01:57+05:30 (CONDUCTOR of SAMPŪRTI-α) pid=73276 [Run 6 dispatched. Orchestrator RUNNING.]
+
+- run_id: `80886c05-dd95-474f-aada-40a314027915`
+- chart_id: `1c826d5a-41cb-4450-b4dc-59d440e5f75a` (Abhinandan)
+- Proxy: PID 72597, fresh restart before dispatch
+- Orchestrator: PID 73276, log: /tmp/run_r2_chart2_kshetra_run6.log
+- Resume: 78/534 substeps committed, 456 remaining
+- Starting position: stage0:Sun (fingerprint re-run, will be fast)
+- Expected to advance: stage0-4 fast (fingerprint match) → resume at stage5:marriage:2
+
+**NEXT-ACTION:** Monitor until marriage:2+ through surgery complete + lit state.
