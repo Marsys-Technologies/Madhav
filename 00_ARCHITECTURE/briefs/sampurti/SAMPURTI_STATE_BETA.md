@@ -60,7 +60,7 @@ B1 → B2 → B3 → B4 → B5 (sequential within β; per mechanism before next)
 | B1 | Wire w23_tara_bala into engine.py production λ; blind-spec commit first; unit+parity suites | sampurti/β-b1-tara-bala | VERIFIED-MERGE-QUEUED | VERIFIED (8/8 checks) | PR #1248 in merge queue; CI green; PARĪKṢAKA VERIFIED |
 | B2 | w30_nodal_drishti (Rahu/Ketu 5/7/9; L1 constants verbatim; "later tradition" hedge preserved) | sampurti/β-b2-nodal-drishti | MERGED | VERIFIED (8/8 checks) | PR #1251 MERGED (commit b7e657bfe, 2026-08-12T21:44Z); CI 19/26 green (7 skip); PARĪKṢAKA VERIFIED |
 | B3 | Lattā → quality_gates (existing malefic-scale path; Ketu absence disclosed) | sampurti/β-b3-latta | VERIFIED-MERGE-QUEUED | VERIFIED (8/8 checks) | PR #1252 in merge queue; CI 19/26 green (7 skip); PARĪKṢAKA VERIFIED (8/8) |
-| B4 | Resonance tokenizer fix (qualifier tokens; "maraka lords" compound) + rebuild resonance | sampurti/β-b4-resonance-tokenizer | BUILDING | — | Builder agent a316ec36521dabdb9 dispatched; branch sampurti/β-b4-resonance-tokenizer |
+| B4 | Resonance tokenizer fix (qualifier tokens; "maraka lords" compound) + rebuild resonance | sampurti/β-b4-resonance-tokenizer | VERIFIED-MERGE-QUEUED | VERIFIED (8/8 checks) | PR #1253 in merge queue; CI 19/26 green (7 skip); PARĪKṢAKA VERIFIED (8/8) |
 | B5 | ONE leased corpus-rebuild window folding B1-B4; PARIṢKĀRA L-6 evidence template; w43 ablation per mechanism; honest w44 refit (non-zero now possible; stamps ONLY via w45 §N.8 gate) | sampurti/β-b5-corpus-rebuild | NOT-STARTED | — | — |
 
 ## ABLATION REGISTER (per B1→B4; required before B5)
@@ -254,3 +254,21 @@ Test results: 6/6 ACs pass; 98/98 full suite pass, zero regressions. I2 complian
 
 PARĪKṢAKA B4 dispatched (agent a891f373b5677dc1f). Awaiting CI + PARĪKṢAKA verdict.
 CONDUCTOR-HEARTBEAT: 2026-08-12T22:08:00Z pid=59044 host=Montys-MacBook-Pro.local session=β [B4 builder COMPLETE; PR #1253 open; PARĪKṢAKA dispatched (a891f373b5677dc1f); awaiting B4 CI + PARĪKṢAKA]
+
+### 2026-08-13 08:57 IST — B4 PARĪKṢAKA VERIFIED / PR #1253 IN MERGE QUEUE
+
+**B4 PARĪKṢAKA VERIFIED (8/8):**
+1. Commit order: PASS — TDD red (54d62308a) → blind-spec (46c3bb718) → effect (7cf519bb1) ✓
+2. Spec commit content: PASS — `import re as _re` + `_LORD_TOKEN_RE: "_re.Pattern[str]" = _re.compile(r'\d+L')` constant only; `_build_lord_rows` unchanged at spec commit ✓
+3. Effect placement: PASS — `_build_lord_rows` rewritten to call `_LORD_TOKEN_RE.findall(ref)` in effect commit; pure-text refs correctly dropped ✓
+4. I2 compliance: PASS — only `ka_gochara_resonance/writer.py` + test file touched; no `gochara_grammar/*` or `gochara_intensity/*` ✓
+5. Tokenizer correctness: PASS — AC-E1 (qualifier stripped), AC-E2 (paren compound expanded), AC-E3 (slash compound expanded), AC-E4 (clean refs unchanged), AC-E5 (`_LORD_TOKEN_RE` importable), AC-E6 (pure-text dropped) all pass ✓
+6. Test coverage: PASS — 6/6 ACs pass; 98/98 full suite pass ✓
+7. Regression guard: PASS — zero regressions in 98-test suite ✓
+8. CI green: PASS — 19 SUCCESS, 7 SKIPPED, 0 FAILURE ✓
+
+**PR #1253:** already in merge queue (PARĪKṢAKA agent queued it; confirmed "already queued" on re-check).
+
+**B1-B4 ALL VERIFIED-MERGE-QUEUED.** All ablations complete. Gate G-B checklist ready for B5.
+
+NEXT-ACTION: Monitor merge queue for B3+B4 merge to main. Once both merged, execute B5 leased corpus-rebuild.
