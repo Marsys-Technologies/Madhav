@@ -757,3 +757,22 @@ Scope W-B: B1 (w23_tara_bala) → B2 (w30_nodal_drishti) → B3 (Lattā) → B4 
 No lease needed for B1-B4 (code+tests only). Lease before B5.
 Starting B1 builder dispatch now.
 
+
+### LOG — 2026-08-13 ~03:12 IST (SAMPŪRTI-γ CONDUCTOR, session γ)
+
+**G-γ1 GATE PASS** — all 4 W-C facets confirmed live in deployed gochara_forecast_get.
+
+All 5 C-lanes merged to main and deployed (deploy run 31645231863 SUCCESS, commit 1e0b80e91):
+- C1 (#1249, 1e0b80e91): term_breakdown_summary + citation_verse_refs (incl. unresolved)
+- C2 (#1247, 44646da1e): era⊃month⊃day nested_hierarchy
+- C3 (#1245, baca82bad): coverage_quality.tier (thin/moderate/rich)
+- C4 (#1250, aa23e7ba1): NOW gochara_narrative + EXPLAIN A5 agreement (behind SM_GAMMA_C4_ENABLED)
+- C5 (#1246, 8477e87b4): AHEAD field_window_id re-key + authority_basis (behind SM_GAMMA_C5_ENABLED)
+
+MCP gate evidence (chart 482012f1, gochara_forecast_get 2026-01-01..2027-06-30):
+- term_breakdown_summary: 5/5 windows, non-null ✓
+- citation_verse_refs: 5/5 windows (key present, empty when no active_sentences) ✓
+- nested_hierarchy.roots=3, legacy_flat=2, coverage_note present ✓
+- coverage_quality.tier='thin', reason non-empty ✓
+
+Watching for FIELD-INTEGRATED from α to proceed with G-P4.
