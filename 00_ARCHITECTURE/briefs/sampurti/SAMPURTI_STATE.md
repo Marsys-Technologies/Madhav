@@ -1141,3 +1141,38 @@ writes. Fix: kill + restart proxy for fresh connections before each heavy run.
 
 **Next**: R2 chart2 — dispatch_sampurti_r2_chart2_kshetra.py for chart 1c826d5a
 (Abhinandan Mohanty). Multiple runs expected (same 3-run pattern as chart1 ka_kshetra).
+
+---
+
+## Heartbeat: 2026-08-13T00:05+00:00 — R2 chart2 ka_kshetra in progress (Run 4, stage5)
+
+**Phase**: R2 — chart 2 (1c826d5a, Abhinandan Mohanty), ka_kshetra only
+
+**Status**: IN PROGRESS — Run 4 (bb53ba1e) active, index ~360/534 (stage5 null blocks)
+
+**Bug found and fixed (commit 77109b8ac)**:
+- `EnvelopeContractViolation: envelope knots must not go backwards in t` in
+  stage1:run (substep 12) — degenerate Ketu contact episode in chart2's
+  kala_field_kinematics (t_in=31022.648, t_peak=31108.000, t_out=31108.000 —
+  coincident peak/egress produces backwards knot in trapezoid envelope).
+- Fix: wrap `build_contact_primitive_with_dwell` calls in
+  `stage1_symbolization.run_substep` with try/except EnvelopeContractViolation;
+  log warning + skip malformed episode (§N.7 item 6 pattern). One Ketu episode
+  skipped; stage1:run completed 536,630 rows. Committed 77109b8ac.
+
+**Run sequence for chart2 ka_kshetra**:
+- Run 9d0de878: BLOCKED — bo_upaya in error (prerequisite gap)
+- Run 51eaa05c: pre-kshetra full build (48 assets) — COMPLETE 22:42:38; bo_upaya LIT
+- Run 93ebab9d: FAILED stage1:run (EnvelopeContractViolation — now fixed)
+- Run bb53ba1e: IN PROGRESS — fresh start; stage0-3 done (yogini 65,260-row
+  dedup + 87,081-row chara_karaka dedup logged); stage1:run passed; now
+  at stage5 null blocks (~360/534, 16/27 classes skipped no_class_prior_row)
+
+**Auto-restart**: /tmp/watch_and_loop.sh monitors PID 12211; starts
+/tmp/kshetra_chart2_loop.sh (max 6 attempts, fresh proxy each) if not lit.
+
+**Resumption confirmed durable**: asset_runner conn.commit() per substep (line 457);
+build_substep_progress keyed on (chart_id, asset_id, substep_key) persists.
+
+**Expected**: ka_kshetra lit after 1-2 more proxy-restart cycles; then
+dispatch_sampurti_r2_chart2_full.py.
