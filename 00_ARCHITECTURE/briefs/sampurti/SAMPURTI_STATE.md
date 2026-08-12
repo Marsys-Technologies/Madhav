@@ -871,3 +871,38 @@ Estimated Run 16 total: 80-100 minutes for all 474 substeps.
 - Remaining: blocks 6-8 + finalize → ~9 minutes
 
 **Next**: After R1 completes → R2 (S5 full-DAG both charts sequential per REBASE_PLAN §4 R2).
+
+## HEARTBEAT 2026-08-12T09:27+00:00 — L1o fix: PR #1244 in CI, Run 23 pending
+
+**Context**: Context compaction mid-session (at L1o implementation phase). Resuming.
+
+**Run 22 post-mortem** (completed since last heartbeat):
+- All 8 stage5:childbirth null blocks committed (blocks 1–8, substep indices 295–302)
+- Finalize ran for ~32 minutes → idle_in_transaction_session_timeout (10min) killed
+  the orchestrator's signal-check connection (PID 1728201 → psycopg.OperationalError)
+- Run 22 set to `failed`; kala_field_null has 0 rows (finalize rolled back at savepoint)
+- kala_field has 425,971 rows (stage4 output — intact, not affected)
+- The 8 committed null blocks survive via fingerprint-based substep resumption
+
+**Root cause** (confirmed):
+- `_write_window` called per-window: 1 INSERT into kala_field_windows + ~37 individual
+  INSERTs into kala_field_provenance + 1 citation query per window
+- At observed window count: hundreds of thousands of round-trips → 30+ min finalize
+- Orchestrator signal-check connection idle-in-transaction for entire substep duration
+- PG `idle_in_transaction_session_timeout = 10min` kills it → post-substep check_signals() dies
+
+**L1o fix** (PR #1244, branch sampurti/l1o-batch-finalize-write, commit 69cdb7ba9):
+- New `_write_windows_batch` method replaces per-window `_write_window` loop
+- Phase 1: pure CPU (no DB I/O) per window
+- Phase 2: ONE citation query covering ALL windows (was 1 per window)
+- Phase 3: collect all INSERT param tuples
+- Phase 4: TWO executemany calls (windows + provenance, was N×~37 individual inserts)
+- Expected finalize time: seconds, well within 10min timeout
+- CI running — all checks pending
+
+**Run 23 plan** (once L1o deployed):
+- Fresh dispatch of ka_kshetra build for chart 482012f1
+- 8 null blocks will be skipped (fingerprint-based resumption)
+- Only finalize substep needs to execute — expected < 5 min end-to-end
+
+**Next**: Monitor PR #1244 CI → merge → deploy → launch Run 23 → confirm finalize success.
