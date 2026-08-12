@@ -70,6 +70,7 @@ B1 → B2 → B3 → B4 → B5 (sequential within β; per mechanism before next)
 | w23_tara_bala | λ mean=0.197083 (business_launch, 52 JDs, 2026) | delta mean=−0.008025 (−4.1%); tara mods range [0.70,1.20] std=0.183 | POSITIVE (genuine firing) |
 | w30_nodal_drishti | modifier baseline=1.000000 (disabled; business_launch, 52 JDs, 2026) | delta mean=+0.001268 (+0.13%); range=[0.9500,1.0241] std=0.035; 52/52 JDs fire; Rahu in Aquarius/Capricorn | POSITIVE (genuine firing) |
 | Lattā (B3) | quality_gates baseline from latta: mean=0.988462 (factor=0.85/hit; 4/52 JDs affected) | After B3: mean=0.950000 (factor=0.35/hit); delta=−0.038 (−3.89%); latta grade 'killing'→WORST_SUPPRESSION=0.35 | POSITIVE (genuine improvement; classically appropriate severity) |
+| Lord tokenizer (B4) | gochara_resonance_map lord rows for affected classes: 13 rows total (5 compound/qualified entries emitted as garbage refs) | After B4: 16 rows (+3 net); career_setback→10L, separation→7L (qualitative fix, 0 count change); bereavement→+1 (2L+7L from compound); major_loss→+1 (2L+11L); financial_deception→+1. Lambda delta deferred to B5 corpus-rebuild. | POSITIVE (structural fix; garbage refs replaced by matchable lord tokens) |
 
 ## GATE G-B EVIDENCE CHECKLIST
 
@@ -234,3 +235,22 @@ Scope: `_build_lord_rows` in ka_gochara_resonance/writer.py; `re.findall(r'\d+L'
 Affected event classes: career_setback, separation, bereavement, major_loss, financial_deception.
 
 CONDUCTOR-HEARTBEAT: 2026-08-12T21:52:00Z pid=59044 host=Montys-MacBook-Pro.local session=β [B3 VERIFIED (8/8); PR #1252 in merge queue; B4 builder dispatched (a316ec36521dabdb9); awaiting B4 completion]
+
+### 2026-08-13 03:28 IST — B4 BUILDER COMPLETE, PARĪKṢAKA DISPATCHED
+
+**B4 BUILDER COMPLETE:** PR #1253 [SM-β] lord tokenizer fix.
+Commit chain: TDD red (54d62308a) → blind-spec (46c3bb718, _LORD_TOKEN_RE constant) → effect (7cf519bb1, _build_lord_rows rewritten).
+Test results: 6/6 ACs pass; 98/98 full suite pass, zero regressions. I2 compliant.
+
+**B4 ABLATION (lord row count delta — structural, pre-corpus-rebuild):**
+- career_setback: '10L afflicted'→'10L' (1→1 rows, qualitative fix)
+- separation: '7L afflicted'→'7L' (1→1 rows, qualitative fix)
+- bereavement: '8L'+'maraka lords (2L/7L)' → '8L'+'2L'+'7L' (2→3 rows, +1)
+- major_loss: '2L/11L afflicted'+'12L' → '2L'+'11L'+'12L' (2→3 rows, +1)
+- financial_deception: same as major_loss (2→3 rows, +1)
+- Net: 13→16 lord rows (+3); 5 event classes now emit matchable lord refs
+- Lambda delta deferred to B5 corpus-rebuild (resonance map not yet rebuilt)
+- Ablation verdict: POSITIVE (structural fix; garbage compound refs replaced by clean tokens)
+
+PARĪKṢAKA B4 dispatched (agent a891f373b5677dc1f). Awaiting CI + PARĪKṢAKA verdict.
+CONDUCTOR-HEARTBEAT: 2026-08-12T22:08:00Z pid=59044 host=Montys-MacBook-Pro.local session=β [B4 builder COMPLETE; PR #1253 open; PARĪKṢAKA dispatched (a891f373b5677dc1f); awaiting B4 CI + PARĪKṢAKA]
