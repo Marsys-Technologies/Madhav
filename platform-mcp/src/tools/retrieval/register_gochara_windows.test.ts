@@ -31,6 +31,10 @@ import {
   computeGocharaCoverage,
   type GocharaWindowRow,
   type GocharaCoverage,
+  buildNestedHierarchy,
+  type GocharaWindowRow,
+  type HierarchyNode,
+  type ServedWindow,
 } from './register_gochara_windows.js'
 import type { Principal } from '../../types.js'
 
@@ -61,7 +65,17 @@ function makeRow(overrides: Partial<GocharaWindowRow> = {}): GocharaWindowRow {
     computed_at: '2026-07-19T00:00:00Z',
     continuity_state: null,
     plateau_disclosure: null,
+    resolution: null,
+    parent_window_id: null,
     ...overrides,
+  }
+}
+
+// Helper: build a ServedWindow (GocharaWindowRow with resolution_disclosure attached)
+function makeServedWindow(overrides: Partial<GocharaWindowRow> = {}): ServedWindow {
+  return {
+    ...makeRow(overrides),
+    resolution_disclosure: null,
   }
 }
 
@@ -361,6 +375,190 @@ describe('computeGocharaCoverage — C3 coverage_quality field', () => {
     mockCoverageFetch(makeClassRows(classes), classes)
     const { coverage } = await computeGocharaCoverage(CHART_ID, TEST_PRINCIPAL)
     expect(coverage.coverage_quality.reason).toContain('rich')
+  })
+})
+
+// ── buildNestedHierarchy — C2 era⊃month⊃day nesting ───────────────────────
+describe('buildNestedHierarchy', () => {
+  it('returns empty roots and empty legacy_flat for an empty input', () => {
+    const result = buildNestedHierarchy([])
+    expect(result.roots).toEqual([])
+    expect(result.legacy_flat).toEqual([])
+    expect(result.coverage_note).toContain('0 windows')
+  })
+
+  it('places an era-tier window as a root with empty children', () => {
+    const era = makeServedWindow({ id: 10, resolution: 'era', parent_window_id: null })
+    const result = buildNestedHierarchy([era])
+    expect(result.roots).toHaveLength(1)
+    expect(result.roots[0]?.resolution).toBe('era')
+    expect(result.roots[0]?.window.id).toBe(10)
+    expect(result.roots[0]?.children).toEqual([])
+    expect(result.legacy_flat).toEqual([])
+  })
+
+  it('nests a month window under its era parent', () => {
+    const era = makeServedWindow({ id: 10, resolution: 'era', parent_window_id: null })
+    const month = makeServedWindow({ id: 20, resolution: 'month', parent_window_id: 10 })
+    const result = buildNestedHierarchy([era, month])
+    expect(result.roots).toHaveLength(1)
+    const eraNode = result.roots[0] as HierarchyNode
+    expect(eraNode.children).toHaveLength(1)
+    expect(eraNode.children[0]?.resolution).toBe('month')
+    expect(eraNode.children[0]?.window.id).toBe(20)
+    expect(eraNode.children[0]?.children).toEqual([])
+    expect(result.legacy_flat).toEqual([])
+  })
+
+  it('nests a day window under its month parent', () => {
+    const era = makeServedWindow({ id: 10, resolution: 'era', parent_window_id: null })
+    const month = makeServedWindow({ id: 20, resolution: 'month', parent_window_id: 10 })
+    const day = makeServedWindow({ id: 30, resolution: 'day', parent_window_id: 20 })
+    const result = buildNestedHierarchy([era, month, day])
+    expect(result.roots).toHaveLength(1)
+    const eraNode = result.roots[0] as HierarchyNode
+    expect(eraNode.children).toHaveLength(1)
+    const monthNode = eraNode.children[0] as HierarchyNode
+    expect(monthNode.children).toHaveLength(1)
+    expect(monthNode.children[0]?.resolution).toBe('day')
+    expect(monthNode.children[0]?.window.id).toBe(30)
+    expect(monthNode.children[0]?.children).toEqual([])
+    expect(result.legacy_flat).toEqual([])
+  })
+
+  it('handles multiple era roots each with their own month/day subtrees', () => {
+    const era1 = makeServedWindow({ id: 1, resolution: 'era', parent_window_id: null })
+    const era2 = makeServedWindow({ id: 2, resolution: 'era', parent_window_id: null })
+    const month1 = makeServedWindow({ id: 11, resolution: 'month', parent_window_id: 1 })
+    const month2 = makeServedWindow({ id: 12, resolution: 'month', parent_window_id: 2 })
+    const day1 = makeServedWindow({ id: 21, resolution: 'day', parent_window_id: 11 })
+    const result = buildNestedHierarchy([era1, era2, month1, month2, day1])
+    expect(result.roots).toHaveLength(2)
+    const node1 = result.roots.find((n) => n.window.id === 1) as HierarchyNode
+    const node2 = result.roots.find((n) => n.window.id === 2) as HierarchyNode
+    expect(node1.children).toHaveLength(1)
+    expect(node1.children[0]?.children).toHaveLength(1)
+    expect(node1.children[0]?.children[0]?.window.id).toBe(21)
+    expect(node2.children).toHaveLength(1)
+    expect(node2.children[0]?.children).toEqual([])
+    expect(result.legacy_flat).toEqual([])
+  })
+
+  it('puts resolution=null windows into legacy_flat, not roots', () => {
+    const legacy = makeServedWindow({ id: 99, resolution: null, parent_window_id: null })
+    const result = buildNestedHierarchy([legacy])
+    expect(result.roots).toEqual([])
+    expect(result.legacy_flat).toHaveLength(1)
+    expect(result.legacy_flat[0]?.id).toBe(99)
+  })
+
+  it('mixes era/month/day tree with legacy_flat correctly', () => {
+    const era = makeServedWindow({ id: 10, resolution: 'era', parent_window_id: null })
+    const month = makeServedWindow({ id: 20, resolution: 'month', parent_window_id: 10 })
+    const legacy = makeServedWindow({ id: 5, resolution: null, parent_window_id: null })
+    const result = buildNestedHierarchy([era, month, legacy])
+    expect(result.roots).toHaveLength(1)
+    expect(result.legacy_flat).toHaveLength(1)
+    expect(result.legacy_flat[0]?.id).toBe(5)
+    expect(result.coverage_note).toContain('2 windows organized')
+    expect(result.coverage_note).toContain('1 legacy')
+  })
+
+  it('places a window with a parent_window_id pointing to a non-present parent into legacy_flat (defensive)', () => {
+    // month claims parent 999 which is not in the array
+    const orphan = makeServedWindow({ id: 20, resolution: 'month', parent_window_id: 999 })
+    const result = buildNestedHierarchy([orphan])
+    expect(result.roots).toEqual([])
+    expect(result.legacy_flat).toHaveLength(1)
+    expect(result.legacy_flat[0]?.id).toBe(20)
+  })
+
+  it('coverage_note counts only nested windows, not legacy', () => {
+    const era = makeServedWindow({ id: 1, resolution: 'era', parent_window_id: null })
+    const month = makeServedWindow({ id: 2, resolution: 'month', parent_window_id: 1 })
+    const legacy = makeServedWindow({ id: 3, resolution: null, parent_window_id: null })
+    const result = buildNestedHierarchy([era, month, legacy])
+    expect(result.coverage_note).toContain('2 windows organized')
+    expect(result.coverage_note).toContain('1 legacy')
+    expect(result.coverage_note).toContain('migration 567')
+  })
+})
+
+// ── computeGocharaForecast — nested_hierarchy field presence ───────────────
+describe('computeGocharaForecast — nested_hierarchy in response', () => {
+  function mockFetchForecast(rows: Record<string, unknown>[]) {
+    let mainQueryServed = false
+    global.fetch = vi.fn(async (url: unknown, opts: unknown) => {
+      const urlStr = String(url)
+      if (urlStr.includes('/api/mcp/db/query')) {
+        const body = JSON.parse((opts as { body: string }).body) as { sql?: string }
+        const sql = body.sql ?? ''
+        // The main forecast SELECT is the only query that: (a) reads kala_gochara_windows,
+        // (b) filters on window_start/window_end, and (c) has no is_adverse clause.
+        // Serve `rows` exactly once for this query; everything else (coverage, verse refs) returns [].
+        if (!mainQueryServed && sql.includes('kala_gochara_windows') && sql.includes('window_start')) {
+          mainQueryServed = true
+          return { ok: true, json: async () => ({ rows }) }
+        }
+        return { ok: true, json: async () => ({ rows: [] }) }
+      }
+      return { ok: false, status: 500, text: async () => 'unexpected fetch in test' }
+    }) as unknown as typeof fetch
+  }
+
+  it('response includes nested_hierarchy with roots and legacy_flat', async () => {
+    const eraRow = {
+      id: 10, chart_id: CHART_ID, event_class: 'marriage',
+      temporal_shape: 'point', window_start: '2026-01-01', window_end: '2026-01-01',
+      peak_date: '2026-01-01', milestone_id: null, is_irreversibility_milestone: false,
+      signed_intensity: 1.0, raw_intensity: 1.0, valence: 'gain', is_adverse: false,
+      active_sentences: [], contributing_systems: [], suppression_state: {},
+      peak_basis: 'gochara_lambda_e_v1', calibration_state: 'structural_prior',
+      source: 'live', computed_at: '2026-01-01T00:00:00Z',
+      continuity_state: null, generation: 'g3_utkarsha',
+      era_slice_key: 'g3_2024_2034', term_breakdown: null,
+      resolution: 'era', parent_window_id: null, shape_conformance: null,
+    }
+    mockFetchForecast([eraRow])
+
+    const result = (await computeGocharaForecast(
+      CHART_ID,
+      { start: '2026-01-01', end: '2027-01-01' },
+      undefined, undefined, 50, TEST_PRINCIPAL
+    )) as { nested_hierarchy: { roots: HierarchyNode[]; legacy_flat: unknown[]; coverage_note: string } }
+
+    expect(result.nested_hierarchy).toBeDefined()
+    expect(Array.isArray(result.nested_hierarchy.roots)).toBe(true)
+    expect(Array.isArray(result.nested_hierarchy.legacy_flat)).toBe(true)
+    expect(typeof result.nested_hierarchy.coverage_note).toBe('string')
+    expect(result.nested_hierarchy.roots).toHaveLength(1)
+    expect(result.nested_hierarchy.roots[0]?.resolution).toBe('era')
+  })
+
+  it('response nested_hierarchy.legacy_flat contains windows with resolution=null', async () => {
+    const legacyRow = {
+      id: 5, chart_id: CHART_ID, event_class: 'marriage',
+      temporal_shape: 'point', window_start: '2026-06-01', window_end: '2026-06-01',
+      peak_date: '2026-06-01', milestone_id: null, is_irreversibility_milestone: false,
+      signed_intensity: 0.8, raw_intensity: 0.8, valence: 'neutral', is_adverse: false,
+      active_sentences: [], contributing_systems: [], suppression_state: {},
+      peak_basis: 'gochara_lambda_v1', calibration_state: 'structural_prior',
+      source: 'live', computed_at: '2026-06-01T00:00:00Z',
+      continuity_state: null, generation: null,
+      era_slice_key: null, term_breakdown: null,
+      resolution: null, parent_window_id: null, shape_conformance: null,
+    }
+    mockFetchForecast([legacyRow])
+
+    const result = (await computeGocharaForecast(
+      CHART_ID,
+      { start: '2026-01-01', end: '2027-01-01' },
+      undefined, undefined, 50, TEST_PRINCIPAL
+    )) as { nested_hierarchy: { roots: unknown[]; legacy_flat: Array<{ id: number }> } }
+
+    expect(result.nested_hierarchy.roots).toHaveLength(0)
+    expect(result.nested_hierarchy.legacy_flat).toHaveLength(1)
+    expect(result.nested_hierarchy.legacy_flat[0]?.id).toBe(5)
   })
 })
 
