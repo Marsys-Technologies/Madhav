@@ -96,6 +96,13 @@ from pipeline.transit_search import _jd_to_ist_iso
 from .context import ClassContext, VedhaRow, MaleficScaleRow
 from .threshold import ThresholdConfig, compute_threshold_config, is_above_threshold
 from services.gochara_v3.mechanisms import w23_tara_bala as _w23  # W2.3 tara bala
+from services.gochara_v3.mechanisms import w30_nodal_drishti as _w30  # W3.0 nodal drishti
+
+# W3.0 nodal drishti toggle — Rahu/Ketu 5/7/9 aspect modifier.
+# When True the engine will call _w30.compute() in _evaluate_single_from_context
+# and incorporate w30_modifier into the lambda_v3 formula:
+#   raw_lambda = promise * permission * activity * tara_modifier * w30_modifier * quality_gates
+_W30_NODAL_DRISHTI_ENABLED: bool = True
 
 logger = logging.getLogger(__name__)
 
