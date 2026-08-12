@@ -28,7 +28,9 @@ import {
   computeGocharaActivation,
   computeGocharaForecast,
   computeGocharaElectionAvoidance,
+  computeGocharaCoverage,
   type GocharaWindowRow,
+  type GocharaCoverage,
 } from './register_gochara_windows.js'
 import type { Principal } from '../../types.js'
 
@@ -227,6 +229,138 @@ describe('computeGocharaElectionAvoidance — MR-12 is_irreversibility_milestone
     expect(result.windows).toHaveLength(1)
     expect(result.windows[0]?.['milestone_id']).toBe('decision')
     expect(result.windows[0]?.['is_irreversibility_milestone']).toBe(false)
+  })
+})
+
+// ── computeGocharaCoverage — C3 coverage_quality.tier ──────────────────────
+// Tests for the coverage_quality field added in SAMPŪRTI-γ C3.
+// Mocks global.fetch to intercept platformQuery calls — same pattern as the
+// MR-12 block above. The four queries computeGocharaCoverage issues are:
+//   1. kala_gochara_authority  → authority generation (returns [] → v1 path)
+//   2. gochara_resonance_map   → targeted classes + domains (classesResp)
+//   3. brahma_event_ontology   → universe domains (universeResp)
+//   4. build_substep_progress  → substeps + swept classes (substepResp)
+//
+// For tier tests we care about covered_class_count (= eventClasses.length),
+// so we wire classesResp and substepResp to agree on exactly N classes.
+// universeResp always returns 5 domains so domains_not_covered is non-empty
+// and does not interfere with the tier assertions.
+
+function makeClassRows(eventClasses: string[], domainMap: Record<string, string> = {}): Record<string, unknown>[] {
+  return eventClasses.map((ec) => ({ event_class: ec, domain: domainMap[ec] ?? 'career' }))
+}
+
+function mockCoverageFetch(
+  classRows: Record<string, unknown>[],
+  sweptClasses: string[],
+  universeDomains: string[] = ['career', 'health', 'finance', 'relationship', 'spirituality'],
+): void {
+  global.fetch = vi.fn(async (url: unknown, opts: unknown) => {
+    const urlStr = String(url)
+    if (!urlStr.includes('/api/mcp/db/query')) {
+      return { ok: false, status: 500, text: async () => 'unexpected' }
+    }
+    const body = JSON.parse((opts as { body: string }).body) as { sql?: string }
+    const sql = body.sql ?? ''
+
+    // Query 1: kala_gochara_authority → empty (v1 path)
+    if (sql.includes('kala_gochara_authority')) {
+      return { ok: true, json: async () => ({ rows: [] }) }
+    }
+    // Query 2: gochara_resonance_map → classRows
+    if (sql.includes('gochara_resonance_map')) {
+      return { ok: true, json: async () => ({ rows: classRows }) }
+    }
+    // Query 3: brahma_event_ontology universe
+    if (sql.includes('brahma_event_ontology') && sql.includes('DISTINCT domain')) {
+      return { ok: true, json: async () => ({ rows: universeDomains.map((d) => ({ domain: d })) }) }
+    }
+    // Query 4: build_substep_progress
+    if (sql.includes('build_substep_progress')) {
+      return {
+        ok: true,
+        json: async () => ({
+          rows: [{
+            substeps_committed: sweptClasses.length,
+            swept_event_classes: sweptClasses,
+          }],
+        }),
+      }
+    }
+    return { ok: true, json: async () => ({ rows: [] }) }
+  }) as unknown as typeof fetch
+}
+
+describe('computeGocharaCoverage — C3 coverage_quality field', () => {
+  it('0 covered classes → tier thin, covered_class_count 0, covered_domain_count 0', async () => {
+    mockCoverageFetch([], [])
+    const { coverage } = await computeGocharaCoverage(CHART_ID, TEST_PRINCIPAL)
+    expect(coverage.coverage_quality).toBeDefined()
+    expect(coverage.coverage_quality.tier).toBe('thin')
+    expect(coverage.coverage_quality.covered_class_count).toBe(0)
+    expect(coverage.coverage_quality.covered_domain_count).toBe(0)
+  })
+
+  it('3 covered classes → tier thin', async () => {
+    const classes = ['career_advancement', 'marriage_formation', 'major_gain']
+    mockCoverageFetch(makeClassRows(classes), classes)
+    const { coverage } = await computeGocharaCoverage(CHART_ID, TEST_PRINCIPAL)
+    expect(coverage.coverage_quality.tier).toBe('thin')
+    expect(coverage.coverage_quality.covered_class_count).toBe(3)
+  })
+
+  it('4 covered classes → tier moderate', async () => {
+    const classes = ['career_advancement', 'marriage_formation', 'major_gain', 'health_crisis']
+    mockCoverageFetch(makeClassRows(classes), classes)
+    const { coverage } = await computeGocharaCoverage(CHART_ID, TEST_PRINCIPAL)
+    expect(coverage.coverage_quality.tier).toBe('moderate')
+    expect(coverage.coverage_quality.covered_class_count).toBe(4)
+  })
+
+  it('9 covered classes → tier moderate', async () => {
+    const classes = ['c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7', 'c8', 'c9']
+    mockCoverageFetch(makeClassRows(classes), classes)
+    const { coverage } = await computeGocharaCoverage(CHART_ID, TEST_PRINCIPAL)
+    expect(coverage.coverage_quality.tier).toBe('moderate')
+    expect(coverage.coverage_quality.covered_class_count).toBe(9)
+  })
+
+  it('10 covered classes → tier rich', async () => {
+    const classes = ['c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7', 'c8', 'c9', 'c10']
+    mockCoverageFetch(makeClassRows(classes), classes)
+    const { coverage } = await computeGocharaCoverage(CHART_ID, TEST_PRINCIPAL)
+    expect(coverage.coverage_quality.tier).toBe('rich')
+    expect(coverage.coverage_quality.covered_class_count).toBe(10)
+  })
+
+  it('covered_domain_count counts distinct domains across covered classes', async () => {
+    // 4 classes across 3 distinct domains
+    const classRows = [
+      { event_class: 'career_advancement', domain: 'career' },
+      { event_class: 'job_loss', domain: 'career' },
+      { event_class: 'marriage_formation', domain: 'relationship' },
+      { event_class: 'major_gain', domain: 'finance' },
+    ]
+    const swept = ['career_advancement', 'job_loss', 'marriage_formation', 'major_gain']
+    mockCoverageFetch(classRows, swept)
+    const { coverage } = await computeGocharaCoverage(CHART_ID, TEST_PRINCIPAL)
+    expect(coverage.coverage_quality.covered_domain_count).toBe(3)
+  })
+
+  it('reason string is non-empty and contains the tier name', async () => {
+    const classes = ['career_advancement', 'marriage_formation', 'major_gain']
+    mockCoverageFetch(makeClassRows(classes), classes)
+    const { coverage } = await computeGocharaCoverage(CHART_ID, TEST_PRINCIPAL)
+    expect(typeof coverage.coverage_quality.reason).toBe('string')
+    expect(coverage.coverage_quality.reason.length).toBeGreaterThan(0)
+    expect(coverage.coverage_quality.reason).toContain('thin')
+  })
+
+  it('reason string for rich tier contains "rich"', async () => {
+    const classes = ['c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7', 'c8', 'c9', 'c10']
+    mockCoverageFetch(makeClassRows(classes), classes)
+    const { coverage } = await computeGocharaCoverage(CHART_ID, TEST_PRINCIPAL)
+    expect(coverage.coverage_quality.reason).toContain('rich')
   })
 })
 

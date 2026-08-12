@@ -826,6 +826,17 @@ export interface GocharaCoverage {
     source: string
     note: string
   }
+  /** C3 (SAMPŪRTI-γ): first-class "thin ≠ rich silence" facet.
+   *  Derived from event_classes_covered — thin/moderate/rich signals whether the covered set
+   *  is sparse (0–3 classes), mid-range (4–9), or broad (10+).
+   *  Never fabricated: always computed from the same `eventClasses` / `coveredDomains` sets
+   *  that back the rest of this object; never hand-maintained. */
+  coverage_quality: {
+    tier: 'thin' | 'moderate' | 'rich'
+    covered_class_count: number
+    covered_domain_count: number
+    reason: string
+  }
 }
 
 export interface GocharaNotCovered {
@@ -950,6 +961,20 @@ export async function computeGocharaCoverage(
 
   const ok = classesResp.ok && universeResp.ok && substepResp.ok
 
+  // C3 (SAMPŪRTI-γ): compute coverage_quality — tier classification based on covered class count.
+  const coveredClassCount = eventClasses.length
+  const coveredDomainCount = coveredDomains.size
+  const coverageTier: 'thin' | 'moderate' | 'rich' =
+    coveredClassCount < 4 ? 'thin' : coveredClassCount < 10 ? 'moderate' : 'rich'
+  const coverageReason =
+    coveredClassCount === 0
+      ? `0 event classes covered — thin coverage: no classes in universe`
+      : coverageTier === 'thin'
+        ? `${coveredClassCount} event class${coveredClassCount === 1 ? '' : 'es'} covered (${eventClasses.slice(0, 3).join(', ')}) — thin coverage: only ${coveredClassCount} of ${targetedClasses.length} targeted`
+        : coverageTier === 'moderate'
+          ? `${coveredClassCount} event classes covered across ${coveredDomainCount} domain${coveredDomainCount === 1 ? '' : 's'} — moderate coverage`
+          : `${coveredClassCount} event classes covered across ${coveredDomainCount} domain${coveredDomainCount === 1 ? '' : 's'} — rich coverage`
+
   return {
     ok,
     coverage: {
@@ -957,6 +982,12 @@ export async function computeGocharaCoverage(
       event_classes_targeted_not_swept: targetedNotSwept,
       domains_not_covered: domainsNotCovered,
       universe_source: COVERAGE_UNIVERSE_SOURCE,
+      coverage_quality: {
+        tier: coverageTier,
+        covered_class_count: coveredClassCount,
+        covered_domain_count: coveredDomainCount,
+        reason: coverageReason,
+      },
       sweep_completeness: {
         substeps_committed: substepsCommitted,
         source: substepSourceLabel,
