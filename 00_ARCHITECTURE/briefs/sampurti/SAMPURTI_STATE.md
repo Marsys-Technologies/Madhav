@@ -1771,3 +1771,32 @@ a) Increase writer_timeout_seconds in orchestrator config + redeploy (requires n
 b) Re-dispatch again (N times) until all 534 substeps complete via checkpoint-resume
 
 **Next:** Monitor ww8d2 for ka_kshetra state change (lit or error again).
+
+---
+
+## Heartbeat: 2026-08-13T09:00+05:30 — A3 exec mq4b8 RUNNING (24h budget, 465 substeps remaining)
+
+CONDUCTOR-HEARTBEAT: 2026-08-13T09:00+05:30 (CONDUCTOR of SAMPŪRTI-α) pid=89453 [A3 run ec366f46 exec mq4b8 RUNNING]
+
+### A3 STATUS UPDATE
+
+**Timeline:**
+- exec lzqb2 (run 6600de09): TIMEOUT at 03:19 UTC (7200s limit) — 70/534 substeps committed
+- exec ww8d2 (run cfb4678a): CANCELLED at 03:23 UTC (to avoid 2h wait) — 70/534 unchanged
+- **writer_timeout_seconds updated in asset_registry: 7200 → 86400 (24h)**
+- exec mq4b8 (run ec366f46): DISPATCHED 03:25 UTC — reads new 86400s timeout
+
+**mq4b8 startup confirmed:** `ka_kshetra: RESUMING chart 482012f1 — 69/534 substeps committed, 465 remaining`
+
+**Expected:** 465 substeps at ~1.7 min/substep = ~13h total build time. Within 24h budget.
+
+**writer_timeout_seconds=86400 is in asset_registry** (DB change, no code deploy needed). Future ka_kshetra builds will all use 24h budget.
+
+**MONITOR:** b7ux00cks background poll running (10-min interval, 100 iterations). When `lit`, proceed to Measurement #5.
+
+**NEXT AFTER ka_kshetra lit:**
+1. Measurement #5: post-β, A1-pinned field measurement (MCP calls via marsys-jis)
+2. G-P3a gate: kala_now / kala_ahead / kala_windows MCP verification
+3. G-P3b gate: Brilliance Gate #1 + Measurement #5
+4. FIELD-INTEGRATED marker → γ unblocked (C4/C5)
+5. A4: x13 bump+refit (inert clock)
