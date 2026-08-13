@@ -3309,3 +3309,82 @@ No independent work remaining beyond what was completed in R30–R33 park window
 Native signals resume → A6 dispatch immediately (460 substeps remaining, checkpoint intact) → ka_kshetra=LIT → FIELD-INTEGRATED posted → S4 parity → G-P1 → SMR-2 M4' → P3 → M5 → Brilliance Gate #1.
 
 CONDUCTOR-HEARTBEAT: 2026-08-13T23:02+05:30 [R34 — PARKED-NATIVE SMR-2 HOLD-A6 carries; all surfaces checked: no native signal; DB clean (advisory_locks=0, builds=0); ka_kshetra=incomplete 2,063,838 rows stable; no independent work remaining; session closing]
+
+---
+
+## R35 — SAMPŪRTI-Δ1 CONDUCTOR (2026-08-13T23:15+05:30)
+
+**Identity:** CONDUCTOR of SAMPŪRTI-Δ1 (supervisor relaunch; R34 closed 23:02 IST)
+
+### LIVENESS CHECK (FM-10/11/21)
+
+- current_conductor.pid = 14250 (prior session; pgrep "CONDUCTOR of SAMPŪRTI-Δ1" → no match → DEAD) ✅
+- PEERS: none found after self-exclusion ✅
+- My PID: 16011 (written to dh-d1-logs/current_conductor.pid) — sole conductor confirmed ✅
+
+### HYGIENE CHECK (FM-06 amended)
+
+- Cloud Run executions: tkp7b/mv7c5/s6zbw/szwkw/sd2ph all Completed, runningCount=0 — no live builds ✅
+- advisory_locks = 0 ✅
+- active build_runs (state IN planned,running) = 0 ✅
+- Cloud SQL proxy: PID 72597 on 127.0.0.1:5433 ✅
+
+### STATE RECONCILIATION (FM-09)
+
+**DB state (live, 2026-08-13T~17:45Z):**
+
+| asset | chart | state | rows_written | note |
+|---|---|---|---|---|
+| ka_kshetra | 482012f1 (native) | **incomplete** | 2,063,838 | 74/534 substeps, checkpoint resumable |
+| ka_kshetra | 1c826d5a (Abhinandan) | lit | 837,992 | no change |
+
+**No change from R33/R34.** Checkpoint preserved.
+
+**Coordination:** No new entries since R32 22:25 IST. No native signal.
+
+**CLAUDECODE_BRIEF.md:** status=COMPLETE — no new directives.
+
+**SM-R Registry:** SMR-1 and SMR-2 only. No new rulings.
+
+**Flag-flip state (clarification):** PR #1268 ("feat(ka_kshetra): flip ENGINE_VERSION sampled -> analytic (DHARA)") is MERGED to main. The DHARA engine is the active engine. When A6 runs, ka_kshetra will build using the analytic engine.
+
+### PARKED-NATIVE — SMR-2 HOLD-A6 CONTINUES
+
+No native signal on any surface. PARKED-NATIVE posture unchanged from R34.
+
+### INDEPENDENT WORK COMPLETED THIS SESSION
+
+**S7459 fix → PR #1269:**
+- Created clean branch `sampurti/s7459-timeout-fix` from origin/main
+- Cherry-picked code-only changes from 06c04b72a (db.py, run_ka_sangam_prod.py, run_ph_pratikara_prod.py, test_mr39_idle_timeout_connection_setup.py)
+- Pushed and opened PR #1269: "fix(db): S7459 — idle_in_transaction_session_timeout 0→1800000 (30 min)"
+- CI: 24 checks running (TypeScript, Build Check, TAP-6, etc.) — IN_PROGRESS at time of ledger entry
+- This ensures A6 runs with the timeout fix on main (not just on sampurti/integration)
+
+**State delta discovered:**
+- PR #1268 (flag-flip to 'analytic') was already MERGED to main in R27 — confirmed in this session
+- The integration branch's writer.py is behind main (expected: conductor heartbeat-only spine, code went via separate builder PRs to main)
+- No merge of main→integration needed: conductor spine is heartbeat-only
+
+### NEXT-ACTION
+
+**BLOCKED (PARKED-NATIVE — SMR-2 HOLD-A6):**
+- A6 field rebuild — awaiting explicit native signal
+- All downstream gated on ka_kshetra=LIT for 482012f1
+
+**In-flight:**
+- PR #1269 (S7459 fix) — CI running; merge when green
+
+**When PR #1269 merges + native signals resume:**
+1. Verify advisory_locks=0 + no active Cloud Run executions
+2. Claim lease in CAMPAIGN_COORDINATION.md
+3. Dispatch A6: `gcloud run jobs execute brahma-build-pipeline-job --region=asia-south1`
+4. Record execution name + build_run id in ledger IMMEDIATELY
+5. Monitor until LIT → post FIELD-INTEGRATED to coordination file
+6. Δ2 runs parity battery → PARITY-GREEN
+7. G-P1 gates → SMR-2 M4' re-baseline → P3 DVIPRAMĀṆA → M5 → Brilliance Gate #1
+
+**ONE-LINE ANSWER:**
+Native signals resume → A6 dispatch (460 substeps, checkpoint intact, DHARA engine active, S7459 fix will be on main) → ka_kshetra=LIT → FIELD-INTEGRATED → S4 parity → G-P1 → SMR-2 M4' → P3 → M5 → Brilliance Gate #1.
+
+CONDUCTOR-HEARTBEAT: 2026-08-13T23:15+05:30 [R35 — PARKED-NATIVE SMR-2 HOLD-A6 carries; all surfaces checked: no native signal; DB clean (advisory_locks=0, builds=0); ka_kshetra=incomplete 2,063,838 rows stable; S7459 fix extracted and opened as PR #1269 (CI running); #1268 flag-flip confirmed on main; session closing]
