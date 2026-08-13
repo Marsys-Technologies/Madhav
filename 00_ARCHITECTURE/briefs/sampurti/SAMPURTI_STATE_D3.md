@@ -164,3 +164,22 @@ HEARTBEAT: 2026-08-13T13:00Z
 **Coordination:** FIELD-INTEGRATED NOT YET POSTED. Δ2 SESSION-DONE posted at 12:38Z. S4 unblocked per Δ2 PARITY-GREEN.
 
 **NEXT-ACTION:** Poll FIELD-INTEGRATED every ≤15 min. On post: R2 MCP proof + R4 G-P4 → SESSION-DONE-Δ3.
+
+### 2026-08-13 ~19:40 IST — A4 RUNNING; all infra deployed
+
+HEARTBEAT: 2026-08-13T14:09Z
+
+**A4 DISPATCHED BY Δ1:**
+- Build run: `af759e40-ac64-4b07-9c3c-174785fc0bc9` (state=running, triggered_by=sampurti-a4-chart1-kshetra-dhara)
+- Cloud Run execution: `brahma-build-pipeline-job-mv7c5` (created 14:09:07Z, runningCount=1)
+- ka_kshetra state: `building`, started 14:09:27Z
+
+**Infrastructure status:**
+- PR #1268 (ENGINE_VERSION sampled→analytic): MERGED at 13:31:09Z (commit 00345531e3)
+- Deploy to Cloud Run (run 31706000690): ALL COMPLETE — Sidecar ✓, Pipeline Job Image ✓, Web ✓
+- Cloud Run Job memory: 16Gi/8cpu (re-applied at 14:05:57Z — CI deploy had reset to 4Gi/2cpu)
+- ENGINE_VERSION='analytic': LIVE in production
+
+**FIELD-INTEGRATED:** NOT YET POSTED (A4 build in progress; ka_kshetra writing rows with DHARA engine)
+
+**NEXT-ACTION:** Poll FIELD-INTEGRATED every ≤15 min. On post: R2 MCP proof + R4 G-P4 → SESSION-DONE-Δ3.
