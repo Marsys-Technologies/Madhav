@@ -3518,3 +3518,5 @@ CONDUCTOR-HEARTBEAT: 2026-08-14T00:16+05:30 [R37 open — RESTART EDITION; SM-R-
 CONDUCTOR-HEARTBEAT: 2026-08-14T00:21+05:30 [R37 — S7-LOCK builder running (TDD phase, writing failing tests); builder agent ID a66156da8f67ce7dd; waiting for PR creation → CI → merge → deploy → PARĪKṢAKA; L-8 lease ACTIVE; all clear (advisory_locks=0, no running Cloud Run)]
 
 CONDUCTOR-HEARTBEAT: 2026-08-14T00:26+05:30 [R37 — PR #1270 OPEN (S7-LOCK: lock_timeout=300s + GUC smoke-log); SHA=a95abcceb; CI IN_PROGRESS (17 checks); diff verified correct (db.py + run_ka_sangam + run_ph_pratikara all correct); waiting for CI green → merge → deploy → PARĪKṢAKA]
+
+CONDUCTOR-HEARTBEAT: 2026-08-14T00:31+05:30 [R37 — PR #1270 CI: 16 SUCCESS, 3 IN_PROGRESS (Build Check, Unit Tests, Governance Gates), 0 FAIL; A6′ dispatch script created (dispatch_sampurti_a6prime_chart1_kshetra.py FM-18 compliant)]
