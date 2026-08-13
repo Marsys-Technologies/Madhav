@@ -210,6 +210,18 @@ export interface GocharaWindowRow {
    * parent. NULL for era-tier rows (no coarser parent) and for every row
    * written before migration 567. */
   parent_window_id?: number | null
+  // PARIṢKĀRA MR-47 (ADJUDICATOR ruling PK-R-10, migration 570): the
+  // earned, explicit marker proving this row's temporal_shape was checked
+  // against brahma_event_ontology at WRITE time. 'ontology_match' -- the
+  // stored temporal_shape genuinely equals the ontology's declared shape.
+  // 'point_class_context_envelope' -- the R8.12 flat-production branch for a
+  // point-canonical class: this row is honestly an envelope
+  // (temporal_shape='interval', resolution=NULL), never a genuine interval
+  // production. NULL for every row written before migration 570 (an honest
+  // gap, not backfilled/unclassifiable per that migration's own CASE logic).
+  /** See `deriveResolutionDisclosure`'s point-class-envelope branch for the
+   * honest, class-specific `timing_window_blocked_reason` this field earns. */
+  shape_conformance?: 'ontology_match' | 'point_class_context_envelope' | null
 }
 
 // D-5 native disposition (2026-07-20, gate_run_2 finding 1): "the cap never
@@ -351,6 +363,7 @@ export type TimingWindowBlockedReason =
   | 'resolution_unavailable'
   | 'chain_basis_not_declared'
   | 'chain_milestone_unanchored'
+  | 'point_class_context_envelope'
   | null
 
 // Mirrors services/gochara_v3/peak_basis_vocab.py GENUINE_PEAK_BASES exactly
@@ -385,10 +398,14 @@ export interface ResolutionDisclosure {
    * unavailable' (no stored resolution and not a point/chain row -- R8.10's
    * v1-row case), 'chain_basis_not_declared' (PK-R-8a: a chain row whose
    * peak_basis is anything other than ONTOLOGY_MILESTONE_OFFSET, including
-   * a stray LAMBDA_V3_ARGMAX), or 'chain_milestone_unanchored' (PK-R-8a: a
+   * a stray LAMBDA_V3_ARGMAX), 'chain_milestone_unanchored' (PK-R-8a: a
    * chain row with the right basis but milestone_id is NULL -- the row
-   * cannot be pinned to a specific declared milestone). Null when
-   * is_timing_window is true. */
+   * cannot be pinned to a specific declared milestone), or (PARIṢKĀRA MR-47,
+   * PK-R-10) 'point_class_context_envelope' -- a class-specific refinement
+   * of 'resolution_unavailable' for rows whose stored `shape_conformance`
+   * (migration 570) is earned-marked as the R8.12 flat envelope for a
+   * point-canonical class, rather than the generic "we don't know why"
+   * reason. Null when is_timing_window is true. */
   timing_window_blocked_reason: TimingWindowBlockedReason
 }
 
@@ -400,7 +417,7 @@ export interface ResolutionDisclosure {
  * the pre-PK-R-8 duration-based inference this function used to perform).
  */
 export function deriveResolutionDisclosure(
-  row: Pick<GocharaWindowRow, 'resolution' | 'temporal_shape' | 'peak_basis' | 'milestone_id'>
+  row: Pick<GocharaWindowRow, 'resolution' | 'temporal_shape' | 'peak_basis' | 'milestone_id' | 'shape_conformance'>
 ): ResolutionDisclosure {
   // PK-R-1's second floor: a dated point row is always a genuine timing
   // claim, regardless of resolution/peak_basis -- this is what preserves
@@ -469,6 +486,25 @@ export function deriveResolutionDisclosure(
   // interval-row case (and any pre-hierarchy flat v3 row). Honest null,
   // never guessed from date span (R8.9 supersedes the old duration-based
   // inference entirely).
+  //
+  // PARIṢKĀRA MR-47 (PK-R-10): before this fix, EVERY row landing here fell
+  // through to the SAME generic 'resolution_unavailable' reason, whether it
+  // was a genuinely unclassified legacy row or the R8.12 flat-production
+  // envelope for a point-canonical class -- an accidental gate, not an
+  // earned one (see PK-R-10's own finding: "these rows fall through the
+  // generic resolution IS NULL fallback branch, which knows nothing about
+  // point-canonicity specifically"). A row whose stored `shape_conformance`
+  // (migration 570) is earned-marked as the point-class envelope now gets
+  // its own, class-specific reason instead of the generic fallback.
+  if (row.shape_conformance === 'point_class_context_envelope') {
+    return {
+      resolution: null,
+      resolution_source: 'unavailable',
+      is_timing_window: false,
+      timing_window_blocked_reason: 'point_class_context_envelope',
+    }
+  }
+
   return {
     resolution: null,
     resolution_source: 'unavailable',
@@ -578,7 +614,7 @@ const ROW_COLUMNS = `
   peak_basis, calibration_state, source,
   computed_at, continuity_state,
   generation, era_slice_key, term_breakdown,
-  resolution, parent_window_id
+  resolution, parent_window_id, shape_conformance
 `
 // W5.1 (GOCHARA-UTKARSA): generation and era_slice_key are nullable columns
 // present on kala_gochara_windows since migrations 527 and 556 respectively.
@@ -722,9 +758,16 @@ export async function fetchVerseRefs(
 
 /**
  * Add `citation_verse_refs` to each served window object.
- * citation_verse_refs carries only 'resolved' rows (confirmed corpus chunks)
- * to avoid serving CORPUS_GAP stub rows as if they were live verse refs.
- * The raw row count (including unresolved) is disclosed in the provenance.
+ * citation_verse_refs is a COMPLETE list of all citation strings found in
+ * active_sentences, with each entry carrying its resolution status:
+ *   - 'resolved': confirmed corpus chunk (chunk_id is a real FK into
+ *     classical_text_chunks, not a CORPUS_GAP stub)
+ *   - 'unresolved': honest corpus gap — either the verseRefMap has an
+ *     explicit unresolved row from bg_gochara_citation_resolution, OR the
+ *     citation string has no entry in the table at all (CORPUS_GAP stub
+ *     synthesised on the fly).
+ * C1 change: the previous implementation only included resolved entries.
+ * Callers that want only confirmed verse refs should filter on status='resolved'.
  */
 export function enrichWindowsWithVerseRefs<T extends { active_sentences: unknown[] }>(
   windows: T[],
@@ -740,26 +783,79 @@ export function enrichWindowsWithVerseRefs<T extends { active_sentences: unknown
     // Collect all citation strings for this row's active_sentences.
     const citations = extractCitationStrings([row])
 
-    // Gather only resolved entries (status='resolved', chunk_id not starting with CORPUS_GAP:).
-    const resolved: CitationVerseRef[] = []
+    // Build the complete list: resolved entries from verseRefMap, then any
+    // unresolved entries (explicit from the map or corpus-gap stubs for
+    // strings that have no entry in bg_gochara_citation_resolution at all).
+    const allRefs: CitationVerseRef[] = []
+    let resolvedCount = 0
     for (const cit of citations) {
-      const refs = verseRefMap.get(cit) ?? []
-      for (const ref of refs) {
-        if (ref.status === 'resolved' && !ref.chunk_id.startsWith('CORPUS_GAP:')) {
-          resolved.push(ref)
+      const refs = verseRefMap.get(cit)
+      if (refs && refs.length > 0) {
+        // Entry exists in bg_gochara_citation_resolution — include all rows
+        // (may be resolved, unresolved, or mixed) with their honest status.
+        for (const ref of refs) {
+          allRefs.push(ref)
+          if (ref.status === 'resolved' && !ref.chunk_id.startsWith('CORPUS_GAP:')) {
+            resolvedCount++
+          }
         }
+      } else {
+        // No entry in bg_gochara_citation_resolution at all — synthesise an
+        // honest corpus-gap stub using the established CORPUS_GAP: prefix
+        // pattern so callers can distinguish "not looked up" from "looked up
+        // and found nothing" (both are unresolved, but the chunk_id tells
+        // which kind of gap this is).
+        allRefs.push({
+          citation_string: cit,
+          chunk_id: `CORPUS_GAP:${cit}`,
+          text_id: 'unknown',
+          verse_ref: 'unresolved',
+          status: 'unresolved',
+        })
       }
     }
 
     const note =
       citations.size === 0
         ? null
-        : resolved.length > 0
-          ? `${resolved.length} citation(s) resolved to verse_refs from bg_gochara_citation_resolution (migration 565)`
+        : resolvedCount > 0
+          ? `${resolvedCount} citation(s) resolved to verse_refs from bg_gochara_citation_resolution (migration 565)`
           : `${citations.size} citation string(s) found in active_sentences but none resolved to corpus chunks yet — see bg_gochara_citation_resolution for honest gap catalog`
 
-    return { ...window, citation_verse_refs: resolved, citation_resolution_note: note }
+    return { ...window, citation_verse_refs: allRefs, citation_resolution_note: note }
   })
+}
+
+/**
+ * Build a concise human-readable summary string from a λ_v3 term_breakdown
+ * object. Returns null if term_breakdown is null/undefined (honest gap — the
+ * row predates migration 564 or was written on the v1-parity path).
+ *
+ * Format: "λ_v3={lambda_v3:.2f} (promise={promise:.2f} × permission={permission:.2f} × activity={activity:.2f})"
+ * Only keys present in the object are included in the product list.
+ * If lambda_v3 is absent, the prefix reads "λ_v3=?".
+ *
+ * C1 addition: exported so callers and tests can use it directly.
+ */
+export function buildTermBreakdownSummary(
+  termBreakdown: Record<string, unknown> | null | undefined
+): string | null {
+  if (termBreakdown == null) return null
+
+  const lv3 = termBreakdown['lambda_v3']
+  const prefix = typeof lv3 === 'number' ? `λ_v3=${lv3.toFixed(2)}` : 'λ_v3=?'
+
+  const FACTOR_KEYS = ['promise', 'permission', 'activity'] as const
+  const parts: string[] = []
+  for (const key of FACTOR_KEYS) {
+    const val = termBreakdown[key]
+    if (typeof val === 'number') {
+      parts.push(`${key}=${val.toFixed(2)}`)
+    }
+  }
+
+  if (parts.length === 0) return prefix
+  return `${prefix} (${parts.join(' × ')})`
 }
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -789,6 +885,17 @@ export interface GocharaCoverage {
     substeps_committed: number
     source: string
     note: string
+  }
+  /** C3 (SAMPŪRTI-γ): first-class "thin ≠ rich silence" facet.
+   *  Derived from event_classes_covered — thin/moderate/rich signals whether the covered set
+   *  is sparse (0–3 classes), mid-range (4–9), or broad (10+).
+   *  Never fabricated: always computed from the same `eventClasses` / `coveredDomains` sets
+   *  that back the rest of this object; never hand-maintained. */
+  coverage_quality: {
+    tier: 'thin' | 'moderate' | 'rich'
+    covered_class_count: number
+    covered_domain_count: number
+    reason: string
   }
 }
 
@@ -914,6 +1021,20 @@ export async function computeGocharaCoverage(
 
   const ok = classesResp.ok && universeResp.ok && substepResp.ok
 
+  // C3 (SAMPŪRTI-γ): compute coverage_quality — tier classification based on covered class count.
+  const coveredClassCount = eventClasses.length
+  const coveredDomainCount = coveredDomains.size
+  const coverageTier: 'thin' | 'moderate' | 'rich' =
+    coveredClassCount < 4 ? 'thin' : coveredClassCount < 10 ? 'moderate' : 'rich'
+  const coverageReason =
+    coveredClassCount === 0
+      ? `0 event classes covered — thin coverage: no classes in universe`
+      : coverageTier === 'thin'
+        ? `${coveredClassCount} event class${coveredClassCount === 1 ? '' : 'es'} covered (${eventClasses.slice(0, 3).join(', ')}) — thin coverage: only ${coveredClassCount} of ${targetedClasses.length} targeted`
+        : coverageTier === 'moderate'
+          ? `${coveredClassCount} event classes covered across ${coveredDomainCount} domain${coveredDomainCount === 1 ? '' : 's'} — moderate coverage`
+          : `${coveredClassCount} event classes covered across ${coveredDomainCount} domain${coveredDomainCount === 1 ? '' : 's'} — rich coverage`
+
   return {
     ok,
     coverage: {
@@ -921,6 +1042,12 @@ export async function computeGocharaCoverage(
       event_classes_targeted_not_swept: targetedNotSwept,
       domains_not_covered: domainsNotCovered,
       universe_source: COVERAGE_UNIVERSE_SOURCE,
+      coverage_quality: {
+        tier: coverageTier,
+        covered_class_count: coveredClassCount,
+        covered_domain_count: coveredDomainCount,
+        reason: coverageReason,
+      },
       sweep_completeness: {
         substeps_committed: substepsCommitted,
         source: substepSourceLabel,
@@ -1367,6 +1494,95 @@ const ForecastInputSchema = z.object({
   resolution: ResolutionFilterSchema,
 })
 
+// ── C2: nested era⊃month⊃day hierarchy (SAMPŪRTI-γ C2) ──────────────────────
+
+/** Enriched window type: GocharaWindowRow with resolution_disclosure attached
+ * (produced by the `withResolutionDisclosure` helper above). */
+export type ServedWindow = GocharaWindowRow & { resolution_disclosure: unknown }
+
+/** A node in the era⊃month⊃day hierarchy tree. */
+export interface HierarchyNode {
+  /** 'era', 'month', 'day', or null for legacy rows. */
+  resolution: string | null
+  /** The enriched window this node represents. */
+  window: ServedWindow
+  /** Sub-windows: month children of an era node, day children of a month node. */
+  children: HierarchyNode[]
+}
+
+/** Nested hierarchy result returned inside `computeGocharaForecast`'s response. */
+export interface NestedHierarchyResult {
+  roots: HierarchyNode[]
+  legacy_flat: ServedWindow[]
+  coverage_note: string
+}
+
+/**
+ * Build an era⊃month⊃day hierarchy from a flat array of ServedWindows.
+ *
+ * Rules (per SAMPŪRTI-γ C2 spec):
+ * - resolution='era' (or parent_window_id=null with non-null resolution): era roots.
+ * - resolution='month': child of the era identified by parent_window_id.
+ * - resolution='day': child of the month identified by parent_window_id.
+ * - resolution=null: legacy (pre-migration-567) — goes into legacy_flat, not the tree.
+ * - A window whose parent_window_id points to a non-present id: defensive fallback
+ *   to legacy_flat (never silently dropped, never incorrectly promoted to root).
+ */
+export function buildNestedHierarchy(windows: ServedWindow[]): NestedHierarchyResult {
+  // Build id→window map for O(1) parent lookup.
+  const byId = new Map<number, ServedWindow>()
+  for (const w of windows) {
+    byId.set(w.id, w)
+  }
+
+  // Build id→HierarchyNode map so we can attach children.
+  const nodeById = new Map<number, HierarchyNode>()
+  for (const w of windows) {
+    nodeById.set(w.id, { resolution: w.resolution ?? null, window: w, children: [] })
+  }
+
+  const roots: HierarchyNode[] = []
+  const legacy_flat: ServedWindow[] = []
+
+  for (const w of windows) {
+    const res = w.resolution ?? null
+
+    // Legacy: resolution is null → flat list, not in tree.
+    if (res === null) {
+      legacy_flat.push(w)
+      continue
+    }
+
+    const node = nodeById.get(w.id) as HierarchyNode
+
+    // Era roots: resolution='era' or no parent.
+    if (res === 'era' || w.parent_window_id == null) {
+      roots.push(node)
+      continue
+    }
+
+    // Month/day: must attach to their parent node.
+    const parentNode = nodeById.get(w.parent_window_id)
+    if (!parentNode) {
+      // Defensive: parent not present in this page → legacy_flat.
+      legacy_flat.push(w)
+      // Remove from roots in case it was accidentally added; remove from nodeById
+      // so no child can attach to it either.
+      nodeById.delete(w.id)
+      continue
+    }
+    parentNode.children.push(node)
+  }
+
+  const nestedCount = windows.length - legacy_flat.length
+  const coverage_note =
+    `${nestedCount} window${nestedCount === 1 ? '' : 's'} organized in era⊃month⊃day hierarchy; ` +
+    `${legacy_flat.length} legacy row${legacy_flat.length === 1 ? '' : 's'} (resolution=null, pre-migration-567) ` +
+    `served flat — hierarchy requires resolution column (migration 567)`
+
+  return { roots, legacy_flat, coverage_note }
+}
+
 export async function computeGocharaForecast(
   chartId: string,
   dateRange: { start: string; end: string },
@@ -1450,15 +1666,22 @@ export async function computeGocharaForecast(
   const enrichedWindows = enrichWindowsWithVerseRefs(rows as unknown as Array<{ active_sentences: unknown[] }>, rows, verseRefMap)
   // PARIṢKĀRA MR-11(b): resolution_disclosure per served window (PK-R-1).
   const disclosures = rows.map((row) => deriveResolutionDisclosure(row))
+  // C1: attach term_breakdown_summary (human-readable λ_v3 decomposition) and
+  // resolution_disclosure to every served window before budget assembly.
   const windowsWithDisclosure = enrichedWindows.map((window, i) => ({
     ...window,
     resolution_disclosure: disclosures[i] ?? null,
+    term_breakdown_summary: buildTermBreakdownSummary(rows[i]?.term_breakdown ?? null),
   }))
   const { context_only_rows_in_page, context_only_note } = summarizeResolutionDisclosure(disclosures)
   const resolution_breakdown = computeResolutionBreakdown(disclosures)
 
+  // C2: build era⊃month⊃day hierarchy from the enriched windows.
+  const nested_hierarchy = buildNestedHierarchy(windowsWithDisclosure as unknown as ServedWindow[])
+
   const content: Record<string, unknown> = {
     windows: windowsWithDisclosure,
+    nested_hierarchy,
     facets,
     coverage,
     drill_pointers: [] as unknown[],

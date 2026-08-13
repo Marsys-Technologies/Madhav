@@ -401,6 +401,22 @@ class KaKshetraWriter(WriterBase):
 
     # ── stage 4 ──────────────────────────────────────────────────────────────
 
+    # SQL constant shared by the batch (_run_stage4) and single-row (_insert_segment) paths.
+    _KALA_FIELD_INSERT_SQL = """INSERT INTO kala_field (
+                   chart_id, event_class, segment_index, t_start, t_end, alpha, gamma,
+                   lambda_start, lambda_end, integral_days,
+                   promise_term, clock_term_start, modifier_term_start,
+                   suppression_term_start, signed_obstruction_start,
+                   refinement_depth, refinement_exhausted, refinement_residual,
+                   weights_version, x_schema_version, field_snapshot_id)
+               VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+               ON CONFLICT (chart_id, event_class, segment_index) DO UPDATE SET
+                   t_start = EXCLUDED.t_start, t_end = EXCLUDED.t_end,
+                   alpha = EXCLUDED.alpha, gamma = EXCLUDED.gamma,
+                   lambda_start = EXCLUDED.lambda_start, lambda_end = EXCLUDED.lambda_end,
+                   integral_days = EXCLUDED.integral_days,
+                   computed_at = now()"""
+
     def _run_stage4(self, conn, event_class: str, decade: int, step: SubStep) -> WriterResult:
         try:
             cctx = self._class_context(conn, event_class)
@@ -418,44 +434,41 @@ class KaKshetraWriter(WriterBase):
         if self._dry_run:
             return WriterResult(asset_id=ASSET_ID, rows_inserted=len(segments))
 
-        rows = 0
-        with conn.cursor() as cur:
-            for local, seg in enumerate(segments):
-                terms = ev.terms_at(seg.t_start)
-                self._insert_segment(cur, event_class,
-                                     decade * SEGMENT_INDEX_DECADE_STRIDE + local,
-                                     seg, terms)
-                rows += 1
-        self._record_substep(conn, step.key, rows)
-        return WriterResult(asset_id=ASSET_ID, rows_inserted=rows)
+        # L1e: separate computation from DB writes — batch all segment rows into a
+        # single executemany call rather than one cur.execute() per segment.
+        # Stage4 produces 40–80K segments per decade; at ~7ms per round-trip through
+        # the Cloud SQL proxy, individual inserts took 5–10 min per decade.
+        # executemany sends one batch, matching stage3's L1d pattern (which cut
+        # chara_karaka boundaries from 22 min to seconds).
+        params_list = [
+            self._segment_row(event_class,
+                              decade * SEGMENT_INDEX_DECADE_STRIDE + local,
+                              seg, ev.terms_at(seg.t_start))
+            for local, seg in enumerate(segments)
+        ]
+        if params_list:
+            with conn.cursor() as cur:
+                cur.executemany(self._KALA_FIELD_INSERT_SQL, params_list)
+        self._record_substep(conn, step.key, len(params_list))
+        return WriterResult(asset_id=ASSET_ID, rows_inserted=len(params_list))
+
+    def _segment_row(self, event_class: str, segment_index: int,
+                     seg: Segment, terms: hazard.HazardTerms) -> tuple:
+        """Return the params tuple for one kala_field row (shared by batch and single paths)."""
+        lam_start = math.exp(seg.alpha)
+        lam_end = math.exp(seg.alpha + seg.gamma * (seg.t_end - seg.t_start))
+        return (self._chart_id, event_class, segment_index, seg.t_start, seg.t_end,
+                seg.alpha, seg.gamma, lam_start, lam_end,
+                integrator.segment_integral(seg, seg.t_start, seg.t_end),
+                terms.promise_term, terms.clock_term, terms.modifier_term,
+                terms.suppression_term, terms.signed_obstruction,
+                seg.refinement_depth, seg.refinement_exhausted, seg.refinement_residual,
+                self._weights_version, hazard.X_SCHEMA_VERSION, self._snapshot_id)
 
     def _insert_segment(self, cur, event_class: str, segment_index: int,
                         seg: Segment, terms: hazard.HazardTerms) -> None:
-        lam_start = math.exp(seg.alpha)
-        lam_end = math.exp(seg.alpha + seg.gamma * (seg.t_end - seg.t_start))
-        cur.execute(
-            """INSERT INTO kala_field (
-                   chart_id, event_class, segment_index, t_start, t_end, alpha, gamma,
-                   lambda_start, lambda_end, integral_days,
-                   promise_term, clock_term_start, modifier_term_start,
-                   suppression_term_start, signed_obstruction_start,
-                   refinement_depth, refinement_exhausted, refinement_residual,
-                   weights_version, x_schema_version, field_snapshot_id)
-               VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
-               ON CONFLICT (chart_id, event_class, segment_index) DO UPDATE SET
-                   t_start = EXCLUDED.t_start, t_end = EXCLUDED.t_end,
-                   alpha = EXCLUDED.alpha, gamma = EXCLUDED.gamma,
-                   lambda_start = EXCLUDED.lambda_start, lambda_end = EXCLUDED.lambda_end,
-                   integral_days = EXCLUDED.integral_days,
-                   computed_at = now()""",
-            (self._chart_id, event_class, segment_index, seg.t_start, seg.t_end,
-             seg.alpha, seg.gamma, lam_start, lam_end,
-             integrator.segment_integral(seg, seg.t_start, seg.t_end),
-             terms.promise_term, terms.clock_term, terms.modifier_term,
-             terms.suppression_term, terms.signed_obstruction,
-             seg.refinement_depth, seg.refinement_exhausted, seg.refinement_residual,
-             self._weights_version, hazard.X_SCHEMA_VERSION, self._snapshot_id),
-        )
+        cur.execute(self._KALA_FIELD_INSERT_SQL,
+                    self._segment_row(event_class, segment_index, seg, terms))
 
     # ── stage 5 ──────────────────────────────────────────────────────────────
 
@@ -540,10 +553,9 @@ class KaKshetraWriter(WriterBase):
         sigma_t = self._sigma_t_days(conn)
         legacy = S4.load_legacy_crosscheck(conn, self._chart_id, event_class)
 
-        for w in windows:
-            rows += self._write_window(conn, ev, event_class, segments, w, result,
-                                       adrishta, ayanamsha_ids, sigma_t, legacy,
-                                       cctx.temporal_shape)
+        rows += self._write_windows_batch(conn, ev, event_class, segments, windows, result,
+                                          adrishta, ayanamsha_ids, sigma_t, legacy,
+                                          cctx.temporal_shape)
 
         if not self._dry_run:
             self._record_substep(conn, step.key, rows)
@@ -643,6 +655,141 @@ class KaKshetraWriter(WriterBase):
                      e.source_fact_id, wid),
                 )
         return 1 + len(edges)
+
+    def _write_windows_batch(self, conn, ev, event_class, segments, windows, null_result,
+                              adrishta, ayanamsha_ids, sigma_t, legacy,
+                              temporal_shape: str) -> int:
+        """L1o: batch-insert all windows + provenance in two executemany calls.
+
+        Per-window _write_window does one cur.execute per edge (~37 edges/window
+        × thousands of windows) — hundreds of thousands of round-trips causing
+        30+ min finalize → idle_in_transaction timeout kills the signal-check
+        connection. Two executemany calls reduce this to seconds.
+        """
+        if self._dry_run:
+            return len(windows)
+        if not windows:
+            return 0
+
+        # ── Phase 1: pure CPU — compute all per-window values (no DB I/O) ─────
+        prepared: list[tuple] = []   # (wid, w, edges, bucket, p, robustness)
+        for w in windows:
+            wid = integrator.window_id(
+                str(self._chart_id), event_class, w.t_start, w.t_end,
+                self._weights_version, hazard.X_SCHEMA_VERSION,
+            )
+            terms = ev.terms_at(w.t_peak)
+            edges: list[ProvenanceEdge] = list(terms.edges)
+            for r in ev.promise.routes:
+                edges.append(hazard.identity_edge(
+                    'route', f'route:rank{r.route_rank}', 'l3_row',
+                    source_table='kala_field_routes',
+                    source_pk=str(r.path_edge_ids[0]) if r.path_edge_ids else None,
+                ))
+            for row in legacy:
+                agreement = 'agree' if self._legacy_overlaps(row, w) else 'diverge'
+                edges.append(hazard.identity_edge(
+                    'gate', f'gate:legacy_sweep_xref:{row["id"]}:{agreement}', 'l3_row',
+                    source_table='kala_gochara_windows', source_pk=str(row['id']),
+                ))
+            S4.assert_provenance_reconciles(edges, w.lambda_peak, target_id=wid)
+
+            bucket = S5.select_bucket(w.duration_days)
+            p = S5.null_p(null_result.max_stats.get(bucket, []), w.expected_count)
+            robustness = RobustnessVector(
+                ayanamsha_robust=S5.ayanamsha_robust(ayanamsha_ids),
+                birth_time_robust=S5.birth_time_robust(
+                    segments, w.t_peak, null_result.q_threshold or 0.0, sigma_t,
+                ),
+                system_concurrent=S5.system_concurrent(ev, w.t_peak),
+                null_exceeding=S5.null_exceeding(p),
+                authority_clean=None,   # filled after batch citation query below
+            )
+            prepared.append((wid, w, edges, bucket, p, robustness))
+
+        # ── Phase 2: ONE citation query covering all windows ──────────────────
+        all_fact_ids = sorted({
+            e.source_fact_id
+            for _, _, edges, _, _, _ in prepared
+            for e in edges
+            if e.source_fact_id
+        })
+        resolved_set: set[str] = set()
+        if all_fact_ids:
+            with conn.cursor() as cur:
+                cur.execute(
+                    'SELECT DISTINCT fact_id FROM chart_facts '
+                    'WHERE chart_id = %s AND fact_id = ANY(%s)',
+                    (self._chart_id, all_fact_ids),
+                )
+                resolved_set = {r['fact_id'] for r in S4._rows(cur)}
+
+        # ── Phase 3: build insert param lists ────────────────────────────────
+        window_params: list[tuple] = []
+        prov_params: list[tuple] = []
+        for wid, w, edges, bucket, p, robustness in prepared:
+            cited = sum(1 for e in edges if e.source_fact_id)
+            resolved = sum(1 for e in edges if e.source_fact_id in resolved_set)
+            robustness.authority_clean = S5.authority_clean(cited, resolved)
+            window_params.append((
+                self._chart_id, wid, event_class, w.t_start, w.t_end,
+                self._as_date(w.t_start), self._as_date(w.t_end),
+                self._as_date(w.t_peak), w.t_peak, w.lambda_peak,
+                w.expected_count, w.duration_days,
+                hazard.promise_state(ev.promise.p),
+                temporal_shape, 'day_grade',
+                p, null_result.replicates, S5.null_resolution(null_result.replicates),
+                robustness.null_exceeding,
+                json.dumps(robustness.as_json()),
+                robustness.confidence_tier(), robustness.weakest_link(), adrishta,
+                self._weights_version, hazard.X_SCHEMA_VERSION, self._snapshot_id,
+            ))
+            for e in edges:
+                prov_params.append((
+                    self._chart_id, self._snapshot_id, 'window', wid,
+                    e.term_role, e.term_key, e.term_value, e.log_contribution,
+                    e.weight_id, e.weight_value, self._weights_version,
+                    e.source_kind, e.source_table, e.source_pk, e.source_fact_id, wid,
+                ))
+
+        # ── Phase 4: TWO executemany calls (was N×~37 individual inserts) ─────
+        with conn.cursor() as cur:
+            cur.executemany(
+                """INSERT INTO kala_field_windows (
+                       chart_id, window_id, event_class, t_start, t_end,
+                       window_start, window_end, peak_date, t_peak, lambda_peak,
+                       expected_count, duration_days, promise_state, temporal_shape,
+                       precision_regime, null_p, null_R, null_resolution, null_exceeding,
+                       robustness, confidence_tier, weakest_link, adrishta_residual,
+                       weights_version, x_schema_version, field_snapshot_id)
+                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,
+                           %s::jsonb,%s,%s,%s,%s,%s,%s)
+                   ON CONFLICT (chart_id, window_id) DO UPDATE SET
+                       lambda_peak = EXCLUDED.lambda_peak,
+                       expected_count = EXCLUDED.expected_count,
+                       null_p = EXCLUDED.null_p,
+                       robustness = EXCLUDED.robustness,
+                       confidence_tier = EXCLUDED.confidence_tier,
+                       weakest_link = EXCLUDED.weakest_link,
+                       adrishta_residual = EXCLUDED.adrishta_residual,
+                       computed_at = now()""",
+                window_params,
+            )
+            cur.executemany(
+                """INSERT INTO kala_field_provenance (
+                       chart_id, field_snapshot_id, target_kind, target_id,
+                       term_role, term_key, term_value, log_contribution,
+                       weight_id, weight_value, weights_version,
+                       source_kind, source_table, source_pk, source_fact_id,
+                       authority_basis)
+                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                   ON CONFLICT (chart_id, field_snapshot_id, target_kind,
+                                target_id, term_key)
+                   DO UPDATE SET term_value = EXCLUDED.term_value,
+                                 log_contribution = EXCLUDED.log_contribution""",
+                prov_params,
+            )
+        return len(window_params) + len(prov_params)
 
     # ── stage 6 · salience vector + submodular selection (§6.1/§6.2) ─────────
 

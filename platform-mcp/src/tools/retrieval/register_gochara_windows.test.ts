@@ -28,7 +28,15 @@ import {
   computeGocharaActivation,
   computeGocharaForecast,
   computeGocharaElectionAvoidance,
+  computeGocharaCoverage,
   type GocharaWindowRow,
+  type GocharaCoverage,
+  buildNestedHierarchy,
+  type HierarchyNode,
+  type ServedWindow,
+  enrichWindowsWithVerseRefs,
+  buildTermBreakdownSummary,
+  type CitationVerseRef,
 } from './register_gochara_windows.js'
 import type { Principal } from '../../types.js'
 
@@ -59,7 +67,17 @@ function makeRow(overrides: Partial<GocharaWindowRow> = {}): GocharaWindowRow {
     computed_at: '2026-07-19T00:00:00Z',
     continuity_state: null,
     plateau_disclosure: null,
+    resolution: null,
+    parent_window_id: null,
     ...overrides,
+  }
+}
+
+// Helper: build a ServedWindow (GocharaWindowRow with resolution_disclosure attached)
+function makeServedWindow(overrides: Partial<GocharaWindowRow> = {}): ServedWindow {
+  return {
+    ...makeRow(overrides),
+    resolution_disclosure: null,
   }
 }
 
@@ -227,6 +245,512 @@ describe('computeGocharaElectionAvoidance — MR-12 is_irreversibility_milestone
     expect(result.windows).toHaveLength(1)
     expect(result.windows[0]?.['milestone_id']).toBe('decision')
     expect(result.windows[0]?.['is_irreversibility_milestone']).toBe(false)
+  })
+})
+
+// ── computeGocharaCoverage — C3 coverage_quality.tier ──────────────────────
+// Tests for the coverage_quality field added in SAMPŪRTI-γ C3.
+// Mocks global.fetch to intercept platformQuery calls — same pattern as the
+// MR-12 block above. The four queries computeGocharaCoverage issues are:
+//   1. kala_gochara_authority  → authority generation (returns [] → v1 path)
+//   2. gochara_resonance_map   → targeted classes + domains (classesResp)
+//   3. brahma_event_ontology   → universe domains (universeResp)
+//   4. build_substep_progress  → substeps + swept classes (substepResp)
+//
+// For tier tests we care about covered_class_count (= eventClasses.length),
+// so we wire classesResp and substepResp to agree on exactly N classes.
+// universeResp always returns 5 domains so domains_not_covered is non-empty
+// and does not interfere with the tier assertions.
+
+function makeClassRows(eventClasses: string[], domainMap: Record<string, string> = {}): Record<string, unknown>[] {
+  return eventClasses.map((ec) => ({ event_class: ec, domain: domainMap[ec] ?? 'career' }))
+}
+
+function mockCoverageFetch(
+  classRows: Record<string, unknown>[],
+  sweptClasses: string[],
+  universeDomains: string[] = ['career', 'health', 'finance', 'relationship', 'spirituality'],
+): void {
+  global.fetch = vi.fn(async (url: unknown, opts: unknown) => {
+    const urlStr = String(url)
+    if (!urlStr.includes('/api/mcp/db/query')) {
+      return { ok: false, status: 500, text: async () => 'unexpected' }
+    }
+    const body = JSON.parse((opts as { body: string }).body) as { sql?: string }
+    const sql = body.sql ?? ''
+
+    // Query 1: kala_gochara_authority → empty (v1 path)
+    if (sql.includes('kala_gochara_authority')) {
+      return { ok: true, json: async () => ({ rows: [] }) }
+    }
+    // Query 2: gochara_resonance_map → classRows
+    if (sql.includes('gochara_resonance_map')) {
+      return { ok: true, json: async () => ({ rows: classRows }) }
+    }
+    // Query 3: brahma_event_ontology universe
+    if (sql.includes('brahma_event_ontology') && sql.includes('DISTINCT domain')) {
+      return { ok: true, json: async () => ({ rows: universeDomains.map((d) => ({ domain: d })) }) }
+    }
+    // Query 4: build_substep_progress
+    if (sql.includes('build_substep_progress')) {
+      return {
+        ok: true,
+        json: async () => ({
+          rows: [{
+            substeps_committed: sweptClasses.length,
+            swept_event_classes: sweptClasses,
+          }],
+        }),
+      }
+    }
+    return { ok: true, json: async () => ({ rows: [] }) }
+  }) as unknown as typeof fetch
+}
+
+describe('computeGocharaCoverage — C3 coverage_quality field', () => {
+  it('0 covered classes → tier thin, covered_class_count 0, covered_domain_count 0', async () => {
+    mockCoverageFetch([], [])
+    const { coverage } = await computeGocharaCoverage(CHART_ID, TEST_PRINCIPAL)
+    expect(coverage.coverage_quality).toBeDefined()
+    expect(coverage.coverage_quality.tier).toBe('thin')
+    expect(coverage.coverage_quality.covered_class_count).toBe(0)
+    expect(coverage.coverage_quality.covered_domain_count).toBe(0)
+  })
+
+  it('3 covered classes → tier thin', async () => {
+    const classes = ['career_advancement', 'marriage_formation', 'major_gain']
+    mockCoverageFetch(makeClassRows(classes), classes)
+    const { coverage } = await computeGocharaCoverage(CHART_ID, TEST_PRINCIPAL)
+    expect(coverage.coverage_quality.tier).toBe('thin')
+    expect(coverage.coverage_quality.covered_class_count).toBe(3)
+  })
+
+  it('4 covered classes → tier moderate', async () => {
+    const classes = ['career_advancement', 'marriage_formation', 'major_gain', 'health_crisis']
+    mockCoverageFetch(makeClassRows(classes), classes)
+    const { coverage } = await computeGocharaCoverage(CHART_ID, TEST_PRINCIPAL)
+    expect(coverage.coverage_quality.tier).toBe('moderate')
+    expect(coverage.coverage_quality.covered_class_count).toBe(4)
+  })
+
+  it('9 covered classes → tier moderate', async () => {
+    const classes = ['c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7', 'c8', 'c9']
+    mockCoverageFetch(makeClassRows(classes), classes)
+    const { coverage } = await computeGocharaCoverage(CHART_ID, TEST_PRINCIPAL)
+    expect(coverage.coverage_quality.tier).toBe('moderate')
+    expect(coverage.coverage_quality.covered_class_count).toBe(9)
+  })
+
+  it('10 covered classes → tier rich', async () => {
+    const classes = ['c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7', 'c8', 'c9', 'c10']
+    mockCoverageFetch(makeClassRows(classes), classes)
+    const { coverage } = await computeGocharaCoverage(CHART_ID, TEST_PRINCIPAL)
+    expect(coverage.coverage_quality.tier).toBe('rich')
+    expect(coverage.coverage_quality.covered_class_count).toBe(10)
+  })
+
+  it('covered_domain_count counts distinct domains across covered classes', async () => {
+    // 4 classes across 3 distinct domains
+    const classRows = [
+      { event_class: 'career_advancement', domain: 'career' },
+      { event_class: 'job_loss', domain: 'career' },
+      { event_class: 'marriage_formation', domain: 'relationship' },
+      { event_class: 'major_gain', domain: 'finance' },
+    ]
+    const swept = ['career_advancement', 'job_loss', 'marriage_formation', 'major_gain']
+    mockCoverageFetch(classRows, swept)
+    const { coverage } = await computeGocharaCoverage(CHART_ID, TEST_PRINCIPAL)
+    expect(coverage.coverage_quality.covered_domain_count).toBe(3)
+  })
+
+  it('reason string is non-empty and contains the tier name', async () => {
+    const classes = ['career_advancement', 'marriage_formation', 'major_gain']
+    mockCoverageFetch(makeClassRows(classes), classes)
+    const { coverage } = await computeGocharaCoverage(CHART_ID, TEST_PRINCIPAL)
+    expect(typeof coverage.coverage_quality.reason).toBe('string')
+    expect(coverage.coverage_quality.reason.length).toBeGreaterThan(0)
+    expect(coverage.coverage_quality.reason).toContain('thin')
+  })
+
+  it('reason string for rich tier contains "rich"', async () => {
+    const classes = ['c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7', 'c8', 'c9', 'c10']
+    mockCoverageFetch(makeClassRows(classes), classes)
+    const { coverage } = await computeGocharaCoverage(CHART_ID, TEST_PRINCIPAL)
+    expect(coverage.coverage_quality.reason).toContain('rich')
+  })
+})
+
+// ── buildNestedHierarchy — C2 era⊃month⊃day nesting ───────────────────────
+describe('buildNestedHierarchy', () => {
+  it('returns empty roots and empty legacy_flat for an empty input', () => {
+    const result = buildNestedHierarchy([])
+    expect(result.roots).toEqual([])
+    expect(result.legacy_flat).toEqual([])
+    expect(result.coverage_note).toContain('0 windows')
+  })
+
+  it('places an era-tier window as a root with empty children', () => {
+    const era = makeServedWindow({ id: 10, resolution: 'era', parent_window_id: null })
+    const result = buildNestedHierarchy([era])
+    expect(result.roots).toHaveLength(1)
+    expect(result.roots[0]?.resolution).toBe('era')
+    expect(result.roots[0]?.window.id).toBe(10)
+    expect(result.roots[0]?.children).toEqual([])
+    expect(result.legacy_flat).toEqual([])
+  })
+
+  it('nests a month window under its era parent', () => {
+    const era = makeServedWindow({ id: 10, resolution: 'era', parent_window_id: null })
+    const month = makeServedWindow({ id: 20, resolution: 'month', parent_window_id: 10 })
+    const result = buildNestedHierarchy([era, month])
+    expect(result.roots).toHaveLength(1)
+    const eraNode = result.roots[0] as HierarchyNode
+    expect(eraNode.children).toHaveLength(1)
+    expect(eraNode.children[0]?.resolution).toBe('month')
+    expect(eraNode.children[0]?.window.id).toBe(20)
+    expect(eraNode.children[0]?.children).toEqual([])
+    expect(result.legacy_flat).toEqual([])
+  })
+
+  it('nests a day window under its month parent', () => {
+    const era = makeServedWindow({ id: 10, resolution: 'era', parent_window_id: null })
+    const month = makeServedWindow({ id: 20, resolution: 'month', parent_window_id: 10 })
+    const day = makeServedWindow({ id: 30, resolution: 'day', parent_window_id: 20 })
+    const result = buildNestedHierarchy([era, month, day])
+    expect(result.roots).toHaveLength(1)
+    const eraNode = result.roots[0] as HierarchyNode
+    expect(eraNode.children).toHaveLength(1)
+    const monthNode = eraNode.children[0] as HierarchyNode
+    expect(monthNode.children).toHaveLength(1)
+    expect(monthNode.children[0]?.resolution).toBe('day')
+    expect(monthNode.children[0]?.window.id).toBe(30)
+    expect(monthNode.children[0]?.children).toEqual([])
+    expect(result.legacy_flat).toEqual([])
+  })
+
+  it('handles multiple era roots each with their own month/day subtrees', () => {
+    const era1 = makeServedWindow({ id: 1, resolution: 'era', parent_window_id: null })
+    const era2 = makeServedWindow({ id: 2, resolution: 'era', parent_window_id: null })
+    const month1 = makeServedWindow({ id: 11, resolution: 'month', parent_window_id: 1 })
+    const month2 = makeServedWindow({ id: 12, resolution: 'month', parent_window_id: 2 })
+    const day1 = makeServedWindow({ id: 21, resolution: 'day', parent_window_id: 11 })
+    const result = buildNestedHierarchy([era1, era2, month1, month2, day1])
+    expect(result.roots).toHaveLength(2)
+    const node1 = result.roots.find((n) => n.window.id === 1) as HierarchyNode
+    const node2 = result.roots.find((n) => n.window.id === 2) as HierarchyNode
+    expect(node1.children).toHaveLength(1)
+    expect(node1.children[0]?.children).toHaveLength(1)
+    expect(node1.children[0]?.children[0]?.window.id).toBe(21)
+    expect(node2.children).toHaveLength(1)
+    expect(node2.children[0]?.children).toEqual([])
+    expect(result.legacy_flat).toEqual([])
+  })
+
+  it('puts resolution=null windows into legacy_flat, not roots', () => {
+    const legacy = makeServedWindow({ id: 99, resolution: null, parent_window_id: null })
+    const result = buildNestedHierarchy([legacy])
+    expect(result.roots).toEqual([])
+    expect(result.legacy_flat).toHaveLength(1)
+    expect(result.legacy_flat[0]?.id).toBe(99)
+  })
+
+  it('mixes era/month/day tree with legacy_flat correctly', () => {
+    const era = makeServedWindow({ id: 10, resolution: 'era', parent_window_id: null })
+    const month = makeServedWindow({ id: 20, resolution: 'month', parent_window_id: 10 })
+    const legacy = makeServedWindow({ id: 5, resolution: null, parent_window_id: null })
+    const result = buildNestedHierarchy([era, month, legacy])
+    expect(result.roots).toHaveLength(1)
+    expect(result.legacy_flat).toHaveLength(1)
+    expect(result.legacy_flat[0]?.id).toBe(5)
+    expect(result.coverage_note).toContain('2 windows organized')
+    expect(result.coverage_note).toContain('1 legacy')
+  })
+
+  it('places a window with a parent_window_id pointing to a non-present parent into legacy_flat (defensive)', () => {
+    // month claims parent 999 which is not in the array
+    const orphan = makeServedWindow({ id: 20, resolution: 'month', parent_window_id: 999 })
+    const result = buildNestedHierarchy([orphan])
+    expect(result.roots).toEqual([])
+    expect(result.legacy_flat).toHaveLength(1)
+    expect(result.legacy_flat[0]?.id).toBe(20)
+  })
+
+  it('coverage_note counts only nested windows, not legacy', () => {
+    const era = makeServedWindow({ id: 1, resolution: 'era', parent_window_id: null })
+    const month = makeServedWindow({ id: 2, resolution: 'month', parent_window_id: 1 })
+    const legacy = makeServedWindow({ id: 3, resolution: null, parent_window_id: null })
+    const result = buildNestedHierarchy([era, month, legacy])
+    expect(result.coverage_note).toContain('2 windows organized')
+    expect(result.coverage_note).toContain('1 legacy')
+    expect(result.coverage_note).toContain('migration 567')
+  })
+})
+
+// ── computeGocharaForecast — nested_hierarchy field presence ───────────────
+describe('computeGocharaForecast — nested_hierarchy in response', () => {
+  function mockFetchForecast(rows: Record<string, unknown>[]) {
+    let mainQueryServed = false
+    global.fetch = vi.fn(async (url: unknown, opts: unknown) => {
+      const urlStr = String(url)
+      if (urlStr.includes('/api/mcp/db/query')) {
+        const body = JSON.parse((opts as { body: string }).body) as { sql?: string }
+        const sql = body.sql ?? ''
+        // The main forecast SELECT is the only query that: (a) reads kala_gochara_windows,
+        // (b) filters on window_start/window_end, and (c) has no is_adverse clause.
+        // Serve `rows` exactly once for this query; everything else (coverage, verse refs) returns [].
+        if (!mainQueryServed && sql.includes('kala_gochara_windows') && sql.includes('window_start')) {
+          mainQueryServed = true
+          return { ok: true, json: async () => ({ rows }) }
+        }
+        return { ok: true, json: async () => ({ rows: [] }) }
+      }
+      return { ok: false, status: 500, text: async () => 'unexpected fetch in test' }
+    }) as unknown as typeof fetch
+  }
+
+  it('response includes nested_hierarchy with roots and legacy_flat', async () => {
+    const eraRow = {
+      id: 10, chart_id: CHART_ID, event_class: 'marriage',
+      temporal_shape: 'point', window_start: '2026-01-01', window_end: '2026-01-01',
+      peak_date: '2026-01-01', milestone_id: null, is_irreversibility_milestone: false,
+      signed_intensity: 1.0, raw_intensity: 1.0, valence: 'gain', is_adverse: false,
+      active_sentences: [], contributing_systems: [], suppression_state: {},
+      peak_basis: 'gochara_lambda_e_v1', calibration_state: 'structural_prior',
+      source: 'live', computed_at: '2026-01-01T00:00:00Z',
+      continuity_state: null, generation: 'g3_utkarsha',
+      era_slice_key: 'g3_2024_2034', term_breakdown: null,
+      resolution: 'era', parent_window_id: null, shape_conformance: null,
+    }
+    mockFetchForecast([eraRow])
+
+    const result = (await computeGocharaForecast(
+      CHART_ID,
+      { start: '2026-01-01', end: '2027-01-01' },
+      undefined, undefined, 50, TEST_PRINCIPAL
+    )) as { nested_hierarchy: { roots: HierarchyNode[]; legacy_flat: unknown[]; coverage_note: string } }
+
+    expect(result.nested_hierarchy).toBeDefined()
+    expect(Array.isArray(result.nested_hierarchy.roots)).toBe(true)
+    expect(Array.isArray(result.nested_hierarchy.legacy_flat)).toBe(true)
+    expect(typeof result.nested_hierarchy.coverage_note).toBe('string')
+    expect(result.nested_hierarchy.roots).toHaveLength(1)
+    expect(result.nested_hierarchy.roots[0]?.resolution).toBe('era')
+  })
+
+  it('response nested_hierarchy.legacy_flat contains windows with resolution=null', async () => {
+    const legacyRow = {
+      id: 5, chart_id: CHART_ID, event_class: 'marriage',
+      temporal_shape: 'point', window_start: '2026-06-01', window_end: '2026-06-01',
+      peak_date: '2026-06-01', milestone_id: null, is_irreversibility_milestone: false,
+      signed_intensity: 0.8, raw_intensity: 0.8, valence: 'neutral', is_adverse: false,
+      active_sentences: [], contributing_systems: [], suppression_state: {},
+      peak_basis: 'gochara_lambda_v1', calibration_state: 'structural_prior',
+      source: 'live', computed_at: '2026-06-01T00:00:00Z',
+      continuity_state: null, generation: null,
+      era_slice_key: null, term_breakdown: null,
+      resolution: null, parent_window_id: null, shape_conformance: null,
+    }
+    mockFetchForecast([legacyRow])
+
+    const result = (await computeGocharaForecast(
+      CHART_ID,
+      { start: '2026-01-01', end: '2027-01-01' },
+      undefined, undefined, 50, TEST_PRINCIPAL
+    )) as { nested_hierarchy: { roots: unknown[]; legacy_flat: Array<{ id: number }> } }
+
+    expect(result.nested_hierarchy.roots).toHaveLength(0)
+    expect(result.nested_hierarchy.legacy_flat).toHaveLength(1)
+    expect(result.nested_hierarchy.legacy_flat[0]?.id).toBe(5)
+  })
+})
+
+// ── enrichWindowsWithVerseRefs — C1: complete citation_verse_refs (incl. unresolved) ─
+describe('enrichWindowsWithVerseRefs — complete citation_verse_refs (C1)', () => {
+  function makeWindowWithCitations(citations: string[]): GocharaWindowRow {
+    return makeRow({
+      active_sentences: citations.map((c) => ({ classical_citation: c, text: 'some sentence' })),
+    })
+  }
+
+  it('includes unresolved entries from verseRefMap (status=unresolved preserved)', () => {
+    const row = makeWindowWithCitations(['BPHS Ch.29 v.5'])
+    const verseRefMap = new Map<string, CitationVerseRef[]>([
+      [
+        'BPHS Ch.29 v.5',
+        [
+          {
+            citation_string: 'BPHS Ch.29 v.5',
+            chunk_id: 'CORPUS_GAP:BPHS Ch.29 v.5',
+            text_id: 'unknown',
+            verse_ref: 'unresolved',
+            status: 'unresolved',
+          },
+        ],
+      ],
+    ])
+    const [enriched] = enrichWindowsWithVerseRefs([row], [row], verseRefMap)
+    expect(enriched).toBeDefined()
+    expect(enriched!.citation_verse_refs).toHaveLength(1)
+    expect(enriched!.citation_verse_refs[0]!.status).toBe('unresolved')
+    expect(enriched!.citation_verse_refs[0]!.citation_string).toBe('BPHS Ch.29 v.5')
+  })
+
+  it('includes both resolved and unresolved entries when both exist for different citations', () => {
+    const row = makeWindowWithCitations(['BPHS Ch.29 v.5', 'Jataka Parijata 3.12'])
+    const verseRefMap = new Map<string, CitationVerseRef[]>([
+      [
+        'BPHS Ch.29 v.5',
+        [{ citation_string: 'BPHS Ch.29 v.5', chunk_id: 'CORPUS_GAP:BPHS Ch.29 v.5', text_id: 'unknown', verse_ref: 'unresolved', status: 'unresolved' }],
+      ],
+      [
+        'Jataka Parijata 3.12',
+        [{ citation_string: 'Jataka Parijata 3.12', chunk_id: 'chunk-001', text_id: 'jp', verse_ref: '3.12', status: 'resolved' }],
+      ],
+    ])
+    const [enriched] = enrichWindowsWithVerseRefs([row], [row], verseRefMap)
+    expect(enriched!.citation_verse_refs).toHaveLength(2)
+    const statuses = enriched!.citation_verse_refs.map((r) => r.status).sort()
+    expect(statuses).toEqual(['resolved', 'unresolved'])
+  })
+
+  it('creates a corpus-gap unresolved entry for a citation with NO verseRefMap entry at all', () => {
+    const row = makeWindowWithCitations(['Unknown Text 5.3'])
+    // verseRefMap has no entry for 'Unknown Text 5.3'
+    const verseRefMap = new Map<string, CitationVerseRef[]>()
+    const [enriched] = enrichWindowsWithVerseRefs([row], [row], verseRefMap)
+    expect(enriched!.citation_verse_refs).toHaveLength(1)
+    const entry = enriched!.citation_verse_refs[0]!
+    expect(entry.status).toBe('unresolved')
+    expect(entry.citation_string).toBe('Unknown Text 5.3')
+    expect(entry.chunk_id).toBe('CORPUS_GAP:Unknown Text 5.3')
+    expect(entry.text_id).toBe('unknown')
+    expect(entry.verse_ref).toBe('unresolved')
+  })
+
+  it('returns empty array for a row with no citation strings (unchanged behaviour)', () => {
+    const row = makeRow({ active_sentences: [] })
+    const verseRefMap = new Map<string, CitationVerseRef[]>()
+    const [enriched] = enrichWindowsWithVerseRefs([row], [row], verseRefMap)
+    expect(enriched!.citation_verse_refs).toEqual([])
+  })
+})
+
+// ── buildTermBreakdownSummary — C1 ────────────────────────────────────────────
+describe('buildTermBreakdownSummary (C1)', () => {
+  it('returns null for null input', () => {
+    expect(buildTermBreakdownSummary(null)).toBeNull()
+  })
+
+  it('returns null for undefined input', () => {
+    expect(buildTermBreakdownSummary(undefined)).toBeNull()
+  })
+
+  it('builds the human-readable summary string for a full term_breakdown object', () => {
+    const td = { promise: 0.82, permission: 0.61, activity: 0.73, lambda_v3: 0.50 }
+    const result = buildTermBreakdownSummary(td)
+    expect(result).toBe('λ_v3=0.50 (promise=0.82 × permission=0.61 × activity=0.73)')
+  })
+
+  it('uses λ_v3=? when lambda_v3 is missing', () => {
+    const td = { promise: 0.82, permission: 0.61, activity: 0.73 }
+    const result = buildTermBreakdownSummary(td)
+    expect(result).toContain('λ_v3=?')
+  })
+
+  it('omits a factor from the product list when it is missing from the object', () => {
+    const td = { promise: 0.82, lambda_v3: 0.50 }
+    const result = buildTermBreakdownSummary(td)
+    expect(result).not.toContain('permission=')
+    expect(result).not.toContain('activity=')
+    expect(result).toContain('promise=0.82')
+  })
+})
+
+// ── computeGocharaForecast — C1: term_breakdown_summary on served windows ─────
+describe('computeGocharaForecast — C1 term_breakdown_summary', () => {
+  const FORECAST_ROW = {
+    id: 42,
+    chart_id: CHART_ID,
+    event_class: 'career_advancement',
+    temporal_shape: 'interval' as const,
+    window_start: '2026-01-01',
+    window_end: '2026-06-30',
+    peak_date: '2026-03-15',
+    milestone_id: null,
+    is_irreversibility_milestone: false,
+    signed_intensity: 0.6,
+    raw_intensity: 0.6,
+    valence: 'gain' as const,
+    is_adverse: false,
+    active_sentences: [] as unknown[],
+    contributing_systems: [] as unknown[],
+    suppression_state: {},
+    peak_basis: 'gochara_lambda_v3',
+    calibration_state: 'structural_prior',
+    source: 'live' as const,
+    computed_at: '2026-01-01T00:00:00Z',
+    continuity_state: null,
+    generation: 'g3_utkarsha',
+    era_slice_key: 'g3_2024_2034',
+    term_breakdown: { promise: 0.82, permission: 0.61, activity: 0.73, lambda_v3: 0.50 },
+  }
+
+  function mockFetchForecast(row: Record<string, unknown>) {
+    // Mirror the exact pattern used by computeGocharaElectionAvoidance tests above:
+    // intercept /api/mcp/db/query, return the fixture row for the main
+    // kala_gochara_windows SELECT (identified by containing window_start/window_end
+    // range params — unique to the forecast query), and empty rows for all
+    // coverage/authority support queries.
+    global.fetch = vi.fn(async (url: unknown, opts: unknown) => {
+      const urlStr = String(url)
+      if (urlStr.includes('/api/mcp/db/query')) {
+        const body = JSON.parse((opts as { body: string }).body) as { sql?: string }
+        const sql = body.sql ?? ''
+        // The forecast main query is the only one that references both
+        // kala_gochara_windows and the window_start/window_end range clause.
+        // All coverage sub-queries (kala_gochara_authority, gochara_resonance_map,
+        // brahma_event_ontology, build_substep_progress) don't reference that table.
+        if (sql.includes('FROM kala_gochara_windows') && sql.includes('window_start')) {
+          return { ok: true, json: async () => ({ rows: [row] }) }
+        }
+        return { ok: true, json: async () => ({ rows: [] }) }
+      }
+      return { ok: false, status: 500, text: async () => 'unexpected fetch in test' }
+    }) as unknown as typeof fetch
+  }
+
+  it('served windows include term_breakdown_summary computed from term_breakdown', async () => {
+    mockFetchForecast(FORECAST_ROW)
+
+    const result = (await computeGocharaForecast(
+      CHART_ID,
+      { start: '2026-01-01', end: '2026-12-31' },
+      undefined,
+      undefined,
+      50,
+      TEST_PRINCIPAL,
+    )) as { windows: Array<Record<string, unknown>> }
+
+    expect(result.windows).toHaveLength(1)
+    expect(result.windows[0]!['term_breakdown_summary']).toBe(
+      'λ_v3=0.50 (promise=0.82 × permission=0.61 × activity=0.73)',
+    )
+  })
+
+  it('term_breakdown_summary is null when term_breakdown is null', async () => {
+    mockFetchForecast({ ...FORECAST_ROW, term_breakdown: null })
+
+    const result = (await computeGocharaForecast(
+      CHART_ID,
+      { start: '2026-01-01', end: '2026-12-31' },
+      undefined,
+      undefined,
+      50,
+      TEST_PRINCIPAL,
+    )) as { windows: Array<Record<string, unknown>> }
+
+    expect(result.windows).toHaveLength(1)
+    expect(result.windows[0]!['term_breakdown_summary']).toBeNull()
   })
 })
 
