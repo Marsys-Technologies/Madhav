@@ -220,3 +220,29 @@ CONDUCTOR-HEARTBEAT: 2026-08-13T16:12:56Z pid=45719(supervisor) host=Montys-MacB
 | R4 | BLOCKED | FIELD-INTEGRATED not posted |
 
 **NEXT-ACTION:** Poll FIELD-INTEGRATED every ≤15 min. On post: R2 MCP proof + R4 G-P4 → SESSION-DONE-Δ3.
+
+### 2026-08-13 21:48 IST — A5 DISPATCHED; R1 re-proof PASS
+
+CONDUCTOR-HEARTBEAT: 2026-08-13T16:20:00Z pid=45719(supervisor) host=Montys-MacBook-Pro.local session=Δ3
+
+**A5 BUILD CONFIRMED:**
+- Cloud Run exec: `brahma-build-pipeline-job-tkp7b` (RUNNING ✓, created 16:16:07Z)
+- run_id: `777c3681-27b7-4e91-adc5-8c06e59b7348`
+- triggered_by: sampurti-a5-chart1-kshetra-dhara
+- Engine: DHARA analytic (ENGINE_VERSION='analytic', PR #1268)
+- Substeps: 69/534 committed (checkpoint from A4), **465 remaining**
+- Lease: L-5, expiry 05:00 IST Aug 14 (per Δ1 ledger R29)
+- NOTE: s6zbw (16:13:07Z, 14s) was bad no-op dispatch — missing `--run-id` arg. Lesson recorded by Δ1 in R29.
+
+**R1 MCP PROOF RE-VERIFIED** (16:18Z):
+- gochara_forecast_get(chart 482012f1, domain=marriage, 2026-08-13→2027-08-13)
+- coverage.event_classes_covered: 27 (incl. marriage) ✓
+- coverage.domains_not_covered: [] ✓
+- sweep_completeness.substeps_committed: 270 under ka_gochara_v3_century_materialize ✓
+- No S4-05 refusal ✓
+- windows: [] — honest empty (no marriage windows in this date range; SEV-1 fix confirmed via coverage data)
+
+**FIELD-INTEGRATED ETA:** Hours. A5 at 465 substeps remaining. S4 parity gate + re-field after that.
+→ Δ3 will be relaunched by supervisor; poll FIELD-INTEGRATED on each relaunch.
+
+**NEXT-ACTION:** Poll FIELD-INTEGRATED every ≤15 min. On post: R2 MCP proof + R4 G-P4 → SESSION-DONE-Δ3.
