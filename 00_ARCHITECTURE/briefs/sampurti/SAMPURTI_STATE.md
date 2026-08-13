@@ -3612,3 +3612,61 @@ CONDUCTOR-HEARTBEAT: 2026-08-14T03:10+05:30 [R39 — FM-21 pass#2 T+34min: 74 co
 CONDUCTOR-HEARTBEAT: 2026-08-14T03:22+05:30 [R39 — FM-21 pass#3 T+55min: committed_substeps=75 (FIRST new analytic substep committed! 74→75); pid 1834987 idle_in_txn/ClientRead 388s (next COUNT check running, 6th CPU cycle starting); DNS workaround active (gcloud DNS system broken, curl+forced-DNS working); vcc6h RUNNING; FM-21 CLEAR — active progress confirmed; rate monitoring to establish steady-state]
 
 CONDUCTOR-HEARTBEAT: 2026-08-14T03:48+05:30 [R39 — FM-21 pass#4 T+65min: committed_substeps=77 (75→77 in T+55→T+65 = 2 substeps in 10 min, rate=0.2/min); pid 1834987 idle_secs=84 (healthy, active computation); FM-21 CLEAR — good progress; rate revised downward: ~5-6h remaining (57 computable decades × ~5min vs 9min initial estimate + fast stage5); DNS workaround active; vcc6h RUNNING]
+
+---
+
+## R40 — SAMPŪRTI-Δ1 CONDUCTOR (2026-08-14T04:16:+05:30)
+
+**Identity:** CONDUCTOR of SAMPŪRTI-Δ1 (supervisor relaunch; R39 closed after FM-21 pass#4 at 03:48 IST)
+
+### LIVENESS CHECK (FM-10/11/21)
+
+- current_conductor.pid = 33173 (R39 session; pgrep "CONDUCTOR of SAMPŪRTI-Δ1" → no match → DEAD) ✅
+- PEERS: none found after self-exclusion ✅
+- My PID: 41320 (written to dh-d1-logs/current_conductor.pid) — sole conductor confirmed ✅
+- SM-R-4 READ AND ACKNOWLEDGED ✅
+
+### HYGIENE CHECK (FM-06 amended)
+
+- vcc6h: state=failed in build_runs (stop_requested_at=22:19Z set by desk per SM-R-6); Cloud Run execution still showing running (draining — sessions idle-in-txn 1574s/346s; 30-min idle_in_txn_timeout fires at ~22:49Z); advisory_locks=1 (LIVE BUILD per FM-06 amended — NOT touching); ✅ desk stop already done
+- ka_kshetra 482012f1: state=incomplete, rows=622,757 (up from 566,545 — app still draining at substep boundary)
+- active_build_runs planned/running: 0 per build_runs table (vcc6h=failed) ✅
+
+### SM-R-6 RECONCILE (FM-09)
+
+SM-R-6 READ AND ACKNOWLEDGED (committed e29ecee37, campaign-coordination branch):
+- F-11: DHARA HAS run production substeps; stage4 took ~20min for all 6 classes on 2vCPU ✅
+- F-12: ~9h is 100% stage-5 with the UNWIRED 256-replicate sampled engine ✅
+- F-13 ROOT CAUSE: dhara_null.py imported by NOTHING in production (writer.py only wires dhara_sweep at :1691) ✅
+- F-14: SM-R-5's 9h acceptance SUPERSEDED ✅
+- DIRECTIVE: vcc6h stop (DONE by desk pre-prompt), OPT-N1 (dispatched), OPT-N2 (dispatched), A6″ post deploy-green ✅
+
+### STATE RECONCILIATION (FM-09)
+
+| asset | chart | state | rows |
+|---|---|---|---|
+| ka_kshetra | 482012f1 (native) | **incomplete** | 622,757 |
+| ka_kshetra | 1c826d5a (Abhinandan) | lit | 837,992 |
+
+Coordination: SM-R-6 posted (e29ecee37). Δ3 session-18 absorbed SM-R-6. L-8 lease active (to 14:00 IST).
+
+### OPT WAVE DISPATCH
+
+| Lane | Branch | Worktree | Status |
+|---|---|---|---|
+| OPT-N1 | sampurti/d1-optn1-dhara-null-wiring | sm-d1-optn1 | **DISPATCHED** (sonnet builder) |
+| OPT-N2 | sampurti/d1-optn2-fm23-guard | sm-d1-optn2 | **DISPATCHED** (sonnet builder) |
+
+OPT-N1: wire dhara_compute_null into stage-5 analytic path, _RESUME_VERSION 4→5 (same PR per FM-17). Expected: ~30min to PR open + CI.
+OPT-N2: FM-23 CI guard asserting every dhara_*.py is imported by production code. Small lane, expected ~15min.
+
+A6″ dispatch GATED on: OPT-N1 deploy-green (ancestry-verified) + advisory_locks=0.
+
+### NEXT-ACTION
+
+Monitor OPT-N1 + OPT-N2 builders. When both PRs open and CI runs:
+- PARĪKṢAKA (opus) verdict on OPT-N1 before merge
+- Merge both → wait for deploy-green (ancestry-verified) 
+- A6″ dispatch: expect 30-60min total; rate-gate 90min
+
+CONDUCTOR-HEARTBEAT: 2026-08-14T22:46:40Z [R40 open — SM-R-6 ACK; vcc6h draining (advisory_locks=1, idle-in-txn=1574s/346s, timeout fires ~22:49Z); OPT-N1+N2 builders DISPATCHED (background agents); session-open posted to campaign-coordination 218b917cd]
