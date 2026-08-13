@@ -449,3 +449,13 @@ RUN-TERMINAL: SESSION-Δ3-PENDING-4 (not COMPLETE — FIELD-INTEGRATED outstandi
 7. Post SESSION-DONE-Δ3 to coordination
 
 RUN-TERMINAL: SESSION-Δ3-PENDING-4b (not COMPLETE — FIELD-INTEGRATED outstanding; Δ1 implementing timeout fix; R1 re-proof PASS; R2 baseline updated)
+
+**SESSION-4 CLOSE (16:56Z):**
+- Coordination advisory posted (cc52574ec, campaign-coordination)
+- Δ1 R30 PARKED-NATIVE confirmed: fix is DONE but A6 held pending native signal
+- All session-4 findings documented; worktrees cleaned; coordination posted
+- Session ends cleanly per LONG-RUN AUTONOMY RULES
+
+**WHAT ONE RELAUNCH FINISHES:** When FIELD-INTEGRATED is posted: gochara_forecast_get(domain=marriage, 2020-2030) → verify marriage in roots; kala_ahead_get → verify field_snapshot_id=kfs_...; record both in γ ledger; post SESSION-DONE-Δ3.
+
+RUN-TERMINAL: SESSION-Δ3-PENDING-4-CLOSE
