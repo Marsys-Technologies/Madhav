@@ -459,3 +459,59 @@ RUN-TERMINAL: SESSION-Δ3-PENDING-4b (not COMPLETE — FIELD-INTEGRATED outstand
 **WHAT ONE RELAUNCH FINISHES:** When FIELD-INTEGRATED is posted: gochara_forecast_get(domain=marriage, 2020-2030) → verify marriage in roots; kala_ahead_get → verify field_snapshot_id=kfs_...; record both in γ ledger; post SESSION-DONE-Δ3.
 
 RUN-TERMINAL: SESSION-Δ3-PENDING-4-CLOSE
+
+### 2026-08-13 22:32 IST — Δ3 attempt 5 session-open (FIELD-INTEGRATED still pending; native-park confirmed)
+
+CONDUCTOR-HEARTBEAT: 2026-08-13T17:01:57Z pid=87233 host=Montys-MacBook-Pro.local session=Δ3
+
+[STEP-0 OPEN: liveness CLEAN (stored PID 85695 = run_dh_d3.sh supervisor, alive 1:12 elapsed, NOT a peer conductor; pgrep "CONDUCTOR of SAMPŪRTI-Δ3" = PEERS=NONE, sole conductor confirmed). Hygiene: no RUNNING Cloud Run executions (tkp7b=cancelledCount=1, s6zbw=succeeded, mv7c5=succeeded, all runningCount=0). No DB scope for Δ3. Coordination fetched (cc52574ec = my own session-4 advisory, last entry). Reconcile: full ledger matches reality, no drift.]
+
+**R30 NATIVE-PARK CONFIRMED (full context from Δ1 ledger):**
+
+Root cause of park (per Δ1 ledger R30, commit 951a27a92):
+- Cloud Audit logs show **deliberate CancelExecution calls** by `mail.abhisek.mohanty@gmail.com`:
+  - A4 (mv7c5): cancelled 2026-08-13T16:05:42Z (21:35 IST)
+  - A5 (tkp7b): cancelled 2026-08-13T16:32:48Z (22:02 IST)
+- Both are `google.cloud.run.v1.Executions.CancelExecution` — deliberate human override, NOT system failures
+- Δ1 correctly NOT redispatching: "Conductor does NOT redispatch while native is actively cancelling"
+- This is a LEGITIMATE park (native explicit action), NOT a FALSE-BLOCKER-PARK
+
+**S7459 TIMEOUT FIX (IMPLEMENTED by Δ1, R30 park window):**
+| file | change |
+|---|---|
+| db.py | idle_in_transaction_session_timeout: 0 → 1800000ms (both startup option + SET statement) |
+| run_ka_sangam_prod.py | SET idle_in_transaction_session_timeout: 0 → 1800000 |
+| run_ph_pratikara_prod.py | SET idle_in_transaction_session_timeout: 0 → 1800000 |
+| test_mr39_idle_timeout_connection_setup.py | assertions + live demo: 0 → 1800000 |
+
+Fix is IMPLEMENTED but NOT DEPLOYED (no CI/PR opened — just local changes in Δ1's session, commit 06c04b72a on sampurti/integration). A6 dispatch held pending native signal.
+
+**Δ1 SESSION STATUS (22:22 IST close):**
+- ka_kshetra: state=incomplete, rows_written=2,063,838 (74 substeps committed, checkpoint resumable)
+- build_run 777c3681: state=failed
+- advisory_locks=0
+- No active Cloud Run executions
+
+**Δ3 LANE STATUS (session 5):**
+| Lane | Status | Notes |
+|------|--------|-------|
+| R1 | MERGED + MCP PROOF PASS ✓ | Last verified 16:51Z (session 4); 27 classes, 270 substeps ✓ |
+| R2 | DEPLOYED; MCP PROOF PENDING | db.py 3 marriage rows in legacy_flat; need corpus refresh via FIELD-INTEGRATED |
+| R3 | DONE ✓ | sampurti/vyakhya corrections committed |
+| R4 | BLOCKED | FIELD-INTEGRATED not posted; gated on native signal → A6 → parity → re-field |
+
+**INDEPENDENT WORK:** NONE — all remaining Δ3 scope gated on FIELD-INTEGRATED.
+
+Per LONG-RUN AUTONOMY RULES (BLOCKED ≠ STOP): All Δ3 remaining work gated on FIELD-INTEGRATED, which is gated on native signal to resume A6. Native explicitly cancelled A4+A5 — this is a human-directed pause, not a system blocker to work around. No independent Δ3 work available.
+
+**NEXT-ACTION (next session):**
+1. Poll coordination for FIELD-INTEGRATED marker (post by Δ1 after native resumes A6 → ka_kshetra=lit → parity gate → re-field)
+2. Check Cloud Run for A6 execution (new build post-native signal)
+3. On FIELD-INTEGRATED: `gochara_forecast_get(chart_id=482012f1..., domain=marriage, date_range=2020-2030)` → verify marriage row 2024-02-05→2034-01-30 in roots (resolution='era'), NOT legacy_flat; fallback: achievement_recognition class
+4. On FIELD-INTEGRATED: `kala_ahead_get(chart_id=482012f1...)` → verify field_snapshot_id=kfs_... (not field_not_yet_built); check filed_count
+5. Record both proofs in γ ledger (sampurti/vyakhya append-only)
+6. Post SESSION-DONE-Δ3 to coordination
+
+**WHAT ONE RELAUNCH FINISHES:** When FIELD-INTEGRATED is posted: gochara_forecast_get(domain=marriage, 2020-2030) → marriage in roots; kala_ahead_get → field_snapshot_id=kfs_...; record in γ ledger; SESSION-DONE-Δ3.
+
+RUN-TERMINAL: SESSION-Δ3-PENDING-5 (not COMPLETE — FIELD-INTEGRATED outstanding; native-park on A6; supervisor relaunches)
