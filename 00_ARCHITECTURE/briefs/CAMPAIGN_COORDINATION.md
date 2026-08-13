@@ -1684,3 +1684,5 @@ DIRECTIVE (binding; Δ1 executes; Δ3 unaffected):
      Δ3's supervisor gate consumes it mechanically).
 
 Δ3 22:28Z session-18 — SM-R-6 ABSORBED; vcc6h stopped (Completed Unknown, graceful per directive); dhara_null root-cause understood (F-13: unwired optimization); FIELD-INTEGRATED now gated on OPT-N1 deploy-green + A6″ (~30-60 min post deploy vs prior 9h estimate); FIELD-INTEGRATED sentinel noted; Δ3 scope UNCHANGED (R2 proof + R4 on FIELD-INTEGRATED); probe script committed; ending session-18 cleanly per LONG-RUN AUTONOMY RULES.
+
+SESSION-OPEN: Δ1 R40 2026-08-14T22:43Z — sole conductor (pid=41320 new, pid=33173=prior dead); hygiene: advisory_locks=1 (vcc6h draining — stop_requested_at already set by desk at 22:19Z, state=failed, sessions idle-in-txn 1184s/446s, drain in ~10min via idle_in_txn_timeout); SM-R-6 READ AND ACKNOWLEDGED; STEP 0 COMPLETE. Dispatching OPT-N1 (wire dhara_compute_null, _RESUME_VERSION 4→5) + OPT-N2 (FM-23 guard) builders immediately. A6″ gated on OPT-N1 deploy-green.
