@@ -2001,3 +2001,55 @@ CONDUCTOR-HEARTBEAT: 2026-08-13T11:31+05:30 (CONDUCTOR of SAMPŪRTI-α) pid=new 
 
 ---
 
+## Heartbeat: 2026-08-13T11:40+05:30 — R12 SESSION OPEN; A3 sd2ph ALIVE (marriage:3 in flight)
+
+CONDUCTOR-HEARTBEAT: 2026-08-13T11:40+05:30 (CONDUCTOR of SAMPŪRTI-α) pid=new [R12 launch — sole conductor confirmed; A3 sd2ph alive (85/534, marriage:3 in flight)]
+
+### STEP 0 — COMPLETE (R12)
+
+**LIVENESS (FM-10/11):**
+- pgrep "CONDUCTOR of SAMPŪRTI-α": no match (prior sessions all dead)
+- No cron monitor persisted from R11 (session-level cron expired)
+- Sole SAMPŪRTI-α conductor: CONFIRMED (this session)
+
+**HYGIENE:**
+- cloud-sql-proxy port 5433: ALIVE (PID 72597, uptime since 1:56AM) ✓
+- cloud-sql-proxy port 5434 (β): ALIVE (PID 72369) — β's, not ours ✓
+- Advisory locks: 1 (orchestrator sd2ph active) ✓ EXPECTED
+- build_runs 8ddf6162: state=`running`, started_at=05:46:58 UTC ✓
+- No phantom running rows ✓
+
+**COORDINATION:**
+- L-4: ACTIVE (A3 checkpoint-resume, expiry 16:00 IST = 10:30 UTC) ✓ — our lease
+- No UTKARṢA lease conflicts ✓
+
+**RECONCILE (FM-09):**
+- A3 exec sd2ph: alive, build_run 8ddf6162 = `running`, ka_kshetra = `building` ✓
+- Substeps: 85/534 committed; last = `stage5:marriage:2` at 05:59:27 UTC
+- `stage5:marriage:3` in progress (~11 min since marriage:2, pace ~8.5 min/substep → normal)
+- G2-EARLY ADJUDICATION-2: CLOSED-DEFER (career_entry + career_change Tier N-iii) ✓
+
+### A3 sd2ph STATUS (06:10 UTC)
+
+| Field | Value |
+|---|---|
+| build_run | 8ddf6162, state=`running` |
+| ka_kshetra.state | `building` ✅ |
+| Substeps committed | 85/534 |
+| Last substep | stage5:marriage:2 at 05:59:27 UTC |
+| Current substep | stage5:marriage:3 (in flight) |
+| Advisory lock | 1 ✅ |
+| L-4 expiry | 10:30 UTC (16:00 IST) — ~4.5h remaining |
+
+**ETA:** 6 slow classes × 8 substeps × 8.5 min + stage6/7 overhead ≈ 16:00–16:30 UTC (21:30–22:00 IST)
+**L-4 renewal required:** before 10:30 UTC; recommend extending to 22:00 IST
+
+### NEXT ACTIONS
+
+1. [RUNNING] Monitor A3 sd2ph every 30 min — poll substep count + ka_kshetra.state
+2. [~09:30 UTC] Renew L-4 lease before 10:30 UTC expiry → extend to 22:00 IST
+3. [ON ka_kshetra lit] Measurement #5: kala_now_get / kala_ahead_get / gochara_forecast_get
+4. [ON #5] G-P3a gate → G-P3b + Brilliance Gate #1 → FIELD-INTEGRATED marker → γ unblocked
+
+
+
