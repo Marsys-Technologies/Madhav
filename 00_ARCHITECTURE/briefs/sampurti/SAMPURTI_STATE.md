@@ -3536,3 +3536,5 @@ CONDUCTOR-HEARTBEAT: 2026-08-14T01:21+05:30 [R37 — Ganga Quality Gate merge-gr
 CONDUCTOR-HEARTBEAT: 2026-08-14T01:26+05:30 [R37 — merge queue PR #1270 state=MERGEABLE (both merge-group CI green: Ganga+TAP); PR still OPEN pending auto-merge; monitoring]
 
 CONDUCTOR-HEARTBEAT: 2026-08-14T01:31+05:30 [R37 — PR #1270 MERGED (19:44:02Z, merge commit 0e33cce00c); deploy not yet started (Ganga CI still in_progress on push, deploy likely triggers after); monitoring for Build & Deploy Pipeline Job Image run → lock_timeout verification → A6′ dispatch]
+
+CONDUCTOR-HEARTBEAT: 2026-08-14T01:41+05:30 [R37 — PARĪKṢAKA PASS (image tag=brahma-pipeline:0e33cce00c, lock_timeout+GUC smoke-log confirmed on all 3 targets); A6′ DISPATCHED — execution=brahma-build-pipeline-job-7pv5m, run_id=ce704a7f-6b3a-48ae-98b1-745f2ad973d9; FM-21 active hang watch ACTIVE; rate-gate clock starts now]
