@@ -3670,3 +3670,5 @@ Monitor OPT-N1 + OPT-N2 builders. When both PRs open and CI runs:
 - A6″ dispatch: expect 30-60min total; rate-gate 90min
 
 CONDUCTOR-HEARTBEAT: 2026-08-14T22:46:40Z [R40 open — SM-R-6 ACK; vcc6h draining (advisory_locks=1, idle-in-txn=1574s/346s, timeout fires ~22:49Z); OPT-N1+N2 builders DISPATCHED (background agents); session-open posted to campaign-coordination 218b917cd]
+
+CONDUCTOR-HEARTBEAT: 2026-08-14T04:23+05:30 [R40 — OPT WAVE COMPLETE; PR #1272 (OPT-N1: dhara_compute_null wiring, _RESUME_VERSION 4→5) open, CI running; PR #1271 (OPT-N2: FM-23 guard) open, CI mostly green (unit tests PASS, Governance Gates pending — expected: FM-23 guard fails for dhara_null until OPT-N1 merges); PARĪKṢAKA (opus) being dispatched on OPT-N1 while CI runs; sequence: OPT-N1 merge first (wires dhara_null → FM-23 PASS) → update OPT-N2 branch → OPT-N2 merge → deploy-green → A6″]
