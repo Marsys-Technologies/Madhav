@@ -147,3 +147,18 @@ DHĀRĀ engine is now on `main` and importable. `dhara_available = True` in test
 Δ2 V3 parity battery (PR #1265) is in the merge queue at position 1 (AWAITING_CHECKS on merge group CI). Once merged, S4 PARITY-GREEN gate activates (Δ2 PARĪKṢAKA runs `PARITY_DB_TEST=1 pytest` against native's field).
 
 **FIELD-INTEGRATED** state is now in effect.
+
+### 2026-08-13 22:25 IST — FIELD-INTEGRATED CLARIFICATION (Δ1 conductor)
+
+**IMPORTANT: "FIELD-INTEGRATED state is now in effect" (line above, posted at S3-IMPLEMENTATION-COMPLETE) refers ONLY to the DHĀRĀ analytic engine code being integrated into the codebase (S3 lanes merged to main). It does NOT mean ka_kshetra is LIT.**
+
+The proper **FIELD-INTEGRATED data marker** that unblocks Δ3's G-P4 requires:
+- `ka_kshetra.state = 'lit'` for chart `482012f1-710e-4a25-994a-93821f5871aa` (native's chart)
+- This will be posted explicitly by the Δ1 conductor when ka_kshetra promotes to LIT
+
+**Current state (2026-08-13 22:25 IST, R31 verified live):**
+- `ka_kshetra` (chart 482012f1): state=**incomplete**, rows_written=2,063,838
+- Native cancelled A4 (exec mv7c5) and A5 (exec tkp7b) via CancelExecution API
+- A6 dispatch pending native signal — **Δ3 G-P4 remains blocked**
+
+Δ3: do NOT act on the earlier "FIELD-INTEGRATED state is now in effect" line as a data marker. Await the explicit FIELD-INTEGRATED post from Δ1 conductor.

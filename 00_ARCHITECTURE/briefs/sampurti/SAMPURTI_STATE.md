@@ -3020,3 +3020,77 @@ During this park window, implemented the S7459-directed `idle_in_transaction_ses
 CONDUCTOR-HEARTBEAT: 2026-08-13T22:12+05:30 [R30 PARKED-NATIVE — builds cancelled by native; S7459 timeout fix implemented (db.py + tests + prod runners: idle_in_transaction_session_timeout 0→1800000); awaiting native signal before A6 redispatch]
 
 CONDUCTOR-HEARTBEAT: 2026-08-13T22:22+05:30 [R30 poll — PARKED-NATIVE stable: ka_kshetra=incomplete rows=2,063,838 (74 substeps committed, checkpoint resumable per orphan-watchdog last_error); advisory_locks=0; no new build_runs; A6 held; session closing]
+
+---
+
+## R31 — SAMPŪRTI-Δ1 CONDUCTOR (2026-08-13T22:25+05:30)
+
+**Identity:** CONDUCTOR of SAMPŪRTI-Δ1 (supervisor relaunch; R30 closed 22:22 IST)
+
+### LIVENESS CHECK (FM-10/11/21)
+
+- current_conductor.pid was absent (R30 session ended, file not carried over)
+- SELF=$(cat dh-d1-logs/current_conductor.pid) → EXIT_CODE:1 (missing)
+- PEERS=$(pgrep -f "CONDUCTOR of SAMPŪRTI-Δ1" | grep -vw 0) → none
+- My PID: 81176 (written to current_conductor.pid) → sole conductor confirmed ✅
+
+### HYGIENE CHECK (FM-06 amended)
+
+- Cloud Run executions: tkp7b=CANCELLED (16:33 UTC, cancelTime=16:32:48Z), mv7c5=CANCELLED (16:05:49 UTC, cancelTime=16:05:42Z), s6zbw=succeeded (no-op, 10s) ✅
+- runningCount=0 across all executions ✅
+- advisory_locks = 0 ✅
+- active build_runs (state IN planned,running) = 0 ✅
+- Cloud SQL proxy: already up on 127.0.0.1:5433 ✅
+
+### STATE RECONCILIATION (FM-09)
+
+**DB state (live queries):**
+
+| asset | chart | state | rows_written |
+|---|---|---|---|
+| ka_kshetra | 482012f1 (native) | **incomplete** | 2,063,838 |
+| ka_kshetra | 1c826d5a (Abhinandan) | lit | 837,992 |
+
+**Build runs:**
+
+| run_id | state | triggered_by |
+|---|---|---|
+| 777c3681 (A5) | failed | sampurti-a5-chart1-kshetra-dhara |
+| af759e40 (A4) | stopped | sampurti-a4-chart1-kshetra-dhara |
+| 30241b84 (A3) | failed | sampurti-a3-chart1-kshetra-postbeta |
+
+**Campaign coordination:** Last entry is S3-IMPLEMENTATION-COMPLETE (17:55 IST). "FIELD-INTEGRATED state is now in effect." at line 149 refers to DHARA code integration into codebase — NOT the ka_kshetra=LIT data marker. **Clarification appended to coordination file this session** (see below).
+
+**Open PRs:** None from SAMPŪRTI territory. S7459 fix is committed to sampurti/integration (06c04b72a) but not yet in a dedicated PR to main — will ride the integration→main gate packet when field LITs.
+
+### PARKED-NATIVE STATUS CONFIRMED
+
+Native cancelled A4 (mv7c5, 21:35 IST) and A5 (tkp7b, 22:02 IST) via explicit CancelExecution API calls. No native signal for A6 redispatch in coordination file or any other surface. R30 PARKED-NATIVE posture carries forward.
+
+**No A6 dispatch this session.** Per rails: record + continue with work that does not need this dependency.
+
+### COORDINATION FILE AMBIGUITY — CORRECTED
+
+The "FIELD-INTEGRATED state is now in effect" line posted at S3-IMPLEMENTATION-COMPLETE (17:55 IST) was ambiguous: it referred to DHARA code being integrated into the codebase (S3 lane PRs merged to main). It did NOT mean ka_kshetra=LIT for the native's chart. The proper FIELD-INTEGRATED data marker (which unblocks Δ3's G-P4) requires `ka_kshetra.state='lit'` for chart 482012f1 and has NOT been posted.
+
+Clarification appended to CAMPAIGN_COORDINATION.md this session.
+
+### NEXT-ACTION
+
+**BLOCKED (PARKED-NATIVE):**
+- A6 field rebuild dispatch — awaiting native signal (two consecutive cancellations, A4+A5)
+- FIELD-INTEGRATED marker — requires ka_kshetra=LIT
+- S4 parity gate, G-P1, SMR-2, P3 DVIPRAMĀṆA, M5, Brilliance Gate #1 — all gated on LIT
+
+**When native signal arrives (resume checklist):**
+1. Verify advisory_locks=0 + no active Cloud Run executions
+2. Set ka_kshetra.state='dormant' for 482012f1 (reset incomplete state)
+3. Dispatch A6: `gcloud run jobs execute brahma-build-pipeline-job --region=asia-south1 --args="--run-id,<new_run_id>"`
+   - Create new build_run first, OR reuse checkpoint logic — check if 777c3681 checkpoint substeps can be adopted
+   - 74 substeps were committed at park; 460 remaining
+4. Monitor until LIT, then run S4 parity gate + post FIELD-INTEGRATED
+
+**ONE-LINE ANSWER:**
+Native signals resume → A6 dispatch with checkpoint (460 substeps remaining) → ka_kshetra=LIT → FIELD-INTEGRATED posted → S4 parity → G-P1/M5/Brilliance Gate #1.
+
+CONDUCTOR-HEARTBEAT: 2026-08-13T22:25+05:30 [R31 open; PARKED-NATIVE confirmed; DB/CloudRun verified clean; FIELD-INTEGRATED coordination ambiguity corrected; awaiting native signal for A6]
