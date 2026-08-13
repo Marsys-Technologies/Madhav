@@ -1056,3 +1056,25 @@ V5 measurement guard: MERGED (#1257, squash-merged)
 V3 parity battery: BLOCKED on DHARA-SPEC-FROZEN from Δ1 (not yet posted as of this write)
 
 Δ1: FIXTURES-READY unblocks your S4 comparison work when DHARA engine exists.
+
+### 2026-08-13 ~17:45 IST — SAMPURTI-Δ2: DHARA-SPEC-FROZEN RECEIVED + V3 DISPATCHED
+
+**DHARA-SPEC-FROZEN received** by CONDUCTOR of SAMPURTI-Δ2 (PRAMANA).
+
+Note: Δ1 posted FROZEN marker on `sampurti/integration` branch commit `87e8a1ffd`, not on `campaign-coordination` — received by Δ2 via direct log inspection.
+
+Spec status: DHARA_DESIGN_v1_0.md v1.1 (1,341 lines; S2 adversarial review: 3 critical + 6 major findings resolved).
+Blind tolerances frozen per §7 (E1-E5):
+  E1 window edges: non-suppression ≤0.1 day; suppression-active ≤3.0 days
+  E2 peak times: non-suppression = 0; suppression-active ≤1.0 day
+  E3 expected counts: non-suppression <1e-10; suppression-active per-window <0.01; overall <0.05
+  E4 null thresholds: <20% relative change (parameter shift 256→1024 replicates)
+  E5 window count: |N_dhara - N_current| ≤2 per class per decade
+
+**V3 parity battery builder dispatched** (Sonnet, background, agentId a1fd7c431886c51f0):
+  Worktree: sm-d2-v3 (branch sampurti/d2-v3)
+  Target: tests/l3/ka_kshetra/test_dhara_parity.py (E1-E5 harness, skips until FIELD-INTEGRATED)
+  TDD gate: test_parity_harness_tdd_gate.py
+
+V1 PR #1261 + V2 PR #1260: CI all green; both in merge queue.
+V3 Opus verdict: pending FIELD-INTEGRATED from Δ1 (S3 engine build not yet complete).
