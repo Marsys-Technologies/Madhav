@@ -924,3 +924,70 @@ RUN-TERMINAL: SESSION-Δ3-PENDING-13 (FIELD-INTEGRATED outstanding; A6 dispatch 
 - NEXT-ACTION current (see above)
 
 RUN-TERMINAL: SESSION-Δ3-PENDING-13 (FIELD-INTEGRATED outstanding; A6 dispatch imminent — deploy in progress; supervisor relaunches)
+
+---
+
+## SESSION-14 — 2026-08-13T18:10Z (23:40 IST)
+
+CONDUCTOR-HEARTBEAT: 2026-08-13T18:10Z pid=51723 host=Montys-MacBook-Pro.local session=Δ3-14
+
+### STEP-0 (session-14)
+
+**Liveness:** CLEAN — stored PID=48354 (dead; previous session attempt); `pgrep -f "CONDUCTOR of SAMPŪRTI-Δ3"` = NONE (excluding stored PID). Sole conductor confirmed. PID 51723 written to dh-d3-logs/current_conductor.pid.
+
+**Hygiene:** CLEAN — A6 (brahma-build-pipeline-job-crfzx) is a LIVE CLOUD BUILD (runningCount=1 since 18:05:11Z UTC). Per amended hygiene rule (2026-08-13): a RUNNING cloud execution's lock is a LIVE BUILD — touch nothing. No DB scope for Δ3.
+
+**Coordination (fetched 18:10Z):** Last entry = Δ1 R36 18:04Z (a6e0a1419): "A6 dispatched (brahma-build-pipeline-job-crfzx, run-id=0e2748f7), L-8 lease ACTIVE". FIELD-INTEGRATED: NOT POSTED.
+
+**Reconcile (FM-09) — KEY STATE CHANGES since session-13 (17:59Z):**
+
+| Surface | Session-13 state | Session-14 reality |
+|---------|-----------------|-------------------|
+| Deploy run 31728387539 | IN_PROGRESS | **COMPLETED SUCCESS** — Build & Deploy Pipeline Job Image ✓ (8m43s), Sidecar ✓ (5m3s), Web ✓ (8m54s) |
+| A6 | Not dispatched | **RUNNING** — brahma-build-pipeline-job-crfzx, started 18:05:11Z UTC, run-id=0e2748f7 |
+| Δ1 R36 | Not yet started | **ACTIVE** — L-8 lease CLAIMED, SM-R-3 read, A6 dispatched, monitoring for ka_kshetra=lit |
+| FIELD-INTEGRATED | NOT POSTED | NOT POSTED — A6 at ~460 substeps remaining, ~4+ hours from 18:05Z |
+
+**Deploy details (run 31728387539 — COMPLETED):**
+- Gate & detect changed paths: SUCCESS ✓
+- Build & Deploy Pipeline Job Image: SUCCESS ✓ (8m43s) ← S7459 fix NOW LIVE in pipeline job
+- Build & Deploy Sidecar: SUCCESS ✓ (5m3s)
+- Build & Deploy Web: SUCCESS ✓ (8m54s)
+- Build & Deploy MCP: SKIPPED
+- Build Check (PR only): SKIPPED (main push)
+
+**A6 details (brahma-build-pipeline-job-crfzx):**
+- Started: 2026-08-13T18:05:11Z
+- Status: RUNNING (runningCount=1, succeeded=0, failed=0)
+- Container started in 6.29s; provisioned + ResourcesAvailable=True
+- S7459 timeout fix (idle_in_transaction_session_timeout=1800000ms) is live in this image
+- Checkpoint: 74/534 substeps, 2,063,838 rows; ~460 substeps remaining
+- Expected ka_kshetra=lit: ~22:00-22:30Z UTC (4+ hours from dispatch)
+
+**Δ3 LANE STATUS (session 14, unchanged):**
+| Lane | Status | Notes |
+|------|--------|-------|
+| R1 | MERGED + MCP PROOF PASS ✓ | 27 classes, 270 substeps, ka_gochara_v3_century_materialize ✓ |
+| R2 | DEPLOYED; MCP PROOF PENDING | Fix in place (sidecar v3.2); awaiting corpus refresh (FIELD-INTEGRATED) |
+| R3 | DONE ✓ | sampurti/vyakhya corrections committed (66e35c216) |
+| R4 | READY-ON-SIGNAL | Awaiting FIELD-INTEGRATED |
+
+**Independent Δ3 work:** NONE. A6 is running — FIELD-INTEGRATED will post when ka_kshetra=lit + S4 parity. No Δ3 work can proceed before then.
+
+**WHAT ONE RELAUNCH FINISHES:** When FIELD-INTEGRATED posts:
+1. `gochara_forecast_get(chart_id=482012f1..., domain=marriage, date_range=2020-2030)` → verify marriage row in roots (resolution='era'), NOT legacy_flat; is_timing_window=true nested under era parent
+2. `kala_ahead_get(chart_id=482012f1...)` → verify field_snapshot_id=kfs_... (not 'field_not_yet_built')
+3. Record both proofs in γ ledger (sampurti/vyakhya append-only)
+4. Post SESSION-DONE-Δ3 to coordination
+
+**NEXT-ACTION (session-15):**
+1. Poll coordination for FIELD-INTEGRATED marker (ka_kshetra.state='lit' for chart 482012f1)
+2. Verify A6 crfzx still running (or completed)
+3. On FIELD-INTEGRATED: R2 MCP proof + R4 G-P4 → γ ledger → SESSION-DONE-Δ3
+
+RUN-TERMINAL: SESSION-Δ3-PENDING-14 (A6 crfzx RUNNING since 18:05Z; FIELD-INTEGRATED ~22:00Z UTC; supervisor relaunches)
+
+**SESSION-14 CLOSE (18:10Z / 23:40 IST):**
+- No uncommitted changes elsewhere; no active worktrees from this session; no leases (Δ3 has no DB scope)
+- NEXT-ACTION current (see above)
+
