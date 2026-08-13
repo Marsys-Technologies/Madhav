@@ -70,7 +70,7 @@ In `run_substep` else branch (R8.12 point-canonical gate), flat intervals get `(
 
 ## NEXT-ACTION
 
-PRs #1258+#1259 in merge queue. Awaiting merge queue processing → deploy → MCP proofs. Polling FIELD-INTEGRATED.
+R1+R2 merged and deployed. R1 MCP PROOF: PASS. Polling FIELD-INTEGRATED (Δ1 S3 engine build in progress — L1+L2 merged, L3+L4 in merge queue). On FIELD-INTEGRATED: run R2 MCP proof + R4 G-P4.
 
 ## LOG
 
