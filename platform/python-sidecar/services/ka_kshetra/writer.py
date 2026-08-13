@@ -180,6 +180,9 @@ class _ClassContext:
     evaluator: S4.FieldEvaluator
     null_accumulator: S5.NullAccumulator
     temporal_shape: str
+    #: Full-horizon DHARA segments, built once per event class when
+    #: ENGINE_VERSION == 'analytic'.  None when 'sampled'.
+    dhara_segments: "list | None" = None
 
 
 @register(ASSET_ID)
@@ -430,8 +433,10 @@ class KaKshetraWriter(WriterBase):
         ev = cctx.evaluator
         from services.ka_kshetra.engine_config import ENGINE_VERSION
         if ENGINE_VERSION == 'analytic':
-            from services.ka_kshetra.dhara_sweep import dhara_build_segments
-            segments = dhara_build_segments(ev)
+            # Full-horizon segments built once in _class_context(); filter to
+            # this decade's window [d0, d1] to match the per-decade substep model.
+            segments = [s for s in cctx.dhara_segments
+                        if s.t_start >= d0 and s.t_end <= d1]
         else:
             knots = [t for t in ev.breakpoints() if d0 < t < d1]
             segments = integrator.build_segments([d0] + knots + [d1], ev.ln_lambda)
@@ -1679,12 +1684,18 @@ class KaKshetraWriter(WriterBase):
             baseline_source=source,
             extra_breakpoints=self._shared_extra_breakpoints,
         )
+        from services.ka_kshetra.engine_config import ENGINE_VERSION as _EV
+        dhara_segs = None
+        if _EV == 'analytic':
+            from services.ka_kshetra.dhara_sweep import dhara_build_segments
+            dhara_segs = dhara_build_segments(evaluator)
         ctx = _ClassContext(
             event_class=event_class,
             evaluator=evaluator,
             null_accumulator=S5.NullAccumulator(replicates=S5.DEFAULT_REPLICATES,
                                                 horizon_days=HORIZON_DAYS),
             temporal_shape=shape,
+            dhara_segments=dhara_segs,
         )
         self._class_cache[event_class] = ctx
         return ctx
