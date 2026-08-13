@@ -2289,3 +2289,80 @@ CONDUCTOR-HEARTBEAT: 2026-08-13T12:18+05:30 (CONDUCTOR of SAMPŪRTI-α) pid=new 
 2. [ON ka_kshetra lit] Measurement #5: kala_now_get / kala_ahead_get / gochara_forecast_get (SMR-1: proceed directly, M4 stands)
 3. [ON #5] G-P3a gate → G-P3b + Brilliance Gate #1 → FIELD-INTEGRATED marker → γ unblocked
 
+---
+
+## Heartbeat: 2026-08-13T12:20+05:30 — R17 SESSION OPEN; A3 exec szwkw RUNNING; α-02 dispatching
+
+CONDUCTOR-HEARTBEAT: 2026-08-13T12:20+05:30 (CONDUCTOR of SAMPŪRTI-α) pid=71589 [R17 launch — sole conductor confirmed; A3 exec szwkw RUNNING (85/534, marriage:6 last @ 06:32 UTC, ~3 min into new run — startup/fingerprint phase); α-02 DISPATCHING now per EMERGENCY DIRECTIVE]
+
+### STEP 0 — COMPLETE (R17)
+
+**LIVENESS (FM-10/11):**
+- pgrep "CONDUCTOR of SAMPŪRTI-α": no match (R16 DEAD)
+- Sole SAMPŪRTI-α conductor: CONFIRMED (this session, pid=71589)
+
+**HYGIENE (AMENDED RULE — 2026-08-13 EMERGENCY DIRECTIVE):**
+- cloud-sql-proxy port 5433: ALIVE (PIDs 61752/72369/72597) ✓
+- Cloud Run exec brahma-build-pipeline-job-szwkw: runningCount=1 ✅ LIVE BUILD
+- → AMENDED RULE FIRES: advisory lock is a LIVE BUILD's poll connection. Touch NOTHING.
+- Advisory locks: 1 (orchestrator szwkw active) ✓ EXPECTED per amended FM-06
+- build_runs: 1 active (30241b84 state=running) ✓
+
+**COORDINATION (origin/campaign-coordination read):**
+- L-4: ACTIVE, expires 18:00 IST (12:30 UTC) ✓ — our lease
+- EMERGENCY DIRECTIVE adopted (2026-08-13 12:2x IST): amended hygiene rule in effect;
+  α-02 perf triad dispatch ORDERED; sizing decision pending from native
+- No UTKARṢA lease conflicts ✓
+
+**RECONCILE (FM-09, adopt-never-redo):**
+- A3 exec szwkw (run 30241b84): DB verified — state=running, ka_kshetra=building,
+  substeps=85/534, last=stage5:marriage:6 @ 06:32:04 UTC, kala_field_windows=2,236
+  (consistent with R16 dispatch at 06:47 UTC; ~3 min elapsed, startup/fingerprint phase normal)
+- sd2ph FAILED at 06:40:05 UTC (exit code 1); zombie lock correctly terminated by R16 BEFORE
+  amended rule applied (lock was genuinely dead — sd2ph process had exited); no fratricide in R16
+- SELF-ERROR RECORDED (per EMERGENCY DIRECTIVE): α-02 perf triad was NEVER LANDED —
+  zero hazard.py/stage4_field.py performance commits since Aug-12; G-P0 gate requirement not met.
+  Named self-error; dispatching NOW per explicit directive order.
+- SMR-1: M4 STANDS (PRATINIDHI ruling) ✓
+- G2-EARLY ADJUDICATION-2: CLOSED-DEFER (career_entry + career_change → Tier N-iii) ✓
+- A1 code deployed (dbdbb30ac); A2' 28/29 assets lit ✓
+
+### A3 exec szwkw STATUS (06:50 UTC, R17 open)
+
+| Field | Value |
+|---|---|
+| Run ID | 30241b84-fc06-4ed5-a83c-8e9fe835ef3c |
+| Cloud Run exec | brahma-build-pipeline-job-szwkw |
+| started_at | 2026-08-13T06:47:01 UTC |
+| build_run.state | running ✅ |
+| ka_kshetra.state | building ✅ |
+| Advisory locks | 1 (orchestrator active) ✅ |
+| Substeps committed | 85/534 (DB verified 06:50 UTC) |
+| Last substep | stage5:marriage:6 @ 06:32:04 UTC |
+| Phase | Startup/fingerprint-skip phase (~3 min into run) |
+| ETA marriage:7 commit | ~06:55 UTC (stage 0-4 fast skip + marriage:7 execution) |
+| ETA ka_kshetra lit | ~11:00-11:30 UTC (~17:00 IST) |
+| L-4 expiry | 18:00 IST = 12:30 UTC — sufficient ✓ |
+
+**NATIVE SIZING DECISION (pending):** EMERGENCY DIRECTIVE says "await sizing decision posted shortly."
+No sizing decision in coordination file as of this read. Options as understood from directive context:
+(A) Local resume ~1.5-3h, (B) Cloud resized + α-02, (C) both parallel. szwkw is already running
+(pre-directive dispatch). Per amended hygiene rule: leave it running.
+
+### SELF-ERROR LOG (EMERGENCY DIRECTIVE mandated)
+
+**SELF-ERROR-1: α-02 perf triad never dispatched (named defect)**
+- G-P0 gate explicitly required α-02 ≥2× measured speedup before field dispatches
+- Zero hazard.py/stage4_field.py performance commits landed since Aug-12
+- The "G-P0 gate requirement" that α-02 passes before field builds was NEVER enforced
+- Consequence: field builds (mq4b8, sd2ph, szwkw) run at ~50× penalty vs local (8 min/substep vs 10s)
+- Contributing factor: cloud job mis-sizing (2 vCPU/4Gi vs ~2GB EnvelopeIndex)
+- Dispatching α-02 NOW per EMERGENCY DIRECTIVE order
+
+### NEXT ACTIONS
+
+1. [DISPATCHING NOW] α-02 perf triad builder (sonnet/medium, TDD; per EMERGENCY DIRECTIVE)
+2. [RUNNING — LEAVE ALONE] A3 exec szwkw: monitor every 30 min per amended FM-06
+3. [PENDING — after szwkw completes] Await native's sizing decision for next build path
+4. [ON ka_kshetra lit + α-02 merged] Measurement #5 → G-P3a → G-P3b + Brilliance Gate #1 → FIELD-INTEGRATED
+
