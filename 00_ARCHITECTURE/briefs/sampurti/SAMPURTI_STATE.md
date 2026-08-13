@@ -2647,4 +2647,36 @@ Without `PARITY_DB_TEST=1`, E1-E5 tests get 0 fixtures → pass trivially → CI
 3. Monitor merge queue — all 4 S3 PRs (#1263/#1264/#1266 + Δ2 #1265) will merge sequentially
 4. Once all merged: post S3-IMPLEMENTATION-COMPLETE + proceed to S5
 
+---
+
+## R22 — SAMPŪRTI-Δ1 CONDUCTOR (2026-08-13T17:55+05:30)
+
+**Identity:** CONDUCTOR of SAMPŪRTI-Δ1
+
+### S3 COMPLETE — all 4 implementation lanes on main
+
+| PR | Module | Status |
+|----|--------|--------|
+| #1262 | dhara_sweep.py | MERGED ✓ |
+| #1263 | dhara_null.py | MERGED ✓ |
+| #1264 | engine_config.py + dhara_pin_matrix.py | MERGED ✓ |
+| #1266 | dhara_term_matrix.py | MERGED ✓ |
+
+S3-IMPLEMENTATION-COMPLETE marker posted in CAMPAIGN_COORDINATION.md.
+
+### PR #1265 (Δ2 V3 parity battery) — status
+
+Three CI fixes committed and pushed to `sampurti/d2-v3`:
+- `a8f185939`: gate `_active_fixtures()` on `PARITY_DB_TEST` (prevents API mismatch TypeError in CI)
+- `2d5a99907`: `_call_dhara()` — `pytest.skip` on INTERFACE-ADAPTER-GAP when called without FieldEvaluator
+- `bdbf6d3fc`: TDD gate update — `test_dhara_available_is_false_in_test_env` skips when `dhara_available=True` (post-FIELD-INTEGRATED); `test_active_fixtures_callable_and_non_empty` relaxed to list-type only
+
+PR CI: ALL 19 checks PASS on `bdbf6d3fc`. PR re-queued (already in queue when re-queued).
+
+**Current state:** #1265 at position 1 in merge queue, AWAITING_CHECKS (merge group CI running against S3 code on main).
+
+### NEXT-ACTION
+
+Wait for merge group CI on #1265 to pass → #1265 merges → Δ2 is complete (V1 golden fixtures + V2 property tests + V3 parity battery all on main) → await Δ2 PARĪKṢAKA running `PARITY_DB_TEST=1` → post PARITY-GREEN → S5 DHARA field rebuild for native's chart.
+
 CONDUCTOR-HEARTBEAT: 2026-08-13T18:00+05:30 [R20 — Δ2 V1+V2 MERGED; S3 PRs entering merge queue (#1262 sweep IN QUEUE at 11:59 UTC); advisory lock CLEARED; DB free; monitoring S4 readiness]

@@ -127,3 +127,22 @@ S3 (≤4 parallel Sonnet lanes) will begin dispatch now. Lanes:
 - sm-d1-null: vectorized null (dhara_null.py)
 - sm-d1-termat: term matrix (.npz artifact, refit path)
 - sm-d1-pinmat: (stage×class) pin matrix + engine_config.py
+
+### 2026-08-13 17:55 IST — S3-IMPLEMENTATION-COMPLETE
+
+**S3-IMPLEMENTATION-COMPLETE** — SAMPŪRTI-Δ1 conductor posts this marker.
+
+All four DHĀRĀ S3 implementation lanes have merged to main:
+
+| PR | Lane | Module | SHA |
+|----|------|--------|-----|
+| #1262 | sm-d1-sweep | `dhara_sweep.py` — event-driven sweep algorithm | MERGED |
+| #1263 | sm-d1-null | `dhara_null.py` — vectorized null (1024 replicates) | MERGED |
+| #1264 | sm-d1-pinmat | `engine_config.py` + `dhara_pin_matrix.py` — dual-engine flag + stage×class pin matrix | MERGED |
+| #1266 | sm-d1-termat | `dhara_term_matrix.py` — term matrix artifact (section 4, F-06/F-14) | MERGED |
+
+DHĀRĀ engine is now on `main` and importable. `dhara_available = True` in test environments.
+
+Δ2 V3 parity battery (PR #1265) is in the merge queue at position 1 (AWAITING_CHECKS on merge group CI). Once merged, S4 PARITY-GREEN gate activates (Δ2 PARĪKṢAKA runs `PARITY_DB_TEST=1 pytest` against native's field).
+
+**FIELD-INTEGRATED** state is now in effect.
