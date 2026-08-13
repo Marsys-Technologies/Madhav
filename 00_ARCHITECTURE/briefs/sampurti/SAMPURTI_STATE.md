@@ -2574,3 +2574,35 @@ Then await S4 (Δ2 FIXTURES-READY + PARITY-GREEN markers before proceeding to S4
 CONDUCTOR-HEARTBEAT: 2026-08-13T17:37+05:30 [R19 — S2 COMPLETE (7ee9eef4a, 14 findings, 10 amendments); DHARA-SPEC-FROZEN (87e8a1ffd); ALL 4 S3 LANES DISPATCHED (L1-sweep/L2-null/L3-pinmat dispatched R18; L4-termat dispatched R19); monitoring S3 PRs; exec szwkw zombie/advisory lock passive watch]
 
 CONDUCTOR-HEARTBEAT: 2026-08-13T17:52+05:30 [R19 UPDATE — advisory lock CLEARED (pg_locks advisory = 0 rows; zombie exec-szwkw resolved naturally); A3 sampled-engine restart moot per n1 DHĀRĀ-first (S5 DHARA rebuild supersedes); ALL 4 S3 PRs in merge queue (#1262 sweep, #1263 null, #1264 pinmat, #1266 termat); Δ2 PR #1265 (parity battery E1-E5) appeared; Δ2 V2 PR #1260 MERGED 11:50 UTC; monitoring CI and merge progress]
+
+---
+
+## R20 — SAMPŪRTI-Δ1 CONDUCTOR (2026-08-13T18:00+05:30)
+
+**Identity:** CONDUCTOR of SAMPŪRTI-Δ1, continuing R19 monitoring
+
+### Merge queue progress (12:00 UTC)
+
+| PR | Title | Status |
+|----|-------|--------|
+| #1260 | Δ2 V2: DHARA property-test harness | MERGED 11:50 UTC |
+| #1261 | Δ2 V1: golden fixtures (sampled engine snapshots) | MERGED 11:59 UTC |
+| #1262 | S3-L1: dhara_sweep.py | IN MERGE QUEUE 11:59 UTC |
+| #1263 | S3-L2: dhara_null.py | QUEUED (awaiting #1262) |
+| #1264 | S3-L3: engine_config.py + dhara_pin_matrix.py | QUEUED (awaiting #1263) |
+| #1265 | Δ2 V3: parity battery harness (E1-E5) | QUEUED (CI green) |
+| #1266 | S3-L4: dhara_term_matrix.py | CI RUNNING (termat) |
+
+### Advisory lock: CLEARED
+
+Advisory lock from exec szwkw zombie cleared naturally (pg_locks advisory = 0 rows). DB is free. Per n1 DHĀRĀ-first, A3 sampled-engine restart is MOOT — S5 DHARA rebuild supersedes.
+
+### S4 readiness
+
+Δ2 has V1 (golden fixtures, MERGED), V2 (property tests, MERGED), V3 (parity battery E1-E5, CI GREEN queued). Once S3 code is in main, the parity battery will run (all 11 parity tests SKIP until DHARA importable — they will activate once S3 merges).
+
+### NEXT-ACTION
+
+Wait for all S3+Δ2 PRs to merge → post S3-IMPLEMENTATION-COMPLETE in CAMPAIGN_COORDINATION.md → await Δ2 PARITY-GREEN marker → proceed to S5 (DHARA field rebuild for native's chart).
+
+CONDUCTOR-HEARTBEAT: 2026-08-13T18:00+05:30 [R20 — Δ2 V1+V2 MERGED; S3 PRs entering merge queue (#1262 sweep IN QUEUE at 11:59 UTC); advisory lock CLEARED; DB free; monitoring S4 readiness]
