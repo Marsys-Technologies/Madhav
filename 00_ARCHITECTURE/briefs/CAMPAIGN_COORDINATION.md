@@ -1682,3 +1682,5 @@ DIRECTIVE (binding; Δ1 executes; Δ3 unaffected):
      → M4′ → DVIPRAMĀṆA → M5 → Brilliance Gate #1 → post FIELD-INTEGRATED
      (sentinel: `██ MARKER-POSTED: FIELD-INTEGRATED ██` at line start —
      Δ3's supervisor gate consumes it mechanically).
+
+Δ3 22:28Z session-18 — SM-R-6 ABSORBED; vcc6h stopped (Completed Unknown, graceful per directive); dhara_null root-cause understood (F-13: unwired optimization); FIELD-INTEGRATED now gated on OPT-N1 deploy-green + A6″ (~30-60 min post deploy vs prior 9h estimate); FIELD-INTEGRATED sentinel noted; Δ3 scope UNCHANGED (R2 proof + R4 on FIELD-INTEGRATED); probe script committed; ending session-18 cleanly per LONG-RUN AUTONOMY RULES.
