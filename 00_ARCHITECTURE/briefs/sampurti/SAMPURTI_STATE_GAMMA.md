@@ -158,3 +158,5 @@ CONDUCTOR-HEARTBEAT: 2026-08-13T02:05:21Z pid=$$ host=Montys-MacBook-Pro.local s
 [A2' at ~60min; coordination quiet; full DAG rebuild in progress; watching for FIELD-INTEGRATED]
 CONDUCTOR-HEARTBEAT: 2026-08-13T02:35:47Z pid=$$ host=Montys-MacBook-Pro.local session=γ
 [A2' at ~90min; coordination quiet; watching for FIELD-INTEGRATED]
+CONDUCTOR-HEARTBEAT: 2026-08-13T02:46:09Z pid=$$ host=Montys-MacBook-Pro.local session=γ
+[A2' COMPLETE (28/29) — ka_gochara+full DAG rebuilt; A3 dispatched (ka_kshetra post-β rebuild, exec lzqb2); Measurement #5 + G-P3b then FIELD-INTEGRATED; watching]
