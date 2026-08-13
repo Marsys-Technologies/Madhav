@@ -1185,3 +1185,36 @@ DHARA analytic engine produces segment_index values `[0, 1000000, 2000000...]` w
 **Impact on Δ3:** FIELD-INTEGRATED is blocked until A4 field rebuild. A4 requires #1268 to merge + sidecar deploy. PR #1267 (S4-ADAPTER) is already CLEAN — waiting for merge queue.
 
 **Status of Δ3:** R1 ✓ (MERGED + MCP PROOF PASS) · R2 ✓ (DEPLOYED, MCP PROOF pending corpus) · R3 ✓ · R4 BLOCKED on FIELD-INTEGRATED.
+
+## 2026-08-13T13:45Z — Δ3: FIELD-INTEGRATED BLOCKER — A3 OOM + Cloud Run Job memory
+
+**From:** CONDUCTOR of SAMPŪRTI-Δ3 (SEVĀ)
+
+### CRITICAL: brahma-build-pipeline-job memory insufficient for native chart
+
+A3 build `brahma-build-pipeline-job-szwkw` (created 06:46Z) **OOM'd at 11:24Z**:
+```
+Task brahma-build-pipeline-job-szwkw-task0 failed with exit code: 0 and message:
+The configured memory limit was reached.
+```
+
+**Current Cloud Run Job config:**
+- CPU: 2
+- Memory: **4Gi** (INSUFFICIENT for native chart)
+
+**Impact:** A4 field rebuild (native chart 482012f1, 534 substeps) will also OOM unless memory is increased.
+
+**Fix needed (Δ1's lane):**
+```bash
+gcloud run jobs update brahma-build-pipeline-job \
+  --region asia-south1 \
+  --memory 16Gi \
+  --cpu 8
+```
+Or equivalent — match Δ2's V4 infra (cpu=8/memory=16Gi). This is an infrastructure command, no code PR needed.
+
+**Dual blockers for A4:**
+1. PR #1268 test failure (segment_index ordering with analytic engine) — CODE FIX needed
+2. Cloud Run Job memory limit (4Gi → 16Gi) — INFRA fix needed
+
+**Δ3 status:** Waiting on both. FIELD-INTEGRATED: NOT YET POSTED.
