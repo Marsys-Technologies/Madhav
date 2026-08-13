@@ -70,7 +70,7 @@ In `run_substep` else branch (R8.12 point-canonical gate), flat intervals get `(
 
 ## NEXT-ACTION
 
-R1+R2 merged and deployed. R1 MCP PROOF: PASS. Polling FIELD-INTEGRATED (Δ1 S3 engine build in progress — L1+L2 merged, L3+L4 in merge queue). On FIELD-INTEGRATED: run R2 MCP proof + R4 G-P4.
+A4 RUNNING (brahma-build-pipeline-job-mv7c5, 14:09Z). Build in stage5 null replicates (~4h from 15:05Z). Δ3 context approaching limit — HANDOFF STATE documented above. Next session: poll FIELD-INTEGRATED → R2 MCP proof + R4 G-P4 → SESSION-DONE-Δ3.
 
 ## LOG
 
@@ -165,21 +165,36 @@ HEARTBEAT: 2026-08-13T13:00Z
 
 **NEXT-ACTION:** Poll FIELD-INTEGRATED every ≤15 min. On post: R2 MCP proof + R4 G-P4 → SESSION-DONE-Δ3.
 
-### 2026-08-13 ~19:40 IST — A4 RUNNING; all infra deployed
+### 2026-08-13 ~20:35 IST — A4 RUNNING; stage5 null replicates; ~4h ETA; HANDOFF
 
-HEARTBEAT: 2026-08-13T14:09Z
+HEARTBEAT: 2026-08-13T15:05Z
 
-**A4 DISPATCHED BY Δ1:**
+**A4 BUILD PROGRESS:**
 - Build run: `af759e40-ac64-4b07-9c3c-174785fc0bc9` (state=running, triggered_by=sampurti-a4-chart1-kshetra-dhara)
-- Cloud Run execution: `brahma-build-pipeline-job-mv7c5` (created 14:09:07Z, runningCount=1)
-- ka_kshetra state: `building`, started 14:09:27Z
+- Cloud Run execution: `brahma-build-pipeline-job-mv7c5` (started 14:09:07Z, still running as of 15:05Z)
+- Stage progress at 15:05Z: stage4 ALL DONE (60 substeps: 6 classes × 10 blocks); stage5 IN PROGRESS — stage5:childbirth:6 completed at 15:04Z; 65 substeps total done
+- Build rate in stage5: ~6 min per replicate-block (32 replicates/block × 8 blocks/class × 6 classes = 48 blocks + 6 finalize + stage6/65/8/snapshot)
+- ETA to completion: ~4+ hours from 15:05Z (≈19:00Z IST 20:30-21:00)
+- ka_kshetra rows_written: 2,630,383 (stable — rows written at stage4; stage5 null model computation adds no rows until finalize)
+- kala_field_snapshots: NONE YET (written at build completion by snapshot substep)
 
-**Infrastructure status:**
-- PR #1268 (ENGINE_VERSION sampled→analytic): MERGED at 13:31:09Z (commit 00345531e3)
-- Deploy to Cloud Run (run 31706000690): ALL COMPLETE — Sidecar ✓, Pipeline Job Image ✓, Web ✓
-- Cloud Run Job memory: 16Gi/8cpu (re-applied at 14:05:57Z — CI deploy had reset to 4Gi/2cpu)
-- ENGINE_VERSION='analytic': LIVE in production
+**Infrastructure status (ALL CONFIRMED at 15:05Z):**
+- PR #1268 (ENGINE_VERSION sampled→analytic): MERGED 13:31:09Z (commit 00345531e3)
+- Deploy to Cloud Run (run 31706000690): ALL COMPLETE — Sidecar ✓ (ENGINE_VERSION='analytic' live), Pipeline Job Image ✓ (brahma-pipeline:00345531e3), Web ✓
+- Cloud Run Job: 16Gi/8cpu (last set 14:05:57Z — ⚠️ CI deploys reset to 4Gi/2cpu; always recheck + reapply)
 
-**FIELD-INTEGRATED:** NOT YET POSTED (A4 build in progress; ka_kshetra writing rows with DHARA engine)
+**FIELD-INTEGRATED:** NOT YET POSTED (A4 build in progress, ~4h remaining)
 
-**NEXT-ACTION:** Poll FIELD-INTEGRATED every ≤15 min. On post: R2 MCP proof + R4 G-P4 → SESSION-DONE-Δ3.
+**CONTEXT LIMIT APPROACHING — CLEAN HANDOFF:**
+
+Next Δ3 session resumes from this state:
+1. Check if A4 build complete: `SELECT id, state FROM build_runs WHERE id='af759e40-ac64-4b07-9c3c-174785fc0bc9';`
+2. If ka_kshetra=`lit` AND kala_field_snapshots row exists: proceed with proofs
+3. **R2 MCP PROOF**: `gochara_forecast_get(chart_id='482012f1-710e-4a25-994a-93821f5871aa', domain='marriage', date_range wide)` → marriage rows in `nested_hierarchy.roots` (resolution='era'), NOT in `legacy_flat`
+4. **R4 G-P4**: `kala_ahead_get(chart_id='482012f1-...')` → `field_snapshot_id` starts with `kfs_...` (not `field_not_yet_built`)
+5. Poll FIELD-INTEGRATED from origin/campaign-coordination (Δ1 posts after ka_kshetra=lit)
+6. **SESSION-DONE-Δ3**: update ledger, post SESSION-DONE to coordination, release leases
+
+⚠️ Cloud Run Job memory resets to 4Gi/2cpu on each Pipeline Job Image CI deploy. Before any new field rebuild: `gcloud run jobs describe brahma-build-pipeline-job --region asia-south1` and reapply if needed: `gcloud run jobs update brahma-build-pipeline-job --region asia-south1 --memory 16Gi --cpu 8`
+
+**NEXT-ACTION (next session):** Poll FIELD-INTEGRATED. On post: R2 MCP proof + R4 G-P4 → SESSION-DONE-Δ3.
