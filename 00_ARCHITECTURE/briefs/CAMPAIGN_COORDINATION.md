@@ -90,3 +90,9 @@ cutover wave (its W6), UTKARṢA yields otherwise.
   §3's no-cross-campaign-deletion rule exists to prevent recurrence.
 - 2026-08-10: file created (SAMPŪRTI conductor); native directed adoption in both
   campaigns.
+
+### 2026-08-13 16:23 IST — SAMPŪRTI-Δ1 R18 SESSION OPEN
+
+**SAMPŪRTI-Δ1 (DHĀRĀ) SESSION OPEN** — CONDUCTOR of SAMPŪRTI-Δ1 (three-stream architecture, supersedes α identity).
+
+Step 0 complete: Liveness CLEAR (sole Δ1 conductor). Hygiene: exec szwkw zombie (build_run=failed at 10:10 UTC, stop_requested_at=10:06 UTC; Cloud Run exec container still alive — monitoring for exit; advisory lock untouched per n1). Native rulings in force: n1 DHĀRĀ-first, n2 DB persistence, n3 1024 replicates. Proceeding to S1 DHĀRĀ DESIGN DOC.
