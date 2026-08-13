@@ -1,0 +1,157 @@
+# MEASUREMENT COMPARABILITY GUARD — SAMPURTI-Δ2 V5
+# CI-checkable spec for the M4' / M5 dvi-pramana measurement family.
+#
+# Committed BEFORE any M4'/M5 effect computation (blind-before-effect, FM-07;
+# R14 measurement versioning). This file is the authority; the validator
+# (measurement_comparability_guard.py alongside this file) enforces every
+# rule at publication time.
+#
+# Authority: SAMPURTI_IMPLEMENTATION_PLAN_v1_0.md §7.2d + ALPHA_DAY_PLAN_v1_0.md §6.4 d4
+# Ruling: SMR-2 (PRATINIDHI — engine swap = measurement-version event)
+# Conductor: SAMPURTI-Δ2 (PRAMANA), branch sampurti/d2-v5, 2026-08-13
+
+spec_version: "1.0"
+committed_at: "2026-08-13"
+committed_by: "CONDUCTOR of SAMPURTI-Δ2"
+plan_references:
+  - "SAMPURTI_IMPLEMENTATION_PLAN_v1_0.md §7.2d"
+  - "ALPHA_DAY_PLAN_v1_0.md §6.4 d4 (DHARĀ measurement discipline)"
+  - "SAMPURTI_REBASE_PLAN_v1_0.md R14 (measurement versioning)"
+
+# ── RULE 1: ENGINE IDENTITY ────────────────────────────────────────────────
+# Every measurement in the M4'/M5 family must use the SAME engine.
+# Cross-engine deltas (sampled vs analytic) are FORBIDDEN in published
+# comparisons (§6.4 d4: "no cross-engine deltas").
+rules:
+  - id: R-ENG-1
+    name: engine_uniformity
+    description: >
+      M4' and M5 must both use engine='analytic' (DHARĀ). The sampled engine
+      (engine='sampled') produced M4 (baseline, pre-integration). M4' is the
+      re-baseline on DHARĀ; it is published BESIDE M4 for transparency but
+      delta computations use M4'↔M5 only (same engine, same metric).
+    check_field: engine
+    required_value: "analytic"
+    applies_to: ["M4_prime", "M5"]
+    violation: BLOCK_PUBLICATION
+
+  - id: R-ENG-2
+    name: m4_baseline_sampled_preserved
+    description: >
+      M4 (sampled baseline, taken 2026-08-13) must NOT be overwritten or
+      re-versioned. It remains the reference that documents the engine-swap
+      magnitude. R14: measurements are never overwritten, always versioned beside.
+    check_field: measurement_label
+    required_distinct_from: ["M4_prime", "M5"]
+    required_value: "M4"
+    applies_to: ["M4"]
+    violation: BLOCK_PUBLICATION
+
+# ── RULE 2: CLASS SET MATCHING ─────────────────────────────────────────────
+  - id: R-CLASS-1
+    name: delta_on_matched_subset_only
+    description: >
+      The M4'↔M5 delta (skill score, CRPS improvement) is computed on the
+      MATCHED CLASS SUBSET — classes present in BOTH M4' and M5. A class added
+      between M4' and M5 (e.g. G2-early Tranche-3 classes) reports as a
+      FIRST-MEASUREMENT row and is excluded from the delta table.
+      This prevents class-count changes from confounding the gochara-effect signal.
+    check_field: delta_class_set_rule
+    required_value: "matched_subset"
+    applies_to: ["M4_prime_vs_M5_delta"]
+    violation: BLOCK_PUBLICATION
+
+  - id: R-CLASS-2
+    name: g2_early_classes_labeled_first_measurement
+    description: >
+      Any class added to the field after M4' was published (G2-early classes
+      sourced via ADJUDICATION-2 + Tranche-3) must be labeled
+      measurement_epoch='first_measurement' in the output. They are reported
+      separately from the delta table; their absence from the delta is not
+      a gap but a deliberate design property.
+    check_field: new_class_measurement_epoch
+    required_value: "first_measurement"
+    applies_to: ["classes_added_post_M4_prime"]
+    violation: WARN_AND_LABEL
+
+  - id: R-CLASS-3
+    name: class_set_documented_at_publication
+    description: >
+      Each measurement artifact must carry a class_set field listing the
+      exact class IDs included in that measurement's delta computation.
+      This makes the matched-subset rule auditable without re-running.
+    check_field: class_set
+    required_type: "list[str]"
+    required_non_empty: true
+    applies_to: ["M4_prime", "M5"]
+    violation: BLOCK_PUBLICATION
+
+# ── RULE 3: SMR-2 GATE ─────────────────────────────────────────────────────
+  - id: R-SMR-2
+    name: smr2_recorded_before_m4_prime
+    description: >
+      PRATINIDHI must record ruling SMR-2 ("engine swap = measurement-version
+      event; M4 re-baselines on DHARĀ; published BESIDE M4, never overwrites;
+      P3 and M5 run on DHARĀ only") in the SM-R registry BEFORE M4' is
+      published. M4' publication is gated on SMR-2 existing in the registry.
+      The validator checks for the SMR-2 entry in CAMPAIGN_COORDINATION.md.
+    check_field: smr2_recorded
+    required_value: true
+    applies_to: ["M4_prime"]
+    violation: BLOCK_PUBLICATION
+    detection_command: >
+      grep -c 'SMR-2' 00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md
+
+# ── RULE 4: DEGENERATE-INTERVAL TRIPWIRE (R15) ─────────────────────────────
+  - id: R-DEGEN-1
+    name: no_degenerate_intervals
+    description: >
+      A degenerate interval is one where test_era_start >= test_era_end, or
+      where the entire matched class set has zero events in the test era.
+      R15: degenerate-interval tripwire halts publication.
+      Any measurement artifact where test_era_event_count == 0 for ALL classes
+      in the matched subset must not be published as a delta — report as
+      DEGENERATE_INTERVAL with a named park.
+    check_field: test_era_event_count_matched_subset_total
+    required_comparison: "> 0"
+    applies_to: ["M4_prime_vs_M5_delta"]
+    violation: BLOCK_PUBLICATION
+
+# ── RULE 5: VERSION DISCIPLINE ─────────────────────────────────────────────
+  - id: R-VER-1
+    name: measurement_version_bumped_on_engine_swap
+    description: >
+      The engine swap (sampled→analytic) is a measurement-version event (R14).
+      M4' carries a distinct version label from M4. The version field in
+      measurement artifacts must differ: M4.version != M4_prime.version.
+    check_field: version
+    required_distinct_across: ["M4", "M4_prime"]
+    applies_to: ["M4_prime"]
+    violation: BLOCK_PUBLICATION
+
+  - id: R-VER-2
+    name: null_replicate_count_documented
+    description: >
+      The null replicate count (R=1024 per ALPHA_DAY_PLAN §6.2 e2, blind-spec'd)
+      must be recorded in each measurement artifact as null_replicates.
+      A change from R=1024 requires a new measurement version (R14).
+    check_field: null_replicates
+    required_value: 1024
+    applies_to: ["M4_prime", "M5"]
+    violation: WARN_AND_LABEL
+
+# ── ENFORCEMENT LEVELS ──────────────────────────────────────────────────────
+enforcement:
+  BLOCK_PUBLICATION: >
+    Measurement artifact must not be published or cited in any gate evidence.
+    Conductor records a named park with the rule ID and failed check.
+  WARN_AND_LABEL: >
+    Measurement artifact is published with an honest warning field.
+    The warning must appear in the gate evidence alongside the artifact.
+
+# ── VALIDATOR INVOCATION ────────────────────────────────────────────────────
+# Run before publishing any M4'/M5 artifact:
+#   python3 platform/scripts/governance/measurement_comparability_guard.py \
+#     --artifact <path-to-artifact.json> \
+#     --label <M4_prime|M5|M4_prime_vs_M5_delta>
+# Exit code 0 = PASS; exit code 1 = BLOCK_PUBLICATION triggered; exit code 2 = misconfiguration.
