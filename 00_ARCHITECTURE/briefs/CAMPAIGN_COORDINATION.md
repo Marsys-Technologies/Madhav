@@ -1522,3 +1522,54 @@ directive just performed (stop_requested_at → 25s → pg_terminate_backend
 timeout of uncertain effective value. This converts a class of failure
 that has cost ~4 manual desk interventions tonight into a self-healing
 loop inside the conductor itself.
+
+---
+### SM-R-4 — DESK RULING (2026-08-14): STOP-AND-ANALYZE COMPLETE; crfzx DIRECTIVE PARTIALLY WITHDRAWN; Δ1/Δ3 RESTART AUTHORIZED UNDER NEW PROTOCOL
+
+Full authority: /Users/Dev/shad_overnight/SAMPURTI_INVESTIGATION_v1_0.md
+(findings F-1..F-10; Δ1 commits a copy to 00_ARCHITECTURE/briefs/sampurti/
+at first restart run). Both conductors were stopped cleanly on native
+directive; worktrees salvaged clean; DB verified clean (0 locks).
+
+WITHDRAWN from the crfzx DIRECTIVE (commit 2756e0bce): the "★ VERIFIED
+LIVE: current_setting() returned 10min" claim. current_setting() reads the
+CALLING session only — that measurement was the desk's own psql session
+reading the amjis_app role default (600s), never the hung backend. Also:
+crfzx was cancelled at T+12min, INSIDE the 30-min window — the S7459 fix
+was never disproven; it was never tested. The fix stands as deployed.
+
+CONFIRMED FINDINGS BINDING THE RESTART:
+1. The hang class is transport-level (unix-socket path /cloudsql/... —
+   libpq keepalives are silently INERT there) and engine-independent.
+   Every automatic defense layer was inert/disabled/oversized during all
+   three incidents (investigation F-3 table). Nothing autonomous was ever
+   on duty; the desk was the only recovery layer that ever fired.
+2. DHARA has NEVER run a production substep: all 74 checkpointed substeps
+   are SAMPLED-generation (single fingerprint 5d1c656a…; mv7c5/tkp7b ran
+   pre-flip image ebfe9423). On restart, _RESUME_VERSION 3→4 forces a
+   full 534-substep replan. THIS IS EXPECTED AND PRE-AUTHORIZED — do not
+   park on the fingerprint change (it is NOT the G2-early surprise class).
+3. Job was still 2vCPU/4Gi (the diagnosed, never-remediated mis-size).
+   Desk resizes to 4vCPU/8Gi as part of this ruling.
+
+RESTART PROTOCOL (binding, supersedes conflicting older directives):
+  P1  Δ1 FIRST ACTION before ANY dispatch — lane S7-LOCK: db.py::connect()
+      gains SET lock_timeout='300s' + a GUC SMOKE-LOG line (log
+      current_setting() of idle_in_transaction_session_timeout /
+      statement_timeout / lock_timeout on the worker connection right
+      after connect). PR→CI→merge→deploy-green (ancestry). VERIFIER
+      confirms before dispatch authorization.
+  P2  A6′ dispatch under RATE GATE: measure substeps/min over first 15
+      min; projected ≤6h continue · 6–12h continue + escalate sizing to
+      8vCPU/16Gi at next checkpoint · >12h STOP + PARKED-EXTERNAL +
+      PARĪKṢAKA diagnosis (a >12h projection = defect, not tuning).
+      FM-21 ACTIVE HANG WATCH every heartbeat; on hang HOLD TO T+35min
+      (give the 30-min server layer its first live test — its firing is
+      itself evidence), then self-recover + redispatch from checkpoint.
+      ≥3 hangs in one run → PARKED + evidence; desk's P3 transport lane
+      (TCP/private-IP) is evidence-gated on that record.
+  FM-22 (all parties incl. the desk): no manual kill before T+35min;
+      evidence captured before any kill; desk recovery actions are
+      audit-logged under the native's identity — a coordination entry
+      ALWAYS precedes desk action (SM-R-3 hardening reaffirmed).
+Δ3 scope unchanged (R2 proof + R4 on FIELD-INTEGRATED); inherits FM-21/22.
