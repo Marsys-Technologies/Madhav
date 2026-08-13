@@ -38,4 +38,4 @@ Stage routing (§8.4):
 Authority: DHARA_DESIGN_v1_0.md §8.1–§8.4
 """
 
-ENGINE_VERSION: str = 'sampled'
+ENGINE_VERSION: str = 'analytic'
