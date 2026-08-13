@@ -3018,3 +3018,5 @@ During this park window, implemented the S7459-directed `idle_in_transaction_ses
 4. S4 parity gate, G-P1, SMR-2, P3 DVIPRAMĀṆA, M5, Brilliance Gate #1 all gated on field LIT
 
 CONDUCTOR-HEARTBEAT: 2026-08-13T22:12+05:30 [R30 PARKED-NATIVE — builds cancelled by native; S7459 timeout fix implemented (db.py + tests + prod runners: idle_in_transaction_session_timeout 0→1800000); awaiting native signal before A6 redispatch]
+
+CONDUCTOR-HEARTBEAT: 2026-08-13T22:22+05:30 [R30 poll — PARKED-NATIVE stable: ka_kshetra=incomplete rows=2,063,838 (74 substeps committed, checkpoint resumable per orphan-watchdog last_error); advisory_locks=0; no new build_runs; A6 held; session closing]
