@@ -1437,3 +1437,19 @@ to prevent going forward.
 Δ3 17:44Z session-11 — FIELD-INTEGRATED still pending; A6 not yet dispatched; Δ1 R35 closed 23:15 IST PARKED-NATIVE (missed SM-R-3 by race at coord fetch — SM-R-3 committed ~17:40Z, Δ1 R35 fetched coord before it was visible); Δ1 R36 will read SM-R-3 and dispatch A6; PR #1269 (S7459 timeout fix) open with CI running (Δ1 R35 created it); no independent Δ3 work; ending session-11 cleanly per LONG-RUN AUTONOMY RULES; supervisor relaunches when FIELD-INTEGRATED posts.
 
 Δ3 17:50Z session-12 — FIELD-INTEGRATED pending; Δ1 R36 not yet started (R35 latest at 17:45Z); PR #1269 (S7459 fix) ALL CI GREEN + MERGEABLE as of 17:49Z (was still running when R35 closed); A6 not dispatched; Cloud Run: no RUNNING executions; DB: ka_kshetra=incomplete 2,063,838 rows (unchanged); Δ3 lanes: R1✓ R2✓(proof pending) R3✓ R4 ready-on-signal; no independent Δ3 work; ending session-12 cleanly per LONG-RUN AUTONOMY RULES.
+
+### 2026-08-13 23:29 IST — Δ3 session-13 (17:59Z)
+
+**Δ3 conductor session-13 open. Key state changes since session-12 (17:50Z):**
+
+- **PR #1269 MERGED** (`4747ea831` on main, ~17:54Z) — S7459 idle_in_transaction_session_timeout fix (0→1800000ms) is now on main.
+- **Deploy to Cloud Run IN_PROGRESS** (run 31728387539, started 17:58Z on main) — "Build & Deploy Pipeline Job Image" is IN_PROGRESS. S7459 fix will be live in the pipeline job image within minutes.
+- **Δ1 R35 closed** (18:00Z / 23:30 IST) — commit `34d23034d`; closed PARKED-NATIVE HOLD-A6 (R35 closed before it could see SM-R-3 lift). R36 has not yet started.
+- **A6 NOT dispatched** — no new Cloud Run execution after tkp7b (cancelled 16:33Z).
+- **FIELD-INTEGRATED: NOT POSTED.**
+
+**Δ3 lane status:** R1 ✓ · R2 deployed/proof-pending · R3 ✓ · R4 ready-on-signal.
+
+**Expected sequence:** Deploy completes (~18:05-18:10Z) → Δ1 R36 starts → reads SM-R-3 → dispatches A6 from checkpoint (74/534 substeps, 2,063,838 rows) → ~4+ hours → ka_kshetra=lit → S4 parity → FIELD-INTEGRATED posted.
+
+Δ3 session-13 closing cleanly. Supervisor relaunches on FIELD-INTEGRATED.
