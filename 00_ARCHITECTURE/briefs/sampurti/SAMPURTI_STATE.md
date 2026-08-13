@@ -2790,3 +2790,38 @@ PR #1267 (S4-ADAPTER): all non-build checks PASS; Build Check + Governance Gates
 5. Monitor A4 → once ka_kshetra LIT → run S4 parity gate → post PARITY-GREEN → M5 measurement
 
 CONDUCTOR-HEARTBEAT: 2026-08-13T18:33+05:30 [R25 — PR #1268 flag-flip opened (CI pending); PR #1267 S4-ADAPTER mostly green; A4 blocked on #1268 merge + deploy]
+
+---
+
+## R26 — SAMPŪRTI-Δ1 CONDUCTOR (2026-08-13T18:47+05:30)
+
+**Identity:** CONDUCTOR of SAMPŪRTI-Δ1
+
+### PR #1267 (S4-ADAPTER) MERGED ✅
+
+Merged 2026-08-13T13:10:48Z. INTERFACE-ADAPTER-GAP fully closed on main.
+
+### PR #1268 (flag-flip) — Governance Gates FAIL → FIXED
+
+**Root cause:** `dhara_build_segments(ev)` returns segments for the FULL horizon [0, H].
+The writer calls `_run_stage4` once per decade — the first routing implementation called
+DHARA per-decade, producing N×M segments with non-consecutive indices (decade 0: 0, 1, 2…;
+decade 1: 1000000, 1000001…). When all rows sorted by t_start, indices interleaved from
+all decades, failing `assert idx == sorted(idx)` in `test_segment_indices_are_unique_and_ascending_in_time`.
+
+**Fix (commit `591efbc41`):**
+- `_ClassContext.dhara_segments: list | None = None` — new field
+- `_class_context()`: when `ENGINE_VERSION == 'analytic'`, call `dhara_build_segments(evaluator)` ONCE per event class, cache in `dhara_segments`
+- `_run_stage4()`: filter `cctx.dhara_segments` to `[s for s in ... if s.t_start >= d0 and s.t_end <= d1]`
+- DHARA now computed once-per-event-class (correct per its design), zero additional compute per decade
+
+New CI run `31703977344` triggered. All checks pending.
+
+### NEXT-ACTION
+
+1. Monitor PR #1268 CI → green → merge
+2. Await sidecar deploy (ENGINE_VERSION='analytic' enters production)
+3. Dispatch A4: Cloud Run field rebuild for native chart (482012f1-...) with DHARA engine
+4. Monitor A4 → once LIT → run S4 parity gate → PARITY-GREEN → M5
+
+CONDUCTOR-HEARTBEAT: 2026-08-13T18:47+05:30 [R26 — #1267 MERGED; #1268 Governance Gates fix pushed (CI run 31703977344 pending); A4 blocked on #1268 merge]
