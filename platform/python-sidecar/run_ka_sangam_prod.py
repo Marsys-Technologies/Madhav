@@ -45,7 +45,7 @@ def main():
     # build session cannot be killed by the server-side idle-in-transaction
     # timeout while ka_sangam's substeps compute with no DB traffic in between.
     with conn.cursor() as _mr39_cur:
-        _mr39_cur.execute("SET idle_in_transaction_session_timeout = 0")
+        _mr39_cur.execute("SET idle_in_transaction_session_timeout = 1800000")
     conn.commit()
 
     # Pre-delete phala_anchors rows that reference kala_convergence to avoid

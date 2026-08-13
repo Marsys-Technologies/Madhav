@@ -2959,3 +2959,62 @@ gcloud run jobs execute brahma-build-pipeline-job \
 CONDUCTOR-HEARTBEAT: 2026-08-13T21:43+05:30 [R29 open; A5 exec tkp7b RUNNING (DHARA engine); 69/534 substeps committed, 465 remaining; parity gate pending field completion]
 
 CONDUCTOR-HEARTBEAT: 2026-08-13T21:53+05:30 [R29 poll — exec tkp7b RUNNING=1; ka_kshetra building, rows=566,545 (stable — stage5 null compute, no commits until finalize); advisory_locks=1 (orchestrator's own active lock, correct); ~10-min mark post-dispatch]
+
+---
+
+## R30 — SAMPŪRTI-Δ1 CONDUCTOR (2026-08-13T22:12+05:30)
+
+**Identity:** CONDUCTOR of SAMPŪRTI-Δ1 (continuation; supervisor relaunch after prior session context compaction)
+
+### PARKED-NATIVE — FIELD BUILD SUSPENDED BY NATIVE INTERVENTION
+
+**Root cause (confirmed, not inferred):** Cloud Audit logs show deliberate CancelExecution calls by `mail.abhisek.mohanty@gmail.com` on both A4 and A5 Cloud Run executions:
+
+| execution | Cloud Run exec | cancelled at (UTC) | cancelled at (IST) |
+|---|---|---|---|
+| A4 (mv7c5) | brahma-build-pipeline-job-mv7c5 | 2026-08-13T16:05:42Z | 21:35 IST |
+| A5 (tkp7b) | brahma-build-pipeline-job-tkp7b | 2026-08-13T16:32:48Z | 22:02 IST |
+
+Both cancellations are `google.cloud.run.v1.Executions.CancelExecution` calls attributed to the native's account. This is NOT an automated system failure; it is a deliberate human override. Per conductor rails: "Record a PARKED-EXTERNAL entry in your ledger with the exact error text + the detector command, post it to campaign-coordination, and continue with any work that does not need that dependency."
+
+**Current DB state at park time:**
+- `ka_kshetra`: state=incomplete, rows_written=2,063,838 (rows from A4+A5 combined committed substeps; checkpoint preserved)
+- `build_run 777c3681-27b7-4e91-adc5-8c06e59b7348`: state=failed
+- advisory_locks = 0
+- No active Cloud Run executions
+
+**Detector command (to re-verify before any redispatch):**
+```sql
+SELECT asset_id, state, rows_written FROM asset_throughput
+WHERE build_run_id = '777c3681-27b7-4e91-adc5-8c06e59b7348' AND asset_id = 'ka_kshetra';
+
+SELECT COUNT(*) FROM advisory_locks;
+```
+
+**No A6 dispatch.** Conductor does NOT redispatch while native is actively cancelling. Field build is PARKED pending native signal.
+
+### PARK-WINDOW TASK COMPLETED — S7459 TIMEOUT FIX
+
+During this park window, implemented the S7459-directed `idle_in_transaction_session_timeout` fix:
+
+**Root cause (S7459 finding):** `idle_in_transaction_session_timeout=0` (prior MR-39 value) disabled the server-side idle-in-txn killer entirely. A connection that became idle-in-transaction (e.g. Python code hung between SQL calls, or a substep stalled without crashing) would wait FOREVER, requiring manual `pg_terminate_backend`. Confirmed across A4 and A5 recovery sessions.
+
+**Fix applied (S7459 directive — "1800s (30 min)"):**
+
+| file | change |
+|---|---|
+| `platform/python-sidecar/pipeline/orchestrator/db.py` | `options="-c idle_in_transaction_session_timeout=0"` → `=1800000`; `SET ... = 0` → `= 1800000` |
+| `platform/python-sidecar/run_ka_sangam_prod.py` | `SET ... = 0` → `= 1800000` |
+| `platform/python-sidecar/run_ph_pratikara_prod.py` | `SET ... = 0` → `= 1800000` |
+| `platform/python-sidecar/pipeline/orchestrator/tests/test_mr39_idle_timeout_connection_setup.py` | All `= 0` assertions updated to `= 1800000`; layer (b) live demo updated |
+
+**Rationale:** 1800s is above any legitimately slow substep (stage5 null replicates: ~20 min observed per class) but finite, so a genuinely hung connection auto-recovers instead of blocking indefinitely. The prior `idle_in_transaction_session_timeout=0` was correct for the MR-39 kill-within-10-min problem but introduced the inverse vulnerability (no automatic recovery from genuine hangs).
+
+### NEXT-ACTION (pending native direction)
+
+1. **Wait for native signal** before any A6 field rebuild dispatch — native cancelled A4+A5 explicitly
+2. **FIELD-INTEGRATED** marker cannot be posted until ka_kshetra is LIT; Δ3 remains blocked
+3. If native signals to resume: dispatch A6 with same run_id (checkpoint at 2M rows preserved)
+4. S4 parity gate, G-P1, SMR-2, P3 DVIPRAMĀṆA, M5, Brilliance Gate #1 all gated on field LIT
+
+CONDUCTOR-HEARTBEAT: 2026-08-13T22:12+05:30 [R30 PARKED-NATIVE — builds cancelled by native; S7459 timeout fix implemented (db.py + tests + prod runners: idle_in_transaction_session_timeout 0→1800000); awaiting native signal before A6 redispatch]
