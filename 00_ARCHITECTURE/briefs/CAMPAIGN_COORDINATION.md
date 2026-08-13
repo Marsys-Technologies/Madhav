@@ -1587,3 +1587,19 @@ CONDUCTOR HEARTBEAT Δ1 R37 19:44Z: PR #1270 (S7-LOCK: lock_timeout=300s + GUC s
 CONDUCTOR HEARTBEAT Δ1 R38 20:45Z [FM-22 DESK ACTION NOTICE — PRECEDING STOP]: A6′ (brahma-build-pipeline-job-7pv5m, run-id=ce704a7f) RATE-GATE TRIGGERED at T+35min. Rate: 4 substeps done in 28 min = 0.114/min; 534 total → projection 78h >> 12h threshold per SM-R-4 P2 rate-gate. FM-21 hold boundary reached (T+35min). Writer ALIVE (state_secs=82, not hung). Per rate-gate protocol: STOP mandated. Executing clean stop now (set stop_requested_at in build_run; cancel Cloud Run execution). PARĪKṢAKA diagnosis dispatch follows. Escalation path: 8vCPU/16Gi + substep granularity review.
 
 CONDUCTOR HEARTBEAT Δ1 R38 20:59Z [PARKED-NATIVE, PARĪKṢAKA COMPLETE]: A6′ rate-gate stop re-assessed. ROOT CAUSE: Python CPU for ka_kshetra stage4 adaptive-refinement segment computation (~9min/computable decade, 60 decades total → ~9h). L1e batch-insert + L1g-L1n null-replicate fixes ARE deployed and working. Rate-gate stop was premature (4/534 substeps masked SKIP substeps — true rate is 6-12h zone, not >12h). Per protocol, 6-12h = continue + 8vCPU/16Gi, BUT 8vCPU/16Gi does not help single-threaded Python CPU. Real fix = L1g-style coarse breakpoints for stage4 (code change). NATIVE DECISION REQUIRED: (a) re-dispatch accepting ~9h build; (b) request L1g stage4 fix; (c) other. Conductor PARKED-NATIVE. L-8 lease expires 06:00 IST (00:30 UTC).
+
+---
+SM-R-5 — NATIVE-PRATINIDHI RULING (2026-08-14T02:40+05:30): A6′ RE-DISPATCH AUTHORIZED AT 4vCPU/8Gi
+
+R38 conductor parked "PARKED-NATIVE decision required" (Option A: dispatch ~9h vs Option B: stage4 optimization sprint). This was a FALSE-BLOCKER-PARK (not on the absolute PARKED-FOR-NATIVE list). NATIVE-PRATINIDHI (opus/max) dispatched by R39 conductor and ruled:
+
+RULING: Option A — dispatch immediately at 4vCPU/8Gi, accept ~9h build.
+RATIONALE: S8 rate-gate protocol (binding per SM-R-4) says CONTINUE for 6-12h band; PARĪKṢAKA re-classified rate to 6-12h (not >12h); protocol compliance is not optional. 8vCPU escalation waived per PARĪKṢAKA diagnosis (single-threaded CPU bottleneck; more cores do not accelerate a single thread). Option B introduces code risk at 02:30 IST on a complex adaptive loop. 9h completes by ~11:30 IST, unattended with FM-21 hang-watch and per-substep checkpointing proven across four cancellations.
+BACKLOG: Stage4 coarse-breakpoints optimization (restrict to MD/AD/PD levels, ~1K vs 165K breakpoints) → file for next campaign's prep phase.
+
+LEASE RENEWAL — L-8 (SAMPŪRTI Δ1):
+| # | campaign | purpose | started | expiry | status |
+|---|---|---|---|---|---|
+| L-8 | SAMPŪRTI Δ1 | A6′ ka_kshetra 482012f1 DHARA build | 2026-08-13T23:34 IST | **2026-08-14T14:00 IST** | ACTIVE (renewed from 06:00 IST) |
+
+SESSION-OPEN: Δ1 R39 2026-08-14T02:40+05:30 (21:10Z) — sole conductor (pid=64456, prior 61694=DEAD); hygiene CLEAN (advisory_locks=0, no running Cloud Run); SM-R-5 posted; L-8 lease renewed to 14:00 IST; A6′ dispatch IMMINENT.
