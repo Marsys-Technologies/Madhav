@@ -286,3 +286,32 @@ Next session: check FIELD-INTEGRATED, then R2 + R4 proofs → SESSION-DONE-Δ3.
 6. Post SESSION-DONE-Δ3 to coordination
 
 RUN-TERMINAL: SESSION-Δ3-PENDING (not COMPLETE — awaiting FIELD-INTEGRATED; supervisor relaunches)
+
+### 2026-08-13 21:58 IST — Δ3 attempt 2 session-open (FIELD-INTEGRATED still pending)
+
+CONDUCTOR-HEARTBEAT: 2026-08-13T16:28:28Z pid=62531(claude) host=Montys-MacBook-Pro.local session=Δ3
+
+[STEP-0 OPEN: liveness CLEAN (stored PID 61453=prev supervisor, no live peer conductor processes, sole conductor confirmed PID 62531). Hygiene: tkp7b STILL RUNNING (runningCount=1, started 16:16:07Z, now 16:28Z — 12 min elapsed, normal stage5 silent-compute gap, last log 16:18:46Z with SKIPPING event class warnings = writer init messages, not stall). No DB scope for Δ3. Coordination fetched: FIELD-INTEGRATED NOT POSTED. Reconcile: all ledger state matches reality — R1 MERGED+PROOF, R2 DEPLOYED, R3 DONE, R4 BLOCKED. Nothing has changed since 16:27Z close.]
+
+**A5 BUILD STATUS (16:28Z):**
+- Execution tkp7b: RUNNING (runningCount=1, failedCount=0)
+- Last log: 16:18:46Z — 20× SKIPPING event class messages (writer init, normal)
+- Silent gap (10 min) during stage5 replicate computation — normal pattern, same as A4
+- ETA: hours (465 substeps remaining from 16:16Z start)
+
+**Coordination:** No new entries since 16:27Z (my own close advisory). FIELD-INTEGRATED NOT POSTED.
+
+**Independent work available:** NONE — all Δ3 remaining work (R2 MCP proof, R4 G-P4) is gated on FIELD-INTEGRATED marker from Δ1.
+
+Per LONG-RUN AUTONOMY RULES (BLOCKED ≠ STOP): Since ALL remaining Δ3 scope is gated on FIELD-INTEGRATED with ETA hours, ending session cleanly. Supervisor relaunches on FIELD-INTEGRATED or at interval.
+
+**NEXT-ACTION (next session):**
+1. Poll coordination for FIELD-INTEGRATED (Δ1 posts after ka_kshetra=lit + S4 parity gate + re-field)
+2. Check tkp7b execution status (should be succeeded by then)
+3. On FIELD-INTEGRATED posted: run R2 MCP proof → gochara_forecast_get(domain=marriage, wide range) → verify resolution='era' rows in roots (not legacy_flat)
+4. On FIELD-INTEGRATED posted: run R4 G-P4 → kala_ahead_get → verify field_snapshot_id=kfs_... (not field_not_yet_built)
+5. Record both proofs in γ ledger (sampurti/vyakhya append-only)
+6. Post SESSION-DONE-Δ3 to coordination
+7. Note: if marriage windows absent post-refresh, verify with achievement_recognition class (was in legacy_flat pre-fix; should be in roots post-fix) per R2 proof fallback
+
+RUN-TERMINAL: SESSION-Δ3-PENDING-2 (not COMPLETE — FIELD-INTEGRATED outstanding; supervisor relaunches)
