@@ -853,3 +853,66 @@ Per LONG-RUN AUTONOMY RULES (BLOCKED ≠ STOP): No independent Δ3 work exists. 
 RUN-TERMINAL: SESSION-Δ3-PENDING-12 (FIELD-INTEGRATED outstanding; A6 not yet dispatched; PR #1269 all-green; Δ1 R36 imminent; supervisor relaunches)
 
 RUN-TERMINAL: SESSION-Δ3-PENDING-11 (FIELD-INTEGRATED outstanding; A6 not yet dispatched — Δ1 R36 will dispatch after reading SM-R-3; supervisor relaunches when marker posts or A6 confirmed running)
+
+---
+
+## SESSION-13 — 2026-08-13T17:59Z (23:29 IST)
+
+CONDUCTOR-HEARTBEAT: 2026-08-13T17:59Z pid=36179 host=Montys-MacBook-Pro.local session=Δ3-13
+
+### STEP-0 (session-13)
+
+**Liveness:** CLEAN — stored PID=28642 (dead; run_dh_d3.sh supervisor); pgrep "CONDUCTOR of SAMPŪRTI-Δ3" = NONE. Sole conductor confirmed. PID 36179 written to dh-d3-logs/current_conductor.pid.
+
+**Hygiene:** CLEAN — Cloud Run: no RUNNING executions (tkp7b=cancelled 16:16Z UTC, all runningCount=0). No DB scope for Δ3. No proxy needed.
+
+**Coordination (fetched 17:59Z):** Last entry = session-12 close (582c05da7, 17:50Z). No new entries from Δ1. FIELD-INTEGRATED: NOT POSTED.
+
+**Reconcile (FM-09) — KEY STATE CHANGES since session-12:**
+
+| Surface | Session-12 state | Session-13 reality |
+|---------|-----------------|-------------------|
+| PR #1269 (S7459 fix) | OPEN, all-green CI, mergeable | **MERGED** — `4747ea831` on main, ~17:54Z |
+| Pipeline Job Image | Not yet deployed | **IN_PROGRESS** — Deploy to Cloud Run run 31728387539, started 17:58Z |
+| Δ1 R35 | Latest (17:45Z) | Closed 18:00Z (23:30 IST); commit `34d23034d` says "PR #1269 MERGED, PARKED-NATIVE HOLD-A6" |
+| Δ1 R36 | Not yet started | NOT yet started — supervisor relaunching |
+| A6 | Not dispatched | Not dispatched — imminent on R36 + deploy completion |
+| FIELD-INTEGRATED | NOT POSTED | NOT POSTED |
+
+**Deploy details (run 31728387539, 17:58Z start on main):**
+- Gate & detect changed paths: SUCCESS ✓
+- Build & Deploy Pipeline Job Image: **IN_PROGRESS** ← S7459 fix deploying NOW
+- Build & Deploy Sidecar: in_progress
+- Build & Deploy Web: in_progress
+- Build & Deploy MCP: SKIPPED
+- Build Check (PR only): SKIPPED (main push)
+
+**Δ3 LANE STATUS (session 13, unchanged):**
+| Lane | Status | Notes |
+|------|--------|-------|
+| R1 | MERGED + MCP PROOF PASS ✓ | 27 classes, 270 substeps, ka_gochara_v3_century_materialize ✓ |
+| R2 | DEPLOYED; MCP PROOF PENDING | Fix in place; awaiting corpus refresh (FIELD-INTEGRATED) |
+| R3 | DONE ✓ | sampurti/vyakhya corrections committed (66e35c216) |
+| R4 | READY-ON-SIGNAL | Awaiting FIELD-INTEGRATED |
+
+**Independent Δ3 work:** NONE. All remaining scope (R2 MCP proof + R4 G-P4) gates on FIELD-INTEGRATED, which gates on A6 completing ka_kshetra=lit (~4+ hours from dispatch).
+
+**Sequence to FIELD-INTEGRATED:**
+1. Deploy run 31728387539 completes → Pipeline Job Image has S7459 fix (~18:05-18:10Z)
+2. Δ1 R36 starts → reads SM-R-3 (HOLD-A6 LIFTED) → dispatches A6 from checkpoint (74/534 substeps, 2,063,838 rows)
+3. A6 runs ~4+ hours → ka_kshetra=lit for chart 482012f1
+4. S4 parity gate → Δ1 posts FIELD-INTEGRATED to coordination
+
+**WHAT ONE RELAUNCH FINISHES:** When FIELD-INTEGRATED posts:
+1. `gochara_forecast_get(chart_id=482012f1..., domain=marriage, date_range=2020-2030)` → verify marriage row 2024-02-05→2034-01-30 in roots (resolution='era'), NOT legacy_flat
+2. `kala_ahead_get(chart_id=482012f1...)` → verify field_snapshot_id=kfs_... (not field_not_yet_built)
+3. Record both proofs in γ ledger (sampurti/vyakhya append-only)
+4. Post SESSION-DONE-Δ3 to coordination
+
+**NEXT-ACTION (session-14):**
+1. Poll coordination for FIELD-INTEGRATED data marker
+2. Check Cloud Run for A6 execution (record execution name + run-id)
+3. Verify deploy run 31728387539 completed (Pipeline Job Image deployed)
+4. On FIELD-INTEGRATED: R2 MCP proof (gochara_forecast_get marriage in roots, resolution='era') + R4 G-P4 (kala_ahead_get field_snapshot_id=kfs_...) → SESSION-DONE-Δ3
+
+RUN-TERMINAL: SESSION-Δ3-PENDING-13 (FIELD-INTEGRATED outstanding; A6 dispatch imminent — deploy in progress, R36 starting; supervisor relaunches)
