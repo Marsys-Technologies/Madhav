@@ -949,3 +949,9 @@ coverage by any route that bypasses ADJUDICATION-2.
 6. LEDGER: record this directive, the reframed gate, and the G2-early
    lane; your "ETA ~5h to 27 classes" line is superseded — that ETA was
    never achievable and the reason is now on record.
+
+### 2026-08-13 12:10 IST — SAMPŪRTI-α R15 SESSION OPEN
+
+**SAMPŪRTI-α (KṢETRA) SESSION OPEN** — pid=61927 (CONDUCTOR of SAMPŪRTI-α).
+
+Step 0 complete: Liveness CLEAR (sole conductor, 61927=me). Hygiene CLEAN (proxy 5433 alive, advisory_locks=1). A3 sd2ph RUNNING (85/534, stage5:marriage:6 in flight @ 06:35 UTC). SMR-1 M4-baseline ruling adopted (M4 stands, proceed to #5 on A3 completion). L-4 active to 18:00 IST. Proceeding to monitor A3 → Measurement #5 on lit.
