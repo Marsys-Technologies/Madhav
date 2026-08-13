@@ -1939,3 +1939,65 @@ No published Indian demographic statistic meets Tier N-i for this class at magni
 
 **P1 target unchanged:** 6 prior-backed classes (Tranche-1, ne_v01) + skip ledger (21 + 2 career attempts confirmed Tier N-iii). ka_kshetra completing A3 with 6 active classes is the correct, fully shippable outcome.
 
+---
+
+## Heartbeat: 2026-08-13T11:31+05:30 — R11 SESSION OPEN; A3 sd2ph ALIVE and BUILDING
+
+CONDUCTOR-HEARTBEAT: 2026-08-13T11:31+05:30 (CONDUCTOR of SAMPŪRTI-α) pid=new [R11 open — sole conductor confirmed; A3 sd2ph alive; G2-EARLY closed]
+
+### STEP 0 — COMPLETE
+
+**LIVENESS (FM-10/11):**
+- Prior R10 conductors: all dead (pgrep "CONDUCTOR of SAMPŪRTI-α" = no match)
+- Background task b7ux00cks (sleep 7200): DEAD — session-only cron did not persist
+- Sole SAMPŪRTI-α conductor: CONFIRMED (this session)
+
+**HYGIENE:**
+- cloud-sql-proxy port 5433: ALIVE (PID 72597, started 1:56AM) ✓
+- cloud-sql-proxy port 5434 (β): ALIVE (PID 72369) — β session, not ours, do not touch
+- Advisory locks: 1 (active — orchestrator sd2ph holding build advisory lock) ✓ EXPECTED
+- Active build_runs: 1 (8ddf6162, state=running) ✓
+- No orphan phantom running rows ✓
+
+**COORDINATION:**
+- L-3: RELEASED (expired 10:00 IST) ✓
+- L-4: ACTIVE (A3 checkpoint-resume, expiry 16:00 IST 2026-08-13) ✓ — our lease
+- No UTKARṢA lease conflicts ✓
+
+**RECONCILE (FM-09, adopt, never redo):**
+- G2-EARLY ADJUDICATION-2: CLOSED-DEFER — career_entry + career_change both Tier N-iii; committed c45f3c87b ✓
+- A3 exec sd2ph: build_run 8ddf6162 = `running` (started 05:46:58 UTC), ka_kshetra = `building`, advisory lock held ✓
+- Substeps: 85/534 committed; last = `stage5:marriage:1` at 05:50:58 UTC (re-committed by sd2ph; sd2ph re-runs stage5 slow substeps because per-substep fingerprint diverges from mq4b8's plan — systematic, not a defect)
+- sd2ph is currently executing `stage5:marriage:2` — ETA ~06:00 UTC (imminent)
+
+### A3 sd2ph LIVE STATUS (06:01 UTC)
+
+| Field | Value |
+|---|---|
+| Run ID | 8ddf6162-5007-4bc2-a61f-098cda1363a0 |
+| Cloud Run exec | brahma-build-pipeline-job-sd2ph |
+| build_run.state | running ✅ |
+| ka_kshetra.state | building ✅ |
+| Advisory locks | 1 (orchestrator active) ✅ |
+| Substeps committed | 85/534 |
+| Last substep (completed_at) | stage5:marriage:1 at 05:50:58 UTC |
+| Current substep | stage5:marriage:2 (mid-execution) |
+| Pace | ~8 min/slow substep |
+| Remaining slow substeps | ~34 (marriage:3-8 + relocation×8 + separation×8 + surgery×8 + finalizes) |
+| ETA ka_kshetra lit | ~15:30–16:00 UTC (21:00–21:30 IST) |
+
+**NOTE on fingerprint divergence:** sd2ph re-runs all stage5 slow substeps from marriage:1 because its per-substep fingerprints differ from mq4b8's (different run_id + writer_timeout_seconds=86400 vs 7200 affects some internal plan parameter). The 85 mq4b8-committed substeps from stages 0-4 and fast-class finalizes MATCH fingerprints (skipped). Stage5 slow substeps do NOT match → re-run. This means sd2ph's effective remaining work is all stage5 slow substeps (not just marriage:2 onward). This is the same pattern as R1 multi-run completion.
+
+**REVISED ETA:** 6 slow classes × 8 blocks × 8 min/block + stage6/7 ≈ 6.5h from 05:50 UTC → ~16:20 UTC (21:50 IST). Within L-4 expiry (16:00 IST = 10:30 UTC) — wait, L-4 expiry 16:00 IST = 10:30 UTC. If ka_kshetra takes until 16:20 UTC (21:50 IST), that exceeds L-4 expiry. **L-4 MUST BE RENEWED before 16:00 IST (10:30 UTC).**
+
+**ACTION REQUIRED: Renew L-4 before 10:30 UTC (16:00 IST) if sd2ph is still running.**
+
+### NEXT ACTIONS
+
+1. [RUNNING] A3 exec sd2ph: monitor every 30 min until ka_kshetra = `lit`
+2. [REQUIRED ~10:00 UTC] Renew L-4 lease before 10:30 UTC expiry (sd2ph likely still running)
+3. [ON ka_kshetra lit] Measurement #5 (MCP calls: kala_now_get / kala_ahead_get / gochara_forecast_get)
+4. [ON Measurement #5] G-P3a gate → G-P3b + Brilliance Gate #1 → FIELD-INTEGRATED marker → γ unblocked
+
+---
+
