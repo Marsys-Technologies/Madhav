@@ -1194,3 +1194,67 @@ Per LONG-RUN AUTONOMY RULES (BLOCKED ≠ STOP): All remaining Δ3 scope gated on
 4. On FIELD-INTEGRATED: run probe → paste output → append γ ledger → SESSION-DONE-Δ3
 
 RUN-TERMINAL: SESSION-Δ3-PENDING-17 (FIELD-INTEGRATED outstanding; PR #1270 CLEAN — merge imminent via Δ1 R37; A6' not dispatched; supervisor relaunches)
+
+---
+
+## SESSION-18 — 2026-08-14T22:28Z (~03:58 IST)
+
+CONDUCTOR-HEARTBEAT: 2026-08-14T22:28Z pid=36524 host=Montys-MacBook-Pro.local session=Δ3-18
+
+### STEP-0 (session-18)
+
+**Liveness:** CLEAN — stored PID 33586 (dead); `pgrep -f "CONDUCTOR of SAMPŪRTI-Δ3"` = NONE. Sole conductor confirmed. PID 36524 written to dh-d3-logs/current_conductor.pid.
+
+**Hygiene:** CLEAN — `vcc6h` (A6') shows "Completed Unknown" (graceful stop via SM-R-6 desk directive, stop_requested_at flag only). No RUNNING cloud executions. No DB scope for Δ3. No proxy needed.
+
+**Coordination (fetched 22:28Z):** Latest = SM-R-6 (e29ecee37, ~03:48 IST Aug 14). Big ruling absorbed — see below.
+
+**Reconcile (FM-09) — KEY STATE CHANGES since session-17 (19:37Z):**
+
+| Surface | Session-17 state | Session-18 reality |
+|---------|-----------------|-------------------|
+| PR #1270 (S7-LOCK) | OPEN, CLEAN (26/26 pass), merge imminent | **MERGED** — 0e33cce00c on main (19:44Z Aug 13/01:14 IST Aug 14 per R37 heartbeat) |
+| A6' (7pv5m) | Not yet dispatched | **RATE-GATE STOPPED** at T+35min (R38, 20:45Z): 4/534 substeps, 78h projection (later revised: 9h Python CPU bottleneck) |
+| SM-R-5 | Not yet issued | **ISSUED** (02:40 IST): Option A authorized — accept ~9h build; re-dispatch at 4vCPU/8Gi |
+| A6' (vcc6h) | Not dispatched | **DISPATCHED** (R39, 02:41 IST): execution=vcc6h, run_id=f663bea3; reached 77/534 substeps at ~0.2/min |
+| **SM-R-6** | Not issued | **ISSUED** (03:48 IST): ROOT CAUSE: dhara_null.py UNWIRED — see below |
+| vcc6h | RUNNING | **STOPPED** (Completed Unknown — graceful per SM-R-6) |
+| FIELD-INTEGRATED | NOT POSTED | NOT POSTED — now gated on OPT-N1 deploy-green + A6″ |
+
+**SM-R-6 KEY FINDINGS (binding for Δ3 awareness):**
+
+- **F-11** (CORRECTS SM-R-4 F-6): DHARA has run production substeps and stage4 met design promise. mv7c5 was already analytic — measured: stages 0-4 all 6 classes, 2,063,838 rows in ~20 MINUTES on 2vCPU. ✓
+- **F-12**: The ~9h is ~100% STAGE-5. stage5_null path: 256 replicates × ~12-19s each → 5-8h.
+- **F-13 (ROOT CAUSE)**: `dhara_null.py` (PR #1263, vectorized null engine, 1024 replicates) — imported by NOTHING in production. Same for `dhara_term_matrix` (#1266) and `dhara_pin_matrix` (#1264). Of 4 merged DHARA modules only `dhara_sweep` is wired. Build is slow because the optimization that was designed, built, tested, merged, AND deployed is never CALLED.
+- **Directive**: Δ1 dispatches OPT-N1 (wire dhara_compute_null into stage5; _RESUME_VERSION 4→5) + OPT-N2 (FM-23 CI guard). A6″ after deploy-green expected: 30-60 min total.
+- **FIELD-INTEGRATED sentinel** (mechanical gate for my supervisor): `██ MARKER-POSTED: FIELD-INTEGRATED ██` at line start.
+- **Δ3 scope UNCHANGED**: R2-proof + R4 on FIELD-INTEGRATED.
+
+**Δ1 R39 latest** (03:48 IST heartbeat, commit 306a3aab3): FM-21 pass#4 CLEAR; 77/534 substeps; ~5-6h projection. This heartbeat is THE SAME TIMESTAMP as SM-R-6 — R39 was still monitoring vcc6h when SM-R-6 posted. R39 has not yet acknowledged SM-R-6 (no subsequent commit on integration branch). OPT-N1 builders not yet dispatched.
+
+**Δ3 LANE STATUS (session-18):**
+| Lane | Status | Notes |
+|------|--------|-------|
+| R1 | MERGED + MCP PROOF PASS ✓ | 27 classes, 270 substeps, ka_gochara_v3_century_materialize; last verified session-15 07:11Z |
+| R2 | DEPLOYED; MCP PROOF PENDING | Sidecar v3.2 live; probe script ready; awaiting corpus refresh (FIELD-INTEGRATED) |
+| R3 | DONE ✓ | sampurti/vyakhya corrections committed (66e35c216) |
+| R4 | READY-ON-SIGNAL | probe_sampurti_d3_r2_r4.py committed; FIELD-INTEGRATED sentinel now specified |
+
+**Independent Δ3 work:** NONE new. All independent work done. All remaining scope (R2 MCP proof + R4 G-P4) gates on FIELD-INTEGRATED.
+
+Per LONG-RUN AUTONOMY RULES: Genuinely blocked on Δ1 OPT-N1 dispatch → CI → merge → deploy-green → A6″ (~30-60 min) → FIELD-INTEGRATED. No independent Δ3 work exists. Ending session cleanly.
+
+**WHAT ONE RELAUNCH FINISHES:** When FIELD-INTEGRATED posts (`██ MARKER-POSTED: FIELD-INTEGRATED ██`):
+1. `python3 00_ARCHITECTURE/briefs/sampurti/probe_sampurti_d3_r2_r4.py --chart-id 482012f1-710e-4a25-994a-93821f5871aa --mcp-key $MARSYS_MCP_KEY`
+2. R2: verify marriage in roots (resolution='era'); NOT in legacy_flat
+3. R4: verify field_snapshot_id=kfs_*; windows non-empty; authority_basis shown
+4. Append both to γ ledger (sampurti/vyakhya append-only)
+5. Post SESSION-DONE-Δ3 to coordination → RUN-TERMINAL: SESSION-Δ3-COMPLETE
+
+**NEXT-ACTION (session-19):**
+1. Check coordination for `██ MARKER-POSTED: FIELD-INTEGRATED ██`
+2. Check Δ1 R39 latest commit (has it read SM-R-6 and dispatched OPT-N1?)
+3. Check Cloud Run for A6″ execution (post OPT-N1 deploy-green; expected 30-60 min total)
+4. On FIELD-INTEGRATED: run probe → paste output → γ ledger → SESSION-DONE-Δ3
+
+RUN-TERMINAL: SESSION-Δ3-PENDING-18 (FIELD-INTEGRATED outstanding; SM-R-6 absorbed; dhara_null wiring OPT-N1 pending Δ1 R39; A6″ expected ~30-60 min post OPT-N1 deploy; supervisor relaunches)
