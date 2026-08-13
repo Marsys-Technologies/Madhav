@@ -1609,3 +1609,73 @@ ka_gochara rebuilds (823 rows → fresh) → unblocks ka_sangam → cascade to k
 **NEXT:** Monitor cww2x execution; once ka_gochara lit → verify ka_sangam unblocked → measure progress; then dispatch Measurement #5 (post-β, A1-pinned field) once ka_kshetra rebuilt with new snapshot.
 
 **CORRECTION on ka_kshetra:** re-reading A2' asset list — ka_kshetra IS included if it's stale/error. Let me verify: ka_kshetra state at last check = `lit` (A2 checkpoint-resume). So it's NOT in A2' targets (29 assets do not include ka_kshetra). A3 (dedicated ka_kshetra rebuild with A1 deployed) is needed post-A2'.
+
+---
+
+## Heartbeat: 2026-08-13T07:37+05:30 — A2' RUNNING (exec 8vvqv); ka_gochara building
+
+CONDUCTOR-HEARTBEAT: 2026-08-13T07:37+05:30 (CONDUCTOR of SAMPŪRTI-α) pid=89453 [A2' execution 8vvqv RUNNING]
+
+**A2' CORRECTION:** cww2x failed (7 sec, help text) — orchestrator needs --run-id as CLI arg (--args), not env var.
+Re-dispatched as exec 8vvqv with `--args="--run-id,cbd6ea44"` ✅
+
+**8vvqv LIVE LOGS (01:02:29-01:02:38 UTC):**
+- Orchestrator initialized, writers registered
+- orphan-cleanup complete
+- ka_gochara (pos=1): STARTED ✅ — ROOT CAUSE FIX WORKING
+- mi_bhara (pos=11): FAILED — pre-existing TypeError(float NoneType) — EXPECTED, out of scope
+- mi_sankalpa (pos=18): COMPLETE 0 rows
+
+**MONITORING:** ka_gochara is a light writer (823 rows). Should complete quickly → ka_sangam unblocked → cascade.
+
+**NOTE on ka_kshetra (A3):** ka_kshetra is `lit` from A2 checkpoint-resume (old snapshot, pre-A1 gochara pin). After A2' cascade completes (all ka_* lit), need to force-stale or dispatch ka_kshetra with new snapshot to get fresh post-β, A1-pinned field. This is A3.
+
+---
+
+## Heartbeat: 2026-08-13T08:10+05:30 — A2' CASCADE PROGRESSING; ka_kalasutra building
+
+CONDUCTOR-HEARTBEAT: 2026-08-13T08:10+05:30 (CONDUCTOR of SAMPŪRTI-α) pid=89453 [A2' run cbd6ea44 exec 8vvqv — ka_kalasutra BUILDING]
+
+**A2' CASCADE STATUS (08:10 IST / 02:40 UTC):**
+
+run cbd6ea44 / exec 8vvqv — state=`running` (1 task currently running in Cloud Run)
+
+build_run_assets states:
+```
+ka_gochara        → complete ✅  (ROOT CAUSE FIX: was stale, now lit in asset_throughput)
+ka_sangam         → complete ✅  (was error/BLOCKED; unblocked by ka_gochara rebuild; 14,868 rows)
+ka_taranga        → complete ✅  (92,412 rows)
+ka_vighnakara     → complete ✅  (536 rows)
+mi_sankalpa       → complete ✅  (0 rows — expected)
+mi_bhara          → error ❌     (pre-existing TypeError — out of scope, expected)
+ka_kalasutra      → building ⏳  (started 01:07:14 UTC; 1.5h build time, normal for heavy writer)
+ka_bhavishya_lekha→ queued      (waiting on ka_kalasutra)
+ka_jivana_parva   → queued      (waiting on ka_kalasutra)
+ka_kala_darshana  → queued      (waiting on ka_kalasutra)
+ka_tulana         → queued      (waiting on ka_kalasutra)
+ph_* (×9)         → queued      (waiting on ka_* cascade to complete)
+mi_* (×9 exc bhara/sankalpa) → queued (waiting on ph_* cascade)
+```
+
+asset_throughput (live DB state):
+- ka_gochara: lit ✅
+- ka_sangam: lit ✅
+- ka_kalasutra: building ⏳ (rows_written=335,403 from previous build; last_built_at=01:07:14 UTC)
+- ka_taranga: lit ✅
+- ka_vighnakara: lit ✅
+- ka_kshetra: lit ✅ (from A2 checkpoint-resume, pre-A1 snapshot — A3 still needed)
+- ka_bhavishya_lekha / ka_jivana_parva / ka_kala_darshana / ka_tulana: error (unchanged — still waiting)
+- ph_* (×9): error (unchanged — waiting on ka_*)
+- mi_* (×10 exc jivanaghatana): error (unchanged — waiting on ph_*)
+- mi_jivanaghatana: lit ✅ (was already lit, untouched)
+- mi_sankalpa: dormant
+
+**LOGS:** Cloud Logging shows logs only through 01:08:13 UTC (ka_vighnakara complete). No ka_kalasutra progress logs visible — it runs silently through its dasha period substeps. Container is confirmed running.
+
+**NEXT STEPS:**
+1. Wait for ka_kalasutra to complete (may take 2-4h total from start)
+2. Once complete: ka_bhavishya_lekha / ka_jivana_parva / ka_kala_darshana / ka_tulana cascade
+3. Then ph_* cascade (9 assets)
+4. Then mi_* cascade (those not error for other reasons)
+5. When run cbd6ea44 completes/stalls → assess remaining errors → dispatch A3 (ka_kshetra rebuild with A1 code)
+6. A3 produces new snapshot_id → Measurement #5 (post-β, A1-pinned field)
