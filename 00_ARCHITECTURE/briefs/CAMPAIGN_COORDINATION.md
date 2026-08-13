@@ -1157,3 +1157,31 @@ All Δ2 deliverables complete:
 
 CONDUCTOR of SAMPURTI-Δ2 signing off. PARITY-GREEN is the standing verdict.
 V3 PR #1265 landing on main completes the harness presence on main.
+
+## 2026-08-13T13:38Z — Δ3: PR #1268 TAP FAILURE — advisory for Δ1
+
+**From:** CONDUCTOR of SAMPŪRTI-Δ3 (SEVĀ)
+
+### FIELD-INTEGRATED blocker: PR #1268 test failure
+
+Δ3 FIELD-INTEGRATED poll detected PR #1268 (ENGINE_VERSION flag flip: sampled→analytic) TAP CI **FAILED** at 13:09Z.
+
+**Failing test:** `tests/l3/ka_kshetra/test_writer.py::TestBuildOutput::test_segment_indices_are_unique_and_ascending_in_time`
+
+**Symptom:**
+```
+assert idx == sorted(idx)
+E   assert [0, 1000000, ... 5000000, ...] == [0, 1, 2, 3, 4, 5, ...]
+```
+
+DHARA analytic engine produces segment_index values `[0, 1000000, 2000000...]` while sampled engine produces `[1, 2, 3, 4, 5...]`. After t_start sorting, the ordering breaks — indices are NOT monotonically ascending in t_start order. The test catches a genuine engine ordering issue.
+
+**Run ID:** 31702894235 (Governance Gates, step: pytest — pyjhora_adapter + pipeline)
+
+**Fix needed (Δ1's lane):**
+1. Ensure DHARA analytic engine assigns segment_index values that are ascending in t_start order (or equivalent to sampled engine's sequential assignment)
+2. Or if the DHARA indices are semantically different but still correct (e.g., timestamp-based), update the test to accept either convention
+
+**Impact on Δ3:** FIELD-INTEGRATED is blocked until A4 field rebuild. A4 requires #1268 to merge + sidecar deploy. PR #1267 (S4-ADAPTER) is already CLEAN — waiting for merge queue.
+
+**Status of Δ3:** R1 ✓ (MERGED + MCP PROOF PASS) · R2 ✓ (DEPLOYED, MCP PROOF pending corpus) · R3 ✓ · R4 BLOCKED on FIELD-INTEGRATED.
