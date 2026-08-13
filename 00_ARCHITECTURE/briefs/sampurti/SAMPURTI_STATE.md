@@ -2108,3 +2108,56 @@ CONDUCTOR-HEARTBEAT: 2026-08-13T11:53+05:30 (CONDUCTOR of SAMPŪRTI-α) pid=new 
 4. [COMPLETED THIS SESSION] L-4 renewed to 18:00 IST (done 11:47 IST)
 
 
+
+---
+
+## Heartbeat: 2026-08-13T11:57+05:30 — R14 SESSION OPEN; A3 sd2ph RUNNING (marriage:4 done, :5 in flight)
+
+CONDUCTOR-HEARTBEAT: 2026-08-13T11:57+05:30 (CONDUCTOR of SAMPŪRTI-α) pid=new [R14 launch — sole conductor confirmed; A3 sd2ph running; PRATINIDHI M4-baseline ruling to dispatch]
+
+### STEP 0 — COMPLETE (R14)
+
+**LIVENESS (FM-10/11):**
+- pgrep "CONDUCTOR of SAMPŪRTI-α": no match (R13 DEAD, no cron carry-over)
+- Sole SAMPŪRTI-α conductor: CONFIRMED (this session)
+
+**HYGIENE:**
+- cloud-sql-proxy port 5433: ALIVE (PID 72597) ✓
+- cloud-sql-proxy port 5434 (β): ALIVE (PID 72369) — β's, not ours ✓
+- Advisory locks: 1 (orchestrator sd2ph active) ✓ EXPECTED
+- build_runs 8ddf6162: state=`running`, started 05:46:58 UTC ✓
+- No phantom running rows ✓
+
+**COORDINATION (CAMPAIGN_COORDINATION.md read from origin/campaign-coordination):**
+- L-4: ACTIVE, renewed to 18:00 IST (12:30 UTC) ✓ — our lease
+- No UTKARṢA lease conflicts ✓
+- DIRECTIVE item 7 (coordination file): ★ PRATINIDHI ruling REQUIRED before Measurement #5 on M4 baseline supersession (field torn down post-M4; PRATINIDHI must rule whether to re-run #4 against completed field or document why earlier baseline stands)
+
+**RECONCILE (FM-09):**
+- A3 exec sd2ph RUNNING: build_run 8ddf6162 = `running`, ka_kshetra = incomplete/building ✓
+- Latest substep committed: stage5:marriage:4 @ 06:15:48 UTC (live DB verified) — marriage:5 in flight (~12 min elapsed, pace ~8 min/substep)
+- G2-EARLY ADJUDICATION-2: CLOSED-DEFER (career_entry + career_change → Tier N-iii) ✓ (committed c45f3c87b)
+- A1 code (gochara corpus pin): deployed on main (dbdbb30ac) ✓
+- A2' 28/29 assets lit (mi_bhara pre-existing error, out of scope) ✓
+
+### A3 sd2ph STATUS (06:27 UTC)
+
+| Field | Value |
+|---|---|
+| build_run | 8ddf6162 state=`running` |
+| ka_kshetra.state | incomplete/building ✅ |
+| Substeps committed | 85/534 (last = stage5:marriage:4 @ 06:15:48 UTC) |
+| Current substep | stage5:marriage:5 (in flight, ~12 min elapsed) |
+| Advisory lock | 1 ✅ |
+| L-4 expiry | 18:00 IST = 12:30 UTC ✓ |
+
+**ETA:** ~6 slow classes × 8 substeps × 8.5 min + stage6/7 ≈ completion ~17:00 IST (11:30 UTC)
+L-4 expires 18:00 IST (12:30 UTC) — sufficient buffer, no further renewal needed unless build slips
+
+### NEXT ACTIONS
+
+1. [RUNNING] Monitor A3 sd2ph every 30 min — poll substep count + ka_kshetra.state
+2. [DISPATCHING NOW] NATIVE-PRATINIDHI (opus/max): M4 baseline ruling per coordination DIRECTIVE item 7
+3. [ON ka_kshetra lit + PRATINIDHI ruling received] Measurement #5: kala_now_get / kala_ahead_get / gochara_forecast_get
+4. [ON #5] G-P3a gate → G-P3b + Brilliance Gate #1 → FIELD-INTEGRATED marker → γ unblocked
+
