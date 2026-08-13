@@ -38,7 +38,8 @@ cutover wave (its W6), UTKARṢA yields otherwise.
 
 | # | campaign | purpose | started (IST) | expiry (IST) | status |
 |---|---|---|---|---|---|
-| L-3 | SAMPŪRTI | P-G1 ka_kshetra rebuild (fetch_orb_deg L1b fix deployed) | 08:34 IST | 10:00 IST | ACTIVE |
+| L-3 | SAMPŪRTI | P-G1 ka_kshetra rebuild (fetch_orb_deg L1b fix deployed) | 08:34 IST | 10:00 IST | RELEASED (expired 10:00 IST; A3 mq4b8 ran 03:25–05:29 UTC, 85/534 substeps, run failed; lease void) |
+| L-4 | SAMPŪRTI | A3 checkpoint-resume: ka_kshetra redispatch from substep 85/534 | 11:10 IST 2026-08-13 | 16:00 IST 2026-08-13 | ACTIVE |
 
 ## 2. MIGRATION NUMBER CLAIMS (claim-at-PR-open; renumber-on-collision stands)
 

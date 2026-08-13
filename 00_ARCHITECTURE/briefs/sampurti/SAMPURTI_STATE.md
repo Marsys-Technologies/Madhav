@@ -1831,3 +1831,55 @@ CONDUCTOR-HEARTBEAT: 2026-08-13T09:58+05:30 (CONDUCTOR of SAMPŪRTI-α) pid=8945
 **NEXT:** Wait for mq4b8 to complete → ka_kshetra `lit` → Measurement #5 → G-P3a gate.
 
 MONITORING: b7ux00cks background poll (10-min interval)
+
+---
+
+## Heartbeat: 2026-08-13T11:10+05:30 — SESSION OPEN; A3 exec sd2ph RUNNING (checkpoint-resume 85/534)
+
+CONDUCTOR-HEARTBEAT: 2026-08-13T11:10+05:30 (CONDUCTOR of SAMPŪRTI-α) pid=new [R10 launch — directive 70064 adopted; A3 exec sd2ph running]
+
+### STEP 0 — COMPLETE
+
+**LIVENESS (FM-10/11):**
+- Previous heartbeat: 09:58 IST — pid from that session confirmed dead (no pgrep match; background sleep 7200 b7ux00cks is a monitor task, not conductor)
+- Sole SAMPŪRTI-α conductor: CONFIRMED
+
+**HYGIENE:**
+- Advisory lock PID 1781047: TERMINATED (was zombie Cloud Run connection from mq4b8, idle-in-transaction `SELECT pause_requested_at, stop_requested_at FROM build_runs`; `pg_terminate_backend(1781047)` = true; advisory_locks now 0)
+- Running build_runs before session: NONE
+- cloud-sql-proxy port 5433: ALIVE (PID 72597)
+
+**COORDINATION:**
+- Coordination file read: L-3 ACTIVE (expired 10:00 IST) — no UTKARṢA ACTIVE lease
+- L-3 marked RELEASED (expired; mq4b8 ran 03:25–05:29 UTC, 85/534 substeps, run=failed, Cloud Run exec terminated)
+- L-4 claimed (A3 checkpoint-resume, expiry 16:00 IST 2026-08-13) — committed to sampurti/integration
+
+**RECONCILE (FM-09):**
+- Adopted **DIRECTIVE 70064** (SAMPŪRTI-α, obs 70064): P1 reframed — goal is "every prior-backed class built + honest skip ledger" NOT 27/27; 21 classes skipping via `ClassSkipped('no_class_prior_row')` = ADJUDICATION-2 honesty by design; G2-EARLY lane dispatched for career_change+career_entry; mq4b8 disposition = checkpoint-resume redispatch
+- mq4b8 actual state: build_run `ec366f46` failed at 04:25 UTC; Cloud Run exec terminated; substeps continued writing until 05:29 UTC (85/534 committed, fingerprint `b39fa2fc`, last = `stage5:marriage:7`); ka_kshetra `incomplete`
+- ka_kshetra marked `error` → redispatch precondition satisfied
+
+### A3 CHECKPOINT-RESUME STATUS
+
+| Field | Value |
+|---|---|
+| Run ID | 8ddf6162-5007-4bc2-a61f-098cda1363a0 |
+| Cloud Run exec | brahma-build-pipeline-job-sd2ph (short: sd2ph) |
+| started_at | 2026-08-13 05:46:58 UTC (11:16 IST) |
+| build_run.state | running ✅ |
+| ka_kshetra state | building ✅ |
+| Substeps already committed | 85/534 (fingerprint b39fa2fc) |
+| Last committed substep | stage5:marriage:7 |
+| Expected resume from | stage5:marriage:8 (next unfinished) |
+| Remaining active classes | marriage (cont.), relocation, separation, surgery, childbirth, foreign_settlement (Stage5 finalization) |
+| 21 skipped classes | ADJUDICATION-2 honesty — ClassSkipped('no_class_prior_row') — NOT a defect |
+
+**ETA:** At ~7.5 min/Stage5 substep, remaining ~35-40 substantive substeps ≈ 4-5 hours → completion ~15:30–16:30 IST.
+
+### NEXT ACTIONS (in order)
+
+1. [RUNNING] A3 exec sd2ph: monitor every 30 min until ka_kshetra = `lit`
+2. [PENDING] G2-EARLY lane: dispatch builder for career_change + career_entry class priors (ADJUDICATION-2 + PRATINIDHI ratification + bg_class_priors rebuild)
+3. [ON ka_kshetra lit] Measurement #5: MCP calls (kala_now_get / kala_ahead_get / gochara_forecast_get) — post-β, A1-pinned field
+4. [ON Measurement #5] G-P3a gate → G-P3b + Brilliance Gate #1 → FIELD-INTEGRATED marker → γ unblocked
+
