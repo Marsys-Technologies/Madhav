@@ -3390,3 +3390,68 @@ Native signals resume → A6 dispatch (460 substeps, checkpoint intact, DHARA en
 CONDUCTOR-HEARTBEAT: 2026-08-13T23:15+05:30 [R35 — PARKED-NATIVE SMR-2 HOLD-A6 carries; all surfaces checked: no native signal; DB clean (advisory_locks=0, builds=0); ka_kshetra=incomplete 2,063,838 rows stable; S7459 fix extracted and opened as PR #1269 (CI running); #1268 flag-flip confirmed on main; session closing]
 
 CONDUCTOR-HEARTBEAT: 2026-08-13T23:30+05:30 [R35 — PR #1269 (S7459 idle-timeout fix) MERGED to main at 17:54 UTC; S7459 fix now live on main; PARKED-NATIVE SMR-2 HOLD-A6 continues; all downstream gated on ka_kshetra=LIT (482012f1); no native signal; session closing]
+
+---
+
+## R36 — SAMPŪRTI-Δ1 CONDUCTOR (2026-08-13T23:34+05:30)
+
+**Identity:** CONDUCTOR of SAMPŪRTI-Δ1 (supervisor relaunch; R35 closed 23:30 IST)
+
+### LIVENESS CHECK (FM-10/11/21)
+
+- current_conductor.pid = 36443 (R35 session; pgrep "CONDUCTOR of SAMPŪRTI-Δ1" → no match → DEAD) ✅
+- PEERS: none found after self-exclusion ✅
+- My PID: 39026 (written to dh-d1-logs/current_conductor.pid) — sole conductor confirmed ✅
+
+### HYGIENE CHECK (FM-06 amended)
+
+- Cloud Run executions: tkp7b/s6zbw/mv7c5/szwkw/sd2ph all Completed, runningCount=0 — no live builds at session open ✅
+- advisory_locks = 0 ✅
+- active_build_runs (state IN planned,running) = 0 ✅
+- Cloud SQL proxy: PID 72597 on 127.0.0.1:5433 ✅
+- PR #1269 (S7459 fix): MERGED to main at 2026-08-13T17:54:19Z ✅
+
+### SM-R-3 RULING READ AND ACTIONED
+
+**SM-R-3 discovered in campaign-coordination branch (f00aa2b50, ~17:40Z):**
+- SMR-2 HOLD-A6 was a FALSE-BLOCKER-PARK (R35 missed it by ~6 min race at coord fetch)
+- HOLD-A6 explicitly LIFTED. A6 AUTHORIZED to dispatch immediately.
+- Sequence: (1) PR #1269 S7459 fix — ALREADY DONE (merged 17:54Z) ✅; (2) A6 dispatch; (3) spine resumes.
+
+### A6 DISPATCH (18:04Z / 23:34 IST)
+
+**build_run created:**
+- id: `0e2748f7-ba23-4154-9e6c-3999701ef000`
+- chart_id: `482012f1-710e-4a25-994a-93821f5871aa` (native)
+- scope: asset_set | plan: ["ka_kshetra"] | action: build | triggered_by: sampurti-a6-chart1-kshetra-dhara
+
+**Cloud Run execution dispatched:**
+- execution name: `brahma-build-pipeline-job-crfzx`
+- status: Successfully started running ✅
+- args: `--run-id 0e2748f7-ba23-4154-9e6c-3999701ef000`
+
+**L-8 lease claimed in campaign-coordination:** started 23:34 IST, expiry 06:00 IST (2026-08-14), committed to campaign-coordination branch (a6e0a1419).
+
+### STATE RECONCILIATION (FM-09)
+
+**DB state at dispatch:**
+| asset | chart | state | rows_written |
+|---|---|---|---|
+| ka_kshetra | 482012f1 (native) | **incomplete** | 2,063,838 |
+| ka_kshetra | 1c826d5a (Abhinandan) | lit | 837,992 |
+
+Checkpoint: 74/534 substeps committed (460 remaining). DHARA analytic engine active (PR #1268 merged). S7459 timeout fix live on main (PR #1269 merged).
+
+**build_run A6 will transition: planned → running → (4+ hours) → completed when ka_kshetra=lit.**
+
+### NEXT-ACTION
+
+**Monitor A6 build progress:**
+- Poll every ≤10 min: check build_run state, Cloud Run execution status
+- When ka_kshetra=lit for 482012f1 → post FIELD-INTEGRATED to campaign-coordination
+- Then: S4 parity (Δ2 PARĪKṢAKA parity battery) → G-P1 gates → SMR-2 M4' re-baseline → P3 DVIPRAMĀṆA → M5 → Brilliance Gate #1
+
+**ONE-LINE ANSWER:**
+A6 running (brahma-build-pipeline-job-crfzx) → ~4+ hours → ka_kshetra=lit → FIELD-INTEGRATED → S4 parity → G-P1 → SMR-2 M4' → P3 → M5 → Brilliance Gate #1.
+
+CONDUCTOR-HEARTBEAT: 2026-08-13T23:34+05:30 [R36 — A6 DISPATCHED; execution=brahma-build-pipeline-job-crfzx run-id=0e2748f7; build_run planned→running; monitoring ka_kshetra=lit; lease L-8 ACTIVE]
