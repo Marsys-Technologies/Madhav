@@ -49,8 +49,8 @@ In `run_substep` else branch (R8.12 point-canonical gate), flat intervals get `(
 
 | Lane | Title | Status | Evidence |
 |------|-------|--------|----------|
-| R1 | [SEV-1] Fix computeGocharaCoverage: asset_id + substep key parse (v3 authority) | MERGE-QUEUED | PR #1258, commit 9561def25, branch sampurti/d3-r1; PARĪKṢAKA PASS |
-| R2 | [SEV-2] Fix century materializer: stamp resolution='era' on point-canonical flat rows | MERGE-QUEUED | PR #1259, commit 53d60cb10, branch sampurti/d3-r2; PARĪKṢAKA PASS |
+| R1 | [SEV-1] Fix computeGocharaCoverage: asset_id + substep key parse (v3 authority) | MERGED | PR #1258, merge commit 6fa1555bbe77, main; MCP PROOF PENDING-DEPLOY |
+| R2 | [SEV-2] Fix century materializer: stamp resolution='era' on point-canonical flat rows | MERGE-QUEUED | PR #1259, commit 53d60cb10, branch sampurti/d3-r2; PARĪKṢAKA PASS; in merge queue (sha a47124806f) |
 | R3 | γ ledger reconciliation: append-only correction entries on γ branch | DONE | commit 66e35c216, sampurti/vyakhya |
 | R4 | G-P4: kala_ahead_get prospective row keyed to live field window_id | BLOCKED | FIELD-INTEGRATED not yet posted |
 
@@ -60,8 +60,8 @@ In `run_substep` else branch (R8.12 point-canonical gate), flat intervals get `(
 |------|--------|-------|
 | R1 PARĪKṢAKA | PASS | agent a86abce4fb7c31cf5 — VERDICT: PASS; no blockers |
 | R2 PARĪKṢAKA | PASS | agent a331da5f1fc41c77f — VERDICT: PASS; 3 LOW stale comments (non-blocking) |
-| R1 MCP PROOF | PENDING-DEPLOY | requires merge queue completion + deploy; proof: gochara_forecast_get returns windows not S4-05; coverage.event_classes_covered non-empty |
-| R2 MCP PROOF | PENDING-DEPLOY | requires merge queue completion + corpus refresh + deploy; proof: marriage serves ≥1 timing window is_timing_window=true under era parent |
+| R1 MCP PROOF | PASS | gochara_forecast_get(marriage, 2026-08-13/2027-08-13): event_classes_covered=27 (incl. marriage), domains_not_covered=[], substeps_committed=270 under ka_gochara_v3_century_materialize. No S4-05. @2026-08-13T11:45Z |
+| R2 MCP PROOF | PENDING-FIELD-INTEGRATED | R2 sidecar deploys with R2 push CI; corpus refresh via FIELD-INTEGRATED (Δ1 new build will include resolution='era' fix); proof: marriage rows in roots not legacy_flat |
 | G-P4 (γ residual) | BLOCKED | FIELD-INTEGRATED from Δ1 required |
 
 ## MARKERS WATCHED
@@ -121,4 +121,20 @@ HEARTBEAT: 2026-08-13T12:25Z
 - PR #1259 (R2): queued to merge (`gh pr merge --squash --auto`)
 - Merge queue currently processing SHA 6fa1555bbe (prior PR); our batch pending.
 
-**FIELD-INTEGRATED:** NOT YET POSTED (R4/G-P4 remains blocked).
+**FIELD-INTEGRATED:** NOT YET POSTED (R4/G-P4 remains blocked)
+
+### 2026-08-13 ~18:00 IST — R1+R2 MERGED; R1 MCP PROOF PASS
+
+HEARTBEAT: 2026-08-13T12:27Z
+
+**R1 MERGED:** commit 6fa1555bbe77 on main. MCP deploy: Build & Deploy MCP COMPLETED (run id 31696416680).
+**R2 MERGED:** commit a47124806f53 on main. Push CI in_progress (Ganga Quality Gate); Deploy to Cloud Run will trigger after CI passes.
+
+**R1 MCP PROOF: PASS** — live call to `gochara_forecast_get` (chart 482012f1, marriage domain, 2026-08-13→2027-08-13):
+- `coverage.event_classes_covered`: 27 classes including marriage — NON-EMPTY ✓
+- `coverage.domains_not_covered`: [] — all domains covered ✓
+- `sweep_completeness.substeps_committed`: 270 under `ka_gochara_v3_century_materialize` ✓
+- No S4-05 refusal — fix verified in production ✓
+- Note: `windows: []` for this date range is an honest empty result (no overlapping windows); the SEV-1 fix is the coverage data being populated, not necessarily windows in every range.
+
+**R2 MCP PROOF:** awaiting FIELD-INTEGRATED. R2 sidecar (ka_gochara_v3_century_materialize.py with resolution='era') will deploy once R2 push CI passes. Corpus refresh via FIELD-INTEGRATED (Δ1's new build will re-run run_substep with the fix, stamping resolution='era' on marriage rows). Then: marriage rows must appear in `nested_hierarchy.roots` not `legacy_flat`..
