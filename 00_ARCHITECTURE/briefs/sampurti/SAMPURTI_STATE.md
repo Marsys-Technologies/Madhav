@@ -2429,3 +2429,47 @@ CONDUCTOR-HEARTBEAT: 2026-08-13T10:57+00:00 (CONDUCTOR of SAMPŪRTI-Δ1) pid=$$ 
 ---
 
 CONDUCTOR-HEARTBEAT: 2026-08-13T11:07+00:00 (CONDUCTOR of SAMPŪRTI-Δ1) pid=11751 [R18 10-min — S1 builder active (73KB output, reading stage files); exec szwkw zombie monitoring; advisory lock still present (n1 hold)]
+
+---
+
+CONDUCTOR-HEARTBEAT: 2026-08-13T11:17+00:00 (CONDUCTOR of SAMPŪRTI-Δ1) pid=11751 [R18 20-min — S1 builder still active; no new tool-result files since 16:32; spec writing phase in progress; advisory lock still present]
+
+### SESSION STATUS (R18, 20 min in)
+
+**All Step 0 complete.** S1 Opus builder (agent aa5b293ba5795ac73) dispatched at 16:23 IST, still running at 16:43 IST (~20 min). Normal for Opus writing a comprehensive ~200-line technical spec after reading 5 large source files.
+
+**DHĀRĀ understanding captured this session:**
+- Current engine: adaptive bisection (τ=0.02, depth 6) treats ln_lambda as black box — wastes 50×
+- DHĀRĀ insight: K_c (daśā boundaries) = piecewise-CONSTANT; K_e (envelope knots) = piecewise-LINEAR modifier terms; suppression = log-AFFINE (not linear)
+- Between consecutive knots: non-suppression terms EXACTLY linear → no bisection needed
+- Suppression-active intervals: log-affine → certified-bracket Newton for crossing detection only
+- Null: current = 256 replicates on 1-day coarse grid (~819 points); DHĀRĀ = 1024 on full-fidelity knot grid
+- Stage I/O: stages 0-3 UNCHANGED by DHĀRĀ; changes only in stage 4 (field assembly) and stage 5 (null)
+- S3 lanes: L1 term-matrix · L2 sweep combiner · L3 exact ops · L4 vectorized null · L5 pin matrix · L6 IO
+
+**exec szwkw zombie**: Build_run=failed (ended 10:10 UTC, stop_requested_at=10:06 UTC), Cloud Run exec still alive per gcloud (RUNNING=1). Advisory lock count=1. Per n1: NOT terminated.
+
+### NEXT-ACTION (if this session ends before S1 completes)
+
+```
+IMMEDIATE: Resume S1 by re-dispatching Opus builder if agent aa5b293ba5795ac73 has not
+           completed or produced DHARA_DESIGN_v1_0.md. Check: git log | grep DHARA-SPEC or
+           ls 00_ARCHITECTURE/briefs/sampurti/DHARA_DESIGN_v1_0.md
+
+ON S1 COMPLETE:
+  S2: Dispatch fresh Opus VERIFIER + fresh Opus PRATINIDHI to attack the spec on:
+      knot collisions at shared K_c/K_e times · century wraparound on circular shifts ·
+      suppression-active edge cases (empty u, ρ at RHO_MAX, single-knot intervals) ·
+      empty classes (< 2 knots in K) · float-ordering in window_id (determinism) ·
+      term-matrix schema completeness · pin-matrix invalidation edge cases
+  AFTER S2 AMENDMENTS: post DHARA-SPEC-FROZEN marker in coordination, bump spec to v1.1
+
+ON DHARA-SPEC-FROZEN:
+  S3: Dispatch ≤4 parallel Sonnet builders with sm-d1-{lane} worktrees off origin/main:
+      L2 (sweep combiner) + L3 (exact ops) FIRST — these are the core engine
+      L4 (vectorized null) + L6 (IO) SECOND
+      L1 (term-matrix assembly) + L5 (pin matrix) THIRD
+      Each: TDD failing-test-first; PR→main title [SM-Δ1]; engine='analytic' behind flag
+
+BLOCKED ON S3+S4: S5 convergence spine (field rebuild + M5 + Brilliance Gate #1)
+```
