@@ -862,3 +862,48 @@ Step 0 complete:
 2. PARĪKṢAKA review + GATE-EXECUTOR merge + Cloud Run deploy
 3. A2' dispatch: ka_gochara rebuild unblocks ka_sangam cascade
 4. Measurement #5 (post-β, A1-pinned field)
+
+### DIRECTIVE — 2026-08-13 ~10:3x IST (native's desk) → SAMPŪRTI-α
+
+**GATE PACKET: AUTHORIZED. Execute now via GATE-EXECUTOR.** And note the
+process correction, which matters more than the authorization:
+
+1. PROCESS (standing, record in your ledger): a gate-packet merge is NOT
+   parked-for-native. Your charter delegates it to GATE-EXECUTOR under
+   R29/PRATINIDHI. The parked list is exhaustive and narrow: LEL content ·
+   scope reductions · retiring a surface without demonstrated parity ·
+   admitting an empirically-calibrated gochara corpus into the field ·
+   R27 acharya commissioning. NOTHING ELSE stops for a human. Halting on
+   an unparked item is a FALSE-BLOCKER-PARK — a named defect class in your
+   own plan (§7). Dispatch PRATINIDHI for any future "may I".
+2. EXECUTE: pinned-commit packet, full GATE-EXECUTOR floors — all checks
+   COMPLETED SUCCESS · deploy RUN whose HEAD CONTAINS the merge concluded
+   GREEN (retry ONCE on the PROD_DATABASE_URL flake, then structural) ·
+   _migrations_applied shows 569 · production==main · evidence pasted.
+   PR body must state: ~163 commits but only ~10 carry code (A1 pin,
+   PG-31, 569 + _RESUME_VERSION, G12, G14b, L1j) — the rest are conductor
+   heartbeats; say so or the diff will be misread.
+3. VERIFY POST-DEPLOY BY MCP, NOT SQL: A1's pin live (config_pin carries
+   gochara_generation + calibration_state + corpus_digest) · PG-31 seam
+   present on main · one kala_now_get + one gochara_forecast_get for the
+   native returning non-error. Paste responses.
+4. THEN A2' IMMEDIATELY. No further authorization is needed for any
+   subsequent dispatch, rebuild, packet, or deploy inside your scope.
+5. LEDGER CORRECTION REQUIRED: A1 is recorded "MERGED db7fb4f67" but is
+   NOT on main — integration only (verified by ancestry at 10:2x). Fix
+   that line. A merged-to-integration claim reading as merged-to-main is
+   precisely the confusion that cost this campaign eleven runs while
+   PG-31 sat unmerged.
+6. mi_bhara float(w_start) NoneType: correct to scope out — register as a
+   named residual WITH its reproduction so P8 hands it forward honestly.
+7. ★ RULING REQUIRED FROM PRATINIDHI (not from the native) BEFORE
+   Measurement #5: Measurement #4 + FIELD-BASELINE-DONE were posted
+   2026-08-13 04:02, but the field has since been TORN DOWN and is
+   rebuilding (native chart now 2 classes / 2,236 windows against 27
+   promised; Abhinandan 6). A baseline measured on a superseded field
+   cannot honestly anchor #5's delta. PRATINIDHI rules, with written
+   rationale: (a) re-run #4 against the completed 27-class field before
+   any integration effect is computed — desk recommendation, R14-clean
+   (publish BESIDE, never overwrite; label the superseded one), or
+   (b) a documented reason why the earlier baseline still stands. Record
+   the ruling in the SM-R registry either way.
