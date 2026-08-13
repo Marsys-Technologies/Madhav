@@ -185,3 +185,26 @@ CRITICAL FINDINGS (e6bb344ac): (1) Cloud job MIS-SIZED (2vCPU/4Gi vs ~2GB Envelo
 GAMMA POSTURE: waiting for FIELD-INTEGRATED. No change to C-lanes (all merged+deployed). A3 path: current run completes (slow) OR native resizes+redeploys → perf triad merges → redispatch. ETA unknown. Next poll 20-min.]
 CONDUCTOR-HEARTBEAT: 2026-08-13T09:55:00Z pid=$$ host=Montys-MacBook-Pro.local session=γ
 [A3 SUSTAINED PROGRESS (post-fratricide-fix): Build has run clean since ~06:48Z without a single crash. Completed: marriage (all :1-:8 + finalize, 42,494 rows), relocation (all :1-:8 + finalize, 106,220 rows), separation (:1-:7 done, :8+finalize in-flight). rows_written=715,259. Separation finalize ETA ~10:09Z. Surgery ETA ~11:12Z. lit ETA ~11:15Z UTC (4:45 PM IST). Coordination: no new commits since e6bb344ac (native sizing decision still pending, but build is proceeding at slow speed). C4 live, C5 deployed. γ continues 20-min polls; accelerating when surgery finalize approaches.]
+
+---
+## R3 LEDGER CORRECTION (appended by SAMPŪRTI-Δ3 conductor, 2026-08-13 ~16:3x IST)
+**Δ3 R3 task: γ ledger reconciliation — append-only entries per campaign rails.**
+
+### LANE TABLE CORRECTIONS (all lanes merged — ledger was stale at γ session end)
+
+| Lane | Stale Ledger Status | Actual Status | Merge SHA | Correction by |
+|------|--------------------|----|---|---|
+| C1 | PR-OPEN (PR #1249) | MERGED to main | 1e0b80e91 | Δ3 R3 (verified git log) |
+| C2 | PR-OPEN (PR #1247) | MERGED to main | 44646da1e | Δ3 R3 (verified git log) |
+| C3 | PR-OPEN (PR #1245) | MERGED to main | baca82bad | Δ3 R3 (verified git log) |
+| C4 | IN-PROGRESS (PR #1250) | MERGED to main | aa23e7ba1 | Δ3 R3 (verified git log) |
+| C5 | PR-OPEN (PR #1246) | MERGED to main | 8477e87b4 | Δ3 R3 (verified git log) |
+
+Additional: PR #1256 (C4/C5 flag activation — SM_GAMMA_C4_ENABLED + SM_GAMMA_C5_ENABLED=true in MCP Cloud Run) MERGED to main 03:54:47Z (merge 8477e87b4, deploy run 31665755957 SUCCESS, C4 live confirmed MCP 04:13Z).
+
+**G-γ1 GATE:** PASS (all 4 facets MCP-verified 2026-08-12 22:07 IST, evidence in §G-γ1 GATE EVIDENCE section above).
+
+**G-P4 STATUS:** BLOCKED pending FIELD-INTEGRATED marker from Δ1. A3 build `szwkw` STILL RUNNING as of Δ3 session open (16:3x IST), ETA ~11:15Z. Δ3 will post G-P4 completion when FIELD-INTEGRATED is received.
+
+**γ CAMPAIGN STATUS:** C1-C5 COMPLETE and deployed. G-γ1 PASS. G-P4 pending. γ conductor session ended; Δ3 inherits G-P4 closure responsibility per ALPHA_DAY_PLAN §2 Phase R4 / SEVĀ scope.
+
