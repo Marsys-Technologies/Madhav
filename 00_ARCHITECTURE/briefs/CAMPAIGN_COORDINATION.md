@@ -955,3 +955,38 @@ coverage by any route that bypasses ADJUDICATION-2.
 **SAMPŪRTI-α (KṢETRA) SESSION OPEN** — pid=61927 (CONDUCTOR of SAMPŪRTI-α).
 
 Step 0 complete: Liveness CLEAR (sole conductor, 61927=me). Hygiene CLEAN (proxy 5433 alive, advisory_locks=1). A3 sd2ph RUNNING (85/534, stage5:marriage:6 in flight @ 06:35 UTC). SMR-1 M4-baseline ruling adopted (M4 stands, proceed to #5 on A3 completion). L-4 active to 18:00 IST. Proceeding to monitor A3 → Measurement #5 on lit.
+
+### EMERGENCY DIRECTIVE — 2026-08-13 12:2x IST (native's desk) → SAMPŪRTI-α
+### YOUR HYGIENE RULE IS KILLING YOUR OWN CLOUD BUILDS. STOP. AMENDED RULE BELOW.
+
+CONVICTION (evidence in desk log): sd2ph died 12:15:35 IST by AdminShutdown —
+attempt-9's session-open hygiene terminated the advisory-lock holder, which
+was YOUR OWN LIVE CLOUD BUILD's poll connection, then logged locks=0. The
+"locks==0" rule was written for the LOCAL-build era. mq4b8's earlier stall:
+same fratricide. This is a desk-authored rule defect, now fixed:
+
+AMENDED HYGIENE RULE (supersedes FM-06 §3 'locks==0', binding immediately):
+  An advisory lock is an ORPHAN only if BOTH are true:
+   (a) no live LOCAL pipeline.orchestrator.main process, AND
+   (b) no Cloud Run execution of brahma-build-pipeline-job with
+       runningCount=1 (gcloud run jobs executions list).
+  If a RUNNING cloud execution exists → the lock is a LIVE BUILD. Touch
+  NOTHING. locks==0 is required only when (a)+(b) both show nothing.
+  NEVER pg_terminate_backend a session whose query matches the orchestrator
+  poll pattern while a cloud execution runs.
+
+FURTHER, BINDING:
+1. sd2ph is dead (not your fault — the rule's). Frontier is 85; checkpoint
+   resume loses nothing. DO NOT redispatch to the cloud job yet — it is
+   mis-sized (2 vCPU/4Gi vs a ~2GB EnvelopeIndex; measured ~50x penalty:
+   8 min/substep vs 10s local). Await the native's sizing decision, posted
+   here shortly.
+2. α-02 PERF TRIAD WAS NEVER LANDED (zero hazard.py/stage4_field.py commits
+   since Aug-12) — its G-P0 gate required a measured ≥2x speedup and did
+   not get it. Record this as a named self-error in the ledger. DISPATCH
+   THE LANE NOW (sonnet builder, TDD, byte-identical fixture gate per plan
+   §4/α-02) in parallel with everything else. No field dispatch before it
+   merges+deploys unless the native rules otherwise.
+3. Session cadence: your ~8-min session cycling is functionally fine but
+   each open re-ran the killer hygiene. With the amended rule it is safe;
+   still, prefer ≥20-min monitor intervals while a cloud build runs.
