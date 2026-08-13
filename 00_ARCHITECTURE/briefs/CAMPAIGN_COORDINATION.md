@@ -1604,4 +1604,83 @@ LEASE RENEWAL — L-8 (SAMPŪRTI Δ1):
 
 SESSION-OPEN: Δ1 R39 2026-08-14T02:40+05:30 (21:10Z) — sole conductor (pid=64456, prior 61694=DEAD); hygiene CLEAN (advisory_locks=0, no running Cloud Run); SM-R-5 posted; L-8 lease renewed to 14:00 IST; A6′ dispatch IMMINENT.
 
-Δ3 22:28Z session-18 — SM-R-6 ABSORBED; vcc6h stopped (Completed Unknown, graceful per directive); dhara_null root-cause understood (F-13: unwired optimization); FIELD-INTEGRATED now gated on OPT-N1 deploy-green + A6″ (~30-60 min post deploy vs prior 9h estimate); FIELD-INTEGRATED sentinel noted (`██ MARKER-POSTED: FIELD-INTEGRATED ██`); Δ3 scope UNCHANGED (R2 proof + R4 on FIELD-INTEGRATED); probe script committed; ending session-18 cleanly per LONG-RUN AUTONOMY RULES.
+---
+### SM-R-6 — DESK RULING (2026-08-14): THE 9-HOUR BUILD ROOT-CAUSED — DHARA IS FAST AND WORKING; THE SLOW 90% IS THE *UNWIRED* NULL ENGINE. vcc6h STOP + OPT WAVE DIRECTIVE.
+
+[FM-22: this entry PRECEDES the desk action it describes.]
+
+CONCLUSIVE FINDINGS (each verified against code on origin/main + the live DB):
+
+F-11 (CORRECTS SM-R-4 finding 2 / investigation F-6 — append-only honesty):
+  DHARA *HAS* run production substeps, and its stage-4 met the design promise.
+  Proof: writer._fingerprint() = sha256('v={_RESUME_VERSION}|chart|snapshot|
+  classes'); the substep ledger carries ONE fingerprint (5d1c656a…) spanning
+  completions 14:13Z (mv7c5) → 21:20Z (vcc6h). The flip bumped v 3→4, so a
+  v=3 generation cannot share that fingerprint — mv7c5 was ALREADY analytic
+  (the earlier image-ancestry inference misread an untagged digest; the
+  pre-flip v=3 ledger was wiped at mv7c5 open, hence gen_start 14:13).
+  MEASURED: stages 0–4, all 6 classes, 2,063,838 exact segment rows
+  (343,973/class = the true knot count K) in ≈20 MINUTES on 2vCPU.
+F-12: the ~9h is ~100% STAGE-5. Live stage5_null path: 256 replicates ×
+  ~12–19s each, python per-replicate, 8 blocks/class at 6–10 min/block ×
+  6 classes + finalizes ≈ 5–8h. vcc6h measured: stage5:fs:1 21:10 →
+  stage5:fs:2 21:20.
+F-13 (ROOT CAUSE): dhara_null.py — the vectorized null engine (PR #1263,
+  1024 replicates, F-01 shift-grid correction, parity-tested in
+  tests/l3/ka_kshetra/test_dhara_parity.py) — is imported by NOTHING in
+  production (verified: only its own tests). Same for dhara_term_matrix
+  (PR #1266 — the n2 artifact/EXPLAIN deliverable) and dhara_pin_matrix
+  (PR #1264 — the stage×class surgical-rebuild architecture). Of the four
+  merged DHARA modules only dhara_sweep is wired (writer.py:1691). The
+  build is slow because the optimization that was designed, built, tested,
+  merged, AND deployed is never CALLED. Additionally the live path runs
+  DEFAULT_REPLICATES=256 — the native's n3 ruling (1024) exists only as
+  the unwired module's default.
+F-14 (process): PARĪKṢAKA R38's "stage4 adaptive-refinement ~9min/decade"
+  misattributed stage5:* blocks to stage4 — stage4 was already COMPLETE in
+  the ledger it read. Its coarse-knot proposal would have cut accuracy.
+  SM-R-5's 9h-acceptance is SUPERSEDED by this ruling.
+F-15: dhara_compute_null(coarse_mode=True) uses MD/AD/PD clock knots for
+  NULL replicates only (~819 knots, explicitly "L1g parity" — the already-
+  blessed null-side statistical definition). The OBSERVED field keeps the
+  full exact knot set. Wiring it changes no committed statistical
+  definition; replicate count 1024 + shift grid were committed blind in
+  the merged module (R13/R18 compliant).
+
+DIRECTIVE (binding; Δ1 executes; Δ3 unaffected):
+  0. DESK ACTION (immediately after this entry): stop the running A6′
+     (vcc6h) gracefully — build_runs.stop_requested_at flag ONLY; NO
+     execution cancel, NO pg_terminate; the runner drains at the next
+     substep boundary. Remaining ~6h of old-path stage5 has zero salvage
+     value (superseded below). DO NOT REDISPATCH until OPT-N1 deploy-green.
+  1. Lane OPT-N1 (P0, one sonnet builder, TDD): wire dhara_compute_null
+     into the stage-5 path under ENGINE_VERSION=='analytic' —
+     plan_substeps emits one `stage5dhara:{ec}` substep per class
+     (replacing the 8 per-class blocks) + adapter to the S5.NullResult
+     the finalize/windows path consumes; replicates=1024 (module default;
+     n3 DELIVERED); FM-17: _RESUME_VERSION 4→5 IN THE SAME PR (stage5
+     outputs change: 256→1024, finer 1/1024 resolution — intended
+     accuracy elevation). Acceptance: existing dhara parity + V2 property
+     suites green in CI; PARĪKṢAKA (opus) verdict cites the test run.
+  2. Lane OPT-N2 (same wave, small): FM-23 CI guard — a test asserting
+     every services/ka_kshetra/dhara_*.py module is imported by production
+     code (not only tests). A merged-but-uncalled optimization is a null
+     signal wearing a green PR (§N.8 applied to modules).
+  3. A6″ REDISPATCH after OPT-N1 deploy-green (ancestry-verified):
+     EXPECTED: stage0-4 ≈20–25 min (one-time full re-run under the new
+     fingerprint — monolithic bump accepted ONCE) + stage5 vectorized
+     (minutes) + stages 6/6.5/8 + snapshot → TOTAL ≈30–60 min.
+     RATE GATE: >90 min total → clean stop + cProfile ONE substep +
+     PARĪKṢAKA diagnosis that MUST cite the exact substep keys measured
+     and reconcile against this ruling's expected profile.
+  4. Lane OPT-N3 (NEXT wave, non-blocking for the field gate): wire
+     dhara_pin_matrix (surgical stage×class rebuilds — the native's
+     standing efficient-rebuild requirement; after it lands, a stage5-only
+     change never again costs a stage4 re-run) and dhara_term_matrix
+     (n2 artifact: EXPLAIN + rho-refit). Own resume-semantics tests.
+  5. Spine unchanged after the field: parity battery → G-P1 (MCP proof)
+     → M4′ → DVIPRAMĀṆA → M5 → Brilliance Gate #1 → post FIELD-INTEGRATED
+     (sentinel: `██ MARKER-POSTED: FIELD-INTEGRATED ██` at line start —
+     Δ3's supervisor gate consumes it mechanically).
+
+Δ3 22:28Z session-18 — SM-R-6 ABSORBED; vcc6h stopped (Completed Unknown, graceful per directive); dhara_null root-cause understood (F-13: unwired optimization); FIELD-INTEGRATED now gated on OPT-N1 deploy-green + A6″ (~30-60 min post deploy vs prior 9h estimate); FIELD-INTEGRATED sentinel noted; Δ3 scope UNCHANGED (R2 proof + R4 on FIELD-INTEGRATED); probe script committed; ending session-18 cleanly per LONG-RUN AUTONOMY RULES.
