@@ -3526,3 +3526,5 @@ CONDUCTOR-HEARTBEAT: 2026-08-14T00:36+05:30 [R37 — Builder COMPLETE (7/7 TDD p
 CONDUCTOR-HEARTBEAT: 2026-08-14T01:01+05:30 [R37 — PR #1270 CI still 17 SUCCESS / 2 IN_PROGRESS (Build Check, Governance Gates) / 0 FAIL; waiting for all-green to merge; no action needed, monitoring only; L-8 lease ACTIVE]
 
 CONDUCTOR-HEARTBEAT: 2026-08-14T01:06+05:30 [R37 — PR #1270 CI ALL GREEN (19 SUCCESS, 0 FAIL, CLEAN); PR already queued for merge; awaiting merge → deploy → PARĪKṢAKA verify → A6′ dispatch]
+
+CONDUCTOR-HEARTBEAT: 2026-08-14T01:11+05:30 [R37 — PR #1270 still in merge queue (OPEN, not yet merged); monitoring for merge → deploy trigger → PARĪKṢAKA → A6′]
