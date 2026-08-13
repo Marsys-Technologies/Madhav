@@ -80,6 +80,12 @@ class _FakeCursor:
     def execute(self, sql, params=None):
         self._owner.executed.append(sql)
 
+    def fetchone(self):
+        # Return a minimal dict for the GUC smoke-log SELECT added by S7-LOCK.
+        # The MR-39 tests don't assert on the logged values, only that the SETs
+        # are issued — so any non-crashing return value is correct here.
+        return {'idle_in_txn': '1800000', 'stmt_timeout': '0', 'lock_timeout': '300s'}
+
 
 class _FakeConn:
     def __init__(self):
