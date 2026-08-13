@@ -148,3 +148,5 @@ CONDUCTOR-HEARTBEAT: 2026-08-13T00:08:39Z pid=$$ host=Montys-MacBook-Pro.local s
 [α new session at 06:35 IST, L-10 claimed, gate packet PR in progress — FIELD-INTEGRATED path unblocked; watching]
 CONDUCTOR-HEARTBEAT: 2026-08-13T00:29:31Z pid=$$ host=Montys-MacBook-Pro.local session=γ
 [PR #1255 CLEAN (gate packet); α conductor at 06:50 IST noted CI running; watching for merge + deploy + A2' + G-P3b + FIELD-INTEGRATED]
+CONDUCTOR-HEARTBEAT: 2026-08-13T00:54:13Z pid=$$ host=Montys-MacBook-Pro.local session=γ
+[Gate packet (PR #1255) DEPLOYED SUCCESS (run 31655385648); A1 now in container; α starting A2' (full DAG rebuild with ka_gochara); watching for FIELD-INTEGRATED]
