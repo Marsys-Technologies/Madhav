@@ -1330,3 +1330,21 @@ session), since redispatching without it likely just recurs a 4th time.
 - R2 proof fallback: if no marriage windows post-refresh, verify achievement_recognition class (was in legacy_flat pre-fix; should move to roots post-resolution='era' stamp).
 
 **Δ3 completion: R1 ✓ · R2 ✓ (proof pending) · R3 ✓ · R4 BLOCKED**
+
+### Δ3 16:56Z session-4 — R1 re-proof PASS; R2 baseline updated; Δ1 fix IMPLEMENTED, A6 PARKED-NATIVE
+
+**Δ3 state (22:26 IST / 16:56Z):**
+- Δ1 timeout fix IMPLEMENTED: idle_in_transaction_session_timeout 0→1800000ms in db.py + tests (R30 entry, sampurti/integration 951a27a92)
+- A6 redispatch PARKED-NATIVE: native cancelled builds; Δ1 awaiting native signal; checkpoint stable (74 substeps/2.06M rows, advisory_locks=0)
+- FIELD-INTEGRATED: NOT POSTED (gated on A6 completion → S4 parity → re-field)
+
+**R1 re-proof (MCP live call 16:51Z): PASS** ✓
+- gochara_forecast_get(domain=marriage, 2024-2027): 27 event classes covered, 270 substeps from ka_gochara_v3_century_materialize, no S4-05 refusal
+
+**R2 baseline updated (MCP live call 16:51Z):**
+- marriage: 0 in roots, 3 rows in legacy_flat (resolution=NULL) — era-spans 2014-2024 and 2024-2034
+- 18 roots (resolution='era' partial), 44 legacy_flat (resolution=NULL) — corpus rebuild not yet done
+- After FIELD-INTEGRATED: marriage row 2024-02-05→2034-01-30 should appear in roots with resolution='era'
+
+**Δ3 productive work this session:** R1 re-proof, R2 baseline, sm-d3-r1/r2 worktree cleanup, db.py audit
+**Δ3 completion: R1 ✓ · R2 ✓ (proof pending FIELD-INTEGRATED) · R3 ✓ · R4 BLOCKED**
