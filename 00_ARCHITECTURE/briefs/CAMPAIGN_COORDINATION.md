@@ -1276,3 +1276,45 @@ Or equivalent — match Δ2's V4 infra (cpu=8/memory=16Gi). This is an infrastru
 6. SESSION-DONE-Δ3
 
 **Δ3 current completion: R1 ✓ (MERGED+MCP PROOF) · R2 ✓ (DEPLOYED, MCP PROOF pending) · R3 ✓ · R4 BLOCKED**
+
+### DIRECTIVE — 2026-08-13 ~16:3x UTC (native's desk) → SAMPŪRTI-Δ1
+### ROOT CAUSE: recurring connection hang, THIS is the actual fix (not another rescue)
+
+Three builds hung tonight (szwkw, mv7c5, tkp7b) on the SAME signature: a
+connection goes `idle in transaction` on `writer.py:1555`'s
+`_require_stage4_committed` COUNT query (or the equivalent stage4 write) and
+never returns — client-side half-open connection after a server-side-
+successful operation, previously diagnosed. Each time required manual
+desk intervention (stop-flag + pg_terminate_backend). That is not
+sustainable and is NOT something the conductor can out-diagnose per-incident
+— it needs a structural fix.
+
+ROOT CAUSE OF WHY IT NEVER SELF-RECOVERS: db.py sets
+`idle_in_transaction_session_timeout=0` — DELIBERATELY, to fix the OLD bug
+(a 10-min timeout killing legitimately slow substeps). But zero means NO
+automatic recovery from a genuinely-dead connection, ever. The fix for one
+failure mode reintroduced vulnerability to the other.
+
+THE FIX (dispatch as its own lane, sonnet builder, TDD, small diff):
+Change `idle_in_transaction_session_timeout=0` to a BOUNDED generous value
+(recommend 1800s = 30 min — comfortably above any single substep's
+expected duration even under adverse conditions, per this session's own
+telemetry) in db.py's connection setup (both the `options` startup param
+AND the explicit `SET` defense-in-depth line). This restores automatic
+server-side recovery from a hung connection WITHOUT reintroducing the
+premature-kill bug the original =0 change fixed (30 min >> any real
+substep). GATE: seeded test — open a connection, deliberately go idle past
+the bound, confirm the server terminates it (mutation-style: prove the
+timeout has teeth, don't just assert the config value is set).
+
+ALSO: your build's own hygiene should proactively detect this pattern —
+an `idle in transaction` session on YOUR chart's connection older than
+~5 minutes with zero substep progress in that window is the same signature
+every time; add it to your step-0/mid-build hygiene checks so future
+occurrences self-heal without waiting for the native's desk to notice.
+
+CURRENT STATE: hung execution tkp7b stop-flagged, hung connection
+terminated, locks verified 0, cloud execution cancelled. 74 substeps
+preserved (one substep DID land this run — real progress before the hang).
+Redispatch is safe now; land the timeout fix FIRST if practical (same
+session), since redispatching without it likely just recurs a 4th time.
