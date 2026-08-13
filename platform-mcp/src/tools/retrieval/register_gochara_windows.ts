@@ -960,12 +960,38 @@ export async function computeGocharaCoverage(
   // The substep asset_id and source description differ by authority generation.
   // v1: 'ka_gochara_sweep' (D-5 Lane G-4 sweep writer, now RETIRED but substep
   //     history is preserved in build_substep_progress for existing charts).
-  // v3: 'ka_gochara' (the renamed ka_gochara_v2_materialize per-chart materializer,
-  //     post-migration 563 rename; substeps use ':year:' suffix convention per W3.4).
-  const substepAssetId = isV3Authority ? 'ka_gochara' : 'ka_gochara_sweep'
+  //     Key format: '{event_class}:year:{n}' — split on ':year:' extracts the class.
+  // v3: 'ka_gochara_v3_century_materialize' (the century materializer; W6.4 rename
+  //     from ka_gochara_v2_materialize; asset_id was previously wrongly set to
+  //     'ka_gochara' here — R1 SEV-1 fix).
+  //     Key format: '{event_class}::{era_slice_key}' — split on '::' extracts the class.
+  //     Using ':year:' split on v3 keys returns NULL for every row → swept_event_classes=[].
+  const substepAssetId = isV3Authority ? 'ka_gochara_v3_century_materialize' : 'ka_gochara_sweep'
   const substepSourceLabel = isV3Authority
-    ? `build_substep_progress (asset_id=ka_gochara, chart-scoped, v3 materializer)`
+    ? `build_substep_progress (asset_id=ka_gochara_v3_century_materialize, chart-scoped, century materializer)`
     : `build_substep_progress (asset_id=ka_gochara_sweep, chart-scoped)`
+
+  // R1 SEV-1 fix (Bug 2): the substep SQL query must be authority-aware because the
+  // key separator differs between generations.
+  //   v1 (ka_gochara_sweep): '{event_class}:year:{n}'   → split_part(key, ':year:', 1)
+  //   v3 (ka_gochara_v3_century_materialize): '{event_class}::{era_slice_key}' → split_part(key, '::', 1)
+  const substepQuery = isV3Authority
+    ? `SELECT COUNT(*)::int AS substeps_committed,
+              COALESCE(
+                ARRAY_AGG(DISTINCT split_part(substep_key, '::', 1))
+                  FILTER (WHERE substep_key LIKE '%::%'),
+                ARRAY[]::text[]
+              ) AS swept_event_classes
+         FROM build_substep_progress
+        WHERE chart_id = $1 AND asset_id = $2`
+    : `SELECT COUNT(*)::int AS substeps_committed,
+              COALESCE(
+                ARRAY_AGG(DISTINCT split_part(substep_key, ':year:', 1))
+                  FILTER (WHERE substep_key LIKE '%:year:%'),
+                ARRAY[]::text[]
+              ) AS swept_event_classes
+         FROM build_substep_progress
+        WHERE chart_id = $1 AND asset_id = $2`
 
   const [classesResp, universeResp, substepResp] = await Promise.all([
     platformQuery(
@@ -983,14 +1009,7 @@ export async function computeGocharaCoverage(
       principal
     ).then((r) => ({ rows: r.rows, ok: true as const })).catch((err) => ({ rows: [] as Record<string, unknown>[], ok: false as const, error: String(err) })),
     platformQuery(
-      `SELECT COUNT(*)::int AS substeps_committed,
-              COALESCE(
-                ARRAY_AGG(DISTINCT split_part(substep_key, ':year:', 1))
-                  FILTER (WHERE substep_key LIKE '%:year:%'),
-                ARRAY[]::text[]
-              ) AS swept_event_classes
-         FROM build_substep_progress
-        WHERE chart_id = $1 AND asset_id = $2`,
+      substepQuery,
       [chartId, substepAssetId],
       principal
     ).then((r) => ({ rows: r.rows, ok: true as const })).catch((err) => ({ rows: [] as Record<string, unknown>[], ok: false as const, error: String(err) })),
@@ -1054,7 +1073,7 @@ export async function computeGocharaCoverage(
         note:
           'Execution completeness ONLY — how many substeps have committed for THIS chart ' +
           '(MR-02: asset_id is authority-aware: ka_gochara_sweep for v1-authority charts, ' +
-          'ka_gochara for v3-authority charts per kala_gochara_authority.authoritative_generation). ' +
+          'ka_gochara_v3_century_materialize for v3-authority charts per kala_gochara_authority.authoritative_generation). ' +
           'NOT the same axis as the category coverage above (which domains the sweep can ever ' +
           'surface at all, per event_classes_covered/domains_not_covered) — a fully-executed sweep ' +
           '(every substep committed) still structurally excludes any domain in domains_not_covered. ' +
