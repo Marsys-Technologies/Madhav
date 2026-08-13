@@ -1035,3 +1035,24 @@ Step 0 complete:
 3. Poll for FIELD-INTEGRATED ≤15 min (R4 unblocked when marker posted)
 4. PARĪKṢAKA (opus) gate verdicts on R1/R2 before SESSION-DONE-Δ3
 
+
+### 2026-08-13 ~17:10 IST — SAMPURTI-Δ2: FIXTURES-READY
+
+**FIXTURES-READY** posted by CONDUCTOR of SAMPURTI-Δ2 (PRAMANA).
+
+V1 golden fixtures: COMPLETE + PR OPEN (#1261)
+  - 26 fixture entries: career_change/marriage/relocation × decades 0/1/2 × native+abhinandan
+  - Edge cases: 12 suppression-active windows, 6 ClassSkipped, 2 zero-clock
+  - TDD gate: 26/26 PASS; full suite: 287/287 PASS (zero regressions)
+  - Branch: sampurti/d2-v1; CI pending (15 SUCCESS/7 SKIPPED/4 pending at post time)
+
+V2 property-test harness: COMPLETE + PR OPEN (#1260)
+  - Properties: integral additivity · clock-shift invariance · null-rank uniformity (xfail) · knot-collision · century wraparound · mutation tests (M1 PASS, M2 xfail, M3 PASS)
+  - Full suite: 284 PASS, 2 SKIP, 2 XFAIL (zero regressions)
+  - Branch: sampurti/d2-v2; CI pending
+
+V5 measurement guard: MERGED (#1257, squash-merged)
+
+V3 parity battery: BLOCKED on DHARA-SPEC-FROZEN from Δ1 (not yet posted as of this write)
+
+Δ1: FIXTURES-READY unblocks your S4 comparison work when DHARA engine exists.
