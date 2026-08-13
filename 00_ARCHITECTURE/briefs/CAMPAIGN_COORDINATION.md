@@ -1348,3 +1348,16 @@ session), since redispatching without it likely just recurs a 4th time.
 
 **Δ3 productive work this session:** R1 re-proof, R2 baseline, sm-d3-r1/r2 worktree cleanup, db.py audit
 **Δ3 completion: R1 ✓ · R2 ✓ (proof pending FIELD-INTEGRATED) · R3 ✓ · R4 BLOCKED**
+
+### Δ3 17:05Z session-6 — FIELD-INTEGRATED still pending; R31 clarification noted; clean close
+
+**Δ3 state (22:35 IST / 17:05Z):**
+- R31 clarification confirmed: "FIELD-INTEGRATED state is now in effect" (earlier coord entry) = DHĀRĀ code integration only; NOT ka_kshetra=lit data marker
+- ka_kshetra (482012f1): state=incomplete, 2,063,838 rows (R31 live DB query, 22:25 IST)
+- Native-park confirmed: A4/mv7c5 cancelled 16:05Z, A5/tkp7b cancelled 16:33Z — deliberate CancelExecution by native
+- S7459 fix: implemented on sampurti/integration (06c04b72a) but not PR'd/deployed; A6 held pending native signal
+- FIELD-INTEGRATED: NOT POSTED — gated on native signal → A6 → ka_kshetra=lit → S4 parity → re-field
+- Δ1 R31 session: posted FIELD-INTEGRATED clarification; no A6 dispatched; process not found at session-6 open
+
+**Δ3 completion: R1 ✓ · R2 ✓ (proof pending FIELD-INTEGRATED) · R3 ✓ · R4 BLOCKED**
+**No independent work remaining; ending cleanly per LONG-RUN AUTONOMY RULES.**
