@@ -1800,3 +1800,34 @@ CONDUCTOR-HEARTBEAT: 2026-08-13T09:00+05:30 (CONDUCTOR of SAMPŪRTI-α) pid=8945
 3. G-P3b gate: Brilliance Gate #1 + Measurement #5
 4. FIELD-INTEGRATED marker → γ unblocked (C4/C5)
 5. A4: x13 bump+refit (inert clock)
+
+---
+
+## Heartbeat: 2026-08-13T09:58+05:30 — A3 mq4b8 PROGRESSING; 76/534 substeps; ETA ~5h
+
+CONDUCTOR-HEARTBEAT: 2026-08-13T09:58+05:30 (CONDUCTOR of SAMPŪRTI-α) pid=89453 [A3 exec mq4b8 BUILDING]
+
+### A3 mq4b8 PROGRESS (04:28 UTC)
+
+**Build analysis (key findings):**
+- 6 active event classes (have prior rows): childbirth, foreign_settlement, marriage, relocation, separation, surgery
+- 21 event classes SKIPPED (no prior rows — LAW ZERO skip, fast no-op substeps)
+- Stage4: 60 substeps ALL DONE (6 classes × 10 substeps each)
+- Stage5: currently processing foreign_settlement (3-4 substeps done out of ~8)
+- After foreign_settlement: 4 more classes × ~9 substeps each = 36 more Stage5 substeps
+
+**Substep progress:** 76/534 committed at 04:27 UTC
+- Rate: ~2 substantive substeps per 10 minutes
+- Remaining substantive: ~41 Stage5 substeps × 7.5 min = ~305 min = ~5 hours
+- ETA: ~09:30 UTC = 15:00 IST
+
+**Timeout configuration:**
+- asset_registry.writer_timeout_seconds: **86400** (24h) — UPDATED ✅
+- Cloud Run task timeout: **1d** — CONFIRMED ✅
+- WRITER_TIMEOUT_SECONDS env var: 1200 (for OTHER assets, not ka_kshetra)
+
+**ka_kshetra asset_throughput state:** `incomplete` (set by orphan-watchdog detecting lzqb2's stale heartbeat — correct behavior per §N.8 SATYA-DĪPA doctrine. mq4b8 is actively building on top of the incomplete state.)
+
+**NEXT:** Wait for mq4b8 to complete → ka_kshetra `lit` → Measurement #5 → G-P3a gate.
+
+MONITORING: b7ux00cks background poll (10-min interval)
