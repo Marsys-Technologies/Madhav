@@ -2473,3 +2473,49 @@ ON DHARA-SPEC-FROZEN:
 
 BLOCKED ON S3+S4: S5 convergence spine (field rebuild + M5 + Brilliance Gate #1)
 ```
+
+
+---
+
+## R18 — SAMPŪRTI-Δ1 CONDUCTOR (2026-08-13 IST)
+
+**Identity:** CONDUCTOR of SAMPŪRTI-Δ1 (three-stream architecture per S7435, R18 is the first Δ1 session)
+**Worktree:** `/Users/Dev/Vibe-Coding/Apps/Madhav/.claude/worktrees/sampurti-conductor` (branch: `sampurti/integration`)
+**Rails:** SAMPURTI COMMON RAILS S1–S5 sequence
+
+### State at R18 open (inherited from α sessions R1–R17)
+
+- A3 field build (exec szwkw): **DB state = FAILED** (stop_requested_at=10:06 UTC, ended_at=10:10 UTC, 104/534 substeps). Cloud Run container: **still RUNNING** (zombie). Advisory lock held by PID 1790069 on remote DB.
+- ka_kshetra: `incomplete` (orphan-watchdog: 104/534 substeps, 2,555,820 rows; last_built_at=10:45 UTC)
+- SMR-1 (PRATINIDHI ruling): M4 baseline STANDS; proceed directly to M5 post-A3 field build.
+
+### S1 — DHĀRĀ DESIGN DOC (COMPLETE 2026-08-13T11:10+00:00)
+
+**Status: COMPLETE**
+- Opus builder (agent aa5b293ba5795ac73) dispatched ~11:02 UTC
+- `DHARA_DESIGN_v1_0.md` committed at `2f0f93088` (1,341 lines, 55KB)
+- Commit message: "conductor(sampurti): S1 DHARA DESIGN DOC — analytic spec v1.0 committed blind"
+- Pushed to `origin/sampurti/integration` at 2026-08-13T11:13+00:00
+- Spec status: `DRAFT_BLIND` — committed before any comparison runs (binding)
+
+**Spec covers:** event-driven sweep over K = sort(K_c ∪ K_e), piecewise-exact handling (§1), closed-form integrals (§3), term matrix format (§4), per-stage-per-class pin matrix (§5), vectorized 1024-replicate null design (§6), equivalence tolerances committed blind (§7), dual-engine flag + rollout contract (§8).
+
+### S2 — ADVERSARIAL DESIGN REVIEW (DISPATCHED 2026-08-13T11:13+00:00)
+
+**Status: IN PROGRESS**
+- Opus VERIFIER (agent a00b95906638a56f3) dispatched at 2026-08-13T11:13+00:00
+- Attack vectors: null-shift wraparound (r=R=1024 → delta=H → zero shift), zero-width segment from float deduplication, pin matrix stage 0-1 grouping vs stage IO order (0→2→3→1), error bound independence of h in section 2.5, GL node numerical verification, term matrix unweighted storage gap (u_m not stored separately), E1 tolerance derivation when |gamma|→0
+- Awaiting VERIFIER findings
+- Post S2: apply amendments → bump spec to v1.1 → post DHARA-SPEC-FROZEN marker in coordination file
+
+### Zombie status
+
+- exec szwkw: Cloud Run still RUNNING (no completionTime in gcloud output)
+- Advisory lock: pid=1790069 still held on remote DB (pg_locks advisory row present)
+- Native ruling n1: do NOT terminate. Wait for container to exit naturally.
+
+### NEXT-ACTION
+
+Await Opus VERIFIER (agent a00b95906638a56f3) completion → read findings → apply amendments to DHARA_DESIGN_v1_0.md → bump to v1.1 → commit blind amendment → dispatch Opus PRATINIDHI for final adjudication → post DHARA-SPEC-FROZEN in CAMPAIGN_COORDINATION.md → proceed to S3 (≤4 parallel Sonnet implementation lanes).
+
+CONDUCTOR-HEARTBEAT: 2026-08-13T11:13+00:00 [R18-Δ1 — S1 COMPLETE (2f0f93088, 1341 lines); S2 VERIFIER dispatched; exec szwkw zombie advisory lock still held; awaiting VERIFIER findings]
