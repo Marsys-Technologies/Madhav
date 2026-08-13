@@ -112,6 +112,25 @@ from services.ka_kshetra.contracts import ProvenanceEdge, RobustnessVector, Segm
 
 logger = logging.getLogger(__name__)
 
+# OPT-N1: lazy accessors for dhara_null and engine_config so the module stays
+# importable even if the optional deps are absent (parity with dhara_sweep's
+# lazy import in _run_stage4), and so tests can patch at the module level.
+
+def _engine_version() -> str:
+    """Return the current ENGINE_VERSION from engine_config."""
+    from services.ka_kshetra.engine_config import ENGINE_VERSION
+    return ENGINE_VERSION
+
+
+def _dn_module():
+    """Return the dhara_null module (lazy import, O(1) after first call)."""
+    from services.ka_kshetra import dhara_null as _dn
+    return _dn
+
+# Expose dhara_null as module-level name DN so _run_stage5dhara can be patched
+# in tests via 'services.ka_kshetra.writer.DN.dhara_compute_null'.
+import services.ka_kshetra.dhara_null as DN  # noqa: E402
+
 ASSET_ID = 'ka_kshetra'
 
 #: §5.2's horizon: birth → birth + 100 Julian years.
@@ -132,7 +151,8 @@ SEGMENT_INDEX_DECADE_STRIDE = 1_000_000
 #: older writer build is treated as a different build and replanned in full
 #: (the `ka_sangam` / `ka_gochara_sweep` convention).
 #: v2 — stages 6 / 6.5 / 8 joined the plan and the content hash.
-_RESUME_VERSION = 4
+#: v5 — OPT-N1: stage5dhara replaces stage5:*:*/stage5finalize:* under ENGINE_VERSION='analytic'.
+_RESUME_VERSION = 5
 
 #: §6.2's row budget K. The design's own worked example ("the budget spends
 #: itself across 15 *different* things") is the source of the number; it is a
@@ -234,7 +254,11 @@ class KaKshetraWriter(WriterBase):
                 'rho_max': hazard.RHO_MAX,
                 'tau_nats': integrator.DEFAULT_TAU,
                 'max_refinement_depth': integrator.DEFAULT_MAX_DEPTH,
-                'null_replicates': S5.DEFAULT_REPLICATES,
+                'null_replicates': (
+                    _dn_module().DEFAULT_REPLICATES
+                    if _engine_version() == 'analytic'
+                    else S5.DEFAULT_REPLICATES
+                ),
                 'null_quantile': S5.Q_QUANTILE,
                 'duration_buckets': list(S5.DURATION_BUCKETS),
                 'precision_regime': 'day_grade',
@@ -262,13 +286,18 @@ class KaKshetraWriter(WriterBase):
             for d in range(DECADES):
                 steps.append(SubStep(key=f'stage4:{ec}:{d}',
                                      label=f'field {ec} decade {d}'))
+        _ev5 = _engine_version()
         n_blocks = math.ceil(S5.DEFAULT_REPLICATES / S5.DEFAULT_BLOCK_SIZE)
         for ec in self._event_classes:
-            for b in range(1, n_blocks + 1):
-                steps.append(SubStep(key=f'stage5:{ec}:{b}',
-                                     label=f'null {ec} replicate block {b}/{n_blocks}'))
-            steps.append(SubStep(key=f'stage5finalize:{ec}',
-                                 label=f'windows + robustness {ec}'))
+            if _ev5 == 'analytic':
+                steps.append(SubStep(key=f'stage5dhara:{ec}',
+                                     label=f'dhara null+windows {ec} (1024 replicates)'))
+            else:
+                for b in range(1, n_blocks + 1):
+                    steps.append(SubStep(key=f'stage5:{ec}:{b}',
+                                         label=f'null {ec} replicate block {b}/{n_blocks}'))
+                steps.append(SubStep(key=f'stage5finalize:{ec}',
+                                     label=f'windows + robustness {ec}'))
         # Stages 6 → 6.5 → 8, in pipeline order and strictly after every
         # stage5finalize: salience reads committed windows, insights read
         # committed salience, and the timeline spec reads both.
@@ -369,6 +398,9 @@ class KaKshetraWriter(WriterBase):
         if kind == 'stage5':
             _, ec, block = step.key.split(':')
             return self._run_stage5_block(conn, ec, int(block), step)
+        if kind == 'stage5dhara':
+            _, ec = step.key.split(':', 1)
+            return self._run_stage5dhara(conn, ec, step)
         if kind == 'stage5finalize':
             _, ec = step.key.split(':', 1)
             return self._run_stage5_finalize(conn, ec, step)
@@ -572,6 +604,81 @@ class KaKshetraWriter(WriterBase):
         return WriterResult(asset_id=ASSET_ID, rows_inserted=rows,
                             notes=f'{event_class}: {len(windows)} window(s), '
                                   f'q={result.q_threshold!r}')
+
+    # ── stage 5 (DHARA analytic path) ────────────────────────────────────────
+
+    def _run_stage5dhara(self, conn, event_class: str, step: SubStep) -> WriterResult:
+        """DHARA vectorized null: 1024 replicates in a single substep.
+
+        Replaces the N×stage5 blocks + stage5finalize sequence that the sampled
+        path uses (ENGINE_VERSION=='sampled'). Under ENGINE_VERSION=='analytic'
+        this is the only stage-5 substep for the given event_class.
+
+        dhara_compute_null (dhara_null.py, PR #1263) runs all 1024 replicates
+        in-process using vectorized NumPy, implementing the F-01 shift-grid
+        correction (range(1, R) instead of range(1, R+1)) and returning a
+        NullResult whose fields are compatible with the downstream
+        _write_windows_batch / _write_window interface.
+
+        Authority: OPT-N1 spec (SM-Δ1), DHARA_DESIGN_v1_0.md §6.
+        """
+        self._require_stage4_committed(conn, event_class)
+        try:
+            cctx = self._class_context(conn, event_class)
+        except S4.ClassSkipped as skip:
+            self._record_skip(skip)
+            return WriterResult(asset_id=ASSET_ID, rows_inserted=0,
+                                notes=f'{event_class} skipped: {skip.reason}')
+
+        ev = cctx.evaluator
+        null_result = DN.dhara_compute_null(ev, replicates=DN.DEFAULT_REPLICATES)
+
+        rows = 0
+        if not self._dry_run:
+            with conn.cursor() as cur:
+                for bucket, stats in null_result.max_stats.items():
+                    cur.execute(
+                        """INSERT INTO kala_field_null (
+                               chart_id, event_class, replicates, horizon_days,
+                               q_threshold, bucket_days, null_max_stats, shift_grid_step,
+                               weights_version, x_schema_version, field_snapshot_id)
+                           VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                           ON CONFLICT (chart_id, event_class, bucket_days, field_snapshot_id)
+                           DO UPDATE SET null_max_stats = EXCLUDED.null_max_stats,
+                                         q_threshold = EXCLUDED.q_threshold,
+                                         computed_at = now()""",
+                        (self._chart_id, event_class, null_result.replicates, HORIZON_DAYS,
+                         null_result.q_threshold, bucket, stats, null_result.shift_grid_step,
+                         self._weights_version, hazard.X_SCHEMA_VERSION, self._snapshot_id),
+                    )
+                    rows += 1
+
+        # Windows are derived from COMMITTED segments (parity with _run_stage5_finalize).
+        # Under dry_run, the evaluator's own segments stand in — nothing is written either.
+        segments = (ev.build_segments() if self._dry_run
+                    else self._load_segments(conn, event_class))
+        if not segments:
+            raise S4.UpstreamStageIncomplete(
+                f'upstream_stage_incomplete: no kala_field segments for {event_class}'
+            )
+
+        windows = integrator.find_windows(segments, null_result.q_threshold or math.inf)
+        totals = [w.expected_count for w in windows]
+        adrishta = S5.adrishta_residual(totals, hazard.baseline_rate(ev.lifetime_count),
+                                        HORIZON_DAYS)
+        ayanamsha_ids = self._kinematics_ayanamsha_ids(conn)
+        sigma_t = self._sigma_t_days(conn)
+        legacy = S4.load_legacy_crosscheck(conn, self._chart_id, event_class)
+
+        rows += self._write_windows_batch(conn, ev, event_class, segments, windows, null_result,
+                                          adrishta, ayanamsha_ids, sigma_t, legacy,
+                                          cctx.temporal_shape)
+
+        if not self._dry_run:
+            self._record_substep(conn, step.key, rows)
+        return WriterResult(asset_id=ASSET_ID, rows_inserted=rows,
+                            notes=f'{event_class}: {len(windows)} window(s) '
+                                  f'(dhara 1024-replicate), q={null_result.q_threshold!r}')
 
     def _write_window(self, conn, ev, event_class, segments, w, null_result,
                       adrishta, ayanamsha_ids, sigma_t, legacy,
