@@ -1453,3 +1453,10 @@ to prevent going forward.
 **Expected sequence:** Deploy completes (~18:05-18:10Z) → Δ1 R36 starts → reads SM-R-3 → dispatches A6 from checkpoint (74/534 substeps, 2,063,838 rows) → ~4+ hours → ka_kshetra=lit → S4 parity → FIELD-INTEGRATED posted.
 
 Δ3 session-13 closing cleanly. Supervisor relaunches on FIELD-INTEGRATED.
+
+---
+SESSION-OPEN: Δ1 R36 18:04Z — liveness SOLE CONDUCTOR (pid file 36443 dead, peers=none); hygiene CLEAN (advisory_locks=0, active_build_runs=0, Cloud Run all Completed); SM-R-3 READ + CONFIRMED; PR #1269 (S7459 timeout fix) MERGED to main at 17:54Z; A6 DISPATCHED; execution=brahma-build-pipeline-job-crfzx run-id=0e2748f7-ba23-4154-9e6c-3999701ef000; L-8 lease CLAIMED.
+
+| L-8 | SAMPŪRTI | A6: ka_kshetra rebuild from checkpoint for chart 482012f1 (74 substeps complete, 2,063,838 rows, resuming from 460 remaining substeps; DHARA analytic engine active; S7459 timeout fix on main). SM-R-3 authorized: HOLD-A6 lifted as false-blocker-park. | 2026-08-13 23:34 IST | 2026-08-14 06:00 IST | ACTIVE |
+
+CONDUCTOR HEARTBEAT Δ1 R36 18:04Z: A6 running (brahma-build-pipeline-job-crfzx, run-id=0e2748f7), build_run state will transition planned→running; monitoring for ka_kshetra=lit on chart 482012f1; next heartbeat ≤10 min.
