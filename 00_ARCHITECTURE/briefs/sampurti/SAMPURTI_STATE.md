@@ -1741,3 +1741,33 @@ mi_bhara           → error ❌     (pre-existing TypeError NoneType — out of
 **Exec lzqb2** running. Expected: ka_kshetra completes (light-ish, but 566,545 rows → may take 15-30min).
 
 **NEXT:** Monitor lzqb2 → ka_kshetra lit with new snapshot_id → dispatch Measurement #5 → G-P3a gate → Brilliance Gate #1 → G-P3b → FIELD-INTEGRATED marker → γ unblocked.
+
+---
+
+## Heartbeat: 2026-08-13T08:53+05:30 — A3 timeout→resume; exec ww8d2 RESUMING (465/534 substeps remain)
+
+CONDUCTOR-HEARTBEAT: 2026-08-13T08:53+05:30 (CONDUCTOR of SAMPŪRTI-α) pid=89453
+
+### A3 TIMEOUT → RESUME
+
+**A3 exec lzqb2 timed out at 03:19 UTC** (exactly writer_timeout_seconds=7200 = 2h from 01:19 UTC start).
+
+Root cause: ka_kshetra's full 27-class post-β build produces **3,157,033 rows** (vs 566,545 in P-G1's 6-class run). Stage5 finalization for 5.5x more rows exceeds the 2h writer timeout.
+
+**Not a code bug** — timeout is a configuration limit; the orchestrator handled it gracefully:
+- 70 substeps committed to build_substep_progress with fingerprint `b39fa2fc`
+- Last completed: `stage5:foreign_settlement:1` at 03:11 UTC
+- ka_kshetra marked `error` in asset_throughput
+
+**A3 re-dispatched (checkpoint-resume):**
+- Run: cfb4678a / exec ww8d2 (03:21 UTC)
+- Log confirmed: `ka_kshetra: RESUMING chart 482012f1 — 69/534 substeps committed, 465 remaining`
+- Checkpoint fingerprint matched → 69 completed substeps SKIPPED
+
+**465 remaining substeps** — at ~6 min/substep (stage5 pattern), that's potentially 46h total. But this may not be accurate — some substeps are faster. Need to monitor.
+
+**If ww8d2 also times out:** Will need to either:
+a) Increase writer_timeout_seconds in orchestrator config + redeploy (requires new gate packet)
+b) Re-dispatch again (N times) until all 534 substeps complete via checkpoint-resume
+
+**Next:** Monitor ww8d2 for ka_kshetra state change (lit or error again).
