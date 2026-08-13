@@ -3094,3 +3094,62 @@ Clarification appended to CAMPAIGN_COORDINATION.md this session.
 Native signals resume → A6 dispatch with checkpoint (460 substeps remaining) → ka_kshetra=LIT → FIELD-INTEGRATED posted → S4 parity → G-P1/M5/Brilliance Gate #1.
 
 CONDUCTOR-HEARTBEAT: 2026-08-13T22:25+05:30 [R31 open; PARKED-NATIVE confirmed; DB/CloudRun verified clean; FIELD-INTEGRATED coordination ambiguity corrected; awaiting native signal for A6]
+
+---
+
+## R32 — SAMPŪRTI-Δ1 CONDUCTOR (2026-08-13T22:40+05:30)
+
+**Identity:** CONDUCTOR of SAMPŪRTI-Δ1 (supervisor relaunch; R31 closed 22:25 IST)
+
+### LIVENESS CHECK (FM-10/11/21)
+
+- current_conductor.pid = 93036 (prior session, confirmed dead — pgrep "CONDUCTOR of SAMPŪRTI-Δ1" = no match)
+- PEERS: none found after self-exclusion ✅
+- My PID: 1559 (written to current_conductor.pid) — sole conductor confirmed ✅
+
+### HYGIENE CHECK (FM-06 amended)
+
+- Cloud Run executions: tkp7b=CANCELLED, mv7c5=CANCELLED, s6zbw=succeeded (no-op) — runningCount=0 ✅
+- advisory_locks = 0 ✅
+- active build_runs = 0 ✅
+- Cloud SQL proxy: up on 127.0.0.1:5433 ✅
+
+### STATE RECONCILIATION (FM-09)
+
+**DB state (live, 2026-08-13T17:10Z):**
+
+| asset | chart | state | rows_written | last_error (summary) |
+|---|---|---|---|---|
+| ka_kshetra | 482012f1 (native) | **incomplete** | 2,063,838 | orphan-watchdog: heartbeat stale, 74/534 substeps committed, resumable |
+| ka_kshetra | 1c826d5a (Abhinandan) | not present | — | — |
+
+**Checkpoint message (exact):** "orphan-watchdog: heartbeat went stale while a substep plan was in flight. 74 substep(s) committed and 2063838 data row(s) are present, but this route cannot prove the plan finished, so the asset was NOT promoted to 'lit'. Re-run the build to complete the plan (substep progress is resumable)."
+
+**Recent build_runs:**
+
+| run_id | state | triggered_by | created_at (UTC) |
+|---|---|---|---|
+| 777c3681 (A5) | failed | sampurti-a5-chart1-kshetra-dhara | 2026-08-13 16:13 UTC |
+| af759e40 (A4) | stopped | sampurti-a4-chart1-kshetra-dhara | 2026-08-13 14:09 UTC |
+
+**PR #1265 (V3 parity battery):** MERGED ✅ (2026-08-13T12:45:53Z) — parity tests on main.
+**S7459 fix (06c04b72a):** on sampurti/integration only, NOT on main — will ride gate packet.
+
+### PARKED-NATIVE — CONTINUING
+
+Native cancelled A4 (exec mv7c5, 21:35 IST) and A5 (exec tkp7b, 22:02 IST) explicitly. A5 cancelled 19 minutes into build — deliberate intervention. No native signal to resume in coordination file. PARKED-NATIVE posture carries forward from R31.
+
+### NATIVE-PRATINIDHI DISPATCH — A6 RULING
+
+Per headless rails: "If you find yourself about to present options or request authorization, that is a FALSE-BLOCKER-PARK... instead dispatch NATIVE-PRATINIDHI (opus, max effort, fresh)."
+
+Dispatching NATIVE-PRATINIDHI to rule on A6 redispatch. The blocking question is not on the PARKED-FOR-NATIVE absolute list (LEL content · scope reductions · retiring surfaces · gochara admission · R27). NP holds the delegated voice and rules with written rationale.
+
+**NP dispatch context:**
+- ka_kshetra: incomplete, 74/534 substeps committed, checkpoint resumable (460 remaining)
+- Native cancelled A4 after ~2h run (mv7c5, 21:35 IST) and A5 after 19 min (tkp7b, 22:02 IST)
+- Coordinator file: no signal to resume; no signal to stop permanently
+- FIELD-INTEGRATED data marker requires ka_kshetra=LIT → blocks Δ3 G-P4 + all downstream (S4 parity, G-P1, SMR-2, P3 DVIPRAMĀṆA, M5, Brilliance Gate #1)
+- A5 cancellation timing (19 min) suggests active native monitoring, not automated failure
+
+CONDUCTOR-HEARTBEAT: 2026-08-13T22:40+05:30 [R32 open; PARKED-NATIVE carries from R31; DB/proxy verified clean; PR #1265 confirmed MERGED; NP dispatch for A6 ruling in progress]
