@@ -246,3 +246,43 @@ CONDUCTOR-HEARTBEAT: 2026-08-13T16:20:00Z pid=45719(supervisor) host=Montys-MacB
 → Δ3 will be relaunched by supervisor; poll FIELD-INTEGRATED on each relaunch.
 
 **NEXT-ACTION:** Poll FIELD-INTEGRATED every ≤15 min. On post: R2 MCP proof + R4 G-P4 → SESSION-DONE-Δ3.
+
+### 2026-08-13 21:55 IST — Pre-FIELD-INTEGRATED corpus probe complete; SESSION CLOSE
+
+CONDUCTOR-HEARTBEAT: 2026-08-13T16:27:00Z pid=45719(supervisor) host=Montys-MacBook-Pro.local session=Δ3
+
+**PRE-FIELD-INTEGRATED PROBE RESULTS:**
+
+**kala_ahead_get (16:23Z) — R4 baseline:**
+- field_snapshot_id: `field_not_yet_built` ✓ (correct pre-FIELD-INTEGRATED state)
+- field_snapshot_reason: "ka_kshetra has written no kala_field_snapshots row yet; real 'kfs_…' id served automatically once field build lands"
+- Tool output: 1 forward window (2010-08-18..2027-08-18 character/relationship/spirituality), 3 projections (2027-10-20..2030-04-03 character/career/relationship, all tier_1_high)
+- predictions_logged: filed=0, skipped=1 (no_resolvable_event_class — current temporal window spans entire Mercury MD, no single event class)
+- NOTE: After FIELD-INTEGRATED, field_snapshot_id will be kfs_...; verify if prospective row filing changes
+
+**gochara_forecast_get corpus probe (2024-2026 unfiltered) — R2 baseline:**
+- 5 windows: 3 in roots (resolution='era'), 2 in legacy_flat (resolution=NULL)
+- legacy_flat classes: achievement_recognition + exam_outcome (both 2014-02-05→2024-01-31, is_timing_window=False)
+- marriage windows: 0 in 2020-2030 range (no marriage windows in current A3 corpus for that range)
+- NOTE: R2 proof requires marriage in roots post-corpus-refresh; if re-field doesn't produce marriage windows, proof condition may need re-assessment with different event class (e.g. achievement_recognition → roots after fix)
+
+**SESSION PRODUCTIVE CLOSE:**
+All Δ3 useful work complete for this session:
+1. STEP-0 liveness/hygiene verified ✓
+2. A5 dispatch confirmed (tkp7b RUNNING, 465/534 substeps remaining, run_id 777c3681) ✓
+3. R1 MCP proof re-verified at 16:18Z ✓
+4. Corpus state documented ✓
+5. kala_ahead_get pre-FIELD-INTEGRATED state documented ✓
+
+A5 build ETA: hours. FIELD-INTEGRATED gated on: A5 complete → S4 parity gate → re-field.
+Next session: check FIELD-INTEGRATED, then R2 + R4 proofs → SESSION-DONE-Δ3.
+
+**NEXT-ACTION (next session):**
+1. Poll coordination for FIELD-INTEGRATED
+2. Check Cloud Run executions for tkp7b completion
+3. On FIELD-INTEGRATED: call gochara_forecast_get(domain=marriage) → verify marriage in roots
+4. On FIELD-INTEGRATED: call kala_ahead_get → verify field_snapshot_id=kfs_...; check filed_count
+5. Record both as γ's G-P4 completion in γ ledger (sampurti/vyakhya append-only)
+6. Post SESSION-DONE-Δ3 to coordination
+
+RUN-TERMINAL: SESSION-Δ3-PENDING (not COMPLETE — awaiting FIELD-INTEGRATED; supervisor relaunches)
