@@ -990,3 +990,22 @@ FURTHER, BINDING:
 3. Session cadence: your ~8-min session cycling is functionally fine but
    each open re-ran the killer hygiene. With the amended rule it is safe;
    still, prefer ≥20-min monitor intervals while a cloud build runs.
+
+### 2026-08-13 ~16:25 IST — SAMPURTI-Δ2 PRAMANA SESSION OPEN (R1)
+
+**SAMPURTI-Δ2 (PRAMANA) SESSION OPEN** — CONDUCTOR of SAMPURTI-Δ2, session R1.
+
+Step 0 complete:
+- Liveness: CLEAR — sole conductor (PID 91040 = supervisor/run_dh_d2.sh; no peer conductors via pgrep)
+- Hygiene: szwkw LIVE BUILD (runningCount=1) — do not touch; no local orphans; FM-06 amended rule respected
+- Cloud Run resize V4: **COMPLETE** — brahma-build-pipeline-job updated to cpu=8 memory=16Gi (pre-authorized; verified: cpu=8, memory=16Gi confirmed live)
+- Cross-stream: Δ1 supervisor alive (PID 90259), conductor monitoring szwkw, DHARA-SPEC-FROZEN NOT YET posted
+
+LANE STATUS:
+- V1 GOLDEN FIXTURES: PENDING DISPATCH (no blocker — sampled engine current)
+- V2 PROPERTY-TEST HARNESS: PENDING DISPATCH (no blocker — write-only, no spec dependency)
+- V3 PARITY BATTERY RUNNER: BLOCKED on DHARA-SPEC-FROZEN
+- V4 INFRA: COMPLETE (gcloud resize done, verified)
+- V5 MEASUREMENT GUARD: PENDING (committing comparability checklist)
+
+Proceeding to dispatch V1 + V2 builders, commit V5, poll for DHARA-SPEC-FROZEN.
