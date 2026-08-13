@@ -3530,3 +3530,5 @@ CONDUCTOR-HEARTBEAT: 2026-08-14T01:06+05:30 [R37 — PR #1270 CI ALL GREEN (19 S
 CONDUCTOR-HEARTBEAT: 2026-08-14T01:11+05:30 [R37 — PR #1270 still in merge queue (OPEN, not yet merged); monitoring for merge → deploy trigger → PARĪKṢAKA → A6′]
 
 CONDUCTOR-HEARTBEAT: 2026-08-14T01:16+05:30 [R37 — PR #1270 merge queue AWAITING_CHECKS (pos=1); merge-group CI running: Ganga Quality Gate IN_PROGRESS (19:35Z), TAP CI COMPLETED; awaiting merge-group green → auto-merge → deploy → PARĪKṢAKA → A6′]
+
+CONDUCTOR-HEARTBEAT: 2026-08-14T01:21+05:30 [R37 — Ganga Quality Gate merge-group CI still running (~4 min elapsed); PR #1270 still OPEN; monitoring; L-8 lease ACTIVE]
