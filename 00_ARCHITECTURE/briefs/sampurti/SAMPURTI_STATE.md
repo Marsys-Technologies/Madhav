@@ -3455,3 +3455,62 @@ Checkpoint: 74/534 substeps committed (460 remaining). DHARA analytic engine act
 A6 running (brahma-build-pipeline-job-crfzx) → ~4+ hours → ka_kshetra=lit → FIELD-INTEGRATED → S4 parity → G-P1 → SMR-2 M4' → P3 → M5 → Brilliance Gate #1.
 
 CONDUCTOR-HEARTBEAT: 2026-08-13T23:34+05:30 [R36 — A6 DISPATCHED; execution=brahma-build-pipeline-job-crfzx run-id=0e2748f7; build_run planned→running; monitoring ka_kshetra=lit; lease L-8 ACTIVE]
+
+CONDUCTOR-HEARTBEAT: 2026-08-13T18:16Z [R36 CLOSE — crfzx CANCELLED at 18:17Z (Cancelled by user, per SM-R-4 stop-and-analyze directive); build_run 0e2748f7 state=stopped/failed; advisory_locks=0; ka_kshetra=incomplete 2,063,838 rows (checkpoint intact); R36 closed]
+
+---
+
+## R37 — SAMPŪRTI-Δ1 CONDUCTOR — RESTART EDITION (2026-08-14T00:16+05:30)
+
+**Identity:** CONDUCTOR of SAMPŪRTI-Δ1 (supervisor relaunch; R36 crfzx cancelled by SM-R-4 desk directive)
+
+### LIVENESS CHECK (FM-10/11/21)
+
+- current_conductor.pid = 84643 (supervisor run_dh_d1.sh — parent process, not a peer conductor) ✅
+- PEERS: pgrep -f "CONDUCTOR of SAMPURTI-Δ1" → no match ✅
+- My PID: 90410 (written to dh-d1-logs/current_conductor.pid) — sole conductor confirmed ✅
+
+### HYGIENE CHECK (FM-06 amended)
+
+- Cloud Run: crfzx=Cancelled (18:17Z), tkp7b=Cancelled, s6zbw/mv7c5=Succeeded — no RUNNING executions ✅
+- advisory_locks = 0 ✅
+- active_build_runs (planned/running) = 0 ✅
+- Cloud SQL proxy: PID 72597 on 127.0.0.1:5433 ALIVE ✅
+- Job spec: brahma-build-pipeline-job = 4vCPU/8Gi (resized per SM-R-4 desk) ✅
+
+### SM-R-4 ACK (BINDING)
+
+SM-R-4 READ AND ACKNOWLEDGED in full (commit 140a7701b on campaign-coordination). Key points adopted:
+- crfzx hang: current_setting() returning 10min was desk's psql session reading role default — NOT the hung backend. S7459 fix stands as deployed. (Prior DIRECTIVE's "★ VERIFIED LIVE" claim WITHDRAWN.)
+- Hang class: transport-level (unix-socket, libpq keepalives inert), engine-independent.
+- All 74 substeps are SAMPLED-generation; DHARA has never run a production substep. Full 534-substep replan EXPECTED AND PRE-AUTHORIZED.
+- Job resized to 4vCPU/8Gi: CONFIRMED ✅
+
+### STATE RECONCILIATION (FM-09)
+
+**DB state (live, 2026-08-14T00:16 IST / 18:46Z):**
+
+| asset | chart | state | rows_written | substeps |
+|---|---|---|---|---|
+| ka_kshetra | 482012f1 (native) | **incomplete** | 2,063,838 | 74/534 committed |
+| ka_kshetra | 1c826d5a (Abhinandan) | lit | 837,992 | n/a |
+
+Checkpoint: 74/534 substeps committed. When A6′ dispatches (post-S7-LOCK), DHARA replan will produce 534 fresh substeps (resume_version 3→4) — pre-authorized, not a park trigger.
+
+**Investigation doc committed:** SAMPURTI_INVESTIGATION_v1_0.md + SAMPURTI_IMPLEMENTATION_PLAN_v1_0.md + SAMPURTI_ELEVATED_PLAN_v2_0.md → 00_ARCHITECTURE/briefs/sampurti/ (commit c5d68d50d, pushed to sampurti/integration) ✅ [RESTART EDITION first-run requirement]
+
+### RESTART SEQUENCE POSITION
+
+| Step | Status |
+|---|---|
+| S6 STEP-0+ RECONCILE | ✅ COMPLETE (this entry) |
+| S7-LOCK HARDENING LANE | 🔄 NEXT — dispatching builder now |
+| S8 A6′ DISPATCH UNDER RATE GATE | ⏳ PENDING — after S7-LOCK deployed |
+| S9 CONVERGENCE SPINE | ⏳ PENDING — after ka_kshetra=lit |
+
+### NEXT-ACTION
+
+Dispatch S7-LOCK builder (sonnet): pipeline/orchestrator/db.py::connect() gains `SET lock_timeout='300s'` + GUC SMOKE-LOG line (INFO: current_setting() of idle_in_transaction_session_timeout / statement_timeout / lock_timeout on the worker connection immediately after connect). Same SETs applied to run_ka_sangam_prod.py / run_ph_pratikara_prod.py. PR → CI → merge → deploy-green with ancestry check. PARĪKṢAKA (opus) confirms deployed image before dispatch authorization.
+
+CONDUCTOR-HEARTBEAT: 2026-08-14T00:16+05:30 [R37 open — RESTART EDITION; SM-R-4 ACK; STEP 0 complete; plan docs committed (c5d68d50d); S7-LOCK builder dispatch NEXT]
+
