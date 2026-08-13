@@ -2851,3 +2851,41 @@ Dispatch command (from dispatcher script pattern):
 - Force-rebuild: ka_kshetra state is incomplete/failed — orchestrator will restart from stage0
 
 CONDUCTOR-HEARTBEAT: 2026-08-13T19:35+05:30 [R27 — #1268 MERGED (00345531e3); deploy in_progress; A4 dispatch imminent post-deploy]
+
+---
+
+## R28 — SAMPŪRTI-Δ1 CONDUCTOR (2026-08-13T19:39+05:30)
+
+**Identity:** CONDUCTOR of SAMPŪRTI-Δ1
+
+### A4 DISPATCHED ✅ — DHARA field rebuild for native chart
+
+**Deploy confirmation:** `Deploy to Cloud Run` for main HEAD `00345531e3` completed success.
+`ENGINE_VERSION='analytic'` is LIVE in production sidecar.
+
+**A4 details:**
+| Field | Value |
+|---|---|
+| chart_id | 482012f1-710e-4a25-994a-93821f5871aa |
+| run_id | af759e40-ac64-4b07-9c3c-174785fc0bc9 |
+| Cloud Run exec | brahma-build-pipeline-job-mv7c5 (short: **exec mv7c5**) |
+| triggered_by | sampurti-a4-chart1-kshetra-dhara |
+| engine | analytic (DHARA) |
+| ka_kshetra prior state | incomplete (827,468 rows from A3) → reset to stale |
+| runningCount | 1 ✅ (confirmed LIVE) |
+
+exec-szwkw zombie: confirmed dead (RUNNING=0 before A4 dispatch).
+
+### What A4 will do
+
+DHARA engine sweep for each of the 19 event classes × 6 decades = 114 substeps in stage4.
+dhara_build_segments runs once per event class (cached in _ClassContext.dhara_segments), then sliced per decade — correct per the fix committed to #1268.
+
+### NEXT-ACTION
+
+1. Poll A4: monitor exec mv7c5 until ka_kshetra LIT (expect ~2 hours given A3's ~3h runtime, DHARA may be faster)
+2. Once LIT: run S4 parity gate (`DATABASE_URL=... PARITY_DB_TEST=1 pytest tests/l3/ka_kshetra/test_dhara_parity.py`)
+3. Post PARITY-GREEN marker in coordination file
+4. M5 measurement (post-DHARA field)
+
+CONDUCTOR-HEARTBEAT: 2026-08-13T19:39+05:30 [R28 open; A4 exec mv7c5 RUNNING (DHARA engine); S4 parity gate pending field completion]
