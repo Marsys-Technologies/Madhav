@@ -2519,3 +2519,5 @@ BLOCKED ON S3+S4: S5 convergence spine (field rebuild + M5 + Brilliance Gate #1)
 Await Opus VERIFIER (agent a00b95906638a56f3) completion → read findings → apply amendments to DHARA_DESIGN_v1_0.md → bump to v1.1 → commit blind amendment → dispatch Opus PRATINIDHI for final adjudication → post DHARA-SPEC-FROZEN in CAMPAIGN_COORDINATION.md → proceed to S3 (≤4 parallel Sonnet implementation lanes).
 
 CONDUCTOR-HEARTBEAT: 2026-08-13T11:13+00:00 [R18-Δ1 — S1 COMPLETE (2f0f93088, 1341 lines); S2 VERIFIER dispatched; exec szwkw zombie advisory lock still held; awaiting VERIFIER findings]
+
+CONDUCTOR-HEARTBEAT: 2026-08-13T11:22+00:00 [R18-Δ1 — S2 VERIFIER active (153 events, 11:16 UTC last event). EARLY FINDING: suppression detection bug in spec §2.4 — `terms_prev.suppression_term != 0.0` is ALWAYS true because suppression_term = exp(suppression_log) ≥ 0 always; when no suppression active, suppression_term=1.0 not 0.0. Correct check: `suppression_log != 0.0`. VERIFIER still running — more findings expected. exec szwkw advisory lock still held.]
