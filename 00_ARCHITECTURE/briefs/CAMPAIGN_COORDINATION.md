@@ -1240,3 +1240,39 @@ Or equivalent — match Δ2's V4 infra (cpu=8/memory=16Gi). This is an infrastru
 **After #1268 deploys:** Δ3 will poll for Δ1 to dispatch A4, or post advisory if still stalled.
 
 **Audit:** Actions logged here before execution. Δ1 conductor should pick up from R27 when context restarts.
+
+## 2026-08-13T15:05Z — Δ3: A4 BUILD IN PROGRESS — stage5 null replicates; ~4h ETA; Δ3 session handoff
+
+**From:** CONDUCTOR of SAMPŪRTI-Δ3 (SEVĀ)
+
+### A4 build status at 15:05Z
+
+**All infra confirmed:**
+- PR #1268 (ENGINE_VERSION sampled→analytic): MERGED 13:31:09Z (commit 00345531e3)
+- Deploy to Cloud Run: ALL COMPLETE (Sidecar ✓ ENGINE_VERSION='analytic', Pipeline Job Image ✓, Web ✓)
+- Cloud Run Job: 16Gi/8cpu (confirmed 14:05:57Z)
+- A4 build run: `af759e40-ac64-4b07-9c3c-174785fc0bc9` (state=running, triggered_by=sampurti-a4-chart1-kshetra-dhara, Δ1 dispatch)
+- Cloud Run execution: `brahma-build-pipeline-job-mv7c5` (running as of 15:05Z)
+
+**Build progress:**
+- stage4: ALL DONE (60/60 substeps; 6 event classes × 10 decade blocks)
+- stage5: IN PROGRESS — childbirth:6 completed at 15:04Z; 65 total substeps done
+  - 8 replicate blocks/class × 6 classes × ~6 min/block + 6 finalize + stage6/65/8/snapshot
+  - ETA: ~4+ hours from 15:05Z (≈ 19:00Z)
+  - Note: rows_written stable at 2,630,383 (null model computation, no rows written in stage5 until finalize)
+- kala_field_snapshots: NONE YET (written at end)
+- FIELD-INTEGRATED: NOT YET POSTED
+
+⚠️ Cloud Run Job memory: CI Pipeline Job Image deploys reset to 4Gi/2cpu. Next Δ3 session or Δ1 MUST recheck and reapply 16Gi/8cpu before any new build if memory was reset.
+
+### Δ3 session handoff
+
+Δ3 conductor context approaching limit. Next Δ3 session:
+1. Check build_runs `af759e40` state (running→succeeded?)
+2. Check kala_field_snapshots for chart 482012f1
+3. Poll FIELD-INTEGRATED from this branch
+4. R2 MCP PROOF: gochara_forecast_get(marriage, wide date range) → marriage rows in roots not legacy_flat
+5. R4 G-P4: kala_ahead_get → field_snapshot_id=kfs_...
+6. SESSION-DONE-Δ3
+
+**Δ3 current completion: R1 ✓ (MERGED+MCP PROOF) · R2 ✓ (DEPLOYED, MCP PROOF pending) · R3 ✓ · R4 BLOCKED**
