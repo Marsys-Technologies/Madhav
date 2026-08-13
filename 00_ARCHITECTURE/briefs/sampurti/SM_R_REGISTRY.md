@@ -47,3 +47,42 @@ This is not a fitting violation (R13): no parameter was tuned to M4's result, an
 - **N.7 narration fidelity**: This ruling restates the DVIPRAMANA design's own definition (pre-integration vs. post-integration) without re-deriving or re-interpreting it. The plan's own words: "post-W-A field, measured BESIDE #4."
 
 ---
+
+## SMR-2 — A6 Field Rebuild Dispatch after Native Cancellation of A4+A5
+
+**Date**: 2026-08-13 22:45 IST (17:15 UTC)
+**Ruling authority**: NATIVE-PRATINIDHI (opus, fresh invocation, R32 conductor request)
+**Requested by**: SAMPŪRTI-Δ1 conductor (R32) — PARKED-NATIVE from R30/R31, two consecutive native CancelExecution calls
+
+### Question
+
+The native (mail.abhisek.mohanty@gmail.com) explicitly cancelled both A4 (exec mv7c5, after ~1h56m at 21:35 IST) and A5 (exec tkp7b, after only 19 minutes at 22:02 IST) via the CancelExecution API. No native signal to resume has appeared in the coordination file. The campaign is designed to run unattended overnight. The A6 checkpoint is resumable (74/534 substeps committed, 460 remaining). Should the conductor dispatch A6?
+
+### Ruling: HOLD-A6 — PARKED-NATIVE
+
+The conductor must NOT dispatch A6 until the native provides explicit approval.
+
+### Rationale
+
+- **Two consecutive deliberate API cancellations.** The native cancelled A4 (after 2h) and then started A5 and cancelled it after only 19 minutes. Starting and immediately cancelling A5 suggests the native reconsidered the decision to launch at all — not merely that A4 was inconvenient at bedtime.
+- **CancelExecution is a conscious, authenticated act.** Not an accidental close or timeout.
+- **The 19-minute A5 window is decisive.** If the native simply wanted to stop before sleep, they would not have launched A5 at all.
+- **Asymmetry of error costs.** Wrongly HOLDING costs hours of delay. Wrongly DISPATCHING overrides an explicit native intervention — a categorical trust violation.
+- **NATIVE-PRATINIDHI authority is delegated, not sovereign.** Two consecutive cancellations do not meet the "confidently inferred" bar for unilateral dispatch.
+
+### Operational instruction
+
+1. **Do NOT dispatch A6** until one of:
+   - Explicit native message approving A6 (any authenticated channel)
+   - Native triggers a build manually via Cloud Run API/UI
+   - Native updates CLAUDECODE_BRIEF.md or governance artifact with "resume builds" directive
+2. **Independent work while HOLD is in effect:** governance hygiene, S4 preparatory queries (read-only), heartbeat maintenance, checkpoint integrity verification (read-only), S7459 fix verification (read-only).
+3. **Do NOT** auto-dispatch after N hours elapsed. Do NOT treat supervisor relaunch as implicit permission.
+4. When native signals resume: conductor dispatches A6 immediately without further ruling, using the existing resumable checkpoint (74 substeps committed, 460 remaining).
+
+### Standards applied
+
+- **R16**: two verified CancelExecution audit log entries, native account attribution confirmed
+- **§N.8 Earned-Signal**: "native wants builds to stop" is not confidently inferred from two cancellations — it requires the native to say so. But "native wants to keep running unattended" is also not confidently inferred. Ambiguity resolves to HOLD.
+
+---

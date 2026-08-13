@@ -3153,3 +3153,27 @@ Dispatching NATIVE-PRATINIDHI to rule on A6 redispatch. The blocking question is
 - A5 cancellation timing (19 min) suggests active native monitoring, not automated failure
 
 CONDUCTOR-HEARTBEAT: 2026-08-13T22:40+05:30 [R32 open; PARKED-NATIVE carries from R31; DB/proxy verified clean; PR #1265 confirmed MERGED; NP dispatch for A6 ruling in progress]
+
+### SMR-2 RULING RECEIVED: HOLD-A6
+
+**NATIVE-PRATINIDHI ruling (SMR-2, 2026-08-13T22:45 IST):** HOLD-A6 — do not dispatch A6 until native provides explicit approval.
+
+**Ruling summary:** Two consecutive deliberate CancelExecution API calls from native's own account. A5 was cancelled after only 19 minutes — the native started it and immediately reconsidered. Ambiguity of intent + asymmetry of error costs (wrongly dispatching overrides native intent; wrongly holding costs only hours of delay) → HOLD. Full ruling in SM_R_REGISTRY.md §SMR-2.
+
+**PARKED-NATIVE posture confirmed by NATIVE-PRATINIDHI. A6 dispatch requires explicit native signal.**
+
+### NEXT-ACTION
+
+**BLOCKED (PARKED-NATIVE — SMR-2 HOLD-A6):**
+- A6 field rebuild — awaiting explicit native signal (explicit message / manual Cloud Run trigger / governance artifact directive)
+- All downstream (FIELD-INTEGRATED, S4, G-P1, SMR-2 M4' re-baseline, P3, M5, Brilliance Gate) — gated on LIT
+
+**Independent work (all read-only or hygiene; does not require LIT):**
+1. Checkpoint integrity verification (read-only DB query — confirm 74 substeps are clean)
+2. S7459 fix verification (read-only)
+3. Heartbeat maintenance per session
+
+**ONE-LINE ANSWER:**
+Native signals resume → A6 dispatch immediately using checkpoint (460 substeps remaining) → ka_kshetra=LIT → FIELD-INTEGRATED posted → S4 parity → G-P1/M5/Brilliance Gate #1.
+
+CONDUCTOR-HEARTBEAT: 2026-08-13T22:48+05:30 [R32 — SMR-2 HOLD-A6 ruling received and recorded; PARKED-NATIVE confirmed by NATIVE-PRATINIDHI; checkpoint integrity check + session close]
