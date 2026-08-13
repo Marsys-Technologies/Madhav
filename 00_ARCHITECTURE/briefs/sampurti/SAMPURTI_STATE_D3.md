@@ -396,3 +396,56 @@ CONDUCTOR-HEARTBEAT: 2026-08-13T16:44:33Z pid=71151 host=Montys-MacBook-Pro.loca
 6. Post SESSION-DONE-Δ3 to coordination
 
 RUN-TERMINAL: SESSION-Δ3-PENDING-4 (not COMPLETE — FIELD-INTEGRATED outstanding; Δ1 alive+working; supervisor relaunches)
+
+**SESSION-4 PRODUCTIVE WORK (16:44Z–16:56Z):**
+
+**1. R1 RE-PROOF (16:51Z): PASS** ✓
+- Call: gochara_forecast_get(chart_id=482012f1..., domain=marriage, date_range=2024-2027)
+- coverage.event_classes_covered: 27 classes including marriage ✓
+- coverage.sweep_completeness.substeps_committed: 270 ✓
+- coverage.sweep_completeness.source: "asset_id=ka_gochara_v3_century_materialize" ✓ (R1 fix confirmed live)
+- No S4-05 refusal — honest empty with coverage info ✓
+- domains_not_covered: [] ✓ (no domains missing from coverage)
+- windows: [] (expected — marriage era rows are at 2014-2024 and 2024-2034 ranges, outside 2024-2027 filter when resolution=null; post-FIELD-INTEGRATED they will appear with resolution='era')
+
+**2. R2 PRE-FIELD-INTEGRATED BASELINE UPDATED (16:51Z):**
+- Call: gochara_forecast_get(chart_id=482012f1..., date_range=2020-2030, no domain filter)
+- roots: 18 rows (resolution='era') — partially fixed corpus
+- legacy_flat: 44 rows (resolution=NULL/unavailable) — OLD corpus rows not yet rebuilt
+- marriage in roots: 0 ❌
+- marriage in legacy_flat: 3 rows:
+  1. 2014-02-05→2024-01-31, resolution=None, is_timing_window=None, valence=neutral (era-span)
+  2. 2023-12-21→2023-12-21, resolution=None, is_timing_window=None, valence=neutral (point)
+  3. 2024-02-05→2034-01-30, resolution=None, is_timing_window=None, valence=neutral (era-span) ← overlaps 2020-2030 query
+- STATUS: marriage still in legacy_flat (resolution=NULL) — corpus rebuild not yet happened
+- POST-FIELD-INTEGRATED EXPECTATION: marriage row 3 (2024-02-05→2034-01-30) should appear in roots with resolution='era', is_timing_window=False
+
+**3. WORKTREE CLEANUP:**
+- sm-d3-r1 and sm-d3-r2 builder worktrees removed (PRs #1258/#1259 both MERGED)
+
+**4. DB.PY TIMEOUT FIX STATUS (read-only audit):**
+- Production db.py still has idle_in_transaction_session_timeout=0 — fix NOT YET IMPLEMENTED
+- pk-r2rebuild has test_mr39_idle_timeout_connection_setup.py (MR-39 prior campaign test)
+- MR-39 tested that standalone scripts route through db.connect() — different issue from current hang
+- Current hang is: orchestrator's OWN connection gets stuck idle-in-transaction during _require_stage4_committed COUNT query
+- Fix needed: change idle_in_transaction_session_timeout from 0 → 1800s in db.py (both startup option and SET statement)
+- Δ1 is implementing this fix (PID 45293 alive, no PR yet opened)
+
+**SESSION-4 CLOSE STATE:**
+| Lane | Status |
+|------|--------|
+| R1 | MERGED + MCP PROOF PASS ✓ (re-verified 16:51Z, session 4) |
+| R2 | DEPLOYED; MCP PROOF PENDING (gated on FIELD-INTEGRATED; baseline documented) |
+| R3 | DONE ✓ |
+| R4 | BLOCKED (FIELD-INTEGRATED not posted; Δ1 working on timeout fix) |
+
+**NEXT-ACTION (next session):**
+1. Check Δ1 heartbeat (sampurti/integration) for timeout fix status and A6 dispatch
+2. Poll coordination for FIELD-INTEGRATED marker
+3. Check Cloud Run executions for new A6 build
+4. On FIELD-INTEGRATED: gochara_forecast_get(domain=marriage, date_range=2020-2030) → verify marriage in roots (resolution='era', row 2024-02-05→2034-01-30 should appear)
+5. On FIELD-INTEGRATED: kala_ahead_get → verify field_snapshot_id=kfs_... (not field_not_yet_built); filed_count for prospective
+6. Record both proofs in γ ledger (sampurti/vyakhya append-only)
+7. Post SESSION-DONE-Δ3 to coordination
+
+RUN-TERMINAL: SESSION-Δ3-PENDING-4b (not COMPLETE — FIELD-INTEGRATED outstanding; Δ1 implementing timeout fix; R1 re-proof PASS; R2 baseline updated)
