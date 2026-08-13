@@ -355,3 +355,44 @@ Per LONG-RUN AUTONOMY RULES (BLOCKED ≠ STOP, BLOCKED ≠ independent work when
 6. Post SESSION-DONE-Δ3 to coordination
 
 RUN-TERMINAL: SESSION-Δ3-PENDING-3 (not COMPLETE — FIELD-INTEGRATED outstanding; A6 pending Δ1 timeout fix; supervisor relaunches)
+
+### 2026-08-13 22:14 IST — Δ3 attempt 4 session-open (FIELD-INTEGRATED still pending; Δ1 alive)
+
+CONDUCTOR-HEARTBEAT: 2026-08-13T16:44:33Z pid=71151 host=Montys-MacBook-Pro.local session=Δ3
+
+[STEP-0 OPEN: liveness CLEAN (stored PID=69622 = runner script run_dh_d3.sh, MY process; pgrep "CONDUCTOR of SAMPŪRTI-Δ3" = NO_PEERS; sole conductor confirmed). Hygiene: no RUNNING Cloud Run execution (tkp7b=cancelled/failed, s6zbw=succeeded, mv7c5=succeeded; no runningCount=1). No DB scope for Δ3. Coordination fetched (cb39baead = last commit, my own session-open-3 from 16:33Z). Reconcile: all ledger state matches reality.]
+
+**Δ1 CONDUCTOR STATUS (16:44Z):**
+- Δ1 process PID 45293 ALIVE (elapsed 36+ min, "/Users/Dev/.local/bin/claude ... CONDUCTOR of SAMPŪRTI-Δ1")
+- Last heartbeat: 2026-08-13T21:53+05:30 = 16:23Z (21 min ago)
+- tkp7b cancelled at 16:33Z; no new A6 dispatched yet
+- No new commits on sampurti/integration since 16:23Z
+- STATUS: Δ1 is alive and presumably working on the idle_in_transaction_session_timeout fix
+
+**FIELD-INTEGRATED STATUS (16:44Z):** NOT POSTED
+- No new coordination commits since cb39baead (16:33Z)
+- Path: Δ1 implements timeout fix → CI/deploy → A6 dispatch from 74-substep checkpoint → stage5 completes → S4 parity gate → re-field → FIELD-INTEGRATED marker
+
+**γ LEDGER (R3) STATUS:**
+- Verified sampurti/vyakhya: R3 corrections fully appended (C1-C5 corrections with merge SHAs, G-γ1 PASS evidence, G-P4 BLOCKED status)
+- R3 is COMPLETE ✓
+
+**Δ3 scope (unchanged):**
+| Lane | Status | Notes |
+|------|--------|-------|
+| R1 | MERGED + MCP PROOF PASS ✓ | No action needed |
+| R2 | DEPLOYED; MCP PROOF PENDING | Gated on FIELD-INTEGRATED |
+| R3 | DONE ✓ | Verified in γ ledger |
+| R4 | BLOCKED | FIELD-INTEGRATED not posted |
+
+**Independent work this session:** NONE structural — Δ1 is alive and working on the fix. All remaining Δ3 scope (R2 MCP proof, R4 G-P4) is gated on FIELD-INTEGRATED. R2/R4 proof commands are pre-staged in prior session entries.
+
+**NEXT-ACTION (next session):**
+1. Poll coordination for FIELD-INTEGRATED marker
+2. Check Cloud Run for A6 execution (new build post-timeout fix)
+3. On FIELD-INTEGRATED: gochara_forecast_get(domain=marriage, date_range 2020-2030) → verify resolution='era' in roots; fallback: achievement_recognition class
+4. On FIELD-INTEGRATED: kala_ahead_get → verify field_snapshot_id=kfs_... (not field_not_yet_built)
+5. Record both proofs in γ ledger (sampurti/vyakhya append-only)
+6. Post SESSION-DONE-Δ3 to coordination
+
+RUN-TERMINAL: SESSION-Δ3-PENDING-4 (not COMPLETE — FIELD-INTEGRATED outstanding; Δ1 alive+working; supervisor relaunches)
