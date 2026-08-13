@@ -2521,3 +2521,54 @@ Await Opus VERIFIER (agent a00b95906638a56f3) completion → read findings → a
 CONDUCTOR-HEARTBEAT: 2026-08-13T11:13+00:00 [R18-Δ1 — S1 COMPLETE (2f0f93088, 1341 lines); S2 VERIFIER dispatched; exec szwkw zombie advisory lock still held; awaiting VERIFIER findings]
 
 CONDUCTOR-HEARTBEAT: 2026-08-13T11:22+00:00 [R18-Δ1 — S2 VERIFIER active (153 events, 11:16 UTC last event). EARLY FINDING: suppression detection bug in spec §2.4 — `terms_prev.suppression_term != 0.0` is ALWAYS true because suppression_term = exp(suppression_log) ≥ 0 always; when no suppression active, suppression_term=1.0 not 0.0. Correct check: `suppression_log != 0.0`. VERIFIER still running — more findings expected. exec szwkw advisory lock still held.]
+
+---
+
+## R19 — SAMPŪRTI-Δ1 CONDUCTOR (2026-08-13T17:37+05:30)
+
+**Identity:** CONDUCTOR of SAMPŪRTI-Δ1 (three-stream architecture, continued from R18)
+**Context:** R18 context compacted mid-S3. Resuming at S3-L4 dispatch.
+
+### S2 — ADVERSARIAL DESIGN REVIEW (COMPLETE)
+
+**Status: COMPLETE**
+- Opus VERIFIER (agent a00b95906638a56f3) returned 14 findings (F-01 through F-14)
+- Critical findings: F-01 null-shift wraparound (range(1,R+1)→range(1,R)); F-02 suppression detection (!=0.0→!=1.0); F-03 error bound derivation (h² cancels, amplitude-dependent not width-dependent)
+- All 10 resolvable amendments applied to DHARA_DESIGN_v1_0.md
+- Spec bumped to v1.1 at commit `7ee9eef4a`
+- DHARA-SPEC-FROZEN marker posted in CAMPAIGN_COORDINATION.md at commit `87e8a1ffd`
+
+### S3 — PARALLEL SONNET IMPLEMENTATION LANES
+
+**Status: ALL 4 LANES DISPATCHED**
+
+| Lane | Agent ID | Worktree | File | Status |
+|------|----------|----------|------|--------|
+| S3-L1 | adc1421c404920967 | sm-d1-sweep | dhara_sweep.py | RUNNING (dispatched mid-R18) |
+| S3-L2 | a4abb47bc4cb5c5bf | sm-d1-null | dhara_null.py | RUNNING (dispatched mid-R18) |
+| S3-L3 | a3df0f1275f9cf534 | sm-d1-pinmat | engine_config.py + dhara_pin_matrix.py | RUNNING (dispatched mid-R18) |
+| S3-L4 | af787ef412158d3d4 | sm-d1-termat | dhara_term_matrix.py | RUNNING (dispatched R19) |
+
+**Spec amendments in scope for S3:**
+- F-01: null shift grid corrected (range(1,R) → 1023 independent shifts)
+- F-02: suppression detection (suppression_term != 1.0, not != 0.0)
+- F-03: error bound derivation corrected (amplitude-dependent)
+- F-04: pin matrix stage 0/1 split (separate pins; stage 1 includes stage 3 pin)
+- F-06+F-14: .npz schema extended (raw_u_matrix [K,V], rho_values [V])
+- F-07: config_pin breaking-change acknowledgment
+- F-09: delta-update runtime assertion every 100 clock knots
+- F-12: half-open convention comment corrected (t_{i+1}^+ not t_{i+1}^-)
+
+### Zombie status
+
+- exec szwkw: Cloud Run container likely still running (RUNNING at last check ~11:45 UTC)
+- Advisory lock: pid=1790069 still held on remote DB (pg_locks advisory row present)
+- Native ruling n1: do NOT terminate. Wait for natural exit.
+
+### NEXT-ACTION
+
+Wait for S3 PRs to appear on branches sm-d1-sweep, sm-d1-null, sm-d1-pinmat, sm-d1-termat.
+Review each PR → merge to sampurti/integration → post INTEGRATION-READY when all 4 merged.
+Then await S4 (Δ2 FIXTURES-READY + PARITY-GREEN markers before proceeding to S4 parity gate).
+
+CONDUCTOR-HEARTBEAT: 2026-08-13T17:37+05:30 [R19 — S2 COMPLETE (7ee9eef4a, 14 findings, 10 amendments); DHARA-SPEC-FROZEN (87e8a1ffd); ALL 4 S3 LANES DISPATCHED (L1-sweep/L2-null/L3-pinmat dispatched R18; L4-termat dispatched R19); monitoring S3 PRs; exec szwkw zombie/advisory lock passive watch]
