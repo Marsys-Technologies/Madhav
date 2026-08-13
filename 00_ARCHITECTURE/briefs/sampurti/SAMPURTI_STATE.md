@@ -2366,3 +2366,56 @@ No sizing decision in coordination file as of this read. Options as understood f
 3. [PENDING — after szwkw completes] Await native's sizing decision for next build path
 4. [ON ka_kshetra lit + α-02 merged] Measurement #5 → G-P3a → G-P3b + Brilliance Gate #1 → FIELD-INTEGRATED
 
+
+---
+
+## Heartbeat: 2026-08-13T16:23+05:30 — R18 SESSION OPEN; A3 FAILED (STOP-FLAGGED); DHĀRĀ S1 BEGINNING
+
+CONDUCTOR-HEARTBEAT: 2026-08-13T16:23+05:30 (CONDUCTOR of SAMPŪRTI-Δ1) pid=$$ [R18 launch — identity: CONDUCTOR of SAMPŪRTI-Δ1 (three-stream architecture, supersedes α identity); S7440 confirmed all supervisors/conductors stopped cleanly]
+
+### STEP 0 — COMPLETE (R18)
+
+**LIVENESS (FM-10/11):**
+- pgrep "CONDUCTOR of SAMPŪRTI-Δ1": no match (R17 α-conductor DEAD per S7440)
+- Sole SAMPŪRTI-Δ1 conductor: CONFIRMED (this session)
+
+**HYGIENE (AMENDED RULE):**
+- cloud-sql-proxy port 5433: ALIVE (PID 72597) ✓
+- Cloud Run exec brahma-build-pipeline-job-szwkw: gcloud shows RUNNING=1 (zombie container — application done)
+- DB REALITY: build_run 30241b84 state=`failed`, ended_at=2026-08-13T10:10 UTC, stop_requested_at=2026-08-13T10:06 UTC
+- ka_kshetra state: `incomplete` (orphan-watchdog: 104/534 substeps committed, 2,555,820 rows present, not promoted to lit)
+- Advisory locks: 1 (orphaned from zombie exec — application-level build FAILED; exec container not yet exited)
+- AMENDED RULE INTERPRETATION: build_run=failed in DB; exec is zombie; lock is orphaned (not a live build's connection). Lock NOT terminated per n1 "do NOT terminate its connection" — will clear when container exits naturally.
+
+**COORDINATION:**
+- L-4: EXPIRED (was 18:00 IST = 12:30 UTC; build failed before expiry; no active lease needed now)
+- EMERGENCY DIRECTIVE adopted from R17: amended hygiene rule; α-02 perf triad dispatch ordered
+- Native rulings in force: n1 DHĀRĀ-first, n2 DB persistence, n3 1024 replicates
+- UTKARṢA: no active lease conflict ✓
+
+**RECONCILE (FM-09, adopt-never-redo):**
+- A3 exec szwkw (run 30241b84): FAILED at 10:10 UTC (stop_requested_at 10:06 UTC — stop-flag WAS set by prior session/mechanism); 104/534 substeps committed; ka_kshetra=incomplete
+- Previous identity was CONDUCTOR of SAMPŪRTI-α (R1-R17); this session is CONDUCTOR of SAMPŪRTI-Δ1 (three-stream Δ1/Δ2/Δ3 architecture per S7435)
+- DHĀRĀ (§6 ALPHA_DAY_PLAN; conductor sequence S1-S5): NOT STARTED. S1 begins this session.
+- α-02 perf triad: NOT LANDED (SELF-ERROR-1 from R17 still open; but DHĀRĀ §6.4 d5 says α-02 is SUBSUMED by DHĀRĀ — the triad becomes the fallback hedge if parity gate fails)
+- SMR-1: M4 STANDS ✓; G2-EARLY ADJUDICATION-2: CLOSED-DEFER ✓; A1+A2' all complete ✓
+- DHĀRĀ supersedes §5 Tier-2/3; all measurements (M5+) will run on DHĀRĀ engine
+
+### CURRENT STATE
+
+| Item | State |
+|---|---|
+| ka_kshetra (native 482012f1) | `incomplete` (104/534 substeps, 2.5M rows; needs re-dispatch post-DHĀRĀ) |
+| build_run 30241b84 (exec szwkw) | `failed` (stop-flagged 10:06 UTC, ended 10:10 UTC) |
+| Cloud Run exec szwkw | Zombie container (shows RUNNING on gcloud but build done; will timeout naturally) |
+| Advisory lock | 1 orphaned — DO NOT TERMINATE (n1) |
+| DHĀRĀ spec (S1) | NOT STARTED — beginning this session |
+| α-02 triad | SUBSUMED by DHĀRĀ (fallback hedge only) |
+| M5 measurement | BLOCKED on DHĀRĀ S1-S4 + field rebuild |
+
+### NEXT ACTIONS
+
+1. [THIS SESSION] S1: DHĀRĀ DESIGN DOC — dispatch Opus builder (high effort) for full analytic spec per §6.1
+2. [THIS SESSION] S2: Adversarial design review (fresh Opus VERIFIER + PRATINIDHI) → DHARA-SPEC-FROZEN marker
+3. [NEXT SESSIONS] S3: Implementation lanes (≤4 sonnet builders, parallel, TDD, sm-d1-* worktrees)
+4. [BLOCKED ON S1-S4 + exec exit] S5: Convergence spine — resized field rebuild, M5, Brilliance Gate #1
