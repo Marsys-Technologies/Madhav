@@ -3256,3 +3256,56 @@ SMR-2 HOLD-A6 ruling remains in force. Native cancelled A4 (21:35 IST) and A5 (2
 Native signals resume → A6 dispatch immediately (460 substeps remaining, checkpoint intact) → ka_kshetra=LIT → FIELD-INTEGRATED posted → S4 parity (Δ2 PARĪKṢAKA runs parity battery) → G-P1 → SMR-2 M4' → P3 → M5 → Brilliance Gate #1.
 
 CONDUCTOR-HEARTBEAT: 2026-08-13T23:00+05:30 [R33 — PARKED-NATIVE SMR-2 HOLD-A6 carries; all surfaces checked (Cloud Run/DB/coord/CLAUDECODE_BRIEF/SM-R): no native signal; ka_kshetra=incomplete 2,063,838 rows stable; S7459 fix verified on sampurti/integration; no independent work remaining; session closing]
+
+---
+
+## R34 — SAMPŪRTI-Δ1 CONDUCTOR (2026-08-13T23:02+05:30)
+
+**Identity:** CONDUCTOR of SAMPŪRTI-Δ1 (supervisor relaunch; R33 closed 23:00 IST)
+
+### LIVENESS CHECK (FM-10/11/21)
+
+- current_conductor.pid = 8444 (R33 session; pgrep "CONDUCTOR of SAMPŪRTI-Δ1" → no match → DEAD) ✅
+- PEERS: none found after self-exclusion (pgrep -f "CONDUCTOR.*SAMPURTI" | grep -vw $$) ✅
+- My PID: 11456 (written to dh-d1-logs/current_conductor.pid) — sole conductor confirmed ✅
+
+### HYGIENE CHECK (FM-06 amended)
+
+- Cloud Run executions: tkp7b=runningCount 0 (CANCELLED/complete), mv7c5/s6zbw/szwkw/sd2ph all runningCount=0 — no live builds ✅
+- advisory_locks = 0 ✅
+- active build_runs (state IN planned,running) = 0 ✅
+- Cloud SQL proxy: PID 72597 on 127.0.0.1:5433 ✅
+
+### STATE RECONCILIATION (FM-09)
+
+**DB state (live, 2026-08-13T17:32Z):**
+
+| asset | chart | state | rows_written |
+|---|---|---|---|
+| ka_kshetra | 482012f1 (native) | **incomplete** | 2,063,838 |
+
+**No change from R33.** Checkpoint preserved; 74/534 substeps committed; resumable.
+
+**Coordination file:** No new entries since R32/R33 (22:25 IST FIELD-INTEGRATED clarification). L-5 remains DEAD/PARKED-NATIVE. No native signal.
+
+**CLAUDECODE_BRIEF.md:** status=COMPLETE (PŪRṆATĀ arc) — no active brief, no new directives.
+
+**SM-R Registry:** SMR-1 and SMR-2 only. No new rulings. SMR-2 HOLD-A6 in force.
+
+### PARKED-NATIVE — SMR-2 HOLD-A6 CONTINUES
+
+No native signal on any surface (coordination file, CLAUDECODE_BRIEF.md, SM-R, Cloud Run triggers). PARKED-NATIVE posture unchanged from R33.
+
+### INDEPENDENT WORK
+
+No independent work remaining beyond what was completed in R30–R33 park windows:
+- S7459 fix: verified on sampurti/integration (R33) ✅
+- Checkpoint integrity: confirmed stable (R32/R33) ✅
+- All downstream (S4 parity, G-P1, SMR-2 M4', P3, M5, Brilliance Gate #1): gated on ka_kshetra=LIT
+
+### NEXT-ACTION
+
+**BLOCKED (PARKED-NATIVE — SMR-2 HOLD-A6):**
+Native signals resume → A6 dispatch immediately (460 substeps remaining, checkpoint intact) → ka_kshetra=LIT → FIELD-INTEGRATED posted → S4 parity → G-P1 → SMR-2 M4' → P3 → M5 → Brilliance Gate #1.
+
+CONDUCTOR-HEARTBEAT: 2026-08-13T23:02+05:30 [R34 — PARKED-NATIVE SMR-2 HOLD-A6 carries; all surfaces checked: no native signal; DB clean (advisory_locks=0, builds=0); ka_kshetra=incomplete 2,063,838 rows stable; no independent work remaining; session closing]
