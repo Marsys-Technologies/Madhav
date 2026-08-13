@@ -1547,3 +1547,18 @@ CONDUCTOR-HEARTBEAT: 2026-08-13T06:35+05:30 (CONDUCTOR of SAMPŪRTI-α) pid=8945
 - Dispatch: PARĪKṢAKA (opus/high) for review → GATE-EXECUTOR (opus/high) merge + deploy
 
 **NEXT**: PR created → PARĪKṢAKA verdict → GATE-EXECUTOR merge + deploy → A2' dispatch
+
+---
+
+## Heartbeat: 2026-08-13T06:50+05:30 — PR #1255 mergeable; CI running; merge conflict resolved
+
+CONDUCTOR-HEARTBEAT: 2026-08-13T06:50+05:30 (CONDUCTOR of SAMPŪRTI-α) pid=89453 [PR #1255 MERGEABLE; 16 CI checks in progress]
+
+**MERGE CONFLICT RESOLVED:**
+- Root cause: integration was 18 commits behind main (SM-β B1-B4, SM-γ C1-C5, perf L1e-L1o, PARIṢKĀRA MR-47/48)
+- Conflict 1: SAMPURTI_STATE.md (content) → kept integration's version (full post-R0 conductor history)
+- Conflict 2: ahead_autofile.ts + ahead_autofile.test.ts (add/add) → took main's version (G14b base + C5 = superset)
+- Merge commit: 84571784a pushed origin/sampurti/integration
+- PR #1255: MERGEABLE, BLOCKED on CI (16 checks in progress)
+
+**NEXT**: Poll CI green → PARĪKṢAKA re-review (opus/high) → GATE-EXECUTOR merge + deploy → A2' dispatch
