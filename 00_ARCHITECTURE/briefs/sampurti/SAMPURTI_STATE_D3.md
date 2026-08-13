@@ -768,3 +768,34 @@ HARDENING RULE (recorded per SM-R-3): a Cloud Run execution cancelled by ANY ide
 3. On FIELD-INTEGRATED: execute R2 proof + R4 G-P4 → SESSION-DONE-Δ3
 
 RUN-TERMINAL: SESSION-Δ3-PENDING-10 (FIELD-INTEGRATED outstanding; A6 authorized by SM-R-3; Δ1 dispatching A6; supervisor relaunches when marker posts)
+
+---
+
+## SESSION-11 — 2026-08-13T17:44Z (23:14 IST)
+
+CONDUCTOR-HEARTBEAT: 2026-08-13T17:44Z pid=23623 host=Montys-MacBook-Pro.local session=Δ3-11
+
+### STEP-0 (session-11)
+
+**Liveness:** CLEAN — stored PID=21944 (dead, pgrep returns NONE). pgrep "CONDUCTOR of SAMPŪRTI-Δ3" → NONE (excluding stored PID). Sole conductor confirmed. My PID 23623 written to dh-d3-logs/current_conductor.pid.
+
+**Hygiene:** CLEAN — Cloud Run executions: all Completed (latest: tkp7b cancelled 16:33Z, no runningCount). No local orchestrator process. No proxy needed (Δ3: NO DB builds, NO chart locks).
+
+**Coordination (fetched):** Last entries are SM-R-3 ruling (f00aa2b50, ~17:40Z) + Δ3 SM-R-3 ACK (79889176, 17:40Z). No new entries from Δ1 since R32 (22:25 IST). FIELD-INTEGRATED: NOT POSTED.
+
+**Reconcile (FM-09):**
+- A6: NOT DISPATCHED. Latest Cloud Run execution = tkp7b (cancelled 16:33Z). No new execution after SM-R-3 ruling.
+- Δ1 R35 (closed 23:15 IST): PARKED-NATIVE still — missed SM-R-3 by race at coord fetch (opened at 17:45Z, SM-R-3 committed ~17:40Z; race window). Δ1 R36 will read SM-R-3 and dispatch A6.
+- PR #1269 (S7459 timeout fix): created by Δ1 R35, CI running. Will merge when green; A6 dispatches after.
+- Δ3 lane status unchanged from session-10 close: R1 ✓ · R2 ✓ (proof pending) · R3 ✓ · R4 BLOCKED
+
+**Independent Δ3 work available:** NONE. All remaining scope (R2 proof + R4 G-P4) gates on FIELD-INTEGRATED.
+
+**Per LONG-RUN AUTONOMY RULES:** Genuinely blocked on another stream's marker → end session cleanly with NEXT-ACTION current. Supervisor relaunches when FIELD-INTEGRATED posts (or after A6 confirmed dispatched by Δ1 R36).
+
+**NEXT-ACTION (session-12):**
+1. Check coordination for FIELD-INTEGRATED data marker
+2. Check Cloud Run for A6 execution (running → close + relaunch; completed → check for FIELD-INTEGRATED)
+3. On FIELD-INTEGRATED: execute R2 MCP proof (gochara_forecast_get marriage in roots, resolution='era') + R4 G-P4 (kala_ahead_get field_snapshot_id=kfs_...) → SESSION-DONE-Δ3
+
+RUN-TERMINAL: SESSION-Δ3-PENDING-11 (FIELD-INTEGRATED outstanding; A6 not yet dispatched — Δ1 R36 will dispatch after reading SM-R-3; supervisor relaunches when marker posts or A6 confirmed running)
