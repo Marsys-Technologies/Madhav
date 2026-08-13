@@ -3534,3 +3534,5 @@ CONDUCTOR-HEARTBEAT: 2026-08-14T01:16+05:30 [R37 — PR #1270 merge queue AWAITI
 CONDUCTOR-HEARTBEAT: 2026-08-14T01:21+05:30 [R37 — Ganga Quality Gate merge-group CI still running (~4 min elapsed); PR #1270 still OPEN; monitoring; L-8 lease ACTIVE]
 
 CONDUCTOR-HEARTBEAT: 2026-08-14T01:26+05:30 [R37 — merge queue PR #1270 state=MERGEABLE (both merge-group CI green: Ganga+TAP); PR still OPEN pending auto-merge; monitoring]
+
+CONDUCTOR-HEARTBEAT: 2026-08-14T01:31+05:30 [R37 — PR #1270 MERGED (19:44:02Z, merge commit 0e33cce00c); deploy not yet started (Ganga CI still in_progress on push, deploy likely triggers after); monitoring for Build & Deploy Pipeline Job Image run → lock_timeout verification → A6′ dispatch]
