@@ -2957,3 +2957,5 @@ gcloud run jobs execute brahma-build-pipeline-job \
 4. M5 measurement (post-DHARA field)
 
 CONDUCTOR-HEARTBEAT: 2026-08-13T21:43+05:30 [R29 open; A5 exec tkp7b RUNNING (DHARA engine); 69/534 substeps committed, 465 remaining; parity gate pending field completion]
+
+CONDUCTOR-HEARTBEAT: 2026-08-13T21:53+05:30 [R29 poll — exec tkp7b RUNNING=1; ka_kshetra building, rows=566,545 (stable — stage5 null compute, no commits until finalize); advisory_locks=1 (orchestrator's own active lock, correct); ~10-min mark post-dispatch]
