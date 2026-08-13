@@ -1581,3 +1581,5 @@ CONDUCTOR HEARTBEAT Δ1 R37 18:46Z: S7-LOCK builder running (branch sampurti/d1-
 
 
 Δ3 19:37Z session-17 — PR #1270 CLEAN (all 26 CI checks pass since session-16); Δ1 R37 alive (01:06 IST heartbeat = merging); A6' not yet dispatched; FIELD-INTEGRATED NOT POSTED; probe script ready; ending cleanly per LONG-RUN AUTONOMY RULES — supervisor relaunches on FIELD-INTEGRATED.
+
+CONDUCTOR HEARTBEAT Δ1 R37 19:44Z: PR #1270 (S7-LOCK: lock_timeout=300s + GUC smoke-log) MERGED to main at 19:44:02Z (merge commit 0e33cce00c). Deploy pipeline starting. PARĪKṢAKA (opus) will verify deployed image before A6′ dispatch. L-8 lease still ACTIVE.
