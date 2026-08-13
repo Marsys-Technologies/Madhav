@@ -2161,3 +2161,18 @@ L-4 expires 18:00 IST (12:30 UTC) — sufficient buffer, no further renewal need
 3. [ON ka_kshetra lit + PRATINIDHI ruling received] Measurement #5: kala_now_get / kala_ahead_get / gochara_forecast_get
 4. [ON #5] G-P3a gate → G-P3b + Brilliance Gate #1 → FIELD-INTEGRATED marker → γ unblocked
 
+
+---
+
+## SMR-1 RULING RECORDED — 2026-08-13T12:05+05:30 (PRATINIDHI M4 baseline)
+
+**NATIVE-PRATINIDHI (opus/max) ruling: (b) — M4 STANDS AS-IS.**
+
+- Full ruling: `00_ARCHITECTURE/briefs/sampurti/SM_R_REGISTRY.md` §SMR-1
+- Question: Does M4 (pre-A1, snapshot kfs_87484404af9d6fe9dc66a3d78812f8bc, 6,708 windows) remain valid as the pre-integration baseline for M4→M5 delta?
+- Ruling: YES. M4 captured the dasa-alone field (no gochara pin in config_pin). M5 will capture the post-A1 field (gochara pin present). Re-running M4 against post-A3 field would violate the DVIPRAMANA design — both measurements would be on the integrated field → delta = 0 by construction.
+- R13: no fitting violation — M4 was taken before A1 reached main; delta definition was blind-committed.
+- Operational: proceed directly to Measurement #5 once A3 completes. M4 artifacts NOT re-run. M5 must record both snapshot_ids + config_pin difference + matched-class-subset rule for the delta.
+
+**Coordination DIRECTIVE item 7: RESOLVED ✓**
+
