@@ -557,3 +557,50 @@ Per LONG-RUN AUTONOMY RULES (BLOCKED ≠ STOP): Δ3 scope exhausted pending FIEL
 2. On FIELD-INTEGRATED: R2 MCP proof + R4 G-P4 → SESSION-DONE-Δ3
 
 RUN-TERMINAL: SESSION-Δ3-PENDING-6 (not COMPLETE — FIELD-INTEGRATED outstanding; native-park on A6; supervisor relaunches)
+
+### 2026-08-13 22:43 IST — Δ3 attempt 7 session-open (FIELD-INTEGRATED still pending; SMR-2 HOLD-A6 confirmed)
+
+CONDUCTOR-HEARTBEAT: 2026-08-13T17:13Z pid=590 host=Montys-MacBook-Pro.local session=Δ3-7
+
+[STEP-0 OPEN: liveness CLEAN (stored PID 587=runner, updated to my PID 590; pgrep "CONDUCTOR of SAMPŪRTI-Δ3" = PEERS=NONE, sole conductor confirmed). Hygiene CLEAN: no RUNNING Cloud Run executions (tkp7b=cancelled, s6zbw/mv7c5=succeeded, all runningCount=0). No DB scope for Δ3. Coordination fetched (origin/campaign-coordination, last entry=session-6 advisory 41685bf62). Reconcile: all ledger state matches reality — R1 MERGED+PROOF PASS, R2 DEPLOYED, R3 DONE, R4 BLOCKED. CLAUDECODE_BRIEF.md = status COMPLETE (PŪRṆATĀ — not a new signal). SMR-2 HOLD-A6 confirmed per Δ1 R32 ledger (17:18Z close).]
+
+**STEP-0 FINDINGS:**
+
+| Check | Result |
+|---|---|
+| Liveness | CLEAN — sole Δ3 conductor; PID 590; no peers |
+| Cloud Run | No RUNNING executions; tkp7b=cancelled, s6zbw/mv7c5=succeeded |
+| Coordination | Last entry: session-6 advisory (41685bf62, 17:05Z); no FIELD-INTEGRATED marker |
+| Δ1 R32 state | CLOSED — SMR-2 HOLD-A6; PARKED-NATIVE confirmed by NATIVE-PRATINIDHI at 17:15Z |
+| CLAUDECODE_BRIEF | status=COMPLETE (PŪRṆATĀ arc, 2026-08-01) — not a native resume signal |
+| FIELD-INTEGRATED | NOT POSTED — all matches in coordination are "NOT YET POSTED" / clarification |
+
+**SMR-2 HOLD-A6 (Δ1 NATIVE-PRATINIDHI ruling, 17:15Z):**
+- Rule: DO NOT dispatch A6 until explicit native signal (explicit message / manual Cloud Run trigger / CLAUDECODE_BRIEF "resume builds" directive)
+- Rationale: Native cancelled A4 after 2h (16:05Z) and A5 after 19 min (16:33Z) — deliberate CancelExecution API calls; asymmetry of error costs → HOLD
+- Two consecutive intentional cancellations; NP authority insufficient to override
+
+**Δ3 LANE STATUS (session 7, unchanged):**
+| Lane | Status | Notes |
+|------|--------|-------|
+| R1 | MERGED + MCP PROOF PASS ✓ | Last verified 16:51Z session-4; 27 classes, 270 substeps ✓ |
+| R2 | DEPLOYED; MCP PROOF PENDING | 3 marriage rows in legacy_flat; gated on FIELD-INTEGRATED |
+| R3 | DONE ✓ | sampurti/vyakhya corrections committed (66e35c216) |
+| R4 | BLOCKED | FIELD-INTEGRATED not posted; gated on native signal → A6 → parity → re-field |
+
+**INDEPENDENT WORK:** NONE — all remaining Δ3 scope gated on FIELD-INTEGRATED; native-park is human-directed decision; no Δ3-scope independent work exists.
+
+Per LONG-RUN AUTONOMY RULES (BLOCKED ≠ STOP): All Δ3 remaining work gated on FIELD-INTEGRATED. Block is native-directed (SMR-2 HOLD-A6). Ending session cleanly; supervisor relaunches.
+
+**WHAT ONE RELAUNCH FINISHES:** When FIELD-INTEGRATED is posted by Δ1:
+1. `gochara_forecast_get(chart_id=482012f1..., domain=marriage, date_range=2020-2030)` → verify marriage row 2024-02-05→2034-01-30 in roots (resolution='era'), NOT legacy_flat; fallback: achievement_recognition class (was in legacy_flat pre-fix)
+2. `kala_ahead_get(chart_id=482012f1...)` → verify field_snapshot_id=kfs_... (not field_not_yet_built)
+3. Record both proofs in γ ledger (sampurti/vyakhya append-only)
+4. Post SESSION-DONE-Δ3 to coordination
+
+**NEXT-ACTION (next session):**
+1. Poll coordination for FIELD-INTEGRATED data marker (Δ1 posts "FIELD-INTEGRATED: ka_kshetra=lit" after native signals A6 resume → A6 completes → S4 parity → re-field)
+2. Check Cloud Run executions for new A6 build (native manual trigger or explicit signal)
+3. On FIELD-INTEGRATED: R2 MCP proof + R4 G-P4 → SESSION-DONE-Δ3
+
+RUN-TERMINAL: SESSION-Δ3-PENDING-7 (not COMPLETE — FIELD-INTEGRATED outstanding; SMR-2 HOLD-A6; supervisor relaunches)
