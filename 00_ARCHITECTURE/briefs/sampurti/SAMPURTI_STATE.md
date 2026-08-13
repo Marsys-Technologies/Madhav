@@ -1562,3 +1562,50 @@ CONDUCTOR-HEARTBEAT: 2026-08-13T06:50+05:30 (CONDUCTOR of SAMPŪRTI-α) pid=8945
 - PR #1255: MERGEABLE, BLOCKED on CI (16 checks in progress)
 
 **NEXT**: Poll CI green → PARĪKṢAKA re-review (opus/high) → GATE-EXECUTOR merge + deploy → A2' dispatch
+
+---
+
+## Heartbeat: 2026-08-13T07:20+05:30 — GATE-EXECUTOR SUCCESS; production==main; A2' dispatch starting
+
+CONDUCTOR-HEARTBEAT: 2026-08-13T07:20+05:30 (CONDUCTOR of SAMPŪRTI-α) pid=89453 [gate packet MERGED, deployed; A2' in progress]
+
+**GATE PACKET (PR #1255) — COMPLETE:**
+- Merged: dbdbb30ac2ca4f2eda4ac17db2c1117eb6a50d53 at 2026-08-13T00:35:24Z
+- Deploy: run 31655385648, completed/success, headSha=dbdbb30ac
+- Production: all 3 services at commit-sha=dbdbb30ac (sidecar, pipeline, web)
+- A1 code (gochara corpus pin) now LIVE in Cloud Run container ✅
+
+**L-10 LEASE**: gate packet phase complete. Deploy done. Releasing in coordination.
+Next phase under L-10 scope: A2' dispatch (no new lease needed — no corpus build, just asset rebuild)
+
+**A2' DISPATCH:** Preparing script with corrected exclusions:
+- Include: ka_gochara (stale → clean rebuild unblocks ka_sangam cascade)
+- Exclude: {ka_gochara_v3_century_materialize, ka_gochara_resonance, ka_gochara_sweep, ka_vedha_gochara, ka_kota_chakra}
+
+---
+
+## Heartbeat: 2026-08-13T07:35+05:30 — A2' dispatched (run cbd6ea44, exec cww2x)
+
+CONDUCTOR-HEARTBEAT: 2026-08-13T07:35+05:30 (CONDUCTOR of SAMPŪRTI-α) pid=89453 [A2' dispatched, watcher active]
+
+**A2' DISPATCH (FM-07):**
+- run_id: `cbd6ea44-3c09-4ce5-9b21-d22fb0eeccf6`
+- Cloud Run execution: `brahma-build-pipeline-job-cww2x`
+- Assets (29): ka_gochara + 8 ka_* + 10 mi_* + 9 ph_*
+  - ka_gochara (stale) INCLUDED — corrects A2 root cause; unblocks ka_sangam cascade
+  - ka_sangam/ka_kalasutra/ka_vighnakara/ka_bhavishya_lekha/ka_jivana_parva/ka_kala_darshana/ka_taranga/ka_tulana: all blocked by ka_gochara in A2, now unblocked
+  - mi_* (10 assets): all in error state from pre-existing bo_samskara cascade → now cleared (bo_samskara was lit in A2)
+  - ph_* (8 assets + ph_suddha_sodhana): downstream of mi_*/ka_*
+- Exclusions: ka_gochara_v3_century_materialize, ka_gochara_resonance, ka_gochara_sweep, ka_vedha_gochara, ka_kota_chakra
+- Dispatch script: platform/scripts/dispatch_sampurti_a2prime_chart1_full.py (committed with FM-18 argparse)
+
+**L-10 LEASE:** Gate packet + deploy complete. A2' uses separate Cloud Run job (no DB write lock needed by conductor; orchestrator holds its own advisory lock). L-10 scope fulfilled — releasing in coordination.
+
+**A2' EXPECTED OUTCOME:**
+ka_gochara rebuilds (823 rows → fresh) → unblocks ka_sangam → cascade to ka_kalasutra / ka_vighnakara / all ka_* → then mi_*/ph_* rebuild → NEW ka_kshetra snapshot (A1 code computes gochara pin with post-β corpus → new snapshot_id → fresh field build)
+
+**ka_kshetra note:** ka_kshetra is NOT in A2' target list (it was lit in A2). The A1 code will ONLY produce a new snapshot if the gochara pin changes the config_pin → snapshot_id. This will happen on the NEXT ka_kshetra build (either A3 or a subsequent run).
+
+**NEXT:** Monitor cww2x execution; once ka_gochara lit → verify ka_sangam unblocked → measure progress; then dispatch Measurement #5 (post-β, A1-pinned field) once ka_kshetra rebuilt with new snapshot.
+
+**CORRECTION on ka_kshetra:** re-reading A2' asset list — ka_kshetra IS included if it's stale/error. Let me verify: ka_kshetra state at last check = `lit` (A2 checkpoint-resume). So it's NOT in A2' targets (29 assets do not include ka_kshetra). A3 (dedicated ka_kshetra rebuild with A1 deployed) is needed post-A2'.
