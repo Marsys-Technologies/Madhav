@@ -3548,3 +3548,57 @@ CONDUCTOR-HEARTBEAT: 2026-08-14T02:04+05:30 [R38 — FM-21 pass#3 CLEAR (pid=183
 CONDUCTOR-HEARTBEAT: 2026-08-14T02:19+05:30 [R38 — RATE-GATE STOP EXECUTED. A6′ (7pv5m) stopped at T+38min. FM-21 pass#4 N/A (connections cleared at 20:48:42Z). Stop sequence: (1) FM-22 coordination entry committed to campaign-coordination (ae8b734e7); (2) stop_requested_at set 20:48:13Z; (3) Cloud Run cancel gcloud (completionTime 20:48:42Z); (4) build_run.state=failed. DIAGNOSTIC: 4 substeps completed in T+28:49; SAMPLED substeps averaging ~10min each (writer idle_in_txn 207-364s CPU between COUNT-kala_field queries); at 0.114/min/534-substep = 78h projection. NEXT: PARĪKṢAKA diagnosis — understand substep cost model; consider 8vCPU/16Gi + substep granularity review + escalate to native]
 
 CONDUCTOR-HEARTBEAT: 2026-08-14T02:30+05:30 [R38 — PARĪKṢAKA DIAGNOSIS COMPLETE. ROOT CAUSE: Python CPU for stage4 segment computation (adaptive refinement, 165K+ breakpoints, depth-6 → 40-80K segments/decade at ~9min/decade). L1e batch-insert + L1g-L1n fixes ARE deployed and functioning — DB round-trips are fast. CORRECTED PROJECTION: 57 remaining stage4 decades × 9min = 513min = 8.5h; total ~9h → 6-12h zone per rate-gate. RATE-GATE RE-ASSESSMENT: initial stop at T+35min was based on 4/534 substeps where SKIP substeps masked the true COMPUTABLE rate; corrected rate is 6-12h zone (not >12h). Per protocol, 6-12h = continue + 8vCPU/16Gi. BUT 8vCPU/16Gi does NOT help single-threaded Python CPU. Real fix = L1g-style coarse breakpoints for stage4 (code change). DECISION REQUIRED BY NATIVE: (a) re-dispatch at current code accepting ~9h; (b) request L1g-style stage4 breakpoint reduction code fix; (c) other. CONDUCTOR PARKED-NATIVE pending this decision. L-8 lease: expires 06:00 IST 2026-08-14 = 00:30 UTC; must renew if unattended.]
+
+---
+
+## R39 — SAMPŪRTI-Δ1 CONDUCTOR (2026-08-14T02:31+05:30)
+
+**Identity:** CONDUCTOR of SAMPŪRTI-Δ1 (supervisor relaunch; R38 closed after PARĪKṢAKA diagnosis)
+
+### LIVENESS CHECK (FM-10/11/21)
+
+- current_conductor.pid = 61694 (R38 session; pgrep "CONDUCTOR of SAMPŪRTI-Δ1" → no match → DEAD) ✅
+- PEERS: none found after self-exclusion ✅
+- My PID: 64456 (written to dh-d1-logs/current_conductor.pid) — sole conductor confirmed ✅
+- SM-R-4 READ AND ACKNOWLEDGED ✅
+
+### HYGIENE CHECK (FM-06 amended)
+
+- Cloud Run executions: 7pv5m/crfzx/tkp7b/s6zbw/mv7c5 all Completed, runningCount=0 — no live builds ✅
+- advisory_locks = 0 ✅
+- active_build_runs (state IN planned,running) = 0 ✅
+- Cloud SQL proxy: alive on 127.0.0.1:5433 ✅
+
+### RECONCILE (FM-09)
+
+**DB state (live, 2026-08-14T02:31 IST / 21:01Z):**
+
+| asset | chart | state | rows_written | committed_substeps |
+|---|---|---|---|---|
+| ka_kshetra | 482012f1 (native) | **incomplete** | 566,545 | 74/534 committed |
+| ka_kshetra | 1c826d5a (Abhinandan) | lit | 837,992 | n/a |
+
+**NOTE on rows_written=566,545**: The 7pv5m A6′ run (4 analytic substeps before FM-22 stop) replaced some SAMPLED rows with analytic rows via delete-then-insert. 74 committed substeps remain as checkpoint; next dispatch resumes from where 7pv5m left off.
+
+### R38 FALSE-BLOCKER-PARK IDENTIFIED
+
+R38 parked "PARKED-NATIVE decision required" for: Option A (dispatch now ~9h) vs Option B (stage4 optimization sprint ~1-2h then dispatch ~2-3h). 
+
+This is NOT on the PARKED-FOR-NATIVE absolute list → FALSE-BLOCKER-PARK. NATIVE-PRATINIDHI dispatched (opus/max) for ruling. Awaiting verdict.
+
+CONDUCTOR-HEARTBEAT: 2026-08-14T02:31+05:30 [R39 open — STEP 0 complete; PRATINIDHI dispatched for A/B ruling; proxy alive; locks=0; awaiting ruling before A6′ dispatch]
+
+### A6′ DISPATCH (2026-08-14T02:41+05:30 / 21:08Z) — FM-07 RECORD
+
+- **run_id:** `f663bea3-9b85-41ce-8c3c-01cb8d62b6b3`
+- **execution name:** `brahma-build-pipeline-job-vcc6h`
+- **chart_id:** `482012f1-710e-4a25-994a-93821f5871aa` (native)
+- **scope:** asset_set | plan: ["ka_kshetra"] | triggered_by: sampurti-a6prime-chart1-kshetra-dhara
+- **dispatch time:** 2026-08-13T21:08:03Z
+- **PRATINIDHI ruling:** SM-R-5 — Option A (accept ~9h, dispatch at 4vCPU/8Gi)
+- **8vCPU escalation:** WAIVED per PARĪKṢAKA diagnosis (single-threaded Python bottleneck; more cores do not help)
+- **L-8 lease:** renewed to 14:00 IST 2026-08-14
+
+**NEXT within 3 min (FM-07 extended):** verify GUC smoke-log in job log (idle=1800000ms, lock=300s). Absent = defect, diagnose before proceeding.
+
+CONDUCTOR-HEARTBEAT: 2026-08-14T02:41+05:30 [R39 — A6′ DISPATCHED; execution=brahma-build-pipeline-job-vcc6h run_id=f663bea3; SM-R-5 posted; L-8 renewed to 14:00 IST; FM-21 hang watch starting; GUC smoke-log check in 3 min]
