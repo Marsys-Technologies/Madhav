@@ -1,17 +1,20 @@
 ---
 artifact: DHARA_DESIGN_v1_0.md
-version: 1.0
-status: DRAFT_BLIND — committed before any comparison runs (section 7 requirement)
+version: 1.1
+status: AMENDED_BLIND — v1.0 committed blind; v1.1 amendments applied after S2 adversarial review (F-01 through F-14); tolerances in section 7 remain blind (no engine comparison run yet)
 created: 2026-08-13
-authority: SAMPURTI-D1 conductor S1; native rulings n1/n2/n3
+authority: SAMPURTI-D1 conductor S1 (v1.0); S2 VERIFIER + Δ1 conductor amendments (v1.1)
 related: SAMPURTI_STATE.md, KALA_W2_FIELD_DESIGN_v1_0.md
 changelog:
+  - version: "1.1"
+    date: "2026-08-13"
+    note: "S2 adversarial review amendments: F-01 null-shift grid corrected (range(1,R+1)→range(1,R)); F-02 suppression detection corrected (!=0.0→!=1.0); F-03 error-bound derivation corrected (h^2 cancels, amplitude-dependent); F-04 pin matrix stage-0/1 split; F-05 E1 tolerance caveat for small gamma; F-06 .npz schema clarification; F-07 config_pin breaking-change acknowledgment; F-12 comment fix (t_{i+1}^- → t_{i+1}^+); F-09 delta-update runtime assertion added; F-14 rho storage clarification"
   - version: "1.0"
     date: "2026-08-13"
     note: "Initial blind spec — committed before any comparison engine output exists"
 ---
 
-# DHARA DESIGN DOC v1.0
+# DHARA DESIGN DOC v1.1
 
 ## The Analytic Field Engine for ka_kshetra
 
@@ -265,6 +268,12 @@ because even at O(|K| * S * L * log N), the sweep over ~40K knots with ~5 system
 and ~5 levels is O(40K * 25 * 17) ~ 17M comparisons, which completes in under 1
 second -- negligible compared to the current engine's cost.
 
+**F-09 AMENDMENT — runtime assertion:** Add a correctness check INDEPENDENT of
+the delta state: at every N-th clock knot (e.g., every 100th), assert that the
+delta-updated lord stacks equal the result of a fresh `lord_stacks_at(t)` call.
+This makes the fallback trigger detectable at runtime, not only via offline S4
+comparison. Cost: ~400 extra `lord_stacks_at` calls per class (40K/100), negligible.
+
 ### 2.3 Envelope evaluation at knots
 
 At each knot `t_k`, the twelve covariates `x_j(t_k)` and the active obstructions
@@ -302,16 +311,23 @@ algorithm DHARA_SWEEP(event_class e, evaluator ev):
     terms_next <- evaluate_at(ev, t_ip1, lord_stacks)
 
     a <- terms_prev.ln_lambda          # ln lambda(t_i^+)
-    b <- terms_next.ln_lambda          # ln lambda(t_{i+1}^-)
+    b <- terms_next.ln_lambda          # ln lambda(t_{i+1}^+)  [half-open convention:
+                                       #   t_{i+1} belongs to the next lord period,
+                                       #   so lord_stacks_at(t_{i+1}) returns the NEW lord.
+                                       #   This matches integrator.build_segments exactly.
+                                       #   See F-12 in S2 adversarial report.]
 
     # Determine suppression activity on this interval
+    # F-02 AMENDMENT: suppression_term = exp(suppression_log) is ALWAYS > 0.
+    # Comparing != 0.0 is always True. The correct check uses the multiplicative
+    # identity: when no suppression is active, suppression_term = exp(0) = 1.0.
     suppression_active <- (
-        terms_prev.suppression_term != 0.0
-        or terms_next.suppression_term != 0.0
+        terms_prev.suppression_term != 1.0
+        or terms_next.suppression_term != 1.0
     )
-    # More precisely: check if any u_m(t) > 0 for any t in (t_i, t_{i+1})
-    # Since u_m is piecewise-linear and we have its values at both endpoints,
-    # u_m > 0 somewhere in the interval iff u_m(t_i) > 0 or u_m(t_{i+1}) > 0.
+    # Equivalently (log domain): suppression_log != 0.0 at either endpoint.
+    # u_m > 0 somewhere in the interval iff suppression is nonzero at an endpoint,
+    # because u_m is piecewise-linear between K_e knots (envelope boundaries are in K).
 
     width <- t_ip1 - t_i
     gamma <- (b - a) / width  if width > 0  else 0.0
@@ -379,23 +395,41 @@ refinement converges). The key difference is:
    max_error <= (1/8) * |f''_max| * h^2
    ```
 
-   For `rho = 0.95`, `|b| <= 1/h_min` (where `h_min` is the shortest envelope
-   segment, typically 1-30 days), and `(1 - rho*u)` >= 0.05:
+   **F-03 AMENDMENT — corrected derivation:**
+
+   Since `u_m(t)` is piecewise-linear between consecutive K_e knots, the slope
+   on interval `[t_i, t_{i+1}]` of width `h` is `b = (u_{i+1} - u_i) / h`.
+   Substituting into `|f''_max| = rho^2 * b^2 / (1-rho*u)^2`:
 
    ```
-   max_error <= (1/8) * (0.95^2 / 0.05^2) * (1/h_min)^2 * h^2
-             =  (1/8) * 361 * (h/h_min)^2
+   max_error <= (1/8) * rho^2 * ((u_{i+1} - u_i) / h)^2 / (1-rho*u)^2 * h^2
+             =  (1/8) * rho^2 * (u_{i+1} - u_i)^2 / (1-rho*u)^2
    ```
 
-   When `h = h_min` (the typical case -- the knot set already captures the
-   envelope structure), `max_error <= 361/8 ~ 45` nats. This is LARGE and means
-   that on the rare suppression-active intervals where the envelope knot spacing
-   is wide, the linear interpolant is a poor approximation.
+   **The h^2 cancels completely.** The error depends on the AMPLITUDE CHANGE
+   `delta_u = u_{i+1} - u_i` across the interval, not on the interval width.
+
+   For `rho = 0.95` and worst-case `delta_u = 1`, `(1-rho*u_max) = 0.05`:
+
+   ```
+   max_error_worst_case = (1/8) * 361 * 1^2 = 45.125 nats
+   ```
+
+   This worst case applies when the obstruction envelope traverses its full range
+   (0 to 1) within a single inter-knot interval — an extreme transit onset. In
+   practice, K_e already contains every slope-change knot, so most intervals have
+   small `delta_u` (the envelope changes gradually). For `delta_u = 0.1`:
+   `max_error <= (1/8) * 361 * 0.01 = 0.45 nats`. For `delta_u = 0.02`:
+   `max_error <= (1/8) * 361 * 0.0004 = 0.018 nats < tau`.
 
    **Resolution:** for suppression-active intervals where the endpoint-evaluated
-   residual exceeds tau = 0.02 nats, DHARA applies the SAME adaptive refinement
-   as the current engine (bisect at midpoint, recurse). This is needed ONLY on
-   the ~5-10% of intervals that are suppression-active AND have wide knot spacing.
+   midpoint residual exceeds tau = 0.02 nats, DHARA applies the SAME adaptive
+   refinement as the current engine (bisect at midpoint, recurse). The percentage
+   of intervals requiring refinement depends on the distribution of `delta_u`, not
+   on interval width. Intervals where the obstruction envelope changes by less than
+   `~0.02` across the interval need no refinement; those where it changes by more
+   do. For a typical chart with a handful of active vighnas whose envelopes are
+   gradual, refinement is needed on a small fraction of suppression-active intervals.
    On the ~90-95% of intervals that are non-suppression, no refinement is needed
    because the stored form is EXACT.
 
@@ -744,11 +778,20 @@ PIN[stage, class] = SHA256(canonical_json(stage_inputs[stage][class]))
 
 | Stage | Name | Inputs hashed |
 |-------|------|---------------|
-| 0-1 | Kinematics + Symbolization | `code_version` (DHARA engine version tag) + `chart_data_digest` (birth params + positions hash) + `cohort_version` |
-| 2 | Promise | Stage 0-1 pin + `promise_graph_version` (SHA256 of `bo_pratijna` corpus rows for this chart, sorted by natural key) |
-| 3 | Clocks + Boundaries | Stage 0-1 pin + `kala_field_clocks_digest` (SHA256 of applicable-system rows) + `boundary_data_digest` (SHA256 of ladder periods) |
-| 4 | Field Assembly | Stage 0-1 pin + Stage 2 pin + Stage 3 pin + `weights_version` + `gochara_corpus_digest` (SHA256 of `kala_field_primitives` rows for this chart) |
+| 0 | Kinematics | `code_version` (DHARA engine version tag) + `chart_data_digest` (birth params + positions hash) + `cohort_version` |
+| 1 | Symbolization | Stage 0 pin + Stage 3 pin + `code_version` |
+| 2 | Promise | Stage 0 pin + `promise_graph_version` (SHA256 of `bo_pratijna` corpus rows for this chart, sorted by natural key) |
+| 3 | Clocks + Boundaries | Stage 0 pin + `kala_field_clocks_digest` (SHA256 of applicable-system rows) + `boundary_data_digest` (SHA256 of ladder periods) |
+| 4 | Field Assembly | Stage 0 pin + Stage 1 pin + Stage 2 pin + Stage 3 pin + `weights_version` + `gochara_corpus_digest` (SHA256 of `kala_field_primitives` rows for this chart) |
 | 5 | Null Distribution | Stage 4 pin + `null_replicate_count` (1024 for DHARA) |
+
+**F-04 AMENDMENT note:** Stage 1 (symbolization) depends on stage 3's output
+(`kala_field_boundaries`) because the dispatch order is `0→2→3→1→4` (stage 1
+reads the boundaries produced by stage 3). Stages 0 and 1 must therefore have
+separate pins, with stage 1's pin including the stage 3 pin as an input. This
+replaces the original "0-1 combined" entry. Downstream pins (stages 2-5) that
+previously referenced "Stage 0-1 pin" now reference the specific stage pin(s)
+they depend on directly.
 
 ### 5.3 Invalidation rules
 
@@ -780,8 +823,17 @@ The pin matrix is stored as a JSON object on `kala_field_snapshots`:
 }
 ```
 
+**F-07 AMENDMENT:** The `config_pin` derived from `SHA256(canonical_json(pin_matrix))`
+is a BREAKING CHANGE relative to the existing `kala_field_snapshots` rows produced
+by the sampled engine (those rows have a config_pin with different structure and value).
+A DHARA field snapshot will NOT match any sampled-engine snapshot on config_pin lookup.
+This is intentional: the segment representation IS different. Downstream snapshot-lookup
+code that relies on config_pin matching across engine versions must be aware that a
+DHARA build produces a new, distinct snapshot. The sampled-engine snapshots remain in
+the table as historical records; the DHARA snapshot is a new row.
+
 The monolithic `config_pin` and `field_snapshot_id` remain as DERIVED values
-for backward compatibility: `config_pin = SHA256(canonical_json(pin_matrix))`.
+for DHARA build records: `config_pin = SHA256(canonical_json(pin_matrix))`.
 
 ---
 
@@ -847,7 +899,14 @@ def vectorized_null(ev, R=1024):
     K_c = sorted_clock_knots(ev)           # fixed for all replicates
     K_e = sorted_envelope_knots(ev)        # base (unshifted)
 
-    deltas = [r * (H / R) for r in range(1, R + 1)]  # deterministic grid
+    # F-01 AMENDMENT: range(1, R+1) is wrong — when r=R, delta=H, and
+    # circular_shift's `delta % H = 0` returns an UNSHIFTED index identical to
+    # the real field. This double-counts the observation in the p-value formula
+    # and inflates minimum achievable p from 1/(R+1) to 2/(R+1). The correct
+    # grid uses range(1, R), yielding R-1 = 1023 independent replicates with
+    # p-value resolution 1/1024. This is a pre-existing bug in the 256-replicate
+    # engine (range(1,257) has the same defect); DHARA corrects it.
+    deltas = [r * (H / R) for r in range(1, R)]  # R-1 independent shifts, none wraps to H
 
     q_pool = QuantilePool(quantile=0.95, expected_total=R * int(H))
     all_stats = {b: {} for b in DURATION_BUCKETS}
@@ -1023,8 +1082,19 @@ suppression). In practice, most suppression-active intervals have
 **Practical tolerance:** `|t_edge_dhara - t_edge_current| <= 0.5 day` for
 non-suppression intervals (should be exactly 0, but allowing float64 noise
 at day-grade precision). For suppression-active intervals:
-`|t_edge_dhara - t_edge_current| <= 3.0 days` (conservative upper bound for
-intervals where the concavity gap matters).
+`|t_edge_dhara - t_edge_current| <= 3.0 days` as a DEFAULT tolerance, with
+the following caveat from **F-05**:
+
+The time-domain error from different linear interpolants is bounded by
+`max_interpolant_diff / |gamma|` where `|gamma|` is the log-hazard slope at the
+threshold crossing. For segments with very small `|gamma|` (a near-flat
+ln_lambda crossing the threshold), this bound diverges. The 3.0-day tolerance
+assumes `|gamma| >= 0.007 nats/day`. For segments with `|gamma| < 0.007`
+(extremely flat crossings), the equivalence gate is RELAXED to
+`max_interpolant_diff / |gamma|` computed per-segment. In practice, flat
+crossings are rare (they require ln_lambda to barely nudge above the threshold),
+and both engines produce nearly identical crossing times in such cases (since both
+linear-interpolate the same endpoints).
 
 **Equivalence gate (S4):**
 
@@ -1330,12 +1400,30 @@ the storage and the weight vector is already stored in `kala_field_weights`.
 weight vector as metadata in the `.npz`. The weighted matrix is reconstructed
 at refit time by column-wise multiplication.
 
-Note: for suppression terms, the "unweighted" value still embeds `rho_m` because
-`ln(1 - rho * u)` is nonlinear in rho. A rho refit requires re-evaluating the
-suppression column from `u_m(t_k)` (which IS stored unweighted as a separate
-column) and the new `rho_m`. This is still O(|K|) per vighna class, not a
-full rebuild.
+**F-06 + F-14 AMENDMENT:** The `.npz` schema in section 4.3 does NOT include
+`u_m(t_k)` as a separate column — the schema must be extended. Add:
+
+```python
+np.savez_compressed(
+    ...,                                 # existing fields per section 4.3
+    raw_u_matrix=raw_u_matrix,           # float32, shape [K, V] — raw u_m(t_k) values
+                                         # (unweighted, rho-free, the linear-envelope
+                                         # value at each knot for each vighna class V)
+    rho_values=rho_values,               # float32, shape [V] — rho_m at build time
+                                         # REQUIRED for rho-refit recovery
+)
+```
+
+The suppression "unweighted" column in `term_matrix` stores `ln(1 - rho * u)`,
+which EMBEDS rho. A rho refit requires knowing `u_m(t_k)` separately to
+recompute `ln(1 - rho_new * u)`. The `raw_u_matrix` addition satisfies this.
+
+Additionally, `rho_values` must be stored alongside so the recovery formula
+`u = (1 - exp(stored_log)) / rho_old` is always available even if the
+`kala_field_weights` row for the old weights_version is later deleted.
+This storage is O(|K| * V * 4 bytes) ≈ O(40K * 8 * 4) = ~1.3 MB per class,
+acceptable for the rebuild savings.
 
 ---
 
-*End of DHARA_DESIGN_v1_0.md v1.0*
+*End of DHARA_DESIGN_v1_0.md v1.1*
