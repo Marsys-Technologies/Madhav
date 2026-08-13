@@ -132,7 +132,7 @@ SEGMENT_INDEX_DECADE_STRIDE = 1_000_000
 #: older writer build is treated as a different build and replanned in full
 #: (the `ka_sangam` / `ka_gochara_sweep` convention).
 #: v2 — stages 6 / 6.5 / 8 joined the plan and the content hash.
-_RESUME_VERSION = 3
+_RESUME_VERSION = 4
 
 #: §6.2's row budget K. The design's own worked example ("the budget spends
 #: itself across 15 *different* things") is the source of the number; it is a
@@ -180,6 +180,9 @@ class _ClassContext:
     evaluator: S4.FieldEvaluator
     null_accumulator: S5.NullAccumulator
     temporal_shape: str
+    #: Full-horizon DHARA segments, built once per event class when
+    #: ENGINE_VERSION == 'analytic'.  None when 'sampled'.
+    dhara_segments: "list | None" = None
 
 
 @register(ASSET_ID)
@@ -428,8 +431,15 @@ class KaKshetraWriter(WriterBase):
         d0 = decade * HORIZON_DAYS / DECADES
         d1 = (decade + 1) * HORIZON_DAYS / DECADES
         ev = cctx.evaluator
-        knots = [t for t in ev.breakpoints() if d0 < t < d1]
-        segments = integrator.build_segments([d0] + knots + [d1], ev.ln_lambda)
+        from services.ka_kshetra.engine_config import ENGINE_VERSION
+        if ENGINE_VERSION == 'analytic':
+            # Full-horizon segments built once in _class_context(); filter to
+            # this decade's window [d0, d1] to match the per-decade substep model.
+            segments = [s for s in cctx.dhara_segments
+                        if s.t_start >= d0 and s.t_end <= d1]
+        else:
+            knots = [t for t in ev.breakpoints() if d0 < t < d1]
+            segments = integrator.build_segments([d0] + knots + [d1], ev.ln_lambda)
 
         if self._dry_run:
             return WriterResult(asset_id=ASSET_ID, rows_inserted=len(segments))
@@ -1674,12 +1684,18 @@ class KaKshetraWriter(WriterBase):
             baseline_source=source,
             extra_breakpoints=self._shared_extra_breakpoints,
         )
+        from services.ka_kshetra.engine_config import ENGINE_VERSION as _EV
+        dhara_segs = None
+        if _EV == 'analytic':
+            from services.ka_kshetra.dhara_sweep import dhara_build_segments
+            dhara_segs = dhara_build_segments(evaluator)
         ctx = _ClassContext(
             event_class=event_class,
             evaluator=evaluator,
             null_accumulator=S5.NullAccumulator(replicates=S5.DEFAULT_REPLICATES,
                                                 horizon_days=HORIZON_DAYS),
             temporal_shape=shape,
+            dhara_segments=dhara_segs,
         )
         self._class_cache[event_class] = ctx
         return ctx
