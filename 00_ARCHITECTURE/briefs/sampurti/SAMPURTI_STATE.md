@@ -2051,5 +2051,60 @@ CONDUCTOR-HEARTBEAT: 2026-08-13T11:40+05:30 (CONDUCTOR of SAMPŪRTI-α) pid=new 
 3. [ON ka_kshetra lit] Measurement #5: kala_now_get / kala_ahead_get / gochara_forecast_get
 4. [ON #5] G-P3a gate → G-P3b + Brilliance Gate #1 → FIELD-INTEGRATED marker → γ unblocked
 
+---
+
+## Heartbeat: 2026-08-13T11:53+05:30 — R13 SESSION OPEN; A3 sd2ph RUNNING (marriage:3 done, :4 in flight)
+
+CONDUCTOR-HEARTBEAT: 2026-08-13T11:53+05:30 (CONDUCTOR of SAMPŪRTI-α) pid=new [R13 launch — sole conductor confirmed; A3 sd2ph RUNNING; L-4 RENEWED to 18:00 IST]
+
+### STEP 0 — COMPLETE (R13)
+
+**LIVENESS (FM-10/11):**
+- pgrep "CONDUCTOR of SAMPŪRTI-α": no match (R12 DEAD, no cron carry-over)
+- Sole conductor: CONFIRMED
+
+**HYGIENE:**
+- Proxy 5433: ALIVE (PID 72597) ✓
+- Proxy 5434 (β): ALIVE (PID 72369) ✓
+- Advisory locks: 1 (orchestrator sd2ph active) ✓
+- build_runs 8ddf6162: state=`running`, started 05:46:58 UTC ✓
+- No phantom running rows ✓
+
+**COORDINATION:**
+- L-3: RELEASED ✓
+- L-4: ACTIVE — **RENEWED to 18:00 IST** (was 16:00 IST; renewed R13 open at 11:47 IST; build ETA ~17:00-17:30 IST)
+- No UTKARṢA lease conflict ✓
+
+**RECONCILE (FM-09):**
+- A3 exec sd2ph RUNNING: 85/534 substeps, last = `stage5:marriage:3` @ 06:07:40 UTC
+- Fingerprint divergence (obs 70164): sd2ph re-runs all stage5 slow substeps (different writer_timeout)
+- Stage5 started ~05:50 UTC; full stage5 ETA ~5h → completion ~10:50 UTC; with stage6/7/8: ~11:30 UTC (~17:00 IST)
+- L-4 renewed to 18:00 IST — sufficient buffer
+- asset_throughput ka_kshetra: state=incomplete, rows_written=566,545, kala_field_windows=2,236
+- G2-EARLY ADJUDICATION-2: CLOSED (career_entry + career_change → Tier N-iii DEFER) ✓
+- A1 code (corpus pin): deployed to production ✓ A2' 28/29 assets lit ✓
+
+### A3 sd2ph STATUS (06:17 UTC, R13 open)
+
+| Field | Value |
+|---|---|
+| build_run | 8ddf6162 state=`running` |
+| ka_kshetra.state | incomplete (expected) |
+| rows_written | 566,545 |
+| kala_field_windows | 2,236 |
+| Substeps committed | 85/534 |
+| Last substep | stage5:marriage:3 @ 06:07:40 UTC |
+| Current substep | stage5:marriage:4 (in flight) |
+| Advisory lock | 1 ✅ |
+| L-4 expiry | 18:00 IST (RENEWED) |
+
+**ETA:** stage5 completes ~10:50 UTC; stage6/7/8+snapshot ~11:30 UTC = ~17:00 IST
+
+### NEXT ACTIONS
+
+1. [RUNNING] Monitor A3 sd2ph every 30 min — poll substep count + ka_kshetra.state
+2. [ON ka_kshetra lit] Measurement #5: kala_now_get / kala_ahead_get / gochara_forecast_get
+3. [ON #5] G-P3a gate → G-P3b + Brilliance Gate #1 → FIELD-INTEGRATED marker → γ unblocked
+4. [COMPLETED THIS SESSION] L-4 renewed to 18:00 IST (done 11:47 IST)
 
 
