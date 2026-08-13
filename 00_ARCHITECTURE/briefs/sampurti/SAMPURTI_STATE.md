@@ -3176,4 +3176,4 @@ CONDUCTOR-HEARTBEAT: 2026-08-13T22:40+05:30 [R32 open; PARKED-NATIVE carries fro
 **ONE-LINE ANSWER:**
 Native signals resume → A6 dispatch immediately using checkpoint (460 substeps remaining) → ka_kshetra=LIT → FIELD-INTEGRATED posted → S4 parity → G-P1/M5/Brilliance Gate #1.
 
-CONDUCTOR-HEARTBEAT: 2026-08-13T22:48+05:30 [R32 — SMR-2 HOLD-A6 ruling received and recorded; PARKED-NATIVE confirmed by NATIVE-PRATINIDHI; checkpoint integrity check + session close]
+CONDUCTOR-HEARTBEAT: 2026-08-13T22:48+05:30 [R32 — SMR-2 HOLD-A6 ruling received and recorded; PARKED-NATIVE confirmed by NATIVE-PRATINIDHI; checkpoint integrity verified (ka_kshetra=incomplete, 2,063,838 rows, 74 substeps per orphan-watchdog, resumable); session closing]
