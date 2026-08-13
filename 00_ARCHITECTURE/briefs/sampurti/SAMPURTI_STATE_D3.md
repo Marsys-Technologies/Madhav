@@ -50,7 +50,7 @@ In `run_substep` else branch (R8.12 point-canonical gate), flat intervals get `(
 | Lane | Title | Status | Evidence |
 |------|-------|--------|----------|
 | R1 | [SEV-1] Fix computeGocharaCoverage: asset_id + substep key parse (v3 authority) | MERGED | PR #1258, merge commit 6fa1555bbe77, main; MCP PROOF PENDING-DEPLOY |
-| R2 | [SEV-2] Fix century materializer: stamp resolution='era' on point-canonical flat rows | MERGE-QUEUED | PR #1259, commit 53d60cb10, branch sampurti/d3-r2; PARĪKṢAKA PASS; in merge queue (sha a47124806f) |
+| R2 | [SEV-2] Fix century materializer: stamp resolution='era' on point-canonical flat rows | DEPLOYED | PR #1259, merge commit a47124806f53, main; sidecar deployed 2026-08-13T11:58Z; MCP PROOF pending FIELD-INTEGRATED corpus refresh |
 | R3 | γ ledger reconciliation: append-only correction entries on γ branch | DONE | commit 66e35c216, sampurti/vyakhya |
 | R4 | G-P4: kala_ahead_get prospective row keyed to live field window_id | BLOCKED | FIELD-INTEGRATED not yet posted |
 
@@ -137,4 +137,5 @@ HEARTBEAT: 2026-08-13T12:27Z
 - No S4-05 refusal — fix verified in production ✓
 - Note: `windows: []` for this date range is an honest empty result (no overlapping windows); the SEV-1 fix is the coverage data being populated, not necessarily windows in every range.
 
-**R2 MCP PROOF:** awaiting FIELD-INTEGRATED. R2 sidecar (ka_gochara_v3_century_materialize.py with resolution='era') will deploy once R2 push CI passes. Corpus refresh via FIELD-INTEGRATED (Δ1's new build will re-run run_substep with the fix, stamping resolution='era' on marriage rows). Then: marriage rows must appear in `nested_hierarchy.roots` not `legacy_flat`..
+**R2 SIDECAR DEPLOYED:** 2026-08-13T11:58:06Z (run 31697237127 completed). ka_gochara_v3_century_materialize.py v3.2 with resolution='era' is live. Pipeline Job Image also rebuilt.
+**R2 MCP PROOF:** pending FIELD-INTEGRATED corpus refresh. Existing A3 build `szwkw` (started 06:46Z, completed before 11:58Z) has `resolution=NULL` in DB. Next build with fixed image will stamp `resolution='era'`. Proof: marriage rows in `nested_hierarchy.roots`, not `legacy_flat`..
