@@ -1073,3 +1073,62 @@ CONDUCTOR-HEARTBEAT: 2026-08-14T07:11Z pid=89447 host=Montys-MacBook-Pro.local s
 
 RUN-TERMINAL: SESSION-Δ3-PENDING-15 (FIELD-INTEGRATED outstanding; Δ1 S7-LOCK builder active; supervisor relaunches)
 
+
+---
+
+## SESSION-16 — 2026-08-14T19:28Z (01:00 IST approx)
+
+CONDUCTOR-HEARTBEAT: 2026-08-14T19:28Z pid=3500 host=Montys-MacBook-Pro.local session=Δ3-16
+
+### STEP-0 (session-16)
+
+**Liveness:** CLEAN — stored PID=2459 (not a live peer conductor); `pgrep -f "CONDUCTOR of SAMPŪRTI-Δ3"` = PEERS=none; sole conductor confirmed. PID 3500 written to dh-d3-logs/current_conductor.pid.
+
+**Hygiene:** CLEAN — Cloud Run: no RUNNING executions (crfzx=Cancelled 18:17Z Aug 13; tkp7b/s6zbw/mv7c5/szwkw all completed/cancelled; no A6' dispatched). No DB scope for Δ3. No proxy needed.
+
+**Coordination (fetched):** Last entry = d4e691c35 (session-15 close, 07:11Z Aug 14). FIELD-INTEGRATED: NOT POSTED. No new Δ1 entries since session-15.
+
+**Reconcile (FM-09):**
+
+| Surface | Session-15 state | Session-16 reality |
+|---------|-----------------|-------------------|
+| PR #1270 | OPEN, CI running (16/26 pass at 00:31 IST) | OPEN, CI IN_PROGRESS — 17 SUCCESS + 2 PENDING + 7 SKIPPED; no failures |
+| A6' | Not dispatched | Not dispatched — blocked on PR #1270 merge + deploy |
+| FIELD-INTEGRATED | NOT POSTED | NOT POSTED |
+| Δ3 R1 | MERGED + MCP PROOF PASS (27 classes, 270 substeps, 07:11Z re-verify) | UNCHANGED ✓ |
+| Δ3 R2 | DEPLOYED; MCP PROOF PENDING | UNCHANGED — sidecar v3.2 live |
+| Δ3 R3 | DONE | UNCHANGED ✓ |
+| Δ3 R4 | READY-ON-SIGNAL | UNCHANGED — probe script committed |
+
+**PR #1270 CI detail (19:28Z check):**
+- PENDING: Build Check (PR only) [IN_PROGRESS], Governance Gates [IN_PROGRESS]
+- FAILED: none
+- All resolved: False
+- Path after merge: deploy (~15-20 min) → A6' dispatch → ~4+ hour build → ka_kshetra=lit → S4 parity → FIELD-INTEGRATED
+
+**Independent Δ3 work:** NONE — all remaining scope (R2 MCP proof + R4 G-P4) gates on FIELD-INTEGRATED. R4 probe script already committed (session-15). R1 proof re-verified at session-15 07:11Z. No new independent work available.
+
+Per LONG-RUN AUTONOMY RULES (BLOCKED ≠ STOP): All Δ3 remaining work gated on FIELD-INTEGRATED. Ending session cleanly; supervisor relaunches when PR #1270 CI resolves + merge triggers.
+
+**WHAT ONE RELAUNCH FINISHES:** When FIELD-INTEGRATED posts:
+1. `python3 00_ARCHITECTURE/briefs/sampurti/probe_sampurti_d3_r2_r4.py --chart-id 482012f1-710e-4a25-994a-93821f5871aa --mcp-key $MARSYS_MCP_KEY`
+2. R2: verify marriage in roots (resolution='era', is_timing_window=true nested under era parent)
+3. R4: verify field_snapshot_id=kfs_* (not 'field_not_yet_built'); prospective row keyed to live field window_id + authority_basis
+4. Append both to γ ledger (sampurti/vyakhya append-only)
+5. Post SESSION-DONE-Δ3 to coordination → RUN-TERMINAL: SESSION-Δ3-COMPLETE
+
+**Δ3 LANE STATUS (session 16):**
+| Lane | Status | Notes |
+|------|--------|-------|
+| R1 | MERGED + MCP PROOF PASS ✓ | 27 classes, 270 substeps, ka_gochara_v3_century_materialize; re-verified session-15 07:11Z |
+| R2 | DEPLOYED; MCP PROOF PENDING | Sidecar v3.2 live; awaiting corpus refresh (FIELD-INTEGRATED) |
+| R3 | DONE ✓ | sampurti/vyakhya corrections committed (66e35c216) |
+| R4 | READY-ON-SIGNAL | Probe script committed (probe_sampurti_d3_r2_r4.py, FM-18 compliant); awaiting FIELD-INTEGRATED |
+
+**NEXT-ACTION (session-17):**
+1. Check PR #1270 state (OPEN→MERGED? CI complete?)
+2. Check coordination for FIELD-INTEGRATED marker
+3. Check Cloud Run for new A6' execution (dispatch after PR merge + deploy)
+4. On FIELD-INTEGRATED: run probe → paste output → append to γ ledger → SESSION-DONE-Δ3
+
+RUN-TERMINAL: SESSION-Δ3-PENDING-16 (FIELD-INTEGRATED outstanding; PR #1270 CI in-progress — Build Check + Governance Gates both IN_PROGRESS, no failures; A6' not dispatched; supervisor relaunches)
