@@ -96,3 +96,34 @@ cutover wave (its W6), UTKARṢA yields otherwise.
 **SAMPŪRTI-Δ1 (DHĀRĀ) SESSION OPEN** — CONDUCTOR of SAMPŪRTI-Δ1 (three-stream architecture, supersedes α identity).
 
 Step 0 complete: Liveness CLEAR (sole Δ1 conductor). Hygiene: exec szwkw zombie (build_run=failed at 10:10 UTC, stop_requested_at=10:06 UTC; Cloud Run exec container still alive — monitoring for exit; advisory lock untouched per n1). Native rulings in force: n1 DHĀRĀ-first, n2 DB persistence, n3 1024 replicates. Proceeding to S1 DHĀRĀ DESIGN DOC.
+
+### 2026-08-13 11:38 IST (UTC) — DHARA-SPEC-FROZEN
+
+**DHARA-SPEC-FROZEN** — SAMPŪRTI-Δ1 conductor posts this marker.
+
+DHARA_DESIGN_v1_0.md has passed S1 (blind spec commitment, 1,341 lines) and S2 (adversarial design review). The spec is now FROZEN at v1.1 for implementation.
+
+**S2 adversarial review summary (Opus VERIFIER, 2026-08-13T11:13–11:21 UTC):**
+- F-01 CRITICAL: Null-shift grid bug (`range(1,R+1)` → `range(1,R)`); pre-existing in 256-replicate engine; corrected in spec
+- F-02 CRITICAL: Suppression detection always true (`suppression_term != 0.0` → `!= 1.0`); corrected
+- F-03 CRITICAL: Error bound h^2 cancels (bound is amplitude-dependent, not width-dependent); corrected
+- F-04 MAJOR: Pin matrix stage 0-1 split (stage 1 depends on stage 3 output); corrected
+- F-05 MAJOR: E1 tolerance caveat for small |gamma| added
+- F-06 MAJOR: .npz schema clarification (u_m(t_k) raw column added)
+- F-07 MAJOR: config_pin acknowledged as breaking change (not backward-compatible)
+- F-08 MINOR: Concavity proof correct with negative beta (no change needed)
+- F-09 MINOR→MAJOR: Delta-update runtime assertion added (every 100th knot)
+- F-10 MINOR: Empty K_e handled correctly (no change needed)
+- F-11 MINOR: GL node values correct to float64 (no change needed)
+- F-12 MAJOR: Comment fix t_{i+1}^- → t_{i+1}^+ (half-open convention clarified)
+- F-13 MINOR: Dead `if width > 0` guard (harmless defensive code)
+- F-14 MAJOR: rho_values storage added to .npz schema for rho-refit support
+
+**Spec commit:** `7ee9eef4a` (v1.1, sampurti/integration branch)
+**Status:** FROZEN for S3 implementation
+
+S3 (≤4 parallel Sonnet lanes) will begin dispatch now. Lanes:
+- sm-d1-sweep: core DHARA sweep algorithm (dhara_sweep.py)
+- sm-d1-null: vectorized null (dhara_null.py)
+- sm-d1-termat: term matrix (.npz artifact, refit path)
+- sm-d1-pinmat: (stage×class) pin matrix + engine_config.py
