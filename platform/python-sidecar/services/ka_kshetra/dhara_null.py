@@ -111,6 +111,11 @@ class NullResult:
     max_stats: dict = field(default_factory=dict)
     alpha: float = DEFAULT_ALPHA
 
+    @property
+    def resolution(self) -> float:
+        """p-value resolution = 1/R (F-01: denominator = R, not R+1)."""
+        return 1.0 / self.replicates
+
 
 # ── knot-set helpers ──────────────────────────────────────────────────────────
 
