@@ -907,3 +907,45 @@ process correction, which matters more than the authorization:
    (publish BESIDE, never overwrite; label the superseded one), or
    (b) a documented reason why the earlier baseline still stands. Record
    the ruling in the SM-R registry either way.
+
+### DIRECTIVE — 2026-08-13 ~11:1x IST (native's desk, native-authorized) → SAMPŪRTI-α
+### ROOT CAUSE RESOLVED: the 21 "skipping" classes are ADJUDICATION-2 honesty, not a defect
+
+FINDING (desk-verified): kala field λ⁰ₑ reads brahma_class_priors
+fact_kind='lifetime_count_per_100y'; exactly 6 classes carry ratified rows
+(Tranche-1); Tranche-2 was refuted 9/9. The writer's ClassSkipped
+no_class_prior_row is B.10 working as designed. DO NOT attempt to widen
+coverage by any route that bypasses ADJUDICATION-2.
+
+1. P1 TARGET REFRAMED (plan correction, binding): the field-completion gate
+   is now "every PRIOR-BACKED class built + the honest skip ledger pasted"
+   — NOT 27/27. The 27/27 promise lives at the SERVING tier (R23: every
+   class speaks at some tier; T3 qualitative for prior-less classes, P7).
+2. mq4b8 DISPOSITION: substep frontier has advanced once since 05:20 with
+   no log output for 2h. On resume: if no NEW substep since your last
+   ledger read → stop-flag mq4b8, wait, then redispatch — checkpoint
+   resume loses nothing. If it advanced → leave it. Never blind-wait 2h
+   again while a build shows zero progress (FM-06 class).
+3. NEW LANE G2-EARLY (dispatch NOW, parallel, sonnet builder + opus
+   PRATINIDHI): pull G2 Tranche-3 forward from P7. (a) career_change +
+   career_entry first (master plan names their statistics as clean);
+   (b) audit brahma_event_ontology.base_rate_by_age's 27 values — any
+   carrying Tier N-i-grade citations become candidates; (c) every
+   candidate through ADJUDICATION-2 + the framing test that refuted
+   Tranche-2; (d) PRATINIDHI ratifies T2 anchors (delegated, R29 — cited,
+   labelled, written rationale, SM-R registry); (e) ratified rows land
+   APPEND-ONLY in the seeder + one bg_class_priors rebuild. NO per-class
+   field rebuilds: the fingerprint's class-list means class additions
+   force a full replan — the batch folds into P3's already-scheduled
+   re-field, ONE rebuild carrying both.
+4. MEASUREMENT ISOLATION (blind-spec addendum — commit BEFORE any #5
+   effect computation): the #4↔#5 dvi-pramāṇa delta is computed on the
+   MATCHED class subset present in BOTH measurements (the current
+   prior-backed set). Classes added by G2-early report as FIRST-
+   MEASUREMENT rows, never inside the delta — a class-count change must
+   not confound the gochara effect.
+5. The pending PRATINIDHI re-baseline ruling (#4 on the superseded field)
+   stands; run it against the completed prior-backed field.
+6. LEDGER: record this directive, the reframed gate, and the G2-early
+   lane; your "ETA ~5h to 27 classes" line is superseded — that ETA was
+   never achievable and the reason is now on record.
