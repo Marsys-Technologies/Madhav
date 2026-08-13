@@ -1679,3 +1679,65 @@ asset_throughput (live DB state):
 4. Then mi_* cascade (those not error for other reasons)
 5. When run cbd6ea44 completes/stalls → assess remaining errors → dispatch A3 (ka_kshetra rebuild with A1 code)
 6. A3 produces new snapshot_id → Measurement #5 (post-β, A1-pinned field)
+
+---
+
+## Heartbeat: 2026-08-13T06:48+05:30 — A2' COMPLETE (28/29); A3 dispatched (ka_kshetra post-β)
+
+CONDUCTOR-HEARTBEAT: 2026-08-13T06:48+05:30 (CONDUCTOR of SAMPŪRTI-α) pid=89453 [A2' run cbd6ea44 COMPLETE; A3 run 6600de09 exec lzqb2 DISPATCHED]
+
+**TIME CORRECTION:** Previous heartbeat marked 08:10+05:30 — was incorrect (context compaction confusion). Actual time is 06:48+05:30 IST (01:18 UTC).
+
+### A2' FINAL RESULT — run cbd6ea44 / exec 8vvqv
+
+**build_runs.state = `failed`** (because mi_bhara errored — pre-existing, expected, out of scope)
+
+**build_run_assets final:**
+```
+ka_gochara         → complete ✅  (83 rows — ROOT CAUSE FIX)
+ka_sangam          → complete ✅  (14,868 rows — UNBLOCKED)
+ka_kalasutra       → complete ✅  (335,403 rows)
+ka_taranga         → complete ✅  (92,412 rows)
+ka_vighnakara      → complete ✅  (536 rows)
+ka_bhavishya_lekha → complete ✅  (100 rows)
+ka_jivana_parva    → complete ✅  (100 rows)
+ka_kala_darshana   → complete ✅  (750 rows)
+ka_tulana          → complete ✅  (0 rows)
+ph_muhurta         → complete ✅  (139 rows)
+ph_nimitta         → complete ✅  (139 rows)
+ph_phaladesa       → complete ✅  (13 rows)
+ph_pramana         → complete ✅  (139 rows)
+ph_pratikara       → complete ✅  (536 rows)
+ph_rectification   → complete ✅  (186 rows)
+ph_sankrama        → complete ✅  (2,510 rows)
+ph_sodhana         → complete ✅  (97 rows)
+ph_suddha_sodhana  → complete ✅  (139 rows)
+mi_abhilekha       → complete ✅  (0 rows)
+mi_adhilepa        → complete ✅  (112,270 rows)
+mi_bhavisya        → complete ✅  (278 rows)
+mi_darshana        → complete ✅  (115 rows)
+mi_gunanaka        → complete ✅  (9 rows)
+mi_pariksha        → complete ✅  (1,664 rows)
+mi_pramana         → complete ✅  (63 rows)
+mi_sambandha       → complete ✅  (24 rows)
+mi_sankalpa        → complete ✅  (0 rows)
+mi_seva            → complete ✅  (0 rows)
+mi_bhara           → error ❌     (pre-existing TypeError NoneType — out of scope)
+```
+
+**SCORE: 28/29 assets rebuilt. 1 known pre-existing error (mi_bhara). All ka_*/ph_*/mi_* (exc mi_bhara/mi_sankalpa) now lit.**
+
+**Run completed:** 01:17:23 UTC (15 minutes total from 01:02 UTC start)
+
+### A3 DISPATCH — run 6600de09 / exec lzqb2
+
+**Rationale:** ka_kshetra was built in A2 at ~04:50 IST, BEFORE β completed (05:15 IST). The gochara corpus digest in the snapshot was pre-β. A3 forces a fresh build with:
+1. A1 code deployed (gochara corpus pin in writer.py) ✅
+2. Post-β ka_gochara (83 rows, A2' rebuilt) ✅
+→ New config_pin → new snapshot_id → fresh post-β field data
+
+**Action:** `UPDATE asset_throughput SET state='stale' WHERE asset_id='ka_kshetra'` → dispatch
+
+**Exec lzqb2** running. Expected: ka_kshetra completes (light-ish, but 566,545 rows → may take 15-30min).
+
+**NEXT:** Monitor lzqb2 → ka_kshetra lit with new snapshot_id → dispatch Measurement #5 → G-P3a gate → Brilliance Gate #1 → G-P3b → FIELD-INTEGRATED marker → γ unblocked.
