@@ -1906,3 +1906,36 @@ CONDUCTOR-HEARTBEAT: 2026-08-13T11:22+05:30 (CONDUCTOR of SAMPŪRTI-α) pid=new 
 
 **COORDINATION:** L-4 ACTIVE (expiry 16:00 IST), no UTKARṢA lease conflict.
 
+
+---
+
+## G2-EARLY ADJUDICATION-2 VERDICT — 2026-08-13T11:35+05:30
+
+**NATIVE-PRATINIDHI (OPUS) adjudication complete. Both classes: DEFER (Tier N-iii honest-skip).**
+
+### career_entry: DEFER
+
+No published Indian demographic statistic meets Tier N-i for this class at magnitude_floor=moderate.
+
+- **PLFS WPR/LFPR** (~57–60%): measures STOCK (persons currently working), not EVENT rate of first career entry. Cross-sectional prevalence, not incidence. Converting to lifetime probability requires cohort-dynamic assumptions → FORECLOSED.
+- **Inclusion criteria mismatch**: LFPR/WPR includes self-employment, casual wage, unpaid family work, agricultural subsistence — all below magnitude_floor=moderate. Formal sector (~20-25% of employment) not separately published with Tier N-i credentials.
+- No PLFS/NSS/ILO/Census publication reports "lifetime probability of entering formal/meaningful employment" with all 6 Tier N-i fields for India birth cohorts ~1955-1985.
+
+**Result:** `ClassSkipped('no_class_prior_row')` — Tier N-iii honest-skip. No brahma_class_priors row seeded.
+
+### career_change: DEFER
+
+No published Indian demographic statistic meets Tier N-i for this class at magnitude_floor=moderate.
+
+- **NSS 66th Round (2009-10) Block 7.2**: Collected "whether changed establishment/occupation in last 2 years" — closest candidate. However: (a) aggregate Block 7.2 results not retrievable as clean statistic with all 6 Tier N-i fields; (b) "changed establishment" includes trivial lateral moves/casual churn well below magnitude_floor=moderate; (c) converting 2-year rate to lifetime N_e requires age-varying rate assumptions → "reasonable proportion of" → FORECLOSED.
+- **Bhattacharya (2023) PLFS panel**: Reports quarterly labour-market STATE transitions (~10.68% per quarter). These are employment/unemployment/non-participation state changes, NOT career-domain changes at moderate magnitude.
+- No PLFS/NSS/ILO/Labour Bureau publication reports "number of significant career changes per lifetime" with all 6 Tier N-i fields at moderate magnitude floor.
+
+**Result:** `ClassSkipped('no_class_prior_row')` — Tier N-iii honest-skip. No brahma_class_priors row seeded.
+
+### G2-EARLY OUTCOME
+
+**LANE STATUS: CLOSED-DEFER** — both classes confirmed Tier N-iii. Per ADJUDICATION-2: "honest-empty beats fabricated-full." No ne_v02 rows created. No bg_class_priors rebuild needed. Career classes remain in the honest skip ledger alongside the other 21 non-prior classes.
+
+**P1 target unchanged:** 6 prior-backed classes (Tranche-1, ne_v01) + skip ledger (21 + 2 career attempts confirmed Tier N-iii). ka_kshetra completing A3 with 6 active classes is the correct, fully shippable outcome.
+
