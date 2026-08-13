@@ -3388,3 +3388,5 @@ No native signal on any surface. PARKED-NATIVE posture unchanged from R34.
 Native signals resume → A6 dispatch (460 substeps, checkpoint intact, DHARA engine active, S7459 fix will be on main) → ka_kshetra=LIT → FIELD-INTEGRATED → S4 parity → G-P1 → SMR-2 M4' → P3 → M5 → Brilliance Gate #1.
 
 CONDUCTOR-HEARTBEAT: 2026-08-13T23:15+05:30 [R35 — PARKED-NATIVE SMR-2 HOLD-A6 carries; all surfaces checked: no native signal; DB clean (advisory_locks=0, builds=0); ka_kshetra=incomplete 2,063,838 rows stable; S7459 fix extracted and opened as PR #1269 (CI running); #1268 flag-flip confirmed on main; session closing]
+
+CONDUCTOR-HEARTBEAT: 2026-08-13T23:30+05:30 [R35 — PR #1269 (S7459 idle-timeout fix) MERGED to main at 17:54 UTC; S7459 fix now live on main; PARKED-NATIVE SMR-2 HOLD-A6 continues; all downstream gated on ka_kshetra=LIT (482012f1); no native signal; session closing]
