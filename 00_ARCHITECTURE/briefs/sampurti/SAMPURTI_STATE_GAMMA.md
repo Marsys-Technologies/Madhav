@@ -154,3 +154,5 @@ CONDUCTOR-HEARTBEAT: 2026-08-13T01:04:31Z pid=$$ host=Montys-MacBook-Pro.local s
 [A2' dispatched (cww2x) — full DAG rebuild running (ka_gochara → ka_sangam → ka_kshetra with A1 pin → full chain); ETA 2-4 hours; FIELD-INTEGRATED will post after G-P3b; continuing watch]
 CONDUCTOR-HEARTBEAT: 2026-08-13T01:34:55Z pid=$$ host=Montys-MacBook-Pro.local session=γ
 [A2' running 30+ min; no new coordination markers; normal — full DAG rebuild takes 2-4h; watching]
+CONDUCTOR-HEARTBEAT: 2026-08-13T02:05:21Z pid=$$ host=Montys-MacBook-Pro.local session=γ
+[A2' at ~60min; coordination quiet; full DAG rebuild in progress; watching for FIELD-INTEGRATED]
