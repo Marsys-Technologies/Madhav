@@ -86,8 +86,12 @@ class TestPlan:
         # emitting the stages in dependency order is what makes stage 5 able to
         # read stage 4's committed rows. Each substep ALSO checks its upstream
         # independently (see TestUpstreamGuard) so the ordering is belt, not braces.
-        assert kinds.index('stage4') < kinds.index('stage5')
-        assert kinds.index('stage5') < kinds.index('stage5finalize')
+        #
+        # OPT-N1: under ENGINE_VERSION='analytic' (now the default), stage5dhara
+        # replaces stage5:*/stage5finalize:*. Test the stage that is actually
+        # present in the analytic plan.
+        assert kinds.index('stage4') < kinds.index('stage5dhara')
+        assert kinds.index('stage5dhara') < kinds.index('stage6')
         assert kinds[-1] == 'snapshot'
 
     def test_ten_decade_slices_per_event_class(self):
@@ -97,7 +101,12 @@ class TestPlan:
         assert len(s4) == W.DECADES
         assert {s.key.rsplit(':', 1)[1] for s in s4} == {str(d) for d in range(W.DECADES)}
 
-    def test_replicate_blocks_cover_every_replicate_exactly_once(self):
+    def test_replicate_blocks_cover_every_replicate_exactly_once(self, monkeypatch):
+        # OPT-N1: force the SAMPLED path so the legacy replicate-block scheme is
+        # exercised. The analytic path (now the default) emits one stage5dhara:{ec}
+        # substep per class instead of N block substeps + a finalize. Pinning to
+        # 'sampled' here keeps regression coverage for the sampled plan shape.
+        monkeypatch.setattr(W, '_engine_version', lambda: 'sampled')
         conn = FakeConn(F.build_tables())
         steps = W.KaKshetraWriter().plan_substeps(FakeCtx(conn, F.CHART_ID))
         blocks = [s for s in steps if s.key.startswith('stage5:')]
@@ -327,15 +336,22 @@ class TestReconciliationAtWriteTime:
 
 class TestUpstreamGuard:
     def test_stage5_refuses_to_run_on_an_absent_field(self):
+        # OPT-N1: under ENGINE_VERSION='analytic' (now the default) the stage5
+        # upstream-guard fires on the stage5dhara:{ec} substep, not stage5:{ec}:{b}.
         conn = FakeConn(F.build_tables())
         ctx = FakeCtx(conn, F.CHART_ID)
         writer = W.KaKshetraWriter()
         steps = writer.plan_substeps(ctx)
-        block = next(s for s in steps if s.key.startswith('stage5:'))
+        block = next(s for s in steps if s.key.startswith('stage5dhara:'))
         with pytest.raises(S4.UpstreamStageIncomplete):
             writer.run_substep(ctx, block)     # no stage-4 substep has run
 
-    def test_finalize_refuses_a_partial_replicate_set(self):
+    def test_finalize_refuses_a_partial_replicate_set(self, monkeypatch):
+        # OPT-N1: stage5finalize:{ec} only exists in the SAMPLED plan. Force that
+        # path so the legacy guard is still regression-tested. Under analytic
+        # (the new default) there is no finalize substep — the dhara path handles
+        # null+windows in one atomic stage5dhara:{ec} substep.
+        monkeypatch.setattr(W, '_engine_version', lambda: 'sampled')
         conn = FakeConn(F.build_tables())
         ctx = FakeCtx(conn, F.CHART_ID)
         writer = W.KaKshetraWriter()
@@ -420,7 +436,10 @@ class TestStage6Salience:
         kinds = [k.split(':', 1)[0] for k in keys]
         # §2's pipeline order. The snapshot is last because the content hash is
         # a digest OF every stage-0..8 row, so anything hashed must commit first.
-        assert kinds.index('stage5finalize') < kinds.index('stage6')
+        # OPT-N1: under ENGINE_VERSION='analytic' (now the default) stage5dhara
+        # replaces stage5finalize as the last stage-5 substep type. Assert that
+        # whatever the final stage-5 substep kind is, it precedes stage6.
+        assert kinds.index('stage5dhara') < kinds.index('stage6')
         assert kinds.index('stage6') < kinds.index('stage65')
         assert kinds.index('stage65') < kinds.index('stage8')
         assert kinds[-1] == 'snapshot'
