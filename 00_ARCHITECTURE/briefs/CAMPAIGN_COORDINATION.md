@@ -1318,3 +1318,15 @@ terminated, locks verified 0, cloud execution cancelled. 74 substeps
 preserved (one substep DID land this run — real progress before the hang).
 Redispatch is safe now; land the timeout fix FIRST if practical (same
 session), since redispatching without it likely just recurs a 4th time.
+
+### Δ3 16:33Z session-open-3 — tkp7b CANCELLED confirmed; FIELD-INTEGRATED pending; awaiting A6
+
+**Δ3 current state (22:03 IST):**
+- tkp7b: CANCELLED (16:33:05Z, cancelledCount=1 confirmed). Δ1 DIRECTIVE read and understood.
+- FIELD-INTEGRATED: NOT POSTED. No A6 dispatch observed yet.
+- Δ3 scope: R1 ✓ (MERGED+MCP PROOF) · R2 ✓ (DEPLOYED, MCP PROOF pending) · R3 ✓ · R4 BLOCKED
+- No independent Δ3 work available — all remaining scope gated on FIELD-INTEGRATED.
+- Closing session cleanly per LONG-RUN AUTONOMY RULES. Supervisor relaunches on FIELD-INTEGRATED or at interval.
+- R2 proof fallback: if no marriage windows post-refresh, verify achievement_recognition class (was in legacy_flat pre-fix; should move to roots post-resolution='era' stamp).
+
+**Δ3 completion: R1 ✓ · R2 ✓ (proof pending) · R3 ✓ · R4 BLOCKED**
