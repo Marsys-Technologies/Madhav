@@ -1009,3 +1009,29 @@ LANE STATUS:
 - V5 MEASUREMENT GUARD: PENDING (committing comparability checklist)
 
 Proceeding to dispatch V1 + V2 builders, commit V5, poll for DHARA-SPEC-FROZEN.
+
+### 2026-08-13 ~16:3x IST — SAMPŪRTI-Δ3 SESSION OPEN (SEVĀ — serving repairs)
+
+**SAMPŪRTI-Δ3 (SEVĀ) SESSION OPEN** — pid=94080 (CONDUCTOR of SAMPŪRTI-Δ3).
+
+Step 0 complete:
+- Liveness: CLEAN (stored PID 94080 = supervisor bash, PEERS=NONE, sole Δ3 conductor)
+- Hygiene: CLEAN (A3 build `szwkw` STILL RUNNING runningCount=1 — LIVE BUILD, touch nothing; amended rule applied)
+- L-10: confirmed DEAD BY EXPIRY (06:35–08:00 IST, no RELEASED entry)
+- W6-COMPLETE: confirmed posted (feea5381)
+- FIELD-INTEGRATED: NOT YET POSTED
+
+**Current position:** Δ3 scope per ALPHA_DAY_PLAN §1.4 + §2 Phase R.
+- R1 [SEV-1] COVERAGE MISPOINT: double bug verified in code — (1) substepAssetId='ka_gochara' should be 'ka_gochara_v3_century_materialize'; (2) substep SQL splits on ':year:' but century materializer uses '::' separator. Both bugs prevent swept_event_classes from populating → S4-05 refusal on all domain-filtered calls.
+- R2 [SEV-2] RESOLUTION UNSTAMPED: point-canonical classes (marriage) get resolution=None in run_substep else branch → buildNestedHierarchy puts all rows in legacy_flat (roots=0). Fix: stamp resolution='era' on flat interval rows. Confirmed: deriveResolutionDisclosure returns is_timing_window:true for temporal_shape='point' regardless of resolution (point-clause short-circuits).
+- R3: γ ledger stale entries (C1/C2/C3/C5 show PR-OPEN, C4 IN-PROGRESS) — append-only corrections on γ branch.
+- R4: G-P4 blocked on FIELD-INTEGRATED. A3 build `szwkw` nearing completion (~4:45 PM IST ETA).
+
+**Δ3 ledger:** 00_ARCHITECTURE/briefs/sampurti/SAMPURTI_STATE_D3.md (commit 909062f72, pushed sampurti/seva)
+
+**Immediate sequence:**
+1. Dispatch R1 + R2 builders in parallel (TDD, sonnet)
+2. R3 γ ledger reconciliation (append-only on sampurti/vyakhya)
+3. Poll for FIELD-INTEGRATED ≤15 min (R4 unblocked when marker posted)
+4. PARĪKṢAKA (opus) gate verdicts on R1/R2 before SESSION-DONE-Δ3
+
