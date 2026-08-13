@@ -731,3 +731,40 @@ Per LONG-RUN AUTONOMY RULES (BLOCKED ≠ STOP): Δ3 scope exhausted pending FIEL
 3. On FIELD-INTEGRATED: R2 MCP proof + R4 G-P4 → SESSION-DONE-Δ3
 
 RUN-TERMINAL: SESSION-Δ3-PENDING-10 (not COMPLETE — FIELD-INTEGRATED outstanding; SMR-2 HOLD-A6 confirmed R34; supervisor relaunches)
+
+
+### 2026-08-13 23:10 IST — SM-R-3 received: SMR-2 HOLD-A6 LIFTED; A6 AUTHORIZED
+
+CONDUCTOR-HEARTBEAT: 2026-08-13T17:40Z pid=17337 host=Montys-MacBook-Pro.local session=Δ3-10
+
+**SM-R-3 STATE CHANGE (17:40Z):**
+
+SM-R-3 posted by native's desk to campaign-coordination (f00aa2b5). Key ruling:
+- The two CancelExecution calls (A4/mv7c5 21:35 IST, A5/tkp7b 22:02 IST) were the DESK SESSION's own recovery gcloud commands, run under the native's authenticated identity — NOT a native decision to stop the campaign.
+- SMR-2 HOLD-A6 was a FALSE-BLOCKER-PARK: Δ1/Δ3 misread automated recovery cancels as native override signals.
+- **A6 is AUTHORIZED to dispatch immediately.**
+- Δ1 sequence: (1) open PR for S7459 timeout fix (commit 06c04b72a, sampurti/integration) + deploy verified; (2) dispatch A6 from checkpoint (74/534 substeps, 2,063,838 rows intact); (3) resume S4 → G-P1 → SMR-2 M4' → P3 → M5 → Brilliance Gate #1.
+
+HARDENING RULE (recorded per SM-R-3): a Cloud Run execution cancelled by ANY identity is NOT automatically a native stop-work signal. Distinguish by CONTEXT — if coordination shows a diagnosed-hang + recovery entry covering that execution, treat as recovery. Only silence-plus-cancel-with-no-diagnostic-context warrants NATIVE-PRATINIDHI dispatch.
+
+**Δ3 IMPACT:** Δ3 has no DB scope and cannot dispatch A6 or touch sampurti/integration. Δ3 now monitors for FIELD-INTEGRATED (which requires A6 to complete, ~4+ hours from dispatch). R2 + R4 execute immediately when FIELD-INTEGRATED posts.
+
+**Δ3 LANE STATUS (session 10 close, updated):**
+| Lane | Status | Notes |
+|------|--------|-------|
+| R1 | MERGED + MCP PROOF PASS ✓ | Confirmed; 27 classes, 270 substeps |
+| R2 | DEPLOYED; MCP PROOF READY | R2 fix in place; awaiting corpus refresh (A6 → ka_kshetra=lit → FIELD-INTEGRATED) |
+| R3 | DONE ✓ | sampurti/vyakhya corrections committed |
+| R4 | READY-ON-SIGNAL | Awaiting FIELD-INTEGRATED; R4 can execute immediately on receipt |
+
+**WHAT ONE RELAUNCH FINISHES:** On FIELD-INTEGRATED posted by Δ1:
+1. `gochara_forecast_get(chart_id=482012f1..., domain=marriage, date_range=2020-2030)` → verify marriage row 2024-02-05→2034-01-30 in roots (resolution='era'), NOT legacy_flat
+2. `kala_ahead_get(chart_id=482012f1...)` → verify field_snapshot_id=kfs_... (not field_not_yet_built)
+3. Record both proofs in γ ledger (sampurti/vyakhya append-only) + coordination SESSION-DONE-Δ3
+
+**NEXT-ACTION (next session):**
+1. At session open: check coordination for FIELD-INTEGRATED data marker; check Cloud Run for A6 execution status
+2. If A6 still running: close cleanly, relaunch (A6 is ~4+ hours)
+3. On FIELD-INTEGRATED: execute R2 proof + R4 G-P4 → SESSION-DONE-Δ3
+
+RUN-TERMINAL: SESSION-Δ3-PENDING-10 (FIELD-INTEGRATED outstanding; A6 authorized by SM-R-3; Δ1 dispatching A6; supervisor relaunches when marker posts)
