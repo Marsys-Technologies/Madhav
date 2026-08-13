@@ -49,17 +49,19 @@ In `run_substep` else branch (R8.12 point-canonical gate), flat intervals get `(
 
 | Lane | Title | Status | Evidence |
 |------|-------|--------|----------|
-| R1 | [SEV-1] Fix computeGocharaCoverage: asset_id + substep key parse (v3 authority) | DISPATCHING | builder pending |
-| R2 | [SEV-2] Fix century materializer: stamp resolution='era' on point-canonical flat rows | DISPATCHING | builder pending |
-| R3 | γ ledger reconciliation: append-only correction entries on γ branch | PENDING | — |
+| R1 | [SEV-1] Fix computeGocharaCoverage: asset_id + substep key parse (v3 authority) | PR-OPEN | PR #1258, commit 9561def25, branch sampurti/d3-r1 |
+| R2 | [SEV-2] Fix century materializer: stamp resolution='era' on point-canonical flat rows | PR-OPEN | PR #1259, commit 53d60cb10, branch sampurti/d3-r2 |
+| R3 | γ ledger reconciliation: append-only correction entries on γ branch | DONE | commit 66e35c216, sampurti/vyakhya |
 | R4 | G-P4: kala_ahead_get prospective row keyed to live field window_id | BLOCKED | FIELD-INTEGRATED not yet posted |
 
 ## GATE STATUS
 
 | Gate | Status | Notes |
 |------|--------|-------|
-| R1 MCP PROOF | PENDING | domain-filtered gochara_forecast_get returns windows not S4-05 refusal; coverage.event_classes_covered non-empty |
-| R2 MCP PROOF | PENDING | marriage serves ≥1 timing window is_timing_window=true, nested under era parent |
+| R1 PARĪKṢAKA | IN-PROGRESS | opus code-review agent dispatched (a86abce4fb7c31cf5) |
+| R2 PARĪKṢAKA | IN-PROGRESS | opus code-review agent dispatched (a331da5f1fc41c77f) |
+| R1 MCP PROOF | PENDING-DEPLOY | requires merge + deploy; proof: gochara_forecast_get returns windows not S4-05; coverage.event_classes_covered non-empty |
+| R2 MCP PROOF | PENDING-DEPLOY | requires merge + corpus refresh + deploy; proof: marriage serves ≥1 timing window is_timing_window=true under era parent |
 | G-P4 (γ residual) | BLOCKED | FIELD-INTEGRATED from Δ1 required |
 
 ## MARKERS WATCHED
@@ -68,7 +70,7 @@ In `run_substep` else branch (R8.12 point-canonical gate), flat intervals get `(
 
 ## NEXT-ACTION
 
-Dispatch R1+R2 builders in parallel. Post session-open to coordination. Work R3 (γ ledger). Poll for FIELD-INTEGRATED (R4).
+Await PARĪKṢAKA verdicts for R1+R2. Poll FIELD-INTEGRATED. On PASS: coordinate merge sequence. On FIELD-INTEGRATED: execute R4 G-P4.
 
 ## LOG
 
@@ -77,3 +79,29 @@ Dispatch R1+R2 builders in parallel. Post session-open to coordination. Work R3 
 STEP-0 complete. A3 build `szwkw` still running (close to completion ~4:45 PM IST).
 R1 double bug and R2 resolution='era' fix verified in live code before dispatch.
 Posting session-open to coordination. Dispatching R1 and R2 builders in parallel.
+
+### 2026-08-13 ~17:15 IST — R1+R2 PRs created; R3 done; PARĪKṢAKA dispatched
+
+HEARTBEAT: 2026-08-13T11:15Z
+
+**R1 SEV-1 BUILDER DONE:**
+- commit 9561def25: fix(gochara-coverage): R1 SEV-1 — v3 substep asset_id + "::" key parse
+- PR #1258 (sampurti/d3-r1 → main)
+- Fix: substepAssetId 'ka_gochara' → 'ka_gochara_v3_century_materialize'; SQL split ':year:' → '::' for v3 authority
+- Tests: 42 pass (41 pre-existing + 1 new SEV-1 detector), 3 skipped
+- New test: `v3-authority chart: substep rows under ka_gochara_v3_century_materialize with '::' keys → event_classes_covered non-empty`
+
+**R2 SEV-2 BUILDER DONE:**
+- commit 53d60cb10: fix(century-materializer): R2 SEV-2 — stamp resolution='era' on point-canonical flat rows
+- PR #1259 (sampurti/d3-r2 → main)
+- Fix: None → 'era' in else branch insert_specs tuple; ENGINE_VERSION v3.1 → v3.2
+- Tests: 75 pass, 1 deselected — 4 pre-existing tests updated (resolution assertion None→'era'), 1 new SEV-2 detector added
+- New test: `test_r2_sev2_point_canonical_rows_carry_era_resolution` — confirmed RED→GREEN
+
+**R3 γ LEDGER DONE:**
+- commit 66e35c216 on sampurti/vyakhya
+- All 5 γ C-lanes corrected: C1 1e0b80e91, C2 44646da1e, C3 baca82bad, C4 aa23e7ba1, C5 8477e87b4
+
+**PARĪKṢAKA DISPATCHED:** opus agents a86abce4fb7c31cf5 (R1) and a331da5f1fc41c77f (R2) running.
+
+**FIELD-INTEGRATED:** NOT YET POSTED (R4/G-P4 still blocked). A3 build szwkw status unknown (ETA passed — may be complete or still running).
