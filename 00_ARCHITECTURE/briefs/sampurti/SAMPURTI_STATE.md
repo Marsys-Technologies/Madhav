@@ -3602,3 +3602,5 @@ CONDUCTOR-HEARTBEAT: 2026-08-14T02:31+05:30 [R39 open — STEP 0 complete; PRATI
 **NEXT within 3 min (FM-07 extended):** verify GUC smoke-log in job log (idle=1800000ms, lock=300s). Absent = defect, diagnose before proceeding.
 
 CONDUCTOR-HEARTBEAT: 2026-08-14T02:41+05:30 [R39 — A6′ DISPATCHED; execution=brahma-build-pipeline-job-vcc6h run_id=f663bea3; SM-R-5 posted; L-8 renewed to 14:00 IST; FM-21 hang watch starting; GUC smoke-log check in 3 min]
+
+CONDUCTOR-HEARTBEAT: 2026-08-14T02:45+05:30 [R39 — FM-07 PASS: GUC smoke-log confirmed (idle_in_txn=30min, stmt_timeout=0, lock_timeout=5min); build RESUMING 69/534 substeps committed 465 remaining; stage3 running at T+2min; FM-21 monitoring active; rate-gate baseline at T+15min]
