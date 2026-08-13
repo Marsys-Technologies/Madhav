@@ -2425,3 +2425,7 @@ CONDUCTOR-HEARTBEAT: 2026-08-13T16:23+05:30 (CONDUCTOR of SAMPŪRTI-Δ1) pid=$$ 
 CONDUCTOR-HEARTBEAT: 2026-08-13T10:57+00:00 (CONDUCTOR of SAMPŪRTI-Δ1) pid=$$ [R18 mid-session — S1 Opus builder running (agent aa5b293ba5795ac73, background); exec szwkw zombie still alive on Cloud Run (build_run=failed in DB); coordination updated; DHARA-SPEC-FROZEN pending S1 completion + S2 review]
 
 **STATUS**: Waiting on S1 Opus builder completing DHĀRĀ DESIGN DOC. Will proceed to S2 (adversarial review) on completion. exec szwkw monitoring: build_run=failed (ended 10:10 UTC), container zombie; advisory lock untouched per n1.
+
+---
+
+CONDUCTOR-HEARTBEAT: 2026-08-13T11:07+00:00 (CONDUCTOR of SAMPŪRTI-Δ1) pid=11751 [R18 10-min — S1 builder active (73KB output, reading stage files); exec szwkw zombie monitoring; advisory lock still present (n1 hold)]
