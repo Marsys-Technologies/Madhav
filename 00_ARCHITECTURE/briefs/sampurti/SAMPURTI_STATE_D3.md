@@ -49,8 +49,8 @@ In `run_substep` else branch (R8.12 point-canonical gate), flat intervals get `(
 
 | Lane | Title | Status | Evidence |
 |------|-------|--------|----------|
-| R1 | [SEV-1] Fix computeGocharaCoverage: asset_id + substep key parse (v3 authority) | PR-OPEN | PR #1258, commit 9561def25, branch sampurti/d3-r1 |
-| R2 | [SEV-2] Fix century materializer: stamp resolution='era' on point-canonical flat rows | PR-OPEN | PR #1259, commit 53d60cb10, branch sampurti/d3-r2 |
+| R1 | [SEV-1] Fix computeGocharaCoverage: asset_id + substep key parse (v3 authority) | MERGE-QUEUED | PR #1258, commit 9561def25, branch sampurti/d3-r1; PARĪKṢAKA PASS |
+| R2 | [SEV-2] Fix century materializer: stamp resolution='era' on point-canonical flat rows | MERGE-QUEUED | PR #1259, commit 53d60cb10, branch sampurti/d3-r2; PARĪKṢAKA PASS |
 | R3 | γ ledger reconciliation: append-only correction entries on γ branch | DONE | commit 66e35c216, sampurti/vyakhya |
 | R4 | G-P4: kala_ahead_get prospective row keyed to live field window_id | BLOCKED | FIELD-INTEGRATED not yet posted |
 
@@ -58,10 +58,10 @@ In `run_substep` else branch (R8.12 point-canonical gate), flat intervals get `(
 
 | Gate | Status | Notes |
 |------|--------|-------|
-| R1 PARĪKṢAKA | IN-PROGRESS | opus code-review agent dispatched (a86abce4fb7c31cf5) |
-| R2 PARĪKṢAKA | IN-PROGRESS | opus code-review agent dispatched (a331da5f1fc41c77f) |
-| R1 MCP PROOF | PENDING-DEPLOY | requires merge + deploy; proof: gochara_forecast_get returns windows not S4-05; coverage.event_classes_covered non-empty |
-| R2 MCP PROOF | PENDING-DEPLOY | requires merge + corpus refresh + deploy; proof: marriage serves ≥1 timing window is_timing_window=true under era parent |
+| R1 PARĪKṢAKA | PASS | agent a86abce4fb7c31cf5 — VERDICT: PASS; no blockers |
+| R2 PARĪKṢAKA | PASS | agent a331da5f1fc41c77f — VERDICT: PASS; 3 LOW stale comments (non-blocking) |
+| R1 MCP PROOF | PENDING-DEPLOY | requires merge queue completion + deploy; proof: gochara_forecast_get returns windows not S4-05; coverage.event_classes_covered non-empty |
+| R2 MCP PROOF | PENDING-DEPLOY | requires merge queue completion + corpus refresh + deploy; proof: marriage serves ≥1 timing window is_timing_window=true under era parent |
 | G-P4 (γ residual) | BLOCKED | FIELD-INTEGRATED from Δ1 required |
 
 ## MARKERS WATCHED
@@ -70,7 +70,7 @@ In `run_substep` else branch (R8.12 point-canonical gate), flat intervals get `(
 
 ## NEXT-ACTION
 
-Await PARĪKṢAKA verdicts for R1+R2. Poll FIELD-INTEGRATED. On PASS: coordinate merge sequence. On FIELD-INTEGRATED: execute R4 G-P4.
+PRs #1258+#1259 in merge queue. Awaiting merge queue processing → deploy → MCP proofs. Polling FIELD-INTEGRATED.
 
 ## LOG
 
@@ -105,3 +105,20 @@ HEARTBEAT: 2026-08-13T11:15Z
 **PARĪKṢAKA DISPATCHED:** opus agents a86abce4fb7c31cf5 (R1) and a331da5f1fc41c77f (R2) running.
 
 **FIELD-INTEGRATED:** NOT YET POSTED (R4/G-P4 still blocked). A3 build szwkw status unknown (ETA passed — may be complete or still running).
+
+### 2026-08-13 ~17:55 IST — PARĪKṢAKA PASS; PRs queued; awaiting merge queue
+
+HEARTBEAT: 2026-08-13T12:25Z
+
+**R1 PARĪKṢAKA VERDICT: PASS** (agent a86abce4fb7c31cf5) — GATE OPEN.
+**R2 PARĪKṢAKA VERDICT: PASS** (agent a331da5f1fc41c77f) — GATE OPEN; 3 LOW stale comments in docstrings (non-blocking, follow-up PR).
+
+**R2 CI:** All 27 checks COMPLETED (mergeStateStatus: CLEAN). Ganga Quality Gate PASS, TAP CI PASS, Deploy to Cloud Run PASS.
+**R1 CI:** All checks previously COMPLETED (mergeStateStatus: CLEAN).
+
+**Merge sequence:**
+- PR #1258 (R1): already queued to merge (merge queue confirmed via `gh pr merge --auto`)
+- PR #1259 (R2): queued to merge (`gh pr merge --squash --auto`)
+- Merge queue currently processing SHA 6fa1555bbe (prior PR); our batch pending.
+
+**FIELD-INTEGRATED:** NOT YET POSTED (R4/G-P4 remains blocked).
