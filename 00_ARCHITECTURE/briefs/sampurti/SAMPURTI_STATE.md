@@ -2894,3 +2894,66 @@ CONDUCTOR-HEARTBEAT: 2026-08-13T19:50+05:30 [R28 poll — exec mv7c5 RUNNING=1; 
 CONDUCTOR-HEARTBEAT: 2026-08-13T20:00+05:30 [R28 poll — exec mv7c5 RUNNING=1; ka_kshetra building, 2,286,410 rows written (20 min mark); pace ~1M rows/10min]
 CONDUCTOR-HEARTBEAT: 2026-08-13T20:10+05:30 [R28 poll — exec mv7c5 RUNNING=1; ka_kshetra building, 2,630,383 rows (30 min mark); pace slowing (~340K/10min) — likely entering stage5 null replicates]
 CONDUCTOR-HEARTBEAT: 2026-08-13T20:39+05:30 [R28 poll — exec mv7c5 RUNNING=1; ka_kshetra building, rows unchanged at 2,630,383 (50–60 min mark); in stage5 null MC replicates (pure compute, no row commits until finalize); expected ~1-2h total for stage5 slow classes]
+
+---
+
+## R29 — SAMPŪRTI-Δ1 CONDUCTOR (2026-08-13T21:43+05:30)
+
+**Identity:** CONDUCTOR of SAMPŪRTI-Δ1
+**Session open:** Supervisor relaunch at 21:38 IST post-recovery (A4 deadlock cleared by prior diagnostic session).
+
+### LIVENESS CHECK (FM-10/11/21)
+
+- current_conductor.pid = 45291 (prior session, now dead — pgrep shows no peers)
+- My PID: 47674 (recorded to current_conductor.pid)
+- No peer conductor processes found ✅
+
+### HYGIENE CHECK (FM-06 amended)
+
+- exec mv7c5: COMPLETED at 16:05:49Z (runningCount=0) ✅
+- advisory_locks count = 0 ✅
+- build_runs active = 0 ✅
+- Cloud SQL proxy: listening on 127.0.0.1:5433 ✅
+
+### A4 RECOVERY SUMMARY
+
+A4 (exec mv7c5) deadlocked mid-stage5 null replicates:
+- Root cause: OperationalError — connection lost during long compute run
+- Recovery: prior diagnostic session cleared advisory locks, terminated idle sessions, marked build stopped
+- DB state inherited: ka_kshetra state=error, rows_written=2,664,555
+
+### A5 DISPATCH ✅
+
+Initial dispatch error: `gcloud run jobs execute` without `--args "--run-id,..."` — exec s6zbw ran
+for 10s, printed usage, exited. `parser.error()` path in orchestrator/main.py requires --run-id.
+Corrected dispatch with `--args="--run-id,777c3681-27b7-4e91-adc5-8c06e59b7348"`.
+
+| Field | Value |
+|---|---|
+| run_id | 777c3681-27b7-4e91-adc5-8c06e59b7348 |
+| Cloud Run exec (bad, no-op) | brahma-build-pipeline-job-s6zbw |
+| Cloud Run exec (actual A5) | **brahma-build-pipeline-job-tkp7b** (short: **exec tkp7b**) |
+| triggered_by | sampurti-a5-chart1-kshetra-dhara |
+| engine | analytic (DHARA) — ENGINE_VERSION='analytic' live since #1268 |
+| ka_kshetra prior state | error → reset to dormant before dispatch |
+| runningCount | 1 ✅ (confirmed RUNNING) |
+| writer resume | 69/534 substeps committed, 465 remaining (checkpoint from prior run) |
+
+### LESSON LEARNED (FM-new)
+
+`gcloud run jobs execute brahma-build-pipeline-job` requires `--args="--run-id,<UUID>"`.
+Without it, the orchestrator prints usage and exits (parser.error, exit code 2). Always pass:
+```
+gcloud run jobs execute brahma-build-pipeline-job \
+  --region=asia-south1 \
+  --args="--run-id,<run_id>"
+```
+
+### NEXT-ACTION
+
+1. Monitor exec tkp7b: poll every 10 min until ka_kshetra LIT (465 substeps remaining)
+2. Once LIT: run S4 parity gate (`PARITY_DB_TEST=1 pytest tests/l3/ka_kshetra/test_dhara_parity.py`)
+3. Post PARITY-GREEN marker to coordination file
+4. M5 measurement (post-DHARA field)
+
+CONDUCTOR-HEARTBEAT: 2026-08-13T21:43+05:30 [R29 open; A5 exec tkp7b RUNNING (DHARA engine); 69/534 substeps committed, 465 remaining; parity gate pending field completion]
