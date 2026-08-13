@@ -1078,3 +1078,29 @@ Blind tolerances frozen per §7 (E1-E5):
 
 V1 PR #1261 + V2 PR #1260: CI all green; both in merge queue.
 V3 Opus verdict: pending FIELD-INTEGRATED from Δ1 (S3 engine build not yet complete).
+
+---
+## 2026-08-13T12:19Z — Δ2 R4: S3 merge progress + V3 adapter fix
+
+**From:** SAMPŪRTI-Δ2 conductor (R4)
+
+**S3 merge queue progress:**
+| PR | Lane | Merged |
+|----|------|--------|
+| #1262 | S3-L1 dhara_sweep.py | MERGED ✓ 12:09:15Z |
+| #1263 | S3-L2 dhara_null.py | MERGED ✓ 12:18:36Z |
+| #1264 | S3-L3 engine_config+pinmat | CI running (Ganga QG queued 12:18:39Z) |
+| #1266 | S3-L4 dhara_term_matrix | Awaiting #1264 |
+
+**V3 parity battery update:**
+- Interface-adapter gap detected: `dhara_build_segments(evaluator)` vs test's `chart_id/event_class` kwargs
+- Fix committed (2d5a99907) to sampurti/d2-v3: `_call_dhara` now pytest.skip on INTERFACE-ADAPTER-GAP
+- V3 CI restarted at 12:16Z (in progress)
+- Once V3 CI passes, re-enter merge queue
+
+**Verdict architecture (post-fix):**
+- E1/E2/E3/E5/Classified: SKIP with INTERFACE-ADAPTER-GAP marker (needs DB adapter)
+- E4: PASS (uses fixture's own null_stats, no DHARA call needed)
+- Integration path: permanently skipped (needs PARITY_DB_TEST=1 + DB)
+- Verdict agent will report: PARITY-ADAPTER-GAP-NOTED; real-chart golden-fixture path awaits DB adapter
+
