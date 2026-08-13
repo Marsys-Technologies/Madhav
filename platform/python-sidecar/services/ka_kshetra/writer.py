@@ -132,7 +132,7 @@ SEGMENT_INDEX_DECADE_STRIDE = 1_000_000
 #: older writer build is treated as a different build and replanned in full
 #: (the `ka_sangam` / `ka_gochara_sweep` convention).
 #: v2 — stages 6 / 6.5 / 8 joined the plan and the content hash.
-_RESUME_VERSION = 3
+_RESUME_VERSION = 4
 
 #: §6.2's row budget K. The design's own worked example ("the budget spends
 #: itself across 15 *different* things") is the source of the number; it is a
@@ -428,8 +428,13 @@ class KaKshetraWriter(WriterBase):
         d0 = decade * HORIZON_DAYS / DECADES
         d1 = (decade + 1) * HORIZON_DAYS / DECADES
         ev = cctx.evaluator
-        knots = [t for t in ev.breakpoints() if d0 < t < d1]
-        segments = integrator.build_segments([d0] + knots + [d1], ev.ln_lambda)
+        from services.ka_kshetra.engine_config import ENGINE_VERSION
+        if ENGINE_VERSION == 'analytic':
+            from services.ka_kshetra.dhara_sweep import dhara_build_segments
+            segments = dhara_build_segments(ev)
+        else:
+            knots = [t for t in ev.breakpoints() if d0 < t < d1]
+            segments = integrator.build_segments([d0] + knots + [d1], ev.ln_lambda)
 
         if self._dry_run:
             return WriterResult(asset_id=ASSET_ID, rows_inserted=len(segments))
