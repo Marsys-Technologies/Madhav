@@ -2721,4 +2721,39 @@ A `_build_field_evaluator(conn, chart_id, event_class)` adapter function that:
 2. Dispatch A4: New field rebuild for native's chart (482012f1-...) using DHARA engine (engine='analytic' flag now on main via engine_config.py)
 3. Once S4-ADAPTER PR merges + A4 field completes → run S4 parity gate → post PARITY-GREEN → M5 measurement
 
+---
+
+## R24 — SAMPŪRTI-Δ1 CONDUCTOR (2026-08-13T18:25+05:30)
+
+**Identity:** CONDUCTOR of SAMPŪRTI-Δ1
+
+### S4-ADAPTER implemented directly (PR #1267)
+
+INTERFACE-ADAPTER-GAP is CLOSED. Implemented `_build_field_evaluator(conn, chart_id, event_class)` directly (not via Sonnet agent — recipe was completely known from writer.py):
+
+```python
+envelopes = S4.EnvelopeIndex(S4.load_primitives(conn, chart_id), S4.HORIZON_DAYS)
+clocks = S4.load_clocks(conn, chart_id)
+ladder = S4.load_ladder(conn, chart_id)
+extra_bps = S4.load_kinematics_breakpoints(conn, chart_id)
+_, weights = S4.resolve_weights_pin(conn)
+lifetime, source = S4.load_class_lifetime_count(conn, event_class)
+lifetime = S4.require_baseline(lifetime, event_class)
+promise = S4.load_promise_prior(conn, chart_id, event_class)
+return S4.FieldEvaluator(event_class=event_class, ...)
+```
+
+`_call_dhara()` now uses this adapter when `DATABASE_URL` is set; skips with clear message otherwise. TDD gate: 49/49 pass, 1 skip (expected).
+
+PR #1267 opened from `sampurti/d2-adapter`, queued for auto-merge. CI running.
+
+### NEXT-ACTION
+
+1. Monitor PR #1267 CI → merge
+2. Dispatch A4: field rebuild for native's chart (482012f1-...) with DHARA engine
+   - engine_config.py on main now has `engine='analytic'` dual flag
+   - Need to dispatch a new Cloud Run field rebuild job for the native's chart
+3. Once A4 completes → run `DATABASE_URL=... PARITY_DB_TEST=1 pytest test_dhara_parity.py`
+4. Post PARITY-GREEN → M5 measurement
+
 CONDUCTOR-HEARTBEAT: 2026-08-13T18:00+05:30 [R20 — Δ2 V1+V2 MERGED; S3 PRs entering merge queue (#1262 sweep IN QUEUE at 11:59 UTC); advisory lock CLEARED; DB free; monitoring S4 readiness]
