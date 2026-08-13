@@ -798,4 +798,58 @@ CONDUCTOR-HEARTBEAT: 2026-08-13T17:44Z pid=23623 host=Montys-MacBook-Pro.local s
 2. Check Cloud Run for A6 execution (running → close + relaunch; completed → check for FIELD-INTEGRATED)
 3. On FIELD-INTEGRATED: execute R2 MCP proof (gochara_forecast_get marriage in roots, resolution='era') + R4 G-P4 (kala_ahead_get field_snapshot_id=kfs_...) → SESSION-DONE-Δ3
 
+---
+
+## SESSION-12 — 2026-08-13T17:50Z (23:20 IST)
+
+CONDUCTOR-HEARTBEAT: 2026-08-13T17:50Z pid=28642 host=Montys-MacBook-Pro.local session=Δ3-12
+
+### STEP-0 (session-12)
+
+**Liveness:** CLEAN — stored PID=26598 (supervisor bash `/bin/bash /Users/Dev/shad_overnight/run_dh_d3.sh`, alive at 49s elapsed, NOT a peer conductor). `pgrep -f "CONDUCTOR of SAMPŪRTI-Δ3"` = NONE (excluding stored PID). Sole conductor confirmed. PID 28642 written to dh-d3-logs/current_conductor.pid.
+
+**Hygiene:** CLEAN — Cloud Run: no RUNNING executions (latest: tkp7b cancelled 16:16Z UTC). No local orchestrator process. No DB scope for Δ3.
+
+**Coordination (fetched 17:50Z):** Last entry = session-11 close (36b4efe99, 17:44Z). No new entries since. FIELD-INTEGRATED: NOT POSTED.
+
+**Reconcile (FM-09):**
+- Δ1: Latest commit on sampurti/integration = R35 (2ed1d9a3a, 17:45Z). R36 NOT YET STARTED (no new commit). Δ1 supervisor relaunching R36 now.
+- A6: NOT DISPATCHED. No new Cloud Run execution after tkp7b (cancelled 16:16Z UTC).
+- **NEW FINDING:** PR #1269 (S7459 idle_in_transaction timeout fix) — ALL CI CHECKS GREEN as of 17:49Z; state=OPEN; mergeable=MERGEABLE. Was still CI-running when R35 closed. R36 can merge immediately.
+- DB: ka_kshetra (482012f1) = incomplete, 2,063,838 rows, 74/534 substeps (unchanged from R35).
+- All Δ3 lane states unchanged: R1 ✓ · R2 ✓ (proof pending corpus refresh) · R3 ✓ · R4 BLOCKED.
+
+| Check | Result |
+|---|---|
+| Liveness | CLEAN — sole Δ3 conductor; PID 28642; supervisor PID 26598 (not peer) |
+| Cloud Run | No RUNNING executions; last: tkp7b cancelled 16:16Z UTC; A6 not dispatched |
+| Coordination | Last: 36b4efe99 (session-11 close, 17:44Z); no FIELD-INTEGRATED posted |
+| Δ1 state | R35 latest (17:45Z); R36 not yet started; PR #1269 all-green + mergeable |
+| FIELD-INTEGRATED | NOT POSTED — gated on Δ1 R36: merge #1269 → deploy → dispatch A6 → ka_kshetra=lit → S4 parity → re-field |
+
+**Δ3 LANE STATUS (session 12, unchanged):**
+| Lane | Status | Notes |
+|------|--------|-------|
+| R1 | MERGED + MCP PROOF PASS ✓ | 27 classes, 270 substeps, ka_gochara_v3_century_materialize ✓ |
+| R2 | DEPLOYED; MCP PROOF PENDING | Fix in place; awaiting corpus refresh (FIELD-INTEGRATED) |
+| R3 | DONE ✓ | sampurti/vyakhya corrections committed (66e35c216) |
+| R4 | READY-ON-SIGNAL | Awaiting FIELD-INTEGRATED |
+
+**Independent Δ3 work:** NONE. All remaining scope gates on FIELD-INTEGRATED.
+
+Per LONG-RUN AUTONOMY RULES (BLOCKED ≠ STOP): No independent Δ3 work exists. Ending session cleanly.
+
+**WHAT ONE RELAUNCH FINISHES:** When FIELD-INTEGRATED posts:
+1. `gochara_forecast_get(chart_id=482012f1..., domain=marriage, date_range=2020-2030)` → verify marriage row 2024-02-05→2034-01-30 in roots (resolution='era'), NOT legacy_flat
+2. `kala_ahead_get(chart_id=482012f1...)` → verify field_snapshot_id=kfs_... (not field_not_yet_built)
+3. Record both proofs in γ ledger (sampurti/vyakhya append-only)
+4. Post SESSION-DONE-Δ3 to coordination
+
+**NEXT-ACTION (session-13):**
+1. Poll coordination for FIELD-INTEGRATED (Δ1 R36 path: merge #1269 → deploy → dispatch A6 → ~4+ hour build → ka_kshetra=lit → S4 parity → re-field)
+2. Check Cloud Run for A6 execution name (record if found)
+3. On FIELD-INTEGRATED: R2 MCP proof + R4 G-P4 → SESSION-DONE-Δ3
+
+RUN-TERMINAL: SESSION-Δ3-PENDING-12 (FIELD-INTEGRATED outstanding; A6 not yet dispatched; PR #1269 all-green; Δ1 R36 imminent; supervisor relaunches)
+
 RUN-TERMINAL: SESSION-Δ3-PENDING-11 (FIELD-INTEGRATED outstanding; A6 not yet dispatched — Δ1 R36 will dispatch after reading SM-R-3; supervisor relaunches when marker posts or A6 confirmed running)
