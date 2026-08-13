@@ -139,3 +139,28 @@ HEARTBEAT: 2026-08-13T12:27Z
 
 **R2 SIDECAR DEPLOYED:** 2026-08-13T11:58:06Z (run 31697237127 completed). ka_gochara_v3_century_materialize.py v3.2 with resolution='era' is live. Pipeline Job Image also rebuilt.
 **R2 MCP PROOF:** pending FIELD-INTEGRATED corpus refresh. Existing A3 build `szwkw` (started 06:46Z, completed before 11:58Z) has `resolution=NULL` in DB. Next build with fixed image will stamp `resolution='era'`. Proof: marriage rows in `nested_hierarchy.roots`, not `legacy_flat`..
+
+### 2026-08-13 ~18:30 IST — Polling FIELD-INTEGRATED; S3-L4 deploy in progress
+
+HEARTBEAT: 2026-08-13T13:00Z
+
+**Status snapshot (context resumed):**
+- R1: MERGED + MCP PROOF PASS ✓
+- R2: DEPLOYED (sidecar 11:58Z); MCP PROOF pending corpus refresh
+- R3: DONE ✓
+- R4: BLOCKED — FIELD-INTEGRATED not yet posted
+
+**S3-L4 deploy (sha 92479d089d, run 31701548375):**
+- Build & Deploy Pipeline Job Image: in_progress (7/12 steps)
+- Build & Deploy Web: in_progress (10/20 steps)
+- Build & Deploy Sidecar: COMPLETE ✓
+
+**V3 parity battery (sha 8585b30754):**
+- Ganga Quality Gate: in_progress (run 31701592107)
+- No Deploy triggered (test-only changes)
+
+**Δ1 R23 decision:** Proceed to S5 (A4 field rebuild) in parallel with S4-ADAPTER. A4 dispatch awaiting S3-L4 Pipeline Job Image completion (DHARA engine must be in the image before field rebuild can use SM_DHARA_ENGINE=1).
+
+**Coordination:** FIELD-INTEGRATED NOT YET POSTED. Δ2 SESSION-DONE posted at 12:38Z. S4 unblocked per Δ2 PARITY-GREEN.
+
+**NEXT-ACTION:** Poll FIELD-INTEGRATED every ≤15 min. On post: R2 MCP proof + R4 G-P4 → SESSION-DONE-Δ3.
