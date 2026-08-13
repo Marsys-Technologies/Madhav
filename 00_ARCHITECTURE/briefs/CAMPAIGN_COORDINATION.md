@@ -1372,3 +1372,14 @@ session), since redispatching without it likely just recurs a 4th time.
 
 **Δ3 completion: R1 ✓ · R2 ✓ (proof pending FIELD-INTEGRATED) · R3 ✓ · R4 BLOCKED**
 **No independent Δ3 work; ending cleanly per LONG-RUN AUTONOMY RULES.**
+
+### Δ3 17:22Z session-8 — FIELD-INTEGRATED pending; state unchanged; clean close
+
+**Δ3 state (22:52 IST / 17:22Z):**
+- State is UNCHANGED since session-7 (17:13Z). No new Cloud Run executions; no new coordination commits.
+- SMR-2 HOLD-A6 still in effect. Native has not signalled A6 resume.
+- FIELD-INTEGRATED: NOT POSTED — gated on native signal → A6 → ka_kshetra=lit → S4 parity → re-field
+- All Δ3 scope exhausted pending FIELD-INTEGRATED; ending cleanly per LONG-RUN AUTONOMY RULES.
+
+**Δ3 completion: R1 ✓ · R2 ✓ (proof pending FIELD-INTEGRATED) · R3 ✓ · R4 BLOCKED**
+**No independent Δ3 work; ending cleanly per LONG-RUN AUTONOMY RULES.**
