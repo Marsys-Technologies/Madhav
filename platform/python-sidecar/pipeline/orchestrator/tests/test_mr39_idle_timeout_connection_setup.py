@@ -95,9 +95,9 @@ class _FakeConn:
 
 def test_connect_issues_idle_timeout_set_statement(monkeypatch):
     """GATE (a): db.connect() must issue an explicit
-    `SET idle_in_transaction_session_timeout = 0` after connecting — proven
-    behaviorally (not just by reading the source), via a fake psycopg.connect
-    that records every cursor.execute() call."""
+    `SET idle_in_transaction_session_timeout = 1800000` (30 min) after
+    connecting — proven behaviorally (not just by reading the source), via a
+    fake psycopg.connect that records every cursor.execute() call."""
     fake_conn = _FakeConn()
     monkeypatch.setattr(
         orchestrator_db.psycopg, "connect",
@@ -119,11 +119,11 @@ def test_connect_issues_idle_timeout_set_statement(monkeypatch):
         "server-side idle-in-transaction kill during long substep compute."
     )
     assert any(
-        re.search(r"idle_in_transaction_session_timeout\s*=\s*0", sql)
+        re.search(r"idle_in_transaction_session_timeout\s*=\s*1800000", sql)
         for sql in set_statements
     ), (
-        f"MR-39 GATE (a) FAILED: the SET statement(s) found do not disable "
-        f"the timeout (expect '= 0'). Found: {set_statements!r}"
+        f"MR-39 GATE (a) FAILED: the SET statement(s) found do not apply the "
+        f"required 30-minute bound (expect '= 1800000'). Found: {set_statements!r}"
     )
     assert fake_conn.committed, (
         "db.connect() must commit the session-setup SET statements so they "
@@ -133,7 +133,7 @@ def test_connect_issues_idle_timeout_set_statement(monkeypatch):
 
 def test_connect_startup_option_also_present(monkeypatch):
     """Defense-in-depth: the libpq startup `options` kwarg PASSED TO
-    psycopg.connect() must also request idle_in_transaction_session_timeout=0,
+    psycopg.connect() must also request idle_in_transaction_session_timeout=1800000,
     in case a pooler forwards startup options but strips a later SET
     (belt-and-suspenders, not either/or).
 
@@ -167,9 +167,9 @@ def test_connect_startup_option_also_present(monkeypatch):
         "psycopg.connect() at all — the libpq startup-option defense-in-depth "
         f"layer is missing. kwargs passed: {captured_kwargs!r}"
     )
-    assert "-c idle_in_transaction_session_timeout=0" in captured_kwargs["options"], (
+    assert "-c idle_in_transaction_session_timeout=1800000" in captured_kwargs["options"], (
         f"MR-39 GATE FAILED: the 'options' kwarg passed to psycopg.connect() "
-        f"does not contain '-c idle_in_transaction_session_timeout=0'. "
+        f"does not contain '-c idle_in_transaction_session_timeout=1800000'. "
         f"Got: {captured_kwargs['options']!r}"
     )
 
@@ -229,10 +229,10 @@ def test_prod_runners_set_idle_timeout_directly(script):
         source = fh.read()
 
     assert re.search(
-        r"SET idle_in_transaction_session_timeout\s*=\s*0", source
+        r"SET idle_in_transaction_session_timeout\s*=\s*1800000", source
     ), (
         f"MR-39 regression: {script} does not issue "
-        f"'SET idle_in_transaction_session_timeout = 0' after connecting."
+        f"'SET idle_in_transaction_session_timeout = 1800000' after connecting."
     )
 
 
@@ -279,11 +279,11 @@ def test_idle_timeout_mechanism_live_scaled_demo():
     except Exception:
         pass
 
-    # --- (2) FIXED session (idle_in_transaction_session_timeout=0):
+    # --- (2) FIXED session (idle_in_transaction_session_timeout=1800000, 30 min):
     #         survives an identical idle window with no error. ---
     fixed = psycopg.connect(_DSN, autocommit=False)
     with fixed.cursor() as cur:
-        cur.execute("SET idle_in_transaction_session_timeout = 0")
+        cur.execute("SET idle_in_transaction_session_timeout = 1800000")
     fixed.commit()
     with fixed.cursor() as cur:
         cur.execute("SELECT 1")  # opens a transaction
@@ -294,7 +294,7 @@ def test_idle_timeout_mechanism_live_scaled_demo():
     fixed.commit()
     assert row[0] == 1, (
         "MR-39 GATE (b) FAILED: a connection with "
-        "idle_in_transaction_session_timeout=0 was killed by an idle window "
+        "idle_in_transaction_session_timeout=1800000 was killed by an idle window "
         "that a genuinely fixed session should survive."
     )
     fixed.close()
