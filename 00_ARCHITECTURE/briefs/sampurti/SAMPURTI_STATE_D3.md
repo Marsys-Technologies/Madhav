@@ -198,3 +198,25 @@ Next Δ3 session resumes from this state:
 ⚠️ Cloud Run Job memory resets to 4Gi/2cpu on each Pipeline Job Image CI deploy. Before any new field rebuild: `gcloud run jobs describe brahma-build-pipeline-job --region asia-south1` and reapply if needed: `gcloud run jobs update brahma-build-pipeline-job --region asia-south1 --memory 16Gi --cpu 8`
 
 **NEXT-ACTION (next session):** Poll FIELD-INTEGRATED. On post: R2 MCP proof + R4 G-P4 → SESSION-DONE-Δ3.
+
+### 2026-08-13 21:42 IST — Δ3 attempt 1 session-resume (post-recovery relaunch)
+
+CONDUCTOR-HEARTBEAT: 2026-08-13T16:12:56Z pid=45719(supervisor) host=Montys-MacBook-Pro.local session=Δ3
+
+[STEP-0 OPEN: liveness CLEAN (stored PID 45719=supervisor bash running run_dh_d3.sh, no PEERS matching "CONDUCTOR of SAMPŪRTI-Δ3", sole conductor confirmed). Hygiene: mv7c5 FAILED (DB deadlock, stage5 — per S7453 recovery), no RUNNING Cloud Run execution (runningCount=0 across all 5 recent executions). No DB scope for Δ3. Coordination fetched. Reconcile: FIELD-INTEGRATED NOT POSTED. Δ1 fresh conductor PID 45293 running (recovery dispatched). R1+R2+R3 all complete per ledger. R4 blocked on FIELD-INTEGRATED.]
+
+**Session context (post-recovery):**
+- A4 build mv7c5 FAILED: DB deadlock at stage5 (confirmed by S7453). State: failed→stopped. Database advisory locks cleared (count=0 per S7453 preflight). No orphaned connections.
+- R28 Δ1 conductor (PID 45293): fresh launch post-recovery. Will detect A4 stopped at substep 74, redispatch A4 from checkpoint.
+- FIELD-INTEGRATED: NOT YET POSTED (gated on A4 completion + re-field)
+- My scope unchanged: poll FIELD-INTEGRATED → R2 MCP proof + R4 G-P4 → SESSION-DONE-Δ3
+
+**Current lane status:**
+| Lane | Status | Notes |
+|------|--------|-------|
+| R1 | MERGED + MCP PROOF PASS ✓ | No action needed |
+| R2 | DEPLOYED; MCP PROOF PENDING | Gated on FIELD-INTEGRATED corpus refresh |
+| R3 | DONE ✓ | No action needed |
+| R4 | BLOCKED | FIELD-INTEGRATED not posted |
+
+**NEXT-ACTION:** Poll FIELD-INTEGRATED every ≤15 min. On post: R2 MCP proof + R4 G-P4 → SESSION-DONE-Δ3.
