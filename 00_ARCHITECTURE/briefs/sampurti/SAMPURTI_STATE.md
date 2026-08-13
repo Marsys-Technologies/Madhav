@@ -2572,3 +2572,5 @@ Review each PR → merge to sampurti/integration → post INTEGRATION-READY when
 Then await S4 (Δ2 FIXTURES-READY + PARITY-GREEN markers before proceeding to S4 parity gate).
 
 CONDUCTOR-HEARTBEAT: 2026-08-13T17:37+05:30 [R19 — S2 COMPLETE (7ee9eef4a, 14 findings, 10 amendments); DHARA-SPEC-FROZEN (87e8a1ffd); ALL 4 S3 LANES DISPATCHED (L1-sweep/L2-null/L3-pinmat dispatched R18; L4-termat dispatched R19); monitoring S3 PRs; exec szwkw zombie/advisory lock passive watch]
+
+CONDUCTOR-HEARTBEAT: 2026-08-13T17:52+05:30 [R19 UPDATE — advisory lock CLEARED (pg_locks advisory = 0 rows; zombie exec-szwkw resolved naturally); A3 sampled-engine restart moot per n1 DHĀRĀ-first (S5 DHARA rebuild supersedes); ALL 4 S3 PRs in merge queue (#1262 sweep, #1263 null, #1264 pinmat, #1266 termat); Δ2 PR #1265 (parity battery E1-E5) appeared; Δ2 V2 PR #1260 MERGED 11:50 UTC; monitoring CI and merge progress]
