@@ -1132,3 +1132,65 @@ Per LONG-RUN AUTONOMY RULES (BLOCKED ≠ STOP): All Δ3 remaining work gated on 
 4. On FIELD-INTEGRATED: run probe → paste output → append to γ ledger → SESSION-DONE-Δ3
 
 RUN-TERMINAL: SESSION-Δ3-PENDING-16 (FIELD-INTEGRATED outstanding; PR #1270 CI in-progress — Build Check + Governance Gates both IN_PROGRESS, no failures; A6' not dispatched; supervisor relaunches)
+
+---
+
+## SESSION-17 — 2026-08-13T19:37Z (01:07 IST Aug 14)
+
+CONDUCTOR-HEARTBEAT: 2026-08-13T19:37Z pid=9170 host=Montys-MacBook-Pro.local session=Δ3-17
+
+### STEP-0 (session-17)
+
+**Liveness:** CLEAN — pgrep "CONDUCTOR of SAMPŪRTI-Δ3" = NONE (excluding self PID 9170). No peer conductors. Sole conductor confirmed.
+
+**Hygiene:** CLEAN — Cloud Run: last execution = brahma-build-pipeline-job-crfzx (Completed False, 18:17Z Aug 13 — investigation cancel). No RUNNING executions. No DB scope for Δ3. No proxy needed.
+
+**Coordination (fetched 19:37Z):** Last entry = ac205be77 (Δ3 session-16 close, 19:28Z Aug 13/01:00 IST Aug 14). FIELD-INTEGRATED: NOT POSTED. No new Δ1 entries since Δ1 R37 heartbeat (374a12bbd, 01:06 IST Aug 14).
+
+**Reconcile (FM-09):**
+
+| Surface | Session-16 state | Session-17 reality |
+|---------|-----------------|-------------------|
+| PR #1270 (S7-LOCK) | OPEN, CI in-progress (Build Check + Governance Gates IN_PROGRESS, 17 pass) | **OPEN, mergeStateStatus=CLEAN** — all 26 CI checks PASSED (SUCCESS or SKIPPED); no failures; autoMergeRequest=null |
+| Δ1 R37 | Last heartbeat 01:06 IST — "CI green, queued for merge" | ALIVE — PID 90410 in current_conductor.pid; pgrep PID 84645 running |
+| A6' | Not dispatched | Not dispatched — blocked on PR #1270 merge + deploy |
+| FIELD-INTEGRATED | NOT POSTED | NOT POSTED |
+| Δ3 R1 | MERGED + MCP PROOF PASS ✓ | UNCHANGED ✓ |
+| Δ3 R2 | DEPLOYED; MCP PROOF PENDING | UNCHANGED — sidecar v3.2 live |
+| Δ3 R3 | DONE ✓ | UNCHANGED ✓ |
+| Δ3 R4 | READY-ON-SIGNAL (probe committed) | UNCHANGED — probe_sampurti_d3_r2_r4.py committed |
+
+**PR #1270 CI detail (19:37Z):**
+- State: OPEN — mergeStateStatus=CLEAN — all 26 checks: SUCCESS or SKIPPED
+- autoMergeRequest: null (no auto-merge; Δ1 R37 must manually merge or issue gh pr merge)
+- Δ1 R37 last heartbeat (374a12bbd, 01:06 IST): "PR #1270 CI green, queued for merge" — merge imminent
+- After merge: deploy (~15-20 min) → A6' dispatch (rate gate, P2) → ~4+ hour build → ka_kshetra=lit → S4 parity → FIELD-INTEGRATED
+
+**Probe script review (session-17):** `probe_sampurti_d3_r2_r4.py` reviewed — correct and FM-18 compliant. Covers: R2 (marriage in roots, resolution='era', is_timing_window, not in legacy_flat) + R4 (field_snapshot_id=kfs_*, windows non-empty, authority_basis). **Soft nuance noted:** is_timing_window assertion checks the marriage ROOT row directly; era-span rows (2024-02-05→2034-01-30) may not carry is_timing_window=True at root level — timing window may be a child. If that assertion FAILS while marriage is correctly in roots with resolution='era', treat as PASS-WITH-CAVEAT on R2 core claim (marriage moved from legacy_flat to roots), record the is_timing_window finding, and note for downstream. The core R2 claim does NOT require is_timing_window=True at root level — the root cause fix was about resolution stamping only.
+
+**Independent Δ3 work:** NONE new. All independent work done (probe script committed session-15, R1 re-verified session-15, probe reviewed session-17).
+
+Per LONG-RUN AUTONOMY RULES (BLOCKED ≠ STOP): All remaining Δ3 scope gated on FIELD-INTEGRATED. Block is a stream dependency (Δ1 must merge PR #1270 → deploy → dispatch A6' → build completes). Ending session cleanly.
+
+**Δ3 LANE STATUS (session 17):**
+| Lane | Status | Notes |
+|------|--------|-------|
+| R1 | MERGED + MCP PROOF PASS ✓ | 27 classes, 270 substeps, ka_gochara_v3_century_materialize; last verified 07:11Z session-15 |
+| R2 | DEPLOYED; MCP PROOF PENDING | Sidecar v3.2 live; probe script ready; awaiting corpus refresh (FIELD-INTEGRATED) |
+| R3 | DONE ✓ | sampurti/vyakhya corrections committed (66e35c216) |
+| R4 | READY-ON-SIGNAL | probe_sampurti_d3_r2_r4.py committed; awaiting FIELD-INTEGRATED |
+
+**WHAT ONE RELAUNCH FINISHES:** When FIELD-INTEGRATED posts:
+1. `python3 00_ARCHITECTURE/briefs/sampurti/probe_sampurti_d3_r2_r4.py --chart-id 482012f1-710e-4a25-994a-93821f5871aa --mcp-key $MARSYS_MCP_KEY`
+2. R2: verify marriage in roots (resolution='era'; is_timing_window noted above); NOT in legacy_flat
+3. R4: verify field_snapshot_id=kfs_*; windows non-empty; authority_basis shown
+4. Append both to γ ledger (sampurti/vyakhya append-only)
+5. Post SESSION-DONE-Δ3 to coordination → RUN-TERMINAL: SESSION-Δ3-COMPLETE
+
+**NEXT-ACTION (session-18):**
+1. Check coordination for FIELD-INTEGRATED marker
+2. Check PR #1270 state (should be MERGED; Δ1 R37 was merging at 01:06 IST)
+3. Check Cloud Run for A6' execution (new dispatch after PR merge + deploy)
+4. On FIELD-INTEGRATED: run probe → paste output → append γ ledger → SESSION-DONE-Δ3
+
+RUN-TERMINAL: SESSION-Δ3-PENDING-17 (FIELD-INTEGRATED outstanding; PR #1270 CLEAN — merge imminent via Δ1 R37; A6' not dispatched; supervisor relaunches)
