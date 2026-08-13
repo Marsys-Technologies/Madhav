@@ -408,7 +408,12 @@ def test_run_substep_point_canonical_envelope_rows_carry_point_class_envelope(mo
     v2_rows = _v2_inserts(conn)
     assert len(v2_rows) == 2
     for row in v2_rows + _prod_inserts(conn):
-        assert row["resolution"] is None
+        # R2 SEV-2 fix: point-canonical flat rows now carry resolution='era'
+        # (was NULL pre-R2) so buildNestedHierarchy places them in roots.
+        assert row["resolution"] == "era", (
+            f"R2 SEV-2: point-canonical flat row must carry resolution='era', "
+            f"got {row['resolution']!r}"
+        )
         assert row["temporal_shape"] == "interval"
         assert row["shape_conformance"] == SHAPE_CONFORMANCE_POINT_CLASS_ENVELOPE, (
             f"R8.12 flat-envelope row for a point-canonical class must carry "

@@ -195,10 +195,11 @@ def _patch_swe_and_context(monkeypatch):
 # ===========================================================================
 
 
-def test_engine_version_is_v3_1():
-    assert ENGINE_VERSION == "v3.1", (
-        f"ENGINE_VERSION must be bumped to 'v3.1' (MR-12/Codex C2 writer output "
-        f"shape change), got {ENGINE_VERSION!r}"
+def test_engine_version_is_v3_2():
+    assert ENGINE_VERSION == "v3.2", (
+        f"ENGINE_VERSION must be 'v3.2' (MR-12 bumped v3.0->v3.1 for hierarchy "
+        f"shape change; R2 SEV-2 bumped v3.1->v3.2 for point-canonical "
+        f"resolution='era' stamp fix / FM-17), got {ENGINE_VERSION!r}"
     )
 
 

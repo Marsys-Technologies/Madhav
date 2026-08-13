@@ -378,7 +378,7 @@ GENERATION_PROD = "3.0"
 # silently skipped as "unchanged" by the fingerprint check in `run_substep`.
 # Per Codex C2 convention: exactly this string, so concurrent lanes making
 # the identical bump auto-merge cleanly.
-ENGINE_VERSION = "v3.1"
+ENGINE_VERSION = "v3.2"
 
 # DOCUMENTATION-ONLY as of PARIṢKĀRA MR-16 — the pre-MR-16 hardcoded 6-class
 # scope (3 legacy + 3 health/adverse; see event_class_scope.SWEEP_EVENT_CLASSES
@@ -1757,7 +1757,9 @@ class GocharaV3CenturyMaterializeWriter(WriterBase):
         #                     (score_chain_milestones, MR-12).
         #       'point' (or lookup failure, conservative default)
         #                  -> flat find_threshold_crossings production,
-        #                     resolution=NULL (pre-MR-11(b) shape, unchanged).
+        #                     resolution='era' (R2 SEV-2: was NULL pre-R2,
+        #                     causing buildNestedHierarchy to demote rows to
+        #                     legacy_flat; now 'era' so rows land in roots).
         # class_shape drives the branch below; _fetch_event_class_temporal_
         # shape is the R8.12-named entry point (kept as a thin wrapper over
         # _fetch_class_shape -- see its own docstring) so existing shape-gate
@@ -1978,11 +1980,17 @@ class GocharaV3CenturyMaterializeWriter(WriterBase):
             day_count = len(insert_specs)
         else:
             # R8.12 shape gate: point-canonical class — NO hierarchy tiers.
-            # Flat production identical in shape to the pre-MR-11(b) writer:
-            # one row per detected interval, resolution=NULL. The peak here
-            # is interval_solver's own 50-sample coarse dense scan
-            # (IntervalBoundary.peak_lambda) — LAMBDA_V3_COARSE_ARGMAX, never
-            # the day-refined ARGMAX basis (R8.8).
+            # Flat production: one row per detected interval,
+            # resolution='era' (R2 SEV-2 fix: was NULL pre-R2, which caused
+            # buildNestedHierarchy to route these rows to legacy_flat instead
+            # of roots). The peak here is interval_solver's own 50-sample
+            # coarse dense scan (IntervalBoundary.peak_lambda) —
+            # LAMBDA_V3_COARSE_ARGMAX, never the day-refined ARGMAX basis
+            # (R8.8). deriveResolutionDisclosure returns is_timing_window=true
+            # for temporal_shape='point' regardless of resolution value (point-
+            # clause short-circuits before the resolution check), so stamping
+            # 'era' here preserves the timing claim while promoting these rows
+            # from legacy_flat into roots in buildNestedHierarchy.
             flat_intervals = find_threshold_crossings(
                 swe=swe, context=context,
                 start_jd=decade.start_jd, end_jd=decade.end_jd,
@@ -1990,8 +1998,13 @@ class GocharaV3CenturyMaterializeWriter(WriterBase):
             )
             era_count = len(flat_intervals)
             for interval in flat_intervals:
+                # Stamp resolution='era' for decade-envelope point rows so
+                # buildNestedHierarchy places them in roots (not legacy_flat).
+                # deriveResolutionDisclosure returns is_timing_window=true for
+                # temporal_shape='point' regardless of resolution value (point-
+                # clause short-circuits), so timing claim is preserved.
                 insert_specs.append((
-                    interval, None, peak_basis_vocab.LAMBDA_V3_COARSE_ARGMAX,
+                    interval, 'era', peak_basis_vocab.LAMBDA_V3_COARSE_ARGMAX,
                     None, None,
                 ))
 
