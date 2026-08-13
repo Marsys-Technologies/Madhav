@@ -1299,12 +1299,15 @@ def test_generation_prod_constant():
 # ===========================================================================
 
 
-def test_engine_version_is_v3_1():
-    """Codex C2: this lane changes writer OUTPUT SHAPE (hierarchy rows
-    replace flat interval rows) -> ENGINE_VERSION must be bumped to the
-    exact string 'v3.1' (concurrent PARIṢKĀRA lanes make the identical
-    edit so git auto-merges)."""
-    assert ENGINE_VERSION == "v3.1"
+def test_engine_version_is_v3_2():
+    """Codex C2 / FM-17 (R2 SEV-2): this lane changes writer OUTPUT SHAPE
+    (point-canonical flat rows now carry resolution='era' instead of NULL)
+    -> ENGINE_VERSION must be bumped to the exact string 'v3.2' so every
+    stored fingerprint invalidates and re-materialises under the new shape
+    rather than being silently skipped as 'unchanged'.
+    (Was v3.1 for the MR-11(b) / MR-42 hierarchy + suppression-state shape
+    change; bumped again to v3.2 for the R2 SEV-2 resolution stamp fix.)"""
+    assert ENGINE_VERSION == "v3.2"
 
 
 def _returning_id_responder(
@@ -1666,11 +1669,14 @@ def test_era_rows_carry_coarse_label_month_day_carry_argmax(monkeypatch):
     )
 
 
-def test_shape_gated_flat_rows_carry_coarse_label_and_null_resolution(monkeypatch):
+def test_shape_gated_flat_rows_carry_coarse_label_and_era_resolution(monkeypatch):
     """R8.12 shape-gated flat production (point-canonical classes): rows
-    carry resolution=NULL and peak_basis=LAMBDA_V3_COARSE_ARGMAX (the
-    IntervalBoundary peak is interval_solver's own 50-sample coarse scan,
-    never day-refined)."""
+    carry resolution='era' (R2 SEV-2 fix: was NULL pre-R2, now 'era' so
+    buildNestedHierarchy places them in roots not legacy_flat) and
+    peak_basis=LAMBDA_V3_COARSE_ARGMAX (the IntervalBoundary peak is
+    interval_solver's own 50-sample coarse scan, never day-refined).
+    parent_window_id remains None (decade-envelope rows have no coarser
+    parent)."""
     from services.gochara_v3.interval_solver import IntervalBoundary
 
     targets = ["Venus"]
@@ -1707,7 +1713,10 @@ def test_shape_gated_flat_rows_carry_coarse_label_and_null_resolution(monkeypatc
 
     v2_rows = _v2_inserts(conn)
     assert len(v2_rows) == 1
-    assert v2_rows[0]["resolution"] is None
+    assert v2_rows[0]["resolution"] == "era", (
+        f"R2 SEV-2: point-canonical flat row must carry resolution='era', "
+        f"got {v2_rows[0]['resolution']!r}"
+    )
     assert v2_rows[0]["parent_window_id"] is None
     assert v2_rows[0]["peak_basis"] == mod.peak_basis_vocab.LAMBDA_V3_COARSE_ARGMAX
 
@@ -1728,13 +1737,15 @@ def test_shape_gated_flat_rows_carry_coarse_label_and_null_resolution(monkeypatc
 # for a computed row.
 
 
-def test_engine_version_bumped_to_v3_1():
-    """MR-42 (Codex C2 convention): ENGINE_VERSION bumped v3.0 -> v3.1
-    because this writer's OUTPUT SHAPE changed (suppression_state is no
-    longer an unconditional {}) -- every stored fingerprint must invalidate
-    under the new engine version rather than being silently skipped as
-    'unchanged' by the fingerprint check."""
-    assert ENGINE_VERSION == "v3.1"
+def test_engine_version_bumped_to_v3_2():
+    """R2 SEV-2 (Codex C2 / FM-17 convention): ENGINE_VERSION bumped
+    v3.1 -> v3.2 because this writer's OUTPUT SHAPE changed (point-canonical
+    flat rows now carry resolution='era' instead of NULL) -- every stored
+    fingerprint must invalidate under the new engine version rather than being
+    silently skipped as 'unchanged' by the fingerprint check.
+    (v3.1 was MR-42's bump for the suppression_state structured shape; v3.2
+    is R2 SEV-2's bump for the resolution stamp fix.)"""
+    assert ENGINE_VERSION == "v3.2"
 
 
 def test_build_suppression_state_never_bare_empty_dict_for_a_computed_row():
@@ -1889,8 +1900,11 @@ def test_run_substep_inserted_rows_carry_truthful_suppression_state(monkeypatch)
 def test_no_hierarchy_for_point_canonical_classes(monkeypatch):
     """R8.12 detector: running the writer for a point-canonical class
     (marriage -- confirmed 'point' in live brahma_event_ontology schema)
-    must produce ZERO rows with a non-null resolution column, regardless of
-    how many find_threshold_crossings intervals are found. Removing the
+    must produce ZERO rows with a month or day resolution tier. The R8.12
+    else branch stamps resolution='era' (R2 SEV-2 fix, previously NULL)
+    but must NEVER produce month/day hierarchy rows — those require
+    temporal_shape='interval' and build_resolution_hierarchy, which is
+    deliberately bypassed for point-canonical classes. Removing the
     shape gate (routing marriage through build_resolution_hierarchy like an
     interval-shaped class) would turn this RED."""
     from services.gochara_v3.interval_solver import IntervalBoundary
@@ -1935,10 +1949,18 @@ def test_no_hierarchy_for_point_canonical_classes(monkeypatch):
     v2_rows = _v2_inserts(conn)
     assert len(v2_rows) == 2
     for row in v2_rows:
-        assert row["resolution"] is None, (
-            f"R8.12 VIOLATION: point-canonical class produced a row with "
-            f"resolution={row['resolution']!r} -- hierarchy tiers must never "
-            f"be produced for a point-canonical class."
+        # R2 SEV-2: point rows carry resolution='era' (not NULL) so
+        # buildNestedHierarchy places them in roots, not legacy_flat.
+        assert row["resolution"] == "era", (
+            f"R2 SEV-2: point-canonical flat row must carry resolution='era', "
+            f"got {row['resolution']!r}"
+        )
+        # Still no month/day hierarchy — those require temporal_shape='interval'
+        # and build_resolution_hierarchy, deliberately bypassed here.
+        assert row["resolution"] not in ("month", "day"), (
+            f"R8.12 VIOLATION: point-canonical class produced a sub-era "
+            f"hierarchy row (resolution={row['resolution']!r}) -- only era-level "
+            f"envelope rows are produced for point-canonical classes."
         )
 
 
@@ -2067,4 +2089,91 @@ def test_writer_notes_report_zero_peaks_era_window_too_short(monkeypatch):
     assert ZERO_PEAKS_ERA_WINDOW_TOO_SHORT != ZERO_PEAKS_NO_CANDIDATE_ABOVE_P90, (
         "fixture sanity: the two zero_peaks_reason constants exercised by "
         "these two tests must actually be distinct strings"
+    )
+
+
+# ===========================================================================
+# R2 [SEV-2] — RESOLUTION UNSTAMPED on point-canonical flat rows
+# ===========================================================================
+#
+# ROOT CAUSE: the else branch (R8.12 shape gate) appended flat intervals with
+# resolution=None -> DB NULL.  buildNestedHierarchy (γ C2) puts resolution=null
+# rows in legacy_flat, not roots -> marriage serves roots=0 even though
+# is_timing_window=true for point-shaped rows.
+#
+# FIX: stamp resolution='era' for decade-envelope point rows.
+# deriveResolutionDisclosure returns is_timing_window=true for
+# temporal_shape='point' regardless of resolution value (point-clause
+# short-circuits), so the timing claim is preserved.  Rows now appear in
+# roots instead of legacy_flat.
+#
+# TDD: this test is RED before the fix (resolution is None), GREEN after
+# (resolution == 'era').
+
+
+def test_r2_sev2_point_canonical_rows_carry_era_resolution(monkeypatch):
+    """R2 [SEV-2] detector: flat rows produced by the R8.12 point-canonical
+    else branch must carry resolution='era', NOT None/NULL.
+
+    buildNestedHierarchy (register_gochara_windows.ts γ C2) routes rows by
+    resolution value:
+      resolution=null  -> legacy_flat  (NOT a root, timing window hidden)
+      resolution='era' -> roots        (top-level, is_timing_window preserved)
+
+    deriveResolutionDisclosure returns is_timing_window=true for
+    temporal_shape='point' regardless of resolution value (point-clause
+    short-circuits before the resolution check), so stamping 'era' here
+    does NOT break the timing claim.
+
+    This test FAILS before the fix (None in else branch tuple) and PASSES
+    after (tuple element changed to 'era').
+    """
+    from services.gochara_v3.interval_solver import IntervalBoundary
+
+    targets = ["Venus"]
+    writer = GocharaV3CenturyMaterializeWriter()
+    conn_dummy = _FakeConn(_responder(targets=targets, discovered_classes=["marriage"]))
+    steps = writer.plan_substeps(_ctx(conn_dummy))
+    step = next(s for s in steps if s.key.startswith("marriage::"))
+    ec, era_key = step.key.split("::", 1)
+
+    fake_boundary = IntervalBoundary(
+        enter_jd=2445736.5 + 10.0,
+        exit_jd=2445736.5 + 20.0,
+        peak_jd=2445736.5 + 15.0,
+        peak_lambda=0.72,
+        era_slice_key=era_key,
+    )
+
+    conn = _FakeConn(_responder(targets=targets, stored_fp=None, discovered_classes=["marriage"]))
+    ctx = _ctx(conn)
+
+    # Force temporal_shape='point' explicitly (matches marriage's live-schema
+    # shape and the R8.12 else branch).
+    monkeypatch.setattr(mod, "_fetch_event_class_temporal_shape", lambda *a, **k: "point")
+    monkeypatch.setattr(mod, "find_threshold_crossings", lambda *a, **k: [fake_boundary])
+    monkeypatch.setattr(
+        mod, "ClassContext",
+        type("FakeClassContext", (), {"fetch": staticmethod(lambda **k: object())}),
+        raising=False,
+    )
+    try:
+        import swisseph  # noqa: F401
+    except ImportError:
+        import types, sys
+        sys.modules["swisseph"] = types.ModuleType("swisseph")
+
+    result = writer.run_substep(ctx, step)
+    assert result.rows_inserted == 1
+
+    v2_rows = _v2_inserts(conn)
+    assert len(v2_rows) == 1, f"Expected 1 v2 INSERT, got {len(v2_rows)}"
+
+    row = v2_rows[0]
+    assert row["resolution"] == "era", (
+        f"R2 SEV-2: point-canonical flat row must carry resolution='era' so "
+        f"buildNestedHierarchy places it in roots (not legacy_flat). "
+        f"Got resolution={row['resolution']!r}. "
+        f"Fix: change None -> 'era' in the else branch insert_specs tuple in "
+        f"ka_gochara_v3_century_materialize.py run_substep."
     )
