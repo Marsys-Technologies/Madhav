@@ -197,23 +197,48 @@ def match_windows(
 # (These are no-ops until dhara_available=True; the skip marker handles that)
 # ---------------------------------------------------------------------------
 
+def _build_field_evaluator(conn, chart_id: str, event_class: str):
+    """Construct a FieldEvaluator from live DB data for dhara_build_segments.
+
+    Mirrors the construction in ka_kshetra/writer.py _class_context() exactly,
+    so DHARA evaluates the same field the sampled engine built its golden
+    fixtures against.  Requires DATABASE_URL to be set (PARITY_DB_TEST=1 path).
+
+    Returns a services.ka_kshetra.stage4_field.FieldEvaluator.
+    """
+    import services.ka_kshetra.stage4_field as S4
+    envelopes = S4.EnvelopeIndex(S4.load_primitives(conn, chart_id), S4.HORIZON_DAYS)
+    clocks = S4.load_clocks(conn, chart_id)
+    ladder = S4.load_ladder(conn, chart_id)
+    extra_bps = S4.load_kinematics_breakpoints(conn, chart_id)
+    _weights_version, weights = S4.resolve_weights_pin(conn)
+    lifetime, source = S4.load_class_lifetime_count(conn, event_class)
+    lifetime = S4.require_baseline(lifetime, event_class)
+    promise = S4.load_promise_prior(conn, chart_id, event_class)
+    return S4.FieldEvaluator(
+        event_class=event_class,
+        lifetime_count=lifetime,
+        promise=promise,
+        clocks=clocks,
+        ladder=ladder,
+        envelopes=envelopes,
+        weights=weights,
+        horizon_days=S4.HORIZON_DAYS,
+        baseline_source=source,
+        extra_breakpoints=extra_bps,
+    )
+
+
 def _call_dhara(fixture: dict) -> list[dict]:
     """Invoke DHARA for the given fixture and return window dicts.
 
-    When DHARA is available, calls dhara_build_segments with the fixture's
-    chart_id / event_class / decade bounds and returns windows in the same
-    format as the golden fixtures:
+    When DHARA is available AND PARITY_DB_TEST=1 AND DATABASE_URL is set,
+    constructs a FieldEvaluator from the live DB and calls dhara_build_segments.
+    Returns windows in the same format as the golden fixtures:
         window_start, window_end, peak_days, expected_count,
         is_suppression_active (bool)
 
-    Integration path: requires PARITY_DB_TEST=1 env var (see below).
-
-    INTERFACE-ADAPTER-GAP: dhara_build_segments(evaluator) requires a
-    pre-built FieldEvaluator. A chart-aware DB adapter
-    dhara_build_segments_chart(chart_id, event_class, t_start, t_end) has not
-    yet been implemented. Until it is, this path skips with a structured
-    marker. Golden-fixture parity against real chart data requires the
-    PARITY_DB_TEST=1 integration path (see TestParityIntegration).
+    Without PARITY_DB_TEST=1+DATABASE_URL: skips (no false parity signal).
     """
     # This function is only reached when dhara_available=True (pytestmark
     # ensures the whole module is skipped otherwise).
@@ -225,24 +250,19 @@ def _call_dhara(fixture: dict) -> list[dict]:
     decade_start = fixture["decade_start_days"]
     decade_end = fixture["decade_end_days"]
 
-    try:
-        segments = dhara_build_segments(
-            chart_id=chart_id,
-            event_class=event_class,
-            t_start=float(decade_start),
-            t_end=float(decade_end),
-        )
-    except TypeError:
-        # dhara_build_segments uses the evaluator= interface only.
-        # A chart-aware adapter is required for golden-fixture comparison.
-        # Skip this test with a clear marker so the verdict agent can
-        # distinguish INTERFACE-ADAPTER-GAP from a tolerance failure.
+    db_url = os.environ.get("DATABASE_URL")
+    if not db_url:
         pytest.skip(
-            "INTERFACE-ADAPTER-GAP: dhara_build_segments requires FieldEvaluator; "
-            f"chart-aware adapter not yet implemented. "
+            "DATABASE_URL not set — cannot construct FieldEvaluator for DHARA. "
             f"Fixture: {chart_id}:{event_class}:{fixture.get('decade_index', '?')}. "
-            "Use PARITY_DB_TEST=1 integration path for golden-fixture comparison."
+            "Set DATABASE_URL=... PARITY_DB_TEST=1 to activate parity comparison."
         )
+
+    import psycopg
+    import psycopg.rows
+    with psycopg.connect(db_url, row_factory=psycopg.rows.dict_row) as conn:
+        evaluator = _build_field_evaluator(conn, chart_id, event_class)
+    segments = dhara_build_segments(evaluator)
     if not segments:
         return []
 
