@@ -1465,3 +1465,60 @@ CONDUCTOR HEARTBEAT Δ1 R36 18:04Z: A6 running (brahma-build-pipeline-job-crfzx,
 2026-08-13T18:10Z SAMPŪRTI-Δ3 SESSION OPEN/CLOSE (session-14): Sole conductor (PID 51723). **DEPLOY RUN 31728387539 CONFIRMED COMPLETE** — all 3 jobs succeeded (Pipeline Job Image 8m43s, Sidecar 5m3s, Web 8m54s); S7459 timeout fix NOW LIVE in pipeline image. **A6 CONFIRMED RUNNING** — brahma-build-pipeline-job-crfzx started 18:05:11Z UTC, runningCount=1; container started in 6.29s; S7459 fix active. **FIELD-INTEGRATED NOT POSTED** — A6 at ~460 substeps remaining from checkpoint (74/534), expected ka_kshetra=lit ~22:00-22:30Z UTC. All Δ3 scope gates on FIELD-INTEGRATED. No independent Δ3 work. Closing cleanly — supervisor relaunches when FIELD-INTEGRATED posts.
 
 Δ3 lane status: R1 ✓ · R2 deployed/proof-pending · R3 ✓ · R4 ready-on-signal.
+
+### DIRECTIVE — 2026-08-13 ~23:5x IST (native's desk) → SAMPŪRTI-Δ1
+### S7459's fix DID NOT hold on A6 (execution crfzx). Evidence-first findings — do not re-guess.
+
+WHAT HAPPENED: A6 (crfzx) dispatched cleanly under the correctly-deployed
+image (verified: job's image tag = 4747ea831..., exactly the S7459 fix
+commit). It ran real work (skip-class cycling through the class list,
+logs fresh as of 18:07:42Z), then went silent. A connection (pid 1824867)
+went `idle in transaction` on
+  services/ka_kshetra/stage2_promise.py:358
+  "SELECT pratijna_id, event_class_id, status, grade, ... FROM
+  bodha_pratijna" — a DIFFERENT query than the prior known hang
+  (stage4_field.py:1555's kala_field COUNT). Same CLASS of failure
+  (client-side hang after presumably-successful server op), different
+  call site — this is not one isolated query, it is a connection-handling
+  pattern that can surface at multiple points in the writer.
+
+★ THE ACTUAL SURPRISE, VERIFIED LIVE: `current_setting(
+'idle_in_transaction_session_timeout')` on the hung connection returned
+**10min**, not the 30min (1800000ms) the S7459 fix sets. grep of
+writer.py shows no direct psycopg.connect() call — ka_kshetra should be
+inheriting ctx.db_conn from the orchestrator's (patched) connect() per
+the frozen contract, so a simple "wrong connection factory" explanation
+does NOT fit the evidence cleanly. WHY the effective GUC reads 10min
+(the OLD `ALTER ROLE ... SET idle_in_transaction_session_timeout=600s`
+role-level default, per db.py's own comment) instead of the connection-
+level 30min override is UNRESOLVED. Do not assume either "the fix is
+broken" or "the fix works, this was unrelated" — investigate:
+  (a) confirm the SET statement in db.py's connect() actually executes
+      and its return/error is checked (a silently-swallowed SET failure
+      would exactly produce this symptom);
+  (b) confirm the startup `-c idle_in_transaction_session_timeout=...`
+      option survives whatever pooling/proxy layer sits between the
+      worker and Postgres (cloud-sql-proxy, verified elsewhere as a
+      plain TCP proxy — should not remap connections, but verify);
+  (c) query current_setting() on a KNOWN-GOOD connection immediately
+      after connect() as a smoke check, before trusting any build.
+
+DISPOSITION (recovered by the desk, evidence preserved): stop-flagged,
+terminated (pid 1824867), execution crfzx cancelled, locks=0, 74
+substeps intact (checkpoint-safe, no loss).
+
+RECOMMENDATION — STOP DEPENDING ON THE SERVER-SIDE TIMEOUT TO SELF-HEAL:
+whatever its true effective value, no idle-in-transaction hang tonight
+has ever self-cleared within observed windows (the very first hang ran
+for HOURS despite the role's own 600s default allegedly applying as a
+fallback per db.py's comment — so that fallback has never been
+observed to fire either). Build your OWN active detector into the
+conductor's monitoring loop instead of trusting the GUC: poll
+pg_stat_activity for `state='idle in transaction'` on a session
+matching ka_kshetra's connection; if idle >5 min AND zero new
+build_substep_progress rows in that window, run the SAME recovery this
+directive just performed (stop_requested_at → 25s → pg_terminate_backend
+→ verify locks=0) AUTOMATICALLY, without waiting for a server-side
+timeout of uncertain effective value. This converts a class of failure
+that has cost ~4 manual desk interventions tonight into a self-healing
+loop inside the conductor itself.
