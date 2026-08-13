@@ -1883,3 +1883,26 @@ CONDUCTOR-HEARTBEAT: 2026-08-13T11:10+05:30 (CONDUCTOR of SAMPŪRTI-α) pid=new 
 3. [ON ka_kshetra lit] Measurement #5: MCP calls (kala_now_get / kala_ahead_get / gochara_forecast_get) — post-β, A1-pinned field
 4. [ON Measurement #5] G-P3a gate → G-P3b + Brilliance Gate #1 → FIELD-INTEGRATED marker → γ unblocked
 
+
+---
+
+## Heartbeat: 2026-08-13T11:22+05:30 — A3 exec sd2ph BUILDING (85/534 committed, marriage:8 in flight)
+
+CONDUCTOR-HEARTBEAT: 2026-08-13T11:22+05:30 (CONDUCTOR of SAMPŪRTI-α) pid=new [A3 exec sd2ph building; G2-EARLY PRATINIDHI dispatched]
+
+**A3 STATUS (05:50 UTC):**
+- build_run 8ddf6162: `running` ✅
+- ka_kshetra: `building`, rows_written=566,545 (delete-then-reinsert in progress), last_built_at=05:50:58 UTC ✅
+- Committed substeps: 85/534 (last=stage5:marriage:7, 05:29 UTC)
+- Current substep: stage5:marriage:8 (mid-execution, rows being written, ~7.5 min/substep ETA)
+- Advisory locks: 0 (zombie terminated) ✅
+
+**G2-EARLY STATUS:**
+- NATIVE-PRATINIDHI (OPUS) agent launched to research Tier N-i statistics for career_entry + career_change
+- Running in background; verdict expected within 30-60 min
+- If SEED: builder dispatched to add ne_v02 rows to l0_class_lifetime_counts.py + bg_class_priors rebuild
+- If DEFER: both classes confirmed Tier N-iii honest-skip (shippable outcome per ADJUDICATION-2)
+- Measurement isolation: G2-early additions report as FIRST-MEASUREMENT (outside #4↔#5 delta)
+
+**COORDINATION:** L-4 ACTIVE (expiry 16:00 IST), no UTKARṢA lease conflict.
+
