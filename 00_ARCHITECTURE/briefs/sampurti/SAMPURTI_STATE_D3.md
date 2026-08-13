@@ -991,3 +991,65 @@ RUN-TERMINAL: SESSION-Δ3-PENDING-14 (A6 crfzx RUNNING since 18:05Z; FIELD-INTEG
 - No uncommitted changes elsewhere; no active worktrees from this session; no leases (Δ3 has no DB scope)
 - NEXT-ACTION current (see above)
 
+---
+
+## SESSION-15 — RESTART EDITION (2026-08-14T07:11Z / 12:41 IST)
+
+CONDUCTOR-HEARTBEAT: 2026-08-14T07:11Z pid=89447 host=Montys-MacBook-Pro.local session=Δ3-15
+
+### STEP-0 (session-15 — post stop-and-analyze restart)
+
+**Liveness:** CLEAN — stored PID 85168 = supervisor bash (`/bin/bash /Users/Dev/shad_overnight/run_dh_d3.sh`, 35s elapsed at session open). `pgrep -f "CONDUCTOR of SAMPŪRTI-Δ3"` = NONE (excluding stored PID). Sole conductor confirmed. PID 89447 written to dh-d3-logs/current_conductor.pid.
+
+**Hygiene:** CLEAN — Cloud Run: crfzx = COMPLETED (False/failed) at 2026-08-13T18:17Z (12 min from start 18:05Z — killed during investigation). No RUNNING executions. No DB scope for Δ3. No proxy needed.
+
+**SM-R-4 ACK:** Received + read. Investigation close (SAMPURTI_INVESTIGATION_v1_0.md, findings F-1..F-10). Key bindings for Δ3:
+- Δ3 scope UNCHANGED: R2-proof + R4 on FIELD-INTEGRATED
+- FM-21/FM-22 bind Δ3 (no manual kill before T+35min; evidence before action)
+- crfzx at T+12min was the investigation's own controlled cancel (F-4 finding) — S7459 fix was never disproven, only untested
+- A6′ dispatch: Δ1's responsibility; requires S7-LOCK lane (P1) before dispatch per SM-R-4
+
+**Coordination (fetched 07:11Z):** Latest commit 140a7701b (SM-R-4, 00:38 IST Aug 14). FIELD-INTEGRATED: NOT POSTED. No new Δ1 entries since SM-R-4 posting. Δ1 RESTART EDITION also launching this cycle.
+
+**Reconcile (FM-09):**
+
+| Surface | Session-14 state | Session-15 (RESTART) reality |
+|---------|-----------------|------------------------------|
+| A6/crfzx | RUNNING (18:05Z) | COMPLETED/FAILED at 18:17Z (T+12min — investigation cancel) |
+| DHARA substeps | 74 checkpointed | All 74 are SAMPLED-generation (moot — full replan on restart per F-6) |
+| Cloud Run job | 2vCPU/4Gi | **4vCPU/8Gi** (resized per SM-R-4 P3 before this session) |
+| A6′ | Not dispatched | Not dispatched — Δ1 must run S7-LOCK lane first (SM-R-4 P1) |
+| FIELD-INTEGRATED | NOT POSTED | NOT POSTED |
+| Δ3 R1 | MERGED + PROOF PASS | UNCHANGED ✓ |
+| Δ3 R2 | DEPLOYED; proof pending | UNCHANGED — sidecar v3.2 live |
+| Δ3 R3 | DONE | UNCHANGED ✓ |
+| Δ3 R4 | READY-ON-SIGNAL | UNCHANGED — FIELD-INTEGRATED required |
+
+**INDEPENDENT WORK THIS SESSION:** Pre-write + commit R4 probe script (argparse-guarded, FM-18) so R4/R2 proofs are a RUN not a discovery. Also re-verify R1 MCP proof on live deploy.
+
+**WHAT ONE RELAUNCH FINISHES:** When FIELD-INTEGRATED posts:
+1. Run `probe_sampurti_d3_r2_r4.py` → paste trimmed MCP outputs as gate evidence
+2. R2: `gochara_forecast_get` marriage row in roots (resolution='era', is_timing_window=true nested under era parent)
+3. R4: `kala_ahead_get` field_snapshot_id=kfs_* (not 'field_not_yet_built'); prospective row keyed to live field window_id + authority_basis
+4. Record both in γ ledger (sampurti/vyakhya append-only) + coordination
+5. Post SESSION-DONE-Δ3
+
+**R1 MCP PROOF RE-VERIFIED (07:11Z re-check):**
+- `gochara_forecast_get(chart=482012f1, domain=marriage, 2026-08-14→2027-08-14)`
+- `event_classes_covered`: 27 classes (incl. marriage) ✓
+- `domains_not_covered`: [] ✓
+- `substeps_committed`: 270 under `ka_gochara_v3_century_materialize` ✓
+- No S4-05 refusal ✓
+- windows=0 for this date range: honest empty (not a regression — no overlapping windows for this range)
+
+**R4 PROBE SCRIPT WRITTEN:** `00_ARCHITECTURE/briefs/sampurti/probe_sampurti_d3_r2_r4.py`
+- argparse required args: `--chart-id`, `--mcp-key` (FM-18 compliant)
+- Probes: `gochara_forecast_get` (R2 assertions) + `kala_ahead_get` (R4 assertions)
+- Assertions: marriage in roots (not legacy_flat), resolution='era', is_timing_window=true; field_snapshot_id=kfs_*
+
+**NEXT-ACTION (session-15):**
+1. Commit ledger + probe script, push sampurti/seva
+2. Post session-open to coordination (SM-R-4 ACK + R1 re-proof)
+3. Poll coordination for FIELD-INTEGRATED ≤15 min; check Δ1 S7-LOCK lane status
+4. On FIELD-INTEGRATED: run probe (`python3 probe_sampurti_d3_r2_r4.py --chart-id 482012f1-... --mcp-key $KEY`) → paste evidence → SESSION-DONE-Δ3
+
