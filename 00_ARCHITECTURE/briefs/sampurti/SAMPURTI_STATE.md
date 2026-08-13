@@ -3524,3 +3524,5 @@ CONDUCTOR-HEARTBEAT: 2026-08-14T00:31+05:30 [R37 — PR #1270 CI: 16 SUCCESS, 3 
 CONDUCTOR-HEARTBEAT: 2026-08-14T00:36+05:30 [R37 — Builder COMPLETE (7/7 TDD pass; 3 pre-existing failures confirmed pre-existing Python 3.14 compat issue); PR #1270 CI: 17 SUCCESS, 2 IN_PROGRESS (Build Check, Governance Gates), 0 FAIL; mergeState=BLOCKED (CI still running); A6′ dispatch script created FM-18 compliant]
 
 CONDUCTOR-HEARTBEAT: 2026-08-14T01:01+05:30 [R37 — PR #1270 CI still 17 SUCCESS / 2 IN_PROGRESS (Build Check, Governance Gates) / 0 FAIL; waiting for all-green to merge; no action needed, monitoring only; L-8 lease ACTIVE]
+
+CONDUCTOR-HEARTBEAT: 2026-08-14T01:06+05:30 [R37 — PR #1270 CI ALL GREEN (19 SUCCESS, 0 FAIL, CLEAN); PR already queued for merge; awaiting merge → deploy → PARĪKṢAKA verify → A6′ dispatch]
