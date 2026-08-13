@@ -315,3 +315,43 @@ Per LONG-RUN AUTONOMY RULES (BLOCKED ≠ STOP): Since ALL remaining Δ3 scope is
 7. Note: if marriage windows absent post-refresh, verify with achievement_recognition class (was in legacy_flat pre-fix; should be in roots post-fix) per R2 proof fallback
 
 RUN-TERMINAL: SESSION-Δ3-PENDING-2 (not COMPLETE — FIELD-INTEGRATED outstanding; supervisor relaunches)
+
+### 2026-08-13 22:03 IST — Δ3 attempt 3 session-open (tkp7b CANCELLED; Δ1 timeout fix in flight)
+
+CONDUCTOR-HEARTBEAT: 2026-08-13T16:33:50Z pid=65274(claude) host=Montys-MacBook-Pro.local session=Δ3
+
+[STEP-0 OPEN: liveness CLEAN (stored PID 65274=self, PEERS=NONE, sole conductor confirmed). Hygiene: tkp7b CANCELLED at 16:33:05Z (cancelledCount=1, "Cancelled by user") — Δ1 stop-flagged due to recurring idle_in_transaction hang on _require_stage4_committed COUNT query. No RUNNING cloud execution (all executions: tkp7b=cancelled, s6zbw=succeeded, mv7c5=succeeded). No DB scope for Δ3. Coordination fetched: FIELD-INTEGRATED NOT POSTED. Reconcile: ledger matches reality — R1 MERGED+PROOF PASS, R2 DEPLOYED, R3 DONE, R4 BLOCKED.]
+
+**A5 build tkp7b: CANCELLED (not completed)**
+- Cancelled at 2026-08-13T16:33:05Z by Δ1 conductor
+- Root cause (per DIRECTIVE commit c65d62fc7, 22:03 IST): `idle_in_transaction_session_timeout=0` in db.py — no automatic recovery from hung connection; same hang pattern 3rd time (szwkw, mv7c5, tkp7b all hung on same query)
+- 74 substeps preserved (one additional substep landed before hang). Checkpoint safe.
+- Δ1 DIRECTIVE: fix `idle_in_transaction_session_timeout` to 1800s in db.py (both startup param + SET defense-in-depth); mutation-style seeded test (prove timeout has teeth); then A6 redispatch from checkpoint (74 substeps done)
+- No A6 dispatch yet — Δ1 landing fix first
+
+**Coordination state (16:33Z):**
+- FIELD-INTEGRATED: NOT POSTED (gated on A6 completion → S4 parity gate → re-field → Δ1 posts)
+- DIRECTIVE from Δ1: posted at 22:03 IST (c65d62fc7)
+- No new build dispatched
+
+**Δ3 scope unchanged:**
+| Lane | Status | Notes |
+|------|--------|-------|
+| R1 | MERGED + MCP PROOF PASS ✓ | No action |
+| R2 | DEPLOYED; MCP PROOF PENDING | Gated on FIELD-INTEGRATED |
+| R3 | DONE ✓ | No action |
+| R4 | BLOCKED | FIELD-INTEGRATED not posted |
+
+**Independent work:** NONE — all remaining Δ3 scope gated on FIELD-INTEGRATED.
+
+Per LONG-RUN AUTONOMY RULES (BLOCKED ≠ STOP, BLOCKED ≠ independent work when none exists): Δ1 fixing timeout bug (A6 ETA: unknown; timeout fix PR + CI + deploy + A6 run ≈ 1-2h). Ending session cleanly.
+
+**NEXT-ACTION (next session):**
+1. Poll coordination for FIELD-INTEGRATED
+2. Check Cloud Run for A6 execution (new build post-timeout fix)
+3. On FIELD-INTEGRATED: gochara_forecast_get(domain=marriage, wide range) → verify resolution='era' in roots; if no marriage windows, verify achievement_recognition class (R2 fallback per prior probe)
+4. On FIELD-INTEGRATED: kala_ahead_get → verify field_snapshot_id=kfs_... (not field_not_yet_built)
+5. Record both proofs in γ ledger (sampurti/vyakhya append-only)
+6. Post SESSION-DONE-Δ3 to coordination
+
+RUN-TERMINAL: SESSION-Δ3-PENDING-3 (not COMPLETE — FIELD-INTEGRATED outstanding; A6 pending Δ1 timeout fix; supervisor relaunches)
