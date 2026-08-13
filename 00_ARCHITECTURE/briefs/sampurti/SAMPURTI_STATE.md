@@ -2825,3 +2825,29 @@ New CI run `31703977344` triggered. All checks pending.
 4. Monitor A4 → once LIT → run S4 parity gate → PARITY-GREEN → M5
 
 CONDUCTOR-HEARTBEAT: 2026-08-13T18:47+05:30 [R26 — #1267 MERGED; #1268 Governance Gates fix pushed (CI run 31703977344 pending); A4 blocked on #1268 merge]
+
+---
+
+## R27 — SAMPŪRTI-Δ1 CONDUCTOR (2026-08-13T19:35+05:30)
+
+**Identity:** CONDUCTOR of SAMPŪRTI-Δ1
+
+### PR #1268 (ENGINE_VERSION flag flip) MERGED ✅
+
+Merged 2026-08-13T13:31:09Z. main HEAD = `00345531e3a1`.
+Commit message: "feat(ka_kshetra): flip ENGINE_VERSION sampled -> analytic (DHARA)"
+
+**All S3 lanes merged. Flag-flip on main. DHARA engine activated.**
+
+**Deploy status:** `Deploy to Cloud Run` for `00345531e3` is `in_progress` (Ganga Quality Gate completed success). Waiting for sidecar production deploy to confirm ENGINE_VERSION='analytic' is live in Cloud Run before A4 dispatch.
+
+### A4 dispatch plan (post-deploy)
+
+A3 (the prior field rebuild, exec-szwkw) left ka_kshetra in unknown state. Need to dispatch a fresh Cloud Run rebuild for native chart (482012f1-...) with DHARA engine.
+
+Dispatch command (from dispatcher script pattern):
+- chart_id: 482012f1-710e-4a25-994a-93821f5871aa
+- target_assets: ka_kshetra (plus its DAG deps if stale)
+- Force-rebuild: ka_kshetra state is incomplete/failed — orchestrator will restart from stage0
+
+CONDUCTOR-HEARTBEAT: 2026-08-13T19:35+05:30 [R27 — #1268 MERGED (00345531e3); deploy in_progress; A4 dispatch imminent post-deploy]
