@@ -676,7 +676,7 @@ Started: 2026-08-12 03:20 IST | Expiry: 2026-08-12 06:00 IST
 |---|---|---|---|---|---|
 | L-8 | SAMPŪRTI | R0 gate packet: integration→main merge (PG-31+L1j+G12+G14b+mig-569+RB-2), CI green, Gate-Executor merge+deploy. No corpus build/rebuild. | 2026-08-12 03:20 | 2026-08-12 06:00 | **RELEASED** (2026-08-12 04:08 IST — R0 complete) |
 | L-9 | SAMPŪRTI-β | B5 corpus rebuild: ka_gochara_resonance + full chart rebuild for 482012f1, folding B1–B4 (w23_tara_bala, w30_nodal_drishti, Lattā quality_gates, lord tokenizer). No protected-sweep override. Gate G-B MCP proofs to follow. | 2026-08-13 04:00 | 2026-08-13 06:30 | **RELEASED** (2026-08-13 05:15 IST — β SESSION-DONE-β, YANTRA-CORPUS-READY posted) |
-| L-10 | SAMPŪRTI-α | Gate packet: sampurti/integration → main (G12+G14b+PG-31+L1j+A1+conductor heartbeats; P-G1 GREEN). PARĪKṢAKA review + GATE-EXECUTOR merge + Cloud Run deploy. Deploy only — no corpus build/rebuild. | 2026-08-13 06:35 | 2026-08-13 08:00 | **ACTIVE** |
+| L-10 | SAMPŪRTI-α | Gate packet: sampurti/integration → main (G12+G14b+PG-31+L1j+A1+conductor heartbeats; P-G1 GREEN). PARĪKṢAKA review + GATE-EXECUTOR merge + Cloud Run deploy. Deploy only — no corpus build/rebuild. | 2026-08-13 06:35 | 2026-08-13 08:00 | **RELEASED** (2026-08-13 07:35 IST — PR #1255 merged dbdbb30ac, deploy success 31655385648, A2' dispatched cww2x) |
 
 
 ### 2026-08-12 04:08 IST — SAMPŪRTI L-8 LEASE RELEASED
