@@ -3606,3 +3606,5 @@ CONDUCTOR-HEARTBEAT: 2026-08-14T02:41+05:30 [R39 — A6′ DISPATCHED; execution
 CONDUCTOR-HEARTBEAT: 2026-08-14T02:45+05:30 [R39 — FM-07 PASS: GUC smoke-log confirmed (idle_in_txn=30min, stmt_timeout=0, lock_timeout=5min); build RESUMING 69/534 substeps committed 465 remaining; stage3 running at T+2min; FM-21 monitoring active; rate-gate baseline at T+15min]
 
 CONDUCTOR-HEARTBEAT: 2026-08-14T02:55+05:30 [R39 — FM-21 pass#1 CLEAR (T+10min): 74 committed substeps (SKIP classes cleared at T+2min; stage4 CPU work started for first computable class); idle_in_txn=282s (expected: CPU computation ~9min/decade); no lock-wait, no zero-progress hang; monitoring continues]
+
+CONDUCTOR-HEARTBEAT: 2026-08-14T03:10+05:30 [R39 — FM-21 pass#2 T+34min: 74 committed substeps (unchanged; last progress T+~7min when SKIPs committed), idle_in_txn=2 sessions max_idle=324s; Cloud Run vcc6h RUNNING confirmed via curl+forced-DNS (gcloud DNS system bug); local proxy restarted; FM-21 HOLD — T+35min threshold from last progress = 21:50Z (8min remaining); no intervention yet]
