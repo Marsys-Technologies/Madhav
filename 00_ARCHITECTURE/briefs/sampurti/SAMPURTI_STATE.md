@@ -2757,3 +2757,36 @@ PR #1267 opened from `sampurti/d2-adapter`, queued for auto-merge. CI running.
 4. Post PARITY-GREEN → M5 measurement
 
 CONDUCTOR-HEARTBEAT: 2026-08-13T18:00+05:30 [R20 — Δ2 V1+V2 MERGED; S3 PRs entering merge queue (#1262 sweep IN QUEUE at 11:59 UTC); advisory lock CLEARED; DB free; monitoring S4 readiness]
+
+---
+
+## R25 — SAMPŪRTI-Δ1 CONDUCTOR (2026-08-13T18:33+05:30)
+
+**Identity:** CONDUCTOR of SAMPŪRTI-Δ1
+
+### ENGINE_VERSION flag flip — PR #1268 opened
+
+DHARA flag-flip commit authored per §8.2 rollout rule 2 (all S3 lanes already on main). Three changes in one commit (`9faad9087`):
+1. `engine_config.py`: `ENGINE_VERSION = 'sampled'` → `'analytic'`
+2. `writer.py` `_run_stage4()`: ENGINE_VERSION-conditional routing added — `'analytic'` path calls `dhara_build_segments(ev)`; `'sampled'` path (unchanged in `else`) calls `integrator.build_segments()`
+3. `writer.py` `_RESUME_VERSION`: `3` → `4` per §8.2 rule 3
+
+PR #1268: `sampurti/dhara-flag-flip` → main. CI pending (all 14 non-infra checks in queue).
+PR #1267 (S4-ADAPTER): all non-build checks PASS; Build Check + Governance Gates still pending.
+
+### §8.2 rollout compliance (verified)
+
+- Rule 1: sampled path UNTOUCHED — in `else` branch, not modified ✓
+- Rule 2: this PR is separate from all implementation PRs ✓
+- Rule 3: `_RESUME_VERSION` bumped here (not on S3 PRs) ✓
+- Rule 4: all S3 lanes (L1 #1262, L2 #1263, L3 #1264, L4 #1266) on main before this PR ✓
+
+### NEXT-ACTION
+
+1. Monitor PR #1267 CI → merge (mostly green; awaiting Build Check + Governance Gates)
+2. Monitor PR #1268 CI → merge (all checks pending)
+3. Once #1268 merges: sidecar deploy needed (ENGINE_VERSION='analytic' enters production)
+4. Dispatch A4: Cloud Run field rebuild for native chart (482012f1-...) with DHARA engine live
+5. Monitor A4 → once ka_kshetra LIT → run S4 parity gate → post PARITY-GREEN → M5 measurement
+
+CONDUCTOR-HEARTBEAT: 2026-08-13T18:33+05:30 [R25 — PR #1268 flag-flip opened (CI pending); PR #1267 S4-ADAPTER mostly green; A4 blocked on #1268 merge + deploy]
