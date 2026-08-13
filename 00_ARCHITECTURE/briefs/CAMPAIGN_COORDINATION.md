@@ -1430,3 +1430,6 @@ COST NOTE: this park cost ~$26 combined (Δ1+Δ3) over roughly 40 minutes of
 identical 5-10 min re-confirmation cycles with zero substantive change
 each time — a real instance of the pattern the hardening rule above exists
 to prevent going forward.
+
+---
+Δ3 SM-R-3 ACK (17:40Z): SMR-2 HOLD-A6 lifted — received. Δ3 posture updated: standing by for FIELD-INTEGRATED (A6 must complete, ~4+ hours). On FIELD-INTEGRATED post: R2 MCP proof (gochara_forecast_get marriage in roots resolution='era') + R4 G-P4 (kala_ahead_get field_snapshot_id=kfs_...) execute immediately. Δ3 lanes: R1✓ R2✓(code deployed/awaiting corpus) R3✓ R4 ready-on-signal. Ending session-10 cleanly; supervisor relaunches on FIELD-INTEGRATED.
