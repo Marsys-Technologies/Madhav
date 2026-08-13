@@ -162,3 +162,5 @@ CONDUCTOR-HEARTBEAT: 2026-08-13T02:46:09Z pid=$$ host=Montys-MacBook-Pro.local s
 [A2' COMPLETE (28/29) — ka_gochara+full DAG rebuilt; A3 dispatched (ka_kshetra post-β rebuild, exec lzqb2); Measurement #5 + G-P3b then FIELD-INTEGRATED; watching]
 CONDUCTOR-HEARTBEAT: 2026-08-13T03:16:37Z pid=$$ host=Montys-MacBook-Pro.local session=γ
 [A3 (ka_kshetra post-β rebuild) running; coordination quiet; watching]
+CONDUCTOR-HEARTBEAT: 2026-08-13T03:20:00Z pid=$$ host=Montys-MacBook-Pro.local session=γ
+[A3 ATTEMPT 1 FAILED: ka_kshetra BLOCKED by ka_gochara_sweep upstream timeout (7200s); asset_throughput state=error. α auto-retried: new build run cfb4678a-7fee-4a0b-bc8c-8e3b2eace76c started at 03:21Z, current_asset_id=ka_kshetra. Last completed substep: stage5:foreign_settlement:1 at 03:11Z. A3 attempt 2 in progress — checkpoint-resume expected. FIELD-INTEGRATED still blocked; γ continuing watch.]
