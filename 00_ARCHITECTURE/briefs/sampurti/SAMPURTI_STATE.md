@@ -2234,3 +2234,58 @@ L-4 expires 12:30 UTC — sufficient buffer.
 2. [ON ka_kshetra lit] Measurement #5: kala_now_get / kala_ahead_get / gochara_forecast_get (SMR-1: proceed directly, M4 stands)
 3. [ON #5] G-P3a gate → G-P3b + Brilliance Gate #1 → FIELD-INTEGRATED marker → γ unblocked
 
+
+---
+
+## Heartbeat: 2026-08-13T12:18+05:30 — R16 SESSION OPEN; A3 exec szwkw RUNNING (checkpoint-resume 85/534)
+
+CONDUCTOR-HEARTBEAT: 2026-08-13T12:18+05:30 (CONDUCTOR of SAMPŪRTI-α) pid=new [R16 launch — sole conductor confirmed; A3 sd2ph FAILED (exit_code=1, 85/534, marriage:6 last); zombie terminated; A3 redispatched exec szwkw RUNNING]
+
+### STEP 0 — COMPLETE (R16)
+
+**LIVENESS (FM-10/11):**
+- pgrep "CONDUCTOR of SAMPŪRTI-α": no match (R15 pid=61927 DEAD; only sleep-7200 monitor task found)
+- Sole SAMPŪRTI-α conductor: CONFIRMED (this session)
+
+**HYGIENE:**
+- cloud-sql-proxy port 5433: ALIVE (PID 72597, uptime 10h+) ✓
+- cloud-sql-proxy port 5434 (β): ALIVE (PID 72369) — β's, not ours ✓
+- Advisory lock PID 1787354: ZOMBIE from sd2ph failure — TERMINATED (pg_terminate_backend = true) ✓
+- Advisory locks after termination: 0 ✓
+- Active build_runs before redispatch: 0 ✓
+
+**COORDINATION:**
+- L-4: ACTIVE (A3 checkpoint-resume, expires 18:00 IST = 12:30 UTC) ✓ — our lease
+- SMR-1 ruling: M4 STANDS — proceed directly to Measurement #5 post-A3 ✓
+- No UTKARṢA lease conflicts ✓
+
+**RECONCILE (FM-09, adopt-never-redo):**
+- A3 exec sd2ph (run 8ddf6162): FAILED at 06:40:05 UTC (exit code 1, NonZeroExitCode); last substep = stage5:marriage:6 @ 06:32:04 UTC; 85/534 committed; ka_kshetra reset to `error`
+- Root cause: cloud-sql-proxy drop pattern (same as R1 runs 23/26) — NOT a code bug; fingerprint-based resumption handles it
+- A3 exec szwkw (run 30241b84): DISPATCHED 06:47:01 UTC; state=`running`, ka_kshetra=`building`, advisory_locks=1 ✓
+- Substeps to resume from: stage5:marriage:7 (86th substep onward)
+- G2-EARLY ADJUDICATION-2: CLOSED-DEFER ✓; SMR-1: M4 STANDS ✓; A1+A2' all complete ✓
+
+### A3 exec szwkw STATUS (06:47 UTC)
+
+| Field | Value |
+|---|---|
+| Run ID | 30241b84-fc06-4ed5-a83c-8e9fe835ef3c |
+| Cloud Run exec | brahma-build-pipeline-job-szwkw |
+| started_at | 2026-08-13T06:47:01 UTC |
+| build_run.state | running ✅ |
+| ka_kshetra.state | building ✅ |
+| Advisory locks | 1 (orchestrator active) ✅ |
+| Substeps committed | 85/534 (marriage:6 last) |
+| Resume from | stage5:marriage:7 |
+| Pace | ~8 min/substep |
+| Remaining slow substeps | ~35 (marriage:7-8 + relocation×8 + separation×8 + surgery×8 + finalizes + stage6/7/8) |
+| ETA ka_kshetra lit | ~4.5h from 06:47 UTC → ~11:15 UTC (~16:45 IST) |
+| L-4 expiry | 18:00 IST = 12:30 UTC — sufficient ✓ |
+
+### NEXT ACTIONS
+
+1. [RUNNING] Monitor A3 exec szwkw every 30 min — poll substep count + ka_kshetra.state
+2. [ON ka_kshetra lit] Measurement #5: kala_now_get / kala_ahead_get / gochara_forecast_get (SMR-1: proceed directly, M4 stands)
+3. [ON #5] G-P3a gate → G-P3b + Brilliance Gate #1 → FIELD-INTEGRATED marker → γ unblocked
+
