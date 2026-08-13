@@ -380,6 +380,104 @@ describe('computeGocharaCoverage — C3 coverage_quality field', () => {
   })
 })
 
+// ── computeGocharaCoverage — R1 SEV-1: v3 substep asset_id + '::' key parse ─
+// TDD proof for the double-bug fix:
+//   Bug 1: substepAssetId='ka_gochara' for v3-authority — the ACTUAL century
+//           materializer is 'ka_gochara_v3_century_materialize'. W6.4 rename
+//           left MR-02 pointing at an asset_id with ZERO substeps.
+//   Bug 2: SQL split_part on ':year:' — century materializer substep_key format
+//           is '{event_class}::{era_slice_key}' (e.g. 'marriage::g3_1984_1994'),
+//           not ':year:'. Nothing matches → swept_event_classes=[].
+//
+// This test mocks a v3-authority chart, seeds substep rows under the CORRECT
+// asset_id with '::' keys, and asserts event_classes_covered is non-empty.
+// It FAILS before the fix (asset_id mismatch → 0 substep rows matched → all
+// classes land in event_classes_targeted_not_swept → event_classes_covered=[]).
+// It PASSES after both bugs are fixed.
+describe('computeGocharaCoverage — R1 SEV-1 v3 substep asset_id + "::" key parse', () => {
+  it('v3-authority chart: substep rows under ka_gochara_v3_century_materialize with "::" keys → event_classes_covered non-empty', async () => {
+    // Wire the four queries computeGocharaCoverage issues:
+    //   Q1: kala_gochara_authority  → v3 authority (authoritative_generation='3.0')
+    //   Q2: gochara_resonance_map   → two targeted classes: marriage, career_advancement
+    //   Q3: brahma_event_ontology   → universe of 5 domains
+    //   Q4: build_substep_progress  → substep rows for the CORRECT asset_id
+    //       (ka_gochara_v3_century_materialize) with '::' key format
+    //
+    // BEFORE the fix: Q4 is queried with asset_id='ka_gochara' → 0 rows returned
+    //   (because the mock gates on asset_id in the SQL params, but crucially the
+    //    split_part(':year:') in the old SQL also returns NULL even if rows exist).
+    //   event_classes_covered=[] → test fails.
+    // AFTER the fix: Q4 uses asset_id='ka_gochara_v3_century_materialize' and
+    //   split_part('::', 1) extracts 'marriage' and 'career_advancement'.
+    //   event_classes_covered=['career_advancement','marriage'] → test passes.
+    global.fetch = vi.fn(async (url: unknown, opts: unknown) => {
+      const urlStr = String(url)
+      if (!urlStr.includes('/api/mcp/db/query')) {
+        return { ok: false, status: 500, text: async () => 'unexpected' }
+      }
+      const body = JSON.parse((opts as { body: string }).body) as { sql?: string; params?: unknown[] }
+      const sql = body.sql ?? ''
+      const params = (body.params ?? []) as unknown[]
+
+      // Q1: authority → v3
+      if (sql.includes('kala_gochara_authority')) {
+        return { ok: true, json: async () => ({ rows: [{ authoritative_generation: '3.0' }] }) }
+      }
+      // Q2: resonance map → two targeted classes
+      if (sql.includes('gochara_resonance_map')) {
+        return {
+          ok: true,
+          json: async () => ({
+            rows: [
+              { event_class: 'marriage', domain: 'relationship' },
+              { event_class: 'career_advancement', domain: 'career' },
+            ],
+          }),
+        }
+      }
+      // Q3: ontology universe
+      if (sql.includes('brahma_event_ontology') && sql.includes('DISTINCT domain')) {
+        return {
+          ok: true,
+          json: async () => ({
+            rows: ['career', 'health', 'finance', 'relationship', 'spirituality'].map((d) => ({ domain: d })),
+          }),
+        }
+      }
+      // Q4: build_substep_progress — only respond with data when the correct asset_id
+      //     is passed; the buggy 'ka_gochara' asset_id returns [] (simulating no rows).
+      if (sql.includes('build_substep_progress')) {
+        const assetId = params[1]
+        if (assetId === 'ka_gochara_v3_century_materialize') {
+          // Century materializer uses '::' separator: '{event_class}::{era_slice_key}'
+          return {
+            ok: true,
+            json: async () => ({
+              rows: [{
+                substeps_committed: 2,
+                swept_event_classes: ['marriage', 'career_advancement'],
+              }],
+            }),
+          }
+        }
+        // Wrong asset_id (pre-fix 'ka_gochara') → no rows, same as production
+        return { ok: true, json: async () => ({ rows: [] }) }
+      }
+      return { ok: true, json: async () => ({ rows: [] }) }
+    }) as unknown as typeof fetch
+
+    const { coverage, ok } = await computeGocharaCoverage(CHART_ID, TEST_PRINCIPAL)
+
+    // After fix: both targeted classes are swept → event_classes_covered is non-empty
+    expect(ok).toBe(true)
+    expect(coverage.event_classes_covered).toContain('marriage')
+    expect(coverage.event_classes_covered).toContain('career_advancement')
+    expect(coverage.event_classes_covered.length).toBe(2)
+    // No targeted class was missed
+    expect(coverage.event_classes_targeted_not_swept).toHaveLength(0)
+  })
+})
+
 // ── buildNestedHierarchy — C2 era⊃month⊃day nesting ───────────────────────
 describe('buildNestedHierarchy', () => {
   it('returns empty roots and empty legacy_flat for an empty input', () => {
