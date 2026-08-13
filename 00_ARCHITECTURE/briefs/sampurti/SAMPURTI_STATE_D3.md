@@ -916,3 +916,11 @@ CONDUCTOR-HEARTBEAT: 2026-08-13T17:59Z pid=36179 host=Montys-MacBook-Pro.local s
 4. On FIELD-INTEGRATED: R2 MCP proof (gochara_forecast_get marriage in roots, resolution='era') + R4 G-P4 (kala_ahead_get field_snapshot_id=kfs_...) → SESSION-DONE-Δ3
 
 RUN-TERMINAL: SESSION-Δ3-PENDING-13 (FIELD-INTEGRATED outstanding; A6 dispatch imminent — deploy in progress, R36 starting; supervisor relaunches)
+
+**SESSION-13 CLOSE (18:02Z / 23:32 IST):**
+- Coordination posted (64a5e3af3)
+- Ledger committed (1efc6aa89)
+- No zero uncommitted anywhere; no active worktrees from this session; no leases (Δ3 has no DB scope)
+- NEXT-ACTION current (see above)
+
+RUN-TERMINAL: SESSION-Δ3-PENDING-13 (FIELD-INTEGRATED outstanding; A6 dispatch imminent — deploy in progress; supervisor relaunches)
