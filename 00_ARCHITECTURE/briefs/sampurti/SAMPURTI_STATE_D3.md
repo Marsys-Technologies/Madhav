@@ -1047,9 +1047,29 @@ CONDUCTOR-HEARTBEAT: 2026-08-14T07:11Z pid=89447 host=Montys-MacBook-Pro.local s
 - Probes: `gochara_forecast_get` (R2 assertions) + `kala_ahead_get` (R4 assertions)
 - Assertions: marriage in roots (not legacy_flat), resolution='era', is_timing_window=true; field_snapshot_id=kfs_*
 
-**NEXT-ACTION (session-15):**
-1. Commit ledger + probe script, push sampurti/seva
-2. Post session-open to coordination (SM-R-4 ACK + R1 re-proof)
-3. Poll coordination for FIELD-INTEGRATED ≤15 min; check Δ1 S7-LOCK lane status
-4. On FIELD-INTEGRATED: run probe (`python3 probe_sampurti_d3_r2_r4.py --chart-id 482012f1-... --mcp-key $KEY`) → paste evidence → SESSION-DONE-Δ3
+**POLL STATUS (07:11–07:15Z):**
+- Δ1 conductor PID 84645 ALIVE (supervisor 84643 alive, 12h25m elapsed)
+- S7-LOCK worktree `sm-d1-s7lock` exists; test file written at 00:53 IST; no PR opened
+- Integration branch latest: R37 heartbeat 00:21 IST — S7-LOCK builder running (in TDD cycle)
+- No FIELD-INTEGRATED posted; no A6′ execution
+- CI history: last run = Gochara Smoke Probe FAILURE (unrelated, 2026-08-13T18:54Z)
+
+**Δ3 INDEPENDENT WORK COMPLETE:**
+- Ledger updated (session-15 block) ✓
+- R4 probe script written + committed ✓
+- R1 MCP proof re-verified at 07:11Z ✓
+- Branch pushed (a793b3b25 on sampurti/seva) ✓
+
+**WHAT ONE RELAUNCH FINISHES:** On FIELD-INTEGRATED:
+1. Run `python3 00_ARCHITECTURE/briefs/sampurti/probe_sampurti_d3_r2_r4.py --chart-id 482012f1-710e-4a25-994a-93821f5871aa --mcp-key $MARSYS_MCP_KEY`
+2. Paste trimmed output as gate evidence (R2 + R4)
+3. Append to γ ledger (sampurti/vyakhya append-only)
+4. Post SESSION-DONE-Δ3 to coordination → RUN-TERMINAL: SESSION-Δ3-COMPLETE
+
+**NEXT-ACTION (session-16):**
+1. Check coordination for FIELD-INTEGRATED marker
+2. Check Δ1 S7-LOCK PR status (sampurti/d1-s7lock → PR → CI → merge → deploy → A6′)
+3. On FIELD-INTEGRATED: run probe → paste → γ ledger → SESSION-DONE-Δ3
+
+RUN-TERMINAL: SESSION-Δ3-PENDING-15 (FIELD-INTEGRATED outstanding; Δ1 S7-LOCK builder active; supervisor relaunches)
 
