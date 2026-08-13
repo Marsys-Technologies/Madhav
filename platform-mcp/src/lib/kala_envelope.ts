@@ -7,6 +7,10 @@
  * This lane (w0-spine) builds ONLY this shared library + `argument_composer.ts` — the
  * eight tool facades that CONSUME this envelope are a separate lane's job (W0.4).
  *
+ * SAMPŪRTI-γ C4/C5 (2026-08-13): SM_GAMMA_C4_ENABLED gates gochara_narrative injection into
+ * kala_now_get and a5_gochara_agreement into kala_explain_get (§N.8 byte-identical flag-off
+ * discipline). SM_GAMMA_C5_ENABLED gates ahead_autofile field_window/<id>@<peak> citation.
+ *
  * Design authority (highest wins on conflict): KALA_SUPREME_ELEVATION_v1_0.md (v1.2,
  * "the Elevation") §5 (E3/E4/E5 — argument · question_frame · continuity), §7 (Living-LEL
  * calibration_maturity), §11 (item 43 — tri-plane traversability), CLAUDE.md §N.6 (Serving
