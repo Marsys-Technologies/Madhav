@@ -515,3 +515,45 @@ Per LONG-RUN AUTONOMY RULES (BLOCKED ≠ STOP): All Δ3 remaining work gated on 
 **WHAT ONE RELAUNCH FINISHES:** When FIELD-INTEGRATED is posted: gochara_forecast_get(domain=marriage, 2020-2030) → marriage in roots; kala_ahead_get → field_snapshot_id=kfs_...; record in γ ledger; SESSION-DONE-Δ3.
 
 RUN-TERMINAL: SESSION-Δ3-PENDING-5 (not COMPLETE — FIELD-INTEGRATED outstanding; native-park on A6; supervisor relaunches)
+
+### 2026-08-13 22:35 IST — Δ3 attempt 6 session-open (FIELD-INTEGRATED still pending; native-park confirmed)
+
+CONDUCTOR-HEARTBEAT: 2026-08-13T17:05:00Z pid=98318 host=Montys-MacBook-Pro.local session=Δ3
+
+[STEP-0 OPEN: liveness CLEAN (stored PID 94236 = prior session, MY PID=98318, PEERS=NONE, sole conductor confirmed). Hygiene CLEAN: no RUNNING Cloud Run executions (tkp7b=cancelled, s6zbw/mv7c5=succeeded, all runningCount=0). No DB scope for Δ3. Coordination fetched: FIELD-INTEGRATED NOT POSTED. Reconcile: all ledger state matches reality — R1 MERGED+PROOF PASS, R2 DEPLOYED+PROOF PENDING, R3 DONE, R4 BLOCKED.]
+
+**KEY FINDING — R31 CLARIFICATION (Δ1 conductor, 22:25 IST):**
+The "FIELD-INTEGRATED state is now in effect" line in coordination (posted at S3-IMPLEMENTATION-COMPLETE) referred to DHĀRĀ analytic engine CODE integration, NOT the `ka_kshetra=LIT` data marker. Δ1 appended explicit clarification to CAMPAIGN_COORDINATION.md in sampurti/integration (commit 5809c3c10). Actual data FIELD-INTEGRATED requires `ka_kshetra.state='lit'` for chart 482012f1 — NOT YET posted.
+
+**CURRENT STATE (22:35 IST / 17:05Z):**
+- ka_kshetra (native 482012f1): state=**incomplete**, 2,063,838 rows, 74 substeps committed (R31 live DB query)
+- A6: NOT dispatched — PARKED-NATIVE (native deliberately cancelled A4/mv7c5 at 16:05Z and A5/tkp7b at 16:33Z via CancelExecution API)
+- S7459 timeout fix: IMPLEMENTED on sampurti/integration (commit 06c04b72a) but NOT yet PR'd/deployed to main
+- Δ1 R31 session: posted FIELD-INTEGRATED clarification; R31 status unclear (no process found, commit 22:32Z)
+- FIELD-INTEGRATED: NOT POSTED — gated on native signal → A6 → ka_kshetra=lit → S4 parity gate → re-field
+- No new Cloud Run executions since tkp7b (16:16:07Z cancelled)
+- No new coordination entries since my session-5 advisory (954601b14, 17:01Z)
+
+**LANE STATUS (unchanged):**
+| Lane | Status | Notes |
+|------|--------|-------|
+| R1 | MERGED + MCP PROOF PASS ✓ | Last verified 16:51Z (session 4): 27 classes, 270 substeps ✓ |
+| R2 | DEPLOYED; MCP PROOF PENDING | 3 marriage rows in legacy_flat (resolution=NULL); corpus refresh via FIELD-INTEGRATED |
+| R3 | DONE ✓ | sampurti/vyakhya corrections committed (66e35c216) |
+| R4 | BLOCKED | FIELD-INTEGRATED not posted; gated on native signal → A6 → parity → re-field |
+
+**INDEPENDENT WORK:** NONE — all remaining Δ3 scope gated on FIELD-INTEGRATED. Native-park is human-directed (not a system blocker to work around). No independent Δ3 work available.
+
+Per LONG-RUN AUTONOMY RULES (BLOCKED ≠ STOP): Δ3 scope exhausted pending FIELD-INTEGRATED. Block is a native decision point. Ending session cleanly; supervisor relaunches.
+
+**WHAT ONE RELAUNCH FINISHES:** When FIELD-INTEGRATED is posted by Δ1:
+1. `gochara_forecast_get(chart_id=482012f1..., domain=marriage, date_range=2020-2030)` → verify marriage row 2024-02-05→2034-01-30 in roots (resolution='era'), NOT legacy_flat; fallback: achievement_recognition class
+2. `kala_ahead_get(chart_id=482012f1...)` → verify field_snapshot_id=kfs_... (not field_not_yet_built); check filed_count
+3. Record both proofs in γ ledger (sampurti/vyakhya append-only)
+4. Post SESSION-DONE-Δ3 to coordination
+
+**NEXT-ACTION (next session):**
+1. Poll coordination for explicit FIELD-INTEGRATED data marker (Δ1 posts "FIELD-INTEGRATED: ka_kshetra=lit" after A6 completes → S4 parity → re-field)
+2. On FIELD-INTEGRATED: R2 MCP proof + R4 G-P4 → SESSION-DONE-Δ3
+
+RUN-TERMINAL: SESSION-Δ3-PENDING-6 (not COMPLETE — FIELD-INTEGRATED outstanding; native-park on A6; supervisor relaunches)
