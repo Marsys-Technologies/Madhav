@@ -2892,3 +2892,4 @@ CONDUCTOR-HEARTBEAT: 2026-08-13T19:39+05:30 [R28 open; A4 exec mv7c5 RUNNING (DH
 
 CONDUCTOR-HEARTBEAT: 2026-08-13T19:50+05:30 [R28 poll — exec mv7c5 RUNNING=1; ka_kshetra building, 1,254,491 rows written (10 min mark)]
 CONDUCTOR-HEARTBEAT: 2026-08-13T20:00+05:30 [R28 poll — exec mv7c5 RUNNING=1; ka_kshetra building, 2,286,410 rows written (20 min mark); pace ~1M rows/10min]
+CONDUCTOR-HEARTBEAT: 2026-08-13T20:10+05:30 [R28 poll — exec mv7c5 RUNNING=1; ka_kshetra building, 2,630,383 rows (30 min mark); pace slowing (~340K/10min) — likely entering stage5 null replicates]
