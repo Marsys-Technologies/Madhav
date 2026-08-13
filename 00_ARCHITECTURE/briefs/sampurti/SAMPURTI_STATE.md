@@ -3604,3 +3604,5 @@ CONDUCTOR-HEARTBEAT: 2026-08-14T02:31+05:30 [R39 open — STEP 0 complete; PRATI
 CONDUCTOR-HEARTBEAT: 2026-08-14T02:41+05:30 [R39 — A6′ DISPATCHED; execution=brahma-build-pipeline-job-vcc6h run_id=f663bea3; SM-R-5 posted; L-8 renewed to 14:00 IST; FM-21 hang watch starting; GUC smoke-log check in 3 min]
 
 CONDUCTOR-HEARTBEAT: 2026-08-14T02:45+05:30 [R39 — FM-07 PASS: GUC smoke-log confirmed (idle_in_txn=30min, stmt_timeout=0, lock_timeout=5min); build RESUMING 69/534 substeps committed 465 remaining; stage3 running at T+2min; FM-21 monitoring active; rate-gate baseline at T+15min]
+
+CONDUCTOR-HEARTBEAT: 2026-08-14T02:55+05:30 [R39 — FM-21 pass#1 CLEAR (T+10min): 74 committed substeps (SKIP classes cleared at T+2min; stage4 CPU work started for first computable class); idle_in_txn=282s (expected: CPU computation ~9min/decade); no lock-wait, no zero-progress hang; monitoring continues]
