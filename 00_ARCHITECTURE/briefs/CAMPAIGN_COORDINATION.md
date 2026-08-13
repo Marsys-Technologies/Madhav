@@ -1573,3 +1573,8 @@ RESTART PROTOCOL (binding, supersedes conflicting older directives):
       audit-logged under the native's identity — a coordination entry
       ALWAYS precedes desk action (SM-R-3 hardening reaffirmed).
 Δ3 scope unchanged (R2 proof + R4 on FIELD-INTEGRATED); inherits FM-21/22.
+
+---
+SESSION-OPEN: Δ1 R37 2026-08-14T00:16+05:30 (18:46Z) — RESTART EDITION. Liveness SOLE CONDUCTOR (pid=90410; prior 84643=supervisor script, not peer); hygiene CLEAN (crfzx=Cancelled-18:17Z, advisory_locks=0, active_build_runs=0); SM-R-4 READ+ACKNOWLEDGED; job spec 4vCPU/8Gi CONFIRMED; STEP-0+ complete. Plan docs committed to briefs/sampurti (c5d68d50d). S7-LOCK builder dispatched (sampurti/d1-s7lock → PR to main); expected CI+merge+deploy ~1h. A6′ dispatch follows S7-LOCK deploy-green + PARĪKṢAKA confirmation. L-8 lease from R36 remains ACTIVE (expires 06:00 IST 2026-08-14).
+
+CONDUCTOR HEARTBEAT Δ1 R37 18:46Z: S7-LOCK builder running (branch sampurti/d1-s7lock); monitoring for PR creation → CI → merge → deploy → PARĪKṢAKA verify → A6′ dispatch; next heartbeat ≤10 min.
