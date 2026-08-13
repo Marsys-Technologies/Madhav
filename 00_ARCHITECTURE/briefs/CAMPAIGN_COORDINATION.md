@@ -675,7 +675,8 @@ Started: 2026-08-12 03:20 IST | Expiry: 2026-08-12 06:00 IST
 | # | campaign | purpose | started (IST) | expiry (IST) | status |
 |---|---|---|---|---|---|
 | L-8 | SAMPŪRTI | R0 gate packet: integration→main merge (PG-31+L1j+G12+G14b+mig-569+RB-2), CI green, Gate-Executor merge+deploy. No corpus build/rebuild. | 2026-08-12 03:20 | 2026-08-12 06:00 | **RELEASED** (2026-08-12 04:08 IST — R0 complete) |
-| L-9 | SAMPŪRTI-β | B5 corpus rebuild: ka_gochara_resonance + full chart rebuild for 482012f1, folding B1–B4 (w23_tara_bala, w30_nodal_drishti, Lattā quality_gates, lord tokenizer). No protected-sweep override. Gate G-B MCP proofs to follow. | 2026-08-13 04:00 | 2026-08-13 06:30 | **ACTIVE** |
+| L-9 | SAMPŪRTI-β | B5 corpus rebuild: ka_gochara_resonance + full chart rebuild for 482012f1, folding B1–B4 (w23_tara_bala, w30_nodal_drishti, Lattā quality_gates, lord tokenizer). No protected-sweep override. Gate G-B MCP proofs to follow. | 2026-08-13 04:00 | 2026-08-13 06:30 | **RELEASED** (2026-08-13 05:15 IST — β SESSION-DONE-β, YANTRA-CORPUS-READY posted) |
+| L-10 | SAMPŪRTI-α | Gate packet: sampurti/integration → main (G12+G14b+PG-31+L1j+A1+conductor heartbeats; P-G1 GREEN). PARĪKṢAKA review + GATE-EXECUTOR merge + Cloud Run deploy. Deploy only — no corpus build/rebuild. | 2026-08-13 06:35 | 2026-08-13 08:00 | **ACTIVE** |
 
 
 ### 2026-08-12 04:08 IST — SAMPŪRTI L-8 LEASE RELEASED
@@ -839,3 +840,25 @@ folding changes gochara assets only, NOT ka_kshetra/kala_field_windows. Snapshot
 **α UNBLOCKED:** A1 pin (P3 DVIPRAMĀṆA start) can proceed. β's L-9 window closed.
 
 SESSION-DONE-β: 2026-08-13T05:15:00 IST. All B1–B5 lanes complete and committed.
+
+### 2026-08-13 06:35 IST — SAMPŪRTI-α SESSION OPEN (gate packet + A2')
+
+**SAMPŪRTI-α (KṢETRA) SESSION OPEN** — new context, pid=89453 (CONDUCTOR of SAMPŪRTI-α).
+
+Step 0 complete:
+- Liveness: CLEAN (ledger pid=87229 dead; one α=89453/me, one γ=61752 sibling; no duplicate α)
+- Hygiene: orphans=0, advisory_locks=0, phantom_running=0, proxy 5433 OPEN
+- L-9: confirmed RELEASED per β's SESSION-DONE-β log; lease table updated above
+- L-10: CLAIMED for gate packet + deploy (2026-08-13 06:35–08:00 IST)
+
+**Current position**: P3 DVIPRAMĀṆA in progress.
+- P-G1 GREEN: ✅ declared 05:30 IST, live detector output in SAMPURTI_STATE.md
+- A1 merged: db7fb4f67 (on sampurti/integration, NOT yet on main — deployment gap)
+- A2 failed: run e24e06c1 — ka_gochara STALE exclusion error; 6 assets rebuilt, 28 blocked
+- A2' plan: ka_gochara INCLUDED; exclude {ka_gochara_v3_century_materialize, ka_gochara_resonance, ka_gochara_sweep}
+
+**Immediate sequence** (authorized by session launch):
+1. Gate packet PR: sampurti/integration → main (L-10 lease claimed above)
+2. PARĪKṢAKA review + GATE-EXECUTOR merge + Cloud Run deploy
+3. A2' dispatch: ka_gochara rebuild unblocks ka_sangam cascade
+4. Measurement #5 (post-β, A1-pinned field)
