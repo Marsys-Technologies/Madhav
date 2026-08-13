@@ -3522,3 +3522,5 @@ CONDUCTOR-HEARTBEAT: 2026-08-14T00:26+05:30 [R37 — PR #1270 OPEN (S7-LOCK: loc
 CONDUCTOR-HEARTBEAT: 2026-08-14T00:31+05:30 [R37 — PR #1270 CI: 16 SUCCESS, 3 IN_PROGRESS (Build Check, Unit Tests, Governance Gates), 0 FAIL; A6′ dispatch script created (dispatch_sampurti_a6prime_chart1_kshetra.py FM-18 compliant)]
 
 CONDUCTOR-HEARTBEAT: 2026-08-14T00:36+05:30 [R37 — Builder COMPLETE (7/7 TDD pass; 3 pre-existing failures confirmed pre-existing Python 3.14 compat issue); PR #1270 CI: 17 SUCCESS, 2 IN_PROGRESS (Build Check, Governance Gates), 0 FAIL; mergeState=BLOCKED (CI still running); A6′ dispatch script created FM-18 compliant]
+
+CONDUCTOR-HEARTBEAT: 2026-08-14T01:01+05:30 [R37 — PR #1270 CI still 17 SUCCESS / 2 IN_PROGRESS (Build Check, Governance Gates) / 0 FAIL; waiting for all-green to merge; no action needed, monitoring only; L-8 lease ACTIVE]
