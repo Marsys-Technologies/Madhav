@@ -3514,3 +3514,5 @@ Dispatch S7-LOCK builder (sonnet): pipeline/orchestrator/db.py::connect() gains 
 
 CONDUCTOR-HEARTBEAT: 2026-08-14T00:16+05:30 [R37 open — RESTART EDITION; SM-R-4 ACK; STEP 0 complete; plan docs committed (c5d68d50d); S7-LOCK builder dispatch NEXT]
 
+
+CONDUCTOR-HEARTBEAT: 2026-08-14T00:21+05:30 [R37 — S7-LOCK builder running (TDD phase, writing failing tests); builder agent ID a66156da8f67ce7dd; waiting for PR creation → CI → merge → deploy → PARĪKṢAKA; L-8 lease ACTIVE; all clear (advisory_locks=0, no running Cloud Run)]
