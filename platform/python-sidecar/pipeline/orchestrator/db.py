@@ -16,13 +16,23 @@ the same protection; those now route through `connect()` below.
 `run_ka_sangam_prod.py` / `run_ph_pratikara_prod.py` needed to keep their
 own `prepare_threshold=None` pooler-compatibility flag so they were given the
 equivalent `SET` directly instead of being routed through this factory.
+
+S7-LOCK: `connect()` also sets `lock_timeout='300s'` to bound lock-wait hangs.
+A build connection blocked on a lock for more than 5 minutes is a hang, not a
+legitimate slow operation. Also emits a GUC smoke-log (INFO) immediately after
+connection setup that reads `current_setting()` for all three key GUCs
+(`idle_in_transaction_session_timeout`, `statement_timeout`, `lock_timeout`),
+providing per-run, per-connection ground truth in every job log.
 """
 from __future__ import annotations
 
+import logging
 import os
 
 import psycopg
 import psycopg.rows
+
+logger = logging.getLogger(__name__)
 
 
 def db_url() -> str:
@@ -64,5 +74,18 @@ def connect() -> psycopg.Connection:
     with conn.cursor() as cur:
         cur.execute("SET idle_in_transaction_session_timeout = 1800000")
         cur.execute("SET statement_timeout = 0")
+        # S7-LOCK: bound lock-wait hangs — 5 min is a hang, not a slow operation.
+        cur.execute("SET lock_timeout = '300s'")
+        # GUC smoke-log: read current_setting() for ground-truth evidence in job logs.
+        cur.execute(
+            "SELECT current_setting('idle_in_transaction_session_timeout') AS idle_in_txn"
+            ", current_setting('statement_timeout') AS stmt_timeout"
+            ", current_setting('lock_timeout') AS lock_timeout"
+        )
+        guc = cur.fetchone()
+        logger.info(
+            "[GUC smoke-log] idle_in_txn=%s statement_timeout=%s lock_timeout=%s",
+            guc['idle_in_txn'], guc['stmt_timeout'], guc['lock_timeout'],
+        )
     conn.commit()
     return conn
