@@ -3982,3 +3982,35 @@ GROUNDING: hazard.py:321-355 (unfiltered u dict), hazard.py:249-272 (correct per
 CONDUCTOR-HEARTBEAT: 2026-08-14T17:30+05:30 [R41 T+172min — PARĪKṢAKA in flight for PR#1277+#1278 (both opus agents active, deep code inspection); L-TIER still building (threading baseline_is_synthetic through _write_windows_batch); PARĪKṢAKA#1277 found potential issue: obstruction_sources() dict-comprehension keeps last primitive per key vs obstructions_at() takes MAX — agent assessing whether this is pre-existing or PR-introduced; SM-R-7 full rationale committed (59e679381); PR#1271 governance gate fail traced to pre-existing py-sidecar failures (fix: land L-NULL first, re-run); pid=resumed]
 
 CONDUCTOR-HEARTBEAT: 2026-08-14T17:40+05:30 [R41 T+182min — stale task completions drained (P0.b PARĪKṢAKA PASS, P0.b agent, spec-v1.0 FAIL, spec-v1.1 re-review PASS — all already recorded); ACTIVE: PARĪKṢAKA ad3bf805 (PR#1277 L-ENGINE, found obstruction_sources() issue — agent assessing pre-existing vs introduced); ACTIVE: PARĪKṢAKA a386cb7a (PR#1278 L-NULL, checking scope discipline); L-TIER builder still running (modifying _write_windows_batch executemany INSERT); all 3 P-B lanes progressing; pid=resumed]
+
+---
+
+## P-B PARĪKṢAKA: PR #1278 L-NULL → PASS (2026-08-14T17:48+05:30)
+
+**PARĪKṢAKA verdict (opus agent a386cb7ad864cc977): PASS — safe to enter merge queue.**
+
+All 19 checks (A1-A5, B1-B4, C1-C3, D1-D4, E1-E3) PASS:
+
+- **A1 (K_null parity)**: PASS — both implementations call identical `_null_build_segments` → same `_NULL_COARSE_LEVELS` breakpoints
+- **A2 (shifted envelope)**: PASS — both use `replicate_evaluator(evaluator, delta)` with `circular_shift(delta)` on envelopes
+- **A3 (resolution=1/R)**: PASS — `contracts.NullResult.resolution = 1.0 / self.replicates`
+- **A4 (bucket max)**: PASS — `_vec_sliding_window_max` numpy slice identical to serial `sliding_window_max` (mathematically verified)
+- **A5 (real fixtures)**: PASS — 5 parametrized fixtures, varying horizon/periods/alpha, non-trivial
+- **B1 (_RESUME_VERSION 5→6)**: PASS — writer.py line 160
+- **B2 (FM-24 '900000ms')**: PASS — writer.py line 653
+- **B3 (DEFAULT_REPLICATES=1024)**: PASS — dhara_null.py AND dhara_null_vec.py
+- **B4 (docstring fix)**: PASS — contracts.py line 242-243
+- **C1 (resolution=1/R)**: PASS — 1.0/R, not 1/(R+1)
+- **C2 (q_threshold 95th pct)**: PASS — np.diff(cum) → QuantilePool(Q_QUANTILE=0.95) identical
+- **C3 (max_stats per replicate)**: PASS — max over TIME windows per replicate (matches serial)
+- **D1-D4 (scope)**: PASS — no layer0/layer1, no .npz, no orchestrator, no serving API
+- **E1-E3 (tests)**: PASS — real R=8 fixtures, real wall-clock ceiling, 31/31 existing pass
+
+Non-blocking notes:
+- F1: Docstring says "no inner for-loop over buckets" but Python loop over DURATION_BUCKETS exists; vectorization is INSIDE the function, not across buckets — slightly misleading but algorithm correct
+- F2: Python replicate loop remains (correct per approach b — segment-building cannot vectorize across replicates without losing equivalence; acknowledged in module docstring)
+- F3: deploy.yml 4Gi/2CPU → 8Gi/4CPU not mentioned in PR "NOT changed" section — should have been noted for operational awareness
+
+**STATUS: Cleared for merge queue. Holding per planned order (L-TIER → L-NULL → L-ENGINE); awaiting L-TIER PR + PARĪKṢAKA.**
+
+CONDUCTOR-HEARTBEAT: 2026-08-14T17:50+05:30 [R41 T+192min — PR#1278 L-NULL: PARĪKṢAKA PASS (a386cb7a); PR#1277 L-ENGINE: PARĪKṢAKA ad3bf805 still in flight (obstruction_sources() issue being assessed); L-TIER builder still running; merge order L-TIER→L-NULL→L-ENGINE preserved; holding queue until all 3 ready; pid=resumed]
