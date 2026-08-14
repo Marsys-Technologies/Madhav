@@ -1877,3 +1877,90 @@ R2-proof + R4 unchanged, still fire on FIELD-INTEGRATED.
 
 n3 stands at 1024 (SM-R-8 R-a). All SM-R-8 PARĪKṢAKA duties stand.
 Supervisors remain DOWN until the native green-lights restart.
+
+---
+### SM-R-10 — DESK RULING (2026-08-14): GROUNDING PASS COMPLETE — 7 ASSUMPTIONS CORRECTED; PLAN v1.1 SUPERSEDES v1.0; PO CONSOLIDATION PRECEDES ALL LANES
+
+Full report: /Users/Dev/shad_overnight/PURNA_GROUNDING_REPORT_v1_0.md
+(read-only, code+DB verified, G1-G12). Revised plan:
+/Users/Dev/shad_overnight/PURNA_KSHETRA_PLAN_v1_1.md. Δ1 commits both to
+00_ARCHITECTURE/briefs/sampurti/ at first run. v1.0 is SUPERSEDED, not
+deleted (kept for audit trail).
+
+THE GROUNDING PASS DID ITS JOB — it found 7 assumptions in v1.0 that
+code+data verification proved wrong, most critically:
+
+★ G5 (the load-bearing one): I-2's "prior-less classes ship honest
+  shape_only timing output" is TRUE as math but UNREACHABLE as written
+  — hazard.baseline_rate()/stage4_field.require_baseline() hard-gate
+  and SKIP any class without a real lifetime_count prior BEFORE any
+  scale-invariant window/null/salience math ever runs (stage4_field.py
+  :688-705, hazard.py:133-150). Additionally kala_field_windows
+  .expected_count leaks to the served timeline spec as a raw absolute
+  quantity with zero shape_only awareness (stage8_spec.py:136).
+  Implementing shape_only requires an explicit, versioned synthetic-
+  baseline injection (tagged end-to-end) PLUS a full census of every
+  absolute-value consumer downstream — NOT a downstream flag flip. v1.1
+  §2 P3 rewrites this as a 5-step gated sequence (P3-a synthetic path →
+  P3-b absolute-field census → P3-c adversarial gate against the actual
+  implementation → P3-d tier-basis table → P3-e writer/serving), with
+  explicit scope-honesty: ship shape_only only for consumers PROVEN
+  safe this wave; defer the rest as a named residual, never silently.
+
+G4: DHARA_DESIGN_v1_0.md is NOT merged to origin/main (unmerged
+  sampurti/integration worktree, status AMENDED_BLIND) — no PR may cite
+  it as settled authority until P0.a merges it. Its §4 term matrix is a
+  PER-CLASS WEIGHTED artifact, not the chart-level raw layer P1 needs —
+  P1 now explicitly builds a NEW Layer 0 (chart-level raw) beneath the
+  UNCHANGED Layer 1 (§4's existing per-class projection).
+
+G7/G10 (follow-up confirmed): stage5_null's R+1-denominator NullResult
+  is DEAD CODE (ENGINE_VERSION has no live 'sampled' call site,
+  confirmed this session). dhara_null's R-denominator (F-01-corrected)
+  is authoritative — pinned. NullResult moves into contracts.py as ONE
+  frozen type with .resolution REQUIRED (not optional); the writer.py
+  getattr(...,'resolution',None) fallback — which silently produces the
+  WRONG formula whenever a result object doesn't declare its own
+  resolution — is DELETED, not patched around.
+
+G9: bg_class_priors DOES NOT EXIST. Real table: brahma_class_priors,
+  keyed by signal_type_class (33-value signal/tradition taxonomy), NOT
+  event_class_id. Only 6 of 177 rows (ratified_by=
+  SHAD_DARSHANA_ADJUDICATIONS_NIGHT3_v1_0 §ADJUDICATION-2, prior_version
+  ne_v01) are structurally-complete event-class demographic priors —
+  exactly the 6 classes already wired. The other 171 rows are signal-
+  tradition weights, NOT partial coverage of the remaining 21 classes.
+  P4's scope is corrected: 21 classes need genuinely NEW citation-backed
+  sourcing, not "filling in" existing rows.
+
+G3: suppression's per-class-filter docstring (hazard.py:328-329) is
+  FALSE against the live evaluator — every active vighna suppresses all
+  27 classes uniformly today, with zero per-class Route.suppressed_by
+  filtering in the actual suppression_log_term call path. This is an
+  astrological-model question, not an engineering one: NATIVE-PRATINIDHI
+  RULES (P0.c) whether today's uniform-suppression behavior is correct
+  or whether per-class filtering should be built — BEFORE P1 encodes
+  either as architecture. Both raw curves are identical either way
+  (only the per-class projection differs), so this does not block P1's
+  chart-level sweep from starting.
+
+CONFIRMED GOOD NEWS (no architecture change needed): G1-G3 show the
+  chart-level/class-level separation is even cleaner than v1.0 assumed.
+  G6 confirms zero O(classes²) risk anywhere in stage 6/6.5/8 at 27
+  classes. G11 confirms memory headroom is enormous (≈3-6% of 8Gi even
+  generously sized) — never the constraint. G12 confirms the serving-
+  consistency sweep (P6) is 3 concrete, small fixes, not a rewrite.
+
+REVISED SEQUENCE (v1.1 §3): P-0 CONSOLIDATION (merge the design doc,
+  pin the null definition + contracts.py move + fallback deletion,
+  PRATINIDHI rules G3, naming corrections) → P-A design → P-B parallel
+  lanes (L-ENGINE/L-NULL/L-TIER/L-PIN/L-SERVE, L-SERVE independent and
+  startable immediately) → P-C A7 build → P-D proof spine → P-E upgrade
+  loop. P-0 is new and MUST complete before P-A/P-B — it is mechanical
+  plus one native ruling, low risk, and unblocks everything.
+
+PARĪKṢAKA gains one more standing duty: no PR may cite
+DHARA_DESIGN_v1_0.md as authority until P0.a's merge lands.
+
+Supervisors remain DOWN pending native go-ahead to restart Δ1 onto
+P-0.
