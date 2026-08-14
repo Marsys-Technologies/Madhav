@@ -62,9 +62,10 @@ def _base_stage3(stage0: str) -> str:
 # 1. ENGINE_VERSION default
 # ---------------------------------------------------------------------------
 
-def test_engine_version_default_is_sampled():
-    """ENGINE_VERSION must be 'sampled' in this PR — flag-flip is a separate commit."""
-    assert engine_config.ENGINE_VERSION == 'sampled'
+def test_engine_version_is_analytic():
+    """ENGINE_VERSION is 'analytic' — flag was flipped in PR #1268 (separate commit per
+    DHARA_DESIGN_v1_0.md §8.2 rule 2). OPT-N1 wires dhara_compute_null into this path."""
+    assert engine_config.ENGINE_VERSION == 'analytic'
 
 
 # ---------------------------------------------------------------------------

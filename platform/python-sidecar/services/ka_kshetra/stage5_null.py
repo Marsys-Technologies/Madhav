@@ -472,6 +472,10 @@ def _lambda_grid_fast(
     return vals
 
 
+# DEPRECATED (2026-08-14, P0.b): dead code — ENGINE_VERSION='analytic' permanently
+# removes all callers of run_null / NullAccumulator (the sampled-path block
+# substep machinery).  Slated for removal in a post-P-B cleanup wave.
+# Do NOT call these methods.
 def run_null(
     ev: FieldEvaluator,
     horizon_days: float,

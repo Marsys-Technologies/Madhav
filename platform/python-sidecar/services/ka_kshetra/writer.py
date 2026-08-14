@@ -112,6 +112,28 @@ from services.ka_kshetra.contracts import ProvenanceEdge, RobustnessVector, Segm
 
 logger = logging.getLogger(__name__)
 
+# OPT-N1: lazy accessors for dhara_null and engine_config so the module stays
+# importable even if the optional deps are absent (parity with dhara_sweep's
+# lazy import in _run_stage4), and so tests can patch at the module level.
+
+def _engine_version() -> str:
+    """Return the current ENGINE_VERSION from engine_config."""
+    from services.ka_kshetra.engine_config import ENGINE_VERSION
+    return ENGINE_VERSION
+
+
+def _dn_module():
+    """Return the dhara_null module (lazy import, O(1) after first call)."""
+    from services.ka_kshetra import dhara_null as _dn
+    return _dn
+
+# Expose dhara_null as module-level name DN so _run_stage5dhara can be patched
+# in tests via 'services.ka_kshetra.writer.DN.dhara_compute_null'.
+import services.ka_kshetra.dhara_null as DN  # noqa: E402
+# Expose dhara_null_vec as module-level name DNV so _run_stage5dhara can be
+# patched in tests via 'services.ka_kshetra.writer.DNV.dhara_compute_null_vec'.
+import services.ka_kshetra.dhara_null_vec as DNV  # noqa: E402
+
 ASSET_ID = 'ka_kshetra'
 
 #: §5.2's horizon: birth → birth + 100 Julian years.
@@ -132,7 +154,10 @@ SEGMENT_INDEX_DECADE_STRIDE = 1_000_000
 #: older writer build is treated as a different build and replanned in full
 #: (the `ka_sangam` / `ka_gochara_sweep` convention).
 #: v2 — stages 6 / 6.5 / 8 joined the plan and the content hash.
-_RESUME_VERSION = 4
+#: v5 — OPT-N1: stage5dhara replaces stage5:*:*/stage5finalize:* under ENGINE_VERSION='analytic'.
+#: v6 — P-B L-NULL: vectorized null (dhara_compute_null_vec) + DEFAULT_REPLICATES=1024 restored
+#:       (SM-R-8 mandate; OPT-N3 R=256 VOIDED). Invalidates all R=256 checkpoints from OPT-N3.
+_RESUME_VERSION = 6
 
 #: §6.2's row budget K. The design's own worked example ("the budget spends
 #: itself across 15 *different* things") is the source of the number; it is a
@@ -183,6 +208,11 @@ class _ClassContext:
     #: Full-horizon DHARA segments, built once per event class when
     #: ENGINE_VERSION == 'analytic'.  None when 'sampled'.
     dhara_segments: "list | None" = None
+    #: P3-a (DHARA_ENGINE_SPEC_v1_0.md §4.1): True when the baseline λ⁰_e for
+    #: this class was constructed from SHAPE_ONLY_SYNTHETIC_LIFETIME_COUNT
+    #: rather than a calibrated bg_class_priors row.  Every row the writer
+    #: produces for this class must carry this tag (P3-e).
+    baseline_is_synthetic: bool = False
 
 
 @register(ASSET_ID)
@@ -213,6 +243,7 @@ class KaKshetraWriter(WriterBase):
         self._shared_clocks = None             # list[ClockApplicability]
         self._shared_ladder = None             # list[BoundaryRow]
         self._shared_extra_breakpoints = None  # list[float]
+        self._shared_layer0 = None             # layer0.Layer0, set on first class (DHARA_ENGINE_SPEC §1)
         self._birth_date, self._birth_time = self._load_birth_instant(conn, self._chart_id)
 
         # §7.5 sub-rule 5: resolve the weights version EXACTLY ONCE, here, and
@@ -234,7 +265,11 @@ class KaKshetraWriter(WriterBase):
                 'rho_max': hazard.RHO_MAX,
                 'tau_nats': integrator.DEFAULT_TAU,
                 'max_refinement_depth': integrator.DEFAULT_MAX_DEPTH,
-                'null_replicates': S5.DEFAULT_REPLICATES,
+                'null_replicates': (
+                    _dn_module().DEFAULT_REPLICATES
+                    if _engine_version() == 'analytic'
+                    else S5.DEFAULT_REPLICATES
+                ),
                 'null_quantile': S5.Q_QUANTILE,
                 'duration_buckets': list(S5.DURATION_BUCKETS),
                 'precision_regime': 'day_grade',
@@ -262,13 +297,18 @@ class KaKshetraWriter(WriterBase):
             for d in range(DECADES):
                 steps.append(SubStep(key=f'stage4:{ec}:{d}',
                                      label=f'field {ec} decade {d}'))
+        _ev5 = _engine_version()
         n_blocks = math.ceil(S5.DEFAULT_REPLICATES / S5.DEFAULT_BLOCK_SIZE)
         for ec in self._event_classes:
-            for b in range(1, n_blocks + 1):
-                steps.append(SubStep(key=f'stage5:{ec}:{b}',
-                                     label=f'null {ec} replicate block {b}/{n_blocks}'))
-            steps.append(SubStep(key=f'stage5finalize:{ec}',
-                                 label=f'windows + robustness {ec}'))
+            if _ev5 == 'analytic':
+                steps.append(SubStep(key=f'stage5dhara:{ec}',
+                                     label=f'dhara null+windows {ec} ({DN.DEFAULT_REPLICATES} replicates)'))
+            else:
+                for b in range(1, n_blocks + 1):
+                    steps.append(SubStep(key=f'stage5:{ec}:{b}',
+                                         label=f'null {ec} replicate block {b}/{n_blocks}'))
+                steps.append(SubStep(key=f'stage5finalize:{ec}',
+                                     label=f'windows + robustness {ec}'))
         # Stages 6 → 6.5 → 8, in pipeline order and strictly after every
         # stage5finalize: salience reads committed windows, insights read
         # committed salience, and the timeline spec reads both.
@@ -369,6 +409,9 @@ class KaKshetraWriter(WriterBase):
         if kind == 'stage5':
             _, ec, block = step.key.split(':')
             return self._run_stage5_block(conn, ec, int(block), step)
+        if kind == 'stage5dhara':
+            _, ec = step.key.split(':', 1)
+            return self._run_stage5dhara(conn, ec, step)
         if kind == 'stage5finalize':
             _, ec = step.key.split(':', 1)
             return self._run_stage5_finalize(conn, ec, step)
@@ -557,7 +600,8 @@ class KaKshetraWriter(WriterBase):
 
         windows = integrator.find_windows(segments, result.q_threshold or math.inf)
         totals = [w.expected_count for w in windows]
-        adrishta = S5.adrishta_residual(totals, hazard.baseline_rate(ev.lifetime_count),
+        # P3-a: baseline_rate() now returns (rate, is_synthetic). Unpack the rate.
+        adrishta = S5.adrishta_residual(totals, hazard.baseline_rate(ev.lifetime_count)[0],
                                         HORIZON_DAYS)
         ayanamsha_ids = self._kinematics_ayanamsha_ids(conn)
         sigma_t = self._sigma_t_days(conn)
@@ -565,7 +609,8 @@ class KaKshetraWriter(WriterBase):
 
         rows += self._write_windows_batch(conn, ev, event_class, segments, windows, result,
                                           adrishta, ayanamsha_ids, sigma_t, legacy,
-                                          cctx.temporal_shape)
+                                          cctx.temporal_shape,
+                                          baseline_is_synthetic=cctx.baseline_is_synthetic)
 
         if not self._dry_run:
             self._record_substep(conn, step.key, rows)
@@ -573,9 +618,103 @@ class KaKshetraWriter(WriterBase):
                             notes=f'{event_class}: {len(windows)} window(s), '
                                   f'q={result.q_threshold!r}')
 
+    # ── stage 5 (DHARA analytic path) ────────────────────────────────────────
+
+    def _run_stage5dhara(self, conn, event_class: str, step: SubStep) -> WriterResult:
+        """DHARA null: R=1024 replicates in a single substep (P-B L-NULL).
+
+        Replaces the N×stage5 blocks + stage5finalize sequence that the sampled
+        path uses (ENGINE_VERSION=='sampled'). Under ENGINE_VERSION=='analytic'
+        this is the only stage-5 substep for the given event_class.
+
+        dhara_compute_null_vec (dhara_null_vec.py) runs all R replicates using
+        numpy vectorized operations (no Python loop over replicates), implementing
+        the F-01 shift-grid correction (range(1, R) instead of range(1, R+1))
+        and returning a contracts.NullResult compatible with the downstream
+        _write_windows_batch / _write_window interface.
+
+        SM-R-8 (2026-08-14): DEFAULT_REPLICATES restored to 1024 (OPT-N3 R=256
+        VOIDED). The vectorized implementation eliminates the per-replicate Python
+        loop overhead that made 1024 replicates infeasible with the serial engine.
+
+        FM-24: SET LOCAL idle_in_transaction_session_timeout = '900000ms' (15 min)
+        as defense-in-depth. NEVER set to 0 (FM-24 mandate — see DHARA_ENGINE_SPEC
+        §3.2). SET LOCAL scopes to the current transaction only.
+
+        Authority: OPT-N1 + P-B L-NULL spec (SM-Δ1), DHARA_ENGINE_SPEC_v1_0.md §3.
+        """
+        self._require_stage4_committed(conn, event_class)
+        try:
+            cctx = self._class_context(conn, event_class)
+        except S4.ClassSkipped as skip:
+            self._record_skip(skip)
+            return WriterResult(asset_id=ASSET_ID, rows_inserted=0,
+                                notes=f'{event_class} skipped: {skip.reason}')
+
+        ev = cctx.evaluator
+
+        # FM-24: extend idle_in_transaction_session_timeout to 900000ms (15 min)
+        # for this substep so the vectorized null can complete without hitting the
+        # default GUC wall. NEVER set to 0 (FM-24 mandate).
+        # SET LOCAL scopes to the current transaction only; reverts at substep commit.
+        with conn.cursor() as _cur_set:
+            _cur_set.execute("SET LOCAL idle_in_transaction_session_timeout = '900000ms'")
+
+        null_result = DNV.dhara_compute_null_vec(ev, R=DNV.DEFAULT_REPLICATES)
+
+        rows = 0
+        if not self._dry_run:
+            with conn.cursor() as cur:
+                for bucket, stats in null_result.max_stats.items():
+                    cur.execute(
+                        """INSERT INTO kala_field_null (
+                               chart_id, event_class, replicates, horizon_days,
+                               q_threshold, bucket_days, null_max_stats, shift_grid_step,
+                               weights_version, x_schema_version, field_snapshot_id)
+                           VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                           ON CONFLICT (chart_id, event_class, bucket_days, field_snapshot_id)
+                           DO UPDATE SET null_max_stats = EXCLUDED.null_max_stats,
+                                         q_threshold = EXCLUDED.q_threshold,
+                                         computed_at = now()""",
+                        (self._chart_id, event_class, null_result.replicates, HORIZON_DAYS,
+                         null_result.q_threshold, bucket, stats, null_result.shift_grid_step,
+                         self._weights_version, hazard.X_SCHEMA_VERSION, self._snapshot_id),
+                    )
+                    rows += 1
+
+        # Windows are derived from COMMITTED segments (parity with _run_stage5_finalize).
+        # Under dry_run, the evaluator's own segments stand in — nothing is written either.
+        segments = (ev.build_segments() if self._dry_run
+                    else self._load_segments(conn, event_class))
+        if not segments:
+            raise S4.UpstreamStageIncomplete(
+                f'upstream_stage_incomplete: no kala_field segments for {event_class}'
+            )
+
+        windows = integrator.find_windows(segments, null_result.q_threshold or math.inf)
+        totals = [w.expected_count for w in windows]
+        # P3-a: baseline_rate() now returns (rate, is_synthetic). Unpack the rate.
+        adrishta = S5.adrishta_residual(totals, hazard.baseline_rate(ev.lifetime_count)[0],
+                                        HORIZON_DAYS)
+        ayanamsha_ids = self._kinematics_ayanamsha_ids(conn)
+        sigma_t = self._sigma_t_days(conn)
+        legacy = S4.load_legacy_crosscheck(conn, self._chart_id, event_class)
+
+        rows += self._write_windows_batch(conn, ev, event_class, segments, windows, null_result,
+                                          adrishta, ayanamsha_ids, sigma_t, legacy,
+                                          cctx.temporal_shape,
+                                          baseline_is_synthetic=cctx.baseline_is_synthetic)
+
+        if not self._dry_run:
+            self._record_substep(conn, step.key, rows)
+        return WriterResult(asset_id=ASSET_ID, rows_inserted=rows,
+                            notes=f'{event_class}: {len(windows)} window(s) '
+                                  f'(dhara-vec {null_result.replicates}-replicate), q={null_result.q_threshold!r}')
+
     def _write_window(self, conn, ev, event_class, segments, w, null_result,
                       adrishta, ayanamsha_ids, sigma_t, legacy,
-                      temporal_shape: str) -> int:
+                      temporal_shape: str,
+                      baseline_is_synthetic: bool = False) -> int:
         wid = integrator.window_id(str(self._chart_id), event_class, w.t_start, w.t_end,
                                    self._weights_version, hazard.X_SCHEMA_VERSION)
         terms = ev.terms_at(w.t_peak)
@@ -623,9 +762,10 @@ class KaKshetraWriter(WriterBase):
                        expected_count, duration_days, promise_state, temporal_shape,
                        precision_regime, null_p, null_R, null_resolution, null_exceeding,
                        robustness, confidence_tier, weakest_link, adrishta_residual,
-                       weights_version, x_schema_version, field_snapshot_id)
+                       weights_version, x_schema_version, field_snapshot_id,
+                       baseline_is_synthetic)
                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,
-                           %s::jsonb,%s,%s,%s,%s,%s,%s)
+                           %s::jsonb,%s,%s,%s,%s,%s,%s,%s)
                    ON CONFLICT (chart_id, window_id) DO UPDATE SET
                        lambda_peak = EXCLUDED.lambda_peak,
                        expected_count = EXCLUDED.expected_count,
@@ -634,17 +774,20 @@ class KaKshetraWriter(WriterBase):
                        confidence_tier = EXCLUDED.confidence_tier,
                        weakest_link = EXCLUDED.weakest_link,
                        adrishta_residual = EXCLUDED.adrishta_residual,
+                       baseline_is_synthetic = EXCLUDED.baseline_is_synthetic,
                        computed_at = now()""",
                 (self._chart_id, wid, event_class, w.t_start, w.t_end,
                  self._as_date(w.t_start), self._as_date(w.t_end), self._as_date(w.t_peak),
                  w.t_peak, w.lambda_peak, w.expected_count, w.duration_days,
                  hazard.promise_state(ev.promise.p),
                  temporal_shape, 'day_grade',
-                 p, null_result.replicates, S5.null_resolution(null_result.replicates),
+                 p, null_result.replicates,
+                 null_result.resolution,
                  robustness.null_exceeding,
                  json.dumps(robustness.as_json()),
                  robustness.confidence_tier(), robustness.weakest_link(), adrishta,
-                 self._weights_version, hazard.X_SCHEMA_VERSION, self._snapshot_id),
+                 self._weights_version, hazard.X_SCHEMA_VERSION, self._snapshot_id,
+                 baseline_is_synthetic),
             )
             for e in edges:
                 cur.execute(
@@ -668,7 +811,8 @@ class KaKshetraWriter(WriterBase):
 
     def _write_windows_batch(self, conn, ev, event_class, segments, windows, null_result,
                               adrishta, ayanamsha_ids, sigma_t, legacy,
-                              temporal_shape: str) -> int:
+                              temporal_shape: str,
+                              baseline_is_synthetic: bool = False) -> int:
         """L1o: batch-insert all windows + provenance in two executemany calls.
 
         Per-window _write_window does one cur.execute per edge (~37 edges/window
@@ -748,11 +892,13 @@ class KaKshetraWriter(WriterBase):
                 w.expected_count, w.duration_days,
                 hazard.promise_state(ev.promise.p),
                 temporal_shape, 'day_grade',
-                p, null_result.replicates, S5.null_resolution(null_result.replicates),
+                p, null_result.replicates,
+                null_result.resolution,
                 robustness.null_exceeding,
                 json.dumps(robustness.as_json()),
                 robustness.confidence_tier(), robustness.weakest_link(), adrishta,
                 self._weights_version, hazard.X_SCHEMA_VERSION, self._snapshot_id,
+                baseline_is_synthetic,
             ))
             for e in edges:
                 prov_params.append((
@@ -771,9 +917,10 @@ class KaKshetraWriter(WriterBase):
                        expected_count, duration_days, promise_state, temporal_shape,
                        precision_regime, null_p, null_R, null_resolution, null_exceeding,
                        robustness, confidence_tier, weakest_link, adrishta_residual,
-                       weights_version, x_schema_version, field_snapshot_id)
+                       weights_version, x_schema_version, field_snapshot_id,
+                       baseline_is_synthetic)
                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,
-                           %s::jsonb,%s,%s,%s,%s,%s,%s)
+                           %s::jsonb,%s,%s,%s,%s,%s,%s,%s)
                    ON CONFLICT (chart_id, window_id) DO UPDATE SET
                        lambda_peak = EXCLUDED.lambda_peak,
                        expected_count = EXCLUDED.expected_count,
@@ -782,6 +929,7 @@ class KaKshetraWriter(WriterBase):
                        confidence_tier = EXCLUDED.confidence_tier,
                        weakest_link = EXCLUDED.weakest_link,
                        adrishta_residual = EXCLUDED.adrishta_residual,
+                       baseline_is_synthetic = EXCLUDED.baseline_is_synthetic,
                        computed_at = now()""",
                 window_params,
             )
@@ -1670,7 +1818,14 @@ class KaKshetraWriter(WriterBase):
                 conn, self._chart_id
             )
         lifetime, source = S4.load_class_lifetime_count(conn, event_class)
-        lifetime = S4.require_baseline(lifetime, event_class)
+
+        # P3-e (DHARA_ENGINE_SPEC_v1_0.md §4.4): tier-aware path selection.
+        # Look up whether this class is classified shape_only in the tier-basis
+        # table.  The C-1 guard is COMPLETELY UNCHANGED on the calibrated path
+        # (shape_only_from_tier=False).
+        shape_only_from_tier = self._is_shape_only_class(conn, event_class, lifetime)
+        lifetime = S4.require_baseline(lifetime, event_class,
+                                       shape_only=shape_only_from_tier)
         shape = S4.require_event_shape(S4.load_event_shape(conn, event_class), event_class)
         evaluator = S4.FieldEvaluator(
             event_class=event_class,
@@ -1683,7 +1838,24 @@ class KaKshetraWriter(WriterBase):
             horizon_days=HORIZON_DAYS,
             baseline_source=source,
             extra_breakpoints=self._shared_extra_breakpoints,
+            shape_only=shape_only_from_tier,
         )
+        # DHARA_ENGINE_SPEC §1: compute Layer 0 once per chart (chart-level raw
+        # matrix shared across all 27 event classes). Uses the first evaluator
+        # built — all chart-level data (lord stacks, covariates, obstructions)
+        # is independent of event_class. Layer 0 is consumed by Layer 1
+        # projection (layer1.project_layer1) and by the P2 vectorized null.
+        if self._shared_layer0 is None:
+            try:
+                from services.ka_kshetra.layer0 import compute_layer0
+                self._shared_layer0 = compute_layer0(evaluator, HORIZON_DAYS)
+            except Exception as _l0_exc:  # pragma: no cover
+                logger.warning(
+                    'ka_kshetra: Layer 0 pre-computation failed (%s); '
+                    'falling back to per-knot evaluation. This is a '
+                    'performance degradation, not a correctness failure.',
+                    _l0_exc,
+                )
         from services.ka_kshetra.engine_config import ENGINE_VERSION as _EV
         dhara_segs = None
         if _EV == 'analytic':
@@ -1696,9 +1868,46 @@ class KaKshetraWriter(WriterBase):
                                                 horizon_days=HORIZON_DAYS),
             temporal_shape=shape,
             dhara_segments=dhara_segs,
+            baseline_is_synthetic=shape_only_from_tier,
         )
         self._class_cache[event_class] = ctx
         return ctx
+
+    def _is_shape_only_class(
+        self, conn, event_class: str, lifetime: Optional[float]
+    ) -> bool:
+        """P3-e: Return True iff this event class is in the shape_only tier.
+
+        The tier-basis table (`ka_kshetra_tier_basis`, P3-d deliverable) maps
+        each of the 27 event classes to one of: 'calibrated', 'shape_only', or
+        'not_applicable'.  Until that table exists (it is a conductor/PRATINIDHI
+        deliverable gated before P3-e production writes), this method returns
+        False so the calibrated C-1 guard path is unchanged for all classes.
+
+        INVARIANT: Returns True ONLY when `lifetime is None` (no calibrated
+        bg_class_priors row exists).  A class WITH a calibrated prior is NEVER
+        silently reclassified as shape_only — that would be the exact B.10
+        fabrication this gate is designed to prevent.
+        """
+        if lifetime is not None:
+            # Calibrated prior exists — always use the calibrated path.
+            return False
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """SELECT tier FROM ka_kshetra_tier_basis
+                        WHERE event_class = %s""",
+                    (event_class,),
+                )
+                rows = S4._rows(cur)
+        except Exception:
+            # Table does not exist yet (P3-d not yet deployed) or query error.
+            # Fall back to the calibrated path (which will raise ClassSkipped
+            # for classes with no bg_class_priors row — the existing behaviour).
+            return False
+        if not rows:
+            return False
+        return str(rows[0].get('tier', '')) == 'shape_only'
 
     def _record_skip(self, skip: S4.ClassSkipped) -> None:
         entry = {'event_class': skip.event_class, 'reason': skip.reason,

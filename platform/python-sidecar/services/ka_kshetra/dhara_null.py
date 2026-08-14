@@ -49,11 +49,11 @@ Authority: DHARA_DESIGN_v1_0.md §6.1–§6.6.
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
 from typing import Optional, Sequence
 
 import numpy as np
 
+from services.ka_kshetra.contracts import NullResult
 from services.ka_kshetra.stage4_field import EnvelopeIndex, FieldEvaluator
 from services.ka_kshetra.stage5_null import (
     DURATION_BUCKETS,
@@ -68,7 +68,13 @@ from services.ka_kshetra.stage5_null import (
 
 # ── public constants ──────────────────────────────────────────────────────────
 
-#: R=1024; the F-01-corrected shift grid uses range(1, R), giving R-1=1023
+#: SM-R-8 MANDATE (restored): R=1024. OPT-N3 R=256 is VOIDED.
+#: The serial dhara_compute_null is retained for backward-compatibility and as
+#: the reference implementation for equivalence testing. Under
+#: ENGINE_VERSION='analytic', writer.py routes to dhara_compute_null_vec
+#: (dhara_null_vec.py) which eliminates the per-replicate Python loop and runs
+#: within idle_in_transaction_session_timeout=900000ms (FM-24).
+#: The F-01-corrected shift grid uses range(1, R), giving R-1=1023
 #: independent shifts. p-value resolution = 1/R = 1/1024.
 DEFAULT_REPLICATES: int = 1024
 
@@ -76,40 +82,8 @@ DEFAULT_REPLICATES: int = 1024
 DEFAULT_ALPHA: float = 0.05
 
 
-# ── result type ──────────────────────────────────────────────────────────────
-
-@dataclass
-class NullResult:
-    """Everything the DHARA stage-5 null needs to persist and threshold windows.
-
-    Fields
-    ------
-    replicates : int
-        The R value passed to dhara_compute_null (1024 by default).
-    shift_count : int
-        Actual number of independent shifts used: replicates - 1 = 1023.
-        This is the F-01-corrected count: range(1, replicates) excludes the
-        identity shift (delta == H) that would double-count the observation.
-    horizon_days : float
-        The evaluator's horizon in days (typically 36525.0).
-    shift_grid_step : float
-        H / replicates — the spacing between adjacent shift deltas.
-    q_threshold : float or None
-        95th-percentile of pooled lambda values across all replicates and all
-        1-day grid points. None if no replicates completed (honest not-computed).
-    max_stats : dict[int, list[float]]
-        Per-bucket sliding-window maxima. Key = duration bucket in days (one of
-        DURATION_BUCKETS). Value = list of length shift_count (one per replicate).
-    alpha : float
-        The exceedance threshold used (default 0.05).
-    """
-    replicates: int
-    shift_count: int
-    horizon_days: float
-    shift_grid_step: float
-    q_threshold: Optional[float]
-    max_stats: dict = field(default_factory=dict)
-    alpha: float = DEFAULT_ALPHA
+# NullResult is defined in contracts.py (P0.b, 2026-08-14) — single canonical
+# frozen type shared across writer.py and all consumers.  Imported above.
 
 
 # ── knot-set helpers ──────────────────────────────────────────────────────────
