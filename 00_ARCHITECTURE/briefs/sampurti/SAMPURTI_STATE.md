@@ -3855,3 +3855,5 @@ All 11 checks passed:
 - PR #1275 (P0.b): PARĪKṢAKA PASS; will queue after #1276 lands
 
 CONDUCTOR-HEARTBEAT: 2026-08-14T15:27+05:30 [R41 T+45min — PARĪKṢAKA PASS #1275; both PRs in/pending merge queue; await merge queue to land; then P-A DESIGN; pid=9106]
+
+CONDUCTOR-HEARTBEAT: 2026-08-14T15:27+05:30 → 2026-08-14T15:57+05:30 [R41 T+75min — context compaction resumed; PR #1276 MERGED (89bb6d74b); PR #1275 in merge queue Ganga gate in_progress T+4min; P-A ENGINE spec blind-committed to sampurti/integration (2737026b3, 277 lines); awaiting #1275 merge → P-0 COMPLETE; pid=resumed]
