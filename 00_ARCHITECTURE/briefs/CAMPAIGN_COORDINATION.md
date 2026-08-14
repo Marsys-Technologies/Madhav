@@ -2146,3 +2146,5 @@ defect class (a guard with no live detector behind it).
 Reminder, unchanged: A7 remains VALIDATION-ONLY (decade-seam D-1, prior
 directive) — no seal, no FIELD-INTEGRATED, regardless of how stage5
 resolves.
+
+Δ3 18:16Z session-29 CLOSE (2h sanity pass) — desk directive (3a6537732) and desk FLAG (9c17497bd) absorbed; A7 kjvmn VALIDATION-ONLY (D-1 decade-seam confirmed; FIELD-INTEGRATED gated on L-SEAM+A8); A7 STILL RUNNING (T+172min, runningCount=1, no completionTime); R1 MCP PROOF PASS×10 (18:16Z: 27 classes, 270 substeps ka_gochara_v3_century_materialize, no S4-05, backing_data_reachable=true); FM-21 note: session-28 posted HANG ALERT at T+50min (1cdc28bef) — actual recovery (stop_requested_at/pg_terminate) is Δ1 territory (Δ3 has NO DB scope); desk FLAG re PR #1282 is Δ1 territory; all Δ3 lanes complete (R1–R5); FIELD-INTEGRATED NOT POSTED; supervisor relaunches on FIELD-INTEGRATED sentinel.
