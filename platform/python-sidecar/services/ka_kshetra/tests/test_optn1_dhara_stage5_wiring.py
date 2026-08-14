@@ -212,19 +212,19 @@ class TestPlanSubstepsSampledEmitsStage5Blocks:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Test 3: _RESUME_VERSION == 6
+# Test 3: _RESUME_VERSION == 7
 # ─────────────────────────────────────────────────────────────────────────────
 
 class TestResumeVersionIs6:
-    """_RESUME_VERSION must be 6 (F1+F2+F5 SM-R-11: substep keys changed to
+    """_RESUME_VERSION must be 7 (F1+F2+F5 SM-R-11: substep keys changed to
     stage5dhara:{ec}:1 + stage5dhara:{ec}:2; fingerprint must change to
     invalidate any in-flight builds with old single-substep stage5dhara:{ec}
-    keys, triggering a fresh delete-and-replan.)"""
+    keys, triggering a fresh delete-and-replan. v6 = L-NULL #1278; v7 = F1+F2+F5.)"""
 
     def test_resume_version_is_6(self):
-        assert W._RESUME_VERSION == 6, (
-            f'_RESUME_VERSION must be 6 (SM-R-11 F1+F2+F5 requirement), '
-            f'got {W._RESUME_VERSION!r}'
+        assert W._RESUME_VERSION == 7, (
+            f'_RESUME_VERSION must be 7 (SM-R-11 F1+F2+F5 requirement; '
+            f'v6 was L-NULL PR #1278), got {W._RESUME_VERSION!r}'
         )
 
     def test_resume_version_is_int(self):

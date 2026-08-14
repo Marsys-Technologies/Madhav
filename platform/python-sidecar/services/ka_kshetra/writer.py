@@ -160,7 +160,7 @@ SEGMENT_INDEX_DECADE_STRIDE = 1_000_000
 #: v7 — F1+F2+F5 (SM-R-11): zero-evaluator-call null via C/E decomposition;
 #:       stage5dhara:{ec} split into stage5dhara:{ec}:1 (null) + stage5dhara:{ec}:2 (windows);
 #:       interior decade knots d·H/10 added to assemble_knot_set.
-_RESUME_VERSION = 6
+_RESUME_VERSION = 7
 
 #: §6.2's row budget K. The design's own worked example ("the budget spends
 #: itself across 15 *different* things") is the source of the number; it is a
@@ -653,14 +653,7 @@ class KaKshetraWriter(WriterBase):
 
         ev = cctx.evaluator
 
-        # FM-24: extend idle_in_transaction_session_timeout to 900000ms (15 min)
-        # for this substep so the vectorized null can complete without hitting the
-        # default GUC wall. NEVER set to 0 (FM-24 mandate).
-        # SET LOCAL scopes to the current transaction only; reverts at substep commit.
-        with conn.cursor() as _cur_set:
-            _cur_set.execute("SET LOCAL idle_in_transaction_session_timeout = '900000ms'")
-
-        null_result = DNV.dhara_compute_null_vec(ev, R=DNV.DEFAULT_REPLICATES)
+        null_result = DN.dhara_compute_null(ev, replicates=DN.DEFAULT_REPLICATES)
 
         rows = 0
         if not self._dry_run:
