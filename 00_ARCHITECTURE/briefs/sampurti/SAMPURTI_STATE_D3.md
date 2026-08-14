@@ -1576,3 +1576,76 @@ Key distinction discovered:
 4. If not posted: continue R5 ka_kshetra class audit when field is available; close cleanly
 
 RUN-TERMINAL: SESSION-Δ3-PENDING-23 (2h sanity pass — bxnww CANCELLED 07:38Z unexplained; FIELD-INTEGRATED NOT POSTED; Δ1 R40 no new ledger since 07:06Z; R1 re-proof PASS 08:50Z; R5 census initial inventory complete; supervisor relaunches on FIELD-INTEGRATED sentinel)
+
+---
+
+## SESSION-24 — 13:25Z 2026-08-14
+
+### STEP 0 — LIVENESS + COORDINATION
+
+**Liveness (FM-10/11/21):** PID 94507 confirmed = supervisor bash script (not peer conductor). No peer Δ3 conductors found. Sole conductor confirmed. Self-excluded from coordination advisory count.
+
+**FIELD-INTEGRATED check:** NOT POSTED. Read `origin/campaign-coordination` tail — `██ MARKER-POSTED: FIELD-INTEGRATED ██` sentinel absent. Latest coordination entry = SM-R-10 (plan v1.1 supersedes v1.0).
+
+**Δ1 integration ledger reconcile (origin/sampurti/integration):** Significant Δ1 progress since session-23:
+- P-B builders dispatched: L-ENGINE (PR #1277), L-NULL (PR #1278), L-TIER (PR #1279)
+- PR #1277 (L-ENGINE) MERGED ~10:52Z
+- PR #1278 (L-NULL) in merge queue
+- PR #1279 (L-TIER) blocked: Unit Tests FAILURE; Governance Gates pending
+- P3-d PRATINIDHI tier ratification COMPLETE (16:38 IST = 11:08Z): 6 calibrated, 19 shape_only, 2 not_applicable
+- Latest Δ1 R41 heartbeat: 16:38+05:30 (11:08Z)
+- No A6⁶ dispatch; field build not started; PR #1279 CI failure is the active gate
+
+**FM-09 (adopt reality, never redo):** Reconcile accepted. Session-24 baseline = reconciled state above.
+
+### STEP 1 — PLAN RECONCILE
+
+R5 P6 work is fully independent of FIELD-INTEGRATED per PURNA_KSHETRA_PLAN_v1_1.md §2:
+> "Independent of the field build; Δ3's existing R5 lane, unchanged scope, runs this now rather than waiting."
+
+Three concrete G12 fix sites confirmed from PURNA_GROUNDING_REPORT_v1_0.md + ahead_autofile.ts + kala_upaya_diagnosis.ts reads:
+1. `ahead_autofile.ts:108-114` — `AUTOFILE_WITHHOLD_EVENT_CLASSES` (5-item Set, duplicate of ADVERSE)
+2. `ahead_autofile.ts:124-165` — `KNOWN_EVENT_CLASSES` (27-entry static mirror, no CI drift-guard)
+3. `kala_upaya_diagnosis.ts:774-779` — `ADVERSE_WITHHOLD_EVENT_CLASSES` (5-item array, same 5 classes)
+
+Root cause (comment at kala_upaya_diagnosis.ts:771): `query_event_ontology_class` primitive never built → both withhold lists exist as workarounds.
+
+### R5 P6 — BUILDER DISPATCHED (13:25Z)
+
+**Worktree:** `/Users/Dev/Vibe-Coding/Apps/Madhav/.claude/worktrees/sm-d3-r5` (base: 2f4e7a872, post-#1277 merge)
+**Branch:** `sampurti/d3-r5`
+**Agent ID:** a297c115f611cfaa7 (background, sonnet)
+**Target PR:** `[SM-Δ3] R5 P6: KNOWN_EVENT_CLASSES CI guard + consolidate withhold lists + query_event_ontology_class`
+
+Three fixes:
+1. **Consolidate withhold lists** — `AUTOFILE_WITHHOLD_EVENT_CLASSES` imports from `kala_upaya_diagnosis.ts`'s `ADVERSE_WITHHOLD_EVENT_CLASSES` (canonical source); no more duplicate 5-item set
+2. **`query_event_ontology_class` HTTP primitive** — built in `ahead_autofile.ts` using existing `platformQueryExists` pattern; exported; resolves the self-flagged missing primitive at kala_upaya_diagnosis.ts:771
+3. **CI drift-guard for `KNOWN_EVENT_CLASSES`** — test compares static set against live `brahma_event_ontology`; reports stale + missing classes on failure
+
+### INDEPENDENT WORK (session-24)
+
+R1 not re-verified (stable at 6 consecutive PASSes across sessions 15/19/20/21/22/23; no code changes to R1's path since last proof). Re-proof deferred to next session if R5 builder produces a PR touching gochara paths.
+
+### Δ3 LANE STATUS (session-24)
+
+| Lane | Status | Notes |
+|------|--------|-------|
+| R1 | MERGED + MCP PROOF PASS ✓ | Sixth verification 08:50Z session-23; stable |
+| R2 | DEPLOYED; MCP PROOF PENDING | Sidecar v3.2 live; awaiting FIELD-INTEGRATED |
+| R3 | DONE ✓ | committed 66e35c216 |
+| R4 | READY-ON-SIGNAL | probe script committed; awaiting FIELD-INTEGRATED |
+| R5 | P6 BUILDER RUNNING | worktree sm-d3-r5, branch sampurti/d3-r5, agent a297c115f611cfaa7; 3 G12 fixes in flight |
+
+**FIELD-INTEGRATED:** NOT POSTED. PR #1279 CI failure is active gate for Δ1 A7 build (P-C layer). No ETA.
+
+**Δ1 NOTE FOR COORDINATION:** PR #1279 (L-TIER) unit test failure — Δ1's territory; flagged for awareness only. R5 builder (Δ3) is independent, runs concurrently without conflict.
+
+**WHAT SINGLE RELAUNCH FINISHES MY SCOPE:** FIELD-INTEGRATED sentinel posts → probe script → R2 MCP proof (gochara_forecast_get marriage in roots, resolution='era') + R4 G-P4 (kala_ahead_get field_snapshot_id=kfs_*) → γ ledger append → SESSION-DONE-Δ3 → RUN-TERMINAL: SESSION-Δ3-COMPLETE
+
+**NEXT-ACTION (session-25):**
+1. Check R5 builder completion (agent a297c115f611cfaa7 output or PR #TBD merged)
+2. Check coordination for `██ MARKER-POSTED: FIELD-INTEGRATED ██`
+3. If FIELD-INTEGRATED posted: run probe → R2 + R4 → γ ledger → SESSION-DONE-Δ3
+4. If R5 builder PR exists: verify CI green, merge if approved
+
+RUN-TERMINAL: SESSION-Δ3-PENDING-24 (2h sanity pass — FIELD-INTEGRATED NOT POSTED; Δ1 R41 heartbeat 11:08Z; PR #1279 CI failure active gate; R5 P6 builder dispatched (agent a297c115f611cfaa7, worktree sm-d3-r5); clean close)
