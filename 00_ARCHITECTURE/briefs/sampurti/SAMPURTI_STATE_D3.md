@@ -2391,3 +2391,90 @@ Call: `gochara_forecast_get(chart=482012f1, domain=marriage, 2026-08-15→2027-0
 RUN-TERMINAL: SESSION-Δ3-PENDING-32 (false-positive relaunch — FIELD-INTEGRATED not genuinely posted; cl4dm RUNNING VALIDATION-ONLY T+26min at open, NORMAL progress; R1 PASS×13; L-SEAM not on main; gate false-positive documented)
 
 ---
+
+## SESSION-33 — 2026-08-14T19:08Z (00:38 IST Aug 15 — FALSE-POSITIVE relaunch)
+
+CONDUCTOR-HEARTBEAT: 2026-08-14T19:08Z pid=70911 host=Montys-MacBook-Pro.local session=Δ3-s33
+
+### STEP-0 (session-33)
+
+**Liveness:** CLEAN — stored PID 68383 = run_dh_d3.sh supervisor bash (alive; NOT a peer conductor). `pgrep -f "CONDUCTOR of SAMPŪRTI-Δ3"` = PEERS=NONE. Sole conductor confirmed. MY_PID=70911 written to dh-d3-logs/current_conductor.pid.
+
+**Hygiene:** cl4dm (brahma-build-pipeline-job-cl4dm) RUNNING since 18:31:14Z Aug 14 (runningCount=1, completionTime=N/A) — LIVE BUILD, touch nothing. Per amended hygiene rule: RUNNING cloud execution = live build. No DB scope for Δ3; no proxy started.
+
+**Supervisor launch type:** FALSE-POSITIVE (second consecutive) — desk directive heading at line 2029 of CAMPAIGN_COORDINATION.md still matching supervisor's FIELD-INTEGRATED check pattern. Only 11 min since session-32 (19:08Z vs 18:57Z). FIELD-INTEGRATED NOT genuinely posted.
+
+**Coordination (fetched 19:08Z):** HEAD = 27ccf4066 (session-32 advisory, 18:57Z). No new commits since session-32. FIELD-INTEGRATED: NOT POSTED. No Δ1 activity after R42 (10:52Z Aug 14).
+
+**Reconcile (FM-09):**
+
+| Surface | Session-32 state | Session-33 reality |
+|---------|-----------------|-------------------|
+| cl4dm | RUNNING T+26min (18:57Z open) | RUNNING T+37min (19:08Z) |
+| cl4dm last log | 18:33:49Z LAW ZERO career_change skip | 18:33:49Z — UNCHANGED (no new logs) |
+| FM-21 T+35 threshold | 19:08:49Z (T+35 from last log 18:33:49Z) | **JUST PASSED** (current 19:08Z = T+35 boundary) |
+| Δ1 integration | R42 HEAD 1cda2c6cc (10:52Z Aug 14) | UNCHANGED — no new commits |
+| L-SEAM | NOT on main | UNCHANGED |
+| FIELD-INTEGRATED | NOT POSTED (false-positive) | NOT POSTED |
+| R1 MCP proof | PASS×13 (18:58Z session-32) | **PASS×14** (19:08Z session-33 — see below) |
+
+### FM-21 STATUS (cl4dm, session-33)
+
+- Started: 18:31:14Z; last log: 18:33:49Z (LAW ZERO skip — career_change); elapsed from last log: ~34min
+- FM-21 T+35 threshold: 19:08:49Z — JUST REACHED at session open
+- GUC smoke-log verified at session-32: idle_in_txn=30min, lock_timeout=5min ✓
+- runningCount=1, failedCount=0 → server-side idle-in-txn has NOT fired (same Python-compute-hang pattern as kjvmn: checkpoint-poll loop between substeps, connection not continuously idle → W3 30-min server-side timeout cannot fire because connection cycles every 2-4s)
+- **Δ3 posture: MONITOR ONLY** — Δ3 has NO DB scope (cannot pg_stat_activity, cannot stop_requested_at, cannot pg_terminate_backend). Flagging for Δ1.
+- cl4dm is VALIDATION-ONLY (desk directive: D-1 decade-seam fix not on main → even if completes, ka_kshetra=lit but NO FIELD-INTEGRATED post).
+- **FM-21 recovery authority: Δ1 exclusively.** No active Δ1 conductor (R42 is last commit, 10:52Z Aug 14 — ~8h gap).
+
+### R1 MCP PROOF — 14th Pass (19:08Z Aug 14): PASS ✓
+
+Call: `gochara_forecast_get(chart=482012f1, domain=marriage, date_range=2026-08-14→2027-08-14)`
+- `coverage.event_classes_covered`: 27 classes (all 27 incl. marriage) ✓
+- `coverage.domains_not_covered`: [] ✓
+- `coverage.coverage_quality.tier`: "rich" ✓
+- `sweep_completeness.substeps_committed`: 270 under `ka_gochara_v3_century_materialize` ✓
+- `backing_data_reachable`: true ✓
+- No S4-05 refusal ✓
+- `windows`: [] — honest empty (14th consecutive consistent result)
+
+**R1 PROOF STATUS: PASS** (14th consecutive — sessions 15/19/20/21/22/23/25/27/28/29/30/31/32/33). R1 fix stable in production.
+
+### Δ3 LANE STATUS (session-33)
+
+| Lane | Status | Notes |
+|------|--------|-------|
+| R1 | MERGED + MCP PROOF PASS ✓ | 14th pass 19:08Z session-33; 27 classes, 270 substeps, no S4-05 |
+| R2 | DEPLOYED; MCP PROOF PENDING | Sidecar 0f9395a17 live; gated on L-SEAM + A8 + FIELD-INTEGRATED |
+| R3 | DONE ✓ | commit 66e35c216 |
+| R4 | READY-ON-SIGNAL | probe script committed; gated on FIELD-INTEGRATED (after L-SEAM+A8) |
+| R5 | MERGED + DEPLOYED ✓ | PR #1280 merged 14:04Z Aug 14; deployed 0f9395a17 |
+
+### SESSION-33 CLOSE
+
+**Independent work this session:**
+- STEP-0 complete (liveness/hygiene/coordination/reconcile) ✓
+- cl4dm FM-21 status documented (T+35 threshold just passed; Δ3 cannot act; flagged for Δ1) ✓
+- R1 MCP proof 14th pass: PASS ✓
+- FALSE-POSITIVE relaunch confirmed (second consecutive from supervisor bug on desk directive heading) ✓
+
+**WHAT ONE RELAUNCH FINISHES:** When `██ MARKER-POSTED: FIELD-INTEGRATED ██` is genuinely posted by Δ1 (requires L-SEAM fix + A8 rebuild):
+1. Run `python3 00_ARCHITECTURE/briefs/sampurti/probe_sampurti_d3_r2_r4.py --chart-id 482012f1-710e-4a25-994a-93821f5871aa --mcp-key $MARSYS_MCP_KEY`
+2. R2: verify marriage in roots (resolution='era'); NOT in legacy_flat → paste MCP proof
+3. R4: verify field_snapshot_id=kfs_* (not 'field_not_yet_built') → paste MCP proof
+4. Append both proofs to γ ledger (sampurti/vyakhya append-only)
+5. Post SESSION-DONE-Δ3 to coordination → RUN-TERMINAL: SESSION-Δ3-COMPLETE
+
+**NEXT-ACTION (session-34):**
+1. FM-09: check cl4dm status — completed (VALIDATION-ONLY) or failed (W3/FM-21) or still running?
+2. Check if Δ1 conductor launched and executed FM-21 recovery on cl4dm
+3. Check Δ1 integration branch for L-SEAM lane dispatch
+4. Check coordination for genuine `██ MARKER-POSTED: FIELD-INTEGRATED ██`
+5. On FIELD-INTEGRATED (genuine): probe → R2 + R4 → γ ledger → SESSION-DONE-Δ3
+
+**WHAT SINGLE RELAUNCH FINISHES MY SCOPE:** Genuine FIELD-INTEGRATED (after L-SEAM + A8) posts → probe → R2 proof (marriage in roots, resolution='era') + R4 proof (field_snapshot_id=kfs_*) → γ ledger append → SESSION-DONE-Δ3 → RUN-TERMINAL: SESSION-Δ3-COMPLETE
+
+RUN-TERMINAL: SESSION-Δ3-PENDING-33 (false-positive relaunch #2 — FIELD-INTEGRATED not genuinely posted; cl4dm RUNNING T+37min FM-21 threshold just passed Δ1 action needed; R1 PASS×14; L-SEAM not on main; clean close)
+
+---
