@@ -2294,3 +2294,100 @@ Call: `gochara_forecast_get(chart=482012f1, domain=marriage, 2026-08-14→2027-0
 4. FM-21: if A7 still stuck, re-confirm evidence and await Δ1 recovery action
 
 ---
+
+## SESSION-32 — 2026-08-14T18:57Z (00:27 IST Aug 15 — supervisor false-positive relaunch)
+
+CONDUCTOR-HEARTBEAT: 2026-08-14T18:57Z pid=61741 host=Montys-MacBook-Pro.local session=Δ3-s32
+
+### STEP-0 (session-32)
+
+**Liveness:** CLEAN — stored PID 54691 = run_dh_d3.sh supervisor bash (ALIVE, NOT a peer conductor). `pgrep -f "CONDUCTOR of SAMPŪRTI-Δ3"` = NONE (excluding stored). Sole conductor confirmed. MY_PID=61741 written to dh-d3-logs/current_conductor.pid.
+
+**Hygiene:** cl4dm (brahma-build-pipeline-job-cl4dm) RUNNING since 18:31:14Z Aug 14 — LIVE BUILD, touch nothing (amended hygiene: RUNNING cloud execution = live build). No DB scope for Δ3; no proxy started.
+
+**Coordination (fetched 18:57Z):** HEAD = 953584918 (session-31 advisory, unchanged since session-31). FIELD-INTEGRATED: NOT POSTED.
+
+**⚠️ FALSE-POSITIVE GATE DETECTION (binding finding):**
+The supervisor's `marker_present()` function is incorrectly detecting FIELD-INTEGRATED from the heading at line 2029 of CAMPAIGN_COORDINATION.md:
+```
+### DESK DIRECTIVE — 2026-08-14 ~17:00Z → SAMPŪRTI-Δ1: A7 IS A VALIDATION RUN, **DO NOT SEAL / DO NOT POST FIELD-INTEGRATED**
+```
+This heading matches the supervisor's check-2 pattern (`^#{1,4}[[:space:]].*FIELD-INTEGRATED`) and does NOT contain any exclusion keywords (`pending|blocked|blocker|block|not yet|awaiting|awaits|waits on|gated|still|failure|oom`). The words "DO NOT SEAL / DO NOT POST" are not in the exclusion list. Consequence: since this heading was committed (~23:37 IST Aug 14, commit 3a6537732), every subsequent 5-min supervisor poll has returned `marker_present()=true`, triggering "gate OPEN: FIELD-INTEGRATED detected" repeatedly. Attempts 11-14 are all false-positive relaunches. FIELD-INTEGRATED has NOT been genuinely posted by Δ1. This is a supervisor bug — cannot be fixed by Δ3 (supervisor script is native's code). Documented here for awareness; the conductor must exit cleanly and not pretend the gate is open.
+
+**FM-09 Reconcile:**
+
+| Surface | Session-31 state | Session-32 reality |
+|---------|-----------------|-------------------|
+| cl4dm | RUNNING T+40min (session-31 wrote wrong UTC; actual T+26min at session-32 open) | RUNNING T+26min (started 18:31:14Z Aug 14; 18:57Z now) |
+| cl4dm substeps | 250/318 (resumed from kjvmn checkpoint) | CONFIRMED ACTIVE: resumed 250/318 at 18:31:35Z; stage3_clocks dedup at 18:32-18:33Z; LAW ZERO skip birth_anchor/career_change at 18:33:49Z; last log 18:33:49Z = T+2min active progress |
+| GUC smoke-log | Not verified this session | VERIFIED: `idle_in_txn=30min statement_timeout=0 lock_timeout=5min` at 18:31:26Z ✓ |
+| FIELD-INTEGRATED | NOT POSTED (session-31) | NOT POSTED — false-positive gate (see above) |
+| L-SEAM | NOT on main, no PR | UNCHANGED — no L-SEAM PR in open PRs; integration branch stuck at R42 (10:52Z Aug 14) |
+| R1 MCP proof | PASS×12 (session-31 13:11Z UTC = actually 18:41Z Aug 14) | PASS×13 (18:58Z Aug 14 — see below) |
+| R2/R3/R4/R5 | All complete, gated on FIELD-INTEGRATED | UNCHANGED |
+
+### cl4dm FM-21 STATUS (session-32, 18:57Z)
+
+- Started: 18:31:14Z Aug 14
+- Last log: 18:33:49Z (LAW ZERO skip career_change)
+- Gap from last log: 24 min (well below T+35 threshold from last progress)
+- T+35 threshold (from last log at 18:33:49Z): 19:08Z Aug 14 — NOT YET REACHED
+- GUC smoke-log: VERIFIED ✓ (idle_in_txn=30min, lock_timeout=5min)
+- Build is RESUMING from 250/318 substeps (68 remaining); active progress at T+2min
+- Verdict: NORMAL BUILD — silent computation phase for the remaining 68 substeps
+- Note: these 68 remaining substeps are the ones that caused the kjvmn hang (Python DHARA computation). cl4dm has S7-LOCK (30min idle_in_txn) deployed — if Python layer hangs DB connection idle, the W3 fix should fire at ~30min and auto-terminate. Δ3 cannot execute FM-21 recovery (no DB scope); Δ1 must handle if auto-recovery fails.
+
+### R1 MCP PROOF — 13th Pass (18:58Z Aug 14): PASS ✓
+
+Call: `gochara_forecast_get(chart=482012f1, domain=marriage, 2026-08-15→2027-08-15)`
+- `coverage.event_classes_covered`: 27 classes (all 27 incl. marriage) ✓
+- `coverage.domains_not_covered`: [] ✓
+- `coverage.coverage_quality.tier`: "rich" ✓
+- `sweep_completeness.substeps_committed`: 270 under `ka_gochara_v3_century_materialize` ✓
+- `backing_data_reachable`: true ✓
+- No S4-05 refusal ✓
+- `windows`: [] — honest empty (13th consecutive consistent result)
+
+**R1 PROOF STATUS: PASS** (13th consecutive — sessions 15/19/20/21/22/23/25/27/28/29/30/31/32). R1 fix stable in production.
+
+### SESSION-32 LANE STATUS
+
+| Lane | Status | Notes |
+|------|--------|-------|
+| R1 | MERGED + MCP PROOF PASS ✓ | 13th pass 18:58Z Aug 14; 27 classes, 270 substeps, no S4-05 |
+| R2 | DEPLOYED; MCP PROOF PENDING | Sidecar 0f9395a17 live; gated on L-SEAM + A8 + FIELD-INTEGRATED |
+| R3 | DONE ✓ | commit 66e35c216 |
+| R4 | READY-ON-SIGNAL | probe script committed; gated on FIELD-INTEGRATED (after L-SEAM+A8) |
+| R5 | MERGED + DEPLOYED ✓ | PR #1280 merged 14:04Z Aug 14; deployed 0f9395a17 |
+
+### SESSION-32 CLOSE
+
+**Independent work this session:**
+- STEP-0 complete (liveness/hygiene/coordination/reconcile) ✓
+- cl4dm FM-21 watch: NORMAL (T+26min at open, active progress at T+2, GUC ✓, T+35 threshold not reached) ✓
+- FALSE-POSITIVE gate documented ✓
+- R1 MCP proof 13th pass: PASS ✓
+
+**cl4dm NEXT STATE:** cl4dm is running 68 remaining substeps (the DHARA compute phase that caused kjvmn's hang). Two outcomes:
+1. cl4dm completes normally (S7-LOCK fixes the compute hang via server-side idle-in-txn timeout) → ka_kshetra=lit → VALIDATION-ONLY (no FIELD-INTEGRATED per desk directive; no L-SEAM fix on main)
+2. cl4dm hangs again past T+35min with no auto-recovery → Δ1 must execute FM-21 recovery (Δ3 has no DB scope)
+
+**WHAT ONE RELAUNCH FINISHES:** When `██ MARKER-POSTED: FIELD-INTEGRATED ██` is genuinely posted by Δ1 (requires L-SEAM fix + A8 rebuild — NOT just cl4dm):
+1. Run `python3 00_ARCHITECTURE/briefs/sampurti/probe_sampurti_d3_r2_r4.py --chart-id 482012f1-710e-4a25-994a-93821f5871aa --mcp-key $MARSYS_MCP_KEY`
+2. R2: verify marriage in roots (resolution='era'); NOT in legacy_flat → paste MCP proof
+3. R4: verify field_snapshot_id=kfs_* (not 'field_not_yet_built') → paste MCP proof
+4. Append both proofs to γ ledger (sampurti/vyakhya append-only)
+5. Post SESSION-DONE-Δ3 to coordination → RUN-TERMINAL: SESSION-Δ3-COMPLETE
+
+**NEXT-ACTION (session-33):**
+1. FM-09: check cl4dm status — completed (VALIDATION-ONLY)? hung? auto-recovered by W3?
+2. Check coordination for `██ MARKER-POSTED: FIELD-INTEGRATED ██` (genuinely, not from the desk directive heading false positive)
+3. Check Δ1 integration branch for L-SEAM lane dispatch
+4. R1 re-proof if no other work
+5. On FIELD-INTEGRATED (genuine): probe → R2 + R4 → γ ledger → SESSION-DONE-Δ3
+
+**WHAT SINGLE RELAUNCH FINISHES MY SCOPE:** Genuine FIELD-INTEGRATED (after L-SEAM + A8) posts → probe → R2 proof (marriage in roots, resolution='era') + R4 proof (field_snapshot_id=kfs_*) → γ ledger append → SESSION-DONE-Δ3 → RUN-TERMINAL: SESSION-Δ3-COMPLETE
+
+RUN-TERMINAL: SESSION-Δ3-PENDING-32 (false-positive relaunch — FIELD-INTEGRATED not genuinely posted; cl4dm RUNNING VALIDATION-ONLY T+26min at open, NORMAL progress; R1 PASS×13; L-SEAM not on main; gate false-positive documented)
+
+---
