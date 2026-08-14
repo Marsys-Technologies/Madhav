@@ -4033,3 +4033,26 @@ CONDUCTOR-HEARTBEAT: 2026-08-14T17:50+05:30 [R41 T+192min — PR#1278 L-NULL: PA
 
 **Key risk: `hazard.baseline_rate()` return type changed `float` → `tuple[float, bool]`**
 PARĪKṢAKA must verify ALL call sites (writer.py adrishta_residual + any other consumers in dhara_term_matrix.py, tests) handle the tuple correctly.
+
+---
+
+## P-B PARĪKṢAKA: PR #1277 L-ENGINE → PASS (recorded 2026-08-14T16:07+05:30)
+
+**PARĪKṢAKA verdict (opus agent ad3bf805): PASS — safe to enter merge queue.**
+
+All 22 checks PASS. Non-blocking advisory:
+- **F-1 (obstruction_sources() latent issue)**: `layer0.py` uses `obstruction_sources()` which is a dict comprehension that keeps LAST primitive per `vighna_key`; `obstructions_at()` takes MAX. This is a PRE-EXISTING latent issue NOT introduced by PR #1277 and NOT triggered by any current fixture (only one obstructive primitive in test fixtures). Non-blocking advisory; future fix: iterate `envelopes.obstructive` directly with max-aggregation at the Layer 0 compute site.
+
+**STATUS: Cleared for merge queue. PR #1277 entered merge queue 2026-08-14T16:07+05:30.**
+
+---
+
+## MERGE QUEUE STATUS (2026-08-14T16:07+05:30)
+
+| PR | Lane | PARĪKṢAKA | Queue |
+|---|---|---|---|
+| #1277 | L-ENGINE | PASS (ad3bf805; F-1 advisory) | IN QUEUE |
+| #1278 | L-NULL | PASS (a386cb7a; F1-F3 advisory) | IN QUEUE |
+| #1279 | L-TIER | PARĪKṢAKA a13a9a34 in flight | DRAFT — awaiting review + P3-d |
+
+CONDUCTOR-HEARTBEAT: 2026-08-14T16:07+05:30 [R41 post-compaction resume — PRs #1277+#1278 confirmed in merge queue; PR #1279 L-TIER: PARĪKṢAKA agent a13a9a34 in flight (checking baseline_is_synthetic threading + all caller sites); P3-d tier-basis 27-class draft pending; correcting prior heartbeat timestamp error (prior conductor wrote 17:20–17:50 but actual commit times were 15:47–16:02 IST)]
