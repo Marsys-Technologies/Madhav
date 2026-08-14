@@ -2563,3 +2563,100 @@ Call: `gochara_forecast_get(chart=482012f1, domain=marriage, date_range=2026-08-
 RUN-TERMINAL: SESSION-Δ3-PENDING-34 (cl4dm FAILED exit_code=1 T+42min; kk2m2 10.98s no-op; FIELD-INTEGRATED not posted; L-SEAM not on main; R1 PASS×15; all Δ3 lanes complete; Δ1 dark 8h+; clean close)
 
 ---
+
+---
+
+## SESSION-35 — 2026-08-14T19:25Z (00:55 IST Aug 15)
+
+CONDUCTOR-HEARTBEAT: 2026-08-14T19:25Z pid=90721 host=Montys-MacBook-Pro.local session=Δ3-35
+
+### STEP-0 (session-35)
+
+**Liveness:** CLEAN — stored PID 89320 (prior session). `pgrep -f "CONDUCTOR of SAMPŪRTI-Δ3"` = PEERS=NONE. Sole conductor confirmed. MY_PID=90721 written to dh-d3-logs/current_conductor.pid.
+
+**Hygiene (session open):** `brahma-build-pipeline-job-lj98k` RUNNING since 19:20:20Z — LIVE BUILD, touch nothing. Amended hygiene: RUNNING cloud execution = live build. No DB scope for Δ3.
+
+**Hygiene (session close):** lj98k CANCELLED BY USER at 19:33:00Z (T+12min 40s). No Cloud Run executions running. CLEAN.
+
+**Supervisor launch type:** 2h sanity pass (lj98k was already running when session opened — Δ3 correctly deferred until lj98k resolved).
+
+**Coordination (fetched 19:25Z):** Last entry = session-33 advisory (sessions 32 and 34 did not post). No FIELD-INTEGRATED. No new Δ1 commits.
+
+### FM-09 RECONCILE (session-35)
+
+| Surface | Session-34 state | Session-35 reality |
+|---------|-----------------|-------------------|
+| cl4dm | FAILED 19:13:19Z exit_code=1 | UNCHANGED — FAILED (confirmed) |
+| kk2m2 | SUCCEEDED 19:13:39Z 10.98s | UNCHANGED |
+| **lj98k** | Not dispatched | **NEW: RUNNING 19:20:20Z → CANCELLED 19:33:00Z** |
+| main HEAD | 15ace43df (#1282) | UNCHANGED — no new commits |
+| L-SEAM | NOT on main, no PR | UNCHANGED — no L-SEAM PRs open |
+| Δ1 integration | R42 10:52Z Aug 14 | UNCHANGED — still dark |
+| FIELD-INTEGRATED | NOT POSTED | NOT POSTED |
+| R1 MCP proof | PASS×15 (19:19Z session-34) | **PASS×16** (19:33Z session-35) |
+
+### lj98k FM-21 ANALYSIS
+
+- **What it was:** Desk-dispatched build (creator: mail.abhisek.mohanty@gmail.com); same run-id protocol as A8 dispatches; RESUMED from 250/318 substeps (same checkpoint as cl4dm). Image SHA: deb1e35475b2... (unconfirmed if different from 15ace43df image or same underlying code).
+- **GUC smoke-log:** VERIFIED ✓ at 19:20:33Z (`idle_in_txn=30min statement_timeout=0 lock_timeout=5min`)
+- **Build progression:** 19:20:44Z RESUMING 250/318; 19:21-22Z stage3_clocks dedup warm-up; 19:22:16Z stage1_symbolization coverage gaps; 19:23:17Z LAW ZERO skips (birth_anchor, career_change)
+- **Silence from T+3min:** Last build log at 19:23:17Z; SIGTERM at 19:32:45Z = ~9min silence → same stage5 DHARA hang pattern as kjvmn
+- **CANCELLATION:** "Cancelled by user." at 19:33:00Z (T+12min 40s) — desk actively cancelled after seeing the same hang pattern.
+- **3rd consecutive stage5 failure:**
+  - kjvmn: hung indefinitely (T+3h+, killed by Δ1 recovery)
+  - cl4dm: exit_code=1 at T+42min (cause unknown without DB scope)
+  - lj98k: cancelled at T+12min after same hang pattern
+
+**Δ3 posture:** NO DB scope. Cannot diagnose stage5 root cause. Desk is actively investigating (cancellation was deliberate, indicating desk observed the hang live). Await Δ1 + desk to resolve stage5 DHARA compute bottleneck and ship L-SEAM fix.
+
+### R1 MCP PROOF — 16th Pass (19:33Z Aug 14): PASS ✓
+
+Call: `gochara_forecast_get(chart=482012f1, domain=marriage, date_range=2026-08-15→2027-08-15)`
+- `coverage.event_classes_covered`: 27 classes (all 27 incl. marriage) ✓
+- `coverage.domains_not_covered`: [] ✓
+- `coverage.coverage_quality.tier`: "rich", covered_class_count=27, covered_domain_count=13 ✓
+- `sweep_completeness.substeps_committed`: 270 under `ka_gochara_v3_century_materialize` ✓
+- `backing_data_reachable`: true ✓
+- No S4-05 refusal ✓
+- `windows`: [] — honest empty (16th consecutive consistent result)
+
+**R1 PROOF STATUS: PASS** (16th consecutive — sessions 15/19/20/21/22/23/25/27/28/29/30/31/32/33/34/35). R1 fix stable in production.
+
+### Δ3 LANE STATUS (session-35, unchanged)
+
+| Lane | Status | Notes |
+|------|--------|-------|
+| R1 | MERGED + MCP PROOF PASS ✓ | 16th pass 19:33Z session-35; 27 classes, 270 substeps, no S4-05 |
+| R2 | DEPLOYED; MCP PROOF PENDING | Sidecar 0f9395a17 live; gated on L-SEAM + A8 + FIELD-INTEGRATED |
+| R3 | DONE ✓ | commit 66e35c216 |
+| R4 | READY-ON-SIGNAL | probe script committed; gated on FIELD-INTEGRATED (after L-SEAM+A8) |
+| R5 | MERGED + DEPLOYED ✓ | PR #1280 merged 14:04Z Aug 14; deployed 0f9395a17 |
+
+### SESSION-35 CLOSE
+
+**Work this session:**
+- STEP-0 complete (liveness/hygiene/coordination/reconcile) ✓
+- lj98k monitored: CANCELLED BY USER 19:33Z (3rd consecutive stage5 DHARA hang; Δ3 no DB scope) ✓
+- R1 MCP proof 16th pass: PASS ✓
+- L-SEAM status confirmed: NOT on main, no open PRs ✓
+- main branch: still at 15ace43df (no new merges since PR #1282)
+
+**WHAT ONE RELAUNCH FINISHES:** When `██ MARKER-POSTED: FIELD-INTEGRATED ██` is genuinely posted by Δ1 (requires L-SEAM fix on main + A8 rebuild completing without hang):
+1. R2 MCP proof: `gochara_forecast_get(domain=marriage, date_range=2020-2030)` → verify marriage in roots (resolution='era'), NOT in legacy_flat
+2. R4 probe: `kala_ahead_get(chart_id=482012f1...)` → verify field_snapshot_id=kfs_* (not 'field_not_yet_built')
+3. Append both proofs to γ ledger (sampurti/vyakhya append-only)
+4. Post SESSION-DONE-Δ3 to coordination → RUN-TERMINAL: SESSION-Δ3-COMPLETE
+
+**NEXT-ACTION (session-36):**
+1. FM-09: check for any new Cloud Run executions (A8 attempt #4 or L-SEAM dispatch)
+2. Check main branch for L-SEAM commits
+3. Check Δ1 integration branch for new activity
+4. Check coordination for genuine `██ MARKER-POSTED: FIELD-INTEGRATED ██`
+5. R1 17th pass
+6. On FIELD-INTEGRATED (genuine): R2 + R4 proofs → γ ledger → SESSION-DONE-Δ3
+
+**WHAT SINGLE RELAUNCH FINISHES MY SCOPE:** Genuine FIELD-INTEGRATED (after L-SEAM + A8 succeeds) → R2+R4 proofs → γ ledger → SESSION-DONE-Δ3 → RUN-TERMINAL: SESSION-Δ3-COMPLETE
+
+**BUILD SITUATION SUMMARY (for Δ1/desk):** 3 consecutive A8 attempts (kjvmn/cl4dm/lj98k) all hang/fail at stage5 DHARA compute phase (~T+3-42min into the 68 remaining substeps). L-SEAM fix not on main. FIELD-INTEGRATED gate remains closed. Desk actively debugging (lj98k cancelled deliberately at T+12min).
+
+RUN-TERMINAL: SESSION-Δ3-PENDING-35 (lj98k CANCELLED BY USER T+12min stage5 DHARA 3rd consecutive; R1 PASS×16; FIELD-INTEGRATED not posted; L-SEAM not on main; all Δ3 lanes complete; Δ1 dark 9h+; clean close)
