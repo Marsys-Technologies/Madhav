@@ -1634,18 +1634,27 @@ R1 not re-verified (stable at 6 consecutive PASSes across sessions 15/19/20/21/2
 | R2 | DEPLOYED; MCP PROOF PENDING | Sidecar v3.2 live; awaiting FIELD-INTEGRATED |
 | R3 | DONE ✓ | committed 66e35c216 |
 | R4 | READY-ON-SIGNAL | probe script committed; awaiting FIELD-INTEGRATED |
-| R5 | P6 BUILDER RUNNING | worktree sm-d3-r5, branch sampurti/d3-r5, agent a297c115f611cfaa7; 3 G12 fixes in flight |
+| R5 | **PR #1280 OPEN** | 105/105 pass, tsc clean; 2 commits (746b27415+9b374d92f); career_promotion/birth_anchor documented |
+
+### R5 P6 — BUILDER RESULT (13:55Z approx)
+
+**PR #1280:** `[SM-Δ3] R5 P6: KNOWN_EVENT_CLASSES CI guard + consolidate withhold lists + query_event_ontology_class`
+- Commit `746b27415`: Fix 1 (consolidate withhold lists) + Fix 2 (`queryEventOntologyClass` HTTP primitive, fail-open)
+- Commit `9b374d92f`: Fix 3 (4 drift-guard tests comparing `KNOWN_EVENT_CLASSES` vs `EVENT_CLASS_IDS`)
+- **105/105 tests pass. `tsc --noEmit` clean.**
+
+**Key findings (important for Δ1 / native awareness):**
+- `career_promotion`: confirmed NOT in `brahma_event_ontology` canonical 27-class set — was carried from test fixtures; now a documented exception; test will fail loudly if removed from `KNOWN_EVENT_CLASSES` without resolving ontology status
+- `birth_anchor`: confirmed canonical in ontology but correctly absent from `KNOWN_EVENT_CLASSES` (chart-epoch anchor, not a forward-looking prediction target)
 
 **FIELD-INTEGRATED:** NOT POSTED. PR #1279 CI failure is active gate for Δ1 A7 build (P-C layer). No ETA.
-
-**Δ1 NOTE FOR COORDINATION:** PR #1279 (L-TIER) unit test failure — Δ1's territory; flagged for awareness only. R5 builder (Δ3) is independent, runs concurrently without conflict.
 
 **WHAT SINGLE RELAUNCH FINISHES MY SCOPE:** FIELD-INTEGRATED sentinel posts → probe script → R2 MCP proof (gochara_forecast_get marriage in roots, resolution='era') + R4 G-P4 (kala_ahead_get field_snapshot_id=kfs_*) → γ ledger append → SESSION-DONE-Δ3 → RUN-TERMINAL: SESSION-Δ3-COMPLETE
 
 **NEXT-ACTION (session-25):**
-1. Check R5 builder completion (agent a297c115f611cfaa7 output or PR #TBD merged)
-2. Check coordination for `██ MARKER-POSTED: FIELD-INTEGRATED ██`
-3. If FIELD-INTEGRATED posted: run probe → R2 + R4 → γ ledger → SESSION-DONE-Δ3
-4. If R5 builder PR exists: verify CI green, merge if approved
+1. Check coordination for `██ MARKER-POSTED: FIELD-INTEGRATED ██`
+2. If FIELD-INTEGRATED posted: run probe → R2 + R4 → γ ledger → SESSION-DONE-Δ3
+3. Check PR #1280 CI status; if green + PARĪKṢAKA-approved, note for merge
+4. R1 re-proof optional (stable at 6 consecutive PASSes)
 
-RUN-TERMINAL: SESSION-Δ3-PENDING-24 (2h sanity pass — FIELD-INTEGRATED NOT POSTED; Δ1 R41 heartbeat 11:08Z; PR #1279 CI failure active gate; R5 P6 builder dispatched (agent a297c115f611cfaa7, worktree sm-d3-r5); clean close)
+RUN-TERMINAL: SESSION-Δ3-PENDING-24 (2h sanity pass — FIELD-INTEGRATED NOT POSTED; Δ1 R41 heartbeat 11:08Z; PR #1279 CI failure active Δ1 gate; R5 P6 COMPLETE → PR #1280 open (105/105 pass, career_promotion/birth_anchor findings); clean close)
