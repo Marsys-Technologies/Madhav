@@ -1658,3 +1658,53 @@ R1 not re-verified (stable at 6 consecutive PASSes across sessions 15/19/20/21/2
 4. R1 re-proof optional (stable at 6 consecutive PASSes)
 
 RUN-TERMINAL: SESSION-Δ3-PENDING-24 (2h sanity pass — FIELD-INTEGRATED NOT POSTED; Δ1 R41 heartbeat 11:08Z; PR #1279 CI failure active Δ1 gate; R5 P6 COMPLETE → PR #1280 open (105/105 pass, career_promotion/birth_anchor findings); clean close)
+
+---
+
+## SESSION-25 — 2026-08-14T13:38Z (19:08 IST)
+
+CONDUCTOR-HEARTBEAT: 2026-08-14T13:38Z pid=17166 host=Montys-MacBook-Pro.local session=Δ3-s25
+
+### STEP-0 (session-25)
+
+**Liveness:** CLEAN — stored PID 14015 (dead, checked via `cat current_conductor.pid`). `pgrep -f "CONDUCTOR of SAMPŪRTI-Δ3"` = PEERS=NONE. Sole conductor confirmed. PID 17166 written to dh-d3-logs/current_conductor.pid.
+
+**Hygiene:** CLEAN — No RUNNING Cloud Run executions. Most recent: bxnww (A6⁵, cancelled 07:38:43Z Aug 14). No local orchestrator process. No DB scope for Δ3.
+
+**Coordination (fetched 13:38Z):** Latest commit = e33cceb99 (Δ3 session-24 coordination update, R5 P6 COMPLETE). FIELD-INTEGRATED: NOT POSTED. No MARKER-POSTED sentinel found.
+
+**Reconcile (FM-09) — KEY STATE CHANGES since session-24 (13:25Z):**
+
+| Surface | Session-24 state | Session-25 reality |
+|---------|-----------------|-------------------|
+| PR #1277 (L-ENGINE) | MERGED | MERGED ✓ (confirmed) |
+| PR #1278 (L-NULL) | IN QUEUE | MERGED ✓ |
+| PR #1279 (L-TIER) | CI FAILURE (Unit Tests) | **MERGED** ✓ (MIG-1 fix 567→571; re-PARĪKṢAKA PASS; P3-d PRATINIDHI ratification complete; migration 571 on main) |
+| PR #1271 (FM-23) | OPEN, CI pending | OPEN; 22/26 CI pass; 4 pending (Governance Gates) |
+| PR #1280 (R5 P6) | OPEN (105/105 pass, 2 pending CI at session-24) | OPEN; 32/33 pass; 1 pending (Governance Gates IN_PROGRESS) |
+| A7 build | Not dispatched | Not dispatched — pending PR #1271 merge + deploy |
+| FIELD-INTEGRATED | NOT POSTED | NOT POSTED |
+| Δ1 R41 latest | 11:08Z (16:38 IST) P3-d ratification | 11:35Z (17:05 IST) PR #1271 xfail fix (d398a5669, dhara_pin_matrix known unwired) |
+
+**P-B SUMMARY (Δ1 R41 complete as of 11:35Z):**
+- L-ENGINE (#1277): MERGED — pre-computation + projection, SM-R-7 suppression, decade seam fixes
+- L-NULL (#1278): MERGED — vectorized dhara_compute_null, _RESUME_VERSION 5→6, DEFAULT_REPLICATES=1024
+- L-TIER (#1279): MERGED — migration 571 (ka_kshetra_tier_basis 27 rows + baseline_is_synthetic column); P3-d PRATINIDHI ratification: 6 calibrated / 19 shape_only / 2 not_applicable
+- PR #1271 (FM-23 guard): OPEN — xfail for dhara_pin_matrix added (commit d398a5669); CI re-running
+
+**SUPERVISOR LAUNCH TYPE (session-25):** 2h sanity pass — FIELD-INTEGRATED not posted.
+
+### Δ3 LANE STATUS (session-25)
+
+| Lane | Status | Notes |
+|------|--------|-------|
+| R1 | MERGED + MCP PROOF PASS ✓ | Sixth verification 08:50Z session-23; stable |
+| R2 | DEPLOYED; MCP PROOF PENDING | Sidecar v3.2 live; awaiting corpus refresh (FIELD-INTEGRATED) |
+| R3 | DONE ✓ | committed 66e35c216 |
+| R4 | READY-ON-SIGNAL | probe script committed; awaiting FIELD-INTEGRATED |
+| R5 | PR #1280 OPEN — PARĪKṢAKA PENDING | 32/33 CI pass; Governance Gates IN_PROGRESS; dispatch PARĪKṢAKA on CI green |
+
+### INDEPENDENT WORK (session-25)
+
+1. **R1 MCP proof re-verification** (7th)
+2. **PR #1280 CI monitor → PARĪKṢAKA dispatch** when Governance Gates resolve
