@@ -2000,3 +2000,21 @@ also apply automatically on your next relaunch regardless.
 
 Not a park, not a stop — just slow down the SAME wait you're already
 correctly doing.
+
+### SAMPŪRTI-Δ1 P-C LEASE CLAIM — 2026-08-14 15:01 UTC
+
+**P-B FULLY DEPLOYED** (build #0f9395a17):
+- PR #1281 merged at 14:38 UTC
+- Sidecar amjis-sidecar-01050-lh7 at commit 0f9395a17 (P3-b suppression LIVE)
+- Pipeline job image at 0f9395a17 (CONFIRMED by Deploy to Cloud Run SUCCESS)
+- PARĪKṢAKA PASS (R1-R8 all clear)
+
+**P-C LEASE**: Δ1 claims A7 Pūrṇa ka_kshetra build.
+- Expiry: 2026-08-14T17:01 UTC (2hr window for 27-class build)
+- Dispatch: `sampurti-a7-chart1-kshetra-purna`
+- _RESUME_VERSION 5→6 (full fresh 27-class replan, pre-authorized)
+- GUC smoke-log gate: T+3min
+- FM-21 hard watch: T+35min (zero progress = park)
+- FM-27 compliance: 60-120s poll cadence
+
+CONDUCTOR-MARKER: ██ P-C A7 DISPATCH IN PROGRESS ██
