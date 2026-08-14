@@ -4256,3 +4256,24 @@ CONDUCTOR-HEARTBEAT: 2026-08-14T17:58+05:30 [R41 CLOSE — P-B COMPLETE: #1277+#
 P3-b PR → PARĪKṢAKA → merge → deploy-green → P-C A7 (27-class tiered build)
 
 CONDUCTOR-HEARTBEAT: 2026-08-14T14:07Z [R42 open — STEP 0 CLEAN; P-B verified deployed (mig571+baseline_is_synthetic); P3-b builder dispatched (a66e07c687f9efb15); monitoring for PR creation; pid=29192]
+
+---
+
+## P3-b L-SERVE-B BUILDER COMPLETE (2026-08-14T14:20Z)
+
+**PR #1281 created**: `[SM-Δ1] P-B L-SERVE-B: P3-b serving suppression — suppress expected_count when baseline_is_synthetic=TRUE`
+
+**Changes:**
+- `writer.py:_load_committed_windows`: added `baseline_is_synthetic` to SELECT column list
+- `stage8_spec.py:interval_from_window`: emit `None` for `expected_count` when `baseline_is_synthetic=True`
+- `tests/test_p3b_suppression.py`: 4 TDD gate tests (§N.8 real detector confirmed)
+
+**Zero new failures**: 18 pre-existing failures (layer0_projection, optn1_dhara_stage5_wiring, stage1_symbolization — all pre-existing, none introduced).
+
+**Named residual recorded**: Cross-tier salience ranking in stage6_salience.py → P-E scope.
+
+**A7 dispatch script**: `platform/scripts/dispatch_sampurti_a7_chart1_kshetra.py` written and dry-run verified (`incomplete` → proceed, no active builds).
+
+**PARĪKṢAKA dispatched**: agent a22e3b776ba85bbc7 (opus) reviewing PR #1281 (R1-R8).
+
+CONDUCTOR-HEARTBEAT: 2026-08-14T14:20Z [R42 — P3-b builder COMPLETE (PR #1281); PARĪKṢAKA a22e3b776ba85bbc7 in flight; A7 dispatch script dry-run PASS; DB: 0 advisory locks, ka_kshetra=incomplete 657K rows; pid=29192]
