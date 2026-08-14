@@ -3100,4 +3100,85 @@ Call: `gochara_forecast_get(chart=482012f1, domain=marriage, date_range=2026-08-
 
 **WHAT SINGLE RELAUNCH FINISHES MY SCOPE:** Genuine FIELD-INTEGRATED → R2 proof (marriage in roots, resolution='era') + R4 proof (field_snapshot_id=kfs_*) → γ ledger append → SESSION-DONE-Δ3 → RUN-TERMINAL: SESSION-Δ3-COMPLETE
 
+---
+
+## SESSION-41 (20:20Z–20:38Z Aug 14 2026 UTC / 01:50–02:08 IST Aug 15)
+
+### CONDUCTOR-HEARTBEAT
+- PID: 63231 (written to current_conductor.pid at session start)
+- Supervisor: attempt-2 of sentinel-only detection epoch; attempt-1 exited AUTH-TRANSIENT rc=0, retry after 120s
+- PEERS: NONE — sole Δ3 conductor confirmed
+
+### STEP-0 RESULTS
+
+**LIVENESS:** CLEAN
+- Stored PID 58812 = supervisor bash `/bin/bash /Users/Dev/shad_overnight/run_dh_d3.sh` (not a peer conductor)
+- No running Δ3 peer processes found
+- MY_PID 63231 written to current_conductor.pid
+
+**HYGIENE:** CLEAN
+- No RUNNING Cloud Run executions (last: lj98k CANCELLED 19:33Z Aug 14)
+- No DB scope for Δ3; no Cloud Run exec to monitor
+
+**COORDINATION FETCH:** FIELD-INTEGRATED NOT POSTED
+- Fetched origin/campaign-coordination; scanned CAMPAIGN_COORDINATION.md
+- No `^^██ MARKER-POSTED: FIELD-INTEGRATED ██` sentinel found at line-start
+- Most recent Δ3 entry: session-40 close (20:18Z Aug 14)
+- Δ1 DOWN per SM-R-11; L-SEAM not on main
+
+**FM-09 RECONCILE:** main HEAD = `15ace43df` (PR #1282)
+- Session-40 reported main HEAD as `289d0fddb` — STALE READING (git log without prior fetch)
+- `289d0fddb` is NOT an ancestor of current main (git merge-base --is-ancestor → false)
+- Correct main HEAD confirmed this session: `15ace43df`
+- R5 CI guard (PR #1280) MERGED; Ganga Quality Gate PASSING on main ✓
+- L-SEAM NOT on main; F1-F5 Fix Wave required per SM-R-11 before A8 dispatch
+
+### R1 22ND PASS — PASS (20:35Z Aug 14)
+
+`gochara_forecast_get(chart_id=482012f1-710e-4a25-994a-93821f5871aa, reference_date=2025-01-01)`:
+- event_classes_covered: 27 (incl. marriage) ✓
+- domains_not_covered: [] ✓
+- substeps_committed: 270 under ka_gochara_v3_century_materialize ✓
+- backing_data_reachable: true ✓
+- S4-05 refusal: NONE ✓
+- windows: [] (honest empty — no active windows at reference date) ✓
+- asset_id authority: ka_gochara_v3_century_materialize (not ka_gochara) ✓
+- substep key parse: `::` format (not `:year:`) ✓
+
+**R1 PROOF STATUS: PASS** (22nd consecutive — sessions 15/19/20/21/22/23/25/27/28/29/30/31/32/33/34/35/36/37/38/39/40/41). R1 fix stable in production.
+
+### Δ3 LANE STATUS (session-41, unchanged)
+
+| Lane | Status | Notes |
+|------|--------|-------|
+| R1 | MERGED + MCP PROOF PASS ✓ | 22nd pass 20:35Z session-41; 27 classes, 270 substeps, no S4-05 |
+| R2 | DEPLOYED; MCP PROOF PENDING | Sidecar 0f9395a17 live; gated on L-SEAM + A8 + FIELD-INTEGRATED |
+| R3 | DONE ✓ | commit 66e35c216 |
+| R4 | READY-ON-SIGNAL | probe script committed; gated on `^^██ MARKER-POSTED: FIELD-INTEGRATED ██` |
+| R5 | MERGED + DEPLOYED ✓ | PR #1280; Ganga Quality Gate PASSING on main ✓ |
+
+### SESSION-41 CLOSE
+
+**Work this session:**
+- STEP-0 complete (liveness/hygiene/coordination/reconcile) ✓
+- FM-09 adopt: session-40 stale main HEAD corrected (289d0fddb → 15ace43df) ✓
+- R1 MCP proof 22nd pass: PASS ✓
+- Supervisor sentinel-only detection confirmed still operative ✓
+- No additional independent Δ3 work available (all lanes complete or gated)
+
+**FIELD-INTEGRATED STATUS:** NOT POSTED. Blocker chain unchanged:
+1. L-SEAM fix must land on main (assemble_knot_set interior decade edges + full-horizon contiguity test) [F5 of Fix Wave F]
+2. F1-F4 + L-SEAM merge → deploy to production
+3. A8 dispatch (1-class mandatory canary gate first per SM-R-11 F3)
+4. A8 completion → ka_kshetra=lit → S4 parity gate → `^^██ MARKER-POSTED: FIELD-INTEGRATED ██`
+5. Δ1 requires native restart (DOWN per SM-R-11)
+
+**NEXT-ACTION (session-42):**
+1. Check for `^^██ MARKER-POSTED: FIELD-INTEGRATED ██` (genuine sentinel at line-start)
+2. Check main for L-SEAM commit (assemble_knot_set interior decade edges)
+3. R1 23rd pass
+4. On FIELD-INTEGRATED: R2+R4 proofs → γ ledger → SESSION-DONE-Δ3
+
+**WHAT SINGLE RELAUNCH FINISHES MY SCOPE:** Genuine FIELD-INTEGRATED → R2 proof (marriage in roots, resolution='era') + R4 proof (field_snapshot_id=kfs_*) → γ ledger append → SESSION-DONE-Δ3 → RUN-TERMINAL: SESSION-Δ3-COMPLETE
+
 RUN-TERMINAL: SESSION-Δ3-PENDING-40 (supervisor-fix relaunch — sentinel-only detection now live; main advanced to 289d0fddb (5 P3-tier Fix Wave commits); L-SEAM outstanding; R1 PASS×21; FIELD-INTEGRATED NOT POSTED; clean close)
