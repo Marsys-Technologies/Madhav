@@ -3978,3 +3978,5 @@ GROUNDING: hazard.py:321-355 (unfiltered u dict), hazard.py:249-272 (correct per
 
 **P0.c STATUS: COMPLETE — OPTION B ruling recorded with full rationale. Already implemented in L-ENGINE PR #1277 (SM-R-7 expected-differences register confirmed).**
 
+
+CONDUCTOR-HEARTBEAT: 2026-08-14T17:30+05:30 [R41 T+172min — PARĪKṢAKA in flight for PR#1277+#1278 (both opus agents active, deep code inspection); L-TIER still building (threading baseline_is_synthetic through _write_windows_batch); PARĪKṢAKA#1277 found potential issue: obstruction_sources() dict-comprehension keeps last primitive per key vs obstructions_at() takes MAX — agent assessing whether this is pre-existing or PR-introduced; SM-R-7 full rationale committed (59e679381); PR#1271 governance gate fail traced to pre-existing py-sidecar failures (fix: land L-NULL first, re-run); pid=resumed]
