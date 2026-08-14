@@ -695,6 +695,12 @@ class KaKshetraWriter(WriterBase):
             return WriterResult(asset_id=ASSET_ID, rows_inserted=0,
                                 notes=f'{event_class} skipped: {skip.reason}')
 
+        # F2: chunk:1 never commits in dry_run — kala_field_null is empty.
+        # Return early; the contract only asserts zero writes.
+        if self._dry_run:
+            return WriterResult(asset_id=ASSET_ID, rows_inserted=0,
+                                notes=f'{event_class}: dry_run (dhara chunk:2)')
+
         # ── load committed null from DB (resume-safe) ─────────────────────────
         with conn.cursor() as cur:
             cur.execute(
