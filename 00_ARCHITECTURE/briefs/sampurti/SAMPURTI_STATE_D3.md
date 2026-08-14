@@ -1723,6 +1723,59 @@ CONDUCTOR-HEARTBEAT: 2026-08-14T13:38Z pid=17166 host=Montys-MacBook-Pro.local s
 - Scope: PR #1280 — Fix 1 (withhold consolidation), Fix 2 (queryEventOntologyClass), Fix 3 (CI drift-guard)
 - Checklist: blind-before-effect, ADVERSE_WITHHOLD parity, no circular import, FM-17, FM-04, FM-20
 
-**PR #1271 (FM-23 guard) status (13:47Z):** OPEN, BLOCKED — 24/26 pass, 2 pending (Build Check + Governance Gates). Still running — Δ1 territory.
+**PR #1271 (FM-23 guard) status (13:47Z→13:53Z):** OPEN → **ALL CLEAN** — 26/26 pass (Build Check + Governance Gates both PASS at 13:53Z). Δ1 territory — flagged for R42 awareness; do not merge from Δ3.
 
 **Coordination advisory:** posted to campaign-coordination (24ef7766d).
+
+**PARĪKṢAKA VERDICT — PR #1280 (13:55Z approx):**
+Agent: a37e94cc35a34741d (opus, independent, read-only against `sm-d3-r5` worktree)
+
+| Check | Result |
+|---|---|
+| C1: Blind-before-effect (§1.1) | PASS |
+| C2: ADVERSE_WITHHOLD parity (5 classes) | PASS — same 5 classes confirmed in kala_upaya_diagnosis.ts:774-779 |
+| C3: Fix 2 SQL injection safe | PASS — `$1` parameterized, no string interpolation |
+| C4: Fix 2 not called in production | PASS — zero production imports of `queryEventOntologyClass` |
+| C5: Drift-guard correctness | PASS — career_promotion NOT in EVENT_CLASS_IDS ✓; birth_anchor IS in EVENT_CLASS_IDS ✓ |
+| C6: Circular dependency check | PASS — kala_upaya_diagnosis.ts does NOT import ahead_autofile.ts |
+| C7: FM-04 no per-row DB loops | PASS — single LIMIT 1 lookup, test-only |
+| C8: FM-17 version bump | PASS — no output change (same 5 classes at runtime); AHEAD_AUTOFILE_FORMULA_VERSION unchanged ✓ |
+| C9: FM-20 (§7.1c) | PASS — no MCP tool output change; no deployed MCP proof required |
+
+**Blocking findings (B-level): NONE.**
+
+**Non-blocking advisories:**
+- F-1: Cross-package relative path in test (`../../../../platform/src/lib/event_classes.ts`) — accepted pattern per existing test precedent (non-blocking)
+- F-2: TODO comment at kala_upaya_diagnosis.ts:771 not updated (stale comment saying primitive is missing — now resolved by Fix 2; cleanup deferred)
+
+**VERDICT: PASS — safe to enter merge queue.**
+
+**PR #1280 MERGE QUEUE ENTERED (13:57Z):** `gh pr merge 1280 --squash --auto` ✓
+
+### Δ3 LANE STATUS (session-25 close)
+
+| Lane | Status | Notes |
+|------|--------|-------|
+| R1 | MERGED + MCP PROOF PASS ✓ | Seventh verification 13:40Z session-25; stable |
+| R2 | DEPLOYED; MCP PROOF PENDING | Sidecar v3.2 live; awaiting FIELD-INTEGRATED |
+| R3 | DONE ✓ | committed 66e35c216 |
+| R4 | READY-ON-SIGNAL | probe script committed; awaiting FIELD-INTEGRATED |
+| R5 | **PR #1280 IN MERGE QUEUE** | PARĪKṢAKA PASS (a37e94cc); merge queue entered 13:57Z; F-1/F-2 non-blocking |
+
+**FIELD-INTEGRATED:** NOT POSTED.
+- PR #1271 (FM-23) CLEAN 26/26 — Δ1 R42 to merge + deploy
+- A7 build: not dispatched — gated on PR #1271 merge + deploy
+- Path: R42 merges #1271 → deploy → A7 dispatch → ka_kshetra=lit → S4 parity gate → FIELD-INTEGRATED posted
+
+**WHAT ONE RELAUNCH FINISHES:** When FIELD-INTEGRATED posts (`██ MARKER-POSTED: FIELD-INTEGRATED ██`):
+1. Run `python3 00_ARCHITECTURE/briefs/sampurti/probe_sampurti_d3_r2_r4.py --chart-id 482012f1-710e-4a25-994a-93821f5871aa --mcp-key $MARSYS_MCP_KEY`
+2. R2: verify marriage in roots (resolution='era'); NOT in legacy_flat
+3. R4: verify field_snapshot_id=kfs_* (not 'field_not_yet_built'); windows non-empty; authority_basis shown
+4. Append both to γ ledger (sampurti/vyakhya append-only)
+5. Post SESSION-DONE-Δ3 to coordination → RUN-TERMINAL: SESSION-Δ3-COMPLETE
+
+**NEXT-ACTION (session-26):**
+1. Check coordination for `██ MARKER-POSTED: FIELD-INTEGRATED ██`
+2. Check PR #1280 merge status (squash+deploy; verify migration-free)
+3. Check Δ1 R42 state — has PR #1271 been merged + A7 dispatched?
+4. On FIELD-INTEGRATED: run probe → R2 + R4 → γ ledger → SESSION-DONE-Δ3
