@@ -678,8 +678,8 @@ jobs:
             --region=${{ env.GCP_REGION }} \
             --image=asia-south1-docker.pkg.dev/madhav-astrology/amjis/brahma-pipeline:${{ github.sha }} \
             --task-timeout=86400 \
-            --memory=4Gi \
-            --cpu=2 \
+            --memory=8Gi \
+            --cpu=4 \
             --update-env-vars=GCP_PROJECT=madhav-astrology,PUBSUB_TOPIC=cockpit-events \
             --quiet
 
