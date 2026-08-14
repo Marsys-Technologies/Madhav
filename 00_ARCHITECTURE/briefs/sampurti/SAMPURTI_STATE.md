@@ -4056,3 +4056,23 @@ All 22 checks PASS. Non-blocking advisory:
 | #1279 | L-TIER | PARĪKṢAKA a13a9a34 in flight | DRAFT — awaiting review + P3-d |
 
 CONDUCTOR-HEARTBEAT: 2026-08-14T16:07+05:30 [R41 post-compaction resume — PRs #1277+#1278 confirmed in merge queue; PR #1279 L-TIER: PARĪKṢAKA agent a13a9a34 in flight (checking baseline_is_synthetic threading + all caller sites); P3-d tier-basis 27-class draft pending; correcting prior heartbeat timestamp error (prior conductor wrote 17:20–17:50 but actual commit times were 15:47–16:02 IST)]
+
+---
+
+## P-B PARĪKṢAKA: PR #1279 L-TIER → FAIL (2026-08-14T16:16+05:30) — FIXES APPLIED
+
+**PARĪKṢAKA verdict (opus agent a13a9a34ff8b53be5): FAIL — 2 blocking issues found and fixed.**
+
+All checks except D1 PASS. Blocking findings:
+
+**D1-a (BLOCKING — fixed in commit 458ff5f7f):** `writer.py:688` DHARA path (`_run_stage5dhara`) passed `hazard.baseline_rate(ev.lifetime_count)` directly to `S5.adrishta_residual()` which expects `float`. `baseline_rate()` now returns `tuple[float, bool]` — this would cause `TypeError` at runtime. Fix: added `[0]` unpack at line 688 (matching the already-fixed sampled path at line 598).
+
+**D1-b (BLOCKING — fixed in commit 458ff5f7f):** `test_hazard.py:30-31` compared `tuple[float, bool]` against `pytest.approx(float)`. Fix: unpacked both the rate and `is_synthetic` flag with explicit assertions (`rate == pytest.approx(...)` + `synth is False`).
+
+**Fix verification:** 59 tests pass post-fix (test_hazard 18 + test_shape_only 17 + remaining 24).
+
+**Re-PARĪKṢAKA dispatched:** agent aff1655c87f4d2362 (opus) — confirming the two fixes and scanning for any other missed callers.
+
+**P3-d PRATINIDHI ratification dispatched:** agent a3448a407e9a66ba3 (opus) — ratifying 27-class tier-basis table.
+
+CONDUCTOR-HEARTBEAT: 2026-08-14T16:16+05:30 [R41 T+current — PR#1279 FAIL (D1-a,D1-b) diagnosed + fixed (commit 458ff5f7f; 59/59 tests pass); re-PARĪKṢAKA aff1655c dispatched; PRATINIDHI a3448a dispatched for P3-d ratification; PRs #1277+#1278 in merge queue; pid=resumed]
