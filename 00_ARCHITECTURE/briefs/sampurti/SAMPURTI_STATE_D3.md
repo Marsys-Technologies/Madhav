@@ -2035,6 +2035,97 @@ RUN-TERMINAL: SESSION-Δ3-PENDING-30 (2h sanity pass — kjvmn RUNNING/VALIDATIO
 
 ---
 
+## SESSION-31 — 2026-08-15T13:12Z (~18:42 IST — 2h sanity pass)
+
+CONDUCTOR-HEARTBEAT: 2026-08-15T13:12Z pid=43894 host=Montys-MacBook-Pro.local session=Δ3-s31
+
+### STEP-0 (session-31)
+
+**Liveness:** CLEAN — stored PID 35803 = supervisor bash (alive, NOT a peer conductor — pgrep "CONDUCTOR of SAMPŪRTI-Δ3" = NONE; fallback rule applied: stored PID alive but identity-string grep EMPTY → sole conductor confirmed). My PID 43894 written to dh-d3-logs/current_conductor.pid.
+
+**Hygiene:** cl4dm (brahma-build-pipeline-job-cl4dm) RUNNING since 2026-08-14T18:31:14Z — LIVE BUILD, touch nothing. Per amended hygiene rule: A RUNNING cloud execution's lock is a LIVE BUILD. No DB scope for Δ3; no proxy started.
+
+**Coordination (fetched 13:12Z):** HEAD = 2cd6579d9 (unchanged — last entry = session-30 CLOSE, 18:27Z Aug 14). FIELD-INTEGRATED: NOT POSTED. No new entries since session-30.
+
+**Supervisor launch type:** 2h sanity pass — FIELD-INTEGRATED not yet posted; no marker trigger.
+
+**Reconcile (FM-09) — KEY STATE CHANGES since session-30 (18:27Z Aug 14):**
+
+| Surface | Session-30 state | Session-31 reality |
+|---------|-----------------|-------------------|
+| A7 kjvmn | RUNNING T+177min (VALIDATION-ONLY) | **COMPLETED** 2026-08-14T18:31:10Z |
+| xt79g | Not in ledger | **SUCCEEDED** 18:23:07Z (19s — test dispatch, no-args or early exit) |
+| cl4dm | Not in ledger | **RUNNING** since 18:31:14Z (4s after kjvmn completion) |
+| PR #1282 | In desk FLAG (DEFAULT_BLOCK_SIZE 32→16, potential no-op) | **MERGED** 2026-08-14T18:03:38Z; deployed 18:12Z (run 31827568588, SUCCESS) |
+| L-SEAM | Not yet dispatched | NOT YET: no L-SEAM PR open or merged on main |
+| FIELD-INTEGRATED | NOT POSTED (gated on L-SEAM+A8) | NOT POSTED — unchanged |
+| Δ1 integration | R42 latest (10:52Z UTC) | UNCHANGED (1cda2c6cc still HEAD; no new commits) |
+| R1 MCP proof | PASS×11 (18:27Z session-30) | PASS×12 (13:11Z session-31 — see below) |
+
+**cl4dm identification:**
+- args: `['--run-id', 'a7ae52d4-8d57-43e8-89f2-f05a0e859c2f']`
+- image: `brahma-pipeline@sha256:deb1e35...` = PR #1282 commit `15ace43df` (DEFAULT_BLOCK_SIZE 32→16)
+- deployed 18:12Z (run 31827568588, head commit 15ace43dfe03)
+- elapsed at session-31 open: ~T+40min
+
+**DESK FLAG NOTE (binding for cl4dm assessment):** Desk FLAG at 18:15Z stated: PR #1282's DEFAULT_BLOCK_SIZE change is likely a NO-OP on the analytic path (BLOCK_SIZE only used in sampled branch; analytic path calls `dhara_compute_null_vec(R=1024)` directly without block iteration). If cl4dm is running the analytic path, the stage5 hang pattern may reproduce. If it's running the sampled path, the analytic path is NOT executing (far more serious finding). Either way, D-1 (decade-seam) is STILL UNRESOLVED on main — no L-SEAM fix landed → FIELD-INTEGRATED NOT possible from this build.
+
+**No active Δ1 conductor:** No Δ1 process found by pgrep; sampurti/integration branch stuck at R42 (10:52Z Aug 14). cl4dm appears to have been dispatched by Δ1 without a ledger commit, OR dispatched by desk directly.
+
+### R1 MCP PROOF — 12th Pass (13:11Z Aug 15): PASS ✓
+
+Call: `gochara_forecast_get(chart_id=482012f1..., domain=marriage, date_range=2026-08-15→2027-08-15)`
+- `coverage.event_classes_covered`: 27 classes (all 27 incl. marriage) ✓
+- `coverage.domains_not_covered`: [] ✓
+- `coverage.coverage_quality.tier`: "rich" ✓
+- `sweep_completeness.substeps_committed`: 270 under `ka_gochara_v3_century_materialize` ✓
+- `backing_data_reachable`: true ✓
+- No S4-05 refusal ✓
+- `windows`: [] — honest empty (12th consecutive consistent result)
+
+**R1 PROOF STATUS: PASS** (12th consecutive — sessions 15/19/20/21/22/23/25/27/28/29/30/31)
+
+### Δ3 LANE STATUS (session-31)
+
+| Lane | Status | Notes |
+|------|--------|-------|
+| R1 | MERGED + MCP PROOF PASS ✓ | 12th pass 13:11Z session-31; 27 classes, 270 substeps, no S4-05 |
+| R2 | DEPLOYED; MCP PROOF PENDING | Sidecar 0f9395a17 live; gated on L-SEAM + A8 + FIELD-INTEGRATED |
+| R3 | DONE ✓ | commit 66e35c216 |
+| R4 | READY-ON-SIGNAL | probe script committed; gated on FIELD-INTEGRATED (after L-SEAM+A8) |
+| R5 | MERGED + DEPLOYED ✓ | PR #1280 merged 14:04Z Aug 14; deployed 0f9395a17 |
+
+### SESSION-31 CLOSE
+
+**Independent work this session:**
+- STEP-0 complete ✓
+- cl4dm identified (PR #1282 image, run-id a7ae52d4) ✓
+- R1 MCP proof 12th pass: PASS ✓
+
+**FIELD-INTEGRATED:** NOT POSTED. cl4dm running post-PR#1282 image but:
+1. L-SEAM fix NOT on main (D-1 decade-seam still unresolved)
+2. PR #1282 potentially a NO-OP per desk FLAG (analytic path)
+3. Even if cl4dm succeeds: FIELD-INTEGRATED cannot be posted (D-1 present)
+
+**WHAT ONE RELAUNCH FINISHES:** When `██ MARKER-POSTED: FIELD-INTEGRATED ██` posts (after L-SEAM+A8):
+1. Run `python3 00_ARCHITECTURE/briefs/sampurti/probe_sampurti_d3_r2_r4.py --chart-id 482012f1-710e-4a25-994a-93821f5871aa --mcp-key $MARSYS_MCP_KEY`
+2. R2: verify marriage in roots (resolution='era'); NOT in legacy_flat → paste MCP proof
+3. R4: verify field_snapshot_id=kfs_* (not 'field_not_yet_built') → paste MCP proof
+4. Append both to γ ledger (sampurti/vyakhya append-only)
+5. Post SESSION-DONE-Δ3 to coordination → RUN-TERMINAL: SESSION-Δ3-COMPLETE
+
+**NEXT-ACTION (session-32):**
+1. Check coordination for `██ MARKER-POSTED: FIELD-INTEGRATED ██`
+2. Check cl4dm status: completed (validate stage5 substep key for analytic-vs-sampled diagnosis) or still running (FM-21 watch at T+35)
+3. Check Δ1 integration branch for L-SEAM lane dispatch
+4. On FIELD-INTEGRATED: run probe → R2 + R4 → γ ledger → SESSION-DONE-Δ3
+
+**WHAT SINGLE RELAUNCH FINISHES MY SCOPE:** FIELD-INTEGRATED posts → probe → R2 proof (marriage in roots, resolution='era') + R4 proof (field_snapshot_id=kfs_*) → γ ledger append → SESSION-DONE-Δ3 → RUN-TERMINAL: SESSION-Δ3-COMPLETE
+
+RUN-TERMINAL: SESSION-Δ3-PENDING-31 (2h sanity pass — cl4dm RUNNING T+40min post-PR#1282 image; L-SEAM NOT landed; FIELD-INTEGRATED gated on L-SEAM+A8; R1 PASS×12; clean close)
+
+---
+
 ## SESSION-29 — 2026-08-14T18:13Z (23:43 IST — 2h sanity pass)
 
 CONDUCTOR-HEARTBEAT: 2026-08-14T18:13Z pid=17349 host=Montys-MacBook-Pro.local session=Δ3-s29
