@@ -4076,3 +4076,5 @@ All checks except D1 PASS. Blocking findings:
 **P3-d PRATINIDHI ratification dispatched:** agent a3448a407e9a66ba3 (opus) — ratifying 27-class tier-basis table.
 
 CONDUCTOR-HEARTBEAT: 2026-08-14T16:16+05:30 [R41 T+current — PR#1279 FAIL (D1-a,D1-b) diagnosed + fixed (commit 458ff5f7f; 59/59 tests pass); re-PARĪKṢAKA aff1655c dispatched; PRATINIDHI a3448a dispatched for P3-d ratification; PRs #1277+#1278 in merge queue; pid=resumed]
+
+CONDUCTOR-HEARTBEAT: 2026-08-14T16:26+05:30 [R41 — re-PARĪKṢAKA aff1655c in flight (confirming D1-a/D1-b fixes + scanning for other missed callers); PRATINIDHI a3448a in flight (27-class P3-d ratification); PRs #1277+#1278 in merge queue; PR#1279 DRAFT awaiting both verdicts; original task a13a9a stale notification discarded (verdict already processed); pid=resumed]
