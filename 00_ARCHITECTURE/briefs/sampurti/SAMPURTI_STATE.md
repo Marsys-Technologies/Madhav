@@ -4014,3 +4014,22 @@ Non-blocking notes:
 **STATUS: Cleared for merge queue. Holding per planned order (L-TIER → L-NULL → L-ENGINE); awaiting L-TIER PR + PARĪKṢAKA.**
 
 CONDUCTOR-HEARTBEAT: 2026-08-14T17:50+05:30 [R41 T+192min — PR#1278 L-NULL: PARĪKṢAKA PASS (a386cb7a); PR#1277 L-ENGINE: PARĪKṢAKA ad3bf805 still in flight (obstruction_sources() issue being assessed); L-TIER builder still running; merge order L-TIER→L-NULL→L-ENGINE preserved; holding queue until all 3 ready; pid=resumed]
+
+---
+
+## P-B BUILDERS: ALL THREE COMPLETE (2026-08-14T17:52+05:30)
+
+| Lane | PR | Status | Notes |
+|---|---|---|---|
+| L-ENGINE (P1) | PR #1277 | Open; PARĪKṢAKA ad3bf805 in flight | Layer0+Layer1+decade seams+SM-R-7; 24/24 tests |
+| L-NULL (P2) | PR #1278 | PARĪKṢAKA PASS; cleared for merge queue | Vectorized null; _RESUME_VERSION 5→6; 40/40 tests; FM-25 10.73s |
+| L-TIER (P3-a/b/e) | PR #1279 | DRAFT; PARĪKṢAKA a13a9a34 dispatched | P3-a/b/e infra; 17/17 tests; P3-b census; DRAFT pending P3-d rationale |
+
+**P3-d conductor obligation:**
+- `ka_kshetra_tier_basis` table created by migration 567 (builder deliverable)
+- Conductor must draft 27-class tier classification (calibrated | shape_only | not_applicable) with rationale
+- PRATINIDHI ratifies each row before PR #1279 can be un-drafted
+- Only THEN can shape_only builds run without raising ClassSkipped
+
+**Key risk: `hazard.baseline_rate()` return type changed `float` → `tuple[float, bool]`**
+PARĪKṢAKA must verify ALL call sites (writer.py adrishta_residual + any other consumers in dhara_term_matrix.py, tests) handle the tuple correctly.
