@@ -112,6 +112,17 @@ const ALLOWED_TABLES = new Set([
   // must lead with the highest-scoring insight_score row). Same writer, same chart scope.
   'kala_field_salience',
   'kala_insights',
+  // SM-γ C5 (SAMPŪRTI-γ lane C5, 2026-08-13): ahead_autofile.ts's SM_GAMMA_C5_ENABLED path
+  // queries kala_field_windows to find the best-matching field window overlapping a served
+  // AHEAD window (by chart_id + event_class + date range) and enrich authority_basis with the
+  // field_window provenance (item-44 format). Chart-scoped (chart_id FK), written only by
+  // ka_kshetra; read-only here, no write path added. Gated behind SM_GAMMA_C5_ENABLED=true.
+  'kala_field_windows',
+  // MR-25 (PARIṢKĀRA, migration 565): register_gochara_windows.ts's verse_refs
+  // lookup queries bg_gochara_citation_resolution to resolve gochara citation
+  // strings (gochara_grammar/citations.py constants) to classical_text_chunks
+  // verse_refs. Global read-only reference table; no write path added.
+  'bg_gochara_citation_resolution',
 ])
 
 // Forbidden anywhere in the statement: write/DDL verbs and statement separators.

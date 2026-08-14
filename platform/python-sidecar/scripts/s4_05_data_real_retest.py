@@ -178,10 +178,17 @@ def _health_row_evidence(cur: Any, chart_id: str) -> dict[str, Any]:
     real answer); what matters for the PASS predicate is that the domain is
     COMPUTED, not that it is non-empty.
     """
+    # INTENTIONAL: generation='v1' pin on both queries below — this re-test
+    # re-proves the S4-05 defect closure in the v1 corpus, which is the corpus
+    # that existed when the defect occurred (audit confirmation #1: the sweep
+    # produced zero health rows in `kala_gochara_windows` before item 9). After
+    # the v1→3.0 cutover both generations coexist in the table; including gen-3.0
+    # rows would conflate the v1 defect-closure evidence with the 3.0 corpus and
+    # misrepresent the item-9 fix. The pin is permanent for this script. (MR-18)
     cur.execute(
         """SELECT event_class, COUNT(*)::int AS n
              FROM kala_gochara_windows
-            WHERE chart_id = %s AND event_class = ANY(%s)
+            WHERE chart_id = %s AND generation = 'v1' AND event_class = ANY(%s)
             GROUP BY event_class
             ORDER BY event_class""",
         (chart_id, list(HEALTH_EVENT_CLASSES)),
@@ -191,7 +198,7 @@ def _health_row_evidence(cur: Any, chart_id: str) -> dict[str, Any]:
     cur.execute(
         """SELECT event_class, COUNT(*)::int AS n
              FROM kala_gochara_windows
-            WHERE chart_id = %s AND event_class = ANY(%s)
+            WHERE chart_id = %s AND generation = 'v1' AND event_class = ANY(%s)
             GROUP BY event_class
             ORDER BY event_class""",
         (chart_id, list(LEGACY_EVENT_CLASSES)),

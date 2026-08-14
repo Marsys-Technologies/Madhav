@@ -1,0 +1,274 @@
+# grammar_v3_registry.yaml — UTK-R3 grammar-v3 mechanism registry
+#
+# Catalogs all 9 Wave-2 candidate mechanisms for the GOCHARA-UTKARSHA campaign.
+# Format defined by UTK-R3 ruling; ablation evidence collected by W4.3.
+#
+# Field semantics:
+#   mechanism_id       — canonical identifier matching MECHANISM_ID in the Python module
+#   wave               — campaign wave string (e.g. "W2.1")
+#   lane               — lane label
+#   description        — one-line human description
+#   citation_status    — "classically_cited" | "inferred" | "uncited"
+#   classical_citation — verbatim citation text or "none"
+#   v1_lineage         — provenance of the v1 predecessor, or new/addition
+#     replaces         — what v1 mechanism (or stub) this replaced, or "new"
+#     v1_module        — importable module path of the v1 code, or "none"
+#     change_type      — "replacement" | "addition" | "refinement" | "new"
+#     note             — one-line summary of what changed
+#   module_path        — importable dotted path (relative to python-sidecar root)
+#   admission_state    — "candidate" (Wave-2 default per UTK-R3)
+#   ablation_evidence_link — "W4.3" (this wave)
+#   admission_ruling_id    — "pending" (will be updated by ADJUDICATOR post-ablation)
+#   toggle_key         — Python identifier that disables this mechanism when False
+
+mechanisms:
+
+  - mechanism_id: w21_av_gating
+    wave: "W2.1"
+    lane: ashtakavarga_gating
+    description: >-
+      Ashtakavarga bindu gating — real SAV/BAV bindus from ClassContext replaces
+      the hardcoded bindu_count_resolved=False stub in gochara_grammar/primitives.py:786.
+      Modifier schedule: bindus < 28 → 0.8 (damp), == 28 → 1.0 (neutral), > 28 → 1.2 (amplify).
+    citation_status: classically_cited
+    classical_citation: >-
+      Brihat Parashara Hora Shastra — Ashtakavarga chapters; bg_transit_av_gates rules
+      (gate_kind='sav_threshold') encode the same threshold logic via min_sav_score.
+      SAV total 337 bindus / 12 signs = 28.08 per-sign mean used as damp/neutral/amplify boundary.
+    v1_lineage:
+      replaces: "bindu_count_resolved: False hardcoded stub in primitives.py:786"
+      v1_module: services.gochara_grammar.primitives
+      change_type: replacement
+      note: >-
+        v1 stub always returned False (bindu gating was disabled);
+        v3 fetches real SAV/BAV bindus from ClassContext.av_gate_rows and
+        applies the 3-tier modifier schedule.
+    module_path: services.gochara_v3.mechanisms.w21_av_gating
+    admission_state: candidate
+    ablation_evidence_link: "W4.3"
+    admission_ruling_id: pending
+    toggle_key: w21_av_gating
+
+  - mechanism_id: w22_moorti_nirnaya
+    wave: "W2.2"
+    lane: moorti_nirnaya
+    description: >-
+      Moorti nirnaya quality modifier — svarṇa/rajata/tāmra/loha 4-tier multiplier
+      applied to gochara windows overlapping a graha sign-ingress span.
+      Reads kala_moorti_nirnaya rows pre-fetched in ClassContext; no new DB access.
+    citation_status: classically_cited
+    classical_citation: >-
+      Phaladeepika Ch.27 — Moorti nirnaya grades each sign-ingress as gold/silver/copper/iron
+      quality based on Moon's nakshatra at ingress relative to janma nakshatra.
+      bg_transit_moorti reference table (27 rows) encodes the same rule.
+    v1_lineage:
+      replaces: "kala_moorti_nirnaya table produced but never consumed in v1 gochara scoring"
+      v1_module: services.ka_gochara_sweep.writer
+      change_type: addition
+      note: >-
+        v1 built kala_moorti_nirnaya rows via ka_moorti_nirnaya writer but never
+        read them in the gochara intensity path; v3 applies 4-tier multiplier per ingress span.
+    module_path: services.gochara_v3.mechanisms.w22_moorti_nirnaya
+    admission_state: candidate
+    ablation_evidence_link: "W4.3"
+    admission_ruling_id: pending
+    toggle_key: w22_moorti_nirnaya
+
+  - mechanism_id: w23_tara_bala
+    wave: "W2.3"
+    lane: tara_bala
+    description: >-
+      Tara bala — 9-cycle Nava Tara nakshatra quality modifier for gochara transits
+      relative to native's natal Moon nakshatra. Activates the v1 wired-but-dead
+      nakshatra_ingress_tara primitive by sourcing natal Moon nakshatra from ClassContext.
+    citation_status: classically_cited
+    classical_citation: >-
+      Muhurta Chintamani — Tara bala chapter; BPHS nakshatra transit quality.
+      9-Tara cycle: Janma(1.00), Sampat(1.15), Vipat(0.75), Kshema(1.10),
+      Pratyak(0.80), Sadhana(1.05), Naidhana(0.70), Mitra(1.15), Paramamitra(1.20).
+    v1_lineage:
+      replaces: "nakshatra_ingress_tara wired-but-dead in primitives.py:558 (natal_moon_nakshatra_id never passed)"
+      v1_module: services.gochara_grammar.primitives
+      change_type: refinement
+      note: >-
+        v1 call site (configuration_activity.py ~line 67) never passed natal_moon_nakshatra_id
+        so the Tara-quality dict was never populated; v3 gets natal Moon nakshatra
+        from ClassContext.natal_facts with zero extra DB round-trips.
+    module_path: services.gochara_v3.mechanisms.w23_tara_bala
+    admission_state: candidate
+    ablation_evidence_link: "W4.3"
+    admission_ruling_id: pending
+    toggle_key: w23_tara_bala
+
+  - mechanism_id: w24_sade_sati
+    wave: "W2.4"
+    lane: sade_sati
+    description: >-
+      Sade Sati fully — phase-quarter intensity modifier (VISHAKHA 1.15, JANMA 1.30,
+      ANUMUKHA 1.10) plus cancellation rules from ga_sade_sati chart_facts rows.
+      v1 used only a boolean phase-membership signal; v3 consumes all ~11k rows.
+    citation_status: classically_cited
+    classical_citation: >-
+      Brihat Parashara Hora Shastra — Sade Sati chapter; ga_sade_sati writer stores
+      per-phase timestamps (sade_sati_phase category) and cancellation data
+      (sade_sati_cancellation_check category) in chart_facts (~11k rows).
+    v1_lineage:
+      replaces: "boolean phase-membership flag in gochara_intensity/permission.py"
+      v1_module: services.gochara_intensity.permission
+      change_type: refinement
+      note: >-
+        v1 consumed only a boolean is-in-Sade-Sati signal; v3 reads phase_type
+        (VISHAKHA/JANMA/ANUMUKHA), applies 3-tier intensity multiplier, and
+        applies -0.05 step-down when cancellation_active_flag is true.
+    module_path: services.gochara_v3.mechanisms.w24_sade_sati
+    admission_state: candidate
+    ablation_evidence_link: "W4.3"
+    admission_ruling_id: pending
+    toggle_key: w24_sade_sati
+
+  - mechanism_id: w25_kota_chakra
+    wave: "W2.5"
+    lane: kota_chakra
+    description: >-
+      Kota Chakra ring modifier — malefic siege intensity for adverse event classes.
+      Concentric ring multipliers: stambha(1.30), madhya(1.15), pragara(1.08), bahya(1.04).
+      Only fires for adverse event classes; neutral/gain classes get modifier=1.0.
+    citation_status: classically_cited
+    classical_citation: >-
+      Kota Chakra tradition (Fort Diagram); bg_kota_chakra_rings reference table
+      (ADJUDICATION-9 tier-iii). Malefic transits through inner rings represent
+      increasing siege intensity; Saturn and Mars are primary siege planets.
+    v1_lineage:
+      replaces: "kala_kota_chakra table produced by W0.2 but never consumed in v1 gochara scoring"
+      v1_module: services.ka_gochara_sweep.writer
+      change_type: addition
+      note: >-
+        v1 built the kala_kota_chakra table but never read it in the lambda
+        computation path; v3 closes that gap with a ring-placement modifier
+        on adverse windows.
+    module_path: services.gochara_v3.mechanisms.w25_kota_chakra
+    admission_state: candidate
+    ablation_evidence_link: "W4.3"
+    admission_ruling_id: pending
+    toggle_key: w25_kota_chakra
+
+  - mechanism_id: w26_real_eclipses
+    wave: "W2.6"
+    lane: real_eclipses
+    description: >-
+      Real eclipse amplification — replaces the v1 node×luminary proximity proxy
+      (uncited_extension=True) with actual eclipse events from bg_sky_calendar
+      (solar/lunar, computed via pyswisseph's real eclipse geometry).
+    citation_status: classically_cited
+    classical_citation: >-
+      BPHS — Graha yuddha and eclipse (grahaṇa) chapters treat eclipses as amplifiers
+      of gochara effects when they occur near sensitive natal degrees.
+      bg_sky_events / bg_sky_calendar table (31,059-row sky calendar) holds real eclipse events.
+    v1_lineage:
+      replaces: "eclipse_degree proxy via Rahu/Ketu node×luminary proximity (uncited_extension=True in primitives.py)"
+      v1_module: services.gochara_grammar.primitives
+      change_type: replacement
+      note: >-
+        v1 eclipse_degree used node-luminary conjunction as a proxy; that is necessary
+        but not sufficient for eclipses (latitude alignment required). uncited_extension=True
+        was flagged in the original code. v3 uses real eclipse geometry from bg_sky_calendar.
+    module_path: services.gochara_v3.mechanisms.w26_real_eclipses
+    admission_state: candidate
+    ablation_evidence_link: "W4.3"
+    admission_ruling_id: pending
+    toggle_key: w26_real_eclipses
+
+  - mechanism_id: w27_annual_stack
+    wave: "W2.7"
+    lane: annual_context_stack
+    description: >-
+      Annual context stack — three independently togglable sub-mechanisms combined
+      as a product modifier: (a) Tājaka year-lord relevance (w27a, ×1.35 on match),
+      (b) Tithi Praveśa annual chart tone (w27b, favourable×1.25/adverse×0.80),
+      (c) Sudarśana cakra house placement (w27c, house-specific multipliers 0.75–1.30).
+      All read from ClassContext; no DB access at compute time.
+    citation_status: classically_cited
+    classical_citation: >-
+      Tājaka Nīlakaṇṭhī Ch.1 / BPHS Tājaka chapter — Vārṣeśa is the primary annual
+      significator. Kṛṣṇa Miśra / Tājaka tradition — Praveśa chart annual tone per domain.
+      Sudarśana Cakra Paddhati — house placement of transit body modifies classical effectiveness.
+    v1_lineage:
+      replaces: "documented gap in gochara_intensity/permission.py:60-68 — all three annual signals excluded from G-3 scope"
+      v1_module: services.gochara_intensity.permission
+      change_type: addition
+      note: >-
+        v1 permission.py documented the annual-layer gap honestly (G-3 scope exclusion);
+        W2.7 implements the three missing annual-context generators as independent toggles
+        reading from ClassContext fields populated by L3/L1 annual builders.
+    module_path: services.gochara_v3.mechanisms.w27_annual_stack
+    admission_state: candidate
+    ablation_evidence_link: "W4.3"
+    admission_ruling_id: pending
+    toggle_key: w27_annual_stack
+    sub_mechanisms:
+      - mechanism_id: w27a_tajaka_year_lord
+        toggle_key: w27a_tajaka_year_lord
+        data_source: "ClassContext.tajaka_year_lords (from l1_tajik_varsha_year_lords)"
+      - mechanism_id: w27b_tithi_pravesha
+        toggle_key: w27b_tithi_pravesha
+        data_source: "ClassContext.tithi_pravesha_rows (from kala_tithi_pravesha)"
+      - mechanism_id: w27c_sudarshana
+        toggle_key: w27c_sudarshana
+        data_source: "ClassContext.sudarshana_rows (from kala_sudarshana / bo_sudarshana)"
+
+  - mechanism_id: w28_bhava_degrees
+    wave: "W2.8"
+    lane: bhava_targets_degrees
+    description: >-
+      Bhava cusp degrees — enriches bhava-typed ResonanceTargets with the sripati_madhya
+      cusp degree from L1 chart_facts (fact_category='bhava_cusps'). Enables degree-hungry
+      primitives (station_retro_loop, eclipse_degree, planetary_return) to evaluate house
+      targets instead of silently skipping them. Modifier is always 1.0; this mechanism
+      produces enabling data, not a lambda multiplier.
+    citation_status: classically_cited
+    classical_citation: >-
+      L1 chart_facts bhava cusp data via fact_id reference (§N.5);
+      ga_positions_writer bhava_cusps rows (sripati_madhya) — Sripati system per Parashara.
+      §N.5: L1 is the authority; cusp degrees are referenced by fact_id, never re-derived.
+    v1_lineage:
+      replaces: "enrich_targets in gochara_intensity/enrichment.py resolves bhava to sign only (documented gap lines 46-58)"
+      v1_module: services.gochara_intensity.enrichment
+      change_type: refinement
+      note: >-
+        v1 enrichment left target_longitude_deg=None for bhava targets; degree-hungry
+        primitives guarded on None and silently skipped all house targets (zero lambda
+        contribution). v3 adds sripati_madhya cusp degree from L1 chart_facts per §N.5.
+    module_path: services.gochara_v3.mechanisms.w28_bhava_degrees
+    admission_state: candidate
+    ablation_evidence_link: "W4.3"
+    admission_ruling_id: pending
+    toggle_key: w28_bhava_degrees
+
+  - mechanism_id: w29_citation_resolution
+    wave: "W2.9"
+    lane: citation_resolution
+    description: >-
+      Citation resolution catalog — builds a static baseline mapping all gochara citation
+      strings (from citations.py __all__, primitives.py inline assignments, and bg_transit_rules
+      DB columns) to classical_text_chunks verse_ref stubs. Modifier is always 1.0; this
+      mechanism annotates citation resolution status, never gates lambda.
+    citation_status: classically_cited
+    classical_citation: >-
+      All three citation sources cataloged: citations.py (14 constants in __all__),
+      primitives.py (12 primitive families + sign_occupation addendum, including 3
+      uncited_extension families and 2 DB-inherited families),
+      bg_transit_rules / bg_transit_av_gates (classical_citation columns, db_inherited source).
+    v1_lineage:
+      replaces: "citation strings exist in citations.py and primitives.py but none resolved to classical_text_chunks verse_refs"
+      v1_module: services.gochara_grammar.citations
+      change_type: addition
+      note: >-
+        v1 carries citation strings as module constants and inline assignments but
+        never resolves them to verse_refs in classical_text_chunks. W2.9 builds the
+        static catalog baseline; Wave 5 seeding job will populate verse_refs via
+        hybrid search against classical_text_chunks.
+    module_path: services.gochara_v3.mechanisms.w29_citation_resolution
+    admission_state: candidate
+    ablation_evidence_link: "W4.3"
+    admission_ruling_id: pending
+    toggle_key: w29_citation_resolution

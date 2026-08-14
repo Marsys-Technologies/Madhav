@@ -95,8 +95,25 @@ from pipeline.transit_search import _jd_to_ist_iso
 
 from .context import ClassContext, VedhaRow, MaleficScaleRow
 from .threshold import ThresholdConfig, compute_threshold_config, is_above_threshold
+from services.gochara_v3.mechanisms import w23_tara_bala as _w23  # W2.3 tara bala
+from services.gochara_v3.mechanisms import w30_nodal_drishti as _w30  # W3.0 nodal drishti
+
+# W3.0 nodal drishti toggle — Rahu/Ketu 5/7/9 aspect modifier.
+# When True the engine will call _w30.compute() in _evaluate_single_from_context
+# and incorporate w30_modifier into the lambda_v3 formula:
+#   raw_lambda = promise * permission * activity * tara_modifier * w30_modifier * quality_gates
+_W30_NODAL_DRISHTI_ENABLED: bool = True
 
 logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# W2.3 tara bala: enabled flag. When True, Moon's transit nakshatra vs natal Moon
+# nakshatra produces a multiplicative modifier on activity. Source: Muhurta Chintamani
+# Tara bala chapter; BPHS nakshatra transit quality.
+# Formula with wiring: lambda_v3 = PROMISE * PERMISSION * activity * tara_modifier * quality_gates
+# tara_modifier in (0, 2]; modifier is 1.0 when Moon nakshatra data unavailable (honest skip).
+# ---------------------------------------------------------------------------
+_W23_TARA_BALA_ENABLED: bool = True
 
 # ---------------------------------------------------------------------------
 # W1.1 constants
@@ -112,6 +129,28 @@ _ACTIVITY_MAX_ORB_DEG: float = 5.0
 # we fall back to the raw activity_strength computed from the sentence's
 # own orb_degrees if available, else a conservative 0.5 (not flat 1.0 as in
 # v1's X(t)) to avoid overcounting poorly-orbed contacts.
+#
+# IR-6 (PK-R-9, 2026-08-11): `sarvatobhadra_vedha` REMOVED. Three reasons,
+# all specific to this primitive (not a general "uncited_extension=True is
+# disqualifying" rule -- degree_contact/eclipse_degree also always carry
+# uncited_extension=True, for a DIFFERENT reason -- see the interpretation
+# note in this PR's body -- and remain included here unchanged):
+#   1. every sentence `sarvatobhadra_vedha` emits is UNCONDITIONALLY
+#      uncited_extension=True (sarvatobhadra.py's own module docstring: "no
+#      verified, populated classical vedha-PAIR table exists ... so this
+#      module's nakshatra-vedha pairing is computed by an ALGORITHMIC
+#      approximation").
+#   2. `bg_sarvatobhadra_grid` -- the table that WOULD make this a verified
+#      lookup instead of an approximation -- is empty BY DESIGN (deferred
+#      pending a school-keyed grid ingest; see sarvatobhadra.py docstring).
+#   3. a future admission ruling is required before an algorithmic-
+#      approximation primitive with no populated corpus behind it should be
+#      trusted to move a served, bounded intensity score.
+# `nakshatra_ingress_tara` stays -- it is NOT unconditionally uncited (its
+# citation is `C.TARA_BALA_MUHURTA_CHINTAMANI`, a real classical_citation,
+# not uncited_extension=True) and MR-41(b) is exactly what makes it
+# reachable in production now (see engine.py's MR-41(c) comment below for
+# the resulting λ_v3 impact, disclosed per IR-7).
 _ACTIVITY_PRIMITIVES = frozenset({
     "degree_contact",
     "drishti_contact",
@@ -121,7 +160,6 @@ _ACTIVITY_PRIMITIVES = frozenset({
     "station_retro_loop",
     "eclipse_degree",
     "gochara_vedha_pair",
-    "sarvatobhadra_vedha",
 })
 
 # ---------------------------------------------------------------------------
@@ -178,6 +216,9 @@ _VEDHA_NO_SCALE_ROW_FACTOR: float = 0.70
 # Factor for a vedha row with malefic_count=0 (an obstruction is active but
 # entirely from benefic planets — mildest suppression)
 _VEDHA_ZERO_MALEFIC_FACTOR: float = 0.85
+# B3 Lattā effective malefic count (structural prior — Phaladeepika PG338-339 severity;
+# Ketu absent from classical source).
+_LATTA_EFFECTIVE_MALEFIC_COUNT: int = 3
 
 
 def _suppression_factor_for_grade(effect_grade: str) -> float:
@@ -246,6 +287,44 @@ def _compute_quality_gates_from_context(
 
         # This vedha overlaps the evaluation window.
         detail = vrow.detail
+
+        # --- B3: Lattā-specific grade path ---
+        # Lattā (Phaladeepika PG338-339, Slokas 42-44): a janma-nakṣatra hit.
+        # All kala_vedha_gochara rows with vedha_kind='latta' are janma-nakṣatra hits
+        # (the ka_vedha_gochara writer only stores rows when latta_nak==janma_nak).
+        # Ketu: not defined in Phaladeepika — graha='Ketu'/'Rahu' rows do not appear
+        # in kala_vedha_gochara by construction (Ketu absent, disclosed).
+        # Severity: "Ruin of every business" / "A great loss" → effective_malefic_count=3
+        # (killing grade) as structural prior; refines via L5 calibration.
+        if vrow.vedha_kind == "latta":
+            if scale_by_count:
+                scale_row = scale_by_count.get(
+                    _LATTA_EFFECTIVE_MALEFIC_COUNT,
+                    scale_by_count.get(max(scale_by_count)),
+                )
+                effect_grade = scale_row.effect_grade if scale_row else "unknown"
+                suppression_factor = _suppression_factor_for_grade(effect_grade)
+                scale_citation = scale_row.source_citation if scale_row else None
+            else:
+                suppression_factor = _VEDHA_NO_SCALE_ROW_FACTOR
+                effect_grade = "unknown_no_scale_table"
+                scale_citation = None
+            product *= suppression_factor
+            fired_vedha.append({
+                "vedha_kind": vrow.vedha_kind,
+                "graha": vrow.graha,
+                "window_start": vrow.window_start,
+                "window_end": vrow.window_end,
+                "malefic_count": _LATTA_EFFECTIVE_MALEFIC_COUNT,
+                "malefic_obstructing_grahas": [],
+                "effect_grade": effect_grade,
+                "suppression_factor": round(suppression_factor, 6),
+                "classical_citation": vrow.classical_citation,
+                "scale_citation": scale_citation,
+            })
+            continue  # skip the regular malefic_count path below
+        # --- end B3 Lattā path ---
+
         malefic_count = detail.get("malefic_count", 0)
         try:
             malefic_count = int(malefic_count)
@@ -445,7 +524,9 @@ def _evaluate_single_from_context(
         )
 
     # ── W1.1 bounded lambda_v3 path ─────────────────────────────────────────
-    # Formula: lambda_v3 = PROMISE * PERMISSION * activity * quality_gates
+    # Formula: lambda_v3 = PROMISE * PERMISSION * activity * tara_modifier * quality_gates
+    # tara_modifier (W2.3): Moon's transit nak vs natal Moon nak multiplicative factor.
+    #   Computed in [0.70, 1.20] per the 9-Tara schedule; 1.0 when mechanism disabled or data absent.
     # Invariant: all terms in [0,1] => result in [0,1]
 
     # 4a. activity in [0,1]: noisy-OR over per-sentence orb-decayed strengths,
@@ -484,6 +565,22 @@ def _evaluate_single_from_context(
         class_is_adverse=context.is_adverse,
     )
 
+    # 4d-pre. W2.3 tara bala: Moon's transit nakshatra vs natal Moon nakshatra modifier.
+    # One swe.calc_ut call per JD (Moon position only); zero DB access.
+    # Moon's nakshatra changes ~once per day — cost is negligible per evaluation.
+    _tara_moon_lon: float | None = None
+    try:
+        _tara_moon_pos, _ = swe.calc_ut(t_jd, swe.MOON, swe.FLG_SIDEREAL)
+        _tara_moon_lon = float(_tara_moon_pos[0])
+    except Exception:
+        pass  # honest skip: modifier defaults to 1.0 via mechanism
+    _tara_result = _w23.compute(
+        context, t_jd,
+        enabled=_W23_TARA_BALA_ENABLED,
+        transit_body_longitude_deg=_tara_moon_lon,
+    )
+    tara_modifier = _tara_result.modifier
+
     # 4d. quality_gates: W1.3 vedha-based multiplicative suppression gate.
     #     Looks up kala_vedha_gochara rows (pre-fetched in context) that
     #     overlap the evaluation window and multiplies their suppression factors.
@@ -494,8 +591,15 @@ def _evaluate_single_from_context(
         context, eval_start_iso, eval_end_iso,
     )
 
+    # 4e. W3.0 nodal drishti: Rahu/Ketu 5/7/9 aspect modifier (later tradition —
+    #     not in original BPHS; attested in later Parashari commentaries).
+    #     Computes Rahu/Ketu transit signs via swe.calc_ut at t_jd (no DB access).
+    #     modifier=1.0 when disabled or no natal target signs are aspected.
+    _w30_result = _w30.compute(context, t_jd, swe=swe, enabled=_W30_NODAL_DRISHTI_ENABLED)
+    w30_modifier = _w30_result.modifier
+
     # 5. Assemble lambda_v3 — bounded [0,1] by construction
-    raw_lambda = promise * permission * activity * quality_gates
+    raw_lambda = promise * permission * activity * tara_modifier * w30_modifier * quality_gates
 
     # Clamp for floating-point edge cases (should be impossible, but defensive)
     raw_lambda = max(0.0, min(1.0, raw_lambda))
@@ -517,11 +621,29 @@ def _evaluate_single_from_context(
     x_t_compat = activity  # activity IS the v3 replacement for X(t)
     x_t_detail_compat = {
         **activity_detail,
-        "formula": "lambda_v3 = PROMISE * PERMISSION * activity * quality_gates",
+        "formula": "lambda_v3 = PROMISE * PERMISSION * activity * tara_modifier * w30_modifier * quality_gates",
         "v3_mode": True,
         "term_breakdown": term_breakdown,
+        "tara_modifier": round(tara_modifier, 8),
+        "tara_detail": {
+            "tara_name": _tara_result.tara_name,
+            "tara_position": _tara_result.tara_position,
+            "skipped": _tara_result.skipped,
+            "skip_reason": _tara_result.skip_reason,
+            "mechanism_id": _tara_result.mechanism_id,
+        },
         "quality_gates": quality_gates,
         "quality_gates_detail": quality_gates_detail,
+        # W3.0 nodal drishti fields
+        "w30_modifier": round(w30_modifier, 8),
+        "w30_detail": {
+            "rahu_sign": _w30_result.rahu_sign,
+            "ketu_sign": _w30_result.ketu_sign,
+            "aspected_signs": list(_w30_result.aspected_sign_indices),
+            "skipped": _w30_result.skipped,
+            "skip_reason": _w30_result.skip_reason,
+            "mechanism_id": _w30_result.mechanism_id,
+        },
         # W1.2 signed-channel fields
         "signed_channels": signed_channel_detail,
         "valence_v3": v3_valence,
@@ -531,17 +653,88 @@ def _evaluate_single_from_context(
             "valence derived from net evidence sign. "
             "W1.1/W1.3 bounded lambda_v3: activity replaces exp(beta*X); "
             "quality_gates is W1.3 vedha suppression (multiplicative; 1.0 when no vedha). "
+            "W3.0 nodal drishti: Rahu/Ketu 5/7/9 aspect modifier (later tradition). "
             "activity=noisy_OR over orb-decayed sentence contributions in [0,1]. "
             "exp_term=1.0 (no exponential in v3 formula)."
         ),
     }
 
-    # suppression field is 0.0 in v3 (quality_gates is the W1.3 suppression mechanism)
+    # ── MR-41(c) v3 SUPPRESSION WIRING DECISION (PK-R-5, 2026-08-11; CORRECTED
+    # by ADJUDICATOR ruling PK-R-9, 2026-08-11, IR-7) ───────────────────────────
+    # `quality_gates` (computed above at line ~493) IS the v3-native suppression
+    # mechanism, in production use on every W1.1 bounded-lambda_v3 evaluation
+    # (the branch this code is in -- v1_parity_mode=False, the default/served
+    # path). It reads its own, ALREADY-POPULATED corpus (`kala_vedha_gochara`
+    # rows, pre-fetched into `ClassContext`) -- entirely independent of the
+    # v1 suppression mechanisms below and NOT affected by MR-41(a)'s corrected
+    # bg_transit_rules predicate fix.
+    #
+    # `compute_suppression` (gochara_intensity/suppression.py,
+    # SUPPRESSION_WEIGHTS = vedha_cancellation + sarvatobhadra_vedha +
+    # kartari_pincer) is called ONLY inside the `v1_parity_mode` branch above
+    # (line ~402) -- exercised for golden-test comparison against the v1
+    # engine, never on the v3 production path. This lane does NOT wire it
+    # into the W1.1 formula alongside (or instead of) quality_gates -- doing
+    # so would add a new subtracted term to `raw_lambda`, out of scope here.
+    #
+    # PK-R-9 CORRECTION (2026-08-11, IR-7): an earlier version of this
+    # comment asserted, in substance, that this lane's MR-41 changes left
+    # v3's scoring output untouched. That claim was FALSE and is retracted
+    # here -- see the second bullet below for the real, disclosed impact.
+    # A second claim in the earlier version -- that `gochara_vedha_pair`'s
+    # v3-unreachability was a scoping consequence of the golden-test-only
+    # branch this section documents -- was ALSO an incorrect framing,
+    # corrected in the first bullet below:
+    #   - `gochara_vedha_pair` is unreachable on the v3 production path, but
+    #     NOT because of that branch-scoping (v1_parity_mode vs. this W1.1
+    #     path doesn't call this primitive family into `compute_suppression`
+    #     any more or less reachably than v3 does). It
+    #     is unreachable here for a SEPARATE, structural reason: `_gather_
+    #     sentences_no_db` (this module, below) calls it with `conn=None`
+    #     (v3's "zero per-JD DB access" design), and per PK-R-9 IR-4 this
+    #     primitive now ALSO requires an explicit `moon_sign_idx` argument
+    #     (the Lagna-vs-Moon frame gap, follow-on lane MR-43) that no caller
+    #     anywhere in this codebase currently supplies -- so it earns an
+    #     honest [] on EVERY path (v1-parity AND v3), not specifically a
+    #     parity-mode-vs-production distinction.
+    #   - MR-41(b) (target_nakshatra_id resolution in `gochara_intensity.
+    #     enrichment.enrich_target`) DOES change λ_v3, through the ACTIVITY
+    #     term, not suppression: `ClassContext.fetch()` (context.py) calls
+    #     `enrich_targets` -- the same function MR-41(b) fixed -- so a
+    #     graha-anchored (karaka/dasha_lord_portfolio) target now arrives at
+    #     v3 with `target_nakshatra_id` populated where it was always None
+    #     before. `nakshatra_ingress_tara` IS in `_ACTIVITY_PRIMITIVES`
+    #     (kept, IR-6) and is one of the ephemeris-only primitives `_gather_
+    #     sentences_no_db` calls directly (no conn needed) -- so for such a
+    #     target, this primitive can now fire in `_compute_activity_v3`
+    #     where it structurally could not before (honestly [] every time,
+    #     `target.target_nakshatra_id is None` gate). Its per-sentence
+    #     contribution falls back to `orb_decay=0.5` (the "no orb
+    #     information available" conservative default -- nakshatra_ingress_
+    #     tara never reports `orb_strength`/`orb_degrees`), so this is a
+    #     real, disclosed shift in λ_v3's activity term for affected
+    #     targets, not a null-op. Named explicitly here per IR-7/IR-9;
+    #     rebuild evidence must name it too, not bury it in an aggregate
+    #     diff.
+    #
+    # suppression field is 0.0 in v3 (quality_gates is the W1.3 suppression
+    # mechanism, reported separately via quality_gates/quality_gates_detail
+    # above and forwarded into detail below) -- kept at 0.0 (not None) only
+    # for IntensityResult schema compatibility with v1's numeric suppression
+    # field; MR-42's writer fix reads quality_gates_detail (via
+    # x_t_detail_compat), not this placeholder, when populating a truthful
+    # suppression_state on interval rows.
     suppression_v3 = 0.0
     suppression_detail_v3 = {
         "note": "v3 formula uses quality_gates for vedha suppression (W1.3); "
-                "suppression field is kept at 0.0 for schema compatibility with v1.",
+                "suppression field is kept at 0.0 for schema compatibility with v1. "
+                "quality_gates is the v3-native suppression mechanism (see MR-41(c) "
+                "wiring-decision comment above); the v1 vedha_cancellation/"
+                "sarvatobhadra_vedha/kartari_pincer mechanisms in "
+                "gochara_intensity.suppression.compute_suppression remain "
+                "v1-parity-mode-only and are not consulted on this path.",
         "calibration_state": "structural_prior",
+        "mechanism": "quality_gates",
     }
 
     # ── W1.5 λ decomposition output ──────────────────────────────────────────
@@ -551,10 +744,12 @@ def _evaluate_single_from_context(
         "promise": round(promise, 8),
         "permission": round(permission, 8),
         "activity": round(activity, 8),
+        "tara_modifier": round(tara_modifier, 8),
+        "w30_modifier": round(w30_modifier, 8),
         "quality_gates": round(quality_gates, 8),
         "lambda_v3": round(raw_lambda, 8),
         "activity_terms": x_t_detail_compat.get("contributions", []),
-        "formula": "PROMISE × PERMISSION × activity × quality_gates",
+        "formula": "PROMISE × PERMISSION × activity × tara_modifier × w30_modifier × quality_gates",
     }
 
     # W1.5 credible interval — structural_prior: ±20% band, clamped to [0,1].
@@ -859,10 +1054,27 @@ def _gather_sentences_no_db(
         the primitive's internal format is tightly coupled to its DB query.
         Skipping it means we lose kakshya contributions to X(t) — a minor
         signal in practice.
-      - gochara_vedha_pair: reads bg_transit_rules for vedha houses.
-        These are reference data. Skipping it means we lose vedha-pair
-        contributions. Suppression still works via sarvatobhadra_vedha.
-      - sarvatobhadra_vedha: reads bg_transit_rules. Same as above.
+      - gochara_vedha_pair: reads `bg_transit_rules` (rule_type=
+        'favourable', vedha_house IS NOT NULL — corrected predicate, MR-41(a)
+        / PK-R-9) for vedha houses. Called here with `conn=None`, so it is
+        ALSO gated on `moon_sign_idx` (PK-R-9 IR-4, unsupplied here) and
+        earns an honest [] regardless of the conn degrade — this is not a
+        v1-parity-mode-only gap, it is unreachable on this path full stop
+        until a caller supplies both a live conn AND a moon_sign_idx.
+      - sarvatobhadra_vedha: reads `l1_sarvatobhadra_vedha` (via
+        `sarvatobhadra._vedha_pairs_from_db`) / `bg_sarvatobhadra_grid` (via
+        `ka_vedha_gochara/writer.py`'s ADJUDICATION-11 grid-lookup path) —
+        NEVER `bg_transit_rules` (IR-8, PK-R-9, 2026-08-11: an earlier
+        version of this bullet named the wrong source table for this
+        primitive's DB path, and separately claimed the v3 suppression term
+        was still served through this primitive -- both corrected here;
+        v3's suppression mechanism is `quality_gates`, not
+        `compute_suppression`/sarvatobhadra_vedha at all -- see this
+        module's own MR-41(c) wiring-decision comment below). Called here
+        with `conn=None`, so `_vedha_pairs_from_db` always degrades to the
+        algorithmic opposition-nakshatra approximation (uncited_extension=
+        True unconditionally) -- exactly why IR-6 excludes this primitive
+        from `_ACTIVITY_PRIMITIVES`.
 
     In v1-parity mode, these losses are measurable but bounded. The
     dominant signals (degree_contact, drishti_contact, sign_ingress,

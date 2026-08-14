@@ -69,7 +69,7 @@ def main() -> None:
 
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-    import psycopg
+    from pipeline.orchestrator.db import connect as _orchestrator_connect
     from pipeline.orchestrator.writers import discover_all
     from pipeline.orchestrator.asset_runner import _run_data_writer
 
@@ -78,7 +78,12 @@ def main() -> None:
     run_id = str(uuid.uuid4())
     logger.info("β integration rebuild: asset=%s chart=%s run_id=%s", asset_id, chart_id, run_id)
 
-    conn = psycopg.connect(database_url, row_factory=psycopg.rows.dict_row)
+    # PARIṢKĀRA MR-39: route through pipeline.orchestrator.db.connect() (not
+    # a bare psycopg.connect()) so this build session gets
+    # idle_in_transaction_session_timeout=0 — the writer substep driven via
+    # _run_data_writer below can legitimately hold this transaction open for
+    # minutes of pure CPU work with no DB traffic.
+    conn = _orchestrator_connect()
     conn.autocommit = False
     cur = conn.cursor()
     try:

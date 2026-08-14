@@ -46,7 +46,7 @@ interface AssetDef {
   layer_index?: string                      // e.g. 'L0', 'L1'
   provides_apis?: Record<string, unknown>[] | null
   health_probe?: Record<string, unknown> | null
-  catalog_status?: 'CURRENT' | 'DRAFT'     // L0 = CURRENT; L1–L5 = DRAFT
+  catalog_status?: 'CURRENT' | 'DRAFT' | 'RETIRED'  // L0 = CURRENT; L1–L5 = DRAFT; RETIRED for post-cutover decommissioned assets
   // Migration 242 fields (L3 service/artifact asset kinds)
   asset_kind?: 'data' | 'service' | 'artifact'  // defaults to 'data'
 }
@@ -1922,20 +1922,41 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
   },
 
   {
+    // MR-06 (PARISHKARA cutover durability): post-cutover identity.
+    // The old global-scope service asset (storage_type='service', scope='global')
+    // was DELETED by migration 563 (W6.4 UTK-R2). ka_gochara_v2_materialize was
+    // RENAMED to ka_gochara in the same migration. This seed entry now reflects
+    // the renamed per-chart materializer — NOT the old service.
+    // If this entry were left as the old service definition, a re-seed would
+    // overwrite the DB's renamed materializer row with stale service data.
+    //
+    // PARIṢKĀRA MR-24 fix (2026-08-11): the writer (ka_gochara_v3_century_materialize.py)
+    // documents a later W5.4 UTK-R1 ADJUDICATOR repoint — kala_gochara_windows with
+    // generation='3.0' is the PRODUCTION authority surface; kala_gochara_windows_v2
+    // (generation='g3_utkarsha') is only a calibration/staging copy. This entry (and the
+    // MR-06 fix that preceded it) never caught up to that repoint: count_sql filtered
+    // kala_gochara_windows_v2 for generation='3.0', a combination that table never carries
+    // (its rows are tagged '2.0' or 'g3_utkarsha'), so the cockpit silently read 0 for both
+    // gen-3.0 charts despite 89/85 real, honestly-tiered rows being served in production.
+    // Found by MR-24's live battery (real execution against the deployed product), not by
+    // code review — the exact defect class this campaign's doctrine (§N.8) exists to catch.
     asset_id: 'ka_gochara',
-    layer: 'kala', sort_order: 103,
-    sanskrit_name: 'Gocara',
-    english_name: 'Transit-search service',
-    english_description: 'Live-compute transit-event search service (K2 wave). Finds aspect crossings, conjunctions, ingresses, returns, stations, eclipse proximity, multi-planet confluence, and transit-to-transit events using pyswisseph TRUE_NODE. Coarse-to-fine long-horizon search for 50-year windows. Lahiri sidereal throughout.',
-    storage_type: 'service',
-    target_table: null, count_sql: null, size_sql: null,
-    target_floor: null,
+    layer: 'kala', sort_order: 107,
+    catalog_status: 'CURRENT',
+    sanskrit_name: 'Gochara Puraḥ-Sañcalana Cakra (2.0, satyapana)',
+    english_name: 'Gochara V3 Per-Chart Materializer',
+    english_description: 'Primary per-chart gochara window materializer (GOCHARA-UTKARSA). Renamed from ka_gochara_v2_materialize at W6.4 cutover (UTK-R2, migration 563). Joins bg_gochara_arcs against gochara_resonance_map and scores via gochara_intensity grammar. Writes kala_gochara_windows with generation=\'3.0\' (W5.4 UTK-R1 production repoint) and kala_gochara_windows_v2 with generation=\'g3_utkarsha\' as a calibration/staging copy. kala_gochara_windows generation=\'3.0\' is the post-cutover PRODUCTION authority surface.',
+    storage_type: 'postgres_table',
+    target_table: 'kala_gochara_windows',
+    count_sql: "SELECT COUNT(*) FROM kala_gochara_windows WHERE chart_id=$1 AND generation='3.0'",
+    size_sql: null,
+    target_floor: 0,
     expected_volume_formula: null,
     expected_volume_inputs: null,
-    volume_explanation: 'Service asset — no stored rows; transit events computed on demand via pyswisseph',
-    depends_on: ['bg_ephemeris', 'ka_graha_sancara'],
-    scope: 'global', is_active: true, estimated_seconds: null,
-    asset_kind: 'service', catalog_status: 'DRAFT',
+    volume_explanation: 'Per-chart gochara materialization (generation=3.0), counted from the production surface (kala_gochara_windows) per the W5.4 UTK-R1 repoint — not the g3_utkarsha calibration copy in kala_gochara_windows_v2.',
+    depends_on: ['bg_gochara_arcs', 'ka_gochara_resonance'],
+    scope: 'per_chart', is_active: true, estimated_seconds: null,
+    asset_kind: 'data',
   },
   {
     // D-5 Lane G-1 (migration 459, GOCHARA-UTKARSA campaign item).
@@ -1965,49 +1986,37 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     // D-5 Lane G-4 (migration 460, GOCHARA-UTKARSA campaign item). HEAVY writer
     // with per-event-class/decade sub-stepping and cross-attempt resumption.
     // This is the v1 (legacy) sweep that ka_kshetra reads as a cross-check corpus.
+    // MR-06 (PARISHKARA cutover durability): post-cutover status RETIRED.
+    // Migration 563 (W6.4 UTK-R2, PR #1192) set catalog_status='RETIRED',
+    // is_active=false. The v1 sweep data and protection remain; only the
+    // catalog status changes. A re-seed MUST NOT un-retire this asset.
+    // The ON-CONFLICT guard in runSeed() preserves RETIRED status on conflict.
     asset_id: 'ka_gochara_sweep',
     layer: 'kala', sort_order: 105,
-    catalog_status: 'CURRENT',
+    catalog_status: 'RETIRED',
     sanskrit_name: 'Gochara Puraḥ-Sañcalana Cakra',
-    english_name: 'Forward Sweep + Serving',
-    english_description: 'D-5 Lane G-4: birth->birth+100y daily-grid gochara (transit) intensity sweep (lambda_e via G-3\'s services/gochara_intensity), shape-aware (point/interval/chain per brahma_event_ontology). HEAVY writer, per-event-class/decade sub-stepping with cross-attempt resumption (migration 436). Consumes G-1 gochara_resonance_map + G-2 gochara_grammar + G-3 gochara_intensity read-only.',
+    english_name: 'Forward Sweep + Serving (RETIRED)',
+    english_description: 'D-5 Lane G-4: birth->birth+100y daily-grid gochara (transit) intensity sweep (lambda_e via G-3\'s services/gochara_intensity), shape-aware (point/interval/chain per brahma_event_ontology). HEAVY writer, per-event-class/decade sub-stepping with cross-attempt resumption (migration 436). Consumes G-1 gochara_resonance_map + G-2 gochara_grammar + G-3 gochara_intensity read-only. RETIRED at W6.4 cutover (migration 563, UTK-R2): ka_gochara (renamed from ka_gochara_v2_materialize) is the new authority. Protected v1 data retained in kala_gochara_windows (migration 540 guard).',
     storage_type: 'postgres_table',
     target_table: 'kala_gochara_windows',
-    count_sql: 'SELECT COUNT(*) FROM kala_gochara_windows WHERE chart_id=$1',
+    // MR-07: scoped to generation='v1' (RETIRED sweep only wrote v1 rows; prevents double-count)
+    count_sql: "SELECT COUNT(*) FROM kala_gochara_windows WHERE chart_id=$1 AND generation='v1'",
     size_sql: null,
     target_floor: 0,
     expected_volume_formula: null,
     expected_volume_inputs: null,
-    volume_explanation: 'Transit intensity windows over 100y horizon — count depends on event-class and sweep resolution.',
+    volume_explanation: 'RETIRED — v1 sweep data protected in kala_gochara_windows (migration 540). No new rows written.',
     depends_on: ['ka_gochara_resonance'],
-    scope: 'per_chart', is_active: true, estimated_seconds: null,
+    scope: 'per_chart', is_active: false, estimated_seconds: null,
     asset_kind: 'data',
   },
-  {
-    // ṢAḌ-DARŚANA W2G (item 19, lane G REWORK) · migration 542. Per-chart
-    // materialization that joins bg_gochara_arcs against gochara_resonance_map
-    // and scores via v1's frozen gochara_intensity grammar. Writes to
-    // kala_gochara_windows_v2 ONLY — NEVER touches kala_gochara_windows.
-    // has_substeps=true (progressive-horizon posture). Renamed from the
-    // superseded ka_gochara_sweep_v2 (PR #1081, PARKED-HONEST).
-    asset_id: 'ka_gochara_v2_materialize',
-    layer: 'kala', sort_order: 107,
-    catalog_status: 'CURRENT',
-    sanskrit_name: 'Gochara Puraḥ-Sañcalana Cakra (2.0, satyapana)',
-    english_name: 'GOCHARA-2.0 Per-Chart Materialization (validation surface)',
-    english_description: 'ṢAḌ-DARŚANA W2G (item 19), lane G REWORK: joins the chart-independent bg_gochara_arcs contact stream against a chart\'s gochara_resonance_map natal targets and scores each candidate instant through v1\'s own, unmodified gochara_intensity.compute_lambda_e grammar (design §5: 2.0 changes HOW, never WHAT). Writes to kala_gochara_windows_v2, its OWN table -- NEVER to the protected kala_gochara_windows (native ruling 2026-08-06). v1\'s corpus is this asset\'s frozen equivalence-report benchmark, read-only. Renamed from the superseded ka_gochara_sweep_v2 (PR #1081, PARKED-HONEST) to avoid any implication this is "v2 of the sweep" -- it is a wholly separate validation-phase surface. Progressive-horizon posture: builds +/-3 years from "now" first; full-century backfill is a future lane. Point-shaped event classes only in this first lane -- interval/chain deferred.',
-    storage_type: 'postgres_table',
-    target_table: 'kala_gochara_windows_v2',
-    count_sql: 'SELECT COUNT(*) FROM kala_gochara_windows_v2 WHERE chart_id=$1',
-    size_sql: null,
-    target_floor: 0,
-    expected_volume_formula: null,
-    expected_volume_inputs: null,
-    volume_explanation: 'GOCHARA-2.0 materialized windows — count depends on +/-3y horizon event cardinality.',
-    depends_on: ['bg_gochara_arcs', 'ka_gochara_resonance'],
-    scope: 'per_chart', is_active: true, estimated_seconds: null,
-    asset_kind: 'data',
-  },
+  // MR-06 (PARISHKARA cutover durability): ka_gochara_v2_materialize REMOVED.
+  // Migration 563 (W6.4 UTK-R2) renamed this asset_id → ka_gochara. The old
+  // asset_id no longer exists in the DB post-cutover. Keeping a seed entry here
+  // would re-insert a ghost row on next re-seed via ON-CONFLICT INSERT, and
+  // would collide with the renamed ka_gochara row's sort_order.
+  // The renamed entry lives above as asset_id='ka_gochara' (post-cutover form).
+  //
   // ── GOCHARA-UTKARSA W3.4 — century-horizon heavy writer (migration 560) ────
   {
     asset_id: 'ka_gochara_v3_century_materialize',
@@ -2024,7 +2033,22 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     expected_volume_formula: null,
     expected_volume_inputs: null,
     volume_explanation: 'GOCHARA-v3 century windows — count depends on active threshold-crossing intervals across 60 decade slices.',
-    depends_on: ['ka_gochara_resonance'],
+    // W5.2 DAG integration (migration 562): full depends_on set reflecting the
+    // v3 writer's true runtime inputs across ClassContext.fetch() + engine.py.
+    // ka_gochara_resonance — resonance targets (step 1, always required)
+    // ka_vedha_gochara     — kala_vedha_gochara (W1.3 quality_gates, wired)
+    // ka_moorti_nirnaya    — kala_moorti_nirnaya (W2.2 moorti modifier)
+    // ka_kota_chakra       — kala_kota_chakra (W2.5 kota-chakra ring modifier)
+    // ka_tithi_pravesha    — kala_tithi_pravesha (W2.7b annual tone)
+    // bg_sky_calendar      — bg_sky_events (W2.6 real eclipses)
+    depends_on: [
+      'ka_gochara_resonance',
+      'ka_vedha_gochara',
+      'ka_moorti_nirnaya',
+      'ka_kota_chakra',
+      'ka_tithi_pravesha',
+      'bg_sky_calendar',
+    ],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
     asset_kind: 'data',
   },
@@ -2840,12 +2864,13 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     //
     // W0.1 UPDATE (2026-08-10, GOCHARA-UTKARSA): Now that this file contains seed rows
     // for ka_gochara_sweep (sort_order 105) and ka_gochara_resonance (sort_order 104),
-    // the old `depends_on: []` rationale is resolved. The nine real edges from the live
-    // DB (migration 494 + migration 522) are now all represented in this file and can be
-    // declared here safely. Running this seed against prod will now correctly set
-    // ka_kshetra's depends_on to the full nine-edge set rather than narrowing it to [].
-    // Live DB value (verified 2026-08-10):
-    //   {ka_dasha_kala, ka_gochara_sweep, ka_gochara_resonance, ga_panchanga,
+    // the old `depends_on: []` rationale is resolved. The eight real edges from the live
+    // DB (migration 494 + migration 522; migration 569 drops ka_gochara_sweep per SAMPŪRTI R0)
+    // are now all represented in this file and can be declared here safely. Running this
+    // seed against prod will now correctly set ka_kshetra's depends_on to the eight-edge
+    // set rather than narrowing it to [].
+    // Live DB value (post migration 569):
+    //   {ka_dasha_kala, ka_gochara_resonance, ga_panchanga,
     //    bo_pratijna, bo_sangati, bo_upaya, bg_cohort, bg_class_lifetime_counts}
     asset_id: 'ka_kshetra',
     layer: 'kala', sort_order: 110,
@@ -2871,10 +2896,10 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     volume_explanation:
       'Log-linear hazard segments per event class over a 100-year horizon; set to the ' +
       'ACHIEVED count after the first build (§N.4 — floors are aspirational, never fabricated).',
-    // Nine real edges per live DB (migration 494 + migration 522).
-    // All nine are now represented by seed rows in this file (W0.1, 2026-08-10).
+    // Eight real edges per live DB (migration 494 + migration 522; migration 569 drops ka_gochara_sweep per SAMPŪRTI R0).
+    // All eight are now represented by seed rows in this file (W0.1, 2026-08-10).
     depends_on: [
-      'ka_dasha_kala', 'ka_gochara_sweep', 'ka_gochara_resonance',
+      'ka_dasha_kala', 'ka_gochara_resonance',
       'ga_panchanga', 'bo_pratijna', 'bo_sangati', 'bo_upaya',
       'bg_cohort', 'bg_class_lifetime_counts',
     ],
@@ -3194,13 +3219,25 @@ async function main(): Promise<void> {
         volume_explanation = EXCLUDED.volume_explanation,
         depends_on = EXCLUDED.depends_on,
         scope = EXCLUDED.scope,
-        is_active = EXCLUDED.is_active,
+        -- MR-06 (PARISHKARA cutover durability): RETIRED guard.
+        -- A RETIRED asset (e.g. ka_gochara_sweep post W6.4 cutover) must NEVER
+        -- be resurrected by a re-seed. If the existing DB row is already RETIRED,
+        -- preserve that status and the corresponding is_active=false rather than
+        -- blindly overwriting with whatever the seed says. This is the ON-CONFLICT
+        -- analogue of migration 563's one-way transition: CURRENT→RETIRED is
+        -- irreversible by the seed; only an explicit native-authorized migration
+        -- can reverse it.
+        catalog_status = CASE WHEN asset_registry.catalog_status = 'RETIRED'
+                              THEN asset_registry.catalog_status
+                              ELSE EXCLUDED.catalog_status END,
+        is_active = CASE WHEN asset_registry.catalog_status = 'RETIRED'
+                         THEN asset_registry.is_active
+                         ELSE EXCLUDED.is_active END,
         asset_type = EXCLUDED.asset_type,
         layer_name = EXCLUDED.layer_name,
         layer_index = EXCLUDED.layer_index,
         provides_apis = EXCLUDED.provides_apis,
         health_probe = EXCLUDED.health_probe,
-        catalog_status = EXCLUDED.catalog_status,
         asset_kind = EXCLUDED.asset_kind`,
       [
         asset.asset_id, asset.layer, asset.sort_order,

@@ -4,12 +4,21 @@ FROZEN orchestrator contract: @register, run(ctx) -> WriterResult
 NEVER commits or rolls back (orchestrator owns the transaction).
 NEVER writes outside phala_muhurta.
 
-Reads: phala_anchors · ka_vighnakara · ga_condition_composite · ka_gochara ·
+Reads: phala_anchors · ka_vighnakara · ga_condition_composite ·
        chart_facts (natal Moon nakshatra/sign)
        (calls ka_muhurta_seva for panchanga scoring via the service; calls
        panchang_engine.panchanga_instant() directly for real serve-time
        tarabala/chandrabala per JL-016 — see _compute_tara_chandra_scores)
 Writes: phala_muhurta (delete-then-insert per chart_id)
+
+MR-09 DOCSTRING CORRECTION: ka_gochara was previously listed in "Reads:"
+above, implying a live read dependency.  That is inaccurate.
+ka_gochara (GocharaTransitService) is a COMPUTE-ONLY service with no
+persisted table.  _load_gochara_transits() explicitly returns {} with a
+logged note that gochara wiring is DEFERRED to a future L4 campaign build
+phase.  Until that wiring is implemented and validated end-to-end,
+ka_gochara does NOT appear in the Reads list.  _compute_transit_score()
+returns the documented neutral 0.5 default in the interim.
 """
 from __future__ import annotations
 

@@ -62,31 +62,52 @@ name: TAP CI — Total Audit Protocol Suite
 # repo's required_status_checks ruleset the same way a pull_request-triggered one does, even
 # though the resulting check-run is genuinely associated with the same commit SHA — confirmed
 # empirically (run 31094827789 succeeded on the exact PR head SHA, mergeStateStatus stayed
-# BLOCKED regardless). Touching this file is a no-op edit specifically because it's already in
-# this workflow's own pull_request `paths:` allowlist below — it exists to make TAP-6 fire for
-# real in pull_request context on a docs-only PR that would otherwise never match any path
-# filter, which is exactly what's needed to unblock queue admission.
+# BLOCKED regardless).
+#
+# ALWAYS-REPORT RESTRUCTURE (TAP-6 lane, 2026-08-11). SUPERSEDES the note above and the
+# `pull_request.paths` filter it refers to. The paths-filter approach patched three times
+# (2026-08-01, 2026-08-06, 2026-08-10) and still bit PRs #1207/#1209 on 2026-08-10: whenever
+# a PR touches NO path in the allowlist, GitHub Actions does not run this workflow AT ALL for
+# that PR — no check-run is ever created — and a REQUIRED check with no check-run reads to
+# GitHub's merge queue exactly like a FAILING one. The allowlist was structurally guaranteed
+# to need a fourth, fifth, ... patch forever, because it is an enumeration of every path
+# class a PR could touch, not a description of what TAP-6 actually gates.
+#
+# Fix: the workflow-level `paths:` filter is REMOVED from `pull_request:` below — this
+# workflow now runs on every PR into main, no exceptions. Relevance is instead computed
+# INSIDE the required job itself — `tap6-method-audit`'s (check name "TAP-6 — Method audit
+# grep set", UNCHANGED — it is pinned in the branch-protection ruleset, verified
+# byte-for-byte 2026-08-11) own first step diffs the PR's base..head commit range against
+# the same path list the old filter used (preserved verbatim as a grep pattern — see that
+# job). The job then does ONE of two things based on that step's own output:
+#   - paths irrelevant  -> logs an explicit "no matching paths — no-op success" line and
+#     exits 0. The check-run still gets CREATED and reports a real SUCCESS conclusion.
+#   - paths relevant    -> runs the exact same `npx tsx scripts/audit/tap/tap6_method_grep.ts`
+#     step this job has always run, byte-identical.
+# Either way the required check ALWAYS reports a conclusion for every PR — it can no longer
+# be silently absent. What changed is WHEN it reports a real grep run vs. a no-op; WHAT the
+# grep set checks is untouched.
+#
+# PK-R-6 ADJUDICATOR REVISION (2026-08-11): the first draft of this restructure used a
+# SEPARATE detection job feeding `tap6-method-audit` via `needs:` + cross-job outputs.
+# BLOCKING finding: with no `if:` guard on the required job, an error/failure in that
+# upstream job (e.g. an unresolvable base/head SHA under `set -euo pipefail`) would leave
+# `tap6-method-audit` with conclusion=SKIPPED, not SUCCESS — reintroducing a narrower
+# version of the exact defect this PR exists to close (§N.8: a "the check always reports"
+# claim needs a real path that can't quietly go skipped instead). Fixed by adopting the
+# adjudicator's preferred, strictly-simpler shape: detection is now a plain first STEP
+# inside `tap6-method-audit` itself — no separate job, no `needs`, no cross-job output, no
+# skip path, one runner. It is also now fail-closed (a `git diff` error defaults to
+# `relevant=true`, i.e. run the real grep set — the safe default, since running it
+# unnecessarily costs CI minutes, not correctness) and its own step-level guards default
+# to running the real check on anything other than an explicit `relevant=false` (no
+# fail-open path from an absent/unexpected output value). See the job body below for the
+# implementation.
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
-    paths:
-      # The gates' own source
-      - 'platform/scripts/audit/tap/**'
-      # What the gates actually scan
-      - 'platform/python-sidecar/**'
-      - 'platform-mcp/src/**'
-      - 'platform/src/lib/retrieval/**'
-      # This file
-      - '.github/workflows/tap-ci.yml'
-      # Migrations (2026-08-10): SQL-only PRs that add migration files — such as DB
-      # role grants or schema changes — must also produce a TAP-6 result so the merge
-      # queue's required-check can be satisfied. The gates scan python-sidecar patterns
-      # and always pass for pure SQL (no new code paths to audit), but without this
-      # entry the workflow never fires for SQL-only PRs, leaving the required check
-      # absent and the PR permanently blocked from the queue.
-      - 'platform/supabase/migrations/**'
   # BUG FIX (2026-08-01). This trigger was MISSING, and its absence silently defeated the
   # 2026-07-31 retirement: three jobs/steps were guarded with
   # `if: github.event_name == 'workflow_dispatch'` on a workflow that had no such trigger, so
@@ -115,24 +136,122 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # ALWAYS-REPORT RESTRUCTURE (2026-08-11, PK-R-6 adjudicated shape). Detection is step 1
+  # of THIS job — no separate job, no `needs`, no cross-job output, no path by which the
+  # required check can end up conclusion=SKIPPED instead of a genuine SUCCESS/FAILURE. See
+  # the `on:` block comment above for the full incident history and the adjudicator's
+  # blocking finding on the earlier two-job draft.
+  #
+  # Relevance rule, preserved verbatim from the retired `pull_request.paths` allowlist:
+  #   platform/scripts/audit/tap/**   — the gates' own source
+  #   platform/python-sidecar/**      — what tap6_method_grep.ts actually scans
+  #   platform-mcp/src/**
+  #   platform/src/lib/retrieval/**
+  #   .github/workflows/tap-ci.yml    — this file
+  #   platform/supabase/migrations/** — 2026-08-10 addition
+  #   platform/migrations/**          — 2026-08-10 addition
+  #   .github/workflows/**            — 2026-08-10 addition
+  #
+  # Only `pull_request` events are actually filtered against that list. `push` (branches:
+  # [main]) and `merge_group` never carried a paths filter even before this restructure —
+  # merge_group in particular does not support `paths:` at the trigger level at all (see
+  # the pre-existing note in the old `on:` block, now folded into the detect step instead)
+  # — and workflow_dispatch is an explicit manual/ad-hoc invocation. All three are
+  # therefore always treated as relevant, matching prior behavior exactly; nothing about
+  # their trigger-level behavior changed in this restructure.
   tap6-method-audit:
     name: TAP-6 — Method audit grep set
     runs-on: ubuntu-latest
+    outputs:
+      relevant: ${{ steps.detect.outputs.relevant }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Full history so the base..head diff below always has both endpoints locally —
+          # the default shallow (depth-1) checkout only fetches the triggering commit.
+          fetch-depth: 0
+      - name: Detect relevant path changes
+        id: detect
+        run: |
+          set -uo pipefail
+          # Deliberately NOT `set -e`: a `git diff` failure below must fall through to the
+          # fail-safe default, not abort the step and leave this required job SKIPPED
+          # instead of reporting a real conclusion (PK-R-6 blocking finding F-1).
+
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
+            echo "Trigger is '${{ github.event_name }}', not pull_request — always relevant" \
+              "(matches this trigger's pre-restructure behavior; no paths filter ever" \
+              "applied to it)."
+            echo "relevant=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+          # --no-renames: without it, a file MOVED out of a relevant directory (still a
+          # real change to relevant content) can be reported by `git diff` as a rename
+          # whose old path never surfaces in --name-only output — parity with GitHub's own
+          # `paths:` filter, which matches a rename against both its old and new path.
+          CHANGED=$(git diff --no-renames --name-only "$BASE_SHA" "$HEAD_SHA" 2>&1)
+          DIFF_EXIT=$?
+
+          if [ "$DIFF_EXIT" -ne 0 ]; then
+            echo "git diff failed (exit $DIFF_EXIT) — defaulting relevant=true (fail-closed" \
+              "toward running the real check; per the deploy.yml:228 convention of never" \
+              "trusting an unresolved diff as a reason to skip a check)."
+            echo "$CHANGED"
+            echo "relevant=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "=== Changed files (PR #${{ github.event.pull_request.number }}, $BASE_SHA..$HEAD_SHA) ==="
+          printf '%s\n' "$CHANGED"
+          echo "==================================================================="
+
+          if printf '%s\n' "$CHANGED" | grep -qE \
+            '^(platform/scripts/audit/tap/|platform/python-sidecar/|platform-mcp/src/|platform/src/lib/retrieval/|\.github/workflows/tap-ci\.yml$|platform/supabase/migrations/|platform/migrations/|\.github/workflows/)'; then
+            echo "Relevant path(s) changed — running the real grep set."
+            echo "relevant=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No relevant paths changed — reporting a no-op success."
+            echo "relevant=false" >> "$GITHUB_OUTPUT"
+          fi
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
+      # Step polarity is deliberately fail-CLOSED (PK-R-6 advisory): the no-op only fires
+      # on an explicit `relevant == 'false'`; the real grep set is the default for
+      # anything else (`true`, empty, or any unexpected value), so a step output that
+      # never got set for any reason still results in the real check running, never a
+      # silently-green no-op (§N.8: no signal may default to green without its detector
+      # having actually run).
+      - name: No-op success (no relevant paths changed)
+        if: steps.detect.outputs.relevant == 'false'
+        run: |
+          echo "No matching paths — no-op success."
+          echo "This PR does not touch any path TAP-6 scans (see the 'Detect relevant path" \
+            "changes' step above for the exact diff and pattern). Reporting SUCCESS" \
+            "explicitly so this required check can never again be silently absent from a" \
+            "PR — see the 'on:' block comment above for the 2026-08-10 #1207/#1209" \
+            "incident this replaces."
+          exit 0
       - name: Run TAP-6 grep set (no DB required)
+        if: steps.detect.outputs.relevant != 'false'
         working-directory: platform
         run: npx tsx scripts/audit/tap/tap6_method_grep.ts
 
   sc-pointer-validation:
     name: Boot-time pointer validation (SC-17/18/19)
-    # Not a ruleset-required check; skipped on merge-group runs so the queue
-    # runs only what it requires (this gate is also intentionally red on main
-    # while the SC-pointer baseline holds at zero — see CI_EFFICIENCY_AUDIT §6.18).
-    if: github.event_name != 'merge_group'
+    # Not a ruleset-required check. `needs: tap6-method-audit` + `!cancelled()` (2026-08-11,
+    # PK-R-6 advisory) restores this job's pre-restructure economy — it now skips whenever
+    # TAP-6 found nothing relevant changed, same as when the whole workflow used to not run
+    # at all for such a PR — while still running regardless of TAP-6's own PASS/FAIL verdict
+    # (only an explicit `relevant == 'false'` or a genuine cancellation skips it) and still
+    # skipped on merge-group runs so the queue runs only what it requires (this gate is also
+    # intentionally red on main while the SC-pointer baseline holds at zero — see
+    # CI_EFFICIENCY_AUDIT §6.18).
+    needs: tap6-method-audit
+    if: ${{ !cancelled() && github.event_name != 'merge_group' && needs.tap6-method-audit.outputs.relevant != 'false' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -196,8 +315,12 @@ jobs:
 
   tap-db-gates:
     name: TAP-5 / TAP-7 / S-13 — DB-backed conservation + distribution gates
-    # Not a ruleset-required check; skipped on merge-group runs (see above).
-    if: github.event_name != 'merge_group'
+    # Not a ruleset-required check. `needs`/`if` restore this job's pre-restructure economy
+    # the same way as sc-pointer-validation above (2026-08-11, PK-R-6 advisory) — skipped
+    # when TAP-6 found nothing relevant changed, regardless of TAP-6's own PASS/FAIL verdict,
+    # and skipped on merge-group runs (see above).
+    needs: tap6-method-audit
+    if: ${{ !cancelled() && github.event_name != 'merge_group' && needs.tap6-method-audit.outputs.relevant != 'false' }}
     runs-on: ubuntu-latest
     # id-token needed for the WIF auth used by the dispatch-only Cloud SQL proxy below.
     permissions:
@@ -335,3 +458,16 @@ jobs:
 # paths filter; same pattern; PR #1131)
 # no-op: touch to trigger TAP-6 on sampurti/coordination (CAMPAIGN_COORDINATION.md does not
 # match paths filter; same pattern; PR #1142)
+# ── The "no-op: touch to trigger TAP-6" comment log above is RETIRED as of the 2026-08-11
+# always-report restructure (see the `on:` block comment near the top of this file). Every
+# entry above was a workaround for the same defect: a PR whose diff matched none of the
+# retired `pull_request.paths` allowlist never triggered this workflow at all, so the
+# REQUIRED "TAP-6 — Method audit grep set" check stayed permanently absent and blocked
+# queue admission — worked around, each time, by hand-editing this file so the PR's own
+# diff would match the (now-removed) `.github/workflows/**` pattern. That workaround is no
+# longer needed: this workflow now runs on every pull_request into main unconditionally,
+# and `tap6-method-audit` always reports a conclusion (real grep run or explicit no-op
+# success — see its own "Detect relevant path changes" first step). Left in place, not
+# deleted, as the audit
+# trail for why the always-report pattern was worth building — retain-in-place over
+# deletion is this repo's own documented convention for superseded material.

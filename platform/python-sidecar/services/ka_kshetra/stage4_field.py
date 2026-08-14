@@ -64,6 +64,8 @@ import math
 from dataclasses import dataclass, field
 from typing import Any, Iterable, Mapping, Optional, Sequence
 
+import numpy as np
+
 from services.ka_kshetra import hazard, integrator
 from services.ka_kshetra.contracts import (
     ClockApplicability,
@@ -278,9 +280,12 @@ class Primitive:
                 'A one-knot envelope has no defined value anywhere and would read '
                 'as an honest 0 for the entire horizon.'
             )
-        ts = [k[0] for k in self.knots]
-        if t < ts[0] or t > ts[-1]:
+        # L1h: range check against tuple directly before any list allocation.
+        # For the ~99% of calls where t is outside this primitive's span, this
+        # avoids the [k[0] for k in self.knots] allocation entirely.
+        if t < self.knots[0][0] or t > self.knots[-1][0]:
             return 0.0
+        ts = [k[0] for k in self.knots]
         i = bisect.bisect_right(ts, t) - 1
         if i >= len(self.knots) - 1:
             return self.knots[-1][1]
@@ -317,6 +322,27 @@ class EnvelopeIndex:
         self.obstructive: list[Primitive] = []
         for p in primitives:
             (self.obstructive if p.polarity == 'obstructive' else self.supportive).append(p)
+        # L1i: pre-built numpy arrays for vectorized range-check in covariates_at /
+        # obstructions_at.  Building these once in __init__ (the EnvelopeIndex is
+        # constructed once and shared across ALL stage-4 substeps and stage-5 null
+        # replicates) costs ~2 ms and eliminates the O(N_primitives) Python loop
+        # that previously dominated every covariates_at call.
+        self._sup_t0: np.ndarray = (
+            np.array([p.knots[0][0] for p in self.supportive], dtype=np.float64)
+            if self.supportive else np.empty(0, dtype=np.float64)
+        )
+        self._sup_t1: np.ndarray = (
+            np.array([p.knots[-1][0] for p in self.supportive], dtype=np.float64)
+            if self.supportive else np.empty(0, dtype=np.float64)
+        )
+        self._obs_t0: np.ndarray = (
+            np.array([p.knots[0][0] for p in self.obstructive], dtype=np.float64)
+            if self.obstructive else np.empty(0, dtype=np.float64)
+        )
+        self._obs_t1: np.ndarray = (
+            np.array([p.knots[-1][0] for p in self.obstructive], dtype=np.float64)
+            if self.obstructive else np.empty(0, dtype=np.float64)
+        )
 
     # ── evaluation ───────────────────────────────────────────────────────────
 
@@ -334,8 +360,16 @@ class EnvelopeIndex:
         present, still auditable) provenance edge.
         """
         out: dict[str, float] = {}
-        for p in self.supportive:
-            v = p.value_at(t)
+        if self._sup_t0.size == 0:
+            return out
+        # L1i: vectorized range check — finds active primitives in O(N) numpy
+        # rather than O(N) Python, then calls value_at only for the K << N
+        # primitives whose span contains t.
+        t_f = float(t)
+        active_idx = np.where((self._sup_t0 <= t_f) & (t_f <= self._sup_t1))[0]
+        for i in active_idx:
+            p = self.supportive[int(i)]
+            v = p.value_at(t_f)
             if v <= 0.0:
                 continue
             for key in self._covariate_keys(p):
@@ -366,8 +400,14 @@ class EnvelopeIndex:
         harmless — a reader would see a reason that is not a reason).
         """
         out: dict[str, float] = {}
-        for p in self.obstructive:
-            v = p.value_at(t)
+        if self._obs_t0.size == 0:
+            return out
+        # L1i: same vectorized gate as covariates_at.
+        t_f = float(t)
+        active_idx = np.where((self._obs_t0 <= t_f) & (t_f <= self._obs_t1))[0]
+        for i in active_idx:
+            p = self.obstructive[int(i)]
+            v = p.value_at(t_f)
             if v <= 0.0:
                 continue
             key = p.vighna_key()
@@ -508,6 +548,31 @@ class FieldEvaluator:
         self.horizon_days = float(horizon_days)
         self.baseline_source = baseline_source
         self.extra_breakpoints = tuple(float(t) for t in extra_breakpoints)
+        # L1j: pre-built binary-search arrays per (system_id, level) for O(log N)
+        # lord_stacks_at instead of the O(N) linear scan over 165K+ periods.
+        # Periods in self.ladder are already sorted by (_LEVEL_RANK, t_start), so
+        # grouping by level here preserves outermost-first order (MD→AD→PD→SD→PrD).
+        self._ladder_bsearch: dict[str, list[tuple[str, list[float], list[float], list[str]]]] = {}
+        for sid, periods in self.ladder.items():
+            levels_data: list[tuple[str, list[float], list[float], list[str]]] = []
+            cur_level = ''
+            lvl_t_starts: list[float] = []
+            lvl_t_ends: list[float] = []
+            lvl_lords: list[str] = []
+            for p in periods:
+                if p.level != cur_level:
+                    if cur_level:
+                        levels_data.append((cur_level, lvl_t_starts, lvl_t_ends, lvl_lords))
+                    cur_level = p.level
+                    lvl_t_starts = []
+                    lvl_t_ends = []
+                    lvl_lords = []
+                lvl_t_starts.append(p.t_start)
+                lvl_t_ends.append(p.t_end)
+                lvl_lords.append(p.lord)
+            if cur_level:
+                levels_data.append((cur_level, lvl_t_starts, lvl_t_ends, lvl_lords))
+            self._ladder_bsearch[sid] = levels_data
 
     # ── inputs at an instant ─────────────────────────────────────────────────
 
@@ -518,10 +583,19 @@ class FieldEvaluator:
         exactly one period — the same discipline §6.3's cohort MD-chain join
         uses, and for the same reason: a closed interval double-counts the
         boundary and an open one drops it.
+
+        L1j: O(log N) via pre-built binary-search arrays instead of O(N) linear
+        scan. For this chart 165K+ periods reduce to ~110 bisect comparisons.
         """
         out: dict[str, list[tuple[str, str]]] = {}
-        for sid, periods in self.ladder.items():
-            stack = [(p.level, p.lord) for p in periods if p.t_start <= t < p.t_end]
+        for sid, levels_data in self._ladder_bsearch.items():
+            stack: list[tuple[str, str]] = []
+            for level, lvl_t_starts, lvl_t_ends, lvl_lords in levels_data:
+                # bisect_right gives the first i where t_starts[i] > t, so
+                # t_starts[idx] <= t for idx = result - 1.
+                idx = bisect.bisect_right(lvl_t_starts, t) - 1
+                if idx >= 0 and lvl_t_ends[idx] > t:  # [t_start, t_end) containment
+                    stack.append((level, lvl_lords[idx]))
             if stack:
                 out[sid] = stack
         return out
@@ -948,6 +1022,10 @@ def load_legacy_crosscheck(conn, chart_id: str, event_class: str) -> list[dict]:
             """SELECT id, window_start, window_end, peak_date, temporal_shape
                  FROM kala_gochara_windows
                 WHERE chart_id = %s AND event_class = %s
+                  AND generation = COALESCE(
+                        (SELECT authoritative_generation
+                           FROM kala_gochara_authority
+                          WHERE chart_id = kala_gochara_windows.chart_id), 'v1')
                 ORDER BY window_start, peak_date""",
             (chart_id, event_class),
         )

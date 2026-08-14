@@ -1,0 +1,308 @@
+# mechanism_register.yaml — GOCHARA-UTKARSA W5.3 finalized docs-of-record
+#
+# Grammar-v3 mechanism register: all 12 mechanisms (10 admitted + 2 structural-only)
+# finalized per ADJUDICATOR ruling UTK-R3 (W4.3 ablation + W4.4 weight fitting).
+#
+# PARIṢKĀRA MR-19 RE-ADJUDICATION (PRATINIDHI, 2026-08-11 — native-directed,
+# recorded here per the register's own convention, full rationale in
+# PARISHKARA_LEDGER.md "MR-19 re-adjudication" entry):
+#
+# UTK-R3 admitted all 10 `admitted` mechanisms below on an ablation run against
+# an EMPTY corpus — "cannot degrade v1 parity" was true only because there was
+# no data to degrade (a vacuous pass, not evidence). Post-repair (MR-13/14/15,
+# THE ONE authorized rebuild), the corpus is real (89/85 rows) and W4.4's real
+# refit ran against it — every one of these 10 mechanisms came back
+# `mechanism_not_wired` (w44_weight_fitting.py's MECHANISM_ENGINE_WIRED
+# registry: all False). This is NOT "ablated, measured near-zero effect" — it
+# is structurally stronger and more honest than that: none of these 10
+# mechanisms' compute() is actually INVOKED anywhere in engine.py's production
+# lambda_v3 formula. There is no code path for an ablation to exercise, so a
+# with-vs-without run is mathematically guaranteed to show delta=0 by
+# construction, not by measurement — running one now would be exactly the
+# "ablation theater against zero weights" this ruling is directed to avoid.
+#
+# RULING: `admission_state: admitted` / `weight_type: fitted` below currently
+# read as "this mechanism contributes a real, fitted weight in production
+# scoring." That claim is FALSE today and is hereby DEMOTED, not stripped —
+# the classical citation, code module, and unit test suite for each mechanism
+# remain real and are NOT discarded. Re-scoped status, effective this ruling:
+# DEFINED + CITED + CODED, NOT ENGINE-WIRED. No production contribution claim
+# may be made for these 10 until a dedicated future wave actually wires each
+# mechanism's compute() into engine.py's lambda_v3 path (flips its
+# MECHANISM_ENGINE_WIRED entry to True) — at which point a genuine ablation
+# becomes possible and this re-adjudication is superseded by real evidence.
+# The two `structural_only` mechanisms below (w28/w29) are UNAFFECTED — they
+# were never weight-fitted claims to begin with (modifier is always 1.0 by
+# design), so this finding does not apply to them.
+#
+# This YAML file is unchanged below (still I2-compliant read-only
+# documentation, still records UTK-R3's own original text verbatim — history
+# is not rewritten) — this header block is the additive correction. The
+# authoritative, LIVE, machine-checked source of the honest wiring state is
+# w44_weight_fitting.py's `MECHANISM_ENGINE_WIRED` dict, not this file; read
+# that dict, not `admission_state` here, when the question is "does this
+# mechanism currently contribute in production."
+#
+# Field semantics:
+#   toggle_key          — Python identifier that disables this mechanism when False
+#   admission_state     — "admitted" | "structural_only" (per UTK-R3 enum)
+#   classical_citation  — verbatim citation text; or uncited_extension: true
+#   uncited_extension   — true if no classical grounding exists
+#   evidence_link       — reference to ablation evidence (W4.3 ablation report)
+#   weight_type         — "fitted" (10 admitted) | "structural_modifier=1.0" (2 structural-only)
+#
+# Admission criteria (I3):
+#   admitted            — classically cited + unit test suite present; weight fitted via W4.4
+#   structural_only     — modifier always 1.0 by design; enabling/structural, no lambda gate
+#
+# Source: grammar_v3_registry.yaml (UTK-R3) + mechanisms/registry/*.yaml (W4.4 loader)
+# Finalized: W5.3 docs-of-record lane, 2026-08-10
+# I2 compliance: this file is read-only documentation; no imports from
+#   gochara_grammar/*, gochara_intensity/*, or ka_gochara_sweep/*
+
+mechanisms:
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # ADMITTED (10 mechanisms) — classically cited, test suite present, weight fitted
+  # ─────────────────────────────────────────────────────────────────────────
+
+  - toggle_key: w21_av_gating
+    mechanism_id: w21_av_gating
+    wave: "W2.1"
+    lane: ashtakavarga_gating
+    admission_state: admitted
+    description: >-
+      Ashtakavarga bindu gating — real SAV/BAV bindus from ClassContext replaces
+      hardcoded bindu_count_resolved=False stub in gochara_grammar/primitives.py:786.
+      Modifier schedule: bindus < 28 -> 0.8 (damp), == 28 -> 1.0 (neutral), > 28 -> 1.2 (amplify).
+    classical_citation: >-
+      Brihat Parashara Hora Shastra — Ashtakavarga chapters; bg_transit_av_gates rules
+      (gate_kind='sav_threshold') encode the same threshold logic via min_sav_score.
+      SAV total 337 bindus / 12 signs = 28.08 per-sign mean used as damp/neutral/amplify boundary.
+    uncited_extension: false
+    evidence_link: "W4.3 ablation runner (w43_ablation_runner.py): structural-proxy + unit test coverage; W4.4 weight fitting (w44_weight_fitting.py): per-mechanism delta_hit_rate via pooled cross-chart fit"
+    weight_type: fitted
+    module_path: services.gochara_v3.mechanisms.w21_av_gating
+
+  - toggle_key: w22_moorti_nirnaya
+    mechanism_id: w22_moorti_nirnaya
+    wave: "W2.2"
+    lane: moorti_nirnaya
+    admission_state: admitted
+    description: >-
+      Moorti nirnaya quality modifier — svarna/rajata/tamra/loha 4-tier multiplier
+      applied to gochara windows overlapping a graha sign-ingress span.
+      Reads kala_moorti_nirnaya rows pre-fetched in ClassContext; no new DB access.
+    classical_citation: >-
+      Phaladeepika Ch.27 — Moorti nirnaya grades each sign-ingress as gold/silver/copper/iron
+      quality based on Moon's nakshatra at ingress relative to janma nakshatra.
+      bg_transit_moorti reference table (27 rows) encodes the same rule.
+    uncited_extension: false
+    evidence_link: "W4.3 ablation runner (w43_ablation_runner.py): structural-proxy + unit test coverage; W4.4 weight fitting (w44_weight_fitting.py): per-mechanism delta_hit_rate via pooled cross-chart fit"
+    weight_type: fitted
+    module_path: services.gochara_v3.mechanisms.w22_moorti_nirnaya
+
+  - toggle_key: w23_tara_bala
+    mechanism_id: w23_tara_bala
+    wave: "W2.3"
+    lane: tara_bala
+    admission_state: admitted
+    description: >-
+      Tara bala — 9-cycle Nava Tara nakshatra quality modifier for gochara transits
+      relative to native's natal Moon nakshatra. Activates the v1 wired-but-dead
+      nakshatra_ingress_tara primitive by sourcing natal Moon nakshatra from ClassContext.
+    classical_citation: >-
+      Muhurta Chintamani — Tara bala chapter; BPHS nakshatra transit quality.
+      9-Tara cycle: Janma(1.00), Sampat(1.15), Vipat(0.75), Kshema(1.10),
+      Pratyak(0.80), Sadhana(1.05), Naidhana(0.70), Mitra(1.15), Paramamitra(1.20).
+    uncited_extension: false
+    evidence_link: "W4.3 ablation runner (w43_ablation_runner.py): structural-proxy + unit test coverage; W4.4 weight fitting (w44_weight_fitting.py): per-mechanism delta_hit_rate via pooled cross-chart fit"
+    weight_type: fitted
+    module_path: services.gochara_v3.mechanisms.w23_tara_bala
+
+  - toggle_key: w24_sade_sati
+    mechanism_id: w24_sade_sati
+    wave: "W2.4"
+    lane: sade_sati
+    admission_state: admitted
+    description: >-
+      Sade Sati fully — phase-quarter intensity modifier (VISHAKHA 1.15, JANMA 1.30,
+      ANUMUKHA 1.10) plus cancellation rules from ga_sade_sati chart_facts rows.
+      v1 used only a boolean phase-membership signal; v3 consumes all ~11k rows.
+    classical_citation: >-
+      Brihat Parashara Hora Shastra — Sade Sati chapter; ga_sade_sati writer stores
+      per-phase timestamps (sade_sati_phase category) and cancellation data
+      (sade_sati_cancellation_check category) in chart_facts (~11k rows).
+    uncited_extension: false
+    evidence_link: "W4.3 ablation runner (w43_ablation_runner.py): structural-proxy + unit test coverage; W4.4 weight fitting (w44_weight_fitting.py): per-mechanism delta_hit_rate via pooled cross-chart fit"
+    weight_type: fitted
+    module_path: services.gochara_v3.mechanisms.w24_sade_sati
+
+  - toggle_key: w25_kota_chakra
+    mechanism_id: w25_kota_chakra
+    wave: "W2.5"
+    lane: kota_chakra
+    admission_state: admitted
+    description: >-
+      Kota Chakra ring modifier — malefic siege intensity for adverse event classes.
+      Concentric ring multipliers: stambha(1.30), madhya(1.15), pragara(1.08), bahya(1.04).
+      Only fires for adverse event classes; neutral/gain classes get modifier=1.0.
+    classical_citation: >-
+      Kota Chakra tradition (Fort Diagram); bg_kota_chakra_rings reference table
+      (ADJUDICATION-9 tier-iii). Malefic transits through inner rings represent
+      increasing siege intensity; Saturn and Mars are primary siege planets.
+    uncited_extension: false
+    evidence_link: "W4.3 ablation runner (w43_ablation_runner.py): structural-proxy + unit test coverage; W4.4 weight fitting (w44_weight_fitting.py): per-mechanism delta_hit_rate via pooled cross-chart fit"
+    weight_type: fitted
+    module_path: services.gochara_v3.mechanisms.w25_kota_chakra
+
+  - toggle_key: w26_real_eclipses
+    mechanism_id: w26_real_eclipses
+    wave: "W2.6"
+    lane: real_eclipses
+    admission_state: admitted
+    description: >-
+      Real eclipse amplification — replaces the v1 node x luminary proximity proxy
+      (uncited_extension=True) with actual eclipse events from bg_sky_calendar
+      (solar/lunar, computed via pyswisseph's real eclipse geometry).
+    classical_citation: >-
+      BPHS — Graha yuddha and eclipse (grahana) chapters treat eclipses as amplifiers
+      of gochara effects when they occur near sensitive natal degrees.
+      bg_sky_events / bg_sky_calendar table (31,059-row sky calendar) holds real eclipse events.
+    uncited_extension: false
+    evidence_link: "W4.3 ablation runner (w43_ablation_runner.py): structural-proxy + unit test coverage; W4.4 weight fitting (w44_weight_fitting.py): per-mechanism delta_hit_rate via pooled cross-chart fit"
+    weight_type: fitted
+    module_path: services.gochara_v3.mechanisms.w26_real_eclipses
+
+  - toggle_key: w27_annual_stack
+    mechanism_id: w27_annual_stack
+    wave: "W2.7"
+    lane: annual_context_stack
+    admission_state: admitted
+    description: >-
+      Annual context stack — three independently togglable sub-mechanisms combined
+      as a product modifier: (a) Tajaka year-lord relevance (w27a, x1.35 on match),
+      (b) Tithi Pravesha annual chart tone (w27b, favourable x1.25/adverse x0.80),
+      (c) Sudarsana cakra house placement (w27c, house-specific multipliers 0.75-1.30).
+      All read from ClassContext; no DB access at compute time.
+    classical_citation: >-
+      Tajaka Nilakanathi Ch.1 / BPHS Tajaka chapter — Varsesa is the primary annual
+      significator. Krsna Misra / Tajaka tradition — Pravesa chart annual tone per domain.
+      Sudarsana Cakra Paddhati — house placement of transit body modifies classical effectiveness.
+    uncited_extension: false
+    evidence_link: "W4.3 ablation runner (w43_ablation_runner.py): structural-proxy + unit test coverage; W4.4 weight fitting (w44_weight_fitting.py): per-mechanism delta_hit_rate via pooled cross-chart fit"
+    weight_type: fitted
+    module_path: services.gochara_v3.mechanisms.w27_annual_stack
+
+  - toggle_key: w27a_tajaka_year_lord
+    mechanism_id: w27a_tajaka_year_lord
+    wave: "W2.7"
+    lane: annual_context_stack/tajaka_year_lord
+    admission_state: admitted
+    description: >-
+      Tajaka year-lord (Varsesa) relevance — amplifies when the transit body is the
+      current year-lord (x1.35 on match, 1.0 otherwise). Sub-mechanism of w27_annual_stack
+      with independent toggle_key; reads l1_tajik_varsha_year_lords via ClassContext.
+    classical_citation: >-
+      Tajaka Nilakanathi Ch.1; BPHS Tajaka chapter — Varsesa is the primary annual
+      significator. Recognized as primary annual-context signal in the Tajaka tradition.
+    uncited_extension: false
+    evidence_link: "W4.3 ablation runner (w43_ablation_runner.py): structural-proxy + unit test coverage; W4.4 weight fitting (w44_weight_fitting.py): per-sub-mechanism delta_hit_rate"
+    weight_type: fitted
+    module_path: services.gochara_v3.mechanisms.w27_annual_stack
+    parent_mechanism: w27_annual_stack
+
+  - toggle_key: w27b_tithi_pravesha
+    mechanism_id: w27b_tithi_pravesha
+    wave: "W2.7"
+    lane: annual_context_stack/tithi_pravesha
+    admission_state: admitted
+    description: >-
+      Tithi Pravesha annual chart tone — favourable-year amplifier (x1.25) and
+      adverse-year suppressor (x0.80) based on the Tithi Pravesha chart's domain tone.
+      Sub-mechanism of w27_annual_stack; reads kala_tithi_pravesha via ClassContext.
+    classical_citation: >-
+      Krsna Misra / Tajaka tradition — the annual Pravesha chart sets the year's
+      domain-level quality; BPHS Tithi Pravesha chapter contextualizes domain tone.
+    uncited_extension: false
+    evidence_link: "W4.3 ablation runner (w43_ablation_runner.py): structural-proxy + unit test coverage; W4.4 weight fitting (w44_weight_fitting.py): per-sub-mechanism delta_hit_rate"
+    weight_type: fitted
+    module_path: services.gochara_v3.mechanisms.w27_annual_stack
+    parent_mechanism: w27_annual_stack
+
+  - toggle_key: w27c_sudarshana
+    mechanism_id: w27c_sudarshana
+    wave: "W2.7"
+    lane: annual_context_stack/sudarshana
+    admission_state: admitted
+    description: >-
+      Sudarsana cakra house placement modifier — transit body house position in the
+      Sudarsana composite chart applies house-specific multipliers (0.75-1.30).
+      Sub-mechanism of w27_annual_stack; reads kala_sudarshana via ClassContext.
+    classical_citation: >-
+      Sudarsana Cakra Paddhati — house placement of transit body as seen from
+      Sun-ascendant composite modifies classical effectiveness; BPHS Sudarsana Cakra chapter.
+    uncited_extension: false
+    evidence_link: "W4.3 ablation runner (w43_ablation_runner.py): structural-proxy + unit test coverage; W4.4 weight fitting (w44_weight_fitting.py): per-sub-mechanism delta_hit_rate"
+    weight_type: fitted
+    module_path: services.gochara_v3.mechanisms.w27_annual_stack
+    parent_mechanism: w27_annual_stack
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # STRUCTURAL-ONLY (2 mechanisms) — modifier always 1.0; enabling/annotating, not lambda gates
+  # ─────────────────────────────────────────────────────────────────────────
+
+  - toggle_key: w28_bhava_degrees
+    mechanism_id: w28_bhava_degrees
+    wave: "W2.8"
+    lane: bhava_targets_degrees
+    admission_state: structural_only
+    description: >-
+      Bhava cusp degrees — enriches bhava-typed ResonanceTargets with the sripati_madhya
+      cusp degree from L1 chart_facts (fact_category='bhava_cusps'). Enables degree-hungry
+      primitives (station_retro_loop, eclipse_degree, planetary_return) to evaluate house
+      targets instead of silently skipping them. Modifier is always 1.0; this mechanism
+      produces enabling data, not a lambda multiplier.
+    classical_citation: >-
+      L1 chart_facts bhava cusp data via fact_id reference (section N.5);
+      ga_positions_writer bhava_cusps rows (sripati_madhya) — Sripati system per Parashara.
+      N.5: L1 is the authority; cusp degrees are referenced by fact_id, never re-derived.
+    uncited_extension: false
+    evidence_link: "W4.3 ablation runner: structural-only recommendation (always_unit_modifier=True); no per-toggle ablation required — modifier is 1.0 by design; W4.4: excluded from weight fitting (STRUCTURAL_ONLY_IDS)"
+    weight_type: structural_modifier=1.0
+    module_path: services.gochara_v3.mechanisms.w28_bhava_degrees
+
+  - toggle_key: w29_citation_resolution
+    mechanism_id: w29_citation_resolution
+    wave: "W2.9"
+    lane: citation_resolution
+    admission_state: structural_only
+    description: >-
+      Citation resolution catalog — builds a static baseline mapping all gochara citation
+      strings (from citations.py __all__, primitives.py inline assignments, and bg_transit_rules
+      DB columns) to classical_text_chunks verse_ref stubs. Modifier is always 1.0; this
+      mechanism annotates citation resolution status, never gates lambda.
+    classical_citation: >-
+      All three citation sources cataloged: citations.py (14 constants in __all__),
+      primitives.py (12 primitive families + sign_occupation addendum, including 3
+      uncited_extension families and 2 DB-inherited families),
+      bg_transit_rules / bg_transit_av_gates (classical_citation columns, db_inherited source).
+    uncited_extension: false
+    evidence_link: "W4.3 ablation runner: structural-only recommendation (always_unit_modifier=True); no per-toggle ablation required — modifier is 1.0 by design; W4.4: excluded from weight fitting (STRUCTURAL_ONLY_IDS)"
+    weight_type: structural_modifier=1.0
+    module_path: services.gochara_v3.mechanisms.w29_citation_resolution
+
+# ─────────────────────────────────────────────────────────────────────────
+# SUMMARY
+# ─────────────────────────────────────────────────────────────────────────
+# admitted_count: 10
+#   w21_av_gating, w22_moorti_nirnaya, w23_tara_bala, w24_sade_sati,
+#   w25_kota_chakra, w26_real_eclipses, w27_annual_stack,
+#   w27a_tajaka_year_lord, w27b_tithi_pravesha, w27c_sudarshana
+# structural_only_count: 2
+#   w28_bhava_degrees, w29_citation_resolution
+# total: 12
+#
+# Fits stored: gochara_v3_calibration (migration 561, W4.4)
+# Prospective ledger seeded: W4.5 (w45_post_fit_rebuild.py)
+# DAG integration: W5.2 (migration 562_gochara_v3_dag_integration.sql)

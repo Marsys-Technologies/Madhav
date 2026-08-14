@@ -586,3 +586,138 @@ def test_enrichment_fetch_graha_position_survives_inside_orchestrator_owned_save
         conn.execute("RELEASE SAVEPOINT writer_exec")
     finally:
         conn.close()
+
+
+# ── MR-41(b): target_nakshatra_id resolution in production enrichment
+# (PK-R-5, 2026-08-11) ──────────────────────────────────────────────────────
+#
+# Before this fix, `enrich_target` never populated `target_nakshatra_id`
+# anywhere in production -- only `resonance_map.build_fixture_targets`'s
+# hand-built synthetic fixture rows carried one. Every graha-anchored target
+# `enrich_target` DOES resolve (karaka/dasha_lord_portfolio) therefore
+# silently starved `nakshatra_ingress_tara` and `sarvatobhadra_vedha`
+# (both honestly return [] when `target.target_nakshatra_id is None`, per
+# each primitive's own docstring) of any chance to fire, for every real
+# chart, forever -- not a primitive bug, an upstream wiring gap.
+from services.gochara_intensity.enrichment import enrich_target, _nakshatra_id_from_longitude, NAKSHATRA_ARC_DEG  # noqa: E402
+from services.gochara_grammar import primitives as _P41b  # noqa: E402
+from services.gochara_grammar import sarvatobhadra as _SBC41b  # noqa: E402
+
+
+class _GrahaPositionFakeConn:
+    """Fake conn serving exactly one `chart_facts.graha_position` row shape
+    (longitude_sidereal + sign) for one `fact_subject`, mirroring the real
+    query `enrichment._fetch_graha_position` issues -- mocks only the DB
+    row content, not `enrich_target`'s own resolution logic."""
+
+    def __init__(self, fact_subject: str, longitude_deg: float, sign: str):
+        self.fact_subject = fact_subject
+        self.longitude_deg = longitude_deg
+        self.sign = sign
+        self.autocommit = False
+
+    def execute(self, sql, params=None):
+        s = sql if isinstance(sql, str) else str(sql)
+        stripped = s.strip()
+        if stripped.startswith("SAVEPOINT ") or stripped.startswith("RELEASE SAVEPOINT ") \
+                or stripped.startswith("ROLLBACK TO SAVEPOINT "):
+            return _FakeCur([])
+        if "graha_position" in s and params and params[-1] == self.fact_subject:
+            return _FakeCur([
+                {"fact_key": "longitude_sidereal", "fact_value_text": None, "fact_value_num": self.longitude_deg},
+                {"fact_key": "sign", "fact_value_text": self.sign, "fact_value_num": None},
+            ])
+        return _FakeCur([])
+
+    def rollback(self):
+        pass
+
+
+class _FakeCur:
+    def __init__(self, rows):
+        self._rows = rows
+
+    def fetchall(self):
+        return self._rows
+
+
+def test_nakshatra_id_from_longitude_matches_established_27_division_convention():
+    """Pins `_nakshatra_id_from_longitude` to the exact
+    floor(lon / (360/27)) + 1 formula this codebase already uses elsewhere
+    (services.gochara_v3.mechanisms.w23_tara_bala._longitude_to_nakshatra_index;
+    tests/test_gochara_grammar.py's own _target_at_planet_position helper),
+    computed independently here (not by calling the function under test)."""
+    for lon in (0.0, 13.0, 13.34, 90.0, 180.0, 299.5, 359.99):
+        expected = int((lon % 360.0) / (360.0 / 27.0)) + 1
+        expected = max(1, min(27, expected))
+        assert _nakshatra_id_from_longitude(lon) == expected
+    assert NAKSHATRA_ARC_DEG == pytest.approx(360.0 / 27.0)
+
+
+def test_mr41b_enrich_target_resolves_nakshatra_id_for_graha_anchored_target():
+    """The real fetch/enrichment path (not a hand-built fixture target) must
+    now resolve `target_nakshatra_id` for a karaka (graha-anchored) target,
+    from the SAME longitude it already resolves `target_longitude_deg`/
+    `target_sign` from -- no new DB read."""
+    target = ResonanceTarget(
+        chart_id=CHART_ID, event_class="career_advancement", target_type="karaka",
+        target_ref="Saturn", weight=0.8, classical_citation="TEST FIXTURE",
+    )
+    lon = 299.5  # arbitrary real-looking sidereal longitude (Aquarius range)
+    conn = _GrahaPositionFakeConn(fact_subject="SAT", longitude_deg=lon, sign="Aquarius")
+
+    enriched = enrich_target(conn, target, ayanamsha_id="lahiri_chitrapaksha")
+
+    expected_nak_id = int((lon % 360.0) / (360.0 / 27.0)) + 1
+    assert enriched.target_longitude_deg == lon
+    assert enriched.target_sign == "Aquarius"
+    assert enriched.target_nakshatra_id == expected_nak_id
+    assert enriched.natal_planet == "Saturn"
+    # enrich_target returns a NEW object (dataclasses.replace) -- the input
+    # target is untouched, still carrying no anchors.
+    assert target.target_nakshatra_id is None
+
+
+def test_mr41b_resolved_target_unlocks_nakshatra_ingress_tara_and_sarvatobhadra_vedha():
+    """The POINT of MR-41(b): a target enriched by the real `enrich_target`
+    path (not a hand-built fixture) must actually let
+    `nakshatra_ingress_tara` and `sarvatobhadra_vedha` emit sentences --
+    proving the previously-None field genuinely unlocks both primitive
+    families, not just that the field itself is non-None."""
+    target = ResonanceTarget(
+        chart_id=CHART_ID, event_class="career_advancement", target_type="karaka",
+        target_ref="Saturn", weight=0.8, classical_citation="TEST FIXTURE",
+    )
+    conn = _GrahaPositionFakeConn(fact_subject="SAT", longitude_deg=299.5, sign="Aquarius")
+    enriched = enrich_target(conn, target, ayanamsha_id="lahiri_chitrapaksha")
+    assert enriched.target_nakshatra_id is not None  # precondition for both calls below
+
+    start_jd, end_jd = _jd(2020, 1, 1), _jd(2021, 1, 1)
+    tara_sentences = _P41b.nakshatra_ingress_tara(swe, CHART_ID, enriched, start_jd, end_jd)
+    assert len(tara_sentences) >= 1, (
+        "nakshatra_ingress_tara must be CAPABLE of firing for an enrich_target-"
+        "resolved graha-anchored target (Moon alone crosses all 27 nakshatras "
+        "roughly monthly, so a 1-year window with ALL_GRAHAS must hit)."
+    )
+
+    sbc_sentences = _SBC41b.find_sarvatobhadra_vedha_states(swe, CHART_ID, enriched, start_jd, end_jd)
+    assert len(sbc_sentences) >= 1, (
+        "sarvatobhadra_vedha must be CAPABLE of firing for an enrich_target-"
+        "resolved graha-anchored target."
+    )
+
+
+def test_mr41b_bhava_target_honest_skip_leaves_nakshatra_id_unresolved():
+    """Bhava targets get a documented honest skip, not a fabricated point
+    anchor: enrich_target must NOT invent a target_nakshatra_id for a bhava
+    target (there is no single natal degree within a 30-degree house span
+    to derive one from)."""
+    target = ResonanceTarget(
+        chart_id=CHART_ID, event_class="wealth", target_type="bhava",
+        target_ref="11", weight=0.75, classical_citation="TEST FIXTURE",
+    )
+    conn = _GrahaPositionFakeConn(fact_subject="LAGNA", longitude_deg=15.0, sign="Aries")
+    enriched = enrich_target(conn, target, ayanamsha_id="lahiri_chitrapaksha")
+    assert enriched.target_sign == "Aquarius"  # 11th from Aries lagna, whole-sign
+    assert enriched.target_nakshatra_id is None
+    assert enriched.target_longitude_deg is None

@@ -568,6 +568,13 @@ jobs:
             # Firebase session verification is delegated to amjis-web (no firebase-admin
             # credentials needed in amjis-mcp — platform does the verifySessionCookie call).
             MCP_BASE_URL=https://madhav.marsys.in/mcp
+            # SM-γ C4/C5 (SAMPŪRTI P3 FIELD-INTEGRATED activation, 2026-08-13):
+            # C4: adds gochara_narrative to kala_now_get + a5_gochara_agreement to
+            #     kala_explain_get. Flag-off = key entirely absent (§N.8 byte-identical).
+            # C5: enriches ahead_autofile authority_basis with field_window/<id>@<peak>
+            #     when a kala_field_window overlaps the filed prediction (v2 citation).
+            SM_GAMMA_C4_ENABLED=true
+            SM_GAMMA_C5_ENABLED=true
           secrets: |
             MCP_INTERNAL_TOKEN=mcp-internal-token:1
             PYTHON_SIDECAR_API_KEY=PYTHON_SIDECAR_API_KEY:1
