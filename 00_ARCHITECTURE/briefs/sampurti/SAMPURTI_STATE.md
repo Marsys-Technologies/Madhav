@@ -4290,3 +4290,34 @@ CONDUCTOR-HEARTBEAT: 2026-08-14T14:20Z [R42 — P3-b builder COMPLETE (PR #1281)
 **No Cloud Run field builds in progress.**
 
 CONDUCTOR-HEARTBEAT: 2026-08-14T14:28Z [R42 — PR #1281 CI 18/19 PASS; Build Check Docker pipeline build in progress; PARĪKṢAKA af714624982d2d51d in flight; holding for CI+PARĪKṢAKA before merge; pid=29192]
+
+## P-C A7 PŪRṆA BUILD DISPATCHED (2026-08-14T15:01Z)
+
+**P-B COMPLETE + DEPLOYED:**
+| PR | Content | Status |
+|---|---|---|
+| #1277 | L-ENGINE: Layer 0 pre-computation + Layer 1 per-class projection | MERGED ✅ |
+| #1278 | L-NULL: vectorized dhara_compute_null, _RESUME_VERSION 5→6, DEFAULT_REPLICATES=1024 | MERGED ✅ |
+| #1279 | L-TIER: P3-a/b/e — SHAPE_ONLY_SYNTHETIC_LIFETIME_COUNT, baseline_is_synthetic, shape_only writer path | MERGED ✅ |
+| #1271 | FM-23 guard: dhara_*.py pin matrix | MERGED ✅ |
+| #1281 | P3-b L-SERVE-B: suppress expected_count when baseline_is_synthetic=TRUE | MERGED ✅ |
+
+**DEPLOY-GREEN**: amjis-sidecar-01050-lh7 + pipeline image at commit `0f9395a17` (14:49 UTC)
+**PARĪKṢAKA**: PASS (R1-R8 all clear, verified by agent af714624982d2d51d)
+
+**FM-07 LEDGER ENTRY:**
+- run_id: `7ae69a7c-de3f-46fa-8d0e-8626fddcf72f`
+- execution: `brahma-build-pipeline-job-n55nm`
+- chart_id: `482012f1-710e-4a25-994a-93821f5871aa`
+- TRIGGERED_BY: `sampurti-a7-chart1-kshetra-purna`
+- Dispatched: 2026-08-14T15:01Z
+- _RESUME_VERSION: 5→6 (full fresh 27-class replan, pre-authorized)
+- scope: `ka_kshetra` (27 classes, tiered: 6 calibrated + 19 shape_only + 2 not_applicable)
+
+**GATE SEQUENCE (P-C → P-D):**
+- GUC smoke-log: check at T+3min (15:04Z)
+- FM-21 hard watch: T+35min (15:36Z) — zero substep progress = park
+- FM-27: 60-120s poll cadence (no tight-loop polling)
+- On completion (ka_kshetra=lit): P-D proof spine begins
+
+CONDUCTOR-HEARTBEAT: 2026-08-14T15:01Z [R42 — P-C DISPATCHED: A7 run 7ae69a7c / exec brahma-build-pipeline-job-n55nm; 27-class tiered build in progress; T+3min GUC check pending; pid=29192]
