@@ -3945,3 +3945,5 @@ CONDUCTOR-HEARTBEAT: 2026-08-14T16:38+05:30 [R41 T+116min — L-ENGINE: TDD pass
 CONDUCTOR-HEARTBEAT: 2026-08-14T16:48+05:30 [R41 T+126min — L-ENGINE: layer0.py written, running tests; L-NULL: writing dhara_null_vec.py (using _null_build_segments for exact equiv + numpy bucket vectorization); L-TIER: modifying hazard.baseline_rate() for shape_only path; all healthy; pid=resumed]
 
 CONDUCTOR-HEARTBEAT: 2026-08-14T16:58+05:30 [R41 T+136min — L-ENGINE: planning writer.py wiring (Layer0 in _class_context); L-NULL: writing dhara_null_vec.py (long Write call); L-TIER: threading baseline_is_synthetic through evaluate(); all healthy; planned merge order: L-TIER→L-NULL→L-ENGINE (writer.py conflict zones differ); pid=resumed]
+
+CONDUCTOR-HEARTBEAT: 2026-08-14T17:08+05:30 [R41 T+146min — L-ENGINE: 4 pre-existing test failures identified (OPT-N3 artifacts, not our changes); L-NULL: writing TDD test file for vectorized null; L-TIER: modifying require_baseline() + stage4_field.__all__; NOTE: PARĪKṢAKA must verify SHAPE_ONLY_SYNTHETIC_LIFETIME_COUNT is only in contracts.py per spec §4.1; all healthy; pid=resumed]
