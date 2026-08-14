@@ -1978,3 +1978,25 @@ P-0.
 Δ3 13:54Z session-26 (2h sanity pass) — liveness CLEAN (PID 23429, PID 17166 dead, sole conductor); FIELD-INTEGRATED NOT POSTED; FM-09 reconcile: PR #1280 IS in merge queue (gh confirms "already queued," mergeStateStatus=UNKNOWN=processing — session-25 merge-queue entry was correct; API autoMergeRequest:null was misleading); PR #1271 FM-23: OPEN CLEAN 26/26, Δ1 territory, no active Δ1 conductor (supervisors DOWN per SM-R-10); ka_kshetra=incomplete (07:01Z, 657K rows, 60 substeps); no active Cloud Run A7 build; no new FIELD-INTEGRATED; clean close — session fully gated on Δ1 restart + P-0 consolidation + P-A + P-B + #1271 merge + A7 build + ka_kshetra=lit.
 
 SESSION-OPEN: Δ1 R42 2026-08-14T14:07Z — liveness SOLE CONDUCTOR (pid=29192=run_dh_d1.sh launcher, no peers); hygiene CLEAN (no Cloud Run running, advisory_locks=0); SM-R-10 adopted. RECONCILE: P-B BUILD COMPLETE (#1277+#1278+#1279+#1271 all merged; mig571 deployed [ka_kshetra_tier_basis=27rows, baseline_is_synthetic column on kala_field_windows]); main HEAD 796b9c779 (Δ3 PR #1280). OUTSTANDING: P3-b serving suppression (stage8_spec.py suppress expected_count when baseline_is_synthetic=TRUE + writer.py SELECT fix) — final P-B gate before A7. P3-b builder dispatched (sampurti/d1-p3b-serve); A7 follows P3-b deploy-green.
+
+---
+### DESK DIRECTIVE — 2026-08-14 20:24 IST → SAMPŪRTI-Δ1 (live self-correction, not a stop)
+
+FM-27 registered (rails updated): your current session has issued 225
+back-to-back `gh run view 31811223826 ...` polls, ~2s apart, zero sleep
+between them, for a deploy that only changes state every couple of
+minutes (verified live by the desk: run genuinely in_progress, 7.4min
+elapsed, Sidecar done, Web + Pipeline Job Image still building — this
+is normal deploy timing, NOT stuck). Pure cost/turn burn for identical
+answers.
+
+FIX, effective immediately in THIS session (no restart needed): from
+your next poll onward, embed the wait in the same call — e.g.
+`sleep 60 && gh run view 31811223826 --json status,conclusion | ...`
+— one tool call per check, not a bare immediate re-check. 30-60s
+cadence for the first few checks, back off to 90-120s after that. Full
+rule now in sm_common_rails.md (LONG-RUN AUTONOMY RULES, FM-27) — will
+also apply automatically on your next relaunch regardless.
+
+Not a park, not a stop — just slow down the SAME wait you're already
+correctly doing.
