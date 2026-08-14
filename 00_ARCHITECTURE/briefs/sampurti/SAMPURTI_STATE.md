@@ -4379,3 +4379,67 @@ CONDUCTOR-HEARTBEAT: 2026-08-14T15:24Z [R42 — P-C A7 CORRECTED DISPATCH: exec 
 **Expected next milestone:** ka_kshetra=lit ~16:58Z → P-D proof spine begins
 
 CONDUCTOR-HEARTBEAT: 2026-08-14T16:22Z [R42 — P-C T+60min: 150/318 substeps, 15/25 classes done; rate gate mild exceedance (est. 16:58Z vs 16:54Z gate); build correct and healthy; pid=29192]
+
+## P-C A7 FAILURE SEQUENCE + A7-FIXED DISPATCH (2026-08-14T19:28Z)
+
+### FAILURE CHAIN SUMMARY (kjvmn → cl4dm → xt79g → kk2m2)
+
+**kjvmn (run_id=7ae69a7c) — STAGE5 BLOCK 1 WATCHDOG FAILURE:**
+- Build progressed: 250/318 stage4 substeps committed by 16:57Z
+- Failed at first stage5 block substep: block_size=32 → 32 replicates × ~34s = ~18 min of pure Python CPU with no DB heartbeat
+- Per-substep watchdog (~10 min no-heartbeat) fired → ka_kshetra reset to `incomplete`
+- ROOT CAUSE: DEFAULT_BLOCK_SIZE=32 in stage5_null.py (line 74); code comment says "REDUCE TO 16"
+
+**FIX APPLIED — PR #1282:**
+- stage5_null.py DEFAULT_BLOCK_SIZE: 32 → 16
+- 16 replicates × ~34s = ~9 min < 10-min watchdog ✓
+- Merged to main; image `sha256:5e39fdd6f3...` (tag `15ace43d`) pushed
+
+**DEPLOY RACE CONDITION (cl4dm):**
+- `gcloud run jobs update --image ...@sha256:5e39fdd6f3...` executed at 18:00Z
+- cl4dm dispatched at 18:31Z with `--run-id,a7ae52d4`
+- cl4dm ran with OLD image `sha256:deb1e35475b2...` (race: image tag resolved before push completed)
+- cl4dm hit same stage5 block 1 watchdog at ~T+41min → fail
+- Job config manually forced to new digest: `gcloud run jobs update --image ...@sha256:5e39fdd6f3...`
+
+**ZOMBIE LOCK + REDISPATCH FAILURES (xt79g, kk2m2):**
+- cl4dm (19:13:19Z completion) left zombie PID with advisory lock
+- xt79g (18:22Z): also no-run-id → exit 0 in 9s (§N.8 anti-pattern, same as n55nm)
+- kk2m2 (19:13:28Z): dispatched by previous session without --run-id → exit 0 in 11s
+- Zombie PID 1888746 terminated via pg_terminate_backend(1888746) in this session
+
+### A7-FIXED DISPATCH — EXEC brahma-build-pipeline-job-lj98k (2026-08-14T19:20Z)
+
+**FM-07 LEDGER:**
+- run_id: `d4c3279b-99d0-448a-bf3a-be0f94482919`
+- execution: `brahma-build-pipeline-job-lj98k`
+- chart_id: `482012f1-710e-4a25-994a-93821f5871aa`
+- TRIGGERED_BY: `sampurti-a7-chart1-kshetra-purna`
+- Dispatched: 2026-08-14T19:20Z (correct `--args="--run-id,d4c3279b..."`)
+- Image: job config = `sha256:5e39fdd6f3...` (new; DEFAULT_BLOCK_SIZE=16)
+- CHECKPOINT RESUME: 250/318 stage4 substeps carried forward from kjvmn
+
+**GUC SMOKE-LOG (T+3min VERIFIED ✅):**
+```
+[GUC smoke-log] idle_in_txn=30min statement_timeout=0 lock_timeout=5min
+```
+- Verified at 19:20:33Z (T+13s from start, which counts as T+3min window) ✓
+
+**RESUME CONFIRMED:**
+```
+ka_kshetra: RESUMING chart 482012f1 — 250/318 substeps committed, 68 remaining
+```
+
+**WATCH SCHEDULE:**
+- FM-21 hard watch: T+35min from lj98k start = **19:55Z** (zero substep progress = park)
+- stage5 block 1 expected commit: ~19:33-19:34Z (block_size=16: 16 × ~34s ≈ 9 min from ~19:24Z start)
+- If block_size=32 (wrong image): watchdog fires ~19:35Z → build fails
+- Next poll: 19:34Z — stage5 block 1 commit verification
+
+**CURRENT STATE (19:28Z):**
+- ka_kshetra: `building` ✅
+- advisory lock: 1 held (lj98k orchestrator) ✅
+- build_run d4c3279b: `running` ✅
+- substeps: 250 committed (all stage4), stage5 block 1 in progress
+
+CONDUCTOR-HEARTBEAT: 2026-08-14T19:28Z [R42 — lj98k A7-FIXED: GUC ✅; 250/318 resumed; stage5 block1 in-progress; FM-21 watch 19:55Z; pid=29192]
