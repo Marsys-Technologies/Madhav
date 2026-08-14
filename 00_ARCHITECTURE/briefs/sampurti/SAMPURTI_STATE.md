@@ -4195,3 +4195,5 @@ CONDUCTOR-HEARTBEAT: 2026-08-14T16:48+05:30 [R41 — P-B COMPLETE: ALL 3 LANES (
 **CI re-triggered.** Monitoring for Governance Gates PASS.
 
 CONDUCTOR-HEARTBEAT: 2026-08-14T17:05+05:30 [R41 — PR#1271 FM-23 guard fix: xfail dhara_pin_matrix (known unwired, OPT-N3 pending); commit d398a5669 pushed; fresh CI running; P-B all 3 lanes merged; next: monitor PR#1271 CI green → merge queue; pid=resumed]
+
+CONDUCTOR-HEARTBEAT: 2026-08-14T17:48+05:30 [R41 — PR#1271 ALL CI PASS (Governance Gates PASS after xfail fix); queued to merge ("already queued" confirmed); P-B complete (#1277+#1278+#1279 all MERGED); awaiting #1271 merge queue completion; pid=resumed]
