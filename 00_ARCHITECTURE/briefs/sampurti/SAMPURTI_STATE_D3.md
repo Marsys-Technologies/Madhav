@@ -1958,6 +1958,83 @@ LAW ZERO pattern: classes without bg_class_priors lifetime row are skipped (expe
 
 ---
 
+## SESSION-30 — 2026-08-14T18:21Z (23:51 IST — 2h sanity pass)
+
+CONDUCTOR-HEARTBEAT: 2026-08-14T18:27Z pid=27938 host=Montys-MacBook-Pro.local session=Δ3-s30
+
+### STEP-0 (session-30)
+
+**Liveness:** CLEAN — stored PID 22984 (DEAD), MY_PID=27938, pgrep "CONDUCTOR of SAMPŪRTI-Δ3" = PEERS=NONE. Sole Δ3 conductor confirmed. PID recorded to dh-d3-logs/current_conductor.pid.
+
+**Hygiene:** kjvmn STILL RUNNING (runningCount=1, started 15:24Z — T+177min at session open). Per amended hygiene: LIVE BUILD, touch nothing. Δ1 conductor PID 29194 ALIVE (elapsed 4h25m) — Δ1 is responsible for FM-21 recovery and kjvmn resolution. Δ3 has NO DB scope.
+
+**Coordination (fetched):** Last entry = session-29 CLOSE (18:16Z). No new coordination entries after session-29. FIELD-INTEGRATED NOT POSTED. No `██ MARKER-POSTED: FIELD-INTEGRATED ██` sentinel detected.
+
+**FM-09 Reconcile:**
+
+| Surface | Session-29 state | Session-30 reality |
+|---------|-----------------|-------------------|
+| A7 kjvmn | RUNNING T+172min, VALIDATION-ONLY | RUNNING T+177min (runningCount=1, no completionTime) — unchanged |
+| FIELD-INTEGRATED | NOT POSTED (gated on L-SEAM+A8) | NOT POSTED — unchanged |
+| Δ1 conductor | Alive (R42, FM-21 hang acknowledged per desk FLAG) | PID 29194 ALIVE (elapsed 4h25m) |
+| R1 MCP proof | PASS×10 (18:16Z) | PASS×11 (18:27Z — see below) |
+| R2/R3/R4/R5 | All complete, gated on FIELD-INTEGRATED | UNCHANGED |
+
+### FM-21 STATUS (A7 kjvmn, session-30)
+
+- kjvmn T+177min (15:24Z → 18:21Z); last substep 16:57Z (T+93min from dispatch = 84min zero progress since session-28 alert)
+- Desk FLAG at 18:15Z noted stop_requested_at already set; Python orchestrator stuck in checkpoint-poll loop (SELECT pause_requested_at cycling ~2-4s, not accumulating 15min idle-in-txn)
+- Δ1 conductor PID 29194 ALIVE (4h25m) — Δ1 territory; Δ3 cannot pg_terminate (no DB scope)
+- FM-21 hard trigger passed ~106min ago (T+35 = 17:32Z; now 18:21Z); Δ1 must execute recovery
+- **Δ3 posture:** monitor only, no action; Δ1 conductor alive and responsible
+
+### R1 MCP PROOF — 11th Pass (18:27Z): PASS ✓
+
+Call: `gochara_forecast_get(chart=482012f1, domain=marriage, date_range=2024-01-01→2027-01-01)`
+- `coverage.event_classes_covered`: 27 classes (all 27 incl. marriage) ✓
+- `coverage.domains_not_covered`: [] ✓
+- `coverage.coverage_quality.tier`: "rich" ✓
+- `sweep_completeness.substeps_committed`: 270 under `ka_gochara_v3_century_materialize` ✓
+- `backing_data_reachable`: true ✓
+- No S4-05 refusal ✓
+- `windows`: 0 — honest empty (consistent with all 10 prior passes)
+
+**R1 PROOF STATUS: PASS** (11th consecutive — sessions 15/19/20/21/22/23/25/27/28/29/30). R1 fix stable in production.
+
+### SESSION-30 LANE STATUS
+
+| Lane | Status | Notes |
+|------|--------|-------|
+| R1 | MERGED + MCP PROOF PASS ✓ | 11th pass 18:27Z; 27 classes, 270 substeps, no S4-05 |
+| R2 | DEPLOYED; MCP PROOF PENDING | Sidecar 0f9395a17 live; gated on L-SEAM + A8 + FIELD-INTEGRATED |
+| R3 | DONE ✓ | commit 66e35c216 |
+| R4 | READY-ON-SIGNAL | probe script committed; gated on FIELD-INTEGRATED (after L-SEAM+A8) |
+| R5 | MERGED + DEPLOYED ✓ | PR #1280 merged 14:04Z; deployed 0f9395a17 14:47Z |
+
+### SESSION-30 CLOSE
+
+**Independent work this session:** R1 11th pass complete. No new coordination entries. No other independent Δ3 work available.
+
+**WHAT ONE RELAUNCH FINISHES:** When `██ MARKER-POSTED: FIELD-INTEGRATED ██` posts (after L-SEAM+A8):
+1. Run probe: `python3 00_ARCHITECTURE/briefs/sampurti/probe_sampurti_d3_r2_r4.py --chart-id 482012f1-710e-4a25-994a-93821f5871aa --mcp-key $MARSYS_MCP_KEY`
+2. R2: verify marriage in roots (resolution='era'), NOT legacy_flat → MCP proof pasted
+3. R4: verify field_snapshot_id=kfs_* (not 'field_not_yet_built') → MCP proof pasted
+4. Append both proofs to γ ledger (sampurti/vyakhya append-only)
+5. Post SESSION-DONE-Δ3 → RUN-TERMINAL: SESSION-Δ3-COMPLETE
+
+**NEXT-ACTION (session-31):**
+1. Check coordination for `██ MARKER-POSTED: FIELD-INTEGRATED ██`
+2. Check A7 kjvmn: Δ1 FM-21 recovery executed? Redispatched from 250-substep checkpoint?
+3. Check Δ1 ledger for L-SEAM lane dispatch + A8 build status
+4. R1 re-proof if no other work (11 consecutive PASSes — stable)
+5. On FIELD-INTEGRATED: probe → R2 + R4 → γ ledger → SESSION-DONE-Δ3
+
+**WHAT SINGLE RELAUNCH FINISHES MY SCOPE:** FIELD-INTEGRATED posts → probe → R2 proof (marriage in roots, resolution='era') + R4 proof (field_snapshot_id=kfs_*) → γ ledger append → SESSION-DONE-Δ3 → RUN-TERMINAL: SESSION-Δ3-COMPLETE
+
+RUN-TERMINAL: SESSION-Δ3-PENDING-30 (2h sanity pass — kjvmn RUNNING/VALIDATION-ONLY T+177min; Δ1 conductor alive PID 29194; FIELD-INTEGRATED gated on L-SEAM+A8; R1 PASS×11; clean close)
+
+---
+
 ## SESSION-29 — 2026-08-14T18:13Z (23:43 IST — 2h sanity pass)
 
 CONDUCTOR-HEARTBEAT: 2026-08-14T18:13Z pid=17349 host=Montys-MacBook-Pro.local session=Δ3-s29
