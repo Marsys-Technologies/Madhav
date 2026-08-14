@@ -49,11 +49,11 @@ Authority: DHARA_DESIGN_v1_0.md §6.1–§6.6.
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
 from typing import Optional, Sequence
 
 import numpy as np
 
+from services.ka_kshetra.contracts import NullResult
 from services.ka_kshetra.stage4_field import EnvelopeIndex, FieldEvaluator
 from services.ka_kshetra.stage5_null import (
     DURATION_BUCKETS,
@@ -82,45 +82,8 @@ DEFAULT_REPLICATES: int = 256
 DEFAULT_ALPHA: float = 0.05
 
 
-# ── result type ──────────────────────────────────────────────────────────────
-
-@dataclass
-class NullResult:
-    """Everything the DHARA stage-5 null needs to persist and threshold windows.
-
-    Fields
-    ------
-    replicates : int
-        The R value passed to dhara_compute_null (1024 by default).
-    shift_count : int
-        Actual number of independent shifts used: replicates - 1 = 1023.
-        This is the F-01-corrected count: range(1, replicates) excludes the
-        identity shift (delta == H) that would double-count the observation.
-    horizon_days : float
-        The evaluator's horizon in days (typically 36525.0).
-    shift_grid_step : float
-        H / replicates — the spacing between adjacent shift deltas.
-    q_threshold : float or None
-        95th-percentile of pooled lambda values across all replicates and all
-        1-day grid points. None if no replicates completed (honest not-computed).
-    max_stats : dict[int, list[float]]
-        Per-bucket sliding-window maxima. Key = duration bucket in days (one of
-        DURATION_BUCKETS). Value = list of length shift_count (one per replicate).
-    alpha : float
-        The exceedance threshold used (default 0.05).
-    """
-    replicates: int
-    shift_count: int
-    horizon_days: float
-    shift_grid_step: float
-    q_threshold: Optional[float]
-    max_stats: dict = field(default_factory=dict)
-    alpha: float = DEFAULT_ALPHA
-
-    @property
-    def resolution(self) -> float:
-        """p-value resolution = 1/R (F-01: denominator = R, not R+1)."""
-        return 1.0 / self.replicates
+# NullResult is defined in contracts.py (P0.b, 2026-08-14) — single canonical
+# frozen type shared across writer.py and all consumers.  Imported above.
 
 
 # ── knot-set helpers ──────────────────────────────────────────────────────────

@@ -227,6 +227,51 @@ class RobustnessVector:
         return 'concurrent' if self.weakest_link() is None else 'structural_prior'
 
 
+# ── DHARA null · shared result type (P0.b, 2026-08-14) ───────────────────────
+
+@dataclass(frozen=True)
+class NullResult:
+    """Canonical result type for the DHARA stage-5 null distribution.
+
+    Moved here from dhara_null.py (P0.b) so writer.py and any future consumer
+    can depend on this type without importing a lane module or numpy.
+
+    Fields
+    ------
+    replicates : int
+        The R value passed to dhara_compute_null (256 by default after OPT-N3).
+    max_stats : dict
+        Per-bucket sliding-window maxima keyed by duration bucket in days.
+    q_threshold : float
+        95th-percentile of pooled lambda values across all replicates and all
+        1-day grid points.
+
+    resolution
+    ----------
+    F-01 CORRECTION: 1/R (NOT 1/(R+1)).
+
+    The F-01-corrected shift grid uses range(1, R), yielding R-1 independent
+    shifts.  The p-value denominator is R (= 1 observation + R-1 shifts), so
+    the minimum achievable p is 1/R.  The old getattr fallback in writer.py
+    called S5.null_resolution(R) = 1/(R+1), which is wrong for this grid.
+    """
+    replicates: int
+    max_stats: dict
+    q_threshold: Optional[float]
+    # Optional context fields (populated by dhara_compute_null; default to
+    # sentinel values so callers that only need the core three fields can
+    # construct without them).
+    shift_grid_step: float = 0.0
+    shift_count: int = 0
+    horizon_days: float = 0.0
+    alpha: float = 0.05
+
+    @property
+    def resolution(self) -> float:
+        """p-value resolution = 1/R (F-01: denominator = R, not R+1)."""
+        return 1.0 / self.replicates
+
+
 __all__ = [
     'Route',
     'PromisePrior',
@@ -235,4 +280,5 @@ __all__ = [
     'Segment',
     'FieldWindow',
     'RobustnessVector',
+    'NullResult',
 ]
