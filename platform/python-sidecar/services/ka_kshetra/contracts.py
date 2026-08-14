@@ -273,6 +273,17 @@ class NullResult:
         return 1.0 / self.replicates
 
 
+# ── P3-a: shape_only synthetic baseline (DHARA_ENGINE_SPEC_v1_0.md §4.1, SM-R-10) ──────────
+
+# Pinned. Never silently chosen per-build. This is the synthetic expected lifetime
+# event count used for shape_only classes — exactly 1.0 event over the 100-year
+# horizon, i.e. λ⁰ = 1/36525 ≈ 2.74e-5 events/day. Do NOT adjust without a
+# native ruling: changing it produces cross-snapshot diffs in null_p comparisons
+# (the null_p denominator is the window's expected_count, so any scalar change
+# to SHAPE_ONLY_SYNTHETIC_LIFETIME_COUNT shifts every shape_only row's null_p).
+SHAPE_ONLY_SYNTHETIC_LIFETIME_COUNT: float = 1.0
+
+
 __all__ = [
     'Route',
     'PromisePrior',
@@ -282,4 +293,5 @@ __all__ = [
     'FieldWindow',
     'RobustnessVector',
     'NullResult',
+    'SHAPE_ONLY_SYNTHETIC_LIFETIME_COUNT',
 ]
