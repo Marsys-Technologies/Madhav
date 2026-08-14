@@ -2024,3 +2024,73 @@ CONDUCTOR-MARKER: ██ P-C A7 DISPATCH IN PROGRESS ██
 Δ3 16:01Z session-27 CLOSE — R1 MCP PROOF PASS (8th, 15:46Z: 27 classes, 270 substeps ka_gochara_v3_century_materialize, no S4-05); FM-21 A7 build kjvmn T+36 NORMAL (runningCount=1, last log 15:42Z career_change LAW ZERO, silent DHARA computation phase, no hang); FIELD-INTEGRATED NOT POSTED; all Δ3 lanes complete; clean close — supervisor relaunches on FIELD-INTEGRATED signal.
 
 Δ3 17:47Z session-28 (2h sanity pass) — FM-21 HANG ALERT on A7 kjvmn (Δ1 territory): 250/318 substeps, last substep at 16:57Z (T+50min — 15min past T+35 threshold), pg_stat_activity PID 1880901 idle-in-txn 2-4s cycling checkpoint loop (SELECT pause_requested_at FROM build_runs), no substep growth, advisory_lock=1 held; hang class: Python-layer compute stuck (W3 SET LOCAL 900000ms won't fire — DB connection cycles too fast to accumulate 15min idle-in-txn); Δ3 cannot execute FM-21 recovery (NO DB build scope); Δ1 must handle on next conductor relaunch: stop_requested_at → 25s → pg_terminate_backend(1880901) → gcloud cancel kjvmn → locks==0 → redispatch from 250-substep checkpoint; R1 MCP PROOF PASS×9 (17:47Z: 27 classes, 270 substeps, no S4-05); FIELD-INTEGRATED NOT POSTED; Δ3 scope unchanged; clean close — supervisor relaunches on FIELD-INTEGRATED.
+
+---
+### DESK DIRECTIVE — 2026-08-14 ~17:00Z → SAMPŪRTI-Δ1: A7 IS A VALIDATION RUN, **DO NOT SEAL / DO NOT POST FIELD-INTEGRATED**
+
+Desk verification pass against merged code + LIVE A7 data found ONE
+confirmed defect that makes the current A7 output non-final. A7 is
+otherwise progressing correctly — finish it, but treat it as a
+VALIDATION run, not the deliverable.
+
+★ DEFECT D-1 (CONFIRMED IN LIVE A7 DATA): the decade-seam fix NEVER
+  LANDED. Plan v1.1 §2 P1 (and audit W1 before it) mandated: "interior
+  decade edges (d·H/10, d=1..9) join K in assemble_knot_set". Verified
+  on origin/main: `assemble_knot_set` (dhara_sweep.py) is UNCHANGED —
+  no decade edges — and writer.py:482 still carries the original
+  dropping filter `if s.t_start >= d0 and s.t_end <= d1`. Live proof
+  from the A7 snapshot kfs_e23ba1abdf1c6fd3a1cc5c08c7538aeb:
+  EVERY class shows exactly 9 contiguity gaps (achievement_recognition,
+  bereavement, business_launch, career_advancement, career_entry,
+  career_setback, childbirth, chronic_onset, education_milestone,
+  exam_outcome, financial_deception, foreign_settlement, ... all 9).
+  Scope is now WORSE than the audit found: 9 gaps × 26 classes, not 6.
+  WHY CI MISSED IT: test_dhara_build_segments_contiguous_and_indexed
+  asserts contiguity only on a 3-segment synthetic fixture spanning
+  t=0..100 — it never exercises the full 36,525-day horizon, so it
+  cannot see a decade-boundary gap. The test passes while the defect
+  ships. This is FM-26 (built-vs-designed drift) recurring inside the
+  very wave written to prevent it.
+
+REQUIRED (next lane, before any seal):
+  L-SEAM: (a) add interior decade edges d*H/10 (d=1..9) to
+  assemble_knot_set — exact, zero accuracy cost, ln λ is piecewise-
+  linear through them; OR fix writer.py:482's filter to include
+  straddling segments split at the boundary. (b) REPLACE the synthetic
+  contiguity test with a FULL-HORIZON assertion (gaps==0 across
+  [0,36525] on real or realistic ladder data) — a test that cannot see
+  the defect class is not a guard. (c) _RESUME_VERSION 6→7 (FM-17,
+  output-changing) → full rebuild A8 = the real deliverable.
+
+DISPOSITION OF A7: let it RUN TO COMPLETION. It is genuinely validating
+the whole 27-class pipeline end-to-end (tier writer, vectorized null,
+Layer0/Layer1 engine, serving suppression) and that validation is worth
+having before rebuilding. But: NO snapshot seal claimed as final, NO
+FIELD-INTEGRATED post, NO downstream P-D gate run on A7 output. Record
+A7 in the ledger explicitly as VALIDATION-ONLY with D-1 cited.
+
+VERIFIED-CORRECT (desk-confirmed this pass — adopt, do not re-check):
+ · P0.a/b/c/d all genuinely done: DHARA_DESIGN on main (#1276);
+   NullResult in contracts.py with .resolution REQUIRED and the
+   wrong-formula getattr fallback DELETED (#1275, grep-confirmed);
+   suppression ruling folded into #1277; naming corrected.
+ · Vectorized null: dhara_null_vec.py landed and correctly wired
+   (writer.py:663 calls DNV.dhara_compute_null_vec, R=1024). Its
+   docstring is HONEST about the tradeoff — it vectorizes cumsum/
+   bucket/quantile layers but deliberately keeps _null_build_segments
+   per-replicate to hold the 1e-6 equivalence gate, and states so
+   explicitly. Backed by a real FM-25 perf gate (R=1024 ≤ 120s) plus
+   R=8 equivalence tests vs the serial reference. This is a documented,
+   defensible deviation, NOT drift — desk accepts it.
+ · Tier system live and exactly per PRATINIDHI: ka_kshetra_tier_basis
+   = 6 calibrated / 19 shape_only / 2 not_applicable. P3-a/b/e tests
+   present (test_shape_only.py, test_p3b_suppression.py).
+ · birth_anchor correctly skipped in A7 per LAW ZERO (kill_switch
+   epoch_tautology) — matches grounding G8.
+ · FM-27 smart-polling adopted mid-session (90s cadence confirmed live).
+
+KNOWN DEFERRAL (not a defect, but name it): L-PIN / dhara_pin_matrix
+remains UNWIRED — honestly flagged by the FM-23 xfail rather than
+hidden. It is off the field-build critical path, but plan v1.1 listed
+it as a P-B lane; schedule it in the post-A8 wave (it is what makes
+P-E's per-class prior upgrades surgical).
