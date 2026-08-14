@@ -3937,3 +3937,5 @@ Three sonnet builders dispatched in parallel after PARĪKṢAKA v1.1 PASS:
 Spec: DHARA_ENGINE_SPEC_v1_0.md v1.1 (commit 729f0cc7e on sampurti/integration). Each builder TDD. Each PR requires PARĪKṢAKA (FM-26) review before merge.
 
 CONDUCTOR-HEARTBEAT: 2026-08-14T16:18+05:30 [R41 T+96min — P-B all 3 builders dispatched; monitoring; next heartbeat ≤10min; pid=resumed]
+
+CONDUCTOR-HEARTBEAT: 2026-08-14T16:28+05:30 [R41 T+106min — P-B builders running; L-ENGINE TDD in progress; L-NULL flagged FM-24 violation (OPT-N3 set idle_in_txn=0 in writer.py:646 — will fix as part of L-NULL PR); L-TIER reading serving consumers for P3-b census; main CI green post-P0.b; pid=resumed]
