@@ -3700,3 +3700,81 @@ CONDUCTOR-HEARTBEAT: 2026-08-14T08:54+05:30 [R40 — A6⁴ DISPATCHED AND RUNNIN
 CONDUCTOR-HEARTBEAT: 2026-08-14T12:05+05:30 [R40 — A6⁵(bxnww) ALIVE AND COMPUTING; WATCHDOG FALSE-KILL DIAGNOSED (recoverable); DETAILS: (1) build_runs.state='failed' — watchdog fired at ~06:12 UTC when last_built_at=05:56:36 went >15min stale during DHARA computation loop (no per-replicate log/heartbeat); (2) asset_throughput.state='incomplete' — watchdog set this (has_substeps=true → watchdog chose 'incomplete' over 'error'); (3) CONTAINER IS ALIVE: PIDs 1854512 (monitoring, polling every 5s) and 1854514 (writer, computing stage5dhara:foreign_settlement since 05:58:17 UTC = 37min elapsed); advisory_locks=1; (4) WATCHDOG WILL NOT RE-FIRE: orphan-run reaper only targets state='running'; since run is now 'failed', future watchdog cycles skip it; (5) CONTAINER WILL COMPLETE AND OVERWRITE: when all 6 DHARA classes finish, _drive_substeps returns rows_written>0 → asset_throughput='lit' (unconditional UPDATE overwrites 'incomplete') → build_runs='completed' (unconditional UPDATE overwrites 'failed'); (6) KEY PARAMS: asset_registry.writer_timeout_seconds=86400 (24h) — internal orchestrator timeout safe; SET LOCAL idle_in_txn=0 (OPT-N3) — GUC kill safe; _POLL_INTERVAL=5s — monitoring loop safe; (7) SUBSTEP COUNT: 61/318 committed (60 stage4 + 1 stage5dhara:childbirth at 04:52 UTC); (8) REMAINING: 5 classes × ~30-60min = 2.5-5h; EXPECTED COMPLETION: ~09:00-12:00 UTC (14:30-17:30 IST); (9) FM-21 RESOLVED: watchdog false-kill is NOT a hang — container actively computing; monitor for final 'lit' state]
 
 CONDUCTOR-HEARTBEAT: 2026-08-14T12:36+05:30 [R40 — A6⁵(bxnww) PROGRESSING; stage5dhara:foreign_settlement COMMITTED 05:56:37 UTC (64min DHARA); stage5dhara:marriage STARTED 07:02:58 UTC (T+2min elapsed); kfn_rows=20 (childbirth+foreign_settlement×10 each); REVISED PROJECTION: per-class cycle ~64min DHARA + ~66min inter-class substeps = ~130min; 4 remaining classes (marriage, relocation, separation, surgery); estimated completion 14:30-17:30 UTC (20:00-23:00 IST); watchdog false-kill state still in place (build_runs='failed', asset_throughput='incomplete') — will be overwritten on completion; container alive (advisory_locks=1, PID 1854512 polling, PID 1854514 computing marriage); FM-21 PASS: active computation confirmed, no hang]
+
+---
+
+## R41 — SAMPŪRTI-Δ1 CONDUCTOR (2026-08-14T14:42+05:30 / 09:12Z)
+
+**Identity:** CONDUCTOR of SAMPŪRTI-Δ1 (supervisor relaunch; R40 closed after FM-21 T+35min intervention at 07:38Z)
+
+### LIVENESS CHECK (FM-10/11/21)
+
+- current_conductor.pid = 7035 (R40 session — no process matches → DEAD); pgrep "CONDUCTOR of SAMPŪRTI-Δ1": no match ✅
+- PEERS: none after self-exclusion ✅
+- My PID: 9106 (written to dh-d1-logs/current_conductor.pid) — sole conductor confirmed ✅
+
+### HYGIENE CHECK (FM-06 amended)
+
+- bxnww: CANCELLED at 07:38:43Z, completionTime visible, runningCount=0 ✅
+- advisory_locks = 0 (verified live, 09:12Z) ✅
+- active_build_runs (planned/running) = 0 ✅
+- Cloud SQL proxy: PID 72597 on 127.0.0.1:5433 ALIVE ✅
+- All Cloud Run executions (bxnww/4k59k/bgnfh/66d4q/s27bp): Completed ✅
+
+### SM-R-10 ADOPTION — SUPERSESSION OF R40 NEXT-ACTION
+
+**THIS PROMPT IS CURRENT TRUTH per desk kickoff.** The R40 NEXT-ACTION (monitor A6⁵, continue building marriage/relocation/separation/surgery at R=256) predates SM-R-10 and is hereby SUPERSEDED.
+
+PURNA_KSHETRA_PLAN_v1_1.md §3 is the SEQUENCE OF RECORD (P-0 → P-A → P-B → P-C). Do NOT redispatch A6⁵-continuation:
+
+- bxnww's childbirth + foreign_settlement substeps at R=256 will be INVALIDATED when P-B L-NULL bumps _RESUME_VERSION 5→6
+- dhara_compute_null loops 1023 Python iterations (origin/main comment line 640) — NOT vectorized; further A6⁵ builds at current code are wasteful
+- P-B L-NULL will properly vectorize + restore n3=1024 + fix FM-24; THEN A7 (P-C) runs the correct build
+
+### STATE RECONCILIATION (FM-09)
+
+**DB state (live, 09:12Z):**
+
+| asset | chart | state | rows_written | last_built_at |
+|---|---|---|---|---|
+| ka_kshetra | 482012f1 (native) | **incomplete** | 657,421 | 07:01:15Z |
+| ka_kshetra | 1c826d5a (Abhinandan) | lit | 837,992 | — |
+
+kala_field rows: 2,063,838 (all 6 classes, stage4 complete)
+kala_field_null rows: 20 (childbirth + foreign_settlement, 10 replicates each at R=256)
+Committed substeps (bxnww fc4b06c1): 62 (60 stage4 + childbirth + foreign_settlement) — will be invalidated at _RESUME_VERSION 5→6
+
+**Deployed code (origin/main = d98c5661f):**
+- _RESUME_VERSION = 5 (OPT-N1/PR#1272) ✓
+- dhara_compute_null wired for stage5dhara path ✓
+- DEFAULT_REPLICATES = 256 (OPT-N3/PR#1274 — VOIDED per SM-R-8/prompt; L-NULL restores 1024)
+- getattr fallback at writer.py:765+874 PRESENT (P0.b must delete — silently picks 1/(R+1) when .resolution absent)
+- SET LOCAL idle_in_txn=0 (OPT-N3 — FM-24 violation; L-NULL fixes to bounded 900000ms)
+- NullResult still in dhara_null.py, NOT in contracts.py (P0.b must move)
+
+**P-0 STATUS:**
+- P0.a: DHARA_DESIGN_v1_0.md on sampurti/integration only (commit 7ee9eef4a); NOT on main → NOT DONE
+- P0.b: NullResult not in contracts.py; getattr fallback present in writer.py:765+874 → NOT DONE
+- P0.c: G3 suppression-semantics ruling → NOT DONE (non-blocking for P-A/P-B start)
+- P0.d: "bg_class_priors" naming corrections (plan/kickoff/ledger) → NOT DONE
+
+**Other open items:**
+- PR #1271 (OPT-N2/FM-23 guard): OPEN, not merged (merge during P-B per plan)
+
+### R41 PLAN (SM-R-10)
+
+P-0 target: ~1 session. Parallel dispatch:
+1. P0.a builder (sonnet): fresh lane `sampurti/d1-p0a-dhara-design` from origin/main → copy DHARA_DESIGN_v1_0.md from integration → PR to main AS-IS
+2. P0.b builder (sonnet): fresh lane `sampurti/d1-p0b-null-contracts` → move NullResult to contracts.py; delete getattr fallbacks at writer.py:765+874; make .resolution required; stage5_null dead-path deprecation note; PR to main
+3. P0.c PRATINIDHI dispatch (opus/max): G3 suppression ruling; non-blocking
+4. P0.d: conductor does naming in ledger/plan docs (no code) ← done inline at R41 open
+
+On P-0 complete → P-A DESIGN (blind ENGINE spec + NULL spec + TIERS spec, opus adversarial review FM-26)
+On P-A PARĪKṢAKA PASS → P-B BUILD (≤4 parallel: L-ENGINE, L-NULL, L-TIER, L-PIN)
+On P-B deploy-green → P-C A7 (full 27-class PŪRṆA build)
+
+### NEXT-ACTION
+
+P-0 dispatches (in flight per heartbeat below). Monitor builders; when both PRs open → PARĪKṢAKA on P0.b (opus) → merge both → confirm P0.c PRATINIDHI verdict posted to SM-R registry.
+
+CONDUCTOR-HEARTBEAT: 2026-08-14T14:42+05:30 [R41 OPEN — SM-R-10 ADOPTED; R40 NEXT-ACTION SUPERSEDED; bxnww DEAD (07:38Z, advisory_locks=0); DB CLEAN; P-0 dispatches NEXT: P0.a builder (DHARA_DESIGN→main), P0.b builder (NullResult→contracts.py+fallback delete), P0.c PRATINIDHI (G3 ruling); L-8 lease EXPIRED (14:00 IST) — renewal not needed until A7 dispatch; pid=9106 host=Montys-MacBook-Pro.local]
