@@ -4078,3 +4078,22 @@ All checks except D1 PASS. Blocking findings:
 CONDUCTOR-HEARTBEAT: 2026-08-14T16:16+05:30 [R41 T+current — PR#1279 FAIL (D1-a,D1-b) diagnosed + fixed (commit 458ff5f7f; 59/59 tests pass); re-PARĪKṢAKA aff1655c dispatched; PRATINIDHI a3448a dispatched for P3-d ratification; PRs #1277+#1278 in merge queue; pid=resumed]
 
 CONDUCTOR-HEARTBEAT: 2026-08-14T16:26+05:30 [R41 — re-PARĪKṢAKA aff1655c in flight (confirming D1-a/D1-b fixes + scanning for other missed callers); PRATINIDHI a3448a in flight (27-class P3-d ratification); PRs #1277+#1278 in merge queue; PR#1279 DRAFT awaiting both verdicts; original task a13a9a stale notification discarded (verdict already processed); pid=resumed]
+
+---
+
+## P-B RE-PARĪKṢAKA: PR #1279 L-TIER → PASS (2026-08-14T16:30+05:30)
+
+**Re-PARĪKṢAKA verdict (opus agent aff1655c87f4d2362): PASS — both fixes confirmed, no new findings.**
+
+| Check | Result |
+|---|---|
+| D1-a fix: writer.py:688-689 `[0]` unpack present | PASS |
+| D1-b fix: test_hazard.py tuple unpack + synth is False assertions | PASS |
+| All baseline_rate() call sites scanned (4 files, 9+ sites) | PASS — none missing unpack |
+| Migration 567 + ka_kshetra_tier_basis structure | PASS — no regression |
+
+**Non-blocking note:** DRAFT status acknowledged as intentional per P3-d spec.
+
+**PR #1279 STATUS: Cleared for un-draft + merge queue entry ONCE P3-d tier-basis is populated and PRATINIDHI ratifies.**
+
+CONDUCTOR-HEARTBEAT: 2026-08-14T16:30+05:30 [R41 — PR#1279 re-PARĪKṢAKA PASS (aff1655c); awaiting PRATINIDHI a3448a for P3-d ratification; PRs #1277+#1278 in merge queue; all 3 lanes now PARĪKṢAKA-cleared; pid=resumed]
