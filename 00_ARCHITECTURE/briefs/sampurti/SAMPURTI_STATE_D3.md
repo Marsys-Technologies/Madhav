@@ -3182,3 +3182,90 @@ Call: `gochara_forecast_get(chart=482012f1, domain=marriage, date_range=2026-08-
 **WHAT SINGLE RELAUNCH FINISHES MY SCOPE:** Genuine FIELD-INTEGRATED → R2 proof (marriage in roots, resolution='era') + R4 proof (field_snapshot_id=kfs_*) → γ ledger append → SESSION-DONE-Δ3 → RUN-TERMINAL: SESSION-Δ3-COMPLETE
 
 RUN-TERMINAL: SESSION-Δ3-PENDING-40 (supervisor-fix relaunch — sentinel-only detection now live; main advanced to 289d0fddb (5 P3-tier Fix Wave commits); L-SEAM outstanding; R1 PASS×21; FIELD-INTEGRATED NOT POSTED; clean close)
+
+---
+
+## SESSION-42 — 2026-08-14T22:35Z (04:05 IST Aug 15) — F-WAVE ALL MERGED; DEPLOY IN-PROGRESS
+
+CONDUCTOR-HEARTBEAT: 2026-08-14T22:35Z pid=48729 host=Montys-MacBook-Pro.local session=Δ3-s42
+
+### STEP-0 (session-42)
+
+**Liveness:** CLEAN — stored PID 47589 = `/bin/bash /Users/Dev/shad_overnight/run_dh_d3.sh` (supervisor bash, alive, NOT a peer conductor). `pgrep -f "CONDUCTOR of SAMPŪRTI-Δ3"` = PEERS=NONE. Sole conductor confirmed. MY_PID 48729 written to dh-d3-logs/current_conductor.pid.
+
+**Hygiene:** CLEAN — all Cloud Run executions Completed (last: bm4qp=17.06s, qcrrm=11.96s — both quick-exit, no RUNNING builds). No DB scope for Δ3; no proxy started.
+
+**Coordinator (fetched 22:35Z):** Last entry = Δ1 R42-2 at 21:24Z: "F-wave merge sequence in progress; PARĪKṢAKA dispatched; A8 ETA 2-3h". FIELD-INTEGRATED NOT POSTED (`██ MARKER-POSTED: FIELD-INTEGRATED ██` sentinel absent).
+
+### FM-09 RECONCILE — BIG CHANGES SINCE SESSION-41
+
+| Surface | Session-41 state | Session-42 reality |
+|---------|-----------------|-------------------|
+| main HEAD | 15ace43df (PR #1282) | **46b0c2cc8** — ALL THREE F-WAVE PRs MERGED |
+| PR #1283 (F4 --run-id guard) | Not opened | **MERGED** → f9d36c143 on main |
+| PR #1284 (F1+F2+F5 zero-call null + 2-chunk substeps + decade knots) | Not opened | **MERGED** → 2e435600d on main |
+| PR #1285 (F3 canary-gated dispatch script) | Not opened | **MERGED** → 46b0c2cc8 on main (HEAD) |
+| Deploy 46b0c2cc8 | N/A | **IN_PROGRESS** since 22:28Z (TAP CI/Elevation/ṢAḌ all PASS) |
+| bm4qp | N/A | COMPLETED 17.06s — SAMPURTI_CANARY_CLASSES=CAREER, run-id=987d5b52 (quick-exit pre-deploy or guard test) |
+| qcrrm | N/A | COMPLETED 11.96s (quick-exit) |
+| Δ1 R42-2 | Not started | **ACTIVE** — last commit ef2430ffd 21:21Z: "F-wave 3 PRs open, _RESUME_VERSION→7, awaiting CI+PARĪKṢAKA" |
+| FIELD-INTEGRATED | NOT POSTED | NOT POSTED |
+
+**INFERRED TIMELINE (22:35Z UTC):**
+- Deploy 46b0c2cc8 completes ~22:43-22:50Z (typically 15-20 min from 22:28Z start)
+- After deploy-green: Δ1 R42-2 dispatches A8 canary (CAREER class per F3 script)
+- Canary gate: GREEN ≤4h / YELLOW 4-8h / RED >8h → if GREEN, full 27-class A8 dispatched
+- A8 full build: ~30-60min per SM-R-11 analysis (F1+F2 fix = true C/E decomp + 2-chunk substeps → commit-per-chunk)
+- A8 completion → ka_kshetra=lit → S4 parity → `██ MARKER-POSTED: FIELD-INTEGRATED ██`
+- **ETA FIELD-INTEGRATED: ~01:00-04:00Z Aug 15 UTC (06:30-09:30 IST Aug 15)**
+
+### R1 MCP PROOF — 23rd Pass (22:37Z): PASS ✓
+
+Call: `gochara_forecast_get(chart_id=482012f1..., domain=marriage, date_range=2025-01-01→2026-01-01)`
+- `coverage.event_classes_covered`: 27 classes (incl. marriage) ✓
+- `coverage.domains_not_covered`: [] ✓
+- `coverage.coverage_quality.tier`: "rich", covered_class_count=27, covered_domain_count=13 ✓
+- `sweep_completeness.substeps_committed`: 270 under `ka_gochara_v3_century_materialize` ✓
+- `backing_data_reachable`: true ✓
+- No S4-05 refusal ✓
+- `windows`: [] — honest empty (23rd consecutive consistent result)
+
+**R1 PROOF STATUS: PASS** (23rd consecutive). R1 fix stable in production.
+
+### Δ3 LANE STATUS (session-42)
+
+| Lane | Status | Notes |
+|------|--------|-------|
+| R1 | MERGED + MCP PROOF PASS ✓ | 23rd pass 22:37Z session-42; 27 classes, 270 substeps, no S4-05 |
+| R2 | DEPLOYED; MCP PROOF PENDING | Sidecar v3.2 live; F-wave ALL MERGED; probe ready; gated on FIELD-INTEGRATED |
+| R3 | DONE ✓ | commit 66e35c216 (sampurti/vyakhya) |
+| R4 | READY-ON-SIGNAL | probe_sampurti_d3_r2_r4.py committed; FIELD-INTEGRATED imminent |
+| R5 | MERGED + DEPLOYED ✓ | PR #1280 merged 14:04Z Aug 14; CI PASSING |
+
+### SESSION-42 CLOSE
+
+**Work this session:**
+- STEP-0 complete (liveness/hygiene/coordination/reconcile) ✓
+- FM-09: ALL F-WAVE PRs MERGED (main 46b0c2cc8); Deploy IN_PROGRESS (22:28Z) ✓
+- R1 MCP proof 23rd pass: PASS ✓
+- Inferred A8 ETA documented ✓
+
+**FIELD-INTEGRATED ETA:** Very close. Deploy ~22:43-22:50Z → Δ1 R42-2 dispatches A8 canary → if canary GREEN, full A8 → FIELD-INTEGRATED ~01:00-04:00Z UTC Aug 15. Supervisor will relaunch on sentinel post.
+
+**WHAT ONE RELAUNCH FINISHES:** When `██ MARKER-POSTED: FIELD-INTEGRATED ██` posts:
+1. `python3 00_ARCHITECTURE/briefs/sampurti/probe_sampurti_d3_r2_r4.py --chart-id 482012f1-710e-4a25-994a-93821f5871aa --mcp-key $MARSYS_MCP_KEY`
+2. R2: verify marriage in roots (resolution='era'); NOT in legacy_flat → paste MCP proof
+3. R4: verify field_snapshot_id=kfs_* (not 'field_not_yet_built') → paste MCP proof
+4. Append both proofs to γ ledger (sampurti/vyakhya append-only)
+5. Post SESSION-DONE-Δ3 to coordination → RUN-TERMINAL: SESSION-Δ3-COMPLETE
+
+**NEXT-ACTION (session-43):**
+1. Check for `██ MARKER-POSTED: FIELD-INTEGRATED ██` (genuine sentinel at line-start)
+2. Check Cloud Run for A8 execution (canary + full build under PR #1285 F3 script)
+3. R1 24th pass
+4. On FIELD-INTEGRATED: R2+R4 proofs → γ ledger → SESSION-DONE-Δ3
+
+**WHAT SINGLE RELAUNCH FINISHES MY SCOPE:** Genuine FIELD-INTEGRATED → probe script → R2 proof (marriage in roots, resolution='era') + R4 proof (field_snapshot_id=kfs_*) → γ ledger append → SESSION-DONE-Δ3 → RUN-TERMINAL: SESSION-Δ3-COMPLETE
+
+RUN-TERMINAL: SESSION-Δ3-PENDING-42 (2h sanity pass — ALL F-WAVE PRs MERGED on main 46b0c2cc8; Deploy IN_PROGRESS 22:28Z; Δ1 R42-2 ACTIVE; A8 ETA ~01:00-04:00Z UTC Aug 15; FIELD-INTEGRATED NOT POSTED; R1 PASS×23; supervisor relaunches on FIELD-INTEGRATED sentinel)
+
