@@ -1779,3 +1779,48 @@ Agent: a37e94cc35a34741d (opus, independent, read-only against `sm-d3-r5` worktr
 2. Check PR #1280 merge status (squash+deploy; verify migration-free)
 3. Check Δ1 R42 state — has PR #1271 been merged + A7 dispatched?
 4. On FIELD-INTEGRATED: run probe → R2 + R4 → γ ledger → SESSION-DONE-Δ3
+
+---
+
+## SESSION-26 — 2026-08-14T13:54Z (19:24 IST)
+
+CONDUCTOR-HEARTBEAT: 2026-08-14T13:54Z pid=23429 host=Montys-MacBook-Pro.local session=Δ3-s26
+
+**Step-0 liveness (FM-10/11):** PID 17166 (session-25) DEAD ✓ — sole conductor confirmed.
+
+**Coordination check:** FIELD-INTEGRATED NOT POSTED. Last coordination commit: 567e25b87 (session-25 CLOSE, 13:46Z UTC).
+
+**FM-09 STATE RECONCILE:**
+- PR #1280 R5 P6: OPEN, CLEAN, 33/33 checks pass — BUT `autoMergeRequest: null`. Session-25 claimed "merge queue entered" at 13:57Z but state does not reflect this. FM-09 adopt reality: merge queue entry DID NOT PERSIST. Will re-enter this session.
+- PR #1271 FM-23 (Δ1 R42): OPEN, CLEAN 26/26 — Δ1 territory; no Δ1 conductor active.
+- Cloud Run: NO active A7 build executions. Last execution `bxnww` cancelled 07:38Z. ka_kshetra: `incomplete` (07:01Z, orphan-watchdog, 60/N substeps, 657,421 rows).
+- FIELD-INTEGRATED: NOT POSTED (consistent with ka_kshetra=incomplete).
+
+**GENUINE WORK — FM-09 reconciliation of PR #1280 merge queue status:**
+
+`gh pr merge 1280 --squash --auto` → "Pull request Marsys-Technologies/Madhav#1280 is already queued to merge" ✓
+
+FM-09 reconciliation complete: session-25's merge queue entry WAS successful. The `autoMergeRequest: null` in the JSON API was a false negative — the PR is actively in the merge queue (`mergeStateStatus: UNKNOWN` = being processed). Session-25 ledger was CORRECT.
+
+**Session-26 close state:**
+
+### Δ3 LANE STATUS (session-26 close)
+
+| Lane | Status | Notes |
+|------|--------|-------|
+| R1 | MERGED + MCP PROOF PASS ✓ | Seventh verification 13:40Z session-25; stable |
+| R2 | DEPLOYED; MCP PROOF PENDING | Sidecar v3.2 live; awaiting FIELD-INTEGRATED |
+| R3 | DONE ✓ | committed 66e35c216 |
+| R4 | READY-ON-SIGNAL | probe script committed; awaiting FIELD-INTEGRATED |
+| R5 | **PR #1280 IN MERGE QUEUE** ✓ | PARĪKṢAKA PASS (a37e94cc); confirmed in queue via gh (already queued); mergeStateStatus=UNKNOWN (processing) |
+
+**FIELD-INTEGRATED:** NOT POSTED.
+- PR #1271 (FM-23): OPEN, CLEAN 26/26 — Δ1 R42 territory; no active Δ1 conductor
+- Supervisors: DOWN per SM-R-10 (native go-ahead required to restart Δ1 onto P-0)
+- Cloud Run: NO active A7 build; ka_kshetra=incomplete (07:01Z, 657,421 rows, 60 substeps committed)
+- Unblocking path: Native restarts Δ1 → P-0 consolidation → P-A → P-B → merge #1271 → deploy → A7 → ka_kshetra=lit → S4 parity gate → FIELD-INTEGRATED posted
+
+**NEXT-ACTION (session-27):**
+1. Check coordination for `██ MARKER-POSTED: FIELD-INTEGRATED ██`
+2. Check PR #1280 merge + deploy status (migration-free, no verification needed post-merge)
+3. On FIELD-INTEGRATED: run probe → R2 + R4 → γ ledger → SESSION-DONE-Δ3
