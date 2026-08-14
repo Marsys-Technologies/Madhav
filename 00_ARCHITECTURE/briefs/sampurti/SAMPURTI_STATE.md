@@ -4118,3 +4118,21 @@ Key PRATINIDHI notes on contested classes:
 **Action taken:** 27-row INSERT seeded in migration 567 (commit b91c8d6cf). PR #1279 un-drafted and added to merge queue. CI pending (TAP-6 running; MCP battery pre-existing BLOCKED/skip).
 
 CONDUCTOR-HEARTBEAT: 2026-08-14T16:38+05:30 [R41 — PRATINIDHI P3-d RATIFICATION COMPLETE (0 overrides); 27 rows seeded in migration 567; PR#1279 un-drafted; CI pending (TAP-6); all 3 P-B PRs (#1277+#1278 in queue; #1279 awaiting CI); pid=resumed]
+
+---
+
+## MIG-1 FIX: PR #1279 migration renumbered 567→571 (2026-08-14T16:25+05:30)
+
+**Root cause of Unit Tests CI failure (MIG-1 step in job 94746158358):**
+
+`platform/migrations/567_parishkara_mr11_hierarchy.sql` already claimed number 567 in the legacy migration directory. The new P3-a migration was assigned 567 in `platform/supabase/migrations/`, triggering E2 NEW-COLLISION in `migration_number_guard.ts`. The prior conductor computed 567 by reading only `platform/supabase/migrations/` — the same defect MIG-1 was built to prevent (MIGRATION_AND_MERGE_PROTOCOL_v1_0.md §3, brief v2.0 §4.4).
+
+**Fix (commit 289d0fddb, pushed to sampurti/d1-p3-tier):**
+- `git mv` `567_p3a_shape_only_tier.sql` → `571_p3a_shape_only_tier.sql`
+- Internal header comment updated: `-- migration 567:` → `-- migration 571:`
+- 571 = `max(all numbered files across both dirs) + 1` = correct allocation per protocol §3
+- Guard verified locally: PASS — no new migration-number collision
+
+**CI re-trigger:** fresh CI run dispatched on commit 289d0fddb. Monitoring for Unit Tests PASS.
+
+CONDUCTOR-HEARTBEAT: 2026-08-14T16:25+05:30 [R41 T+context-resume — MIG-1 root cause diagnosed (E2 NEW-COLLISION: migration 567 already claimed in platform/migrations/); fix: rename 567→571 (next allocatable = max across both dirs + 1); commit 289d0fddb pushed; CI re-triggered; all 3 P-B PRs tracked (#1277+#1278 in merge queue; #1279 awaiting CI green); pid=resumed]
