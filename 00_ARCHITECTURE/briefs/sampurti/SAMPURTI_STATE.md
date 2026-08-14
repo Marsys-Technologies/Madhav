@@ -4097,3 +4097,24 @@ CONDUCTOR-HEARTBEAT: 2026-08-14T16:26+05:30 [R41 — re-PARĪKṢAKA aff1655c in
 **PR #1279 STATUS: Cleared for un-draft + merge queue entry ONCE P3-d tier-basis is populated and PRATINIDHI ratifies.**
 
 CONDUCTOR-HEARTBEAT: 2026-08-14T16:30+05:30 [R41 — PR#1279 re-PARĪKṢAKA PASS (aff1655c); awaiting PRATINIDHI a3448a for P3-d ratification; PRs #1277+#1278 in merge queue; all 3 lanes now PARĪKṢAKA-cleared; pid=resumed]
+
+---
+
+## P3-d PRATINIDHI RATIFICATION: COMPLETE (2026-08-14T16:38+05:30)
+
+**PRATINIDHI verdict (opus agent a3448a407e9a66ba3): RATIFICATION COMPLETE — 0 overrides.**
+
+| Tier | Count | Classes |
+|---|---|---|
+| `calibrated` | 6 | marriage, separation, childbirth, relocation, foreign_settlement, surgery |
+| `shape_only` | 19 | career_entry, career_advancement, career_setback, business_launch, education_milestone, exam_outcome, romantic_start, parental_event, bereavement, major_gain, major_loss, property_acquisition, illness_acute, chronic_onset, spiritual_turn, achievement_recognition, financial_deception, psychological_arc, travel_event |
+| `not_applicable` | 2 | career_change (ADJUDICATION-2 Tier N-iii — boundary unfalsifiable), birth_anchor (chart epoch, definitionally not a future event) |
+
+Key PRATINIDHI notes on contested classes:
+- `bereavement` → shape_only: Indian life tables give parental mortality distributions, but "close family" class definition is broader than any single Tier N-i source. Would be promotable only if scoped to parental death only.
+- `career_change` → not_applicable confirmed: not merely "lacks a prior" but "class boundary itself is definitionally ambiguous between career_change vs career_advancement vs career_setback."
+- `birth_anchor` → not_applicable confirmed: t=0 is chart epoch; no confusion with `childbirth` (which covers the subject's children, a genuine future event).
+
+**Action taken:** 27-row INSERT seeded in migration 567 (commit b91c8d6cf). PR #1279 un-drafted and added to merge queue. CI pending (TAP-6 running; MCP battery pre-existing BLOCKED/skip).
+
+CONDUCTOR-HEARTBEAT: 2026-08-14T16:38+05:30 [R41 — PRATINIDHI P3-d RATIFICATION COMPLETE (0 overrides); 27 rows seeded in migration 567; PR#1279 un-drafted; CI pending (TAP-6); all 3 P-B PRs (#1277+#1278 in queue; #1279 awaiting CI); pid=resumed]
