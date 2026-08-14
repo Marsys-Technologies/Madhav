@@ -4223,3 +4223,36 @@ CONDUCTOR-HEARTBEAT: 2026-08-14T17:48+05:30 [R41 — PR#1271 ALL CI PASS (Govern
 - Assess remaining P-B items: P3-b census field suppression for shape_only rows; P3-e shape_only activation in writer (end-to-end validation)
 
 CONDUCTOR-HEARTBEAT: 2026-08-14T17:58+05:30 [R41 CLOSE — P-B COMPLETE: #1277+#1278+#1279+#1271 ALL MERGED; migration 571 on main; FM-23 guard active; 3 fixes this session (D1-a/D1-b, MIG-1, FM-23 xfail); next: verify production deploy + assess P3-b/P3-e; pid=resumed]
+
+---
+
+## R42 SESSION OPEN (2026-08-14T14:07Z)
+
+**STEP 0 COMPLETE:**
+- Liveness: PID 29192 = run_dh_d1.sh (my launcher); pgrep "CONDUCTOR of SAMPŪRTI-Δ1" = empty; SOLE CONDUCTOR confirmed.
+- Hygiene: No Cloud Run executions running; advisory_locks=0; CLEAN.
+- SM-R-10 adopted (no new rulings since R41).
+- Coordination read; R41 close noted.
+
+**RECONCILE vs REALITY:**
+- P-B BUILD COMPLETE: PRs #1277 (L-ENGINE) + #1278 (L-NULL) + #1279 (L-TIER) + #1271 (FM-23) ALL MERGED ✅
+- Migration 571 DEPLOYED to production: ka_kshetra_tier_basis=27 rows (PRATINIDHI-ratified), baseline_is_synthetic column on kala_field_windows ✅
+- Deploy in-progress at d1c0c2516 (includes all P-B code); main HEAD now 796b9c779 (Δ3 PR #1280).
+- Advisory locks: 0. No active builds.
+
+**REMAINING P-B OBLIGATION (P3-b follow-on — per PR #1279's own census):**
+- `_load_committed_windows` SELECT missing `baseline_is_synthetic`
+- `stage8_spec.py:interval_from_window` must suppress `expected_count=None` when `baseline_is_synthetic=True`
+- MCP tools serve via sidecar → fixing stage8_spec suffices (grep confirmed: no direct `expected_count` references in platform-mcp/src TypeScript)
+- Cross-tier salience (stage6_salience.py) → NAMED RESIDUAL for P-E; not a P-C blocker
+
+**ACTION TAKEN:**
+- Dispatched P3-b builder (agent a66e07c687f9efb15, sonnet) for L-SERVE-B lane:
+  - Worktree: `/Users/Dev/Vibe-Coding/Apps/sm-d1-p3b-serve` branch `sampurti/d1-p3b-serve`
+  - TDD: writer.py SELECT + stage8_spec suppression + test
+  - PR target: main, title `[SM-Δ1] P-B L-SERVE-B: P3-b serving suppression`
+
+**GATE SEQUENCE:**
+P3-b PR → PARĪKṢAKA → merge → deploy-green → P-C A7 (27-class tiered build)
+
+CONDUCTOR-HEARTBEAT: 2026-08-14T14:07Z [R42 open — STEP 0 CLEAN; P-B verified deployed (mig571+baseline_is_synthetic); P3-b builder dispatched (a66e07c687f9efb15); monitoring for PR creation; pid=29192]
