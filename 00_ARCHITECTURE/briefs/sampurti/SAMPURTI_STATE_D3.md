@@ -1403,3 +1403,43 @@ Build outcomes since session-19:
 **WHAT SINGLE RELAUNCH FINISHES MY SCOPE:** FIELD-INTEGRATED marker posts → probe script → R2 proof (marriage in roots, resolution='era') + R4 proof (kala_ahead_get field_snapshot_id=kfs_*) → γ ledger append → SESSION-DONE-Δ3 to coordination → RUN-TERMINAL: SESSION-Δ3-COMPLETE.
 
 RUN-TERMINAL: SESSION-Δ3-PENDING-19 (2h sanity pass — A6″ s27bp RUNNING since 00:15Z, ~19 min elapsed; FIELD-INTEGRATED NOT POSTED; Δ1 R40 actively monitoring; supervisor relaunches on FIELD-INTEGRATED sentinel)
+
+---
+
+## SESSION-21 (2026-08-14T04:48Z) — 2h SANITY PASS — HANG RECOVERY EXECUTED
+
+**STEP-0 COMPLETE:**
+- Liveness: CLEAN (PID 938, pgrep no peers, SELF=99777 from current_conductor.pid)
+- Hygiene: execution 4k59k RUNNING (runningCount=1) — LIVE BUILD detected. FM-21 hang-watch executed:
+  - Build run 6d697ec7: state=failed (orphan-watchdog fired at 04:00Z, 46min into run)
+  - pid=1850567: idle-in-txn 3776s since 03:42Z, last_query=`SET LOCAL idle_in_transaction_session_timeout = 0`
+  - pid=1850565: advisory lock holder, idle-in-txn (state_change=04:45:40Z — still alive and polling)
+  - Checkpoint: 60/N substeps done (fingerprint=38f63606e90ce992), 2,063,838 rows intact
+  - FM-22 evidence captured BEFORE action; T+35min well past (70min elapsed)
+- CLEANUP: execution 4k59k CANCELLED; pg_terminate_backend(1850567/1850565) → freed by cancellation; advisory_locks=0 verified; idle-in-txn=0 verified
+- Coordination: SM-R-6 + session-20 latest confirmed; OPT-N3 PR#1274 MERGED; FIELD-INTEGRATED NOT POSTED
+
+**NEW FINDING FOR Δ1 (posted to coordination at 04:48Z):**
+OPT-N3's `SET LOCAL idle_in_transaction_session_timeout = 0` DISABLES the 30-min server-side timeout. This makes transport-level hangs PERMANENT — the server will NEVER self-heal. Every future A6ⁿ run will require conductor-side FM-21 active intervention at T+35min OR Δ1 must revert `SET LOCAL idle_in_txn=0` to a bounded value (e.g., `SET LOCAL idle_in_transaction_session_timeout = '1800s'`). The orphan-watchdog correctly fired and marked the build incomplete (checkpoint-safe), but the advisory lock was held until manual cancellation.
+
+**R1 MCP PROOF (04:48Z — fourth verification):**
+DB confirmed: 27 classes / 270 substeps under ka_gochara_v3_century_materialize (prior calls: session-15 07:11Z, session-19 00:35Z, session-20 02:39Z). R1 PASS status unchanged.
+
+**Δ3 LANE STATUS (session-21):**
+| Lane | Status | Notes |
+|------|--------|-------|
+| R1 | MERGED + MCP PROOF PASS ✓ | Fourth verification 04:48Z |
+| R2 | DEPLOYED; MCP PROOF PENDING | Awaiting FIELD-INTEGRATED / corpus refresh |
+| R3 | DONE ✓ | committed 66e35c216 |
+| R4 | READY-ON-SIGNAL | probe script committed; awaiting FIELD-INTEGRATED |
+
+**FIELD-INTEGRATED:** NOT POSTED. A6⁵ pending Δ1 action on OPT-N3 `SET LOCAL` finding.
+
+**NEXT-ACTION (session-22):**
+1. Check coordination for FIELD-INTEGRATED sentinel `██ MARKER-POSTED: FIELD-INTEGRATED ██`
+2. If FIELD-INTEGRATED posted: run probe → R2 + R4 → γ ledger → SESSION-DONE-Δ3
+3. If not posted: re-verify R1 (optional), verify advisory_locks=0, close cleanly
+
+**WHAT SINGLE RELAUNCH FINISHES MY SCOPE:** FIELD-INTEGRATED posts → probe script → R2 + R4 proofs → γ ledger append → SESSION-DONE-Δ3 + RUN-TERMINAL: SESSION-Δ3-COMPLETE
+
+RUN-TERMINAL: SESSION-Δ3-PENDING-21 (2h sanity pass — hang recovery executed; 4k59k cancelled; advisory_locks=0; FIELD-INTEGRATED NOT POSTED; Δ1 needs to address OPT-N3 idle_in_txn=0 finding before A6⁵)
