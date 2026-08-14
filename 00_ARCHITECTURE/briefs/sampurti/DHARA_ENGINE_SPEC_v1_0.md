@@ -1,7 +1,14 @@
 ---
 artifact: DHARA_ENGINE_SPEC
-version: 1.0
-status: BLIND-DRAFT — written 2026-08-14 BEFORE any P-B implementation; commit BEFORE first builder dispatched per PURNA_KSHETRA_PLAN_v1_1.md §3 P-A
+version: 1.1
+status: >
+  REVIEWED — blind-drafted 2026-08-14 (commit 2737026b3); PARĪKṢAKA (opus, FM-26)
+  issued FAIL on §3.1 (vectorized null algorithm incorrect: loop nesting inverted,
+  ln_lambda wrongly claimed shared across replicates). Amended to v1.1 same date:
+  §3.1 rewritten with correct C(t)+E((t−δ_r)modH) decomposition, REPLICATE-OUTSIDE
+  BUCKET-INSIDE loop, periodic interpolation approach + equivalence-caveat. NullResult
+  docstring fix (stale "256 by default") noted as P-B L-NULL task (non-blocking).
+  PARĪKṢAKA re-review required before first P-B builder dispatches.
 author: SAMPŪRTI-Δ1 conductor (R41, SM-R-10)
 purpose: >
   Binding P-A DESIGN spec for P-B builders (L-ENGINE, L-NULL, L-TIER).
@@ -9,10 +16,13 @@ purpose: >
   Adversarial review: opus PARĪKṢAKA (FM-26) before any builder dispatched.
 references:
   - PURNA_KSHETRA_PLAN_v1_1.md (SM-R-10, plan of record)
-  - DHARA_DESIGN_v1_0.md (now on main, PR #1276)
+  - DHARA_DESIGN_v1_0.md (on main, PR #1276, commit 89bb6d74b)
   - SM-R-7 (suppression semantics: B, per-class filtered)
-  - contracts.py NullResult (PR #1275, in merge queue → main)
+  - contracts.py NullResult (on main, PR #1275, commit d674d71e5)
   - PURNA_GROUNDING_REPORT_v1_0.md (G1–G12, ground-truth constraints)
+changelog:
+  v1.0: 2026-08-14 — blind draft (commit 2737026b3)
+  v1.1: 2026-08-14 — §3.1 algorithm rewrite per PARĪKṢAKA FAIL (A6+B7)
 ---
 
 # DHARA ENGINE SPEC v1.0 — P-B BUILD GUIDE
@@ -146,35 +156,76 @@ The vectorized null replaces `dhara_compute_null`'s serial Python loop with nump
 operations. The mathematical result must be IDENTICAL to the current implementation at R=8 on
 fixtures (acceptance criterion).
 
-**Algorithm (per replicate, vectorized across all R-1 shifts simultaneously):**
+**Mathematical decomposition (plan §P2 notation, SM-R-10):**
+```
+ln λ_r(t) = C(t) + E((t − δ_r) mod H)
+  C(t) = per-class clock/lord-relevance term, evaluated at t — FIXED across all replicates
+  E(τ) = envelope term (covariates × beta + suppression log-term), at shifted time τ
+  δ_r  = r · H / R  (cyclic shift for replicate r ∈ range(1, R))
+  H    = chart horizon in days
+```
+
+`C(t)` depends only on which dasha lord is active at t (lord stacks from Layer 0, filtered
+by per-class routes) — it is NOT shifted per-replicate. `E(τ)` uses covariate and obstruction
+values at the shifted time τ = (t − δ_r) mod H, interpolated from Layer 0's pre-computed arrays.
+
+**Algorithm — REPLICATE LOOP OUTSIDE, BUCKET LOOP INSIDE:**
 
 ```
-1. Build the coarse knot set K_null from Layer 0 restricted to _NULL_COARSE_LEVELS.
-   (Same as today: MD/AD/PD boundaries only, ~819 knots for Abhisek chart)
+1. Build K_null: coarse knot set restricted to _NULL_COARSE_LEVELS.
+   (MD/AD/PD boundaries only — same coarse levels as today, L1g parity preserved.)
+   Shape: (N_k,), float64.
 
-2. For each bucket b in DURATION_BUCKETS:
-   a. Compute ln_lambda at each knot using Layer0.covariates + Layer0.obstructions.
-      Shape: (N_knot,) — computed ONCE, shared across all replicates.
-   b. For each replicate r in range(1, R):  ← vectorized
-      i.   Shift: t_shifted = (K_null - delta_r) mod H   [delta_r = r * H/R]
-      ii.  Interpolate ln_lambda at t_shifted using Layer0's covariate arrays.
-      iii. Cumsum to get CDF-like accumulation.
-      iv.  Window-max over duration b.
-      Store window_max[r] for this replicate.
-   c. all_stats[b] = list(window_max)
+2. Pre-compute ONCE (shared across all replicates):
+   a. C_k = clock/lord-relevance component of Layer1.ln_lambda at each K_null knot.
+      Use project_layer1(layer0, event_class, routes, beta) evaluated at K_null,
+      taking only the lord-stack (C) contribution — NOT the envelope shift.
+      Shape: (N_k,).
+   b. cov_grid = Layer0.covariates restricted to K_null knots. Shape: (12, N_k).
+   c. obs_grid = Layer0.obstructions (suppressed keys only, per SM-R-7) at K_null.
+      Shape: (|S_e|, N_k).
+   d. H = horizon_days.
 
-3. Pool all lambda values for q_threshold (95th percentile).
+3. For all R-1 replicates simultaneously (vectorized, no Python loop over r):
+   a. delta = np.arange(1, R) * H / R          # shape (R-1,)
+   b. tau_rk = np.mod(K_null[np.newaxis,:] - delta[:,np.newaxis], H)
+                                                # shape (R-1, N_k)
+   c. cov_rk  = interp_periodic(cov_grid, K_null, tau_rk)
+                                                # shape (R-1, 12, N_k)
+   d. obs_rk  = interp_periodic(obs_grid, K_null, tau_rk)
+                                                # shape (R-1, |S_e|, N_k)
+   e. E_rk    = beta @ cov_rk + suppression_log_term(obs_rk)
+                                                # shape (R-1, N_k)
+   f. ln_lambda_rk = C_k[np.newaxis, :] + E_rk # shape (R-1, N_k)
+   g. lam_rk  = np.exp(ln_lambda_rk)
+   h. dt_k    = np.diff(K_null, prepend=0)     # knot widths, shape (N_k,)
+   i. cumul_rk = np.cumsum(lam_rk * dt_k[np.newaxis,:], axis=1)
+                                                # shape (R-1, N_k)
+   j. For each bucket b in DURATION_BUCKETS:   ← bucket loop INSIDE replicate block
+      window_max_rb = vectorized_sliding_max(cumul_rk, width=b)  # shape (R-1,)
+      all_stats[b].extend(window_max_rb.tolist())
 
-4. Return contracts.NullResult(
+4. q_threshold = np.percentile(lam_rk.ravel(), 95)
+
+5. Return contracts.NullResult(
        replicates=R,
        max_stats=all_stats,
-       q_threshold=pool_95th,
+       q_threshold=q_threshold,
        shift_grid_step=H/R,
        shift_count=R-1,
        horizon_days=H,
        alpha=alpha,
    )
 ```
+
+**Equivalence caveat (for builder — not negotiable):** The current `dhara_compute_null`
+uses `integrator._refine` with adaptive midpoints between coarse knots (not just K_null).
+This algorithm uses K_null knots + periodic interpolation. These are NOT identical by
+construction. The R=8 equivalence test (§3.3, tol 1e-6) is the **sole binding gate**.
+If the test fails: (a) densify K_null by adding midpoints at fraction ½ between adjacent
+K_null knots, OR (b) compute the adaptive breakpoints for the unshifted evaluator and
+interpolate at those + shifted versions. The builder chooses whichever approach passes
+the gate. The gate is non-negotiable regardless of approach.
 
 ### 3.2 Key constants (non-negotiable)
 
