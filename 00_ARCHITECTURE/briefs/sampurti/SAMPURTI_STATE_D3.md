@@ -1258,3 +1258,91 @@ Per LONG-RUN AUTONOMY RULES: Genuinely blocked on Δ1 OPT-N1 dispatch → CI →
 4. On FIELD-INTEGRATED: run probe → paste output → γ ledger → SESSION-DONE-Δ3
 
 RUN-TERMINAL: SESSION-Δ3-PENDING-18 (FIELD-INTEGRATED outstanding; SM-R-6 absorbed; dhara_null wiring OPT-N1 pending Δ1 R39; A6″ expected ~30-60 min post OPT-N1 deploy; supervisor relaunches)
+
+---
+
+## SESSION-19 — 2026-08-14T00:34Z (~06:04 IST)
+
+CONDUCTOR-HEARTBEAT: 2026-08-14T00:34Z pid=47095(shell) host=Montys-MacBook-Pro.local session=Δ3-19
+
+### STEP-0 (session-19)
+
+**Liveness:** CLEAN — stored PID=41612 (run_dh_d3.sh supervisor bash, NOT a peer conductor); `pgrep -f "CONDUCTOR of SAMPŪRTI-Δ3"` = PEERS=NONE; sole conductor confirmed. PID 47095 written to dh-d3-logs/current_conductor.pid.
+
+**Hygiene:** CLEAN — A6″ (brahma-build-pipeline-job-s27bp) is a LIVE CLOUD BUILD (runningCount=1, started 2026-08-14T00:15:13Z). Per amended hygiene rule: RUNNING cloud execution = live build, touch nothing. No DB scope for Δ3. No proxy needed.
+
+**Coordination (fetched 00:34Z):** Latest commit = 218b917cd (Δ1 R40 session-open, 22:43Z Aug 13 / 04:13 IST Aug 14). FIELD-INTEGRATED: NOT POSTED. No FIELD-INTEGRATED sentinel (`██ MARKER-POSTED: FIELD-INTEGRATED ██`) detected.
+
+**Reconcile (FM-09) — KEY STATE CHANGES since session-18 (22:28Z):**
+
+| Surface | Session-18 state | Session-19 reality |
+|---------|-----------------|-------------------|
+| PR #1272 (OPT-N1) | OPEN, PARĪKṢAKA reviewing OPT-N1b; OPT-N1c builder dispatched | **MERGED** at 23:33Z (05:03 IST Aug 14) |
+| PR #1271 (OPT-N2) | OPEN | OPEN (state=UNKNOWN; FM-23 guard) |
+| Δ1 R40 | Dispatching OPT-N1+N2 builders (22:43Z) | ACTIVE — PID 33175, elapsed 2h 06min; latest heartbeat 04:53 IST (23:23Z): OPT-N1c stale-test fix dispatched |
+| A6″ (s27bp) | Not dispatched | **RUNNING** since 00:15:13Z (19 min elapsed); runningCount=1 |
+| 8vwjj | N/A | 10-second test run, 00:13Z (Δ1 pre-dispatch check, immediate succeed) |
+| FIELD-INTEGRATED | NOT POSTED | NOT POSTED |
+| Δ3 R1 | MERGED + MCP PROOF PASS (session-15 07:11Z) | RE-VERIFIED at 00:35Z — PASS (see below) |
+| Δ3 R2 | DEPLOYED; MCP PROOF PENDING | UNCHANGED — sidecar v3.2 live |
+| Δ3 R3 | DONE ✓ | UNCHANGED |
+| Δ3 R4 | READY-ON-SIGNAL | UNCHANGED — probe committed |
+
+**A6″ status (s27bp, 00:34Z):**
+- Started: 2026-08-14T00:15:13Z
+- Elapsed: ~19 min
+- Status: runningCount=1, no failures/cancellations
+- SM-R-6 expected total: 30-60 min → expected completion ~00:45-01:15Z UTC
+- Rate gate: >90 min → stop + diagnosis
+- Δ1 R40 is ACTIVELY monitoring (PID 33175 alive, 2h+ session)
+
+**Δ1 R40 progress detail:**
+- 22:43Z: R40 SESSION-OPEN; OPT-N1+N2 builders dispatched
+- 04:23 IST (22:53Z): OPT-N1 PR#1272 + OPT-N2 PR#1271 open; PARĪKṢAKA dispatched
+- 04:32 IST (23:02Z): PARĪKṢAKA HOLD — null_resolution 1/1025 vs 1/1024; OPT-N1b dispatched
+- 04:53 IST (23:23Z): PARĪKṢAKA APPROVE OPT-N1b; CI fail: 5 stale tests; OPT-N1c dispatched
+- 23:33Z: PR #1272 MERGED
+- 00:13Z: 8vwjj (10s test run — Δ1 pre-dispatch check)
+- 00:15Z: s27bp started (A6″)
+- [Δ1 R40 monitoring s27bp now]
+
+**SUPERVISOR LAUNCH TYPE (session-19):** 2h sanity pass — FIELD-INTEGRATED not posted (supervisor is marker-gated; no marker seen = this is the sanity interval, NOT a marker trigger).
+
+**INDEPENDENT WORK (session-19):**
+
+**R1 MCP PROOF RE-VERIFIED (00:35Z):**
+- Call: `gochara_forecast_get(chart_id=482012f1..., domain=marriage, 2026-08-14→2027-08-14)`
+- `coverage.event_classes_covered`: 27 classes including `marriage` ✓
+- `coverage.domains_not_covered`: [] ✓
+- `sweep_completeness.substeps_committed`: 270 under `ka_gochara_v3_century_materialize` ✓
+- No S4-05 refusal ✓
+- windows=0: honest empty for this range (marriage era windows at 2014-2024 / 2024-2034 require wider range; R1 fix confirmed by coverage data)
+- **R1 PROOF STATUS: PASS** (last verified session-15 07:11Z; now re-verified 00:35Z session-19)
+
+**Δ3 LANE STATUS (session-19):**
+| Lane | Status | Notes |
+|------|--------|-------|
+| R1 | MERGED + MCP PROOF PASS ✓ | 27 classes, 270 substeps, ka_gochara_v3_century_materialize; re-verified 00:35Z session-19 |
+| R2 | DEPLOYED; MCP PROOF PENDING | Sidecar v3.2 live; probe script ready; awaiting corpus refresh (FIELD-INTEGRATED) |
+| R3 | DONE ✓ | sampurti/vyakhya corrections committed (66e35c216) |
+| R4 | READY-ON-SIGNAL | probe_sampurti_d3_r2_r4.py committed; FIELD-INTEGRATED sentinel noted |
+
+**A6″ COMPLETION ESTIMATE:** s27bp started 00:15Z; SM-R-6 expects 30-60 min total. Expected FIELD-INTEGRATED post: ~00:45-01:30Z UTC (within next 11-56 min from 00:34Z close). Δ1 R40 is actively monitoring and will post the sentinel when complete.
+
+**Per LONG-RUN AUTONOMY RULES:** All Δ3 remaining scope (R2 MCP proof + R4 G-P4) gated on FIELD-INTEGRATED. A6″ is running with active Δ1 monitoring. No independent Δ3 work remains (all done: probe committed, R1 re-verified). Ending session cleanly; supervisor relaunches on FIELD-INTEGRATED marker.
+
+**WHAT ONE RELAUNCH FINISHES:** When `██ MARKER-POSTED: FIELD-INTEGRATED ██` posts:
+1. `python3 00_ARCHITECTURE/briefs/sampurti/probe_sampurti_d3_r2_r4.py --chart-id 482012f1-710e-4a25-994a-93821f5871aa --mcp-key $MARSYS_MCP_KEY`
+2. R2: verify marriage in roots (resolution='era'); NOT in legacy_flat
+3. R4: verify field_snapshot_id=kfs_* (not 'field_not_yet_built'); windows non-empty; authority_basis shown
+4. Append both to γ ledger (sampurti/vyakhya append-only)
+5. Post SESSION-DONE-Δ3 to coordination → RUN-TERMINAL: SESSION-Δ3-COMPLETE
+
+**NEXT-ACTION (session-20):**
+1. Check coordination for `██ MARKER-POSTED: FIELD-INTEGRATED ██` sentinel
+2. Verify s27bp completed (check Cloud Run execution status)
+3. On FIELD-INTEGRATED: run probe → paste output → γ ledger → SESSION-DONE-Δ3
+
+**WHAT SINGLE RELAUNCH FINISHES MY SCOPE:** The session that finds `██ MARKER-POSTED: FIELD-INTEGRATED ██` on coordination runs the probe script, appends to γ ledger, posts SESSION-DONE-Δ3 to coordination, and emits RUN-TERMINAL: SESSION-Δ3-COMPLETE.
+
+RUN-TERMINAL: SESSION-Δ3-PENDING-19 (2h sanity pass — A6″ s27bp RUNNING since 00:15Z, ~19 min elapsed; FIELD-INTEGRATED NOT POSTED; Δ1 R40 actively monitoring; supervisor relaunches on FIELD-INTEGRATED sentinel)
