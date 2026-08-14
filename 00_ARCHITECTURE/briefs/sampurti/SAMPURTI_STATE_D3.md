@@ -1442,4 +1442,51 @@ DB confirmed: 27 classes / 270 substeps under ka_gochara_v3_century_materialize 
 
 **WHAT SINGLE RELAUNCH FINISHES MY SCOPE:** FIELD-INTEGRATED posts → probe script → R2 + R4 proofs → γ ledger append → SESSION-DONE-Δ3 + RUN-TERMINAL: SESSION-Δ3-COMPLETE
 
+---
+
+## SESSION-22 (2026-08-14T06:50Z) — 2h SANITY PASS
+
+CONDUCTOR-HEARTBEAT: 2026-08-14T06:50Z pid=55220 host=Montys-MacBook-Pro.local session=Δ3-s22
+
+**STEP-0 COMPLETE:**
+- Liveness: CLEAN — stored PID 51898 = supervisor bash (run_dh_d3.sh), NOT a peer conductor. PEERS=NONE. Sole conductor confirmed.
+- Hygiene: execution `bxnww` RUNNING since 04:48:56Z (A6⁵, runningCount=1) — LIVE BUILD, touch nothing. FM-21/22 applied: Δ1 R40 heartbeat at 06:35Z confirms build alive ("foreign_settlement computing T+37min; ~2.5-5h to completion; watchdog false-kill diagnosed recoverable"). Δ1 actively monitoring with watchdog — no independent Δ3 intervention needed.
+- Coordination: no new commits since session-21 (e3b186359). FIELD-INTEGRATED NOT POSTED.
+- Reconcile: bxnww = A6⁵ (dispatched at 04:48:56Z by Δ1 R40, concurrent with session-21 cleanup). bgnfh (03:07Z, 10.65s completion) = intermediate execution before bxnww. OPT-N3 PR#1274 MERGED (per session-21 ledger). No new PRs or merges since session-21.
+
+**Δ1 R40 ADOPTED STATE (from origin/sampurti/integration heartbeats):**
+- 06:35Z heartbeat: "A6⁵ alive; watchdog false-kill diagnosed (recoverable); foreign_settlement computing T+37min; ~2.5-5h to completion"
+- Watchdog active and functional — false-kill recovered without conductor intervention
+- ETA to ka_kshetra=lit: ~09:00–11:30Z UTC (2.5–5h from 06:35Z)
+
+**R1 MCP PROOF (06:50Z — fifth verification):**
+- Call: `gochara_forecast_get(chart_id=482012f1..., domain=marriage, 2026-08-14→2027-08-14)`
+- `coverage.event_classes_covered`: 27 classes including `marriage` ✓
+- `coverage.domains_not_covered`: [] ✓
+- `sweep_completeness.substeps_committed`: 270 under `ka_gochara_v3_century_materialize` ✓
+- No S4-05 refusal ✓
+- windows=[] — honest empty (no overlapping marriage windows in range; coverage data confirms SEV-1 fix)
+- **R1 PROOF STATUS: PASS** (fifth verification — sessions 15/19/20/21/22)
+
+**Δ3 LANE STATUS (session-22):**
+| Lane | Status | Notes |
+|------|--------|-------|
+| R1 | MERGED + MCP PROOF PASS ✓ | Fifth verification 06:50Z |
+| R2 | DEPLOYED; MCP PROOF PENDING | Awaiting FIELD-INTEGRATED / corpus refresh |
+| R3 | DONE ✓ | committed 66e35c216 |
+| R4 | READY-ON-SIGNAL | probe script committed; awaiting FIELD-INTEGRATED |
+
+**FIELD-INTEGRATED:** NOT POSTED. A6⁵ (bxnww) RUNNING; Δ1 R40 monitoring with watchdog. ETA ~09:00–11:30Z UTC.
+
+**INDEPENDENT WORK:** NONE — all remaining scope (R2 proof + R4 G-P4) gated on FIELD-INTEGRATED.
+
+**WHAT SINGLE RELAUNCH FINISHES MY SCOPE:** FIELD-INTEGRATED sentinel posts → probe script → R2 MCP proof (gochara_forecast_get marriage in roots, resolution='era') + R4 G-P4 (kala_ahead_get field_snapshot_id=kfs_*) → γ ledger append → SESSION-DONE-Δ3 → RUN-TERMINAL: SESSION-Δ3-COMPLETE
+
+**NEXT-ACTION (session-23):**
+1. Check coordination for `██ MARKER-POSTED: FIELD-INTEGRATED ██`
+2. If FIELD-INTEGRATED posted: run probe → R2 + R4 → γ ledger → SESSION-DONE-Δ3
+3. If not posted: re-verify state, close cleanly
+
+RUN-TERMINAL: SESSION-Δ3-PENDING-22 (2h sanity pass — bxnww A6⁵ RUNNING since 04:48:56Z; FIELD-INTEGRATED NOT POSTED; Δ1 R40 actively monitoring; supervisor relaunches on FIELD-INTEGRATED sentinel)
+
 RUN-TERMINAL: SESSION-Δ3-PENDING-21 (2h sanity pass — hang recovery executed; 4k59k cancelled; advisory_locks=0; FIELD-INTEGRATED NOT POSTED; Δ1 needs to address OPT-N3 idle_in_txn=0 finding before A6⁵)
