@@ -157,6 +157,9 @@ SEGMENT_INDEX_DECADE_STRIDE = 1_000_000
 #: v5 — OPT-N1: stage5dhara replaces stage5:*:*/stage5finalize:* under ENGINE_VERSION='analytic'.
 #: v6 — P-B L-NULL: vectorized null (dhara_compute_null_vec) + DEFAULT_REPLICATES=1024 restored
 #:       (SM-R-8 mandate; OPT-N3 R=256 VOIDED). Invalidates all R=256 checkpoints from OPT-N3.
+#: v7 — F1+F2+F5 (SM-R-11): zero-evaluator-call null via C/E decomposition;
+#:       stage5dhara:{ec} split into stage5dhara:{ec}:1 (null) + stage5dhara:{ec}:2 (windows);
+#:       interior decade knots d·H/10 added to assemble_knot_set.
 _RESUME_VERSION = 6
 
 #: §6.2's row budget K. The design's own worked example ("the budget spends
@@ -301,8 +304,14 @@ class KaKshetraWriter(WriterBase):
         n_blocks = math.ceil(S5.DEFAULT_REPLICATES / S5.DEFAULT_BLOCK_SIZE)
         for ec in self._event_classes:
             if _ev5 == 'analytic':
-                steps.append(SubStep(key=f'stage5dhara:{ec}',
-                                     label=f'dhara null+windows {ec} ({DN.DEFAULT_REPLICATES} replicates)'))
+                # F2 (SM-R-11): two substeps so each commits within the 15-min
+                # reaper window. Chunk:1 writes kala_field_null; chunk:2 loads
+                # that committed null and writes kala_field_windows. Resume-safe:
+                # chunk:2 reads from DB, not in-memory state from chunk:1.
+                steps.append(SubStep(key=f'stage5dhara:{ec}:1',
+                                     label=f'dhara null {ec} — {DN.DEFAULT_REPLICATES} replicates → kala_field_null'))
+                steps.append(SubStep(key=f'stage5dhara:{ec}:2',
+                                     label=f'dhara windows {ec} — load null → kala_field_windows'))
             else:
                 for b in range(1, n_blocks + 1):
                     steps.append(SubStep(key=f'stage5:{ec}:{b}',
@@ -410,8 +419,11 @@ class KaKshetraWriter(WriterBase):
             _, ec, block = step.key.split(':')
             return self._run_stage5_block(conn, ec, int(block), step)
         if kind == 'stage5dhara':
-            _, ec = step.key.split(':', 1)
-            return self._run_stage5dhara(conn, ec, step)
+            # key format: stage5dhara:{ec}:{chunk}  (F2: chunk=1 or 2)
+            _, ec, chunk = step.key.split(':')
+            if chunk == '1':
+                return self._run_stage5dhara_null(conn, ec, step)
+            return self._run_stage5dhara_windows(conn, ec, step)
         if kind == 'stage5finalize':
             _, ec = step.key.split(':', 1)
             return self._run_stage5_finalize(conn, ec, step)
@@ -620,28 +632,16 @@ class KaKshetraWriter(WriterBase):
 
     # ── stage 5 (DHARA analytic path) ────────────────────────────────────────
 
-    def _run_stage5dhara(self, conn, event_class: str, step: SubStep) -> WriterResult:
-        """DHARA null: R=1024 replicates in a single substep (P-B L-NULL).
+    def _run_stage5dhara_null(self, conn, event_class: str, step: SubStep) -> WriterResult:
+        """F2/chunk:1 (SM-R-11) — DHARA null distribution → kala_field_null.
 
-        Replaces the N×stage5 blocks + stage5finalize sequence that the sampled
-        path uses (ENGINE_VERSION=='sampled'). Under ENGINE_VERSION=='analytic'
-        this is the only stage-5 substep for the given event_class.
+        Runs dhara_compute_null (F1: C/E decomposition, zero evaluator calls in
+        replicate loop, ~5–15 s for R=1024) and commits kala_field_null rows.
+        The orchestrator commits immediately after this substep returns, advancing
+        the reaper heartbeat before the 15-min window expires.
 
-        dhara_compute_null_vec (dhara_null_vec.py) runs all R replicates using
-        numpy vectorized operations (no Python loop over replicates), implementing
-        the F-01 shift-grid correction (range(1, R) instead of range(1, R+1))
-        and returning a contracts.NullResult compatible with the downstream
-        _write_windows_batch / _write_window interface.
-
-        SM-R-8 (2026-08-14): DEFAULT_REPLICATES restored to 1024 (OPT-N3 R=256
-        VOIDED). The vectorized implementation eliminates the per-replicate Python
-        loop overhead that made 1024 replicates infeasible with the serial engine.
-
-        FM-24: SET LOCAL idle_in_transaction_session_timeout = '900000ms' (15 min)
-        as defense-in-depth. NEVER set to 0 (FM-24 mandate — see DHARA_ENGINE_SPEC
-        §3.2). SET LOCAL scopes to the current transaction only.
-
-        Authority: OPT-N1 + P-B L-NULL spec (SM-Δ1), DHARA_ENGINE_SPEC_v1_0.md §3.
+        chunk:2 (_run_stage5dhara_windows) then reads this committed null from DB
+        to find and write kala_field_windows — fully resume-safe.
         """
         self._require_stage4_committed(conn, event_class)
         try:
@@ -681,9 +681,58 @@ class KaKshetraWriter(WriterBase):
                          self._weights_version, hazard.X_SCHEMA_VERSION, self._snapshot_id),
                     )
                     rows += 1
+            self._record_substep(conn, step.key, rows)
+        return WriterResult(asset_id=ASSET_ID, rows_inserted=rows,
+                            notes=f'{event_class}: null committed '
+                                  f'({DN.DEFAULT_REPLICATES} replicates, '
+                                  f'q={null_result.q_threshold!r})')
 
-        # Windows are derived from COMMITTED segments (parity with _run_stage5_finalize).
-        # Under dry_run, the evaluator's own segments stand in — nothing is written either.
+    def _run_stage5dhara_windows(self, conn, event_class: str, step: SubStep) -> WriterResult:
+        """F2/chunk:2 (SM-R-11) — load committed null, find windows → kala_field_windows.
+
+        Resume-safe: reads the NullResult from committed kala_field_null rows
+        rather than in-memory state from chunk:1. If chunk:1 is committed but
+        the build was interrupted before chunk:2, this chunk can be re-run
+        from a resumed build without re-computing the null distribution.
+        """
+        try:
+            cctx = self._class_context(conn, event_class)
+        except S4.ClassSkipped as skip:
+            self._record_skip(skip)
+            return WriterResult(asset_id=ASSET_ID, rows_inserted=0,
+                                notes=f'{event_class} skipped: {skip.reason}')
+
+        # ── load committed null from DB (resume-safe) ─────────────────────────
+        with conn.cursor() as cur:
+            cur.execute(
+                """SELECT replicates, horizon_days, q_threshold, shift_grid_step,
+                          bucket_days, null_max_stats
+                     FROM kala_field_null
+                    WHERE chart_id = %s AND event_class = %s AND field_snapshot_id = %s
+                    ORDER BY bucket_days""",
+                (self._chart_id, event_class, self._snapshot_id),
+            )
+            null_rows = S4._rows(cur)
+        if not null_rows:
+            raise S4.UpstreamStageIncomplete(
+                f'upstream_stage_incomplete: stage5dhara chunk:1 not committed for '
+                f'{event_class} — kala_field_null is empty for this snapshot'
+            )
+        first = null_rows[0]
+        rep_count = first['replicates']
+        null_result = DN.NullResult(
+            replicates=rep_count,
+            shift_count=rep_count - 1,
+            horizon_days=first['horizon_days'],
+            shift_grid_step=first['shift_grid_step'],
+            q_threshold=first['q_threshold'],
+            max_stats={int(r['bucket_days']): r['null_max_stats'] for r in null_rows},
+            alpha=DN.DEFAULT_ALPHA,
+        )
+
+        ev = cctx.evaluator
+        # Windows are derived from COMMITTED segments, matching _run_stage5_finalize parity.
+        # Under dry_run, the evaluator's own segments stand in — nothing is written.
         segments = (ev.build_segments() if self._dry_run
                     else self._load_segments(conn, event_class))
         if not segments:
@@ -700,16 +749,16 @@ class KaKshetraWriter(WriterBase):
         sigma_t = self._sigma_t_days(conn)
         legacy = S4.load_legacy_crosscheck(conn, self._chart_id, event_class)
 
-        rows += self._write_windows_batch(conn, ev, event_class, segments, windows, null_result,
-                                          adrishta, ayanamsha_ids, sigma_t, legacy,
-                                          cctx.temporal_shape,
-                                          baseline_is_synthetic=cctx.baseline_is_synthetic)
+        rows = self._write_windows_batch(conn, ev, event_class, segments, windows, null_result,
+                                         adrishta, ayanamsha_ids, sigma_t, legacy,
+                                         cctx.temporal_shape,
+                                         baseline_is_synthetic=cctx.baseline_is_synthetic)
 
         if not self._dry_run:
             self._record_substep(conn, step.key, rows)
         return WriterResult(asset_id=ASSET_ID, rows_inserted=rows,
                             notes=f'{event_class}: {len(windows)} window(s) '
-                                  f'(dhara-vec {null_result.replicates}-replicate), q={null_result.q_threshold!r}')
+                                  f'(dhara chunk:2), q={null_result.q_threshold!r}')
 
     def _write_window(self, conn, ev, event_class, segments, w, null_result,
                       adrishta, ayanamsha_ids, sigma_t, legacy,

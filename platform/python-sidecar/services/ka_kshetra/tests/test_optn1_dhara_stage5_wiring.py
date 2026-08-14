@@ -2,7 +2,7 @@
 tests/ka_kshetra/test_optn1_dhara_stage5_wiring.py — OPT-N1 wiring tests (TDD).
 
 Mandatory tests for SM-Δ1 OPT-N1: dhara_compute_null wired into stage-5
-analytic path and _RESUME_VERSION bumped 4→5.
+analytic path and _RESUME_VERSION bumped 5→6 (SM-R-11 F1+F2+F5).
 
 Tests are pure-Python; no database, no DB fixture, no real chart data.
 """
@@ -52,12 +52,17 @@ def _make_writer_instance() -> KaKshetraWriter:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Test 1: plan_substeps emits stage5dhara:{ec} under ENGINE_VERSION=='analytic'
+# Test 1: plan_substeps emits stage5dhara:{ec}:1 + stage5dhara:{ec}:2 (F2, SM-R-11)
 # ─────────────────────────────────────────────────────────────────────────────
 
 class TestPlanSubstepsAnalyticEmitsStage5Dhara:
-    """Under ENGINE_VERSION='analytic', plan_substeps must emit stage5dhara:*
-    keys and must NOT emit stage5:*:* or stage5finalize:* keys."""
+    """Under ENGINE_VERSION='analytic', plan_substeps must emit stage5dhara:*:1
+    (null chunk) and stage5dhara:*:2 (windows chunk) keys and must NOT emit
+    stage5:*:* or stage5finalize:* keys.
+
+    F2 (SM-R-11): previously one substep per class; now two substeps so each
+    commits within the 15-min reaper window.
+    """
 
     def _call_plan_substeps(self, engine_version: str, event_classes=None):
         """Call plan_substeps with a minimal mocked context and DB."""
@@ -91,10 +96,14 @@ class TestPlanSubstepsAnalyticEmitsStage5Dhara:
         return steps
 
     def test_analytic_emits_stage5dhara_keys(self):
+        """F2 (SM-R-11): plan emits chunk:1 AND chunk:2 for each event class."""
         steps = self._call_plan_substeps('analytic', event_classes=['CAREER'])
         keys = [s.key for s in steps]
-        assert any(k == 'stage5dhara:CAREER' for k in keys), (
-            f'Expected stage5dhara:CAREER in substep keys, got: {keys}'
+        assert 'stage5dhara:CAREER:1' in keys, (
+            f'Expected stage5dhara:CAREER:1 in substep keys, got: {keys}'
+        )
+        assert 'stage5dhara:CAREER:2' in keys, (
+            f'Expected stage5dhara:CAREER:2 in substep keys, got: {keys}'
         )
 
     def test_analytic_does_not_emit_stage5_block_keys(self):
@@ -113,18 +122,22 @@ class TestPlanSubstepsAnalyticEmitsStage5Dhara:
             f'stage5finalize:CAREER must not appear under analytic, got: {finalize_keys}'
         )
 
-    def test_analytic_emits_one_dhara_substep_per_event_class(self):
+    def test_analytic_emits_two_dhara_substeps_per_event_class(self):
+        """F2 (SM-R-11): two substeps (chunk:1 + chunk:2) per event class."""
         ecs = ['CAREER', 'HEALTH', 'WEALTH']
         steps = self._call_plan_substeps('analytic', event_classes=ecs)
         keys = [s.key for s in steps]
         for ec in ecs:
-            assert f'stage5dhara:{ec}' in keys, (
-                f'Expected stage5dhara:{ec} in keys: {keys}'
+            assert f'stage5dhara:{ec}:1' in keys, (
+                f'Expected stage5dhara:{ec}:1 in keys: {keys}'
+            )
+            assert f'stage5dhara:{ec}:2' in keys, (
+                f'Expected stage5dhara:{ec}:2 in keys: {keys}'
             )
 
     def test_analytic_dhara_substep_has_meaningful_label(self):
         steps = self._call_plan_substeps('analytic', event_classes=['CAREER'])
-        dhara_steps = [s for s in steps if s.key == 'stage5dhara:CAREER']
+        dhara_steps = [s for s in steps if s.key == 'stage5dhara:CAREER:1']
         assert len(dhara_steps) == 1
         label = dhara_steps[0].label
         assert 'dhara' in label.lower() or '1024' in label, (
@@ -199,15 +212,18 @@ class TestPlanSubstepsSampledEmitsStage5Blocks:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Test 3: _RESUME_VERSION == 5
+# Test 3: _RESUME_VERSION == 6
 # ─────────────────────────────────────────────────────────────────────────────
 
-class TestResumeVersionIs5:
-    """_RESUME_VERSION must be 5 (FM-17: substep keys changed, fingerprint must change)."""
+class TestResumeVersionIs6:
+    """_RESUME_VERSION must be 6 (F1+F2+F5 SM-R-11: substep keys changed to
+    stage5dhara:{ec}:1 + stage5dhara:{ec}:2; fingerprint must change to
+    invalidate any in-flight builds with old single-substep stage5dhara:{ec}
+    keys, triggering a fresh delete-and-replan.)"""
 
-    def test_resume_version_is_5(self):
-        assert W._RESUME_VERSION == 5, (
-            f'_RESUME_VERSION must be 5 (FM-17 requirement for OPT-N1), '
+    def test_resume_version_is_6(self):
+        assert W._RESUME_VERSION == 6, (
+            f'_RESUME_VERSION must be 6 (SM-R-11 F1+F2+F5 requirement), '
             f'got {W._RESUME_VERSION!r}'
         )
 
@@ -216,52 +232,77 @@ class TestResumeVersionIs5:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Test 4: run_substep routes stage5dhara:{ec} to _run_stage5dhara
+# Test 4: run_substep routes stage5dhara:{ec}:1/2 to the correct chunk method
 # ─────────────────────────────────────────────────────────────────────────────
 
 class TestRunStage5DharaRouting:
-    """run_substep must route stage5dhara:* to _run_stage5dhara."""
+    """run_substep must route stage5dhara:*:1 → _run_stage5dhara_null
+    and stage5dhara:*:2 → _run_stage5dhara_windows (F2, SM-R-11)."""
 
-    def test_run_substep_dispatches_stage5dhara(self):
-        """run_substep('stage5dhara:CAREER') calls _run_stage5dhara."""
+    def test_run_substep_dispatches_stage5dhara_chunk1(self):
+        """run_substep('stage5dhara:CAREER:1') calls _run_stage5dhara_null."""
         writer = _make_writer_instance()
-        # Minimal instance state needed by run_substep dispatch
         writer._plugin_stages = []
 
         ctx = MagicMock()
         ctx.db_conn = MagicMock()
 
         from pipeline.orchestrator.writers import SubStep
-        step = SubStep(key='stage5dhara:CAREER', label='dhara null+windows CAREER')
+        step = SubStep(key='stage5dhara:CAREER:1', label='dhara null CAREER')
 
         called_with = {}
 
-        def fake_run_stage5dhara(conn, ec, step_arg):
-            called_with['conn'] = conn
+        def fake_run_null(conn, ec, step_arg):
+            called_with['method'] = 'null'
             called_with['ec'] = ec
-            called_with['step'] = step_arg
             from pipeline.orchestrator.writers import WriterResult
-            return WriterResult(asset_id='ka_kshetra', rows_inserted=7)
+            return WriterResult(asset_id='ka_kshetra', rows_inserted=4)
 
-        with patch.object(writer, '_run_stage5dhara', side_effect=fake_run_stage5dhara):
+        with patch.object(writer, '_run_stage5dhara_null', side_effect=fake_run_null):
             result = writer.run_substep(ctx, step)
 
+        assert called_with.get('method') == 'null'
         assert called_with.get('ec') == 'CAREER', (
             f"Expected ec='CAREER', got {called_with.get('ec')!r}"
         )
-        assert called_with.get('step') is step
+        assert result.rows_inserted == 4
+
+    def test_run_substep_dispatches_stage5dhara_chunk2(self):
+        """run_substep('stage5dhara:CAREER:2') calls _run_stage5dhara_windows."""
+        writer = _make_writer_instance()
+        writer._plugin_stages = []
+
+        ctx = MagicMock()
+        ctx.db_conn = MagicMock()
+
+        from pipeline.orchestrator.writers import SubStep
+        step = SubStep(key='stage5dhara:CAREER:2', label='dhara windows CAREER')
+
+        called_with = {}
+
+        def fake_run_windows(conn, ec, step_arg):
+            called_with['method'] = 'windows'
+            called_with['ec'] = ec
+            from pipeline.orchestrator.writers import WriterResult
+            return WriterResult(asset_id='ka_kshetra', rows_inserted=7)
+
+        with patch.object(writer, '_run_stage5dhara_windows', side_effect=fake_run_windows):
+            result = writer.run_substep(ctx, step)
+
+        assert called_with.get('method') == 'windows'
+        assert called_with.get('ec') == 'CAREER'
         assert result.rows_inserted == 7
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Test 5: _run_stage5dhara calls dhara_compute_null with replicates=1024
+# Test 5: _run_stage5dhara_null calls dhara_compute_null with replicates=1024
 # ─────────────────────────────────────────────────────────────────────────────
 
 class TestRunStage5DharaCallsDharaComputeNull:
-    """_run_stage5dhara must call dhara_compute_null(ev, replicates=1024)."""
+    """_run_stage5dhara_null (F2 chunk:1) must call dhara_compute_null(ev, replicates=1024)."""
 
     def _make_minimal_writer(self):
-        """Return a writer with the minimum instance state for _run_stage5dhara."""
+        """Return a writer with the minimum instance state for _run_stage5dhara_null."""
         writer = _make_writer_instance()
         writer._chart_id = 'test-chart-uuid'
         writer._dry_run = True   # skip all DB writes; pure logic test
@@ -272,7 +313,7 @@ class TestRunStage5DharaCallsDharaComputeNull:
         return writer
 
     def test_dhara_compute_null_called_with_1024_replicates(self):
-        """_run_stage5dhara must call dhara_compute_null(ev, replicates=1024)."""
+        """_run_stage5dhara_null must call dhara_compute_null(ev, replicates=1024)."""
         writer = self._make_minimal_writer()
 
         # Build a minimal mock evaluator
@@ -306,7 +347,7 @@ class TestRunStage5DharaCallsDharaComputeNull:
         mock_window.duration_days = 100.0
 
         from pipeline.orchestrator.writers import SubStep
-        step = SubStep(key='stage5dhara:CAREER', label='dhara null+windows CAREER')
+        step = SubStep(key='stage5dhara:CAREER:1', label='dhara null CAREER')
 
         dhara_calls = []
 
@@ -317,17 +358,8 @@ class TestRunStage5DharaCallsDharaComputeNull:
         with patch.object(writer, '_require_stage4_committed'), \
              patch.object(writer, '_class_context', return_value=mock_cctx), \
              patch('services.ka_kshetra.writer.DN.dhara_compute_null',
-                   side_effect=fake_dhara_compute_null), \
-             patch('services.ka_kshetra.integrator.find_windows',
-                   return_value=[mock_window]), \
-             patch('services.ka_kshetra.stage5_null.adrishta_residual',
-                   return_value=0.0), \
-             patch.object(writer, '_kinematics_ayanamsha_ids', return_value=set()), \
-             patch.object(writer, '_sigma_t_days', return_value=None), \
-             patch('services.ka_kshetra.stage4_field.load_legacy_crosscheck',
-                   return_value=[]), \
-             patch.object(writer, '_write_windows_batch', return_value=3):
-            result = writer._run_stage5dhara(MagicMock(), 'CAREER', step)
+                   side_effect=fake_dhara_compute_null):
+            result = writer._run_stage5dhara_null(MagicMock(), 'CAREER', step)
 
         assert len(dhara_calls) == 1, (
             f'Expected dhara_compute_null called once, called {len(dhara_calls)} times'
@@ -338,10 +370,11 @@ class TestRunStage5DharaCallsDharaComputeNull:
         )
         assert dhara_calls[0]['ev'] is ev
 
-    def test_run_stage5dhara_returns_writer_result_with_rows(self):
-        """_run_stage5dhara returns WriterResult with rows_inserted > 0
+    def test_run_stage5dhara_windows_returns_writer_result_with_rows(self):
+        """_run_stage5dhara_windows (chunk:2) returns WriterResult with rows_inserted > 0
         when _write_windows_batch returns rows."""
         writer = self._make_minimal_writer()
+        writer._dry_run = False  # chunk:2 always reads null from DB; non-dry-run path
 
         ev = MagicMock()
         ev.horizon_days = 36525.0
@@ -349,10 +382,11 @@ class TestRunStage5DharaCallsDharaComputeNull:
         ev.promise = MagicMock()
         ev.promise.p = 0.5
         ev.promise.routes = []
-        ev.build_segments.return_value = [MagicMock(
+        fake_seg = MagicMock(
             t_start=0.0, t_end=36525.0, alpha=-5.0, gamma=0.0,
             refinement_depth=0, refinement_exhausted=False, refinement_residual=None,
-        )]
+        )
+        ev.build_segments.return_value = [fake_seg]
 
         mock_cctx = MagicMock()
         mock_cctx.evaluator = ev
@@ -369,12 +403,22 @@ class TestRunStage5DharaCallsDharaComputeNull:
         mock_window.duration_days = 100.0
 
         from pipeline.orchestrator.writers import SubStep
-        step = SubStep(key='stage5dhara:CAREER', label='dhara null+windows CAREER')
+        step = SubStep(key='stage5dhara:CAREER:2', label='dhara windows CAREER')
 
-        with patch.object(writer, '_require_stage4_committed'), \
-             patch.object(writer, '_class_context', return_value=mock_cctx), \
-             patch('services.ka_kshetra.writer.DN.dhara_compute_null',
-                   return_value=null_result), \
+        # Fake committed kala_field_null rows that chunk:2 reads from DB.
+        fake_null_rows = [
+            {'replicates': null_result.replicates, 'horizon_days': null_result.horizon_days,
+             'q_threshold': null_result.q_threshold,
+             'shift_grid_step': null_result.shift_grid_step,
+             'bucket_days': b, 'null_max_stats': stats}
+            for b, stats in null_result.max_stats.items()
+        ]
+
+        conn = MagicMock()
+
+        with patch.object(writer, '_class_context', return_value=mock_cctx), \
+             patch('services.ka_kshetra.writer.S4._rows', return_value=fake_null_rows), \
+             patch.object(writer, '_load_segments', return_value=[fake_seg]), \
              patch('services.ka_kshetra.integrator.find_windows',
                    return_value=[mock_window]), \
              patch('services.ka_kshetra.stage5_null.adrishta_residual',
@@ -383,15 +427,16 @@ class TestRunStage5DharaCallsDharaComputeNull:
              patch.object(writer, '_sigma_t_days', return_value=None), \
              patch('services.ka_kshetra.stage4_field.load_legacy_crosscheck',
                    return_value=[]), \
+             patch.object(writer, '_record_substep'), \
              patch.object(writer, '_write_windows_batch', return_value=5):
-            result = writer._run_stage5dhara(MagicMock(), 'CAREER', step)
+            result = writer._run_stage5dhara_windows(conn, 'CAREER', step)
 
         from pipeline.orchestrator.writers import WriterResult
         assert isinstance(result, WriterResult)
-        assert result.rows_inserted == 5   # dry_run=True: _write_windows_batch returns 5
+        assert result.rows_inserted == 5
 
-    def test_run_stage5dhara_dry_run_passes_without_db_writes(self):
-        """In dry_run=True mode, _run_stage5dhara must not write to DB."""
+    def test_run_stage5dhara_null_dry_run_no_db_writes(self):
+        """In dry_run=True mode, _run_stage5dhara_null (chunk:1) must not write to DB."""
         writer = self._make_minimal_writer()
         writer._dry_run = True
 
@@ -401,7 +446,10 @@ class TestRunStage5DharaCallsDharaComputeNull:
         ev.promise = MagicMock()
         ev.promise.p = 0.5
         ev.promise.routes = []
-        ev.build_segments.return_value = []   # no segments (dry_run path)
+        ev.build_segments.return_value = [MagicMock(
+            t_start=0.0, t_end=36525.0, alpha=-5.0, gamma=0.0,
+            refinement_depth=0, refinement_exhausted=False, refinement_residual=None,
+        )]
 
         mock_cctx = MagicMock()
         mock_cctx.evaluator = ev
@@ -410,30 +458,17 @@ class TestRunStage5DharaCallsDharaComputeNull:
         null_result = _make_null_result()
 
         from pipeline.orchestrator.writers import SubStep
-        step = SubStep(key='stage5dhara:CAREER', label='dhara null+windows CAREER')
+        step = SubStep(key='stage5dhara:CAREER:1', label='dhara null CAREER')
 
         conn = MagicMock()
-
-        # ev.build_segments() returns [] which triggers UpstreamStageIncomplete.
-        # Use non-empty segments to ensure we reach the result.
-        ev.build_segments.return_value = [MagicMock(
-            t_start=0.0, t_end=36525.0, alpha=-5.0, gamma=0.0,
-            refinement_depth=0, refinement_exhausted=False, refinement_residual=None,
-        )]
 
         with patch.object(writer, '_require_stage4_committed'), \
              patch.object(writer, '_class_context', return_value=mock_cctx), \
              patch('services.ka_kshetra.writer.DN.dhara_compute_null',
-                   return_value=null_result), \
-             patch('services.ka_kshetra.integrator.find_windows', return_value=[]), \
-             patch('services.ka_kshetra.stage5_null.adrishta_residual', return_value=0.0), \
-             patch.object(writer, '_kinematics_ayanamsha_ids', return_value=set()), \
-             patch.object(writer, '_sigma_t_days', return_value=None), \
-             patch('services.ka_kshetra.stage4_field.load_legacy_crosscheck', return_value=[]), \
-             patch.object(writer, '_write_windows_batch', return_value=0):
-            result = writer._run_stage5dhara(conn, 'CAREER', step)
+                   return_value=null_result):
+            result = writer._run_stage5dhara_null(conn, 'CAREER', step)
 
-        # Must not have called conn.cursor() for DB writes
+        # dry_run=True: the DB write block is skipped, conn.cursor must not be called.
         conn.cursor.assert_not_called()
 
         from pipeline.orchestrator.writers import WriterResult

@@ -53,7 +53,8 @@ def assemble_knot_set(evaluator: "FieldEvaluator") -> np.ndarray:
     """Build K = sort(K_c UNION K_e), clipped to [0, horizon_days].
 
     K_c: all t_start and t_end from every LadderPeriod across all systems,
-         plus 0.0 and horizon_days.
+         plus 0.0, horizon_days, and the nine interior decade boundaries
+         d·H/10 for d=1..9 (F5, SM-R-11 — decade-seam fix).
     K_e: evaluator.envelopes.breakpoints() — the envelope primitive knot times.
     K  : sorted, deduped union, float64.
 
@@ -80,6 +81,13 @@ def assemble_knot_set(evaluator: "FieldEvaluator") -> np.ndarray:
     for t in evaluator.envelopes.breakpoints():
         if math.isfinite(t):
             K_e.add(t)
+
+    # F5 (SM-R-11): interior decade boundaries d·H/10 for d=1..9.
+    # Without these, two adjacent dasa knots that straddle a decade boundary
+    # can leave a 10-year seam invisible to the sweep, producing a gap in the
+    # contiguity invariant and incorrect ln-lambda evaluation at the seam.
+    for d in range(1, 10):
+        K_c.add(d * H / 10)
 
     # Union, clip to [0, H], sort, deduplicate via np.unique.
     merged = [t for t in (K_c | K_e) if 0.0 <= t <= H]
