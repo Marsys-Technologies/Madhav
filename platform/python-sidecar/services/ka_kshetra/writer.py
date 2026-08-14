@@ -203,6 +203,11 @@ class _ClassContext:
     #: Full-horizon DHARA segments, built once per event class when
     #: ENGINE_VERSION == 'analytic'.  None when 'sampled'.
     dhara_segments: "list | None" = None
+    #: P3-a (DHARA_ENGINE_SPEC_v1_0.md §4.1): True when the baseline λ⁰_e for
+    #: this class was constructed from SHAPE_ONLY_SYNTHETIC_LIFETIME_COUNT
+    #: rather than a calibrated bg_class_priors row.  Every row the writer
+    #: produces for this class must carry this tag (P3-e).
+    baseline_is_synthetic: bool = False
 
 
 @register(ASSET_ID)
@@ -589,7 +594,8 @@ class KaKshetraWriter(WriterBase):
 
         windows = integrator.find_windows(segments, result.q_threshold or math.inf)
         totals = [w.expected_count for w in windows]
-        adrishta = S5.adrishta_residual(totals, hazard.baseline_rate(ev.lifetime_count),
+        # P3-a: baseline_rate() now returns (rate, is_synthetic). Unpack the rate.
+        adrishta = S5.adrishta_residual(totals, hazard.baseline_rate(ev.lifetime_count)[0],
                                         HORIZON_DAYS)
         ayanamsha_ids = self._kinematics_ayanamsha_ids(conn)
         sigma_t = self._sigma_t_days(conn)
@@ -597,7 +603,8 @@ class KaKshetraWriter(WriterBase):
 
         rows += self._write_windows_batch(conn, ev, event_class, segments, windows, result,
                                           adrishta, ayanamsha_ids, sigma_t, legacy,
-                                          cctx.temporal_shape)
+                                          cctx.temporal_shape,
+                                          baseline_is_synthetic=cctx.baseline_is_synthetic)
 
         if not self._dry_run:
             self._record_substep(conn, step.key, rows)
@@ -686,7 +693,8 @@ class KaKshetraWriter(WriterBase):
 
         rows += self._write_windows_batch(conn, ev, event_class, segments, windows, null_result,
                                           adrishta, ayanamsha_ids, sigma_t, legacy,
-                                          cctx.temporal_shape)
+                                          cctx.temporal_shape,
+                                          baseline_is_synthetic=cctx.baseline_is_synthetic)
 
         if not self._dry_run:
             self._record_substep(conn, step.key, rows)
@@ -696,7 +704,8 @@ class KaKshetraWriter(WriterBase):
 
     def _write_window(self, conn, ev, event_class, segments, w, null_result,
                       adrishta, ayanamsha_ids, sigma_t, legacy,
-                      temporal_shape: str) -> int:
+                      temporal_shape: str,
+                      baseline_is_synthetic: bool = False) -> int:
         wid = integrator.window_id(str(self._chart_id), event_class, w.t_start, w.t_end,
                                    self._weights_version, hazard.X_SCHEMA_VERSION)
         terms = ev.terms_at(w.t_peak)
@@ -744,9 +753,10 @@ class KaKshetraWriter(WriterBase):
                        expected_count, duration_days, promise_state, temporal_shape,
                        precision_regime, null_p, null_R, null_resolution, null_exceeding,
                        robustness, confidence_tier, weakest_link, adrishta_residual,
-                       weights_version, x_schema_version, field_snapshot_id)
+                       weights_version, x_schema_version, field_snapshot_id,
+                       baseline_is_synthetic)
                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,
-                           %s::jsonb,%s,%s,%s,%s,%s,%s)
+                           %s::jsonb,%s,%s,%s,%s,%s,%s,%s)
                    ON CONFLICT (chart_id, window_id) DO UPDATE SET
                        lambda_peak = EXCLUDED.lambda_peak,
                        expected_count = EXCLUDED.expected_count,
@@ -755,6 +765,7 @@ class KaKshetraWriter(WriterBase):
                        confidence_tier = EXCLUDED.confidence_tier,
                        weakest_link = EXCLUDED.weakest_link,
                        adrishta_residual = EXCLUDED.adrishta_residual,
+                       baseline_is_synthetic = EXCLUDED.baseline_is_synthetic,
                        computed_at = now()""",
                 (self._chart_id, wid, event_class, w.t_start, w.t_end,
                  self._as_date(w.t_start), self._as_date(w.t_end), self._as_date(w.t_peak),
@@ -766,7 +777,8 @@ class KaKshetraWriter(WriterBase):
                  robustness.null_exceeding,
                  json.dumps(robustness.as_json()),
                  robustness.confidence_tier(), robustness.weakest_link(), adrishta,
-                 self._weights_version, hazard.X_SCHEMA_VERSION, self._snapshot_id),
+                 self._weights_version, hazard.X_SCHEMA_VERSION, self._snapshot_id,
+                 baseline_is_synthetic),
             )
             for e in edges:
                 cur.execute(
@@ -790,7 +802,8 @@ class KaKshetraWriter(WriterBase):
 
     def _write_windows_batch(self, conn, ev, event_class, segments, windows, null_result,
                               adrishta, ayanamsha_ids, sigma_t, legacy,
-                              temporal_shape: str) -> int:
+                              temporal_shape: str,
+                              baseline_is_synthetic: bool = False) -> int:
         """L1o: batch-insert all windows + provenance in two executemany calls.
 
         Per-window _write_window does one cur.execute per edge (~37 edges/window
@@ -876,6 +889,7 @@ class KaKshetraWriter(WriterBase):
                 json.dumps(robustness.as_json()),
                 robustness.confidence_tier(), robustness.weakest_link(), adrishta,
                 self._weights_version, hazard.X_SCHEMA_VERSION, self._snapshot_id,
+                baseline_is_synthetic,
             ))
             for e in edges:
                 prov_params.append((
@@ -894,9 +908,10 @@ class KaKshetraWriter(WriterBase):
                        expected_count, duration_days, promise_state, temporal_shape,
                        precision_regime, null_p, null_R, null_resolution, null_exceeding,
                        robustness, confidence_tier, weakest_link, adrishta_residual,
-                       weights_version, x_schema_version, field_snapshot_id)
+                       weights_version, x_schema_version, field_snapshot_id,
+                       baseline_is_synthetic)
                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,
-                           %s::jsonb,%s,%s,%s,%s,%s,%s)
+                           %s::jsonb,%s,%s,%s,%s,%s,%s,%s)
                    ON CONFLICT (chart_id, window_id) DO UPDATE SET
                        lambda_peak = EXCLUDED.lambda_peak,
                        expected_count = EXCLUDED.expected_count,
@@ -905,6 +920,7 @@ class KaKshetraWriter(WriterBase):
                        confidence_tier = EXCLUDED.confidence_tier,
                        weakest_link = EXCLUDED.weakest_link,
                        adrishta_residual = EXCLUDED.adrishta_residual,
+                       baseline_is_synthetic = EXCLUDED.baseline_is_synthetic,
                        computed_at = now()""",
                 window_params,
             )
@@ -1793,7 +1809,14 @@ class KaKshetraWriter(WriterBase):
                 conn, self._chart_id
             )
         lifetime, source = S4.load_class_lifetime_count(conn, event_class)
-        lifetime = S4.require_baseline(lifetime, event_class)
+
+        # P3-e (DHARA_ENGINE_SPEC_v1_0.md §4.4): tier-aware path selection.
+        # Look up whether this class is classified shape_only in the tier-basis
+        # table.  The C-1 guard is COMPLETELY UNCHANGED on the calibrated path
+        # (shape_only_from_tier=False).
+        shape_only_from_tier = self._is_shape_only_class(conn, event_class, lifetime)
+        lifetime = S4.require_baseline(lifetime, event_class,
+                                       shape_only=shape_only_from_tier)
         shape = S4.require_event_shape(S4.load_event_shape(conn, event_class), event_class)
         evaluator = S4.FieldEvaluator(
             event_class=event_class,
@@ -1806,6 +1829,7 @@ class KaKshetraWriter(WriterBase):
             horizon_days=HORIZON_DAYS,
             baseline_source=source,
             extra_breakpoints=self._shared_extra_breakpoints,
+            shape_only=shape_only_from_tier,
         )
         from services.ka_kshetra.engine_config import ENGINE_VERSION as _EV
         dhara_segs = None
@@ -1819,9 +1843,46 @@ class KaKshetraWriter(WriterBase):
                                                 horizon_days=HORIZON_DAYS),
             temporal_shape=shape,
             dhara_segments=dhara_segs,
+            baseline_is_synthetic=shape_only_from_tier,
         )
         self._class_cache[event_class] = ctx
         return ctx
+
+    def _is_shape_only_class(
+        self, conn, event_class: str, lifetime: Optional[float]
+    ) -> bool:
+        """P3-e: Return True iff this event class is in the shape_only tier.
+
+        The tier-basis table (`ka_kshetra_tier_basis`, P3-d deliverable) maps
+        each of the 27 event classes to one of: 'calibrated', 'shape_only', or
+        'not_applicable'.  Until that table exists (it is a conductor/PRATINIDHI
+        deliverable gated before P3-e production writes), this method returns
+        False so the calibrated C-1 guard path is unchanged for all classes.
+
+        INVARIANT: Returns True ONLY when `lifetime is None` (no calibrated
+        bg_class_priors row exists).  A class WITH a calibrated prior is NEVER
+        silently reclassified as shape_only — that would be the exact B.10
+        fabrication this gate is designed to prevent.
+        """
+        if lifetime is not None:
+            # Calibrated prior exists — always use the calibrated path.
+            return False
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """SELECT tier FROM ka_kshetra_tier_basis
+                        WHERE event_class = %s""",
+                    (event_class,),
+                )
+                rows = S4._rows(cur)
+        except Exception:
+            # Table does not exist yet (P3-d not yet deployed) or query error.
+            # Fall back to the calibrated path (which will raise ClassSkipped
+            # for classes with no bg_class_priors row — the existing behaviour).
+            return False
+        if not rows:
+            return False
+        return str(rows[0].get('tier', '')) == 'shape_only'
 
     def _record_skip(self, skip: S4.ClassSkipped) -> None:
         entry = {'event_class': skip.event_class, 'reason': skip.reason,
