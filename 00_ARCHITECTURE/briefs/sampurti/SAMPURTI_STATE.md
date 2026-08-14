@@ -3819,3 +3819,16 @@ Source references verified by opus agent:
 PR #1271 (OPT-N2/FM-23 guard): still OPEN, merge during P-B per plan.
 
 CONDUCTOR-HEARTBEAT: 2026-08-14T15:03+05:30 [R41 T+21min — P0.a PR #1276 OPEN (doc-only, CI pending); P0.c SM-R-7 DONE (B: per-class filtered); P0.b a3515f3f IN FLIGHT (NullResult→contracts.py + fallback delete); awaiting P0.b PR to dispatch PARĪKṢAKA; pid=9106]
+
+### P-0 COMPLETE STATUS UPDATE (R41, 2026-08-14T15:15+05:30)
+
+**All four P-0 sub-tasks dispatched and resolved:**
+
+- **P0.a DONE** — PR #1276 open (doc-only: DHARA_DESIGN_v1_0.md added to main AS-IS; CI: TS/Unit/DB/TAP all green; Governance Gates in progress)
+- **P0.b DONE** — PR #1275 open (NullResult→contracts.py + 1/R resolution + both getattr fallbacks deleted; CI: all checks green; PARĪKṢAKA opus dispatched, verdict pending)
+- **P0.c DONE** — SM-R-7 ruling posted: **B (per-class filtered via Route.suppressed_by)**; rationale: classical tradition per-domain; data structure already encodes this; live behavior is a bug; Layer 0 curves unchanged, Layer 1 projection adds set-intersection
+- **P0.d DONE** — brahma_class_priors correction applied to CAMPAIGN_COORDINATION.md (coord-update-d3s21, commit 7d8246ca9); forward-facing plan docs already correct; historical log entries preserved as-is (archival policy)
+
+**Next gate:** PARĪKṢAKA PASS on #1275 → merge both PRs → confirm CI green on main → proceed to P-A DESIGN
+
+CONDUCTOR-HEARTBEAT: 2026-08-14T15:15+05:30 [R41 T+33min — P-0 ALL DISPATCHED DONE; PARĪKṢAKA a30b5fd6 in flight on #1275; #1276 CI nearly green; awaiting PARĪKṢAKA verdict before merge; pid=9106]
