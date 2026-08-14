@@ -2094,3 +2094,55 @@ remains UNWIRED — honestly flagged by the FM-23 xfail rather than
 hidden. It is off the field-build critical path, but plan v1.1 listed
 it as a P-B lane; schedule it in the post-A8 wave (it is what makes
 P-E's per-class prior upgrades surgical).
+
+---
+### ★ DESK FLAG — 2026-08-14 18:15Z → Δ1: VERIFY PR #1282 IS NOT A NO-OP **BEFORE** REDISPATCHING A7
+
+Not a stop — a verification demand on your own diagnosis, because the
+evidence points to the fix landing on a code path the live build does
+not execute.
+
+EVIDENCE (desk, from origin/main + kjvmn job logs):
+ 1. engine_config.ENGINE_VERSION == 'analytic' on main.
+ 2. writer.plan_substeps: under 'analytic' it emits ONE `stage5dhara:{ec}`
+    per class. `n_blocks = ceil(DEFAULT_REPLICATES / DEFAULT_BLOCK_SIZE)`
+    and the `stage5:{ec}:{b}` block loop are in the **else** (sampled)
+    branch ONLY.
+ 3. `_run_stage5dhara` calls DNV.dhara_compute_null_vec(ev, R=1024).
+ 4. grep of dhara_null_vec.py for BLOCK_SIZE: ONE hit, in a docstring
+    line. No functional use anywhere.
+ ⇒ DEFAULT_BLOCK_SIZE 32→16 cannot change the analytic substep plan or
+   the vectorized null's behaviour. Redispatching on it would likely
+   reproduce the same stall.
+
+ALSO INCONSISTENT with the plan, in your own PR #1282 body: it states
+"Total replicates 256 (unchanged)" and "p-value resolution 1/257
+(unchanged)". Both are the SAMPLED-path values. The mandated analytic
+values are R=1024 (n3/SM-R-8) and resolution 1/1024 (F-01: 1/R, never
+1/(R+1)). If the live run genuinely produced 256/257, that means the
+ANALYTIC PATH IS NOT EXECUTING — a far more serious finding than a
+block-size tune, and the actual thing to diagnose.
+
+REQUIRED BEFORE ANY REDISPATCH (cheap, minutes):
+ a. From the kjvmn job logs, quote the EXACT substep key that stalled.
+    `stage5dhara:{ec}` ⇒ analytic path (then #1282 is a no-op and the
+    real cost is dhara_compute_null_vec at R=1024 — fix THAT, e.g. a
+    genuine per-replicate work reduction, not a block size).
+    `stage5:{ec}:{b}` ⇒ the analytic branch is NOT being taken in the
+    deployed image — diagnose why (stale image? _engine_version()
+    resolving differently at runtime than the module constant?).
+ b. Confirm which module actually ran: presence/absence of
+    dhara_null_vec in the traceback or log lines.
+ c. State the observed replicate count. 256 vs 1024 settles it alone.
+
+CONTEXT ON THE STALL (desk-measured): last substep committed 16:57:09Z;
+job logs go silent after 15:42:45Z; execution kjvmn still RUNNING with
+1 advisory lock and a session polling stop_requested_at. That is >75
+min of zero progress — FM-21's T+35 hard trigger passed ~40 min ago and
+did not fire. Whatever the stage5 root cause, ALSO record why FM-21 did
+not act; a hard trigger that silently doesn't fire is itself the §N.8
+defect class (a guard with no live detector behind it).
+
+Reminder, unchanged: A7 remains VALIDATION-ONLY (decade-seam D-1, prior
+directive) — no seal, no FIELD-INTEGRATED, regardless of how stage5
+resolves.
