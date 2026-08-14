@@ -239,7 +239,8 @@ class NullResult:
     Fields
     ------
     replicates : int
-        The R value passed to dhara_compute_null (256 by default after OPT-N3).
+        The R value passed to dhara_compute_null (1024 by default (SM-R-8 restored;
+        OPT-N3 R=256 is VOIDED)).
     max_stats : dict
         Per-bucket sliding-window maxima keyed by duration bucket in days.
     q_threshold : float

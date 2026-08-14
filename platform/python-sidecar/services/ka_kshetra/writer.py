@@ -130,6 +130,9 @@ def _dn_module():
 # Expose dhara_null as module-level name DN so _run_stage5dhara can be patched
 # in tests via 'services.ka_kshetra.writer.DN.dhara_compute_null'.
 import services.ka_kshetra.dhara_null as DN  # noqa: E402
+# Expose dhara_null_vec as module-level name DNV so _run_stage5dhara can be
+# patched in tests via 'services.ka_kshetra.writer.DNV.dhara_compute_null_vec'.
+import services.ka_kshetra.dhara_null_vec as DNV  # noqa: E402
 
 ASSET_ID = 'ka_kshetra'
 
@@ -152,7 +155,9 @@ SEGMENT_INDEX_DECADE_STRIDE = 1_000_000
 #: (the `ka_sangam` / `ka_gochara_sweep` convention).
 #: v2 — stages 6 / 6.5 / 8 joined the plan and the content hash.
 #: v5 — OPT-N1: stage5dhara replaces stage5:*:*/stage5finalize:* under ENGINE_VERSION='analytic'.
-_RESUME_VERSION = 5
+#: v6 — P-B L-NULL: vectorized null (dhara_compute_null_vec) + DEFAULT_REPLICATES=1024 restored
+#:       (SM-R-8 mandate; OPT-N3 R=256 VOIDED). Invalidates all R=256 checkpoints from OPT-N3.
+_RESUME_VERSION = 6
 
 #: §6.2's row budget K. The design's own worked example ("the budget spends
 #: itself across 15 *different* things") is the source of the number; it is a
@@ -608,23 +613,27 @@ class KaKshetraWriter(WriterBase):
     # ── stage 5 (DHARA analytic path) ────────────────────────────────────────
 
     def _run_stage5dhara(self, conn, event_class: str, step: SubStep) -> WriterResult:
-        """DHARA null: R=256 replicates in a single substep.
+        """DHARA null: R=1024 replicates in a single substep (P-B L-NULL).
 
         Replaces the N×stage5 blocks + stage5finalize sequence that the sampled
         path uses (ENGINE_VERSION=='sampled'). Under ENGINE_VERSION=='analytic'
         this is the only stage-5 substep for the given event_class.
 
-        dhara_compute_null (dhara_null.py) runs all R replicates in-process,
-        implementing the F-01 shift-grid correction (range(1, R) instead of
-        range(1, R+1)) and returning a NullResult compatible with the downstream
+        dhara_compute_null_vec (dhara_null_vec.py) runs all R replicates using
+        numpy vectorized operations (no Python loop over replicates), implementing
+        the F-01 shift-grid correction (range(1, R) instead of range(1, R+1))
+        and returning a contracts.NullResult compatible with the downstream
         _write_windows_batch / _write_window interface.
 
-        OPT-N3 (2026-08-14): R reduced 1024→256. The implementation is sequential
-        Python (not vectorized) — 1024 replicates took ~34min/class, exceeding
-        idle_in_transaction_session_timeout=30min. 256 replicates ≈ 8min/class.
-        SET LOCAL disables the GUC for this substep as defense-in-depth.
+        SM-R-8 (2026-08-14): DEFAULT_REPLICATES restored to 1024 (OPT-N3 R=256
+        VOIDED). The vectorized implementation eliminates the per-replicate Python
+        loop overhead that made 1024 replicates infeasible with the serial engine.
 
-        Authority: OPT-N1/OPT-N3 spec (SM-Δ1), DHARA_DESIGN_v1_0.md §6.
+        FM-24: SET LOCAL idle_in_transaction_session_timeout = '900000ms' (15 min)
+        as defense-in-depth. NEVER set to 0 (FM-24 mandate — see DHARA_ENGINE_SPEC
+        §3.2). SET LOCAL scopes to the current transaction only.
+
+        Authority: OPT-N1 + P-B L-NULL spec (SM-Δ1), DHARA_ENGINE_SPEC_v1_0.md §3.
         """
         self._require_stage4_committed(conn, event_class)
         try:
@@ -636,16 +645,14 @@ class KaKshetraWriter(WriterBase):
 
         ev = cctx.evaluator
 
-        # OPT-N3: disable idle_in_transaction_session_timeout for this substep.
-        # dhara_compute_null loops 1023 Python iterations (not vectorized), each
-        # calling _null_build_segments → terms_at() 60K+ times. At 256 replicates
-        # computation takes ~8min per class (safe within the 30min GUC), but this
-        # SET LOCAL prevents any future regression from hitting the GUC wall.
+        # FM-24: extend idle_in_transaction_session_timeout to 900000ms (15 min)
+        # for this substep so the vectorized null can complete without hitting the
+        # default GUC wall. NEVER set to 0 (FM-24 mandate).
         # SET LOCAL scopes to the current transaction only; reverts at substep commit.
         with conn.cursor() as _cur_set:
-            _cur_set.execute("SET LOCAL idle_in_transaction_session_timeout = 0")
+            _cur_set.execute("SET LOCAL idle_in_transaction_session_timeout = '900000ms'")
 
-        null_result = DN.dhara_compute_null(ev, replicates=DN.DEFAULT_REPLICATES)
+        null_result = DNV.dhara_compute_null_vec(ev, R=DNV.DEFAULT_REPLICATES)
 
         rows = 0
         if not self._dry_run:
@@ -692,7 +699,7 @@ class KaKshetraWriter(WriterBase):
             self._record_substep(conn, step.key, rows)
         return WriterResult(asset_id=ASSET_ID, rows_inserted=rows,
                             notes=f'{event_class}: {len(windows)} window(s) '
-                                  f'(dhara {null_result.replicates}-replicate), q={null_result.q_threshold!r}')
+                                  f'(dhara-vec {null_result.replicates}-replicate), q={null_result.q_threshold!r}')
 
     def _write_window(self, conn, ev, event_class, segments, w, null_result,
                       adrishta, ayanamsha_ids, sigma_t, legacy,

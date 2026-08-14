@@ -68,15 +68,15 @@ from services.ka_kshetra.stage5_null import (
 
 # ── public constants ──────────────────────────────────────────────────────────
 
-#: R=256; the F-01-corrected shift grid uses range(1, R), giving R-1=255
-#: independent shifts. p-value resolution = 1/R = 1/256.
-#: OPT-N3 (2026-08-14): reduced from 1024 to 256 because dhara_compute_null
-#: is sequential-Python over replicates (not vectorized), making 1024 replicates
-#: take ~34min per class and exceeding idle_in_transaction_session_timeout=30min.
-#: 256 replicates takes ~8min per class (6 classes × 8min = ~50min total),
-#: fits within the 90-min rate-gate and the 30-min idle-in-txn GUC.
-#: Resolution 1/256 is sufficient for the DVIPRAMANA M4/M5 comparison (R13).
-DEFAULT_REPLICATES: int = 256
+#: SM-R-8 MANDATE (restored): R=1024. OPT-N3 R=256 is VOIDED.
+#: The serial dhara_compute_null is retained for backward-compatibility and as
+#: the reference implementation for equivalence testing. Under
+#: ENGINE_VERSION='analytic', writer.py routes to dhara_compute_null_vec
+#: (dhara_null_vec.py) which eliminates the per-replicate Python loop and runs
+#: within idle_in_transaction_session_timeout=900000ms (FM-24).
+#: The F-01-corrected shift grid uses range(1, R), giving R-1=1023
+#: independent shifts. p-value resolution = 1/R = 1/1024.
+DEFAULT_REPLICATES: int = 1024
 
 #: Same exceedance threshold as stage5_null.py.
 DEFAULT_ALPHA: float = 0.05
