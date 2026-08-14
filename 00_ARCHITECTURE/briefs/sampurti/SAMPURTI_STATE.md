@@ -3939,3 +3939,5 @@ Spec: DHARA_ENGINE_SPEC_v1_0.md v1.1 (commit 729f0cc7e on sampurti/integration).
 CONDUCTOR-HEARTBEAT: 2026-08-14T16:18+05:30 [R41 T+96min — P-B all 3 builders dispatched; monitoring; next heartbeat ≤10min; pid=resumed]
 
 CONDUCTOR-HEARTBEAT: 2026-08-14T16:28+05:30 [R41 T+106min — P-B builders running; L-ENGINE TDD in progress; L-NULL flagged FM-24 violation (OPT-N3 set idle_in_txn=0 in writer.py:646 — will fix as part of L-NULL PR); L-TIER reading serving consumers for P3-b census; main CI green post-P0.b; pid=resumed]
+
+CONDUCTOR-HEARTBEAT: 2026-08-14T16:38+05:30 [R41 T+116min — L-ENGINE: TDD pass (24 tests skip) → writing layer0.py (long Write call); L-NULL: dhara_null.py fixed (DEFAULT_REPLICATES restored), writer.py changes in progress; L-TIER: reading MCP serving layer for P3-b census (now.ts/register_p1_aliases.ts); all 3 builders healthy; pid=resumed]
