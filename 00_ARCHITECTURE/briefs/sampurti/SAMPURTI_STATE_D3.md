@@ -2660,3 +2660,89 @@ Call: `gochara_forecast_get(chart=482012f1, domain=marriage, date_range=2026-08-
 **BUILD SITUATION SUMMARY (for Δ1/desk):** 3 consecutive A8 attempts (kjvmn/cl4dm/lj98k) all hang/fail at stage5 DHARA compute phase (~T+3-42min into the 68 remaining substeps). L-SEAM fix not on main. FIELD-INTEGRATED gate remains closed. Desk actively debugging (lj98k cancelled deliberately at T+12min).
 
 RUN-TERMINAL: SESSION-Δ3-PENDING-35 (lj98k CANCELLED BY USER T+12min stage5 DHARA 3rd consecutive; R1 PASS×16; FIELD-INTEGRATED not posted; L-SEAM not on main; all Δ3 lanes complete; Δ1 dark 9h+; clean close)
+
+---
+
+## SESSION-36 — 2026-08-14T19:42Z (~01:12 IST Aug 15)
+
+CONDUCTOR-HEARTBEAT: 2026-08-14T19:42Z pid=7869 host=Montys-MacBook-Pro.local session=Δ3-36
+
+### STEP-0 (session-36)
+
+**Liveness:** CLEAN — stored PID 2563 = supervisor bash (`/bin/bash /Users/Dev/shad_overnight/run_dh_d3.sh`, elapsed 01:04 at session open, NOT a peer conductor). `pgrep -f "CONDUCTOR of SAMPŪRTI-Δ3"` = PEERS=NONE (self-exclusion applied). Sole conductor confirmed. PID 7869 written to dh-d3-logs/current_conductor.pid.
+
+**Hygiene:** CLEAN — no RUNNING Cloud Run executions. Recent executions all Completed: lj98k (Completed-cancelled 19:33Z per SM-R-11 desk action), kk2m2 (succeeded 10.98s), cl4dm (failed/1), xt79g (failed/1), kjvmn (failed/1). No DB scope for Δ3; no proxy started.
+
+**Supervisor launch type:** 2h sanity pass — FIELD-INTEGRATED not posted; no genuine marker trigger (note: false-positive gate from desk directive heading resolved in sessions 32-33; coordinator-side fix pending).
+
+**Coordination (fetched 19:42Z):** HEAD = e99b1bfec (session-35 advisory, 19:33Z Aug 14). No new entries from Δ1 or desk since session-35. FIELD-INTEGRATED: NOT POSTED.
+
+### FM-09 RECONCILE (session-36)
+
+| Surface | Session-35 state | Session-36 reality |
+|---------|-----------------|-------------------|
+| main HEAD | 15ace43df (PR #1282) | **UNCHANGED** — no new merges |
+| Δ1 integration | 5f674a89c (salvage/stop entry 19:2xZ Aug 14) | **UNCHANGED** — Δ1 DOWN per SM-R-11; no new commits |
+| F1-F5 PRs | None | **NONE** — open PRs: #1189, #1180, #899, #898, #446 (none are Fix Wave F) |
+| Cloud Run | lj98k cancelled 19:33Z | **UNCHANGED** — all executions Completed; no A8 dispatched |
+| L-SEAM | NOT on main, no PR | **UNCHANGED** |
+| FIELD-INTEGRATED | NOT POSTED | **NOT POSTED** |
+| R1 MCP proof | PASS×16 (19:33Z session-35) | **PASS×17** (19:42Z session-36 — see below) |
+| R2/R3/R4/R5 | All complete, gated | **UNCHANGED** |
+
+### R1 MCP PROOF — 17th Pass (19:42Z Aug 14): PASS ✓
+
+Call: `gochara_forecast_get(chart=482012f1, domain=marriage, date_range=2026-08-15→2027-08-15)`
+- `coverage.event_classes_covered`: 27 classes (all 27 incl. marriage) ✓
+- `coverage.domains_not_covered`: [] ✓
+- `coverage.coverage_quality.tier`: "rich", covered_class_count=27, covered_domain_count=13 ✓
+- `sweep_completeness.substeps_committed`: 270 under `ka_gochara_v3_century_materialize` ✓
+- `backing_data_reachable`: true ✓
+- No S4-05 refusal ✓
+- `windows`: [] — honest empty (17th consecutive consistent result)
+
+**R1 PROOF STATUS: PASS** (17th consecutive — sessions 15/19/20/21/22/23/25/27/28/29/30/31/32/33/34/35/36). R1 fix stable in production.
+
+### Δ3 LANE STATUS (session-36)
+
+| Lane | Status | Notes |
+|------|--------|-------|
+| R1 | MERGED + MCP PROOF PASS ✓ | 17th pass 19:42Z session-36; 27 classes, 270 substeps, no S4-05 |
+| R2 | DEPLOYED; MCP PROOF PENDING | Sidecar 0f9395a17 live; gated on F1-F5 + L-SEAM + A8 + FIELD-INTEGRATED |
+| R3 | DONE ✓ | commit 66e35c216 |
+| R4 | READY-ON-SIGNAL | probe script committed; gated on FIELD-INTEGRATED |
+| R5 | MERGED + DEPLOYED ✓ | PR #1280 merged 14:04Z Aug 14; deployed 0f9395a17 |
+
+### SESSION-36 CLOSE
+
+**Work this session:**
+- STEP-0 complete (liveness/hygiene/coordination/reconcile) ✓
+- No F1-F5 PRs found; Δ1 DOWN confirmed ✓
+- R1 MCP proof 17th pass: PASS ✓
+- Coordination advisory posted (ce8fd9aab, campaign-coordination) ✓
+
+**FIELD-INTEGRATED STATUS:** NOT POSTED. No Fix Wave F progress since SM-R-11 (19:33Z Aug 14). Path:
+1. Δ1 restart (native approval required per SM-R-11)
+2. F1 null engine per spec (true C/E decomposition, zero evaluator calls in replicate loop, production-scale FM-25 perf gate)
+3. F2 reaper-compatible substeps (stage5dhara:{ec}:{chunk} with chunk-level heartbeating)
+4. F3 mandatory canary (1-class production dispatch gate before full 27-class)
+5. F4 mechanized guards (bash watchdog, main.py --run-id required, raw gcloud FORBIDDEN, circuit breaker)
+6. F5 decade-seam fix (L-SEAM lane, _RESUME_VERSION 6→7)
+7. A8 = first dispatch after all F1-F5 land and deploy-green
+
+**WHAT ONE RELAUNCH FINISHES:** When `██ MARKER-POSTED: FIELD-INTEGRATED ██` is genuinely posted by Δ1 (after F1-F5 + L-SEAM + A8):
+1. R2 MCP proof: `gochara_forecast_get(domain=marriage, date_range=2020-2030)` → verify marriage in roots (resolution='era'), NOT in legacy_flat
+2. R4 probe: `kala_ahead_get(chart_id=482012f1...)` → verify field_snapshot_id=kfs_* (not 'field_not_yet_built')
+3. Append both proofs to γ ledger (sampurti/vyakhya append-only)
+4. Post SESSION-DONE-Δ3 to coordination → RUN-TERMINAL: SESSION-Δ3-COMPLETE
+
+**NEXT-ACTION (session-37):**
+1. Check coordination for `██ MARKER-POSTED: FIELD-INTEGRATED ██` (genuine, not false-positive)
+2. Check main for any F1-F5 PRs merged
+3. Check Δ1 integration branch for activity (restart signal?)
+4. R1 18th pass
+5. On FIELD-INTEGRATED: R2+R4 proofs → γ ledger → SESSION-DONE-Δ3
+
+**WHAT SINGLE RELAUNCH FINISHES MY SCOPE:** Genuine FIELD-INTEGRATED (after F1-F5 + A8) → R2 proof (marriage in roots, resolution='era') + R4 proof (field_snapshot_id=kfs_*) → γ ledger append → SESSION-DONE-Δ3 → RUN-TERMINAL: SESSION-Δ3-COMPLETE
+
+RUN-TERMINAL: SESSION-Δ3-PENDING-36 (2h sanity pass — no F1-F5 PRs; Δ1 DOWN per SM-R-11; main unchanged; FIELD-INTEGRATED not posted; R1 PASS×17; all Δ3 lanes complete; clean close)
