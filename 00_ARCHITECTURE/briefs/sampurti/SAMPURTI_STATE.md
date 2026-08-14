@@ -4136,3 +4136,21 @@ CONDUCTOR-HEARTBEAT: 2026-08-14T16:38+05:30 [R41 — PRATINIDHI P3-d RATIFICATIO
 **CI re-trigger:** fresh CI run dispatched on commit 289d0fddb. Monitoring for Unit Tests PASS.
 
 CONDUCTOR-HEARTBEAT: 2026-08-14T16:25+05:30 [R41 T+context-resume — MIG-1 root cause diagnosed (E2 NEW-COLLISION: migration 567 already claimed in platform/migrations/); fix: rename 567→571 (next allocatable = max across both dirs + 1); commit 289d0fddb pushed; CI re-triggered; all 3 P-B PRs tracked (#1277+#1278 in merge queue; #1279 awaiting CI green); pid=resumed]
+
+---
+
+## P-B STATUS UPDATE — ALL 3 LANES IN MERGE QUEUE (2026-08-14T16:38+05:30)
+
+**P-B build complete. All three lanes PARĪKṢAKA-cleared and in merge queue.**
+
+| PR | Lane | Status |
+|---|---|---|
+| #1277 | L-ENGINE | **MERGED** (pre-computation + projection, SM-R-7 suppression) |
+| #1278 | L-NULL | **MERGED** (vectorized dhara_compute_null, _RESUME_VERSION 5→6, DEFAULT_REPLICATES=1024) |
+| #1279 | L-TIER | **IN QUEUE** — Unit Tests PASS (commit 289d0fddb, migration renumbered 567→571); all CI green |
+
+**PR #1271 (FM-23 guard):** branch updated from main (now includes L-NULL fixes); fresh CI running (all pending). Was blocked by pre-existing py-sidecar failures that L-NULL fixed.
+
+**Next:** wait for PRs #1279 and #1271 to merge; then verify migration 571 applied in production; then assess remaining P-B obligations per PURNA_KSHETRA_PLAN_v1_1.md.
+
+CONDUCTOR-HEARTBEAT: 2026-08-14T16:38+05:30 [R41 — ALL 3 P-B LANES DONE: #1277+#1278 MERGED; #1279 IN QUEUE (Unit Tests PASS, MIG-1 renumber 567→571 fixed); PR#1271 updated from main (stale Governance Gates from pre-L-NULL era; fresh CI running); next: monitor #1279/#1271 merge; pid=resumed]
