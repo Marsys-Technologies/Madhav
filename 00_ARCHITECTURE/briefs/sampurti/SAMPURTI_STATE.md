@@ -3857,3 +3857,25 @@ All 11 checks passed:
 CONDUCTOR-HEARTBEAT: 2026-08-14T15:27+05:30 [R41 T+45min — PARĪKṢAKA PASS #1275; both PRs in/pending merge queue; await merge queue to land; then P-A DESIGN; pid=9106]
 
 CONDUCTOR-HEARTBEAT: 2026-08-14T15:27+05:30 → 2026-08-14T15:57+05:30 [R41 T+75min — context compaction resumed; PR #1276 MERGED (89bb6d74b); PR #1275 in merge queue Ganga gate in_progress T+4min; P-A ENGINE spec blind-committed to sampurti/integration (2737026b3, 277 lines); awaiting #1275 merge → P-0 COMPLETE; pid=resumed]
+
+---
+
+## P-0 CONSOLIDATION: COMPLETE (2026-08-14T15:30+05:30 IST)
+
+All four P-0 sub-tasks confirmed done and on main:
+
+| Task | Status | Commit/PR |
+|---|---|---|
+| P0.a DHARA_DESIGN_v1_0.md → main | DONE | PR #1276 → `89bb6d74b` |
+| P0.b NullResult→contracts.py + 1/R + delete fallback | DONE | PR #1275 → `d674d71e5` |
+| P0.c SM-R-7 ruling (B: per-class filtered) | DONE | recorded above |
+| P0.d brahma_class_priors naming correction | DONE | commit `7d8246ca9` coord-update-d3s21 |
+
+**main now at:** `d674d71e5` (post P0.b)
+
+**P-A STATE:**
+- DHARA_ENGINE_SPEC_v1_0.md blind-committed: `sampurti/integration` commit `2737026b3`
+- PARĪKṢAKA (opus, FM-26) dispatched for ENGINE spec adversarial review (agent a069c792553601e45, in_progress)
+- Awaiting PARĪKṢAKA PASS before P-B builders dispatch
+
+CONDUCTOR-HEARTBEAT: 2026-08-14T16:00+05:30 [R41 T+78min — P-0 COMPLETE (all 4 sub-tasks on main); P-A spec blind-committed; PARĪKṢAKA in flight; waiting for verdict; pid=resumed]
