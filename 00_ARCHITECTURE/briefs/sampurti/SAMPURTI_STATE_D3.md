@@ -1957,3 +1957,82 @@ LAW ZERO pattern: classes without bg_class_priors lifetime row are skipped (expe
 4. FM-21: if build still running, check T+35 from last progress for hang
 
 ---
+
+## SESSION-28 — 2026-08-14T17:42Z (23:12 IST — 2h sanity pass)
+
+CONDUCTOR-HEARTBEAT: 2026-08-14T17:42Z pid=88603 host=Montys-MacBook-Pro.local session=Δ3-28
+
+### STEP-0 (session-28)
+
+**Liveness:** CLEAN — stored PID 87186 = run_dh_d3.sh supervisor bash (alive 57s at session open, NOT a peer conductor). `pgrep -f "CONDUCTOR of SAMPŪRTI-Δ3"` = NONE (excluding stored PID). Sole conductor confirmed. PID updated to 88603 (current Claude process).
+
+**Hygiene:** A7 build kjvmn RUNNING (runningCount=1, started 15:24Z) — LIVE BUILD, touch nothing. Per amended hygiene rule: a RUNNING cloud execution's lock is a LIVE BUILD. No DB scope for Δ3.
+
+**Coordination (fetched):** Last entry = session-27 CLOSE (commit 1317a1a80, 16:01Z). FIELD-INTEGRATED: NOT POSTED. No new Δ1 entries since P-C dispatch (15:01Z).
+
+**FM-09 Reconcile:**
+
+| Surface | Session-27 state | Session-28 reality |
+|---------|-----------------|-------------------|
+| A7 kjvmn | RUNNING, T+36 normal | RUNNING, **FM-21 HANG** — 250/318 substeps, last at 16:57Z (50min ago) |
+| FIELD-INTEGRATED | NOT POSTED | NOT POSTED — gated on A7 completion |
+| Δ1 conductor | Active (R42, dispatched A7) | No active Claude conductor (supervisors 6612+29192 alive, waiting) |
+| R1 MCP proof | PASS×8 (15:46Z) | PASS×9 (17:47Z — see below) |
+| R2/R3/R4/R5 | All complete, gated on FIELD-INTEGRATED | UNCHANGED |
+
+### FM-21 HANG ANALYSIS (A7 kjvmn)
+
+**Evidence (17:42-17:47Z):**
+- Build substep progress: 250/318 substeps, MAX(completed_at) = 2026-08-14 16:57:09Z
+- Idle since last substep: 00:50:07 (50 minutes) — **T+35min threshold EXCEEDED by 15min**
+- pg_stat_activity: PID 1880901, `idle in transaction`, wait_event=`ClientRead`, idle 2-4s per check (rapidly cycling)
+- Query pattern: `SELECT pause_requested_at, stop_requested_at FROM build_runs WHERE id = $1` — orchestrator is alive doing checkpoint loops but NOT advancing substeps
+- Advisory locks: 1 held (build alive, chart lock held)
+- Cloud Run: runningCount=1 confirmed
+- Last log entry: 2026-08-14T15:42:45Z (career_change LAW ZERO skip — 2h ago)
+
+**Hang classification:** Python-layer compute hang. The orchestrator connection is NOT idle-in-transaction for 15+ continuous minutes (SET LOCAL 900000ms from W3 would fire then). Instead, the orchestrator is in an active loop checking pause/stop every 2-4 seconds but DHARA stage5 computation is stuck at the Python level between substep commits. The W3 15-min server-side timeout cannot fire because the DB connection is repeatedly cycling (brief queries, not sustained idleness).
+
+**Δ3 AUTHORITY:** Δ3 has NO DB build scope (NO DB builds, NO chart locks). FM-21 recovery (stop_requested_at → pg_terminate → cancel execution) is Δ1's territory. Δ3 posts evidence to coordination and awaits Δ1 conductor relaunch.
+
+**FM-21 EVIDENCE POSTED TO COORDINATION:** See coordination entry below.
+
+### R1 MCP PROOF — 9th Pass (17:47Z): PASS ✓
+
+Call: `gochara_forecast_get(chart=482012f1, domain=marriage, 2026-08-14→2027-08-14)`
+- `coverage.event_classes_covered`: 27 classes (incl. marriage) ✓
+- `coverage.domains_not_covered`: [] ✓
+- `coverage.coverage_quality.tier`: "rich" ✓
+- `sweep_completeness.substeps_committed`: 270 under `ka_gochara_v3_century_materialize` ✓
+- `backing_data_reachable`: true ✓
+- No S4-05 refusal ✓
+- `windows`: 0 — honest empty (no marriage windows in this date range; same consistent result as all 8 prior passes)
+
+### SESSION-28 LANE STATUS
+
+| Lane | Status | Notes |
+|------|--------|-------|
+| R1 | MERGED + MCP PROOF PASS ✓ | 9th pass 17:47Z; 27 classes, 270 substeps, no S4-05 |
+| R2 | DEPLOYED; MCP PROOF PENDING | Sidecar 0f9395a17 live; gated on FIELD-INTEGRATED |
+| R3 | DONE ✓ | commit 66e35c216 |
+| R4 | READY-ON-SIGNAL | probe script committed; waiting FIELD-INTEGRATED |
+| R5 | MERGED + DEPLOYED ✓ | PR #1280 merged 14:04Z, deployed 0f9395a17 |
+
+### SESSION-28 CLOSE
+
+**Independent work:** R1 9th pass complete. FM-21 evidence documented and posted to coordination. No other independent Δ3 work available — all remaining scope (R2+R4) gated on FIELD-INTEGRATED.
+
+**WHAT ONE RELAUNCH FINISHES:** When FIELD-INTEGRATED posts (`██ MARKER-POSTED: FIELD-INTEGRATED ██`):
+1. Run `python3 00_ARCHITECTURE/briefs/sampurti/probe_sampurti_d3_r2_r4.py --chart-id 482012f1-710e-4a25-994a-93821f5871aa --mcp-key $MARSYS_MCP_KEY`
+2. R2: verify marriage in roots (resolution='era'); NOT in legacy_flat → paste as MCP proof
+3. R4: verify field_snapshot_id=kfs_* (not 'field_not_yet_built') → paste as MCP proof
+4. Append both proofs to γ ledger (sampurti/vyakhya append-only)
+5. Post SESSION-DONE-Δ3 to coordination → RUN-TERMINAL: SESSION-Δ3-COMPLETE
+
+**NEXT-ACTION (session-29):**
+1. FM-09: check if A7 kjvmn completed or if Δ1 executed FM-21 recovery + redispatch
+2. Check coordination for `██ MARKER-POSTED: FIELD-INTEGRATED ██`
+3. On FIELD-INTEGRATED: run probe → R2 + R4 → γ ledger → SESSION-DONE-Δ3
+4. FM-21: if A7 still stuck, re-confirm evidence and await Δ1 recovery action
+
+---
