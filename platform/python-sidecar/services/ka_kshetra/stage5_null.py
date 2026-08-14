@@ -71,7 +71,7 @@ DEFAULT_REPLICATES: int = 256
 
 #: §5.5's substep grain. Reduce to 16 if a substep nears the writer timeout —
 #: never raise the timeout.
-DEFAULT_BLOCK_SIZE: int = 32
+DEFAULT_BLOCK_SIZE: int = 16
 
 #: §5.5's exceedance threshold. Declared once so the flag and the number cannot
 #: drift apart.
