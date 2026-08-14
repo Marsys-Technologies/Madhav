@@ -2746,3 +2746,99 @@ Call: `gochara_forecast_get(chart=482012f1, domain=marriage, date_range=2026-08-
 **WHAT SINGLE RELAUNCH FINISHES MY SCOPE:** Genuine FIELD-INTEGRATED (after F1-F5 + A8) → R2 proof (marriage in roots, resolution='era') + R4 proof (field_snapshot_id=kfs_*) → γ ledger append → SESSION-DONE-Δ3 → RUN-TERMINAL: SESSION-Δ3-COMPLETE
 
 RUN-TERMINAL: SESSION-Δ3-PENDING-36 (2h sanity pass — no F1-F5 PRs; Δ1 DOWN per SM-R-11; main unchanged; FIELD-INTEGRATED not posted; R1 PASS×17; all Δ3 lanes complete; clean close)
+
+---
+
+## SESSION-37 — 2026-08-14T19:55Z (~01:25 IST Aug 15)
+
+CONDUCTOR-HEARTBEAT: 2026-08-14T19:55Z pid=13834 host=Montys-MacBook-Pro.local session=Δ3-37
+
+### STEP-0 (session-37)
+
+**Liveness:** CLEAN — stored PID 12711 (supervisor bash `/bin/bash run_dh_d3.sh`, elapsed ~01:05 — NOT a peer conductor). `pgrep -f "CONDUCTOR of SAMPŪRTI-Δ3"` = PEERS=NONE (self-exclusion: my claude process PID=12713 excluded). Sole conductor confirmed. MY_PID=13834 written to dh-d3-logs/current_conductor.pid.
+
+**Hygiene:** CLEAN — no RUNNING Cloud Run executions. All recent executions Completed (lj98k cancelled, kk2m2 succeeded 10.98s, cl4dm/xt79g/kjvmn failed). No DB scope for Δ3; no proxy started. α/β Cloud SQL proxies on 5433/5434 are live sibling infrastructure.
+
+**Supervisor launch type:** 2h sanity pass — FIELD-INTEGRATED NOT posted; coordination has no new entries since `1c32c2dc2` (ci no-op touch, pre-session-36); same as session-36.
+
+**Coordination (fetched 19:55Z):** No new entries on `origin/sampurti/coordination` since session-36. FIELD-INTEGRATED: NOT POSTED. YANTRA-CORPUS-READY, SESSION-DONE-β: still the terminal markers from prior.
+
+### FM-09 RECONCILE (session-37)
+
+| Surface | Session-36 state | Session-37 reality |
+|---------|-----------------|-------------------|
+| main HEAD | 15ace43df (PR #1282) | **UNCHANGED** — no new merges |
+| Δ1 integration | 5f674a89c (salvage/stop 19:2xZ Aug 14) | **UNCHANGED** — Δ1 still DOWN per SM-R-11 |
+| F1-F5 PRs | None open | **NONE** — open PRs: #1189, #1180, #899, #898, #446 (unchanged) |
+| Cloud Run | lj98k Completed-cancelled (19:33Z) | **UNCHANGED** — no new A8 dispatched |
+| FIELD-INTEGRATED | NOT POSTED | **NOT POSTED** |
+| R1-R5 | All merged/deployed | **UNCHANGED** |
+
+
+### R1 MCP PROOF — 18th Pass (19:55Z Aug 14): PASS ✓
+
+Call: `gochara_forecast_get(chart=482012f1, domain=marriage, date_range=2026-08-15→2027-08-15)`
+- `coverage.event_classes_covered`: 27 classes (all 27 incl. marriage) ✓
+- `coverage.domains_not_covered`: [] ✓
+- `coverage.coverage_quality.tier`: "rich", covered_class_count=27, covered_domain_count=13 ✓
+- `sweep_completeness.substeps_committed`: 270 under `ka_gochara_v3_century_materialize` ✓
+- `backing_data_reachable`: true ✓
+- No S4-05 refusal ✓
+- `windows`: [] — honest empty (18th consecutive consistent result)
+
+**R1 PROOF STATUS: PASS** (18th consecutive — sessions 15/19/20/21/22/23/25/27/28/29/30/31/32/33/34/35/36/37). R1 fix stable in production.
+
+### R5 CI GUARD VERIFICATION (session-37)
+
+**Ganga Quality Gate** (includes `KNOWN_EVENT_CLASSES` drift-guard test):
+- On main HEAD `15ace43dfe03` (PR #1282): `completed/success` ✓
+- CI run id: 31826885908-related (multiple gates all success) ✓
+
+**R5 evidence (§7.1c per surface):**
+- PARĪKṢAKA PASS (a37e94cc) — at merge ✓
+- Ganga Quality Gate: PASSING on current main ✓
+- `gochara_forecast_get` event_classes_covered=27 (R1 18th pass above) ✓
+
+**NOTE (non-blocking, filed for information):** "Gochara Serving Outage Smoke Probe (MR-35)" shows `failure` on main — root cause: `MARSYS_MCP_URL` GitHub Actions secret not configured; probe correctly fails loudly per §N.8 (earned signal — cannot report green when misconfigured). This is UTKARṢA campaign scope / repo secret provisioning gap, NOT a Δ3 regression. Pre-existing since probe creation.
+
+### Δ3 LANE STATUS (session-37)
+
+| Lane | Status | Notes |
+|------|--------|-------|
+| R1 | MERGED + MCP PROOF PASS ✓ | 18th pass 19:55Z session-37; 27 classes, 270 substeps, no S4-05 |
+| R2 | DEPLOYED; MCP PROOF PENDING | Sidecar 0f9395a17 live; gated on F1-F5 + L-SEAM + A8 + FIELD-INTEGRATED |
+| R3 | DONE ✓ | commit 66e35c216 |
+| R4 | READY-ON-SIGNAL | probe script committed; gated on FIELD-INTEGRATED |
+| R5 | MERGED + DEPLOYED ✓ | PR #1280; Ganga Quality Gate PASSING on main ✓ |
+
+### SESSION-37 CLOSE
+
+**Work this session:**
+- STEP-0 complete (liveness/hygiene/coordination/reconcile) ✓
+- FM-09 reconcile: main/Δ1/PRs/Cloud Run/FIELD-INTEGRATED all UNCHANGED since session-36 ✓
+- R1 MCP proof 18th pass: PASS ✓
+- R5 CI guard verified PASSING on main (15ace43dfe03, Ganga Quality Gate) ✓
+- Gochara probe failure (MR-35) investigated: pre-existing MARSYS_MCP_URL secret gap, not Δ3 scope ✓
+
+**FIELD-INTEGRATED STATUS:** NOT POSTED. Path remains:
+1. Δ1 restart (requires native approval per SM-R-11)
+2. F1-F5 wave (null engine / reaper substeps / canary / guards / L-SEAM fix)
+3. A8 dispatch after F1-F5 deployed-green
+4. A8 completion → ka_kshetra=lit → S4 parity gate → FIELD-INTEGRATED
+
+**WHAT ONE RELAUNCH FINISHES:** When `██ MARKER-POSTED: FIELD-INTEGRATED ██` posts:
+1. R2 MCP proof: `gochara_forecast_get(domain=marriage, date_range=2020-2030)` → verify marriage in roots (resolution='era'), NOT in legacy_flat
+2. R4 probe: `kala_ahead_get(chart_id=482012f1...)` → verify field_snapshot_id=kfs_* (not 'field_not_yet_built')
+3. Append both proofs to γ ledger (sampurti/vyakhya append-only)
+4. Post SESSION-DONE-Δ3 to coordination → RUN-TERMINAL: SESSION-Δ3-COMPLETE
+
+**NEXT-ACTION (session-38):**
+1. Check coordination for `██ MARKER-POSTED: FIELD-INTEGRATED ██` (genuine)
+2. Check main for F1-F5 PRs merged (Δ1 restart signal)
+3. Check Δ1 integration branch for new commits
+4. R1 19th pass
+5. On FIELD-INTEGRATED (genuine): R2+R4 proofs → γ ledger → SESSION-DONE-Δ3
+
+**WHAT SINGLE RELAUNCH FINISHES MY SCOPE:** Genuine FIELD-INTEGRATED (after F1-F5 + A8) → R2 proof (marriage in roots, resolution='era') + R4 proof (field_snapshot_id=kfs_*) → γ ledger append → SESSION-DONE-Δ3 → RUN-TERMINAL: SESSION-Δ3-COMPLETE
+
+RUN-TERMINAL: SESSION-Δ3-PENDING-37 (2h sanity pass — Δ1 DOWN per SM-R-11; no F1-F5 PRs; main unchanged at 15ace43df; FIELD-INTEGRATED not posted; R1 PASS×18; R5 CI guard PASSING; MR-35 probe failure pre-existing/non-Δ3; all Δ3 lanes complete; clean close)
