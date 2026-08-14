@@ -2842,3 +2842,88 @@ Call: `gochara_forecast_get(chart=482012f1, domain=marriage, date_range=2026-08-
 **WHAT SINGLE RELAUNCH FINISHES MY SCOPE:** Genuine FIELD-INTEGRATED (after F1-F5 + A8) → R2 proof (marriage in roots, resolution='era') + R4 proof (field_snapshot_id=kfs_*) → γ ledger append → SESSION-DONE-Δ3 → RUN-TERMINAL: SESSION-Δ3-COMPLETE
 
 RUN-TERMINAL: SESSION-Δ3-PENDING-37 (2h sanity pass — Δ1 DOWN per SM-R-11; no F1-F5 PRs; main unchanged at 15ace43df; FIELD-INTEGRATED not posted; R1 PASS×18; R5 CI guard PASSING; MR-35 probe failure pre-existing/non-Δ3; all Δ3 lanes complete; clean close)
+
+RUN-TERMINAL: SESSION-Δ3-PENDING-37 (2h sanity pass — no F1-F5 PRs; Δ1 DOWN per SM-R-11; main unchanged; FIELD-INTEGRATED not posted; R1 PASS×18; all Δ3 lanes complete; coordination posted (cbd42effb) — session-37 close + session-38 open; clean close)
+
+---
+
+## SESSION-38 — 2026-08-14T20:00Z (~01:30 IST Aug 15)
+
+CONDUCTOR-HEARTBEAT: 2026-08-14T20:00Z pid=25898 host=Montys-MacBook-Pro.local session=Δ3-38
+
+### STEP-0 (session-38)
+
+**Liveness:** CLEAN — stored PID 25896 (supervisor bash `/bin/bash /Users/Dev/shad_overnight/run_dh_d3.sh`, alive 01:15 elapsed, NOT a peer conductor). `pgrep -f "CONDUCTOR of SAMPŪRTI-Δ3"` = 25898 (my own claude process, self-excluded) + subshell PIDs. PEERS=NONE after self-exclusion. Sole conductor confirmed. MY_PID=25898 written to dh-d3-logs/current_conductor.pid.
+
+**Supervisor launch type:** FALSE-POSITIVE relaunch #7+ — supervisor's `marker_present()` pattern (2) matches coordination line 2029: `### DESK DIRECTIVE — ... DO NOT POST FIELD-INTEGRATED` (heading containing "FIELD-INTEGRATED" without "blocked/pending/not yet/gated/etc."). This has been causing back-to-back launches ~every 10 minutes since ~00:35Z Aug 15 (supervisor log: attempts 15–20 all show "gate OPEN: FIELD-INTEGRATED detected"). The genuine FIELD-INTEGRATED sentinel remains `██ MARKER-POSTED: FIELD-INTEGRATED ██` at line start — NOT present. Known issue (first noted session-33); coordination-side fix pending with Δ1 restart.
+
+**Hygiene:** CLEAN — no RUNNING Cloud Run executions. All recent executions Completed: lj98k (cancelled 19:33Z Aug 14), kk2m2 (succeeded 10.98s), cl4dm/xt79g/kjvmn (all failed/1). No DB scope for Δ3; no proxy started.
+
+**Coordination (fetched):** Posted session-37 close (missed in session-37) + session-38 open to campaign-coordination (commit cbd42effb). FIELD-INTEGRATED: NOT POSTED.
+
+### FM-09 RECONCILE (session-38)
+
+| Surface | Session-37 state | Session-38 reality |
+|---------|-----------------|-------------------|
+| main HEAD | 15ace43df (PR #1282) | **UNCHANGED** |
+| Δ1 integration | 5f674a89c (salvage/stop 19:2xZ Aug 14) | **UNCHANGED** — Δ1 still DOWN per SM-R-11 |
+| F1-F5 PRs | None open | **NONE** — open PRs: #1189, #1180, #899, #898, #446 (unchanged) |
+| Cloud Run | lj98k Completed-cancelled 19:33Z | **UNCHANGED** — no new A8 dispatched |
+| FIELD-INTEGRATED | NOT POSTED | **NOT POSTED** |
+| R1-R5 | All merged/deployed | **UNCHANGED** |
+
+### R1 MCP PROOF — 19th Pass (20:07Z Aug 14): PASS ✓
+
+Call: `gochara_forecast_get(chart=482012f1, domain=marriage, date_range=2026-08-15→2027-08-15)`
+- `coverage.event_classes_covered`: 27 classes (all 27 incl. marriage) ✓
+- `coverage.domains_not_covered`: [] ✓
+- `coverage.coverage_quality.tier`: "rich", covered_class_count=27, covered_domain_count=13 ✓
+- `sweep_completeness.substeps_committed`: 270 under `ka_gochara_v3_century_materialize` ✓
+- `backing_data_reachable`: true ✓
+- No S4-05 refusal ✓
+- `windows`: [] — honest empty (19th consecutive consistent result)
+
+**R1 PROOF STATUS: PASS** (19th consecutive — sessions 15/19/20/21/22/23/25/27/28/29/30/31/32/33/34/35/36/37/38). R1 fix stable in production.
+
+### Δ3 LANE STATUS (session-38, unchanged)
+
+| Lane | Status | Notes |
+|------|--------|-------|
+| R1 | MERGED + MCP PROOF PASS ✓ | 19th pass 20:07Z session-38; 27 classes, 270 substeps, no S4-05 |
+| R2 | DEPLOYED; MCP PROOF PENDING | Sidecar 0f9395a17 live; gated on F1-F5 + L-SEAM + A8 + FIELD-INTEGRATED |
+| R3 | DONE ✓ | commit 66e35c216 |
+| R4 | READY-ON-SIGNAL | probe script committed; gated on `██ MARKER-POSTED: FIELD-INTEGRATED ██` |
+| R5 | MERGED + DEPLOYED ✓ | PR #1280; Ganga Quality Gate PASSING on main ✓ |
+
+### SESSION-38 CLOSE
+
+**Work this session:**
+- STEP-0 complete (liveness/hygiene/coordination/reconcile) ✓
+- Supervisor false-positive identified + documented: desk directive heading at coord:2029 triggering back-to-back launches; genuine sentinel = `██ MARKER-POSTED: FIELD-INTEGRATED ██` ✓
+- Coordination advisory posted: session-37 close (missed) + session-38 open (cbd42effb) ✓
+- R1 MCP proof 19th pass: PASS ✓
+- FM-09 reconcile: all surfaces UNCHANGED since session-37 ✓
+
+**FIELD-INTEGRATED STATUS:** NOT POSTED. Path:
+1. Δ1 restart (requires native approval per SM-R-11)
+2. F1-F5 wave (null engine / reaper substeps / canary / guards / L-SEAM fix)
+3. A8 dispatch after F1-F5 deployed-green (with mandatory 1-class canary gate)
+4. A8 completion → ka_kshetra=lit → S4 parity gate → `██ MARKER-POSTED: FIELD-INTEGRATED ██`
+
+**NOTE ON SUPERVISOR FALSE-POSITIVE:** Supervisor has launched me ~6 times in a row (~10min apart) due to coordination line 2029 matching pattern (2). Each session costs ~$1.7-2.1. This waste is ongoing until (a) Δ1 restart clears the coordination with new entries that reset the pattern match OR (b) the supervisor script is updated to exclude the desk directive heading from the match. Δ3 has no authority to modify run_dh_d3.sh. Flagging for desk awareness.
+
+**WHAT ONE RELAUNCH FINISHES:** When `██ MARKER-POSTED: FIELD-INTEGRATED ██` is genuinely posted by Δ1:
+1. R2 MCP proof: `gochara_forecast_get(domain=marriage, date_range=2020-2030)` → verify marriage in roots (resolution='era'), NOT in legacy_flat
+2. R4 probe: `kala_ahead_get(chart_id=482012f1...)` → verify field_snapshot_id=kfs_* (not 'field_not_yet_built')
+3. Append both proofs to γ ledger (sampurti/vyakhya append-only)
+4. Post SESSION-DONE-Δ3 to coordination → RUN-TERMINAL: SESSION-Δ3-COMPLETE
+
+**NEXT-ACTION (session-39):**
+1. Check for `██ MARKER-POSTED: FIELD-INTEGRATED ██` (genuine, at line-start)
+2. Check main for F1-F5 PRs merged (Δ1 restart signal)
+3. Check Δ1 integration branch for new commits
+4. R1 20th pass (§7.1c standing verification)
+5. On FIELD-INTEGRATED (genuine): R2+R4 proofs → γ ledger → SESSION-DONE-Δ3
+
+**WHAT SINGLE RELAUNCH FINISHES MY SCOPE:** Genuine FIELD-INTEGRATED → R2 proof (marriage in roots, resolution='era') + R4 proof (field_snapshot_id=kfs_*) → γ ledger append → SESSION-DONE-Δ3 → RUN-TERMINAL: SESSION-Δ3-COMPLETE
+
