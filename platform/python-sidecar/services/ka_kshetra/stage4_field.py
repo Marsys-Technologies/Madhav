@@ -73,6 +73,7 @@ from services.ka_kshetra.contracts import (
     ProvenanceEdge,
     Route,
     Segment,
+    SHAPE_ONLY_SYNTHETIC_LIFETIME_COUNT,
 )
 
 logger = logging.getLogger(__name__)
@@ -534,8 +535,10 @@ class FieldEvaluator:
         horizon_days: float = HORIZON_DAYS,
         baseline_source: Optional[tuple[str, str, str]] = None,
         extra_breakpoints: Sequence[float] = (),
+        shape_only: bool = False,
     ):
         self.event_class = event_class
+        self.shape_only = shape_only  # P3-a: threaded into terms_at() → hazard.evaluate()
         self.lifetime_count = float(lifetime_count)
         self.promise = promise
         self.clocks = list(clocks)
@@ -601,7 +604,13 @@ class FieldEvaluator:
         return out
 
     def terms_at(self, t: float) -> hazard.HazardTerms:
-        """The full §5.1 decomposition at t, including its provenance edges."""
+        """The full §5.1 decomposition at t, including its provenance edges.
+
+        P3-a: `self.shape_only` is threaded into `hazard.evaluate()` so that
+        `HazardTerms.baseline_is_synthetic` is correctly set on every evaluation
+        for shape_only classes.  The calibrated path is COMPLETELY UNCHANGED when
+        `self.shape_only is False` (the default).
+        """
         return hazard.evaluate(
             lifetime_count=self.lifetime_count,
             promise=self.promise,
@@ -611,6 +620,7 @@ class FieldEvaluator:
             obstructions=self.envelopes.obstructions_at(t),
             weights=self.weights,
             baseline_source=self.baseline_source,
+            shape_only=self.shape_only,
         )
 
     def ln_lambda(self, t: float) -> float:
@@ -685,7 +695,12 @@ def assert_provenance_reconciles(
         )
 
 
-def require_baseline(lifetime_count: Optional[float], event_class: str) -> float:
+def require_baseline(
+    lifetime_count: Optional[float],
+    event_class: str,
+    *,
+    shape_only: bool = False,
+) -> float:
     """§5.1 C-1's honest-skip gate.
 
     "A class with no prior row is `not_computed` and is SKIPPED ENTIRELY (no
@@ -695,11 +710,32 @@ def require_baseline(lifetime_count: Optional[float], event_class: str) -> float
     rather than returning a sentinel: a caller that forgets to check a sentinel
     would silently build a class on a fabricated λ⁰, which is precisely the B.10
     violation the rule exists to prevent.
+
+    P3-a (DHARA_ENGINE_SPEC_v1_0.md §4.1, SM-R-10): when `shape_only=True` is
+    explicitly passed (the writer has already looked up the tier-basis table and
+    confirmed this class is a shape_only tier), a missing or non-positive
+    `lifetime_count` does NOT raise ClassSkipped — instead the function returns
+    SHAPE_ONLY_SYNTHETIC_LIFETIME_COUNT (1.0) as the lifetime_count.  The caller
+    is responsible for threading `shape_only=True` into `hazard.evaluate()` so
+    the resulting `HazardTerms.baseline_is_synthetic = True` tag is set.
+
+    CRITICAL: `shape_only=True` is passed ONLY when `lifetime_count is None`
+    (class absent from bg_class_priors). Passing it when a real calibrated prior
+    exists would silently replace calibrated data with synthetic — B.10 forbids
+    that. The writer enforces this by checking the lookup result before deciding
+    which path to take (P3-e caller contract).
+
+    When `shape_only=False` (the default): the original ClassSkipped behaviour is
+    COMPLETELY UNCHANGED.
     """
     if lifetime_count is None:
+        if shape_only:
+            return SHAPE_ONLY_SYNTHETIC_LIFETIME_COUNT
         raise ClassSkipped(event_class, 'no_class_prior_row',
                            'no bg_class_priors lifetime-count row for this event class')
     if not math.isfinite(lifetime_count) or lifetime_count <= 0.0:
+        if shape_only:
+            return SHAPE_ONLY_SYNTHETIC_LIFETIME_COUNT
         raise ClassSkipped(event_class, 'class_prior_not_positive',
                            f'lifetime_count={lifetime_count!r}')
     return float(lifetime_count)
@@ -1035,6 +1071,7 @@ def load_legacy_crosscheck(conn, chart_id: str, event_class: str) -> list[dict]:
 __all__ = [
     'HORIZON_DAYS', 'RECONCILIATION_TOLERANCE', 'LEVEL_ORDER',
     'PRIMITIVE_TO_COVARIATE', 'MOORTI_TO_COVARIATE', 'ECLIPSE_CANDIDATE_LABEL',
+    'SHAPE_ONLY_SYNTHETIC_LIFETIME_COUNT',   # re-exported for writer convenience
     'ProvenanceReconciliationError', 'ClassSkipped', 'UpstreamStageIncomplete',
     'canonical_json', 'FieldPins', 'field_content_hash',
     'Primitive', 'EnvelopeIndex', 'LadderPeriod', 'FieldEvaluator',
