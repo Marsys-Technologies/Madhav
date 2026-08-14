@@ -3921,3 +3921,19 @@ All targeted checks passed:
 No new blocking issues. P-B builders cleared to dispatch.
 
 **P-B DISPATCH STATUS: DISPATCHING NOW**
+
+---
+
+## P-B BUILD: BUILDERS DISPATCHED (2026-08-14T16:18+05:30)
+
+Three sonnet builders dispatched in parallel after PARĪKṢAKA v1.1 PASS:
+
+| Lane | Agent ID | Branch | Task |
+|---|---|---|---|
+| L-ENGINE (P1) | ad993d433af7ab31d | sampurti/d1-p1-engine | Layer0 dataclass + compute_layer0() + project_layer1() + SM-R-7 suppression filter + decade-seam fix + Layer0→Layer1 equivalence test |
+| L-NULL (P2) | a71579adbd0e2a53d | sampurti/d1-p2-null | dhara_null_vec.py vectorized null + _RESUME_VERSION 5→6 + DEFAULT_REPLICATES=1024 + NullResult docstring fix + R=8 equivalence test |
+| L-TIER (P3-a/b/e) | a771b114b08bd32e1 | sampurti/d1-p3-tier | SHAPE_ONLY_SYNTHETIC_LIFETIME_COUNT in contracts.py + baseline_is_synthetic on HazardTerms + shape_only writer path + P3-b census table |
+
+Spec: DHARA_ENGINE_SPEC_v1_0.md v1.1 (commit 729f0cc7e on sampurti/integration). Each builder TDD. Each PR requires PARĪKṢAKA (FM-26) review before merge.
+
+CONDUCTOR-HEARTBEAT: 2026-08-14T16:18+05:30 [R41 T+96min — P-B all 3 builders dispatched; monitoring; next heartbeat ≤10min; pid=resumed]
