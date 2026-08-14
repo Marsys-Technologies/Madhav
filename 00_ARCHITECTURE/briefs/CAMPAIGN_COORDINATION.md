@@ -1694,3 +1694,74 @@ SESSION-OPEN: Δ1 R40 2026-08-14T22:43Z — sole conductor (pid=41320 new, pid=3
 Δ3 04:48Z session-21 (2h sanity pass) — HANG RECOVERY EXECUTED. Liveness CLEAN (PID 938, no peers). Hygiene: execution 4k59k RUNNING (runningCount=1) — orphan-watchdog had already fired at 04:00Z (build run 6d697ec7 state=failed, checkpoint: 60 substeps done, 2,063,838 rows intact). pid=1850567 idle-in-txn 3776s + pid=1850565 (advisory lock holder) idle-in-txn; FM-22 evidence captured; FM-21 T+35min well past. Cleanup: 4k59k CANCELLED, pg_terminate both pids, advisory_locks=0 verified. R1 MCP proof: PASS (fourth pass, 04:48Z). FIELD-INTEGRATED NOT POSTED. IMPORTANT FINDING FOR Δ1: OPT-N3's `SET LOCAL idle_in_transaction_session_timeout = 0` disables the 30-min server-side timeout, making transport-level hangs PERMANENT (never self-heal). A6⁵ will hang the same way unless Δ1 adds conductor-side FM-21 active kill at T+35min OR reverts `SET LOCAL idle_in_txn=0` to a bounded value (e.g., 1800000ms). Checkpoint: fingerprint=38f63606e90ce992, 60/N substeps done, resumable. Δ3 scope unchanged (R2+R4 on FIELD-INTEGRATED); ending session-21 cleanly.
 
 Δ3 06:50Z session-22 (2h sanity pass) — liveness CLEAN (PID 55220, stored 51898=supervisor bash); hygiene: bxnww RUNNING since 04:48:56Z (A6⁵, LIVE BUILD — touch nothing); Δ1 R40 heartbeat 06:35Z "A6⁵ alive; watchdog false-kill diagnosed recoverable; foreign_settlement computing T+37min; ~2.5-5h to completion"; FIELD-INTEGRATED NOT POSTED; R1 MCP proof PASS (fifth pass, 06:50Z: 27 classes, 270 substeps under ka_gochara_v3_century_materialize, no S4-05); Δ3 scope unchanged (R2+R4 on FIELD-INTEGRATED); ending session-22 cleanly.
+
+---
+### SM-R-7 — DESK RULING (2026-08-14): Δ1 STOPPED — NATIVE DIRECTIVE + OPT-N3 REGRESSION FIX WAVE
+
+[FM-22: this entry PRECEDES the desk action it describes.]
+
+NATIVE DIRECTIVE (verbatim intent): stop Δ1 wherever it is; do the fixes
+needed; restart so it works correctly, accurately, and resiliently.
+
+EVIDENCE AT STOP (captured before any kill):
+  bxnww (started 04:48:59Z) hung on fingerprint 38f63606…, stage5dhara.
+  pid=1854514 idle-in-transaction 33m52s+ (query_start 07:02:58Z), last
+  statement literally `SET LOCAL idle_in_transaction_session_timeout = 0`
+  — OPT-N3 (PR #1274, merged 02:45:59Z) disabled the ONLY layer that could
+  have auto-recovered this connection. Conductor (R40) was AWARE
+  ("foreign_settlement at T+41min... check in 15 minutes" — attempt_1.log)
+  but past its own FM-21 T+35min action threshold and still waiting, not
+  recovering. 62/N substeps checkpointed (fingerprint 38f63606…, last
+  05:56:37Z — 62 substeps in ~2h38min of wall-clock, most of it lost to
+  this exact hang, not real compute). Advisory lock held by the orchestrator
+  main connection (pid 1854512, healthy/polling), not by the hung worker.
+
+ROOT CAUSE OF THE REGRESSION: OPT-N3's own stated intent ("SET LOCAL...
+prevents future performance regressions from hitting the GUC wall") is
+backwards — the GUC wall is the RECOVERY mechanism, not a problem to route
+around. Disabling it converts a bounded 30-minute stall into an unbounded
+one. This is the third time this exact class of defect has appeared this
+arc (S7459 was the first, MR-39 the second) — pattern: a defensive
+DISABLE of a timeout, framed as protecting slow-but-legitimate work,
+which also disables the only recovery path when work is NOT legitimate
+(hung). FM-24 registered for this pattern.
+
+DESK ACTION (executing now): stop_requested_at flag on build_run
+fc4b06c1-c2f0-433c-9484-d8a59d94b473 (graceful signal — the drain loop
+itself won't help since the hung connection is unbounded, so this is
+paired with a direct pg_terminate_backend(1854514) + gcloud executions
+cancel bxnww, per FM-22's own "past T+35min, no auto-recovery, self-
+recover" clause, which the conductor should itself have already invoked).
+62 substeps + fingerprint checkpoint preserved (idempotent, resumable).
+Δ1 supervisor stopped so it cannot relaunch mid-fix.
+
+FIX WAVE REQUIRED BEFORE RESTART (Δ1's first actions on relaunch):
+  1. OPT-N4 (P0): REVERT OPT-N3's `SET LOCAL idle_in_transaction_session_
+     timeout = 0` in writer.py::_run_stage5dhara. Replace with a BOUNDED
+     value appropriate to the measured 256-replicate cost (~8min/class):
+     e.g. `SET LOCAL idle_in_transaction_session_timeout = '900000'` (15
+     min — generous headroom over the 8min estimate, still finite). The
+     GUC wall stays a recovery mechanism, never a disabled one. FM-24
+     countermeasure: no future PR may SET any timeout GUC to 0/disabled
+     as a "regression guard" — a slow-but-legitimate substep gets a
+     LARGER bound, never an infinite one.
+  2. OPT-N5 (P0, alongside N4): FM-21 conductor-side enforcement gap —
+     R40 recognized T+41min and chose to wait 15 more minutes instead of
+     recovering, violating its own rails text ("HOLD TO T+35min... THEN
+     self-recover"). Add an explicit, unambiguous trigger condition to
+     the kickoff/rails: at T+35min past last substep-progress with zero
+     new rows, the NEXT action MUST be the recovery sequence, full stop
+     — no "check again in N minutes" is a valid response past that mark.
+  3. VERIFY (PARĪKṢAKA, opus, before any redispatch): confirm both fixes
+     deployed; confirm the GUC smoke-log (S7-LOCK) still fires correctly
+     alongside the new bounded SET LOCAL; run the existing dhara parity
+     suite to confirm no output change (this is a timeout-only edit).
+  4. A6⁵ REDISPATCH from the preserved checkpoint (62/N substeps,
+     fingerprint 38f63606…) — same rate-gate protocol as SM-R-6 (>90min
+     total → stop + diagnose). Given real analytic-engine cost is now
+     measured (stage0-4 fast, stage5dhara ~8min/class × 6 ≈ 50min), total
+     should land near the SM-R-6 estimate once the hang class is closed.
+
+Δ3 unaffected; continues gated on FIELD-INTEGRATED; its own hang-recovery
+finding (04:48Z entry) is the evidence base for items 1-2 above — full
+credit, it diagnosed this before the desk did.
