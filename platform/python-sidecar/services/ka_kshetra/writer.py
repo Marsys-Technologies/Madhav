@@ -1283,7 +1283,8 @@ class KaKshetraWriter(WriterBase):
             cur.execute(
                 """SELECT window_id, event_class, t_start, t_end, t_peak, lambda_peak,
                           expected_count, duration_days, null_p, confidence_tier,
-                          robustness, temporal_shape, precision_regime
+                          robustness, temporal_shape, precision_regime,
+                          baseline_is_synthetic
                      FROM kala_field_windows
                     WHERE chart_id = %s AND field_snapshot_id = %s
                     ORDER BY window_id""",
