@@ -1964,3 +1964,9 @@ DHARA_DESIGN_v1_0.md as authority until P0.a's merge lands.
 
 Supervisors remain DOWN pending native go-ahead to restart Δ1 onto
 P-0.
+
+---
+
+Δ3 08:52Z session-23 (2h sanity pass) — liveness CLEAN (PID 39215, supervisor bash, no peer conductors); hygiene CLEAN; coordination reconcile: FIELD-INTEGRATED NOT POSTED, bxnww CANCELLED 07:38Z, no A6⁶ dispatch; Δ1 R41 launched (PR #1277 L-ENGINE, PR #1278 L-NULL dispatched); R1 MCP proof PASS (sixth pass, 08:50Z: 27 classes, 270 substeps, no S4-05); R5 census initial inventory complete — serving layer audit found NO hardcoded 6-class assumptions in gochara_forecast_get/kala_views/L3 retrieval (all derive live from DB); remaining R5: ka_kshetra class set + CI check gate on FIELD-INTEGRATED; ending session-23 cleanly.
+
+Δ3 13:25Z session-24 (2h sanity pass) — liveness CLEAN (PID 94507=supervisor bash, no peer conductors); coordination reconcile: FIELD-INTEGRATED NOT POSTED; Δ1 R41 heartbeat 11:08Z (PRATINIDHI complete 16:38 IST: 6 calibrated, 19 shape_only, 2 not_applicable); PR #1277 L-ENGINE MERGED, PR #1278 L-NULL in merge queue, PR #1279 L-TIER BLOCKED (Unit Tests failure + Governance Gates pending — Δ1's territory, flagged for awareness only); no A6⁶ dispatch; R5 P6 BUILDER DISPATCHED — worktree sm-d3-r5 branch sampurti/d3-r5, 3 G12 fixes: (1) consolidate AUTOFILE_WITHHOLD + ADVERSE_WITHHOLD to one canonical source, (2) build query_event_ontology_class HTTP primitive (self-flagged missing at kala_upaya_diagnosis.ts:771), (3) CI drift-guard for KNOWN_EVENT_CLASSES vs live brahma_event_ontology; PR to main forthcoming; ending session-24 cleanly.
