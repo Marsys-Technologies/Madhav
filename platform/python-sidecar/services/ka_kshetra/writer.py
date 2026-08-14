@@ -291,7 +291,7 @@ class KaKshetraWriter(WriterBase):
         for ec in self._event_classes:
             if _ev5 == 'analytic':
                 steps.append(SubStep(key=f'stage5dhara:{ec}',
-                                     label=f'dhara null+windows {ec} (1024 replicates)'))
+                                     label=f'dhara null+windows {ec} ({DN.DEFAULT_REPLICATES} replicates)'))
             else:
                 for b in range(1, n_blocks + 1):
                     steps.append(SubStep(key=f'stage5:{ec}:{b}',
@@ -608,19 +608,23 @@ class KaKshetraWriter(WriterBase):
     # ── stage 5 (DHARA analytic path) ────────────────────────────────────────
 
     def _run_stage5dhara(self, conn, event_class: str, step: SubStep) -> WriterResult:
-        """DHARA vectorized null: 1024 replicates in a single substep.
+        """DHARA null: R=256 replicates in a single substep.
 
         Replaces the N×stage5 blocks + stage5finalize sequence that the sampled
         path uses (ENGINE_VERSION=='sampled'). Under ENGINE_VERSION=='analytic'
         this is the only stage-5 substep for the given event_class.
 
-        dhara_compute_null (dhara_null.py, PR #1263) runs all 1024 replicates
-        in-process using vectorized NumPy, implementing the F-01 shift-grid
-        correction (range(1, R) instead of range(1, R+1)) and returning a
-        NullResult whose fields are compatible with the downstream
+        dhara_compute_null (dhara_null.py) runs all R replicates in-process,
+        implementing the F-01 shift-grid correction (range(1, R) instead of
+        range(1, R+1)) and returning a NullResult compatible with the downstream
         _write_windows_batch / _write_window interface.
 
-        Authority: OPT-N1 spec (SM-Δ1), DHARA_DESIGN_v1_0.md §6.
+        OPT-N3 (2026-08-14): R reduced 1024→256. The implementation is sequential
+        Python (not vectorized) — 1024 replicates took ~34min/class, exceeding
+        idle_in_transaction_session_timeout=30min. 256 replicates ≈ 8min/class.
+        SET LOCAL disables the GUC for this substep as defense-in-depth.
+
+        Authority: OPT-N1/OPT-N3 spec (SM-Δ1), DHARA_DESIGN_v1_0.md §6.
         """
         self._require_stage4_committed(conn, event_class)
         try:
@@ -631,6 +635,16 @@ class KaKshetraWriter(WriterBase):
                                 notes=f'{event_class} skipped: {skip.reason}')
 
         ev = cctx.evaluator
+
+        # OPT-N3: disable idle_in_transaction_session_timeout for this substep.
+        # dhara_compute_null loops 1023 Python iterations (not vectorized), each
+        # calling _null_build_segments → terms_at() 60K+ times. At 256 replicates
+        # computation takes ~8min per class (safe within the 30min GUC), but this
+        # SET LOCAL prevents any future regression from hitting the GUC wall.
+        # SET LOCAL scopes to the current transaction only; reverts at substep commit.
+        with conn.cursor() as _cur_set:
+            _cur_set.execute("SET LOCAL idle_in_transaction_session_timeout = 0")
+
         null_result = DN.dhara_compute_null(ev, replicates=DN.DEFAULT_REPLICATES)
 
         rows = 0
@@ -678,7 +692,7 @@ class KaKshetraWriter(WriterBase):
             self._record_substep(conn, step.key, rows)
         return WriterResult(asset_id=ASSET_ID, rows_inserted=rows,
                             notes=f'{event_class}: {len(windows)} window(s) '
-                                  f'(dhara 1024-replicate), q={null_result.q_threshold!r}')
+                                  f'(dhara {null_result.replicates}-replicate), q={null_result.q_threshold!r}')
 
     def _write_window(self, conn, ev, event_class, segments, w, null_result,
                       adrishta, ayanamsha_ids, sigma_t, legacy,

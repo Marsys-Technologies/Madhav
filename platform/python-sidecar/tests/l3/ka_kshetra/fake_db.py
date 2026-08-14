@@ -264,6 +264,11 @@ class FakeCursor:
             self._rows = sorted(rows, key=lambda r: (r['t_start'], r['segment_index']))
             return
 
+        # SET LOCAL statements are session-control; no rows returned, no side-effects in tests.
+        if s.startswith('SET LOCAL ') or s.startswith('SET '):
+            self._rows = []
+            return
+
         raise AssertionError(
             f'FakeConn has no handler for this statement — add one deliberately '
             f'rather than letting it read as "no rows":\n{s[:300]}'
