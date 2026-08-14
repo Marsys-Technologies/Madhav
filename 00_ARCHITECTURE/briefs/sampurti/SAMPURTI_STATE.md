@@ -3947,3 +3947,34 @@ CONDUCTOR-HEARTBEAT: 2026-08-14T16:48+05:30 [R41 T+126min — L-ENGINE: layer0.p
 CONDUCTOR-HEARTBEAT: 2026-08-14T16:58+05:30 [R41 T+136min — L-ENGINE: planning writer.py wiring (Layer0 in _class_context); L-NULL: writing dhara_null_vec.py (long Write call); L-TIER: threading baseline_is_synthetic through evaluate(); all healthy; planned merge order: L-TIER→L-NULL→L-ENGINE (writer.py conflict zones differ); pid=resumed]
 
 CONDUCTOR-HEARTBEAT: 2026-08-14T17:08+05:30 [R41 T+146min — L-ENGINE: 4 pre-existing test failures identified (OPT-N3 artifacts, not our changes); L-NULL: writing TDD test file for vectorized null; L-TIER: modifying require_baseline() + stage4_field.__all__; NOTE: PARĪKṢAKA must verify SHAPE_ONLY_SYNTHETIC_LIFETIME_COUNT is only in contracts.py per spec §4.1; all healthy; pid=resumed]
+
+CONDUCTOR-HEARTBEAT: 2026-08-14T17:20+05:30 [R41 T+162min — context resumed after compaction; L-ENGINE PR#1277 CREATED (sampurti/d1-p1-engine; 24/24 TDD pass; decade seams + SM-R-7 filter; pre-existing 4 failures noted); L-NULL PR#1278 CREATED (sampurti/d1-p2-null; 40/40 tests pass + FM-25 10.73s; _RESUME_VERSION 5→6, DEFAULT_REPLICATES 1024, FM-24 fix); L-TIER still building (writing baseline_is_synthetic migration); PARĪKṢAKA (opus, FM-26) dispatched for PR#1277+PR#1278 in parallel; merge order: L-TIER→L-NULL→L-ENGINE; pid=resumed]
+
+---
+
+## SM-R-7 — NATIVE-PRATINIDHI RULING: FULL RATIONALE (P0.c complete)
+
+*Produced by PRATINIDHI ruling agent a36f7ad85ec485579, 2026-08-14. Confirms OPTION B already recorded in P-0 COMPLETE above.*
+
+### SM-R-7 — NATIVE-PRATINIDHI RULING (2026-08-14): G3 SUPPRESSION SEMANTICS
+
+QUESTION: Should vighna (obstruction) suppression in the DHARA analytic field engine be applied chart-wide uniformly to all event classes (Option A), or filtered per-class via Route.suppressed_by (Option B)?
+
+RULING: B — PER-CLASS FILTERED via Route.suppressed_by.
+
+RATIONALE:
+
+1. CLASSICAL TRADITION IS UNAMBIGUOUSLY PER-DOMAIN. The Jyotish tradition treats doshas as domain-specific obstructions, not chart-wide blanket suppressors. Mangal dosha suppresses marriage-class events specifically — it does not attenuate career prospects or financial gains. Kuja dosha operates through the 7th/8th house axis and is understood as a marriage/partnership obstruction; it has no classical warrant to suppress educational attainment or professional advancement. Similarly, Pitru dosha affects lineage-related matters but is not traditionally understood to suppress unrelated domains. The promise graph already encodes this domain-specificity: Route.suppressed_by on kala_field_routes links specific vighna keys to specific routes reaching specific event classes. That linkage IS the classical knowledge about which doshas obstruct which life domains.
+
+2. THE DATA STRUCTURE ALREADY ENCODES OPTION B. Route.suppressed_by is a per-route, per-event-class field populated by stage2_promise.py's k_shortest_routes() and stored in kala_field_routes. The current live evaluator's chart-wide uniform behavior discards information that Lane A already computed and stored. The docstring on suppression_log_term (hazard.py:328-329) correctly describes the INTENDED per-class behavior but the implementation never performs the filtering. This is a bug, not an intentional design choice.
+
+3. THE SIGN-FLIP MECHANISM IS NOT A SUBSTITUTE. Route.suppressed_by currently has a second consumer: _best_route_for_lord() (hazard.py:271) flips the sign of a lord's relevance contribution when that lord appears in a route's suppressed_by. The clock sign-flip already correctly consumes Route.suppressed_by per-class; the suppression thinning S_e should do the same.
+
+4. PRACTICAL MODEL BENEFIT. Per-class suppression produces a more calibratable model. A chart with Mangal dosha should show suppressed marriage-class hazard but unaffected career-class hazard — classically correct and empirically testable against the LEL. Chart-wide uniform suppression forces rho to be fitted incorrectly across all 27 classes.
+
+ARCHITECTURE IMPLICATION: Layer 0's raw suppression curves u_m(t) are UNCHANGED — they remain chart-level, computed once per chart. The ruling affects only Layer 1's per-class projection: when projecting Layer 0's chart-wide u_m(t) dict into event class e's suppression term S_e(t), the projection step filters to include ONLY vighna keys that appear in at least one of class e's Route.suppressed_by tuples. A class whose routes list no suppressed_by entries receives S_e(t) = 1.0 identically. The fix belongs at the Layer 1 projection call site, NOT in suppression_log_term itself.
+
+GROUNDING: hazard.py:321-355 (unfiltered u dict), hazard.py:249-272 (correct per-class sign-flip), contracts.py:56-67 (Route.suppressed_by populated), G3 (confirms docstring vs impl discrepancy).
+
+**P0.c STATUS: COMPLETE — OPTION B ruling recorded with full rationale. Already implemented in L-ENGINE PR #1277 (SM-R-7 expected-differences register confirmed).**
+
