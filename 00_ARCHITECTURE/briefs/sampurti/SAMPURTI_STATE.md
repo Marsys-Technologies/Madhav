@@ -3778,3 +3778,44 @@ On P-B deploy-green → P-C A7 (full 27-class PŪRṆA build)
 P-0 dispatches (in flight per heartbeat below). Monitor builders; when both PRs open → PARĪKṢAKA on P0.b (opus) → merge both → confirm P0.c PRATINIDHI verdict posted to SM-R registry.
 
 CONDUCTOR-HEARTBEAT: 2026-08-14T14:42+05:30 [R41 OPEN — SM-R-10 ADOPTED; R40 NEXT-ACTION SUPERSEDED; bxnww DEAD (07:38Z, advisory_locks=0); DB CLEAN; P-0 dispatches NEXT: P0.a builder (DHARA_DESIGN→main), P0.b builder (NullResult→contracts.py+fallback delete), P0.c PRATINIDHI (G3 ruling); L-8 lease EXPIRED (14:00 IST) — renewal not needed until A7 dispatch; pid=9106 host=Montys-MacBook-Pro.local]
+
+### SM-R-7 — NATIVE-PRATINIDHI RULING (2026-08-14): G3 SUPPRESSION SEMANTICS
+
+QUESTION: Should vighna (obstruction) suppression in the DHARA analytic field engine be applied chart-wide uniformly to all event classes (Option A), or filtered per-class via Route.suppressed_by (Option B)?
+
+RULING: **B — PER-CLASS FILTERED via Route.suppressed_by.**
+
+RATIONALE (P0.c opus agent, 2026-08-14T09:33Z):
+
+1. **CLASSICAL TRADITION IS UNAMBIGUOUSLY PER-DOMAIN.** Jyotish treats doshas as domain-specific obstructions, not chart-wide blanket suppressors. Mangal dosha suppresses marriage-class events; it has no classical warrant to suppress career or financial gains. Even doshas that appear "chart-wide" in popular treatment (Kaal Sarp, Sade Sati) operate through specific house/sign axes and affect the domains those houses govern. The promise graph already encodes this domain-specificity: `Route.suppressed_by` on `kala_field_routes` links specific vighna keys to specific routes reaching specific event classes. Applying every vighna uniformly to all 27 classes is a loss of astrological information the system already possesses.
+
+2. **THE DATA STRUCTURE ALREADY ENCODES OPTION B.** `Route.suppressed_by` is a per-route, per-event-class field populated by `stage2_promise.py`'s `k_shortest_routes()` and stored in `kala_field_routes` — live, populated data in the DB. The current live evaluator's chart-wide uniform behavior (confirmed by G3: `EnvelopeIndex.obstructions_at(t)` returns full chart-wide dict, no per-class filtering; `suppression_log_term` iterates unfiltered) discards information Lane A already computed and stored. The docstring on `suppression_log_term` (hazard.py:328-329) correctly describes the INTENDED per-class behavior; the implementation fails to perform the filtering step. This is a **bug**, not an intentional design choice.
+
+3. **THE SIGN-FLIP MECHANISM IS NOT A SUBSTITUTE.** `_best_route_for_lord()` (hazard.py:271) already correctly consumes `Route.suppressed_by` per-class for the CLOCK sign-flip (C_e term). The SUPPRESSION term (S_e) should do the same. Both mechanisms read the same data for different purposes.
+
+4. **PRACTICAL MODEL BENEFIT.** Per-class suppression yields a calibratable model. Chart-wide uniform suppression forces artificially low rho values (the dosha visibly does NOT suppress all 27 classes equally in reality), weakening the signal even for the domain it genuinely affects.
+
+ARCHITECTURE IMPLICATION:
+
+Layer 0's raw suppression curves u_m(t) are **UNCHANGED** — chart-level, computed once per chart, exactly as G3 confirmed. This ruling affects only **Layer 1's per-class projection**: when projecting Layer 0's chart-wide u_m(t) dict into event class e's suppression term S_e(t), the projection step filters the obstruction dict to include ONLY vighna keys appearing in at least one of class e's `Route.suppressed_by` tuples (read from `kala_field_routes WHERE event_class = e`). A class with no `suppressed_by` entries receives S_e(t) = 1.0 identically (no suppression). This is a cheap set-intersection at Layer 1 projection time.
+
+The fix belongs in the Layer 1 projection code (call site that passes `obstructions` to `evaluate()`), NOT in `suppression_log_term` itself — that function correctly computes ln S from whatever `u` dict it receives; the caller's responsibility is to pass the right `u` dict for the class being evaluated.
+
+NON-BLOCKING: Layer 0 shared sweep (P1) and vectorized null (P2) proceed immediately. The filtering lands when Layer 1 projection code is written in P1.
+
+Source references verified by opus agent:
+- `hazard.py:321-355` — `suppression_log_term` iterates unfiltered `u` dict (live bug)
+- `hazard.py:249-272` — `_best_route_for_lord` correctly consumes `suppressed_by` per-class (existing correct pattern to mirror)
+- `kala_field_routes.suppressed_by` — live, populated per-route field in DB
+- G3 (PURNA_GROUNDING_REPORT_v1_0.md §G3) — confirmed discrepancy between docstring intent and live behavior
+
+### P-0 STATUS UPDATE (R41, 2026-08-14T09:35+05:30)
+
+- **P0.a: DONE** — PR #1276 open (sampurti/d1-p0a-dhara-design → main; DHARA_DESIGN_v1_0.md added AS-IS; doc-only, CI expected green)
+- **P0.b: IN FLIGHT** — agent a3515f3f working on NullResult→contracts.py migration + getattr fallback deletion in writer.py:765+874
+- **P0.c: DONE** — SM-R-7 ruling posted above (RULING: B, per-class filtered); non-blocking for P-A/P-B
+- **P0.d: PENDING** — naming corrections (bg_class_priors→brahma_class_priors) in plan/ledger docs
+
+PR #1271 (OPT-N2/FM-23 guard): still OPEN, merge during P-B per plan.
+
+CONDUCTOR-HEARTBEAT: 2026-08-14T15:03+05:30 [R41 T+21min — P0.a PR #1276 OPEN (doc-only, CI pending); P0.c SM-R-7 DONE (B: per-class filtered); P0.b a3515f3f IN FLIGHT (NullResult→contracts.py + fallback delete); awaiting P0.b PR to dispatch PARĪKṢAKA; pid=9106]
