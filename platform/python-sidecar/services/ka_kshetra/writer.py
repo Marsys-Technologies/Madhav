@@ -685,7 +685,8 @@ class KaKshetraWriter(WriterBase):
 
         windows = integrator.find_windows(segments, null_result.q_threshold or math.inf)
         totals = [w.expected_count for w in windows]
-        adrishta = S5.adrishta_residual(totals, hazard.baseline_rate(ev.lifetime_count),
+        # P3-a: baseline_rate() now returns (rate, is_synthetic). Unpack the rate.
+        adrishta = S5.adrishta_residual(totals, hazard.baseline_rate(ev.lifetime_count)[0],
                                         HORIZON_DAYS)
         ayanamsha_ids = self._kinematics_ayanamsha_ids(conn)
         sigma_t = self._sigma_t_days(conn)
