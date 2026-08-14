@@ -14,6 +14,7 @@ conductor_session: SAMPURTI-CONDUCTOR-2026-08-10 (R8 — relaunch 20:48 IST; R7 
 
 # SAMPŪRTI CAMPAIGN LEDGER
 
+CONDUCTOR-HEARTBEAT: 2026-08-10T08:05+00:00 (SAMPURTI-CONDUCTOR-2026-08-10-R3) [L1d batch insert MERGED PR #1158. L1e OOM fix PR #1172 OPEN CI running. P-G1 runs 3+4 FAILED (OOM — root cause identified). Awaiting #1172 merge+deploy for run 5.] [LIVENESS: conductor session active on main]
 CONDUCTOR-HEARTBEAT: 2026-08-10T16:03:07+00:00 (SAMPURTI-CONDUCTOR-2026-08-10-R8) pid=87229 host=Montys-MacBook-Pro.local [R8 active: PR #1201 MERGED 16:00:03Z (migrations 563/564/565 on main). PARIṢKĀRA deploy pending. L-4 still ACTIVE in coord file (not yet RELEASED). W6-COMPLETE NOT YET posted. Awaiting deploy + F-gates + marker.]
 
 ## MODEL POLICY (BINDING — native directive 2026-08-10)
@@ -37,6 +38,7 @@ Sonnet/Opus respectively per the original charter and are unaffected.
 ## WAVE POSITION
 
 WAVE 0 — IGNITION. Status: COMPLETE (merged to main 3311ae0e3, deployed 31341882724).
+WAVE 1 — RC1 G1 WIRING. Status: L1b GATE MERGED (PR #1150, 976af2a2f). L1c GATE MERGED (PR #1153). L1d GATE MERGED (PR #1158). L1e PR #1172 OPEN (CI running). P-G1 run 5 PENDING (#1172 deploy).
 WAVE 1 — RC1 G1 WIRING. Status: L1b/L1c/L1d/L1e/L1f/L1g/L1h+L1i all MERGED to main. L1j MERGED to sampurti/integration (#1188, PARĪKṢAKA PASS). P-G1 deferred pending UTKARSHA W6-COMPLETE (R-COORD-2 extended).
 PARALLEL LANES (code-only, dispatched during W6 yield window): G12 PR #1191 MERGED to sampurti/integration (682366d9d, 2026-08-10T11:59Z) — PARĪKṢAKA PASS R1–R7. G14b PR #1190 MERGED to sampurti/integration (c2317eaec, 2026-08-10T11:59Z) — PARĪKṢAKA PASS R1–R8. G13 DEFERRED: PA-4 requires bodha_cdlm_cells migration to 13 domains + CDLM regeneration; blocked until post-W6-COMPLETE rebuild.
 PA-0: G1_STAGE_IO_MAP_v1_0.md committed to sampurti/integration (04a2538b8).
