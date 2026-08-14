@@ -2156,3 +2156,80 @@ resolves.
 Δ3 19:08Z Aug 14 session-33 (FALSE-POSITIVE relaunch #2 — supervisor bug on desk directive heading) — liveness CLEAN (PID 70911, stored 68383=supervisor bash alive/not-peer-conductor, PEERS=NONE, sole conductor); hygiene: cl4dm RUNNING since 18:31:14Z Aug 14 (T+37min at session open, last log 18:33:49Z LAW ZERO skip) — LIVE BUILD, touch nothing; FM-21: T+35 threshold JUST REACHED at session-33 open (19:08:49Z = T+35 from last log 18:33:49Z); GUC smoke-log confirmed ✓ (idle_in_txn=30min, lock_timeout=5min); runningCount=1/failedCount=0 → server-side W3 timeout NOT fired (same Python-compute-hang pattern as kjvmn: orchestrator polls pause/stop every 2-4s, connection NOT continuously idle-in-transaction → W3 30min cannot fire); FM-21 recovery authority = Δ1 exclusively (Δ3 NO DB scope, no pg_stat_activity, no stop_requested_at, no pg_terminate); cl4dm is VALIDATION-ONLY (D-1 decade-seam fix not on main; even completion → NO FIELD-INTEGRATED per desk directive); NO L-SEAM on main; Δ1 integration branch stuck at R42 10:52Z Aug 14 (~8h gap, no active Δ1 conductor); R1 MCP PROOF PASS×14 (19:08Z: 27 classes, 270 substeps ka_gochara_v3_century_materialize, backing_data_reachable=true, no S4-05); all Δ3 lanes complete (R1-R5); FIELD-INTEGRATED NOT POSTED; clean close. FLAG FOR Δ1: cl4dm at FM-21 T+35+, Python-compute-hang confirmed, Δ1 FM-21 recovery needed (stop_requested_at → pg_terminate_backend → cancel cl4dm → redispatch or park). NOTE: cl4dm is VALIDATION-ONLY — recovery or natural completion does not ungate FIELD-INTEGRATED; L-SEAM + A8 are the real ungateable items.
 
 Δ3 19:19Z Aug 14 session-34 — liveness CLEAN (PID 82823, stored 77641=DEAD, PEERS=NONE, sole conductor); hygiene CLEAN (no RUNNING Cloud Run: cl4dm FAILED 19:13:19Z exit_code=1 T+42min, kk2m2 succeeded 19:13:39Z in 10.98s nonce="woc_fix_wih" — NOT a field build, 10-second no-op dispatch); FIELD-INTEGRATED NOT POSTED; FM-09 reconcile: Δ1 integration branch UNCHANGED (last commit 1cda2c6cc R42 10:52Z Aug 14, ~8h dark); L-SEAM NOT on main (main HEAD=15ace43df PR#1282); cl4dm failure mode: NonZeroExitCode exit_code=1 at T+42min (possible W3 firing, Python exception, or Δ1 recovery — Δ3 cannot determine, NO DB scope; FLAG FOR Δ1 FM-09); R1 MCP PROOF PASS×15 (19:19Z: 27 classes, 270 substeps ka_gochara_v3_century_materialize, backing_data_reachable=true, no S4-05); all Δ3 lanes complete (R1–R5); FIELD-INTEGRATED gated on L-SEAM + A8 (no Δ1 conductor active); clean close — supervisor relaunches on FIELD-INTEGRATED sentinel.
+
+---
+### SM-R-11 — DESK RCA (2026-08-14 late, native-directed): WHY STAGE-5 CANNOT COMPLETE, WHY RECOVERY THRASHED, WHAT CHANGES. Δ1 STOPPED; lj98k CANCELLED BY DESK (this entry precedes the action).
+
+FIVE ROOT CAUSES, EVIDENCE-BACKED:
+
+RC-1 TERMINAL: stage5dhara's true production cost is HOURS per class
+  (kjvmn: 90+ min on class 1, zero commits; cl4dm: 42 min, zero commits)
+  vs "5-10 min" estimated and "≤120s" CI-gated. dhara_null_vec
+  implemented "approach (b)" — per-replicate _null_build_segments kept
+  to hold the 1e-6 equivalence gate — vectorizing only cumsum/buckets/
+  quantile. The DOMINANT cost (per-replicate envelope evaluation against
+  the production 166K-primitive EnvelopeIndex; 148,696 sandhi_band rows
+  alone) was untouched. The v1.1 §2 P2 spec ("per replicate = periodic
+  shift/interp + cumsum" — NO evaluator calls in the loop) was NOT
+  implemented: FM-26 drift again. The FM-25 perf gate passed because its
+  fixtures are tiny synthetics — production scale was never measured
+  before a 27-class dispatch.
+RC-2 STRUCTURAL: the substep-heartbeat reaper (watchdog route) marks a
+  run failed when no substep commits within its stale window (fired
+  17:15 and 19:10 — both A7 runs). stage5dhara = ONE substep per class
+  ⇒ any class slower than the reaper window is UNBUILDABLE regardless of
+  correctness. The analytic redesign collapsed 8-16 heartbeating blocks
+  into 1 substep/class and nobody reconciled that with the reaper
+  contract. (The conductor's BLOCK_SIZE instinct pointed at the right
+  AXIS — substep granularity — but on the dead sampled path.)
+RC-3 THRASH CASCADE (all within 90 min): PR #1282 fixed dead code
+  (its own body quotes sampled-path numbers "256 replicates / 1/257" —
+  contradicting SM-R-8's 1024/1-1024 mandate; no gate caught it) →
+  hygiene TERMINATED ITS OWN LIVE BUILD cl4dm (AdminShutdown 19:13;
+  amended FM-06 "runningCount=1 ⇒ touch nothing" violated) → kk2m2
+  dispatched with NO ARGS (FM-18 recurrence; main.py prints usage and
+  exits 0 ⇒ "Completed" masks the failure) → immediate re-dispatch
+  d4c3279b/lj98k on the same wrong diagnosis. No circuit breaker exists.
+RC-4 GUARDS-AS-PROSE: FM-21 T+35 (did not fire — it is a rails sentence,
+  no mechanical actor), FM-18 (script hardened, script BYPASSED), FM-06
+  (violated under pressure), 90-min rate gate (waived by its own
+  subject). Every prompt-text-only guard failed precisely when needed.
+RC-5 DESK/VERIFICATION MISS (owned): desk verification checked artifact
+  EXISTENCE and narration honesty, not SCALE BEHAVIOR (fixture-scale
+  perf gate accepted; no production canary demanded) and not MECHANISM
+  (prose guards counted as if they were actuators). The confidence
+  estimate counted countermeasures per KNOWN mode; tonight failed on an
+  unknown-unknown (RC-2) plus prose-guard non-execution (RC-4) — the
+  categories such counting cannot cover.
+
+FIX WAVE F (binding on restart; NO dispatch before F1-F5 deploy-green):
+ F1 NULL ENGINE PER SPEC: implement the true C/E decomposition (values
+    precomputed once; replicate loop = pure array reuse/interp/cumsum,
+    ZERO evaluator calls). If between-knot nonlinearity breaks the 1e-6
+    serial-equivalence gate, batch-evaluate the 819×1023 shifted clock-
+    knot positions in one vectorized pass OR take a PRATINIDHI ruling
+    re-expressing the gate on window equality. FM-25 perf gate RE-CUT on
+    a production-scale fixture (≥150K primitives) with a hard ceiling.
+ F2 REAPER-COMPATIBLE SUBSTEPS: stage5dhara:{ec}:{chunk} — vectorized
+    replicate chunks (~128) that COMMIT progress and heartbeat; resume-
+    safe accumulator. One substep per class is forbidden while the
+    reaper contract stands.
+ F3 MANDATORY CANARY: the dispatch script itself runs a ONE-class
+    production canary (stage4+stage5, marriage) and refuses the full
+    dispatch unless measured×26 fits the rate budget. Measurement
+    before scale, mechanized — not a conductor promise.
+ F4 MECHANIZED GUARDS: (a) supervisor-level build watchdog in bash
+    (substep zero-growth >35min while execution RUNNING ⇒ stop-flag +
+    cancel + ledger; no LLM in the loop); (b) main.py --run-id
+    required=True, exit 2 (kills FM-18 class); (c) raw `gcloud run jobs
+    execute` FORBIDDEN — ratified script only; (d) CIRCUIT BREAKER: 2
+    consecutive failed/no-op dispatches ⇒ mandatory PARK + opus
+    red-diagnosis, never a third improvisation.
+ F5 DECADE-SEAM FIX (still outstanding from prior directive) + full-
+    horizon contiguity test. _RESUME_VERSION 6→7 ONCE across F1+F2+F5;
+    ONE rebuild (A8) after all land.
+DISPOSITION: A7 stage4 data (25×343,973 rows) = valid unsealed
+validation data, known seam gaps, stage5 empty. Runs 7ae69a7c/a7ae52d4
+failed; d4c3279b stop-flagged 19:30:56Z; execution lj98k cancelled by
+desk immediately after this entry. Δ1 supervisors DOWN pending native
+restart approval; Δ3 untouched (gated, unaffected).
