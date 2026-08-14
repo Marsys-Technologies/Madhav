@@ -4443,3 +4443,68 @@ ka_kshetra: RESUMING chart 482012f1 — 250/318 substeps committed, 68 remaining
 - substeps: 250 committed (all stage4), stage5 block 1 in progress
 
 CONDUCTOR-HEARTBEAT: 2026-08-14T19:28Z [R42 — lj98k A7-FIXED: GUC ✅; 250/318 resumed; stage5 block1 in-progress; FM-21 watch 19:55Z; pid=29192]
+
+---
+
+## SESSION-OPEN: 2026-08-15T20:44Z — FIX WAVE F OVERNIGHT EDITION
+
+**REAPER WINDOW CONFIRMED**: 15 min (both clause 1 orphan-run + clause 2 stuck-asset watchdog/route.ts).  
+**REAPER AUDIT (stages 6/6.5/8)**: ALL SAFE. Stage 6/6.5/8 are read-then-compute, complete in seconds. Only stage5dhara requires chunking (F2 addresses).  
+**HALF-WINDOW SAFETY MARGIN**: 7.5 min per substep.
+
+**SM-R-11 ABSORPTION (RC-1..RC-5) CONFIRMED. FIX WAVE F SEQUENCE:**
+- F1: Rewrite dhara_compute_null_vec — true C/E decomposition, ZERO evaluator calls in replicate loop
+- F2: stage5dhara:{ec} → stage5dhara:{ec}:1 + stage5dhara:{ec}:2 (null chunk + windows chunk), commit-per-chunk
+- F3: Canary-gated dispatch script (GREEN ≤4h / YELLOW 4-8h / RED >8h bands; build_strikes≥2 refuses)
+- F4: main.py --run-id required=True, exit 2; forbid raw gcloud run jobs execute
+- F5: assemble_knot_set decade edges d*H/10 (d=1..9); full-horizon contiguity test
+- _RESUME_VERSION 6→7 ONCE across F1+F2+F5 (ONE PR)
+
+**LIVENESS (20:44Z):**
+- Sole conductor: this session (prior lj98k CANCELLED 19:33Z Aug 14)
+- Cloud Run: all executions Completed (no RUNNING builds)
+- main HEAD: 15ace43df (confirmed)
+- Δ1 integration: 5f674a89c (Δ1 DOWN, SM-R-11 governing)
+- F1-F5 PRs: NONE open (Fix Wave not yet started)
+- Stage4 data: 250/318 substeps committed (all stage4, stage5 empty) — STALE WHEN v7 LANDS
+
+**PLAN:**
+- F1+F2+F5+version → ONE PR (branch: fix/sampurti-fw-f1f2f5)
+- F3 → separate PR (branch: fix/sampurti-fw-f3)
+- F4 → separate PR (branch: fix/sampurti-fw-f4)
+- PARĪKṢAKA verification after each PR
+- A8 via F3 canary script after ALL F-wave PRs deploy-green
+
+CONDUCTOR-HEARTBEAT: 2026-08-15T20:44Z [FIX-WAVE-F START — reaper=15min; half-window=7.5min; stages6/65/8=SAFE; F1-F5 sequence: f1f2f5+v ONE PR, f3 separate, f4 separate; A8 post deploy-green]
+
+---
+
+## Heartbeat: 2026-08-14T21:21Z — F-WAVE PRs COMPLETE; ALL AWAITING CI + REVIEW
+
+CONDUCTOR-HEARTBEAT: 2026-08-14T21:21Z [FIX-WAVE-F: 3 PRs OPEN; _RESUME_VERSION corrected to 7; awaiting CI green + PARĪKṢAKA]
+
+**F-WAVE STATUS (21:21Z):**
+- PR #1283 (F4): fix/sampurti-fw-f4 — main.py --run-id guard, exit 2 on no-args. OPEN.
+- PR #1284 (F1+F2+F5): fix/sampurti-fw-f1f2f5 — C/E decomposition null, 2-chunk substeps, decade knots. OPEN.
+  - _RESUME_VERSION: corrected 6→7 (v6 was L-NULL PR #1278; v7 = F1+F2+F5). Push 1f2f03fb9.
+  - Tests: 20/20 pass.
+  - NOTE: branch includes sampurti/integration coordination files (SAMPURTI_STATE.md,
+    CAMPAIGN_COORDINATION.md, deploy.yml, dispatch_a6triple script). These are non-breaking
+    coordination artifacts; PR diff is wider than just F1+F2+F5 changes.
+- PR #1285 (F3): fix/sampurti-fw-f3 — SAMPURTI_CANARY_CLASSES env var + canary/full dispatch scripts. OPEN.
+
+**KEY CORRECTIONS vs SESSION-OPEN PLAN:**
+- F1 rewrite: targeted dhara_null.py (not dhara_null_vec.py — that filename doesn't exist on main).
+  The F1 C/E decomposition replaces the old vectorized-per-replicate approach.
+- _RESUME_VERSION: session-open said "6→7"; correct — main was already at 6 (PR #1278).
+  PR #1284 initially had 6 (mistake); fixed to 7 in push 1f2f03fb9.
+
+**NEXT ACTIONS (for PARĪKṢAKA or next desk session):**
+1. Verify PR CI green (GitHub Actions):
+   - PR #1283: no writer changes → CI fast
+   - PR #1284: writer + test changes → full Python test suite must pass
+   - PR #1285: new scripts + writer env var → test suite must pass
+2. PARĪKṢAKA FM-26 algo-vs-spec verdict on F1+F2+F5 (#1284)
+3. Merge order: F4 (#1283) first (no deps), then F1+F2+F5 (#1284), then F3 (#1285)
+4. After all 3 deployed: run dispatch_sampurti_a8_canary → observe CAREER T+12 GREEN → run dispatch_sampurti_a8_full --canary-verified
+5. Post ██ MARKER-POSTED: FIELD-INTEGRATED ██ after A8 full build completes → unblocks Δ3
