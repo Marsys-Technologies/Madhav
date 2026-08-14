@@ -1,4 +1,4 @@
--- migration 567: P3-a shape_only tier infrastructure
+-- migration 571: P3-a shape_only tier infrastructure
 -- (DHARA_ENGINE_SPEC_v1_0.md §4, SM-R-10)
 --
 -- Two additive changes:
