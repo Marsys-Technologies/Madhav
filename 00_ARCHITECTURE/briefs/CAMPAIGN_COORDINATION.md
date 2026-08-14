@@ -1834,3 +1834,46 @@ W8/W9 next wave (off critical path): pin-matrix wiring (surgical
 
 Δ3: unchanged, still gated; its 4k59k hang-recovery (04:48Z) is
 commended and cited as the FM-21 exemplar.
+
+---
+### SM-R-9 — NATIVE RULING N5 (2026-08-14): PŪRṆA-KṢETRA TARGET STATE — 27-CLASS PLATFORM CONSISTENCY + VECTORIZATION-FIRST BUILD
+
+Plan of record: /Users/Dev/shad_overnight/PURNA_KSHETRA_PLAN_v1_0.md
+(Δ1 commits a copy to 00_ARCHITECTURE/briefs/sampurti/ at first run).
+ABSORBS SM-R-8's W-wave (nothing dropped; W1→P1, W2→P2, W3/W4/W5 ride
+P-B; W8/W9 promoted into the core as P5/P1).
+
+THE MANDATE (native, verbatim intent): 27-class consistency across the
+entire platform; vectorization implemented BEFORE building; target state
+= completeness of output + brilliant astrological insight + minimal
+build time; accuracy non-negotiable.
+
+KEY ARCHITECTURE (code-verified basis — see plan §0):
+  I-1 raw per-knot curves are CHART-level (shared contexts already exist)
+      → ONE term-matrix sweep + 27 cheap per-class combines (≈27× cut on
+      the dominant cost; delivers n2's EXPLAIN artifact as the engine).
+  I-2 baseline_rate is a pure multiplicative constant → shift-null window
+      detection is SCALE-INVARIANT → prior-less classes ship honest
+      `shape_only` timing output (windows/peaks/salience), absolutes
+      withheld — LAW ZERO intact. GATED on an adversarial refutation
+      review + a scale-the-field-10x property test BEFORE any shape row.
+  I-3 tiers: calibrated | shape_only | not_applicable — per-class basis
+      table BLIND-COMMITTED and PRATINIDHI-ratified before computation;
+      priors research lane (citation-backed only, B.10 absolute) upgrades
+      classes shape_only→calibrated via pin-matrix surgical rebuilds.
+
+Δ1 SEQUENCE: P-A specs+freeze (ENGINE/TIERS/PRIORS, adversarial review,
+FM-26 duty) → P-B parallel lanes L-ENGINE/L-NULL/L-TIER/L-PIN (+bounded
+SET LOCAL 900000ms FM-24, merge #1271 FM-23, _RESUME_VERSION 5→6 FM-17)
+→ P-C A7 "PŪRṆA build" all 27 classes (targets: full cold build 45-60min;
+rate gate 90min; GUC smoke T+3; FM-21 hard trigger T+35) → P-D proof
+spine to ██ MARKER-POSTED: FIELD-INTEGRATED ██ → P-E upgrade loop.
+
+Δ3 GAINS LANE R5 (independent, runs inside existing gate/sanity cadence):
+serving-consistency census — every kala_*/portal surface serves the full
+27-class universe with tier disclosure; CI census check (universe ==
+brahma_event_ontology, tier facet present, no hardcoded class lists).
+R2-proof + R4 unchanged, still fire on FIELD-INTEGRATED.
+
+n3 stands at 1024 (SM-R-8 R-a). All SM-R-8 PARĪKṢAKA duties stand.
+Supervisors remain DOWN until the native green-lights restart.
