@@ -1958,6 +1958,96 @@ LAW ZERO pattern: classes without bg_class_priors lifetime row are skipped (expe
 
 ---
 
+## SESSION-29 — 2026-08-14T18:13Z (23:43 IST — 2h sanity pass)
+
+CONDUCTOR-HEARTBEAT: 2026-08-14T18:13Z pid=17349 host=Montys-MacBook-Pro.local session=Δ3-s29
+
+### STEP-0 (session-29)
+
+**Liveness:** CLEAN — stored PID 12937 (supervisor bash run_dh_d3.sh, alive; NOT a peer conductor — pgrep "CONDUCTOR of SAMPŪRTI-Δ3" = NONE). Sole conductor confirmed. PID 17349 written to dh-d3-logs/current_conductor.pid.
+
+**Hygiene:** A7 build kjvmn RUNNING (runningCount=1, createTime=15:24:00Z, no completionTime). LIVE BUILD — touch nothing. Per amended hygiene rule. No DB scope for Δ3; no proxy started.
+
+**Coordination (fetched 18:13Z):** Latest entry = desk directive (commit 3a6537732, posted ~18:07Z / 23:37 IST). **CRITICAL: A7 is VALIDATION-ONLY. D-1 decade-seam defect confirmed. DO NOT POST FIELD-INTEGRATED.**
+
+**FM-09 Reconcile:**
+
+| Surface | Session-28 state | Session-29 reality |
+|---------|-----------------|-------------------|
+| A7 kjvmn | RUNNING, FM-21 HANG (T+50min, 250/318 substeps, last progress 16:57Z) | STILL RUNNING (runningCount=1, T+169min total, no completion) |
+| Desk directive | Not yet posted | **POSTED** (3a6537732, ~18:07Z): A7=VALIDATION-ONLY; DO NOT POST FIELD-INTEGRATED |
+| D-1 defect | Not yet identified | **CONFIRMED**: decade-seam fix NEVER LANDED; 9 gaps × 26 classes in live A7 snapshot kfs_e23ba1abdf1c6fd3a1cc5c08c7538aeb |
+| n55nm execution | Not in session-28 | SUCCEEDED (appeared in executions list, likely pre-dispatch check before kjvmn, non-critical) |
+| FIELD-INTEGRATED | NOT POSTED | NOT POSTED — now gated on **L-SEAM fix + A8 rebuild** (not just A7) |
+| R1–R5 | Per session-28 close | UNCHANGED |
+
+### DESK DIRECTIVE ABSORBED (3a6537732, ~18:07Z)
+
+Key findings (binding):
+- **D-1 (CONFIRMED)**: `assemble_knot_set` (dhara_sweep.py) is UNCHANGED on main — no interior decade edges (d·H/10, d=1..9). writer.py:482 filter unchanged. Live A7 snapshot kfs_e23ba1abdf1c6fd3a1cc5c08c7538aeb shows EVERY class with exactly 9 contiguity gaps across 26 classes.
+- CI test `test_dhara_build_segments_contiguous_and_indexed` is synthetic (3-segment, t=0..100) — cannot detect the 36,525-day defect. FM-26 recurring.
+- **REQUIRED**: L-SEAM lane: (a) add interior decade edges to assemble_knot_set OR fix writer.py:482 filter; (b) replace synthetic contiguity test with full-horizon assertion; (c) _RESUME_VERSION 6→7 → A8 = the real deliverable.
+- **DISPOSITION OF A7**: let run to completion (validates full 27-class pipeline end-to-end: tier writer, vectorized null, Layer0/Layer1 engine, serving suppression). No snapshot seal as final. No FIELD-INTEGRATED post. No P-D gate on A7 output.
+- Verified-correct items (desk-confirmed, adopt, do not re-check): P0.a/b/c/d done; vectorized null wired (#1263 dhara_null_vec.py via writer.py:663); tier system live (6 calibrated / 19 shape_only / 2 not_applicable); birth_anchor LAW ZERO correct; FM-27 smart-polling adopted.
+
+**Impact on Δ3 timeline:** FIELD-INTEGRATED now gated on L-SEAM + A8 (not A7). R2 MCP proof and R4 G-P4 are further delayed. Δ3 scope unchanged — same proofs, later gate.
+
+### FM-21 STATUS (A7 kjvmn, session-29)
+
+- Last substep: 16:57Z (250/318) — T+79min with no substep growth as of 18:16Z
+- Session-28 already posted FM-21 HANG ALERT to coordination (T+50min → T+79min now)
+- Desk directive: "let A7 RUN TO COMPLETION" — this overrides FM-21 park threshold for A7
+- Δ3 cannot execute FM-21 recovery (NO DB scope); Δ1 handles recovery if A7 stalls entirely
+- Build may be in slow Python DHARA computation (not truly hung); W3 15-min idle-in-txn cannot fire (connection cycles too fast per session-28 analysis)
+- **Δ3 posture:** monitor only; no action; desk directive governs
+
+### R1 MCP PROOF — 10th Pass (18:16Z): PASS ✓
+
+Call: `gochara_forecast_get(chart=482012f1, domain=marriage, 2026-08-14→2027-08-14)`
+- `coverage.event_classes_covered`: 27 classes (all 27 incl. marriage) ✓
+- `coverage.domains_not_covered`: [] ✓
+- `coverage.coverage_quality.tier`: "rich" ✓
+- `sweep_completeness.substeps_committed`: 270 under `ka_gochara_v3_century_materialize` ✓
+- `backing_data_reachable`: true ✓
+- No S4-05 refusal ✓
+- `windows`: 0 — honest empty (same consistent result as all 9 prior passes; no overlapping marriage windows in 2026-08-14→2027-08-14)
+
+**R1 PROOF STATUS: PASS** (10th consecutive — sessions 15/19/20/21/22/23/25/27/28/29). R1 fix stable in production.
+
+### SESSION-29 LANE STATUS
+
+| Lane | Status | Notes |
+|------|--------|-------|
+| R1 | MERGED + MCP PROOF PASS ✓ | 10th pass 18:16Z; 27 classes, 270 substeps, no S4-05 |
+| R2 | DEPLOYED; MCP PROOF PENDING | Sidecar 0f9395a17 live; NOW gated on L-SEAM + A8 (not just A7) |
+| R3 | DONE ✓ | commit 66e35c216 |
+| R4 | READY-ON-SIGNAL | probe script committed; NOW gated on L-SEAM + A8 |
+| R5 | MERGED + DEPLOYED ✓ | PR #1280 merged 14:04Z; deployed 0f9395a17 14:47Z |
+
+### SESSION-29 CLOSE
+
+**Independent work:** R1 10th pass complete. Desk directive absorbed. No other independent Δ3 work available — all remaining scope (R2+R4) gated on FIELD-INTEGRATED, which now requires L-SEAM + A8.
+
+**WHAT ONE RELAUNCH FINISHES:** When FIELD-INTEGRATED posts (`██ MARKER-POSTED: FIELD-INTEGRATED ██`) — after L-SEAM + A8 completes:
+1. Run `python3 00_ARCHITECTURE/briefs/sampurti/probe_sampurti_d3_r2_r4.py --chart-id 482012f1-710e-4a25-994a-93821f5871aa --mcp-key $MARSYS_MCP_KEY`
+2. R2: verify marriage in roots (resolution='era'); NOT in legacy_flat → paste as MCP proof
+3. R4: verify field_snapshot_id=kfs_* (not 'field_not_yet_built') → paste as MCP proof
+4. Append both proofs to γ ledger (sampurti/vyakhya append-only)
+5. Post SESSION-DONE-Δ3 to coordination → RUN-TERMINAL: SESSION-Δ3-COMPLETE
+
+**NEXT-ACTION (session-30):**
+1. Check coordination for `██ MARKER-POSTED: FIELD-INTEGRATED ██`
+2. Check A7 kjvmn status: completed (as VALIDATION run)? Δ1 FM-21 recovery executed?
+3. Check Δ1 ledger for L-SEAM lane dispatch + A8 build status
+4. R1 re-proof if there is no other work (10 consecutive PASSes — stable)
+5. On FIELD-INTEGRATED: probe → R2 + R4 → γ ledger → SESSION-DONE-Δ3
+
+**WHAT SINGLE RELAUNCH FINISHES MY SCOPE:** FIELD-INTEGRATED (after A8) posts → probe script → R2 proof (marriage in roots, resolution='era') + R4 proof (kala_ahead_get field_snapshot_id=kfs_*) → γ ledger append → SESSION-DONE-Δ3 → RUN-TERMINAL: SESSION-Δ3-COMPLETE
+
+RUN-TERMINAL: SESSION-Δ3-PENDING-29 (2h sanity pass — A7 kjvmn RUNNING/VALIDATION-ONLY; D-1 decade-seam defect confirmed; FIELD-INTEGRATED gated on L-SEAM+A8 not A7; R1 PASS×10; desk directive absorbed; clean close)
+
+---
+
 ## SESSION-28 — 2026-08-14T17:42Z (23:12 IST — 2h sanity pass)
 
 CONDUCTOR-HEARTBEAT: 2026-08-14T17:42Z pid=88603 host=Montys-MacBook-Pro.local session=Δ3-28
