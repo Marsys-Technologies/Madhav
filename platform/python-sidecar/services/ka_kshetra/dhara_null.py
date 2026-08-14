@@ -48,8 +48,7 @@ Authority: DHARA_DESIGN_v1_0.md §6.1–§6.6.
 """
 from __future__ import annotations
 
-import math
-from typing import Optional, Sequence
+from typing import Optional
 
 import numpy as np
 
@@ -59,11 +58,7 @@ from services.ka_kshetra.stage5_null import (
     DURATION_BUCKETS,
     QuantilePool,
     Q_QUANTILE,
-    cumulative_on_grid,
-    replicate_evaluator,
     sliding_window_max,
-    _NULL_COARSE_LEVELS,
-    _null_build_segments,
 )
 
 # ── public constants ──────────────────────────────────────────────────────────
@@ -86,47 +81,6 @@ DEFAULT_ALPHA: float = 0.05
 # frozen type shared across writer.py and all consumers.  Imported above.
 
 
-# ── knot-set helpers ──────────────────────────────────────────────────────────
-
-def _clock_knots(ev: FieldEvaluator, coarse_mode: bool) -> np.ndarray:
-    """Extract clock knots K_c from the evaluator's ladder.
-
-    coarse_mode=True: MD/AD/PD boundaries only (~819 knots), matching the L1g
-    optimization in stage5_null.py._null_breakpoints.
-    coarse_mode=False: all ladder levels (MD/AD/PD/SD/PrD), ~165K periods.
-
-    Returns a sorted float64 array clipped to [0, horizon_days].
-    """
-    H = ev.horizon_days
-    pts: set[float] = {0.0, H}
-    for periods in ev.ladder.values():
-        for p in periods:
-            if coarse_mode and p.level not in _NULL_COARSE_LEVELS:
-                continue
-            pts.add(p.t_start)
-            pts.add(p.t_end)
-    arr = np.array(
-        sorted(t for t in pts if math.isfinite(t) and 0.0 <= t <= H),
-        dtype=np.float64,
-    )
-    return arr
-
-
-def _envelope_knots(ev: FieldEvaluator) -> np.ndarray:
-    """Extract sorted envelope knots K_e from the evaluator's EnvelopeIndex.
-
-    Uses EnvelopeIndex.breakpoints() which returns every knot time from all
-    primitives (supportive + obstructive), clipped to the horizon.
-    """
-    raw = ev.envelopes.breakpoints()
-    H = ev.horizon_days
-    arr = np.array(
-        sorted(t for t in raw if math.isfinite(t) and 0.0 <= t <= H),
-        dtype=np.float64,
-    )
-    return arr
-
-
 # ── main entry point ──────────────────────────────────────────────────────────
 
 def dhara_compute_null(
@@ -137,31 +91,40 @@ def dhara_compute_null(
 ) -> NullResult:
     """Compute the DHARA null distribution via circular-shift replicates.
 
-    Returns a NullResult with q_threshold and max_stats for each duration bucket.
+    F1 (SM-R-11): C/E DECOMPOSITION — ZERO evaluator calls in the replicate loop.
+    ─────────────────────────────────────────────────────────────────────────────
+    The identity ln λ_r(t) = C(t) + E((t−δ_r) mod H) is exploited:
+
+    C(t): clock/lord/promise contribution only — precomputed ONCE on a 1-day
+          midpoint grid using a clock-only evaluator built with EnvelopeIndex([],H).
+          EnvelopeIndex with empty primitives returns {} from covariates_at and
+          obstructions_at, so hazard.evaluate produces only clock/promise terms.
+    E(t): envelope contribution = ev.ln_lambda(t) − C(t) — precomputed ONCE.
+
+    Total precomputation: 2·n evaluator calls (n = int(H) = 36,525 for a
+    100-year horizon, ~4–8 s).  Previous approach: 819 calls PER replicate
+    × 1,023 replicates = 838,937 calls → 90+ min/class (RC-1, SM-R-11 RCA).
+
+    Each replicate r performs a vectorized circular shift of E_fine by
+    δ_r = r·H/R using modular index arithmetic and linear interpolation
+    (O(n) NumPy ops, zero evaluator calls), then:
+        lam   = exp(C_fine + E_shifted)          # per-day approximate integral
+        cum   = [0] + cumsum(lam)                # cumulative hazard on 1-day grid
+        stats = sliding_window_max(cum, bucket)  # per-bucket max
 
     Parameters
     ----------
     evaluator : FieldEvaluator
         The real (unshifted) field evaluator for this (chart, event_class).
     replicates : int
-        R value. Default 1024. The shift grid uses range(1, replicates), yielding
-        replicates-1 = 1023 independent shifts (F-01 correction).
+        R value. Default 1024. Shift grid uses range(1, R) → R-1=1023
+        independent shifts (F-01 correction).
     alpha : float
-        Exceedance threshold (default 0.05). Stored in NullResult for auditing;
-        the null distribution itself is threshold-agnostic.
+        Exceedance threshold (default 0.05). Stored in NullResult; the null
+        distribution itself is threshold-agnostic.
     coarse_mode : bool
-        True (default): clock knots use MD/AD/PD only (~819 knots, L1g parity).
-        False: clock knots include all ladder levels (~165K periods).
-
-    F-01 correction
-    ---------------
-    The shift grid is range(1, replicates), NOT range(1, replicates+1).
-    When r == replicates, delta = replicates*(H/replicates) = H, and
-    circular_shift's `delta % H == 0` returns the unshifted identity — identical
-    to the observation. Using range(1, replicates) excludes this degenerate shift
-    so all replicates are statistically independent.
-    The p-value denominator is replicates (= 1 observation + replicates-1 shifts).
-    Resolution: 1/replicates = 1/1024.
+        Accepted for API compatibility; not used. The 1-day grid is used for
+        all modes and is coarser than any clock-knot ladder subset.
     """
     if replicates < 2:
         raise ValueError(f'replicates must be >= 2, got {replicates!r}')
@@ -172,79 +135,74 @@ def dhara_compute_null(
     if not (H > 0):
         raise ValueError(f'evaluator.horizon_days must be > 0, got {H!r}')
 
-    # ── assemble fixed knot sets ──────────────────────────────────────────────
+    n = int(round(H))  # 1-day grid size: 36,525 for a 100-year horizon
+    # Midpoint grid: avoids evaluating exactly on dasa-boundary discontinuities.
+    t_grid = np.arange(n, dtype=np.float64) + 0.5  # 0.5, 1.5, …, H-0.5
 
-    # Clock knots K_c: fixed for ALL replicates (birth-chart-fixed dasa ladder).
-    K_c = _clock_knots(evaluator, coarse_mode=coarse_mode)
-
-    # Envelope knots K_e (base, unshifted): shifted per-replicate.
-    K_e = _envelope_knots(evaluator)
+    # ── F1: precompute C and E grids ONCE (2·n evaluator calls total) ─────────
+    # Clock-only evaluator: EnvelopeIndex([], H) → covariates_at → {} and
+    # obstructions_at → {} → C(t) = clock/promise/lord terms only.
+    clock_ev = FieldEvaluator(
+        event_class=evaluator.event_class,
+        lifetime_count=evaluator.lifetime_count,
+        promise=evaluator.promise,
+        clocks=evaluator.clocks,
+        ladder=evaluator.ladder,
+        envelopes=EnvelopeIndex([], H),
+        weights=evaluator.weights,
+        horizon_days=H,
+        baseline_source=evaluator.baseline_source,
+        extra_breakpoints=evaluator.extra_breakpoints,
+    )
+    C_fine = np.fromiter(
+        (clock_ev.ln_lambda(t) for t in t_grid), dtype=np.float64, count=n
+    )
+    full_fine = np.fromiter(
+        (evaluator.ln_lambda(t) for t in t_grid), dtype=np.float64, count=n
+    )
+    E_fine = full_fine - C_fine  # envelope-only contribution, shape (n,)
 
     # ── accumulators ─────────────────────────────────────────────────────────
-
     shift_step = H / replicates
-    # F-01: range(1, replicates) — 1023 independent shifts (r=1..1023 for R=1024)
-    # r * (H/R) for r in [1, R-1]: max delta = (R-1)*(H/R) = H*(1 - 1/R) < H
-    # so the last shift never wraps to H (no identity).
-
-    # Expected total grid values for quantile pool: (replicates-1) replicates
-    # each contributing int(H) grid points.
-    n_grid = int(round(H))
+    # F-01: range(1, replicates) — R-1=1023 independent shifts.
+    # Max delta = (R-1)·(H/R) = H·(1−1/R) < H, so the last shift never
+    # wraps to H (which would yield the identity, double-counting the observation).
     n_shifts = replicates - 1
-    pool = QuantilePool(quantile=Q_QUANTILE, expected_total=n_shifts * n_grid)
 
-    # max_stats[bucket][replicate_index] = M_r(L)
+    pool = QuantilePool(quantile=Q_QUANTILE, expected_total=n_shifts * n)
     all_stats: dict[int, dict[int, float]] = {int(b): {} for b in DURATION_BUCKETS}
 
-    for r in range(1, replicates):  # F-01: range(1, R), gives R-1 shifts
+    for r in range(1, replicates):  # F-01: range(1, R)
         delta = r * shift_step
 
-        # ── shift envelope knots: O(|K_e|) ───────────────────────────────────
-        K_e_shifted: np.ndarray = np.mod(K_e + delta, H)
-        K_e_shifted.sort()  # in-place O(|K_e| log |K_e|)
+        # ── vectorized circular shift of E — zero evaluator calls ─────────────
+        # E_shifted[k] ≈ E_fine at source time (t_grid[k] − delta) mod H.
+        # t_grid[k] = k + 0.5, so source midpoint index = (k + 0.5 − delta) mod H.
+        src_idx = (t_grid - delta) % H   # fractional index in [0, H) = [0, n)
+        i_low = np.floor(src_idx).astype(np.intp) % n
+        i_high = (i_low + 1) % n
+        frac = src_idx - np.floor(src_idx)
+        E_shifted = E_fine[i_low] * (1.0 - frac) + E_fine[i_high] * frac
 
-        # ── merge with clock knots: O((|K_c|+|K_e|) log(|K_c|+|K_e|)) ───────
-        K_r: np.ndarray = np.unique(np.concatenate([K_c, K_e_shifted]))
-
-        # ── build replicate evaluator (shifted envelope) ──────────────────────
-        rep_ev = replicate_evaluator(evaluator, delta)
-
-        # ── build segments for this replicate ─────────────────────────────────
-        # Uses _null_build_segments from stage5_null.py (memoised ln_lambda +
-        # capped max_depth + coarse breakpoints from _null_breakpoints).
-        # Note: _null_build_segments internally calls _null_breakpoints which
-        # builds its own coarse knot set from the replicate evaluator's ladder.
-        # The K_r array above is used to compute the merged knot count for
-        # the q_pool size estimate; the actual sweep uses _null_build_segments'
-        # own breakpoint logic for correctness parity with stage5_null.py.
-        segments = _null_build_segments(rep_ev)
-
-        # ── cumulative integral on 1-day grid: O(|segs| + H) ─────────────────
-        cum = cumulative_on_grid(segments, H, grid_step=1.0)
+        # ── cumulative hazard on 1-day grid ───────────────────────────────────
+        lam = np.exp(C_fine + E_shifted)   # per-day approximate integral, O(n)
+        cum = np.empty(n + 1, dtype=np.float64)
+        cum[0] = 0.0
+        cum[1:] = np.cumsum(lam)
 
         # ── sliding-window max for each duration bucket ───────────────────────
-        replicate_idx = r - 1  # 0-indexed: shift r=1 -> index 0, r=1023 -> index 1022
+        replicate_idx = r - 1  # 0-indexed
         for b in DURATION_BUCKETS:
             all_stats[int(b)][replicate_idx] = sliding_window_max(cum, int(b))
 
         # ── pool lambda values for q_e quantile ──────────────────────────────
-        # Compute lambda on the 1-day grid using the cumulative array differences.
-        # Each grid point's lambda is approximated as the 1-day integral value
-        # (consistent with stage5_null.py's _lambda_grid_fast approach which
-        # reads lambda at each grid step's start time).
-        # Use the differences of the cumulative array as the per-step integrals.
-        n_steps = len(cum) - 1
-        lambda_vals = [cum[k + 1] - cum[k] for k in range(n_steps)]
-        pool.add(lambda_vals)
+        pool.add(lam)  # lam ≡ np.diff(cum); avoids recomputing the differences
 
     # ── finalize ──────────────────────────────────────────────────────────────
-
-    completed = n_shifts  # all replicates ran (no block-partial mode here)
     ordered_stats: dict[int, list[float]] = {
-        int(b): [all_stats[int(b)][i] for i in range(completed)]
+        int(b): [all_stats[int(b)][i] for i in range(n_shifts)]
         for b in DURATION_BUCKETS
     }
-
     return NullResult(
         replicates=replicates,
         shift_count=n_shifts,
