@@ -91,6 +91,7 @@ import hashlib
 import json
 import logging
 import math
+import os
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
 from typing import Any, Optional
@@ -2155,7 +2156,20 @@ class KaKshetraWriter(WriterBase):
                     'SELECT DISTINCT event_class_id FROM bodha_pratijna '
                     'WHERE chart_id = %s '
                     'ORDER BY event_class_id', (chart_id,))
-                return [r['event_class_id'] for r in S4._rows(cur)]
+                classes = [r['event_class_id'] for r in S4._rows(cur)]
+            # F3 (SM-R-11): canary gate — limit to named class(es) if env var is set.
+            # Usage: gcloud run jobs execute brahma-build-pipeline-job
+            #          --update-env-vars SAMPURTI_CANARY_CLASSES=CAREER
+            # Allows a 1-class timing canary to validate F1+F2+F5 before A8 full run.
+            canary_filter = os.environ.get('SAMPURTI_CANARY_CLASSES')
+            if canary_filter:
+                canary_set = {c.strip() for c in canary_filter.split(',') if c.strip()}
+                classes = [c for c in classes if c in canary_set]
+                logger.info(
+                    'ka_kshetra: SAMPURTI_CANARY_CLASSES=%r → %d class(es): %s',
+                    canary_filter, len(classes), classes,
+                )
+            return classes
         except Exception as exc:
             logger.warning('ka_kshetra: event-class discovery failed for %s: %s',
                            chart_id, exc)
