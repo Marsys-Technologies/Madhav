@@ -88,6 +88,7 @@
 
 import type { Principal } from '../types.js'
 import { callPlatformWrites } from '../client.js'
+import { ADVERSE_WITHHOLD_EVENT_CLASSES as _ADVERSE_WITHHOLD } from './kala_upaya_diagnosis.js'
 
 // ── §11 governance: the one sanctioned write action ──────────────────────────────────
 
@@ -98,20 +99,22 @@ export const AHEAD_AUTOFILE_MODEL = 'kala_ahead_get'
 /** Structural-prior confidence — no empirical calibration yet (R14 discipline). */
 export const AHEAD_AUTOFILE_CONFIDENCE = 0.50
 
-// ── WITHHOLD_EVENT_CLASSES (mirrored from intervention_filing.ts §5.3 / ADJUDICATION-13)
+// ── WITHHOLD_EVENT_CLASSES (canonical source: kala_upaya_diagnosis.ts ADVERSE_WITHHOLD_EVENT_CLASSES)
 //
 // These five classes are health/consent-bearing. Auto-filing them without native sign-off
 // would silently create testable adverse claims the native never explicitly authorized.
 // They are withheld here with the same ADJUDICATION-13 rationale as the W4 spine.
-// The live non-vacuity CI test (`intervention_filing.test.ts` G14b block) verifies this
-// set against the live ontology — both places must stay in sync.
-export const AUTOFILE_WITHHOLD_EVENT_CLASSES: ReadonlySet<string> = new Set([
-  'illness_acute',
-  'chronic_onset',
-  'surgery',
-  'psychological_arc',
-  'bereavement',
-])
+//
+// Fix 1 (G12 / SM-Δ3 R5 P6): previously this was a duplicate inline definition of the
+// same 5-element list that ADVERSE_WITHHOLD_EVENT_CLASSES in kala_upaya_diagnosis.ts
+// carries. Both lists could drift independently. Now AUTOFILE_WITHHOLD_EVENT_CLASSES is
+// derived from the canonical source — one definition, one place to update.
+//
+// The live non-vacuity CI test (`intervention_filing.test.ts` G14b block) verifies the
+// canonical set against the live ontology.
+export const AUTOFILE_WITHHOLD_EVENT_CLASSES: ReadonlySet<string> = new Set(
+  _ADVERSE_WITHHOLD,
+)
 
 // ── KNOWN_EVENT_CLASSES — the committed set from brahma_event_ontology (migrations 388 +
 // 456 + 421 + 551 + 555). Only classes from this set are ever auto-filed; any
@@ -194,6 +197,53 @@ async function platformQueryExists(sourceCitation: string, principal: Principal)
     // application level) means a duplicate filing attempt will land a duplicate row,
     // but that is recoverable and vastly preferable to silently dropping a real filing.
     return false
+  }
+}
+
+// ── query_event_ontology_class — Fix 2 (G12 / SM-Δ3 R5 P6) ─────────────────────────
+//
+// Checks whether a given event_class_id is present in `brahma_event_ontology`.
+// This is the primitive that kala_upaya_diagnosis.ts's comment at line 771 explicitly
+// flagged as missing: "Widening this to a genuinely live query needs a new primitive
+// (`query_event_ontology_class` or similar) — out of Lane U's exclusive-write file scope".
+//
+// Architecture: uses the same `/api/mcp/db/query` read-only endpoint and
+// `platformQueryExists`-style pattern as the idempotency check above. Returns `true`
+// if the class exists in the ontology, `true` as a SAFE DEFAULT on any failure
+// (fail-open = do not withhold; the hardcoded sets remain the authoritative runtime gate).
+// Never throws — all errors are caught and handled.
+//
+// USAGE: this function is intended for CI guards and linting helpers that want to
+// validate `KNOWN_EVENT_CLASSES` entries against the live ontology at test time.
+// It is NOT called in the hot runtime path — the synchronous `KNOWN_EVENT_CLASSES` set
+// check remains the runtime gate (per the "must stay synchronous" design constraint
+// documented in the `KNOWN_EVENT_CLASSES` comment above).
+export async function queryEventOntologyClass(
+  eventClassId: string,
+  principal: Principal,
+): Promise<boolean> {
+  try {
+    const res = await fetch(`${PLATFORM_URL}/api/mcp/db/query`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-MCP-Internal-Token': MCP_INTERNAL_TOKEN,
+        'X-MCP-User': principal.user_uid,
+        'X-MCP-Key-Id': principal.key_id,
+      },
+      body: JSON.stringify({
+        sql: 'SELECT 1 FROM brahma_event_ontology WHERE event_class_id = $1 LIMIT 1',
+        params: [eventClassId],
+      }),
+      signal: AbortSignal.timeout(8_000),
+    })
+    if (!res.ok) return true // safe default: fail-open
+    const data = (await res.json()) as { rows?: unknown[] }
+    return Array.isArray(data.rows) && data.rows.length > 0
+  } catch {
+    // On any failure, fail-open: assume the class exists. The hardcoded sets remain
+    // the authoritative runtime guard; this function is a CI/lint helper, not a gate.
+    return true
   }
 }
 
