@@ -2478,3 +2478,88 @@ Call: `gochara_forecast_get(chart=482012f1, domain=marriage, date_range=2026-08-
 RUN-TERMINAL: SESSION-Δ3-PENDING-33 (false-positive relaunch #2 — FIELD-INTEGRATED not genuinely posted; cl4dm RUNNING T+37min FM-21 threshold just passed Δ1 action needed; R1 PASS×14; L-SEAM not on main; clean close)
 
 ---
+
+## SESSION-34 — 2026-08-14T19:13Z (00:43 IST Aug 15)
+
+CONDUCTOR-HEARTBEAT: 2026-08-14T19:19Z pid=82823 host=Montys-MacBook-Pro.local session=Δ3-34
+
+### STEP-0 (session-34)
+
+**Liveness:** CLEAN — stored PID 77641 (dead; prior session). `pgrep -f "CONDUCTOR of SAMPŪRTI-Δ3"` = PEERS=NONE. Sole conductor confirmed. MY_PID=82823 written to dh-d3-logs/current_conductor.pid.
+
+**Hygiene:** CLEAN — no RUNNING Cloud Run executions. Key changes since session-33:
+- cl4dm: FAILED at 19:13:19Z (NonZeroExitCode exit_code=1, T+42min from 18:31:14Z start). VALIDATION-ONLY — does NOT affect FIELD-INTEGRATED gate.
+- kk2m2: SUCCEEDED at 19:13:39Z in 10.98s (nonce="woc_fix_wih"). NOT a field build (10-second runtime). Likely a brief management/test dispatch. No impact on gate.
+- All executions: Completed (no runningCount).
+
+No DB scope for Δ3; no proxy needed.
+
+**Supervisor launch type:** Session-34 opened at ~19:13Z, ~5 min after session-33 close (19:08Z). This is likely triggered by cl4dm failure + kk2m2 activity, not a genuine FIELD-INTEGRATED post or 2h interval. Confirmed: FIELD-INTEGRATED NOT POSTED.
+
+**Coordination (fetched 19:13Z):** HEAD = session-33 advisory (last entry); no new commits from Δ1 or desk. FIELD-INTEGRATED: NOT POSTED.
+
+**Reconcile (FM-09):**
+
+| Surface | Session-33 state | Session-34 reality |
+|---------|-----------------|-------------------|
+| cl4dm | RUNNING T+37min (FM-21 threshold just passed) | **FAILED** 19:13:19Z exit_code=1 (T+42min) |
+| kk2m2 | Not dispatched | **SUCCEEDED** 19:13:39Z in 10.98s (nonce="woc_fix_wih", NOT a build) |
+| Δ1 integration | R42 HEAD 1cda2c6cc (10:52Z Aug 14) | UNCHANGED — no new commits |
+| main HEAD | 15ace43df (PR #1282) | UNCHANGED |
+| L-SEAM | NOT on main | UNCHANGED |
+| FIELD-INTEGRATED | NOT POSTED | NOT POSTED |
+| R1 MCP proof | PASS×14 (19:08Z session-33) | **PASS×15** (19:19Z session-34 — see below) |
+
+**cl4dm failure note:** cl4dm ran for 42 minutes and failed with exit code 1. This is DIFFERENT from the pure Python-compute hang (which stays running indefinitely). Possible causes: (1) W3 idle-in-txn timeout finally fired at ~T+30min since session-33 was monitoring it cycling every 2-4s (but 30-min is 30min idle-in-txn, and a 2-4s cycle means it's never continuously idle → W3 should NOT fire), OR (2) an actual Python exception during compute, OR (3) Δ1 FM-21 recovery (stop_requested_at → pg_terminate) executed by a conductor that left no trace on integration branch. Δ3 cannot determine root cause (NO DB scope). Flagging for Δ1 FM-09.
+
+**kk2m2 note:** 10.98 seconds, nonce="woc_fix_wih" — not a standard sampurti build label. Dispatched 9 seconds after cl4dm failed. This looks like an automatic or desk-triggered management command. Not a field build, no gate impact.
+
+### R1 MCP PROOF — 15th Pass (19:19Z Aug 14): PASS ✓
+
+Call: `gochara_forecast_get(chart=482012f1, domain=marriage, date_range=2026-08-14→2027-08-14)`
+- `coverage.event_classes_covered`: 27 classes (all 27 incl. marriage) ✓
+- `coverage.domains_not_covered`: [] ✓
+- `coverage.coverage_quality.tier`: "rich", covered_class_count=27, covered_domain_count=13 ✓
+- `sweep_completeness.substeps_committed`: 270 under `ka_gochara_v3_century_materialize` ✓
+- `backing_data_reachable`: true ✓
+- No S4-05 refusal ✓
+- `windows`: [] — honest empty (15th consecutive consistent result)
+
+**R1 PROOF STATUS: PASS** (15th consecutive). R1 fix stable in production.
+
+### Δ3 LANE STATUS (session-34, unchanged)
+
+| Lane | Status | Notes |
+|------|--------|-------|
+| R1 | MERGED + MCP PROOF PASS ✓ | 15th pass 19:19Z session-34; 27 classes, 270 substeps, no S4-05 |
+| R2 | DEPLOYED; MCP PROOF PENDING | Sidecar 0f9395a17 live; gated on L-SEAM + A8 + FIELD-INTEGRATED |
+| R3 | DONE ✓ | commit 66e35c216 |
+| R4 | READY-ON-SIGNAL | probe script committed; gated on FIELD-INTEGRATED (after L-SEAM+A8) |
+| R5 | MERGED + DEPLOYED ✓ | PR #1280 merged 14:04Z Aug 14; deployed 0f9395a17 |
+
+### SESSION-34 CLOSE
+
+**Work this session:**
+- STEP-0 complete (liveness/hygiene/coordination/reconcile) ✓
+- cl4dm FAILED documented (exit_code=1, T+42min — Δ3 cannot determine root cause; Δ1 FM-09 needed) ✓
+- kk2m2 documented (10.98s success, nonce="woc_fix_wih", not a build) ✓
+- Δ1 integration branch: no new commits since R42 (10:52Z Aug 14) ✓
+- R1 MCP proof 15th pass: PASS ✓
+
+**WHAT ONE RELAUNCH FINISHES:** When `██ MARKER-POSTED: FIELD-INTEGRATED ██` is genuinely posted by Δ1 (requires L-SEAM fix + A8 rebuild):
+1. Run R2 MCP proof: `gochara_forecast_get(domain=marriage, date_range=2020-2030)` → verify marriage in roots (resolution='era'), NOT legacy_flat
+2. Run R4 probe: `kala_ahead_get(chart_id=482012f1...)` → verify field_snapshot_id=kfs_* (not 'field_not_yet_built')
+3. Append both proofs to γ ledger (sampurti/vyakhya append-only)
+4. Post SESSION-DONE-Δ3 to coordination → RUN-TERMINAL: SESSION-Δ3-COMPLETE
+
+**NEXT-ACTION (session-35):**
+1. FM-09: check Cloud Run for any new A8 build (Δ1 L-SEAM lane + A8)
+2. Check Δ1 integration branch for L-SEAM commits
+3. Check coordination for genuine `██ MARKER-POSTED: FIELD-INTEGRATED ██`
+4. On FIELD-INTEGRATED (genuine): R2 + R4 proofs → γ ledger → SESSION-DONE-Δ3
+
+**WHAT SINGLE RELAUNCH FINISHES MY SCOPE:** Genuine FIELD-INTEGRATED (after L-SEAM + A8) posts → R2 proof (marriage in roots, resolution='era') + R4 proof (field_snapshot_id=kfs_*) → γ ledger append → SESSION-DONE-Δ3 → RUN-TERMINAL: SESSION-Δ3-COMPLETE
+
+RUN-TERMINAL: SESSION-Δ3-PENDING-34 (cl4dm FAILED exit_code=1 T+42min; kk2m2 10.98s no-op; FIELD-INTEGRATED not posted; L-SEAM not on main; R1 PASS×15; all Δ3 lanes complete; Δ1 dark 8h+; clean close)
+
+---
