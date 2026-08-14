@@ -1345,4 +1345,61 @@ CONDUCTOR-HEARTBEAT: 2026-08-14T00:34Z pid=47095(shell) host=Montys-MacBook-Pro.
 
 **WHAT SINGLE RELAUNCH FINISHES MY SCOPE:** The session that finds `██ MARKER-POSTED: FIELD-INTEGRATED ██` on coordination runs the probe script, appends to γ ledger, posts SESSION-DONE-Δ3 to coordination, and emits RUN-TERMINAL: SESSION-Δ3-COMPLETE.
 
+---
+
+### 2026-08-14 08:05 IST (02:35Z) — SESSION-20 OPEN (2h sanity pass)
+
+CONDUCTOR-HEARTBEAT: 2026-08-14T02:35Z pid=73075 host=Montys-MacBook-Pro.local session=Δ3-s20
+
+**STEP-0 LIVENESS:** CLEAN — stored PID 72263 = supervisor bash (run_dh_d3.sh). PEERS=NONE. Sole conductor confirmed.
+
+**REALITY RECONCILE (adopted, FM-09):**
+
+Build outcomes since session-19:
+- `s27bp`: **FAILED** (started 00:15Z, completed 01:11Z, failedCount=1) — idle_in_txn issue diagnosed by Δ1 R40
+- `66d4q`: **CANCELLED** (started 01:13Z, cancelled 02:10Z) — Δ1 R40 dispatched immediately after s27bp failure then cancelled (OPT-N3 fix needed first)
+- No active execution as of 02:35Z
+
+**Δ1 R40 state (adopted from origin/sampurti/integration log):**
+- Latest heartbeat: `2026-08-14T07:35+05:30` (02:05Z) — "A6⁴ idle_in_txn diagnosed; OPT-N3 PR#1274 open; DEFAULT_REPLICATES 1024→256; A6⁴ pending deploy"
+- OPT-N1 PR#1272: MERGED ✓ (wires dhara_compute_null into stage-5 analytic path)
+- OPT-N2 PR#1271: OPEN (FM-23 guard test — not blocking field build)
+- OPT-N3 PR#1274: OPEN — CI 19/19 PASS, MERGEABLE (dhara replicates 1024→256 + SET LOCAL idle_in_txn=0); waiting on Δ1 R40 to merge
+- OPT-N3 fix addresses s27bp failure (idle_in_txn hang in stage-4/5 with 1024 replicates per block)
+- A6⁴: pending OPT-N3 merge + deploy
+
+**FIELD-INTEGRATED:** NOT POSTED (no sentinel on coordination, no successful field build since mv7c5 at 16:05Z Aug 13)
+
+**COORDINATION:** Most recent entry = Δ3 session-19 (8b2cc4309). Δ1 R40 posted only session-open to coordination (218b917cd); all subsequent R40 heartbeats are on sampurti/integration ledger only.
+
+**INDEPENDENT WORK (session-20):**
+
+**R1 MCP PROOF RE-VERIFIED (02:39Z):**
+- Call: `gochara_forecast_get(chart_id=482012f1..., domain=marriage, 2026-08-14→2027-08-14)`
+- `coverage.event_classes_covered`: 27 classes including `marriage` ✓
+- `coverage.domains_not_covered`: [] ✓
+- `sweep_completeness.substeps_committed`: 270 under `ka_gochara_v3_century_materialize` ✓
+- No S4-05 refusal ✓
+- windows=0: honest empty for this date range (coverage populated; no overlapping windows in range)
+- **R1 PROOF STATUS: PASS** (third verification — session-15 07:11Z, session-19 00:35Z, session-20 02:39Z)
+
+**Δ3 LANE STATUS (session-20 close):**
+| Lane | Status | Notes |
+|------|--------|-------|
+| R1 | MERGED + MCP PROOF PASS ✓ | Re-verified 02:39Z session-20 (third pass) |
+| R2 | DEPLOYED; MCP PROOF PENDING | Awaiting corpus refresh (FIELD-INTEGRATED) |
+| R3 | DONE ✓ | sampurti/vyakhya corrections committed (66e35c216) |
+| R4 | READY-ON-SIGNAL | probe script committed; awaiting FIELD-INTEGRATED |
+
+**BUILD OUTLOOK:** Δ1 R40 merging OPT-N3 (PR#1274 CI green/mergeable) → deploy → A6⁴ dispatch. OPT-N3 reduces replicates 1024→256 (addressing idle_in_txn hang root cause) + adds SET LOCAL idle_in_txn=0 guard. Expected build time with 256 replicates: ~20-30 min (per SM-R-6 proven trajectory). A6⁴ dispatch likely within 1-2h pending Δ1 R40 merge action.
+
+**Per LONG-RUN AUTONOMY RULES:** All Δ3 remaining scope gated on FIELD-INTEGRATED. No further independent Δ3 work available. R1 re-proof complete. Closing cleanly.
+
+**NEXT-ACTION (session-21):**
+1. Check coordination for `██ MARKER-POSTED: FIELD-INTEGRATED ██`
+2. If FIELD-INTEGRATED posted: run probe → R2 MCP proof + R4 G-P4 → γ ledger append → SESSION-DONE-Δ3
+3. If not posted: re-verify R1 (optional, done thrice now), check OPT-N3/A6⁴ state, close cleanly
+
+**WHAT SINGLE RELAUNCH FINISHES MY SCOPE:** FIELD-INTEGRATED marker posts → probe script → R2 proof (marriage in roots, resolution='era') + R4 proof (kala_ahead_get field_snapshot_id=kfs_*) → γ ledger append → SESSION-DONE-Δ3 to coordination → RUN-TERMINAL: SESSION-Δ3-COMPLETE.
+
 RUN-TERMINAL: SESSION-Δ3-PENDING-19 (2h sanity pass — A6″ s27bp RUNNING since 00:15Z, ~19 min elapsed; FIELD-INTEGRATED NOT POSTED; Δ1 R40 actively monitoring; supervisor relaunches on FIELD-INTEGRATED sentinel)
