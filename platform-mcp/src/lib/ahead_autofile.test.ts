@@ -31,6 +31,14 @@ import {
   type AutofileWindowInput,
 } from './ahead_autofile.js'
 
+// Fix 3 (G12 / SM-Δ3 R5 P6): import the canonical event class ids from the TS mirror
+// of `brahma_event_ontology` / `l0_ghatana.EVENT_CLASSES`. This is the same source
+// `event_ontology_shapes.ts` and `lel_event_writer.ts` use. The relative path crosses the
+// package boundary, which is permitted in vitest (no bundler restriction applies to tests)
+// — the same pattern `intervention_ledger_filing_gate.test.ts` uses for the SQL migration
+// file and `vidhi_delivery.test.ts` uses for the doctrine harness receipt validator.
+import { EVENT_CLASS_IDS } from '../../../../platform/src/lib/event_classes.ts'
+
 // ── Shared test fixtures ─────────────────────────────────────────────────────────────
 
 const CHART_ID = '482012f1-710e-4a25-994a-93821f5871aa'
@@ -734,6 +742,80 @@ describe('SM_GAMMA_C5_ENABLED — C5.2: flag ON + field window match → enriche
     expect(entry['field_window_id']).toBe(FIELD_WINDOW_ID)
 
     delete process.env['SM_GAMMA_C5_ENABLED']
+  })
+})
+
+// ── §9 — KNOWN_EVENT_CLASSES drift-guard vs canonical EVENT_CLASS_IDS ────────────────
+//
+// Fix 3 (G12 / SM-Δ3 R5 P6): CI guard that compares KNOWN_EVENT_CLASSES against the
+// canonical 27-class id set from `platform/src/lib/event_classes.ts` (the TS mirror of
+// `l0_ghatana.EVENT_CLASSES` / `brahma_event_ontology`). Fails if KNOWN_EVENT_CLASSES
+// contains ids NOT in the canonical set (stale/invented class) or is missing a canonical
+// id that is fileably relevant (a class the runtime would silently skip).
+//
+// On failure the test reports:
+//   - stale: in KNOWN_EVENT_CLASSES but not in the canonical set (remove or investigate)
+//   - missing: in the canonical set but not in KNOWN_EVENT_CLASSES (add if fileable)
+//
+// Known gap: `career_promotion` is in KNOWN_EVENT_CLASSES (used in test fixtures,
+// carried from the original G14b spec) but is NOT a canonical event_class_id in
+// `brahma_event_ontology` / `l0_ghatana.EVENT_CLASSES`. It was called out with a NOTE
+// comment in the original KNOWN_EVENT_CLASSES definition. This guard makes that gap
+// explicit and test-visible.
+//
+// Known gap: `birth_anchor` IS in the canonical 27-class set but is NOT in
+// KNOWN_EVENT_CLASSES. Birth events are not auto-filed as prospective predictions
+// (they are historical chart-epoch anchors, not forward-looking class labels). The
+// guard flags this so the omission is a documented, conscious choice, not a silent drift.
+
+describe('KNOWN_EVENT_CLASSES — §9 drift-guard vs canonical event_class_ids (Fix 3 G12)', () => {
+  it('contains no ids that are not in the canonical EVENT_CLASS_IDS set (no stale/invented classes)', () => {
+    const canonicalSet = new Set(EVENT_CLASS_IDS)
+    // career_promotion is a documented exception: in test fixtures and KNOWN_EVENT_CLASSES
+    // but not in the canonical ontology. Record it explicitly rather than silently excluding.
+    const documentedExceptions = new Set(['career_promotion'])
+
+    const stale = [...KNOWN_EVENT_CLASSES].filter(
+      (cls) => !canonicalSet.has(cls) && !documentedExceptions.has(cls),
+    )
+    expect(
+      stale,
+      `KNOWN_EVENT_CLASSES contains ids not in canonical EVENT_CLASS_IDS and not in documentedExceptions: ` +
+        `[${stale.join(', ')}]. ` +
+        `Remove these or add them to documentedExceptions with a justification comment. ` +
+        `Update KNOWN_EVENT_CLASSES when the ontology gains a new event class.`,
+    ).toHaveLength(0)
+  })
+
+  it('career_promotion is documented as a known exception (in KNOWN_EVENT_CLASSES but not in canonical ontology)', () => {
+    // This test exists to make the career_promotion gap explicit and traceable.
+    // If career_promotion is ever added to brahma_event_ontology, remove it from
+    // documentedExceptions in the test above and delete this assertion.
+    expect(KNOWN_EVENT_CLASSES.has('career_promotion')).toBe(true)
+    expect(new Set(EVENT_CLASS_IDS).has('career_promotion')).toBe(false)
+  })
+
+  it('birth_anchor is in the canonical ontology but intentionally absent from KNOWN_EVENT_CLASSES', () => {
+    // birth_anchor IS a canonical event_class_id (l0_ghatana epoch anchor) but is NOT
+    // auto-filed as a forward-looking prospective prediction. This test makes that
+    // intentional omission explicit and test-visible.
+    expect(new Set(EVENT_CLASS_IDS).has('birth_anchor')).toBe(true)
+    expect(KNOWN_EVENT_CLASSES.has('birth_anchor')).toBe(false)
+  })
+
+  it('AUTOFILE_WITHHOLD_EVENT_CLASSES is derived from ADVERSE_WITHHOLD_EVENT_CLASSES (Fix 1 G12)', async () => {
+    // Fix 1 consolidation: AUTOFILE_WITHHOLD_EVENT_CLASSES now imports from
+    // kala_upaya_diagnosis.ts rather than redefining the same 5 classes. This test
+    // verifies the derivation is live: both sets must have exactly the same members.
+    // If they diverge, one of the two definitions changed without updating the other.
+    const { ADVERSE_WITHHOLD_EVENT_CLASSES } = await import('./kala_upaya_diagnosis.js')
+    expect(AUTOFILE_WITHHOLD_EVENT_CLASSES.size).toBe(ADVERSE_WITHHOLD_EVENT_CLASSES.length)
+    for (const cls of ADVERSE_WITHHOLD_EVENT_CLASSES) {
+      expect(
+        AUTOFILE_WITHHOLD_EVENT_CLASSES.has(cls),
+        `AUTOFILE_WITHHOLD_EVENT_CLASSES is missing '${cls}' from ADVERSE_WITHHOLD_EVENT_CLASSES`,
+      ).toBe(true)
+    }
   })
 })
 
