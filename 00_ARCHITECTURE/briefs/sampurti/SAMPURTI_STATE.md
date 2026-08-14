@@ -3879,3 +3879,27 @@ All four P-0 sub-tasks confirmed done and on main:
 - Awaiting PARĪKṢAKA PASS before P-B builders dispatch
 
 CONDUCTOR-HEARTBEAT: 2026-08-14T16:00+05:30 [R41 T+78min — P-0 COMPLETE (all 4 sub-tasks on main); P-A spec blind-committed; PARĪKṢAKA in flight; waiting for verdict; pid=resumed]
+
+---
+
+## P-A PARĪKṢAKA (FM-26): ENGINE SPEC v1.0 → FAIL → v1.1 → RE-REVIEW IN FLIGHT
+
+**Spec v1.0 PARĪKṢAKA verdict (opus agent a069c792553601e45): FAIL**
+
+Two blocking issues in §3.1 (vectorized null algorithm):
+- **A6+B7**: §3.1 incorrectly claimed ln_lambda is "computed ONCE, shared across all replicates" — WRONG. Each replicate has a different ln_lambda because the envelope (covariates + obstructions) is circularly shifted per-replicate. Algorithm loop nesting was also inverted (bucket-outside-replicate should be replicate-outside-bucket).
+- Non-blocking: NullResult docstring in contracts.py says "256 by default after OPT-N3" — stale, should say 1024 (SM-R-8); assigned to L-NULL builder.
+
+All other checks PASSED (A1-A5, B1-B6, C1-C6, D1-D3, E1-E2).
+
+**Amendment (v1.1, commit 729f0cc7e):**
+- §3.1 completely rewritten with correct C(t) + E((t−δ_r) mod H) decomposition from plan §P2 notation
+- C(t) = per-class clock/lord-relevance term, FIXED across all replicates (pre-computed once at K_null)
+- E(τ) = envelope (covariates × beta + suppression log), evaluated at SHIFTED time points τ = (t−δ_r) mod H via periodic interpolation from Layer 0 arrays
+- REPLICATE LOOP OUTSIDE, BUCKET LOOP INSIDE — corrects inverted nesting
+- Equivalence caveat added: adaptive refinement NOT preserved by construction; R=8 test tol 1e-6 is sole binding gate; builder resolution paths specified
+- Frontmatter bumped to v1.1, status=REVIEWED, changelog added
+
+**Re-review:** PARĪKṢAKA targeted re-review dispatched (opus agent a63237ee259cad05e, focused on §3.1 only). Verdict pending.
+
+CONDUCTOR-HEARTBEAT: 2026-08-14T16:10+05:30 [R41 T+88min — ENGINE SPEC v1.1 committed; PARĪKṢAKA re-review in flight; awaiting PASS for P-B builder dispatch; pid=resumed]
