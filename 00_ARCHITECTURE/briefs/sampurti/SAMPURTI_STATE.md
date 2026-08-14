@@ -3903,3 +3903,21 @@ All other checks PASSED (A1-A5, B1-B6, C1-C6, D1-D3, E1-E2).
 **Re-review:** PARĪKṢAKA targeted re-review dispatched (opus agent a63237ee259cad05e, focused on §3.1 only). Verdict pending.
 
 CONDUCTOR-HEARTBEAT: 2026-08-14T16:10+05:30 [R41 T+88min — ENGINE SPEC v1.1 committed; PARĪKṢAKA re-review in flight; awaiting PASS for P-B builder dispatch; pid=resumed]
+
+---
+
+## PARĪKṢAKA RE-REVIEW: ENGINE SPEC v1.1 → PASS (2026-08-14T16:15+05:30)
+
+**PARĪKṢAKA re-review verdict (opus agent a63237ee259cad05e): PASS**
+
+All targeted checks passed:
+- A6: PASS — §3.1 correctly decomposes C(t)+E((t−δ_r)modH); C(t) fixed across replicates; envelope evaluated at shifted τ per replicate. Old "computed ONCE shared" claim gone.
+- B7: PASS — REPLICATE LOOP OUTSIDE, BUCKET LOOP INSIDE. Shape annotations (R-1,N_k) confirm nesting.
+- Equivalence caveat: PASS — adaptive refinement not preserved by construction; R=8 test tol 1e-6 is sole binding gate; two fallback strategies specified.
+- Math sanity C(t): PASS — lord-stack is chart-level, invariant to envelope shift.
+- Math sanity interp: PASS — periodic interpolation on [0,H) with K_null grid correct.
+- Math sanity step 3e: PASS — beta@cov_rk contracts correctly; no missing terms.
+
+No new blocking issues. P-B builders cleared to dispatch.
+
+**P-B DISPATCH STATUS: DISPATCHING NOW**
