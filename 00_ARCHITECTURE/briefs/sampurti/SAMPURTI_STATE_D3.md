@@ -3008,3 +3008,96 @@ Call: `gochara_forecast_get(chart=482012f1, domain=marriage, date_range=2026-08-
 **WHAT SINGLE RELAUNCH FINISHES MY SCOPE:** Genuine FIELD-INTEGRATED → R2 proof (marriage in roots, resolution='era') + R4 proof (field_snapshot_id=kfs_*) → γ ledger append → SESSION-DONE-Δ3 → RUN-TERMINAL: SESSION-Δ3-COMPLETE
 
 RUN-TERMINAL: SESSION-Δ3-PENDING-39 (false-positive relaunch — Δ1 DOWN per SM-R-11; no F1-F5 PRs; main unchanged at 15ace43df; FIELD-INTEGRATED not posted; R1 PASS×20; R5 CI guard PASSING; all Δ3 lanes complete; clean close)
+
+---
+
+## SESSION-40 — 2026-08-14T20:18Z (01:48 IST Aug 15 — supervisor-fix relaunch / sanity pass)
+
+CONDUCTOR-HEARTBEAT: 2026-08-14T20:18Z pid=49789(subshell)/44871(conductor-cpid) host=Montys-MacBook-Pro.local session=Δ3-s40
+
+### STEP-0 (session-40)
+
+**Liveness:** CLEAN — stored PID 44871 (this conductor's own cpid written by supervisor at line 116; supervisor's `$$`=subshell differs from stored cpid — sole conductor confirmed). pgrep "CONDUCTOR of SAMPŪRTI-Δ3" = NONE. My PID 49789 written to dh-d3-logs/current_conductor.pid.
+
+**Supervisor status:** Script at `/Users/Dev/shad_overnight/run_dh_d3.sh` now uses SENTINEL-ONLY detection (comment: "2026-08-14 fix: the fallback heading-heuristic below was removed"). Pattern (2) false-positive loop from sessions 33/37/38/39 should be BROKEN. Launch reason: fresh supervisor start (LAST_LAUNCH=0 → immediate sanity launch) or 2h gate expired — either way, a LEGITIMATE launch under fixed supervisor.
+
+**Hygiene:** CLEAN — all Cloud Run executions Completed (lj98k cancelled 19:33Z, kk2m2 19:13Z, cl4dm 19:13Z, xt79g 18:23Z, kjvmn 18:31Z — all Aug 14). No running builds. No DB scope for Δ3; no proxy started.
+
+**Coordination (fetched 20:18Z):** FIELD-INTEGRATED NOT POSTED. Last entry: session-39 close (20:13Z Aug 14). No `^^██ MARKER-POSTED: FIELD-INTEGRATED ██` sentinel found.
+
+### FM-09 RECONCILE (session-40)
+
+| Surface | Session-39 state | Session-40 reality |
+|---------|-----------------|-------------------|
+| main HEAD | 15ace43df (PR #1282) | **289d0fddb** — 5 new Δ1 P3-tier commits landed |
+| Deploy | 15ace43df deployed 18:12Z | **UNCHANGED** — no new deploy for new main commits |
+| CI runs at new SHA | N/A | Not visible in top-10 (CI may be pending/in-progress) |
+| Δ1 integration | 5f674a89c (DOWN per SM-R-11) | **UNCHANGED** |
+| F1-F5 PRs | None open | None open — but P-phase commits landed via PB-3 Bot directly |
+| Cloud Run | All Completed | **UNCHANGED** |
+| FIELD-INTEGRATED | NOT POSTED | **NOT POSTED** |
+| Open PRs | #1189/#1180/#899/#898/#446 | **UNCHANGED** |
+
+**New main commits (PB-3 Bot, authored ~16:xx IST Aug 14, merged to main):**
+- `d674d71e5`: P0.b — NullResult→contracts.py, .resolution=1/R required, delete getattr fallback
+- `1070bf040`: P3-a/b/e — SHAPE_ONLY_SYNTHETIC_LIFETIME_COUNT, baseline_is_synthetic tag, shape_only writer path
+- `458ff5f7f`: P3-d fix — add missing [0] unpack for baseline_rate() at DHARA path; test_hazard.py fix (59 tests pass)
+- `b91c8d6cf`: P3-d tier-basis — seeds ka_kshetra_tier_basis with 27 rows (6 calibrated, 19 shape_only, 2 not_applicable); PRATINIDHI-ratified
+- `289d0fddb`: Migration renumber 567→571 (MIG-1 cross-directory collision fix)
+
+**Assessment:** Fix Wave progress IS happening via PB-3 Bot commits. L-SEAM (decade-seam fix) still outstanding — without it, ka_kshetra cannot reach lit → FIELD-INTEGRATED cannot post. A8 cannot be dispatched until L-SEAM lands + canary gate passes. Δ3 scope unchanged.
+
+### R1 MCP PROOF — 21st Pass (20:23Z Aug 14): PASS ✓
+
+Call: `gochara_forecast_get(chart=482012f1, domain=marriage, date_range=2026-08-15→2027-08-15)`
+- `coverage.event_classes_covered`: 27 classes (all 27 incl. marriage) ✓
+- `coverage.domains_not_covered`: [] ✓
+- `coverage.coverage_quality.tier`: "rich", covered_class_count=27, covered_domain_count=13 ✓
+- `sweep_completeness.substeps_committed`: 270 under `ka_gochara_v3_century_materialize` ✓
+- `backing_data_reachable`: true ✓
+- No S4-05 refusal ✓
+- `windows`: [] — honest empty (21st consecutive consistent result)
+
+**R1 PROOF STATUS: PASS** (21st consecutive — sessions 15/19/20/21/22/23/25/27/28/29/30/31/32/33/34/35/36/37/38/39/40). R1 fix stable in production.
+
+### Δ3 LANE STATUS (session-40, unchanged)
+
+| Lane | Status | Notes |
+|------|--------|-------|
+| R1 | MERGED + MCP PROOF PASS ✓ | 21st pass 20:23Z session-40; 27 classes, 270 substeps, no S4-05 |
+| R2 | DEPLOYED; MCP PROOF PENDING | Sidecar 0f9395a17 live; gated on L-SEAM + A8 + FIELD-INTEGRATED |
+| R3 | DONE ✓ | commit 66e35c216 |
+| R4 | READY-ON-SIGNAL | probe script committed; gated on `██ MARKER-POSTED: FIELD-INTEGRATED ██` |
+| R5 | MERGED + DEPLOYED ✓ | PR #1280; Ganga Quality Gate PASSING on main ✓ |
+
+### SESSION-40 CLOSE
+
+**Work this session:**
+- STEP-0 complete (liveness/hygiene/coordination/reconcile) ✓
+- FM-09 adopt: main HEAD advanced (5 new P3-tier commits by PB-3 Bot) ✓
+- Supervisor sentinel-only fix confirmed in script ✓
+- R1 MCP proof 21st pass: PASS ✓
+- No additional independent Δ3 work available (all lanes complete, gated)
+
+**FIELD-INTEGRATED STATUS:** NOT POSTED. Path:
+1. L-SEAM fix must land on main (decade-seam: interior edges in assemble_knot_set + full-horizon contiguity test)
+2. Deploy L-SEAM to production
+3. A8 dispatch (1-class mandatory canary gate first per SM-R-11 F3)
+4. A8 completion → ka_kshetra=lit → S4 parity gate → `^^██ MARKER-POSTED: FIELD-INTEGRATED ██`
+
+**WHAT ONE RELAUNCH FINISHES:** When `^^██ MARKER-POSTED: FIELD-INTEGRATED ██` posts:
+1. R2: `gochara_forecast_get(domain=marriage, date_range=2020-2030)` → marriage in roots (resolution='era'), NOT legacy_flat
+2. R4: `kala_ahead_get(chart_id=482012f1...)` → field_snapshot_id=kfs_* (not 'field_not_yet_built')
+3. Append both proofs to γ ledger (sampurti/vyakhya append-only)
+4. Post SESSION-DONE-Δ3 to coordination → RUN-TERMINAL: SESSION-Δ3-COMPLETE
+
+**NEXT-ACTION (session-41):**
+1. Check for `^^██ MARKER-POSTED: FIELD-INTEGRATED ██` (genuine sentinel at line-start)
+2. Check main for L-SEAM commit (decade-seam fix: assemble_knot_set interior edges)
+3. Check deploy status for 289d0fddb new main commits
+4. R1 22nd pass
+5. On FIELD-INTEGRATED: R2+R4 proofs → γ ledger → SESSION-DONE-Δ3
+
+**WHAT SINGLE RELAUNCH FINISHES MY SCOPE:** Genuine FIELD-INTEGRATED → R2 proof (marriage in roots, resolution='era') + R4 proof (field_snapshot_id=kfs_*) → γ ledger append → SESSION-DONE-Δ3 → RUN-TERMINAL: SESSION-Δ3-COMPLETE
+
+RUN-TERMINAL: SESSION-Δ3-PENDING-40 (supervisor-fix relaunch — sentinel-only detection now live; main advanced to 289d0fddb (5 P3-tier Fix Wave commits); L-SEAM outstanding; R1 PASS×21; FIELD-INTEGRATED NOT POSTED; clean close)
