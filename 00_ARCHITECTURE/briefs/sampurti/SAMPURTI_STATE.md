@@ -4321,3 +4321,37 @@ CONDUCTOR-HEARTBEAT: 2026-08-14T14:28Z [R42 — PR #1281 CI 18/19 PASS; Build Ch
 - On completion (ka_kshetra=lit): P-D proof spine begins
 
 CONDUCTOR-HEARTBEAT: 2026-08-14T15:01Z [R42 — P-C DISPATCHED: A7 run 7ae69a7c / exec brahma-build-pipeline-job-n55nm; 27-class tiered build in progress; T+3min GUC check pending; pid=29192]
+
+## P-C A7 DISPATCH CORRECTION — EXEC brahma-build-pipeline-job-kjvmn (2026-08-14T15:24Z)
+
+**ROOT CAUSE OF n55nm 9-SECOND EXIT:**
+`brahma-build-pipeline-job-n55nm` was fired without `--args=--run-id,<run_id>`. The container
+received no arguments, printed its usage/help string, and called `exit(0)`. The Cloud Run Job
+reported `succeededCount: 1` (exit code 0 = success by job's contract) — §N.8 Earned-Signal: the
+Cloud Run success signal was NOT evidence the field build ran. Verified via log:
+`Container called exit(0)` + help text printed.
+
+**DB STATE AFTER n55nm:**
+- `build_runs 7ae69a7c`: still `planned` (never picked up)
+- `build_run_assets 7ae69a7c/ka_kshetra`: still `queued`
+- `ka_kshetra` asset_throughput: still `incomplete`
+
+**FIX APPLIED:**
+Reused same `run_id = 7ae69a7c-de3f-46fa-8d0e-8626fddcf72f` (still `planned`) — no new DB row needed.
+Fired corrected execution:
+```
+gcloud run jobs execute brahma-build-pipeline-job \
+  --region=asia-south1 \
+  --args="--run-id,7ae69a7c-de3f-46fa-8d0e-8626fddcf72f" \
+  --async
+```
+
+**FM-07 LEDGER UPDATE:**
+- run_id: `7ae69a7c-de3f-46fa-8d0e-8626fddcf72f` (SAME — reused)
+- execution (CORRECTED): `brahma-build-pipeline-job-kjvmn`
+- Fired: 2026-08-14T15:24Z
+- GUC smoke-log check: T+3min = 15:27Z
+- FM-21 hard watch: T+35min = 15:59Z UTC
+- FM-27 poll cadence: 60-120s between checks
+
+CONDUCTOR-HEARTBEAT: 2026-08-14T15:24Z [R42 — P-C A7 CORRECTED DISPATCH: exec brahma-build-pipeline-job-kjvmn with --run-id arg; run_id=7ae69a7c REUSED; GUC check due 15:27Z; FM-21 watch 15:59Z; pid=29192]
