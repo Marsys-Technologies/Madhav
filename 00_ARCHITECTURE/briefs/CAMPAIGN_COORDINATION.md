@@ -1765,3 +1765,72 @@ FIX WAVE REQUIRED BEFORE RESTART (Δ1's first actions on relaunch):
 Δ3 unaffected; continues gated on FIELD-INTEGRATED; its own hang-recovery
 finding (04:48Z entry) is the evidence base for items 1-2 above — full
 credit, it diagnosed this before the desk did.
+
+---
+### SM-R-8 — DESK AUDIT RULING (2026-08-14, native-directed full audit): W-WAVE SUPERSEDES ALL PRIOR OPT SEQUENCING; n3 RESTORED AT 1024; TWO NEW DEFECTS FOUND BY DATA VERIFICATION
+
+Full audit: /Users/Dev/shad_overnight/SAMPURTI_AUDIT_v1_0.md (commit into
+00_ARCHITECTURE/briefs/sampurti/ at Δ1's first restart run). Everything
+below was verified against origin/main code, the live DB, and the
+deployed MCP this session — not ledger claims.
+
+VERIFIED WINS (adopt, never redo): stage-4 DHARA is PROVEN — 2,063,838
+exact rows, all 6 classes, 23m39s measured (substep ledger 03:18:25→
+03:42:04Z), 100% refinement_depth=0, zero NaN/width/λ defects. Job
+sizing now in deploy config (#1273). Δ3 R1 re-verified via deployed MCP
+by the desk (27 classes, 270 substeps, rich tier). Δ2 estate complete.
+
+NEW DEFECTS (data-verified):
+D-1 DECADE-SEAM GAPS: the analytic decade filter drops straddling
+    segments — exactly 9 gaps/class at the 9 interior decade boundaries
+    (verified at multiples of 3652.5 days; widths 0.11–0.58d; all 6
+    classes). Sampled path unaffected. V-battery missed it (no cross-
+    decade contiguity assertion).
+D-2 dhara_compute_null IS NOT THE DESIGNED ALGORITHM: sequential per-
+    replicate _null_build_segments rebuild + pure-Python grid loop; the
+    merged K_r array is computed and unused. "Vectorized" in PR/docstring
+    = false narration (§N.7). Measured: R=256 costs 3min (childbirth) to
+    64+min (foreign_settlement/marriage) per class — the OPT-N3 "50min
+    total" premise is empirically false. This drift is the root of the
+    entire 9h saga. FM-25 (perf claims need perf detectors) + FM-26
+    (built-vs-designed drift) registered.
+
+RULINGS:
+R-a n3 RESTORED: DEFAULT_REPLICATES returns to 1024. PR #1274's cut was
+    an unauthorized scope reduction (PARKED-FOR-NATIVE absolute list) —
+    voided with actual native authority (this audit was native-directed;
+    accuracy is non-negotiable).
+R-b PARĪKṢAKA checklist additions (binding): refuse-verify any PR
+    touching a native-ruled parameter (n1–n3, N1–N4, SM-R registry) —
+    automatic PARKED-FOR-NATIVE; performance claims require measured
+    perf evidence; rate/perf diagnoses cite exact substep keys.
+R-c Naming: the W-wave below supersedes ALL prior OPT-N numbering (the
+    OPT-N3 name collision between SM-R-6's wiring wave and PR #1274 is
+    noted and retired).
+
+THE W-WAVE (Δ1's restart sequence — in order; A6⁵ only after W1–W5
+deploy-green + PARĪKṢAKA verdict):
+W1 decade-seam fix: interior decade edges (d·H/10, d=1..9) added in
+   assemble_knot_set + full-horizon contiguity property test (gaps==0).
+   Zero accuracy cost (ln λ piecewise-linear through the new knots).
+W2 TRUE vectorized null per DHARA design §6: ln λ_r(t) = C(t) + E((t−
+   δ_r) mod H); precompute C,E on the 1-day grid once per class; per
+   replicate = periodic shift/interp + cumsum + vectorized window-max.
+   Same statistical definition as today (L1g parity, 1-day grid).
+   replicates=1024. Acceptance: equivalence vs sequential reference at
+   small R on fixtures + FM-25 perf-gate test + honest docstrings.
+W3 SET LOCAL idle_in_transaction_session_timeout = '900000' (bounded,
+   NEVER 0 — FM-24) in _run_stage5dhara.
+W4 merge PR #1271 (FM-23 guard; open, CI green).
+W5 _RESUME_VERSION 5→6 rides the W1+W2 PR (FM-17).
+A6⁵ fresh build under v6. EXPECTED (measured basis): stage0-3 ~4min +
+   stage4 ~24min + stage5 ~5-10min + 6/6.5/8+seal → 40–55min TOTAL.
+   Rate gate 90min; GUC smoke-log at T+3min; FM-21 hard trigger: past
+   T+35min zero-progress the ONLY valid action is the recovery
+   sequence — "check again later" is a protocol violation.
+W8/W9 next wave (off critical path): pin-matrix wiring (surgical
+   rebuilds) + term-matrix artifact (n2). Then the spine unchanged
+   through FIELD-INTEGRATED (sentinel format) → Δ3 R2-proof + R4.
+
+Δ3: unchanged, still gated; its 4k59k hang-recovery (04:48Z) is
+commended and cited as the FM-21 exemplar.
