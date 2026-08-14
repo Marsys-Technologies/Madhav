@@ -4154,3 +4154,24 @@ CONDUCTOR-HEARTBEAT: 2026-08-14T16:25+05:30 [R41 T+context-resume — MIG-1 root
 **Next:** wait for PRs #1279 and #1271 to merge; then verify migration 571 applied in production; then assess remaining P-B obligations per PURNA_KSHETRA_PLAN_v1_1.md.
 
 CONDUCTOR-HEARTBEAT: 2026-08-14T16:38+05:30 [R41 — ALL 3 P-B LANES DONE: #1277+#1278 MERGED; #1279 IN QUEUE (Unit Tests PASS, MIG-1 renumber 567→571 fixed); PR#1271 updated from main (stale Governance Gates from pre-L-NULL era; fresh CI running); next: monitor #1279/#1271 merge; pid=resumed]
+
+---
+
+## P-B COMPLETE — ALL 3 LANES MERGED (2026-08-14T16:48+05:30)
+
+**#1279 L-TIER MERGED.** All three P-B build lanes are now on main.
+
+| PR | Lane | Final Status |
+|---|---|---|
+| #1277 | L-ENGINE | MERGED ✅ |
+| #1278 | L-NULL | MERGED ✅ |
+| #1279 | L-TIER | MERGED ✅ (migration 571 = ka_kshetra_tier_basis 27-row tier-basis + baseline_is_synthetic column) |
+
+**PR #1271 (FM-23 guard):** still OPEN — CI freshly running after `gh pr update-branch` from main (picked up L-NULL fixes). Governance Gates + Unit Tests + TypeScript still pending; no failures detected yet.
+
+**Next gates per PURNA_KSHETRA_PLAN_v1_1.md:**
+- Verify migration 571 applied in production (ka_kshetra_tier_basis populated, baseline_is_synthetic column present)
+- Confirm PR #1271 CI green → add to merge queue → merge
+- After all pending code lands: assess remaining P-B obligations (P3-b census field suppression, P3-e shape_only writer path activation)
+
+CONDUCTOR-HEARTBEAT: 2026-08-14T16:48+05:30 [R41 — P-B COMPLETE: ALL 3 LANES (#1277+#1278+#1279) MERGED; migration 571 (tier-basis + baseline_is_synthetic) on main pending deploy; PR#1271 FM-23 guard CI running (no failures yet); pid=resumed]
