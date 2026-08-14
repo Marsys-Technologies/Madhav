@@ -1824,3 +1824,49 @@ FM-09 reconciliation complete: session-25's merge queue entry WAS successful. Th
 1. Check coordination for `██ MARKER-POSTED: FIELD-INTEGRATED ██`
 2. Check PR #1280 merge + deploy status (migration-free, no verification needed post-merge)
 3. On FIELD-INTEGRATED: run probe → R2 + R4 → γ ledger → SESSION-DONE-Δ3
+
+---
+
+## SESSION-27 — 2026-08-14T15:44Z (21:14 IST)
+
+CONDUCTOR-HEARTBEAT: 2026-08-14T15:44Z pid=93372 host=Montys-MacBook-Pro.local session=Δ3-s27
+
+**Step-0 liveness (FM-10/11):** PID 91749 (run_dh_d3.sh supervisor) alive — not a peer conductor. `pgrep -f "CONDUCTOR of SAMPŪRTI-Δ3"` = EMPTY. Sole conductor confirmed. PID recycling note: 91749 is the supervisor script, not a prior conductor session (supervisor `kill -0` produces true positive on the launcher, not a false peer).
+
+**Hygiene:** brahma-build-pipeline-job-kjvmn RUNNING (runningCount=1, started 15:24Z). Δ1's A7 Pūrṇa ka_kshetra build. LIVE BUILD — touch nothing. No DB access (Δ3 scope).
+
+**FM-09 STATE RECONCILE:**
+
+| Item | Session-26 state | Actual state (15:44Z) |
+|------|------------------|----------------------|
+| PR #1280 R5 | IN MERGE QUEUE (confirmed via gh) | MERGED 2026-08-14T14:04Z ✓ |
+| PR #1271 FM-23 | OPEN CLEAN 26/26 — Δ1 territory | MERGED 2026-08-14T13:54Z ✓ |
+| Deploy | P3-b pending | 0f9395a17 DEPLOYED 14:47Z ✓ (includes #1271 + #1280 + #1281) |
+| A7 build | Not dispatched | kjvmn RUNNING (15:24Z); 318 substeps 27-class |
+| FIELD-INTEGRATED | NOT POSTED | NOT POSTED |
+
+**A7 build kjvmn status (FM-21 T+20min):**
+- 15:24:16Z GUC smoke-log ✓ (idle_in_txn=30min lock_timeout=5min)
+- 15:24:46Z 318 substeps planned (27 event classes) ✓
+- 15:26:27Z stage3_clocks deduplication warnings (L1 data quality, non-fatal)
+- 15:33Z stage1_symbolization (coverage gap av_kaksha_gate, latta)
+- 15:35:31Z birth_anchor skip — LAW ZERO (expected; no bg_class_priors lifetime row)
+- T+20min from dispatch: **NORMAL PROGRESS** (not at FM-21 T+35 threshold, T+35 = ~16:00Z)
+
+**Coordination posted:** 86c46d65f — session-27 open entry (PR #1280+#1271 MERGED, A7 RUNNING, FIELD-INTEGRATED pending)
+
+### Δ3 LANE STATUS (session-27 open)
+
+| Lane | Status | Notes |
+|------|--------|-------|
+| R1 | MERGED + MCP PROOF PASS ✓ | Seventh verification 13:40Z session-25; 8th pass pending this session |
+| R2 | DEPLOYED; MCP PROOF PENDING | Sidecar 0f9395a17 live; awaiting FIELD-INTEGRATED / corpus refresh |
+| R3 | DONE ✓ | commit 66e35c216 |
+| R4 | READY-ON-SIGNAL | probe script committed; awaiting FIELD-INTEGRATED |
+| R5 | **MERGED + DEPLOYED** ✓ | PR #1280 merged 14:04Z; deployed in 0f9395a17 14:47Z |
+
+**THIS SESSION WORK:**
+1. R1 MCP proof 8th pass (independent verification, independent of FIELD-INTEGRATED)
+2. FM-21 A7 build watch: heartbeat ≤10min; verify T+35 gate at 16:00Z
+3. On FIELD-INTEGRATED signal: run probe → R2 + R4 → γ ledger → SESSION-DONE-Δ3
+
