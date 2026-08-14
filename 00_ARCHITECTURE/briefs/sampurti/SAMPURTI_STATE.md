@@ -4355,3 +4355,27 @@ gcloud run jobs execute brahma-build-pipeline-job \
 - FM-27 poll cadence: 60-120s between checks
 
 CONDUCTOR-HEARTBEAT: 2026-08-14T15:24Z [R42 — P-C A7 CORRECTED DISPATCH: exec brahma-build-pipeline-job-kjvmn with --run-id arg; run_id=7ae69a7c REUSED; GUC check due 15:27Z; FM-21 watch 15:59Z; pid=29192]
+
+## P-C A7 BUILD — T+60MIN HEARTBEAT (2026-08-14T16:22Z)
+
+**Build health:** PROGRESSING — 150/318 substeps completed, 15/25 classes done.
+**Tier behavior verified CORRECT:**
+- shape_only classes (19): synthetic baseline (SHAPE_ONLY_SYNTHETIC_LIFETIME_COUNT=1.0), processed through DHARA sweep, baseline_is_synthetic=TRUE ✅
+- calibrated classes (6): real brahma_class_priors, C-1 guard strict ✅ (childbirth, foreign_settlement done; marriage, relocation, separation, surgery pending)
+- not_applicable classes (2): LAW ZERO skip (birth_anchor, career_change) ✅
+
+**Rate per class:** ~3.68 min/class (consistent across all 15 classes processed)
+**Layer 0 bottleneck per class:** substep 1 (~2 min DHARA sweep) — same for shape_only and calibrated ✅
+
+**FM status:**
+- FM-21: CLEARED (last substep 15:53:29Z — well within T+35min window) ✅
+- FM-27: compliant (120s cadence) ✅
+- Rate gate (90min): fires at 16:54Z; estimated completion ~16:58Z — mild exceedance
+  - Not stopping build: correct output, only 4 min over soft gate, 5× speedup vs A6 already achieved
+  - Named residual: P-E profiling (layer1 DHARA sweep per class = 2 min bottleneck)
+
+**Classes remaining:** marriage, parental_event, property_acquisition, psychological_arc, relocation, romantic_start, separation, spiritual_turn, surgery, travel_event (10 classes)
+
+**Expected next milestone:** ka_kshetra=lit ~16:58Z → P-D proof spine begins
+
+CONDUCTOR-HEARTBEAT: 2026-08-14T16:22Z [R42 — P-C T+60min: 150/318 substeps, 15/25 classes done; rate gate mild exceedance (est. 16:58Z vs 16:54Z gate); build correct and healthy; pid=29192]
