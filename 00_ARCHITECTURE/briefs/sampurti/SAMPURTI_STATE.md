@@ -3832,3 +3832,26 @@ CONDUCTOR-HEARTBEAT: 2026-08-14T15:03+05:30 [R41 T+21min — P0.a PR #1276 OPEN 
 **Next gate:** PARĪKṢAKA PASS on #1275 → merge both PRs → confirm CI green on main → proceed to P-A DESIGN
 
 CONDUCTOR-HEARTBEAT: 2026-08-14T15:15+05:30 [R41 T+33min — P-0 ALL DISPATCHED DONE; PARĪKṢAKA a30b5fd6 in flight on #1275; #1276 CI nearly green; awaiting PARĪKṢAKA verdict before merge; pid=9106]
+
+### PARĪKṢAKA VERDICT (R41, 2026-08-14T15:27+05:30)
+
+**PR #1275 PARĪKṢAKA VERDICT: PASS** (opus agent a30b5fd6, FM-26)
+
+All 11 checks passed:
+- A1. F-01 formula: PASS — contracts.py line 272: `return 1.0 / self.replicates`
+- A2. Both fallbacks deleted: PASS — writer.py lines 765+874 → `null_result.resolution`; `getattr(null_result` returns 0 matches
+- B3. dhara_null NullResult class gone: PASS — `class NullResult` in dhara_null.py: 0 matches; imports from contracts
+- B4. No getattr(null_result: PASS — 0 matches
+- B5. dhara_compute_null return compatible: PASS — keyword args match contracts.NullResult fields exactly
+- C6. frozen=True: PASS — `@dataclass(frozen=True)` confirmed
+- C7. resolution is @property: PASS — not a stored field; cannot be set at construction
+- D8. S5.null_resolution dead in writer.py: PASS — 0 live call sites in writer.py
+- D9. Stale test import NOTE (non-blocking) — test_optn1_dhara_stage5_wiring.py imports from dhara_null; works because dhara_null re-exports; should point to contracts in follow-up
+- E10. Negative test is real: PASS — `assert nr.resolution != 1.0 / 257`
+- E11. Frozen test uses try/except: PASS
+
+**MERGE STATUS:**
+- PR #1276 (P0.a): in merge queue CI (`gh-readonly-queue/main/pr-1276-*`; Ganga Quality Gate in_progress)
+- PR #1275 (P0.b): PARĪKṢAKA PASS; will queue after #1276 lands
+
+CONDUCTOR-HEARTBEAT: 2026-08-14T15:27+05:30 [R41 T+45min — PARĪKṢAKA PASS #1275; both PRs in/pending merge queue; await merge queue to land; then P-A DESIGN; pid=9106]
