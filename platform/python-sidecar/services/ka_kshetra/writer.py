@@ -238,6 +238,7 @@ class KaKshetraWriter(WriterBase):
         self._shared_clocks = None             # list[ClockApplicability]
         self._shared_ladder = None             # list[BoundaryRow]
         self._shared_extra_breakpoints = None  # list[float]
+        self._shared_layer0 = None             # layer0.Layer0, set on first class (DHARA_ENGINE_SPEC §1)
         self._birth_date, self._birth_time = self._load_birth_instant(conn, self._chart_id)
 
         # §7.5 sub-rule 5: resolve the weights version EXACTLY ONCE, here, and
@@ -1814,6 +1815,22 @@ class KaKshetraWriter(WriterBase):
             baseline_source=source,
             extra_breakpoints=self._shared_extra_breakpoints,
         )
+        # DHARA_ENGINE_SPEC §1: compute Layer 0 once per chart (chart-level raw
+        # matrix shared across all 27 event classes). Uses the first evaluator
+        # built — all chart-level data (lord stacks, covariates, obstructions)
+        # is independent of event_class. Layer 0 is consumed by Layer 1
+        # projection (layer1.project_layer1) and by the P2 vectorized null.
+        if self._shared_layer0 is None:
+            try:
+                from services.ka_kshetra.layer0 import compute_layer0
+                self._shared_layer0 = compute_layer0(evaluator, HORIZON_DAYS)
+            except Exception as _l0_exc:  # pragma: no cover
+                logger.warning(
+                    'ka_kshetra: Layer 0 pre-computation failed (%s); '
+                    'falling back to per-knot evaluation. This is a '
+                    'performance degradation, not a correctness failure.',
+                    _l0_exc,
+                )
         from services.ka_kshetra.engine_config import ENGINE_VERSION as _EV
         dhara_segs = None
         if _EV == 'analytic':
