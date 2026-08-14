@@ -4197,3 +4197,29 @@ CONDUCTOR-HEARTBEAT: 2026-08-14T16:48+05:30 [R41 — P-B COMPLETE: ALL 3 LANES (
 CONDUCTOR-HEARTBEAT: 2026-08-14T17:05+05:30 [R41 — PR#1271 FM-23 guard fix: xfail dhara_pin_matrix (known unwired, OPT-N3 pending); commit d398a5669 pushed; fresh CI running; P-B all 3 lanes merged; next: monitor PR#1271 CI green → merge queue; pid=resumed]
 
 CONDUCTOR-HEARTBEAT: 2026-08-14T17:48+05:30 [R41 — PR#1271 ALL CI PASS (Governance Gates PASS after xfail fix); queued to merge ("already queued" confirmed); P-B complete (#1277+#1278+#1279 all MERGED); awaiting #1271 merge queue completion; pid=resumed]
+
+---
+
+## R41 CLOSE — P-B BUILD COMPLETE + FM-23 GUARD MERGED (2026-08-14T17:58+05:30)
+
+**All P-B builder lanes and FM-23 guard are on main.**
+
+| PR | Content | Status |
+|---|---|---|
+| #1277 | L-ENGINE: Layer 0 pre-computation + Layer 1 per-class projection (SM-R-7 suppression) | MERGED ✅ |
+| #1278 | L-NULL: vectorized dhara_compute_null, _RESUME_VERSION 5→6, DEFAULT_REPLICATES=1024 | MERGED ✅ |
+| #1279 | L-TIER: P3-a/b/e — SHAPE_ONLY_SYNTHETIC_LIFETIME_COUNT, baseline_is_synthetic, shape_only writer path; migration 571 (ka_kshetra_tier_basis 27-row + baseline_is_synthetic column) | MERGED ✅ |
+| #1271 | FM-23 guard: assert every dhara_*.py imported by production code; dhara_pin_matrix xfailed as known residual (wiring pending OPT-N3) | MERGED ✅ |
+
+**Issues surfaced and fixed in this R41 session:**
+- D1-a/D1-b: `baseline_rate()` tuple unpack missing in writer.py:688 + test_hazard.py:30-31 (commit 458ff5f7f)
+- MIG-1 E2 NEW-COLLISION: migration 567 claimed twice (commit 289d0fddb → renumbered 571)
+- FM-23 Governance Gates: `dhara_pin_matrix` unwired — xfail added with auditable tracking reference (commit d398a5669)
+- PR #1271 pre-existing block: stale Governance Gates from pre-L-NULL era — fixed by `gh pr update-branch`
+
+**Next conductor obligations per PURNA_KSHETRA_PLAN_v1_1.md:**
+- Verify migration 571 deployed to production (ka_kshetra_tier_basis populated; baseline_is_synthetic column on kala_field_windows)
+- Monitor dhara_pin_matrix wiring (FM-23 will XPASS once landed — remove the xfail entry from _KNOWN_UNWIRED)
+- Assess remaining P-B items: P3-b census field suppression for shape_only rows; P3-e shape_only activation in writer (end-to-end validation)
+
+CONDUCTOR-HEARTBEAT: 2026-08-14T17:58+05:30 [R41 CLOSE — P-B COMPLETE: #1277+#1278+#1279+#1271 ALL MERGED; migration 571 on main; FM-23 guard active; 3 fixes this session (D1-a/D1-b, MIG-1, FM-23 xfail); next: verify production deploy + assess P3-b/P3-e; pid=resumed]
