@@ -77,3 +77,14 @@ EKV-D08-CLAIMED 2026-08-16T00:00Z
 - All 5 lints: fixtures pass/fail + allowlist + CI job (WARN-first continue-on-error).
 EKV-D01-BUILT 2026-08-16T00:20Z
 EKV-D04-BUILT 2026-08-16T00:20Z
+
+### T+40
+- D-01b regex bug fixed: `_RE_DIGNITY_TABLE_VAR` required prefix chars before DIGNITY keyword; `DIGNITY_TABLE` (starts at keyword) was not caught. Fixed: match any identifier, filter by `'dignity' in varname.lower()`.
+- D-01c same regex bug fixed: `_RE_AYANAMSHA_CONST` required prefix chars before AYANAMSHA; same fix applied.
+- All 5 self-tests PASS: D-01a (2p/2f), D-01b (2p/2f), D-01c (2p/1f), D-01d (1p/1f), D-01e (2p/2f).
+- Live tree scanned: D-01a 5 violations, D-01b 3, D-01c 9, D-01d 25, D-01e 2. All allowlisted with B-01/B-02/A-09/A-14/A-15 dispositions. All 5 lints: 0 new violations. PASS.
+- D-08 BUILT: `test_d08_pointer_integrity.py` — 12 failing tests (TDD red-light). TestF43 (3 tests), TestF59 (8 parameterized), TestF131F132 (1 test). All 12 currently FAIL as expected.
+- `.github/workflows/ekv-lints.yml` BUILT: 6 jobs (D-01a..e + D-08), all continue-on-error: true, merge_group trigger.
+- Committed 31 files as `69becab37`. Pushed `origin/ekv/lead-dharma`.
+EKV-D08-BUILT 2026-08-16T00:40Z
+EKV-D08-TESTS-POSTED 2026-08-16T00:40Z
