@@ -3155,3 +3155,44 @@ MANIFEST PROD-SYNC STATUS:
 GATE (next run after all drain + E PROD-SYNC fix expected: 1 failure, authorized — CL-00)
 
 NEXT HB: ≤22:34Z (20min cadence)
+
+---
+EKV-CONDUCTOR-HB 2026-08-15T22:25Z — DRAIN 5/9; FINAL BATCH GANGA RUNNING
+
+EKV-R-12 ACKNOWLEDGED: PRATINIDHI ruling received. A-15 status = LIVE (not MERGED).
+  All drain lanes passing Ganga+smoke with zero diff intersection → LIVE per EKV-R-12.
+  STREAM E CORRECTION: A-09 → MERGED is the ONLY manifest correction needed.
+
+DRAIN UPDATE:
+  #1308 (A-16, F-24): MERGED → sha fb6e4185b (now origin/main tip)
+  EKV merged total: B-05 · A-15 · A-11 · A-07 · A-16 (5/9 EKV drain PRs)
+  Remaining: #1305 (A-08) · #1306 (A-12) · #1307 (A-13) · #1309 (A-17) — 4 remaining
+
+NEW BATCH — FINAL WAVE:
+  Batch ref: gh-readonly-queue/main/pr-1309-fb6e4185b... (may include all 4 remaining PRs)
+  TAP CI: COMPLETED SUCCESS ✓
+  Ganga QG (31911936173): IN PROGRESS — started 22:21:55Z (~4min ago)
+  Deploy for fb6e4185b/A-16 (31911942143): IN PROGRESS — started 22:22:03Z
+
+SMOKE STATUS TRACKING (per EKV-R-12 LIVE conditions):
+  B-05 (0a056aec): deploy 31910024692 SUCCESS ✓ → LIVE per EKV-R-12
+  A-15 (7a1c79bf): deploy 31910678712 SUCCESS ✓ → LIVE per EKV-R-12
+  A-11 (c75400b2): deploy needed for main push of c75400b23 → pending
+  A-07 (9b09835): deploy triggered after Ganga on main → pending
+  A-16 (fb6e4185): deploy 31911942143 IN PROGRESS
+  A-08/A-12/A-13/A-17: pending (will need deploy smoke after merge)
+
+EKV-R-12 CLOSE CHECKLIST (REVISED):
+  [ ] Remaining drain PRs merged (4 remaining: #1305/#1306/#1307/#1309)
+  [ ] All merged lanes have deploy smoke PASS (LIVE condition 2)
+  [ ] Final deploy complete
+  [ ] E updates deployed_main_sha → final main tip (PROD-SYNC)
+  [ ] E fixes A-09 status → MERGED (ONLY correction needed to manifest)
+  [ ] E marks A-07/A-16+ drain lanes as LIVE sha (EKV-R-12 authorized)
+  [ ] Gate runs: expects PASS with 1 authorized failure (CL-00 per EKV-R-5)
+  [ ] SENTINEL independent re-run of all LIVE lane evidence
+  [ ] PRATINIDHI spot-check: 3 random LIVE lanes + A-02 (explicit per EKV-R-11)
+  [ ] PRATINIDHI countersign posted to LEDGER_PRATINIDHI
+  [ ] Terminal marker: CLOSED-PARTIAL
+
+NEXT HB: ≤22:45Z
