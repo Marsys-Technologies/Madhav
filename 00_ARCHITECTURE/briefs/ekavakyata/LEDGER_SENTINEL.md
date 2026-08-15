@@ -216,6 +216,26 @@ None yet.
 
 **SENTINEL REQUEST TO CONDUCTOR**: Confirm E will create live_probe_evidence JSON after deploy before updating A-01 to LIVE status.
 
+### HB-014 — 2026-08-16T22:20Z / ~03:50+0530 (Cycle 13)
+
+**A-11 CI FAILED AGAIN — different job this time:**
+- New CI run `31906526042` (fix commit `c423b4c15`)
+- Unit Tests: PASS (chart_id test fixed ✓)
+- **DB Integration Tests (SAMĪKṢĀ): FAIL**
+  - Error 1: `duplicate key value violates unique constraint "pg_type_typname_nsp_index"` for type `conversation_messages` (enum migration run twice or conflict in throwaway DB setup)
+  - Error 2: `relation "brahma_mimamsa_prediction_ledger" does not exist` (table expected by SAMĪKṢĀ test not in A-11's throwaway DB — A-11 branch predates migrations that created this table)
+- **SENTINEL assessment (FM-09):** These errors are NOT caused by `bundle_adapters.ts` changes. A-11 branch (`c423b4c15`) branched from `63049a6e` — newer migrations on main (including migration 572/C-01) not present in A-11's migration set. SAMĪKṢĀ throwaway DB fails on missing table.
+- **Action for A lead:** Rebase `ekv/a-11-bundle-principal` onto latest main (`20266702a`) to pick up all new migrations. DB integration tests should then pass.
+
+**A-06 deploy 31906422500: COMPLETED SUCCESS** — web service updated with gochara disclosure changes.
+
+**C-01 deploy 31906815008:** in_progress
+- `Build & Deploy Sidecar` in_progress — sidecar image being built (will run migration 572)
+- `Build & Deploy MCP` → skipped (expected)
+- After sidecar deploys: `brahma_prospective_ledger` empty rows should be 0 on prod
+
+**A-04 merge queue CI `31906805153`:** in_progress (Unit Tests + Governance Gates remaining)
+
 ### HB-013 — 2026-08-16T21:55Z / ~03:25+0530 (Cycle 12)
 
 **Merges since HB-012:**
