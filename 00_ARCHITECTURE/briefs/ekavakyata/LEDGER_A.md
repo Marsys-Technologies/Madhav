@@ -29,6 +29,7 @@ Lane worktrees and branches:
 | A-08 | ekv/a-08-promise-spine | .git/.claude/worktrees/ekv-a-08 | VERIFIED |
 | A-09 | ekv/a-09-sara-kernel | .claude/worktrees/ekv-a-09 | VERIFIED |
 | A-11 | ekv/a-11-bundle-principal | .claude/worktrees/ekv-a-11 | VERIFIED |
+| A-12 | ekv/a-12-inv2-determinism | .claude/worktrees/ekv-a-12 | VERIFIED |
 | A-15 | ekv/a-15-ayanamsha-wire | .claude/worktrees/ekv-a-15 | VERIFIED |
 
 ## HEARTBEATS
@@ -48,6 +49,14 @@ Lane worktrees and branches:
   - A-05: query_insights.ts filters use lowercase 'confirmed'/'partial'/'denied' vs DB uppercase CONFIRMED/PARTIAL/REFUTED; UNRESOLVED absent ✓
   - A-06: gochara_sweep.top_windows in register_d8_assess_domain.ts lacks withResolutionDisclosure; function exists in register_gochara_windows.ts ✓
 - NEXT: A-01 worktree FIRST (hot-file rule), then parallel A-02..A-06
+
+### 2026-08-16 HB-8 ~22:00Z
+- A-12 VERIFIED: 526612229 pushed ekv/a-12-inv2-determinism — 2-file fix; INV-2 determinism closed (F-92/F-60)
+  - query_temporal_activation.ts: `ORDER BY orb_strength DESC NULLS LAST, activation_start, id` — id PK tiebreaker added
+  - register_d9_judgment.ts: trimmedActivations .sort() gains id-based localeCompare tiebreaker; repeated calls now stable
+  - Lease: platform/src/lib/retrieval/registry/** only; id already in SELECT + compact; no hot-file touch
+- W2 status: A-12 DONE; next candidates: A-07 (domain charter SHASTRA_MAP gaps F-55/40/41/57), A-13 (error boundary F-89; F-90 BLOCKED hot-file)
+- NEXT: scope A-07 — SHASTRA_MAP missing family/general/transition/travel domains (F-55); input validation (F-40/41/57)
 
 ### 2026-08-16 HB-7 ~21:40Z
 - A-08 VERIFIED: bea9d379f pushed ekv/a-08-promise-spine — interpretPactJoin 20/20 tests green; INV-1 + one-voice contract met; 2 new platform-mcp/** files only
@@ -145,6 +154,8 @@ EKV-A-11-VERIFIED — 53929cb2e pushed ekv/a-11-bundle-principal — PrimitiveRe
 EKV-A-15-VERIFIED — 08ce27108 pushed ekv/a-15-ayanamsha-wire — 10 na()→resolveChartFactsAyanamsha() replacements in register_p1_aliases.ts, local AYANAMSHA_ALIAS+na() deleted
 
 EKV-A-08-VERIFIED — bea9d379f pushed ekv/a-08-promise-spine — interpretPactJoin pure mapper (pact_status→SaraPromiseJoin); INV-1 enforced (denied→stance:contradicts); 20/20 tests; one-voice story: kala_ahead × kala_upaya reconciled verdict via shared pact call
+
+EKV-A-12-VERIFIED — 526612229 pushed ekv/a-12-inv2-determinism — F-92/F-60: id PK tiebreaker in SQL ORDER BY + localeCompare tiebreaker in JS .sort(); judgment_query activation windows now deterministic across repeated byte-identical calls
 
 EKV-KERNEL-API-FROZEN — dcc2fb5a pushed ekv/a-09-sara-kernel — SaraKernel/SaraPromiseJoin/CompositionReport/SaraLayeredContent/assembleSaraContent stable in response_budget.ts
 
