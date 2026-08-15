@@ -3614,3 +3614,108 @@ Call: `gochara_forecast_get(chart_id=482012f1..., domain=marriage, date_range={s
 5. R1 27th pass
 
 RUN-TERMINAL: SESSION-Δ3-PENDING-46 (2h sanity pass — 88gh6 A8 RUNNING T+~320min, 19/26 effective stage5 classes CONFIRMED PROGRESS; FIELD-INTEGRATED NOT POSTED; ETA ~10:46 IST; R1 PASS×26; supervisor relaunches on ^^██ MARKER-POSTED: FIELD-INTEGRATED ██ sentinel or 2h)
+
+
+---
+
+## SESSION-47 (2026-08-15 ~06:44Z UTC / 12:14 IST)
+
+**Invoked by:** supervisor (2h sanity pass — "gate CLOSED but 7200s since last launch"; FIELD-INTEGRATED not yet posted)
+
+CONDUCTOR-HEARTBEAT: 2026-08-15T06:47Z pid=15315(supervisor) host=local session=Δ3-s47
+
+### STEP-0 LIVENESS
+- Stored PID (dh-d3-logs/current_conductor.pid): 15315 = `/bin/bash /Users/Dev/shad_overnight/run_dh_d3.sh` (supervisor bash, alive, NOT a peer conductor)
+- `pgrep -f "CONDUCTOR of SAMPŪRTI-Δ3"` = 16965 (transient/self-match, did not survive ps verify); 15315 excluded as supervisor
+- **SOLE_CONDUCTOR confirmed** ✓
+
+### STEP-0 HYGIENE
+| Execution | Status | Completion | Notes |
+|-----------|--------|-----------|-------|
+| 88gh6 | **COMPLETED FAILED** | 2026-08-15T05:42:13Z | **OOM-KILLED** — "The configured memory limit was reached." (exit code 0) |
+| dkjgw | Completed SUCCESS | — | Prior canary |
+| b72pp | Completed SUCCESS | — | career_change canary F3+F4 |
+| All others | Completed | — | No new executions since 88gh6 |
+
+**88gh6 OOM finding:**
+- Failure mode: Cloud Run OOM kill at 05:42:13Z UTC
+- Run duration: 23:20:38Z Aug 14 → 05:42:13Z Aug 15 = **6h21m35s**
+- At session-46 close (04:41Z): 19/26 effective classes at stage5 done; ETA ~10:46 IST
+- OOM-killed before completion — FIELD-INTEGRATED NOT POSTED
+- Exit code 0 (GCP memory-kill behavior); FAILED_COUNT=1
+
+**This is a new failure mode** (prior failures were: hang/idle-in-transaction, exit-code-3 lock contention, S7-LOCK guard). The A8 full build (27 classes, 345 substeps) requires more memory than the current Cloud Run job configuration allows.
+
+**Δ3 cannot act** (NO DB scope, NO Cloud Run dispatch authority without lease + coordination). Δ1 attempt 3 (launched 12:14 IST) must diagnose and handle the OOM.
+
+### STEP-0 COORDINATION
+- Last commit on campaign-coordination: `fde854892` = Δ3 session-46 advisory (04:41Z Aug 15)
+- **No FIELD-INTEGRATED sentinel** — confirmed (no `^^██ MARKER-POSTED: FIELD-INTEGRATED ██` at line-start)
+- No Δ1 entries in coordination since R42-attempt2 advisory at 21:24Z Aug 14
+- Δ1 attempt 2 exited at 12:12 IST Aug 15 (06:42Z) without posting coordination advisory — noted
+- **Δ1 attempt 3 launched at 12:14 IST** (06:44Z) — handling OOM situation
+
+### FM-09 RECONCILE (session-46 → session-47)
+| Surface | Session-46 | Session-47 |
+|---------|-----------|-----------|
+| main HEAD | 46b0c2cc8 (F-wave all merged) | **UNCHANGED** |
+| 88gh6 | RUNNING T+~320min; 19/26 stage5 classes | **COMPLETED FAILED (OOM) 05:42Z** |
+| FIELD-INTEGRATED | NOT POSTED | NOT POSTED (88gh6 OOM-killed before completion) |
+| Δ1 supervisor | attempt 2 running (since 02:54 IST) | attempt 2 EXITED 12:12 IST; **attempt 3 LAUNCHED 12:14 IST** |
+| New Cloud Run | None | **None** (no new A8 dispatch yet as of 06:47Z) |
+
+### OOM ANALYSIS (Δ3 observation; Δ1 must act)
+- A8 full build: 27 classes × ~10 substeps/class stage5 = ~270 stage5 substeps
+- The memory pressure likely comes from the DHARA engine's in-process data: F1's C/E precompute loads per-class matrices; F2's 2-chunk substep reduces checkpoint commits but keeps full-epoch data in memory between chunks
+- Possible mitigations (for Δ1 to evaluate): (a) increase Cloud Run memory limit (4Gi → 8Gi+), (b) reduce F1 replicate count, (c) dispatch A8 in batches (e.g. 13 classes + 14 classes = 2 sequential runs, both in same checkpoint-resume transaction)
+- **Δ3 has no authority** to change any of these — this is Δ1's terrain
+
+### R1 MCP PROOF — 27th Pass (06:47Z Aug 15): PASS ✓
+
+Call: `gochara_forecast_get(chart_id=482012f1..., domain=marriage, date_range={start:2025-01-01, end:2026-01-01})`
+- `coverage.event_classes_covered`: 27 classes (all 27 incl. marriage) ✓
+- `coverage.domains_not_covered`: [] ✓
+- `coverage.coverage_quality.tier`: "rich", covered_class_count=27, covered_domain_count=13 ✓
+- `sweep_completeness.substeps_committed`: 270 (asset: ka_gochara_v3_century_materialize) ✓
+- `backing_data_reachable`: true ✓
+- No S4-05 refusal ✓
+- `windows`: 0 — honest empty (27th consecutive consistent result) ✓
+- `computed_at`: 2026-08-15T06:47:35.824Z
+
+**R1 PROOF STATUS: PASS** (27th consecutive — sessions 15/19-47). R1 fix stable in production.
+
+### LANE STATUS (session-47)
+| Lane | Status | Notes |
+|------|--------|-------|
+| R1 (SEV-1) | MERGED + MCP PROOF PASS×27 | 27th pass 06:47Z session-47; 27 classes, 270 substeps, no S4-05 |
+| R2 (SEV-2) | DEPLOYED; MCP PROOF gated | Sidecar v3.2 live; gated on FIELD-INTEGRATED (corpus refresh) |
+| R3 (CI guard) | DONE ✓ | commit 66e35c216 (sampurti/vyakhya) |
+| R4 (G-P4) | READY-ON-SIGNAL | probe_sampurti_d3_r2_r4.py committed; gated on FIELD-INTEGRATED |
+| R5 (27-class CI) | MERGED + DEPLOYED ✓ | PR #1280 |
+
+### SESSION-47 CLOSE
+
+**Work this session:**
+- STEP-0 complete (liveness/hygiene/coordination/reconcile) ✓
+- FM-09: 88gh6 OOM-killed at 05:42Z after 6h21m — NEW failure mode documented ✓
+- Δ1 attempt 3 launched 12:14 IST to handle OOM; no Δ3 action required ✓
+- R1 MCP proof 27th pass: PASS ✓
+- FIELD-INTEGRATED: NOT POSTED
+
+**WHAT ONE RELAUNCH FINISHES:** When `^^██ MARKER-POSTED: FIELD-INTEGRATED ██` posts:
+1. `python3 00_ARCHITECTURE/briefs/sampurti/probe_sampurti_d3_r2_r4.py --chart-id 482012f1-710e-4a25-994a-93821f5871aa --mcp-key $MARSYS_MCP_KEY`
+2. R2: verify marriage in roots (resolution='era', is_timing_window=true nested under era parent) → paste MCP proof
+3. R4: verify field_snapshot_id=kfs_* (not 'field_not_yet_built'); prospective row shown; A5 facet live → paste MCP proof
+4. Append both proofs to γ ledger (sampurti/vyakhya append-only)
+5. Post SESSION-DONE-Δ3 to coordination → RUN-TERMINAL: SESSION-Δ3-COMPLETE
+
+**NEXT-ACTION (session-48):**
+1. Check `^^██ MARKER-POSTED: FIELD-INTEGRATED ██` (genuine sentinel at line-start)
+2. Check Cloud Run for any new A8 execution dispatched by Δ1 attempt 3 (OOM fix: higher memory or chunked dispatch)
+3. If FIELD-INTEGRATED posted: run probe script → R2+R4 proofs → γ ledger → SESSION-DONE-Δ3
+4. Check Δ1 attempt_3.log for OOM mitigation strategy
+5. R1 28th pass
+
+**WHAT SINGLE RELAUNCH FINISHES MY SCOPE:** Genuine FIELD-INTEGRATED → probe script → R2 proof (marriage in roots, resolution='era') + R4 proof (field_snapshot_id=kfs_*) → γ ledger append → SESSION-DONE-Δ3 → RUN-TERMINAL: SESSION-Δ3-COMPLETE
+
+RUN-TERMINAL: SESSION-Δ3-PENDING-47 (2h sanity pass — 88gh6 A8 OOM-KILLED 05:42Z after 6h21m [NEW FAILURE MODE: memory limit]; Δ1 attempt 3 LAUNCHED 12:14 IST to handle OOM; FIELD-INTEGRATED NOT POSTED; R1 PASS×27; supervisor relaunches on ^^██ MARKER-POSTED: FIELD-INTEGRATED ██ sentinel or 2h)
