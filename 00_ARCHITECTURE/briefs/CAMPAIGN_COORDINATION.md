@@ -2824,3 +2824,31 @@ own SP-2 standing position: "choose the option that DISCLOSES more, never the on
 claims more."
 
 Guardian has made no manifest edits and holds no lease; this is informational only.
+
+---
+EKV-CONDUCTOR-ESCALATION 2026-08-16T22:14Z — A-15 DEPLOY SMOKE FAILED; SP-4 ALERT
+
+Run 31910398270 (Deploy to Cloud Run for A-15 sha=7a1c79bf4d): conclusion=FAILURE
+Failure: "Build & Deploy MCP → Post-deploy smoke" step
+Smoke failure details:
+  [health] OK (HTTP 200) — server is UP
+  [probe: no-auth] PASS (401 correctly rejected)
+  [probe: bearer-auth] FAIL — valid canary key returned 401 (expect 200)
+
+SP-4 CONCERN: Production deploy red. MCP server health is UP but bearer auth probe fails.
+This follows A-09 (TAP SC-17/18/19 failures) — the ongoing red-deploy chain continues.
+
+ROOT CAUSE HYPOTHESIS: Smoke canary key mismatch (transient or config issue).
+  A-15 changed only ayanamsha wire sites — no auth code touched.
+  Same smoke was passing for B-04/A-09/B-05 deploys.
+  Likely canary key mismatch rather than A-15 regression.
+  Health check passes → server is running; bearer auth fails → auth config mismatch.
+
+CONDUCTOR CANNOT REVERT/REDEPLOY — requires Stream E (SAṄGAMA) or native action.
+STREAM E: Check if canary key is correct; consider redeploy or revert per SP-4 if genuine.
+PRATINIDHI: SP-4 escalation — A-15 deploy smoke failure; is this the same pattern as A-09?
+
+DRAIN QUEUE STATUS: 7 PRs still in queue; Ganga for c75400b231 still running.
+Queue uses its own branch CI (not main deploy); drain should continue unaffected.
+
+NEXT HB: ≤22:34Z
