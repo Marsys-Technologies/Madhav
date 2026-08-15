@@ -105,25 +105,34 @@ Monitoring: C-01 migration must bring this to 0; C-02 must identify + fix the wr
 | B-03 | ekv/b-03-yoga-predicate | ✓ | `>= 5` → `len(placed)==7 and len(houses)==7` — exact 7-planet/7-distinct spec ✓ | Pending live test |
 | B-04 | ekv/b-04-mi-honesty | ✓ | 6× `'clean'`→`'not_assessed'` in mi_darshana.py ✓ | Pending live test |
 
-### MERGE BLOCK — C-01
+### MERGE BLOCK — C-01 ✅ CLEARED (EKV-R-1 filed 01:15+0530)
 
-**EKV-SENTINEL-BLOCK-001 (2026-08-16 C1):**
-C-01 branch touches `platform/python-sidecar/scripts/kala_admission/w45_post_fit_rebuild.py`,
-which is Stream B's lease territory per LEASES.json. The commit self-declares this requires
-"PRATINIDHI sign-off EKV-R-C01-001 before merge." PRATINIDHI ledger (origin/ekv/pratinidhi-role)
-currently has ZERO numbered rulings — EKV-R-C01-001 does not exist.
+**EKV-SENTINEL-BLOCK-001 CLEARED** — PRATINIDHI filed EKV-R-1 at 2026-08-16T01:15+05:30.
+Authorization conditions:
+1. E must run all 4 post-deploy assertions from migration 572 header → record in LEDGER_E
+2. Migration 572 must NOT be edited after application
+3. PR must cite EKV-R-1
 
-**E must not merge C-01 until EKV-R-C01-001 appears in origin/ekv/pratinidhi-role.**
-This is also a product-table write (deletes 6 rows from brahma_prospective_ledger) — double gate.
-
-The fix itself looks correct (root cause correctly identified; migration idempotent; writer guard minimal).
-Once PRATINIDHI files the ruling, SENTINEL will re-confirm and clear the block.
+C-01 is now cleared to merge. SENTINEL will verify E's post-deploy assertion record before countersigning.
 
 ---
 
 ## ESCALATION LOG
 
-### EKV-ESCALATION-001 — PRATINIDHI RULING DEADLOCK (2026-08-16 ~00:50+0530)
+### EKV-ESCALATION-001 — PRATINIDHI RULING DEADLOCK ✅ CLEARED (2026-08-16 ~01:15+0530)
+
+**CLEARED:** PRATINIDHI filed EKV-R-1 and EKV-R-2 at 2026-08-16T01:15+05:30.
+Both rulings INDEPENDENTLY VALIDATED by SENTINEL (match source analysis).
+
+**EKV-R-1 (C-01 AUTHORIZED):** C-01 merge authorized. Conditions: E runs 4 post-deploy assertions (documented in migration 572 header) and records in LEDGER_E; PR must cite EKV-R-1. Merge HOLD cleared.
+
+**EKV-R-2 (Gate fix APPROVED — Option A):** `ekv_gate.py` PROD-SYNC check replaced with `deployed_main_sha` (manifest field, E-writes) vs `git rev-parse origin/main`. Conductor owns gate fix; E writes `deployed_main_sha` after each deploy.
+
+SENTINEL validation of EKV-R-2: Matches independently-derived source read (`mcp_catalog_version.ts:72-74`). §N.8 rationale correct. Ruling is sound.
+
+---
+
+### EKV-ESCALATION-001 — ORIGINAL FINDING (2026-08-16 ~00:50+0530)
 
 **Source-verified by SENTINEL (FM-09):**
 
@@ -183,6 +192,14 @@ None yet.
 - ISSUE: C-01 has lease cross into B's territory; EKV-R-C01-001 missing from PRATINIDHI ledger → MERGE HOLD posted
 - A-06 NOTE: resolution field omitted from disclosure (data type constraint) — not a dispute, noted
 - Next: watch for VERIFIED markers + E merge actions; run live exit tests when E deploys
+
+### HB-006 — 2026-08-16 ~01:20+0530 (Cycle 5)
+- **PRATINIDHI UNBLOCKED**: EKV-R-1 + EKV-R-2 filed at 01:15+0530 — ESCALATION-001 CLEARED
+- EKV-R-1: C-01 authorized (E can merge; 4 post-deploy assertions required)
+- EKV-R-2: Gate fix approved (Option A: deployed_main_sha field; conductor fixes gate)
+- D-lane: D-01a..e + D-04 + D-08 lint battery on ekv/lead-dharma (not yet merged)
+- Main: still 63049a6e (no merges yet)
+- Next: E should now merge W0 A-lanes (CI hopefully green); C-01 can merge after E runs post-deploy assertions; watch for first merge to main
 
 ### HB-005 — 2026-08-16 ~01:15+0530 (Cycle 4)
 - **PRATINIDHI STALE**: Invoked at 19:29Z, no ruling after 25+ min. Ledger has ZERO heartbeats (only seed commit). FM-27: SENTINEL flagging potential stale session.
