@@ -1,0 +1,364 @@
+{
+ "generated_by": "P4 (Consolidate) \u2014 PARIPURNA-2",
+ "source": "pp2-audit/manifest.json (138 findings, F-1..F-138)",
+ "defect_class_count_excluding_controls": 23,
+ "control_bucket": "CL-00",
+ "meta_pattern_note": "A cross-cutting pattern visible across CL-01/CL-03/CL-05/CL-07/CL-09/CL-11/CL-16: in at least 7 independent cases the CORRECT fix already exists somewhere in the same repo (often the same file) and was simply not propagated to sibling call sites \u2014 RC-04's toolName fix applied to 1 of ~22 dualOutput sites (F-43); registry_bridge's resolveChartFactsAyanamsha applied to 1 of 11 alias sites (F-59); hardFloor:true applied to bearing_yogas but not timing_hooks (F-51); NODE_PARASHARI_ASPECTS={5,7,9} correct in ga_structural_writer but absent from 3 other drishti tables (CL-07); mi_adhilepa's honest 'not_assessed' tier not adopted by mi_darshana (F-104); the already-fixed DEEP_DOMAIN_WORD regex not wired to the output (F-24); finalizeMcpBudget's honesty-echo not used by applyAutoBudgetToEnvelope (F-46). A remediation campaign should treat 'apply the known fix at every sibling site, enforced by a lint' as a first-class lane in its own right.",
+ "classes": [
+  {
+   "class_name": "CL-01 Registered-but-unreachable capability (dispatch/registration wiring gap)",
+   "member_count": 6,
+   "member_finding_ids": [
+    "F-02",
+    "F-07",
+    "F-11",
+    "F-25",
+    "F-67",
+    "F-73"
+   ],
+   "root_mechanism": "A capability is fully implemented \u2014 often with its own contract, schema and even a whitelist entry in ONE map \u2014 but the map the live dispatcher actually consults never receives the key: MCP_TO_RETRIEVAL_TOOL (F-02/F-07/F-11), the retrieval-registry URI table (F-73's marsys://tool/L4/gochara_forecast_get, zero registered gochara URIs anywhere in platform/src/lib/retrieval/registry \u2014 re-verified live this pass), server.tool() registration (F-67 bo_pratijna), or the Principal argument at registration time (F-25). server.ts's own docstring names this class: 'registered != deployed != callable'.",
+   "remediation_lane": "LANE-WIRING: one sweep that asserts, in CI, that every CapabilityDescriptor/contract with annotations.surgical is present as a key in MCP_TO_RETRIEVAL_TOOL AND reachable end-to-end, and that every callRegistryCapability URI literal resolves to a registered capability."
+  },
+  {
+   "class_name": "CL-02 Implemented backend with no serving consumer (dead data path + false 'no such data' assertion)",
+   "member_count": 5,
+   "member_finding_ids": [
+    "F-04",
+    "F-05",
+    "F-22",
+    "F-61",
+    "F-70"
+   ],
+   "root_mechanism": "Real, correct, populated data or computation exists (reference_nakshatra 28 rows; brahma_dasha_systems 20 rows + a complete tested query_dasha_systems capability; tantric.yaml + l0_remedy_loader; the 6 per-varga saptavargaja components; mi_bhara's calibration plane) but no serving-layer code reads it. The surface silently falls back to a weaker path and, in F-04/F-22, emits a fallback_reason that positively asserts the structured table does not exist. Re-verified this pass: kala_field_skill holds 7 real rows for the native chart (n_events=7, weights_version v0_classical) while all 8 kala_* facades still hardcode calibration_maturity n_events=0 (see P4-F-140).",
+   "remediation_lane": "LANE-DEADPATH: audit every fallback_reason/'no such table' literal against information_schema, and wire the existing capabilities (query_dasha_systems, reference_nakshatra, mi_bhara skill rows) into their declared consumers."
+  },
+  {
+   "class_name": "CL-03 Parameter accepted but never applied (no-op filter / silent value substitution)",
+   "member_count": 8,
+   "member_finding_ids": [
+    "F-03",
+    "F-06",
+    "F-08",
+    "F-10",
+    "F-26",
+    "F-27",
+    "F-59",
+    "F-133"
+   ],
+   "root_mechanism": "The MCP schema declares a parameter and the alias layer forwards it, but it is dropped before it reaches a SQL predicate \u2014 either because the primitive's input_schema does not declare it (F-08 domain), the SQL simply has no clause (F-03 limit/offset, F-06 chart_id, F-10 action_class, F-133 horizon_months on the mitigations family), the call site never passes it (F-49 mitigation_map), or a file-local alias map rewrites the value before the query (F-59 true_chitra -> lahiri_chitrapaksha at 10 of 11 unfixed call sites). Callers get false confidence that scoping occurred. Several of these carry an inline comment claiming the filter IS applied (F-10).",
+   "remediation_lane": "LANE-PARAMPARITY: contract test per tool asserting that changing each declared parameter changes the result_hash, or that the tool documents the parameter as advisory.",
+   "also_manifests_as": {
+    "F-26": "CL-02"
+   }
+  },
+  {
+   "class_name": "CL-04 Unreconciled domain/enum vocabularies + unvalidated input (false honest-zero)",
+   "member_count": 8,
+   "member_finding_ids": [
+    "F-24",
+    "F-40",
+    "F-41",
+    "F-42",
+    "F-53",
+    "F-55",
+    "F-57",
+    "F-58"
+   ],
+   "root_mechanism": "At least four independent domain/enum vocabularies coexist (CANONICAL_DOMAINS 13 entries, register_d9_judgment SHASTRA_MAP 10 concepts, brahma_event_ontology.domain, the gochara window domain enum, six stored ayanamsha ids) and were never reconciled 1:1; no handler validates its input against its own vocabulary. An out-of-vocabulary value therefore falls through to an empty/neutral path that is byte-indistinguishable from a genuine negative result \u2014 and in F-40/F-53 it defeats the very not_covered refusal the tool's description says was added to prevent exactly this. F-24 is the same shape one file down: two DOMAIN regex lists in intent_scope_classifier.ts, only one of them fixed and it is not the one wired to the output.",
+   "remediation_lane": "LANE-VOCAB: publish one canonical domain vocabulary, make every handler validate against it and return a typed UNKNOWN_DOMAIN error, and delete the duplicate regex/alias maps."
+  },
+  {
+   "class_name": "CL-05 Response-budget / trim defects (unenforced ceiling, inverted density priority, unreachable data)",
+   "member_count": 7,
+   "member_finding_ids": [
+    "F-13",
+    "F-28",
+    "F-51",
+    "F-56",
+    "F-111",
+    "F-112",
+    "F-122"
+   ],
+   "root_mechanism": "A generic post-hoc byte trimmer runs outside the handlers' knowledge. It has no notion of which section carries the answer \u2014 hardFloor:true is declared on only some sections, so timing_hooks (F-51) and the kala_elect candidate slate (F-122) are floored to zero while hora bookkeeping and catalog rows survive intact; sections attached AFTER the trimmer (F-112's domain_completeness) escape it entirely, so verbosity:'concise' makes the response BIGGER; some tools have no budget control at all (F-13, 1.30MB); and the budget is echoed as budget_kb_applied but not enforced (F-56/F-111: 3.5x-17.4x overshoot with a self-reported budget_exceeded_after_trim flag). Re-verified live this pass: assess_marriage = 158,200 bytes against budget_kb_applied 40; mimamsa_calibration_get still truncates mid-JSON at ~120 chars. Direct violation of CLAUDE.md \u00a7N.6 items 2-3.",
+   "remediation_lane": "LANE-BUDGET: make budget_kb a hard contract \u2014 declare hardFloor+minKeep on every answer-bearing section, move post-trim attachments inside the trim path, and fail loudly (typed error + drill pointer) rather than shipping an over-budget payload."
+  },
+  {
+   "class_name": "CL-06 False or stale aggregate / pagination fields",
+   "member_count": 5,
+   "member_finding_ids": [
+    "F-12",
+    "F-29",
+    "F-36",
+    "F-37",
+    "F-45"
+   ],
+   "root_mechanism": "An aggregate is derived from the wrong set: from the post-LIMIT page instead of a COUNT(*) (F-12 dignity/avasthas/karakas, F-37 ref_yogas_get), from the PRE-trim array the trimmer later cut and never re-derived (F-45, five independent tools: bodha_signals_get 200 vs 20, synth_chart_brief_get 27 vs 13, kala_priority_ranking_get 100 vs 50, kala_windows_get 500 vs 5, bodha_remedies_get 27 vs 13), from a clamped input echoed back as the caller's own (F-36 offset silently clamped to 100,000), or from a case-mismatched SQL FILTER that matches zero rows (F-29, served 0/0/0 against a real 2 CONFIRMED / 23 PARTIAL / 7 REFUTED distribution). A caller cannot page or size any of these surfaces correctly.",
+   "remediation_lane": "LANE-COUNTS: every total/\u2026_count field either issues its own COUNT(*) or is re-derived after the trimmer, and any clamped/substituted input is echoed alongside the caller's original value."
+  },
+  {
+   "class_name": "CL-07 Nodal (Rahu/Ketu) special-aspect truncation to the universal 7th",
+   "member_count": 6,
+   "member_finding_ids": [
+    "F-19",
+    "F-20",
+    "F-21",
+    "F-52",
+    "F-64",
+    "F-65"
+   ],
+   "root_mechanism": "FOUR independent hardcoded Mars/Jupiter/Saturn-only special-aspect tables, each with a silent universal-7th fallback for every other body: SPECIAL_DRISHTI_DEG (primitives.py, feeds all three gochara_* tools), NB_GRAHA_DRISHTI (ga_yoga_writer.py, feeds the Vipareeta Raja Yoga dilution loop), the local `special` dict in ga_vargas_writer.py::_compute_aspect_matrix (dead code today, latent landmine), against this same codebase's own CORRECT NODE_PARASHARI_ASPECTS={5,7,9} in ga_structural_writer.py. F-52 is the live present-day instance: Ketu's 5th aspect onto natal Venus and Rahu's 9th onto the natal 7th are both suppressed from this chart's own marriage-timing windows today. F-21 is the corollary: the w30_nodal_drishti compensator exists in engine.py but the built windows show no trace of it.",
+   "remediation_lane": "LANE-NODAL: one shared nodal-aspect constant (5/7/9) imported by every drishti site, a lint forbidding a locally-defined graha->aspect dict, and a chart rebuild so the built gochara windows pick up the corrected engine."
+  },
+  {
+   "class_name": "CL-08 Tier-honesty leaks (non-calibrated data served at full numeric precision / inflated labels)",
+   "member_count": 5,
+   "member_finding_ids": [
+    "F-68",
+    "F-69",
+    "F-117",
+    "F-119",
+    "F-126"
+   ],
+   "root_mechanism": "The project's own P3-b suppression discipline ('shape_only classes must NEVER show absolute/numeric probability values end-to-end') is implemented in ka_kshetra only. Parallel surfaces invented their own permanent non-calibrated tags \u2014 confidence_basis:'structural_not_yet_empirical' (F-68, AnchorRecord's only-ever-set value), evidence_grade:'structural'/'prior_only' (F-69, hardcoded per row type), calibration_status:'prior_only' + mode:'STRUCTURAL' \u2014 and then serve 4-decimal posteriors, confidence bands, 0-10 provenance grades and 'CRITICAL' priority labels through with NO suppression gate keyed on the tag. F-119 is the highest-harm shape: five single-day acute-illness dates 2-3 years out, no probability, no confidence interval, and none of the resolution_disclosure/{resolution,is_timing_window} envelope that gochara_forecast_get attaches precisely so a caller can tell a decade-era context row from an actionable date. F-126 is the same confusion in the confidence field itself: confidence_band='high' describes retrieval determinism, not evidential weight, on a zero-result query.",
+   "remediation_lane": "LANE-TIERSUPPRESS: one shared serving-layer gate that reads the epistemic tag and suppresses/rounds numerics + attaches resolution_disclosure, applied to L4 anchors, L5 insights, bo_upaya resonance and the assess_* gochara projection."
+  },
+  {
+   "class_name": "CL-09 Earned-signal violations (flag/grade with no detector, or a detector on a proxy)",
+   "member_count": 4,
+   "member_finding_ids": [
+    "F-47",
+    "F-48",
+    "F-104",
+    "F-118"
+   ],
+   "root_mechanism": "CLAUDE.md \u00a7N.8's own class, found in four more places. leakage_status is a bare Python string literal 'clean' at all 6 mi_darshana INSERT sites \u2014 on BLIND RETRODICTION rows, the exact row type where an unearned cleanliness claim does most damage \u2014 while the sibling writer mi_adhilepa already established 'not_assessed' as this codebase's honest tier for the identical concept (F-104). transit_quality, 20% of the muhurta composite, contains no transit computation at all \u2014 a lunar-phase approximation plus a static day-of-week table, by the code's own docstring (F-48). 50% of that same composite (dasha_quality + transit_quality) takes no action_type parameter, so the 'domain-specific' election score is half domain-blind (F-47). efficacy_tier is assigned by source_surface, restating provenance rather than assessing anything, and reads 'classically_attested' on 100/100 rows (F-118).",
+   "remediation_lane": "LANE-EARNEDSIGNAL: for each status/grade/PASS field, require a named detector and a test that makes it read false; where none exists, emit the honest null/not_assessed tier."
+  },
+  {
+   "class_name": "CL-10 Jargon / raw-internal leakage into user-facing prose",
+   "member_count": 5,
+   "member_finding_ids": [
+    "F-114",
+    "F-129",
+    "F-130",
+    "F-131",
+    "F-132"
+   ],
+   "root_mechanism": "The v3 register/reading_contract self-glossing mechanism exists and demonstrably works (graha_portrait, judgment_query \u2014 F-137 is the positive contrast), but was never applied to the primary narrative slot of the other serving code paths. Those interpolate raw internals directly into sentence templates: signal_type_id colon-namespaces ('Signal tajik_hadda_lord:sign appears unremarkable', F-128/F-129), enum concatenations ('strongest: CLASSIFY_RESIDUAL/DIGNITY/YOGA/SUBSYSTEM', F-132), raw truncated JSON mid-sentence (F-130, 2/2 tools, 2 families each), MSR-style templates ('SAT: graha nakshatra join: nakshatra id ref = 16 [ga_sensitive]', F-114/F-131), and in F-131 an internal computation-ABSTENTION marker ('floored: no_canonical_per_varga_method') salience-scored and served as the #3 priority signal deserving the native's attention. Re-verified live this pass on assess_marriage: 10/10 top-ranked marriage-lens signals are that exact ga_sensitive template string, all at identical salience 2.16108, and the marriage and progeny lenses share 6 of their 10 top signal_ids \u2014 the ranker does not discriminate at the top of the distribution or between domains.",
+   "remediation_lane": "LANE-REGISTER: make the v3 register/reading_contract glossing pass mandatory for any string that reaches a narrative field, plus a CI lint forbidding raw signal_type_id/enum/JSON interpolation into *_text/*_thesis/*_statement slots."
+  },
+  {
+   "class_name": "CL-11 Non-actionable or dead recovery pointers (recover_via / drill_pointers / tri_plane)",
+   "member_count": 6,
+   "member_finding_ids": [
+    "F-09",
+    "F-17",
+    "F-18",
+    "F-43",
+    "F-44",
+    "F-123"
+   ],
+   "root_mechanism": "Recovery and navigation pointers are emitted by shared helpers that know nothing about the target: dualOutput's default toolName='unknown_tool' fires on ~22 registrations in one file (F-17/F-18/F-43), the budget helper emits a boilerplate hint naming date_range/top_k/limit params the target tool does not have (F-09), the 1-entry-still-too-big fallback names a non-existent 'response_format:legacy' instrument (F-44), and tri_plane pointers carry an instrument name with none of the arguments the target actually requires, so following the server's own navigation graph dead-ends (F-123: kala_now_get points at kala_explain_get, which then demands a domain a NOW question has no value for). A sibling fix (RC-04) exists and was applied to exactly one call site.",
+   "remediation_lane": "LANE-POINTERS: make toolName a required argument of dualOutput, derive recover_via hints from the target's real JSONSchema, and emit required-args alongside every drill/tri_plane pointer.",
+   "also_manifests_as": {
+    "F-44": "CL-05"
+   }
+  },
+  {
+   "class_name": "CL-12 Narration-fidelity defects (prose diverges from the rows it sits on)",
+   "member_count": 8,
+   "member_finding_ids": [
+    "F-39",
+    "F-50",
+    "F-63",
+    "F-93",
+    "F-116",
+    "F-120",
+    "F-121",
+    "F-135"
+   ],
+   "root_mechanism": "CLAUDE.md \u00a7N.7's class. The sentence is not a faithful restatement of the cited rows: fabricated dasha boundary dates ~6 weeks off the two_pass_verified chart_dashas row (F-93); catalog trigger-condition preambles presented as chart-matched diagnoses of afflictions this native does not have \u2014 'debilitated Jupiter in Capricorn' for a chart whose Jupiter is in its OWN sign, 'debilitated Sun in Libra' against a FORENSIC birth anchor of Sun in Capricorn (F-116); a narration hard-coded to three dasha levels that labels the level-3 period 'current' and never mentions the level-4 period running today with sandhi_flag=TRUE (F-120); four explicit per-band false booleans rendering absence-of-coverage in the same grammar as absence-of-condition (F-121); '#1 remedy-priority target' asserted for the chart's second-strongest graha (F-50); an ENTITLEMENT_DENIED template asserting 'this chart exists' for a fabricated UUID (F-39); an empty weaknesses bucket beside five conditional sub-5/10 grades (F-135); and a detector that fires true but serves combination_name='unknown' (F-63).",
+   "remediation_lane": "LANE-NARRATION: every narration layer gets its own golden-value test asserting the sentence's numbers/labels equal the cited fact row (\u00a7N.7 item 5); remove conditional catalog preambles unless a predicate confirms the condition on this chart."
+  },
+  {
+   "class_name": "CL-13 Missing disclosure of a known partial or mixed result",
+   "member_count": 6,
+   "member_finding_ids": [
+    "F-31",
+    "F-33",
+    "F-34",
+    "F-35",
+    "F-78",
+    "F-134"
+   ],
+   "root_mechanism": "The surface knows (or can cheaply know) that it clipped, skipped or mixed scopes, but the disclosure branch is gated on the wrong condition \u2014 usually total emptiness. gochara_forecast_get emits an empty_reason only when rows.length===0, so a range half beyond the swept horizon returns 22 silently-capped windows with empty_reason:null (F-34). assess_health omits the entire documented reading layer without a judgment_flag, in a response whose judgment_flags mechanism is live and used for a lesser gap in the same payload (F-31). A pre-birth as_of_date is served as two_pass_verified dasha rows whose only tell is a free-text 'age ~-4' (F-33). Cross-chart population-mined insights carry evidence_grade='empirical' with no population-level marker beside this chart's own structural rows (F-35). event_classes conflates attempted-with-built (F-78). An already-peaked 2025 window sits inside an 'upcoming' forward sweep unflagged (F-134).",
+   "remediation_lane": "LANE-DISCLOSE: move every empty_reason/coverage guard from an 'is empty' predicate to a 'did we serve less/other than asked' predicate."
+  },
+  {
+   "class_name": "CL-14 Uneven wiring of cross-cutting capabilities across a tool family",
+   "member_count": 5,
+   "member_finding_ids": [
+    "F-14",
+    "F-15",
+    "F-46",
+    "F-124",
+    "F-125"
+   ],
+   "root_mechanism": "Capabilities that should be cross-cutting gates were implemented per-handler, so sibling tools presenting identical envelopes differ sharply in depth and contract. DOMAIN_READING_FAMILIES has no 'health' or 'relationship' key, so assess_health and assess_marriage can never return the documented reading/domain_completeness/completeness_directive layer on any chart or budget setting while assess_career does (F-14/F-15/F-124 \u2014 re-verified live this pass: assess_marriage still ships no `reading` field). The mandatory B.11 orientation pre-fetch is on assess_* only, so kala_upaya_get can serve a PACT promise-DENIAL \u2014 the most interpretively loaded output in the estate \u2014 with no orientation_ok field at all (F-125). The honest budget-echo contract (budget_kb_applied/requested + merged drill pointers) exists in finalizeMcpBudget but not in the applyAutoBudgetToEnvelope path used by ganita_planet_get and siblings (F-46).",
+   "remediation_lane": "LANE-PARITY: promote reading-layer attachment, B.11 orientation and budget-echo to shared middleware over the tool registry rather than per-handler code, and add a family-parity test."
+  },
+  {
+   "class_name": "CL-15 Cross-tool incoherence \u2014 unreconciled contradictory verdicts on the same question",
+   "member_count": 2,
+   "member_finding_ids": [
+    "F-49",
+    "F-110"
+   ],
+   "root_mechanism": "Two surfaces compute the same question over the same substrate and neither consumes nor flags the other's verdict. F-110 (the single most consequential finding in the corpus): for the identical chart, domain and date the marriage-timing path returns a tier_1_high relationship projection for 2027-10-20..2030-04-03 narrated as 'High probability (>=70% convergence, clear activation)', while kala_upaya_get(domain=relationship) returns pact_status='denied_at_promise' graded strong on 63 fact_ids \u2014 the two verdicts SHARE 5 fact_ids including Venus debilitated in D9, and assess_marriage additionally certifies contradictions.status='no_contradictions_in_domain'. kala_ahead_get names the cause in its own coverage block ('promise_gated_forecasting: not_in_corpus \u2014 Law-3 PACT gating is not yet applied to these raw windows') but still narrates the unqualified probability. Which answer a real person receives is decided by which tool the consuming LLM picks, and the natural tool for 'when will I marry' is the one that omits the denial. F-49 is the same shape on remedies: three surfaces disagree on which graha needs remediation.",
+   "remediation_lane": "LANE-PROMISEGATE: join the PACT promise verdict into every forward-projection surface and suppress/downgrade projections the promise chain denies; where two surfaces can disagree, require an explicit reconciliation field rather than silence.",
+   "also_manifests_as": {
+    "F-49": "CL-03"
+   }
+  },
+  {
+   "class_name": "CL-16 Unstable row selection \u2014 no total ORDER BY / non-deterministic serving",
+   "member_count": 3,
+   "member_finding_ids": [
+    "F-60",
+    "F-92",
+    "F-115"
+   ],
+   "root_mechanism": "Identical inputs do not produce identical served evidence. judgment_query returned 4 then 6 distinct kala_activation windows on two byte-identical calls ~2.3s apart, with the flag text changing to match (F-92) \u2014 the dedup step has no total tiebreaker. ganita_strength_get's offset is not a stable pointer: declared total and counterfactual_rows_dropped changed on every retry at a different offset for the identical chart, and it took 5 escalating attempts to reach the graha_shadbala_total rows the \u015aUDDHA-V\u0100CA campaign exists to protect (F-60). assess_career and bodha_remedies_get name different #1 remedy targets from the same bodha_rm_resonances asset because neither pins the rank-1 ordering key (F-115). Exactly the defect class \u00a7N.7 item 2 names for fact selection, one layer up at the row-set level.",
+   "remediation_lane": "LANE-DETERMINISM: total ORDER BY (with a UUID/pk tiebreaker) on every reducing/paginating query, plus a repeat-call result_hash equality test in CI for the top ~20 tools.",
+   "also_manifests_as": {
+    "F-60": "CL-05"
+   }
+  },
+  {
+   "class_name": "CL-17 Malformed source data crashing or leaking through unguarded parsers",
+   "member_count": 2,
+   "member_finding_ids": [
+    "F-01",
+    "F-71"
+   ],
+   "root_mechanism": "FOUR rows in brahma_prospective_ledger carry a PostgreSQL EMPTY daterange literal in observation_window (re-confirmed live this pass: 4 rows, chart 482012f1). Neither reader guards for it, and the SQL-level `observation_window IS NOT NULL` filter does not catch it because an empty range is itself non-NULL \u2014 only its bounds are. The TypeScript path throws out of parseDaterange and serves String(err) verbatim, so standing_predictions_read has been 100% unusable for this chart (still is: PR #1287 is OPEN, never merged, and the live call still returns 'parseDaterange: could not parse daterange literal empty'). The Python path does float(None) in mi_bhara's falsifier-resolution phase and takes the ENTIRE calibration-plane build down with an uncaught TypeError (asset_throughput.state='error' confirmed live, last_built_at 2026-08-13). One data repair plus two guards closes both.",
+   "remediation_lane": "LANE-EMPTYRANGE: repair or nullify the 4 rows, add isempty() guards on both read paths, and add a NOT isempty(observation_window) CHECK constraint so it cannot recur."
+  },
+  {
+   "class_name": "CL-18 Error-hygiene leaks (raw driver/upstream text and internal routes to the caller)",
+   "member_count": 2,
+   "member_finding_ids": [
+    "F-89",
+    "F-90"
+   ],
+   "root_mechanism": "Shared helpers embed an upstream response body or driver exception verbatim into a thrown Error with no sanitization boundary between the internal service mesh and the MCP caller. callSidecarPath/callSidecarGet in register_p1_aliases.ts do `throw new Error(\\`[alias] sidecar ${path} failed (${res.status}): ${txt.slice(0,200)}\\`)` at 10 call sites across ~7 tools, leaking both the internal microservice route ('/api/pyhora/compute', '/api/compute/phala/muhurta_finder') and the raw CPython exception ('Invalid isoformat string: ...') (F-90). ref_rules_search served a raw Postgres 'invalid byte sequence for encoding UTF8: 0x00' literal into content.content (F-89). Same class as CL-17's symptom.",
+   "remediation_lane": "LANE-ERRSANITIZE: one sanitizing error boundary at the MCP dispatch edge that maps upstream failures to typed, path-free, driver-text-free MCP errors, with the raw text logged server-side only."
+  },
+  {
+   "class_name": "CL-19 Chart-scope entitlement boundary crossed inconsistently",
+   "member_count": 4,
+   "member_finding_ids": [
+    "F-30",
+    "F-38",
+    "F-74",
+    "F-127"
+   ],
+   "root_mechanism": "Chart-scope authorization is enforced at exactly one route boundary (isPerChartPrimitive -> authorizeChartAccess in /api/mcp/primitives/[tool]), and paths cross it unevenly. bodha_bundle_get \u2014 the tool whose entire purpose is the B.11 whole-chart-read floor \u2014 fans out over an internal HTTP loopback whose principal fails that gate for every scope:'per_chart' sub-capability, so 5 of 8 subsystems (MSR, CGM, LEL, PANCHANG, DASHA) error on every call for both ground-truth charts while the 3 backed by scope:'global' capabilities always succeed (F-30/F-74/F-127). The mirror-image failure: kala_now_get performs no entitlement/existence check at all before doing substantial work, returning a full successful-looking envelope for a nonexistent chart UUID (F-38). The bundle degrades honestly (b11_floor_passed:false), but the B.11 floor tool is nonetheless majority-failed on every call.",
+   "remediation_lane": "LANE-ENTITLEMENT: give the internal bundle caller a real principal (or resolve sub-capabilities in-process), and apply one uniform chart-existence + entitlement precondition to every chart-scoped handler."
+  },
+  {
+   "class_name": "CL-20 Classical-derivation defects (wrong predicate, or technique with no computed representation)",
+   "member_count": 5,
+   "member_finding_ids": [
+    "F-62",
+    "F-66",
+    "F-107",
+    "F-108",
+    "F-113"
+   ],
+   "root_mechanism": "The classical rule is either evaluated with the wrong predicate or has no representation at all, while the reading_checklist still certifies the unit as covered. F-66: Chatra and Ardhachandra Yoga fire on a chart whose 7 planets occupy only 4 distinct houses, because the detector's test is containment (`all(p in ps_in_houses for p in placed)`) rather than exact 7-house coverage with one planet per house. F-62: the dignity classifier never emits 'moolatrikona' anywhere, chart-wide \u2014 natal Jupiter at 9.79\u00b0 Sagittarius is served as 'own' \u2014 which systematically under-scores Sthana Bala (MT=45 vs Own=30 shashtiamsha) for any graha in its own MT range. F-113: natal D1 dignity-in-bhava for the 7th house is in NO leg of assess_marriage's pipeline; Saturn EXALTED in Libra in the 7th (2nd-strongest graha in the chart) never appears \u2014 'exalted' occurs zero times in the whole 158KB response, re-verified live this pass \u2014 while the generic ganita_dasha_lord_capability_get surfaced it in ~6KB. F-107/F-108: cross-varga (D2/D11/Indu Lagna) convergence and bhavat-bhavam have no fact_category, signal or checklist unit anywhere.",
+   "remediation_lane": "LANE-CLASSICAL: re-derive each Nabhasa/dignity detector against its cited BPHS rule with a golden-chart test; add a direct 7th-house/7th-lord/karaka fact join to assess_marriage; register bhavat-bhavam and cross-varga convergence as first-class checklist units (even if initially not_built) so their absence is disclosed."
+  },
+  {
+   "class_name": "CL-21 Response-envelope shape mismatch (double-enveloping) \u2014 top level contradicts nested payload",
+   "member_count": 2,
+   "member_finding_ids": [
+    "F-16",
+    "F-128"
+   ],
+   "root_mechanism": "The registry capability wraps its own response in {content:{...}} and the MCP handler then reads content['rows'] one nesting level too shallow, so the primary field is always empty while the real rows sit at content['content']['rows']. bodha_discoveries_get's discoveries/total/returned are permanently empty/zero for this reason (F-16), and the SAME response simultaneously carries judgment_flags:[{code:'hollow_envelope_no_data_rows'}] at the top level and 15 fully-populated discovery objects at content.content.rows (F-128) \u2014 the envelope actively contradicts its own payload.",
+   "remediation_lane": "LANE-ENVELOPE: one typed unwrap helper for callRegistryCapability results plus a test asserting top-level counts equal nested row counts.",
+   "also_manifests_as": {
+    "F-128": "CL-10"
+   }
+  },
+  {
+   "class_name": "CL-22 Governance / registry drift and auditability",
+   "member_count": 4,
+   "member_finding_ids": [
+    "F-79",
+    "F-81",
+    "F-94",
+    "F-95"
+   ],
+   "root_mechanism": "Multiple governance registries have no enforced 1:1 reconciliation, so genuine new drift is indistinguishable from the accepted residual. drift_detector.py exits 3 with 216 findings and schema_validator.py exits 3 with 43 violations on the clean tree (F-94/F-95) \u2014 both functioning as designed against a knowingly-accepted nonzero baseline, but that baseline includes at least one unambiguously fresh GA.1-class defect (CURRENT_STATE.last_session_id F1-AMENDMENT-\u2026 vs SESSION_LOG tail F1-ADOPTION-\u2026). CAPABILITY_MANIFEST.json's 115 entries are ALL governance-doc canonical_ids with zero ga_*/bo_*/ka_*/ph_*/mi_*/bg_* ids, so the CLAUDE.md \u00a7C-2 claim that it is the single source of truth cannot cover the >120-row asset_registry, and no reconciliation mechanism between the two exists (F-81). Migration 456_lel_schema_v2_event_shapes.sql is recorded as applied but its SQL is deleted outright rather than archived \u2014 the one exception in 430 applied rows (F-79).",
+   "remediation_lane": "LANE-GOVDRIFT: drive the known_residuals whitelist to an explicit enumerated list so any un-whitelisted finding fails close, reconcile CURRENT_STATE/SESSION_LOG, restore migration 456 to _archive/, and either extend the manifest to asset_registry or amend \u00a7C-2's scope claim."
+  },
+  {
+   "class_name": "CL-23 Corpus / data-coverage gaps (honestly served, genuinely thin)",
+   "member_count": 3,
+   "member_finding_ids": [
+    "F-23",
+    "F-54",
+    "F-136"
+   ],
+   "root_mechanism": "Not serving-layer defects \u2014 the tools query the right table and honestly null or disclose what is missing. The gap is in the corpus: only 16/67 (24%) mantra rows carry mantra_text and 9/67 (13%) carry mantra_sanskrit (F-23); and kala_gochara_windows currently holds NO rows at month/day resolution for the native chart in the tested ranges, so both tools purpose-built for near-term transit triggers return era-scale context only, correctly flagged via context_only_note per the PK-R-1 ruling (F-136).",
+   "remediation_lane": "LANE-CORPUS: content/backfill work, tracked as data debt rather than code defects; keep the honest-disclosure behaviour unchanged."
+  },
+  {
+   "class_name": "CL-00 Verified-PASS / positive controls / informational (no defect asserted)",
+   "member_count": 27,
+   "member_finding_ids": [
+    "F-32",
+    "F-72",
+    "F-75",
+    "F-76",
+    "F-77",
+    "F-80",
+    "F-82",
+    "F-83",
+    "F-84",
+    "F-85",
+    "F-86",
+    "F-87",
+    "F-88",
+    "F-91",
+    "F-96",
+    "F-97",
+    "F-98",
+    "F-99",
+    "F-100",
+    "F-101",
+    "F-102",
+    "F-103",
+    "F-105",
+    "F-106",
+    "F-109",
+    "F-137",
+    "F-138"
+   ],
+   "root_mechanism": "Findings recorded for audit completeness that assert no defect: eight data-integrity PASSes (kala_field decade-seam contiguity, the 25x10 null grid, the independently recomputed 10,502,780-row field_content_hash for both charts \u2014 re-confirmed by row count this pass, R17 identity adoption, FK/orphan integrity, natural-key uniqueness, verification_pass_status vocabulary, migration-order monotonicity, full-horizon coverage), nine \u00a7N.8 earned-signal COMPLIANT verdicts including the mutation-tested fact-category-pin-lint guard, two positive-contrast records (mi_adhilepa's honest 'not_assessed'; the v3 register mechanism), the retrodiction and dark-corpus baseline measurements, one genuine depth demonstration (kala_ahead_get's period_echo), and two informational observations (session active_chart_id labelling; sensitive-degree profile scoping being UX curation, not an access boundary). F-137 is dual-listed with CL-10 as its positive contrast; F-82's one exception is F-79 in CL-22.",
+   "remediation_lane": "No remediation lane \u2014 these are the audit's controls and should be preserved as regression anchors.",
+   "also_manifests_as": {
+    "F-137": "CL-10"
+   }
+  },
+  {
+   "class_name": "unclassified (singletons that fit no multi-member class)",
+   "member_count": 0,
+   "member_finding_ids": [],
+   "root_mechanism": "None. Every one of the 138 findings landed in a multi-member defect class or in CL-00 (the verified-PASS / positive-control bucket). No finding required force-fitting and none was left as a true singleton \u2014 the smallest defect class is CL-15 (2 members) and the smallest non-defect grouping is CL-21 (2 members).",
+   "remediation_lane": "n/a"
+  }
+ ]
+}
