@@ -281,9 +281,56 @@ may cite them by tag (SP-n). They do not consume an EKV-R number.
   3. PRATINIDHI's own spot-check of 3 random LIVE lanes' evidence
 -->
 
+### EKV-R-10: A-15 Deploy Smoke Failure — NOT AN A-15 REGRESSION; NO REVERT
+
+- **Asked by:** Conductor (SP-4 escalation at 22:14Z)
+- **Question:** A-15 deploy smoke test failed: bearer-auth probe returned 401 (valid canary key rejected). Health check passes (HTTP 200, server UP). SP-4 says "revert first, diagnose second." Does SP-4 apply here?
+- **Options considered:**
+  - **(A) Full SP-4 — revert A-15:** Heavyweight. Delays entire drain. A-15 only wired ayanamsha resolution at 10 sites — zero auth code touched. If the issue is canary-key config, reverting A-15 doesn't fix it.
+  - **(B) Conditional stand:** A-15 stays; Stream E verifies bearer auth with a real tool call (not just canary). Revert only if real auth is broken.
+  - **(C) Scoped ruling — not an A-15 regression:** The smoke canary probe tests a specific key. A-15 touched no auth paths. Previous deploys (B-04, A-09, B-05) passed the same smoke. The 401 is more likely canary key rotation/config than an A-15 code regression.
+- **Ruling:** **(C) — NOT AN A-15 REGRESSION. No revert.**
+  - SP-4's spirit is "production outage caused by a commit → revert the commit." Here: (1) the server IS running and healthy (HTTP 200); (2) A-15's diff touches only `resolveChartFactsAyanamsha` call sites — no auth, no middleware, no bearer handling; (3) the same smoke passed for the 3 deploys immediately prior (B-04 → A-09 → B-05); (4) a canary key returning 401 when the health check returns 200 points to a key mismatch, not a code regression.
+  - Reverting A-15 would NOT fix a canary key mismatch — it would only delay the drain while the real issue persists.
+  - The drain queue continues. A-15 is MERGED (not LIVE — no successful deploy smoke = no LIVE claim per N.8).
+  - Morning session investigates the canary key config. If morning session finds A-15 DID cause the auth failure (evidence required), then revert at that time.
+  - **A-15 status: MERGED** (deploy smoke failed; LIVE not earned per N.8).
+- **Rationale:** SP-4 protects against regressions. A regression requires the commit to have caused the failure. A-15's diff has zero intersection with auth paths. The canary probe failure with a passing health check is a config-class issue. Applying SP-4 mechanically (revert a commit that didn't cause the failure) would be cargo-cult safety, not real safety.
+- **Reversibility:** If morning diagnosis shows A-15 IS causal (would require evidence of auth-path interaction), revert is straightforward. The precedent (SP-4 scoped to actual regressions, not coincidental deploy failures) is durable.
+- **Timestamp:** 2026-08-16T03:24+05:30
+
+### EKV-R-11: A-02 Evidence Gap — DEPLOY ≠ FUNCTION; EXPLICIT SPOT-CHECK TARGET
+
+- **Asked by:** Guardian desk (22:10Z signal)
+- **Question:** A-02 evidence file (created by conductor at 22:08Z since Stream A dead) proves deployment succeeded but contains no MCP probe proving the 4 whitelisted tools return content. Manifest records `exit_test_result: PASS` for a claim about tool functionality. Per N.8 and SP-2, what is the correct disposition?
+- **Ruling:** Guardian is correct. The evidence gap is real.
+  - `exit_test_result: PASS` for "four tools return content live; every surgical contract callable" is an N.8 violation — the detector (deploy run) does not measure the specific claim (tool functionality).
+  - **A-02 is added to the explicit countersign spot-check target list.** It will NOT be left to the 3-random-lane lottery.
+  - If Stream E can run the actual 4-tool MCP probe before close, that upgrades the evidence and PASS stands.
+  - If Stream E cannot run the probe: `exit_test_result` should be recorded as `UNVERIFIED` (deploy confirmed, function unconfirmed) per SP-2. A-02 status becomes MERGED (not LIVE).
+  - The conductor's evidence creation was honest and within mandate (dead stream recovery, honest about limitations). No procedural violation.
+- **Rationale:** N.8 (earned signal) + N.7 item 5 (verified deploy ≠ verified function) + SP-2 (disclose more, never claim more). The guardian's finding is the exact pattern §N.8 instance 4 documents: a proxy check wearing a broader claim's clothes.
+- **Reversibility:** Forward-only. If the 4-tool probe runs and passes, upgrade to PASS/LIVE. If not, UNVERIFIED/MERGED is the honest state.
+- **Timestamp:** 2026-08-16T03:24+05:30
+
+## COUNTERSIGN LOG
+
+<!-- Night-close countersign goes here ONLY after:
+  1. ekv_gate.py verify exit 0 output pasted
+  2. SENTINEL's independent re-run pasted
+  3. PRATINIDHI's own spot-check of 3 random LIVE lanes' evidence
+  EXPLICIT SPOT-CHECK TARGETS (not random):
+  - A-02: per EKV-R-11, evidence gap between deploy proof and function claim
+-->
+
 ## ESCALATION LOG
 
 ### ESC-1: A-09 Force-Merge (EKV-R-8)
 - **Self-escalated to maximum deliberation:** irreversible-class, production-affecting
 - **Time spent:** ~15 minutes (evidence review + Ganga CI status check + proportionality analysis)
 - **Outcome:** Conditional stand with Ganga gate as the arbiter; procedural violation recorded
+
+### ESC-2: A-15 Deploy Smoke Failure (EKV-R-10)
+- **Escalated by:** Conductor (SP-4 alert at 22:14Z)
+- **Time spent:** ~10 minutes (diff review + smoke failure analysis + SP-4 scoping)
+- **Outcome:** Not an A-15 regression; no revert; A-15 stays MERGED (not LIVE); morning investigates canary key
