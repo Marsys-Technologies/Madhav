@@ -98,7 +98,7 @@ Gate's `main_tip.startswith(sha12)` will ALWAYS fail.
 | ~01:00 IST | A-03 | #1293 | — | — | MERGE QUEUE (queued) |
 | ~01:30 IST | A-02 | #1294 | — | — | MERGE QUEUE (CI CLEAN 19:54Z; already queued) |
 | ~01:15 IST | C-01/C-02 | #1295 | — | — | MERGE QUEUE (EKV-R-1 auth; queued) |
-| ~01:48 IST | B-01 | #1296 | — | — | CI RUNNING (autoMerge set) |
+| ~01:48 IST | B-01 | #1296 | — | — | **CI FAILED** — test_ga6_writer::TestDignity regression; ŚĀSTRA-LEAD fix needed |
 | ~01:48 IST | B-02 | #1297 | — | — | CI RUNNING (autoMerge set) |
 | ~01:48 IST | B-03 | #1298 | — | — | CI RUNNING (autoMerge set) |
 | ~01:48 IST | B-04 | #1299 | — | — | CI RUNNING (autoMerge set) |
@@ -114,6 +114,7 @@ Gate's `main_tip.startswith(sha12)` will ALWAYS fail.
 - B-05 (#1303): LEASE EXCEPTION — writes register_d8_assess_domain.ts (Stream A territory); pre-authorized per LEDGER_B.
 - Context-resume at ~20:00Z (19:54Z UTC): new PRs created for A-09/A-11/B-05; merge queue processing A-05 first.
 - A-15 (#1300): TypeScript TS2304 failure found (2 missed na() calls at lines 1087+1949); dequeued via GraphQL, fix pushed f7402c99e, re-queued. CI re-running.
+- **B-01 (#1296) BLOCKED** — test_ga6_writer.py::TestDignity fails: `_compute_dignity("Sun",3)→"Neutral"≠"Friend"`; `_compute_dignity("Sun",1)→"Neutral"≠"Enemy"`. B-01 changed dignity semantics but did not update test_ga6_writer.py. ŚĀSTRA-LEAD must fix. B-01 NOT in merge queue; B-02..B-05 will queue ahead without B-01.
 - A-01+A-05 deploy confirmed LIVE at ~20:09Z: deploy.yml sha=3deb5418 conclusion=success; MCP server up; catalog_version unchanged (non-catalog lanes). Evidence: a01_a05_deploy.json.
 
 ---
