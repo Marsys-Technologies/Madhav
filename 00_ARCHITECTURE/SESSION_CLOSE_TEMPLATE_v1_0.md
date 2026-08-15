@@ -1,17 +1,17 @@
 ---
 artifact: SESSION_CLOSE_TEMPLATE_v1_0.md
-version: 1.0
+version: 1.1
 status: CURRENT
 produced_during: STEP_7_GOVERNANCE_INTEGRITY_IMPLEMENTATION (2026-04-24)
 implements: GOVERNANCE_INTEGRITY_PROTOCOL_v1_0.md §G
-authoritative_side: Claude (Claude-only template artifact; per-session instantiations ARE the
-  mirror surface via SESSION_LOG + STEP_LEDGER + project_state.md composite per MP.2)
+authoritative_side: tool-neutral (per-session instantiations are the governed provenance
+  surface via SESSION_LOG + CURRENT_STATE_v1_0.md.)
 mirror_obligations: >
   None for this template file itself. Per-session instantiations are appended to SESSION_LOG
   as the closing block of the session's entry; the Gemini-side mirror is the corresponding
   state-after reflected in `.gemini/project_state.md` per MP.2 adapted parity.
 consumers:
-  - Every Claude (and Gemini) session closing on this project from Step 7 close forward
+  - Every Claude Code and Codex session closing on this project
   - `schema_validator.py` — validates the checklist YAML as its LAST action before SESSION_LOG
     append
   - `drift_detector.py` + `mirror_enforcer.py` — their exit codes feed the checklist's
@@ -21,6 +21,9 @@ consumers:
   - Step 10 (SESSION_LOG schema retrofit) — swaps `step_ledger_updated` for `current_state_updated`
     post-rebuild
 changelog:
+  - v1.1 (2026-08-15, CODEX_ONBOARDING): Adds tool provenance and mandatory CCD,
+    work-order, and remote lease-release synchronization for the shared Claude Code/Codex
+    operating convention in GOVERNANCE_INTEGRITY_PROTOCOL §P.
   - v1.0 (2026-04-24, Step 7): Initial template. Produced per GOVERNANCE_INTEGRITY_PROTOCOL §G.
     Carries the mandatory-field schema, enforcement rules, and two worked examples
     (rebuild-era Step 7, post-rebuild-era M2.B.3).
@@ -39,7 +42,10 @@ changelog:
 # SESSION_CLOSE_TEMPLATE v1.0
 ## MARSYS-JIS Project — Session-Close Checklist
 
-*Implements `GOVERNANCE_INTEGRITY_PROTOCOL_v1_0.md §G`. Every session, before claiming close, emits a machine-readable checklist per this schema. The checklist is the LAST thing `schema_validator.py` validates; only after it validates does the SESSION_LOG append happen atomically.*
+*Implements `GOVERNANCE_INTEGRITY_PROTOCOL_v1_0.md §§G, P`. Every Claude Code or Codex
+session, before claiming close, emits a machine-readable checklist per this schema. The
+checklist is the LAST thing `schema_validator.py` validates; only after it validates does
+the SESSION_LOG append happen atomically.*
 
 ---
 
@@ -64,6 +70,8 @@ session_close:
   # ------------------------------------------------------------------
   session_id: STEP_7_GOVERNANCE_INTEGRITY_IMPLEMENTATION
   closed_at: 2026-04-24T23:59:00+05:30
+  tool: "Claude Code"
+    # Required provenance: "Claude Code" or "Codex".
 
   # ------------------------------------------------------------------
   # Files touched (GA.21 closure; Axis C.5 hygiene enforcement)
@@ -161,6 +169,20 @@ session_close:
   step_ledger_updated: true                  # rebuild era (Steps 0–15)
   current_state_updated: n/a                 # post-Step-10 field; n/a pre-Step-10
   session_log_appended: true
+
+  # ------------------------------------------------------------------
+  # Cross-tool synchronization and lease release
+  # ------------------------------------------------------------------
+  cross_tool_sync:
+    ccd_entries_appended: []
+    work_order_outcome_recorded: true
+    work_order_surface: <owning-campaign-ledger-or-queue>
+    lease_release_recorded: true
+    lease_release_verified_on_remote: true
+    next_session_can_resume_from:
+      - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+      - 00_ARCHITECTURE/SESSION_LOG.md
+      - 00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md
 
   # ------------------------------------------------------------------
   # Disagreement register

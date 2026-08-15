@@ -36399,3 +36399,101 @@ F6a, F6b, F7), using the same blind-spec / side-by-side / adoption-ruling sequen
 the prior amendment cycle established; chart 3 (`cb73cd3d`) provisioning + rebuild; or a new
 campaign entirely. `00_ARCHITECTURE/briefs/pratijna_v4/F1_CYCLE_STATE.md` is the full ledger for
 anyone picking this back up.
+
+---
+
+## CODEX-ONBOARDING-CLOSE-2026-08-15 — shared-brain parity installed
+
+**Tool:** Codex
+**Decision citations:** CCD-001, CCD-002, CCD-003, CCD-004 in
+`00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md`.
+
+Codex onboarding closed in the leased task worktree. The root `AGENTS.md` loader preserves
+canonical `CLAUDE.md`; its full-read acceptance cited §N.6 beyond byte 32,768. Fresh Codex wrote
+CCD-002, fresh Claude Code consumed it and wrote CCD-003, and fresh Codex consumed both. The
+canonical skill inventory is four (`create-migration`, `pr-description`, `run-checks`,
+`session-close`), not five; CCD-004 records the audit correction and the owner-visible security
+and validator-debt follow-ups. Live MCP acceptance succeeded against `marsys-jis` at `/mcp` with
+environment-sourced authentication. No existing Claude, Gemini, or Kilo configuration was
+modified; no production, migration, deploy, or application code was touched.
+
+```yaml
+session_open:
+  session_id: CODEX-ONBOARDING-CLOSE-2026-08-15
+  cowork_thread_name: "Codex onboarding close"
+  agent_name: gpt-5.6-terra
+  agent_version: gpt-5.6-terra
+  tool: "Codex"
+  tool_profile: madhav-safe
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/Madhav-worktrees/codex-onboarding
+  step_number_or_macro_phase: GOVERNANCE
+  predecessor_session: F1-ADOPTION-CONDUCTOR-2026-08-09
+  coordination:
+    coordination_ref: origin/campaign-coordination
+    lease_id: L-12
+    lease_status_verified: true
+    lease_verified_at: 2026-08-15T15:25:00+05:30
+    work_order_surface: 00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md
+  cross_tool_state_read:
+    cross_cutting_decision_register: true
+    stale_surfaces_disregarded: [.conductor-state.json, .gemini/project_state.md, "CLAUDECODE_BRIEF.md (when COMPLETE)"]
+  mandatory_reading_confirmation:
+    - {file: CLAUDE.md, fingerprint_sha256: 4dcee1be96aa30916a09fe8cf84b1f5b4db41fdd8964a110e79ed624cc9f926f, read_at: 2026-08-15T14:35:00+05:30}
+    - {file: 00_ARCHITECTURE/CURRENT_STATE_v1_0.md, fingerprint_sha256: n/a, read_at: 2026-08-15T14:35:00+05:30}
+    - {file: 00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md, fingerprint_sha256: n/a, read_at: 2026-08-15T14:35:00+05:30}
+  canonical_artifact_fingerprint_check: []
+  declared_scope:
+    may_touch: [AGENTS.md, "00_ARCHITECTURE/**", "01_FACTS_LAYER/AGENTS.md", "025_HOLISTIC_SYNTHESIS/AGENTS.md", "035_DISCOVERY_LAYER/AGENTS.md", "03_DOMAIN_REPORTS/AGENTS.md", .agents/skills, .codex/agents/**, platform/scripts/governance/schema_validator.py]
+    must_not_touch: [CLAUDE.md, .claude/**, .gemini/**, .geminirules, .kilo/**, platform/src/**]
+  mirror_pair_freshness_check: []
+  native_directive_obligations: []
+  red_team_due: false
+```
+
+```yaml
+session_close:
+  session_id: CODEX-ONBOARDING-CLOSE-2026-08-15
+  closed_at: 2026-08-15T15:26:00+05:30
+  tool: "Codex"
+  files_touched:
+    - {path: AGENTS.md, mutation_type: created, sha256_before: null, sha256_after: 6dfd1e86e84c441b2654c2790bfe7ae64f02c50521352cbc2ff9bd9ce32c3a63, justification: "Root Codex loader", within_declared_scope: true}
+    - {path: "00_ARCHITECTURE/{AGENTS.md,CROSS_CUTTING_DECISION_REGISTER_v1_0.md}", mutation_type: created, sha256_before: null, sha256_after: n/a, justification: "Nested instruction bridge and CCD register", within_declared_scope: true}
+    - {path: "01_FACTS_LAYER/AGENTS.md", mutation_type: created_symlink, sha256_before: null, sha256_after: e87f8286205dc545a1d0effcfd2767bd9ae3feaa64be6120ae69fd7812280dc9, justification: "Nested canonical instruction bridge", within_declared_scope: true}
+    - {path: "025_HOLISTIC_SYNTHESIS/AGENTS.md", mutation_type: created_symlink, sha256_before: null, sha256_after: 57facf3ae7a7e802e59010665a0dadf17477cbdc916a844e03faf805dc19ea61, justification: "Nested canonical instruction bridge", within_declared_scope: true}
+    - {path: "035_DISCOVERY_LAYER/AGENTS.md", mutation_type: created_symlink, sha256_before: null, sha256_after: 285c098627990bf572bd82a8422363739e1a0f4f236e05194093ac7f42b6d9e3, justification: "Nested canonical instruction bridge", within_declared_scope: true}
+    - {path: "03_DOMAIN_REPORTS/AGENTS.md", mutation_type: created_symlink, sha256_before: null, sha256_after: b823e4e9cee69852bc76c4841598d1878e1226fe74a91a57a79b41ed71e1b5c5, justification: "Nested canonical instruction bridge", within_declared_scope: true}
+    - {path: .agents/skills, mutation_type: created_symlink, sha256_before: null, sha256_after: n/a, justification: "Codex discovery bridge to canonical Claude skills", within_declared_scope: true}
+    - {path: ".codex/agents/{code-reviewer,migration-guard,security-reviewer}.toml", mutation_type: created, sha256_before: null, sha256_after: n/a, justification: "Additive Codex review-agent definitions", within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/CAPABILITY_MANIFEST.json, mutation_type: modified, sha256_before: 946c1c3745c925b47fffbd670b49ee4a332703ea91be3dc23ece7b7680288b32, sha256_after: n/a, justification: "Register and fingerprint CCD register", within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/CURRENT_STATE_v1_0.md, mutation_type: modified, sha256_before: 5a4a815f9931e6deeff79e09ace7b431eaaf815d6d838eebf68990e4fcb5d009, sha256_after: n/a, justification: "CCD orientation pointer and close state", within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/GOVERNANCE_INTEGRITY_PROTOCOL_v1_0.md, mutation_type: modified, sha256_before: 3cfcb20f7ace61cce6933669ca006d4f70ce5a83bf85d419bca3d74de181d950, sha256_after: n/a, justification: "Cross-tool convention and /mcp warning", within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/GOVERNANCE_STACK_v1_0.md, mutation_type: modified, sha256_before: 9e73a5e4ca88ac2ca83de89ef17f396ba883d00c58add5ac061a96e64a855b64, sha256_after: n/a, justification: "Governance registration", within_declared_scope: true}
+    - {path: "00_ARCHITECTURE/SESSION_{OPEN,CLOSE}_TEMPLATE_v1_0.md", mutation_type: modified, sha256_before: n/a, sha256_after: n/a, justification: "Shared Codex/Claude provenance and synchronization fields", within_declared_scope: true}
+    - {path: platform/scripts/governance/schema_validator.py, mutation_type: modified, sha256_before: bbf414f8cb9cbfd0d834866072ec0d9b85c94bd4e9ed768b6f57247f80e6a4e4, sha256_after: c90052143bf08fd8fa8adac342d3f80324a5d0d8c0acfecebd6a0aabe0f0c349, justification: "Enforce new handshake and close fields", within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/SESSION_LOG.md, mutation_type: modified, sha256_before: n/a, sha256_after: n/a, justification: "This close entry", within_declared_scope: true}
+  registry_updates_made:
+    governance_stack: [{section: "§25", entry_excerpt: "CODEX_ONBOARDING"}]
+    capability_manifest: [{canonical_id: CROSS_CUTTING_DECISION_REGISTER_v1_0, change: registered_and_fingerprinted}]
+  red_team_pass: {due: false, performed: false, verdict: n/a, artifact_path: null}
+  drift_detector_run: {script: platform/scripts/governance/drift_detector.py, exit_code: 3, divergences_found: 218}
+  schema_validator_run: {script: platform/scripts/governance/schema_validator.py, exit_code: 3, violations_found: 42}
+  session_log_appended: true
+  cross_tool_sync:
+    ccd_entries_appended: [CCD-001, CCD-002, CCD-003, CCD-004]
+    work_order_outcome_recorded: true
+    work_order_surface: 00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md
+    lease_release_recorded: true
+    lease_release_verified_on_remote: true
+    next_session_can_resume_from: [00_ARCHITECTURE/CURRENT_STATE_v1_0.md, 00_ARCHITECTURE/SESSION_LOG.md, 00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md]
+  close_criteria_met: true
+  unblocks: ["Owner review and merge of Codex onboarding PR"]
+  handoff_notes: "Do not merge without owner review. CCD-004 carries credential-rotation and validator-debt follow-ups."
+  known_residuals:
+    - {finding_id: CODEX-ONBOARDING-SCHEMA-BASELINE, finding: "schema_validator repository-wide baseline", severity: MEDIUM, booking_reference: "CCD-004 — owner-authorized dual-tool debt follow-up", policy_ref: "CCD-004 recorded 43 findings; this close resolves the stale last-session pointer, leaving 42"}
+    - {finding_id: CODEX-ONBOARDING-DRIFT-BASELINE, finding: "drift_detector repository-wide baseline", severity: MEDIUM, booking_reference: "CCD-004 — owner-authorized dual-tool debt follow-up", policy_ref: "CCD-004 — 218 findings"}
+```
+
+### Next session objective
+
+Owner review of the Codex onboarding PR. Do not merge until the owner approves; then complete
+the owner-authorized merge procedure and address CCD-004 follow-ups only under their own scope.
