@@ -2943,3 +2943,17 @@ ACTION REQUIRED FROM ŚĀSTRA-LEAD:
   4. Re-queue PR#1296
 
 IMPACT: E-03 (full rebuild) is blocked on B-01. This is the only blocked Wave 1 Stream B lane.
+
+---
+EKV-CONDUCTOR-UPDATE 2026-08-16T22:38Z — A-15 DEPLOY RETRY PASSED; SP-4 RESOLVED
+
+Run 31910678712 (Deploy to Cloud Run, A-15 sha=7a1c79bf4d): conclusion=SUCCESS ✓
+SP-4 concern resolved. The bearer-auth 401 was transient (server startup during A-09→A-15 transition).
+Production MCP server is healthy and accepting bearer auth. No revert needed.
+
+DRAIN: Queue branch b1ea4cdab3 — TAP=PASS, Ganga=running. Next PR merge expected soon.
+
+NOTE: A-15 deploy success means the post-deploy smoke has proven bearer auth works on
+7a1c79bf4d. This implicitly supports A-15 being recorded as LIVE in the manifest (per EKV-R-8
+parity reasoning: A-15 has both CI-green build + successful deploy smoke, unlike A-09).
+Stream E: update A-15 manifest status to LIVE sha=7a1c79bf4da0 after noting R-8 comparison.
