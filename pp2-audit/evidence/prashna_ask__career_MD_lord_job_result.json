@@ -1,0 +1,9 @@
+NOTE: full prashna_status result for job_id 3af702e7-188f-40dd-b728-f53bbbc6b0f4 (chart 482012f1, question "current Vimshottari mahadasha lord") saved at:
+/Users/Dev/.claude/projects/-Users-Dev-Vibe-Coding-Apps-Madhav/9d2de432-f395-4d70-8fac-5765dec068af/tool-results/mcp-marsys-jis-direct-prashna_status-1786807322254.txt
+
+Key excerpt: result.chart_id = "482012f1-710e-4a25-994a-93821f5871aa" (correct, matches request -- Task 2 PASS, no cross-request corruption).
+result.reading (excerpt): "As of the specified date of August 15, 2026, your current Vimshottari Mahadasha (major period) lord is Mercury. This 17-year Mercury Mahadasha is active from July 7, 2010, to July 7, 2027. Within this major period, the current Antardasha (sub-period) of Saturn is running from October 27, 2024, to July 7, 2027."
+
+CROSS-CHECK vs ganita_dashas_get (same chart, same ayanamsha lahiri_chitrapaksha, level=1) called earlier this session:
+  Mercury MD: start_date "2010-08-18", end_date "2027-08-18" (chart_dashas table, two_pass_verified)
+DISCREPANCY: prashna_ask's synthesized narrative reading states Mercury MD start/end as "July 7, 2010" / "July 7, 2027" -- roughly 6 weeks off from the authoritative chart_dashas value of 2010-08-18 / 2027-08-18. Also the Antardasha end-date in the narrative ("July 7, 2027") does not match the AD end reported by kala_now_get's dasha_sandhi block earlier this session (Antardasha Saturn boundary period_end "2027-08-18"). This is a narration-fidelity mismatch (§N.7), not a same-call-twice non-determinism instance, so it is filed as a secondary/tertiary observation rather than a primary wave-2 finding.

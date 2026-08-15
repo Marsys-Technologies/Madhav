@@ -1,0 +1,16 @@
+{
+  "call": 1,
+  "tool": "judgment_query",
+  "params": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "domain": "career"},
+  "note": "First of two back-to-back identical calls. Key divergent field vs call2: content.checklist.timing_hooks.kala_activations (4 entries here) and judgment_flags[].kala_activations_trimmed detail ('...deduped by window to 4 distinct window(s)').",
+  "kala_activations_this_call": [
+    {"id":"8095951","signal_id":"f6e55799-0ef8-47a3-9034-17ffd38e05fc","signature_class":"SUBSYSTEM","activation_start":"2024-12-08","activation_peak_date":"2026-04-13","activation_end":"2027-08-18","convergence_score":1,"dasha_activation_proximity_score":0.8768,"orb_strength":1,"domains_affected_array":["career","wealth","relationship"]},
+    {"id":"7858084","signal_id":"df5c4452-6e42-4bae-a6a2-15f3616a3703","signature_class":"DISPOSITOR_RELATIONAL","activation_start":"2024-12-08","activation_peak_date":"2026-04-13","activation_end":"2027-08-18","convergence_score":0.6071,"dasha_activation_proximity_score":0.8768,"orb_strength":1,"domains_affected_array":["career","wealth","relationship","residence","progeny","travel"]},
+    {"id":"8177250","signal_id":"c516edf0-0f2d-410b-b876-5ed04c5fa67a","signature_class":"YOGA","activation_start":"2010-08-18","activation_peak_date":"2019-02-16","activation_end":"2027-08-18","convergence_score":0.1095,"dasha_activation_proximity_score":0.27995,"orb_strength":1,"domains_affected_array":["career","wealth","health","relationship","spirituality","progeny","education"]},
+    {"id":"7859260","signal_id":"9a6da6e9-2376-4ad3-a36a-e670b3960bb8","signature_class":"DISPOSITOR_RELATIONAL","activation_start":"2010-08-18","activation_peak_date":"2019-02-16","activation_end":"2027-08-18","convergence_score":null,"dasha_activation_proximity_score":0.47425,"orb_strength":null,"domains_affected_array":["character","career","family"]}
+  ],
+  "kala_activations_trimmed_flag_detail": "10 raw activation row(s) deduped by window to 4 distinct window(s); per-row activation_predicted_dates_jsonb / active_dasha_periods_jsonb dropped from this envelope (§N.6 budget) — full predicted-date detail via the kala temporal-activation drill.",
+  "verdict_grade": "convergent_strong",
+  "composite_score": 4.58,
+  "computed_at": "2026-08-15T15:19:22.016Z"
+}
