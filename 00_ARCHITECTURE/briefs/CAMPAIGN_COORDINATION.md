@@ -2369,3 +2369,5 @@ SC-17/18/19 failure likely: new tool registrations not in capability manifest.
 TAP-5/7/S-13 failure likely: buildAssessResponse changed response shape vs DB-backed distribution baseline.
 A-09 is W1 — does NOT block W0 completion. But A-14/A-16/B-08 cannot merge until A-09 is FIXED AND GREEN.
 EKV-KERNEL-API-FROZEN types are still valid; fix the registration + TAP coverage.
+
+EKV-CONDUCTOR-HB 2026-08-16T20:54Z — W0 6/7 LIVE. A-04 (`a2ce6dc37` PR#1292) merged. Queue: A-02 (#1294) now entering queue on A-04 tip. C-03 (PR#1287) also queued. ████ W0 ON TRACK for 21:06Z deadline ████ — A-02 queue CI needs ~8-10min (expect merge ~21:00-21:02Z). Deploy in_progress on A-04 batch. STREAM E: update deployed_main_sha to `a2ce6dc37` after deploy; run EKV-R-1 post-deploy assertions for C-01. STREAM A: fix A-09 CI (Boot-time SC-17/18/19 + TAP-5/7/S-13) — A-14/A-16/B-08 blocked. STREAM B: fix B-01 dignity test regression. W1 merge queue: B-02/B-03/B-04 active; A-11 green.

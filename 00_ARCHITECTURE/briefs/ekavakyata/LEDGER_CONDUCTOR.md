@@ -100,7 +100,14 @@ Sole writer: SŪTRADHĀRA. One file, one writer — PP2 write-race lesson.
 
 **W0 RISK: A-02 may not merge until 21:05-21:15Z — tight vs 21:06Z deadline. C-03 (PR#1287) stuck outside queue.**
 
-**W0 PROGRESS: 5/7 LIVE at 20:45Z — deadline 21:06Z (~21min remaining)**
+**W0 STATUS (20:51Z — A-04 merged):**
+- A-04 ✓ LIVE (`a2ce6dc37` PR#1292) — W0 6/7 LIVE
+- A-02 (PR#1294): entering queue on A-04 tip; queue CI ~8-10min → expect merge ~21:00-21:02Z
+- C-03 (PR#1287): queued (resolved MERGEABLE after C-01 + now in queue)
+- Note: Ganga QG API timestamps were stale (showed 20:29Z for a run triggered at 20:42Z); actual CI took ~8min total
+- ekv_manifest.json: deployed_main_sha still A-06 (cfc37fc38); Stream E must update after A-04 deploy
+
+**W0 PROGRESS: 6/7 LIVE at 20:51Z — deadline 21:06Z (~15min remaining) — ON TRACK**
 
 ### KERNEL API FREEZE MARKER (A posts, I broadcast)
 `EKV-KERNEL-API-FROZEN` — post when A-09 sāra kernel types are frozen.
