@@ -31,6 +31,7 @@ Lane worktrees and branches:
 | A-11 | ekv/a-11-bundle-principal | .claude/worktrees/ekv-a-11 | VERIFIED |
 | A-07 | ekv/a-07-domain-charter | .claude/worktrees/ekv-a-07 | VERIFIED |
 | A-12 | ekv/a-12-inv2-determinism | .claude/worktrees/ekv-a-12 | VERIFIED |
+| A-13 | ekv/a-13-error-boundary | .claude/worktrees/ekv-a-13 | VERIFIED |
 | A-15 | ekv/a-15-ayanamsha-wire | .claude/worktrees/ekv-a-15 | VERIFIED |
 
 ## HEARTBEATS
@@ -50,6 +51,15 @@ Lane worktrees and branches:
   - A-05: query_insights.ts filters use lowercase 'confirmed'/'partial'/'denied' vs DB uppercase CONFIRMED/PARTIAL/REFUTED; UNRESOLVED absent ✓
   - A-06: gochara_sweep.top_windows in register_d8_assess_domain.ts lacks withResolutionDisclosure; function exists in register_gochara_windows.ts ✓
 - NEXT: A-01 worktree FIRST (hot-file rule), then parallel A-02..A-06
+
+### 2026-08-16 HB-10 ~22:40Z
+- A-13 VERIFIED: 33250d56d pushed ekv/a-13-error-boundary — F-89 closed
+  - register_p1_reference.ts classifyErrorMessage: +2 Postgres encoding patterns to looksInternal regex
+  - `invalid byte sequence for encoding` + `NUL character not allowed` now sanitize to generic safe_message
+  - F-90 (registry_bridge.ts error sanitize) remains BLOCKED — hot-file A-09 only
+  - Lease: platform-mcp/src/tools/register_p1_reference.ts only
+- W3 status: A-07/A-12/A-13 VERIFIED; assessing A-24 (intent_scope_classifier DEEP_DOMAIN_WORD) and A-17 (kala_upaya remedy scoping)
+- NEXT: scope F-24 (intent_scope_classifier.ts dual regex — one fixed, wrong one wired to output)
 
 ### 2026-08-16 HB-9 ~22:20Z
 - A-07 VERIFIED: 02d891bde pushed ekv/a-07-domain-charter — F-55/F-41 closed
@@ -168,6 +178,8 @@ EKV-A-08-VERIFIED — bea9d379f pushed ekv/a-08-promise-spine — interpretPactJ
 EKV-A-12-VERIFIED — 526612229 pushed ekv/a-12-inv2-determinism — F-92/F-60: id PK tiebreaker in SQL ORDER BY + localeCompare tiebreaker in JS .sort(); judgment_query activation windows now deterministic across repeated byte-identical calls
 
 EKV-A-07-VERIFIED — 02d891bde pushed ekv/a-07-domain-charter — F-55/F-41: SHASTRA_MAP +4 domains (family/general/transition/travel); unknown-domain early reject with live key list; stale 7-domain error message fixed
+
+EKV-A-13-VERIFIED — 33250d56d pushed ekv/a-13-error-boundary — F-89: looksInternal regex +2 Postgres encoding patterns; raw UTF8 exception text now sanitized to generic safe_message
 
 EKV-KERNEL-API-FROZEN — dcc2fb5a pushed ekv/a-09-sara-kernel — SaraKernel/SaraPromiseJoin/CompositionReport/SaraLayeredContent/assembleSaraContent stable in response_budget.ts
 
