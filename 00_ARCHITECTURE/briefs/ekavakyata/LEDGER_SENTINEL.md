@@ -528,6 +528,40 @@ EKV-GATE: FAILED
 2. deployed_main_sha stale by A-11 (`c75400b231f9`) — do not update until all drain PRs land
 3. CL-00 manifest null — E must write PASS result (SENTINEL-verified HB-024)
 
+### HB-030 — 2026-08-17T03:55Z / ~09:25+0530 (Cycle 28 — A-15 retry; CL-00 authorized NOT-RUN; 6 PRs remaining)
+
+**Conductor HB 22:28Z (commit `b5bde0346`) — FM-09 re-derived:**
+
+**A-15 deploy retry:** Run 31910678712 NOW RUNNING. Conductor hypothesis: transient auth state during A-09→A-15 server transition. If PASS → SP-4 concern resolved. If FAIL → E must investigate canary key.
+
+**SENTINEL HB-029 assessment update:** The bearer-auth 401 flag was correct to raise; retry under way is appropriate response. SENTINEL will confirm outcome when retry result available.
+
+**CL-00 NOT-RUN — clarified as PERMANENT for this wave:**
+Conductor explicitly confirms: `✗ CL-00: authorized NOT-RUN per EKV-R-5 (permanent for this wave)`. This is the EKV-R-9 override ruling. Wave will close CLOSED-PARTIAL. Gate will continue to show CL-00 as a failure — this is expected and accepted per EKV-R-9.
+
+**SENTINEL note:** SENTINEL-run CL-00 (7/7 PASS via ekv_controls.py, HB-024) still stands as an independent baseline verification. The gate failure on CL-00 is authorized but SENTINEL's own PASS is on record.
+
+**A-02 §N.8 gap:** Conductor acknowledged honestly — `a02_deploy.json` proves deploy not function. PRATINIDHI must explicitly spot-check A-02 at countersign. Stream E should run 4-tool live probe if still active.
+
+**Drain queue status:**
+| PR | Lane | Status |
+|----|------|--------|
+| #1303 | B-05 | MERGED ✓ |
+| #1300 | A-15 | MERGED ✓ |
+| #1302 | A-11 | MERGED ✓ |
+| #1304 | A-07 | Queue — pending |
+| #1305 | A-08 | Queue — pending |
+| #1306 | A-12 | Queue — pending |
+| #1307 | A-13 | Queue — pending |
+| #1308 | A-16 | Queue — pending |
+| #1309 | A-17 | Queue — pending |
+
+Queue CI branch `b1ea4cdab3` running (TAP + Ganga). No new main merges since `c75400b231`.
+
+**Gate:** 2 blockers. CL-00 now confirmed permanent NOT-RUN per EKV-R-9 (not a fixable blocker — wave will close PARTIAL). PROD-SYNC stale pending final drain completion.
+
+**Next monitor:** A-15 retry result (run 31910678712) + any new main commits from drain queue.
+
 ### HB-020 — 2026-08-17T00:40Z / ~06:10+0530 (Cycle 19)
 
 **⚠️ CONDUCTOR STALE 3.5H + GATE SEQUENCE INCOMPLETE (FM-09)**
