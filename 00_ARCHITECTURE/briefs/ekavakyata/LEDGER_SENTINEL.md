@@ -121,6 +121,41 @@ Once PRATINIDHI files the ruling, SENTINEL will re-confirm and clear the block.
 
 ---
 
+## ESCALATION LOG
+
+### EKV-ESCALATION-001 — PRATINIDHI RULING DEADLOCK (2026-08-16 ~00:50+0530)
+
+**Source-verified by SENTINEL (FM-09):**
+
+**Issue 1 — ekv_gate.py PROD-SYNC check broken:**
+- Gate code (ekv_gate.py:74): `sha12 = dep.rsplit("+r", 1)[-1] if "+r" in dep else ""`
+- Gate check: `if not main_tip.startswith(sha12)` → compares against sha12 from catalog_version
+- Actual source (`mcp_catalog_version.ts:72-74`):
+  ```ts
+  function catalogContentHash(): string {
+    const canonical = JSON.stringify(MCP_SURFACE_PROFILES.full.tool_names)
+    return createHash('sha256').update(canonical).digest('hex').slice(0, 12)
+  }
+  ```
+- `+r` suffix = SHA256(tool_names).hex.slice(0,12) — NEVER a git sha
+- `main_tip.startswith(sha12)` will NEVER be true for any deploy
+- **Consequence:** `ekv_gate.py verify --wave N` will ALWAYS fail PROD-SYNC, making formal wave verification mechanically impossible
+- E's EKV-R-01 filing (in LEDGER_E on origin/ekv/lead-sangama) is CONFIRMED CORRECT
+- E's interim workaround (track `deployed_main_sha` separately) is the correct approach
+- **Ruling needed:** PRATINIDHI must file EKV-R-01 to authorize gate fix before wave verdicts
+
+**Issue 2 — C-01 cross-stream merge:**
+- C-01 touches `platform/python-sidecar/` (Stream B's territory)
+- Claim: "EKV-R-C01-001 required before merge"
+- PRATINIDHI ledger: ZERO numbered rulings as of C1
+- C-01 also = product-table write (deletes 6 brahma_prospective_ledger rows) → §4 item 5 gate
+- **E must NOT merge C-01 until EKV-R-C01-001 filed**
+
+**Status of PRATINIDHI (origin/ekv/pratinidhi-role as of C1):**
+Only 1 commit (seed of standing positions). RULINGS section empty.
+
+**SENTINEL REQUEST TO CONDUCTOR:** Alert PRATINIDHI — two blocking rulings needed urgently.
+
 ## DISPUTE LOG
 
 <!-- EKV-DISPUTE-N: [lane] [claim vs reality] [timestamp] -->
@@ -148,6 +183,18 @@ None yet.
 - ISSUE: C-01 has lease cross into B's territory; EKV-R-C01-001 missing from PRATINIDHI ledger → MERGE HOLD posted
 - A-06 NOTE: resolution field omitted from disclosure (data type constraint) — not a dispute, noted
 - Next: watch for VERIFIED markers + E merge actions; run live exit tests when E deploys
+
+### HB-003 — 2026-08-16 ~00:50+0530 (Cycle 2)
+- Conductor: ALIVE — HBs at 19:25Z + 19:30Z confirmed
+- Stream A: W0 all 6 VERIFIED in LEDGER_A; EKV-A-01..06-VERIFIED markers posted in LEDGER_A
+- Stream B: B-01 multi-commit build in progress; B-02 14/14 goldens green (BUILT); B-03 4/4 goldens green (BUILT); B-04 BUILT
+- Stream C: C-03 test commit pushed (lel/c-03 toServed guard test)
+- Stream E: LEDGER_E seeded; EKV-R-01 filed (gate PROD-SYNC issue); SS3 MERGE LOG "Awaiting VERIFIED markers"
+- PRATINIDHI: ZERO numbered rulings — BLOCKING campaign (EKV-R-01 + EKV-R-C01-001 pending)
+- ESCALATION-001 filed (see ESCALATION LOG)
+- ekv_gate.py PROD-SYNC bug INDEPENDENTLY CONFIRMED by SENTINEL via source read (mcp_catalog_version.ts:72-74)
+- Manifest: all PENDING — no merges yet
+- Next: fetch PRATINIDHI ruling; if no ruling in 20min, re-escalate to conductor for relaunch
 
 ---
 
