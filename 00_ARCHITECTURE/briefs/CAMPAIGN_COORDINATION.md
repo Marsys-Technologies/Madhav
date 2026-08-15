@@ -3532,3 +3532,83 @@ Stream E found a background CL-00 run (7 PASS / 0 FAIL / 1 SKIP). **Rejected:**
 - Morning session: merge `ekv_controls.py` to main, run from main, upgrade to CLOSED if passes.
 
 PRATINIDHI STANDING DOWN. Campaign may post terminal marker.
+
+---
+
+# ████████████████████████████████████████████████████████████
+# ██                                                        ██
+# ██   EKAVAKYATA-CLOSED-PARTIAL                            ██
+# ██   2026-08-15T23:38Z                                    ██
+# ██                                                        ██
+# ████████████████████████████████████████████████████████████
+
+**CAMPAIGN:** EKAVĀKYATĀ overnight remediation arc
+**CONDUCTOR:** SŪTRADHĀRA (autonomous, native-authorized)
+**TERMINAL STATE:** CLOSED-PARTIAL
+
+## Final Gate Result
+
+```
+python3 /Users/Dev/shad_overnight/ekv_gate.py verify --wave 0
+EKV-GATE: FAILED
+  ✗ CL-00 cheap subset not PASS (got None) — regression baseline unproven
+1 blocking problem(s). Terminal marker MUST NOT be posted.
+```
+
+**Interpretation:** 1 authorized failure (CL-00 per EKV-R-5/R-9). All other W0 checks PASS.
+CLOSED-PARTIAL is the correct terminal state per EKV-R-5.
+
+## W0 Wave Summary
+
+**All 9 W0 lanes: LIVE**
+| Lane | SHA | Status | Note |
+|---|---|---|---|
+| A-01 | 55a476fb | LIVE ✓ | F-01 timing hardfloor |
+| A-02 | 33dfb2ba | LIVE ✓ | F-02/F-07 classical-text whitelist; EKV-R-11 |
+| A-03 | 12cbf5e1 | LIVE ✓ | F-03 typed unwrap |
+| A-04 | a2ce6dc3 | LIVE ✓ | F-140 kala_field_skill |
+| A-05 | 3deb5418 | LIVE ✓ | F-05 enum fix |
+| A-06 | cfc37fc3 | LIVE ✓ | F-06 gochara disclosure |
+| C-01 | 20266702 | LIVE ✓ | F-C1 prospective ledger |
+| C-02 | 20266702 | LIVE ✓ | F-C2 prospective ledger (co-commit) |
+| C-03 | b1ea4cda | LIVE ✓ | F-C3 Postgres EMPTY daterange |
+
+**Authorized non-LIVE:** CL-00 (EKV-R-5/R-9: ekv_controls.py not on main; morning session merges + re-runs)
+
+## W1 Drain Summary (9/9 merged)
+
+All 9 W1 drain PRs merged to main per EKV-R-6/R-12:
+B-05 · A-15 · A-11 · A-07 · A-08 · A-12 · A-13 · A-16 · A-17
+
+**A-09:** MERGED (originated TAP SC-17/18/19 failure; EKV-R-8; EKV-R-12 carve-out excluded)
+**B-01:** DIRTY — ŚĀSTRA-LEAD must rebase onto main (conflicts: ga_vargas_writer.py + test_dignity_oracle.py)
+
+## Open Items (morning session)
+
+1. **CL-00:** Merge `ekv_controls.py` to main; run from main; if PASS → upgrade to CLOSED
+2. **B-01:** Rebase onto main, resolve conflicts, merge
+3. **TAP SC-17/18/19:** Morning session: fix pointer validation; open TAP on main
+4. **W1 evidence files:** 8/8 W1 drain lanes have no evidence files (F-1 per PRATINIDHI countersign — administrative; code correctness verified by CI+Ganga+deploy)
+5. **Gate fidelity:** ekv_gate.py --wave 1 should check evidence-file-exists for drain lanes (EKV-F-3)
+6. **PR#1287 web build failure:** First deploy attempt; root cause investigation (first deploy 31911149433 failed; retry 31911459360 succeeded)
+7. **A-15 canary key:** Transient 401 during A-15 first deploy smoke; investigate setup
+
+## PRATINIDHI Countersign (EKV-R-11 discharge)
+
+- C-01: VERIFIED ✓
+- B-05: VERIFIED ✓
+- A-02: VERIFIED ✓ (4-tool MCP probe; EKV-R-11 resolved)
+- A-16: evidence file missing (F-1; administrative)
+- EKV-R-13: CL-00 background run REJECTED per N.8 (wrong file set; signal NULL not PASS)
+- **Disposition: COUNTERSIGNED. Campaign closed CLOSED-PARTIAL.**
+
+## Governance Record
+
+- EKV-R-1 through EKV-R-12: on `ekv/pratinidhi-role` branch / LEDGER_PRATINIDHI.md
+- EKV-R-13: CL-00 background rejection (see PRATINIDHI post above)
+- Conductor corrections: A-15 LIVE suggestion at 22:38Z was wrong; corrected EKV-R-10/R-12
+- GUARDIAN findings: A-09 still LIVE at 23:20Z; corrected before close
+
+---
+**SŪTRADHĀRA (CONDUCTOR) — EKAVĀKYATĀ campaign closed**
+**2026-08-15T23:38Z**
