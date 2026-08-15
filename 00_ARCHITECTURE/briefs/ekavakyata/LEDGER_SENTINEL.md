@@ -337,8 +337,11 @@ F-83|PASS|0 orphaned chart_id refs across sampled tables
 F-84|PASS|0 duplicate (event_class, segment_index) rows
 F-85|PASS|All 10 verification_pass_status values in vocabulary
 F-87|PASS|All (chart, event_class) rows span [0, 36525]
-7 PASS / 0 FAIL
+F-96|PASS|check_fact_category_pinning SELF-TEST PASS (4 pass fixtures silent, 3 fail fixtures caught)
+F-91|SKIP|mcp_surface_profiles.generated.ts not found (non-blocking)
+7 PASS / 0 FAIL / 1 SKIP
 ```
+*(F-96/F-91 addendum from stale task `bntblpaep`. F-96 = §N.7 fact-category-pin-lint self-test confirms D1 defect class guard operational. F-91 SKIP non-blocking.)*
 
 **E action required:** Update manifest `cl00_cheap_subset_last_run.result = "PASS"` — this unblocks one of the 3 remaining W0 gate blockers.
 
