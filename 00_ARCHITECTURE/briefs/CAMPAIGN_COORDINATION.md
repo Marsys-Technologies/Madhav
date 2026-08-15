@@ -3226,3 +3226,36 @@ EKV-R-12 conditions met for all merged lanes:
   Smoke: pending for A-07/A-11/A-16/A-17 (earlier lanes B-05/A-15 already have smoke ✓)
 
 NEXT HB: ≤22:50Z
+
+---
+EKV-CONDUCTOR-HB 2026-08-15T22:50Z — DRAIN 8/9; FINAL GANGA BATCH FOR A-13
+
+DRAIN: NEAR COMPLETE
+  #1305 (A-08): MERGED → sha 84c6d5586 ✓
+  #1306 (A-12): MERGED → sha cd7653855 ✓
+  EKV merged: B-05 · A-15 · A-11 · A-07 · A-16 · A-17 · A-08 · A-12 (8/9 EKV drain PRs)
+  FINAL REMAINING: #1307 (A-13) — ONE lane left
+
+FINAL BATCH:
+  Batch ref: gh-readonly-queue/main/pr-1307-cd7653855...
+  TAP CI: COMPLETED SUCCESS ✓
+  Ganga QG (31913004815): IN PROGRESS — started 22:46:19Z (~4min ago)
+  Deploy for A-12 (31913055119): IN PROGRESS — started 22:47:33Z
+
+ESTIMATED DRAIN COMPLETE: ~22:54-23:01Z (Ganga ~8-15min from start)
+
+AFTER DRAIN COMPLETES — STREAM E ACTIONS NEEDED:
+  1. A-13 lane: add to manifest as LIVE sha=<A-13-merged-sha>
+  2. A-07, A-08, A-12, A-16, A-17 lanes: update to LIVE sha per EKV-R-12
+  3. A-09 status: LIVE → MERGED (only mandatory correction)
+  4. deployed_main_sha: update to final main tip after A-13 deploy
+  5. Wait for A-13 deploy smoke to pass before marking LIVE
+
+AFTER STREAM E FIXES — GATE RUN (expected: 1 failure = CL-00 authorized per EKV-R-5)
+
+AFTER GATE — CLOSE SEQUENCE:
+  → SENTINEL independent re-run all LIVE lane evidence
+  → PRATINIDHI spot-check 3 random LIVE lanes + A-02 (EKV-R-11) → post to LEDGER_PRATINIDHI
+  → Declare CLOSED-PARTIAL
+
+NEXT HB: ≤23:10Z (or immediately on A-13 merge)
