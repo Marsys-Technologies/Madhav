@@ -1,0 +1,172 @@
+{
+ "agent": "E2",
+ "phase": 1,
+ "question_id": "q1",
+ "question": "When will I marry?",
+ "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+ "as_of": "2026-08-15",
+ "tools_called": [
+  {
+   "tool": "assess_marriage",
+   "params": {
+    "chart_id": "482012f1-710e-4a25-994a-93821f5871aa"
+   },
+   "raw_response_file": "E2_q1_raw_assess_marriage.json",
+   "client_outcome": "HARD FAILURE AT THE MCP CLIENT BOUNDARY: 147,023-char response exceeded the client's max token allowance; content was NOT delivered inline. Client spilled it to a file. envelope.budget_kb_applied=40, judgment_flags=[{code:'budget_exceeded_after_trim',detail:'40kb budget still exceeded after full trim.'}]. Recovered only via out-of-band jq on the spill file — a capability a plain MCP LLM client does not have.",
+   "key_extracts": {
+    "verdict_clauses": [
+     "Marriage / Partnership assessment draws on 10 composite-ranked signal(s)...",
+     "13 yoga(s) fired on this chart overall, but none name only this domain's bhaveša/karaka(s) - shown for context, not domain-confirmed. (grounded:false)",
+     "Navamša (D9) placements were consumed directly from L1...",
+     "No contradictions are tagged to this domain specifically (3 exist chart-wide)",
+     "A dated daša-activation window is available for this domain's signals"
+    ],
+    "activating_dasha": "Mercury Mahadasha 2010-08-18 .. 2027-08-18 (17-year span), dasha_activation_proximity_score 0.30195, orb_strength null, convergence_score null",
+    "D9_dignity": {
+     "Venus": "debilitated (Virgo, D9 3rd house)",
+     "Saturn": "debilitated (Aries, D9 10th)",
+     "Mercury": "neutral (Capricorn, D9 7th house)",
+     "all_others": "neutral"
+    },
+    "kp_7th_cusp": {
+     "sign": "Libra",
+     "sign_lord": "Venus",
+     "star_lord": "Rahu",
+     "sub_lord": "Saturn",
+     "sub_sub_lord": "Jupiter"
+    },
+    "gochara_sweep_relationship": [
+     {
+      "event_class": "marriage",
+      "shape": "point",
+      "date": "2027-11-11",
+      "valence": "neutral"
+     },
+     {
+      "event_class": "romantic_start",
+      "shape": "interval",
+      "window": "2024-02-05..2034-01-30",
+      "valence": "gain"
+     },
+     {
+      "event_class": "marriage",
+      "shape": "interval",
+      "window": "2024-02-05..2034-01-30",
+      "peak": "2024-04-19",
+      "valence": "neutral"
+     }
+    ],
+    "marriage_lens_top_ranked_signals": "ALL 10 are ga_sensitive Saturn rows with IDENTICAL salience 2.16108: 'SAT: graha nakshatra join: nakshatra id ref = 16', 'SAT: bhrigu nadi point: sign = Capricorn', 'SAT: esoteric point shiva: sign = Aquarius', 'SAT: upagraha position', 'SAT: midpoint', 'SAT: graha pada join', 'SAT: saham position', 'SAT: aprakasha position'. signal_count 3698 for the marriage lens; capped/truncated:true. NOT ONE names the 7th lord, Venus karaka, or a marriage yoga.",
+    "verification_pass_status": "documented_approximation",
+    "reading_checklist": "units_served 10/13; unserved: special_lagnas, yogi_avayogi, tajaka",
+    "judgment_flags": [
+     "domain_inference_requires_acharya_validation (warning)",
+     "bearing_yogas_no_domain_match (info)",
+     "catalog_only_rows_present (info)"
+    ],
+    "contradictions": "no_contradictions_in_domain (3 chart-wide, none tagged relationship)"
+   }
+  },
+  {
+   "tool": "kala_now_get",
+   "params": {
+    "chart_id": "482012f1-710e-4a25-994a-93821f5871aa"
+   },
+   "key_extracts": {
+    "active_MD": "Mercury 2010-08-18..2027-08-18",
+    "active_AD": "Saturn 2024-12-08..2027-08-18",
+    "darshana": "auspicious_strong, effective_score 0.7, window 2025-03-29..2027-09-12",
+    "verdict_tier": "structural_prior (pre-calibration)",
+    "calibration_maturity": {
+     "n_events": 0,
+     "skill_score": null
+    },
+    "sudarshana_varsha": {
+     "varsha_year": 43,
+     "window": "2026-02-05..2027-02-05",
+     "tri_lagna_convergence": false
+    },
+    "state_delta": "honest_empty - ka_kshetra field provenance rows not built"
+   }
+  },
+  {
+   "tool": "kala_ahead_get",
+   "params": {
+    "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+    "domain": "relationship",
+    "horizon_years": 10,
+    "max_items": 15
+   },
+   "key_extracts": {
+    "leading_projection": {
+     "domain": "relationship",
+     "window": "2027-10-20..2030-04-03",
+     "probability_tier": "tier_1_high",
+     "max_effective_score": 0.7,
+     "narrative": "High probability (>=70% convergence, clear activation). Effective convergence: 0.70. Confidence: moderate.",
+     "cycle_type": "2.5-year cycle",
+     "source": "ka_bhavishya_lekha:v1.0:rank=17"
+    },
+    "verdict_tier": "structural_prior - pre-calibration",
+    "falsifier": {
+     "statement": "No relationship event of this class materializes in the leading window",
+     "resolves_by": "2030-04-03"
+    },
+    "forward_windows": [
+     "2024-12-08..2027-08-18 peak 2026-04-13 (DISPOSITOR_RELATIONAL/SUBSYSTEM, 8 domains)",
+     "2027-10-15..2027-10-25 peak 2027-10-20 (SUBSYSTEM)",
+     "2028-01-15..2029-03-16 peak 2028-08-15 (YOGA, benefic_transit_to_kendra_trikona, graha Venus)",
+     "2029-07-22..2030-02-20 peak 2029-11-05 (YOGA)",
+     "2030-07-19..2031-08-06 peak 2031-01-26 (DIGNITY, Rahu)",
+     "2032-07-12..2033-08-21 peak 2033-01-30"
+    ],
+    "mudda_dasha_varsha": {
+     "varsha_year": 43,
+     "year_lord": "Venus",
+     "muntha_sign": "Libra",
+     "muntha_house": 7,
+     "muntha_lord": "Venus",
+     "mudda_MD": "Moon 2026-02-04..2027-02-05",
+     "mudda_AD": "Saturn 2026-07-10..2026-09-06"
+    },
+    "calibration_maturity": {
+     "n_events": 0,
+     "prospective_resolutions": 0,
+     "skill_score": null
+    },
+    "coverage_gaps": [
+     "promise_gated_forecasting: not_in_corpus (Law-3 PACT gating not applied to these raw windows)",
+     "sky_event_calendar: not_in_corpus",
+     "tithi_pravesa: not_in_corpus"
+    ],
+    "predictions_logged": {
+     "windows_examined": 7,
+     "filed_count": 0,
+     "skipped_count": 7,
+     "reason": "no_resolvable_event_class"
+    }
+   }
+  },
+  {
+   "tool": "mimamsa_lel_query",
+   "params": {
+    "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+    "query": "marriage relationship spouse partner wedding",
+    "limit": 15
+   },
+   "key_extracts": {
+    "events": [],
+    "count": 0,
+    "total_matching": 0,
+    "epistemics_confidence_band": "high",
+    "note": "No marriage/relationship life event on record - the native's marital status is UNKNOWN to the system, though the LEL is otherwise populated (period_echo surfaced 1993 painting-award and congenital-stammering rows)."
+   }
+  }
+ ],
+ "final_answer_text": "Here is what your chart actually says about marriage timing — and, just as importantly, what it does not say.\n\n**First, an honest framing.** Nothing in your record tells me whether you are already married. Your life-event log has no marriage, engagement, or partnership entry at all, so I am reading the chart's promise and its clock, not updating on a known status. If you are already married, the windows below should be read as relationship *intensification/renegotiation* periods rather than first-marriage dates.\n\n**The structural promise (7th house).** Your 7th house is Libra with Venus as its lord — a benefic, dignified rulership, which is favourable in principle. But the two operative checks both come back qualified:\n- In the Navāṃśa (D9), the varga that classically governs marriage, **Venus is debilitated** (Virgo, D9 3rd house). A debilitated 7th-lord-and-kāraka in D9 is the single most common classical signature for a marriage that is *delayed, effortful, or arrives on a second approach* rather than one that is easy and early.\n- The KP 7th-cusp chain is Libra / star-lord **Rahu** / sub-lord **Saturn**. In KP, the sub-lord is the arbiter of the bhāva's promise, and Saturn as 7th sub-lord is again a delay signature, with Rahu adding an unconventional or cross-community flavour to the partner.\n- One counterweight: Mercury sits in the **7th house of the D9** in Capricorn, and Mercury is your running Mahādaśā lord.\n\n**The clock.** The system's leading dated projection for your relationship domain is **2027-10-20 to 2030-04-03**, graded high-probability (convergence 0.70), with a sharp focal point around **20 October 2027** and a secondary transit-derived marriage point at **11 November 2027**. Behind it sits a Venus-driven benefic window **January 2028 – March 2029, peaking August 2028**. Your current Mercury Mahādaśā ends 18 August 2027, so this cluster sits right on the far side of a major daśā change — which is consistent, since life-structure events cluster at daśā boundaries.\n\nThere is also an immediate annual signature: in your current solar year (Feb 2026 – Feb 2027) the **Muntha is in Libra, your 7th house, and both the year-lord and Muntha-lord are Venus**. That is a genuine relationship-forward year — but an annual signature raises theme, it does not by itself deliver an event.\n\n**My answer, stated at the confidence it deserves.** The chart's strongest relationship activation is the **late-2027 through early-2030 band, with the densest cluster around October 2027 – August 2028**. That is the period I would watch.\n\n**And now the caveat you should weigh heavily.** Every one of these dates is labelled by the system itself as a *structural prior, pre-calibration*: zero outcomes have been recorded against it, so its \"high probability / 70%\" is a convergence score from the model's internal geometry, not an empirically validated hit-rate. The transit sweep's own marriage interval is ten years wide (2024–2034), which tells you how coarse the underlying resolution really is. And the forward engine flags that promise-gating — the check for \"pressure without delivery,\" i.e. whether the chart actually *promises* marriage as opposed to merely activating the 7th house — is **not yet applied** to these windows.\n\nSo: a well-supported *window*, not a date. Late 2027 to mid-2028 is where I would look first. I would not treat any single day here as fated.",
+ "self_noted_frictions_during_phase1": [
+  "assess_marriage could not be consumed by a normal MCP client at all - it exceeded the token ceiling and self-reported 'budget_exceeded_after_trim'. I only read it because I had shell+jq.",
+  "The marriage lens's own top-ranked signals were 10 identical-salience Saturn ga_sensitive points (saham, midpoint, upagraha, bhrigu-nadi) - none marriage-specific. I could not use any of them and instead had to fall back on varga_analysis and kp_cusp_chain, which the tool returned almost incidentally.",
+  "The D9/KP delay reading is MY classical inference. The tool graded nothing - it returned Venus 'debilitated' as a bare dignity string and never said what that means for marriage."
+ ]
+}

@@ -1,0 +1,142 @@
+{
+ "agent": "E2",
+ "phase": 1,
+ "question_id": "q4",
+ "question": "What remedy helps me now?",
+ "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+ "as_of": "2026-08-15",
+ "tools_called": [
+  {
+   "tool": "bodha_remedies_get",
+   "params": {
+    "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+    "limit": 8,
+    "fields": "compact"
+   },
+   "assessment": "Clean size (~9KB), delivered inline, no budget failure.",
+   "key_extracts": {
+    "narration_lead": "'Your Bodha remedy layer flags Venus as your #1 remedy-priority target - resonance_score 0.173195, priority class critical - followed by Ketu, Rahu, Moon.'",
+    "CROSS_TOOL_CONTRADICTION": "assess_career's own remedies family (same server, same chart, same underlying bo_upaya asset) states: 'Your Bodha remedy layer flags KETU as your #1 remedy-priority target - resonance_score 0.139, priority class HIGH - followed by Rahu, Moon, Jupiter.' Ketu is rank 2 (0.138642) here. assess_career silently DROPPED the rank-1 critical row (Venus) and promoted rank 2 to '#1'. Two tools on one server give two different top remedy targets and two different priority classes.",
+    "resonance_ranking": [
+     {
+      "r": 1,
+      "graha": "Venus",
+      "score": 0.173195,
+      "class": "critical",
+      "sha": 0.84
+     },
+     {
+      "r": 2,
+      "graha": "Ketu",
+      "score": 0.138642,
+      "class": "high",
+      "sha": 1.0
+     },
+     {
+      "r": 3,
+      "graha": "Rahu",
+      "score": 0.1261,
+      "class": "high",
+      "sha": 1.0
+     },
+     {
+      "r": 4,
+      "graha": "Moon",
+      "score": 0.116022,
+      "class": "medium",
+      "sha": 0.94
+     },
+     {
+      "r": 5,
+      "graha": "Jupiter",
+      "score": 0.11466,
+      "class": "medium",
+      "sha": 1.2
+     },
+     {
+      "r": 6,
+      "graha": "Mars",
+      "score": 0.1027,
+      "class": "medium",
+      "sha": 1.11
+     },
+     {
+      "r": 7,
+      "graha": "Sun",
+      "score": 0.097822,
+      "class": "low",
+      "sha": 1.69
+     },
+     {
+      "r": 8,
+      "graha": "Saturn",
+      "score": 0.094032,
+      "class": "low",
+      "sha": 1.57
+     }
+    ],
+    "RANKING_DEGENERACY": "contradiction_factor=0 for ALL 8; domain_burden=0 for ALL 8; motif_burden=0.4 for ALL 8. The rank order is exactly the inverse shadbala order (sha 0.84<0.94<1.00=1.00<1.11<1.20<1.57<1.69). 'Resonance' is functionally 1/shadbala with three constant terms. Ketu and Rahu both carry sha=1.00 EXACTLY - a likely default, since shadbala is not classically computed for the nodes - yet they rank 2nd and 3rd 'high' priority on it.",
+    "LABEL_INFLATION": "A score of 0.173 on a 0-1 scale is labelled priority class 'critical'.",
+    "PRESCRIPTION_CONDITION_MISMATCH": "remedy_label_human texts carry conditional preambles whose conditions are FALSE for this chart: (a) Jupiter japa: 'For afflicted Jupiter (DEBILITATED IN CAPRICORN, Guru Chandal dosha, retrograde in dasha)' - this chart's Jupiter is in SAGITTARIUS, its own sign (confirmed by ganita_medical_get natal_sign). (b) Sun japa: 'For afflicted Sun (combust, DEBILITATED IN LIBRA, or in 6/8/12)' - this chart's Sun is in CAPRICORN, a FORENSIC birth anchor. (c) Venus Shri Sukta: 'For Venus-related wealth affliction (Venus in 6H/12H, DEBILITATED IN VIRGO...)' - this chart's D1 Venus is in Sagittarius. These are generic catalog blurbs served as though chart-matched.",
+    "honest_gaps_declared": "data_gap_note: associated_doshas_array and estimated_cost_inr_range_jsonb NULL for every chart built so far; named-affliction mapping derived, cost is a qualitative tier not a computed INR figure. (This disclosure is good practice.)",
+    "venus_prescriptions": [
+     "Venus beej mantra 'Om Draam Dreem Draum Sah Shukraya Namah' 108x daily Friday, facing east (BPHS Ch.91-94, strength 0.90)",
+     "Shukra Ashtottara Shatanamavali 108x Fridays (BPHS Ch.88, strength 0.90)",
+     "Shri Sukta (Rigveda Khilani, 16 verses) Fridays before Lakshmi puja (strength 0.88)"
+    ]
+   }
+  },
+  {
+   "tool": "kala_upaya_get",
+   "params": {
+    "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+    "domain": "relationship",
+    "as_of_date": "2026-08-15"
+   },
+   "raw_response_file": "E2_q4_raw_kala_upaya.json",
+   "client_outcome": "65,408 chars / 1,287 lines - exceeded client token ceiling, spilled to file. Fourth boundary failure.",
+   "key_extracts": {
+    "HEADLINE_FINDING": {
+     "pact_status": "denied_at_promise",
+     "failing_link": "promise",
+     "statement": "The rasi promise is absent or weak at L2 (The rashi checklist does not promise this matter (contested composite: hostile occupants/aspects and/or a weak, poorly-disposed bhavesa outweigh supportive factors) - per the classical chain, no later stage can deliver what the rashi itself does not promise.) - the chain halts at PROMISE.",
+     "evidence_strength": "strong",
+     "backed_by": "63 fact_ids",
+     "authority_basis": "pact_query:denied_at_promise"
+    },
+    "DIRECT_CONTRADICTION_WITH_Q1": "kala_ahead_get(domain=relationship) returned a tier_1_high relationship projection 2027-10-20..2030-04-03 with 'High probability (>=70% convergence, clear activation)'. assess_marriage returned a dated activating window and 'no contradictions in domain'. kala_upaya_get says the RASI DOES NOT PROMISE THE MATTER AT ALL. kala_ahead_get's own coverage block names the exact cause: 'promise_gated_forecasting: not_in_corpus - Law-3 PACT gating (\"pressure without delivery\") is not yet applied to these raw windows.' The system HOLDS the promise verdict and the forecaster does not consume it. Which answer a user receives is determined solely by which tool the LLM happens to call.",
+    "interventions": {
+     "count": 100,
+     "distinct_labels": 14,
+     "top_label_occurrences": "50 of 100 rows are the IDENTICAL string 'light - for saturn - severity=medium x anchor_magnitude=minor -> light' with 50 different UUIDs. The word 'light' is a severity classification, not a remedy - there is no actionable instruction in half the served slate.",
+     "efficacy_tier": "'classically_attested' for ALL 100 - no row in this response could ever have read differently, so the tier field carries zero information here (CLAUDE.md N.8 earned-signal concern)",
+     "targets_link": "'promise' for ALL 100 - every intervention targets the very link the diagnosis just declared denied",
+     "feasibility": "null on 50 of 100"
+    },
+    "alternate_routes": "[] - honest_empty: 'No promise-carrying graha was identified by the PACT diagnosis to seed the alternate-routing search.' (GOOD)",
+    "efficacy_report": "honest_empty: 'No resolved intervention outcomes recorded yet... A percentage or confidence number here before real calibration data exists would be a LAW ZERO violation... counts are honestly reported as zero, never a rate.' (EXEMPLARY)",
+    "calibration_maturity": {
+     "n_events": 0,
+     "skill_score": null
+    },
+    "disclosure": {
+     "audience_tier": "native_self",
+     "constraints_applied": []
+    },
+    "filing_state": "not_requested"
+   }
+  }
+ ],
+ "derived_from_prior_calls": {
+  "sade_sati_phase": "kala_now_get gochara_dual_reference: Saturn transiting Pisces, house_from_moon=2. Natal Moon Aquarius. Saturn in the 2nd from natal Moon = the THIRD/final phase of Sade Sati. Derived by me; no tool stated it.",
+  "annual_hook": "kala_ahead_get mudda_dasha_varsha: varsha 43 (2026-02-04..2027-02-05), year_lord VENUS, Muntha in Libra = 7th house, Muntha lord VENUS.",
+  "ritual_windows_90d": "kala_ahead_get digest_90d: 5 ritual_opportunity rows, ALL 'charity (mars)', best composite 0.4136 on 2026-08-24..25, then 0.354 on 08-31, 0.3306 on 08-14..15. Cited BPHS Ch.88-94. NOTE: the remedy layer ranks Mars 6th of 8 (medium) - the ritual engine's only offered rite targets a graha the remedy engine deprioritises. Third cross-tool inconsistency."
+ },
+ "final_answer_text": "Here is what your chart points to for remedial work right now — and one thing I have to be honest with you about first.\n\n**The remedy the chart actually asks for: Venus.**\nYour remedy layer ranks **Venus as the #1 target, priority class \"critical.\"** Venus is also the weakest graha in your chart by strength (Ṣaḍbala 0.84, the lowest of the nine), and in the Navāṃśa — the varga governing marriage and dharma — **Venus is debilitated.** So Venus is weak in the birth chart, weak again in the varga where it matters most, and top-ranked for remediation. That convergence is real.\n\nThe timing supports it too, and specifically now:\n- Your current solar year (Feb 2026 – Feb 2027) has **Venus as the year-lord**, with the **Muntha in Libra — your 7th house — whose lord is also Venus.** Venus is the presiding graha of this year of your life. A Venus remedy undertaken now is working with the year's own current, not against it.\n\n**The practice, in order of classical weight:**\n1. **Śukra bīja mantra** — *Oṃ Drāṃ Drīṃ Drauṃ Saḥ Śukrāya Namaḥ* — 108 times each Friday morning, facing east. (BPHS Ch. 91–94; classical strength 0.90.) This is the simple, low-cost, high-feasibility core.\n2. **Śukra Aṣṭottara Śatanāmāvalī** — the 108 names of Venus — also on Fridays. (BPHS Ch. 88.)\n3. If you want a third: **Śrī Sūkta**, the sixteen verses from the Ṛgveda Khilāni, on Fridays. (Strength 0.88.)\n\nAll three are simple, require no acharya supervision, and cost nothing.\n\n**A second thread worth knowing.** Saturn is currently transiting Pisces, which is the **2nd house from your natal Moon in Aquarius** — the **third and final phase of Sāḍe Sātī.** That is the closing stretch of a seven-and-a-half year Saturn passage. The classical remedy for this phase is Saturn-directed: the Śani bīja mantra on Saturdays, or the Śani Aṣṭottara. Your remedy engine ranks Saturn *last* of nine for intrinsic weakness, so I would treat this as situational rather than structural — a transit you are finishing, not a chart defect you carry.\n\n**Now the thing I must not hide from you.**\nWhen I asked the system specifically what remedy would repair your **relationship** prospects, it returned a verdict I did not expect and that sits badly against what I told you earlier. Its promise-chain diagnosis came back **`denied_at_promise`**: *\"the rāśi checklist does not promise this matter — hostile occupants and aspects and a weak, poorly-disposed house-lord outweigh the supportive factors. Per the classical chain, no later stage can deliver what the rāśi itself does not promise.\"* That verdict is backed by 63 chart facts and graded strong.\n\nThis **directly contradicts** the confident late-2027 marriage window I gave you from the forecasting tool. And I now know why: that forecasting tool **states in its own output that promise-gating is not yet applied to its windows** — it reports when the 7th house is *activated*, without ever checking whether the chart *promises* delivery. Activation without promise is, in the classical idiom, pressure without result.\n\nI am not going to resolve that contradiction for you, because I do not think it is mine to resolve — one half of the system says the matter is promised and timed, the other says it is not promised at all, and there is no adjudication between them. **What I will do is retract the confidence of my earlier answer.** Treat the 2027–2030 relationship window as *possible activation*, not as a promised marriage.\n\n**And a caution about remedies generally.** Two things I checked and want you to know: the remedy engine has recorded **zero outcomes ever** — it reports that honestly and refuses to quote you a success rate, which I respect. And its ranking, once I looked at the numbers, is essentially an inverse-strength ordering with three of its four inputs sitting at constant values for every graha. So \"Venus, critical\" is a well-grounded *identification of your weakest graha*. It is not a validated prescription. Do the Friday practice because it is classically sound, cheap, and harmless — not because a number said 0.173.",
+ "self_noted_frictions_during_phase1": [
+  "Two tools on the same server named two different #1 remedy targets with two different priority classes for the same chart.",
+  "Half the UPAYA slate (50 of 100 rows) is one duplicated row whose entire 'remedy' text is the word 'light'.",
+  "The prescription blurbs describe afflictions this chart does not have (Jupiter debilitated in Capricorn, Sun debilitated in Libra) - I had to cross-check every one against ganita_medical_get's natal signs before quoting any of them.",
+  "kala_upaya_get's denied_at_promise verdict retroactively falsified the Q1 answer I had already composed. Nothing in the Q1 tool path (assess_marriage, kala_ahead_get) surfaced it - assess_marriage even reported 'no contradictions in domain'."
+ ]
+}

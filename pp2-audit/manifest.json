@@ -959,6 +959,326 @@
       "id": "F-106",
       "source_agent": "W3-FactPin",
       "source_id": "W3-F-104"
+    },
+    {
+      "id": "F-107",
+      "claim": "judgment_query(domain='wealth') and bodha_mechanisms_get, when asked to answer DC-W-16 ('What convergent mechanisms across my D1, D2, D11 and Indu Lagna support or contradict wealth accumulation?'), silently substitute a D1-natal-graph-only mechanism list for the specific cross-varga (D2/D11/Indu Lagna) convergence the question named — no field, filter, or row anywhere in the response references D2, D11, or Indu Lagna.",
+      "reproduce_cmd": "MCP bodha_mechanisms_get {chart_id:'482012f1-710e-4a25-994a-93821f5871aa'} — inspect response: mechanism rows (convergent_dispositor_chain onto Jupiter, mutual_aspect_triangle x84, mutual_aspect x36) are all snapshot_type='static_natal' (D1 only); no D2/D11/Indu-Lagna-scoped mechanism facet exists on this tool.",
+      "evidence_file": "evidence/E1_dark_corpus_21q_results.json (item DC-W-16)",
+      "severity": "TIER2-QUALITY",
+      "mechanism": "bodha_mechanisms_get (bo_yantra_mechanism writer / CGM subgraph) is architecturally scoped to the D1 chart-facts graph only; it has no varga/divisional-chart parameter and no notion of cross-varga mechanism convergence (D1 promise vs D2/D11 confirmation vs Indu Lagna). A user asking the acharya-grade question 'do my D1, D2, D11, and Indu Lagna agree on wealth' gets a real, well-cited, but entirely off-topic D1-only mechanism dump instead — the specific convergence-across-vargas technique the question named is never computed anywhere in the served surface, and nothing in the response discloses that the D2/D11/Indu-Lagna legs were skipped.",
+      "source_agent": "E1",
+      "source_id": "E1-F-107"
+    },
+    {
+      "id": "F-108",
+      "claim": "The bhavat-bhavam (house-from-house amplification) technique named in DC-W-21 ('Given all bhavat-bhavam amplifiers on my wealth houses, what is the net structural verdict?') is entirely absent from the live served concept model — judgment_query(domain='wealth') never names or computes it, and a direct keyword search confirms zero matching fact_category/alias entries exist.",
+      "reproduce_cmd": "MCP judgment_query {chart_id:'482012f1-710e-4a25-994a-93821f5871aa', domain:'wealth'} — response has no field, checklist unit, or judgment_flag mentioning 'bhavat-bhavam' or house-from-house amplification anywhere. Confirming lookup: MCP ganita_chart_facts_get {chart_id:'482012f1-710e-4a25-994a-93821f5871aa', keyword:'bhavat'} returns 0 rows, empty_reason states 'No concept alias or live fact_category matched bhavat — checked 29 seed alias entries and 219 live fact_category values'.",
+      "evidence_file": "evidence/E1_dark_corpus_21q_results.json (item DC-W-21)",
+      "severity": "TIER2-QUALITY",
+      "mechanism": "judgment_query's classical checklist (bhava/bhavesha/karaka/varga/yogas/timing) has no bhavat-bhavam unit — the technique of judging a house's promise through the house-counted-from-that-house lens (e.g. the 2nd-from-2nd as amplifier of wealth) is a documented classical Jyotish method with no corresponding fact_category, computed signal, or checklist unit anywhere in the served surface. A user asking this specific expert question receives a real, well-cited, but generic wealth verdict (dhana/raja yoga firings, afflictions) that never engages the named technique, and no judgment_flag discloses the omission the way other coverage gaps on this same tool are disclosed (e.g. 'ashtakavarga: not_joined', 'special_lagnas: not_joined' are honestly flagged in reading_checklist.units, but bhavat-bhavam is not even listed as a known-absent unit — it is unrepresented in the checklist's own vocabulary, not just unserved).",
+      "source_agent": "E1",
+      "source_id": "E1-F-108"
+    },
+    {
+      "id": "F-109",
+      "claim": "SUMMARY — 21-question wealth-domain dark-corpus re-run (G15 gate): 19/21 questions (90.48%) graded qualitatively BRIGHT under this run's rubric; 2/21 (DC-W-16, DC-W-21) graded DARK, both from well-cited answers silently evading the specific expert technique named in the question rather than from hollow/generic content. This qualitative bright% is NOT comparable to the 2026-07-25 baseline's 5.58% wealth bright% (DARK_CORPUS_REPORT_v1_0.md), which is a structurally different concept-coverage metric (fraction of the ~12,450-concept computed universe whose exact fact_id/token was string-matched across transcripts) — no re-run of that exact metric was performed. No prior run of this qualitative per-answer rubric exists to compare against; this run establishes it as the new baseline going forward. Career domain's parallel 21-question set was not re-run in this pass (wealth only, full 21/21).",
+      "reproduce_cmd": "Full Q&A + grading table: pp2-audit/evidence/E1_dark_corpus_21q_results.json. Question set source: 00_ARCHITECTURE/llm_consumption_audit/ledgers/elevation_v2/DARK_CORPUS_REPLAY_SET_v1_0.json (domain=wealth, DC-W-01..21). Baseline source: 00_ARCHITECTURE/llm_consumption_audit/capability_map/DARK_CORPUS_REPORT_v1_0.md headline table (2026-07-25) + its 2026-07-28 addendum.",
+      "evidence_file": "evidence/E1_dark_corpus_21q_results.json",
+      "severity": "informational",
+      "mechanism": "Measurement-only record for the G15 closing gate (\"post-Wave re-run of the 21-question dark-corpus evaluation ... PROOF: bright% number on record\"). By phrasing band: naive 7/7 bright, narrow 7/7 bright, expert 5/7 bright. The naive band's 7 questions all collapsed onto one identical underlying tool call (assess_wealth, verbosity=concise) since bare rephrasings of 'how is my wealth' give a router no distinguishing signal — itself a notable pattern, not a defect: the single served answer was substantive (grounded verdict clauses, named fired yogas, dasha-timed activation windows, classical citations) rather than templated. Both dark findings are recorded individually as E1-F-107 and E1-F-108.",
+      "source_agent": "E1",
+      "source_id": "E1-F-109"
+    },
+    {
+      "id": "F-110",
+      "claim": "CONFIDENCE LAUNDERING (top-severity). For the identical chart, domain and date, the marriage-timing path (assess_marriage + kala_ahead_get domain=relationship) returns a tier_1_high relationship projection for 2027-10-20..2030-04-03 narrated as 'High probability (>=70% convergence, clear activation)', while kala_upaya_get(domain=relationship) returns pact_status='denied_at_promise' - 'The rasi checklist does not promise this matter... no later stage can deliver what the rashi itself does not promise' - graded strong on 63 fact_ids. The two verdicts share 5 fact_ids (incl. d332fe1dbda74ea0, Venus debilitated in D9): SAME evidence, OPPOSITE conclusions, no reconciliation anywhere. assess_marriage additionally asserts contradictions.status='no_contradictions_in_domain', actively certifying an absence of tension in the exact domain the promise-chain denies. kala_ahead_get names the cause in its own coverage block: 'promise_gated_forecasting: not_in_corpus - Law-3 PACT gating (\"pressure without delivery\") is not yet applied to these raw windows.' The system HOLDS the promise verdict and the forecaster does not consume it. Which answer a real person receives is determined entirely by which tool the consuming LLM happens to pick - and the natural tool for 'when will I marry' is the one that omits the denial. This is the exact failure mode a predictive astrology system must not have: a confidently-stated, precisely-dated marriage prediction over a chart the same server judges does not promise marriage.",
+      "reproduce_cmd": "Q1 'When will I marry?' + Q4 'What remedy helps me now?'. Call kala_ahead_get(chart_id=482012f1-710e-4a25-994a-93821f5871aa, domain='relationship', horizon_years=10) then kala_upaya_get(chart_id=same, domain='relationship', as_of_date='2026-08-15'). Compare .projections[0].probability_tier ('tier_1_high') against .diagnosis.pact_status ('denied_at_promise'). Inspect E2_q1_marriage_timing_trace.json and E2_q4_remedy_now_trace.json.",
+      "evidence_file": "pp2-audit/evidence/E2_q1_marriage_timing_trace.json | pp2-audit/evidence/E2_q4_remedy_now_trace.json | pp2-audit/evidence/E2_q4_raw_kala_upaya.json | pp2-audit/evidence/E2_q1_raw_assess_marriage.json",
+      "severity": "critical",
+      "mechanism": "kala_bhavishya/kala_activation forward windows are emitted without joining the PACT promise verdict that pact_query/kala_upaya_get already computes. The gap is disclosed inside kala_ahead_get's coverage array as 'not_in_corpus' prose, but the projection is still narrated with an unqualified '>=70%' probability statement rather than being suppressed, downgraded, or flagged in the reading/verdict. A consumer reading the reading/verdict/falsifier - the fields designed to be read - never sees the caveat.",
+      "source_agent": "E2",
+      "source_id": "E2-F-107"
+    },
+    {
+      "id": "F-111",
+      "claim": "All three assess_* tools are undeliverable to a normal MCP client. assess_marriage=147,294 bytes (budget_kb_applied 40), assess_career=163,241 bytes (applied 20), assess_health=139,678 bytes (budget_kb_requested 8, applied 8). Every one exceeded the client token ceiling and had to be spilled to disk; every one self-reported judgment_flags:[{code:'budget_exceeded_after_trim'}]. The overshoot is 3.7x, 8.1x and 17.4x the declared budget respectively. I could only read them because I had shell and jq - a capability the actual end user of this server (an LLM in an MCP client) does not have. In a plain client all three domain-assessment tools return nothing usable.",
+      "reproduce_cmd": "Q1/Q2/Q3. Call assess_marriage(chart_id=482012f1-710e-4a25-994a-93821f5871aa); assess_career(chart_id=same, verbosity='concise', max_signals_per_lens=3); assess_health(chart_id=same, max_signals_per_lens=1, budget_kb=8). Each returns a token-limit error. Check jq '.object.judgment_flags' on the spill files.",
+      "evidence_file": "pp2-audit/evidence/E2_q1_raw_assess_marriage.json | pp2-audit/evidence/E2_q2_raw_assess_career.json | pp2-audit/evidence/E2_q3_raw_assess_health.json",
+      "severity": "critical",
+      "mechanism": "response_budget.ts trims only the sections it is given; the dominant payload sections escape it. In assess_marriage/assess_health the bulk is activating_dasha (62KB) + verdict_skeleton (43KB) = 105KB of 147KB - two sections the trimmer evidently cannot floor to zero. The budget_kb parameter is accepted, echoed as budget_kb_applied, and then not enforced; 'budget_exceeded_after_trim' is emitted as an informational flag rather than triggering a harder fallback (e.g. dropping activating_dasha to a summary). A declared-and-echoed budget that cannot be honoured is a contract the caller cannot plan against.",
+      "source_agent": "E2",
+      "source_id": "E2-F-108"
+    },
+    {
+      "id": "F-112",
+      "claim": "verbosity:'concise' makes the response BIGGER. assess_career called with verbosity='concise' AND max_signals_per_lens=3 returned 163,241 bytes - 11% LARGER than assess_marriage's 147,294 at full default verbosity and default caps. The declared budget did halve (40 -> 20) exactly as documented, yet the delivered payload grew, because the unbudgeted domain_completeness block (13,825-concept coverage map across 26 serving tools) is appended outside the trim path. The knob's documented behaviour ('tightens this call's response-budget ceiling to roughly half its normal size') is true of the ceiling and false of the response.",
+      "reproduce_cmd": "Q2. Call assess_career(chart_id=482012f1-710e-4a25-994a-93821f5871aa, verbosity='concise', max_signals_per_lens=3) and assess_marriage(chart_id=same) with no knobs. Compare byte counts of the two spill files: wc -c on E2_q2_raw_assess_career.json vs E2_q1_raw_assess_marriage.json.",
+      "evidence_file": "pp2-audit/evidence/E2_q2_raw_assess_career.json | pp2-audit/evidence/E2_q1_raw_assess_marriage.json",
+      "severity": "high",
+      "mechanism": "The Omega5 domain_completeness/dossier coverage-walk is attached to the envelope after response_budget.ts runs, so it is invisible to the trimmer and unaffected by verbosity/budget_kb. Because it is roughly constant in size, lowering the budget lowers only the trimmable remainder while the fixed block dominates - producing the inversion. Callers steering for size will make the problem worse, not better.",
+      "source_agent": "E2",
+      "source_id": "E2-F-109"
+    },
+    {
+      "id": "F-113",
+      "claim": "assess_marriage omits the chart's single most consequential 7th-house fact. The string 'exalted' appears ZERO times in the entire 147,294-byte assess_marriage response. Saturn is EXALTED in Libra in the 7TH HOUSE (Vishakha, shadbala 7.83 - the 2nd-strongest graha in the chart), and Venus - the 7th lord and stored karaka for domain 'marriage' - sits in the bottom strength quartile (shadbala_percentile 0.25, warning_tier 'watch'). Neither fact appears anywhere in the marriage assessment. Both were surfaced incidentally, in ~6KB, by ganita_dasha_lord_capability_get - a generic dasha tool called for an unrelated question. The domain-specialised tool missed what the generic tool found.",
+      "reproduce_cmd": "Q1 vs Q5. Run: grep -c 'exalted' on the assess_marriage spill file (returns 0). Then call ganita_dasha_lord_capability_get(chart_id=482012f1-710e-4a25-994a-93821f5871aa) and ganita_dasha_periods_get(chart_id=same, ayanamsha_id='lahiri_chitrapaksha', as_of_date='2026-08-15', all_levels=true) and read the Saturn rows (lord_natal_house_d1=7, lord_natal_dignity_d1='exalted').",
+      "evidence_file": "pp2-audit/evidence/E2_q1_raw_assess_marriage.json | pp2-audit/evidence/E2_q5_current_dasha_trace.json",
+      "severity": "critical",
+      "mechanism": "assess_marriage's house_analysis leg is driven by bodha_question_lenses ranked signals rather than by a direct 7th-house/7th-lord/karaka fact join. Its varga_analysis leg reads D9 only. So natal D1 dignity-in-bhava for the 7th - the first thing any acharya looks at - is in no leg of the pipeline. The reading_checklist reports 'bhava_bhavesha: served' on the strength of the CDLM/lens path, which makes the omission invisible: the checklist certifies the unit as covered while the actual placement never surfaces.",
+      "source_agent": "E2",
+      "source_id": "E2-F-110"
+    },
+    {
+      "id": "F-114",
+      "claim": "Domain-lens signal ranking is degenerate and non-domain-discriminating. assess_marriage's 'marriage' lens reports signal_count 3698 and returns as its top 10 ranked signals ten ga_sensitive SATURN rows with IDENTICAL salience 2.16108: 'SAT: graha nakshatra join: nakshatra id ref = 16', 'SAT: bhrigu nadi point: sign = Capricorn', 'SAT: esoteric point shiva: sign = Aquarius', 'SAT: upagraha position', 'SAT: midpoint', 'SAT: graha pada join', 'SAT: saham position', 'SAT: aprakasha position'. Not one names the 7th lord, Venus, or a marriage yoga. assess_health's health lens returns the same class of row as its #1 of 767 ('SAT: sun derived upagraha: sign = Capricorn'). The tie at 2.16108 across ten rows means the composite ranker is not discriminating at all at the top of the distribution, and the surfaced rows are unusable for the question asked.",
+      "reproduce_cmd": "Q1/Q3. jq '.object.content.house_analysis.question_lenses[0].all_relevant_ranked_jsonb.ranked_signals[]|{salience,headline}' on E2_q1_raw_assess_marriage.json; same path on E2_q3_raw_assess_health.json.",
+      "evidence_file": "pp2-audit/evidence/E2_q1_raw_assess_marriage.json | pp2-audit/evidence/E2_q3_raw_assess_health.json | pp2-audit/evidence/E2_q1_marriage_timing_trace.json",
+      "severity": "high",
+      "mechanism": "The composite_4d score is class_prior x topic_relevance x intrinsic_strength x structural_role x temporal_activation x percentile. ga_sensitive rows carry signature_tier 'chart_defining' and topic_relevance 1, so the whole ga_sensitive block scores identically and saturates the top of every lens regardless of domain. The lens itself is chart-wide (its own note: 'bodha_question_lenses returned chart-wide (no domain column); reconcile via cdlm_cells'), so domain filtering never happens at ranking time. verification_pass_status on the lens is 'documented_approximation'.",
+      "source_agent": "E2",
+      "source_id": "E2-F-111"
+    },
+    {
+      "id": "F-115",
+      "claim": "Two tools on the same server name different #1 remedy targets for the same chart from the same underlying asset. bodha_remedies_get: 'Your Bodha remedy layer flags VENUS as your #1 remedy-priority target - resonance_score 0.173195, priority class CRITICAL - followed by Ketu, Rahu, Moon.' assess_career's remedies reading family: 'Your Bodha remedy layer flags KETU as your #1 remedy-priority target - resonance_score 0.139, priority class HIGH - followed by Rahu, Moon, Jupiter.' Ketu is rank 2 in the authoritative listing. assess_career silently drops the rank-1 critical row and promotes rank 2 to '#1', with a lower score and a lower priority class, using the identical sentence template. A consumer asking about remedies in a career context is told to prioritise the wrong graha and is given a milder severity than the data carries.",
+      "reproduce_cmd": "Q2 vs Q4. Call bodha_remedies_get(chart_id=482012f1-710e-4a25-994a-93821f5871aa, limit=8, fields='compact') and read .content.narration.lead. Then jq -r '.object.reading[]|select(.family==\"remedies\")|.sentences[0]' on E2_q2_raw_assess_career.json.",
+      "evidence_file": "pp2-audit/evidence/E2_q4_remedy_now_trace.json | pp2-audit/evidence/E2_q2_raw_assess_career.json",
+      "severity": "high",
+      "mechanism": "assess_career's remedies family selects its 'top' resonance row without pinning the rank-1 ordering key - a fact-selection-without-total-ORDER-BY defect of exactly the class CLAUDE.md N.7 item 2 describes. The two surfaces rank over bodha_rm_resonances with different (or non-total) orderings, so 'the #1 target' is whichever row the query happened to return first. Neither surface flags the disagreement.",
+      "source_agent": "E2",
+      "source_id": "E2-F-112"
+    },
+    {
+      "id": "F-116",
+      "claim": "Remedy prescriptions carry conditional preambles that are FALSE for this chart, presented as chart-matched. (a) Jupiter japa: 'For afflicted Jupiter (debilitated in Capricorn, Guru Chandal dosha, retrograde in dasha)' - this chart's Jupiter is in SAGITTARIUS, its OWN sign (ganita_medical_get natal_sign='Sagittarius'; assess_career D10 reports Jupiter 'own'). (b) Sun japa: 'For afflicted Sun (combust, debilitated in Libra, or in 6/8/12)' - this chart's Sun is in CAPRICORN, which is one of the seven FORENSIC birth anchors. (c) Venus Shri Sukta: 'For Venus-related wealth affliction (Venus in 6H/12H, debilitated in Virgo, or Shukra dasha poverty)' - this chart's D1 Venus is in Sagittarius. Generic catalog blurbs are served in remedy_label_human as though the stated affliction had been detected on this chart.",
+      "reproduce_cmd": "Q4. Call bodha_remedies_get(chart_id=482012f1-710e-4a25-994a-93821f5871aa, limit=8, fields='compact'), read .content.prescriptions[].remedy_label_human, and cross-check each stated condition against ganita_medical_get(chart_id=same).content.rows[].natal_sign.",
+      "evidence_file": "pp2-audit/evidence/E2_q4_remedy_now_trace.json | pp2-audit/evidence/E2_q3_health_outlook_trace.json",
+      "severity": "high",
+      "mechanism": "brahma_remedy_corpus rows are keyed to target_graha only; the human label embeds the catalog's generic trigger-condition list verbatim. The join to the resonance is by graha, and no predicate ever tests whether the named condition holds on this chart. Nothing in the response distinguishes 'this remedy is for your Jupiter because your Jupiter is weak' from 'this remedy's catalog entry describes a Jupiter unlike yours' - so the prose reads as a chart-specific diagnosis of an affliction the native does not have.",
+      "source_agent": "E2",
+      "source_id": "E2-F-113"
+    },
+    {
+      "id": "F-117",
+      "claim": "bo_upaya 'resonance' ranking is inverse-shadbala with three constant terms, and its priority labels are inflated. Across all 8 resonance rows: contradiction_factor=0 for every graha, domain_burden=0 for every graha, motif_burden=0.4 for every graha. The only varying input is weakness_score, and the resulting rank order is exactly the inverse shadbala order (Venus sha 0.84 < Moon 0.94 < Ketu 1.00 = Rahu 1.00 < Mars 1.11 < Jupiter 1.20 < Saturn 1.57 < Sun 1.69). Separately, Rahu and Ketu both carry sha=1.00 EXACTLY - shadbala is not classically computed for the nodes, so this is a placeholder - yet they are ranked #2 and #3 'high' priority on it. Finally, a resonance_score of 0.173 on a 0-1 scale is labelled remedy_priority_class 'critical'.",
+      "reproduce_cmd": "Q4. Call bodha_remedies_get(chart_id=482012f1-710e-4a25-994a-93821f5871aa, limit=8, fields='compact') and inspect .content.resonances[] for contradiction_factor / domain_burden / motif_burden (all constant) and .content.narration.resonance_ranked[].citation for the sha= values.",
+      "evidence_file": "pp2-audit/evidence/E2_q4_remedy_now_trace.json",
+      "severity": "medium",
+      "mechanism": "Three of the four composite inputs are unpopulated or constant chart-wide, collapsing a nominally 4-factor 'resonance' to a monotone function of one factor. The presentation ('resonance_score', 'priority class critical', 'named_affliction_mapping') implies a richer synthesis than the arithmetic supports, and the node placeholder value means two of the top four priorities rest on a number that was never computed. Compare CLAUDE.md N.8: a grade whose discriminating inputs cannot vary is not an earned signal.",
+      "source_agent": "E2",
+      "source_id": "E2-F-114"
+    },
+    {
+      "id": "F-118",
+      "claim": "kala_upaya_get's intervention slate is 50% one duplicated non-remedy, and its efficacy grading carries zero information. intervention_count=100, but only 14 distinct labels; 50 of the 100 rows are the byte-identical string 'light - for saturn - severity=medium x anchor_magnitude=minor -> light', each under a different phala_mitigation UUID. The entire 'remedy' content of half the slate is the word 'light' - a severity classification leaked into the label field, containing no action a native could take. Additionally, all 100 rows carry efficacy_tier='classically_attested' and targets_link='promise', and feasibility is null on 50 - so within this response no row could ever have graded differently on any of the three discriminating fields. Every intervention targets 'promise', the very link the same response's diagnosis just declared denied.",
+      "reproduce_cmd": "Q4. Call kala_upaya_get(chart_id=482012f1-710e-4a25-994a-93821f5871aa, domain='relationship', as_of_date='2026-08-15'); count distinct .interventions[].label (14 of 100) and Counter over .interventions[].efficacy_tier (all classically_attested) and .targets_link (all 'promise').",
+      "evidence_file": "pp2-audit/evidence/E2_q4_raw_kala_upaya.json | pp2-audit/evidence/E2_q4_remedy_now_trace.json",
+      "severity": "high",
+      "mechanism": "The phala_mitigation join emits one intervention row per source mitigation row without deduplicating on label, so a mitigation severity-bucket repeated 50 times across anchors produces 50 identical 'remedies'. The label is built from severity x anchor_magnitude -> tier rather than from any remedy text. efficacy_tier appears to be assigned by source_surface (everything from phala_mitigation/bodha_rm is 'classically_attested'), so the tier is a restatement of provenance, not an assessment - a flag with no detector behind it (CLAUDE.md N.7 item 4 / N.8).",
+      "source_agent": "E2",
+      "source_id": "E2-F-115"
+    },
+    {
+      "id": "F-119",
+      "claim": "assess_health serves five single-day acute-illness dates two-to-three years out, with no probability, no confidence interval, and no resolution/is_timing_window disclosure. gochara_sweep(domain='health') returns 17 forward windows - 11 loss, 6 neutral, 0 favourable - whose top five are ALL event_class='illness_acute', temporal_shape='point', is_adverse=true, on the single days 2027-08-21, 2028-11-21, 2028-12-13, 2029-04-13 and 2029-07-18. gochara_forecast_get's schema documents a resolution_disclosure/{resolution, is_timing_window} contract precisely so a caller can tell a decade-era context row from an actionable date (PK-R-1: 'a decade-era row is CONTEXT, never a genuine timing claim'); the assess_health gochara_sweep surface carries NO such field on any row. A consuming LLM has no machine-readable way to know these are not actionable dates, and the response's shape actively invites relaying them.",
+      "reproduce_cmd": "Q3. Call assess_health(chart_id=482012f1-710e-4a25-994a-93821f5871aa) and inspect .object.content.gochara_sweep.top_windows - note temporal_shape='point' with a single date and the absence of resolution_disclosure, probability, or confidence on every row.",
+      "evidence_file": "pp2-audit/evidence/E2_q3_raw_assess_health.json | pp2-audit/evidence/E2_q3_health_outlook_trace.json",
+      "severity": "critical",
+      "mechanism": "The kala_gochara_windows signed-intensity field is projected into assess_* without carrying the MR-11(b) resolution_disclosure envelope that gochara_forecast_get attaches. A local intensity maximum becomes a 'point'-shaped row indistinguishable from a genuine day-resolution claim. Combined with calibration_maturity n_events=0 / skill_score=null (nothing has ever been validated), the surface presents uncalibrated field maxima in the visual grammar of dated medical predictions. This is the highest-harm shape in the system: an LLM relaying it verbatim tells a real person they will fall acutely ill on a named day three years hence.",
+      "source_agent": "E2",
+      "source_id": "E2-F-116"
+    },
+    {
+      "id": "F-120",
+      "claim": "ganita_dasha_periods_get's narration drops the finest currently-running period and its sandhi flag. The payload correctly returns four rows including level_n=4 (Sukshma, Mercury, 2026-08-13..2026-08-25) with sandhi_flag=TRUE - i.e. the as_of_date 2026-08-15 falls inside a flagged junction period. The narration string reads: 'You are in Mercury Mahadasha (ends 2027-08-18, age ~43) -> Saturn Antardasha (ends 2027-08-18, age ~43) -> Moon Pratyantardasha (current, ends 2026-09-17, age ~42).' It labels the LEVEL-3 period 'current', stops there, and never mentions the level-4 period or its sandhi_flag. A caller who reads the prose - which is what prose is for - is told they are not in a junction when the data says they are.",
+      "reproduce_cmd": "Q5. Call ganita_dasha_periods_get(chart_id=482012f1-710e-4a25-994a-93821f5871aa, ayanamsha_id='lahiri_chitrapaksha', as_of_date='2026-08-15', all_levels=true, fields='compact'). Compare .content.narration against .content.rows[3] (level_n=4, sandhi_flag=true).",
+      "evidence_file": "pp2-audit/evidence/E2_q5_current_dasha_trace.json",
+      "severity": "medium",
+      "mechanism": "The narration template is hard-coded to three levels (MD -> AD -> PD) and applies the word 'current' to whichever is last in that fixed chain, regardless of levels_available (which the same response reports as 4). sandhi_flag is not consulted by the narrator at any level. This is a narration-fidelity defect of the CLAUDE.md N.7 class: the prose is not a faithful restatement of the rows it sits on, and it omits precisely the field that would change a reader's behaviour.",
+      "source_agent": "E2",
+      "source_id": "E2-F-117"
+    },
+    {
+      "id": "F-121",
+      "claim": "kala_now_get reports 'not in a dasha junction' while a junction is active. Its dasha_sandhi block computes exactly 4 bands - MD start/end and AD start/end - and reports is_now_within_band=false on all four, with no statement that finer levels were not examined. Meanwhile ganita_dasha_periods_get shows the level-4 Sukshma period running on the same date carries sandhi_flag=true. The band_convention prose does disclose that this is a 'LITE' convention, but discloses only the two-period-vs-one-period simplification, not the level restriction. A caller asking 'am I in a sandhi right now' gets four explicit false values, which reads as an all-clear rather than as a scope limit.",
+      "reproduce_cmd": "Q1/Q5. Call kala_now_get(chart_id=482012f1-710e-4a25-994a-93821f5871aa) and read .dasha_sandhi.bands[].is_now_within_band (all false, levels 1-2 only). Then call ganita_dasha_periods_get(chart_id=same, ayanamsha_id='lahiri_chitrapaksha', as_of_date='2026-08-15', all_levels=true) and read rows[3].sandhi_flag (true).",
+      "evidence_file": "pp2-audit/evidence/E2_q1_marriage_timing_trace.json | pp2-audit/evidence/E2_q5_current_dasha_trace.json",
+      "severity": "medium",
+      "mechanism": "The item-1-lite sandhi calendar is built only over currently-active level 1 and 2 periods. Because the response emits an explicit per-band boolean rather than a coverage statement, absence-of-coverage is rendered in the same grammar as absence-of-condition. The honest form would be a coverage entry ('dasha_sandhi levels 3-4: not_computed') alongside the bands; the coverage array instead lists dasha_sandhi as flatly 'computed'.",
+      "source_agent": "E2",
+      "source_id": "E2-F-118"
+    },
+    {
+      "id": "F-122",
+      "claim": "kala_elect_get's budget trim deletes the actionable layer and keeps the bookkeeping. The call returned candidate_count=4 and frontier data for 4 candidates, but only ONE candidate object survived into .candidates - while the same response emitted ~60 full hora_* neutral_annotation rows (each with a multi-line source_citation), 15 hora_ladder entries, a 12-row dosha list, a 10-row residual_dosa list and 114 convention_only_keys, all in full. The response also reported judgment_flags 'budget_exceeded_after_trim: 20kb budget still exceeded after full trim'. The user-facing question ('which windows can I act in?') is answerable only from the candidate array that was trimmed to 25%; the surviving bulk is per-hour planetary-hour bookkeeping.",
+      "reproduce_cmd": "Q2. Call kala_elect_get(chart_id=482012f1-710e-4a25-994a-93821f5871aa, undertaking='business', date_range={start:'2026-08-15',end:'2026-11-12'}, limit=4, native_janma_nakshatra='Purva Bhadrapada', budget_kb=20). Compare .candidate_count (4) with (.candidates|length) (1), then count .lattice_adjudication.ledgers[].neutral_annotations rows surviving.",
+      "evidence_file": "pp2-audit/evidence/E2_q2_job_change_trace.json",
+      "severity": "high",
+      "mechanism": "Inverted density priority relative to CLAUDE.md N.6 item 2: the candidate slate is the confirmed, highest-density, most-actionable section and should declare hardFloor with a minKeep, while hora/neutral_annotation/convention_only sections are the floorable-to-zero catalog layer. The trimmer's generic biggest-section-first heuristic appears not to be applied to lattice_adjudication at all, so the section that should be trimmed first is the one that survives intact.",
+      "source_agent": "E2",
+      "source_id": "E2-F-119"
+    },
+    {
+      "id": "F-123",
+      "claim": "kala_explain_get hard-errors on the exact call shape kala_now_get advertises. kala_now_get's response contains tri_plane.interpretation_ref = {instrument:'kala_explain_get', hint:'Why this NOW state reads as it does - the drivers and classical grounds behind the active windows and confluence'} and repeats it in drill_pointers, with no indication that any further argument is required. Following that pointer with only chart_id returns {ok:false, error:'either `domain` or `bhava` is required'}. The advertised drill is chart-scoped ('this NOW state'); the target is domain-scoped. 'Explain my current dasha' is domain-less by nature and has no correct value to supply.",
+      "reproduce_cmd": "Q5. Call kala_now_get(chart_id=482012f1-710e-4a25-994a-93821f5871aa), read .tri_plane.interpretation_ref and .drill_pointers[0], then call kala_explain_get(chart_id=482012f1-710e-4a25-994a-93821f5871aa) exactly as pointed and observe the error.",
+      "evidence_file": "pp2-audit/evidence/E2_q5_current_dasha_trace.json | pp2-audit/evidence/E2_q1_marriage_timing_trace.json",
+      "severity": "medium",
+      "mechanism": "tri_plane pointers are emitted as static instrument names without the required-argument set, and the pointer is generated at the chart scope while the target validates at the domain scope. Nothing in the pointer payload carries the args the drill needs, so an autonomous consumer following the server's own navigation graph dead-ends.",
+      "source_agent": "E2",
+      "source_id": "E2-F-120"
+    },
+    {
+      "id": "F-124",
+      "claim": "The three assess_* siblings are advertised as equivalent domain assessments but differ sharply in depth. assess_career returns a substance-inline `reading` array carrying 11 of 12 career concept families as grounded, fact_id-cited sentences (per-varga AV, D10, karakamsha, argala, dispositor closure, mechanisms, special lagnas, cross-ayanamsha agreement, timing, remedies, contradictions) plus a completeness_directive and a 13,825-concept domain_completeness accounting. assess_marriage and assess_health return NO `reading` field, NO completeness_directive and NO domain_completeness at all. assess_career also returned 2 CONFIRMED domain-bearing yoga firings (Sasa, Budha Aditya) from the same 13 chart-wide firings for which marriage and health both got the flag 'none name only this domain's bhavesa/karaka(s)'. A consumer cannot know from the tool descriptions - which are near-identical in structure - that a marriage or health question will be answered several tiers more thinly than a career one.",
+      "reproduce_cmd": "Q1/Q2/Q3. Compare jq '.object|has(\"reading\"),has(\"completeness_directive\"),has(\"domain_completeness\")' across E2_q2_raw_assess_career.json (all true) vs E2_q1_raw_assess_marriage.json and E2_q3_raw_assess_health.json (all false).",
+      "evidence_file": "pp2-audit/evidence/E2_q2_raw_assess_career.json | pp2-audit/evidence/E2_q1_raw_assess_marriage.json | pp2-audit/evidence/E2_q3_raw_assess_health.json",
+      "severity": "medium",
+      "mechanism": "The Omega5 gather-then-compose reading/completeness layer has been wired to assess_career only; the sibling handlers still return the older bundle shape. Because the depth difference is invisible in the tool schema and in the envelope (all three report orientation_ok:true and a populated reading_checklist claiming 10/13 units served), the thinner responses present as complete.",
+      "source_agent": "E2",
+      "source_id": "E2-F-121"
+    },
+    {
+      "id": "F-125",
+      "claim": "B.11 orientation is enforced on assess_* but absent from the intervention and remedy path, and I completed a full interpretive remedy answer without ever routing through Bodha synthesis. assess_marriage/assess_career/assess_health all carry orientation_ok:true (the mandatory B.11 orientation pre-fetch). kala_upaya_get - which served a PACT promise-denial verdict, the single most interpretively-loaded output of the entire session - carries NO orientation_context and NO orientation_ok field at all. bodha_remedies_get likewise returns none. Q4 ('What remedy helps me now?') is squarely interpretive and not a depth:'retrieval' lookup exempt under the RS-4 carve-out, yet nothing in either tool's envelope required, performed, or flagged the missing Whole-Chart-Read routing, and I was never prompted to call bodha_bundle_get. Self-charged: my own Q4 tool selection omitted it.",
+      "reproduce_cmd": "Q4. Call kala_upaya_get(chart_id=482012f1-710e-4a25-994a-93821f5871aa, domain='relationship', as_of_date='2026-08-15') and bodha_remedies_get(chart_id=same, limit=8); check for orientation_ok / orientation_context on either envelope (absent on both) and compare with assess_* where it is present and true.",
+      "evidence_file": "pp2-audit/evidence/E2_q4_raw_kala_upaya.json | pp2-audit/evidence/E2_q4_remedy_now_trace.json",
+      "severity": "medium",
+      "mechanism": "The B.11 orientation pre-fetch is implemented per-handler on the assess_* family rather than as a cross-cutting gate on interpretive capabilities. Tools that emit verdicts of equal or greater interpretive weight (a promise-chain denial; a prioritised remedy prescription) bypass it silently. Because the obligation is invisible in the envelope of the tools that skip it, a consuming LLM has no signal that the Whole-Chart-Read step was never performed.",
+      "source_agent": "E2",
+      "source_id": "E2-F-122"
+    },
+    {
+      "id": "F-126",
+      "claim": "mimamsa_lel_query returns epistemics.confidence_band='high' on a zero-result query. Querying the life-event log for 'marriage relationship spouse partner wedding' returned events:[], count:0, total_matching:0 - while the envelope reported epistemics:{surgical:true, confidence_band:'high', falsifier:null}. The LEL is demonstrably populated for this chart (kala_ahead_get's period_echo surfaced two logged rows, a 1993 painting award and a congenital speech-pattern correction), so the empty result is a genuine absence rather than an empty corpus - but a 'high confidence' stamp on a null retrieval invites a consumer to read the absence as an established negative fact ('he is not married') rather than as unrecorded. In a marriage-timing question that distinction changes the entire answer.",
+      "reproduce_cmd": "Q1. Call mimamsa_lel_query(chart_id=482012f1-710e-4a25-994a-93821f5871aa, query='marriage relationship spouse partner wedding', limit=15) and read .object.epistemics.confidence_band alongside .result.results[0].content count=0.",
+      "evidence_file": "pp2-audit/evidence/E2_q1_marriage_timing_trace.json",
+      "severity": "low",
+      "mechanism": "confidence_band appears to describe the retrieval mechanism's determinism (surgical:true - the query ran cleanly) rather than the evidential weight of its result. Two different meanings of 'confidence' share one field, and the response carries no empty_reason distinguishing 'no such event is recorded' from 'no such event occurred' - the empty_reason discipline that CLAUDE.md N.6 item 4 requires of a density_contract surface.",
+      "source_agent": "E2",
+      "source_id": "E2-F-123"
+    },
+    {
+      "id": "F-127",
+      "claim": "bodha_bundle_get — the tool designed to serve the B.11 whole-chart-synthesis bundle in one call — returns DEGRADED status on a plain, unparameterized call for the native's canonical chart: 5 of 8 subsystems (MSR, CGM, LEL, PANCHANG, DASHA) error with error_class=tool_error, leaving only UCN/RM/CDLM served. The tool's own sub_errors_note states this explicitly: 'This is NOT a complete whole-chart read (B.11) — the failing subsystems are named in sub_errors; do not treat the served sections as exhaustive.' A caller following the documented B.11 whole-chart-read path through this tool would either compose an incomplete reading or need out-of-band knowledge to fall back to individual subsystem tools.",
+      "reproduce_cmd": "Call mcp__marsys-jis-direct__bodha_bundle_get with chart_id=482012f1-710e-4a25-994a-93821f5871aa (no other params)",
+      "evidence_file": "pp2-audit/evidence/E3_read1_general_trace.json (step 3)",
+      "severity": "high",
+      "mechanism": "bodha_bundle_get response envelope: status=degraded, ok=false, b11_floor_passed=false, sub_tools_errored=[MSR,CGM,LEL,PANCHANG,DASHA]. Recommendation: fix or fail loudly at the orchestration layer rather than silently degrading a tool whose entire purpose is completeness assurance for the B.11 discipline.",
+      "source_agent": "E3",
+      "source_id": "E3-F-107"
+    },
+    {
+      "id": "F-128",
+      "claim": "bodha_discoveries_get — described as serving 'the system's highest-signal cross-domain observations... acharya-grade discoveries' — at min_salience=0.5 returns 15 rows whose 'discovery' content is entirely raw internal signal_type_id strings in template sentences (e.g. surface_reading='Signal tajik_hadda_lord:sign appears unremarkable to pattern inspection', hypothesis_text='Pattern kp_cuspal_significators:sign_lord represents a chart-unusual semantic configuration whose practical significance may be underweighted') with zero actual Jyotish interpretive content — none of the 15 rows states what the signal MEANS for the native, only that it is a statistical embedding outlier. Additionally, the SAME response is internally contradictory: the outer envelope carries judgment_flags=[{code:'hollow_envelope_no_data_rows', detail:\"the served 'discoveries' field is empty for this call\"}] and separately reports discoveries:[], total:0, returned:0 at the top level, while content.content.rows simultaneously carries the 15 fully-populated discovery objects described above.",
+      "reproduce_cmd": "Call mcp__marsys-jis-direct__bodha_discoveries_get with chart_id=482012f1-710e-4a25-994a-93821f5871aa, limit=15, min_salience=0.5",
+      "evidence_file": "pp2-audit/evidence/E3_read1_general_trace.json (step 6)",
+      "severity": "high",
+      "mechanism": "bodha_discoveries_get response: judgment_flags[0].code=hollow_envelope_no_data_rows contradicts content.content.rows (15 populated objects) and discovery_families (15 grouped motifs). surface_reading/hypothesis_text templates render raw signal_type_id colon-namespace strings verbatim (e.g. 'aspect_tajik:eesarpha', 'aspect_tajik:ithasala', 'dispositor_chain_per_varga:chain') instead of a rendered classical-Jyotish interpretation.",
+      "source_agent": "E3",
+      "source_id": "E3-F-108"
+    },
+    {
+      "id": "F-129",
+      "claim": "synth_chart_brief_get (the Maha-Brief, the flagship whole-chart-synthesis tool) at depth=complete serves its top_discoveries array — the cross-domain-discoveries section of a whole-chart brief — as raw signal descriptors rather than narrative: 'Signal combustion_per_varga:is_combust with low visibility (salience 0.215)', 'Signal dispositor_chain_per_varga:chain with low visibility (salience 0.227)', and 'Appears as one of many composite_state signals' (verbatim, repeated across multiple rows with different discovery_ids and no chart-specific content differentiating them beyond the salience number).",
+      "reproduce_cmd": "Call mcp__marsys-jis-direct__synth_chart_brief_get with chart_id=482012f1-710e-4a25-994a-93821f5871aa, depth=complete; inspect content.top_discoveries[].statement",
+      "evidence_file": "pp2-audit/evidence/E3_read1_general_trace.json (step 2)",
+      "severity": "high",
+      "mechanism": "synth_chart_brief_get content.top_discoveries[].statement field — the user-facing narrative slot for the maha-brief's discovery section — renders raw signal_type_id / signal_type_class tokens instead of a synthesized claim.",
+      "source_agent": "E3",
+      "source_id": "E3-F-109"
+    },
+    {
+      "id": "F-130",
+      "claim": "assess_career and assess_wealth's 'reading' array — explicitly billed by completeness_directive as 'SUBSTANCE-INLINE: this response's reading field carries N/12 concept families as grounded sentences (fact_id-cited) — read it directly, it IS the opening reading, not a pointer to one' — contains, in the 'timing_windows' family of BOTH tools, a raw truncated JSON blob mid-sentence instead of rendered prose. Verbatim (assess_career): \"10 activation window(s) in range; nearest: {\\\"id\\\":\\\"8106742\\\",\\\"signal_id\\\":\\\"1846a106-4424-41bf-8fe9-3e7a2c7df8c0\\\",\\\"ayanamsha_id\\\":\\\"lahiri_chitrapaksha\\\",\\\"signature_class\\\":\\\"SUBSYSTEM\\\",\\\"activation_start\\\":\\\"2027-08-18\\\",\\\"activation_end\\\":\\\"2028-01-15\\\",\\\"activation_peak_date\\\":\\\".\" — the sentence is cut off mid-JSON-key with a dangling period. The identical defect class recurs in assess_wealth's timing_windows AND in both tools' 'contradictions_with_adjudication' family (assess_career: '...signal_b_id\\\":\\\"36a6e81b-9e8c-478b-a24e-3535f7ee0'). This is not a one-off truncation artifact — it is the same code path serving raw JSON into a sentence template across two different tools and two different families within each tool.",
+      "reproduce_cmd": "Call mcp__marsys-jis-direct__assess_career and mcp__marsys-jis-direct__assess_wealth with chart_id=482012f1-710e-4a25-994a-93821f5871aa; inspect object.reading[] entries with family='timing_windows' and family='contradictions_with_adjudication'",
+      "evidence_file": "pp2-audit/evidence/E3_read2_career_wealth_trace.json (steps 1-2)",
+      "severity": "high",
+      "mechanism": "assess_career / assess_wealth reading[].sentences template for the timing_windows and contradictions_with_adjudication families interpolates a raw (and truncated) JSON object into the sentence string instead of rendering its fields into prose. Reproduced identically in 2/2 tools tested.",
+      "source_agent": "E3",
+      "source_id": "E3-F-110"
+    },
+    {
+      "id": "F-131",
+      "claim": "kala_priority_ranking_get — described as ranking 'which signals deserve attention in a time window' — returns, for the current 6-month window (2026-08-15 to 2027-02-15), 15 top-ranked 'priority' signals that are 100% raw signal_type_id template strings with zero interpretive content, e.g. 'SAT: arudha pada: sign = Aquarius [ga_sensitive]', 'SAT: graha nakshatra join: yoni en = Tiger [ga_sensitive]'. Worse, the #3-ranked signal by priority_score is 'graha cheshta bala per varga: D14 = floored: no_canonical_per_varga_method [ga_structural]' — this is not an astrological finding at all but an internal computation-abstention marker (the writer had no verifiable classical per-varga formula for D14 cheshta bala and floored the value per B.10 rather than fabricate one). That floor-reason string has been salience-scored and served as if it were a priority signal deserving the native's attention right now.",
+      "reproduce_cmd": "Call mcp__marsys-jis-direct__kala_priority_ranking_get with chart_id=482012f1-710e-4a25-994a-93821f5871aa, date_from=2026-08-15, date_to=2027-02-15, top_k=15; inspect ranked_signals[].signal_headline_text, particularly ranked_signals[2]",
+      "evidence_file": "pp2-audit/evidence/E3_read3_timing_trace.json (step 3)",
+      "severity": "high",
+      "mechanism": "kala_priority_ranking_get's ranked_signals[].signal_headline_text is a raw MSR-style template ('GRAHA: category: key = value [subsystem]') applied uniformly to every signal regardless of whether its value is a genuine astrological fact or an internal floor/abstention marker; no filtering excludes non-astrological internal-state strings from the priority ranking.",
+      "source_agent": "E3",
+      "source_id": "E3-F-111"
+    },
+    {
+      "id": "F-132",
+      "claim": "kala_now_get's reading.thesis — the single sentence that answers the tool's own stated question 'What is my temporal state right now?' — names its strongest active window using raw internal enum concatenation with no plain-language rendering: 'strongest: CLASSIFY_RESIDUAL/DIGNITY/YOGA/SUBSYSTEM (orb strength 1.00, 10 contributing signal(s)).' The response DOES carry a register/glossary elsewhere in the payload that maps some tokens to plain language, but it is not applied to the thesis sentence itself, which is the part of the response most likely to be surfaced to an end user verbatim.",
+      "reproduce_cmd": "Call mcp__marsys-jis-direct__kala_now_get with chart_id=482012f1-710e-4a25-994a-93821f5871aa; inspect object.reading.thesis",
+      "evidence_file": "pp2-audit/evidence/E3_read3_timing_trace.json (step 1)",
+      "severity": "medium",
+      "mechanism": "kala_now_get reading.thesis string interpolates window.signature_classes.join('/') directly (raw enum values CLASSIFY_RESIDUAL/DIGNITY/YOGA/SUBSYSTEM) rather than a glossed label.",
+      "source_agent": "E3",
+      "source_id": "E3-F-112"
+    },
+    {
+      "id": "F-133",
+      "claim": "phala_outlook_get called with horizon_months=18 (query_window 2026-08-15 to 2028-02-06) correctly scopes its 'anchors' section to the requested horizon, but its 'mitigations' section is NOT scoped the same way: of the 10 mitigation rows served (trimmed from 100), several carry window_start dates as old as 1966-04-08 and 1993-10-15 — the 1966 window predates the native's own birth (1984-02-05) by 18 years. A remedy/mitigation program keyed to a pre-natal obstruction window is served inside an '18-month forward outlook' response with no flag explaining its relevance or why it was selected ahead of the mitigation rows that actually fall inside the requested horizon.",
+      "reproduce_cmd": "Call mcp__marsys-jis-direct__phala_outlook_get with chart_id=482012f1-710e-4a25-994a-93821f5871aa, horizon_months=18; inspect mitigations[].window_start (native birth date is 1984-02-05)",
+      "evidence_file": "pp2-audit/evidence/E3_read2_career_wealth_trace.json (step 5)",
+      "severity": "medium",
+      "mechanism": "phala_outlook_get's mitigations family (ph_pratikara / PH-4-2 layer) is trimmed by row-count (top 10 of 100) without a horizon_months date filter, unlike the anchors family (PH-4-1 layer) which is correctly windowed; the trim ordering surfaces several mitigation rows with obstruction windows decades outside — in one case predating — the native's lifetime.",
+      "source_agent": "E3",
+      "source_id": "E3-F-113"
+    },
+    {
+      "id": "F-134",
+      "claim": "judgment_query(domain=wealth)'s gochara_sweep reports upcoming_window_count=3 with window_range starting 2026-08-15 ('now'), but its top-ranked window (event_class=major_gain, valence=gain) has peak_date=2025-04-27 — more than a year in the PAST relative to the call's own now_context_date. This already-peaked window is presented inside the 'upcoming' forward-sweep set alongside two genuinely future loss windows (peak 2030-08-14) with no flag distinguishing past-peaked activity from forward activity.",
+      "reproduce_cmd": "Call mcp__marsys-jis-direct__judgment_query with chart_id=482012f1-710e-4a25-994a-93821f5871aa, domain=wealth, response_format=v3; inspect content.gochara_sweep.top_windows[0]",
+      "evidence_file": "pp2-audit/evidence/E3_read2_career_wealth_trace.json (step 4)",
+      "severity": "low",
+      "mechanism": "gochara_sweep.top_windows selection (kala_gochara_windows overlap query) includes any window overlapping the sweep's window_range even when peak_date falls before 'now'; no is_past_peak / already_occurred flag distinguishes it from a genuinely upcoming peak.",
+      "source_agent": "E3",
+      "source_id": "E3-F-114"
+    },
+    {
+      "id": "F-135",
+      "claim": "synth_chart_brief_get's ranked_themes.weaknesses array is empty at depth=complete, even though the same response's open_questions list several genuinely low-grade domains that read as natural 'weaknesses' content for a whole-chart read: Marriage (conditional, 4.5/10), Romantic Relationship Start (conditional, 3.9/10), Property Acquisition (conditional, 3.8/10), Acute Illness (conditional, 4.7/10), Surgery (conditional, 4.7/10). None of these are promoted into the weaknesses bucket, so a caller reading only ranked_themes (the structured summary slot) sees a strengths list and an open_questions list but no distinctly-labeled weaknesses, even though the underlying grades clearly support one.",
+      "reproduce_cmd": "Call mcp__marsys-jis-direct__synth_chart_brief_get with chart_id=482012f1-710e-4a25-994a-93821f5871aa, depth=complete; inspect content.ranked_themes.weaknesses vs content.ranked_themes.open_questions",
+      "evidence_file": "pp2-audit/evidence/E3_read1_general_trace.json (step 2)",
+      "severity": "low",
+      "mechanism": "ranked_themes.weaknesses population logic in the mi_darshana maha-brief writer does not promote any conditional/low-grade verdict into the weaknesses bucket for this chart; only open_questions (grade-agnostic 'conditional' activation_state) captures them, diluting the strengths/weaknesses contrast an acharya-grade summary should foreground.",
+      "source_agent": "E3",
+      "source_id": "E3-F-115"
+    },
+    {
+      "id": "F-136",
+      "claim": "For chart 482012f1, both gochara_activation_get (as-of today, 2026-08-15) and gochara_forecast_get (career domain, next 12 months) return rows that are ALL era-scale context (resolution_disclosure.is_timing_window=false for every row in both calls) — meaning the two tools purpose-built for 'is this configuration active right now' and 'what career transit windows are coming' currently have ZERO genuine day/month-resolution rows to serve for this chart. This is honestly disclosed each time via context_only_note (compliant with the PK-R-1 native ruling — not a fabrication defect), but it means a timing-focused whole-chart read gets no actionable near-term transit-trigger content from either dedicated gochara tool; all genuinely current-dated texture in this read came from kala_now_get's kota_chakra/moorti_nirnaya joins instead.",
+      "reproduce_cmd": "Call mcp__marsys-jis-direct__gochara_activation_get and mcp__marsys-jis-direct__gochara_forecast_get (date_range 2026-08-15..2027-08-15, domain=career) with chart_id=482012f1-710e-4a25-994a-93821f5871aa; inspect windows[].resolution_disclosure.is_timing_window across both",
+      "evidence_file": "pp2-audit/evidence/E3_read3_timing_trace.json (step 2); pp2-audit/evidence/E3_read2_career_wealth_trace.json (step 6)",
+      "severity": "informational",
+      "mechanism": "kala_gochara_windows for this chart currently has no rows stamped resolution in {'month','day'} within the tested ranges — a data-coverage gap in the D-5 gochara sweep, not a serving-layer honesty defect (both tools disclose the gap correctly per PK-R-1).",
+      "source_agent": "E3",
+      "source_id": "E3-F-116"
+    },
+    {
+      "id": "F-137",
+      "claim": "Contrast (informational) — graha_portrait and judgment_query's v3 response_format demonstrate the system CAN avoid raw jargon leaking to the end user when the serving code path is built for it: both self-gloss internal tokens via a 'register' array (e.g. token='parivartana' -> label='Parivartana (mutual sign-exchange) between two grahas' dispositors.'; token='dasha_of_promise' -> label='Next step: locate which dasha period carries/activates the promise.') and both carry a 'reading_contract' field explicitly instructing the reader to consult that glossary for any unrecognized token. This makes the raw-signal leaks documented in E3-F-108/109/110/111/112 an inconsistency across serving-layer code paths within the same product, not a structural limitation of the platform.",
+      "reproduce_cmd": "Call mcp__marsys-jis-direct__graha_portrait with chart_id=482012f1-710e-4a25-994a-93821f5871aa, graha=Mars; and mcp__marsys-jis-direct__judgment_query with chart_id=482012f1-710e-4a25-994a-93821f5871aa, bhava=1, response_format=v3; inspect object.register and object.reading_contract on both",
+      "evidence_file": "pp2-audit/evidence/E3_read1_general_trace.json (steps 8-9)",
+      "severity": "informational",
+      "mechanism": "v3-envelope register/reading_contract fields (R5 unified envelope) are populated on graha_portrait and judgment_query's v3 format but are either absent or not applied to the primary narrative sentence on synth_chart_brief_get, bodha_discoveries_get, assess_career/wealth's reading[], and kala_now_get.reading.thesis / kala_priority_ranking_get.",
+      "source_agent": "E3",
+      "source_id": "E3-F-117"
+    },
+    {
+      "id": "F-138",
+      "claim": "Non-generic depth (informational, positive) — kala_ahead_get's period_echo mechanism cross-references the CURRENTLY ACTIVE Saturn Antardasha (2024-12-08 to 2027-08-18) against its own prior occurrence in the native's lifetime (Saturn AD 1991-08-18 to 1994-08-21) using genuine Life-Event-Log-corroborated events from that period (congenital stammering onset per the native's own 2026-07-19 correction; childhood painting awards) to construct an explicitly falsifiable 'same-dasha-lord recurrence' hypothesis. Correctly labeled status='hypothesis_served' with confidence_basis='N=1 same-lord prior Antardasha occurrence(s)' — not asserted as a confirmed finding. This is a concrete instance of the 'something a competent human astrologer might miss' bar the audit asks about: a systematic same-lord dasha-recurrence check against a 40-year documented life history, which no individual astrologer's working memory could reliably hold or compute unprompted.",
+      "reproduce_cmd": "Call mcp__marsys-jis-direct__kala_ahead_get with chart_id=482012f1-710e-4a25-994a-93821f5871aa, horizon_years=3; inspect object.period_echo[1] (Antardasha/Saturn)",
+      "evidence_file": "pp2-audit/evidence/E3_read3_timing_trace.json (step 4)",
+      "severity": "informational",
+      "mechanism": "kala_ahead_get period_echo (item 31, ka_kalasutra period-echo mining) joins chart_dashas (same lord_graha + level_n, prior period) against life_events (LEL) within that prior period's span, and states its own N=1 sample-size limitation and falsifier condition rather than overclaiming.",
+      "source_agent": "E3",
+      "source_id": "E3-F-118"
     }
   ],
   "tool_count_declared": 125,

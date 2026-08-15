@@ -1,0 +1,50 @@
+{
+  "read": "E3-Read3: Timing-focused read (current dasha, active gochara windows, near-term outlook)",
+  "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+  "session_date": "2026-08-15",
+  "calls": [
+    {
+      "step": 1,
+      "tool": "kala_now_get",
+      "params": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa"},
+      "response_summary": "Rich composite: 2 active temporal windows, Kala-Darshana confluence auspicious_strong (0.7), dasha_sandhi bands (Mahadasha end 2027-08-18 band +-186d, Antardasha end 2027-08-18 band +-29d, both is_now_within_band=false), sukshma_boundary_uncertainty for the CURRENT Moon Pratyantardasha (start band 2026-08-07..2026-08-19, end band 2026-08-19..2026-08-31), gochara_dual_reference (all 9 grahas, house-from-Moon AND house-from-Lagna), dasha_lord_transit_condition (Mercury MD lord transiting Cancer neutral; Saturn AD lord transiting Pisces retrograde neutral), kota_chakra (Mars 'breaching_the_wall' elevated Aug13-Sep1 2026 — i.e. RIGHT NOW; Mercury 'anchoring_the_heart' strong_support ending today), moorti_nirnaya (Mars rajata moderate gains through Sep17; Mercury swarna gains+health through Aug22; Sun swarna auspicious ending tomorrow).",
+      "verbatim_excerpts": {
+        "reading.thesis": "2 temporal activation window(s) active as of 2026-08-15; strongest: CLASSIFY_RESIDUAL/DIGNITY/YOGA/SUBSYSTEM (orb strength 1.00, 10 contributing signal(s)). Kāla-Darshana confluence: auspicious_strong (effective_score 0.7).",
+        "dasha_lord_transit_condition[1]": "{level_name: Antardasha, lord_graha: Saturn, transit_sign_name: Pisces, is_retrograde: true, house_from_lagna: 12, dignity: neutral}",
+        "moorti_nirnaya (Mars)": "Second from janma — Rajata moorti; moderate gains and comfort. (BPHS Ch.28; Phaladeepika Ch.26)"
+      },
+      "significance": "MIXED. Jargon defect: the tool's PRIMARY headline sentence ('reading.thesis' — the answer to \"what is my temporal state right now\") names its strongest window as raw enum concatenation 'CLASSIFY_RESIDUAL/DIGNITY/YOGA/SUBSYSTEM' with zero plain-language gloss in the thesis itself (the register glossary exists elsewhere in the payload but is not applied to the thesis sentence a reader would quote). POSITIVE: dasha_sandhi/sukshma_boundary/kota_chakra/moorti_nirnaya sections are genuinely rich, honestly epistemically-graded (explicit 'a probability/confidence-level claim would be a fabrication at this tier'), classical-citation-backed, and correctly centered on the CURRENTLY active Moon Pratyantardasha and Saturn Antardasha rather than the 17-year Mercury Mahadasha window — no 'long window headlined over active sub-period' pattern found in this specific call."
+    },
+    {
+      "step": 2,
+      "tool": "gochara_activation_get",
+      "params": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa"},
+      "response_summary": "5 windows returned for 'as of today' (2026-08-15): spiritual_turn, bereavement, major_gain, psychological_arc, exam_outcome — ALL decade-scale (window_start 2024-02-05, window_end 2034-01-30) with resolution_disclosure.is_timing_window=false for every single row.",
+      "note": "Every row honestly self-discloses it is era-scale CONTEXT, not a genuine 'firing right now' timing claim — compliant with the PK-R-1 native ruling. But it also means: for this chart, the dedicated 'is this configuration active right now' tool currently has ZERO genuine day/month-resolution rows to serve at all."
+    },
+    {
+      "step": 3,
+      "tool": "kala_priority_ranking_get",
+      "params": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "date_from": "2026-08-15", "date_to": "2027-02-15", "top_k": 15},
+      "response_summary": "15 ranked signals for the current 6-month window, sorted by priority_score. neutral_dignity_downranked_count=0.",
+      "verbatim_excerpts": {
+        "ranked_signals[0].signal_headline_text": "SAT: arudha pada: sign = Aquarius [ga_sensitive]",
+        "ranked_signals[1].signal_headline_text": "ashtakavarga bindu per varga: D16 = 4 [ga_structural]",
+        "ranked_signals[2].signal_headline_text": "graha cheshta bala per varga: D14 = floored: no_canonical_per_varga_method [ga_structural]",
+        "ranked_signals[3].signal_headline_text": "SAT: graha nakshatra join: yoni en = Tiger [ga_sensitive]",
+        "ranked_signals[4].signal_headline_text": "SAT: graha nakshatra join: pakshi = Sparrow [ga_sensitive]"
+      },
+      "significance": "SEVERE jargon leak + a genuine defect, not just a style issue. This tool is explicitly described as ranking 'which signals deserve attention in a time window.' Every one of the top 15 results for the CURRENT 6-month window is a raw signal_type_id template string with no interpretive content. Worse: rank #3 ('graha cheshta bala per varga: D14 = floored: no_canonical_per_varga_method') is not an astrological finding at all — 'floored: no_canonical_per_varga_method' is an internal computation-abstention marker (the writer had no classical per-varga formula and floored the value rather than fabricate one, per B.10) that has been ranked and served as if it were a priority signal deserving the native's attention. A caller using this tool as directed for 'what deserves attention right now' gets a list that is 100% internal telemetry, 0% astrology."
+    },
+    {
+      "step": 4,
+      "tool": "kala_ahead_get",
+      "params": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "horizon_years": 3, "max_items": 10},
+      "response_summary": "thesis correctly centers the near/mid-term: 'leading: character (high probability, window 2027-10-20..2030-04-03)'. dasha_lord_transit_condition_forward projects Mercury MD lord and Saturn AD lord's transit condition to the horizon boundary (2029-08-14). mudda_dasha_varsha correctly labeled as a separate Tajika/annual system, not conflated with natal Vimshottari. period_echo cross-checks the CURRENTLY ACTIVE Saturn Antardasha (2024-12-08..2027-08-18) against its prior occurrence in the native's own lifetime.",
+      "verbatim_excerpts": {
+        "period_echo[1].hypothesis": "Hypothesis: the current Saturn Antardasha (2024-12-08 to 2027-08-18) may echo Saturn's prior Antardasha period — 1991-08-18 to 1994-08-21 (2 logged life event(s): psychological/speech_pattern_arc; creative/award) — because both share the same daśā lord at the same level. This is a structural resonance hypothesis, not a prediction... status: hypothesis_served"
+      },
+      "significance": "POSITIVE, non-generic depth. period_echo mines the native's OWN Life-Event-Log across a 30+ year gap to test whether the currently-running dasha lord's PRIOR occurrence correlates with logged life themes (congenital stammering onset; childhood painting awards during the 1991-1994 Saturn AD) — genuinely something a human acharya, without perfect recall of a 40-year case file, would be unlikely to systematically check. Correctly framed as a falsifiable, unconfirmed hypothesis (status=hypothesis_served, confidence_basis='N=1'), not asserted as fact. NOTE: recurrence_ladder in the same response dumps future dasha-cycle dates out to 2085 (60+ years past the requested horizon_years=3) — clearly a separate, explicitly-labeled multi-cycle feature rather than the call's headline content, so not counted as a salience violation, but worth noting as a size/scope observation."
+    }
+  ]
+}

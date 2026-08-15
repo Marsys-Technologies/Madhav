@@ -1,0 +1,79 @@
+{
+  "read": "E3-Read2: Career + wealth focused deep-dive",
+  "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+  "session_date": "2026-08-15",
+  "calls": [
+    {
+      "step": 1,
+      "tool": "assess_career",
+      "params": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa"},
+      "response_size": "168075 chars (exceeded inline token budget; probed via jq on saved file)",
+      "response_summary": "domain_completeness: 13825-concept career slice, 100% accounted (12455 served / 1364 empty_for_this_chart / 6 not_computed_globally), 26 distinct serving_tools. reading[] carries 12 flagship 'families' as grounded sentences.",
+      "verbatim_excerpts": {
+        "divisional_D10.sentences[0]": "D10 (Dasamsa — career/status): Moon exalted in 10th house (+8 more grahas placed).",
+        "argala_house_10.sentences[0]": "House 10 carries a net argala score of 0 — exactly balanced (argala and virodha-argala cancel) (whole-sign, D1, all contributing offsets from BPHS's argala/virodha-argala rule).",
+        "full_dispositor_closure.sentences[0]": "1 dispositor chain/cycle structure(s) close on this chart. Highest-ranked: \"Convergent dispositor chain onto Jupiter: Ketu -> ... -> Jupiter, Mars -> ... -> Jupiter, ... Venus -> ... -> Jupiter\" (convergent_dispositor_chain, valence mixed, traces through 9 node(s))",
+        "cross_ayanamsha_agreement.sentences[0]": "Saturn (career kāraka) holds the SAME nakṣatra in 5/5 of the 5 sidereal ayanaṃśas this chart carries — its dignity/house reading above is cross-ayanaṃśa stable to that degree, not an artifact of one ayanaṃśa choice.",
+        "timing_windows.sentences[0]": "10 activation window(s) in range; nearest: {\"id\":\"8106742\",\"signal_id\":\"1846a106-4424-41bf-8fe9-3e7a2c7df8c0\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"signature_class\":\"SUBSYSTEM\",\"activation_start\":\"2027-08-18\",\"activation_end\":\"2028-01-15\",\"activation_peak_date\":\".",
+        "contradictions_with_adjudication.sentences[0]": "1 contradiction(s) tag this domain. Leading tension: {\"contradiction_id\":\"3fa9292b-46c5-4151-b273-6cd167553b77\",\"signal_a_id\":\"17ef271e-b82b-46a5-bf55-65e090b93141\",\"signal_b_id\":\"36a6e81b-9e8c-478b-a24e-3535f7ee0 — no automated adjudication hint; needs acharya-level resolution.",
+        "remedies.sentences[1]": "Top prescription for Saturn: Recite the Saturn beej mantra 'Om Praam Preem Praum Sah Shanaye Namah' 108 times daily on Saturday, facing east. Complete mahadasha-count japa over the dasha period. (mantra, parashari tradition, classical strength 0.90)."
+      },
+      "significance": "SEVERE jargon leak confirmed twice in the same call: the 'timing_windows' and 'contradictions_with_adjudication' family sentences — both explicitly part of the completeness_directive's 'SUBSTANCE-INLINE... read it directly, it IS the opening reading' user-facing narrative — contain raw, mid-string-TRUNCATED JSON blobs with internal field names (signal_id UUIDs, signature_class='SUBSYSTEM', contradiction_id) dumped verbatim instead of a rendered sentence. The sentence literally ends mid-JSON-key with a dangling period ('...\"activation_peak_date\":\".'). This is not an edge case — the same defect class recurs identically in assess_wealth (step 2 below), confirming it is systemic to the 'timing_windows' and 'contradictions_with_adjudication' sentence-templating code path shared by assess_career/assess_wealth."
+    },
+    {
+      "step": 2,
+      "tool": "assess_wealth",
+      "params": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa"},
+      "response_size": "157566 chars",
+      "response_summary": "domain_completeness: 13820-concept wealth slice, 100% accounted. reading[] carries 12 families.",
+      "verbatim_excerpts": {
+        "divisional_D2.sentences[0]": "D2 (Horā — liquid wealth): Mars debilitated in 12th house (+8 more grahas placed).",
+        "argala_house_2.sentences[0]": "House 2 carries a net argala score of -4 — net obstructed (virodha-argala outweighs argala — interventions on this house's results are more blocked than helped)",
+        "argala_house_11.sentences[0]": "House 11 carries a net argala score of -3 — net obstructed (virodha-argala outweighs argala — interventions on this house's results are more blocked than helped)",
+        "timing_windows.sentences[0]": "10 activation window(s) in range; nearest: {\"id\":\"8177250\",\"signal_id\":\"c516edf0-0f2d-410b-b876-5ed04c5fa67a\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"signature_class\":\"YOGA\",\"activation_start\":\"2010-08-18\",\"activation_end\":\"2027-08-18\",\"activation_peak_date\":\"2019-.",
+        "contradictions_with_adjudication.sentences[0]": "No contradictions tagged to this domain in bodha_contradictions — not_adjudicated: the contradiction corpus does not yet cover this domain, so absence of a tag is a coverage gap, not a confirmed clean reading."
+      },
+      "significance": "Same raw-JSON-in-sentence defect as assess_career step 1, confirming it is systemic across at least 2 of the 2 assess_* tools tested. Genuinely useful negative finding buried in plain sentences: both wealth houses (2nd and 11th) show net-obstructed argala (-4, -3) and D2 (liquid-wealth varga) shows Mars DEBILITATED in the 12th (loss house) — real, chart-specific, non-generic negative signal stated candidly, not hidden."
+    },
+    {
+      "step": 3,
+      "tool": "dossier",
+      "params": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "domain": "career", "receipt": true},
+      "response_summary": "receipt mode: 100% accounted (13825 concepts), synthesis_gate=OPEN, 26 families, gate_reason=slice_fully_accounted.",
+      "note": "Confirms the completeness-accounting architecture behind assess_career/wealth is genuinely load-bearing, not decorative — the dossier tool independently reconciles to the same 13825/13820 concept counts assess_career/wealth report inline."
+    },
+    {
+      "step": 4,
+      "tool": "judgment_query",
+      "params": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "domain": "wealth", "response_format": "v3"},
+      "response_summary": "verdict_grade=convergent_moderate, composite_score=2.38. bhavesha Venus neutral (9th); from-chandra bhavesha Jupiter OWN dignity (9th). karaka Jupiter own-dignity. 3 domain-matched bearing_yogas (dhana_yoga x2, raja_yoga_kendra_trikona). bearing_afflictions: Saturn aspects houses 9/4/1 (malefic). affliction_mechanisms: 'Rahu occupies dhana (2nd) bhāva (mixed)' net -0.50.",
+      "verbatim_excerpts": {
+        "gochara_sweep": "upcoming_window_count=3, valence_breakdown gain:1/loss:2, window_range 2026-08-15 to 2029-08-15, top_windows: major_gain (peak_date 2025-04-27, already PAST relative to 2026-08-15 'now'), financial_deception (peak 2030-08-14, loss), major_loss (peak 2030-08-14, loss)."
+      },
+      "significance": "TIMING/SALIENCE DEFECT: the wealth judgment's gochara_sweep is billed as a forward-looking 'upcoming_window_count' set with window_range starting 2026-08-15 (today), yet its top-ranked 'gain' window has peak_date 2025-04-27 — over a year in the PAST relative to the stated window_range start and the call's own now_context_date (2026-08-15). A window whose peak has already occurred should not be headlined inside an 'upcoming' forward sweep without at least a flag distinguishing already-peaked activity from genuinely future activity."
+    },
+    {
+      "step": 5,
+      "tool": "phala_outlook_get",
+      "params": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "horizon_months": 18},
+      "response_summary": "query_window 2026-08-15 to 2028-02-06. anchors (5 of 27, hard-capped): marriage/career_entry/transition x2/health, all correctly windowed within or overlapping the 18-month horizon with proper falsifiers + confidence bands. mitigations (10 of 100, trimmed): Saturn-affliction remedy program rows.",
+      "verbatim_excerpts": {
+        "mitigations[6].window_start/window_end": "1966-04-08 to 1968-09-21 (obstruction_id 32489)",
+        "mitigations[7].window_start/window_end": "1993-10-15 to 1996-03-29 (obstruction_id 32581)",
+        "mitigations[8].window_start/window_end": "1996-02-16 to 1998-08-01 (obstruction_id 32487)"
+      },
+      "significance": "COMPLETENESS/SALIENCE DEFECT: this is an explicit horizon_months=18 forward outlook call (query_window 2026-08-15 -> 2028-02-06). The 'anchors' section correctly respects that window. The 'mitigations' section does NOT — of the 10 mitigation rows served, several carry window_start dates from 1966-04-08 and 1993-10-15, i.e. decades before the query horizon and in the case of 1966-04-08, 18 YEARS BEFORE THE NATIVE'S OWN BIRTH (1984-02-05). A remedy program keyed to an obstruction window that predates the native's existence, surfaced inside an '18-month forward outlook' response with no note explaining why a pre-natal window is relevant or how it was selected ahead of the many mitigation rows that DO fall inside the requested horizon, is a serving-layer relevance defect — the horizon_months parameter is not honored for the mitigations family the way it is for anchors."
+    },
+    {
+      "step": 6,
+      "tool": "gochara_forecast_get",
+      "params": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "date_range": {"start": "2026-08-15", "end": "2027-08-15"}, "domain": "career"},
+      "response_summary": "3 windows returned (career_setback loss, career_entry gain, career_advancement gain), all decade-scale (window_start 2024-02-05, window_end 2034-01-30) overlapping the queried 1-year range per the tool's documented overlap semantics.",
+      "verbatim_excerpts": {
+        "provenance_envelope.context_only_note": "3 of 3 served row(s) are era-scale/unresolved CONTEXT, not timing windows (PK-R-1)",
+        "windows[0].resolution_disclosure": "{resolution: 'era', resolution_source: 'stored', is_timing_window: false, timing_window_blocked_reason: 'era_resolution'}"
+      },
+      "note": "POSITIVE contrast case: unlike the timing_windows/mitigations defects above, this call is exemplary — it honestly discloses that none of the 3 rows served for the requested near-term career window are genuine day/month-resolution timing claims, only decade-scale context, and flags this explicitly per the PK-R-1 native ruling rather than presenting era-scale rows as if they were near-term predictions."
+    }
+  ]
+}

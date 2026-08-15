@@ -1,0 +1,200 @@
+{
+ "agent": "E2",
+ "phase": 1,
+ "question_id": "q2",
+ "question": "Is this a good period for a job change?",
+ "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+ "as_of": "2026-08-15",
+ "tools_called": [
+  {
+   "tool": "assess_career",
+   "params": {
+    "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+    "verbosity": "concise",
+    "max_signals_per_lens": 3
+   },
+   "raw_response_file": "E2_q2_raw_assess_career.json",
+   "client_outcome": "HARD FAILURE AT THE CLIENT BOUNDARY AGAIN: 162,741 chars - LARGER than the 147,023-char assess_marriage call despite verbosity:'concise' AND max_signals_per_lens:3. budget_kb_applied dropped 40->20 as requested, yet the delivered payload GREW ~11%, because the unbudgeted domain_completeness block (13,825-concept coverage map, 26 serving tools) is appended outside the trim. judgment_flags again carried 'budget_exceeded_after_trim: 20kb budget still exceeded after full trim.'",
+   "key_extracts": {
+    "reading_substance_inline": "11/12 career concept families served as grounded fact_id-cited sentences (assess_marriage returned NO equivalent `reading` field at all - asymmetric between the two assess_* tools)",
+    "D10_dignity": {
+     "Moon": "EXALTED in Taurus, D10 10th house",
+     "Sun": "neutral Taurus D10 10th",
+     "Jupiter": "own sign Pisces D10 8th",
+     "Venus": "neutral Gemini D10 11th",
+     "Saturn": "neutral Scorpio D10 4th",
+     "Mercury": "neutral Libra D10 3rd",
+     "Mars": "neutral Libra D10 3rd"
+    },
+    "D10_ashtakavarga": {
+     "SARVA": 336,
+     "JUP": 55,
+     "MER": 54,
+     "VEN": 52,
+     "MOON": 49,
+     "SUN": 48,
+     "SAT": 39,
+     "MAR": 39
+    },
+    "confirmed_domain_yogas": [
+     "Sasa (Panchamahapurusha, Saturn)",
+     "Budha Aditya"
+    ],
+    "note_yoga_asymmetry": "career got 2 CONFIRMED domain-bearing yogas from ga_yoga_firings; marriage got 0 of the same 13 firings",
+    "kp_10th_cusp": {
+     "sign": "Capricorn",
+     "sign_lord": "Saturn",
+     "star_lord": "Sun",
+     "sub_lord": "Jupiter"
+    },
+    "kp_6th_cusp": {
+     "sign": "Virgo",
+     "sign_lord": "Mercury",
+     "star_lord": "Sun",
+     "sub_lord": "Saturn"
+    },
+    "argala_house_10": "net argala score 0 - exactly balanced (argala and virodha-argala cancel)",
+    "karakamsha": "Aries; Atmakaraka = Moon",
+    "kartari": {
+     "Jupiter": "papa_kartari",
+     "Venus": "papa_kartari",
+     "Mercury": "shubha_kartari",
+     "Sun": "shubha_kartari"
+    },
+    "domain_contradiction": {
+     "tension_class": "domain_promise_vs_denial",
+     "combined_salience": 1.38805,
+     "resolution_hint_jsonb": null,
+     "served_as": "1 contradiction(s) tag this domain. Leading tension: {\"contradiction_id\":\"3fa9292b-...\",\"signal_a_id\":\"17ef271e-...\",\"signal_b_id\":\"36a6e81b-9e8c-478b-a24e-3535f7ee0 - no automated adjudication hint; needs acharya-level resolution.'",
+     "DEFECT": "the prose 'sentences' field dumps a RAW JSON object and is TRUNCATED MID-UUID. Same defect in the timing_windows family: 'nearest: {...\"activation_peak_date\":\".' - cut off mid-value."
+    },
+    "gochara_sweep_career": {
+     "valence_breakdown": {
+      "gain": 3,
+      "loss": 3
+     },
+     "windows": [
+      {
+       "event_class": "career_advancement",
+       "shape": "point",
+       "date": "2028-09-05",
+       "valence": "gain"
+      },
+      {
+       "event_class": "career_setback",
+       "shape": "interval",
+       "window": "2028-02-01..2028-02-29",
+       "peak": "2028-02-07",
+       "valence": "loss",
+       "is_adverse": true
+      },
+      {
+       "event_class": "career_setback",
+       "shape": "point",
+       "date": "2028-02-07",
+       "valence": "loss"
+      },
+      {
+       "event_class": "career_setback",
+       "shape": "interval",
+       "window": "2024-02-05..2034-01-30",
+       "peak": "2030-10-27",
+       "valence": "loss"
+      },
+      {
+       "event_class": "career_entry",
+       "shape": "interval",
+       "window": "2024-02-05..2034-01-30",
+       "peak": "2029-05-24",
+       "valence": "gain"
+      }
+     ]
+    },
+    "nearest_career_activation_window": {
+     "start": "2027-08-18",
+     "end": "2028-01-15",
+     "peak": "2027-11-01",
+     "proximity_score": 0.5599,
+     "note": "ALL OTHER 9 activation rows are the same undifferentiated Mercury MD 2010-08-18..2027-08-18 span at proximity 0.27995-0.30195. There is NO career activation window inside the next 12 months."
+    },
+    "reading_checklist": "10/13 units served; unserved: special_lagnas, yogi_avayogi, tajaka",
+    "domain_completeness": {
+     "slice_size": 13825,
+     "accounted": 13825,
+     "pct": 100,
+     "served": 12455,
+     "empty_for_this_chart": 1364,
+     "not_computed_globally": 6
+    }
+   }
+  },
+  {
+   "tool": "kala_elect_get",
+   "params": {
+    "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+    "undertaking": "business",
+    "date_range": {
+     "start": "2026-08-15",
+     "end": "2026-11-12"
+    },
+    "limit": 4,
+    "native_janma_nakshatra": "Purva Bhadrapada",
+    "budget_kb": 20
+   },
+   "key_extracts": {
+    "frontier": {
+     "candidate_count": 4,
+     "best": {
+      "window": "2026-10-30..2026-11-01",
+      "score": 0.666,
+      "tier": "silver",
+      "tier_label": "Silver - solid but not ideal"
+     },
+     "gold_tier_present": false
+    },
+    "best_candidate_drivers": [
+     "panchanga_quality=0.64",
+     "dasha_quality=0.72 (Mercury/Saturn)",
+     "transit_quality=0.61",
+     "signal_activation=0.72",
+     "tara_bala=Mitra (favorable)"
+    ],
+    "tara_bala": {
+     "count_from_janma": 8,
+     "tara_name": "Mitra",
+     "favorable": true
+    },
+    "verdict_tier": "structural_prior",
+    "calibration_maturity": {
+     "n_events": 0,
+     "skill_score": null
+    },
+    "paired_rite": null,
+    "muhurta_lagna_strength": "honest_empty - 'the L0 lattice may not be rebuilt in this environment'",
+    "pareto_axes_excluded": [
+     "personal_field_alignment (ka_kshetra field rows not populated at this build tier)",
+     "rite_specific_resonance",
+     "practical_feasibility"
+    ],
+    "census": {
+     "computed": 42,
+     "not_computed": 9,
+     "not_in_corpus": 8
+    },
+    "density": {
+     "cited_rows_in_horizon": 791,
+     "convention_only_rows_in_horizon": 1209,
+     "parihara_rules_muhurta_scope": 1
+    },
+    "DEFECT_trim_priority": "budget_exceeded_after_trim again. The trim kept only 1 of 4 CANDIDATES (the actionable, densest layer) while emitting ~60 hora_* neutral_annotation rows and 114 convention_only factor keys in full - inverted density priority vs CLAUDE.md N.6.2 hardFloor doctrine."
+   }
+  }
+ ],
+ "final_answer_text": "Short answer: **not yet — and your chart is unusually specific about why.**\n\n**What your 10th house actually promises (this part is strong).**\nYour career signature is genuinely good, and I want to be clear that this is not flattery:\n- In the **Daśāṃśa (D10)** — the divisional chart that specifically governs career and professional standing — your **Moon is exalted in the 10th house**, with the Sun also in that 10th. An exalted graha in the 10th of the D10 is a first-rank professional signature.\n- **Jupiter is in its own sign (Pisces)** in the D10, and carries the highest Aṣṭakavarga piṇḍa in that chart (55, against a Sarva of 336).\n- Two classically-confirmed yogas bear directly on your career significators: **Śaśa Yoga** (one of the five Pañcha-Mahāpuruṣa yogas, formed by Saturn) and **Budha-Āditya Yoga** (Mercury with the Sun — intelligence applied through office).\n\nSo the *promise* is not in question. The question is the *timing*, and there the answer changes.\n\n**Why now is not the moment.**\n- You are in the final year of a **Mercury Mahādaśā that runs out on 18 August 2027**, currently in its Saturn sub-period. The tail of a 17-year daśā is characteristically a period of winding-down rather than fresh launching.\n- The system carries **no career activation window anywhere in the next twelve months.** The nearest one opens **18 August 2027 and peaks 1 November 2027** — i.e. precisely when the Mercury daśā hands over. Everything before that is undifferentiated background.\n- I checked directly for an auspicious window to launch a professional undertaking in the next 90 days. The best available in that whole span scores **0.67 and grades \"Silver — solid but not ideal,\" and no gold-tier window exists at all** in the searched horizon. The single best slot is 30 October – 1 November 2026, if you are forced to move.\n- Net **argala on your 10th house is exactly 0** — support and obstruction cancel. That is a precise picture of \"pushing produces no net movement.\"\n\n**Two things I will not smooth over.**\n1. The transit sweep shows **three gain-windows and three loss-windows** for career over the next three years — it is genuinely balanced, not favourable. A **career setback window is flagged for February 2028, peaking 7 February**, sitting uncomfortably close to the good 2027 activation. The advancement point lands **5 September 2028**.\n2. Your chart carries a **live, unresolved contradiction tagged specifically to career** — classed `domain_promise_vs_denial`, meaning two signals of comparable weight say the 10th house delivers and does not deliver. The system offers no automated adjudication for it and explicitly marks it as needing acharya-level resolution. I am not going to pretend that tension away: it is the strongest single reason to be cautious about a confident answer here.\n\n**What I would actually advise.** Prepare now, move later. Use the remaining Mercury period for positioning — conversations, credentials, and the network — and target the **August 2027 – January 2028 opening, around November 2027**, for the actual switch. If circumstances force your hand before then, 30 October – 1 November 2026 is the least-bad window available.\n\n**Confidence.** Moderate on the structural reading (D10 and the two yogas are hard, cited chart facts). Low-to-moderate on the dates: every timing figure here is labelled by the system as a *structural prior, pre-calibration* — zero recorded outcomes back it — and the election engine notes that several of its own scoring axes (personal field alignment, rite-specific resonance) could not be computed for this chart at all.",
+ "self_noted_frictions_during_phase1": [
+  "Setting verbosity:'concise' made the response BIGGER, not smaller. The knob is misleading.",
+  "The 'nearest activation window' and 'leading contradiction' were served to me as raw truncated JSON inside a field literally named 'sentences'. I had to re-parse the underlying arrays myself to state them.",
+  "The election tool returned 4 candidates and the budget trim deleted 3 of them while keeping ~60 rows of hourly hora bookkeeping I did not ask for and cannot use.",
+  "No tool ever told me the chart HAS a job right now, or what it is. LEL was not consulted for career - I inferred 'job change' framing entirely from the user's wording."
+ ]
+}

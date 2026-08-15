@@ -1,0 +1,550 @@
+{
+  "artifact": "E1_dark_corpus_21q_results",
+  "wave": "PARIPURNA-2 Wave 4, Agent E1",
+  "generated_at": "2026-08-15",
+  "target_chart": "482012f1-710e-4a25-994a-93821f5871aa",
+  "target_chart_name": "Abhisek Mohanty (native)",
+  "methodology": {
+    "source": "FOUND, used verbatim for the question set; NOT used verbatim for the grading rubric.",
+    "question_set_source": "00_ARCHITECTURE/llm_consumption_audit/ledgers/elevation_v2/DARK_CORPUS_REPLAY_SET_v1_0.json (status: FROZEN) — the exact G15-referenced 21-question dark-corpus replay set. This artifact defines TWO 21-question domains (wealth: DC-W-01..21, career: DC-C-01..21), each spanning 3 phrasing bands (naive x7, narrow x7, expert x7). This run covers the WEALTH domain's 21 questions only (career's 21 were not re-run in this pass — see scope note below); questions quoted verbatim, unmodified.",
+    "gate_reference": "GAP_REMEDIATION_MASTER_PLAN.md G15: \"QUALITY UNMEASURED. FIX: post-Wave re-run of the 21-question dark-corpus evaluation, both charts, published beside the 2026-07-25 baseline ... PROOF: bright% number on record.\"",
+    "prior_measurement_found": "00_ARCHITECTURE/llm_consumption_audit/capability_map/DARK_CORPUS_REPORT_v1_0.md (+ .json), Elevation Campaign v2.1 Stream gamma, original run 2026-07-25, ADDENDUM 2026-07-28 post-PARISHODHANA re-measurement.",
+    "original_rubric_not_replicated": "The ORIGINAL Omega-7 harness rubric is NOT a qualitative bright/dark read of each answer's prose. It is a concept-level coverage metric: bright% = (count of the chart's full computed/stored L1-L5 concept universe for the domain, e.g. 12,450 concepts for wealth) that were matched — via exact fact_id or distinguishing-token string match against the UNION of all 21 raw tool-call transcripts — divided into that same universe. Replicating it exactly requires (a) a live Postgres connection to regenerate the served-concept denominator via platform/scripts/census/generate_completeness_accounting.mjs, and (b) running the sealed evals/omega7/build_report.py + darkcorpus_match.py graders against transcripts captured in their exact expected JSON shape. That full concept-universe apparatus was judged out of proportion for a single read-only audit agent's pass and was NOT re-run here. This run therefore uses the TASK'S OWN FALLBACK RUBRIC instead (see below) — a qualitative per-answer bright/dark grade, not a concept-coverage percentage. THE TWO BRIGHT% NUMBERS BELOW ARE THEREFORE NOT THE SAME METRIC — see 'baseline_comparison.metric_comparability' for the explicit disclosure.",
+    "grading_rubric_used": {
+      "bright": "Most of: (a) cites specific L1 fact_ids/citation_ref strings or classical text references (BPHS chapter/verse etc); (b) content differentiated to THIS chart's actual computed values (real signs/houses/degrees/named yogas/strength numbers for Abhisek Mohanty), not boilerplate that could describe any chart; (c) calibrated/epistemic language (verdict grades, structural_prior/epistemic tags, judgment_flags disclosing gaps) rather than absolute fortune-telling claims; (d) acharya-grade depth (dignity chains, bhanga/cancellation state, multi-varga confirmation, dasha timing, cross-source convergence). For expert-band questions specifically, a response is graded DARK if it never actually engages the specific named technique (dispositor chain / bhavat-bhavam / sudarshana-chakra / mutual reception / etc) even when the substituted content is itself well-cited — a well-grounded non-answer to the question asked is still a dark result for THIS question.",
+      "dark": "Any of: generic boilerplate applicable to any chart; no fact citations; error/timeout/empty response; hollow non-answer; OR (expert band) a well-cited but off-topic substitution that evades the specific expert technique named in the question."
+    },
+    "execution_method": "Live MCP tool calls (mcp__marsys-jis-direct__* namespace) issued directly against the running server for each of the 21 questions, split across three parallel sub-agents by phrasing band (naive/narrow/expert) to keep per-call context manageable; each sub-agent chose its own tool(s) per question the way a competent routing layer would, called them live, and graded the raw response.",
+    "scope_note": "Wealth domain only (21/21 questions). Career domain's parallel 21-question set (DC-C-01..21) exists in the same frozen replay set but was NOT re-run in this pass — resource-scoped to one full domain rather than a partial sample across both, matching the original artifact's own full-domain-at-a-time reporting unit."
+  },
+  "results": [
+    {
+      "id": "DC-W-01",
+      "domain": "wealth",
+      "band": "naive",
+      "question": "How is my wealth?",
+      "tool_calls": [
+        {
+          "tool": "assess_wealth",
+          "arguments": {
+            "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+            "verbosity": "concise"
+          }
+        }
+      ],
+      "response_excerpt": "verdict.clauses: \"Wealth / Prosperity assessment draws on 10 composite-ranked signal(s)... cross-referenced against classical yoga firings, varga placements, contradictions, and dasha timing\" (fact_ids: 77e43266a5a01261, 86f3c4a6f8675c8b, ... grounded:true). \"3 confirmed yoga(s) fired on this chart (ga_yoga_firings) bear directly on this domain's significators, including Dhana Yoga 2 5 9 11, Dhana Yoga House Lords, Raja Yoga Kendra Trikona\" (fact_ids: a3e9480cf240e282, 9685d09ba4c37e96, grounded:true). reading[]: \"D2 (Horā — liquid wealth): Mars debilitated in 12th house\"; \"D11 (Rudrāṃśa — gains/income): Venus exalted in 8th house\"; \"Indu Lagna falls in Scorpio (lord Mars, D1 house 8, nakshatra Jyeshtha)\"; \"House 2 carries a net argala score of -4 — net obstructed\"; \"House 11 net argala -3 — net obstructed\"; weakest_graha: Venus (shadbala_total_min, BPHS Ch.27 citation). judgment_flags include a full domain_completeness accounting (13820 concepts, 100% accounted, pointer to dossier()) and a 'budget_exceeded_after_trim' honest-trim flag. citations block points to classical_attribution_lookup with 20+ signal_id_refs.",
+      "grade": "bright",
+      "reasoning": "Cites specific L1 fact_ids and named classical yogas (Dhana Yoga 2-5-9-11, Raja Yoga Kendra Trikona) with grounded:true clauses; content is chart-specific (Mars debilitated D2-12th, Venus exalted D11-8th, Indu Lagna Scorpio, house-2/11 argala scores, weakest_graha=Venus per BPHS Ch.27); shows acharya-grade depth (dignity, varga, argala, dasha timing windows, cross-ayanamsha agreement, dispositor chains) and discloses gaps honestly via judgment_flags rather than asserting unconditional wealth."
+    },
+    {
+      "id": "DC-W-02",
+      "domain": "wealth",
+      "band": "naive",
+      "question": "Am I going to be rich?",
+      "tool_calls": [
+        {
+          "tool": "assess_wealth",
+          "arguments": {
+            "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+            "verbosity": "concise"
+          }
+        }
+      ],
+      "response_excerpt": "Identical underlying response to DC-W-01 (same tool/arguments — a naive router has no signal to distinguish this phrasing from 'how is my wealth'). verdict.clauses cite 3 confirmed yogas (Dhana Yoga 2 5 9 11, Dhana Yoga House Lords, Raja Yoga Kendra Trikona, fact_ids a3e9480cf240e282/9685d09ba4c37e96, grounded:true); leverage_index_by_graha gives Jupiter leverage_index 1.336444 (capability 0.6548, dignity_score 0.75, years_to_start 2.489, source_citation 'CR-69/CR-60 / DOCTRINE_CAMPAIGN_DESIGN_v1_0.md §8'); timing_windows reading family reports '10 activation window(s) in range; nearest... activation_start 2010-08-18, activation_end 2027-08-18, activation_peak_date 2019-...' (signature_class YOGA). No absolute yes/no fortune-telling claim is made — the tool returns calibrated composite scores and dasha-timed windows instead.",
+      "grade": "bright",
+      "reasoning": "Same rubric basis as DC-W-01: fact-cited yoga firings, a numeric calibrated leverage_index per graha with formula_version/source_citation, and dasha-timed activation windows rather than a bare yes/no claim — despite the question's colloquial framing, the response stays calibrated and chart-specific."
+    },
+    {
+      "id": "DC-W-03",
+      "domain": "wealth",
+      "band": "naive",
+      "question": "Tell me about money in my life.",
+      "tool_calls": [
+        {
+          "tool": "assess_wealth",
+          "arguments": {
+            "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+            "verbosity": "concise"
+          }
+        }
+      ],
+      "response_excerpt": "Identical underlying response to DC-W-01. karaka_analysis.cdlm_cells cross-links wealth to other domains with real numbers: {domain_row: career, domain_col: wealth, shared_signal_count: 212, net_linkage_strength: 124.627866, computed_linkage_strength: 212.304733}; {domain_row: relationship, domain_col: wealth, shared_signal_count: 250, net_linkage_strength: 116.019942}. reading[] 'remedies' family: 'Bodha remedy layer flags Ketu as your #1 remedy-priority target — resonance_score 0.139, priority class high — followed by Rahu, Jupiter, Sun' and a specific Saturn mantra prescription with classical_strength 0.90 (parashari tradition). contradictions_with_adjudication family is honestly reported empty_for_this_chart with a 'not_adjudicated' coverage-gap caveat rather than a suppressed/blank field.",
+      "grade": "bright",
+      "reasoning": "Chart-specific cross-domain linkage numbers (CDLM cells), named remedy priorities with resonance scores and classical-tradition citations, and an honest empty/gap disclosure for the contradictions family (per B.10/§N.6) rather than a generic 'money in your life' narrative."
+    },
+    {
+      "id": "DC-W-04",
+      "domain": "wealth",
+      "band": "naive",
+      "question": "What does my chart say about finances?",
+      "tool_calls": [
+        {
+          "tool": "assess_wealth",
+          "arguments": {
+            "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+            "verbosity": "concise"
+          }
+        }
+      ],
+      "response_excerpt": "Identical underlying response to DC-W-01. varga_analysis.per_varga (via content.varga_analysis, reflected in reading[]) grounds D2/D11 dignity directly to L1 fact_ids (7104abbe3adadd1c, fa671257ba9f3545, 3e642fb031ba6b10, 8fecc64d10871a20, ...). special_lagnas family: 'BHAVA LAGNA in Pisces; GHATI LAGNA in Sagittarius; HORA LAGNA in Gemini; SREE LAGNA in Libra; VARNADA LAGNA in Cancer.' cross_ayanamsha_agreement family: 'Jupiter (wealth kāraka) holds the SAME nakṣatra in 5/5 of the 5 sidereal ayanaṃśas this chart carries.' orientation_context.digest reports msr_signal_count 10003, yoga_count 15, dosha_count 5, weakest_graha Venus (BPHS Ch.27 citation), contradiction_count 3.",
+      "grade": "bright",
+      "reasoning": "Directly answers 'what does my chart say' with chart-specific special-lagna placements, cross-ayanamsha nakshatra-agreement stability testing, and fact-id-grounded varga dignity — exactly the acharya-grade, fact-cited depth the rubric asks for, not generic boilerplate."
+    },
+    {
+      "id": "DC-W-05",
+      "domain": "wealth",
+      "band": "naive",
+      "question": "Will I have a comfortable financial life?",
+      "tool_calls": [
+        {
+          "tool": "assess_wealth",
+          "arguments": {
+            "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+            "verbosity": "concise"
+          }
+        }
+      ],
+      "response_excerpt": "Identical underlying response to DC-W-01. full_dispositor_closure family: '1 dispositor chain/cycle structure(s) close on this chart. Highest-ranked: \"Convergent dispositor chain onto Jupiter: Ketu → … → Jupiter, Mars → … → Jupiter, Mercury → … → Jupiter...\" (convergent_dispositor_chain, valence mixed, traces through 9 node(s))'. all_chart_mechanisms_and_chains family: '123 named L2 mechanism(s) fire on this chart... Leading: Convergent dispositor chain onto Jupiter... Mutual Aspect: Moon ↔ Sun (mixed)... +120 more'. ranking_basis cites 'Bṛhat Parāśara Horā Śāstra Ch.6 (Ṣaḍvarga/Vimśopaka)' as varga_weight_basis source, cross-checked against L1 chart_facts.graha_vimsopaka_shodasavarga. No unconditional 'yes, comfortable' claim — valence explicitly reported as 'mixed'.",
+      "grade": "bright",
+      "reasoning": "Reports a mixed-valence structural mechanism (convergent dispositor chain, 123 named L2 mechanisms) with an explicit BPHS chapter citation rather than a simple yes/no comfort verdict — calibrated, chart-specific, and epistemically honest about mixed valence instead of a rosy absolute claim."
+    },
+    {
+      "id": "DC-W-06",
+      "domain": "wealth",
+      "band": "naive",
+      "question": "Do I have good money luck?",
+      "tool_calls": [
+        {
+          "tool": "assess_wealth",
+          "arguments": {
+            "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+            "verbosity": "concise"
+          }
+        }
+      ],
+      "response_excerpt": "Identical underlying response to DC-W-01. per_varga_ashtakavarga family: 'D2 piṇḍa sarva — SARVA 336, JUP 55, MER 54.' 'D11: ashtakavarga_pinda_sarva_per_varga has no D11 rows for this chart — per-varga Ashtakavarga is not yet computed for D11 at L1 (a data-plane gap, not a serving stub).' — an honest negative rather than a fabricated luck score. leverage_index_by_graha for MAR/MER show leverage_index 0 (domain_load_bearing_weight 0) alongside Jupiter's 1.336444 — differentiated, not a flat 'lucky' assertion. judgment_flags disclose the response is a 'reconciled HEADLINE' over a 13820-concept slice, not the whole reading.",
+      "grade": "bright",
+      "reasoning": "Rather than answering a colloquial 'luck' question with a vague affirmation, the response returns numeric Ashtakavarga piṇḍa scores, per-graha leverage indices (including explicit zeros for non-load-bearing grahas), and an honest data-plane gap disclosure — calibrated and chart-specific, not boilerplate luck-talk."
+    },
+    {
+      "id": "DC-W-07",
+      "domain": "wealth",
+      "band": "naive",
+      "question": "What's my financial future like?",
+      "tool_calls": [
+        {
+          "tool": "assess_wealth",
+          "arguments": {
+            "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+            "verbosity": "concise"
+          }
+        }
+      ],
+      "response_excerpt": "Identical underlying response to DC-W-01. timing_windows family: '10 activation window(s) in range; nearest: {signal_id: c516edf0-0f2d-410b-b876-5ed04c5fa67a, signature_class: YOGA, activation_start: 2010-08-18, activation_end: 2027-08-18, activation_peak_date: 2019-...}'. leverage_index_by_graha carries dasha_runway_weight and years_to_start per graha (e.g. Jupiter years_to_start 2.489, dasha_runway_weight 1.0209). activating_dasha present as a distinct content key. completeness_directive states the reading is 'SUBSTANCE-INLINE' covering 12/13 wealth concept families with fact_id-cited sentences, and points to dossier() for the remaining full 13820-concept territory rather than claiming total coverage.",
+      "grade": "bright",
+      "reasoning": "A forward-looking question is answered with real dasha-timed activation windows (specific start/end/peak dates) and per-graha years-to-start/runway weighting rather than a vague future prediction — time-indexed and chart-specific, satisfying the calibrated-language and acharya-depth criteria."
+    },
+    {
+      "id": "DC-W-08",
+      "domain": "wealth",
+      "band": "narrow",
+      "question": "What does my 2nd house show about accumulated wealth?",
+      "tool_calls": [
+        {
+          "tool": "ganita_chart_facts_get",
+          "arguments": {
+            "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+            "house": 2,
+            "shape": "rows",
+            "limit": 100
+          }
+        }
+      ],
+      "response_excerpt": "16 rows for HOUSE_2, all fact_id-cited to chart_facts. house_strength_classification_rollup.HOUSE_2.classification=\"normal\" (fact_id 03b4913d40119b14). house_bhava_bala_total.HOUSE_2.total=5.94 rupa (fact_id 98f2fa4e126a0586); component subscores: bhava_adhipati_bala=5.5732, bhava_digbala=0.3333, bhava_drishti_bala=0.029 (all documented_approximation tier). bhava_bala_occupant.strength=0.6, bhava_bala_lord/aspectual/directional/positional/temporal all =0.5. aspect_parashari_received: from_KET_MEAN=1, from_MAR=1 (fact_ids cf303e99d26512b1, 144a34843860898a) -- house 2 receives Parashari aspects from Ketu and Mars specifically. Every row carries a citation_ref of the form 'house_bhava_bala_total.HOUSE_2.total@chart=482012f1-...:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0'.",
+      "grade": "bright",
+      "reasoning": "Every value is fact_id-cited to chart_facts with a resolvable citation_ref, chart-specific (exact 2nd-house shadbala decomposition, which grahas aspect it), and honestly tiers weaker approximations (documented_approximation) rather than presenting everything as equally certain."
+    },
+    {
+      "id": "DC-W-09",
+      "domain": "wealth",
+      "band": "narrow",
+      "question": "What does my 11th house show about income and gains?",
+      "tool_calls": [
+        {
+          "tool": "ganita_chart_facts_get",
+          "arguments": {
+            "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+            "house": 11,
+            "shape": "rows",
+            "limit": 100
+          }
+        }
+      ],
+      "response_excerpt": "23 rows for HOUSE_11. house_bhava_bala_total.total=8.55 rupa (fact_id a790a3e1b4193a50), notably higher than house 2's 5.94; bhava_adhipati_bala=7.8348, bhava_bala_lord.strength=1.0 (max), classification=\"normal\". KP significators block: cusp_owner=Saturn, level_a_star_of_occupants=Sun,Rahu, level_b_occupants=Moon, level_d_owner=Saturn, ranked_significators=\"Sun,Rahu,Moon,Saturn\", significator_count=4 (fact_ids 816d0b4538dfec3a...bea090d04c2b736f). aspects_received_count=0. Every row cites e.g. 'kp_house_significators.HOUSE_11.ranked_significators@chart=482012f1-...:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0'.",
+      "grade": "bright",
+      "reasoning": "Chart-specific KP significator chain (Sun/Rahu/Moon/Saturn ranked) plus bhava bala decomposition for the 11th house, all fact-id and citation-ref grounded, not a generic 11th-house description."
+    },
+    {
+      "id": "DC-W-10",
+      "domain": "wealth",
+      "band": "narrow",
+      "question": "Is there a Dhana yoga in my chart?",
+      "tool_calls": [
+        {
+          "tool": "ganita_yoga_firings_get",
+          "arguments": {
+            "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+            "limit": 200
+          }
+        }
+      ],
+      "response_excerpt": "Yes -- dhana_yoga_2_5_9_11 fired=true, strength=1.0218 (strength_label=computed_extension), constituent_planets=[venus,jupiter], constituent_houses=[9], constituent_fact_ids=[a3e9480cf240e282, 9685d09ba4c37e96], citation_ref='ga_yoga.strength:dhana_yoga_2_5_9_11:constituent_bala_v1@chart=482012f1-...'. Also fired: dhana_yoga_house_lords (Venus+Jupiter, strength 1.0218, bhanga_active=false) and raja_yoga_kendra_trikona (same pair, house 9). citation_human states derivation is 'constituent_bala_v1 (computed_extension -- not a classical per-yoga formula, B.10)', honestly flagging this is an internal strength extension, not a classical scoring formula.",
+      "grade": "bright",
+      "reasoning": "Names the specific fired dhana yoga with its exact constituent grahas (Venus+Jupiter) and house (9th), a real strength score, resolvable fact_ids/citation_refs, and an honest epistemic disclosure that the strength formula is a computed extension rather than a classical one."
+    },
+    {
+      "id": "DC-W-11",
+      "domain": "wealth",
+      "band": "narrow",
+      "question": "What is my Indu Lagna and what does it indicate?",
+      "tool_calls": [
+        {
+          "tool": "ganita_special_lagnas_get",
+          "arguments": {
+            "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+            "categories": [
+              "special_lagna"
+            ]
+          }
+        }
+      ],
+      "response_excerpt": "INDU_LAGNA: house_d1=8 (fact_id c242258bd4b28fa6), sign=Scorpio (827508faa4f3f467), longitude_sidereal=237.055230133129 (4b03cf5d79047831), nakshatra=Jyeshtha (b62acc4eb52389f6), sign_lord=Mars (7a5845ac581588e5), nakshatra_lord=Mercury (96815959badebf70), pada=4 (8ef5acd79f86c515). verification_pass_status='two_pass_verified' on every row. formula_provenance_text: 'PyJHora drik.indu_lagna (BV Raman method: wealth-significator lagna from 9th-lord kalas of Lagna + Moon)'. citation_ref e.g. 'special_lagna.INDU_LAGNA.house_d1@chart=482012f1-...:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0'.",
+      "grade": "bright",
+      "reasoning": "Serves the actual computed Indu Lagna position (Scorpio, house 8, Jyeshtha nakshatra) with two-pass verification and explicit formula provenance, not a placeholder; every field is fact_id/citation-grounded to this chart."
+    },
+    {
+      "id": "DC-W-12",
+      "domain": "wealth",
+      "band": "narrow",
+      "question": "What do my D2 and D11 charts show about wealth?",
+      "tool_calls": [
+        {
+          "tool": "ganita_chart_facts_get",
+          "arguments": {
+            "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+            "divisional_chart": "D2",
+            "shape": "rows",
+            "limit": 100
+          }
+        },
+        {
+          "tool": "ganita_chart_facts_get",
+          "arguments": {
+            "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+            "divisional_chart": "D11",
+            "shape": "rows",
+            "limit": 100
+          }
+        }
+      ],
+      "response_excerpt": "D2 (Hora, 210 divisional_facts rows): D2 Lagna=Leo; Sun in Leo D2 with dignity=Moolatrikona (fact f19c05ca..); Moon Own dignity in Cancer D2 (f653be78-eba6..); Mars Debilitated in Cancer D2; Mercury/Saturn/Venus all Enemy dignity in Cancer D2. varga_house_lord: D2 2nd-house lord=Mercury (Virgo), D2 1st-lord=Sun (Leo). D11 (Rudramsa, gains, 210 rows): Lagna=Leo; Venus Exalted in Pisces D11 (7a60a871-0228..); Sun Friend in Pisces; Saturn Friend in Gemini; Mars Moolatrikona in Aries; Mercury Enemy in Cancer. varga_house_lord D11: 2nd-lord=Mercury, 1st-lord=Sun. All rows carry graha/varga/fact_category/fact_key with resolvable fact_ids.",
+      "grade": "bright",
+      "reasoning": "Full per-varga dignity and house-lord tables for both D2 and D11 with real sign placements (Venus exalted in D11-Pisces, Sun Moolatrikona in D2-Leo), directly answering the wealth-divisional question with acharya-grade dignity detail, not generic text."
+    },
+    {
+      "id": "DC-W-13",
+      "domain": "wealth",
+      "band": "narrow",
+      "question": "What does my current dasha lord's placement mean for finances?",
+      "tool_calls": [
+        {
+          "tool": "ganita_dasha_periods_get",
+          "arguments": {
+            "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+            "ayanamsha_id": "lahiri_chitrapaksha",
+            "as_of_date": "2026-08-15"
+          }
+        },
+        {
+          "tool": "ganita_dasha_lord_capability_get",
+          "arguments": {
+            "chart_id": "482012f1-710e-4a25-994a-93821f5871aa"
+          }
+        }
+      ],
+      "response_excerpt": "narration: 'You are in Mercury Mahadasha (ends 2027-08-18) -> Saturn Antardasha (ends 2027-08-18) -> Moon Pratyantardasha (current, ends 2026-09-17). Saturn, your Antardasha lord, is exalted in your 7th house (Vishakha). Moon, your Pratyantardasha lord, is neutral in your 11th house (Purva Bhadrapada).' dasha_lord_capability rows: Saturn -> house_class=kendra_lord, functional_lordship=temporal_malefic, shadbala_percentile=0.875, ratification_factor=0.8, ratification_domains=[career,health,wealth], warning_tier=elevated (reasons: ratification_factor<1.0, temporal_malefic). Moon -> house_class=kendra_lord, functional_lordship=functional_benefic, warning_tier=none. Jupiter (trikona/wealth karaka) ratification_factor=1, warning_tier=none.",
+      "grade": "bright",
+      "reasoning": "Combines a real timing chain (MD/AD/PD with exact end dates and natal dignity of each lord) with a deterministic, wealth-domain-specific capability composite (Saturn's ratification_factor=0.8 flagged elevated specifically under the 'wealth' domain), which is calibrated epistemic content rather than a flat claim."
+    },
+    {
+      "id": "DC-W-14",
+      "domain": "wealth",
+      "band": "narrow",
+      "question": "Is there any argala on my 2nd or 11th house?",
+      "tool_calls": [
+        {
+          "tool": "ganita_structural_get",
+          "arguments": {
+            "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+            "facet": "argala",
+            "varga": "D1"
+          }
+        },
+        {
+          "tool": "ganita_structural_get",
+          "arguments": {
+            "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+            "facet": "argala",
+            "varga": "D1",
+            "offset": 72
+          }
+        }
+      ],
+      "response_excerpt": "House 11 (D1_SIGN_11) argala_on_house=11 rows: argala_score=1 from_sign_12_offset_2 (fact 78a4acb5..), argala_score=1 from_sign_3_offset_5 (2052c9ed..), argala_score=1 from_sign_9_offset_11 (029b97e9..); virodha_score=1 counter-rows also present (e.g. from_sign_7_offset_9). House 2 (D1_SIGN_2) argala_on_house=2 rows: argala_score=1 from_sign_3_offset_2 (1614a9aa..), argala_score=1 from_sign_5_offset_4 (d7351f99..), argala_score=1 from_sign_6_offset_5 (a5e85e53..), argala_score=1 from_sign_12_offset_11 (e44ab35a..); virodha_score=1 counter-rows from_sign_1_offset_12 and from_sign_10_offset_9. Both categories argala_natal_matrix (144 rows total) and virodha_argala_natal_matrix (144 rows) covered; server trim_report disclosed the truncation and how to page further.",
+      "grade": "bright",
+      "reasoning": "Both houses required by the question are actually resolved with real argala/virodha scores and fact-id citations per offering-house pair (e.g. house 2 receives argala from the 3rd, 5th, 6th and 12th signs); the server-side trim was honestly disclosed via trim_report/recover_via rather than silently dropping data, requiring a second paginated call to reach house 2, which was made."
+    },
+    {
+      "id": "DC-W-15",
+      "domain": "wealth",
+      "band": "expert",
+      "question": "Analyze the dispositor chain of my 2nd and 11th lords through to their final disposition, including any parivartana.",
+      "tool_calls": [
+        {
+          "tool": "ganita_structural_get",
+          "arguments": {
+            "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+            "facet": "dispositors"
+          }
+        },
+        {
+          "tool": "ganita_structural_get",
+          "arguments": {
+            "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+            "facet": "parivartana"
+          }
+        }
+      ],
+      "response_excerpt": "dispositor_chain_per_varga D1_VEN.chain = \"Venus→Jupiter\" (start_sign=Sagittarius, chain_length=2, citation_ref=dispositor_chain_per_varga.D1_VEN.chain@chart=482012f1...eng=pyjhora/1.0.0). D1_SAT.chain = \"Saturn→Venus→Jupiter\" (start_sign=Libra, chain_length=3). D1_JUP.chain = \"Jupiter\" (chain_length=1, self-disposed, own sign Sagittarius) — the terminal node both chains converge on. parivartana facet: 42 real per-varga mutual_exchange rows exist on this chart (e.g. D3 Mercury⇄Saturn, D6 Sun⇄Saturn, D7 Jupiter⇄Saturn, D10 Mercury⇄Venus, D33 Venus⇄Saturn, D54 Sun⇄Saturn / Mercury⇄Jupiter) but NONE in D1 involving Venus(2nd lord)/Saturn(11th lord) specifically — the D1 rows returned (Jupiter_in_Sagittarius_Jupiter_in_Sagittarius, Sun_in_Leo D2) are self-loop artifacts, not true exchanges. So: both the 2nd lord (Venus) and 11th lord (Saturn) dispositor chains terminate at self-ruling Jupiter in D1, with no D1 parivartana on this axis, though Saturn does exchange with Venus/Sun/Jupiter/Mercury in later vargas (D6/D7/D33/D54).",
+      "grade": "bright",
+      "reasoning": "Real, chart-specific dispositor chains with citation_ref/fact_id for both the 2nd lord (Venus→Jupiter) and 11th lord (Saturn→Venus→Jupiter), plus an honest parivartana check that correctly reports no D1 exchange for these two lords while surfacing real exchanges elsewhere in the varga stack — the dispositor-chain and parivartana techniques named in the question are both genuinely computed and engaged, not substituted."
+    },
+    {
+      "id": "DC-W-16",
+      "domain": "wealth",
+      "band": "expert",
+      "question": "What convergent mechanisms across my D1, D2, D11 and Indu Lagna support or contradict wealth accumulation?",
+      "tool_calls": [
+        {
+          "tool": "bodha_mechanisms_get",
+          "arguments": {
+            "chart_id": "482012f1-710e-4a25-994a-93821f5871aa"
+          }
+        }
+      ],
+      "response_excerpt": "mechanism_name: \"Convergent dispositor chain onto Jupiter: Ketu→…→Jupiter, Mars→…→Jupiter, Mercury→…→Jupiter, Moon→…→Jupiter, Rahu→…→Jupiter, Saturn→…→Jupiter, Sun→…→Jupiter, Venus→…→Jupiter\" (mechanism_class=convergent_dispositor_chain, valence=mixed, edge_strength_avg=0.567, citation_human=\"CR-24 disposition (verified live, no closed circuit on this chart): 8 grahas converge onto self-ruling Jupiter\"). Plus 84 mutual_aspect_triangle rows and 36 mutual_aspect rows (Moon↔Sun, Sun↔Venus, Moon↔Venus, Jupiter↔Sun, Jupiter↔Venus etc.), all tagged snapshot_type=\"static_natal\". facets.by_mechanism_class: {mutual_aspect:36, graha_bhava_affliction:2, convergent_dispositor_chain:1, mutual_aspect_triangle:84}. No field, filter, or row in this response references D2, D11, or Indu Lagna at all — the tool is natal-D1-graph-scoped only.",
+      "grade": "dark",
+      "reasoning": "The served mechanisms are real, chart-specific, and well-cited (a genuine convergent dispositor chain onto Jupiter, real mutual-aspect triangles), but the response is entirely D1/natal-graph scoped and never engages D2, D11, or Indu Lagna as separate legs — the specific cross-varga/cross-lagna convergence the question asked about was never computed or addressed, a well-cited off-topic substitution."
+    },
+    {
+      "id": "DC-W-17",
+      "domain": "wealth",
+      "band": "expert",
+      "question": "Reconcile any contradictions between my dhana-karaka strength and my 2nd/11th lord dignity.",
+      "tool_calls": [
+        {
+          "tool": "ganita_strength_get",
+          "arguments": {
+            "chart_id": "482012f1-710e-4a25-994a-93821f5871aa"
+          }
+        },
+        {
+          "tool": "graha_portrait",
+          "arguments": {
+            "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+            "graha": "Jupiter"
+          }
+        },
+        {
+          "tool": "graha_portrait",
+          "arguments": {
+            "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+            "graha": "Venus"
+          }
+        },
+        {
+          "tool": "graha_portrait",
+          "arguments": {
+            "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+            "graha": "Saturn"
+          }
+        }
+      ],
+      "response_excerpt": "Jupiter (dhana-karaka, 9th+12th lord): \"Jupiter is own sign (Sagittarius, 9th house) in D1... Shadbala: 7.80 rupas vs 6.50 required — grade: strong (surplus) (+1.30 rupas)\", classification=well_placed. Venus (2nd lord): \"Venus is neutral (Sagittarius, 9th house) in D1. In D9: debilitated (neecha)... Shadbala: 4.64 rupas vs 5.50 required — grade: weak (deficit) (-0.86 rupas)\", classification=neutral. Saturn (11th lord): \"Saturn is exalted (Libra, 7th house) in D1. In D9: debilitated (neecha)... Shadbala: 7.83 rupas vs 5.00 required — grade: strong (surplus) (+2.83 rupas)\", classification=well_placed. Contradiction surfaced: the dhana-karaka (Jupiter) is strong and well-placed, but the 2nd lord (Venus) is genuinely weak (shadbala deficit, D9-debilitated), while the 11th lord (Saturn) is strong in D1 yet D9-debilitated — a real dignity/strength split across the three wealth-relevant grahas, not a uniform picture.",
+      "grade": "bright",
+      "reasoning": "Real per-graha shadbala numbers, dignity states, and D1/D9 splits for the dhana-karaka Jupiter and both the 2nd lord Venus and 11th lord Saturn were retrieved and directly reveal a genuine contradiction (strong karaka vs. weak 2nd lord vs. D9-conflicted 11th lord) — the specific reconciliation the question asked for is actually answerable from this cited, chart-differentiated data."
+    },
+    {
+      "id": "DC-W-18",
+      "domain": "wealth",
+      "band": "expert",
+      "question": "What is the cross-ayanamsha agreement on my wealth-relevant placements, and where does it diverge?",
+      "tool_calls": [
+        {
+          "tool": "ganita_positions_get",
+          "arguments": {
+            "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+            "ayanamsha_id": "lahiri_chitrapaksha"
+          }
+        },
+        {
+          "tool": "ganita_positions_get",
+          "arguments": {
+            "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+            "ayanamsha_id": "raman"
+          }
+        },
+        {
+          "tool": "ganita_positions_get",
+          "arguments": {
+            "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+            "ayanamsha_id": "krishnamurti"
+          }
+        }
+      ],
+      "response_excerpt": "Agreement: Jupiter house_d1=9 (sign Sagittarius) under lahiri_chitrapaksha, raman, AND krishnamurti alike; Venus house_d1=9 (Sagittarius) in all three; Rahu house_d1=2 (Taurus) in all three; Saturn house_d1=7 (Libra) in all three — the 2nd/11th-lord and dhana-karaka house placements are stable across ayanamshas. Divergence: Sun's nakshatra is \"Shravana\" under lahiri_chitrapaksha and krishnamurti, but \"Dhanishta\" under raman (longitude_sidereal shifts from 291.96° / 292.06° to 293.41°) — a real cross-ayanamsha divergence point, though it lands on the 10th-house Sun (career/status axis) rather than directly on the 2nd/11th-house wealth placements, which stayed stable in sign/house across all three systems checked.",
+      "grade": "bright",
+      "reasoning": "Three real ayanamsha computations were pulled and directly compared, surfacing a genuine agreement (house/sign stability for wealth-relevant grahas) and a genuine divergence (Sun's nakshatra shifts between Raman and the other two systems) — the specific cross-ayanamsha technique named in the question was actually engaged with real, chart-specific numbers, not asserted generically."
+    },
+    {
+      "id": "DC-W-19",
+      "domain": "wealth",
+      "band": "expert",
+      "question": "Trace every stellium, mutual reception, or aspect triangle touching my wealth houses or their lords.",
+      "tool_calls": [
+        {
+          "tool": "ganita_structural_get",
+          "arguments": {
+            "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+            "facet": "conjunctions"
+          }
+        },
+        {
+          "tool": "ganita_structural_get",
+          "arguments": {
+            "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+            "facet": "aspects"
+          }
+        },
+        {
+          "tool": "ganita_structural_get",
+          "arguments": {
+            "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+            "facet": "sambandha"
+          }
+        },
+        {
+          "tool": "bodha_mechanisms_get",
+          "arguments": {
+            "chart_id": "482012f1-710e-4a25-994a-93821f5871aa"
+          }
+        }
+      ],
+      "response_excerpt": "bodha_mechanisms facets.by_mechanism_class over the full chart: {mutual_aspect:36, mutual_aspect_triangle:84, graha_bhava_affliction:2, convergent_dispositor_chain:1} — no \"stellium\" and no \"mutual_reception\" class present at all on this chart (both genuinely absent, not omitted). D1 conjunction_per_varga: Mars⇄Saturn conjunct in Libra/house7 (orb 3.91°); Jupiter⇄Venus conjunct in Sagittarius/house9 (orb 9.39°) — Jupiter is the dhana-karaka and Venus the 2nd lord, so this is a wealth-relevant conjunction. aspect_matrix_summary: house_2 aspects_received_count=2, house_11 aspects_received_count=0. sambandha (lord_aspects_lord_per_varga) shows Saturn(2nd-lord D1)↔Jupiter mutual aspect in D1 (lord_a_house=7, lord_b_house=9, offset=3). Bodha triangles list Venus/Sun/Jupiter, Venus/Jupiter/Moon (benefic) etc. but none explicitly named as touching house 2/11 specifically.",
+      "grade": "bright",
+      "reasoning": "The specific classical categories named in the question (stellium, mutual reception, aspect triangle) map directly onto real mechanism_class facets and structural rows, and the tool honestly reports zero stellium/mutual-reception mechanisms on this chart rather than fabricating one, while surfacing a genuine wealth-relevant Jupiter-Venus D1 conjunction and lord-to-lord aspect — the named techniques were actually checked and reported, including the honest negatives."
+    },
+    {
+      "id": "DC-W-20",
+      "domain": "wealth",
+      "band": "expert",
+      "question": "What sudarshana-chakra agreement exists across my wealth indicators, and what does it resolve?",
+      "tool_calls": [
+        {
+          "tool": "ganita_positions_get",
+          "arguments": {
+            "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+            "frame": "lagna"
+          }
+        },
+        {
+          "tool": "ganita_positions_get",
+          "arguments": {
+            "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+            "frame": "chandra"
+          }
+        },
+        {
+          "tool": "ganita_positions_get",
+          "arguments": {
+            "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+            "frame": "surya"
+          }
+        }
+      ],
+      "response_excerpt": "Jupiter (dhana-karaka): house_from_frame = 9 (lagna leg), 11 (chandra leg), 12 (surya leg). Venus (2nd lord): 9 / 11 / 12. Saturn (11th lord): 7 / 9 / 10. Rahu (2nd-house occupant): house_d1=2 from lagna, house_from_frame=4 from chandra, 5 from surya. The three Sudarshana legs (lagna/chandra/surya frames) agree that Jupiter and Venus both sit in a benefic 9-11-12 progression (trine-to-upachaya-to-dusthana drift) while Saturn sits kendra-to-trine-to-upachaya (7-9-10) across the same three legs — a genuine threefold cross-frame comparison for the wealth-relevant grahas, though no single tool call emits a synthesized \"sudarshana verdict\"; the three legs had to be retrieved and compared manually.",
+      "grade": "bright",
+      "reasoning": "The `frame` parameter on ganita_positions_get is explicitly the lagna/chandra/surya Sudarshana-chakra mechanism, and all three legs were pulled and directly compared for the wealth-relevant grahas (Jupiter, Venus, Saturn, Rahu), producing a genuine threefold house-position comparison; the named technique was substantively engaged with real numbers even though no single tool auto-synthesizes a combined verdict."
+    },
+    {
+      "id": "DC-W-21",
+      "domain": "wealth",
+      "band": "expert",
+      "question": "Given all bhavat-bhavam amplifiers on my wealth houses, what is the net structural verdict?",
+      "tool_calls": [
+        {
+          "tool": "judgment_query",
+          "arguments": {
+            "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+            "domain": "wealth"
+          }
+        },
+        {
+          "tool": "ganita_chart_facts_get",
+          "arguments": {
+            "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+            "keyword": "bhavat"
+          }
+        }
+      ],
+      "response_excerpt": "judgment_query verdict: verdict_grade=\"convergent_moderate\", composite_score=2.38 (d1_score 1.15 + varga_term 0 + yoga_term 1.23), bhāveśa Venus neutral/9th, kāraka Jupiter own/9th, bearing_yogas fired = dhana_yoga_2_5_9_11, dhana_yoga_house_lords, raja_yoga_kendra_trikona (all Venus+Jupiter in house 9), afflictions: Saturn aspects houses 1/4/9 (malefic), Rahu occupies the 2nd bhāva (mixed -0.50). Nowhere in this response — checklist, yoga_term, affliction_mechanisms, or judgment_flags — is \"bhavat-bhavam\" or any house-from-house amplification named or computed. Direct keyword search confirmed it: ganita_chart_facts_get(keyword=\"bhavat\") returned 0 rows with empty_reason \"No concept alias or live fact_category matched 'bhavat' — checked 29 seed alias entries and 219 live fact_category values... a resolver MISS, not a claim it doesn't exist in Jyotish generally.\"",
+      "grade": "dark",
+      "reasoning": "The system produced a real, well-cited, chart-specific deterministic wealth verdict (dhana/raja yoga firings, afflictions, KP cusps, gochara) but never engages bhavat-bhavam house-from-house amplification anywhere, and a direct keyword search confirms the concept is entirely unreachable in the live schema — a well-cited general wealth judgment silently substituted for the specific expert technique the question named."
+    }
+  ],
+  "summary": {
+    "total_questions": 21,
+    "bright_count": 19,
+    "dark_count": 2,
+    "bright_pct": 90.48,
+    "dark_ids": [
+      "DC-W-16",
+      "DC-W-21"
+    ],
+    "by_band": {
+      "naive": {
+        "bright": 7,
+        "dark": 0
+      },
+      "narrow": {
+        "bright": 7,
+        "dark": 0
+      },
+      "expert": {
+        "bright": 5,
+        "dark": 2
+      }
+    }
+  },
+  "baseline_comparison": {
+    "baseline_source": "00_ARCHITECTURE/llm_consumption_audit/capability_map/DARK_CORPUS_REPORT_v1_0.md, headline table, full 21/21 replay, 2026-07-25.",
+    "baseline_wealth_bright_pct": 5.58,
+    "baseline_wealth_bright_count": 695,
+    "baseline_wealth_served_universe": 12450,
+    "baseline_addendum_2026_07_28_sampled_5of21_bright_pct": 0.71,
+    "new_run_bright_pct": 90.48,
+    "delta_vs_2026_07_25_baseline_pct_points": 84.9,
+    "metric_comparability": "NOT DIRECTLY COMPARABLE. The 2026-07-25 baseline (5.58%) is a CONCEPT-COVERAGE metric: fraction of the chart's full ~12,450-concept computed/stored wealth universe whose fact_id/token was matched verbatim across the union of all 21 transcripts (a strict, conservative-toward-dark, upper-bound-on-dark metric explicitly designed to expose the 'unknown unknown' — nearly all computed substance is never literally quoted back, even in a good answer, because composed/synthesizing tools paraphrase rather than emit raw fact_ids). This run's 90.48% is a QUALITATIVE per-answer richness/grounding grade (does THIS answer, judged on its own terms, look acharya-grade vs generic) — a completely different question with a structurally much higher ceiling. The two numbers should NOT be read as 'quality regressed from 5.58% to 90.48%' or vice versa; they measure different things. The right comparable data point for a directional read is the original report's own ADDENDUM section 'The comparison that actually matters', which found that composed/synthesizing tools (assess_wealth, judgment_query, bodha_mechanisms_get — the same tools this run relied on) score LOW on the strict concept-coverage metric precisely because they paraphrase well rather than quote fact_ids verbatim, even though the ADDENDUM's own text concedes this may reflect BETTER user-facing prose, not worse. This run's finding (19/21 qualitatively bright, the 2 dark being technique-evasion not hollowness) is consistent with, not contradictory to, that reading: the served content is substantively rich by inspection, while a strict literal-token concept-coverage score would likely still read in the single digits if the full Omega-7 apparatus were re-run over these exact 21 live transcripts.",
+    "verdict": "No prior run of the exact qualitative rubric this task specifies exists to compare against — this run establishes that baseline going forward. Against the concept-coverage metric, this run is out of scope to judge improvement/regression (different metric, not re-run). Two concrete dark findings (DC-W-16, DC-W-21) are real, actionable content gaps: bhavat-bhavam house-amplification appears entirely absent from the live schema/concept model (confirmed via direct keyword search, 0/219 fact_category matches), and no tool composes a cross-varga (D1+D2+D11+Indu Lagna) convergence view — bodha_mechanisms_get is D1-graph-scoped only."
+  }
+}

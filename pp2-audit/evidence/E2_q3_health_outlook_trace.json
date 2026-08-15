@@ -1,0 +1,190 @@
+{
+ "agent": "E2",
+ "phase": 1,
+ "question_id": "q3",
+ "question": "What's my health outlook?",
+ "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+ "as_of": "2026-08-15",
+ "tools_called": [
+  {
+   "tool": "assess_health",
+   "params": {
+    "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+    "max_signals_per_lens": 1,
+    "budget_kb": 8
+   },
+   "raw_response_file": "E2_q3_raw_assess_health.json",
+   "client_outcome": "THIRD consecutive client-boundary failure: 139,337 chars. budget_kb_requested=8, budget_kb_applied=8, and the payload was still ~17x the requested ceiling. judgment_flags: 'budget_exceeded_after_trim: 8kb budget still exceeded after full trim.' Even max_signals_per_lens=1 did not help.",
+   "key_extracts": {
+    "verdict_clauses": [
+     "Health / Vitality assessment draws on 10 composite-ranked signal(s)...",
+     "13 yoga(s) fired on this chart overall, but none name only this domain's bhaveša/karaka(s) - shown for context, not domain-confirmed.",
+     "Šašthamša (D6) placements were consumed directly from L1...",
+     "1 domain-tagged tension(s) surfaced for this domain (of 3 chart-wide)",
+     "A dated daša-activation window is available"
+    ],
+    "D6_dignity": {
+     "Mars": "DEBILITATED in Cancer, D6 2nd house",
+     "all_others": "neutral",
+     "Moon": "Virgo D6 4th",
+     "Rahu/Ketu": "Capricorn D6 8th",
+     "Jupiter": "Taurus D6 12th"
+    },
+    "D6_ashtakavarga": "NOT PRESENT for D6 (unlike D9/D10 which both carried pinda_sarva)",
+    "kp_1st_cusp": {
+     "sign": "Aries",
+     "sign_lord": "Mars",
+     "star_lord": "Ketu",
+     "sub_lord": "Mercury"
+    },
+    "kp_6th_cusp": {
+     "sign": "Virgo",
+     "sign_lord": "Mercury",
+     "star_lord": "Sun",
+     "sub_lord": "Saturn"
+    },
+    "domain_contradiction": {
+     "tension_class": "domain_promise_vs_denial",
+     "combined_salience": 1.246312,
+     "resolution_hint_jsonb": null
+    },
+    "gochara_sweep_health": {
+     "upcoming_window_count": 17,
+     "valence_breakdown": {
+      "loss": 11,
+      "neutral": 6
+     },
+     "range": "2026-08-15..2029-08-15",
+     "top_windows": "ALL FIVE are event_class 'illness_acute', temporal_shape 'point' (SINGLE-DAY), valence loss, is_adverse true: 2029-04-13, 2028-12-13, 2029-07-18, 2027-08-21, 2028-11-21",
+     "OVER_PRECISION_CONCERN": "single-day acute-illness dates 2-3 years out, served with no probability, no confidence interval, and no is_timing_window/resolution_disclosure field in this surface"
+    },
+    "nearest_health_activation": "2024-12-08..2027-08-18 peak 2026-04-13 (proximity 0.27995) - the same undifferentiated Saturn AD span; next distinct is 2028-01-15..2029-03-16 (YOGA)",
+    "top_ranked_health_signal": "'SAT: sun derived upagraha: sign = Capricorn [ga_sensitive]' out of 767 total - again a Saturn ga_sensitive point, not a health significator",
+    "verification_pass_status": "documented_approximation",
+    "reading_checklist": "10/13; unserved: special_lagnas, yogi_avayogi, tajaka",
+    "judgment_flags": [
+     "domain_inference_requires_acharya_validation (warning): 'Affliction assessment and maraka timing require acharya review'",
+     "bearing_yogas_no_domain_match (info)",
+     "catalog_only_rows_present (info)"
+    ],
+    "MISSING": "No `reading` substance-inline block (career had one with 11/12 grounded families; health and marriage both have none). No ayurdaya/longevity leg. No ganita_medical join - I had to fetch it separately."
+   }
+  },
+  {
+   "tool": "ganita_medical_get",
+   "params": {
+    "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+    "limit": 12
+   },
+   "assessment": "CLEANEST TOOL OF THE ENTIRE SESSION - 9 rows, ~3KB, every row classically cited, every row carrying not_diagnosis:true and an explicit disclaimer.",
+   "key_extracts": {
+    "strong_indications": [
+     {
+      "graha": "Moon",
+      "sign": "Aquarius",
+      "nakshatra": "Purva Bhadrapada",
+      "strength": "strong",
+      "dosha": [
+       "kapha",
+       "vata"
+      ],
+      "organ_watch": [
+       "mind",
+       "lungs",
+       "stomach"
+      ],
+      "body_part_watch": [
+       "left_eye",
+       "breast",
+       "uterus"
+      ],
+      "nakshatra_body_part": "left_side",
+      "citation": "BPHS Ch.18 / Charaka Samhita"
+     },
+     {
+      "graha": "Sun",
+      "sign": "Capricorn",
+      "nakshatra": "Shravana",
+      "strength": "strong",
+      "dosha": [
+       "pitta"
+      ],
+      "organ_watch": [
+       "heart",
+       "eyes"
+      ],
+      "body_part_watch": [
+       "right_eye",
+       "spine",
+       "heart"
+      ],
+      "citation": "BPHS Ch.18 / Ashtanga Hridayam"
+     }
+    ],
+    "moderate": [
+     {
+      "graha": "Mars",
+      "sign": "Libra",
+      "nakshatra": "Swati",
+      "dosha": [
+       "pitta"
+      ],
+      "organ_watch": [
+       "marrow",
+       "red_blood_cells"
+      ]
+     },
+     {
+      "graha": "Mercury",
+      "sign": "Capricorn",
+      "nakshatra": "Uttara Ashadha",
+      "dosha": [
+       "tridosha"
+      ],
+      "organ_watch": [
+       "nervous_system",
+       "skin"
+      ],
+      "body_part_watch": [
+       "tongue",
+       "hands",
+       "arms"
+      ]
+     },
+     {
+      "graha": "Venus",
+      "sign": "Sagittarius",
+      "nakshatra": "Purva Ashadha",
+      "dosha": [
+       "kapha",
+       "vata"
+      ],
+      "organ_watch": [
+       "reproductive",
+       "kidneys"
+      ]
+     }
+    ],
+    "mild": [
+     "Jupiter (liver/pancreas, kapha)",
+     "Saturn (large_intestine/spleen, vata, teeth/bones/joints)",
+     "Rahu (nervous_system, vata)",
+     "Ketu (intestines, pitta+vata)"
+    ],
+    "cross_check_ok": "Moon=Aquarius/Purva Bhadrapada and Sun=Capricorn both agree with the chart's FORENSIC birth anchors.",
+    "notable": "Mercury's 'tridosha / nervous_system / TONGUE' watch-indication is independently interesting given the native's congenital stammering surfaced in the LEL during Q1 - but NO tool made that connection; I made it."
+   }
+  }
+ ],
+ "deliberately_not_called": {
+  "ganita_ayurdaya_get": "longevity/ayurdaya. Withheld by my own judgment - a person asking 'what's my health outlook' has not asked for a lifespan estimate, and delivering one unrequested would be harmful. Noting that the burden of that restraint fell entirely on me: no tool refused, gated, or warned."
+ },
+ "final_answer_text": "Here is your health picture, kept carefully inside what the chart can honestly support — and I want to say up front that **none of this is a diagnosis.** These are classical watch-indications, not medical findings, and nothing here should displace a doctor.\n\n**Your constitutional pattern.**\nTwo placements carry *strong* classical health signatures in your chart:\n- **Moon in Aquarius, Puṛva Bhādrapada nakṣatra** — aggravating **kapha and vāta**, with the classical watch falling on **mind, lungs and stomach**. This is your birth-Moon, which makes it the single most load-bearing health signature you have. In practical terms: the classical reading of this configuration is a nervous system that carries stress somatically, and a respiratory/digestive axis worth protecting.\n- **Sun in Capricorn, Śravaṇa nakṣatra** — aggravating **pitta**, watch on **heart, eyes and spine**.\n\nAt moderate strength: **Mercury in Capricorn** flags a **tridoṣa** disturbance with the watch on **nervous system, skin, tongue and hands**; **Mars in Libra** on **marrow and red blood cells** (pitta); **Venus** on **kidneys and reproductive**. Milder: Saturn on **teeth, bones, joints, large intestine** — the classical vāta-and-structure pattern that typically asserts itself from midlife onward. All of these trace to BPHS Ch.18 cross-read with Charaka Saṃhitā and Aṣṭāṅga Hṛdayam.\n\nI will flag one connection the system did not make for me: **Mercury's watch includes the tongue and the nervous system**, and your own life record notes a congenital speech pattern. Classically those sit in the same significator. I offer that as a coherence observation, not as a cause.\n\n**The one structural weak point.** In the **Ṣaṣṭhāṃśa (D6)** — the divisional chart for disease and affliction — **Mars is debilitated**, and it sits in the 2nd house of that chart. Everything else in D6 is dignity-neutral. So the D6 does not show a broadly afflicted constitution; it shows one specific weak lever, and that lever is Mars — which is also the lord of your Aries lagna. Blood, inflammation, and pitta-driven acute episodes are the classical reading of a weak Mars in the D6.\n\n**Timing — and here I must be careful with you.**\nThe transit sweep returns **17 forward health windows over the next three years: 11 adverse, 6 neutral, and none favourable.** The five strongest are all classed `illness_acute` and are served as **single calendar days**: 21 Aug 2027, 21 Nov 2028, 13 Dec 2028, 13 Apr 2029, 18 Jul 2029.\n\n**I am not going to pass those to you as predictions, and you should not treat them as such.** A single-day acute-illness date two and three years out is a precision the underlying method cannot support. They arrive with no probability attached, no confidence interval, and no calibration behind them — the system's own tier for all its timing output here is *structural prior, pre-calibration*, meaning zero recorded outcomes have ever tested it. What the cluster reasonably supports is a **directional** statement: **2028–2029 carries more health pressure in this chart than 2026–2027 does.** That is the honest resolution of that data. The dates themselves are noise dressed as signal.\n\n**Two further honest limits.**\n- Unlike your career reading, **no classical yoga in your chart bears on health specifically.** Thirteen yogas fired; none name your 1st/6th/8th lords or the Sun as kāraka. So there is no strong yoga-level verdict either way — neither a protective āyur-yoga nor an affliction yoga.\n- Your chart carries an **unresolved contradiction tagged to health** (`domain_promise_vs_denial`) with no automated adjudication. Two comparable-weight signals disagree about your vitality. That is a genuine open question in your chart, not something I can close for you.\n\n**Bottom line.** Constitutionally: a kapha-vāta Moon and a pitta Sun, with nervous-system and respiratory/digestive sensitivity as the recurring theme, plus a weak Mars in the disease-varga pointing at inflammatory and blood-related susceptibility. No catastrophic signature. **2028–2029 is the stretch to be attentive in.** Everything timing-related here is low-confidence, and I would rather tell you that than sell you five dates.",
+ "self_noted_frictions_during_phase1": [
+  "budget_kb:8 was accepted, echoed as applied, and then exceeded 17-fold. The parameter appears decorative.",
+  "assess_health served me five single-day acute-illness dates 2-3 years out with no probability and no resolution/is_timing_window disclosure. If I had relayed those verbatim - which the response's shape invites - I would have alarmed a real person over nothing. The restraint was mine, not the system's.",
+  "The health lens's top-ranked signal out of 767 was 'SAT: sun derived upagraha: sign = Capricorn'. Same degenerate ga_sensitive ranking as the marriage lens.",
+  "assess_career returns a rich `reading` block with 11/12 grounded concept families; assess_health and assess_marriage return no such block. The three sibling tools are not equivalent in depth.",
+  "ganita_medical_get was excellent and I had to know to call it - assess_health does not join it."
+ ]
+}

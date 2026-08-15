@@ -1,0 +1,93 @@
+{
+  "read": "E3-Read1: General life-pattern whole-chart read",
+  "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+  "session_date": "2026-08-15",
+  "calls": [
+    {
+      "step": 1,
+      "tool": "catalog_chart_select",
+      "params": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa"},
+      "response_summary": "ok=true, display_name=Abhisek, build_status=completed, now_context_date=2026-08-15"
+    },
+    {
+      "step": 2,
+      "tool": "synth_chart_brief_get",
+      "params": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "depth": "complete"},
+      "response_summary": "115 topic slots / 13 domains / 27 domain verdicts / 4 load-bearing / 6 calibration strata / 20 cross-domain discoveries ranked. trim_report shows verdict_summary trimmed from 27 to 13 kept even at depth=complete.",
+      "verbatim_excerpts": {
+        "ranked_themes.weaknesses": "[] (EMPTY — even though open_questions lists Marriage: conditional 4.5/10, Romantic Relationship Start: conditional 3.9/10, Property Acquisition: conditional 3.8/10, Acute Illness: conditional 4.7/10, Surgery: conditional 4.7/10 — none of these lower-grade domains are ever promoted into the 'weaknesses' bucket; the field appears structurally unused)",
+        "top_discoveries[5].statement": "Signal combustion_per_varga:is_combust with low visibility (salience 0.215)",
+        "top_discoveries[8].statement": "Signal dispositor_chain_per_varga:chain with low visibility (salience 0.227)",
+        "top_discoveries[0-3].statement": "Appears as one of many composite_state signals",
+        "dissent_flags": "5 identically-worded dissent flags (Career Setback / Entry / Change / Advancement / Business Launch) all citing the SAME signal pair (17ef271e.../36a6e81b...) and identical salience 1.38805 — the same underlying tension is being restated 5 times across event classes rather than surfaced once as a single cross-cutting contradiction"
+      }
+    },
+    {
+      "step": 3,
+      "tool": "bodha_bundle_get",
+      "params": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa"},
+      "response_summary": "DEGRADED. status=degraded, ok=false, b11_floor_passed=false. sub_tools_fired=[UCN,RM,CDLM]; sub_tools_errored=[MSR,CGM,LEL,PANCHANG,DASHA] (5 of 8 subsystems failed with error_class=tool_error). Tool's own sub_errors_note states: 'This is NOT a complete whole-chart read (B.11) — the failing subsystems are named in sub_errors; do not treat the served sections as exhaustive.'",
+      "significance": "This is the designated B.11 whole-chart-synthesis bundle tool, and on the very first call for the native's canonical chart it degrades with 5/8 subsystems erroring, including MSR (the core signal layer), DASHA and PANCHANG (both essential for any acharya-grade read). A caller following this tool as directed would either compose an incomplete reading or have to know to fall back to individual subsystem tools."
+    },
+    {
+      "step": 4,
+      "tool": "ganita_yoga_firings_get",
+      "params": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "limit": 50},
+      "response_summary": "13 fired yogas (default fired=true): sasa, budha_aditya, vasi, ardhachandra, chatra, kedara, sarasvati_yoga, dhana_yoga_2_5_9_11, dhana_yoga_house_lords, raja_yoga_kendra_trikona, anapha, jaimini_karakamsha_moon, neecha_bhanga_raja_yoga (Venus+Saturn both debilitated-then-cancelled via BPHS Ch.39 dispositor-kendra/exaltation-lord-kendra rules, with citation_human quoting the exact classical rule and rule-by-rule grounds_jsonb receipt including which sub-rules were floored for lack of a verifiable citation).",
+      "quality_note": "Good B.10 discipline: bhanga_na_reason explains classical bhanga rules that exist but are not evaluated (fabrication avoidance); nbry_rule_5_mutual_kendra explicitly floored with reason 'no confidently-verifiable classical citation'."
+    },
+    {
+      "step": 5,
+      "tool": "bodha_chart_digest_get",
+      "params": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "mode": "full"},
+      "response_summary": "msr_signal_count=10003, yoga_count=15, dosha_count=5, contradiction_count=3, weakest_graha=Venus (shadbala_total_min), top_priority_class=critical. entity_profiles top-ranked: SATURN (aggregate_score 94.1, 213 signals), JUPITER (17.3, 40 signals). convergence_domains: character 7401 signals, family 5684, relationship 3698, career 3043, spirituality 1238, health 747, transition 611.",
+      "verbatim_excerpts": {
+        "top_signals[0].signal_headline_text": "SAT: swamsa position: sign = Aquarius [ga_sensitive]",
+        "top_signals[9].signal_headline_text": "SAT: nakshatra dispositor: is cycle = false [ga_sensitive]",
+        "top_signals[15].signal_headline_text": "SAT: graha nakshatra join: varna = Mleccha [ga_sensitive]"
+      },
+      "note": "top_signals headline_text is presented as if narrative but is a mechanical template 'GRAHA: category: key = value' — raw signal_type_id vocabulary in colon-namespace form leaks through directly (e.g. 'nakshatra dispositor: is cycle', 'graha nakshatra join: varna')."
+    },
+    {
+      "step": 6,
+      "tool": "bodha_discoveries_get",
+      "params": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "limit": 15, "min_salience": 0.5},
+      "response_summary": "Outer envelope reports judgment_flags=[{code:'hollow_envelope_no_data_rows', detail:\"the served 'discoveries' field is empty for this call\"}] AND separately reports discoveries:[], total:0, returned:0 at the bottom-level keys — YET content.content.rows contains 15 fully-populated discovery objects with real discovery_id/salience/hypothesis_text. The same response simultaneously claims 'no data' and carries substantive data under a differently-named field.",
+      "verbatim_excerpts": {
+        "rows[0].surface_reading": "Signal tajik_hadda_lord:sign appears unremarkable to pattern inspection",
+        "rows[0].hypothesis_text": "Pattern tajik_hadda_lord:sign represents a chart-unusual semantic configuration whose practical significance may be underweighted",
+        "rows[0].why_an_acharya_misses_it": "Semantically unusual (distance 0.740 from chart centroid) — stands apart from the chart's dominant patterns; invisible to pattern-matching",
+        "rows[6].surface_reading (distributional_anomaly family)": "Appears as one of many composite_state signals",
+        "discovery_families[0].hypothesis_text": "Pattern tajik_hadda_lord:sign represents a chart-unusual semantic configuration whose practical significance may be underweighted"
+      },
+      "significance": "This is the tool explicitly billed (per its own description) as serving 'the system's highest-signal cross-domain observations... acharya-grade discoveries'. In practice, at min_salience=0.5, the discoveries returned are raw internal signal_type_id strings (tajik_hadda_lord:sign, kp_cuspal_significators:sub_lord, aspect_tajik:eesarpha/ithasala/manaau) wrapped in template sentences, not chart-specific interpretive prose an acharya would recognize as a discovery. None of the 15 rows contain an actual Jyotish interpretive claim (e.g. what tajik_hadda_lord:sign in Aquarius MEANS) — only the fact that the raw signal is an embedding outlier."
+    },
+    {
+      "step": 7,
+      "tool": "ganita_dasha_periods_get",
+      "params": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "ayanamsha_id": "lahiri_chitrapaksha", "as_of_date": "2026-08-15"},
+      "response_summary": "Clean 3-level current dasha stack with plain narration.",
+      "verbatim_excerpts": {
+        "narration": "You are in Mercury Mahadasha (ends 2027-08-18, age ~43) -> Saturn Antardasha (ends 2027-08-18, age ~43) -> Moon Pratyantardasha (current, ends 2026-09-17, age ~42). Saturn, your Antardasha lord, is exalted in your 7 house (Vishakha). Moon, your Pratyantardasha lord, is neutral in your 11 house (Purva Bhadrapada)."
+      },
+      "note": "POSITIVE contrast case for salience: current sub-period (Moon Pratyantardasha, ends 2026-09-17) is given first-class, plain-language prominence rather than being buried under the 17-year Mercury Mahadasha window."
+    },
+    {
+      "step": 8,
+      "tool": "graha_portrait",
+      "params": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "graha": "Mars"},
+      "response_summary": "Full 8/8 section completeness (position, dignity, functional_nature, strength, avasthas, yogas, dashas, cgm_neighborhood).",
+      "verbatim_excerpts": {
+        "verdict.narration": "Mars = 1st + 8th lord for Aries lagna (yogakaraka). Mars is neutral (Libra, 7th house) in D1. In D9: neutral (Pisces, 9th house) — and a consistent read across D1 and D9. Shadbala: 5.57 rupas vs 5.00 required — grade: strong (surplus) (+0.57 rupas). ... Next Mars Mahadasha: 2070-08-18 -> 2077-08-18 (age 86)."
+      },
+      "note": "POSITIVE contrast case for jargon: this tool self-glosses internal tokens via a 'register' field (e.g. 'parivartana' -> plain-language definition, 'dasha_of_promise' -> 'Next step: locate which dasha period carries/activates the promise') and a 'reading_contract' field pointing the caller at that glossary. Demonstrates the system CAN avoid raw jargon leaking to the end user when it tries — making the top_signals/discoveries jargon leaks (steps 5-6) an inconsistency, not a hard limitation."
+    },
+    {
+      "step": 9,
+      "tool": "judgment_query",
+      "params": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "bhava": 1, "response_format": "v3"},
+      "response_summary": "verdict_grade=convergent_moderate, composite_score=1.48. Full classical bhava-adhyaya checklist: bhava condition (from lagna AND from chandra/Sudarshana), bhavesha (Mars, neutral, 7th) vs from-chandra bhavesha (Saturn, exalted, 7th), karakas (Moon, Mercury), bearing_yogas (anapha, jaimini_karakamsha_moon domain-matched; sasa non-matched but shown), bearing_afflictions (navamsha_d9_cross_check jupiter broken_promise, Saturn temporal_malefic x2), sensitive_degree_firings (5 fired: Mars pushkara, Jupiter/Venus papa_kartari, Mercury/Sun shubha_kartari), kp_cusp_chain, gochara_sweep, reading_checklist with units_served=8/units_total=12 (ashtakavarga, special_lagnas, yogi_avayogi, tajaka explicitly disclosed as not_joined with drill pointers).",
+      "quality_note": "Genuinely acharya-grade in structure: judges from BOTH lagna and Moon (Sudarshana discipline), separates supporting (bearing_yogas) from threatening (bearing_afflictions) layers with independent floors so neither crowds out the other, discloses exactly which of the 12 classical checklist units were and were not folded into this call. This is the single most complete/non-generic artifact seen in Read 1."
+    }
+  ]
+}

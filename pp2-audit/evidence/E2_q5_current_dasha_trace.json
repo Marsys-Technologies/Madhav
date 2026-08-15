@@ -1,0 +1,139 @@
+{
+ "agent": "E2",
+ "phase": 1,
+ "question_id": "q5",
+ "question": "Explain my current dasha.",
+ "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+ "as_of": "2026-08-15",
+ "tools_called": [
+  {
+   "tool": "kala_explain_get",
+   "params": {
+    "chart_id": "482012f1-710e-4a25-994a-93821f5871aa"
+   },
+   "outcome": "ERROR: {\"ok\":false,\"error\":\"either `domain` or `bhava` is required\"}",
+   "note": "kala_now_get's own tri_plane.interpretation_ref advertises kala_explain_get as the drill target for 'Why this NOW state reads as it does - the drivers and classical grounds behind the active windows and confluence', with NO mention that a domain/bhava is mandatory. Following the server's own pointer produces a hard error. 'Explain my current dasha' is domain-less by nature."
+  },
+  {
+   "tool": "ganita_dasha_periods_get",
+   "params": {
+    "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+    "ayanamsha_id": "lahiri_chitrapaksha",
+    "as_of_date": "2026-08-15",
+    "all_levels": true,
+    "fields": "compact"
+   },
+   "assessment": "EXCELLENT. ~4KB inline, 4 rows, every row two_pass_verified with a full citation_ref naming table/system/level/chart/ayanamsha/engine version. A drill_pointer honestly explains what an as_of_date call CANNOT show.",
+   "key_extracts": {
+    "L1_Mahadasha": {
+     "lord": "Mercury",
+     "span": "2010-08-18..2027-08-18",
+     "natal_house_d1": 10,
+     "natal_sign": "Capricorn",
+     "nakshatra": "Uttara Ashadha",
+     "dignity": "neutral",
+     "shadbala": 7.55,
+     "verification": "two_pass_verified"
+    },
+    "L2_Antardasha": {
+     "lord": "Saturn",
+     "span": "2024-12-08..2027-08-18",
+     "natal_house_d1": 7,
+     "natal_sign": "Libra",
+     "nakshatra": "Vishakha",
+     "dignity": "EXALTED",
+     "shadbala": 7.83,
+     "verification": "two_pass_verified"
+    },
+    "L3_Pratyantardasha": {
+     "lord": "Moon",
+     "span": "2026-06-27..2026-09-17",
+     "natal_house_d1": 11,
+     "natal_sign": "Aquarius",
+     "nakshatra": "Purva Bhadrapada",
+     "dignity": "neutral",
+     "shadbala": 5.65
+    },
+    "L4_Sukshma": {
+     "lord": "Mercury",
+     "span": "2026-08-13..2026-08-25",
+     "natal_house_d1": 10,
+     "SANDHI_FLAG": true
+    },
+    "NARRATION_DEFECT": "The served narration reads: 'You are in Mercury Mahadasha -> Saturn Antardasha -> Moon Pratyantardasha (current, ends 2026-09-17, age ~42).' It labels the LEVEL-3 Moon period 'current' and OMITS THE LEVEL-4 MERCURY SUKSHMA ENTIRELY - the finest period actually running on the as_of_date - along with its sandhi_flag=true. The row is present in the payload; the prose drops it. A caller reading only the narration is told they are NOT in a junction period when the data says they are.",
+    "levels_available": 4
+   }
+  },
+  {
+   "tool": "ganita_dasha_lord_capability_get",
+   "params": {
+    "chart_id": "482012f1-710e-4a25-994a-93821f5871aa"
+   },
+   "assessment": "EXCELLENT. ~6KB inline. Deterministic, fully-specified warning_tier formula published in the response. Three explicit 'ratification_unavailable' honest-absence flags.",
+   "key_extracts": {
+    "Mercury_MD_lord": {
+     "house_class": "dusthana_lord",
+     "functional_lordship": "temporal_malefic",
+     "shadbala_rupa": 7.55,
+     "shadbala_percentile": 0.625,
+     "ratification_factor": 1,
+     "ratification_domains": [
+      "health"
+     ],
+     "warning_tier": "ELEVATED",
+     "warning_score": 2,
+     "reasons": [
+      "house_class=dusthana_lord",
+      "functional_lordship=temporal_malefic"
+     ]
+    },
+    "Saturn_AD_lord": {
+     "house_class": "kendra_lord",
+     "functional_lordship": "temporal_malefic",
+     "shadbala_rupa": 7.83,
+     "shadbala_percentile": 0.875,
+     "ratification_factor": 0.8,
+     "ratification_domains": [
+      "career",
+      "health",
+      "wealth"
+     ],
+     "warning_tier": "ELEVATED",
+     "warning_score": 2,
+     "reasons": [
+      "ratification_factor=0.8 (< 1.0)",
+      "functional_lordship=temporal_malefic"
+     ]
+    },
+    "Moon_PD_lord": {
+     "house_class": "kendra_lord",
+     "functional_lordship": "functional_benefic",
+     "shadbala_percentile": 0.5,
+     "warning_tier": "none",
+     "warning_score": 0
+    },
+    "Venus_for_context": {
+     "house_class": "kendra_lord",
+     "functional_lordship": "temporal_benefic",
+     "shadbala_rupa": 4.64,
+     "shadbala_percentile": 0.25,
+     "ratification_factor": 1,
+     "ratification_domains": [
+      "marriage",
+      "wealth"
+     ],
+     "warning_tier": "watch"
+    },
+    "formula_note": "warning_tier is a DETERMINISTIC composite: +1 dusthana/maraka house_class; +1 shadbala_percentile<0.34; +1 ratification_factor<1.0; +1 functional_lordship containing 'malefic'. 0=none,1=watch,2=elevated,3+=high.",
+    "CROSS_QUESTION_FINDING": "This dasha tool incidentally surfaced TWO first-order marriage facts that assess_marriage NEVER SURFACED: (1) SATURN IS EXALTED IN THE 7TH HOUSE (Libra/Vishakha, shadbala 7.83, 2nd strongest in the chart) - the single most important 7th-house placement in the chart; (2) VENUS, the 7th lord and marriage karaka, is in the BOTTOM QUARTILE of strength (percentile 0.25, warning_tier watch) and is explicitly stored as karaka for domain 'marriage'. assess_marriage's ten top-ranked 'marriage' signals were instead Saturn sahams, midpoints, upagrahas and bhrigu-nadi points. The domain tool missed what the generic tool found."
+   }
+  }
+ ],
+ "final_answer_text": "Here is your daśā, read at every level that is actually running today.\n\n**The four periods you are inside right now**\n\n| Level | Lord | Runs | The lord's own condition at birth |\n|---|---|---|---|\n| Mahādaśā | **Mercury** | 18 Aug 2010 – 18 Aug 2027 | Capricorn, **10th house**, Uttara Āṣāḍhā, dignity neutral |\n| Antardaśā | **Saturn** | 8 Dec 2024 – 18 Aug 2027 | Libra, **7th house**, Viśākhā, **exalted** |\n| Pratyantardaśā | **Moon** | 27 Jun 2026 – 17 Sep 2026 | Aquarius, **11th house**, Pūrva Bhādrapadā, neutral |\n| Sūkṣma | **Mercury** | 13 – 25 Aug 2026 | Capricorn, 10th house — **flagged as a junction (sandhi) period** |\n\n**The big frame: sixteen years of Mercury, now in its last year.**\nMercury has governed your life since August 2010 and hands over on **18 August 2027** — almost exactly one year from now. Mercury sits in your **10th house**, the house of profession and public standing, which is why this whole stretch has been career-shaped whether or not it felt that way.\n\nBut there is a real qualification, and it is the most important thing in this reading. For an Aries ascendant, Mercury rules the 3rd and the 6th, which makes it a **duṣṭhāna lord and a temporal malefic** for you. The system grades your Mercury daśā at **warning tier \"elevated.\"** In plain terms: a long period placed in a strong, visible house, but run by a lord whose functional nature is one of friction, effort, competition, and obstacle-management rather than smooth gain. Sixteen years of grinding forward in the professional sphere rather than being carried.\n\n**The current sub-period: Saturn, and this is the interesting one.**\nSince December 2024 you have been in **Saturn's antardaśā**, running to the end of the Mercury cycle. Saturn here is a genuine paradox, and I want to lay both halves out:\n- Saturn is **exalted in Libra, in your 7th house**, and it is the **second-strongest graha in your entire chart** (Ṣaḍbala 7.83). By raw capacity, this is a powerful period lord.\n- And yet Saturn is *also* a temporal malefic for Aries, and its varga-ratification comes in at **0.8 rather than 1.0** across career, health and wealth — meaning its promise is only partly confirmed in the divisional charts. The system grades it **\"elevated\"** as well.\n\nA strong graha whose delivery is not fully ratified is a very specific experience: **capability that arrives with conditions attached.** Things do get built in this period, but slowly, with weight, and with terms you did not set. That Saturn sits in your **7th** house means partnership — marital and professional — is the arena where that weight lands.\n\n**Right now, this month.**\nMoon's pratyantardaśā runs to **17 September 2026** — Moon is a *functional benefic* for you and the only one of your three period lords carrying **no warning at all**. Within it, you are currently in a **Mercury sūkṣma from 13 to 25 August that is explicitly flagged as a junction period.** Daśā junctions are classically periods of instability and unclear signal — not a time to read too much into how things feel, and not an ideal moment for irreversible decisions. It clears on the 25th.\n\n**What comes next.** Your Mercury Mahādaśā ends 18 August 2027 and Ketu's seven-year period begins. I should tell you that **Ketu is graded \"watch\" — it is the second-weakest graha in your chart** (Ṣaḍbala percentile 0.13). That is a significant handover and worth preparing for rather than meeting cold.\n\n**On confidence.** This is the most solid answer I can give you of anything you have asked. Every date and every placement here is marked `two_pass_verified` in the source and carries a full computational citation — unlike the predictive material, this is calculation, not forecast. The one caveat is interpretive: the \"elevated\" warning tiers are a deterministic four-factor score (duṣṭhāna lordship, strength percentile, varga ratification, functional malefic status), published openly and applied identically to every chart. It is a well-defined flag, not a calibrated probability of anything bad happening.\n\n**One thing I noticed and should pass on.** Looking at your period lords surfaced two facts that never appeared when I asked about marriage earlier: **Saturn is exalted in your 7th house**, and **Venus — your 7th lord and the kāraka for marriage — is in the bottom quarter of your chart for strength.** Both bear directly on partnership, and both are more consequential than anything the marriage assessment itself returned to me. If relationships are a live question for you, those two facts are where a real reading would start.",
+ "self_noted_frictions_during_phase1": [
+  "The server's own advertised drill target for 'why does my current state read this way' (kala_explain_get) hard-errors on a domain-less call, which is the exact shape of 'explain my current dasha'.",
+  "The narration string omitted the level-4 period actually running today AND its sandhi flag. I only caught it because I read the rows rather than the prose.",
+  "kala_now_get's dasha_sandhi block reported is_now_within_band:false on all four bands it computed - it only models levels 1-2 - while the level-4 row carries sandhi_flag:true. A caller trusting kala_now_get would be told they are not in a junction. The lite convention's scope limit reads as an all-clear.",
+  "The two best tools in this entire session (ganita_dasha_periods_get, ganita_dasha_lord_capability_get) are plain L1/derived-view tools. Every high-level assess_*/kala_* synthesis tool I called performed worse than them."
+ ]
+}
