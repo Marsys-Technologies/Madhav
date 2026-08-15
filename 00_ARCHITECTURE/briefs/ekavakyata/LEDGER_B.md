@@ -72,7 +72,22 @@ model: sonnet-high (lead) · sonnet-medium (builders)
 | ~00:22 | B-03 | **EKV-B-03-BUILT** | 4/4 goldens pass; sha=158377fd8; pushed; lead review PASS |
 | ~00:56 | B-01 | **EKV-B-01-BUILT** | 30/30 goldens pass; sha=3710f093e; pushed; lead review PASS — oracle + 3 consumers wired |
 | ~00:56 | B-04 | **EKV-B-04-BUILT** | 9/9 tests pass; sha=5f69734f4; pushed; lead review PASS |
-| ~07:25 | B-05 | REDISPATCH | Original agent stalled (no commits); redispatching now |
+| ~07:25 | B-05 | **EKV-B-05-BUILT** | sha=8e7880eec; pushed; lead review PASS — spec doc + signal glossary + 2 not_joined checklist units |
+
+---
+
+## **EKV-B-W1-COMPLETE** — 2026-08-16T07:30Z
+
+All five W1 lanes BUILT and pushed. Ready for E to merge.
+
+Branch list for E:
+- `ekv/b-01-dignity-oracle` — sha=3710f093e (dignity oracle + 3 consumers)
+- `ekv/b-02-nodal-aspects` — sha=692563430 (nodes 5th/9th + 3 fix sites)
+- `ekv/b-03-yoga-predicate` — sha=158377fd8 (exact 7-planet/7-house predicate)
+- `ekv/b-04-mi-honesty` — sha=5f69734f4 (6× not_assessed + isempty guard)
+- `ekv/b-05-spec-pack` — sha=8e7880eec (spec doc + glossary + checklist units)
+
+LEASE EXCEPTION NOTE (B-05): Builder wrote `register_d8_assess_domain.ts` (Stream A territory) for the 2 F-107/F-108 not_joined checklist entries. Pre-authorized by B-05's spec assignment; change is purely additive disclosure; Stream A lead informed via this marker. Python-side deliverables (`signal_register_glossary.py`) are in B's lease.
 
 ---
 
@@ -84,7 +99,7 @@ model: sonnet-high (lead) · sonnet-medium (builders)
 | B-02 | ekv/b-02-nodal-aspects | **BUILT** ✓ sha=692563430 | 14/14 pass incl. Ketu-Leo→Sag 5th ✓ | pending verifier |
 | B-03 | ekv/b-03-yoga-predicate | **BUILT** ✓ sha=158377fd8 | 4/4 pass: 4-house non-fire ✓ Kedara fires ✓ | pending verifier |
 | B-04 | ekv/b-04-mi-honesty | **BUILT** ✓ sha=5f69734f4 | 9/9 pass: 6× not_assessed ✓ isempty guard ✓ | pending verifier |
-| B-05 | ekv/b-05-spec-pack | REDISPATCHING | A-16 spec delivered; checklist units present | pending |
+| B-05 | ekv/b-05-spec-pack | **BUILT** ✓ sha=8e7880eec | spec+glossary+checklist: A-16 exit test FORENSIC-grounded ✓ | pending verifier |
 | B-06 | — | W2 — waiting | muhurta honesty | — |
 | B-07 | — | W2 — waiting | ph_nimitta tag | — |
 | B-08 | — | W3 — waiting on A EKV-KERNEL-API-FROZEN + B-05 | ranker | — |
