@@ -27,7 +27,7 @@ Lane worktrees and branches:
 | A-05 | ekv/a-05-enum-fix | .claude/worktrees/ekv-a-05 | VERIFIED |
 | A-06 | ekv/a-06-gochara-disclosure | .claude/worktrees/ekv-a-06 | VERIFIED |
 | A-09 | ekv/a-09-sara-kernel | .claude/worktrees/ekv-a-09 | IN-PROGRESS (tool conversion) |
-| A-11 | ekv/a-11-bundle-principal | .claude/worktrees/ekv-a-11 | IN-PROGRESS (builder running) |
+| A-11 | ekv/a-11-bundle-principal | .claude/worktrees/ekv-a-11 | VERIFIED |
 | A-15 | ekv/a-15-ayanamsha-wire | .claude/worktrees/ekv-a-15 | VERIFIED |
 
 ## HEARTBEATS
@@ -47,6 +47,11 @@ Lane worktrees and branches:
   - A-05: query_insights.ts filters use lowercase 'confirmed'/'partial'/'denied' vs DB uppercase CONFIRMED/PARTIAL/REFUTED; UNRESOLVED absent ✓
   - A-06: gochara_sweep.top_windows in register_d8_assess_domain.ts lacks withResolutionDisclosure; function exists in register_gochara_windows.ts ✓
 - NEXT: A-01 worktree FIRST (hot-file rule), then parallel A-02..A-06
+
+### 2026-08-16 HB-5 ~20:50Z
+- A-11 (53929cb2e) DIFF-REVIEWED + VERIFIED: PrimitiveResult typed, params wrapped {params} (F-127), upstream_status surfaced (F-30/74), error classification added; only bundle_adapters.ts touched (A-lease clean); pre-existing TS errors only
+- A-09 assess_* conversion COMMITTED (ceadae8cb): buildAssessResponse helper + 4 replacements; verdict_skeleton+activating_dasha now in evidence layer (F-56/F-111 closed for assess_*)
+- A-09 NEXT: judgment_query → kala_now/explain/ahead/upaya conversion in registry_bridge.ts
 
 ### 2026-08-16 HB-4 ~20:20Z
 - Context resumed after compaction; A-11 builder still running (stash-verify step in progress)
@@ -115,6 +120,7 @@ EKV-A-04-VERIFIED — 39bc414f pushed ekv/a-04-lel-calibration — fetchCalibrat
 EKV-A-05-VERIFIED — 52abb3d6 pushed ekv/a-05-enum-fix — CONFIRMED/PARTIAL/REFUTED/UNRESOLVED uppercase enum fix
 EKV-A-06-VERIFIED — 4cdf3dfc pushed ekv/a-06-gochara-disclosure — withSweepDisclosure on d8+d9 top_windows, bare-point rows suppressed
 
+EKV-A-11-VERIFIED — 53929cb2e pushed ekv/a-11-bundle-principal — PrimitiveResult typed + params wrapped {params} (F-127) + upstream_status surfaced (F-30/74) + error classification
 EKV-A-15-VERIFIED — 08ce27108 pushed ekv/a-15-ayanamsha-wire — 10 na()→resolveChartFactsAyanamsha() replacements in register_p1_aliases.ts, local AYANAMSHA_ALIAS+na() deleted
 
 EKV-KERNEL-API-FROZEN — dcc2fb5a pushed ekv/a-09-sara-kernel — SaraKernel/SaraPromiseJoin/CompositionReport/SaraLayeredContent/assembleSaraContent stable in response_budget.ts
