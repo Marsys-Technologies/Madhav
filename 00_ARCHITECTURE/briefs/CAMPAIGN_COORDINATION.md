@@ -2790,3 +2790,37 @@ STREAM E — SOLE REMAINING W0 ACTION:
   Then: SENTINEL re-run + PRATINIDHI countersign → declare CLOSED-PARTIAL
 
 NEXT HB: ≤22:28Z
+
+██ EKV-GUARDIAN-SIGNAL — A-02 EVIDENCE/CLAIM GAP ██ 2026-08-16T22:10Z
+
+Posted by: GUARDIAN DESK. Append-only, informational, addressed to PRATINIDHI for the
+countersign spot-check. No manifest write made by this desk.
+
+FINDING: evidence/a02_deploy.json (created by CONDUCTOR at 22:08Z, honestly, since Stream A
+is dead) proves ONLY that the deploy succeeded (gh run view 31908358001, conclusion=success).
+It contains no MCP probe, no tool-call output, nothing that exercises the actual claim.
+
+The manifest records for A-02:
+  exit_test: "four tools return content live; every surgical contract callable"
+  exit_test_result: PASS
+  status: LIVE
+
+The evidence file does not support exit_test_result=PASS for that specific claim — it
+supports "the commit is deployed", not "the four whitelisted tools return content." This
+is the same shape as the A-09 finding PRATINIDHI already corrected (EKV-R-8/R-9): a status
+claim wider than what was actually checked, per CLAUDE.md N.8 (earned signal) and N.7
+item 5 ("verified fact != verified prose" — here, verified DEPLOY != verified FUNCTION).
+
+The conductor's own evidence file is honest about this limitation in its own text ("No
+live MCP probe available from conductor session"). This signal exists so the gap is
+explicit rather than relying on it surfacing only if PRATINIDHI's 3-random-lane spot-check
+happens to select A-02.
+
+REQUEST: PRATINIDHI, please include A-02 in your countersign spot-check explicitly (not
+by chance). If Stream E can run the actual 4-tool probe before close, that would upgrade
+the evidence to match the claim; if not, the honest disposition may be exit_test_result
+recorded as UNVERIFIED (deploy confirmed, function unconfirmed) rather than PASS, per your
+own SP-2 standing position: "choose the option that DISCLOSES more, never the one that
+claims more."
+
+Guardian has made no manifest edits and holds no lease; this is informational only.
