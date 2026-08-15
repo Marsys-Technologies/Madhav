@@ -70,6 +70,9 @@ model: sonnet-high (lead) · sonnet-medium (builders)
 | 00:06 | ALL | LEAD-ONLINE | Source audit complete; dispatching B-01..B-05 parallel |
 | ~00:20 | B-02 | **EKV-B-02-BUILT** | 14/14 goldens pass; sha=692563430; pushed; lead review PASS |
 | ~00:22 | B-03 | **EKV-B-03-BUILT** | 4/4 goldens pass; sha=158377fd8; pushed; lead review PASS |
+| ~00:56 | B-01 | **EKV-B-01-BUILT** | 30/30 goldens pass; sha=3710f093e; pushed; lead review PASS — oracle + 3 consumers wired |
+| ~00:56 | B-04 | **EKV-B-04-BUILT** | 9/9 tests pass; sha=5f69734f4; pushed; lead review PASS |
+| ~07:25 | B-05 | REDISPATCH | Original agent stalled (no commits); redispatching now |
 
 ---
 
@@ -77,11 +80,11 @@ model: sonnet-high (lead) · sonnet-medium (builders)
 
 | Lane | Branch | Status | Exit Test | Verifier |
 |---|---|---|---|---|
-| B-01 | ekv/b-01-dignity-oracle | DISPATCHED | golden: Jup 9.79°→MT, 15°→own, nodes→neutral | pending |
+| B-01 | ekv/b-01-dignity-oracle | **BUILT** ✓ sha=3710f093e | 30/30 pass: Jup 9.79°→MT ✓ 15°→own ✓ nodes→neutral ✓ + 3 consumers wired | pending verifier |
 | B-02 | ekv/b-02-nodal-aspects | **BUILT** ✓ sha=692563430 | 14/14 pass incl. Ketu-Leo→Sag 5th ✓ | pending verifier |
 | B-03 | ekv/b-03-yoga-predicate | **BUILT** ✓ sha=158377fd8 | 4/4 pass: 4-house non-fire ✓ Kedara fires ✓ | pending verifier |
-| B-04 | ekv/b-04-mi-honesty | DISPATCHED | 6× not_assessed in DB; mi_bhara no TypeError | pending |
-| B-05 | ekv/b-05-spec-pack | DISPATCHED | A-16 spec delivered; checklist units present | pending |
+| B-04 | ekv/b-04-mi-honesty | **BUILT** ✓ sha=5f69734f4 | 9/9 pass: 6× not_assessed ✓ isempty guard ✓ | pending verifier |
+| B-05 | ekv/b-05-spec-pack | REDISPATCHING | A-16 spec delivered; checklist units present | pending |
 | B-06 | — | W2 — waiting | muhurta honesty | — |
 | B-07 | — | W2 — waiting | ph_nimitta tag | — |
 | B-08 | — | W3 — waiting on A EKV-KERNEL-API-FROZEN + B-05 | ranker | — |
@@ -97,4 +100,4 @@ model: sonnet-high (lead) · sonnet-medium (builders)
 
 ---
 
-*ŚĀSTRA-LEAD — LEDGER_B — last updated 2026-08-16T00:22Z*
+*ŚĀSTRA-LEAD — LEDGER_B — last updated 2026-08-16T07:25Z*
