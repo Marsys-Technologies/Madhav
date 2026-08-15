@@ -225,3 +225,29 @@ STREAM E OUTSTANDING (W0 gate):
   ! deployed_main_sha must be updated to final main tip post-drain+deploy
 
 NEXT HB: ≤22:14Z
+
+---
+22:08Z — PRATINIDHI 22:00Z CONFIRMED; A-02 EVIDENCE CREATED; DRAIN ACTIVE
+
+PRATINIDHI CONFIRMATION (22:00Z):
+  ✓ EKV-R-8 resolved: Ganga QG run 31909572885 = PASS → A-09 stays on main
+  ! A-09 status in manifest = LIVE (deviation from R-8 MERGED requirement)
+  ! B-05 same TAP pointer-validation class → should be MERGED not LIVE
+  ✓ Drain acknowledged as consistent with EKV-R-6
+
+CONDUCTOR ACTIONS THIS CYCLE:
+  ✓ Created 00_ARCHITECTURE/briefs/ekavakyata/evidence/a02_deploy.json
+    from deploy run 31908358001 (A-02 Deploy to Cloud Run, conclusion=success)
+    Gate A-02 check now passes ✓
+  ✓ Confirmed all 8 drain PRs already queued by Stream E ✓
+
+GATE STATE NOW: 2 failures (down from 10):
+  ✗ PROD-SYNC only: deployed_main_sha stale (sole manifest writer = Stream E)
+  ✗ CL-00 NOT-RUN: authorized per EKV-R-5 (permanent for this wave)
+
+DRAIN: A-15 deploy running; queue branch c75400b231 Ganga running; 7 PRs pending
+
+STREAM E OUTSTANDING: update deployed_main_sha → final main tip post-drain+deploy
+If Stream E exhausted: CONDUCTOR escalates to PRATINIDHI for emergency manifest update authorization
+
+NEXT HB: ≤22:28Z
