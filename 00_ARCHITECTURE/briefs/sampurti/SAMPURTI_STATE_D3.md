@@ -3513,3 +3513,104 @@ Call: `gochara_forecast_get(chart=482012f1, domain=marriage, date_range=2025-01-
 
 RUN-TERMINAL: SESSION-Δ3-PENDING-45 (2h sanity pass — 88gh6 A8 RUNNING T+202min, 10/27 classes stage5 CONFIRMED PROGRESS; FIELD-INTEGRATED NOT POSTED; R1 PASS×25; supervisor relaunches on ^^██ MARKER-POSTED: FIELD-INTEGRATED ██ sentinel or 2h)
 
+
+---
+
+## SESSION-46 (2026-08-15 ~04:40Z UTC / 10:10 IST)
+
+**Invoked by:** supervisor (2h sanity pass — "gate CLOSED but 7200s since last launch"; FIELD-INTEGRATED not yet posted)
+
+CONDUCTOR-HEARTBEAT: 2026-08-15T04:41Z pid=68984 host=local session=Δ3-s46
+
+### STEP-0 LIVENESS
+- Stored PID (dh-d3-logs/current_conductor.pid): 67284 = `/bin/bash /Users/Dev/shad_overnight/run_dh_d3.sh` (supervisor bash, alive, NOT a peer conductor)
+- `pgrep -f "CONDUCTOR of SAMPŪRTI-Δ3"` = NONE (excluding 67284 and MY_PID 68984)
+- **SOLE_CONDUCTOR confirmed** ✓ — PID 68984 written to dh-d3-logs/current_conductor.pid
+
+### STEP-0 HYGIENE
+| Execution | Status | Notes |
+|-----------|--------|-------|
+| 88gh6 | **RUNNING (runningCount=1)** | A8 full build — T+~320min at session open; LIVE BUILD, touch nothing |
+| All prior (dkjgw/b72pp/bm4qp/qcrrm/...) | Completed | No new dispatches |
+
+**88gh6 status at session open:** RUNNING, completionTime=NONE. T+~320min from 23:20:34Z start.
+
+### STEP-0 COORDINATION
+- Last commit on campaign-coordination: `2b01a759e` = Δ3 session-45 advisory (02:42Z Aug 15)
+- **No FIELD-INTEGRATED sentinel** at line-start (`^^██ MARKER-POSTED: FIELD-INTEGRATED ██`) — confirmed
+- No new Δ1 entries since session-45
+
+### FM-09 RECONCILE (session-45 → session-46)
+| Surface | Session-45 | Session-46 |
+|---------|-----------|-----------|
+| main HEAD | 46b0c2cc8 (F-wave all merged) | **UNCHANGED** |
+| 88gh6 | RUNNING T+202min; 10/27 stage5 classes (Δ1 log) | RUNNING T+~320min; **19/26 effective classes done** (Δ1 log T+296) |
+| FIELD-INTEGRATED | NOT POSTED | NOT POSTED |
+| Δ1 conductor attempt 2 | RUNNING (log 02:40Z) | RUNNING — log last modified **09:47 IST** (T+297min); sleeping until T+340=10:30 IST |
+| ETA FIELD-INTEGRATED | ~08:22Z (per session-45 20min/class estimate) | **~10:46-11:00 IST** (revised: Δ1 said "~60min" at T+296=09:46 IST; actual rate ~12.5min/class) |
+
+### FM-21 ASSESSMENT (88gh6, T+~320min)
+- Δ1 conductor attempt 2 log at T+296 (09:47 IST): **"T+296: 19/26 effective classes done. 7 remaining. ~60 min to completion. Polling T+340."**
+- 7 remaining classes: relocation, romantic_start, separation, spiritual_turn, surgery, travel_event + 1 unknown
+- Δ1 conductor sleeping until T+340 (10:30 IST); next poll will catch ~21/26 classes done
+- **FM-28 confirmed: progressing, not hung. DO NOT ABORT.**
+- Δ3 cannot act (NO DB scope); Δ1 has full FM-21 authority
+
+### FM-09 RATE ANALYSIS (updated from Δ1 log data)
+| Checkpoint | Time UTC | Classes Done | Rate |
+|-----------|---------|-------------|------|
+| T+101 | 01:01Z | 0 (stage5 just started) | — |
+| T+122 | 01:22Z | 3 classes | — |
+| T+154 | 01:54Z | 6 classes | ~10.7min/class |
+| T+200 | 02:40Z | 10 classes | ~11.5min/class |
+| T+246 | 03:26Z | 15 classes | ~9.6min/class |
+| T+296 | 04:16Z | 19/26 effective | ~12.5min/class |
+
+Rate consistent ~10.5-12.5min/class. Δ1 estimate "~60min" at T+296 → ETA T+356 = 23:20:34Z + 5h56min = **05:16Z = 10:46 IST**.
+
+### R1 MCP PROOF — 26th Pass (04:41Z Aug 15): PASS ✓
+
+Call: `gochara_forecast_get(chart_id=482012f1..., domain=marriage, date_range={start:2025-01-01, end:2026-01-01})`
+- `coverage.event_classes_covered`: 27 classes ✓
+- `coverage.domains_not_covered`: [] ✓
+- `coverage.coverage_quality.tier`: "rich" ✓
+- `covered_class_count`: 27, `covered_domain_count`: 13 ✓
+- `sweep_completeness.substeps_committed`: 270 (asset: ka_gochara_v3_century_materialize) ✓
+- No S4-05 refusal ✓
+- `windows`: 0 — honest empty (26th consecutive consistent result) ✓
+
+**R1 PROOF STATUS: PASS** (26th consecutive — sessions 15/19-46). R1 fix stable in production.
+
+### LANE STATUS (session-46)
+| Lane | Status | Notes |
+|------|--------|-------|
+| R1 (SEV-1) | MERGED + MCP PROOF PASS×26 | 26th pass 04:41Z session-46; 27 classes, 270 substeps, no S4-05 |
+| R2 (SEV-2) | DEPLOYED; MCP PROOF gated | Gated on FIELD-INTEGRATED |
+| R3 (CI guard) | DONE ✓ | commit 66e35c216 |
+| R4 (G-P4) | READY-ON-SIGNAL | probe_sampurti_d3_r2_r4.py committed; gated on FIELD-INTEGRATED |
+| R5 (27-class CI) | MERGED + DEPLOYED ✓ | PR #1280 |
+
+### SESSION-46 CLOSE
+
+**Work this session:**
+- STEP-0 complete (liveness/hygiene/coordination/reconcile) ✓
+- FM-09: 88gh6 T+296 = 19/26 effective classes done; rate ~12.5min/class; Δ1 estimate "~60min" → ETA **10:46 IST** ✓
+- FM-21 assessment: PROGRESSING, not hung; Δ1 owns recovery; FM-28 applies ✓
+- R1 MCP proof 26th pass: PASS ✓
+- FIELD-INTEGRATED: NOT POSTED (ETA imminent ~10:46 IST)
+
+**WHAT ONE RELAUNCH FINISHES:** When `^^██ MARKER-POSTED: FIELD-INTEGRATED ██` posts:
+1. `python3 00_ARCHITECTURE/briefs/sampurti/probe_sampurti_d3_r2_r4.py --chart-id 482012f1-710e-4a25-994a-93821f5871aa --mcp-key $MARSYS_MCP_KEY`
+2. R2: verify marriage in roots (resolution='era', is_timing_window=true nested under era parent) → paste MCP proof
+3. R4: verify field_snapshot_id=kfs_* (not 'field_not_yet_built'); prospective row shown; A5 facet live → paste MCP proof
+4. Append both proofs to γ ledger (sampurti/vyakhya append-only)
+5. Post SESSION-DONE-Δ3 to coordination → RUN-TERMINAL: SESSION-Δ3-COMPLETE
+
+**NEXT-ACTION (session-47):**
+1. Check `^^██ MARKER-POSTED: FIELD-INTEGRATED ██` (genuine sentinel at line-start)
+2. Check 88gh6 completion (ETA ~10:46 IST — may already be COMPLETED at next launch)
+3. If FIELD-INTEGRATED posted: run probe script → R2+R4 proofs → γ ledger → SESSION-DONE-Δ3
+4. Check Δ1 attempt_2.log for T+340/T+380 progress entries
+5. R1 27th pass
+
+RUN-TERMINAL: SESSION-Δ3-PENDING-46 (2h sanity pass — 88gh6 A8 RUNNING T+~320min, 19/26 effective stage5 classes CONFIRMED PROGRESS; FIELD-INTEGRATED NOT POSTED; ETA ~10:46 IST; R1 PASS×26; supervisor relaunches on ^^██ MARKER-POSTED: FIELD-INTEGRATED ██ sentinel or 2h)
