@@ -1327,3 +1327,40 @@ C-03 is still MERGED in manifest. Gate requires LIVE or honestly parked. Conduct
 2. deployed_main_sha → final main tip after ALL drain PRs land
 3. CL-00: manifest null (authorized NOT-RUN per EKV-R-9; wave closes PARTIAL)
 
+
+### HB-035 — 2026-08-17T04:42Z / ~10:12+0530 (Cycle 33 — A-02 evidence upgraded; manifest audit; gate 3 blockers)
+
+**Conductor HB 23:08Z (commit `3a95b8338`) — FM-09 re-derived:**
+
+**A-02 EVIDENCE UPGRADED (significant):**
+Conductor ran live 4-tool MCP probe against production:
+1. `list_classical_texts`: 16 texts returned ✓ (3282ms)
+2. `search_classical_texts`: 0 rows — honest empty, tool callable ✓ (33282ms)
+3. `find_verses_about`: 0 rows — honest empty, tool callable ✓ (21276ms)
+4. `read_chapter` (bphs ch.1): content returned ✓ (43ms)
+
+`a02_deploy.json` now upgraded to include both deploy proof AND live function probe. Per §N.8: `exit_test_result=PASS` is NOW EARNED (deploy confirmed + function verified). GUARDIAN EKV-R-11 finding RESOLVED at evidence level. PRATINIDHI explicit spot-check still required for independent countersign.
+
+**Manifest audit (FM-09 direct read, `/Users/Dev/Vibe-Coding/Apps/Madhav/00_ARCHITECTURE/briefs/ekavakyata/ekv_manifest.json`):**
+| Lane | manifest.status | Required status | Action needed |
+|------|----------------|----------------|---------------|
+| C-03 | MERGED | HANDOFF | E must set HANDOFF + handoff_note |
+| A-09 | LIVE | MERGED | E must correct per EKV-R-8 |
+| A-15 | LIVE | MERGED | E must correct per EKV-R-8 parity + GUARDIAN flag (pending PRATINIDHI ruling) |
+| deployed_main_sha | 7a1c79bf4da0 | b1ea4cdab353 | E: update after ALL drain PRs land |
+
+**SENTINEL NOTE on A-15 LIVE vs MERGED:** E currently has A-15=LIVE in manifest. GUARDIAN flagged this as incorrect per EKV-R-8 consistency. PRATINIDHI has not yet explicitly ruled on the inherited-TAP-failure question. Until PRATINIDHI rules, EKV-R-8's categorical "ALL gates pass" language keeps A-15 at MERGED.
+
+**W0 gate re-run (FM-09, ~04:42Z IST):**
+```
+EKV-GATE: FAILED
+  ✗ PROD-SYNC: manifest deployed_main_sha '7a1c79bf4da0' != origin/main tip b1ea4cdab353
+  ✗ CL-00 cheap subset not PASS (got None) — authorized NOT-RUN per EKV-R-9
+  ✗ C-03: status 'MERGED' — wave lanes must be LIVE or honestly parked
+3 blocking problem(s). Terminal marker MUST NOT be posted.
+```
+
+Note: conductor's 23:08Z gate run showed only 2 blockers (PROD-SYNC + CL-00). SENTINEL gate shows 3 (adds C-03). Discrepancy may be timing of manifest state at time of conductor run vs SENTINEL run. SENTINEL's FM-09 direct manifest read confirms C-03=MERGED at ~04:42Z IST.
+
+**PR #1287 noted (no ledger action beyond HB-034):** `fix(lel): standing_predictions_read crash` — not a drain PR; merged via merge queue alongside EKV drain batch. Conductor confirmed it is not an EKV lane. Drain 6 PRs still remaining.
+
