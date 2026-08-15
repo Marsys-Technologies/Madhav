@@ -26,6 +26,7 @@ Lane worktrees and branches:
 | A-04 | ekv/a-04-lel-calibration | .claude/worktrees/ekv-a-04 | VERIFIED |
 | A-05 | ekv/a-05-enum-fix | .claude/worktrees/ekv-a-05 | VERIFIED |
 | A-06 | ekv/a-06-gochara-disclosure | .claude/worktrees/ekv-a-06 | VERIFIED |
+| A-08 | ekv/a-08-promise-spine | .git/.claude/worktrees/ekv-a-08 | VERIFIED |
 | A-09 | ekv/a-09-sara-kernel | .claude/worktrees/ekv-a-09 | VERIFIED |
 | A-11 | ekv/a-11-bundle-principal | .claude/worktrees/ekv-a-11 | VERIFIED |
 | A-15 | ekv/a-15-ayanamsha-wire | .claude/worktrees/ekv-a-15 | VERIFIED |
@@ -47,6 +48,18 @@ Lane worktrees and branches:
   - A-05: query_insights.ts filters use lowercase 'confirmed'/'partial'/'denied' vs DB uppercase CONFIRMED/PARTIAL/REFUTED; UNRESOLVED absent ✓
   - A-06: gochara_sweep.top_windows in register_d8_assess_domain.ts lacks withResolutionDisclosure; function exists in register_gochara_windows.ts ✓
 - NEXT: A-01 worktree FIRST (hot-file rule), then parallel A-02..A-06
+
+### 2026-08-16 HB-7 ~21:40Z
+- A-08 VERIFIED: bea9d379f pushed ekv/a-08-promise-spine — interpretPactJoin 20/20 tests green; INV-1 + one-voice contract met; 2 new platform-mcp/** files only
+- W1 summary: A-08/A-09/A-11/A-15 all VERIFIED and on origin
+- NEXT: assess A-07 (domain charter) — reading SHASTRA_MAP + platform source to scope
+- W2 candidates: A-10 middleware, A-12 INV-2 determinism, A-13 error boundary, A-17 kala_upaya remedy scoping
+
+### 2026-08-16 HB-6 ~21:20Z
+- A-08 worktree confirmed at `.git/.claude/worktrees/ekv-a-08` (branch `ekv/a-08-promise-spine`, tip 55a476fbd); EKV plan doc not found as file — scoping from plan summary in LEDGER_A
+- A-08 scope confirmed: new `platform-mcp/src/lib/promise_spine.ts` (pure `interpretPactJoin` mapper) + colocated tests; no hot-file touch (registry_bridge.ts/response_budget.ts off-limits — A-09 only per LEASES.json)
+- BUILDING promise_spine.ts now
+- NEXT: commit A-08, push, add lane to LEDGER table, post VERIFIED marker, then assess A-07
 
 ### 2026-08-16 HB-5 ~20:50Z
 - A-11 (53929cb2e) DIFF-REVIEWED + VERIFIED: PrimitiveResult typed, params wrapped {params} (F-127), upstream_status surfaced (F-30/74), error classification added; only bundle_adapters.ts touched (A-lease clean); pre-existing TS errors only
@@ -78,6 +91,13 @@ Lane worktrees and branches:
 - registry_bridge.ts FROZEN (A-09 only from here)
 - tool_name_bridge.ts FROZEN (per hot-file rule)
 - NEXT: hand W0 branches to Stream E for merge/deploy; begin W1 planning (A-07 charter, A-08 spine, A-09 kernel API freeze)
+
+### A-08 — One-Voice Spine: interpretPactJoin (F-110/49/51-pair) [VERIFIED]
+- Commit: bea9d379f | Branch: ekv/a-08-promise-spine → pushed
+- platform-mcp/src/lib/promise_spine.ts: interpretPactJoin pure function + SaraPromiseJoin canonical type
+- platform-mcp/src/lib/promise_spine.test.ts: 20/20 green (INV-1, one-voice, null/invalid, denial variants)
+- Lease: 2 new files in platform-mcp/** only; no hot-file touch
+- Status: BUILT → 20-test pass → PUSHED → awaiting E merge
 
 ## W0 LANE STATUS
 
@@ -123,6 +143,8 @@ EKV-A-06-VERIFIED — 4cdf3dfc pushed ekv/a-06-gochara-disclosure — withSweepD
 EKV-A-09-VERIFIED — ceadae8cb pushed ekv/a-09-sara-kernel — F-56/F-111: buildAssessResponse() moves verdict_skeleton+activating_dasha to evidence layer for all 4 assess_* tools; judgment_query excluded (named sections + hardFloor already correct); SaraKernel/assembleSaraContent API frozen
 EKV-A-11-VERIFIED — 53929cb2e pushed ekv/a-11-bundle-principal — PrimitiveResult typed + params wrapped {params} (F-127) + upstream_status surfaced (F-30/74) + error classification
 EKV-A-15-VERIFIED — 08ce27108 pushed ekv/a-15-ayanamsha-wire — 10 na()→resolveChartFactsAyanamsha() replacements in register_p1_aliases.ts, local AYANAMSHA_ALIAS+na() deleted
+
+EKV-A-08-VERIFIED — bea9d379f pushed ekv/a-08-promise-spine — interpretPactJoin pure mapper (pact_status→SaraPromiseJoin); INV-1 enforced (denied→stance:contradicts); 20/20 tests; one-voice story: kala_ahead × kala_upaya reconciled verdict via shared pact call
 
 EKV-KERNEL-API-FROZEN — dcc2fb5a pushed ekv/a-09-sara-kernel — SaraKernel/SaraPromiseJoin/CompositionReport/SaraLayeredContent/assembleSaraContent stable in response_budget.ts
 
