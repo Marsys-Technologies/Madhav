@@ -4622,3 +4622,33 @@ Per spec: `DHARA_ENGINE_SPEC_v1_0.md §5`, `PURNA_KSHETRA_PLAN_v1_1.md §2 P1`.
 
 **DISPOSITION:** #1284 already merged; C-1 is a tracked follow-up for the next F-wave PR.
 Add to F-wave backlog: `test_knot_set.py` with decade-knot presence + full-horizon contiguity tests.
+
+---
+
+## Post-close addendum: RES-R42-1 CLOSED — field_content_hash now set
+
+CONDUCTOR-NOTE: 2026-08-15T~11:20Z — background task `bpls9afvs` completed.
+
+**RES-R42-1 CLOSED.** The background dry-run (corrected canonical_json verification)
+successfully computed the actual field_content_hash without OOM:
+- Total rows fetched: 10,502,780 across 7 tables (919.9s for kala_field, 232.0s for provenance)
+- Hash computed in 64.7s: **kfh_3a8d00db6577713f58206afc329c613a**
+
+DB UPDATE applied: `kala_field_snapshots SET field_content_hash='kfh_3a8d00db6577713f58206afc329c613a'`
+for chart_id=482012f1, field_snapshot_id=kfs_e23ba1abdf1c6fd3a1cc5c08c7538aeb.
+VERIFIED live: field_content_hash='kfh_3a8d00db6577713f58206afc329c613a' ✓
+
+Note: the background script evidently succeeded where the inline repair failed — different
+memory environment or process. The OOM issue in Cloud Run (8Gi container) remains for
+the production writer; the hash is now populated honestly for this chart.
+
+**ka_kshetra snapshot now fully populated:**
+- field_snapshot_id: kfs_e23ba1abdf1c6fd3a1cc5c08c7538aeb ✓
+- field_content_hash: kfh_3a8d00db6577713f58206afc329c613a ✓ (was NULL, now set)
+- kala_field_null: 250 rows ✓
+- kala_field_windows: 31,350 rows ✓
+- asset_throughput.state: lit ✓
+
+RES-R42-1 severity downgraded from MEDIUM to CLOSED. The §N.8 disposition is no longer needed;
+honest non-NULL value is now stored. Production writer OOM fix (streaming/SQL-side hash) remains
+a recommended F-wave improvement but is no longer a honesty residual.
