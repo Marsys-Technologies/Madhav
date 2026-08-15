@@ -2323,3 +2323,5 @@ COST ENVELOPE: target $280 · warn $340 · hard cap $420
 CLOSE TARGET: 07:00 IST (01:30Z) — ekv_gate.py verify --wave 0 AND --wave 1 exit 0
 + SENTINEL re-run + PRATINIDHI countersign → RUN-TERMINAL posted
 
+
+EKV-CONDUCTOR-HB 2026-08-16T19:10Z — PRATINIDHI: LIVE (ledger seeded, 8 standing positions, ekv/pratinidhi-role pushed); SENTINEL: starting; Streams A-E: active processes (initializing — no lane output yet); W0 deadline: 21:06Z. Next HB ≤19:30Z.
