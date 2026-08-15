@@ -3520,6 +3520,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
               if (timing) timing['current'] = kept
             },
             minKeep: 3,
+            hardFloor: true, // F-51: answer-bearing timing — PASS 2 must not zero this while catalog rows survive
             recover: { instrument: 'ganita_dashas_get', hint: 'full current-period rows across all dasha levels (this call kept a lean slice).' },
             label: 'checklist.timing_hooks.current',
           },
@@ -3550,6 +3551,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
               timing['mahadasha_windows_by_graha'] = regrouped
             },
             minKeep: 4,
+            hardFloor: true, // F-51: answer-bearing timing — PASS 2 must not zero this while catalog rows survive
             recover: { instrument: 'ganita_dashas_get', hint: 'full multi-level dasha timeline for the bhāveśa/kāraka(s) (this call kept a lean slice of mahadasha windows only).' },
             label: 'checklist.timing_hooks.mahadasha_windows_by_graha',
           },
