@@ -77,8 +77,9 @@ Must show C-01/C-02 migration names with applied_at AFTER deploy timestamp.
 Gate PROD-SYNC fix applied: gate compares `manifest["deployed_main_sha"]` vs `git rev-parse origin/main`.
 E writes `deployed_main_sha` after each merge+deploy cycle.
 
-**Current deployed_main_sha:** `7a1c79bf4da000f1c09f5a468d24ce262afcfcc0` (A-15 deploy ~22:00Z)
-**Current origin/main:** `c75400b231f95b2933f736d1630cc5b920fee8e9` (A-11 merged 21:55Z; CI in_progress; deploy pending)
+**FINAL deployed_main_sha:** `b2dc6be8ebbbeb72b5bc5df70ac5b8b4fbcace9f` (A-13 FINAL drain, deploy run 31913806187 web+MCP SUCCESS ~23:15Z)
+**FINAL origin/main:** `b2dc6be8ebbbeb72b5bc5df70ac5b8b4fbcace9f` (A-13 merged ~22:55Z)
+**PROD-SYNC: PASS** (deployed_main_sha == origin/main)
 
 ---
 
@@ -99,15 +100,15 @@ E writes `deployed_main_sha` after each merge+deploy cycle.
 | ~21:29Z | A-09 | #1301 | 6a0f8c9d284118f9758eaaa1fd3f4b411b6ce1aa | 31909647552 | **LIVE** (EKV-R-8: CI SC/TAP non-blocking; merged by conductor per PRATINIDHI ruling) |
 | ~21:38Z | B-05 | #1303 | 0a056aec841ad4be65714d1c2d2e3793a63861a3 | 31910024692 | **LIVE** (evidence: b05_classical_spec.json) |
 | ~21:45Z | A-15 | #1300 | 7a1c79bf4da000f1c09f5a468d24ce262afcfcc0 | 31910678712 | **LIVE** (MCP smoke flap on first run 31910398270; retry SUCCESS; evidence: a15_ayanamsha.json) |
-| ~21:55Z | A-11 | #1302 | c75400b231f95b2933f736d1630cc5b920fee8e9 | pending | **MERGED** (CI on main in_progress 31910741588; deploy will follow) |
-| — | B-01 | #1296 | — | — | **DIRTY** — E-LEAD fix dfbdfe620 pushed; add/add conflicts in ga_vargas_writer.py + test_dignity_oracle.py; ŚĀSTRA-LEAD must rebase onto c75400b23 |
-| — | C-03 | #1287 | — | — | **MERGE QUEUE** (CI running as b1ea4cdab on top of c75400b23; run 31910742242) |
-| — | A-07 | #1304 | — | — | MERGE QUEUE (autoMerge queued; CI all PASS on branch) |
-| — | A-08 | #1305 | — | — | MERGE QUEUE (autoMerge queued; CI all PASS on branch) |
-| — | A-12 | #1306 | — | — | MERGE QUEUE (autoMerge queued; CI all PASS on branch) |
-| — | A-13 | #1307 | — | — | MERGE QUEUE (autoMerge queued; CI all PASS on branch) |
-| — | A-16 | #1308 | — | — | MERGE QUEUE (autoMerge queued; CI all PASS on branch) |
-| — | A-17 | #1309 | — | — | MERGE QUEUE (autoMerge queued; CI all PASS on branch) |
+| ~21:55Z | A-11 | #1302 | c75400b231f95b2933f736d1630cc5b920fee8e9 | 31911459360 | **LIVE** (co-deployed with C-03; 1st deploy 31911149433 Google Fonts flap; retry SUCCESS) |
+| ~22:03Z | C-03 | #1287 | b1ea4cdab35393961837ad0af953b23195a623cf | 31911459360 | **LIVE** (co-deployed with A-11; evidence: c03_standing_predictions.json) |
+| — | B-01 | #1296 | — | — | **DIRTY** — E-LEAD fix dfbdfe620 pushed; add/add conflicts in ga_vargas_writer.py + test_dignity_oracle.py; ŚĀSTRA-LEAD must rebase onto b2dc6be8e (current main) |
+| ~22:12Z | A-07 | #1304 | 9b09835033e5cdb4ddf7d68eed529a9f1efa0be9 | 31911942143 | **LIVE** (co-deployed with A-16; run 31911942143 SUCCESS ~22:32Z) |
+| ~22:21Z | A-16 | #1308 | fb6e4185b197c248a460d259075c8a187c039e32 | 31911942143 | **LIVE** (co-deployed with A-07; web+MCP SUCCESS ~22:32Z) |
+| ~22:30Z | A-17 | #1309 | 46e59ac990df67bb2ae8fc329dc9b853b6730b7f | 31912688002 | **LIVE** (1st deploy MCP flap; covered by A-08 deploy run 31912688002 MCP SUCCESS ~22:43Z) |
+| ~22:37Z | A-08 | #1305 | 84c6d55867b43b7a9f44ec9d682591ef2dbc73a9 | 31912688002 | **LIVE** (deploy run 31912688002 web+MCP SUCCESS ~22:45Z; also covers A-17) |
+| ~22:46Z | A-12 | #1306 | cd7653855d02111f742cc1bd9a4d059cb98bc773 | 31913055119 | **LIVE** (deploy run 31913055119 web-only SUCCESS ~23:00Z; MCP not changed by A-12) |
+| ~22:55Z | A-13 | #1307 | b2dc6be8ebbbeb72b5bc5df70ac5b8b4fbcace9f | 31913806187 | **LIVE** (FINAL drain; 1st MCP flap 31913429332; retry 31913806187 web+MCP SUCCESS ~23:15Z) |
 
 ### Integration notes
 - **A-02 GUARDIAN gap closed**: GUARDIAN (22:10Z) flagged that a02_deploy.json only proved deploy, not function. E-LEAD ran live MCP probe ~21:54Z: all 4 tools (list_classical_texts, find_verses_about, search_classical_texts, read_chapter) callable; evidence: a02_whitelist_probe.json.
@@ -155,22 +156,37 @@ C-01 merge block cleared: EKV-R-1 now in PRATINIDHI ledger.
 
 ## SS6 COST: $0 running / $35 budget
 
-## SS7 GATE STATUS (as of ~22:00Z)
+## SS7 GATE STATUS — FINAL (~23:18Z)
 
-### W0 Gate blockers remaining:
-1. **CL-00**: result=null — authorized NOT-RUN per EKV-R-5/R-9 (permanent)
-2. **PROD-SYNC**: deployed_main_sha=7a1c79bf4 vs origin/main=c75400b23 — A-11 CI in_progress, deploy will follow
-3. **C-03**: HANDOFF → will become LIVE after merge queue CI passes and deploys
+### W0 Gate run result:
+```
+EKV-GATE: FAILED
+  ✗ CL-00 cheap subset not PASS (got None) — regression baseline unproven
+1 blocking problem(s). Terminal marker MUST NOT be posted.
+```
 
-### Expected final gate state:
-- PROD-SYNC: PASS (after A-11 + drain deploys complete; deployed_main_sha updated)
-- CL-00: AUTHORIZED FAIL (permanent EKV-R-5)
-- W0 lanes: all LIVE/HANDOFF except C-03 (HANDOFF→LIVE after merge) and B-01 (blocked, not W0)
-- Wave closes **PARTIAL** per EKV-R-5
+**1 failure — CL-00 only** — authorized per EKV-R-5/R-9 (permanent).
+**PROD-SYNC: PASS** — deployed_main_sha = origin/main = b2dc6be8ebbb.
+**Wave status: CLOSED-PARTIAL per EKV-R-5.**
 
-### Next actions for E-LEAD:
-1. Wait for C-03 queue CI (b1ea4cdab) to pass → merge → update manifest C-03 LIVE
-2. Wait for A-11 CI (c75400b23) success → deploy triggered → update deployed_main_sha
-3. Monitor drain PRs (#1304-1309) — all in queue, CI all pass on branch
-4. After final deploy: update deployed_main_sha → run gate → post result to CAMPAIGN_COORDINATION
-5. SENTINEL re-run + PRATINIDHI countersign → declare CLOSED-PARTIAL
+### Gate result posted:
+- Commit 733ebe2be to `campaign-coordination` branch → pushed to origin/campaign-coordination
+- CONDUCTOR/SENTINEL will pick up for countersign
+
+### Drain MCP smoke flap summary:
+| Lane | First Deploy | Outcome | Resolution |
+|------|-------------|---------|------------|
+| A-15 | 31910398270 | MCP flap (401) | Retry 31910678712 SUCCESS |
+| A-11+C-03 | 31911149433 | Google Fonts failure | Retry 31911459360 SUCCESS |
+| A-17 | 31912330035 | MCP flap (401) | Covered by A-08 deploy 31912688002 |
+| A-13 | 31913429332 | MCP flap (401) | Retry 31913806187 SUCCESS |
+
+All transient — same bearer-auth 401 pattern. Not code issues.
+
+### C-03 lease_ok correction:
+C-03 `lease_ok` was `null` (tracking gap from HANDOFF era). Set to `true` after LIVE confirm — files (`prospective_ledger.ts`, `query_prospective_ledger.ts`) are unique to C-03; no other lane touches them.
+
+### Remaining open items (post-CLOSED-PARTIAL):
+- **B-01**: ŚĀSTRA-LEAD must rebase onto b2dc6be8e + resolve 2 conflicts → re-queue
+- **SENTINEL re-run**: Awaiting
+- **PRATINIDHI countersign**: Awaiting → formal CLOSED-PARTIAL declaration
