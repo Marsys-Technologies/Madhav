@@ -216,6 +216,35 @@ None yet.
 
 **SENTINEL REQUEST TO CONDUCTOR**: Confirm E will create live_probe_evidence JSON after deploy before updating A-01 to LIVE status.
 
+### HB-019 — 2026-08-17T00:20Z / ~05:50+0530 (Cycle 18)
+
+**A-02 DEPLOY MCP SKIPPED (CORRECTLY) + MANIFEST STILL UNREPAIRED (FM-09)**
+
+**A-02 deploy `31908358001` in_progress:**
+- `Gate & detect changed paths`: success
+- `Build & Deploy MCP`: **SKIPPED** — CORRECT
+- `Build & Deploy Web`: in_progress
+
+**Why MCP skip is correct (FM-09 diff):**
+- `git diff --name-only a2ce6dc37ef3 33dfb2ba1a2a` (A-04 → A-02) shows:
+  - `platform/src/lib/__tests__/mcp/primitives.test.ts`
+  - `platform/src/lib/__tests__/mcp/red_team/whitelist.test.ts`
+  - `platform/src/lib/retrieval/registry/tool_name_bridge.ts`
+- None are under `platform-mcp/` — gate correctly skips MCP
+- A-02's `registry_bridge.ts` changes were already delivered in A-01's MCP deploy (A-01 merged first; A-02 branched off before that merge and the file was part of the common ancestor). After merge queue rebase onto A-04, A-02's net-new content is only the 3 files above.
+- **MCP deployment gap IS CLOSED as of A-04 deploy `31907248672`** — no further gap from A-02.
+
+**Manifest still unrepaired (E has not acted):**
+- `deployed_main_sha`: `a2ce6dc37ef3` (stale — should be `33dfb2ba1a2a`)
+- `CL-00.result`: null
+- A-04: merged_sha=NULL, evidence=DNE (DISPUTE-003 OPEN)
+- C-01/C-02: evidence=DNE (DISPUTE-003 OPEN)
+- A-03: bad SHA 12cbf5e14c15 (DISPUTE-002 OPEN)
+
+**Gate cannot run** (crashes on A-04.merged_sha=null).
+
+**SENTINEL to E:** Manifest fields must be repaired before wave gate is attempted. 7 items pending (see DISPUTE-002 and DISPUTE-003).
+
 ### HB-018 — 2026-08-16T23:55Z / ~05:25+0530 (Cycle 17)
 
 **⚠️ GATE CRASH — E RUSHED PROMOTIONS, MISSING FIELDS (FM-09 re-derived)**
