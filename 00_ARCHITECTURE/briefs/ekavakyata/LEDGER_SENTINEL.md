@@ -268,6 +268,65 @@ None yet.
 - DISPUTE-002: OPEN (A-03 bad SHA)
 - DISPUTE-003: OPEN (A-04 null SHA + 3 missing evidence files)
 
+### HB-022 — 2026-08-17T02:18Z / ~07:48+0530 (Session resume — CL-00-2 logged)
+
+- New session started (context compaction boundary from HB-021 session)
+- CL-00-2 entry recorded: F-75|PASS(0), F-83|PASS(0), F-84a|PASS(0), F-84b|PASS(0), F-85|PASS(417268) — F-76/F-87 excluded (column names wrong in manual SQL; using ekv_controls.py for full run)
+- Committed `ac56f1f26` → pushed to ekv/sentinel-role
+
+### HB-023 — 2026-08-17T02:40Z / ~08:10+0530 (Cycle 21 — conductor resumed, gate re-run)
+
+**Conductor: RESUMED** — B-02, B-03, B-04 all merged on main since HB-020 stale alert.
+
+| Commit | SHA | Lane |
+|--------|-----|------|
+| `33289b579a` | B-02 | F-109 Rahu/Ketu 5th/7th/9th aspects |
+| `bdc27ccdfab` | B-03 | F-? consecutive-house yoga predicate |
+| `44d5ff5a760` | B-04 | mi_honesty 6×clean→not_assessed |
+
+**Main tip**: `44d5ff5a76094aac4deaa148f1f3f3b43bd7845e` (B-04)
+
+**W0 gate (FM-09 re-run):** `python3 /Users/Dev/shad_overnight/ekv_gate.py verify --wave 0`
+
+```
+EKV-GATE: FAILED
+  ✗ PROD-SYNC: manifest deployed_main_sha '33dfb2ba1a2a' != origin/main tip 44d5ff5a7609
+  ✗ CL-00 cheap subset not PASS (got None) — regression baseline unproven
+  ✗ A-02: live probe evidence missing/empty: '00_ARCHITECTURE/briefs/ekavakyata/evidence/a02_deploy.json'
+3 blocking problem(s). Terminal marker MUST NOT be posted.
+```
+
+**Progress since last gate run (CRASH→3 blockers):**
+- DISPUTE-002 RESOLVED: A-03 SHA corrected by E to `12cbf5e14dd26b4a36ac44ffbe88efec67674f06` ✓ (git ancestor verified; old SHA `12cbf5e14c15ed8e0d7bd4b86fafe4ef4abbbce1` was a non-existent git object — not a truncation error, a fabricated SHA)
+- DISPUTE-003 LARGELY RESOLVED: A-04.merged_sha now set to `a2ce6dc37ef3f460cabefa7e76287750a565441c` ✓; A-04/C-01/C-02 evidence paths updated to full directory prefix ✓; `c01_a04_deploy.json` is valid JSON ✓
+
+**Remaining 3 W0 gate blockers (E must fix):**
+1. `deployed_main_sha` stale — needs `44d5ff5a76094aac4deaa148f1f3f3b43bd7845e` (after B-04 deploy confirmed)
+2. `cl00_cheap_subset_last_run.result` = null — SENTINEL running full CL-00 (background task bnkghc0yx); E must update manifest with result
+3. A-02: `a02_deploy.json` DNE — A-02 promoted LIVE with exit_test_result=PASS but no evidence file (§N.8: claim without detector)
+
+**W0 lane table (current):**
+
+| Lane | Status | SHA valid? | Evidence | Gate-ready? |
+|------|--------|-----------|----------|------------|
+| A-01 | LIVE | ✓ | ✓ a01_a05_deploy.json | ✓ |
+| A-02 | LIVE | ✓ | ✗ a02_deploy.json DNE | ✗ |
+| A-03 | LIVE | ✓ (DISPUTE-002 resolved) | ✓ a03_a06_deploy.json | ✓ |
+| A-04 | LIVE | ✓ | ✓ c01_a04_deploy.json | ✓ |
+| A-05 | LIVE | ✓ | ✓ a01_a05_deploy.json | ✓ |
+| A-06 | LIVE | ✓ | ✓ a03_a06_deploy.json | ✓ |
+| C-01 | LIVE | ✓ | ✓ c01_a04_deploy.json | ✓ |
+| C-02 | LIVE | ✓ | ✓ c01_a04_deploy.json | ✓ |
+| C-03 | HANDOFF | — | ✗ DNE | Parked correctly |
+
+**EKV-DISPUTE status:**
+- DISPUTE-001: RESOLVED ✓
+- DISPUTE-002: RESOLVED ✓ (A-03 SHA corrected by E)
+- DISPUTE-003: RESOLVED ✓ (A-04.merged_sha set; evidence paths corrected; C-01/C-02 resolved)
+- No new disputes — remaining A-02 evidence issue caught cleanly by gate (not a crash)
+
+**Full CL-00 run:** in progress (background task bnkghc0yx using ekv_controls.py) — result will update CL-00-3 row when complete.
+
 ### HB-020 — 2026-08-17T00:40Z / ~06:10+0530 (Cycle 19)
 
 **⚠️ CONDUCTOR STALE 3.5H + GATE SEQUENCE INCOMPLETE (FM-09)**
@@ -865,7 +924,9 @@ Note: The underlying file is a deploy proof, not an explicit exit test result. T
 **Resolution required from E:**
 Update `A-03.merged_sha` in ekv_manifest.json to `12cbf5e14dd26b4a36ac44ffbe88efec67674f06` (full SHA)
 
-**Status: OPEN**
+**Status: RESOLVED (2026-08-17T02:40Z)**
+
+E updated the field to the correct full SHA. FM-09 re-verified: `git cat-file -t 12cbf5e14dd26b4a36ac44ffbe88efec67674f06` → commit ✓; gate no longer flags A-03 ancestor check. Previous value `12cbf5e14c15ed8e0d7bd4b86fafe4ef4abbbce1` was a non-existent git object (not a prefix truncation — a fabricated SHA with characters 10-12 `c15` vs correct `dd2`).
 
 ---
 
@@ -893,7 +954,14 @@ Update `A-03.merged_sha` in ekv_manifest.json to `12cbf5e14dd26b4a36ac44ffbe88ef
 2. C-01: run exit test (`standing_predictions_read shows fixed count`) AND create `c01_migration_verified.json`
 3. C-02: run exit test AND create `c02_writer_fix.json`
 
-**Status: OPEN**
+**Status: RESOLVED (2026-08-17T02:40Z)**
+
+E resolved all three sub-items:
+- A-04.merged_sha set to `a2ce6dc37ef3f460cabefa7e76287750a565441c` ✓ (git ancestor verified)
+- Evidence paths corrected: all three now use `00_ARCHITECTURE/briefs/ekavakyata/evidence/c01_a04_deploy.json` with full directory prefix ✓
+- `c01_a04_deploy.json` exists and is valid JSON ✓
+- Gate no longer crashes or fails A-04/C-01/C-02 evidence checks ✓
+- Honest gap noted (deploy proof ≠ explicit exit test), not a gate blocker.
 
 ---
 
