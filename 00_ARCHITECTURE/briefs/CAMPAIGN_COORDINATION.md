@@ -2327,3 +2327,5 @@ CLOSE TARGET: 07:00 IST (01:30Z) — ekv_gate.py verify --wave 0 AND --wave 1 ex
 EKV-CONDUCTOR-HB 2026-08-16T19:10Z — PRATINIDHI: LIVE (ledger seeded, 8 standing positions, ekv/pratinidhi-role pushed); SENTINEL: starting; Streams A-E: active processes (initializing — no lane output yet); W0 deadline: 21:06Z. Next HB ≤19:30Z.
 
 EKV-CONDUCTOR-HB 2026-08-16T19:25Z — SŪTRADHĀRA ACTIVE (this session is the live conductor; a re-invocation at PID 83098 was detected — it should detect RESUME state and stand down or wait without posting heartbeats). Stream D (DHARMA) building D-01 lints + D-04 harness (ekv_controls.py). Stream A (SEVĀ) initialized coord dir. Streams B/C/E still in reading phase. W0 deadline: 21:06Z remaining ~1h40m.
+
+EKV-CONDUCTOR-HB 2026-08-16T19:30Z — REAL PROGRESS: A-01/02/03/05 branches on origin (SEVĀ W0 running); B-02/03/04 on origin (ŚĀSTRA W1 running); C-01 on origin (ṚTA ledger repair); D building 9 lint scripts + ekv_controls.py. SENTINEL: branch pushed. 10 ekv/* branches live in 25min. Orphan conductor PID 83098 still running (watch for conflicts). W0 deadline: 21:06Z (~1h35m remaining).
