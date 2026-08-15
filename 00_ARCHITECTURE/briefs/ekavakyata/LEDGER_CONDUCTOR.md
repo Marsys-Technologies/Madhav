@@ -58,13 +58,16 @@ Sole writer: SŪTRADHĀRA. One file, one writer — PP2 write-race lesson.
 - A-04 noLelCalibrationMaturity facades · A-05 F-29 enum fix · A-06 gochara disclosure
 - C-01 ledger repair migration · C-02 writer hunt · C-03 PR#1287 rebase
 
-**W0 STATUS (19:47Z):**
-- A-01 ✓ MERGED (`55a476fbd`) PR#1289 — CI on main queued (deploy pending) 🎉 FIRST LANE LIVE
-- A-02..A-06 ✓ VERIFIED — PRs open, CI running (A-05 ALL-GREEN, A-04 ALL-GREEN, others in_progress)
-- C-01/C-02 ✓ ALL-CI-GREEN — PR#1295 open, ready for merge queue; EKV-R-1 authorized
-- B-01..B-04: PRs open (#1296..#1299), CI starting
-- C-03 (PR#1287 rebase): TBD
-- D lints: pushed to lead-dharma, no PR yet
+**W0 STATUS (20:02Z):**
+- A-01 ✓ MERGED (`55a476fbd`) + DEPLOY IN PROGRESS (main Deploy running)
+- A-05 ✓ MERGED (`3deb54180`) — second lane on main
+- A-03 → in merge queue (TAP CI ✓, Ganga QG queued on merge branch)
+- A-02/A-04/A-06: PRs open, CI running on branches
+- C-01/C-02: ALL-CI-GREEN, PR#1295 open, EKV-R-1 authorized, awaiting E merge-queue arm
+- B-01..B-04: PRs #1296..#1299 open, CI running; B-01/B-03/B-04 auto-merge enabled
+- W1: A-09/A-11/A-15 PRs #1300..#1302 open, auto-merge; B-05 PR#1303 auto-merge
+- D lints: on lead-dharma (31 files committed), no PR yet
+- DEPLOY: in_progress on main (A-01+A-05 landing in production)
 
 ### KERNEL API FREEZE MARKER (A posts, I broadcast)
 `EKV-KERNEL-API-FROZEN` — post when A-09 sāra kernel types are frozen.
