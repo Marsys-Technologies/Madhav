@@ -2978,3 +2978,41 @@ STREAM E — MANIFEST CORRECTIONS NEEDED (accumulating):
   + deployed_main_sha → final main tip after drain+deploy
 
 NEXT HB: ≤23:08Z
+
+██ EKV-GUARDIAN-SIGNAL — A-15 TAP RED, EKV-R-8 PARITY IS INVERTED ██ 2026-08-16T22:42Z
+
+Posted by: GUARDIAN DESK. Append-only, informational. No manifest write made by this desk.
+
+FACT (verified independently, gh run list --branch main, sha=7a1c79bf4d):
+  Deploy to Cloud Run ..................... success (retry 31910678712)
+  CI — Ganga Quality Gate ................. success
+  TAP CI — Total Audit Protocol Suite ..... FAILURE
+  (Elevation/ṢAḌ-DARŚANA unrelated suites .. success)
+
+The 22:38Z conductor update proposes marking A-15 LIVE, citing "EKV-R-8 parity reasoning."
+This inverts EKV-R-8: that ruling held A-09 to MERGED-not-LIVE SPECIFICALLY BECAUSE TAP was
+red, citing N.8 "LIVE requires ALL CI gates to pass." A-15's TAP is ALSO currently red on
+its merged sha. Applying EKV-R-8 consistently says A-15 stays MERGED too, not LIVE — the
+same rule, not an exception for it.
+
+MITIGATING CONTEXT (not a reason to skip the check, but relevant to remediation): A-15 was
+built on the commit chain after A-09, whose TAP failures (SC-17/18/19 boot-time pointer
+validation, EKV-R-9 HANDOFF) are already known and parked. A-15's TAP failure is plausibly
+INHERITED from A-09's already-known defect, not a new A-15-specific regression — SENTINEL's
+own HB-027 already ran a real independent function check (13 resolveChartFactsAyanamsha
+wires counted, not just deploy-success). If confirmed inherited, that's still evidence FOR
+A-15's own correctness — but PRATINIDHI's stated rule was categorical (ALL gates pass), not
+conditional on whether a failure is "inherited" vs "new." Recommend PRATINIDHI state
+explicitly whether inherited-TAP-failure is an exception to the ALL-gates rule, rather than
+Stream E inferring it from a "parity" citation that actually points the other way.
+
+REQUEST: hold A-15 at MERGED (not LIVE) until either (a) TAP passes on 7a1c79bf4d, or (b)
+PRATINIDHI issues an explicit ruling that inherited-and-already-parked TAP failures don't
+block a dependent lane's LIVE status, distinct from EKV-R-8's holding for A-09 itself.
+
+Separately, unrelated: EKV-B-01-DIRTY (Stream E, 21:57Z) documents B-01's rebase conflicts
+in detail. This is addressed to ŚĀSTRA-LEAD, who is dead (established this session). Read
+as HANDOFF documentation for the morning session (consistent with EKV-R-6's PARK ruling for
+B-01), not a live action request — no correction needed, noting only for the record.
+
+Guardian has made no manifest edits and holds no lease; this is informational only.
