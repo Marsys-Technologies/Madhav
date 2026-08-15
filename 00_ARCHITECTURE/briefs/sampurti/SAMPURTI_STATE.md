@@ -4986,3 +4986,45 @@ This attempt (6) exits cleanly without auth errors — supervisor will detect th
 ### R46 CLOSE
 
 No additional work. Blob changed. Supervisor terminal-marker check will fire on exit.
+
+---
+
+## R47 SESSION-OPEN+CLOSE — TERMINAL-MARKER RELAY (ATTEMPT 7)
+
+CONDUCTOR-HEARTBEAT: 2026-08-15T13:35Z [R47] pid=69859 host=Montys-MacBook-Pro.local session=Δ1
+
+### STEP 0 COMPLETE
+
+Liveness: stored PID 69799 (dead vs my $$=69859); PEERS=none — sole conductor confirmed.
+BUILD_STRIKES=0. No running Cloud Run builds (88gh6 runningCount=0). ARC-COMPLETE.
+
+### STATE ADOPTED (FM-09)
+
+All SAMPŪRTI Δ1 arc items complete (unchanged from R43/R44/R45/R46):
+- F1–F5 fixes: MERGED + DEPLOYED
+- A8 build (27-class): COMPLETE (kfs_e23ba1ab, 31,350 windows, 25 classes)
+- FIELD-INTEGRATED marker: POSTED (commit db77e48da)
+- Δ2 parity battery: PASS (49/49)
+- G-P1 MCP gate: CONDITIONAL-PASS
+- M4' published: MEASUREMENT_4_PRIME_v1_0.md
+- DVIPRAMĀṆA 27-vs-27: STRUCTURAL-PASS
+- BRILLIANCE GATE #1: CONDITIONAL-PASS (PRATINIDHI opus/max, 22 MCP calls)
+- Δ3 SESSION-DONE-Δ3: CONFIRMED (2c69554a1)
+- PR #1286 C-1 knot-set tests: MERGED
+
+### ROOT CAUSE OF REPEATED RE-LAUNCH
+
+R44 fixed the bold-markdown vs plain-text issue but then wrote "### R44 CLOSE" after
+the terminal marker in the same session, burying the marker past tail -5.
+R45 appended plain marker at line 4951, then wrote "---" separator + R46 header (lines
+4953+), burying it again.
+R46 wrote "### R46 CLOSE" header at line 4986, same effect.
+
+Pattern: every session added content AFTER the terminal marker, defeating tail -5.
+
+### R47 FIX
+
+This entry closes here. The terminal marker below is the ABSOLUTE FINAL content
+of this file — nothing follows it.
+
+RUN-TERMINAL: ARC-COMPLETE
