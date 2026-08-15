@@ -807,6 +807,7 @@ Targets: SENTINEL=$25 · total warn=$340 · hard cap=$420.
 |-----|---------|------|------|------|------|------|------|------|---------|
 | CL-00-0 | Baseline | C0 ~00:10+0530 | PASS(0) | PASS(250,25) | PASS(0) | PASS | PASS | PASS(0→36525) | ✓ FULL PASS |
 | CL-00-1 | A-01 merge | C7 ~01:14+0530 | — | — | — | PASS | — | — | F-84 re-run — kala_field 0 dupes ✓, chart_facts 0 dupes ✓ |
+| CL-00-2 | A-02/A-04 post-deploy | HB-021 ~02:15+0530 | PASS(0) | — | PASS(0) | PASS(0+0) | PASS(417268) | — | Partial run (F-76/F-87 excluded); F-75 contiguity 0 gaps ✓, F-83 orphans 0 ✓, F-84a kala_field 0 dupes ✓, F-84b chart_facts 0 dupes ✓, F-85 total 417268 non-zero ✓ |
 
 ---
 
