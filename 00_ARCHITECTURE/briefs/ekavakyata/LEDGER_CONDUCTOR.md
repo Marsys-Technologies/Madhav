@@ -251,3 +251,29 @@ STREAM E OUTSTANDING: update deployed_main_sha → final main tip post-drain+dep
 If Stream E exhausted: CONDUCTOR escalates to PRATINIDHI for emergency manifest update authorization
 
 NEXT HB: ≤22:28Z
+
+---
+22:28Z — DRAIN ACTIVE; 3/9 MERGED; QUEUE CI HEALTHY
+
+MERGED SO FAR:
+  B-05 (#1303) → 0a056aec8 ✓
+  A-15 (#1300) → 7a1c79bf4 ✓
+  A-11 (#1302) → c75400b23 ✓ (main tip)
+
+QUEUE STATUS:
+  Queue branch b1ea4cdab3: TAP=PASS, Ganga=running
+  Queue branch c75400b231 (second round): TAP=FAIL (expected — inherited A-09 main CI failure, NOT queue CI)
+  A-15 deploy retry (31910678712): still running
+  Remaining open: #1304/#1305/#1306/#1307/#1308/#1309
+
+GOVERNANCE FLAGS:
+  ! A-09 status LIVE in manifest — should be MERGED per EKV-R-8 (PRATINIDHI confirms)
+  ! B-05 should be LIVE (not MERGE_QUEUE) — it merged to 0a056aec8
+  ! A-02 evidence = deploy proof only, not function proof (GUARDIAN §N.8 flag, PRATINIDHI spot-check required)
+  ! A-15 deploy retry in progress (original smoke fail: bearer-auth 401)
+
+STREAM E: After drain completes + final deploy:
+  1. Fix A-09 status → MERGED per EKV-R-8
+  2. Fix B-05 status → LIVE sha=0a056aec841ad4be65714d1c2d2e3793a63861a3
+  3. Update deployed_main_sha → final main tip
+  4. Run W0 gate (expect: PASS with 1 authorized failure: CL-00)
