@@ -68,9 +68,8 @@ def test_moon_mt_taurus_within_range():
 
 
 def test_moon_taurus_below_mt_boundary():
-    """Moon in Taurus at 3° — MT range is 4°-30°, so 3° falls below → exalted (not MT)."""
-    # 3° is Moon's exaltation degree AND below MT lower bound (4°)
-    # Exaltation is checked before MT, so this should be exalted
+    """Moon in Taurus at 3° — MT range is 4°-30°, so 3° falls below → exalted."""
+    # Exaltation is checked before MT, so 3° in Taurus hits exalted first
     assert classify_dignity("Moon", "Taurus", 3.0) == "exalted"
 
 
