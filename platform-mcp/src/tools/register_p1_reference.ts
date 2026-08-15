@@ -167,7 +167,9 @@ function classifyErrorMessage(message: string): { error_class: McpErrorClass; sa
     return { error_class: 'validation', safe_message: message }
   }
   const looksInternal =
-    /column ".*" does not exist|relation ".*" does not exist|syntax error at or near|ECONNREFUSED|invalid input syntax|PostgresError|\bat \S+\.(ts|js):\d+|\.node_modules[\\/]/i.test(message)
+    // F-89: extend to cover Postgres encoding/null-byte exceptions (invalid byte sequence for
+    // encoding "UTF8", NUL character not allowed) that bypassed sanitization and leaked verbatim.
+    /column ".*" does not exist|relation ".*" does not exist|syntax error at or near|ECONNREFUSED|invalid input syntax|invalid byte sequence for encoding|NUL character not allowed|PostgresError|\bat \S+\.(ts|js):\d+|\.node_modules[\\/]/i.test(message)
   if (looksInternal) {
     return {
       error_class: 'internal_error',
