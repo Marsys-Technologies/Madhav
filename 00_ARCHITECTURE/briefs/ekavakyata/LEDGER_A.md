@@ -32,11 +32,22 @@ Lane worktrees and branches:
 | A-07 | ekv/a-07-domain-charter | .claude/worktrees/ekv-a-07 | VERIFIED |
 | A-12 | ekv/a-12-inv2-determinism | .claude/worktrees/ekv-a-12 | VERIFIED |
 | A-13 | ekv/a-13-error-boundary | .claude/worktrees/ekv-a-13 | VERIFIED |
+| A-16 | ekv/a-16-vocab-sync | .claude/worktrees/ekv-a-16 | VERIFIED |
 | A-15 | ekv/a-15-ayanamsha-wire | .claude/worktrees/ekv-a-15 | VERIFIED |
 
 ## HEARTBEATS
 
 <!-- Format: HH:MMZ — status · lanes active · next -->
+
+### 2026-08-16 HB-11 ~23:00Z
+- A-16 VERIFIED: b0dc139f5 pushed ekv/a-16-vocab-sync — F-24 closed
+  - intent_scope_classifier.ts DOMAIN_RULES: plural-safe vocabulary aligned with DEEP_DOMAIN_WORD
+  - 'married'/'jobs'/'relationships'/'diseases' etc. now map to correct domain in scope_tuple.domains
+  - Stale single-form patterns (job→jobs?, marriage→married|marital, disease→diseases?) updated
+  - Lease: platform-mcp/src/tools/intent_scope_classifier.ts only; no hot-file touch
+- W3 complete: A-07/A-12/A-13/A-16 VERIFIED; W4 scope: A-17 (kala_upaya remedy scoping F-49/118/115)
+- Stream A total: 12 lanes VERIFIED (A-01..A-09, A-11, A-12, A-13, A-15, A-16, A-07); F-90/F-39 BLOCKED (hot-file)
+- NEXT: scope A-17 kala_upaya remedy scoping
 
 ### 2026-08-16 HB-1 ~19:06Z
 - Bootstrapping: read plan §§0,1,2(A),4,5 COMPLETE
@@ -180,6 +191,8 @@ EKV-A-12-VERIFIED — 526612229 pushed ekv/a-12-inv2-determinism — F-92/F-60: 
 EKV-A-07-VERIFIED — 02d891bde pushed ekv/a-07-domain-charter — F-55/F-41: SHASTRA_MAP +4 domains (family/general/transition/travel); unknown-domain early reject with live key list; stale 7-domain error message fixed
 
 EKV-A-13-VERIFIED — 33250d56d pushed ekv/a-13-error-boundary — F-89: looksInternal regex +2 Postgres encoding patterns; raw UTF8 exception text now sanitized to generic safe_message
+
+EKV-A-16-VERIFIED — b0dc139f5 pushed ekv/a-16-vocab-sync — F-24: DOMAIN_RULES plural-safe patterns aligned with DEEP_DOMAIN_WORD; 'married'/'jobs'/'relationships' etc. now resolve to correct scope_tuple.domains
 
 EKV-KERNEL-API-FROZEN — dcc2fb5a pushed ekv/a-09-sara-kernel — SaraKernel/SaraPromiseJoin/CompositionReport/SaraLayeredContent/assembleSaraContent stable in response_budget.ts
 
