@@ -72,88 +72,74 @@ Must show C-01/C-02 migration names with applied_at AFTER deploy timestamp.
 
 ## SS2 PROD-SYNC VERIFICATION
 
-### EKV-R-01 PENDING -- see SS4
+### EKV-R-01 RESOLVED (EKV-R-2 Option A implemented by CONDUCTOR)
 
-Live catalog_version (2026-08-16 session start): `catalog-1+t152+r653c2a1a98c8`
+Gate PROD-SYNC fix applied: gate compares `manifest["deployed_main_sha"]` vs `git rev-parse origin/main`.
+E writes `deployed_main_sha` after each merge+deploy cycle.
 
-The `+r653c2a1a98c8` is SHA256(tool_names).slice(0,12) NOT the git sha.
-Gate's `main_tip.startswith(sha12)` will ALWAYS fail.
-
-### Interim procedure (until EKV-R-01 resolved)
-1. Call mcp_server_info -- confirm response non-error (server up)
-2. Note tools_changed_at >= deploy trigger time (confirms new code running)
-3. git rev-parse origin/main == pushed merge sha
-4. Record both: `deployed_catalog_version` (from server) + `deployed_main_sha` (from git)
+**Current deployed_main_sha:** `7a1c79bf4da000f1c09f5a468d24ce262afcfcc0` (A-15 deploy ~22:00Z)
+**Current origin/main:** `c75400b231f95b2933f736d1630cc5b920fee8e9` (A-11 merged 21:55Z; CI in_progress; deploy pending)
 
 ---
 
 ## SS3 MERGE LOG
 
-| Time (IST) | Lane | PR# | Merged SHA | Deploy SHA | Status |
+| Time (UTC) | Lane | PR# | Merged SHA | Deploy Run | Status |
 |------------|------|-----|-----------|-----------|--------|
-| ~01:50 IST | A-01 | #1289 | 55a476fbd28f16abfaae756633a4729a23016379 | 3deb54180 | **LIVE** (A-01+A-05 co-deployed ~20:09Z; MCP up) |
-| ~01:30 IST | A-05 | #1290 | 3deb54180deeb2f6141f189899da29284638ac54 | 3deb54180 | **LIVE** (A-01+A-05 co-deployed ~20:09Z) |
-| ~01:10 IST | A-03 | #1293 | 12cbf5e14c15ed8e0d7bd4b86fafe4ef4abbbce1 | cfc37fc38 | **LIVE** (A-03+A-06 co-deployed ~20:31Z; evidence: a03_a06_deploy.json) |
-| ~01:18 IST | A-06 | #1291 | cfc37fc381661fd2671b299978d28cb5a9f13aad | cfc37fc38 | **LIVE** (A-03+A-06 co-deployed ~20:31Z) |
-| ~01:15 IST | C-01/C-02 | #1295 | 20266702ada941565569dac8fc76b0b89b5ae88d | a2ce6dc37 | **LIVE** (EKV-R-1 4/4 PASSED ~20:50Z; evidence: c01_a04_deploy.json) |
-| ~01:00 IST | A-04 | #1292 | a2ce6dc37ef3f460cabefa7e76287750a565441c | a2ce6dc37 | **LIVE** (deploy run 31907248672 ~20:50Z; web+MCP deployed) |
-| ~01:30 IST | A-02 | #1294 | — | — | MERGE QUEUE (UNKNOWN — entering on A-04 tip) |
-| ~01:48 IST | B-01 | #1296 | — | — | **CI FAILED** — test_ga6_writer::TestDignity regression; ŚĀSTRA-LEAD fix needed; EKV-B-01-BLOCKED posted 20:17Z |
-| ~01:48 IST | B-02 | #1297 | — | — | MERGE QUEUE (UNKNOWN) |
-| ~01:48 IST | B-03 | #1298 | — | — | MERGE QUEUE (UNKNOWN) |
-| ~01:48 IST | B-04 | #1299 | — | — | MERGE QUEUE (UNKNOWN) |
-| ~01:24 IST | A-09 | #1301 | — | — | **CI FAIL** SC-17/18/19+TAP-5/7/S-13; EKV-A-09-CI-FAIL posted 20:40Z; SEVĀ-LEAD must fix |
-| ~01:24 IST | B-05 | #1303 | — | — | MERGE QUEUE (UNKNOWN) |
-| ~01:50 IST | A-15 | #1300 | — | — | MERGE QUEUE (UNKNOWN; fix f7402c99e re-queued) |
-| ~01:24 IST | A-11 | #1302 | — | — | MERGE QUEUE (UNKNOWN; CI rerun passed c423b4c15) |
-| ~02:32Z | A-07 | #1304 | — | — | CI BLOCKED (PR created; autoMerge set) |
-| ~02:32Z | A-08 | #1305 | — | — | CI BLOCKED (PR created; autoMerge set) |
-| ~02:32Z | A-12 | #1306 | — | — | CI BLOCKED (PR created; autoMerge set) |
-| ~02:32Z | A-13 | #1307 | — | — | CI BLOCKED (PR created; autoMerge set) |
-| ~02:32Z | A-16 | #1308 | — | — | CI BLOCKED (PR created; autoMerge set) |
-| ~02:32Z | A-17 | #1309 | — | — | CI BLOCKED (PR created; autoMerge set) |
-| — | C-03 | #1287 | — | — | MERGE QUEUE (UNKNOWN; fix/prospective-ledger-empty-daterange) |
+| ~19:38Z | A-01 | #1289 | 55a476fbd28f16abfaae756633a4729a23016379 | — | **LIVE** (A-01+A-05 co-deploy ~20:09Z) |
+| ~20:00Z | A-05 | #1290 | 3deb54180deeb2f6141f189899da29284638ac54 | 31906219... | **LIVE** (evidence: a01_a05_deploy.json) |
+| ~20:10Z | A-03 | #1293 | 12cbf5e14dd26b4a36ac44ffbe88efec67674f06 | 31906422500 | **LIVE** (A-03+A-06 co-deploy ~20:31Z; evidence: a03_a06_deploy.json) |
+| ~20:18Z | A-06 | #1291 | cfc37fc381661fd2671b299978d28cb5a9f13aad | 31906422500 | **LIVE** |
+| ~20:28Z | C-01/C-02 | #1295 | 20266702ada941565569dac8fc76b0b89b5ae88d | 31907248672 | **LIVE** (EKV-R-1 4/4 PASS ~20:50Z; evidence: c01_a04_deploy.json) |
+| ~20:51Z | A-04 | #1292 | a2ce6dc37ef3f460cabefa7e76287750a565441c | 31907248672 | **LIVE** (web+MCP deployed) |
+| ~20:55Z | A-02 | #1294 | 33dfb2ba1a2a900ef641d82755f8cc14426c2104 | 31908358001 | **LIVE** (A-02 evidence: a02_whitelist_probe.json; 4-tool MCP probe PASS ~21:54Z) |
+| ~21:05Z | B-02 | #1297 | 33289b579a00f73e191d12964d285dea9bff2270 | 31908884289 | **LIVE** (evidence: b02_b03_deploy.json) |
+| ~21:11Z | B-03 | #1298 | bdc27ccdfabdea33e4620a9b80de186f359171d7 | 31908884289 | **LIVE** |
+| ~21:20Z | B-04 | #1299 | 44d5ff5a76094aac4deaa148f1f3f3b43bd7845e | 31909264034 | **LIVE** (evidence: b04_a09_deploy.json) |
+| ~21:29Z | A-09 | #1301 | 6a0f8c9d284118f9758eaaa1fd3f4b411b6ce1aa | 31909647552 | **LIVE** (EKV-R-8: CI SC/TAP non-blocking; merged by conductor per PRATINIDHI ruling) |
+| ~21:38Z | B-05 | #1303 | 0a056aec841ad4be65714d1c2d2e3793a63861a3 | 31910024692 | **LIVE** (evidence: b05_classical_spec.json) |
+| ~21:45Z | A-15 | #1300 | 7a1c79bf4da000f1c09f5a468d24ce262afcfcc0 | 31910678712 | **LIVE** (MCP smoke flap on first run 31910398270; retry SUCCESS; evidence: a15_ayanamsha.json) |
+| ~21:55Z | A-11 | #1302 | c75400b231f95b2933f736d1630cc5b920fee8e9 | pending | **MERGED** (CI on main in_progress 31910741588; deploy will follow) |
+| — | B-01 | #1296 | — | — | **DIRTY** — E-LEAD fix dfbdfe620 pushed; add/add conflicts in ga_vargas_writer.py + test_dignity_oracle.py; ŚĀSTRA-LEAD must rebase onto c75400b23 |
+| — | C-03 | #1287 | — | — | **MERGE QUEUE** (CI running as b1ea4cdab on top of c75400b23; run 31910742242) |
+| — | A-07 | #1304 | — | — | MERGE QUEUE (autoMerge queued; CI all PASS on branch) |
+| — | A-08 | #1305 | — | — | MERGE QUEUE (autoMerge queued; CI all PASS on branch) |
+| — | A-12 | #1306 | — | — | MERGE QUEUE (autoMerge queued; CI all PASS on branch) |
+| — | A-13 | #1307 | — | — | MERGE QUEUE (autoMerge queued; CI all PASS on branch) |
+| — | A-16 | #1308 | — | — | MERGE QUEUE (autoMerge queued; CI all PASS on branch) |
+| — | A-17 | #1309 | — | — | MERGE QUEUE (autoMerge queued; CI all PASS on branch) |
 
 ### Integration notes
-- A-02 (#1294): count gate `56→60` fix pushed (47c7ec6e5). Two test files updated.
-- C-01 (#1295): EKV-R-1 AUTHORIZED + **ALL 4 ASSERTIONS PASSED** ~20:50Z: migration_applied=1, empty_rows=0, CHECK fires on empty insert, open_count=29. Evidence: c01_a04_deploy.json.
-- A-04 (#1292): LIVE. Deploy run 31907248672 (sha=a2ce6dc37) deployed web+MCP. tools_changed_at advanced to 2026-08-15T20:43Z.
-- A-09 (#1301): 2 commits — dcc2fb5a (SaraKernel API freeze) + ceadae8cb (buildAssessResponse). **CI FAIL** Boot-time SC-17/18/19 + TAP-5/7/S-13 — EKV-A-09-CI-FAIL posted 20:40Z by CONDUCTOR; SEVĀ-LEAD must fix before A-14/A-16/B-08 can merge.
-- B-05 (#1303): LEASE EXCEPTION — writes register_d8_assess_domain.ts (Stream A territory); pre-authorized per LEDGER_B.
-- Context-resume at ~20:00Z (19:54Z UTC): new PRs created for A-09/A-11/B-05; merge queue processing.
-- A-15 (#1300): TypeScript TS2304 failure (2 missed na() calls at lines 1087+1949); dequeued via GraphQL, fix pushed f7402c99e, re-queued.
-- **A-03 merged** ~20:10Z (12cbf5e14). **A-06 merged** ~20:18Z (cfc37fc38). Deploy success run 31906422500. Evidence: a03_a06_deploy.json.
-- **C-01 merged** ~20:40Z (20266702a). **A-04 merged** ~20:51Z (a2ce6dc37). Deploy success run 31907248672. EKV-R-1 ALL PASS. Evidence: c01_a04_deploy.json.
-- **B-01 (#1296) BLOCKED** — test_ga6_writer.py::TestDignity fails: `_compute_dignity("Sun",3)→"Neutral"≠"Friend"`; `_compute_dignity("Sun",1)→"Neutral"≠"Enemy"`. B-01 changed dignity semantics but did not update test_ga6_writer.py. ŚĀSTRA-LEAD must fix. EKV-B-01-BLOCKED signal posted 86f915441 to campaign-coordination 20:17Z.
-- **A-11 (#1302) mechanical fix** — bundle_adapters.test.ts:46 stub read raw body (including `{ params }` wrapper from F-127) causing `call.body['chart_id']` undefined. Fix c423b4c15: unwrap `params` layer in stub. CI rerun passed; in merge queue.
-- A-01+A-05 deploy confirmed LIVE at ~20:09Z. Evidence: a01_a05_deploy.json.
-- A-07/A-08/A-12/A-13/A-16/A-17: PRs #1304-#1309 created ~20:32Z from SEVA-LEAD VERIFIED markers; autoMerge set; CI running.
-- **deployed_main_sha = a2ce6dc37** (A-04 tip). W0 LIVE: 7 lanes (A-01/A-03/A-04/A-05/A-06/C-01/C-02). A-02 + C-03 still in merge queue.
+- **A-02 GUARDIAN gap closed**: GUARDIAN (22:10Z) flagged that a02_deploy.json only proved deploy, not function. E-LEAD ran live MCP probe ~21:54Z: all 4 tools (list_classical_texts, find_verses_about, search_classical_texts, read_chapter) callable; evidence: a02_whitelist_probe.json.
+- **A-09 EKV-R-8**: PRATINIDHI authorized A-09 merge despite SC-17/18/19+TAP-5/7/S-13 CI failures (non-blocking checks per EKV-R-8). merge_log status=LIVE is a EKV-R-8 deviation per CONDUCTOR note.
+- **A-15 MCP smoke flap**: First deploy run 31910398270 MCP smoke failed (bearer-auth 401; transient). Retry deploy 31910678712 MCP=SUCCESS at ~22:00Z.
+- **B-01 DIRTY signal** posted to CAMPAIGN_COORDINATION ~21:57Z (commit 53de31d6e). Conflicts: ga_vargas_writer.py (B-02 Rahu/Ketu vs B-01 dignity wiring) + brahmagyan/__tests__/test_dignity_oracle.py (add/add semantic: exaltation vs MT priority for Moon at 10° Taurus).
+- **CL-00 EKV-R-5/R-9**: PRATINIDHI authorized NOT-RUN. ekv_controls.py exists only in dharma worktree (not on main). Permanent for this wave. Gate will fail on CL-00; failure is authorized (wave closes PARTIAL).
+- **A-02 merged SHA corrected**: Earlier manifest had wrong SHA; corrected to 33dfb2ba1a2a900ef641d82755f8cc14426c2104.
+- **A-03 merged SHA corrected**: gate reported 12cbf5e14c15 NOT ancestor; corrected to 12cbf5e14dd26b4a36ac44ffbe88efec67674f06.
 
 ---
 
 ## SS4 RULINGS
 
 ### EKV-R-1 (PRATINIDHI, 2026-08-16T01:15+05:30) — C-01 AUTHORIZED
-
-C-01 migration (delete 6 empty-daterange rows + CHECK guard) AUTHORIZED by PRATINIDHI.
-E must run 4 post-deploy assertions after C-01 deploys:
-1. `SELECT count(*) FROM _migrations_applied WHERE filename='572_ekv_c01_ledger_empty_daterange_repair.sql'` → 1
-2. `SELECT count(*) FROM brahma_prospective_ledger WHERE isempty(observation_window)` → 0
-3. INSERT empty range → CHECK violation (test in throwaway txn, rollback)
-4. `SELECT count(*) FROM brahma_prospective_ledger WHERE lifecycle_status='open'` → 29
+C-01 migration AUTHORIZED. 4 post-deploy assertions ALL PASSED at 2026-08-15T20:50Z.
+Evidence: c01_a04_deploy.json. EKV-R-1 CLOSED.
 
 ### EKV-R-2 / EKV-R-01 (PRATINIDHI, 2026-08-16T01:15+05:30) — GATE FIX APPROVED
+Gate PROD-SYNC fix applied: compare `deployed_main_sha` vs `git rev-parse origin/main`. IMPLEMENTED.
 
-Gate PROD-SYNC fix: **Option A APPROVED**. CONDUCTOR fixes `ekv_gate.py` to compare
-`manifest["deployed_main_sha"]` against `git rev-parse origin/main`. E writes
-`deployed_main_sha` after each merge+deploy. Interim procedure (SS2) remains in force
-until Conductor applies the fix.
+### EKV-R-5 (PRATINIDHI, ~2026-08-15T21:40Z) — CL-00 NOT-RUN AUTHORIZED
+ekv_controls.py not on main; Stream D dead. CL-00 must remain NOT-RUN (null). Wave closes PARTIAL. Gate failure on CL-00 is authorized. E must NOT run CL-00 from dharma worktree.
+
+### EKV-R-8 (PRATINIDHI, ~2026-08-15T21:40Z) — A-09 FORCE-MERGE
+A-09 SC-17/18/19+TAP-5/7/S-13 CI failures are non-blocking. CONDUCTOR authorized to merge A-09 without fixing them. A-09 manifest status=LIVE is an EKV-R-8 deviation.
+
+### EKV-R-9 (PRATINIDHI, ~2026-08-15T21:40Z) — CL-00 OVERRIDE
+CONDUCTOR Step 4 OVERRIDDEN. CL-00 must NOT be run from dharma worktree. Stream E: SKIP Step 4 entirely. Permanent for this wave.
 
 ### EKV-SENTINEL-BLOCK-001 — CLEARED
-
-C-01 merge block cleared: EKV-R-1 now in PRATINIDHI ledger (origin/ekv/pratinidhi-role).
-B-territory (python-sidecar) lease granted via EKV-R-1.
+C-01 merge block cleared: EKV-R-1 now in PRATINIDHI ledger.
 
 ---
 
@@ -164,7 +150,27 @@ B-territory (python-sidecar) lease granted via EKV-R-1.
 - ekv_manifest.json lives at main repo path (untracked) for gate readability.
 - LEDGER_E.md lives in THIS worktree (ekv-lead-sangama), committed to ekv/lead-sangama.
 - gh CLI: authenticated as amonty84. Repo: Marsys-Technologies/Madhav
-- No ekv/* PRs open at session start. PR #1287 open (C-03's base).
 - origin/main at session start: `63049a6e327e46a552496d7fc3a66f87a67d5ee8`
+- origin/main at ~22:00Z: `c75400b231f95b2933f736d1630cc5b920fee8e9` (A-11)
 
 ## SS6 COST: $0 running / $35 budget
+
+## SS7 GATE STATUS (as of ~22:00Z)
+
+### W0 Gate blockers remaining:
+1. **CL-00**: result=null — authorized NOT-RUN per EKV-R-5/R-9 (permanent)
+2. **PROD-SYNC**: deployed_main_sha=7a1c79bf4 vs origin/main=c75400b23 — A-11 CI in_progress, deploy will follow
+3. **C-03**: HANDOFF → will become LIVE after merge queue CI passes and deploys
+
+### Expected final gate state:
+- PROD-SYNC: PASS (after A-11 + drain deploys complete; deployed_main_sha updated)
+- CL-00: AUTHORIZED FAIL (permanent EKV-R-5)
+- W0 lanes: all LIVE/HANDOFF except C-03 (HANDOFF→LIVE after merge) and B-01 (blocked, not W0)
+- Wave closes **PARTIAL** per EKV-R-5
+
+### Next actions for E-LEAD:
+1. Wait for C-03 queue CI (b1ea4cdab) to pass → merge → update manifest C-03 LIVE
+2. Wait for A-11 CI (c75400b23) success → deploy triggered → update deployed_main_sha
+3. Monitor drain PRs (#1304-1309) — all in queue, CI all pass on branch
+4. After final deploy: update deployed_main_sha → run gate → post result to CAMPAIGN_COORDINATION
+5. SENTINEL re-run + PRATINIDHI countersign → declare CLOSED-PARTIAL
