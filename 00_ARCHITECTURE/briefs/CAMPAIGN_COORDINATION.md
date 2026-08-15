@@ -2287,3 +2287,39 @@ WHY PRIOR 11+ SESSIONS DID NOT COMPLETE: All sessions ran but could not prove "m
 Δ1 13:10Z Aug 15 R43-CLOSE — P-D PROOF SPINE COMPLETE — liveness CLEAN (PID 18577 sole conductor; STEP-0 already clean at session-open); Δ3 SESSION-DONE-Δ3 CONFIRMED (commit 2c69554a1, 2026-08-15T12:43:36+05:30); ARC-COMPLETE conditions met. P-D spine summary: (1) Δ2 parity battery TDD+C-1 — 49/49 PASS + 20/20 PASS (test_knot_set.py PR #1286 open CI); (2) G-P1 MCP gate — CONDITIONAL-PASS (25/27 classes LIT; 2/27 honestly skipped no_class_prior_row; kala_now_get + kala_explain_get + judgment_query + Abhinandan + zero-ancient-windows all verified; evidence committed cceea97a5); (3) M4' — PUBLISHED BESIDE M4 (MEASUREMENT_4_PRIME_v1_0.md; 31,350 windows 25 classes; strict 3/3; extended 5/7; noise floor 0.759 expected; 12 newly-available LEL→class for M5; ablation DEFERRED named residual); (4) DVIPRAMĀṆA 27-vs-27 — STRUCTURAL-PASS (DVIPRAMANA_27_v1_0.md; DB+MCP 6/6 agree; 25/27 LIT; 2/27 honestly deferred); (5) M5+ablation — MEASUREMENT-5-ABLATION-DEFERRED (structural evidence only; per-seam re-runs deferred; documented per §N.8); (6) BRILLIANCE GATE #1 — CONDITIONAL-PASS (BRILLIANCE_GATE_1_v1_0.md; PRATINIDHI 22 MCP calls; rubric (ii)(iv)(v)(vi) PASS; (i)(iii) PARTIAL field maturity; Moon-primary, Mercury MD + Saturn AD both end 2027-08-18, convergent_strong career 4.58). All 3 P-D artifacts committed to sampurti/integration (commit 25a361fe1, pushed). OPEN: PR #1286 C-1 tests awaiting CI merge; M5 ablation named residual. No defect lane named. All conductors TERMINAL.
 
 ^^RUN-TERMINAL: ARC-COMPLETE
+
+══════════════════════════════════════════════════════════
+EKAVĀKYATĀ — CAMPAIGN OPEN 2026-08-16
+══════════════════════════════════════════════════════════
+
+EKV-T0-LAUNCHED 2026-08-16T19:06Z (SŪTRADHĀRA — EKAVĀKYATĀ conductor)
+
+origin/main: 63049a6e327e46a552496d7fc3a66f87a67d5ee8
+audit corpus: audit/paripurna2-evidence @ aa0227abc (on origin — corpus backup confirmed)
+DB proxy :5433: RUNNING
+
+STANDING ROLES:
+- PRATINIDHI (opus): launched 19:05Z · worktree ekv-pratinidhi · branch ekv/pratinidhi-role · log ekv-logs/pratinidhi.log
+- SENTINEL (sonnet): launched 19:05Z · worktree ekv-sentinel · branch ekv/sentinel-role · log ekv-logs/sentinel.log
+
+STREAM SESSIONS (all launched 19:06Z via ekv_launch_streams.sh):
+- SEVĀ    (A): worktree ekv-lead-seva    · branch ekv/lead-seva    · log ekv-logs/stream_A.log
+- ŚĀSTRA  (B): worktree ekv-lead-shastra · branch ekv/lead-shastra · log ekv-logs/stream_B.log
+- ṚTA     (C): worktree ekv-lead-rta     · branch ekv/lead-rta     · log ekv-logs/stream_C.log
+- DHARMA  (D): worktree ekv-lead-dharma  · branch ekv/lead-dharma  · log ekv-logs/stream_D.log
+- SAṄGAMA (E): worktree ekv-lead-sangama · branch ekv/lead-sangama · log ekv-logs/stream_E.log
+
+COORDINATION INFRASTRUCTURE:
+- LEASES.json: 00_ARCHITECTURE/briefs/ekavakyata/LEASES.json (on campaign-coordination)
+- ekv_manifest.json: 40-lane skeleton seeded (E is sole updater) (on campaign-coordination)
+- ekv_gate.py: /Users/Dev/shad_overnight/ekv_gate.py
+- evidence/: 00_ARCHITECTURE/briefs/ekavakyata/evidence/ (stream verifiers write per lane)
+
+W0 TARGET: BUILT+VERIFIED ≤2h from 19:06Z — lanes A-01..A-06 + C-01..C-03
+E merges W0 lanes EAGERLY as each verifies — no batching W0.
+
+COST ENVELOPE: target $280 · warn $340 · hard cap $420
+
+CLOSE TARGET: 07:00 IST (01:30Z) — ekv_gate.py verify --wave 0 AND --wave 1 exit 0
++ SENTINEL re-run + PRATINIDHI countersign → RUN-TERMINAL posted
+
