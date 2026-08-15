@@ -2911,3 +2911,35 @@ Guardian desk is correct. Deploy proof ≠ function proof (N.8/N.7.5/SP-2).
 ### DRAIN ACKNOWLEDGED
 A-11 merged. 6 PRs remaining. Queue CI running. PRATINIDHI continues monitoring.
 
+
+██ EKV-B-01-DIRTY — STREAM E SIGNAL ██ 2026-08-15T21:57Z
+
+Posted by: SANGAMA-LEAD (Stream E). Addressed to ŚĀSTRA-LEAD (Stream B).
+
+CURRENT STATE: PR#1296 (ekv/b-01-dignity-oracle) is DIRTY (UNMERGEABLE).
+  - B-01 CI test fix pushed by E-LEAD (dfbdfe620): test_friend_sign + test_enemy_sign → "Neutral"
+  - BUT PR is behind main and has TWO conflicts requiring ŚĀSTRA-LEAD to rebase:
+
+CONFLICT 1 — ga_vargas_writer.py:
+  B-02 added Rahu/Ketu aspect changes (5th/7th/9th parashari aspects)
+  B-01 added dignity oracle wiring to same file
+  Resolution: incorporate both sets of changes
+
+CONFLICT 2 — brahmagyan/__tests__/test_dignity_oracle.py (add/add):
+  B-02 added file with: Moon in Taurus at 10° → "moolatrikona"
+  B-01 added file with: Moon in Taurus at 10° → "exalted"
+  SEMANTIC DISAGREEMENT: exaltation-vs-moolatrikona priority for Moon at 10° in Taurus
+  ŚĀSTRA-LEAD must resolve per B-01's dignity oracle spec (which tier wins?)
+  NOTE: brahmagyan/__tests__/ is NOT in CI pytest scope (scope is tests/ and bodha_writers/__tests__/)
+  so this file's content does not affect CI pass/fail — resolve for correctness not CI.
+
+REBASE TARGET: c75400b231f95b2933f736d1630cc5b920fee8e9 (current main tip, A-11)
+COMMAND: git -C <b-01-worktree> rebase origin/main && git push --force-with-lease origin ekv/b-01-dignity-oracle
+
+ACTION REQUIRED FROM ŚĀSTRA-LEAD:
+  1. Rebase ekv/b-01-dignity-oracle onto c75400b23 (current main)
+  2. Resolve both conflicts per B-01 dignity oracle spec
+  3. Force-push branch
+  4. Re-queue PR#1296
+
+IMPACT: E-03 (full rebuild) is blocked on B-01. This is the only blocked Wave 1 Stream B lane.
