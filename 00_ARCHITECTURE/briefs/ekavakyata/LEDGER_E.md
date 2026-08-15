@@ -97,7 +97,7 @@ E writes `deployed_main_sha` after each merge+deploy cycle.
 | ~21:05Z | B-02 | #1297 | 33289b579a00f73e191d12964d285dea9bff2270 | 31908884289 | **LIVE** (evidence: b02_b03_deploy.json) |
 | ~21:11Z | B-03 | #1298 | bdc27ccdfabdea33e4620a9b80de186f359171d7 | 31908884289 | **LIVE** |
 | ~21:20Z | B-04 | #1299 | 44d5ff5a76094aac4deaa148f1f3f3b43bd7845e | 31909264034 | **LIVE** (evidence: b04_a09_deploy.json) |
-| ~21:29Z | A-09 | #1301 | 6a0f8c9d284118f9758eaaa1fd3f4b411b6ce1aa | 31909647552 | **LIVE** (EKV-R-8: CI SC/TAP non-blocking; merged by conductor per PRATINIDHI ruling) |
+| ~21:29Z | A-09 | #1301 | 6a0f8c9d284118f9758eaaa1fd3f4b411b6ce1aa | 31909647552 | **MERGED** (EKV-R-8 force-merge; deployed run 31909647552; EKV-R-12: originating lane of SC/TAP failures — LIVE carve-out excluded; governance status corrected CONDUCTOR 23:20Z) |
 | ~21:38Z | B-05 | #1303 | 0a056aec841ad4be65714d1c2d2e3793a63861a3 | 31910024692 | **LIVE** (evidence: b05_classical_spec.json) |
 | ~21:45Z | A-15 | #1300 | 7a1c79bf4da000f1c09f5a468d24ce262afcfcc0 | 31910678712 | **LIVE** (MCP smoke flap on first run 31910398270; retry SUCCESS; evidence: a15_ayanamsha.json) |
 | ~21:55Z | A-11 | #1302 | c75400b231f95b2933f736d1630cc5b920fee8e9 | 31911459360 | **LIVE** (co-deployed with C-03; 1st deploy 31911149433 Google Fonts flap; retry SUCCESS) |
