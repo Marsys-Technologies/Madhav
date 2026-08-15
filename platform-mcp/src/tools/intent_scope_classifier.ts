@@ -175,15 +175,19 @@ const INTENT_RULES: ReadonlyArray<readonly [Intent, ReadonlyArray<Rule>]> = [
   ]],
 ]
 
+// F-24: DOMAIN_RULES updated to match DEEP_DOMAIN_WORD's plural-safe vocabulary so that
+// 'married'/'jobs'/'relationships' etc. resolve to the correct domain in scope_tuple.domains
+// (they already triggered the deep-push path via DEEP_DOMAIN_WORD but were classified as
+// 'general' because DOMAIN_RULES lacked plural/morphological coverage).
 const DOMAIN_RULES: ReadonlyArray<readonly [Domain, RegExp]> = [
-  ['wealth', /\b(wealth|money|finance|financial|riches|dhana|income|savings|prosperity|affluen|net worth|gains?)\b/i],
-  ['career', /\b(career|job|profession|work|business|occupation|employ|promotion|karma bhava|10th house|vocation|livelihood)\b/i],
-  ['marriage', /\b(marriage|marry|spouse|wife|husband|partner|relationship|love|romance|7th house|kalatra|divorce|union)\b/i],
-  ['health', /\b(health|disease|illness|body|medical|ailment|roga|longevity|ayurdaya|vitality|sickness|surgery)\b/i],
-  ['children', /\b(child|children|progeny|santana|santāna|pregnan|conceive|5th house|putra|offspring)\b/i],
+  ['wealth', /\b(wealth|moneys?|finances?|financial|riches|dhana|incomes?|savings|prosperity|affluen|net worth|gains?)\b/i],
+  ['career', /\b(careers?|jobs?|professions?|professional|work|business(es)?|occupations?|employ|promotion|karma bhava|10th house|vocations?|livelihoods?)\b/i],
+  ['marriage', /\b(marriages?|marry|married|marital|spouses?|wi(fe|ves)|husbands?|partners?|partnerships?|relationships?|love|romance|romantic|compatib|7th house|kalatra|divorces?|separations?|union)\b/i],
+  ['health', /\b(health|diseases?|illness(es)?|body|medical|ailments?|roga|longevity|ayurdaya|vitality|sickness|chronic|acute|surg(ery|eries))\b/i],
+  ['children', /\b(child(ren)?|progeny|santana|santāna|pregnan|conceive|5th house|putra|offspring|fertility)\b/i],
   ['education', /\b(education|study|studies|learning|degree|academic|vidya|knowledge|exam|scholar)\b/i],
   ['spirituality', /\b(spiritual|moksha|mokṣa|liberation|dharma|guru|sadhana|meditation|12th house|renunciation|sannyasa)\b/i],
-  ['litigation', /\b(litigation|lawsuit|court|legal|dispute|enemy|enemies|6th house|conflict|debt|loan)\b/i],
+  ['litigation', /\b(litigation|lawsuit|court|legal|dispute|enemy|enemies|6th house|conflict|debts?|loans?)\b/i],
   ['property', /\b(property|house|home|real estate|land|vehicle|4th house|assets?|conveyance)\b/i],
   ['travel', /\b(travel|foreign|abroad|relocation|journey|migration|overseas|pilgrimage)\b/i],
 ]
