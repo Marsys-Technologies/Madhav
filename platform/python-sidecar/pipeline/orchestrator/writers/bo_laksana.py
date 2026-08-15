@@ -1849,6 +1849,20 @@ def _graha_key_from_subject(fact_subject: str) -> str | None:
     return s or None
 
 
+# B-08: Abstention marker prefixes — signals whose text begins with one of these
+# are internal computation-placeholder strings, not astrological findings.
+# They receive computed_salience=0.0 so they never surface in ranked output.
+# NOTE: once ekv/b-05-spec-pack merges, replace with:
+#   from brahmagyan.signal_register_glossary import INTERNAL_MARKER_PATTERNS
+_ABSTENTION_MARKER_PREFIXES: tuple[str, ...] = (
+    "floored: no_canonical_per_varga_method",
+    "no_canonical_per_varga_method",
+    "floored:",
+    "[COMPUTATION-ABSTENTION",
+    "[FLOOR-VALUE",
+)
+
+
 def _compute_salience(
     fact_row: dict,
     tags: dict,
@@ -1858,6 +1872,8 @@ def _compute_salience(
     class_prior: float = 1.0,
     functional_context: float = 1.0,
     varga_id: str = "D1",
+    domain_count: int = 3,
+    is_abstention_marker: bool = False,
 ) -> dict:
     """Compute salience_formula_v2 inputs from L1 data (BA-P3B formula upgrade).
 
@@ -1926,6 +1942,9 @@ def _compute_salience(
         bala_gate=bala_gate_val,
         functional_context=functional_context,
         inputs_complete=inputs_complete,
+        # B-08: domain-affinity and abstention suppression
+        domain_count=domain_count,
+        is_abstention_marker=is_abstention_marker,
     )
     result = salience_formula_v2(inp)
     # Add legacy decomposition keys for backward compat with downstream readers
@@ -2132,11 +2151,22 @@ def _build_signal_row(
     class_prior_val, class_prior_hit = _resolve_class_prior(
         class_priors or {}, stc_for_prior, source_subsystem,
     )
+    # B-08: detect abstention markers before salience computation so zero-salience
+    # is set at the formula level (not patched after the fact).  We check both
+    # fact_value_text (the raw L1 value) and the pre-computed summary text is
+    # not yet available here; fact_value_text is the authoritative source for
+    # computation-abstention strings like "floored: no_canonical_per_varga_method".
+    _fvt_for_abstention = str(fact_value_text or "")
+    _is_abstention = any(
+        _fvt_for_abstention.startswith(p) for p in _ABSTENTION_MARKER_PREFIXES
+    )
     sal = _compute_salience(
         fact_row, tags, strength_lookup, dignity_lookup, av_lookup,
         class_prior=class_prior_val,
         functional_context=1.0,
         varga_id=varga_id or "D1",
+        domain_count=max(len(domains), 1),
+        is_abstention_marker=_is_abstention,
     )
     computed_salience = sal["computed_salience"]
 
