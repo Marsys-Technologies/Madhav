@@ -1084,7 +1084,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
       try {
         const data = await callRegistryCap('marsys://tool/L4/query_predictive_anchors', {
           chart_id: chartId,
-          ayanamsha_id: na(p['ayanamsha_id'] as string | undefined),
+          ayanamsha_id: resolveChartFactsAyanamsha(p['ayanamsha_id'] as string | undefined),
           domain: p['domain'], event_type: p['event_type'], direction: p['direction'],
           horizon_tier: p['horizon_tier'], top_k: p['top_k'],
         }, principal)
@@ -1946,7 +1946,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
           )]
           const data = await callRegistryCap('marsys://tool/L1/get_sensitive_points', {
             chart_id: chartId,
-            ayanamsha_id: na(p['ayanamsha_id'] as string | undefined),
+            ayanamsha_id: resolveChartFactsAyanamsha(p['ayanamsha_id'] as string | undefined),
             categories: realCategories,
             limit: (p['limit'] as number) ?? 25000,
             offset: (p['offset'] as number) ?? 0,
