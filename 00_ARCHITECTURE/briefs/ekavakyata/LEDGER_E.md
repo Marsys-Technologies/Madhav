@@ -93,28 +93,30 @@ Gate's `main_tip.startswith(sha12)` will ALWAYS fail.
 |------------|------|-----|-----------|-----------|--------|
 | ~01:50 IST | A-01 | #1289 | 55a476fbd28f16abfaae756633a4729a23016379 | 3deb54180 | **LIVE** (A-01+A-05 co-deployed ~20:09Z; MCP up) |
 | ~01:30 IST | A-05 | #1290 | 3deb54180deeb2f6141f189899da29284638ac54 | 3deb54180 | **LIVE** (A-01+A-05 co-deployed ~20:09Z) |
-| ~01:00 IST | A-06 | #1291 | — | — | MERGE QUEUE (queued) |
-| ~01:00 IST | A-04 | #1292 | — | — | MERGE QUEUE (queued) |
-| ~01:00 IST | A-03 | #1293 | — | — | MERGE QUEUE (queued) |
-| ~01:30 IST | A-02 | #1294 | — | — | MERGE QUEUE (CI CLEAN 19:54Z; already queued) |
-| ~01:15 IST | C-01/C-02 | #1295 | — | — | MERGE QUEUE (EKV-R-1 auth; queued) |
-| ~01:48 IST | B-01 | #1296 | — | — | **CI FAILED** — test_ga6_writer::TestDignity regression; ŚĀSTRA-LEAD fix needed |
-| ~01:48 IST | B-02 | #1297 | — | — | CI RUNNING (autoMerge set) |
-| ~01:48 IST | B-03 | #1298 | — | — | CI RUNNING (autoMerge set) |
-| ~01:48 IST | B-04 | #1299 | — | — | CI RUNNING (autoMerge set) |
-| ~01:50 IST | A-15 | #1300 | — | — | CI RUNNING (autoMerge set) |
-| ~01:24 IST | A-09 | #1301 | — | — | CI RUNNING (autoMerge set; just created) |
-| ~01:24 IST | A-11 | #1302 | — | — | CI RUNNING (autoMerge set; just created) |
-| ~01:24 IST | B-05 | #1303 | — | — | CI RUNNING (autoMerge set; just created) |
+| ~01:10 IST | A-03 | #1293 | 12cbf5e14c15ed8e0d7bd4b86fafe4ef4abbbce1 | cfc37fc38 | **MERGED** (deploy in_progress run 31906422500) |
+| ~01:18 IST | A-06 | #1291 | cfc37fc381661fd2671b299978d28cb5a9f13aad | cfc37fc38 | **MERGED** (deploy in_progress run 31906422500; deploy-web running ~20:20Z) |
+| ~01:00 IST | A-04 | #1292 | — | — | MERGE QUEUE pos=2 (AWAITING after C-01) |
+| ~01:30 IST | A-02 | #1294 | — | — | MERGE QUEUE pos=3 |
+| ~01:15 IST | C-01/C-02 | #1295 | — | — | **AWAITING_CHECKS** pos=1 (EKV-R-1 auth) |
+| ~01:48 IST | B-01 | #1296 | — | — | **CI FAILED** — test_ga6_writer::TestDignity regression; ŚĀSTRA-LEAD fix needed; EKV-B-01-BLOCKED posted 20:17Z |
+| ~01:48 IST | B-02 | #1297 | — | — | MERGE QUEUE pos=5 |
+| ~01:48 IST | B-03 | #1298 | — | — | MERGE QUEUE pos=6 |
+| ~01:48 IST | B-04 | #1299 | — | — | MERGE QUEUE pos=7 |
+| ~01:24 IST | A-09 | #1301 | — | — | MERGE QUEUE pos=8 |
+| ~01:24 IST | B-05 | #1303 | — | — | MERGE QUEUE pos=9 |
+| ~01:50 IST | A-15 | #1300 | — | — | MERGE QUEUE pos=10 (fix f7402c99e; re-queued) |
+| ~01:24 IST | A-11 | #1302 | — | — | **CI RERUN** (c423b4c15 — test stub fix; autoMerge; will enter queue after pass) |
 
 ### Integration notes
 - A-02 (#1294): count gate `56→60` fix pushed (47c7ec6e5). Two test files updated.
-- C-01 (#1295): EKV-R-1 AUTHORIZED. 4 post-deploy assertions required before LIVE.
+- C-01 (#1295): EKV-R-1 AUTHORIZED. 4 post-deploy assertions required before LIVE. Now AWAITING_CHECKS pos=1.
 - A-09 (#1301): 2 commits — dcc2fb5a (SaraKernel API freeze) + ceadae8cb (buildAssessResponse). registry_bridge.ts relock after merge.
 - B-05 (#1303): LEASE EXCEPTION — writes register_d8_assess_domain.ts (Stream A territory); pre-authorized per LEDGER_B.
 - Context-resume at ~20:00Z (19:54Z UTC): new PRs created for A-09/A-11/B-05; merge queue processing A-05 first.
-- A-15 (#1300): TypeScript TS2304 failure found (2 missed na() calls at lines 1087+1949); dequeued via GraphQL, fix pushed f7402c99e, re-queued. CI re-running.
-- **B-01 (#1296) BLOCKED** — test_ga6_writer.py::TestDignity fails: `_compute_dignity("Sun",3)→"Neutral"≠"Friend"`; `_compute_dignity("Sun",1)→"Neutral"≠"Enemy"`. B-01 changed dignity semantics but did not update test_ga6_writer.py. ŚĀSTRA-LEAD must fix. B-01 NOT in merge queue; B-02..B-05 will queue ahead without B-01.
+- A-15 (#1300): TypeScript TS2304 failure found (2 missed na() calls at lines 1087+1949); dequeued via GraphQL, fix pushed f7402c99e, re-queued. CI re-running → now QUEUED pos=10.
+- **A-03 merged** ~20:10Z (12cbf5e14). A-06 merged ~20:18Z (cfc37fc38). Deploy in_progress run 31906422500 (headSha=cfc37fc38).
+- **B-01 (#1296) BLOCKED** — test_ga6_writer.py::TestDignity fails: `_compute_dignity("Sun",3)→"Neutral"≠"Friend"`; `_compute_dignity("Sun",1)→"Neutral"≠"Enemy"`. B-01 changed dignity semantics but did not update test_ga6_writer.py. ŚĀSTRA-LEAD must fix. EKV-B-01-BLOCKED signal posted 86f915441 to campaign-coordination 20:17Z.
+- **A-11 (#1302) mechanical fix** — bundle_adapters.test.ts:46 stub read raw body (including `{ params }` wrapper from F-127) causing `call.body['chart_id']` undefined. Fix c423b4c15: unwrap `params` layer in stub so flat name assertions work. CI re-running.
 - A-01+A-05 deploy confirmed LIVE at ~20:09Z: deploy.yml sha=3deb5418 conclusion=success; MCP server up; catalog_version unchanged (non-catalog lanes). Evidence: a01_a05_deploy.json.
 
 ---
