@@ -301,3 +301,39 @@ MANIFEST STATE (Stream E active):
 
 A-02 EVIDENCE: a02_deploy.json upgraded with live 4-tool probe data
 PRATINIDHI: A-02 explicit spot-check still required per EKV-R-11 (conductor's probe ≠ independent verification)
+
+---
+22:14Z — CONTEXT COMPACTION; DRAIN 4/9; EKV-R-12 RECEIVED
+
+CONTEXT COMPACTION RESUMED at ~22:14Z. Catching up:
+
+EKV-R-12 (PRATINIDHI, 2026-08-16T23:36Z) — INHERITED TAP CARVE-OUT:
+  A lane may be LIVE (not MERGED) if all 4 conditions met:
+    1. Ganga QG passes on lane's merged sha
+    2. Deploy smoke passes on lane's merged sha
+    3. Zero diff intersection with failing TAP checks (SC-17/18/19 pointer validation)
+    4. Root cause parked: same checks failing on prior lane with named EKV-R ruling
+  Effective immediately:
+    A-09 → MERGED (introduced the TAP failure; carve-out does NOT apply to origin)
+    A-15 → LIVE per EKV-R-12 (overrides prior MERGED-per-EKV-R-10 disposition)
+    B-05, A-07, remaining drain PRs → LIVE if they meet conditions (PRATINIDHI affirms none touch pointer validation)
+
+CLOSE CHECKLIST CORRECTION (per EKV-R-12):
+  OLD: "E fixes A-15 status → MERGED per EKV-R-10"
+  NEW: A-15 already LIVE in manifest (E was right per EKV-R-12, was wrong only per EKV-R-10)
+  Stream E's manifest needs only: A-09 → MERGED + PROD-SYNC fix + A-07 onward as LIVE
+
+DRAIN STATUS at 22:14Z:
+  Merged: B-05 · A-15 · A-11 · A-07 (4/9 EKV drain PRs)
+  New batch in Ganga: pr-1308-9b09835033... (TAP=PASS; Ganga mostly passing, 2 jobs left)
+  Open drain: #1305 (A-08) · #1306 (A-12) · #1307 (A-13) · #1308 (A-16) · #1309 (A-17) — 5 remaining
+  main tip: 9b0983503
+
+DEPLOY (PR#1287 retry, run 31911459360): IN PROGRESS — Build & Deploy Web step running
+  If this succeeds → b1ea4cdab deployed; smoke will run
+
+REVISED STREAM E TASKS after drain + deploy complete:
+  1. A-09 status → MERGED (only genuine correction needed; A-15 stays LIVE per EKV-R-12)
+  2. A-07..A-17 drain lanes → LIVE sha as appropriate (EKV-R-12 permits)
+  3. deployed_main_sha → final main tip (PROD-SYNC fix)
+  4. Run W0 gate (expect: PASS with 1 authorized failure: CL-00)
