@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.59
+version: 6.60
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,19 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.60 (2026-08-15, SAMPŪRTI R42 CLOSE — ka_kshetra lit; FIELD-INTEGRATED posted; Δ3 unblocked):
+    F-wave (F1+F2+F5 #1284, F3 #1285, F4 #1283) all merged and deployed. A8 CANARY GREEN
+    (MARRIAGE class :1 at T+8m29s, :2 at T+11m06s, within 12-min gate). A8 full 27-class
+    build (run 3c0cfc9d, exec 88gh6): kala_field_null=250 rows (25 classes × 10 buckets),
+    kala_field_windows=31,350 rows. Snapshot substep failed with OOM (1,839,618
+    kala_field_provenance rows × fetchall() = 3–8 GB RAM). Local repair via cloud-sql-proxy:
+    kala_field_snapshots inserted (field_content_hash=NULL, §N.8 honest nullable),
+    asset_throughput.state='lit'. FIELD-INTEGRATED marker posted to CAMPAIGN_COORDINATION.md.
+    Δ3 UNBLOCKED: R2 proof + R4 may now proceed. Known residuals: RES-R42-1 (provenance OOM
+    fix needed in future F-wave PR — streaming cursor or SQL-side hash); RES-R42-2
+    (build_run.state='failed' despite data fully integrated); RES-R42-3 (CAMPAIGN_COORDINATION.md
+    local main commit pending push via next PR merge). Full account: SAMPURTI_STATE.md R42
+    CLOSE heartbeat. last_session_id: SAMPURTI-CONDUCTOR-R42-CLOSE-2026-08-15.
   - v6.59 (2026-08-12, PARIṢKĀRA CAMPAIGN CLOSE — genuine, MR-29-verified close of the
     GOCHARA-UTKARṢA transit-prediction elevation): GOCHARA-UTKARṢA (v1 daily-grid gochara
     sweep → v3 arc-solved engine) declared itself closed on its own campaign branch
@@ -98,8 +111,8 @@ changelog:
     independently verified end-to-end, trigger recorded), MR-48's chain-canonical Stage C
     seeding gap, MR-49's coverage-envelope under-claim (fails safe). GOCHARA-UTKARṢA
     CAMPAIGN STATUS: COMPLETE. Main HEAD at close: `a8f6c2052` (merge of PR #1236).
-    last_session_id: PARISHKARA-CONDUCTOR-R2-R3-R4-2026-08-12.
-    predecessor_session: SAMPURTI-CONDUCTOR-2026-08-10.
+    last_session_id: SAMPURTI-CONDUCTOR-R42-CLOSE-2026-08-15.
+    predecessor_session: PARISHKARA-CONDUCTOR-R2-R3-R4-2026-08-12.
   - v6.58 (2026-08-10, SAMPURTI Wave 0 COMPLETE): Wave 0 of SAMPURTI Gap Remediation fully
     closed. PR #1138 (sampurti/integration → main) merged via merge queue @ merge commit
     3311ae0e3 (2026-08-09T23:18Z). All 6 lanes landed: L0a (G16 record repair + citation gate

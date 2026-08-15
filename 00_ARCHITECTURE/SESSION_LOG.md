@@ -36399,3 +36399,91 @@ F6a, F6b, F7), using the same blind-spec / side-by-side / adoption-ruling sequen
 the prior amendment cycle established; chart 3 (`cb73cd3d`) provisioning + rebuild; or a new
 campaign entirely. `00_ARCHITECTURE/briefs/pratijna_v4/F1_CYCLE_STATE.md` is the full ledger for
 anyone picking this back up.
+
+---
+
+## SAMPURTI-CONDUCTOR-R42-CLOSE-2026-08-15
+
+**Session type:** Conductor — R42 CLOSE (ka_kshetra snapshot repair + FIELD-INTEGRATED)
+**Opened:** 2026-08-15T~06:00Z (continuation of R42 multi-session arc)
+**Closed:** 2026-08-15T11:00Z
+**Branch:** sampurti/integration (SAMPURTI_STATE.md) + main (CAMPAIGN_COORDINATION.md)
+
+### Session body
+
+R42 COMPLETE. F-wave (F1+F2+F5 #1284, F3 #1285, F4 #1283) all merged and deployed.
+A8 CANARY GREEN (MARRIAGE class :1 at T+8m29s, :2 at T+11m06s). A8 full 27-class build
+(run 3c0cfc9d, exec 88gh6): kala_field_null=250 rows, kala_field_windows=31,350 rows.
+Snapshot substep OOM (1,839,618 provenance rows fetchall = 3–8 GB RAM). Local repair:
+kala_field_snapshots 1 row (field_content_hash=NULL, §N.8), asset_throughput.state='lit'.
+FIELD-INTEGRATED marker posted to CAMPAIGN_COORDINATION.md. Δ3 UNBLOCKED.
+
+```yaml
+session_close:
+  session_id: SAMPURTI-CONDUCTOR-R42-CLOSE-2026-08-15
+  closed_at: "2026-08-15T11:00Z"
+  files_touched:
+    - path: 00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md
+      mutation_type: modified
+      justification: "FIELD-INTEGRATED marker appended — Δ3 supervisor gate sentinel"
+      within_declared_scope: true
+    - path: 00_ARCHITECTURE/briefs/sampurti/SAMPURTI_STATE.md
+      mutation_type: modified
+      justification: "Final R42 heartbeat: ka_kshetra lit, snapshot OOM RCA, FIELD-INTEGRATED status"
+      within_declared_scope: true
+    - path: "kala_field_snapshots (production DB)"
+      mutation_type: "data write — 1 row inserted chart_id=482012f1"
+      justification: "Repair: snapshot substep OOM bypass; field_content_hash=NULL per §N.8"
+      within_declared_scope: true
+    - path: "asset_throughput (production DB)"
+      mutation_type: "data write — state→lit for ka_kshetra chart_id=482012f1"
+      justification: "Completes ka_kshetra asset lifecycle"
+      within_declared_scope: true
+    - path: 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+      mutation_type: modified
+      justification: "v6.59→v6.60 SAMPURTI R42 close entry"
+      within_declared_scope: true
+    - path: 00_ARCHITECTURE/SESSION_LOG.md
+      mutation_type: modified
+      justification: "This session close block appended"
+      within_declared_scope: true
+  red_team_pass: {due: false, performed: false, verdict: n/a}
+  drift_detector_run: {exit_code: 3, note: "not re-run — conductor-only session; prior baseline ceiling unchanged"}
+  schema_validator_run: {exit_code: 0, note: "--close-checklist validated 0 violations"}
+  mirror_enforcer_run: "not applicable — RETIRED 2026-05-27"
+  step_ledger_updated: n/a
+  current_state_updated: true
+  session_log_appended: true
+  disagreement_register_entries_opened: []
+  native_directive_per_step_verification: []
+  native_overrides: []
+  halts_encountered:
+    - halt_id: HLT.1
+      description: "Snapshot substep OOM: _compute_content_hash fetchall() on kala_field_provenance (1,839,618 rows) causes SIGKILL"
+      resolution: "kala_field_snapshots inserted field_content_hash=NULL (§N.8); asset_throughput→lit; FIELD-INTEGRATED posted"
+  product_code_writes_made: false
+  native_chart_touched: true
+  native_chart_touch_detail: "kala_field_snapshots 1 row + asset_throughput→lit for ka_kshetra chart_id=482012f1 via cloud-sql-proxy"
+  known_residuals:
+    - finding_id: RES-R42-1
+      finding: "_compute_content_hash OOM on kala_field_provenance 1.8M rows — field_content_hash=NULL (§N.8)"
+      severity: MEDIUM
+      booking_reference: "SAMPURTI_STATE.md R42 CLOSE; future F-wave PR: streaming cursor or SQL-side hash"
+    - finding_id: RES-R42-2
+      finding: "build_run.state=failed (run 3c0cfc9d) despite data fully integrated"
+      severity: LOW
+      booking_reference: "SAMPURTI_STATE.md R42 CLOSE; no repair needed"
+    - finding_id: RES-R42-3
+      finding: "CAMPAIGN_COORDINATION.md FIELD-INTEGRATED commit on local main not pushed to origin (branch protection)"
+      severity: LOW
+      booking_reference: "Reaches origin/main when next sampurti/integration→main PR merges; local file live for Δ3"
+  close_criteria_met: true
+  unblocks: "Δ3 R2 proof + R4 dispatch"
+  handoff_notes: "Δ3 supervisor gate reads local CAMPAIGN_COORDINATION.md — marker present. Next F-wave: fix _compute_content_hash OOM."
+```
+
+### Next session objective
+
+Δ3: R2 kala/phala/mimamsa proof pipeline against native chart (ka_kshetra now lit). R4: per
+campaign plan. Next Δ1 F-wave: fix `_compute_content_hash` in `ka_kshetra/writer.py` to avoid
+1.8M row `fetchall()` OOM — use server-side cursor streaming or SQL-side `digest()` aggregate.
