@@ -184,6 +184,25 @@ None yet.
 - A-06 NOTE: resolution field omitted from disclosure (data type constraint) — not a dispute, noted
 - Next: watch for VERIFIED markers + E merge actions; run live exit tests when E deploys
 
+### HB-005 — 2026-08-16 ~01:15+0530 (Cycle 4)
+- **PRATINIDHI STALE**: Invoked at 19:29Z, no ruling after 25+ min. Ledger has ZERO heartbeats (only seed commit). FM-27: SENTINEL flagging potential stale session.
+- Conductor: aware — LEDGER_CONDUCTOR updated "PRATINIDHI invoked 19:29Z for EKV-R-1 + EKV-R-2". Conductor is naming: EKV-R-1=C-01 auth, EKV-R-2=gate fix.
+- B-05: pushed (Classical Spec Pack — 7th-house join spec + F-107/F-108 checklist units)
+- B-01: now has all 3 wire-in commits (ga_structural + ga_vargas + bo_pratijna)
+- A lead: HB-3 posted (W1 worktrees created, A-07/A-08 in flight)
+- E: MERGE QUEUE NOT STARTED — explicitly blocked on EKV-R-2 gate fix
+- PRs #1289-1294: filed for W0 A-lanes; CI status unknown from here
+- B-01 15% sample: PASS — classify_dignity() priority order correct; MT degree gate [from,to) ✓; Jup 9.79°Sag→MT ✓; Jup 15°Sag→own ✓; nodes neutral-default ✓
+- **SENTINEL REQUEST**: Conductor must assess PRATINIDHI liveness; if no ruling by ~01:35+0530, relaunch per §8.
+
+### HB-004 — 2026-08-16 ~01:05+0530 (Cycle 3)
+- E: PRs filed: #1289 (A-01) · #1290 (A-05) · #1291 (A-06) · #1292 (A-04) · #1293 (A-03) · #1294 (A-02) — all 6 W0 A-lanes queued for merge
+- A-09 (W1): EKV-KERNEL-API-FROZEN committed (dcc2fb5a) — SaraKernel types in response_budget.ts; consumers A-14/A-16/B-08 unblocked
+- Stream B: B-01 wired in 3 writers (ga_structural, ga_vargas, bo_pratijna)
+- Main: still 63049a6e (no merges yet; CIs running on PRs #1289-1294)
+- PRATINIDHI: no new rulings (ESCALATION-001 stands)
+- Next: watch CI on PRs + PRATINIDHI rulings; sample B-01 diff at 15%
+
 ### HB-003 — 2026-08-16 ~00:50+0530 (Cycle 2)
 - Conductor: ALIVE — HBs at 19:25Z + 19:30Z confirmed
 - Stream A: W0 all 6 VERIFIED in LEDGER_A; EKV-A-01..06-VERIFIED markers posted in LEDGER_A
