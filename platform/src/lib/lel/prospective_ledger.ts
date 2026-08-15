@@ -589,7 +589,10 @@ export function deriveWindowFields(
   row: Pick<ProspectiveLedgerRow, 'claim_shape' | 'observation_window'>
 ): { point_date: string | null; window_start: string | null; window_end: string | null } {
   if (!row.observation_window) return { point_date: null, window_start: null, window_end: null }
-  const [start, end] = parseDaterange(row.observation_window)
+  const parsed = parseDaterange(row.observation_window)
+  // Postgres EMPTY range == no window: same all-null shape as a missing window.
+  if (!parsed) return { point_date: null, window_start: null, window_end: null }
+  const [start, end] = parsed
   if (row.claim_shape === 'point') return { point_date: start, window_start: null, window_end: null }
   return { point_date: null, window_start: start, window_end: subOneDay(end) }
 }
@@ -714,15 +717,15 @@ export async function matchOpenPredictionsForLelEvent(
     let hit = false
     let note = ''
 
-    if (row.claim_shape === 'point' && row.observation_window) {
-      const [pointStart] = parseDaterange(row.observation_window)
+    if (row.claim_shape === 'point' && row.observation_window && parseDaterange(row.observation_window)) {
+      const [pointStart] = parseDaterange(row.observation_window) as [string, string]
       const diffMs = Math.abs(eventDate - new Date(`${pointStart}T00:00:00Z`).getTime())
       if (diffMs <= toleranceMs) {
         hit = true
         note = `LEL event ${event.life_event_id} (${event.event_date}) is within ${dateConfidence} tolerance (±${toleranceDaysFor(dateConfidence)}d) of point claim ${pointStart}.`
       }
-    } else if (row.claim_shape === 'interval' && row.observation_window) {
-      const [winStart, winEnd] = parseDaterange(row.observation_window)
+    } else if (row.claim_shape === 'interval' && row.observation_window && parseDaterange(row.observation_window)) {
+      const [winStart, winEnd] = parseDaterange(row.observation_window) as [string, string]
       const evStart = event.interval_start ?? event.event_date
       const evEnd = event.interval_end ?? event.event_date
       const overlap =
@@ -754,8 +757,23 @@ export async function matchOpenPredictionsForLelEvent(
   return matches
 }
 
-/** Parses a Postgres daterange text representation, e.g. "[2027-04-09,2027-08-19)" -> ['2027-04-09','2027-08-18']. Handles both '[' and ')'/']' bound styles. */
-function parseDaterange(text: string): [string, string] {
+/** Parses a Postgres daterange text representation, e.g. "[2027-04-09,2027-08-19)" -> ['2027-04-09','2027-08-18']. Handles both '[' and ')'/']' bound styles.
+ *
+ * Returns `null` for Postgres's EMPTY range, whose canonical text literal is the bare
+ * word `empty` — a legal daterange value, not corrupt data (PARIPŪRṆA audit, 2026-08-15).
+ * LIVE DEFECT this closes: `standing_predictions_read` threw
+ * "could not parse daterange literal 'empty'" and 500'd for EVERY caller on the
+ * canonical chart, because 6 brahma_prospective_ledger rows carry
+ * observation_window='empty' with claim_shape='interval' AND lifecycle_status='open'
+ * — i.e. the tool's DEFAULT (status=open) read returns them on the happy path.
+ * Semantics: an empty window is "no window", so callers treat it exactly as a missing
+ * observation_window (null derived dates; matches no event) rather than throwing.
+ * NOTE (separate, filed): rows SHOULD not normally be filed with an empty window —
+ * the producer that created these 6 is a distinct write-path question, deliberately
+ * NOT conflated with this read-path crash fix.
+ */
+function parseDaterange(text: string): [string, string] | null {
+  if (text.trim().toLowerCase() === 'empty') return null
   const m = text.match(/[[(]([^,]*),([^)\]]*)[)\]]/)
   if (!m) throw new Error(`parseDaterange: could not parse daterange literal '${text}'`)
   return [m[1] as string, m[2] as string]
