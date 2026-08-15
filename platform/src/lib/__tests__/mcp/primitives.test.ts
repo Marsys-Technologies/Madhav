@@ -30,7 +30,9 @@ describe('primitives_registry — isAllowedSurgicalTool', () => {
     // (mechanism_retrodiction_get) + 1 SARVA-SIDDHI CR-24 (bodha_mechanisms_get)
     // + 2 ṢAḌ-DARŚANA W3 item-36 muhūrta lattice readers (query_muhurta_lattice,
     //   query_parihara_graph — the L0 read path the contender-lattice engine consumes)
-    expect(mcpToolNames).toHaveLength(56)
+    // + 4 EKAVĀKYATĀ A-02 classical-text tools (read_chapter, list_classical_texts,
+    //   find_verses_about, search_classical_texts)
+    expect(mcpToolNames).toHaveLength(60)
     for (const name of mcpToolNames) {
       expect(isAllowedSurgicalTool(name)).toBe(true)
     }
