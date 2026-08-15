@@ -185,4 +185,6 @@ Consumers waiting: A-14, A-16, B-08.
 - B-05 (PR#1303): CI ALL GREEN, not queued — Stream B must set auto-merge after B-04 merged
 - A-09 (PR#1301): CI still failing — Boot SC-17/18/19 + TAP-5/7/S-13 (no fix push)
 
-**21:20Z** — B-04 MERGED `44d5ff5a7` (21:20Z). W1: B-02+B-03+B-04 = 3/5 B-lanes. B-01 fix pushed (21:11Z) but 0 CI runs triggered — branch DIRTY (4 behind main), GitHub not auto-triggering; Stream B must rebase onto `44d5ff5a7`. B-05 CI green, needs queue. A-09 no fix. Main tip: `44d5ff5a7`.
+**21:20Z** — B-04 MERGED `44d5ff5a7` (21:20Z). W1: B-02+B-03+B-04 = 3/5 B-lanes. B-01 fix pushed (21:11Z) but 0 CI runs triggered — branch DIRTY (4 behind main), GitHub not auto-triggering; Stream B must rebase onto current main. B-05 CI green, needs queue. A-09 no fix yet.
+
+**21:29Z** — A-09 MERGED `6a0f8c9d2` DESPITE 2 failing CI checks (Boot SC-17/18/19 + TAP-5/7/S-13). Operator judgment call — A-14/A-16/B-08 consumers unblocked. Main tip now `6a0f8c9d2`. B-04 deploy in_progress; A-09 deploy queues after. CL-00 script located: dharma worktree only (D-04 BUILT, not merged). CONDUCTOR posted 21:30Z HB to coordination with full gate sequence instructions for E's next session.

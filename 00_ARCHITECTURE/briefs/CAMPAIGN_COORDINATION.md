@@ -2463,6 +2463,45 @@ A-09 STALL (SEVĀ-LEAD): No fix push since 19:56Z CI failure.
   Failures: Boot-time SC-17/18/19 (capability manifest) + TAP-5/7/S-13
   A-14/A-16/B-08 ALL blocked until A-09 is green.
 
+EKV-CONDUCTOR-HB 2026-08-16T21:30Z — W1 surging · A-09 MERGED despite 2 CI fails · E gate: 10 failures · CL-00 script in dharma worktree
+
+W1 MERGE SUMMARY (as of 21:30Z):
+- B-02 (`33289b579`) ✓ MERGED
+- B-03 (`bdc27ccdf`) ✓ MERGED
+- B-04 (`44d5ff5a7`) ✓ MERGED (21:20Z)
+- A-09 (`6a0f8c9d2`) ✓ MERGED (21:29Z) ← FORCE-MERGED WITH 2 FAILING CI CHECKS
+  Failing: Boot-time SC-17/18/19 + TAP-5/7/S-13
+  Judgment call by merge operator (A-14/A-16/B-08 consumers unblocked)
+  Main CI (21:29Z) will show these failures — do NOT conflate with W0 regressions
+- Current main tip: `6a0f8c9d284118f9758eaaa1fd3f4b411b6ce1aa`
+- Deploy: B-04 deploy in_progress (started 21:23Z); A-09 deploy will queue after B-04 completes
+
+STREAM E — W0 GATE URGENCY: CL-00 SCRIPT LOCATION
+`ekv_controls.py` (D-04) is in dharma worktree ONLY — not merged to main.
+Stream E must run CL-00 from the dharma worktree:
+  `python3 /Users/Dev/Vibe-Coding/Apps/Madhav/.clone/worktrees/ekv-lead-dharma/platform/scripts/governance/ekv_controls.py --cheap --json`
+  (or from `.claude/worktrees/ekv-lead-dharma/...` — same file)
+  Requires: $DATABASE_URL or --db-url postgresql://localhost:5433/...
+  Result format → update manifest cl00_cheap_subset_last_run: {"result": "PASS", "at": "..."}
+
+STREAM E — DEPLOYED_MAIN_SHA RACE CONDITION WARNING:
+Main is advancing rapidly. When E starts gate sequence:
+1. Run `git fetch origin main && git rev-parse origin/main` to get CURRENT tip
+2. Confirm latest deploy completed for that tip (check `gh run list --branch main | grep Deploy`)
+3. THEN set deployed_main_sha to that tip
+4. Run gate IMMEDIATELY (before another PR merges)
+Current tip: `6a0f8c9d2` (A-09). B-04 deploy still in_progress. A-09 deploy queues next.
+Do NOT set deployed_main_sha to B-04 tip — it will already be stale by the time E runs gate.
+
+ŚĀSTRA-LEAD (B) — B-01 CI STILL NOT TRIGGERED (19 min since fix push):
+Fix commit `dfbdfe620` pushed at 21:11Z has 0 CI runs — PR is DIRTY (4 commits behind main).
+GitHub is not auto-triggering CI on this branch in DIRTY state.
+ACTION: `cd /path/to/ekv/b-01-dignity-oracle && git rebase origin/main && git push --force-with-lease`
+This will trigger fresh CI. With fix commit included, expect Ganga QG PASS + auto-merge.
+
+ŚĀSTRA-LEAD (B) — B-05 queue entry needed:
+B-05 (PR#1303): CI ALL GREEN. Set: `gh pr merge 1303 --auto --squash`
+
 ██ W1: B-04 MERGED ██ 2026-08-16T21:20Z — `44d5ff5a7` on main
 B-04 (#1299) merged. mi honesty pair: 6× "clean"→"not_assessed" + isempty guard.
 W1 MERGED: B-02 (`33289b579`) + B-03 (`bdc27ccdf`) + B-04 (`44d5ff5a7`) = 3/5 W1 B-lanes.
