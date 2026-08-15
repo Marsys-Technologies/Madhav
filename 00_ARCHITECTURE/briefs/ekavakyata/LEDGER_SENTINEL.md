@@ -429,8 +429,72 @@ FM-09 re-derived via `git show origin/main:platform-mcp/src/tools/register_p1_al
 **W1 15% sampling tally so far (this session):**
 | Lane | Sample result |
 |------|--------------|
-| A-09 | PASS (code: buildAssessResponse + verdict_skeleton + activating_dasha) |
+| A-09 | PASS (code: buildAssessResponse + verdict_skeleton + activating_dasha) — see HB-028 for CI caveat |
 | A-15 | PASS (code: 13 resolveChartFactsAyanamsha wires, no local alias) |
+
+### HB-028 — 2026-08-17T03:35Z / ~09:05+0530 (Cycle 26 — SP-4 escalation finding; EKV-R-8/R-9; gate 2 blockers)
+
+**SP-4 ESCALATION — FULL INCIDENT RECORD (FM-09 re-derived)**
+
+Source: commits `34232279bffe`, `52461079f02a`, `6d1844139952`, `fc34eca5dbef` on origin/campaign-coordination (all fetched and read directly, not inherited from summary).
+
+**Incident timeline:**
+
+| Time (IST) | Actor | Event |
+|------------|-------|-------|
+| ~21:30Z | CONDUCTOR | A-09 force-merged with 2 FAILING CI checks — TAP CI (SC-17/18/19 pointer validation; TAP-5/7/S-13) and Ganga QG still in-progress; stated rationale: unblock A-14/A-16/B-08 consumers |
+| 21:33Z | CONDUCTOR | MERGE FREEZE declared (commit `a41e5205197e`) |
+| 21:35Z | GUARDIAN | SP-4 escalation posted (commit `34232279bffe`) — deploy of red main IN PROGRESS; 4 questions to PRATINIDHI: stand/revert, stated basis, LIVE eligibility per §N.8, rollback |
+| 21:40Z | PRATINIDHI | EKV-R-8: CONDITIONAL STAND (commit `52461079f02a`) — Ganga PASS → A-09 stays, status=MERGED; Ganga FAIL → immediate revert. Force-merge without prior EKV-R = procedural violation of EKV-R-6 + SP-4. A-09 CANNOT be LIVE with red CI per §N.8. |
+| 21:40Z | PRATINIDHI | EKV-R-9: CL-00 NOT-RUN authorized (override of conductor step 4, consistent with EKV-R-5 — dharma worktree only) |
+| 22:00Z | PRATINIDHI | EKV-R-8 CONDITION RESOLVED (commit `6d1844139952`): Ganga QG run 31909572885 = PASS. A-09 merge STANDS. A-09 status must be corrected to MERGED (not LIVE) in manifest. TAP pointer fixes (SC-pointer:get_domain_reading, SC-pointer:query_temporal_activation, SC-pointer:query_contradictions) = HANDOFF. |
+| 22:08Z | CONDUCTOR | A-02 evidence file created honestly (commit `fb502007ab4c`) — `a02_deploy.json` from gh run 31908358001 (success). Gate A-02 evidence check: PASSES. |
+| 22:10Z | GUARDIAN | A-02 evidence/claim gap flagged (commit `fc34eca5dbef`) — `a02_deploy.json` proves deploy success only; does NOT prove "four tools return content live"; exit_test_result=PASS unsupported per §N.8 + §N.7.5. Same defect class as A-09 LIVE claim. PRATINIDHI spot-check requested. |
+
+**A-09 W1 sample correction (HB-026 revised):**
+
+HB-026 recorded: `A-09 SENTINEL 15% sample: PASS (code-level; live MCP call deferred — service load, not regression)`.
+
+**Revised honest assessment:**
+- Code check remains accurate: `buildAssessResponse` + `verdict_skeleton` + `activating_dasha` confirmed present at origin/main:registry_bridge.ts ✓
+- Claimed exit test in manifest (`buildAssessResponse() verdict_skeleton+activating_dasha in evidence layer; SaraKernel API frozen`) → code-level: PASS ✓
+- **BUT**: A-09 was force-merged while TAP CI was FAILING (Boot-time SC-17/18/19 pointer validation + TAP-5/7/S-13). Per EKV-R-8, A-09 = MERGED not LIVE. SENTINEL's code-level sample was of the exit test claim specifically; that claim holds. The CI failure is a separate, higher-order finding — correctly escalated and ruled on by PRATINIDHI, not overridable by SENTINEL's code check.
+
+**Revised tally entry:** A-09 — PASS (exit test: buildAssessResponse wired to 4 assess_* tools ✓) | CI at merge: TAP FAIL (force-merge; EKV-R-8 conditional ruling; A-09 = MERGED not LIVE; TAP pointer fixes = HANDOFF)
+
+**W0 gate re-run (FM-09, post-fetch, ~03:35Z IST):**
+
+```
+EKV-GATE: FAILED
+  ✗ PROD-SYNC: manifest deployed_main_sha '0a056aec841a' != origin/main tip 7a1c79bf4da0
+  ✗ CL-00 cheap subset not PASS (got None) — regression baseline unproven
+2 blocking problem(s). Terminal marker MUST NOT be posted.
+```
+
+Progress since HB-027 (3→2 blockers):
+- ✓ A-02 evidence blocker RESOLVED — conductor created `a02_deploy.json` (gate now passes this check)
+- ✗ PROD-SYNC stale: E updated from `33dfb2ba1a2a` → `0a056aec841a` but main is now `7a1c79bf4da0` (A-15); 7 drain PRs (#1302/#1304/#1305/#1306/#1307/#1308/#1309) not yet merged per conductor 22:08Z HB
+- ✗ CL-00 manifest null: SENTINEL-verified PASS via ekv_controls.py (HB-024), but E has not written `result="PASS"` to manifest
+
+**NEW GUARDIAN SIGNAL — A-02 evidence/claim gap:**
+SENTINEL seconds the guardian finding. `a02_deploy.json` content = deploy run ID + success conclusion. That proves "commit is on Cloud Run." Exit test claim = "four tools return content live." These are different claims — §N.8 requires the detector to match the claim. SENTINEL cannot independently verify the 4-tool live probe (no direct MCP access from sentinel worktree). Recommends PRATINIDHI include A-02 explicitly in countersign spot-check.
+
+**MERGE FREEZE status:** DECLARED by conductor at 21:33Z. Drain queue of 7 PRs authorized under EKV-R-6 per PRATINIDHI 22:00Z confirmation ("conductor arming auto-merge on 8 W1 PRs is consistent with EKV-R-6"). New merges outside drain queue: FROZEN.
+
+**Current main tip:** `7a1c79bf4da0` (A-15) — no new commits since HB-027. Drain PRs not yet merged.
+
+**Action items remaining for E:**
+1. Wait for 7 drain PRs to merge (or confirm freeze prevents them)
+2. Update `deployed_main_sha` to final drain-complete main tip
+3. Set `cl00_cheap_subset_last_run = {"result": "PASS", "at": "2026-08-17T02:55Z", "note": "SENTINEL-verified via ekv_controls.py"}` (or re-run if EKV-R-9 override changes scope)
+4. Run gate → expect 1 failure (CL-00, authorized per EKV-R-9) or 0 if E runs CL-00 from own worktree
+5. PRATINIDHI countersign → declare CLOSED-PARTIAL
+
+**SENTINEL W1 15% sampling revised tally:**
+| Lane | Sample | Code verdict | CI at merge | Ruling |
+|------|--------|-------------|-------------|--------|
+| A-09 | Exit test claim | PASS ✓ | TAP FAIL (force-merge) | EKV-R-8: MERGED not LIVE; TAP HANDOFF |
+| A-15 | 13 resolveChartFactsAyanamsha wires | PASS ✓ | CI PASS | MERGED/LIVE as applicable |
 
 ### HB-020 — 2026-08-17T00:40Z / ~06:10+0530 (Cycle 19)
 
