@@ -581,6 +581,8 @@ def _compute_aspect_matrix(varga_positions: dict[str, int]) -> list[tuple[str, s
         "Mars": [3, 7],   # 4th, 8th (0-indexed offset from body sign)
         "Jupiter": [4, 8], # 5th, 9th
         "Saturn": [2, 9],  # 3rd, 10th
+        "Rahu": [4, 8],    # 5th, 9th (BPHS Ch.26 — same as Jupiter)
+        "Ketu": [4, 8],    # 5th, 9th (BPHS Ch.26 — same as Jupiter)
     }
     for body, sign in varga_positions.items():
         if body == "Lagna":
