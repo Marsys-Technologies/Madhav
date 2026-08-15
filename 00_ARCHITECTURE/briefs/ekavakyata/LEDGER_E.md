@@ -93,31 +93,42 @@ Gate's `main_tip.startswith(sha12)` will ALWAYS fail.
 |------------|------|-----|-----------|-----------|--------|
 | ~01:50 IST | A-01 | #1289 | 55a476fbd28f16abfaae756633a4729a23016379 | 3deb54180 | **LIVE** (A-01+A-05 co-deployed ~20:09Z; MCP up) |
 | ~01:30 IST | A-05 | #1290 | 3deb54180deeb2f6141f189899da29284638ac54 | 3deb54180 | **LIVE** (A-01+A-05 co-deployed ~20:09Z) |
-| ~01:10 IST | A-03 | #1293 | 12cbf5e14c15ed8e0d7bd4b86fafe4ef4abbbce1 | cfc37fc38 | **MERGED** (deploy in_progress run 31906422500) |
-| ~01:18 IST | A-06 | #1291 | cfc37fc381661fd2671b299978d28cb5a9f13aad | cfc37fc38 | **MERGED** (deploy in_progress run 31906422500; deploy-web running ~20:20Z) |
-| ~01:00 IST | A-04 | #1292 | — | — | MERGE QUEUE pos=2 (AWAITING after C-01) |
-| ~01:30 IST | A-02 | #1294 | — | — | MERGE QUEUE pos=3 |
-| ~01:15 IST | C-01/C-02 | #1295 | — | — | **AWAITING_CHECKS** pos=1 (EKV-R-1 auth) |
+| ~01:10 IST | A-03 | #1293 | 12cbf5e14c15ed8e0d7bd4b86fafe4ef4abbbce1 | cfc37fc38 | **LIVE** (A-03+A-06 co-deployed ~20:31Z; evidence: a03_a06_deploy.json) |
+| ~01:18 IST | A-06 | #1291 | cfc37fc381661fd2671b299978d28cb5a9f13aad | cfc37fc38 | **LIVE** (A-03+A-06 co-deployed ~20:31Z) |
+| ~01:15 IST | C-01/C-02 | #1295 | 20266702ada941565569dac8fc76b0b89b5ae88d | a2ce6dc37 | **LIVE** (EKV-R-1 4/4 PASSED ~20:50Z; evidence: c01_a04_deploy.json) |
+| ~01:00 IST | A-04 | #1292 | a2ce6dc37ef3f460cabefa7e76287750a565441c | a2ce6dc37 | **LIVE** (deploy run 31907248672 ~20:50Z; web+MCP deployed) |
+| ~01:30 IST | A-02 | #1294 | — | — | MERGE QUEUE (UNKNOWN — entering on A-04 tip) |
 | ~01:48 IST | B-01 | #1296 | — | — | **CI FAILED** — test_ga6_writer::TestDignity regression; ŚĀSTRA-LEAD fix needed; EKV-B-01-BLOCKED posted 20:17Z |
-| ~01:48 IST | B-02 | #1297 | — | — | MERGE QUEUE pos=5 |
-| ~01:48 IST | B-03 | #1298 | — | — | MERGE QUEUE pos=6 |
-| ~01:48 IST | B-04 | #1299 | — | — | MERGE QUEUE pos=7 |
-| ~01:24 IST | A-09 | #1301 | — | — | MERGE QUEUE pos=8 |
-| ~01:24 IST | B-05 | #1303 | — | — | MERGE QUEUE pos=9 |
-| ~01:50 IST | A-15 | #1300 | — | — | MERGE QUEUE pos=10 (fix f7402c99e; re-queued) |
-| ~01:24 IST | A-11 | #1302 | — | — | **CI RERUN** (c423b4c15 — test stub fix; autoMerge; will enter queue after pass) |
+| ~01:48 IST | B-02 | #1297 | — | — | MERGE QUEUE (UNKNOWN) |
+| ~01:48 IST | B-03 | #1298 | — | — | MERGE QUEUE (UNKNOWN) |
+| ~01:48 IST | B-04 | #1299 | — | — | MERGE QUEUE (UNKNOWN) |
+| ~01:24 IST | A-09 | #1301 | — | — | **CI FAIL** SC-17/18/19+TAP-5/7/S-13; EKV-A-09-CI-FAIL posted 20:40Z; SEVĀ-LEAD must fix |
+| ~01:24 IST | B-05 | #1303 | — | — | MERGE QUEUE (UNKNOWN) |
+| ~01:50 IST | A-15 | #1300 | — | — | MERGE QUEUE (UNKNOWN; fix f7402c99e re-queued) |
+| ~01:24 IST | A-11 | #1302 | — | — | MERGE QUEUE (UNKNOWN; CI rerun passed c423b4c15) |
+| ~02:32Z | A-07 | #1304 | — | — | CI BLOCKED (PR created; autoMerge set) |
+| ~02:32Z | A-08 | #1305 | — | — | CI BLOCKED (PR created; autoMerge set) |
+| ~02:32Z | A-12 | #1306 | — | — | CI BLOCKED (PR created; autoMerge set) |
+| ~02:32Z | A-13 | #1307 | — | — | CI BLOCKED (PR created; autoMerge set) |
+| ~02:32Z | A-16 | #1308 | — | — | CI BLOCKED (PR created; autoMerge set) |
+| ~02:32Z | A-17 | #1309 | — | — | CI BLOCKED (PR created; autoMerge set) |
+| — | C-03 | #1287 | — | — | MERGE QUEUE (UNKNOWN; fix/prospective-ledger-empty-daterange) |
 
 ### Integration notes
 - A-02 (#1294): count gate `56→60` fix pushed (47c7ec6e5). Two test files updated.
-- C-01 (#1295): EKV-R-1 AUTHORIZED. 4 post-deploy assertions required before LIVE. Now AWAITING_CHECKS pos=1.
-- A-09 (#1301): 2 commits — dcc2fb5a (SaraKernel API freeze) + ceadae8cb (buildAssessResponse). registry_bridge.ts relock after merge.
+- C-01 (#1295): EKV-R-1 AUTHORIZED + **ALL 4 ASSERTIONS PASSED** ~20:50Z: migration_applied=1, empty_rows=0, CHECK fires on empty insert, open_count=29. Evidence: c01_a04_deploy.json.
+- A-04 (#1292): LIVE. Deploy run 31907248672 (sha=a2ce6dc37) deployed web+MCP. tools_changed_at advanced to 2026-08-15T20:43Z.
+- A-09 (#1301): 2 commits — dcc2fb5a (SaraKernel API freeze) + ceadae8cb (buildAssessResponse). **CI FAIL** Boot-time SC-17/18/19 + TAP-5/7/S-13 — EKV-A-09-CI-FAIL posted 20:40Z by CONDUCTOR; SEVĀ-LEAD must fix before A-14/A-16/B-08 can merge.
 - B-05 (#1303): LEASE EXCEPTION — writes register_d8_assess_domain.ts (Stream A territory); pre-authorized per LEDGER_B.
-- Context-resume at ~20:00Z (19:54Z UTC): new PRs created for A-09/A-11/B-05; merge queue processing A-05 first.
-- A-15 (#1300): TypeScript TS2304 failure found (2 missed na() calls at lines 1087+1949); dequeued via GraphQL, fix pushed f7402c99e, re-queued. CI re-running → now QUEUED pos=10.
-- **A-03 merged** ~20:10Z (12cbf5e14). A-06 merged ~20:18Z (cfc37fc38). Deploy in_progress run 31906422500 (headSha=cfc37fc38).
+- Context-resume at ~20:00Z (19:54Z UTC): new PRs created for A-09/A-11/B-05; merge queue processing.
+- A-15 (#1300): TypeScript TS2304 failure (2 missed na() calls at lines 1087+1949); dequeued via GraphQL, fix pushed f7402c99e, re-queued.
+- **A-03 merged** ~20:10Z (12cbf5e14). **A-06 merged** ~20:18Z (cfc37fc38). Deploy success run 31906422500. Evidence: a03_a06_deploy.json.
+- **C-01 merged** ~20:40Z (20266702a). **A-04 merged** ~20:51Z (a2ce6dc37). Deploy success run 31907248672. EKV-R-1 ALL PASS. Evidence: c01_a04_deploy.json.
 - **B-01 (#1296) BLOCKED** — test_ga6_writer.py::TestDignity fails: `_compute_dignity("Sun",3)→"Neutral"≠"Friend"`; `_compute_dignity("Sun",1)→"Neutral"≠"Enemy"`. B-01 changed dignity semantics but did not update test_ga6_writer.py. ŚĀSTRA-LEAD must fix. EKV-B-01-BLOCKED signal posted 86f915441 to campaign-coordination 20:17Z.
-- **A-11 (#1302) mechanical fix** — bundle_adapters.test.ts:46 stub read raw body (including `{ params }` wrapper from F-127) causing `call.body['chart_id']` undefined. Fix c423b4c15: unwrap `params` layer in stub so flat name assertions work. CI re-running.
-- A-01+A-05 deploy confirmed LIVE at ~20:09Z: deploy.yml sha=3deb5418 conclusion=success; MCP server up; catalog_version unchanged (non-catalog lanes). Evidence: a01_a05_deploy.json.
+- **A-11 (#1302) mechanical fix** — bundle_adapters.test.ts:46 stub read raw body (including `{ params }` wrapper from F-127) causing `call.body['chart_id']` undefined. Fix c423b4c15: unwrap `params` layer in stub. CI rerun passed; in merge queue.
+- A-01+A-05 deploy confirmed LIVE at ~20:09Z. Evidence: a01_a05_deploy.json.
+- A-07/A-08/A-12/A-13/A-16/A-17: PRs #1304-#1309 created ~20:32Z from SEVA-LEAD VERIFIED markers; autoMerge set; CI running.
+- **deployed_main_sha = a2ce6dc37** (A-04 tip). W0 LIVE: 7 lanes (A-01/A-03/A-04/A-05/A-06/C-01/C-02). A-02 + C-03 still in merge queue.
 
 ---
 
