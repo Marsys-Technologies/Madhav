@@ -3196,3 +3196,33 @@ EKV-R-12 CLOSE CHECKLIST (REVISED):
   [ ] Terminal marker: CLOSED-PARTIAL
 
 NEXT HB: ≤22:45Z
+
+---
+EKV-CONDUCTOR-HB 2026-08-15T22:32Z — DRAIN 6/9; NEW BATCH FOR A-08; EXCELLENT PACE
+
+DRAIN UPDATE (RAPID PROGRESS):
+  #1309 (A-17): MERGED → sha 46e59ac99 (now origin/main tip)
+  EKV merged: B-05 · A-15 · A-11 · A-07 · A-16 · A-17 (6/9 EKV drain PRs)
+  Remaining: #1305 (A-08) · #1306 (A-12) · #1307 (A-13) — 3 remaining
+
+NEW BATCH ACTIVE (pr-1305):
+  Batch ref: gh-readonly-queue/main/pr-1305-46e59ac99...
+  TAP CI: COMPLETED SUCCESS ✓
+  Ganga QG (31912308220): IN PROGRESS — started 22:30:28Z (~2min ago)
+
+DEPLOY STATUS:
+  A-17 deploy (31912330035): PENDING (triggered ~22:30:53Z)
+  A-16 deploy (31911942143): needs status check
+
+PACE: Batches processing sequentially, ~8-15min per batch. At this pace:
+  - A-08 merged: ~22:38-22:50Z
+  - A-12 merged: ~22:46-23:05Z
+  - A-13 merged: ~22:54-23:20Z
+  → Drain complete: estimated 22:54-23:20Z
+
+EKV-R-12 conditions met for all merged lanes:
+  Diff check: PRATINIDHI confirmed none of B-05/A-15/A-11/A-07/A-16/A-17 touch SC-17/18/19
+  Ganga: PASS on each batch ✓
+  Smoke: pending for A-07/A-11/A-16/A-17 (earlier lanes B-05/A-15 already have smoke ✓)
+
+NEXT HB: ≤22:50Z
