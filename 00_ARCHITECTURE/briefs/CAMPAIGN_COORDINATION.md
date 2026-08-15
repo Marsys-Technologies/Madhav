@@ -3109,3 +3109,49 @@ The conductor's 23:28Z checklist item "E fixes A-15 status → MERGED per EKV-R-
 
 Full ruling text on `ekv/pratinidhi-role` branch in LEDGER_PRATINIDHI.md.
 
+EKV-CONDUCTOR-NOTE 2026-08-16T23:35Z — PR#1287 DEPLOY WEB BUILD FAILURE; NOT W0 BLOCKER
+
+PR#1287 Deploy to Cloud Run (31911149433): FAILURE
+  Failed step: "Build and push web image" (NOT smoke test — different failure class than A-15)
+  Web image build failure ≠ MCP service failure. MCP deploy may have succeeded independently.
+  PR#1287 is a LEL crash fix (not an EKV lane). Does NOT affect W0 gate.
+  SP-4 concern: web deploy red. Morning session investigates.
+
+MANIFEST UPDATE NOTES (E active, 15 LIVE lanes recorded):
+  A-09: status=LIVE in manifest (EKV-R-8 says MERGED — governance deviation persists)
+  A-15: status=LIVE in manifest (EKV-R-10 says MERGED — governance deviation persists)
+  Both require PRATINIDHI countersign attention. Gate PASSES mechanically for W0 lanes.
+
+DRAIN: Ganga QG for 9b09835033 still running (started ~22:03Z, now ~23:35Z = 92min running)
+  TAP passed for 9b09835033 batch. Waiting on Ganga to clear next drain PR.
+
+MANIFEST DEPLOYED_MAIN_SHA: still 7a1c79bf4da0 (E must update post-drain)
+
+---
+EKV-CONDUCTOR-HB 2026-08-15T22:14Z — DRAIN 4/9; NEW GANGA BATCH RUNNING; DEPLOY RE-ATTEMPT
+
+DRAIN UPDATE:
+  #1304 (A-07, F-55/F-41): MERGED → sha 9b0983503 (now origin/main tip)
+  EKV merged total: B-05 · A-15 · A-11 · A-07 (4/9 EKV drain PRs) + PR#1287 non-EKV
+  Remaining: #1305 (A-08) · #1306 (A-12) · #1307 (A-13) · #1308 (A-16) · #1309 (A-17) — 5 still open
+
+MERGE QUEUE — NEW BATCH ACTIVE:
+  Batch ref: gh-readonly-queue/main/pr-1308-9b09835033...
+  TAP CI: COMPLETED SUCCESS (23s) ✓
+  Ganga QG (31911537293): IN PROGRESS — started 22:12:44Z (~2min ago)
+  Expected completion: ~22:20–22:55Z (Ganga typically 8–45min)
+
+DEPLOY RE-ATTEMPT (PR#1287 / b1ea4cdab):
+  Run 31911459360: IN PROGRESS — triggered via workflow_run ~22:11Z
+  Build & Deploy Web: running
+  First attempt (31911149433): FAILED (web image build step)
+  Morning investigation items carry forward: PR#1287 web build root cause + A-15 canary key
+
+MANIFEST PROD-SYNC STATUS:
+  deployed_main_sha in manifest: 7a1c79bf4da0 (stale — 4 merges behind)
+  origin/main tip: 9b0983503
+  Stream E: DO NOT update until ALL drain PRs merge + final deploy completes
+
+GATE (next run after all drain + E PROD-SYNC fix expected: 1 failure, authorized — CL-00)
+
+NEXT HB: ≤22:34Z (20min cadence)
