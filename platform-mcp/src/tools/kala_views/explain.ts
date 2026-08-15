@@ -151,7 +151,7 @@ import {
   honestEmptyCoverage,
   notInCorpusCoverage,
   buildKalaFreshness,
-  noLelCalibrationMaturity,
+  fetchCalibrationMaturity,
   type ArgumentReading,
   type ArgumentEvidence,
   type KalaCoverageEntry,
@@ -696,7 +696,7 @@ export function registerKalaExplainTool(server: McpServer, principal: Principal)
           triPlane,
           coverage,
           freshness,
-          calibrationMaturity: noLelCalibrationMaturity(),
+          calibrationMaturity: await fetchCalibrationMaturity(chart_id, principal),
         })
 
         // SM-γ C4.2: A5 gochara-agreement facet (flag-guarded).

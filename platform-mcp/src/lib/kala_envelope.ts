@@ -460,6 +460,68 @@ export function noLelCalibrationMaturity(): CalibrationMaturity {
   }
 }
 
+/**
+ * F-140: reads the kala_field_skill chart-level aggregate row (event_class IS NULL)
+ * to serve real calibration data instead of the honest-zero stub. Falls back to
+ * noLelCalibrationMaturity() when no row exists (chart not yet fitted).
+ *
+ * Uses the same /api/mcp/db/query pattern as resolveFieldSnapshot above.
+ * Reads platformUrl and internalToken from process.env internally (same as
+ * resolveFieldSnapshot) so call sites need only supply chart_id + principal.
+ */
+export async function fetchCalibrationMaturity(
+  chartId: string,
+  principal: FieldSnapshotPrincipalLike,
+): Promise<CalibrationMaturity> {
+  const platformUrl = (process.env['PLATFORM_URL'] ?? 'http://localhost:3000').replace(/\/$/, '')
+  const internalToken = process.env['MCP_INTERNAL_TOKEN'] ?? ''
+  try {
+    const res = await fetch(`${platformUrl}/api/mcp/db/query`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-mcp-internal-token': internalToken,
+        'x-mcp-user': principal.user_uid,
+        'x-mcp-key-id': principal.key_id,
+      },
+      body: JSON.stringify({
+        sql: `
+          SELECT
+            agg.n_events,
+            agg.n_prospective,
+            agg.weights_version,
+            agg.skill_score,
+            COALESCE(cls.class_count, 0) AS event_class_coverage
+          FROM kala_field_skill agg
+          LEFT JOIN LATERAL (
+            SELECT COUNT(*)::int AS class_count
+            FROM kala_field_skill
+            WHERE chart_id = $1 AND event_class IS NOT NULL
+          ) cls ON true
+          WHERE agg.chart_id = $1 AND agg.event_class IS NULL
+          ORDER BY agg.released_at DESC
+          LIMIT 1
+        `,
+        params: [chartId],
+      }),
+      signal: AbortSignal.timeout(8_000),
+    })
+    if (!res.ok) return noLelCalibrationMaturity()
+    const data = (await res.json()) as { rows?: Array<Record<string, unknown>> }
+    const row = data.rows?.[0]
+    if (!row) return noLelCalibrationMaturity()
+    return {
+      n_events: Number(row['n_events'] ?? 0),
+      prospective_resolutions: Number(row['n_prospective'] ?? 0),
+      event_class_coverage: Number(row['event_class_coverage'] ?? 0),
+      weights_version: typeof row['weights_version'] === 'string' ? row['weights_version'] : null,
+      skill_score: row['skill_score'] != null ? Number(row['skill_score']) : null,
+    }
+  } catch {
+    return noLelCalibrationMaturity()
+  }
+}
+
 // ── the envelope itself ──────────────────────────────────────────────────────────────
 
 export interface KalaEnvelope<TReading = ArgumentReading> {

@@ -38,7 +38,7 @@ import {
   honestEmptyCoverage,
   notInCorpusCoverage,
   buildKalaFreshness,
-  noLelCalibrationMaturity,
+  fetchCalibrationMaturity,
   type ArgumentReading,
   type ArgumentEvidence,
   type KalaCoverageEntry,
@@ -431,7 +431,7 @@ export function registerKalaPriorityTool(server: McpServer, principal: Principal
           triPlane: triPlane,
           coverage,
           freshness,
-          calibrationMaturity: noLelCalibrationMaturity(),
+          calibrationMaturity: await fetchCalibrationMaturity(chart_id, principal),
         })
 
         // W2.7: include the live salience vector in the response when computed.
