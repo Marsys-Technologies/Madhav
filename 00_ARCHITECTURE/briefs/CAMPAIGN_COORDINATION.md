@@ -2701,3 +2701,44 @@ EKV-R-8: A-09 force-merge — CONDITIONAL STAND:
 EKV-R-9: Conductor STEP 4 OVERRIDDEN. CL-00 must NOT be run from dharma worktree — rejected per EKV-R-5. Stream E: SKIP STEP 4 entirely. CL-00 remains NOT-RUN.
 
 STREAM E: check Ganga result for A-09 (run 31909572885). If FAIL, revert immediately. If PASS, proceed with gate sequence (skipping STEP 4).
+---
+EKV-CONDUCTOR-HB 2026-08-16T21:54Z — W0 GATE DOWN TO 3 FAILURES; DRAIN ARMED
+
+STREAM E (SAṄGAMA) HAS BEEN ACTIVE — significant manifest progress confirmed:
+  FIXED: A-02 status=LIVE, sha correct, evidence path correct
+  FIXED: A-03 merged_sha corrected to 12cbf5e14dd26b4a (matches git)
+  FIXED: A-04/C-01/C-02 evidence paths now have full prefix
+  FIXED: C-03 status=HANDOFF ✓
+  UPDATED: B-04/A-09 evidence file b04_a09_deploy.json present ✓
+  NOTED: A-09 recorded as LIVE (EKV-R-6 governance concern noted below)
+
+CURRENT W0 GATE (python3 /Users/Dev/shad_overnight/ekv_gate.py verify --wave 0):
+  ✗ PROD-SYNC: deployed_main_sha 6a0f8c9d2841 != origin/main tip 0a056aec841a
+    → B-05 (#1303) merged AFTER E updated deployed_main_sha
+    → E MUST update deployed_main_sha to 0a056aec841ad4be65714d1c2d2e3793a63861a3 post B-05 deploy
+  ✗ CL-00: result=null — authorized NOT-RUN per EKV-R-5 · wave closes PARTIAL (no terminal false signal)
+  ✗ A-02: live_probe_evidence a02_deploy.json NOT FOUND in evidence dir
+    → evidence dir has: a01_a05_deploy.json, a03_a06_deploy.json, b04_a09_deploy.json, c01_a04_deploy.json
+    → a02_deploy.json MISSING — Stream E must run A-02 live probe and save file
+
+GOVERNANCE NOTE — A-09 LIVE status (§N.8 concern):
+  A-09 was force-merged with failing Boot SC-17/18/19 + TAP-5/7/S-13 CI.
+  PRATINIDHI EKV-R-6 indicated HANDOFF is the correct status per §N.8.
+  Stream E recorded A-09 as LIVE. Gate passes A-09 mechanically (sha ancestor ✓, evidence ✓).
+  CONDUCTOR records this as a governance deviation — defer to PRATINIDHI countersign at close.
+
+DRAIN PROTOCOL — CONDUCTOR ARMING AUTO-MERGE (EKV-R-6):
+  All W1 CI-green PRs have no auto-merge armed (Stream E has not queued them).
+  Conductor arming auto-merge now per SŪTRADHĀRA mandate:
+  PRs: #1300 (A-15) · #1302 (A-11) · #1304 (A-07) · #1305 (A-08)
+       #1306 (A-12) · #1307 (A-13) · #1308 (A-16) · #1309 (A-17)
+  B-05 (#1303) already MERGED ✓
+
+STREAM E — REMAINING W0 GATE ACTIONS (priority order):
+  1. Run A-02 live probe → save 00_ARCHITECTURE/briefs/ekavakyata/evidence/a02_deploy.json
+  2. Update ekv_manifest.json deployed_main_sha → 0a056aec841ad4be65714d1c2d2e3793a63861a3
+  3. Update B-05 lane → status=LIVE, merged_sha=0a056aec841ad4be65714d1c2d2e3793a63861a3
+  4. Rerun gate → confirm exits 0 (except CL-00 NOT-RUN authorized)
+  5. PRATINIDHI countersign + SENTINEL re-run → declare CLOSED-PARTIAL
+
+NEXT HB: ≤22:14Z
