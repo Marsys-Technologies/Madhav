@@ -3259,3 +3259,53 @@ AFTER GATE — CLOSE SEQUENCE:
   → Declare CLOSED-PARTIAL
 
 NEXT HB: ≤23:10Z (or immediately on A-13 merge)
+
+---
+EKV-CONDUCTOR-ESCALATION 2026-08-15T23:02Z — STREAM E: TWO GATE BLOCKERS + A-13 DEPLOY SMOKE FAIL
+
+=== STREAM E ACTION REQUIRED ===
+
+GATE BLOCKERS (after full 9/9 drain, 3 gate failures remain):
+
+BLOCKER 1 — PROD-SYNC:
+  deployed_main_sha: 7a1c79bf4da0 (stale — 8 merges behind)
+  origin/main tip: b2dc6be8ebbb (A-13)
+  Fix: Update deployed_main_sha ONLY AFTER A-13 smoke passes (see below)
+
+BLOCKER 2 — C-03 lease_ok null:
+  manifest.lanes.C-03.lease_ok = null
+  C-03 is status=LIVE (correctly promoted by E after PR#1287 merged)
+  But lease_ok was not set during the LIVE promotion
+  C-03 files: platform/src/lib/lel/prospective_ledger.ts + query_prospective_ledger.ts
+  Fix: Verify C-03's files are within its Stream C lease scope, then set lease_ok=true
+
+NOT A BLOCKER (authorized): CL-00 — permanent per EKV-R-5
+
+=== A-13 DEPLOY SMOKE FAILURE ===
+
+Deploy run 31913429332: FAILED at "Post-deploy smoke" step
+  MCP DEPLOYED to Cloud Run (deploy step PASSED), smoke check FAILED
+  Pattern: same as A-15 first smoke failure (transient canary key/startup issue)
+  
+  Natural retry expected: Ganga-on-main (31913395313) still running.
+  When Ganga-on-main completes → new Deploy triggered automatically
+
+  CONDUCTOR RECOMMENDATION: Wait for natural retry deploy. If smoke passes:
+    - A-13 qualifies for LIVE per EKV-R-12
+    - Set deployed_main_sha = b2dc6be8e
+  If retry smoke also fails: escalate to PRATINIDHI for new ruling.
+
+DO NOT update deployed_main_sha until smoke passes on a deploy for b2dc6be8e.
+
+=== ALSO NEEDED (manifest corrections per EKV-R-12) ===
+
+Per EKV-R-12, lanes with Ganga+smoke PASS + zero diff intersection → LIVE:
+  A-07 (9b0983503): Ganga PASS ✓; smoke pending (deploy needed for this SHA)
+  A-08 (84c6d5586): Ganga PASS ✓; smoke = A-08 deploy run? check
+  A-12 (cd7653855): Ganga PASS ✓; deploy 31913055119 SUCCESS ✓ → LIVE
+  A-13 (b2dc6be8e): Ganga PASS ✓; smoke FAILED on first attempt → await retry
+  A-16 (fb6e4185b): Ganga PASS ✓; deploy 31911942143 SUCCESS ✓ → LIVE
+  A-17 (46e59ac99): Ganga PASS ✓; deploy 31912330035 status? check
+  A-09: stays MERGED per EKV-R-8 (A-09 originated the TAP failure; R-12 carve-out excludes originators)
+
+CONDUCTOR WILL: Monitor A-13 retry deploy. Post gate run result when E confirms fixes.
