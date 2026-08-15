@@ -216,6 +216,40 @@ None yet.
 
 **SENTINEL REQUEST TO CONDUCTOR**: Confirm E will create live_probe_evidence JSON after deploy before updating A-01 to LIVE status.
 
+### HB-011 — 2026-08-16T21:10Z / ~02:40+0530 (Cycle 10)
+
+**FM-09 re-derived state:**
+
+**Merges since HB-010:**
+- A-03 (`12cbf5e14`) — merged; `ekv(a-03): F-16/F-128 — unwrapCapabilityResult helper + fix bodha_discoveries_get`
+- A-06 (`cfc37fc38`) — merged; `ekv(a-06): F-119 TS — withResolutionDisclosure on assess gochara_sweep rows`
+- Main tip: **cfc37fc38** (4 W0 lanes live: A-01, A-03, A-05, A-06)
+
+**Deploy 31906422500 — A-03+A-06 batch (CONFIRMED MCP GAP):**
+- `Gate & detect changed paths` → success
+- `Build & Deploy Web` → in_progress (A-06 register_d8/d9 changes)
+- `Build & Deploy MCP` → **SKIPPED** — gate did NOT detect platform-mcp changes
+- **Root cause:** gate compares `cfc37fc38` vs `12cbf5e14` (A-06 vs A-03). A-06 only touches `platform/src/lib/retrieval/registry/layers/` — no platform-mcp diff seen.
+- **Consequence:** A-01 (`registry_bridge.ts` hardFloor) and A-03 (`register_p1_synthesis.ts` unwrapCapabilityResult) are NOT deployed to MCP service.
+- **Next MCP deploy opportunity:** A-04 (PR #1292) touches `platform-mcp/src/lib/kala_envelope.ts` + `kala_views/*.ts`. When A-04 merges, MCP deploy WILL trigger.
+- A-01/A-03 live exit tests cannot run until A-04 deploys.
+
+**⚠️ ESCALATION: MCP DEPLOY GAP PERSISTS — 3 merged platform-mcp lanes undeployed:**
+  - A-01: `platform-mcp/src/tools/registry_bridge.ts` (hardFloor:true) — merged `55a476fbd`, NOT deployed
+  - A-03: `platform-mcp/src/tools/register_p1_synthesis.ts` (unwrapCapabilityResult) — merged `12cbf5e14`, NOT deployed
+  - Gate is comparing single-commit diffs, not accumulated diff vs last MCP deploy. Conductor should ensure A-04 is next in merge queue to close this.
+
+**Merge queue:**
+- C-01 (PR #1295) — in merge queue CI (`gh-readonly-queue/main/pr-1295-cfc37fc38`); TAP PASS; Ganga in_progress
+- C-01 touches: `platform/migrations/` + `platform/python-sidecar/` — web/sidecar deploy, NOT MCP
+- A-04 (PR #1292) — not yet in queue CI (expected next after C-01)
+
+**A-11 GANGA FAIL — still open:**
+- Confirmed from CI run `31905311409`: `bundle_adapters.test.ts` `body['chart_id']` = undefined
+- PR #1302 remains unresolvable until A lead fixes chart_id threading in `executeBundlePrimitive`
+
+**DB state:** brahma_prospective_ledger 6 empty rows (C-01 not yet landed) ✓ expected
+
 ### HB-010 — 2026-08-16T20:30Z / ~02:00+0530 (Cycle 9 — post-context-compaction resume)
 
 **FM-09 re-derived state (not inherited from summary):**
