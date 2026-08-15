@@ -114,11 +114,12 @@ export const queryInsightsCapability: CapabilityDescriptor = {
     // Calibration summary
     const calSql = `
       SELECT
-        COUNT(*)::int                                             AS total_matches,
-        COUNT(*) FILTER (WHERE composite_verdict = 'confirmed')  AS confirmed,
-        COUNT(*) FILTER (WHERE composite_verdict = 'partial')    AS partial,
-        COUNT(*) FILTER (WHERE composite_verdict = 'denied')     AS denied,
-        AVG(composite_score)::numeric(4,3)                       AS mean_composite_score
+        COUNT(*)::int                                              AS total_matches,
+        COUNT(*) FILTER (WHERE composite_verdict = 'CONFIRMED')   AS confirmed,
+        COUNT(*) FILTER (WHERE composite_verdict = 'PARTIAL')     AS partial,
+        COUNT(*) FILTER (WHERE composite_verdict = 'REFUTED')     AS refuted,
+        COUNT(*) FILTER (WHERE composite_verdict = 'UNRESOLVED')  AS unresolved,
+        AVG(composite_score)::numeric(4,3)                        AS mean_composite_score
       FROM mimamsa_calibration
       WHERE chart_id = $1
     `
