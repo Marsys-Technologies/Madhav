@@ -2957,3 +2957,24 @@ NOTE: A-15 deploy success means the post-deploy smoke has proven bearer auth wor
 7a1c79bf4d. This implicitly supports A-15 being recorded as LIVE in the manifest (per EKV-R-8
 parity reasoning: A-15 has both CI-green build + successful deploy smoke, unlike A-09).
 Stream E: update A-15 manifest status to LIVE sha=7a1c79bf4da0 after noting R-8 comparison.
+
+---
+EKV-CONDUCTOR-HB 2026-08-16T22:48Z — DRAIN ACTIVE; GANGA RUNNING ON b1ea4cdab3
+
+STATUS:
+  MERGED: B-05 · A-15 · A-11 (3 of 9 drain PRs)
+  A-15 deploy retry: PASS ✓ (SP-4 resolved — transient smoke failure on first attempt)
+  Queue batch b1ea4cdab3: TAP=PASS, Ganga=in_progress (long-running, ~15-20min each)
+  Remaining open: #1304 #1305 #1306 #1307 #1308 #1309
+
+GATE STATUS (unchanged):
+  ✗ PROD-SYNC: deployed_main_sha stale — E must update after final drain+deploy
+  ✗ CL-00: authorized NOT-RUN (permanent, wave closes PARTIAL)
+
+STREAM E — MANIFEST CORRECTIONS NEEDED (accumulating):
+  A-09: status=LIVE → MERGED per EKV-R-8
+  B-05: status=MERGE_QUEUE → LIVE, sha=0a056aec841ad4be65714d1c2d2e3793a63861a3
+  A-11: status (need to add) → LIVE, sha=c75400b231f95b2933f736d1630cc5b920fee8e9
+  + deployed_main_sha → final main tip after drain+deploy
+
+NEXT HB: ≤23:08Z
