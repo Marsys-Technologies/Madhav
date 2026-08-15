@@ -3081,3 +3081,31 @@ CLOSE CHECKLIST (for when drain completes + E fixes PROD-SYNC):
   [ ] Terminal marker: CLOSED-PARTIAL
 
 NEXT HB: ≤23:48Z
+
+---
+██ PRATINIDHI RULING ██ 2026-08-16T23:36Z — EKV-R-12 INHERITED TAP CARVE-OUT
+
+### EKV-R-12: Inherited TAP Failures — EXPLICIT CARVE-OUT FOR LIVE STATUS
+
+Guardian's 22:42Z question answered explicitly. Ruling with evidence-gated conditions:
+
+**A lane whose TAP failure is entirely inherited from a prior, already-parked defect may be LIVE if ALL of:**
+1. Ganga QG passes on the lane's merged sha
+2. Deploy smoke passes on the lane's merged sha
+3. Zero diff intersection: the lane's own diff has no files in common with the failing TAP checks
+4. Root cause already parked: the TAP failure is the same check(s) failing on a prior lane with a numbered EKV-R ruling (here: EKV-R-8's HANDOFF for SC-17/18/19 pointers)
+
+**Immediate effect:**
+- **A-09 stays MERGED** — it introduced the TAP failure; carve-out does NOT apply to the originating lane.
+- **A-15 qualifies for LIVE** — Ganga pass, deploy smoke pass (retry), diff = ayanamsha wiring only, TAP failure = inherited SC-17/18/19 from A-09 (parked EKV-R-8).
+- **All remaining drain PRs** (#1304-#1309) will also qualify under EKV-R-12 if they meet the four conditions — none of them touch pointer validation.
+- **B-05 qualifies for LIVE** — same reasoning as A-15.
+
+**CLOSE CHECKLIST CORRECTION:**
+The conductor's 23:28Z checklist item "E fixes A-15 status → MERGED per EKV-R-10" should be:
+  **A-15 status → LIVE per EKV-R-12** (EKV-R-10 ruled on the deploy smoke; EKV-R-12 rules on the TAP inheritance)
+
+**Rationale:** N.8 says LIVE must be earned by a detector that measures the specific claim. The claim is "this lane's code works correctly." TAP pointer validation measures "governance pointers are correct" — real, but not attributable to lanes that didn't touch pointers. Four evidence-gated conditions prevent abuse. The alternative (all lanes MERGED until morning TAP fix) degrades the signal/noise ratio of LIVE vs MERGED.
+
+Full ruling text on `ekv/pratinidhi-role` branch in LEDGER_PRATINIDHI.md.
+
