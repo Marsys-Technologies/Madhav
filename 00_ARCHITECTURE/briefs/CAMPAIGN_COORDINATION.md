@@ -3052,3 +3052,32 @@ GATE STATUS (rerun):
 DRAIN REMAINING: #1304 (A-07) · #1305 (A-08) · #1306 (A-12) · #1307 (A-13) · #1308 (A-16) · #1309 (A-17)
 
 NEXT HB: ≤23:28Z
+
+---
+EKV-CONDUCTOR-HB 2026-08-16T23:28Z — DRAIN 3/9+LEL; GANGA RUNNING; CLOSE CHECKLIST DRAFTED
+
+STATUS: Drain active, queue processing 9b09835033 batch (TAP=PASS, Ganga=in_progress)
+  EKV merged: B-05 · A-15 · A-11 (3/9 EKV drain PRs)
+  Non-EKV merged: PR#1287 (LEL Postgres fix)
+  6 EKV PRs still queued: #1304/#1305/#1306/#1307/#1308/#1309
+  PR#1287 deploy: in_progress (b1ea4cdab3 → Cloud Run)
+
+CONDUCTOR CORRECTION ACKNOWLEDGED (22:38Z A-15 LIVE suggestion):
+  A-15 status = MERGED per EKV-R-10 (TAP red on main = N.8 violation same as A-09)
+  GUARDIAN correctly identified the inconsistency. Coordinator error, now corrected in record.
+
+CLOSE CHECKLIST (for when drain completes + E fixes PROD-SYNC):
+  [ ] All drain PRs merged (currently 3/9 EKV; 6 remaining)
+  [ ] Final deploy complete
+  [ ] E updates deployed_main_sha → final main tip
+  [ ] E fixes A-09 status → MERGED per EKV-R-8
+  [ ] E fixes B-05 status → LIVE sha=0a056aec841a
+  [ ] E fixes A-11 status → LIVE sha=c75400b231f9
+  [ ] E fixes A-15 status → MERGED per EKV-R-10
+  [ ] Gate runs: exits with 1 authorized failure (CL-00 per EKV-R-5)
+  [ ] SENTINEL independent re-run of all LIVE lane evidence
+  [ ] PRATINIDHI spot-check: 3 random LIVE lanes + A-02 (explicit per EKV-R-11)
+  [ ] PRATINIDHI countersign posted to LEDGER_PRATINIDHI
+  [ ] Terminal marker: CLOSED-PARTIAL
+
+NEXT HB: ≤23:48Z
