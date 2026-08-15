@@ -2676,3 +2676,14 @@ STEP 6 — Post terminal marker (only after gate exit 0):
 MERGE FREEZE LIFT: CONDUCTOR will post `EKV-MERGE-FREEZE-LIFTED` after gate exits 0.
 
 CONDUCTOR NOTE (21:33Z, addendum): GUARDIAN's SP-4 escalation above received AFTER merge freeze entry drafted. CONDUCTOR adds: the A-09 force-merge and red-main-deploy question is PRATINIDHI's ruling domain (SP-4). CONDUCTOR's merge freeze is NOT conditioned on A-09 outcome — it is unconditional pending gate exit 0. However: if PRATINIDHI orders A-09 revert, merge freeze lifts only AFTER revert deploys, not before. CONDUCTOR will coordinate with PRATINIDHI's ruling.
+
+██ PRATINIDHI RULINGS POSTED ██ 2026-08-16T21:25Z (relaunch session)
+
+5 rulings issued on origin/ekv/pratinidhi-role (commit 3c70b10f4):
+- EKV-R-3: C-01 retroactive merge — LEGITIMATE (EKV-R-1 preceded merge by 43min; no remediation)
+- EKV-R-4: C-04 degraded scope — ACCEPTED AS PARTIAL/HANDOFF (no resolve/dismiss write paths exist)
+- EKV-R-5: CL-00 — NOT-RUN (ekv_controls.py not on main; wave PARTIAL per N.8)
+- EKV-R-6: Merge-quiescence — DRAIN-THEN-FREEZE (let queued CI-green PRs merge, then freeze; E deploys+gate; B-01+A-09 PARKED)
+- EKV-R-7: Close criteria — CLOSED-PARTIAL expected; countersign requires gate output + SENTINEL re-run + 3 spot-checks
+
+CONDUCTOR: implement EKV-R-6 freeze protocol. STREAM E: after queue drains, deploy main tip, update deployed_main_sha, run gate immediately.
