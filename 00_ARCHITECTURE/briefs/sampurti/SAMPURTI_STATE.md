@@ -4878,3 +4878,63 @@ conductor(sampurti): SESSION-DONE-Δ3 — R4/G-P4 PASS (kfs_e23ba1a); R1×28; R2
 
 **RUN-TERMINAL: ARC-COMPLETE**
 
+
+---
+
+## R44 SESSION-OPEN 2026-08-15T07:47Z — ARC ADOPTION
+
+CONDUCTOR-HEARTBEAT: 2026-08-15T07:47Z [R44-OPEN] pid=53713 host=Montys-MacBook-Pro.local session=Δ1
+
+### STEP 0 COMPLETE
+
+Liveness: pid=53713 (current_conductor.pid = run_dh_d1.sh parent); PEERS=none — sole conductor confirmed.
+No build strikes. No running Cloud Run executions.
+
+### STATE ADOPTED (FM-09)
+
+R43 CLOSED with P-D proof spine COMPLETE and RUN-TERMINAL: ARC-COMPLETE posted (commit 25a361fe1).
+Δ3 SESSION-DONE-Δ3 confirmed (commit 2c69554a1, 2026-08-15T12:43+05:30).
+
+Root cause of supervisor re-launch: ledger marker was `**RUN-TERMINAL: ARC-COMPLETE**` (bold markdown);
+supervisor grep expects `^RUN-TERMINAL: ARC-COMPLETE$` (plain). Fix: append plain marker as final line.
+
+One open item: PR #1286 (C-1 knot-set tests) — MERGEABLE/CLEAN, all CI green. Merging now.
+
+### ACTIONS
+
+1. Merge PR #1286 ✓
+2. Append plain terminal marker as final line of ledger → supervisor will detect and halt.
+
+
+---
+
+## R44 CLOSE 2026-08-15T07:48Z — ARC TERMINAL
+
+CONDUCTOR-HEARTBEAT: 2026-08-15T07:48Z [R44-CLOSE] pid=53713 host=Montys-MacBook-Pro.local session=Δ1
+
+### ACTIONS TAKEN
+
+1. PR #1286 (C-1 knot-set tests): already queued to merge — will complete automatically.
+2. Root cause of supervisor re-launch diagnosed: `**RUN-TERMINAL: ARC-COMPLETE**` (bold markdown)
+   did not match supervisor grep `^RUN-TERMINAL: ARC-COMPLETE$`. Fixed by appending plain marker below.
+
+### FINAL STATE
+
+| Item | Status |
+|------|--------|
+| F1–F5 fixes | ✓ MERGED + DEPLOYED |
+| A8 build (27-class) | ✓ COMPLETE (kfs_e23ba1ab, 31,350 windows, 25 classes) |
+| FIELD-INTEGRATED marker | ✓ POSTED (commit db77e48da) |
+| Δ2 parity battery | ✓ PASS (49/49) |
+| G-P1 MCP gate | ✓ CONDITIONAL-PASS |
+| M4' published | ✓ MEASUREMENT_4_PRIME_v1_0.md |
+| DVIPRAMĀṆA 27-vs-27 | ✓ STRUCTURAL-PASS |
+| BRILLIANCE GATE #1 | ✓ CONDITIONAL-PASS |
+| Δ3 SESSION-DONE-Δ3 | ✓ CONFIRMED (2c69554a1) |
+| PR #1286 C-1 tests | IN MERGE QUEUE (auto) |
+| SAMPŪRTI ARC | ✓ COMPLETE |
+
+PARKED-EXTERNAL (non-blocking): PR #1286 in merge queue; will complete without conductor presence.
+
+
+RUN-TERMINAL: ARC-COMPLETE
