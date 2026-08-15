@@ -523,7 +523,14 @@ export async function fetchRemedyRows(
         errors.push(`query_remedy_program (mitigation_map): ${unwrapFailureReason('mitigation_map', failure)}`)
       } else {
         const rows = Array.isArray(payload?.['remedies']) ? (payload['remedies'] as PhalaMitigationRow[]) : []
-        for (const row of rows) interventions.push(phalaMitigationToIntervention(row, params.failingLink))
+        // F-49: filter by targeted graha so a domain query for marriage (Venus-targeted)
+        // no longer returns 50 identical Saturn rows. Mirrors the filter already applied
+        // to bodha_rm_prescriptions_get rows below (lines ~543-545). Rows with null
+        // afflicting_graha are included unconditionally (general/tradition-level remedies).
+        const mitigationFiltered = params.targetedGraha
+          ? rows.filter((r) => !r.afflicting_graha || r.afflicting_graha === params.targetedGraha)
+          : rows
+        for (const row of mitigationFiltered) interventions.push(phalaMitigationToIntervention(row, params.failingLink))
       }
     } else {
       errors.push(`query_remedy_program (mitigation_map) returned status ${status}`)
