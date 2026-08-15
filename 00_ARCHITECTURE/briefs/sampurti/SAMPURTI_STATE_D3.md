@@ -3509,5 +3509,7 @@ Call: `gochara_forecast_get(chart=482012f1, domain=marriage, date_range=2025-01-
 4. If 88gh6 still running: confirm progress via Δ1 log + FM-21 re-assessment
 5. R1 26th pass
 
+**Coordination advisory posted:** commit `2b01a759e76a8e60f725c2714bde6816d0f99078` (campaign-coordination branch, via gh api PUT) ✓
+
 RUN-TERMINAL: SESSION-Δ3-PENDING-45 (2h sanity pass — 88gh6 A8 RUNNING T+202min, 10/27 classes stage5 CONFIRMED PROGRESS; FIELD-INTEGRATED NOT POSTED; R1 PASS×25; supervisor relaunches on ^^██ MARKER-POSTED: FIELD-INTEGRATED ██ sentinel or 2h)
 
