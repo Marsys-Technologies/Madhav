@@ -58,11 +58,13 @@ Sole writer: SŪTRADHĀRA. One file, one writer — PP2 write-race lesson.
 - A-04 noLelCalibrationMaturity facades · A-05 F-29 enum fix · A-06 gochara disclosure
 - C-01 ledger repair migration · C-02 writer hunt · C-03 PR#1287 rebase
 
-**W0 STATUS (19:29Z):**
-- A-01 ✓ VERIFIED | A-02 ✓ VERIFIED | A-03 ✓ VERIFIED | A-04 ✓ VERIFIED | A-05 ✓ VERIFIED | A-06 ✓ VERIFIED
-- C-01/C-02 ✓ ON-ORIGIN · BLOCKED: awaiting EKV-R-1 (PRATINIDHI invoked)
+**W0 STATUS (19:47Z):**
+- A-01 ✓ MERGED (`55a476fbd`) PR#1289 — CI on main queued (deploy pending) 🎉 FIRST LANE LIVE
+- A-02..A-06 ✓ VERIFIED — PRs open, CI running (A-05 ALL-GREEN, A-04 ALL-GREEN, others in_progress)
+- C-01/C-02 ✓ ALL-CI-GREEN — PR#1295 open, ready for merge queue; EKV-R-1 authorized
+- B-01..B-04: PRs open (#1296..#1299), CI starting
 - C-03 (PR#1287 rebase): TBD
-- E merge queue: NOT STARTED (EKV-R-01 gate bug blocking; EKV-R-2 pending)
+- D lints: pushed to lead-dharma, no PR yet
 
 ### KERNEL API FREEZE MARKER (A posts, I broadcast)
 `EKV-KERNEL-API-FROZEN` — post when A-09 sāra kernel types are frozen.
