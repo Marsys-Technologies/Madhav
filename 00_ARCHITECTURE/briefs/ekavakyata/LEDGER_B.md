@@ -73,6 +73,9 @@ model: sonnet-high (lead) · sonnet-medium (builders)
 | ~00:56 | B-01 | **EKV-B-01-BUILT** | 30/30 goldens pass; sha=3710f093e; pushed; lead review PASS — oracle + 3 consumers wired |
 | ~00:56 | B-04 | **EKV-B-04-BUILT** | 9/9 tests pass; sha=5f69734f4; pushed; lead review PASS |
 | ~07:25 | B-05 | **EKV-B-05-BUILT** | sha=8e7880eec; pushed; lead review PASS — spec doc + signal glossary + 2 not_joined checklist units |
+| ~07:55 | B-07 | **EKV-B-07-BUILT** | 5/5 goldens pass; sha=8f9a1197b; pushed; lead review PASS — confidence_vocab.py + 3 emission sites clean |
+| ~07:57 | B-09 | **EKV-B-09-BUILT** | 8/8 goldens pass; sha=3e7b8d99e; pushed; lead review PASS — canary+full dispatch scripts + runbook |
+| ~07:57 | B-08 | BUILDING | salience/ranker — domain-affinity + abstention zero + plateau test |
 
 ---
 
@@ -101,9 +104,9 @@ LEASE EXCEPTION NOTE (B-05): Builder wrote `register_d8_assess_domain.ts` (Strea
 | B-04 | ekv/b-04-mi-honesty | **BUILT** ✓ sha=5f69734f4 | 9/9 pass: 6× not_assessed ✓ isempty guard ✓ | pending verifier |
 | B-05 | ekv/b-05-spec-pack | **BUILT** ✓ sha=8e7880eec | spec+glossary+checklist: A-16 exit test FORENSIC-grounded ✓ | pending verifier |
 | B-06 | — | W2 — waiting | muhurta honesty | — |
-| B-07 | — | W2 — waiting | ph_nimitta tag | — |
-| B-08 | — | W3 — waiting on A EKV-KERNEL-API-FROZEN + B-05 | ranker | — |
-| B-09 | — | W2 — waiting | rebuild runbook for E | — |
+| B-07 | ekv/b-07-nimitta-tag | **BUILT** ✓ sha=8f9a1197b | 5/5 pass: STRUCTURAL_NOT_YET_EMPIRICAL constant ✓ no bare literals in 3 sites ✓ 128 ph_* regressions pass ✓ | pending verifier |
+| B-08 | ekv/b-08-ranker | BUILDING | domain-affinity multiplier + abstention zero + 5 plateau tests | — |
+| B-09 | ekv/b-09-rebuild-runbook | **BUILT** ✓ sha=3e7b8d99e | 8/8 pass: canary+full scripts ✓ F-52 + 35-min stall in runbook ✓ | pending verifier |
 
 ---
 
@@ -115,4 +118,4 @@ LEASE EXCEPTION NOTE (B-05): Builder wrote `register_d8_assess_domain.ts` (Strea
 
 ---
 
-*ŚĀSTRA-LEAD — LEDGER_B — last updated 2026-08-16T07:25Z*
+*ŚĀSTRA-LEAD — LEDGER_B — last updated 2026-08-16T08:00Z*
