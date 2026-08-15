@@ -17,6 +17,8 @@ from dataclasses import dataclass, field, asdict
 from datetime import date, datetime, timedelta
 from typing import Optional
 
+from brahmagyan.phala.confidence_vocab import STRUCTURAL_NOT_YET_EMPIRICAL
+
 __all__ = [
     'NimittaContext',
     'AnchorLiftVector',
@@ -415,7 +417,7 @@ class AnchorRecord:
     # confidence band — backward compat with phala_anchors schema (derived from posterior)
     confidence_low:         Optional[float] = None
     confidence_high:        Optional[float] = None
-    confidence_basis:       str             = 'structural_not_yet_empirical'
+    confidence_basis:       str             = STRUCTURAL_NOT_YET_EMPIRICAL
     # BA-P5B: true posterior point estimate + lift decomposition
     posterior:              Optional[float] = None
     lift_vector:            Optional[dict]  = None

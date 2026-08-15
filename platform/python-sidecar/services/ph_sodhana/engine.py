@@ -11,7 +11,7 @@ Five anomaly types (no LLM, fully deterministic):
   magnitude_drift       — magnitude label inconsistent with convergence_score quartile
   falsifier_absent      — falsifier missing machine-evaluable REFUTED/CONFIRMED tokens
   ledger_gap            — derivation_ledger_jsonb missing ≥1 required axis key
-  layer_leakage         — confidence_basis != 'structural_not_yet_empirical'
+  layer_leakage         — confidence_basis != STRUCTURAL_NOT_YET_EMPIRICAL
                           (any other value is an L5 contamination attempt)
 
 auto_action is ALWAYS 'stage_for_review' — enforced at DB level AND here.
@@ -20,6 +20,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from typing import Optional
+
+from brahmagyan.phala.confidence_vocab import STRUCTURAL_NOT_YET_EMPIRICAL
 
 __all__ = [
     'AnchorRow',
@@ -244,24 +246,24 @@ def detect_ledger_gap(anchor: AnchorRow) -> Optional[SodhanaRecord]:
 
 def detect_layer_leakage(anchor: AnchorRow) -> Optional[SodhanaRecord]:
     """
-    confidence_basis MUST be 'structural_not_yet_empirical'.
+    confidence_basis MUST equal STRUCTURAL_NOT_YET_EMPIRICAL.
     Any other value is an L5 calibration contamination (LEAKAGE-FIREWALL).
     Returns a record with leakage_class = 'l5_calibration_attempted'.
     The WRITER raises LeakageFirewallError when it sees this record type.
     """
     basis = (anchor.confidence_basis or '').strip()
-    if basis and basis != 'structural_not_yet_empirical':
+    if basis and basis != STRUCTURAL_NOT_YET_EMPIRICAL:
         return SodhanaRecord(
             anchor_id=anchor.anchor_id,
             anomaly_type='layer_leakage',
             anomaly_severity='critical',
             detected_field='confidence_basis',
-            expected_value_text="'structural_not_yet_empirical'",
+            expected_value_text=repr(STRUCTURAL_NOT_YET_EMPIRICAL),
             observed_value_text=repr(basis),
             leakage_class='l5_calibration_attempted',
             recommendation_text=(
                 'LEAKAGE-FIREWALL: phala_anchors.confidence_basis must always be '
-                "'structural_not_yet_empirical'. L5 Mimamsa owns empirical calibration. "
+                f'{STRUCTURAL_NOT_YET_EMPIRICAL!r}. L5 Mimamsa owns empirical calibration. '
                 'This anchor has been written with an L5-calibrated basis — this is a '
                 'write-time bug in ph_nimitta. Correct the writer before re-running the build.'
             ),

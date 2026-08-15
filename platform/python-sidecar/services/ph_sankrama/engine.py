@@ -10,6 +10,8 @@ from dataclasses import dataclass, field
 from datetime import date
 from typing import Optional
 
+from brahmagyan.phala.confidence_vocab import STRUCTURAL_NOT_YET_EMPIRICAL
+
 __all__ = [
     'CdlmCell',
     'SankramaContext',
@@ -73,7 +75,7 @@ class SankramaRecord:
     cascade_chain_jsonb:    Optional[dict]
     cascade_depth:          int
     spillover_confidence:   float
-    confidence_basis:       str = 'structural_not_yet_empirical'
+    confidence_basis:       str = STRUCTURAL_NOT_YET_EMPIRICAL
     falsifier:              str = ''
     mitigation_ref:         Optional[str] = None   # set post-facto by writer
     derivation_ledger_jsonb: dict = field(default_factory=dict)
