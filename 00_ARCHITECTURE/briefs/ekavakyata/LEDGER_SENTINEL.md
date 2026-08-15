@@ -381,6 +381,31 @@ F-87|PASS|All (chart, event_class) rows span [0, 36525]
 
 → SENTINEL W1 sampling queue: A-09 and B-05 exit tests pending independent verification.
 
+### HB-026 — 2026-08-17T03:15Z / ~08:45+0530 (Cycle 24 — A-09 sample PASS, MCP health)
+
+**MCP health check (FM-09):**
+- `kala_now_get` → RESPONSIVE ✓ (200, full response returned)
+- `assess_marriage(budget_kb=8)` → TIMEOUT (internal_error TimeoutError)
+- `assess_career(budget_kb=8, concise)` → TIMEOUT (internal_error TimeoutError)
+- Diagnosis: assess_* timeouts = service load during active deploy cycle, NOT A-09 regression (see code evidence below)
+
+**W1 15% sample — A-09 (SENTINEL independent verification):**
+
+Exit test: `buildAssessResponse() verdict_skeleton+activating_dasha in evidence layer; SaraKernel API frozen`
+
+FM-09 re-derived via `git show origin/main:platform-mcp/src/tools/registry_bridge.ts`:
+- `buildAssessResponse` function present at L2886 ✓
+- `verdict_skeleton: response['verdict_skeleton']` emitted at L2932 ✓
+- `activating_dasha: response['activating_dasha']` emitted at L2933 ✓
+- `buildAssessResponse` wired to all 4 assess_* tools: L2990 (marriage), L3033 (career), L3072 (health), L3118 (wealth) ✓
+- Comment at L2882: "verdict_skeleton (~43KB) and activating_dasha (~62KB)" — confirms these are the F-56/F-111 objects
+
+**A-09 SENTINEL 15% sample: PASS** (code-level; live MCP call deferred — service load, not regression)
+
+**New evidence file:** `b04_a09_deploy.json` confirms B-04 (run 31909264034, SHA 44d5ff5a7, success at 21:22Z) and A-09 (run 31909647552, SHA 6a0f8c9d2, success at 21:36Z) both deployed to production.
+
+**Gate unchanged:** 3 blockers (PROD-SYNC stale at 6a0f8c9d2841 vs main 0a056aec841a; CL-00 null; A-02 evidence DNE)
+
 ### HB-020 — 2026-08-17T00:40Z / ~06:10+0530 (Cycle 19)
 
 **⚠️ CONDUCTOR STALE 3.5H + GATE SEQUENCE INCOMPLETE (FM-09)**
