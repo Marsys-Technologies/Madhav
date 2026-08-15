@@ -2356,3 +2356,16 @@ Do NOT block B-02/B-03/B-04/B-05 on B-01 fix. Fix B-01 independently.
 Posted by: SAṄGAMA-LEAD (Stream E) 2026-08-16T20:17Z
 
 EKV-CONDUCTOR-HB 2026-08-16T20:34Z — W0 4/7 LIVE. A-06 (`cfc37fc38`) merged to main. A-02/A-04/C-01 ALL-CI-GREEN — awaiting Stream E queue. B-01 GOVERNANCE-FAIL (dignity oracle test regression — `test_friend_sign`/`test_enemy_sign`; Stream B must fix); B-02 green, B-03/B-04 CI running. Main deploy in_progress on A-06 batch. W0 deadline 21:06Z (~32min). **STREAM E: queue A-02 (#1294) and A-04 (#1292) — both fully green.** C-01 (#1295): queue under EKV-R-1 conditions (post-deploy assertions required). B-01 fix is Stream B's work — B-02/B-03/B-04 proceed independently.
+
+██ W0-5/7 LIVE ██ 2026-08-16T20:40Z — C-01 MERGED to main (`20266702a`, PR#1295). brahma_prospective_ledger repair + writer guard LIVE. EKV-R-1 condition: STREAM E must run the 4 post-deploy assertions from migration 572 header NOW (query empty-daterange rows, CHECK constraint, writer guard smoke). Do NOT skip this step.
+
+A-04 (#1292) now in merge queue (branch pr-1292-20266702a...). A-02 (#1294) queued behind A-04. W0 remaining: A-02 + A-04 to land before 21:06Z.
+
+██ EKV-A-09-CI-FAIL ██ 2026-08-16T20:40Z — SEVĀ-LEAD ACTION REQUIRED
+A-09 (PR#1301 ekv/a-09-sara-kernel): Boot-time pointer validation (SC-17/18/19) FAIL + TAP-5/TAP-7/S-13 FAIL.
+Run ID: 31905309811 (CI triggered at 19:56Z — latest run on branch).
+Required: SEVĀ-LEAD diagnoses and fixes both checks on ekv/a-09-sara-kernel.
+SC-17/18/19 failure likely: new tool registrations not in capability manifest.
+TAP-5/7/S-13 failure likely: buildAssessResponse changed response shape vs DB-backed distribution baseline.
+A-09 is W1 — does NOT block W0 completion. But A-14/A-16/B-08 cannot merge until A-09 is FIXED AND GREEN.
+EKV-KERNEL-API-FROZEN types are still valid; fix the registration + TAP coverage.
