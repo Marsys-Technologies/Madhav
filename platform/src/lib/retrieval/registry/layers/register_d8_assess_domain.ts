@@ -1073,6 +1073,13 @@ async function runAssessDomain(
       { unit: 'bearing_yoga_firings', state: bearingYogaFirings.length > 0 ? 'served' : 'empty_for_this_chart', count: bearingYogaFirings.length, detail: 'ga_yoga_firings (firings-authoritative)' },
       { unit: 'contradictions', state: (contradictions.status === 'ok' && Array.isArray((contradictions as Record<string, unknown>)['items']) && ((contradictions as Record<string, unknown>)['items'] as unknown[]).length > 0) ? 'served' : 'empty_for_this_chart', detail: 'bodha_contradictions dissent surface' },
       { unit: 'tajaka', state: 'not_joined', detail: 'annual (varṣaphala/tājaka) not folded into the natal assessment', drill: 'ganita_tajaka_get' },
+      // F-107 (PP2 audit): bhavat-bhavam rule not computed. Discloses absence explicitly
+      // rather than silently omitting a classical layer of house analysis.
+      { unit: 'bhavat_bhavam_rule', state: 'not_joined', detail: 'Bhavat-bhavam (house-from-house) analysis — computation absent; registered for future build', drill: 'ganita_structural_get' },
+      // F-108 (PP2 audit): cross-varga dignity/strength cross-reference not computed.
+      // A confirmed finding in one varga that contradicts another is a classical discriminator;
+      // the cross-varga layer is not yet folded into this surface.
+      { unit: 'cross_varga_analysis', state: 'not_joined', detail: 'Cross-varga dignity/strength cross-reference — computation absent; registered for future build', drill: 'ganita_chart_facts_get' },
     ]
     const t5Exhaustiveness = checklistExhaustiveness(reading_checklist_units)
     const reading_checklist = {
