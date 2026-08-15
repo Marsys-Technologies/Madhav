@@ -64,7 +64,7 @@ import json
 import logging
 import os
 import sys
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
@@ -589,6 +589,22 @@ def seed_prospective_ledger(conn: Any, today: Optional[date] = None) -> int:
                 window_start = date.fromisoformat(window_start)
             if isinstance(window_end, str):
                 window_end = date.fromisoformat(window_end)
+
+            # EKV C-02 guard: single-day or inverted windows produce an EMPTY daterange
+            # when using Postgres default [) bounds: daterange(d, d) = empty.
+            # The existing shape_fields_check constraint allows NULL upper()/lower() on
+            # empty ranges to slip through (NULL > NULL = NULL = CHECK pass). Migration 572
+            # adds a hard CHECK (NOT isempty(observation_window)); this guard closes the
+            # writer side: ensure window_end > window_start before filing.
+            if window_end <= window_start:
+                _adjusted = window_start + timedelta(days=1)
+                logger.warning(
+                    "[w45] Stage C: window_end=%s <= window_start=%s for chart=%s "
+                    "event_class=%s — adjusted window_end to %s to prevent empty daterange "
+                    "(EKV C-02; migration 572)",
+                    window_end, window_start, chart_id, event_class, _adjusted,
+                )
+                window_end = _adjusted
 
             # AC4: paranoid forward-only guard (the WHERE clause already does this,
             # but double-check here for the §N.8 "earned signal" discipline).
