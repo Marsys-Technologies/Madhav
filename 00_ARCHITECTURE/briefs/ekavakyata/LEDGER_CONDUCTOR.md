@@ -160,3 +160,17 @@ Consumers waiting: A-14, A-16, B-08.
 **20:50Z (context-resume #3)** — CORRECTION: W0 DEADLINE SLIP was premature. A-02 Ganga QG started 20:47Z (was queued behind concurrent feature-branch CI runs, not stuck indefinitely). TAP ✓. ETA merge: ~21:00Z. W0 6/7 LIVE — deadline achievable. Manifest stale: A-04 (a2ce6dc37) IS on main; deployed_main_sha still at A-06; C-01/C-02 at MERGED not LIVE. C-03: no queue branch found — possible dequeue after A-04 base change. C-03 must re-queue. Signals posted to CAMPAIGN_COORDINATION.
 
 **20:57Z** — ██ W0 CORE 7/7 LIVE ██ A-02 merged `33dfb2ba1` (20:56Z). All 7 core W0 lanes on main. C-03 still UNKNOWN mergeability — honest park needed in manifest. Gate sequence posted to CAMPAIGN_COORDINATION. Signals to E: update A-02/A-04→LIVE; deployed_main_sha→33dfb2ba1; C-03→HANDOFF; C-01/C-02→LIVE after EKV-R-1 assertions; run CL-00; run gate. W1 merge queue: B-02/B-03/B-04 active. B-01 stalled (no fix push since 19:52Z CI fail — 65min blocked). A-09 CI still failing. Next HB ≤21:17Z.
+
+### WAVE SEQUENCING LOG (continued)
+
+**W0 STATUS (21:00Z — A-02 DEPLOYED):**
+- ALL 7 CORE W0 LANES ON MAIN AND DEPLOYED:
+  - A-01 ✓ LIVE · A-03 ✓ LIVE · A-04 ✓ LIVE · A-05 ✓ LIVE · A-06 ✓ LIVE
+  - C-01/C-02 ✓ MERGED (EKV-R-1 post-deploy assertions pending)
+  - A-02 ✓ LIVE (merged `33dfb2ba1` at 20:56Z, deployed at 20:59Z)
+- C-03 (PR#1287): UNKNOWN state — not in queue; honest park needed in manifest (HANDOFF)
+- Deploy: Cloud Run at `33dfb2ba1` — production == main ✓
+- MANIFEST: stale — E must update A-02/A-04→LIVE, deployed_main_sha, C-01/C-02→LIVE, C-03→HANDOFF
+- W1: B-02 in queue (TAP ✓, Ganga QG in_progress ~21:06Z expected)
+
+**W0 PROGRESS: CORE 7/7 LIVE + DEPLOYED at 21:00Z — gate pending E manifest update + CL-00 run**

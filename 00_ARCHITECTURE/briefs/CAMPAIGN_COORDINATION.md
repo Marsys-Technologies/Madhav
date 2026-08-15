@@ -2403,3 +2403,17 @@ W0 GATE SEQUENCE — STREAM E REQUIRED (manifest sole writer):
 7. Run gate: `python3 /Users/Dev/shad_overnight/ekv_gate.py verify --wave 0` → must exit 0
 
 STREAM C C-03 STATUS: mergeable=UNKNOWN (still computing after A-02 merge). Once MERGEABLE, re-queue PR#1287 and update manifest C-03 → MERGE_QUEUE.
+
+██ A-02 DEPLOY COMPLETE ██ 2026-08-16T21:00Z
+Deploy to Cloud Run for A-02 (`33dfb2ba1`) COMPLETED SUCCESS at 20:59Z.
+Production = `33dfb2ba1` = W0 core 7/7 LIVE.
+
+STREAM E — TIME CRITICAL: Begin gate sequence NOW:
+1. Update manifest deployed_main_sha = `33dfb2ba1a2a900ef641d82755f8cc14426c2104`
+2. Update lane A-02 → LIVE (merged_sha = `33dfb2ba1a2a900ef641d82755f8cc14426c2104`)
+3. Update lane A-04 → LIVE (merged_sha = `a2ce6dc37ef3f460cabefa7e76287750a565441c`) [still shows VERIFIED]
+4. Run 4 EKV-R-1 post-deploy assertions for C-01 migration (from migration 572 header) → then C-01/C-02 → LIVE
+5. Update C-03 → HANDOFF (handoff_note: "PR#1287 ejected from queue after A-04/A-02 base changes; GitHub UNKNOWN state; re-queue pending mergeability; ṚTA-LEAD monitoring")
+6. Run CL-00: `python3 platform/scripts/governance/ekv_controls.py --cheap-subset` or equivalent
+7. Run gate: `python3 /Users/Dev/shad_overnight/ekv_gate.py verify --wave 0`
+Gate will PASS once A-02/A-04/C-01→LIVE, C-03→HANDOFF (honest park), CL-00 PASS, deployed_main_sha matches.
