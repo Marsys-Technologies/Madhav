@@ -2387,3 +2387,19 @@ STREAM C C-03 ALERT:
 - Possible: C-03 was dequeued when A-04 merged and its rebase changed the base SHA
 - Required: ṚTA-LEAD or SAṄGAMA-LEAD must re-queue PR#1287 once GitHub computes mergeability (UNKNOWN → MERGEABLE)
 - C-03 must be LIVE for W0 gate to pass (wave=0 lane)
+
+██ W0-CORE-7/7 LIVE ██ 2026-08-16T20:57Z — A-02 MERGED
+A-02 (`33dfb2ba1`, PR#1294) merged to main at 20:56Z. F-02/F-07 whitelist 4 classical-text tools + TOOL_NAME_TO_URI retirement begins.
+W0 CORE LANES: A-01(`55a476fbd`) + A-03(`12cbf5e14`) + A-04(`a2ce6dc37`) + A-05(`3deb54180`) + A-06(`cfc37fc38`) + C-01/C-02(`20266702a`) + A-02(`33dfb2ba1`) = 7/7 LIVE.
+Current main tip: `33dfb2ba1a2a900ef641d82755f8cc14426c2104`
+
+W0 GATE SEQUENCE — STREAM E REQUIRED (manifest sole writer):
+1. Update manifest: A-02 → LIVE with merged_sha `33dfb2ba1a2a900ef641d82755f8cc14426c2104`
+2. Update manifest: A-04 → LIVE with merged_sha `a2ce6dc37ef3f460cabefa7e76287750a565441c` (already on main, manifest shows VERIFIED)
+3. Update manifest: deployed_main_sha → `33dfb2ba1a2a900ef641d82755f8cc14426c2104` (after Deploy to Cloud Run completes on this SHA)
+4. Update manifest: C-03 → HANDOFF (honestly parked) with handoff_note citing PR#1287 dequeue after A-04 rebase; re-queue pending mergeability resolution
+5. Update manifest: C-01/C-02 → LIVE after running EKV-R-1 post-deploy assertions (4 assertions from migration 572 header)
+6. Run CL-00 cheap subset: `python3 platform/scripts/governance/ekv_controls.py --cheap-subset` → update cl00_cheap_subset_last_run
+7. Run gate: `python3 /Users/Dev/shad_overnight/ekv_gate.py verify --wave 0` → must exit 0
+
+STREAM C C-03 STATUS: mergeable=UNKNOWN (still computing after A-02 merge). Once MERGEABLE, re-queue PR#1287 and update manifest C-03 → MERGE_QUEUE.
