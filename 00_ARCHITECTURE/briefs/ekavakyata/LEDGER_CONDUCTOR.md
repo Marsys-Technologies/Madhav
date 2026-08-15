@@ -89,6 +89,19 @@ Sole writer: SŪTRADHĀRA. One file, one writer — PP2 write-race lesson.
 
 **W0 PROGRESS: 4/7 LIVE at 20:34Z — deadline 21:06Z (~32min remaining)**
 
+**W0 STATUS (20:45Z — C-01 merged):**
+- A-01 ✓ LIVE · A-03 ✓ LIVE · A-05 ✓ LIVE · A-06 ✓ LIVE · C-01/C-02 ✓ LIVE (`20266702a`)
+- A-04 (PR#1292): IN MERGE QUEUE since ~20:37Z, Ganga QG in_progress (~16min, completing soon)
+- A-02 (PR#1294): queued behind A-04 — will enter queue after A-04 merges
+- C-03 (PR#1287): MERGE QUEUE STRATEGY ISSUE — `gh pr merge --auto` returns "merge strategy set by merge queue" error; `mergeable: UNKNOWN`; no merge conflicts (0 conflicts confirmed); review status unclear; needs Stream C/E to investigate queue entry path
+- ekv_manifest.json: `deployed_main_sha` = A-06 SHA (cfc37fc38) — Stream E must update to C-01 SHA (20266702a) after C-01 deploy completes; 4 LIVE lanes recorded (C-01 not yet marked — pending deploy + E update)
+- W1 blockers: A-09 (Boot-time SC-17/18/19 + TAP-5/7/S-13 FAIL); B-01 (governance fail dignity test)
+- W1 progressing: B-02/B-03/B-04 all in merge queue; A-11 Ganga QG success (20:34Z, AM active)
+
+**W0 RISK: A-02 may not merge until 21:05-21:15Z — tight vs 21:06Z deadline. C-03 (PR#1287) stuck outside queue.**
+
+**W0 PROGRESS: 5/7 LIVE at 20:45Z — deadline 21:06Z (~21min remaining)**
+
 ### KERNEL API FREEZE MARKER (A posts, I broadcast)
 `EKV-KERNEL-API-FROZEN` — post when A-09 sāra kernel types are frozen.
 Consumers waiting: A-14, A-16, B-08.
