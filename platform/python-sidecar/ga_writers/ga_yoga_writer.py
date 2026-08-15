@@ -1500,6 +1500,8 @@ NB_GRAHA_DRISHTI: dict[str, frozenset[int]] = {
     "mars": frozenset({4, 7, 8}),
     "jupiter": frozenset({5, 7, 9}),
     "saturn": frozenset({3, 7, 10}),
+    "rahu": frozenset({5, 7, 9}),   # BPHS Ch.26 — same special aspects as Jupiter
+    "ketu": frozenset({5, 7, 9}),   # BPHS Ch.26 — same special aspects as Jupiter
 }
 NB_DEFAULT_DRISHTI = frozenset({7})
 

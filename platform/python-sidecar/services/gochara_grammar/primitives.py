@@ -190,6 +190,8 @@ SPECIAL_DRISHTI_DEG: dict[str, list[float]] = {
     "Mars": [90.0, 180.0, 210.0],       # 4th, 7th, 8th
     "Jupiter": [120.0, 180.0, 240.0],   # 5th, 7th, 9th
     "Saturn": [60.0, 180.0, 270.0],     # 3rd, 7th, 10th
+    "Rahu": [120.0, 180.0, 240.0],      # 5th, 7th, 9th (BPHS Ch.26 — same as Jupiter)
+    "Ketu": [120.0, 180.0, 240.0],      # 5th, 7th, 9th (BPHS Ch.26 — same as Jupiter)
 }
 _DEFAULT_DRISHTI_DEG = [180.0]  # every other graha: 7th-house aspect only
 
