@@ -43,6 +43,10 @@ Sole writer: SŪTRADHĀRA. One file, one writer — PP2 write-race lesson.
 **19:30Z** — REAL PROGRESS: A-01/02/03/05 on origin; B-02/03/04 on origin; C-01 on origin. D 9-lint scripts + ekv_controls.py building. SENTINEL branch pushed.
 
 **19:29Z (context-resume)** — LEDGER catches up post-compaction. Full audit of state:
+
+**20:34Z (context-resume #2)** — A-06 MERGED → W0 4/7 LIVE (`cfc37fc38`). A-02/A-04/C-01 ALL-CI-GREEN awaiting E queue. B-01 GOVERNANCE FAIL (dignity test regression; E posted EKV-B-01-BLOCKED). Main deploy in_progress. W0 deadline ~32min.
+
+**19:29Z (context-resume)** — LEDGER catches up post-compaction. Full audit of state:
 - A: A-01/02/03/04/05/06 ALL VERIFIED on origin/ekv/a-0*; awaiting E merge
 - B: B-01/02/03/04 on origin; stream still active (W1 lanes in flight)
 - C: C-01 on origin (migration 572 + C-02 writer fix); awaiting EKV-R-1 sign-off
@@ -68,6 +72,22 @@ Sole writer: SŪTRADHĀRA. One file, one writer — PP2 write-race lesson.
 - W1: A-09/A-11/A-15 + B-05 all PRs with auto-merge open
 
 **W0 PROGRESS: 3/7 LIVE at 20:14Z — deadline 21:06Z (~52min remaining)**
+
+**W0 STATUS (20:34Z — context-resume):**
+- A-01 ✓ LIVE (`55a476fbd`) · A-05 ✓ LIVE (`3deb54180`) · A-03 ✓ LIVE (`12cbf5e14`) · A-06 ✓ LIVE (`cfc37fc38` PR#1291)
+- A-02 (PR#1294): ALL-CI-GREEN — awaiting E merge-queue arm
+- A-04 (PR#1292): ALL-CI-GREEN — awaiting E merge-queue arm
+- C-01 (PR#1295): ALL-CI-GREEN, EKV-R-1 authorized — awaiting E merge-queue arm (E runs post-deploy assertions after merge)
+- C-02: bundled in C-01 PR — same status
+- C-03: PR#1287 still open (predates campaign, no auto-merge)
+- B-01 (PR#1296): GOVERNANCE GATE FAIL — test_ga6_writer.py::TestDignity (2 regressions); Stream E posted EKV-B-01-BLOCKED at 20:17Z; Stream B must fix
+- B-02 (PR#1297): ALL-CI-GREEN
+- B-03 (PR#1298): CI running (passing so far)
+- B-04 (PR#1299): CI running (passing so far)
+- DEPLOY: main Deploy to Cloud Run in_progress + Ganga QG in_progress on A-06 merge (`cfc37fc38`)
+- W1: A-09 (PR#1301) · A-11 (PR#1302 auto-merge) · A-15 (PR#1300) · B-05 (PR#1303)
+
+**W0 PROGRESS: 4/7 LIVE at 20:34Z — deadline 21:06Z (~32min remaining)**
 
 ### KERNEL API FREEZE MARKER (A posts, I broadcast)
 `EKV-KERNEL-API-FROZEN` — post when A-09 sāra kernel types are frozen.
@@ -97,7 +117,14 @@ Consumers waiting: A-14, A-16, B-08.
 
 ## BLOCKED LANES
 
-<!-- EKV-<lane>-BLOCKED entries with evidence -->
+**EKV-B-01-BLOCKED** (20:17Z) — dignity oracle test regression
+- PR#1296 `ekv/b-01-dignity-oracle`: Governance Gate FAIL
+- `test_ga6_writer.py::TestDignity::test_friend_sign`: `_compute_dignity("Sun",3)` → `"Neutral"` ≠ `"Friend"`
+- `test_ga6_writer.py::TestDignity::test_enemy_sign`: `_compute_dignity("Sun",1)` → `"Neutral"` ≠ `"Enemy"`
+- Root: B-01's moolatrikona degree gate changed dignity computation but didn't update tests
+- Action: Stream B fixes tests OR reverts dignity change if unintended (EKV-R not required)
+- B-02..B-04 not blocked (independent; no dependency on B-01)
+- Stream E posted signal in CAMPAIGN_COORDINATION.md at 20:17Z
 
 ## CLOSE LOG
 
