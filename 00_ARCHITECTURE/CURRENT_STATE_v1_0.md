@@ -43,6 +43,8 @@ update_rules: >
   Post-Step-15, `step_ledger_updated` is dropped from the close-checklist; only
   `current_state_updated` remains as the state-transition field.
 consumers:
+  - CROSS_CUTTING_DECISION_REGISTER_v1_0.md — first tool-neutral decision record read
+    by Claude Code and Codex during orientation, immediately after this state pointer
   - CLAUDE.md §F + §C item #8 — cite this file as the primary you-are-here surface
   - .geminirules §F + §C item #8 (MP.1 mirror of the Claude-side citations)
   - .gemini/project_state.md — reflects CURRENT_STATE fields in Gemini-idiom prose (MP.2)
@@ -54,6 +56,18 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.61 (2026-08-15, CODEX_ONBOARDING_CLOSE): Closed the owner-approved Codex
+    shared-brain onboarding under CCD-001 through CCD-004. The project now has a
+    tool-neutral decision register, Codex loader/profile/skill/agent bridges, and shared
+    session provenance fields. Fresh Codex→Claude Code→Codex CCD handoff, full-CLAUDE
+    truncation proof, skill discovery, and live MCP acceptance passed. CCD-004 carries the
+    owner-visible credential-rotation and validator-debt follow-ups. No production, migration,
+    deployment, or application-code action occurred.
+  - v6.60 (2026-08-15, CODEX_ONBOARDING): Added the governed orientation pointer to
+    `CROSS_CUTTING_DECISION_REGISTER_v1_0.md`. Claude Code and Codex read this file
+    first and the CCD register second; CCD-001 records the cross-tool onboarding and
+    lease convention. This pointer supersedes no project decision and does not make
+    stale auxiliary state an authority.
   - v6.59 (2026-08-12, PARIṢKĀRA CAMPAIGN CLOSE — genuine, MR-29-verified close of the
     GOCHARA-UTKARṢA transit-prediction elevation): GOCHARA-UTKARṢA (v1 daily-grid gochara
     sweep → v3 arc-solved engine) declared itself closed on its own campaign branch
@@ -9050,6 +9064,8 @@ current_state:
     This block is transient and may be removed at the next steady-state
     close once the M4-C parallel-pair coordination phase has fully settled
     (likely at M4-C-S3 close or M4-C-S4 sub-phase close).
+  # Current close pointer. Kept here to override the historical embedded value above.
+  last_session_id: CODEX-ONBOARDING-CLOSE-2026-08-15
 ```
 
 ---

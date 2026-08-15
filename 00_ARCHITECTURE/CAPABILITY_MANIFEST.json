@@ -1,7 +1,7 @@
 {
-  "generated_at": "2026-07-22T06:50:04.573Z",
+  "generated_at": "2026-08-15T00:00:00.000Z",
   "generator_version": "1.0",
-  "entry_count": 115,
+  "entry_count": 116,
   "fingerprint": "651139efdb098680fda9f3fa12129d9672d92a10e30cb58eccceb459e5b6a030",
   "entries": [
     {
@@ -1622,6 +1622,20 @@
       "interface_version": "1.0",
       "fingerprint": "ac18ad9c4de0ee88caf7c9de4b9a4bf7bbd136f4734364feb4951bb19b49a17e",
       "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "CROSS_CUTTING_DECISION_REGISTER_v1_0",
+      "path": "00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md",
+      "version": "1.0",
+      "status": "LIVING",
+      "layer": "governance",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "6c35006ba085c2cd0b3dc088f466c43474eb694cd2f47046df2e1fe846bcbed3",
+      "native_id": "project"
     },
     {
       "canonical_id": "RETRIEVAL_TOOL_prashna_status",

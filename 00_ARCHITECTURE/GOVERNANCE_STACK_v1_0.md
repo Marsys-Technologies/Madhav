@@ -122,6 +122,7 @@ CLAUDE.md). See `VALIDATED_ASSET_REGISTRY_v1_0.json §archive_actions`.
 | **GOVERNANCE_INTEGRITY_PROTOCOL_v1_0** | **1.0** | **DRAFT_PENDING_REDTEAM** | **Step 6 deliverable (2026-04-24) — 999-line design specification; 14 sections (§A–§N); six axes; 32 GA.N + ND.1 covered; 13-deliverable Step 7 hand-off. Status flips to CURRENT at Step 8 close if red-team verdict PASS or PASS_WITH_FIXES.** |
 | **SESSION_OPEN_TEMPLATE_v1_0** | **1.0** | **CURRENT** | **NEW STEP_7_GOVERNANCE_INTEGRITY_IMPLEMENTATION (2026-04-24) — Session-open handshake template per protocol §F.** |
 | **SESSION_CLOSE_TEMPLATE_v1_0** | **1.0** | **CURRENT** | **NEW STEP_7_GOVERNANCE_INTEGRITY_IMPLEMENTATION (2026-04-24) — Session-close checklist template per protocol §G.** |
+| **CROSS_CUTTING_DECISION_REGISTER_v1_0** | **1.0** | **LIVING** | **NEW CODEX_ONBOARDING (2026-08-15) — append-only, tool-neutral decision register. Read immediately after CURRENT_STATE by Claude Code and Codex; CCD-001 establishes the shared onboarding convention.** |
 | **DISAGREEMENT_REGISTER_v1_0** | **1.0** | **LIVING** | **NEW STEP_7_GOVERNANCE_INTEGRITY_IMPLEMENTATION (2026-04-24) — Multi-agent disagreement log per protocol §K. Zero entries at creation.** |
 | FALSIFIER_REGISTRY_v1_0 | 1.0 | **SUPERSEDED** | Superseded by v1.1 |
 | FALSIFIER_REGISTRY_v1_1 | 1.1 | **SUPERSEDED** | Superseded by FALSIFIER_REGISTRY_v2_0_EXPANSION (current) |
@@ -995,6 +996,33 @@ M2 execution session. red_team_counter 2 → 3 → cadence FIRED → reset to 0 
 **Governance verdicts:** drift_detector exit=2 (62 findings; pre-existing; no Exec_8 regression); schema_validator exit=2 (54 violations; pre-existing heading/session_id mismatches; SESSION_LOG "Body" H2 heading corrected); mirror_enforcer exit=0 (8/8 pairs clean). build_state.json re-uploaded to GCS.
 
 *End of §24 — Madhav_M2A_Exec_8 amendment log.*
+
+---
+
+### §25 — CODEX_ONBOARDING (2026-08-15) — cross-tool governance addition
+
+**Decision register.** `CROSS_CUTTING_DECISION_REGISTER_v1_0.md` is registered as a
+LIVING governance artifact. It is the first decision record both Claude Code and Codex
+read after `CURRENT_STATE_v1_0.md`; CCD-001 records this orientation, loader, profile,
+and lease convention.
+
+**Tool parity.** The root `AGENTS.md` is a minimal Codex bootstrap that requires a full
+read of canonical `CLAUDE.md`; both Codex profiles set
+`project_doc_fallback_filenames = []`, preventing the native 32 KiB fallback from
+silently truncating `CLAUDE.md`. Directory-local Codex instruction files are symlinks to
+their canonical `CLAUDE.md` targets, and `.agents/skills` points to the canonical
+`.claude/skills` tree.
+
+**Session enforcement.** The open/close templates and schema validator now require tool
+identity, profile, worktree, coordination lease evidence, CCD consumption, and CCD/work
+order/lease synchronization at close. The governance protocol adds §P as the normative
+cross-tool convention.
+
+**Lease authority.** During this user-authorized onboarding session only, Codex may
+commit and push acquisition/release rows for its campaign-coordination lease. No other
+onboarding files are committed by that authority; all remain available for native review.
+
+*End of §25 — CODEX_ONBOARDING amendment log.*
 
 ## Changelog
 
