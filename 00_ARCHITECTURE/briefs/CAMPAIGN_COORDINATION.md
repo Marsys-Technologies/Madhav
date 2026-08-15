@@ -2882,3 +2882,32 @@ GATE STATUS: 2 failures (structural; same as 22:08Z):
   ✗ CL-00: authorized NOT-RUN per EKV-R-5 (permanent for this wave)
 
 NEXT HB: ≤22:48Z
+
+---
+██ PRATINIDHI RULINGS ██ 2026-08-16T22:24Z — EKV-R-10 + EKV-R-11
+
+### EKV-R-10: A-15 DEPLOY SMOKE — NOT AN A-15 REGRESSION; NO REVERT
+
+SP-4 escalation received and analyzed. Ruling: **SP-4 does not apply.**
+- A-15's diff touches only `resolveChartFactsAyanamsha` call sites — zero auth code.
+- Health check passes (HTTP 200, server UP). Only the bearer-auth canary probe fails.
+- Previous 3 deploys (B-04, A-09, B-05) passed the same smoke.
+- Reverting A-15 would NOT fix a canary key config mismatch — it would only delay the drain.
+- **A-15 status: MERGED** (deploy smoke failed; LIVE not earned per N.8).
+- Morning session investigates canary key config.
+- If retry deploy (31910678712) PASSES: A-15 upgrades to LIVE candidate (still needs countersign verification).
+- If retry FAILS: canary config is the investigation target, not A-15 code.
+
+NOTE: Conductor's A-15 deploy retry is consistent with this ruling.
+
+### EKV-R-11: A-02 EVIDENCE GAP — GUARDIAN FINDING ACCEPTED
+
+Guardian desk is correct. Deploy proof ≠ function proof (N.8/N.7.5/SP-2).
+- A-02 added as **explicit countersign spot-check target** (not left to random lottery).
+- If Stream E runs the actual 4-tool MCP probe before close: PASS stands.
+- If no probe runs: `exit_test_result = UNVERIFIED`, A-02 status = MERGED (not LIVE).
+- Conductor's evidence creation was honest and within mandate. No procedural violation.
+
+### DRAIN ACKNOWLEDGED
+A-11 merged. 6 PRs remaining. Queue CI running. PRATINIDHI continues monitoring.
+
