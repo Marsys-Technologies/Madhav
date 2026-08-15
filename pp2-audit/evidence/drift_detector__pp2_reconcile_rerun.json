@@ -1,0 +1,2625 @@
+{
+  "captured_at": "2026-08-15",
+  "captured_by": "PP2 gate reconciliation pass",
+  "command": "python3 platform/scripts/governance/drift_detector.py --repo-root . --session-id PP2-RECONCILE-EVIDENCE",
+  "observed": {
+    "findings": 216,
+    "exit_code": 3
+  },
+  "agreement_with_finding_claim": "MATCHES F-94's claim exactly (216 findings, exit=3).",
+  "report": {
+    "drift_report": {
+      "session_id": "PP2-RECONCILE-EVIDENCE",
+      "run_at": "2026-08-15T16:56:20.077822+00:00",
+      "findings": [
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "CGP_AUDIT_v1_0",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
+            "CANONICAL_ARTIFACTS"
+          ],
+          "evidence": "FILE_REGISTRY does not name 'CGP_AUDIT_v1_0.md'",
+          "suggested_remediation": "Add a row for CGP_AUDIT_v1_0.md in FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "EXTERNAL_COMPUTATION_SPEC_v2_0",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
+            "CANONICAL_ARTIFACTS"
+          ],
+          "evidence": "FILE_REGISTRY does not name 'EXTERNAL_COMPUTATION_SPEC_v2_0.md'",
+          "suggested_remediation": "Add a row for EXTERNAL_COMPUTATION_SPEC_v2_0.md in FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "JH_EXPORT_SCHEDULE_v1_0",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
+            "CANONICAL_ARTIFACTS"
+          ],
+          "evidence": "FILE_REGISTRY does not name 'JH_EXPORT_SCHEDULE_v1_0.md'",
+          "suggested_remediation": "Add a row for JH_EXPORT_SCHEDULE_v1_0.md in FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "LEL_HELD_OUT_PARTITION",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
+            "CANONICAL_ARTIFACTS"
+          ],
+          "evidence": "FILE_REGISTRY does not name 'LEL_HELD_OUT_PARTITION_v1_0.md'",
+          "suggested_remediation": "Add a row for LEL_HELD_OUT_PARTITION_v1_0.md in FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "LEL_FACTS_ONLY",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
+            "CANONICAL_ARTIFACTS"
+          ],
+          "evidence": "FILE_REGISTRY does not name 'LIFE_EVENT_LOG_FACTS_ONLY_v1_0.md'",
+          "suggested_remediation": "Add a row for LIFE_EVENT_LOG_FACTS_ONLY_v1_0.md in FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "LEL",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
+            "CANONICAL_ARTIFACTS"
+          ],
+          "evidence": "FILE_REGISTRY does not name 'LIFE_EVENT_LOG_v1_2.md'",
+          "suggested_remediation": "Add a row for LIFE_EVENT_LOG_v1_2.md in FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "PPL_RETROACTIVE_PROTOCOL_v1_0",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
+            "CANONICAL_ARTIFACTS"
+          ],
+          "evidence": "FILE_REGISTRY does not name 'PPL_RETROACTIVE_PROTOCOL_v1_0.md'",
+          "suggested_remediation": "Add a row for PPL_RETROACTIVE_PROTOCOL_v1_0.md in FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "SADE_SATI_CYCLES_ALL",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
+            "CANONICAL_ARTIFACTS"
+          ],
+          "evidence": "FILE_REGISTRY does not name 'SADE_SATI_CYCLES_ALL.md'",
+          "suggested_remediation": "Add a row for SADE_SATI_CYCLES_ALL.md in FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "EVENT_CHART_STATES_v1_0",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
+            "CANONICAL_ARTIFACTS"
+          ],
+          "evidence": "FILE_REGISTRY does not name 'EVENT_CHART_STATES_v1_0.md'",
+          "suggested_remediation": "Add a row for EVENT_CHART_STATES_v1_0.md in FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "JHORA_TRANSCRIPTION_v8_0_SOURCE",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
+            "CANONICAL_ARTIFACTS"
+          ],
+          "evidence": "FILE_REGISTRY does not name 'JHORA_TRANSCRIPTION_v8_0_SOURCE.md'",
+          "suggested_remediation": "Add a row for JHORA_TRANSCRIPTION_v8_0_SOURCE.md in FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "CDLM",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
+            "CANONICAL_ARTIFACTS"
+          ],
+          "evidence": "FILE_REGISTRY does not name 'CDLM_v1_1.md'",
+          "suggested_remediation": "Add a row for CDLM_v1_1.md in FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "CGM",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
+            "CANONICAL_ARTIFACTS"
+          ],
+          "evidence": "FILE_REGISTRY does not name 'CGM_v9_0.md'",
+          "suggested_remediation": "Add a row for CGM_v9_0.md in FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "MSR",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
+            "CANONICAL_ARTIFACTS"
+          ],
+          "evidence": "FILE_REGISTRY does not name 'MSR_v5_0.md'",
+          "suggested_remediation": "Add a row for MSR_v5_0.md in FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "RM",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
+            "CANONICAL_ARTIFACTS"
+          ],
+          "evidence": "FILE_REGISTRY does not name 'RM_v2_0.md'",
+          "suggested_remediation": "Add a row for RM_v2_0.md in FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "UCN",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
+            "CANONICAL_ARTIFACTS"
+          ],
+          "evidence": "FILE_REGISTRY does not name 'UCN_v4_0.md'",
+          "suggested_remediation": "Add a row for UCN_v4_0.md in FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "CROSS_REPORT_COHERENCE_AUDIT_v1_0",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
+            "CANONICAL_ARTIFACTS"
+          ],
+          "evidence": "FILE_REGISTRY does not name 'CROSS_REPORT_COHERENCE_AUDIT_v1_0.md'",
+          "suggested_remediation": "Add a row for CROSS_REPORT_COHERENCE_AUDIT_v1_0.md in FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "RED_TEAM_L3_v1_0",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
+            "CANONICAL_ARTIFACTS"
+          ],
+          "evidence": "FILE_REGISTRY does not name 'RED_TEAM_L3_v1_0.md'",
+          "suggested_remediation": "Add a row for RED_TEAM_L3_v1_0.md in FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "REPORT_CAREER_DHARMA_v1_0",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
+            "CANONICAL_ARTIFACTS"
+          ],
+          "evidence": "FILE_REGISTRY does not name 'REPORT_CAREER_DHARMA_v1_0.md'",
+          "suggested_remediation": "Add a row for REPORT_CAREER_DHARMA_v1_0.md in FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "REPORT_CAREER_DHARMA_v1_1",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
+            "CANONICAL_ARTIFACTS"
+          ],
+          "evidence": "FILE_REGISTRY does not name 'REPORT_CAREER_DHARMA_v1_1.md'",
+          "suggested_remediation": "Add a row for REPORT_CAREER_DHARMA_v1_1.md in FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "REPORT_CHILDREN_v1_0",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
+            "CANONICAL_ARTIFACTS"
+          ],
+          "evidence": "FILE_REGISTRY does not name 'REPORT_CHILDREN_v1_0.md'",
+          "suggested_remediation": "Add a row for REPORT_CHILDREN_v1_0.md in FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "REPORT_CHILDREN_v1_1",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
+            "CANONICAL_ARTIFACTS"
+          ],
+          "evidence": "FILE_REGISTRY does not name 'REPORT_CHILDREN_v1_1.md'",
+          "suggested_remediation": "Add a row for REPORT_CHILDREN_v1_1.md in FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "REPORT_FINANCIAL_v2_0",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
+            "CANONICAL_ARTIFACTS"
+          ],
+          "evidence": "FILE_REGISTRY does not name 'REPORT_FINANCIAL_v2_0.md'",
+          "suggested_remediation": "Add a row for REPORT_FINANCIAL_v2_0.md in FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "REPORT_FINANCIAL_v2_1",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
+            "CANONICAL_ARTIFACTS"
+          ],
+          "evidence": "FILE_REGISTRY does not name 'REPORT_FINANCIAL_v2_1.md'",
+          "suggested_remediation": "Add a row for REPORT_FINANCIAL_v2_1.md in FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "REPORT_HEALTH_LONGEVITY_v1_0",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
+            "CANONICAL_ARTIFACTS"
+          ],
+          "evidence": "FILE_REGISTRY does not name 'REPORT_HEALTH_LONGEVITY_v1_0.md'",
+          "suggested_remediation": "Add a row for REPORT_HEALTH_LONGEVITY_v1_0.md in FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "REPORT_HEALTH_LONGEVITY_v1_1",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
+            "CANONICAL_ARTIFACTS"
+          ],
+          "evidence": "FILE_REGISTRY does not name 'REPORT_HEALTH_LONGEVITY_v1_1.md'",
+          "suggested_remediation": "Add a row for REPORT_HEALTH_LONGEVITY_v1_1.md in FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "REPORT_PARENTS_v1_0",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
+            "CANONICAL_ARTIFACTS"
+          ],
+          "evidence": "FILE_REGISTRY does not name 'REPORT_PARENTS_v1_0.md'",
+          "suggested_remediation": "Add a row for REPORT_PARENTS_v1_0.md in FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "REPORT_PARENTS_v1_1",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
+            "CANONICAL_ARTIFACTS"
+          ],
+          "evidence": "FILE_REGISTRY does not name 'REPORT_PARENTS_v1_1.md'",
+          "suggested_remediation": "Add a row for REPORT_PARENTS_v1_1.md in FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "REPORT_PSYCHOLOGY_MIND_v1_0",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
+            "CANONICAL_ARTIFACTS"
+          ],
+          "evidence": "FILE_REGISTRY does not name 'REPORT_PSYCHOLOGY_MIND_v1_0.md'",
+          "suggested_remediation": "Add a row for REPORT_PSYCHOLOGY_MIND_v1_0.md in FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "REPORT_PSYCHOLOGY_MIND_v1_1",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
+            "CANONICAL_ARTIFACTS"
+          ],
+          "evidence": "FILE_REGISTRY does not name 'REPORT_PSYCHOLOGY_MIND_v1_1.md'",
+          "suggested_remediation": "Add a row for REPORT_PSYCHOLOGY_MIND_v1_1.md in FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "REPORT_RELATIONSHIPS_v1_0",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
+            "CANONICAL_ARTIFACTS"
+          ],
+          "evidence": "FILE_REGISTRY does not name 'REPORT_RELATIONSHIPS_v1_0.md'",
+          "suggested_remediation": "Add a row for REPORT_RELATIONSHIPS_v1_0.md in FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "REPORT_RELATIONSHIPS_v1_1",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
+            "CANONICAL_ARTIFACTS"
+          ],
+          "evidence": "FILE_REGISTRY does not name 'REPORT_RELATIONSHIPS_v1_1.md'",
+          "suggested_remediation": "Add a row for REPORT_RELATIONSHIPS_v1_1.md in FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "REPORT_SPIRITUAL_v1_0",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
+            "CANONICAL_ARTIFACTS"
+          ],
+          "evidence": "FILE_REGISTRY does not name 'REPORT_SPIRITUAL_v1_0.md'",
+          "suggested_remediation": "Add a row for REPORT_SPIRITUAL_v1_0.md in FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "REPORT_SPIRITUAL_v1_1",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
+            "CANONICAL_ARTIFACTS"
+          ],
+          "evidence": "FILE_REGISTRY does not name 'REPORT_SPIRITUAL_v1_1.md'",
+          "suggested_remediation": "Add a row for REPORT_SPIRITUAL_v1_1.md in FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "REPORT_TRAVEL_v1_0",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
+            "CANONICAL_ARTIFACTS"
+          ],
+          "evidence": "FILE_REGISTRY does not name 'REPORT_TRAVEL_v1_0.md'",
+          "suggested_remediation": "Add a row for REPORT_TRAVEL_v1_0.md in FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "REPORT_TRAVEL_v1_1",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
+            "CANONICAL_ARTIFACTS"
+          ],
+          "evidence": "FILE_REGISTRY does not name 'REPORT_TRAVEL_v1_1.md'",
+          "suggested_remediation": "Add a row for REPORT_TRAVEL_v1_1.md in FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "DECISION_SUPPORT_PLAYBOOK_v1_0",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
+            "CANONICAL_ARTIFACTS"
+          ],
+          "evidence": "FILE_REGISTRY does not name 'DECISION_SUPPORT_PLAYBOOK_v1_0.md'",
+          "suggested_remediation": "Add a row for DECISION_SUPPORT_PLAYBOOK_v1_0.md in FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "QUERY_PROMPT_LIBRARY_v1_0",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
+            "CANONICAL_ARTIFACTS"
+          ],
+          "evidence": "FILE_REGISTRY does not name 'QUERY_PROMPT_LIBRARY_v1_0.md'",
+          "suggested_remediation": "Add a row for QUERY_PROMPT_LIBRARY_v1_0.md in FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "SESSION_PROTOCOL_QUESTION_TAXONOMY_v1_0",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
+            "CANONICAL_ARTIFACTS"
+          ],
+          "evidence": "FILE_REGISTRY does not name 'SESSION_PROTOCOL_QUESTION_TAXONOMY_v1_0.md'",
+          "suggested_remediation": "Add a row for SESSION_PROTOCOL_QUESTION_TAXONOMY_v1_0.md in FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "CLUSTER_ATLAS_v1_0",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
+            "CANONICAL_ARTIFACTS"
+          ],
+          "evidence": "FILE_REGISTRY does not name 'CLUSTER_ATLAS_v1_0.md'",
+          "suggested_remediation": "Add a row for CLUSTER_ATLAS_v1_0.md in FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "CLUSTER_ATLAS_v1_1",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
+            "CANONICAL_ARTIFACTS"
+          ],
+          "evidence": "FILE_REGISTRY does not name 'CLUSTER_ATLAS_v1_1.md'",
+          "suggested_remediation": "Add a row for CLUSTER_ATLAS_v1_1.md in FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "CONTRADICTION_REGISTER_v1_0",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
+            "CANONICAL_ARTIFACTS"
+          ],
+          "evidence": "FILE_REGISTRY does not name 'CONTRADICTION_REGISTER_v1_0.md'",
+          "suggested_remediation": "Add a row for CONTRADICTION_REGISTER_v1_0.md in FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "CONTRADICTION_REGISTER_v1_1",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
+            "CANONICAL_ARTIFACTS"
+          ],
+          "evidence": "FILE_REGISTRY does not name 'CONTRADICTION_REGISTER_v1_1.md'",
+          "suggested_remediation": "Add a row for CONTRADICTION_REGISTER_v1_1.md in FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "PATTERN_REGISTER_v1_0",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
+            "CANONICAL_ARTIFACTS"
+          ],
+          "evidence": "FILE_REGISTRY does not name 'PATTERN_REGISTER_v1_0.md'",
+          "suggested_remediation": "Add a row for PATTERN_REGISTER_v1_0.md in FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "PATTERN_REGISTER_v1_1",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
+            "CANONICAL_ARTIFACTS"
+          ],
+          "evidence": "FILE_REGISTRY does not name 'PATTERN_REGISTER_v1_1.md'",
+          "suggested_remediation": "Add a row for PATTERN_REGISTER_v1_1.md in FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "RESONANCE_REGISTER_v1_0",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
+            "CANONICAL_ARTIFACTS"
+          ],
+          "evidence": "FILE_REGISTRY does not name 'RESONANCE_REGISTER_v1_0.md'",
+          "suggested_remediation": "Add a row for RESONANCE_REGISTER_v1_0.md in FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "RESONANCE_REGISTER_v1_1",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
+            "CANONICAL_ARTIFACTS"
+          ],
+          "evidence": "FILE_REGISTRY does not name 'RESONANCE_REGISTER_v1_1.md'",
+          "suggested_remediation": "Add a row for RESONANCE_REGISTER_v1_1.md in FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "SCHEMAS/chunker_spec_v1_0",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
+            "CANONICAL_ARTIFACTS"
+          ],
+          "evidence": "FILE_REGISTRY does not name 'chunker_spec_v1_0.md'",
+          "suggested_remediation": "Add a row for chunker_spec_v1_0.md in FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "L1_TRUTH_INDEX_REPORT_v1_0",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
+            "CANONICAL_ARTIFACTS"
+          ],
+          "evidence": "FILE_REGISTRY does not name 'L1_TRUTH_INDEX_REPORT_v1_0.md'",
+          "suggested_remediation": "Add a row for L1_TRUTH_INDEX_REPORT_v1_0.md in FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "M4_CLOSE",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
+            "CANONICAL_ARTIFACTS"
+          ],
+          "evidence": "FILE_REGISTRY does not name 'M4_CLOSE_v1_0.md'",
+          "suggested_remediation": "Add a row for M4_CLOSE_v1_0.md in FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "M5_CLOSE",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
+            "CANONICAL_ARTIFACTS"
+          ],
+          "evidence": "FILE_REGISTRY does not name 'M5_CLOSE_v1_0.md'",
+          "suggested_remediation": "Add a row for M5_CLOSE_v1_0.md in FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "CI_REPORTING_POLICY",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
+            "CANONICAL_ARTIFACTS"
+          ],
+          "evidence": "FILE_REGISTRY does not name 'NAP_M5_3_CI_REPORTING_POLICY_v1_0.md'",
+          "suggested_remediation": "Add a row for NAP_M5_3_CI_REPORTING_POLICY_v1_0.md in FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "06_LEARNING_LAYER/SHADOW_MODE_PROTOCOL_v1_0",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
+            "CANONICAL_ARTIFACTS"
+          ],
+          "evidence": "FILE_REGISTRY does not name 'SHADOW_MODE_PROTOCOL_v1_0.md'",
+          "suggested_remediation": "Add a row for SHADOW_MODE_PROTOCOL_v1_0.md in FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/LL1_TWO_PASS_APPROVAL_v1_0",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
+            "CANONICAL_ARTIFACTS"
+          ],
+          "evidence": "FILE_REGISTRY does not name 'LL1_TWO_PASS_APPROVAL_v1_0.md'",
+          "suggested_remediation": "Add a row for LL1_TWO_PASS_APPROVAL_v1_0.md in FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/LL2_EDGE_WEIGHT_DESIGN_v1_0",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
+            "CANONICAL_ARTIFACTS"
+          ],
+          "evidence": "FILE_REGISTRY does not name 'LL2_EDGE_WEIGHT_DESIGN_v1_0.md'",
+          "suggested_remediation": "Add a row for LL2_EDGE_WEIGHT_DESIGN_v1_0.md in FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/LL2_STABILITY_GATE_v1_0",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
+            "CANONICAL_ARTIFACTS"
+          ],
+          "evidence": "FILE_REGISTRY does not name 'LL2_STABILITY_GATE_v1_0.md'",
+          "suggested_remediation": "Add a row for LL2_STABILITY_GATE_v1_0.md in FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/LL3_DOMAIN_COHERENCE_v1_0",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
+            "CANONICAL_ARTIFACTS"
+          ],
+          "evidence": "FILE_REGISTRY does not name 'LL3_DOMAIN_COHERENCE_v1_0.md'",
+          "suggested_remediation": "Add a row for LL3_DOMAIN_COHERENCE_v1_0.md in FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/LL4_PREDICTION_PRIOR_v1_0",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
+            "CANONICAL_ARTIFACTS"
+          ],
+          "evidence": "FILE_REGISTRY does not name 'LL4_PREDICTION_PRIOR_v1_0.md'",
+          "suggested_remediation": "Add a row for LL4_PREDICTION_PRIOR_v1_0.md in FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/LL5_DASHA_TRANSIT_DESIGN_v1_0",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
+            "CANONICAL_ARTIFACTS"
+          ],
+          "evidence": "FILE_REGISTRY does not name 'LL5_DASHA_TRANSIT_DESIGN_v1_0.md'",
+          "suggested_remediation": "Add a row for LL5_DASHA_TRANSIT_DESIGN_v1_0.md in FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "LL6_TEMPORAL_DENSITY_DESIGN_v1_0",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
+            "CANONICAL_ARTIFACTS"
+          ],
+          "evidence": "FILE_REGISTRY does not name 'LL6_TEMPORAL_DENSITY_DESIGN_v1_0.md'",
+          "suggested_remediation": "Add a row for LL6_TEMPORAL_DENSITY_DESIGN_v1_0.md in FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "LL7_DISCOVERY_PRIOR_DESIGN",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
+            "CANONICAL_ARTIFACTS"
+          ],
+          "evidence": "FILE_REGISTRY does not name 'LL7_DISCOVERY_PRIOR_DESIGN_v1_0.md'",
+          "suggested_remediation": "Add a row for LL7_DISCOVERY_PRIOR_DESIGN_v1_0.md in FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "M4_B_CLOSE",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
+            "CANONICAL_ARTIFACTS"
+          ],
+          "evidence": "FILE_REGISTRY does not name 'M4_B_CLOSE_v1_0.md'",
+          "suggested_remediation": "Add a row for M4_B_CLOSE_v1_0.md in FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "M4_C_CLOSE",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
+            "CANONICAL_ARTIFACTS"
+          ],
+          "evidence": "FILE_REGISTRY does not name 'M4_C_CLOSE_v1_0.md'",
+          "suggested_remediation": "Add a row for M4_C_CLOSE_v1_0.md in FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "DBN_TOPOLOGY",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
+            "CANONICAL_ARTIFACTS"
+          ],
+          "evidence": "FILE_REGISTRY does not name 'DBN_TOPOLOGY_v1_0.md'",
+          "suggested_remediation": "Add a row for DBN_TOPOLOGY_v1_0.md in FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "M5_C_CLOSE",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
+            "CANONICAL_ARTIFACTS"
+          ],
+          "evidence": "FILE_REGISTRY does not name 'M5_C_CLOSE_v1_0.md'",
+          "suggested_remediation": "Add a row for M5_C_CLOSE_v1_0.md in FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "M5_D_CLOSE",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
+            "CANONICAL_ARTIFACTS"
+          ],
+          "evidence": "FILE_REGISTRY does not name 'M5_D_CLOSE_v1_0.md'",
+          "suggested_remediation": "Add a row for M5_D_CLOSE_v1_0.md in FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "PRIOR_SPEC",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
+            "CANONICAL_ARTIFACTS"
+          ],
+          "evidence": "FILE_REGISTRY does not name 'PRIOR_SPEC_v1_0.md'",
+          "suggested_remediation": "Add a row for PRIOR_SPEC_v1_0.md in FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "LL8_EMBEDDING_REFIT_SPEC",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
+            "CANONICAL_ARTIFACTS"
+          ],
+          "evidence": "FILE_REGISTRY does not name 'LL8_EMBEDDING_REFIT_SPEC_v1_0.md'",
+          "suggested_remediation": "Add a row for LL8_EMBEDDING_REFIT_SPEC_v1_0.md in FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "REFIT_GATE",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
+            "CANONICAL_ARTIFACTS"
+          ],
+          "evidence": "FILE_REGISTRY does not name 'REFIT_GATE_v1_0.md'",
+          "suggested_remediation": "Add a row for REFIT_GATE_v1_0.md in FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "refit_procedure",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
+            "CANONICAL_ARTIFACTS"
+          ],
+          "evidence": "FILE_REGISTRY does not name 'refit_procedure.md'",
+          "suggested_remediation": "Add a row for refit_procedure.md in FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "stability_report",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
+            "CANONICAL_ARTIFACTS"
+          ],
+          "evidence": "FILE_REGISTRY does not name 'stability_report.md'",
+          "suggested_remediation": "Add a row for stability_report.md in FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "ll2_promotion_campaign_v1_0",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
+            "CANONICAL_ARTIFACTS"
+          ],
+          "evidence": "FILE_REGISTRY does not name 'll2_promotion_campaign_v1_0.md'",
+          "suggested_remediation": "Add a row for ll2_promotion_campaign_v1_0.md in FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "LL8_SPEC",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
+            "CANONICAL_ARTIFACTS"
+          ],
+          "evidence": "FILE_REGISTRY does not name 'LL8_SPEC_v1_0.md'",
+          "suggested_remediation": "Add a row for LL8_SPEC_v1_0.md in FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "LL9_SPEC",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
+            "CANONICAL_ARTIFACTS"
+          ],
+          "evidence": "FILE_REGISTRY does not name 'LL9_SPEC_v1_0.md'",
+          "suggested_remediation": "Add a row for LL9_SPEC_v1_0.md in FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "PATTERN_SCHEMA_v0_1",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
+            "CANONICAL_ARTIFACTS"
+          ],
+          "evidence": "FILE_REGISTRY does not name 'pattern_schema_v0_1.json'",
+          "suggested_remediation": "Add a row for pattern_schema_v0_1.json in FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "PREDICTION_SCHEMA_v0_1",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
+            "CANONICAL_ARTIFACTS"
+          ],
+          "evidence": "FILE_REGISTRY does not name 'prediction_schema_v0_1.json'",
+          "suggested_remediation": "Add a row for prediction_schema_v0_1.json in FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "TWO_PASS_EVENTS_SCHEMA_v0_1",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
+            "CANONICAL_ARTIFACTS"
+          ],
+          "evidence": "FILE_REGISTRY does not name 'two_pass_events_schema_v0_1.json'",
+          "suggested_remediation": "Add a row for two_pass_events_schema_v0_1.json in FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "PROMPT_REGISTRY_INDEX",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
+            "CANONICAL_ARTIFACTS"
+          ],
+          "evidence": "FILE_REGISTRY does not name 'INDEX.json'",
+          "suggested_remediation": "Add a row for INDEX.json in FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "PREDICTION_LEDGER_JSONL",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
+            "CANONICAL_ARTIFACTS"
+          ],
+          "evidence": "FILE_REGISTRY does not name 'prediction_ledger.jsonl'",
+          "suggested_remediation": "Add a row for prediction_ledger.jsonl in FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "PATTERN_REGISTER_JSON",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
+            "CANONICAL_ARTIFACTS"
+          ],
+          "evidence": "FILE_REGISTRY does not name 'PATTERN_REGISTER_v1_0.json'",
+          "suggested_remediation": "Add a row for PATTERN_REGISTER_v1_0.json in FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "RESONANCE_REGISTER_JSON",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
+            "CANONICAL_ARTIFACTS"
+          ],
+          "evidence": "FILE_REGISTRY does not name 'RESONANCE_REGISTER_v1_0.json'",
+          "suggested_remediation": "Add a row for RESONANCE_REGISTER_v1_0.json in FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "CONTRADICTION_REGISTER_JSON",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
+            "CANONICAL_ARTIFACTS"
+          ],
+          "evidence": "FILE_REGISTRY does not name 'CONTRADICTION_REGISTER_v1_0.json'",
+          "suggested_remediation": "Add a row for CONTRADICTION_REGISTER_v1_0.json in FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "CLUSTER_ATLAS_JSON",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
+            "CANONICAL_ARTIFACTS"
+          ],
+          "evidence": "FILE_REGISTRY does not name 'CLUSTER_ATLAS_v1_0.json'",
+          "suggested_remediation": "Add a row for CLUSTER_ATLAS_v1_0.json in FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "DISCOVERY_REGISTERS_INDEX",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
+            "CANONICAL_ARTIFACTS"
+          ],
+          "evidence": "FILE_REGISTRY does not name 'INDEX.json'",
+          "suggested_remediation": "Add a row for INDEX.json in FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "L2_BODHA_CAMPAIGN_HANDOFF",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
+            "CANONICAL_ARTIFACTS"
+          ],
+          "evidence": "FILE_REGISTRY does not name 'L2_BODHA_CAMPAIGN_HANDOFF_v1_0.md'",
+          "suggested_remediation": "Add a row for L2_BODHA_CAMPAIGN_HANDOFF_v1_0.md in FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "governance_stack_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "MSR",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/GOVERNANCE_STACK_v1_0.md",
+            "CANONICAL_ARTIFACTS"
+          ],
+          "evidence": "GOVERNANCE_STACK does not name 'MSR_v5_0.md'",
+          "suggested_remediation": "Add MSR_v5_0.md to GOVERNANCE_STACK \u00a71 version registry",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "phantom_reference",
+          "severity": "MEDIUM",
+          "canonical_id": null,
+          "surfaces_involved": [
+            "00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md",
+            "python-sidecar/rag/embed.py"
+          ],
+          "evidence": "Live pointer `python-sidecar/rag/embed.py` in 00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md does not resolve (neither relative to repo nor by basename search)",
+          "suggested_remediation": "Whitelist or resolve at PHASE_B_PLAN v1.0.3 amendment cycle",
+          "whitelist_ticket": "WARN.2"
+        },
+        {
+          "class": "phantom_reference",
+          "severity": "MEDIUM",
+          "canonical_id": null,
+          "surfaces_involved": [
+            "00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md",
+            "035_DISCOVERY_LAYER/PROMPTS/gemini/cluster_annotation_v1.md"
+          ],
+          "evidence": "Live pointer `035_DISCOVERY_LAYER/PROMPTS/gemini/cluster_annotation_v1.md` in 00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md does not resolve (neither relative to repo nor by basename search)",
+          "suggested_remediation": "Whitelist or resolve at PHASE_B_PLAN v1.0.3 amendment cycle",
+          "whitelist_ticket": "WARN.2"
+        },
+        {
+          "class": "phantom_reference",
+          "severity": "MEDIUM",
+          "canonical_id": null,
+          "surfaces_involved": [
+            "00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md",
+            "p1_layer_separation.py"
+          ],
+          "evidence": "Live pointer `p1_layer_separation.py` in 00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md does not resolve (neither relative to repo nor by basename search)",
+          "suggested_remediation": "Whitelist or resolve at PHASE_B_PLAN v1.0.3 amendment cycle",
+          "whitelist_ticket": "WARN.2"
+        },
+        {
+          "class": "phantom_reference",
+          "severity": "MEDIUM",
+          "canonical_id": null,
+          "surfaces_involved": [
+            "00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md",
+            "p2_citation.py"
+          ],
+          "evidence": "Live pointer `p2_citation.py` in 00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md does not resolve (neither relative to repo nor by basename search)",
+          "suggested_remediation": "Whitelist or resolve at PHASE_B_PLAN v1.0.3 amendment cycle",
+          "whitelist_ticket": "WARN.2"
+        },
+        {
+          "class": "phantom_reference",
+          "severity": "MEDIUM",
+          "canonical_id": null,
+          "surfaces_involved": [
+            "00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md",
+            "p3_whole_chart_read.py"
+          ],
+          "evidence": "Live pointer `p3_whole_chart_read.py` in 00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md does not resolve (neither relative to repo nor by basename search)",
+          "suggested_remediation": "Whitelist or resolve at PHASE_B_PLAN v1.0.3 amendment cycle",
+          "whitelist_ticket": "WARN.2"
+        },
+        {
+          "class": "phantom_reference",
+          "severity": "MEDIUM",
+          "canonical_id": null,
+          "surfaces_involved": [
+            "00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md",
+            "p4_no_fabrication.py"
+          ],
+          "evidence": "Live pointer `p4_no_fabrication.py` in 00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md does not resolve (neither relative to repo nor by basename search)",
+          "suggested_remediation": "Whitelist or resolve at PHASE_B_PLAN v1.0.3 amendment cycle",
+          "whitelist_ticket": "WARN.2"
+        },
+        {
+          "class": "phantom_reference",
+          "severity": "MEDIUM",
+          "canonical_id": null,
+          "surfaces_involved": [
+            "00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md",
+            "p5_signal_id_resolution.py"
+          ],
+          "evidence": "Live pointer `p5_signal_id_resolution.py` in 00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md does not resolve (neither relative to repo nor by basename search)",
+          "suggested_remediation": "Whitelist or resolve at PHASE_B_PLAN v1.0.3 amendment cycle",
+          "whitelist_ticket": "WARN.2"
+        },
+        {
+          "class": "phantom_reference",
+          "severity": "MEDIUM",
+          "canonical_id": null,
+          "surfaces_involved": [
+            "00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md",
+            "p6_ucn_authority.py"
+          ],
+          "evidence": "Live pointer `p6_ucn_authority.py` in 00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md does not resolve (neither relative to repo nor by basename search)",
+          "suggested_remediation": "Whitelist or resolve at PHASE_B_PLAN v1.0.3 amendment cycle",
+          "whitelist_ticket": "WARN.2"
+        },
+        {
+          "class": "phantom_reference",
+          "severity": "MEDIUM",
+          "canonical_id": null,
+          "surfaces_involved": [
+            "00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md",
+            "p7_three_interpretation.py"
+          ],
+          "evidence": "Live pointer `p7_three_interpretation.py` in 00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md does not resolve (neither relative to repo nor by basename search)",
+          "suggested_remediation": "Whitelist or resolve at PHASE_B_PLAN v1.0.3 amendment cycle",
+          "whitelist_ticket": "WARN.2"
+        },
+        {
+          "class": "phantom_reference",
+          "severity": "MEDIUM",
+          "canonical_id": null,
+          "surfaces_involved": [
+            "00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md",
+            "p8_confidence.py"
+          ],
+          "evidence": "Live pointer `p8_confidence.py` in 00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md does not resolve (neither relative to repo nor by basename search)",
+          "suggested_remediation": "Whitelist or resolve at PHASE_B_PLAN v1.0.3 amendment cycle",
+          "whitelist_ticket": "WARN.2"
+        },
+        {
+          "class": "phantom_reference",
+          "severity": "MEDIUM",
+          "canonical_id": null,
+          "surfaces_involved": [
+            "00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md",
+            "p9_audit_trail.py"
+          ],
+          "evidence": "Live pointer `p9_audit_trail.py` in 00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md does not resolve (neither relative to repo nor by basename search)",
+          "suggested_remediation": "Whitelist or resolve at PHASE_B_PLAN v1.0.3 amendment cycle",
+          "whitelist_ticket": "WARN.2"
+        },
+        {
+          "class": "phantom_reference",
+          "severity": "MEDIUM",
+          "canonical_id": null,
+          "surfaces_involved": [
+            "00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md",
+            "p1_layer_separation.py"
+          ],
+          "evidence": "Live pointer `p1_layer_separation.py` in 00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md does not resolve (neither relative to repo nor by basename search)",
+          "suggested_remediation": "Whitelist or resolve at PHASE_B_PLAN v1.0.3 amendment cycle",
+          "whitelist_ticket": "WARN.2"
+        },
+        {
+          "class": "phantom_reference",
+          "severity": "MEDIUM",
+          "canonical_id": null,
+          "surfaces_involved": [
+            "00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md",
+            "fixtures/p1_trigger_vocab.json"
+          ],
+          "evidence": "Live pointer `fixtures/p1_trigger_vocab.json` in 00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md does not resolve (neither relative to repo nor by basename search)",
+          "suggested_remediation": "Whitelist or resolve at PHASE_B_PLAN v1.0.3 amendment cycle",
+          "whitelist_ticket": "WARN.2"
+        },
+        {
+          "class": "phantom_reference",
+          "severity": "MEDIUM",
+          "canonical_id": null,
+          "surfaces_involved": [
+            "00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md",
+            "p4_no_fabrication.py"
+          ],
+          "evidence": "Live pointer `p4_no_fabrication.py` in 00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md does not resolve (neither relative to repo nor by basename search)",
+          "suggested_remediation": "Whitelist or resolve at PHASE_B_PLAN v1.0.3 amendment cycle",
+          "whitelist_ticket": "WARN.2"
+        },
+        {
+          "class": "phantom_reference",
+          "severity": "MEDIUM",
+          "canonical_id": null,
+          "surfaces_involved": [
+            "00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md",
+            "reconciler_v1_3.md"
+          ],
+          "evidence": "Live pointer `reconciler_v1_3.md` in 00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md does not resolve (neither relative to repo nor by basename search)",
+          "suggested_remediation": "Whitelist or resolve at PHASE_B_PLAN v1.0.3 amendment cycle",
+          "whitelist_ticket": "WARN.2"
+        },
+        {
+          "class": "phantom_reference",
+          "severity": "MEDIUM",
+          "canonical_id": null,
+          "surfaces_involved": [
+            "00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md",
+            "platform/python-sidecar/rag/prompt_registry.py"
+          ],
+          "evidence": "Live pointer `platform/python-sidecar/rag/prompt_registry.py` in 00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md does not resolve (neither relative to repo nor by basename search)",
+          "suggested_remediation": "Whitelist or resolve at PHASE_B_PLAN v1.0.3 amendment cycle",
+          "whitelist_ticket": "WARN.2"
+        },
+        {
+          "class": "phantom_reference",
+          "severity": "MEDIUM",
+          "canonical_id": null,
+          "surfaces_involved": [
+            "00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md",
+            "platform/python-sidecar/rag/prompt_registry.py"
+          ],
+          "evidence": "Live pointer `platform/python-sidecar/rag/prompt_registry.py` in 00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md does not resolve (neither relative to repo nor by basename search)",
+          "suggested_remediation": "Whitelist or resolve at PHASE_B_PLAN v1.0.3 amendment cycle",
+          "whitelist_ticket": "WARN.2"
+        },
+        {
+          "class": "phantom_reference",
+          "severity": "MEDIUM",
+          "canonical_id": null,
+          "surfaces_involved": [
+            "00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md",
+            "platform/python-sidecar/rag/ingest.py"
+          ],
+          "evidence": "Live pointer `platform/python-sidecar/rag/ingest.py` in 00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md does not resolve (neither relative to repo nor by basename search)",
+          "suggested_remediation": "Whitelist or resolve at PHASE_B_PLAN v1.0.3 amendment cycle",
+          "whitelist_ticket": "WARN.2"
+        },
+        {
+          "class": "phantom_reference",
+          "severity": "MEDIUM",
+          "canonical_id": null,
+          "surfaces_involved": [
+            "00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md",
+            "rag/validators/p1_layer_separation.py"
+          ],
+          "evidence": "Live pointer `rag/validators/p1_layer_separation.py` in 00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md does not resolve (neither relative to repo nor by basename search)",
+          "suggested_remediation": "Whitelist or resolve at PHASE_B_PLAN v1.0.3 amendment cycle",
+          "whitelist_ticket": "WARN.2"
+        },
+        {
+          "class": "phantom_reference",
+          "severity": "MEDIUM",
+          "canonical_id": null,
+          "surfaces_involved": [
+            "00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md",
+            "rag/validators/p2_citation.py"
+          ],
+          "evidence": "Live pointer `rag/validators/p2_citation.py` in 00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md does not resolve (neither relative to repo nor by basename search)",
+          "suggested_remediation": "Whitelist or resolve at PHASE_B_PLAN v1.0.3 amendment cycle",
+          "whitelist_ticket": "WARN.2"
+        },
+        {
+          "class": "phantom_reference",
+          "severity": "MEDIUM",
+          "canonical_id": null,
+          "surfaces_involved": [
+            "00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md",
+            "rag/validators/p5_signal_id_resolution.py"
+          ],
+          "evidence": "Live pointer `rag/validators/p5_signal_id_resolution.py` in 00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md does not resolve (neither relative to repo nor by basename search)",
+          "suggested_remediation": "Whitelist or resolve at PHASE_B_PLAN v1.0.3 amendment cycle",
+          "whitelist_ticket": "WARN.2"
+        },
+        {
+          "class": "phantom_reference",
+          "severity": "MEDIUM",
+          "canonical_id": null,
+          "surfaces_involved": [
+            "00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md",
+            "platform/python-sidecar/rag/ingest.py"
+          ],
+          "evidence": "Live pointer `platform/python-sidecar/rag/ingest.py` in 00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md does not resolve (neither relative to repo nor by basename search)",
+          "suggested_remediation": "Whitelist or resolve at PHASE_B_PLAN v1.0.3 amendment cycle",
+          "whitelist_ticket": "WARN.2"
+        },
+        {
+          "class": "phantom_reference",
+          "severity": "MEDIUM",
+          "canonical_id": null,
+          "surfaces_involved": [
+            "00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md",
+            "platform/python-sidecar/rag/embed.py"
+          ],
+          "evidence": "Live pointer `platform/python-sidecar/rag/embed.py` in 00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md does not resolve (neither relative to repo nor by basename search)",
+          "suggested_remediation": "Whitelist or resolve at PHASE_B_PLAN v1.0.3 amendment cycle",
+          "whitelist_ticket": "WARN.2"
+        },
+        {
+          "class": "phantom_reference",
+          "severity": "MEDIUM",
+          "canonical_id": null,
+          "surfaces_involved": [
+            "00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md",
+            "prompt_registry.py"
+          ],
+          "evidence": "Live pointer `prompt_registry.py` in 00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md does not resolve (neither relative to repo nor by basename search)",
+          "suggested_remediation": "Whitelist or resolve at PHASE_B_PLAN v1.0.3 amendment cycle",
+          "whitelist_ticket": "WARN.2"
+        },
+        {
+          "class": "phantom_reference",
+          "severity": "MEDIUM",
+          "canonical_id": null,
+          "surfaces_involved": [
+            "00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md",
+            "platform/python-sidecar/rag/graph.py"
+          ],
+          "evidence": "Live pointer `platform/python-sidecar/rag/graph.py` in 00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md does not resolve (neither relative to repo nor by basename search)",
+          "suggested_remediation": "Whitelist or resolve at PHASE_B_PLAN v1.0.3 amendment cycle",
+          "whitelist_ticket": "WARN.2"
+        },
+        {
+          "class": "phantom_reference",
+          "severity": "MEDIUM",
+          "canonical_id": null,
+          "surfaces_involved": [
+            "00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md",
+            "platform/python-sidecar/rag/retrieve.py"
+          ],
+          "evidence": "Live pointer `platform/python-sidecar/rag/retrieve.py` in 00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md does not resolve (neither relative to repo nor by basename search)",
+          "suggested_remediation": "Whitelist or resolve at PHASE_B_PLAN v1.0.3 amendment cycle",
+          "whitelist_ticket": "WARN.2"
+        },
+        {
+          "class": "phantom_reference",
+          "severity": "MEDIUM",
+          "canonical_id": null,
+          "surfaces_involved": [
+            "00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md",
+            "platform/src/lib/rag/retrieveClient.ts"
+          ],
+          "evidence": "Live pointer `platform/src/lib/rag/retrieveClient.ts` in 00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md does not resolve (neither relative to repo nor by basename search)",
+          "suggested_remediation": "Whitelist or resolve at PHASE_B_PLAN v1.0.3 amendment cycle",
+          "whitelist_ticket": "WARN.2"
+        },
+        {
+          "class": "phantom_reference",
+          "severity": "MEDIUM",
+          "canonical_id": null,
+          "surfaces_involved": [
+            "00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md",
+            "verification_artifacts/RAG/eval_baseline.json"
+          ],
+          "evidence": "Live pointer `verification_artifacts/RAG/eval_baseline.json` in 00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md does not resolve (neither relative to repo nor by basename search)",
+          "suggested_remediation": "Whitelist or resolve at PHASE_B_PLAN v1.0.3 amendment cycle",
+          "whitelist_ticket": "WARN.2"
+        },
+        {
+          "class": "phantom_reference",
+          "severity": "MEDIUM",
+          "canonical_id": null,
+          "surfaces_involved": [
+            "00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md",
+            "verification_artifacts/RAG/RED_TEAM_v1_0.md"
+          ],
+          "evidence": "Live pointer `verification_artifacts/RAG/RED_TEAM_v1_0.md` in 00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md does not resolve (neither relative to repo nor by basename search)",
+          "suggested_remediation": "Whitelist or resolve at PHASE_B_PLAN v1.0.3 amendment cycle",
+          "whitelist_ticket": "WARN.2"
+        },
+        {
+          "class": "phantom_reference",
+          "severity": "MEDIUM",
+          "canonical_id": null,
+          "surfaces_involved": [
+            "00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md",
+            "RAG_READINESS_REPORT_v1_0.md"
+          ],
+          "evidence": "Live pointer `RAG_READINESS_REPORT_v1_0.md` in 00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md does not resolve (neither relative to repo nor by basename search)",
+          "suggested_remediation": "Whitelist or resolve at PHASE_B_PLAN v1.0.3 amendment cycle",
+          "whitelist_ticket": "WARN.2"
+        },
+        {
+          "class": "phantom_reference",
+          "severity": "MEDIUM",
+          "canonical_id": null,
+          "surfaces_involved": [
+            "00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md",
+            "platform/python-sidecar/rag/ingest.py"
+          ],
+          "evidence": "Live pointer `platform/python-sidecar/rag/ingest.py` in 00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md does not resolve (neither relative to repo nor by basename search)",
+          "suggested_remediation": "Whitelist or resolve at PHASE_B_PLAN v1.0.3 amendment cycle",
+          "whitelist_ticket": "WARN.2"
+        },
+        {
+          "class": "phantom_reference",
+          "severity": "MEDIUM",
+          "canonical_id": null,
+          "surfaces_involved": [
+            "00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md",
+            "platform/python-sidecar/rag/chunk.py"
+          ],
+          "evidence": "Live pointer `platform/python-sidecar/rag/chunk.py` in 00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md does not resolve (neither relative to repo nor by basename search)",
+          "suggested_remediation": "Whitelist or resolve at PHASE_B_PLAN v1.0.3 amendment cycle",
+          "whitelist_ticket": "WARN.2"
+        },
+        {
+          "class": "phantom_reference",
+          "severity": "MEDIUM",
+          "canonical_id": null,
+          "surfaces_involved": [
+            "00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md",
+            "platform/python-sidecar/rag/embed.py"
+          ],
+          "evidence": "Live pointer `platform/python-sidecar/rag/embed.py` in 00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md does not resolve (neither relative to repo nor by basename search)",
+          "suggested_remediation": "Whitelist or resolve at PHASE_B_PLAN v1.0.3 amendment cycle",
+          "whitelist_ticket": "WARN.2"
+        },
+        {
+          "class": "phantom_reference",
+          "severity": "MEDIUM",
+          "canonical_id": null,
+          "surfaces_involved": [
+            "00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md",
+            "platform/python-sidecar/rag/graph.py"
+          ],
+          "evidence": "Live pointer `platform/python-sidecar/rag/graph.py` in 00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md does not resolve (neither relative to repo nor by basename search)",
+          "suggested_remediation": "Whitelist or resolve at PHASE_B_PLAN v1.0.3 amendment cycle",
+          "whitelist_ticket": "WARN.2"
+        },
+        {
+          "class": "phantom_reference",
+          "severity": "MEDIUM",
+          "canonical_id": null,
+          "surfaces_involved": [
+            "00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md",
+            "platform/python-sidecar/rag/retrieve.py"
+          ],
+          "evidence": "Live pointer `platform/python-sidecar/rag/retrieve.py` in 00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md does not resolve (neither relative to repo nor by basename search)",
+          "suggested_remediation": "Whitelist or resolve at PHASE_B_PLAN v1.0.3 amendment cycle",
+          "whitelist_ticket": "WARN.2"
+        },
+        {
+          "class": "phantom_reference",
+          "severity": "MEDIUM",
+          "canonical_id": null,
+          "surfaces_involved": [
+            "00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md",
+            "platform/python-sidecar/rag/discovery/patterns.py"
+          ],
+          "evidence": "Live pointer `platform/python-sidecar/rag/discovery/patterns.py` in 00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md does not resolve (neither relative to repo nor by basename search)",
+          "suggested_remediation": "Whitelist or resolve at PHASE_B_PLAN v1.0.3 amendment cycle",
+          "whitelist_ticket": "WARN.2"
+        },
+        {
+          "class": "phantom_reference",
+          "severity": "MEDIUM",
+          "canonical_id": null,
+          "surfaces_involved": [
+            "00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md",
+            "platform/python-sidecar/rag/discovery/resonances.py"
+          ],
+          "evidence": "Live pointer `platform/python-sidecar/rag/discovery/resonances.py` in 00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md does not resolve (neither relative to repo nor by basename search)",
+          "suggested_remediation": "Whitelist or resolve at PHASE_B_PLAN v1.0.3 amendment cycle",
+          "whitelist_ticket": "WARN.2"
+        },
+        {
+          "class": "phantom_reference",
+          "severity": "MEDIUM",
+          "canonical_id": null,
+          "surfaces_involved": [
+            "00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md",
+            "platform/python-sidecar/rag/discovery/contradictions.py"
+          ],
+          "evidence": "Live pointer `platform/python-sidecar/rag/discovery/contradictions.py` in 00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md does not resolve (neither relative to repo nor by basename search)",
+          "suggested_remediation": "Whitelist or resolve at PHASE_B_PLAN v1.0.3 amendment cycle",
+          "whitelist_ticket": "WARN.2"
+        },
+        {
+          "class": "phantom_reference",
+          "severity": "MEDIUM",
+          "canonical_id": null,
+          "surfaces_involved": [
+            "00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md",
+            "platform/python-sidecar/rag/discovery/clusters.py"
+          ],
+          "evidence": "Live pointer `platform/python-sidecar/rag/discovery/clusters.py` in 00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md does not resolve (neither relative to repo nor by basename search)",
+          "suggested_remediation": "Whitelist or resolve at PHASE_B_PLAN v1.0.3 amendment cycle",
+          "whitelist_ticket": "WARN.2"
+        },
+        {
+          "class": "phantom_reference",
+          "severity": "MEDIUM",
+          "canonical_id": null,
+          "surfaces_involved": [
+            "00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md",
+            "platform/python-sidecar/rag/validators/p1_layer_separation.py"
+          ],
+          "evidence": "Live pointer `platform/python-sidecar/rag/validators/p1_layer_separation.py` in 00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md does not resolve (neither relative to repo nor by basename search)",
+          "suggested_remediation": "Whitelist or resolve at PHASE_B_PLAN v1.0.3 amendment cycle",
+          "whitelist_ticket": "WARN.2"
+        },
+        {
+          "class": "phantom_reference",
+          "severity": "MEDIUM",
+          "canonical_id": null,
+          "surfaces_involved": [
+            "00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md",
+            "p9_audit_trail.py"
+          ],
+          "evidence": "Live pointer `p9_audit_trail.py` in 00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md does not resolve (neither relative to repo nor by basename search)",
+          "suggested_remediation": "Whitelist or resolve at PHASE_B_PLAN v1.0.3 amendment cycle",
+          "whitelist_ticket": "WARN.2"
+        },
+        {
+          "class": "phantom_reference",
+          "severity": "MEDIUM",
+          "canonical_id": null,
+          "surfaces_involved": [
+            "00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md",
+            "platform/python-sidecar/rag/prompt_registry.py"
+          ],
+          "evidence": "Live pointer `platform/python-sidecar/rag/prompt_registry.py` in 00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md does not resolve (neither relative to repo nor by basename search)",
+          "suggested_remediation": "Whitelist or resolve at PHASE_B_PLAN v1.0.3 amendment cycle",
+          "whitelist_ticket": "WARN.2"
+        },
+        {
+          "class": "phantom_reference",
+          "severity": "MEDIUM",
+          "canonical_id": null,
+          "surfaces_involved": [
+            "00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md",
+            "platform/python-sidecar/rag/eval/run_eval.py"
+          ],
+          "evidence": "Live pointer `platform/python-sidecar/rag/eval/run_eval.py` in 00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md does not resolve (neither relative to repo nor by basename search)",
+          "suggested_remediation": "Whitelist or resolve at PHASE_B_PLAN v1.0.3 amendment cycle",
+          "whitelist_ticket": "WARN.2"
+        },
+        {
+          "class": "phantom_reference",
+          "severity": "MEDIUM",
+          "canonical_id": null,
+          "surfaces_involved": [
+            "00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md",
+            "platform/python-sidecar/rag/eval/red_team.py"
+          ],
+          "evidence": "Live pointer `platform/python-sidecar/rag/eval/red_team.py` in 00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md does not resolve (neither relative to repo nor by basename search)",
+          "suggested_remediation": "Whitelist or resolve at PHASE_B_PLAN v1.0.3 amendment cycle",
+          "whitelist_ticket": "WARN.2"
+        },
+        {
+          "class": "phantom_reference",
+          "severity": "MEDIUM",
+          "canonical_id": null,
+          "surfaces_involved": [
+            "00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md",
+            "platform/src/lib/rag/synthesize.ts"
+          ],
+          "evidence": "Live pointer `platform/src/lib/rag/synthesize.ts` in 00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md does not resolve (neither relative to repo nor by basename search)",
+          "suggested_remediation": "Whitelist or resolve at PHASE_B_PLAN v1.0.3 amendment cycle",
+          "whitelist_ticket": "WARN.2"
+        },
+        {
+          "class": "phantom_reference",
+          "severity": "MEDIUM",
+          "canonical_id": null,
+          "surfaces_involved": [
+            "00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md",
+            "platform/src/lib/rag/prompts/synthesis.ts"
+          ],
+          "evidence": "Live pointer `platform/src/lib/rag/prompts/synthesis.ts` in 00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md does not resolve (neither relative to repo nor by basename search)",
+          "suggested_remediation": "Whitelist or resolve at PHASE_B_PLAN v1.0.3 amendment cycle",
+          "whitelist_ticket": "WARN.2"
+        },
+        {
+          "class": "phantom_reference",
+          "severity": "MEDIUM",
+          "canonical_id": null,
+          "surfaces_involved": [
+            "00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md",
+            "platform/src/lib/rag/validate.ts"
+          ],
+          "evidence": "Live pointer `platform/src/lib/rag/validate.ts` in 00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md does not resolve (neither relative to repo nor by basename search)",
+          "suggested_remediation": "Whitelist or resolve at PHASE_B_PLAN v1.0.3 amendment cycle",
+          "whitelist_ticket": "WARN.2"
+        },
+        {
+          "class": "phantom_reference",
+          "severity": "MEDIUM",
+          "canonical_id": null,
+          "surfaces_involved": [
+            "00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md",
+            "035_DISCOVERY_LAYER/RED_TEAM/probes_v1.md"
+          ],
+          "evidence": "Live pointer `035_DISCOVERY_LAYER/RED_TEAM/probes_v1.md` in 00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md does not resolve (neither relative to repo nor by basename search)",
+          "suggested_remediation": "Whitelist or resolve at PHASE_B_PLAN v1.0.3 amendment cycle",
+          "whitelist_ticket": "WARN.2"
+        },
+        {
+          "class": "phantom_reference",
+          "severity": "MEDIUM",
+          "canonical_id": null,
+          "surfaces_involved": [
+            "00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md",
+            "verification_artifacts/RAG/eval_baseline.json"
+          ],
+          "evidence": "Live pointer `verification_artifacts/RAG/eval_baseline.json` in 00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md does not resolve (neither relative to repo nor by basename search)",
+          "suggested_remediation": "Whitelist or resolve at PHASE_B_PLAN v1.0.3 amendment cycle",
+          "whitelist_ticket": "WARN.2"
+        },
+        {
+          "class": "phantom_reference",
+          "severity": "MEDIUM",
+          "canonical_id": null,
+          "surfaces_involved": [
+            "00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md",
+            "verification_artifacts/RAG/RED_TEAM_v1_0.md"
+          ],
+          "evidence": "Live pointer `verification_artifacts/RAG/RED_TEAM_v1_0.md` in 00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md does not resolve (neither relative to repo nor by basename search)",
+          "suggested_remediation": "Whitelist or resolve at PHASE_B_PLAN v1.0.3 amendment cycle",
+          "whitelist_ticket": "WARN.2"
+        },
+        {
+          "class": "phantom_reference",
+          "severity": "MEDIUM",
+          "canonical_id": null,
+          "surfaces_involved": [
+            "00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md",
+            "verification_artifacts/RAG/RAG_READINESS_REPORT_v1_0.md"
+          ],
+          "evidence": "Live pointer `verification_artifacts/RAG/RAG_READINESS_REPORT_v1_0.md` in 00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md does not resolve (neither relative to repo nor by basename search)",
+          "suggested_remediation": "Whitelist or resolve at PHASE_B_PLAN v1.0.3 amendment cycle",
+          "whitelist_ticket": "WARN.2"
+        },
+        {
+          "class": "phantom_reference",
+          "severity": "MEDIUM",
+          "canonical_id": null,
+          "surfaces_involved": [
+            "00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md",
+            "RAG_READINESS_REPORT_v1_0.md"
+          ],
+          "evidence": "Live pointer `RAG_READINESS_REPORT_v1_0.md` in 00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md does not resolve (neither relative to repo nor by basename search)",
+          "suggested_remediation": "Whitelist or resolve at PHASE_B_PLAN v1.0.3 amendment cycle",
+          "whitelist_ticket": "WARN.2"
+        },
+        {
+          "class": "canonical_unreferenced",
+          "severity": "MEDIUM",
+          "canonical_id": "CGP_AUDIT_v1_0",
+          "surfaces_involved": [
+            "CLAUDE.md",
+            "FILE_REGISTRY"
+          ],
+          "evidence": "Canonical CGP_AUDIT_v1_0 (CGP_AUDIT_v1_0.md) not referenced in any surface",
+          "suggested_remediation": "Register CGP_AUDIT_v1_0.md in CLAUDE.md / FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "canonical_unreferenced",
+          "severity": "MEDIUM",
+          "canonical_id": "EXTERNAL_COMPUTATION_SPEC_v2_0",
+          "surfaces_involved": [
+            "CLAUDE.md",
+            "FILE_REGISTRY"
+          ],
+          "evidence": "Canonical EXTERNAL_COMPUTATION_SPEC_v2_0 (EXTERNAL_COMPUTATION_SPEC_v2_0.md) not referenced in any surface",
+          "suggested_remediation": "Register EXTERNAL_COMPUTATION_SPEC_v2_0.md in CLAUDE.md / FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "canonical_unreferenced",
+          "severity": "MEDIUM",
+          "canonical_id": "JH_EXPORT_SCHEDULE_v1_0",
+          "surfaces_involved": [
+            "CLAUDE.md",
+            "FILE_REGISTRY"
+          ],
+          "evidence": "Canonical JH_EXPORT_SCHEDULE_v1_0 (JH_EXPORT_SCHEDULE_v1_0.md) not referenced in any surface",
+          "suggested_remediation": "Register JH_EXPORT_SCHEDULE_v1_0.md in CLAUDE.md / FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "canonical_unreferenced",
+          "severity": "MEDIUM",
+          "canonical_id": "LEL_HELD_OUT_PARTITION",
+          "surfaces_involved": [
+            "CLAUDE.md",
+            "FILE_REGISTRY"
+          ],
+          "evidence": "Canonical LEL_HELD_OUT_PARTITION (LEL_HELD_OUT_PARTITION_v1_0.md) not referenced in any surface",
+          "suggested_remediation": "Register LEL_HELD_OUT_PARTITION_v1_0.md in CLAUDE.md / FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "canonical_unreferenced",
+          "severity": "MEDIUM",
+          "canonical_id": "LEL_FACTS_ONLY",
+          "surfaces_involved": [
+            "CLAUDE.md",
+            "FILE_REGISTRY"
+          ],
+          "evidence": "Canonical LEL_FACTS_ONLY (LIFE_EVENT_LOG_FACTS_ONLY_v1_0.md) not referenced in any surface",
+          "suggested_remediation": "Register LIFE_EVENT_LOG_FACTS_ONLY_v1_0.md in CLAUDE.md / FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "canonical_unreferenced",
+          "severity": "MEDIUM",
+          "canonical_id": "PPL_RETROACTIVE_PROTOCOL_v1_0",
+          "surfaces_involved": [
+            "CLAUDE.md",
+            "FILE_REGISTRY"
+          ],
+          "evidence": "Canonical PPL_RETROACTIVE_PROTOCOL_v1_0 (PPL_RETROACTIVE_PROTOCOL_v1_0.md) not referenced in any surface",
+          "suggested_remediation": "Register PPL_RETROACTIVE_PROTOCOL_v1_0.md in CLAUDE.md / FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "canonical_unreferenced",
+          "severity": "MEDIUM",
+          "canonical_id": "SADE_SATI_CYCLES_ALL",
+          "surfaces_involved": [
+            "CLAUDE.md",
+            "FILE_REGISTRY"
+          ],
+          "evidence": "Canonical SADE_SATI_CYCLES_ALL (SADE_SATI_CYCLES_ALL.md) not referenced in any surface",
+          "suggested_remediation": "Register SADE_SATI_CYCLES_ALL.md in CLAUDE.md / FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "canonical_unreferenced",
+          "severity": "MEDIUM",
+          "canonical_id": "EVENT_CHART_STATES_v1_0",
+          "surfaces_involved": [
+            "CLAUDE.md",
+            "FILE_REGISTRY"
+          ],
+          "evidence": "Canonical EVENT_CHART_STATES_v1_0 (EVENT_CHART_STATES_v1_0.md) not referenced in any surface",
+          "suggested_remediation": "Register EVENT_CHART_STATES_v1_0.md in CLAUDE.md / FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "canonical_unreferenced",
+          "severity": "MEDIUM",
+          "canonical_id": "JHORA_TRANSCRIPTION_v8_0_SOURCE",
+          "surfaces_involved": [
+            "CLAUDE.md",
+            "FILE_REGISTRY"
+          ],
+          "evidence": "Canonical JHORA_TRANSCRIPTION_v8_0_SOURCE (JHORA_TRANSCRIPTION_v8_0_SOURCE.md) not referenced in any surface",
+          "suggested_remediation": "Register JHORA_TRANSCRIPTION_v8_0_SOURCE.md in CLAUDE.md / FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "canonical_unreferenced",
+          "severity": "MEDIUM",
+          "canonical_id": "CROSS_REPORT_COHERENCE_AUDIT_v1_0",
+          "surfaces_involved": [
+            "CLAUDE.md",
+            "FILE_REGISTRY"
+          ],
+          "evidence": "Canonical CROSS_REPORT_COHERENCE_AUDIT_v1_0 (CROSS_REPORT_COHERENCE_AUDIT_v1_0.md) not referenced in any surface",
+          "suggested_remediation": "Register CROSS_REPORT_COHERENCE_AUDIT_v1_0.md in CLAUDE.md / FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "canonical_unreferenced",
+          "severity": "MEDIUM",
+          "canonical_id": "RED_TEAM_L3_v1_0",
+          "surfaces_involved": [
+            "CLAUDE.md",
+            "FILE_REGISTRY"
+          ],
+          "evidence": "Canonical RED_TEAM_L3_v1_0 (RED_TEAM_L3_v1_0.md) not referenced in any surface",
+          "suggested_remediation": "Register RED_TEAM_L3_v1_0.md in CLAUDE.md / FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "canonical_unreferenced",
+          "severity": "MEDIUM",
+          "canonical_id": "REPORT_CAREER_DHARMA_v1_0",
+          "surfaces_involved": [
+            "CLAUDE.md",
+            "FILE_REGISTRY"
+          ],
+          "evidence": "Canonical REPORT_CAREER_DHARMA_v1_0 (REPORT_CAREER_DHARMA_v1_0.md) not referenced in any surface",
+          "suggested_remediation": "Register REPORT_CAREER_DHARMA_v1_0.md in CLAUDE.md / FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "canonical_unreferenced",
+          "severity": "MEDIUM",
+          "canonical_id": "REPORT_CAREER_DHARMA_v1_1",
+          "surfaces_involved": [
+            "CLAUDE.md",
+            "FILE_REGISTRY"
+          ],
+          "evidence": "Canonical REPORT_CAREER_DHARMA_v1_1 (REPORT_CAREER_DHARMA_v1_1.md) not referenced in any surface",
+          "suggested_remediation": "Register REPORT_CAREER_DHARMA_v1_1.md in CLAUDE.md / FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "canonical_unreferenced",
+          "severity": "MEDIUM",
+          "canonical_id": "REPORT_CHILDREN_v1_0",
+          "surfaces_involved": [
+            "CLAUDE.md",
+            "FILE_REGISTRY"
+          ],
+          "evidence": "Canonical REPORT_CHILDREN_v1_0 (REPORT_CHILDREN_v1_0.md) not referenced in any surface",
+          "suggested_remediation": "Register REPORT_CHILDREN_v1_0.md in CLAUDE.md / FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "canonical_unreferenced",
+          "severity": "MEDIUM",
+          "canonical_id": "REPORT_CHILDREN_v1_1",
+          "surfaces_involved": [
+            "CLAUDE.md",
+            "FILE_REGISTRY"
+          ],
+          "evidence": "Canonical REPORT_CHILDREN_v1_1 (REPORT_CHILDREN_v1_1.md) not referenced in any surface",
+          "suggested_remediation": "Register REPORT_CHILDREN_v1_1.md in CLAUDE.md / FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "canonical_unreferenced",
+          "severity": "MEDIUM",
+          "canonical_id": "REPORT_FINANCIAL_v2_0",
+          "surfaces_involved": [
+            "CLAUDE.md",
+            "FILE_REGISTRY"
+          ],
+          "evidence": "Canonical REPORT_FINANCIAL_v2_0 (REPORT_FINANCIAL_v2_0.md) not referenced in any surface",
+          "suggested_remediation": "Register REPORT_FINANCIAL_v2_0.md in CLAUDE.md / FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "canonical_unreferenced",
+          "severity": "MEDIUM",
+          "canonical_id": "REPORT_FINANCIAL_v2_1",
+          "surfaces_involved": [
+            "CLAUDE.md",
+            "FILE_REGISTRY"
+          ],
+          "evidence": "Canonical REPORT_FINANCIAL_v2_1 (REPORT_FINANCIAL_v2_1.md) not referenced in any surface",
+          "suggested_remediation": "Register REPORT_FINANCIAL_v2_1.md in CLAUDE.md / FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "canonical_unreferenced",
+          "severity": "MEDIUM",
+          "canonical_id": "REPORT_HEALTH_LONGEVITY_v1_0",
+          "surfaces_involved": [
+            "CLAUDE.md",
+            "FILE_REGISTRY"
+          ],
+          "evidence": "Canonical REPORT_HEALTH_LONGEVITY_v1_0 (REPORT_HEALTH_LONGEVITY_v1_0.md) not referenced in any surface",
+          "suggested_remediation": "Register REPORT_HEALTH_LONGEVITY_v1_0.md in CLAUDE.md / FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "canonical_unreferenced",
+          "severity": "MEDIUM",
+          "canonical_id": "REPORT_HEALTH_LONGEVITY_v1_1",
+          "surfaces_involved": [
+            "CLAUDE.md",
+            "FILE_REGISTRY"
+          ],
+          "evidence": "Canonical REPORT_HEALTH_LONGEVITY_v1_1 (REPORT_HEALTH_LONGEVITY_v1_1.md) not referenced in any surface",
+          "suggested_remediation": "Register REPORT_HEALTH_LONGEVITY_v1_1.md in CLAUDE.md / FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "canonical_unreferenced",
+          "severity": "MEDIUM",
+          "canonical_id": "REPORT_PARENTS_v1_0",
+          "surfaces_involved": [
+            "CLAUDE.md",
+            "FILE_REGISTRY"
+          ],
+          "evidence": "Canonical REPORT_PARENTS_v1_0 (REPORT_PARENTS_v1_0.md) not referenced in any surface",
+          "suggested_remediation": "Register REPORT_PARENTS_v1_0.md in CLAUDE.md / FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "canonical_unreferenced",
+          "severity": "MEDIUM",
+          "canonical_id": "REPORT_PARENTS_v1_1",
+          "surfaces_involved": [
+            "CLAUDE.md",
+            "FILE_REGISTRY"
+          ],
+          "evidence": "Canonical REPORT_PARENTS_v1_1 (REPORT_PARENTS_v1_1.md) not referenced in any surface",
+          "suggested_remediation": "Register REPORT_PARENTS_v1_1.md in CLAUDE.md / FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "canonical_unreferenced",
+          "severity": "MEDIUM",
+          "canonical_id": "REPORT_PSYCHOLOGY_MIND_v1_0",
+          "surfaces_involved": [
+            "CLAUDE.md",
+            "FILE_REGISTRY"
+          ],
+          "evidence": "Canonical REPORT_PSYCHOLOGY_MIND_v1_0 (REPORT_PSYCHOLOGY_MIND_v1_0.md) not referenced in any surface",
+          "suggested_remediation": "Register REPORT_PSYCHOLOGY_MIND_v1_0.md in CLAUDE.md / FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "canonical_unreferenced",
+          "severity": "MEDIUM",
+          "canonical_id": "REPORT_PSYCHOLOGY_MIND_v1_1",
+          "surfaces_involved": [
+            "CLAUDE.md",
+            "FILE_REGISTRY"
+          ],
+          "evidence": "Canonical REPORT_PSYCHOLOGY_MIND_v1_1 (REPORT_PSYCHOLOGY_MIND_v1_1.md) not referenced in any surface",
+          "suggested_remediation": "Register REPORT_PSYCHOLOGY_MIND_v1_1.md in CLAUDE.md / FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "canonical_unreferenced",
+          "severity": "MEDIUM",
+          "canonical_id": "REPORT_RELATIONSHIPS_v1_0",
+          "surfaces_involved": [
+            "CLAUDE.md",
+            "FILE_REGISTRY"
+          ],
+          "evidence": "Canonical REPORT_RELATIONSHIPS_v1_0 (REPORT_RELATIONSHIPS_v1_0.md) not referenced in any surface",
+          "suggested_remediation": "Register REPORT_RELATIONSHIPS_v1_0.md in CLAUDE.md / FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "canonical_unreferenced",
+          "severity": "MEDIUM",
+          "canonical_id": "REPORT_RELATIONSHIPS_v1_1",
+          "surfaces_involved": [
+            "CLAUDE.md",
+            "FILE_REGISTRY"
+          ],
+          "evidence": "Canonical REPORT_RELATIONSHIPS_v1_1 (REPORT_RELATIONSHIPS_v1_1.md) not referenced in any surface",
+          "suggested_remediation": "Register REPORT_RELATIONSHIPS_v1_1.md in CLAUDE.md / FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "canonical_unreferenced",
+          "severity": "MEDIUM",
+          "canonical_id": "REPORT_SPIRITUAL_v1_0",
+          "surfaces_involved": [
+            "CLAUDE.md",
+            "FILE_REGISTRY"
+          ],
+          "evidence": "Canonical REPORT_SPIRITUAL_v1_0 (REPORT_SPIRITUAL_v1_0.md) not referenced in any surface",
+          "suggested_remediation": "Register REPORT_SPIRITUAL_v1_0.md in CLAUDE.md / FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "canonical_unreferenced",
+          "severity": "MEDIUM",
+          "canonical_id": "REPORT_SPIRITUAL_v1_1",
+          "surfaces_involved": [
+            "CLAUDE.md",
+            "FILE_REGISTRY"
+          ],
+          "evidence": "Canonical REPORT_SPIRITUAL_v1_1 (REPORT_SPIRITUAL_v1_1.md) not referenced in any surface",
+          "suggested_remediation": "Register REPORT_SPIRITUAL_v1_1.md in CLAUDE.md / FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "canonical_unreferenced",
+          "severity": "MEDIUM",
+          "canonical_id": "REPORT_TRAVEL_v1_0",
+          "surfaces_involved": [
+            "CLAUDE.md",
+            "FILE_REGISTRY"
+          ],
+          "evidence": "Canonical REPORT_TRAVEL_v1_0 (REPORT_TRAVEL_v1_0.md) not referenced in any surface",
+          "suggested_remediation": "Register REPORT_TRAVEL_v1_0.md in CLAUDE.md / FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "canonical_unreferenced",
+          "severity": "MEDIUM",
+          "canonical_id": "REPORT_TRAVEL_v1_1",
+          "surfaces_involved": [
+            "CLAUDE.md",
+            "FILE_REGISTRY"
+          ],
+          "evidence": "Canonical REPORT_TRAVEL_v1_1 (REPORT_TRAVEL_v1_1.md) not referenced in any surface",
+          "suggested_remediation": "Register REPORT_TRAVEL_v1_1.md in CLAUDE.md / FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "canonical_unreferenced",
+          "severity": "MEDIUM",
+          "canonical_id": "DECISION_SUPPORT_PLAYBOOK_v1_0",
+          "surfaces_involved": [
+            "CLAUDE.md",
+            "FILE_REGISTRY"
+          ],
+          "evidence": "Canonical DECISION_SUPPORT_PLAYBOOK_v1_0 (DECISION_SUPPORT_PLAYBOOK_v1_0.md) not referenced in any surface",
+          "suggested_remediation": "Register DECISION_SUPPORT_PLAYBOOK_v1_0.md in CLAUDE.md / FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "canonical_unreferenced",
+          "severity": "MEDIUM",
+          "canonical_id": "QUERY_PROMPT_LIBRARY_v1_0",
+          "surfaces_involved": [
+            "CLAUDE.md",
+            "FILE_REGISTRY"
+          ],
+          "evidence": "Canonical QUERY_PROMPT_LIBRARY_v1_0 (QUERY_PROMPT_LIBRARY_v1_0.md) not referenced in any surface",
+          "suggested_remediation": "Register QUERY_PROMPT_LIBRARY_v1_0.md in CLAUDE.md / FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "canonical_unreferenced",
+          "severity": "MEDIUM",
+          "canonical_id": "SESSION_PROTOCOL_QUESTION_TAXONOMY_v1_0",
+          "surfaces_involved": [
+            "CLAUDE.md",
+            "FILE_REGISTRY"
+          ],
+          "evidence": "Canonical SESSION_PROTOCOL_QUESTION_TAXONOMY_v1_0 (SESSION_PROTOCOL_QUESTION_TAXONOMY_v1_0.md) not referenced in any surface",
+          "suggested_remediation": "Register SESSION_PROTOCOL_QUESTION_TAXONOMY_v1_0.md in CLAUDE.md / FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "canonical_unreferenced",
+          "severity": "MEDIUM",
+          "canonical_id": "CLUSTER_ATLAS_v1_0",
+          "surfaces_involved": [
+            "CLAUDE.md",
+            "FILE_REGISTRY"
+          ],
+          "evidence": "Canonical CLUSTER_ATLAS_v1_0 (CLUSTER_ATLAS_v1_0.md) not referenced in any surface",
+          "suggested_remediation": "Register CLUSTER_ATLAS_v1_0.md in CLAUDE.md / FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "canonical_unreferenced",
+          "severity": "MEDIUM",
+          "canonical_id": "CLUSTER_ATLAS_v1_1",
+          "surfaces_involved": [
+            "CLAUDE.md",
+            "FILE_REGISTRY"
+          ],
+          "evidence": "Canonical CLUSTER_ATLAS_v1_1 (CLUSTER_ATLAS_v1_1.md) not referenced in any surface",
+          "suggested_remediation": "Register CLUSTER_ATLAS_v1_1.md in CLAUDE.md / FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "canonical_unreferenced",
+          "severity": "MEDIUM",
+          "canonical_id": "CONTRADICTION_REGISTER_v1_0",
+          "surfaces_involved": [
+            "CLAUDE.md",
+            "FILE_REGISTRY"
+          ],
+          "evidence": "Canonical CONTRADICTION_REGISTER_v1_0 (CONTRADICTION_REGISTER_v1_0.md) not referenced in any surface",
+          "suggested_remediation": "Register CONTRADICTION_REGISTER_v1_0.md in CLAUDE.md / FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "canonical_unreferenced",
+          "severity": "MEDIUM",
+          "canonical_id": "CONTRADICTION_REGISTER_v1_1",
+          "surfaces_involved": [
+            "CLAUDE.md",
+            "FILE_REGISTRY"
+          ],
+          "evidence": "Canonical CONTRADICTION_REGISTER_v1_1 (CONTRADICTION_REGISTER_v1_1.md) not referenced in any surface",
+          "suggested_remediation": "Register CONTRADICTION_REGISTER_v1_1.md in CLAUDE.md / FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "canonical_unreferenced",
+          "severity": "MEDIUM",
+          "canonical_id": "PATTERN_REGISTER_v1_0",
+          "surfaces_involved": [
+            "CLAUDE.md",
+            "FILE_REGISTRY"
+          ],
+          "evidence": "Canonical PATTERN_REGISTER_v1_0 (PATTERN_REGISTER_v1_0.md) not referenced in any surface",
+          "suggested_remediation": "Register PATTERN_REGISTER_v1_0.md in CLAUDE.md / FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "canonical_unreferenced",
+          "severity": "MEDIUM",
+          "canonical_id": "PATTERN_REGISTER_v1_1",
+          "surfaces_involved": [
+            "CLAUDE.md",
+            "FILE_REGISTRY"
+          ],
+          "evidence": "Canonical PATTERN_REGISTER_v1_1 (PATTERN_REGISTER_v1_1.md) not referenced in any surface",
+          "suggested_remediation": "Register PATTERN_REGISTER_v1_1.md in CLAUDE.md / FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "canonical_unreferenced",
+          "severity": "MEDIUM",
+          "canonical_id": "RESONANCE_REGISTER_v1_0",
+          "surfaces_involved": [
+            "CLAUDE.md",
+            "FILE_REGISTRY"
+          ],
+          "evidence": "Canonical RESONANCE_REGISTER_v1_0 (RESONANCE_REGISTER_v1_0.md) not referenced in any surface",
+          "suggested_remediation": "Register RESONANCE_REGISTER_v1_0.md in CLAUDE.md / FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "canonical_unreferenced",
+          "severity": "MEDIUM",
+          "canonical_id": "RESONANCE_REGISTER_v1_1",
+          "surfaces_involved": [
+            "CLAUDE.md",
+            "FILE_REGISTRY"
+          ],
+          "evidence": "Canonical RESONANCE_REGISTER_v1_1 (RESONANCE_REGISTER_v1_1.md) not referenced in any surface",
+          "suggested_remediation": "Register RESONANCE_REGISTER_v1_1.md in CLAUDE.md / FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "canonical_unreferenced",
+          "severity": "MEDIUM",
+          "canonical_id": "SCHEMAS/chunker_spec_v1_0",
+          "surfaces_involved": [
+            "CLAUDE.md",
+            "FILE_REGISTRY"
+          ],
+          "evidence": "Canonical SCHEMAS/chunker_spec_v1_0 (chunker_spec_v1_0.md) not referenced in any surface",
+          "suggested_remediation": "Register chunker_spec_v1_0.md in CLAUDE.md / FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "canonical_unreferenced",
+          "severity": "MEDIUM",
+          "canonical_id": "L1_TRUTH_INDEX_REPORT_v1_0",
+          "surfaces_involved": [
+            "CLAUDE.md",
+            "FILE_REGISTRY"
+          ],
+          "evidence": "Canonical L1_TRUTH_INDEX_REPORT_v1_0 (L1_TRUTH_INDEX_REPORT_v1_0.md) not referenced in any surface",
+          "suggested_remediation": "Register L1_TRUTH_INDEX_REPORT_v1_0.md in CLAUDE.md / FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "canonical_unreferenced",
+          "severity": "MEDIUM",
+          "canonical_id": "M4_CLOSE",
+          "surfaces_involved": [
+            "CLAUDE.md",
+            "FILE_REGISTRY"
+          ],
+          "evidence": "Canonical M4_CLOSE (M4_CLOSE_v1_0.md) not referenced in any surface",
+          "suggested_remediation": "Register M4_CLOSE_v1_0.md in CLAUDE.md / FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "canonical_unreferenced",
+          "severity": "MEDIUM",
+          "canonical_id": "M5_CLOSE",
+          "surfaces_involved": [
+            "CLAUDE.md",
+            "FILE_REGISTRY"
+          ],
+          "evidence": "Canonical M5_CLOSE (M5_CLOSE_v1_0.md) not referenced in any surface",
+          "suggested_remediation": "Register M5_CLOSE_v1_0.md in CLAUDE.md / FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "canonical_unreferenced",
+          "severity": "MEDIUM",
+          "canonical_id": "CI_REPORTING_POLICY",
+          "surfaces_involved": [
+            "CLAUDE.md",
+            "FILE_REGISTRY"
+          ],
+          "evidence": "Canonical CI_REPORTING_POLICY (NAP_M5_3_CI_REPORTING_POLICY_v1_0.md) not referenced in any surface",
+          "suggested_remediation": "Register NAP_M5_3_CI_REPORTING_POLICY_v1_0.md in CLAUDE.md / FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "canonical_unreferenced",
+          "severity": "MEDIUM",
+          "canonical_id": "06_LEARNING_LAYER/SHADOW_MODE_PROTOCOL_v1_0",
+          "surfaces_involved": [
+            "CLAUDE.md",
+            "FILE_REGISTRY"
+          ],
+          "evidence": "Canonical 06_LEARNING_LAYER/SHADOW_MODE_PROTOCOL_v1_0 (SHADOW_MODE_PROTOCOL_v1_0.md) not referenced in any surface",
+          "suggested_remediation": "Register SHADOW_MODE_PROTOCOL_v1_0.md in CLAUDE.md / FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "canonical_unreferenced",
+          "severity": "MEDIUM",
+          "canonical_id": "06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/LL1_TWO_PASS_APPROVAL_v1_0",
+          "surfaces_involved": [
+            "CLAUDE.md",
+            "FILE_REGISTRY"
+          ],
+          "evidence": "Canonical 06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/LL1_TWO_PASS_APPROVAL_v1_0 (LL1_TWO_PASS_APPROVAL_v1_0.md) not referenced in any surface",
+          "suggested_remediation": "Register LL1_TWO_PASS_APPROVAL_v1_0.md in CLAUDE.md / FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "canonical_unreferenced",
+          "severity": "MEDIUM",
+          "canonical_id": "06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/LL2_EDGE_WEIGHT_DESIGN_v1_0",
+          "surfaces_involved": [
+            "CLAUDE.md",
+            "FILE_REGISTRY"
+          ],
+          "evidence": "Canonical 06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/LL2_EDGE_WEIGHT_DESIGN_v1_0 (LL2_EDGE_WEIGHT_DESIGN_v1_0.md) not referenced in any surface",
+          "suggested_remediation": "Register LL2_EDGE_WEIGHT_DESIGN_v1_0.md in CLAUDE.md / FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "canonical_unreferenced",
+          "severity": "MEDIUM",
+          "canonical_id": "06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/LL2_STABILITY_GATE_v1_0",
+          "surfaces_involved": [
+            "CLAUDE.md",
+            "FILE_REGISTRY"
+          ],
+          "evidence": "Canonical 06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/LL2_STABILITY_GATE_v1_0 (LL2_STABILITY_GATE_v1_0.md) not referenced in any surface",
+          "suggested_remediation": "Register LL2_STABILITY_GATE_v1_0.md in CLAUDE.md / FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "canonical_unreferenced",
+          "severity": "MEDIUM",
+          "canonical_id": "06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/LL3_DOMAIN_COHERENCE_v1_0",
+          "surfaces_involved": [
+            "CLAUDE.md",
+            "FILE_REGISTRY"
+          ],
+          "evidence": "Canonical 06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/LL3_DOMAIN_COHERENCE_v1_0 (LL3_DOMAIN_COHERENCE_v1_0.md) not referenced in any surface",
+          "suggested_remediation": "Register LL3_DOMAIN_COHERENCE_v1_0.md in CLAUDE.md / FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "canonical_unreferenced",
+          "severity": "MEDIUM",
+          "canonical_id": "06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/LL4_PREDICTION_PRIOR_v1_0",
+          "surfaces_involved": [
+            "CLAUDE.md",
+            "FILE_REGISTRY"
+          ],
+          "evidence": "Canonical 06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/LL4_PREDICTION_PRIOR_v1_0 (LL4_PREDICTION_PRIOR_v1_0.md) not referenced in any surface",
+          "suggested_remediation": "Register LL4_PREDICTION_PRIOR_v1_0.md in CLAUDE.md / FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "canonical_unreferenced",
+          "severity": "MEDIUM",
+          "canonical_id": "06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/LL5_DASHA_TRANSIT_DESIGN_v1_0",
+          "surfaces_involved": [
+            "CLAUDE.md",
+            "FILE_REGISTRY"
+          ],
+          "evidence": "Canonical 06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/LL5_DASHA_TRANSIT_DESIGN_v1_0 (LL5_DASHA_TRANSIT_DESIGN_v1_0.md) not referenced in any surface",
+          "suggested_remediation": "Register LL5_DASHA_TRANSIT_DESIGN_v1_0.md in CLAUDE.md / FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "canonical_unreferenced",
+          "severity": "MEDIUM",
+          "canonical_id": "LL6_TEMPORAL_DENSITY_DESIGN_v1_0",
+          "surfaces_involved": [
+            "CLAUDE.md",
+            "FILE_REGISTRY"
+          ],
+          "evidence": "Canonical LL6_TEMPORAL_DENSITY_DESIGN_v1_0 (LL6_TEMPORAL_DENSITY_DESIGN_v1_0.md) not referenced in any surface",
+          "suggested_remediation": "Register LL6_TEMPORAL_DENSITY_DESIGN_v1_0.md in CLAUDE.md / FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "canonical_unreferenced",
+          "severity": "MEDIUM",
+          "canonical_id": "LL7_DISCOVERY_PRIOR_DESIGN",
+          "surfaces_involved": [
+            "CLAUDE.md",
+            "FILE_REGISTRY"
+          ],
+          "evidence": "Canonical LL7_DISCOVERY_PRIOR_DESIGN (LL7_DISCOVERY_PRIOR_DESIGN_v1_0.md) not referenced in any surface",
+          "suggested_remediation": "Register LL7_DISCOVERY_PRIOR_DESIGN_v1_0.md in CLAUDE.md / FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "canonical_unreferenced",
+          "severity": "MEDIUM",
+          "canonical_id": "M4_B_CLOSE",
+          "surfaces_involved": [
+            "CLAUDE.md",
+            "FILE_REGISTRY"
+          ],
+          "evidence": "Canonical M4_B_CLOSE (M4_B_CLOSE_v1_0.md) not referenced in any surface",
+          "suggested_remediation": "Register M4_B_CLOSE_v1_0.md in CLAUDE.md / FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "canonical_unreferenced",
+          "severity": "MEDIUM",
+          "canonical_id": "M4_C_CLOSE",
+          "surfaces_involved": [
+            "CLAUDE.md",
+            "FILE_REGISTRY"
+          ],
+          "evidence": "Canonical M4_C_CLOSE (M4_C_CLOSE_v1_0.md) not referenced in any surface",
+          "suggested_remediation": "Register M4_C_CLOSE_v1_0.md in CLAUDE.md / FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "canonical_unreferenced",
+          "severity": "MEDIUM",
+          "canonical_id": "DBN_TOPOLOGY",
+          "surfaces_involved": [
+            "CLAUDE.md",
+            "FILE_REGISTRY"
+          ],
+          "evidence": "Canonical DBN_TOPOLOGY (DBN_TOPOLOGY_v1_0.md) not referenced in any surface",
+          "suggested_remediation": "Register DBN_TOPOLOGY_v1_0.md in CLAUDE.md / FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "canonical_unreferenced",
+          "severity": "MEDIUM",
+          "canonical_id": "M5_C_CLOSE",
+          "surfaces_involved": [
+            "CLAUDE.md",
+            "FILE_REGISTRY"
+          ],
+          "evidence": "Canonical M5_C_CLOSE (M5_C_CLOSE_v1_0.md) not referenced in any surface",
+          "suggested_remediation": "Register M5_C_CLOSE_v1_0.md in CLAUDE.md / FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "canonical_unreferenced",
+          "severity": "MEDIUM",
+          "canonical_id": "M5_D_CLOSE",
+          "surfaces_involved": [
+            "CLAUDE.md",
+            "FILE_REGISTRY"
+          ],
+          "evidence": "Canonical M5_D_CLOSE (M5_D_CLOSE_v1_0.md) not referenced in any surface",
+          "suggested_remediation": "Register M5_D_CLOSE_v1_0.md in CLAUDE.md / FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "canonical_unreferenced",
+          "severity": "MEDIUM",
+          "canonical_id": "PRIOR_SPEC",
+          "surfaces_involved": [
+            "CLAUDE.md",
+            "FILE_REGISTRY"
+          ],
+          "evidence": "Canonical PRIOR_SPEC (PRIOR_SPEC_v1_0.md) not referenced in any surface",
+          "suggested_remediation": "Register PRIOR_SPEC_v1_0.md in CLAUDE.md / FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "canonical_unreferenced",
+          "severity": "MEDIUM",
+          "canonical_id": "LL8_EMBEDDING_REFIT_SPEC",
+          "surfaces_involved": [
+            "CLAUDE.md",
+            "FILE_REGISTRY"
+          ],
+          "evidence": "Canonical LL8_EMBEDDING_REFIT_SPEC (LL8_EMBEDDING_REFIT_SPEC_v1_0.md) not referenced in any surface",
+          "suggested_remediation": "Register LL8_EMBEDDING_REFIT_SPEC_v1_0.md in CLAUDE.md / FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "canonical_unreferenced",
+          "severity": "MEDIUM",
+          "canonical_id": "REFIT_GATE",
+          "surfaces_involved": [
+            "CLAUDE.md",
+            "FILE_REGISTRY"
+          ],
+          "evidence": "Canonical REFIT_GATE (REFIT_GATE_v1_0.md) not referenced in any surface",
+          "suggested_remediation": "Register REFIT_GATE_v1_0.md in CLAUDE.md / FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "canonical_unreferenced",
+          "severity": "MEDIUM",
+          "canonical_id": "refit_procedure",
+          "surfaces_involved": [
+            "CLAUDE.md",
+            "FILE_REGISTRY"
+          ],
+          "evidence": "Canonical refit_procedure (refit_procedure.md) not referenced in any surface",
+          "suggested_remediation": "Register refit_procedure.md in CLAUDE.md / FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "canonical_unreferenced",
+          "severity": "MEDIUM",
+          "canonical_id": "stability_report",
+          "surfaces_involved": [
+            "CLAUDE.md",
+            "FILE_REGISTRY"
+          ],
+          "evidence": "Canonical stability_report (stability_report.md) not referenced in any surface",
+          "suggested_remediation": "Register stability_report.md in CLAUDE.md / FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "canonical_unreferenced",
+          "severity": "MEDIUM",
+          "canonical_id": "ll2_promotion_campaign_v1_0",
+          "surfaces_involved": [
+            "CLAUDE.md",
+            "FILE_REGISTRY"
+          ],
+          "evidence": "Canonical ll2_promotion_campaign_v1_0 (ll2_promotion_campaign_v1_0.md) not referenced in any surface",
+          "suggested_remediation": "Register ll2_promotion_campaign_v1_0.md in CLAUDE.md / FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "canonical_unreferenced",
+          "severity": "MEDIUM",
+          "canonical_id": "LL8_SPEC",
+          "surfaces_involved": [
+            "CLAUDE.md",
+            "FILE_REGISTRY"
+          ],
+          "evidence": "Canonical LL8_SPEC (LL8_SPEC_v1_0.md) not referenced in any surface",
+          "suggested_remediation": "Register LL8_SPEC_v1_0.md in CLAUDE.md / FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "canonical_unreferenced",
+          "severity": "MEDIUM",
+          "canonical_id": "LL9_SPEC",
+          "surfaces_involved": [
+            "CLAUDE.md",
+            "FILE_REGISTRY"
+          ],
+          "evidence": "Canonical LL9_SPEC (LL9_SPEC_v1_0.md) not referenced in any surface",
+          "suggested_remediation": "Register LL9_SPEC_v1_0.md in CLAUDE.md / FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "canonical_unreferenced",
+          "severity": "MEDIUM",
+          "canonical_id": "PATTERN_SCHEMA_v0_1",
+          "surfaces_involved": [
+            "CLAUDE.md",
+            "FILE_REGISTRY"
+          ],
+          "evidence": "Canonical PATTERN_SCHEMA_v0_1 (pattern_schema_v0_1.json) not referenced in any surface",
+          "suggested_remediation": "Register pattern_schema_v0_1.json in CLAUDE.md / FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "canonical_unreferenced",
+          "severity": "MEDIUM",
+          "canonical_id": "PREDICTION_SCHEMA_v0_1",
+          "surfaces_involved": [
+            "CLAUDE.md",
+            "FILE_REGISTRY"
+          ],
+          "evidence": "Canonical PREDICTION_SCHEMA_v0_1 (prediction_schema_v0_1.json) not referenced in any surface",
+          "suggested_remediation": "Register prediction_schema_v0_1.json in CLAUDE.md / FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "canonical_unreferenced",
+          "severity": "MEDIUM",
+          "canonical_id": "TWO_PASS_EVENTS_SCHEMA_v0_1",
+          "surfaces_involved": [
+            "CLAUDE.md",
+            "FILE_REGISTRY"
+          ],
+          "evidence": "Canonical TWO_PASS_EVENTS_SCHEMA_v0_1 (two_pass_events_schema_v0_1.json) not referenced in any surface",
+          "suggested_remediation": "Register two_pass_events_schema_v0_1.json in CLAUDE.md / FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "canonical_unreferenced",
+          "severity": "MEDIUM",
+          "canonical_id": "PROMPT_REGISTRY_INDEX",
+          "surfaces_involved": [
+            "CLAUDE.md",
+            "FILE_REGISTRY"
+          ],
+          "evidence": "Canonical PROMPT_REGISTRY_INDEX (INDEX.json) not referenced in any surface",
+          "suggested_remediation": "Register INDEX.json in CLAUDE.md / FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "canonical_unreferenced",
+          "severity": "MEDIUM",
+          "canonical_id": "PREDICTION_LEDGER_JSONL",
+          "surfaces_involved": [
+            "CLAUDE.md",
+            "FILE_REGISTRY"
+          ],
+          "evidence": "Canonical PREDICTION_LEDGER_JSONL (prediction_ledger.jsonl) not referenced in any surface",
+          "suggested_remediation": "Register prediction_ledger.jsonl in CLAUDE.md / FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "canonical_unreferenced",
+          "severity": "MEDIUM",
+          "canonical_id": "PATTERN_REGISTER_JSON",
+          "surfaces_involved": [
+            "CLAUDE.md",
+            "FILE_REGISTRY"
+          ],
+          "evidence": "Canonical PATTERN_REGISTER_JSON (PATTERN_REGISTER_v1_0.json) not referenced in any surface",
+          "suggested_remediation": "Register PATTERN_REGISTER_v1_0.json in CLAUDE.md / FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "canonical_unreferenced",
+          "severity": "MEDIUM",
+          "canonical_id": "RESONANCE_REGISTER_JSON",
+          "surfaces_involved": [
+            "CLAUDE.md",
+            "FILE_REGISTRY"
+          ],
+          "evidence": "Canonical RESONANCE_REGISTER_JSON (RESONANCE_REGISTER_v1_0.json) not referenced in any surface",
+          "suggested_remediation": "Register RESONANCE_REGISTER_v1_0.json in CLAUDE.md / FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "canonical_unreferenced",
+          "severity": "MEDIUM",
+          "canonical_id": "CONTRADICTION_REGISTER_JSON",
+          "surfaces_involved": [
+            "CLAUDE.md",
+            "FILE_REGISTRY"
+          ],
+          "evidence": "Canonical CONTRADICTION_REGISTER_JSON (CONTRADICTION_REGISTER_v1_0.json) not referenced in any surface",
+          "suggested_remediation": "Register CONTRADICTION_REGISTER_v1_0.json in CLAUDE.md / FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "canonical_unreferenced",
+          "severity": "MEDIUM",
+          "canonical_id": "CLUSTER_ATLAS_JSON",
+          "surfaces_involved": [
+            "CLAUDE.md",
+            "FILE_REGISTRY"
+          ],
+          "evidence": "Canonical CLUSTER_ATLAS_JSON (CLUSTER_ATLAS_v1_0.json) not referenced in any surface",
+          "suggested_remediation": "Register CLUSTER_ATLAS_v1_0.json in CLAUDE.md / FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "canonical_unreferenced",
+          "severity": "MEDIUM",
+          "canonical_id": "DISCOVERY_REGISTERS_INDEX",
+          "surfaces_involved": [
+            "CLAUDE.md",
+            "FILE_REGISTRY"
+          ],
+          "evidence": "Canonical DISCOVERY_REGISTERS_INDEX (INDEX.json) not referenced in any surface",
+          "suggested_remediation": "Register INDEX.json in CLAUDE.md / FILE_REGISTRY",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "schema_file_empty",
+          "severity": "MEDIUM",
+          "canonical_id": null,
+          "surfaces_involved": [
+            "platform/scripts/governance/CHART_FACTS_SCHEMA.json"
+          ],
+          "evidence": "CHART_FACTS_SCHEMA.json has no columns declared",
+          "suggested_remediation": "Populate the columns array",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "a3_schema_db_unreachable",
+          "severity": "LOW",
+          "canonical_id": null,
+          "surfaces_involved": [
+            "chart_facts"
+          ],
+          "evidence": "DB query failed: Password for user amjis_app: \npsql: error: connection to server at \"127.0.0.1\", port 5433 failed: fe_sendauth: no password supplied",
+          "suggested_remediation": "Ensure DB is running on PGHOST:PGPORT",
+          "whitelist_ticket": null
+        }
+      ],
+      "summary": {
+        "total": 216,
+        "by_class": {
+          "registry_disagreement": 84,
+          "governance_stack_disagreement": 1,
+          "phantom_reference": 52,
+          "canonical_unreferenced": 77,
+          "schema_file_empty": 1,
+          "a3_schema_db_unreachable": 1
+        },
+        "by_severity": {
+          "MEDIUM": 215,
+          "LOW": 1
+        },
+        "whitelisted": 52
+      },
+      "exit_code": 3
+    }
+  }
+}

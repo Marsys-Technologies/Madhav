@@ -2922,12 +2922,32 @@ Recorded so a reader can weight the findings correctly rather than uniformly:
 
 ---
 
-*End of PARIPŪRṆA-2 audit report v1.0 (P5+P6). §6.3 is populated with P6's results (17/21 sampled
-findings fully reproduced, 4 partially, 0 removed; all 3 highest-severity findings survived active
-refutation). Nothing in this document may be read as a terminal completion marker on its own: per
-`PARIPURNA_2_AUDIT_PLAN_v2_0.md` §7, done means the gate exits 0 and its signed line is in the
-ledger. As of this writing (post-P6) the gate still reports 187 blocking problems — independently
-re-confirmed by direct execution — nearly all of them a severity-vocabulary mismatch between this
-audit's actual finding severities and the gate's stricter 4-tier vocabulary, not a substance defect
-in the underlying findings. That reconciliation has not yet been done and is disclosed here rather
-than silently resolved either way.*
+*End of PARIPŪRṆA-2 audit report v1.0 (P5+P6+gate reconciliation). §6.3 is populated with P6's
+results (17/21 sampled findings fully reproduced, 4 partially, 0 removed; all 3 highest-severity
+findings survived active refutation). Per `PARIPURNA_2_AUDIT_PLAN_v2_0.md` §7, done means the gate
+exits 0 and its signed line is in the ledger — that reconciliation pass has now run: all 141
+findings' severities were reclassified against the gate's strict 4-tier vocabulary using the
+report's own §3 grouping as ground truth (TIER1-CORRECTNESS 25 · TIER2-HONESTY 53 ·
+TIER3-EXPERIENCE 27 · TIER4-POLISH 36, the last including all positive/control records), 55
+`evidence_file` pointers were reformatted to the gate's single-existing-JSON-file requirement (51
+format-only, 4 requiring a newly-created JSON evidence file), all 125 tool verdicts were confirmed
+already conformant with zero fixes needed, and all 10 dimension letters received a substantiated
+sign-off — including honest sub-axis gaps stated inline (H's concurrent-session-memory-corruption
+and `as_of`-backdating axes have no evidence at all; A/B/E/G/I/J each disclose a named untested
+axis; F alone has none). No finding's `claim`, `reproduce_cmd`, or `id` was altered in this pass.
+One discrepancy surfaced and was NOT papered over: F-95's live schema_validator re-run now returns
+44 violations / exit=2, not the 43/exit=3 recorded when the finding was filed — a new
+session-log-heading violation accrued since, and F-95's evidence file documents this delta directly
+rather than silently updating the claim to match. Independently re-run and confirmed by the
+orchestrating session (not taken on the reconciliation agent's word):
+
+```
+AUDIT-GATE: PASSED
+AUDIT-COVERAGE-VERIFIED: 125/125 tools verdicted · 141 findings each with reproduce_cmd + evidence
+· 10 dimensions signed off · catalog catalog-1+t152+r653c2a1a98c8 · 295 unreferenced evidence file(s)
+```
+
+The 295 unreferenced evidence files are informational only (the gate does not fail on orphans) —
+they are supplementary evidence saved during the five waves that a finding's single canonical
+`evidence_file` pointer doesn't cite directly; nothing was deleted, and most are cited from the
+narrative findings text or from `mechanism` fields even where not the gate-checked pointer.*
