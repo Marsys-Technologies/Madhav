@@ -496,6 +496,38 @@ SENTINEL seconds the guardian finding. `a02_deploy.json` content = deploy run ID
 | A-09 | Exit test claim | PASS ✓ | TAP FAIL (force-merge) | EKV-R-8: MERGED not LIVE; TAP HANDOFF |
 | A-15 | 13 resolveChartFactsAyanamsha wires | PASS ✓ | CI PASS | MERGED/LIVE as applicable |
 
+### HB-029 — 2026-08-17T03:45Z / ~09:15+0530 (Cycle 27 — A-11 merged; A-15 deploy smoke FAIL; new SP-4)
+
+**NEW MAIN COMMIT — A-11 merged (drain queue -1):**
+- `c75400b231f9` — PR #1302: F-30/74/127 — bundle principal propagation + real upstream_status surfaced
+- Main tip now `c75400b231f9`.
+
+**NEW CONDUCTOR ESCALATION — A-15 deploy smoke FAIL (commit `961ec6713`):**
+- Run 31910398270 (Deploy to Cloud Run, sha=7a1c79bf4d): conclusion=FAILURE
+- `[probe: bearer-auth] FAIL — valid canary key returned 401 (expect 200)`
+- Health check: UP (200) ✓ | No-auth rejection: PASS ✓ | Bearer-auth: FAIL ✗
+
+**SENTINEL assessment (FM-09):**
+- A-15 diff is limited to `register_p1_aliases.ts` ayanamsha wire sites (SENTINEL-verified HB-027) — no auth code touched. A-15 cannot be the root cause.
+- Pattern: health UP + unauthenticated-rejection correct + authenticated-call 401 = auth config issue (canary key mismatch), not application crash. Consistent with conductor hypothesis.
+- Same smoke passed for B-04/A-09/B-05 — breakage introduced between B-05 and A-15 deploy slots, not in A-15 code.
+- Per SP-4: production auth is broken; requires E/native diagnosis + remediation before MCP lanes can be confirmed LIVE.
+
+**Drain queue:** A-11 merged; 6 remaining (#1304/#1305/#1306/#1307/#1308/#1309). Queue Ganga CI running separately from main deploy (unaffected by smoke failure).
+
+**W0 gate re-run (FM-09, ~03:45Z IST):**
+```
+EKV-GATE: FAILED
+  ✗ PROD-SYNC: manifest deployed_main_sha '0a056aec841a' != origin/main tip c75400b231f9
+  ✗ CL-00 cheap subset not PASS (got None)
+2 blocking problem(s). Terminal marker MUST NOT be posted.
+```
+
+**Watch items for E/PRATINIDHI:**
+1. A-15 bearer-auth 401 — production MCP auth broken; E must diagnose + redeploy/revert per SP-4
+2. deployed_main_sha stale by A-11 (`c75400b231f9`) — do not update until all drain PRs land
+3. CL-00 manifest null — E must write PASS result (SENTINEL-verified HB-024)
+
 ### HB-020 — 2026-08-17T00:40Z / ~06:10+0530 (Cycle 19)
 
 **⚠️ CONDUCTOR STALE 3.5H + GATE SEQUENCE INCOMPLETE (FM-09)**
