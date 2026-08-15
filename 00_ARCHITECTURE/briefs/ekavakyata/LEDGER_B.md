@@ -75,7 +75,7 @@ model: sonnet-high (lead) · sonnet-medium (builders)
 | ~07:25 | B-05 | **EKV-B-05-BUILT** | sha=8e7880eec; pushed; lead review PASS — spec doc + signal glossary + 2 not_joined checklist units |
 | ~07:55 | B-07 | **EKV-B-07-BUILT** | 5/5 goldens pass; sha=8f9a1197b; pushed; lead review PASS — confidence_vocab.py + 3 emission sites clean |
 | ~07:57 | B-09 | **EKV-B-09-BUILT** | 8/8 goldens pass; sha=3e7b8d99e; pushed; lead review PASS — canary+full dispatch scripts + runbook |
-| ~07:57 | B-08 | BUILDING | salience/ranker — domain-affinity + abstention zero + plateau test |
+| ~08:10 | B-08 | **EKV-B-08-BUILT** | 5/5 goldens pass; sha=408c4fae8; pushed; lead review PASS — domain-affinity 1/(1+0.25*(n-1)) + abstention zero |
 
 ---
 
@@ -94,6 +94,17 @@ LEASE EXCEPTION NOTE (B-05): Builder wrote `register_d8_assess_domain.ts` (Strea
 
 ---
 
+## **EKV-B-W2-COMPLETE** — 2026-08-16T08:15Z
+
+W2/W3 lanes BUILT and pushed. Ready for E to merge.
+
+Branch list for E (additions):
+- `ekv/b-07-nimitta-tag` — sha=8f9a1197b (confidence_vocab.py + 3 emission sites)
+- `ekv/b-08-ranker` — sha=408c4fae8 (domain-affinity + abstention zero)
+- `ekv/b-09-rebuild-runbook` — sha=3e7b8d99e (canary/full dispatch scripts + runbook)
+
+---
+
 ## LANE STATES
 
 | Lane | Branch | Status | Exit Test | Verifier |
@@ -105,17 +116,17 @@ LEASE EXCEPTION NOTE (B-05): Builder wrote `register_d8_assess_domain.ts` (Strea
 | B-05 | ekv/b-05-spec-pack | **BUILT** ✓ sha=8e7880eec | spec+glossary+checklist: A-16 exit test FORENSIC-grounded ✓ | pending verifier |
 | B-06 | — | W2 — waiting | muhurta honesty | — |
 | B-07 | ekv/b-07-nimitta-tag | **BUILT** ✓ sha=8f9a1197b | 5/5 pass: STRUCTURAL_NOT_YET_EMPIRICAL constant ✓ no bare literals in 3 sites ✓ 128 ph_* regressions pass ✓ | pending verifier |
-| B-08 | ekv/b-08-ranker | BUILDING | domain-affinity multiplier + abstention zero + 5 plateau tests | — |
+| B-08 | ekv/b-08-ranker | **BUILT** ✓ sha=408c4fae8 | 5/5 pass: abstention→0.0 ✓ domain-penalty monotone ✓ 10 distinct ✓ 440 bodha regressions pass ✓ | pending verifier |
 | B-09 | ekv/b-09-rebuild-runbook | **BUILT** ✓ sha=3e7b8d99e | 8/8 pass: canary+full scripts ✓ F-52 + 35-min stall in runbook ✓ | pending verifier |
 
 ---
 
 ## DEPENDENCY NOTES
 
-- B-08 waits on BOTH: A's EKV-KERNEL-API-FROZEN marker AND B-05 glossary delivery
+- B-08 ✓ BUILT — no longer blocking
 - E-03 gochara rebuild waits on B-01/B-02/B-03 merged + deployed
 - B-05 specs must reach A-16 and A-14 BEFORE those lanes start; ŚĀSTRA-LEAD posts EKV-B-05-DELIVERED marker to CAMPAIGN_COORDINATION when builder returns
 
 ---
 
-*ŚĀSTRA-LEAD — LEDGER_B — last updated 2026-08-16T08:00Z*
+*ŚĀSTRA-LEAD — LEDGER_B — last updated 2026-08-16T08:15Z*
