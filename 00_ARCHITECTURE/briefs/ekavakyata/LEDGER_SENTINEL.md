@@ -193,6 +193,15 @@ None yet.
 - A-06 NOTE: resolution field omitted from disclosure (data type constraint) — not a dispute, noted
 - Next: watch for VERIFIED markers + E merge actions; run live exit tests when E deploys
 
+### HB-007 — 2026-08-16 ~01:30+0530 (Cycle 6)
+- **PR #1289 (A-01) in merge queue** (gh-readonly-queue/main/pr-1289 branch visible); CI running
+- Gate PROD-SYNC fix verified correct: `deployed_main_sha` vs `main_tip[:12]` ✓
+- A-11 (W1) pushed: F-30/74/127 bundle principal propagation
+- A-15 (W1) pushed: F-59 ayanamsha — 10 sites wired (earlier cycle)
+- D-01+D-04 BUILT on ekv/lead-dharma; 40 total lanes, 6 VERIFIED
+- Main: still 63049a6e — first merge pending CI completion (~13-15min from queue entry)
+- Next: watch main advancement; run cheap CL-00 after first deploy; verify A-01 live exit test
+
 ### HB-006 — 2026-08-16 ~01:20+0530 (Cycle 5)
 - **PRATINIDHI UNBLOCKED**: EKV-R-1 + EKV-R-2 filed at 01:15+0530 — ESCALATION-001 CLEARED
 - EKV-R-1: C-01 authorized (E can merge; 4 post-deploy assertions required)
