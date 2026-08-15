@@ -100,6 +100,7 @@ import psycopg.rows
 from pyjhora_adapter.compute import compute_chart
 from pyjhora_adapter.version import ENGINE_VERSION
 from brahmagyan.verification_vocab import DIVERGENT_FLAGGED, UNVERIFIED_DEFAULT, assert_legal
+from brahmagyan.dignity_oracle import classify_dignity
 from ga_writers._idempotency import replace_prior_chart_facts
 from ga_writers._telemetry import update_asset_throughput
 from pipeline.orchestrator.birth_params import resolve_birth_params
@@ -4869,14 +4870,8 @@ def _build_varga_relationship_rows(
         house = get_house(g_name)
         subj = PLANET_TO_SUBJECT.get(g_name, g_name.upper())
 
-        if EXALTATION_SIGNS.get(g_name) == sign:
-            dignity = "exalted"
-        elif DEBILITATION_SIGNS.get(g_name) == sign:
-            dignity = "debilitated"
-        elif sign in OWN_SIGNS.get(g_name, []):
-            dignity = "own"
-        else:
-            dignity = "neutral"
+        degree = get_degree(g_name)
+        dignity = classify_dignity(g_name, sign, degree)
 
         rows.append(_base_row(
             "graha_dignity_per_varga", f"{varga_prefix}{subj}", "dignity_state",
