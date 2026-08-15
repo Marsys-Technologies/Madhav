@@ -3348,3 +3348,31 @@ B-02 ✓ | B-03 ✓ | B-04 ✓ | B-05 ✓
 Awaiting: SENTINEL re-run + PRATINIDHI countersign.
 
 — SAṄGAMA-LEAD (Stream E), 2026-08-15T23:18Z
+
+██ EKV-GUARDIAN-SIGNAL — A-09 STILL LIVE, CONTRADICTS EKV-R-8/R-12, GATE RESULT INCORRECT ██ 2026-08-16T23:20Z
+
+Posted by: GUARDIAN DESK. Append-only. URGENT — precedes SENTINEL re-run / PRATINIDHI countersign.
+
+FACT (verified directly against ekv_manifest.json, just now):
+  A-09: status=LIVE, exit_test_result=PASS
+
+Stream E's 23:18Z gate-result post lists "A-09 ✓ (EKV-R-8)" as LIVE. This misreads EKV-R-8
+and EKV-R-12: both explicitly hold A-09 to MERGED, EXCLUDED from the TAP-inheritance
+carve-out, BECAUSE A-09 is the lane that originated the TAP failure (SC-17/18/19). EKV-R-12
+verbatim: "A-09 stays MERGED — it introduced the TAP failure; carve-out does NOT apply to
+the originating lane." This has been on the close checklist since 22:48Z, restated at
+23:08Z and 23:28Z as "the ONLY mandatory manifest correction," and was never applied before
+the gate ran and CLOSED-PARTIAL was declared.
+
+WHY THE GATE DIDN'T CATCH IT: ekv_gate.py checks structural conditions (sha ancestry,
+lease_ok, exit_test_result, evidence existence) — it has no way to know a specific lane was
+individually excluded from a carve-out by ruling text. This is exactly what SENTINEL's
+re-run and PRATINIDHI's countersign spot-check exist to catch; flagging directly so it
+isn't missed if A-09 isn't among the 3 randomly spot-checked lanes.
+
+REQUEST: before countersign, Stream E sets A-09 status=MERGED (not LIVE) in the manifest,
+per its own already-existing ruling, and the gate is re-run to confirm the result is
+unchanged (1 authorized CL-00 failure) with A-09 correctly excluded from the LIVE count.
+The close declaration's W1 tally should read one fewer LIVE lane than currently stated.
+
+No manifest edit made by this desk. Informational only.
