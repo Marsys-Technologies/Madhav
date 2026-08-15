@@ -1,0 +1,23 @@
+{
+  "note": "A1 Wave1 PP2 -- graha_saptavargaja_bala_component.<GRAHA>.saptavargaja_score is served with fact_value_num=null / fact_value_text=null for every graha, chart_id=482012f1-710e-4a25-994a-93821f5871aa. Only a jsonb pointer ('note' + 'constituent_fact_ids' -- raw chart_divisionals.id UUIDs, NOT chart_facts.fact_id values) is served instead of an actual computed score, despite the fact_key literally being named 'saptavargaja_score'.",
+  "mcp_served_row_example_SUN": {
+    "fact_id":"324eda87f599703b","fact_category":"graha_saptavargaja_bala_component","fact_subject":"SUN","fact_key":"saptavargaja_score",
+    "fact_value_num": null, "fact_value_text": null,
+    "fact_value_jsonb": {"note":"chart_divisionals rows for SUN across saptavarga set (lahiri_chitrapaksha)","source_table":"chart_divisionals","source_category":"varga_saptavargaja_bala_component",
+      "constituent_fact_ids":["4841c8b8-7855-4050-8a26-df239b5bf553","eea311f9-388f-4214-862d-9de5d475c598","e1c8bd69-a951-4554-9846-e2ddf3d9f3bd","e7c9fb5c-5463-4060-a038-46ace8a15e9b","e852c072-ed56-4dd4-8504-2bddbe6392b6","ffa387f9-f608-4218-8cb0-e38939939962"]}
+  },
+  "postgres_direct_resolution_of_the_6_pointers_for_SUN": {
+    "sql": "SELECT id, varga, sign, fact_value_num, fact_value_text FROM chart_divisionals WHERE id::text IN (<the 6 uuids above>)",
+    "results": [
+      {"varga":"D1","sign":"Capricorn","fact_value_num":7.5,"fact_value_text":"Sama"},
+      {"varga":"D12","sign":"Sagittarius","fact_value_num":7.5,"fact_value_text":"Sama"},
+      {"varga":"D2","sign":"Leo","fact_value_num":30,"fact_value_text":"Own"},
+      {"varga":"D3","sign":"Virgo","fact_value_num":3.75,"fact_value_text":"Shatru"},
+      {"varga":"D60","sign":"Sagittarius","fact_value_num":22.5,"fact_value_text":"Adhi_Mitra"},
+      {"varga":"D9","sign":"Cancer","fact_value_num":22.5,"fact_value_text":"Adhi_Mitra"}
+    ],
+    "sum_of_the_6_components": 93.75,
+    "note": "The raw per-varga strength values genuinely exist and are individually correct/computed in chart_divisionals (not fabricated, not missing) -- but they are never aggregated into the 'saptavargaja_score' the graha_saptavargaja_bala_component fact_key promises. A caller using only the MCP tool surface (chart_divisionals is not exposed as its own queryable category through any ganita_* MCP tool found in this audit) has NO way to resolve the constituent_fact_ids pointers -- they are raw DB table-row UUIDs (chart_divisionals.id), not chart_facts.fact_id citation-resolvable values, and postgres direct access is not available to a normal MCP caller."
+  },
+  "verdict": "DEFECT -- graha_saptavargaja_bala_component.<subject>.saptavargaja_score is a null stub for all grahas, every call, confirmed for SUN with full manual resolution proving real underlying data exists and sums to a non-trivial value (93.75). This is an unearned/unresolved rollup: the fact_key name promises a computed score; the served value is always null with an unresolvable-via-MCP pointer instead."
+}

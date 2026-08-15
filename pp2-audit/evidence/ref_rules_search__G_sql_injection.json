@@ -1,0 +1,4 @@
+{"tool":"ref_rules_search","scenarios":[
+  {"scenario":"G_sqli_or_1_1","args":{"keyword":"' OR '1'='1"},"result":"rows:[], total:0, empty_reason quotes the literal payload back but is a safe parameterized no-match message, no SQL error, no data leak. PASS."},
+  {"scenario":"G_sqli_drop_table","args":{"keyword":"Saturn'; DROP TABLE chart_facts;--"},"result":"rows:[], total:0, same safe honest-empty shape. PASS."}
+]}

@@ -1,0 +1,44 @@
+Evidence for A3-F-60 (bo_pratijna promise rubric unreachable via MCP)
+
+QUERY 1:
+SELECT count(*) FROM bodha_pratijna WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa';
+RESULT: count = 135
+
+QUERY 2 (sample rows, weights + citations confirmed present and correct in storage):
+SELECT event_class_id, status, grade, derivation->'weights' as weights, derivation->'rubric_version',
+  (SELECT sum((w->>'weight')::numeric) FROM jsonb_array_elements(derivation->'weights') w) as weight_sum
+FROM bodha_pratijna WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa' ORDER BY event_class_id LIMIT 30;
+RESULT (excerpt): 135 rows returned (27 event classes x 5 rows each). Every sampled row's weight_sum ~= 1.0
+(e.g. 0.99999999999999995 -- float rounding of an exact Fraction(1) sum per bo_pratijna_v4_engine.py's
+compute_class_weights renormalization). rubric_version = "V4_RUBRIC_SPEC_v1_0" throughout.
+Example row (achievement_recognition): weights = [
+  {slot:house_lord,item:"5",weight:0.1667}, {slot:house_lord,item:"10",weight:0.1667},
+  {slot:house_lord,item:"11",weight:0.1667}, {slot:karaka,item:"Mercury",weight:0.1429},
+  {slot:karaka,item:"Sun",weight:0.1429}, {slot:divisional,item:"D10",weight:0.1429},
+  {slot:yoga,item:null,weight:0.0714}
+]
+
+CODE SEARCH CONFIRMING NO MCP REGISTRATION EXISTS FOR THIS CAPABILITY:
+$ grep -rli "pratijna" platform-mcp/src --include="*.ts" | grep -v generated
+  -> platform-mcp/src/tools/register_p1_synthesis.ts   (a single COMMENT mentioning "bo_pratijna v2.0", not a registration)
+$ grep -n "pratijna" platform-mcp/src/server.ts
+  -> (no output -- server.ts never imports or registers any Pratijna tool)
+$ grep -n "bodha_pratijna_get\|'query_pratijna'" platform-mcp/src/tools/registry_bridge.ts
+  -> (no output)
+
+The capability IS fully defined and aliased for the primitives whitelist:
+  platform/src/lib/retrieval/registry/layers/L2_bodha/query_pratijna.ts  (full CapabilityDescriptor, handler, docs)
+  platform/src/lib/retrieval/registry/tool_name_bridge.ts:203  query_pratijna: 'marsys://tool/L2/query_pratijna'
+  platform/src/lib/retrieval/registry/tool_name_bridge.ts:584  bodha_pratijna_get: 'query_pratijna'   // F-0156,0176
+
+But no platform-mcp/src/tools/*.ts file ever calls server.tool('bodha_pratijna_get', ...) or
+server.tool('query_pratijna', ...) -- the capability has no live MCP entrypoint. This is the same
+"registered capability, never wired to MCP" defect class server.ts's own comment (lines 103-111)
+explicitly names and had previously fixed for read_classical_text/list_classical_texts/etc:
+  "a genuine 'registered capability, never wired to MCP' instance of exactly the failure
+   class this campaign targets (registered != deployed != callable)"
+-- bo_pratijna is a NEW, currently-unfixed instance of that same named defect class.
+
+ToolSearch (query: "pratijna promise denial ledger", max_results:10) against the live marsys-jis-direct
+MCP surface returned NO bodha_pratijna_get / query_pratijna tool among its results, confirming the tool
+does not appear on the live MCP tool list.

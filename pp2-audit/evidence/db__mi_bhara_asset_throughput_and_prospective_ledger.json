@@ -1,0 +1,28 @@
+{
+  "queries_and_results": [
+    {
+      "sql": "SELECT * FROM asset_throughput WHERE asset_id = 'mi_bhara' AND chart_id = '482012f1-710e-4a25-994a-93821f5871aa';",
+      "result": {
+        "asset_id": "mi_bhara", "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+        "state": "error",
+        "built_against_upstream_hash": "53be7fa0ef18347d",
+        "last_built_at": "2026-08-13T01:02:31.824Z",
+        "last_error": "TypeError: float() argument must be a string or a real number, not 'NoneType'\nTraceback (most recent call last):\n  File \"/app/platform/python-sidecar/pipeline/orchestrator/asset_runner.py\", line 562, in _run_data_writer\n    rows_inserted, rows_updated = _drive_substeps(conn, cur, run_id, chart_id, asset_id, writer, ctx)\n  File \"/app/platform/python-sidecar/pipeline/orchestrator/asset_runner.py\", line 440, in _drive_substeps\n    result = writer.run_substep(ctx, step)\n  File \"/app/platform/python-sidecar/pipeline/orchestrator/writers/__init__.py\", line 134, in run_substep\n    return self.run(ctx)\n  File \"/app/platform/python-sidecar/pipeline/orchestrator/writers/mi_bhara.py\", line 141, in run\n    open_predictions = db.fetch_open_predictions(conn, chart_id, birth_iso)\n  File \"/app/platform/python-sidecar/services/mi_bhara/db.py\", line 185, in fetch_open_predictions\n    return [\n  File \"/app/platform/python-sidecar/services/mi_bhara/db.py\", line 189, in <listcomp>\n    window_start=float(r[\"w_start\"]),\nTypeError: float() argument must be a string or a real number, not 'NoneType'\n",
+        "rows_written": 0
+      }
+    },
+    {
+      "sql": "SELECT * FROM asset_throughput WHERE asset_id='mi_bhara' AND chart_id='1c826d5a-41cb-4450-b4dc-59d440e5f75a';",
+      "result": {"chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a", "state": "error", "last_error": "BLOCKED: upstream dependency(ies) ka_kshetra did not complete in this run; skipped to avoid building on incomplete data"}
+    },
+    {
+      "sql": "SELECT prediction_id, event_class, lifecycle_status, observation_window, observation_window::text, lower(observation_window), upper(observation_window) FROM brahma_prospective_ledger WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa' AND lifecycle_status='open' LIMIT 20;",
+      "result_note": "20 rows returned; 4 rows have observation_window = 'empty' (the PostgreSQL empty-daterange literal), for which lower()/upper() both evaluate to NULL: prediction_ids 59c9f870-2200-47be-9d62-534a5812ce81 (psychological_arc), 94d6679c-96d2-4b7b-81b3-b4192705dcd1 (parental_event), 8ef06a85-7192-47c8-aa3f-de3f724d9f7f (financial_deception), b7cd449b-9927-4954-920d-6b54abbe11b5 (major_loss). All other 16 sampled rows have well-formed [start,end) ranges."
+    },
+    {
+      "sql": "SELECT table_name FROM information_schema.tables WHERE table_name IN ('kala_field','kala_field_skill','kala_field_gof','kala_field_weight_versions');",
+      "result": "all four tables exist -- mi_bhara does not early-return on NOTE_FIELD_ABSENT/NOTE_SKILL_TABLES_ABSENT for this chart; it proceeds to phase 1 (falsifier resolution) and crashes there."
+    }
+  ],
+  "auditor_note": "This is the SAME underlying data condition already documented in manifest finding F-01 (4 'empty' observation_window rows in brahma_prospective_ledger causing a parseDaterange crash in L4's query_prospective_ledger.ts). Here it manifests as a DIFFERENT failure: mi_bhara.py's own writer (services/mi_bhara/db.py:189, fetch_open_predictions) does `window_start=float(r['w_start'])` where w_start is `(lower(observation_window) - birth_date)::double precision` -- for an 'empty' range, lower() returns SQL NULL, so w_start is None and float(None) raises TypeError, crashing the ENTIRE mi_bhara asset build (not just this one ledger row) for the native chart. This is a distinct downstream failure site from F-01, sharing F-01's root data condition but not its code path."
+}

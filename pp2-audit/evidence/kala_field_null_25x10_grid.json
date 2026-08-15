@@ -1,0 +1,22 @@
+{
+  "description": "25x10 grid invariant check on kala_field_null (25 event classes x 10 duration buckets), both charts",
+  "reproduce_cmd": "SELECT chart_id, count(*) as n, count(DISTINCT event_class) as n_classes, count(DISTINCT bucket_days) as n_buckets, array_agg(DISTINCT bucket_days ORDER BY bucket_days) as buckets FROM kala_field_null GROUP BY chart_id;",
+  "result": [
+    {
+      "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+      "n": 250,
+      "n_classes": 25,
+      "n_buckets": 10,
+      "buckets": [1, 3, 7, 15, 30, 60, 90, 180, 365, 730]
+    },
+    {
+      "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+      "n": 60,
+      "n_classes": 6,
+      "n_buckets": 10,
+      "buckets": [1, 3, 7, 15, 30, 60, 90, 180, 365, 730]
+    }
+  ],
+  "verdict_native": "PASS -- exactly 250 = 25 x 10 rows, matching kala_field_snapshots.event_classes' declared 25-class list for this chart exactly (no skipped classes for the native chart's snapshot).",
+  "verdict_second_chart": "The 6x10=60 grid is internally consistent (matches the 6 event classes that actually have kala_field rows for this chart), but kala_field_snapshots.event_classes for this chart declares 27 classes, 21 of which are recorded in skipped_classes with reason 'no_class_prior_row'. See finding on event_classes/skipped_classes field semantics."
+}

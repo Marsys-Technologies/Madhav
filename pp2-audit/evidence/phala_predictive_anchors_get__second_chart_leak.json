@@ -1,0 +1,28 @@
+{
+  "reproduce_cmd": "mcp__marsys-jis-direct__phala_predictive_anchors_get({chart_id:'1c826d5a-41cb-4450-b4dc-59d440e5f75a', limit:3})",
+  "note": "Confirms A3-F-61's leak pattern is systemic (identical on the second canonical chart), not chart-specific.",
+  "anchors_excerpt": [
+    {
+      "anchor_id": "2300fe19-533c-4ca8-8e60-d0ecd2fc6d53",
+      "domain": "relationship", "event_type": "marriage",
+      "confidence_low": 0.324, "confidence_high": 0.424,
+      "confidence_basis": "structural_not_yet_empirical",
+      "posterior": 0.3736,
+      "lift_vector_jsonb": {"base_rate":0.098,"posterior":0.3736,"promise_lift":2.071,"trigger_lift":1,"activation_lift":2,"ayanamsha_robustness_modifier":0.92}
+    },
+    {
+      "anchor_id": "d6e3577d-f8ca-4637-9cf0-17bf4cf54f88",
+      "domain": "career", "event_type": "career_entry",
+      "confidence_low": 0.11, "confidence_high": 0.21,
+      "confidence_basis": "structural_not_yet_empirical",
+      "posterior": 0.1598
+    },
+    {
+      "anchor_id": "eecb7e3a-1eac-4f3d-957b-027a0e7fd276",
+      "domain": "spirituality", "event_type": "spiritual_turn",
+      "confidence_low": 0.487, "confidence_high": 0.587,
+      "confidence_basis": "structural_not_yet_empirical",
+      "posterior": 0.5367
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "description": "FK referential integrity (chart_id -> charts) and duplicate natural-key checks",
+  "reproduce_cmd_orphan": "SELECT c.chart_id, count(*) FROM (SELECT DISTINCT chart_id FROM chart_facts UNION SELECT DISTINCT chart_id FROM kala_field UNION SELECT DISTINCT chart_id FROM bodha_msr_signals UNION SELECT DISTINCT chart_id FROM phala_anchors UNION SELECT DISTINCT chart_id FROM mimamsa_calibration) c LEFT JOIN charts ch ON ch.id = c.chart_id WHERE ch.id IS NULL GROUP BY c.chart_id;",
+  "result_orphan": [],
+  "reproduce_cmd_dup": "SELECT event_class, segment_index, count(*) FROM kala_field WHERE chart_id='482012f1-710e-4a25-994a-93821f5871aa' GROUP BY event_class, segment_index HAVING count(*) > 1 LIMIT 20;",
+  "result_dup": [],
+  "reproduce_cmd_migration_monotonicity": "SELECT count(*) FROM (SELECT id, applied_at, LAG(applied_at) OVER (ORDER BY id) AS prev_applied_at FROM _migrations_applied) t WHERE applied_at < prev_applied_at;",
+  "result_migration_monotonicity": 0,
+  "verdict": "PASS on all three: no orphaned chart_id rows across 5 sampled tables spanning L1/L2/L3/L4/L5; no duplicate (event_class, segment_index) natural-key rows in kala_field for the native chart; _migrations_applied.applied_at is monotonically non-decreasing when ordered by id."
+}

@@ -1,0 +1,18 @@
+{
+  "tool": "kala_now_get",
+  "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+  "as_of_date": "2026-08-15",
+  "extracted_fields": {
+    "calibration_maturity": {"n_events": 0, "prospective_resolutions": 0, "event_class_coverage": 0, "weights_version": null, "skill_score": null},
+    "gochara_narrative": {
+      "moon_primary": {"description": "Moon in Virgo transiting house 6 from Lagna", "house_from_lagna": 6, "house_from_moon": 1, "current_sign": "Virgo", "is_retrograde": false},
+      "active_windows": [],
+      "field_gochara_alignment": "insufficient_data",
+      "narrative_tier": "thin"
+    }
+  },
+  "auditor_note": "Full raw response captured in session transcript (very large — includes windows, darshana, disha_shula, gulika_kalam_now, chandrashtama, hora_now, janma_resonance, gochara_dual_reference x9 planets, dasha_lord_transit_condition, sukshma_boundary_uncertainty, dasha_sandhi, kota_chakra, sudarshana_varsha, moorti_nirnaya, vedha_gochara, tithi_pravesha). This extract isolates the two fields under audit: calibration_maturity (Task 1 / prior finding #3) and gochara_narrative.field_gochara_alignment (Task 2 / prior finding #4). Both confirmed live on the native chart (482012f1-...) with 64 known LEL events and 22 gochara windows covering today per prior finding descriptions.",
+  "cross_check_mimamsa_calibration_get": {
+    "note": "mimamsa_calibration_get (L5 Mīmāṃsā, separate subsystem from kala_* envelope) on the SAME chart_id returns real, non-zero calibration data: verdict_distribution includes composite_verdict=UNRESOLVED n=25 (truncated response, budget_kb=40); mimamsa_insight_get's calibration_summary reports total_matches=57, mean_composite_score=0.495, with calibrated_outlook insight_units carrying n_support values of 7/12/18/3/13/4 events per confidence-band stratum (sum=57). This proves LEL-derived calibration data DOES exist and IS computed somewhere in the system for this chart -- the kala_* envelope's calibration_maturity field is zero not because no calibration data exists globally, but because (per living_lel.py's own module docstring) it is a SEPARATE, not-yet-wired W2 'Living-LEL calibration plane' that the kala_* facades stub to noLelCalibrationMaturity() regardless of chart LEL richness."
+  }
+}

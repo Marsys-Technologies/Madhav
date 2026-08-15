@@ -1,0 +1,7 @@
+{
+  "tool": "mcp__postgres__query",
+  "sql": "SELECT fact_category, count(*) FROM chart_facts WHERE chart_id='482012f1-710e-4a25-994a-93821f5871aa' AND fact_category = 'varga_aspect_matrix' GROUP BY fact_category;",
+  "purpose": "Confirm ga_writers/ga_vargas_writer.py's _compute_aspect_matrix() (lines 573-595, its own independent Mars/Jupiter/Saturn-special-case dict with a silent 7th-only fallback for every other body including Rahu/Ketu) is DEAD CODE -- declared but never called anywhere in the repo (grep -rn '_compute_aspect_matrix\\b' finds only its own def), and its target category 'varga_aspect_matrix' (declared in TWO_PASS_CATEGORIES, line 299) has ZERO live rows on the native chart.",
+  "response": [],
+  "verdict": "Zero rows returned -- confirms the category is unpopulated / the defective function is unreachable in production. Not a live violation; flagged as a latent landmine only (same bug pattern as primitives.py SPECIAL_DRISHTI_DEG, would resurface if this dead function is ever wired up)."
+}

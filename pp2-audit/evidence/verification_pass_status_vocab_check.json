@@ -1,0 +1,18 @@
+{
+  "description": "chart_facts.verification_pass_status distinct values vs declared vocabulary in brahmagyan/verification_vocab.py",
+  "reproduce_cmd": "SELECT verification_pass_status, count(*) FROM chart_facts GROUP BY verification_pass_status;",
+  "result": [
+    {"verification_pass_status": "classical_match", "count": 42},
+    {"verification_pass_status": "computed_extension", "count": 11295},
+    {"verification_pass_status": "divergent_flagged", "count": 45},
+    {"verification_pass_status": "documented_approximation", "count": 2410},
+    {"verification_pass_status": "floored", "count": 7095},
+    {"verification_pass_status": "not_defined_for_nodes", "count": 96},
+    {"verification_pass_status": "pending_w3_verification", "count": 150},
+    {"verification_pass_status": "single", "count": 353068},
+    {"verification_pass_status": "single_pass", "count": 10417},
+    {"verification_pass_status": "two_pass_verified", "count": 32650}
+  ],
+  "vocab_source": "platform/python-sidecar/brahmagyan/verification_vocab.py VERIFICATION_PASS_STATUS_VOCAB / ALL_STATUSES (13-member settled vocabulary)",
+  "verdict": "PASS -- all 10 distinct live values are declared members of ALL_STATUSES. No PROHIBITED_STATUSES ('pass'/'PASS') literal found in chart_facts."
+}

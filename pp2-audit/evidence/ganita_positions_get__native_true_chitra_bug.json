@@ -1,0 +1,34 @@
+{
+  "note": "A1 Wave1 PP2 -- ganita_positions_get ayanamsha_id=true_chitra silently serves lahiri_chitrapaksha data instead",
+  "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+  "mcp_call_1": {
+    "call": "ganita_positions_get(chart_id, planet='LAGNA', ayanamsha_id='true_chitra')",
+    "served_response_row_house_d1": {"fact_id":"a9689755ebaf8d87","ayanamsha_id":"lahiri_chitrapaksha","fact_value_num":1},
+    "served_response_row_longitude": {"fact_id":"aefc095c91e61a73","ayanamsha_id":"lahiri_chitrapaksha","fact_value_num":12.431149598843},
+    "note": "Requested true_chitra, server returned rows whose own ayanamsha_id field literally reads 'lahiri_chitrapaksha' and whose fact_id values are byte-identical to the unfiltered/default lahiri_chitrapaksha call."
+  },
+  "mcp_call_2_sun_confirms_pattern": {
+    "call": "ganita_positions_get(chart_id, planet='SUN', ayanamsha_id='true_chitra')",
+    "served_ayanamsha_id_in_every_row": "lahiri_chitrapaksha",
+    "served_fact_ids": ["f3bd08377708d065 (combustion_state)","4f14bb3f2e38e238 (house_d1)","92fe462beee14d92 (longitude_sidereal)"],
+    "note": "Identical fact_ids to the plain lahiri_chitrapaksha SUN call -- same pattern as LAGNA."
+  },
+  "mcp_call_3_control_bogus_ayanamsha": {
+    "call": "ganita_positions_get(chart_id, planet='SUN', ayanamsha_id='bogus_nonexistent_ayanamsha_xyz')",
+    "served_response": {"rows": [], "total": 0},
+    "note": "CONTROL: proves the ayanamsha_id filter mechanism itself works correctly for a genuinely-unknown value (empty result) -- so true_chitra is not simply being treated as 'unknown'; it is being specifically mishandled/aliased to the default."
+  },
+  "postgres_direct_query_proves_true_chitra_rows_exist": {
+    "sql_1": "SELECT DISTINCT ayanamsha_id FROM chart_facts WHERE chart_id='482012f1-710e-4a25-994a-93821f5871aa' AND fact_category='graha_position'",
+    "result_1": ["krishnamurti","lahiri_chitrapaksha","raman","surya_siddhanta_classical","true_chitra"],
+    "sql_2": "SELECT fact_id, fact_subject, fact_key, fact_value_num, fact_value_text, ayanamsha_id FROM chart_facts WHERE chart_id='482012f1-710e-4a25-994a-93821f5871aa' AND fact_category='graha_position' AND fact_subject='LAGNA' AND ayanamsha_id='true_chitra' ORDER BY fact_key",
+    "result_2": [
+      {"fact_id":"61614223585102d2","fact_key":"house_d1","fact_value_num":"1","ayanamsha_id":"true_chitra"},
+      {"fact_id":"28889b6b1ac77b77","fact_key":"longitude_sidereal","fact_value_num":"12.4466905339283","ayanamsha_id":"true_chitra"},
+      {"fact_id":"7f0e3e9b665979a6","fact_key":"pada","fact_value_num":"4","ayanamsha_id":"true_chitra"},
+      {"fact_id":"3ff2fb441fc4896d","fact_key":"sign","fact_value_text":"Aries","ayanamsha_id":"true_chitra"},
+      {"fact_id":"073276be4c582691","fact_key":"sign_lord","fact_value_text":"Mars","ayanamsha_id":"true_chitra"}
+    ],
+    "verdict": "The database DOES contain genuine, distinctly-computed true_chitra rows (different fact_ids, slightly different longitude 12.4467 vs lahiri's 12.4311 deg) for this chart. The MCP tool ganita_positions_get, when explicitly asked for ayanamsha_id='true_chitra', does NOT serve these rows -- it silently serves the lahiri_chitrapaksha rows instead, mislabeled as if the caller's filter had matched. LAGNA sign happens to still read Aries in both ayanamshas (values are only 0.015 deg apart) so this specific defect does not break the FORENSIC Lagna=Aries claim for THIS chart by coincidence, but the served ayanamsha_id field is factually wrong and a caller cannot trust any true_chitra-filtered query result from this tool."
+  }
+}

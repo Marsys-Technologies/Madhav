@@ -1,0 +1,25 @@
+{
+  "tool": "mcp__marsys-jis-direct__ganita_yoga_firings_get",
+  "args": {"chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a", "yoga_canonical_id": "vipareeta_raja_yoga", "all": true},
+  "purpose": "Empirically confirm _cancel_vipareeta_raja_yoga (ga_yoga_writer.py) is live-reachable and its dilution loop (which calls _nb_aspects_house over ALL planets in state.planet_house, including Rahu/Ketu) actually executes and can set bhanga_active. This firing shows dilution by Venus (a classical planet) -- the live confirmation is that the code path executes; the Rahu/Ketu-specific gap (NB_GRAHA_DRISHTI has no 'rahu'/'ketu' keys, so _nb_aspects_house falls back to NB_DEFAULT_DRISHTI={7} for nodes) is a static-code finding (ga_writers/ga_yoga_writer.py lines 1499-1504, 2322-2326) not independently re-derivable from this single firing alone (would require a chart where a node sits at a 5th/9th, non-7th, house-offset from a dusthana lord to see it miss).",
+  "response": {
+    "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+    "rows": [
+      {
+        "id": 2555,
+        "yoga_canonical_id": "vipareeta_raja_yoga",
+        "ayanamsha_id": "lahiri_chitrapaksha",
+        "fired": true,
+        "strength": 1.324,
+        "bhanga_active": true,
+        "bhanga_rule_fired": "conjunct_or_aspected_by_non_dusthana_lord:venus",
+        "constituent_planets": ["mars"],
+        "constituent_houses": [12],
+        "constituent_fact_ids": ["df62b24b70643c99"],
+        "citation_ref": "ga_yoga.strength:vipareeta_raja_yoga:constituent_bala_v1@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:bala_gate=graha_shadbala_total"
+      }
+    ],
+    "count": 1,
+    "total_matching": 1
+  }
+}

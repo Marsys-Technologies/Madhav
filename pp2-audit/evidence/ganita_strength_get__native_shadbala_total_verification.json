@@ -1,0 +1,35 @@
+{
+  "note": "A1 Wave1 PP2 -- HIGH PRIORITY shadbala verification. Compares ganita_strength_get served graha_shadbala_total values against direct postgres chart_facts query, chart_id=482012f1-710e-4a25-994a-93821f5871aa, ayanamsha=lahiri_chitrapaksha.",
+  "db_direct_query": "SELECT fact_subject, fact_key, fact_value_num FROM chart_facts WHERE chart_id='482012f1-710e-4a25-994a-93821f5871aa' AND fact_category='graha_shadbala_total' AND ayanamsha_id='lahiri_chitrapaksha' ORDER BY fact_subject, fact_key",
+  "db_direct_result": {
+    "JUP":{"ratio":1.2,"rupa":7.8},
+    "MAR":{"ratio":1.114,"rupa":5.57},
+    "MER":{"ratio":1.07857142857143,"rupa":7.55},
+    "MOON":{"ratio":0.941666666666667,"rupa":5.65},
+    "RAH_MEAN":{"rupa":0.375},
+    "SAT":{"ratio":1.566,"rupa":7.83},
+    "SUN":{"ratio":1.694,"rupa":8.47},
+    "VEN":{"ratio":0.843636363636364,"rupa":4.64},
+    "KET_MEAN":{"rupa":0.625}
+  },
+  "mcp_served_result_via_ganita_strength_get_offset_400": {
+    "MER":{"ratio":1.07857142857143,"rupa":7.55,"fact_ids":["27870f78a693a757","94d524d73b1252d8"]},
+    "VEN":{"ratio":0.843636363636364,"rupa":4.64,"fact_ids":["e11125e5f946a057","5a80bdf4947d5e16"]},
+    "SUN":{"ratio":1.694,"rupa":8.47,"fact_ids":["0f1452c054230713","bdd122ffbf3e8f5a"]},
+    "SAT":{"ratio":1.566,"rupa":7.83,"fact_ids":["ef89ff1678e269b5","802b98a85d32bc93"]},
+    "MAR":{"ratio":1.114,"rupa":5.57,"fact_ids":["d105fd3b4a061064","918ddc509a17a250"]},
+    "MOON":{"ratio":0.941666666666667,"rupa":5.65,"fact_ids":["6ad73f1d7b347972","cc79e7a6cab70298"]},
+    "JUP":{"rupa":7.8,"fact_ids":["8d3b488e487bfc8e"],"note":"JUP.ratio row not present on THIS trimmed page (offset=400, kept_count 60 of 120) -- ratio value not independently re-confirmed via MCP for JUP this pass, but rupa matches DB exactly"},
+    "RAH_MEAN":{"rupa":0.375,"fact_ids":["7018ffcd5923f0ee"]},
+    "KET_MEAN":{"rupa":0.625,"fact_ids":["289c3793f9d81488"]}
+  },
+  "verdict_shadbala_values": "PASS -- every graha_shadbala_total value served by ganita_strength_get (ratio and rupa, for all 9 grahas reachable on this page) matches the raw chart_facts DB table byte-for-byte / digit-for-digit. NO wrong-column-selector defect found in the currently-deployed serving path. The ŚUDDHA-VĀCA-era shadbala selector fix (CLAUDE.md §N.8 instance 1) appears to hold for the native chart as of this audit.",
+  "verdict_reachability": "DEFECT (see finding) -- graha_shadbala_total is NOT reachable on the tool's DEFAULT page (offset=0) or on several higher offsets tried (0, 80, 125, 250) despite being declared in the response's own top-level 'categories' array every single call. It took offset=400 (found by trial-and-error escalation: 0 -> 80 -> 125 -> 250 -> 400) to finally surface graha_shadbala_total rows. The 'limit' parameter (tested at 25000, the tool's documented max) has NO effect on the number of rows actually served -- every call regardless of limit was silently capped by an internal byte-budget trim to somewhere between 48 and 60 rows. The declared 'total' row count and 'counterfactual_rows_dropped' count also both changed between calls at different offsets for the SAME chart/ayanamsha (223 at offset=0, 208 at offset=80, 205 at offset=125, 193 at offset=250, 120 at offset=400), indicating offset is not applied to a stable, consistently-filtered row ordering.",
+  "offset_escalation_log": [
+    {"offset":0,"total":223,"counterfactual_rows_dropped":297,"first_category_seen":"graha_composite_state_classification","shadbala_total_present":false},
+    {"offset":80,"total":208,"counterfactual_rows_dropped":232,"first_category_seen":"graha_in_house_composite_strength","shadbala_total_present":false},
+    {"offset":125,"total":205,"counterfactual_rows_dropped":190,"first_category_seen":"graha_in_house_composite_strength","shadbala_total_present":false},
+    {"offset":250,"total":193,"counterfactual_rows_dropped":77,"first_category_seen":"graha_in_house_composite_strength","last_category_seen":"graha_shadbala_drik","shadbala_total_present":false},
+    {"offset":400,"total":120,"counterfactual_rows_dropped":0,"first_category_seen":"graha_shadbala_total","shadbala_total_present":true}
+  ]
+}

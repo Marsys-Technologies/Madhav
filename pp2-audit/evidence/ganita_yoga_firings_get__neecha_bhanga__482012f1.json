@@ -1,0 +1,19 @@
+{
+  "tool": "mcp__marsys-jis-direct__ganita_yoga_firings_get",
+  "args": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "yoga_canonical_id": "neecha_bhanga_raja_yoga", "all": true},
+  "purpose": "Confirm nbry_rule_3_lord_aspect (which also calls _nb_aspects_house) executes live on the native chart. grounds_jsonb shows rule_3 'checked': true, 'fired': false for both venus@D9 and saturn@D9 debilitations. Static-code review (ga_writers/ga_yoga_writer.py nbry_rule_3_lord_aspect, lines 1666-1693) shows rule 3's candidate aspectors are drawn ONLY from NB_SIGN_LORDS (classical sign rulers of the debilitation-sign and exaltation-sign) -- Rahu/Ketu never own a sign lordship in this codebase's mainstream Parashari model, so they can never appear as 'cand' in rule 3. CONCLUSION: rule 3 itself is NOT reachable by the Rahu/Ketu drishti gap (compliant by construction, not because the underlying table is correct). The reachable gap is in _cancel_vipareeta_raja_yoga's separate dilution loop (see other evidence file), which iterates ALL planets including nodes.",
+  "response_excerpt": {
+    "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+    "rows": [
+      {
+        "yoga_canonical_id": "neecha_bhanga_raja_yoga",
+        "fired": true,
+        "bhanga_active": true,
+        "debilitated_planets": ["venus", "saturn"],
+        "rescuer_planets": ["mercury", "mars", "sun"],
+        "grounds_jsonb_rule3_venus": {"fired": false, "checked": true, "rule_id": "nbry_rule_3_lord_aspect"},
+        "grounds_jsonb_rule3_saturn": {"fired": false, "checked": true, "rule_id": "nbry_rule_3_lord_aspect"}
+      }
+    ]
+  }
+}

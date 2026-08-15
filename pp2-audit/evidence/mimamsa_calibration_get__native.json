@@ -1,0 +1,10 @@
+{
+  "tool": "mimamsa_calibration_get",
+  "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+  "raw_response_content_field_decoded": {
+    "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+    "verdict_distribution": [{"composite_verdict": "UNRESOLVED", "n": 25}],
+    "note": "response was budget-trimmed (budget_kb_applied:40, trim_report present) -- full verdict_distribution beyond the first entry was not captured verbatim in this evidence file, but result_hash sha256:8e64ba7d16a7a2aa6f1155a250acafcaa717397aa6927fe90b496f33e1e833b5 is recorded for reproducibility."
+  },
+  "cross_reference": "mimamsa_insight_get (insight_type=calibrated_outlook) on the SAME chart_id independently reports calibration_summary.total_matches=57, mean_composite_score=0.495, with 6 calibrated_outlook insight_units carrying n_support=7/12/18/3/13/4 (sum=57) across confidence-band strata -- proving real, non-zero, LEL-derived calibration computation exists and is served for this chart through the L5 Mimamsa 'mimamsa_insight_units' surface, in direct tension with the kala_* envelope's calibration_maturity field which reports n_events=0 unconditionally for the same chart (see A4-F-59)."
+}

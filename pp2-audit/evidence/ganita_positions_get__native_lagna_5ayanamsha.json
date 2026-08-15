@@ -1,0 +1,7 @@
+{"note":"A1 Wave1 PP2 -- LAGNA sign across 5 ayanamshas, chart_id=482012f1-710e-4a25-994a-93821f5871aa","results":{
+"lahiri_chitrapaksha":{"sign":"Aries","longitude_sidereal":12.431149598843},
+"krishnamurti":{"sign":"Aries","longitude_sidereal":12.5280019321739},
+"raman":{"sign":"Aries","longitude_sidereal":13.8774509321739},
+"surya_siddhanta_classical":{"sign":"Aries","longitude_sidereal":15.3931824105296},
+"true_chitra":{"sign":"Aries (same row as lahiri_chitrapaksha in server response -- see note)","note":"positions_get call with ayanamsha_id=true_chitra returned identical fact_ids to the default lahiri_chitrapaksha row -- server may be aliasing true_chitra to lahiri_chitrapaksha or the call silently fell back to default; see A1-F-* finding if this is anomalous"}
+},"verdict":"Lagna = Aries confirmed across all 4 explicitly-distinct ayanamshas queried (lahiri_chitrapaksha, krishnamurti, raman, surya_siddhanta_classical); true_chitra call returned lahiri's own fact_ids verbatim (see finding)."}

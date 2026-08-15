@@ -1,0 +1,16 @@
+{
+  "description": "R17 identity-adoption check: legacy id-mapping columns/tables + phantom chart_id 362f9f17 presence",
+  "reproduce_cmd_1": "SELECT table_name, column_name FROM information_schema.columns WHERE column_name ILIKE '%legacy_id%' OR column_name ILIKE '%old_chart_id%' OR column_name ILIKE '%identity_map%' OR column_name ILIKE '%id_crosswalk%' ORDER BY table_name;",
+  "result_1": [],
+  "reproduce_cmd_2": "grep -rln \"identity_map\\|id_crosswalk\\|legacy_chart_id\\|chart_id_map\" platform/src platform-mcp/src platform/python-sidecar",
+  "result_2": "no matches",
+  "reproduce_cmd_3": "SELECT 'charts' as tbl, count(*) FROM charts WHERE id::text LIKE '362f9f17%' UNION ALL SELECT 'chart_facts', count(*) FROM chart_facts WHERE chart_id::text LIKE '362f9f17%' UNION ALL SELECT 'asset_throughput', count(*) FROM asset_throughput WHERE chart_id::text LIKE '362f9f17%' UNION ALL SELECT 'kala_field', count(*) FROM kala_field WHERE chart_id::text LIKE '362f9f17%';",
+  "result_3": [
+    {"tbl": "charts", "count": 0},
+    {"tbl": "chart_facts", "count": 0},
+    {"tbl": "asset_throughput", "count": 0},
+    {"tbl": "kala_field", "count": 0}
+  ],
+  "note": "chart_fact_identity table (270471 rows) exists but is a fact-identity PARSING index (fact_id -> entity_kind/graha_code/house_num/varga_id/sign_num), not a legacy chart-id crosswalk; not in scope for R17.",
+  "verdict": "PASS -- no surviving independent identity maps found; the CLAUDE.md-flagged phantom chart_id is confirmed absent from all checked tables."
+}

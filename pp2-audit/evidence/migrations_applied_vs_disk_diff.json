@@ -1,0 +1,38 @@
+{
+  "description": "_migrations_applied DB table (430 rows) vs *.sql/*.py files under platform/migrations + platform/supabase/migrations (423 files)",
+  "reproduce_cmd_db": "SELECT filename FROM _migrations_applied ORDER BY filename;",
+  "reproduce_cmd_disk": "find platform/migrations platform/supabase/migrations -maxdepth 1 \\( -name '*.sql' -o -name '*.py' \\) | xargs -n1 basename | sort",
+  "db_count": 430,
+  "disk_count": 423,
+  "only_in_db_no_file_on_disk": [
+    "118_build_events.sql",
+    "124_builds.sql",
+    "125_build_steps.sql",
+    "126_engine_versions.sql",
+    "127_build_notifications.sql",
+    "133_notification_views.sql",
+    "456_lel_schema_v2_event_shapes.sql"
+  ],
+  "only_on_disk_not_applied": [],
+  "followup_check_archive": {
+    "reproduce_cmd": "find /Users/Dev/Vibe-Coding/Apps/Madhav -name '<filename>' -not -path '*/node_modules/*' -not -path '*/.clone/*' -not -path '*/.claude/worktrees/*' -not -path '*/.git/*'",
+    "result": {
+      "118_build_events.sql": "found at platform/migrations/_archive/118_build_events.sql (legitimate archival, ONGOING_HYGIENE_POLICIES retain-in-place)",
+      "124_builds.sql": "found at platform/migrations/_archive/124_builds.sql",
+      "125_build_steps.sql": "found at platform/migrations/_archive/125_build_steps.sql",
+      "126_engine_versions.sql": "found at platform/migrations/_archive/126_engine_versions.sql",
+      "127_build_notifications.sql": "found at platform/migrations/_archive/127_build_notifications.sql",
+      "133_notification_views.sql": "found at platform/migrations/_archive/133_notification_views.sql",
+      "456_lel_schema_v2_event_shapes.sql": "NOT FOUND anywhere in the repository, including _archive/"
+    }
+  },
+  "sql_identity_check": {
+    "reproduce_cmd": "SELECT filename, applied_at, sha256, sql_identity FROM _migrations_applied WHERE filename IN ('456_lel_schema_v2_event_shapes.sql','457_lel_schema_v2_event_shapes.sql','456_brahma_event_ontology_dr13_shapes.sql') ORDER BY filename;",
+    "result": [
+      {"filename": "456_brahma_event_ontology_dr13_shapes.sql", "applied_at": "2026-07-19T01:19:39.845Z", "sha256": "0f62d49880bd7be7ed45e4745f4cb7bc12ca9e0fe99f88c2ceba451b6bc7faa2"},
+      {"filename": "456_lel_schema_v2_event_shapes.sql", "applied_at": "2026-07-18T23:30:11.222Z", "sha256": "a6d30ee464d7cac18884e13724a2505182c935a6453ab00558eb0c9dc3c29339", "sql_identity": null},
+      {"filename": "457_lel_schema_v2_event_shapes.sql", "applied_at": "2026-07-19T01:19:40.153Z", "sha256": "fdc1edb0789ac743c8d67c0f4cc9b2ad8cb995597407c724fb5d175dfc612e7f"}
+    ],
+    "note": "456_lel_schema_v2_event_shapes.sql and 457_lel_schema_v2_event_shapes.sql have DIFFERENT sha256 hashes (not a simple filename rename of identical content) and 456's sql_identity is NULL, unlike 456_brahma_event_ontology_dr13_shapes.sql and 457_lel_schema_v2_event_shapes.sql which both have a populated sql_identity. 456_lel_schema_v2_event_shapes.sql applied against production 2026-07-18 but its source is unrecoverable from the repository."
+  }
+}

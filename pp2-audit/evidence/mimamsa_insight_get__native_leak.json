@@ -1,0 +1,38 @@
+{
+  "reproduce_cmd": "mcp__marsys-jis-direct__mimamsa_insight_get({chart_id:'482012f1-710e-4a25-994a-93821f5871aa', top_k:10})",
+  "top_level_tier_declaration": {
+    "calibration_status": "prior_only",
+    "mode": "STRUCTURAL",
+    "note": "L5 Mimamsa is SEALED in STRUCTURAL mode. Empirical calibration accrues as outcome data is recorded."
+  },
+  "insight_units_excerpt": [
+    {
+      "insight_id": "disc_retro_021e49f5-9c6a-5e0e-ad6c-84c8ea2ad83f",
+      "insight_type": "retrodiction",
+      "rank_consequence": 0.95,
+      "n_support": 3,
+      "evidence_grade": "prior_only"
+    },
+    {
+      "insight_id": "verdict_career_setback",
+      "insight_type": "verdict_object",
+      "statement": "Career Setback: promised (grade 8.8/10). Strong evidence, corroborated across traditions.",
+      "rank_consequence": 0.88,
+      "confidence_band": "[0.68,0.98)",
+      "n_support": 5,
+      "evidence_grade": "structural",
+      "provenance_chain": {"grade": 8.8, "domain": "career", "event_class_id": "career_setback"}
+    },
+    {
+      "insight_id": "verdict_career_entry",
+      "insight_type": "verdict_object",
+      "statement": "Career Entry: promised (grade 7.9/10). Strong evidence, corroborated across traditions.",
+      "rank_consequence": 0.786,
+      "confidence_band": "[0.59,0.89)",
+      "evidence_grade": "structural",
+      "provenance_chain": {"grade": 7.86}
+    }
+  ],
+  "mechanism_confirmation": "platform/python-sidecar/pipeline/orchestrator/writers/mi_darshana.py line 215: evidence_grade = 'empirical' if n_support>=5 else 'prior_only' (so 'prior_only' is the honest non-calibrated marker for retrodiction rows). For insight_type='verdict_object' rows, evidence_grade is hardcoded to the literal string 'structural' at lines 247, 366, 509 -- never conditional, never 'empirical' -- meaning EVERY verdict_object row this writer ever produces is permanently non-calibrated by construction, yet each one is served with a full numeric rank_consequence (0.88, 0.786, 0.774...), a numeric confidence_band interval, and a numeric provenance_chain.grade (0-10 scale) with no suppression.",
+  "observation": "Same defect class as A3-F-61 (phala_predictive_anchors_get), independently confirmed in a second writer (mi_darshana.py) feeding a second MCP tool (mimamsa_insight_get): a permanently self-declared non-calibrated tier (evidence_grade='prior_only'/'structural', calibration_status='prior_only', mode='STRUCTURAL') nonetheless serves precise numeric probability/score values end-to-end with no suppression."
+}

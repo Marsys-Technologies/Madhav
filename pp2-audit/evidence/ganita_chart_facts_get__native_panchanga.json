@@ -1,0 +1,10 @@
+{"note":"A1 Wave1 PP2 -- ganita_chart_facts_get category=panchanga chart_id=482012f1-710e-4a25-994a-93821f5871aa","forensic_anchors_confirmed":{
+"TITHI_BIRTH.name":"Shukla Tritiya",
+"VARA_BIRTH.name":"Ravivara",
+"YOGA_BIRTH.name":"Shiva",
+"KARANA_BIRTH.name":"Garaja"
+},"verdict":"All 4 panchanga FORENSIC anchors (Tithi, Vara, Yoga, Karana) CONFIRMED as served, matching CLAUDE.md's stated 7 FORENSIC birth anchors exactly.",
+"minor_observation_not_a_forensic_anchor":{
+"fact_subject":"YOGA_UNKNOWN","fact_category":"panchanga_special_yoga_combinations","combination_name":"unknown","active_at_birth_flag":"true",
+"note":"A row literally named YOGA_UNKNOWN with combination_name='unknown' is served alongside the real Nitya Yoga (Shiva). This appears to be a special-combination detector (vara+tithi+nakshatra pattern match) that found no named classical combination and is serving a placeholder 'unknown' label rather than omitting the row. Not a FORENSIC-anchor violation (Yoga=Shiva is separately and correctly served via panchanga_yoga/YOGA_BIRTH) but worth flagging under N.7 (no invented judgment) -- see finding for whether this is intentional (an honest 'no match' signal) or an unimplemented detector always firing 'unknown'."
+}}

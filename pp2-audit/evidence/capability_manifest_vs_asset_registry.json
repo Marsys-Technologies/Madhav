@@ -1,0 +1,10 @@
+{
+  "description": "Registry<->ontology reconciliation: asset_registry (DB) vs 00_ARCHITECTURE/CAPABILITY_MANIFEST.json declared catalog",
+  "reproduce_cmd_manifest_entry_count": "python3 -c \"import json; m=json.load(open('00_ARCHITECTURE/CAPABILITY_MANIFEST.json')); print(m['entry_count'], len(m['entries']))\"",
+  "result_manifest_entry_count": "115 entries total (all canonical_id values are governance/doc-artifact ids, e.g. CGP_AUDIT_v1_0, LEL, MSR_v5_0, PROJECT_ARCHITECTURE)",
+  "reproduce_cmd_prefix_scan": "grep -o '\"ga_[a-z_]*\"\\|\"bo_[a-z_]*\"\\|\"ka_[a-z_]*\"\\|\"ph_[a-z_]*\"\\|\"mi_[a-z_]*\"\\|\"bg_[a-z_]*\"' 00_ARCHITECTURE/CAPABILITY_MANIFEST.json | sort -u | wc -l",
+  "result_prefix_scan": 0,
+  "reproduce_cmd_asset_registry": "SELECT asset_id FROM asset_registry ORDER BY asset_id;",
+  "result_asset_registry_sample_count": "asset_registry contains ga_*/bo_*/ka_*/ph_*/mi_*/bg_*/lel_events data-layer asset ids (>120 rows observed, e.g. ka_kshetra, bo_laksana, mi_pramana, ph_pramana)",
+  "verdict": "MISMATCH BY NAMESPACE -- CAPABILITY_MANIFEST.json (00_ARCHITECTURE) catalogs governance/documentation artifacts only; it contains zero of the ga_*/bo_*/ka_*/ph_*/mi_*/bg_* data-layer asset ids that populate asset_registry. The two catalogs cover disjoint namespaces, so a direct orphan-reconciliation between them is vacuous (100% of asset_registry rows would show as 'orphaned' against the manifest, and vice versa) -- this is a scope mismatch, not evidence of drift within either catalog considered on its own terms."
+}

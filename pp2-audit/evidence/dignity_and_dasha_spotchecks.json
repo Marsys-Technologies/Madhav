@@ -1,0 +1,37 @@
+{
+  "note": "A1 Wave1 PP2 -- dignity D1 spot-checks and vimshottari dasha boundary re-derivation, both charts.",
+  "dasha_native_1984-02-05_10-43_IST": {
+    "moon_nakshatra": "Purva Bhadrapada (#25)", "moon_longitude_sidereal": 327.055230133129,
+    "nakshatra_start_deg": 320.0, "fraction_elapsed_in_nakshatra": 0.529142,
+    "vimshottari_starting_lord": "Jupiter",
+    "independent_recompute": "Jupiter dasha balance at birth = (1-0.529142)*16y = 7.5337y remaining => dasha_start ~= birth - 8.4663y ~= 1975-08-04..08-18, dasha_end = dasha_start+16y ~= 1991-08-04..08-18",
+    "served_via_ganita_dasha_periods_get": [
+      {"lord":"Jupiter","start_date":"1975-08-18","end_date":"1991-08-18","duration_years":16,"classical_years_for_Jupiter":16,"match":true},
+      {"lord":"Saturn","start_date":"1991-08-18","end_date":"2010-08-18","duration_years":19,"classical_years_for_Saturn":19,"match":true},
+      {"lord":"Mercury","start_date":"2010-08-18","end_date":"2027-08-18","duration_years":17,"classical_years_for_Mercury":17,"match":true}
+    ],
+    "verdict": "PASS -- all three mahadasha boundaries (Jupiter/Saturn/Mercury) match classical vimshottari year-proportions exactly (16/19/17y) and the Jupiter dasha start/end independently re-derived from Moon's nakshatra elapsed-fraction agree with the served dates to within ~1 day (attributable to manual rounding, not a system defect)."
+  },
+  "dasha_second_chart_1985-03-02_approx": {
+    "moon_nakshatra": "Ardra (#6)", "vimshottari_starting_lord": "Rahu",
+    "served_via_ganita_dasha_periods_get": [
+      {"lord":"Rahu","start_date":"1976-04-22","end_date":"1994-04-23","duration_years":18,"classical_years_for_Rahu":18,"match":true},
+      {"lord":"Jupiter","start_date":"1994-04-23","end_date":"2010-04-23","duration_years":16,"classical_years_for_Jupiter":16,"match":true,"lord_natal_dignity_d1":"debilitated","note":"Jupiter in Capricorn = classically debilitated -- served dignity field correctly matches classical rule"}
+    ],
+    "verdict": "PASS -- Rahu (18y) and Jupiter (16y) mahadasha durations exactly match classical vimshottari proportions; nakshatra-to-starting-lord mapping (Ardra->Rahu) correct; embedded lord_natal_dignity_d1='debilitated' for Jupiter-in-Capricorn independently confirmed correct."
+  },
+  "dignity_d1_native_spotcheck": {
+    "positions_used": {"SUN":"Capricorn 21.96deg","MOON":"Aquarius 27.06deg","MAR":"Libra 18.52deg","MER":"Capricorn 0.84deg","JUP":"Sagittarius 9.79deg","VEN":"Sagittarius 19.17deg","SAT":"Libra 22.43deg"},
+    "served_graha_dignity_per_varga_D1": {"D1_JUP":"own","D1_MAR":"neutral","D1_MER":"neutral","D1_MOON":"neutral","D1_SAT":"exalted","D1_SUN":"neutral","D1_VEN":"neutral"},
+    "unambiguous_classical_checks": [
+      {"graha":"SAT","classical_rule":"Saturn exalts in Libra 0-30deg (deepest 20deg)","position":"Libra 22.43deg","served":"exalted","match":true},
+      {"graha":"JUP","classical_rule":"Jupiter Moolatrikona = Sagittarius 0-10deg; Own sign = Sagittarius 10-30deg (BPHS Ch.4 moolatrikona table)","position":"Sagittarius 9.79deg -- WITHIN the 0-10deg Moolatrikona range, not the 10-30deg plain-Own range","served":"own","match":false,"note":"See finding: served value should classically be 'moolatrikona', a distinct and stronger dignity tier than plain 'own' (different Sthana Bala shashtiamsa point value: MT=45 vs Own=30 per classical Shadbala)."}
+    ],
+    "panchadha_maitri_checks_attempted_but_inconclusive": "SUN and MER sign-lord (Saturn) panchadha-maitri (5-fold: naisargika x tatkalika) combinations were hand-derived and appeared to match (SUN: enemy+friend=neutral, served neutral, match) or mismatch (MER: neutral+friend=friend expected, served neutral) depending on the exact tatkalika-friendship house-counting convention assumed -- given real ambiguity between classical-text variants on this convention, these are NOT logged as findings (DIAGNOSIS-INCOMPLETE), only the unambiguous degree-range Moolatrikona case above is logged as a finding."
+  },
+  "moolatrikona_vocabulary_absence_check": {
+    "postgres_query": "SELECT DISTINCT fact_value_text FROM chart_facts WHERE fact_category='graha_dignity_per_varga' AND fact_value_text ILIKE '%moola%'",
+    "result": "EMPTY (zero rows) -- confirmed chart-wide, across ALL vargas and ALL grahas for chart_id=482012f1-710e-4a25-994a-93821f5871aa: the string 'moolatrikona' (or any 'moola*' variant) never appears as a graha_dignity_per_varga.dignity_state value anywhere in this chart's data.",
+    "ganita_chart_facts_get_keyword_search": "keyword='moolatrikona' also returned zero matching facts chart-wide."
+  }
+}

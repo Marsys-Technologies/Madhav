@@ -1,0 +1,10 @@
+{"note":"A1 Wave1 PP2 -- ganita_positions_get chart_id=1c826d5a-41cb-4450-b4dc-59d440e5f75a (second/comparison chart, Abhinandan)","forensic_relevant_rows":{
+"SUN.sign":"Aquarius",
+"MOON.nakshatra":"Ardra",
+"MOON.sign":"Gemini",
+"LAGNA.sign":"Aries",
+"LAGNA.longitude_sidereal":23.5264715224494,
+"SUN.longitude_sidereal":317.889531661735,
+"MOON.longitude_sidereal":73.2278246385889,
+"MERCURY.combustion_state":"combust"
+},"cross_contamination_check":"PASS -- second chart's Sun (Aquarius, lon 317.89) and Moon (Ardra, lon 73.23) are clearly DIFFERENT from native chart's Sun (Capricorn, lon 291.96) and Moon (Purva Bhadrapada, lon 327.06). No copy-paste/cross-contamination detected between the two charts' served graha_position rows. Lagna happens to also be Aries for this chart (different degree: 23.53 vs native's 12.43) which is a coincidence of two different birth times/places, not contamination -- confirmed distinct longitude and distinct fact_ids throughout.","full_response_total_rows":86,"retrieved_via":"mcp__marsys-jis-direct__ganita_positions_get(chart_id=1c826d5a-41cb-4450-b4dc-59d440e5f75a)"}

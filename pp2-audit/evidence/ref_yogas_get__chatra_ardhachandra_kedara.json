@@ -1,0 +1,22 @@
+{
+  "reproduce_cmd": "mcp__marsys-jis-direct__ref_yogas_get({yoga_name:'chatra'}) | ({yoga_name:'ardhachandra'}) | ({yoga_name:'kedara'})",
+  "chatra_classical_rule": {
+    "canonical_id": "chatra",
+    "formation_rule_jsonb": {"all_seven_planets_in_seven_consecutive_from": "7"},
+    "formation_text": "The seven planets in seven consecutive houses from the 7th (7-1) (parasol).",
+    "classical_citations": [{"chapter": 35, "text_id": "bphs"}]
+  },
+  "ardhachandra_classical_rule": {
+    "canonical_id": "ardhachandra",
+    "formation_rule_jsonb": {"all_seven_planets_in_seven_consecutive_from": "a_panaphara_or_apoklima"},
+    "formation_text": "The seven planets in seven consecutive houses beginning from a non-kendra (half-moon).",
+    "classical_citations": [{"chapter": 35, "text_id": "bphs"}]
+  },
+  "kedara_classical_rule": {
+    "canonical_id": "kedara",
+    "formation_rule_jsonb": {"distinct_signs_occupied": 4},
+    "formation_text": "The seven planets occupy four signs (field).",
+    "classical_citations": [{"chapter": 35, "text_id": "bphs"}]
+  },
+  "analysis": "Chatra/Ardhachandra both classically require the 7 classical planets to occupy 7 DISTINCT consecutive houses (one planet per house in the window) -- fundamentally different from Kedara's '4 distinct signs occupied' count rule. The native chart's 7 planets occupy only 4 distinct houses (7,9,10,11), satisfying Kedara but categorically failing Chatra/Ardhachandra's spread requirement, yet the system fires all three."
+}

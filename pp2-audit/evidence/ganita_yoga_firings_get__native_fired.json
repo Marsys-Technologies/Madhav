@@ -1,0 +1,47 @@
+{
+  "reproduce_cmd": "mcp__marsys-jis-direct__ganita_yoga_firings_get({chart_id:'482012f1-710e-4a25-994a-93821f5871aa', limit:100})",
+  "note": "13 fired yogas returned. Key rows relevant to A3-F-59 (Chatra/Ardhachandra Nabhasa misfire):",
+  "chatra": {
+    "id": 2680,
+    "yoga_canonical_id": "chatra",
+    "fired": true,
+    "strength": 1.2054,
+    "constituent_planets": ["sun","moon","mars","mercury","jupiter","venus","saturn"],
+    "constituent_houses": [7,8,9,10,11,12,1],
+    "citation_human": "chatra strength = mean of normalized shadbala ... derivation=constituent_bala_v1"
+  },
+  "ardhachandra": {
+    "id": 2678,
+    "yoga_canonical_id": "ardhachandra",
+    "fired": true,
+    "strength": 1.2054,
+    "constituent_planets": ["sun","moon","mars","mercury","jupiter","venus","saturn"],
+    "constituent_houses": [5,6,7,8,9,10,11],
+    "citation_human": "ardhachandra strength = mean of normalized shadbala ... derivation=constituent_bala_v1"
+  },
+  "kedara": {
+    "id": 2682,
+    "yoga_canonical_id": "kedara",
+    "fired": true,
+    "strength": 1.2054,
+    "constituent_planets": ["sun","moon","mars","mercury","jupiter","venus","saturn"],
+    "constituent_houses": [],
+    "note_for_audit": "Kedara (4-distinct-signs Sankhya rule) correctly fires; constituent_houses empty is a separate minor data-completeness issue, not a firing-correctness defect."
+  },
+  "actual_planet_houses_from_ganita_positions_get": {
+    "SUN": 10, "MOON": 11, "MARS": 7, "MERCURY": 10, "JUPITER": 9, "VENUS": 9, "SATURN": 7,
+    "note": "Only 4 DISTINCT houses occupied (7,9,10,11) by the 7 classical planets -- directly contradicts Chatra/Ardhachandra's classical requirement of 7 planets in 7 DISTINCT consecutive houses (one planet per house)."
+  },
+  "other_fired_yogas_checked_for_task1_sample_of_10": [
+    "sasa (Pancha Mahapurusha) -- CORRECT: Saturn exalted in Libra (kendra house 7)",
+    "budha_aditya -- CORRECT: Sun+Mercury conjunct house 10",
+    "vasi -- CORRECT: Jupiter+Venus (benefics) in house 9, which is 12th from Sun's house 10",
+    "anapha -- CORRECT: Mercury (house 10) in 12th from Moon (house 11)",
+    "sarasvati_yoga -- CORRECT: Jupiter(own sign, trikona h9)+Venus(trikona h9)+Mercury(kendra h10), all kendra/trikona/2nd, Jupiter own/exalted per rule",
+    "dhana_yoga_2_5_9_11 -- CORRECT: Venus(2nd lord)+Jupiter(9th lord) conjunct house 9",
+    "raja_yoga_kendra_trikona -- CORRECT: Venus(7th lord, kendra)+Jupiter(9th lord, trikona) conjunct house 9",
+    "chatra -- MISFIRE (see above)",
+    "ardhachandra -- MISFIRE (see above)",
+    "kedara -- CORRECT (4 distinct signs occupied)"
+  ]
+}

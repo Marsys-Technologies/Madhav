@@ -1,0 +1,8 @@
+{"note":"A1 Wave1 PP2 evidence -- ganita_positions_get chart_id=482012f1-710e-4a25-994a-93821f5871aa (native, Abhisek Mohanty)","forensic_relevant_rows":{
+"SUN.sign":"Capricorn",
+"MOON.nakshatra":"Purva Bhadrapada",
+"LAGNA.sign":"Aries",
+"LAGNA.longitude_sidereal":12.431149598843,
+"SUN.longitude_sidereal":291.962617284992,
+"MOON.longitude_sidereal":327.055230133129
+},"full_response_total_rows":86,"retrieved_via":"mcp__marsys-jis-direct__ganita_positions_get(chart_id=482012f1-710e-4a25-994a-93821f5871aa)"}

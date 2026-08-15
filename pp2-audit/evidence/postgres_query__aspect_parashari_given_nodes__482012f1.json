@@ -1,0 +1,14 @@
+{
+  "tool": "mcp__postgres__query",
+  "sql": "SELECT fact_id, fact_key, fact_value_num, citation_ref, citation_human FROM chart_facts WHERE chart_id='482012f1-710e-4a25-994a-93821f5871aa' AND fact_category = 'aspect_parashari_given' AND ayanamsha_id='lahiri_chitrapaksha' AND (citation_human ILIKE 'Rahu%' OR citation_human ILIKE 'Ketu%') ORDER BY citation_human LIMIT 20;",
+  "purpose": "Empirically confirm ga_structural_writer.py's _graha_aspects_house / NODE_PARASHARI_ASPECTS correctly grants Rahu and Ketu the classical 5th/7th/9th special-aspect set (not truncated to 7th-only) in the LIVE aspect_parashari_given chart_facts feeding get_aspects.ts (L1 ganita_structural_get / judgment_query's aspect_parashari_received read).",
+  "response": [
+    {"fact_id": "0ca1f84feddababd", "citation_human": "Ketu 5th aspect on house 12 (Pisces) at strength 1.00 (lahiri_chitrapaksha)."},
+    {"fact_id": "8fe943c700209c07", "citation_human": "Ketu 7th aspect on house 2 (Taurus) at strength 1.00 (lahiri_chitrapaksha)."},
+    {"fact_id": "72b669c6bfa31873", "citation_human": "Ketu 9th aspect on house 4 (Cancer) at strength 1.00 (lahiri_chitrapaksha)."},
+    {"fact_id": "4eab5ac1dd61ae75", "citation_human": "Rahu 5th aspect on house 6 (Virgo) at strength 1.00 (lahiri_chitrapaksha)."},
+    {"fact_id": "296389ab2ad746ba", "citation_human": "Rahu 7th aspect on house 8 (Scorpio) at strength 1.00 (lahiri_chitrapaksha)."},
+    {"fact_id": "6afc26519c996528", "citation_human": "Rahu 9th aspect on house 10 (Capricorn) at strength 1.00 (lahiri_chitrapaksha)."}
+  ],
+  "verdict": "COMPLIANT -- both nodes show exactly the 5th/7th/9th triple, no 3rd, no other offsets. Matches NODE_PARASHARI_ASPECTS = {5: 1.0, 7: 1.0, 9: 1.0} in ga_writers/ga_structural_writer.py line 564."
+}

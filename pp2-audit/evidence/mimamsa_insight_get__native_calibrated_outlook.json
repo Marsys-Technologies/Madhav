@@ -1,0 +1,25 @@
+{
+  "tool": "mimamsa_insight_get",
+  "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+  "args": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "insight_type": "calibrated_outlook"},
+  "content": {
+    "calibration_status": "prior_only",
+    "mode": "STRUCTURAL",
+    "note": "L5 Mimamsa is SEALED in STRUCTURAL mode. Empirical calibration accrues as outcome data is recorded.",
+    "content": {
+      "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+      "insight_units": [
+        {"insight_id": "cal_domain_all_[0.6,0.7)_0", "statement": "In predictions scored [0.6, 0.7), the observed outcome rate is 28.6% across 7 events (evidence: empirical).", "n_support": 7, "evidence_grade": "empirical", "provenance_chain": {"brier": 0.296380158571429, "stratum": "domain_all|[0.6,0.7)"}},
+        {"insight_id": "cal_domain_all_[0.4,0.5)_1", "statement": "In predictions scored [0.4, 0.5), the observed outcome rate is 0.0% across 12 events (evidence: empirical).", "n_support": 12, "evidence_grade": "empirical"},
+        {"insight_id": "cal_domain_all_[0.5,0.6)_2", "statement": "In predictions scored [0.5, 0.6), the observed outcome rate is 0.0% across 18 events (evidence: empirical).", "n_support": 18, "evidence_grade": "empirical"},
+        {"insight_id": "cal_domain_all_[0.8,0.9)_3", "statement": "In predictions scored [0.8, 0.9), the observed outcome rate is 0.0% across 3 events (evidence: prior_only).", "n_support": 3, "evidence_grade": "prior_only"},
+        {"insight_id": "cal_domain_all_[0.3,0.4)_4", "statement": "In predictions scored [0.3, 0.4), the observed outcome rate is 0.0% across 13 events (evidence: empirical).", "n_support": 13, "evidence_grade": "empirical"},
+        {"insight_id": "cal_domain_all_[0.2,0.3)_5", "statement": "In predictions scored [0.2, 0.3), the observed outcome rate is 0.0% across 4 events (evidence: prior_only).", "n_support": 4, "evidence_grade": "prior_only"}
+      ],
+      "calibration_summary": {"total_matches": 57, "confirmed": "0", "partial": "0", "denied": "0", "mean_composite_score": 0.495},
+      "total_returned": 6
+    },
+    "is_error": false
+  },
+  "auditor_note": "sum of n_support across all 6 strata = 7+12+18+3+13+4 = 57, matching calibration_summary.total_matches=57 exactly -- internally consistent. This is REAL, non-zero calibration data served for the native chart via a different surface (mimamsa_insight_get / mimamsa_calibration_get) than the kala_* envelope's calibration_maturity field, which reports n_events=0 for the identical chart_id. See A4-F-59."
+}

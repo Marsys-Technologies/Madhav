@@ -1,0 +1,17 @@
+{
+  "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+  "field_snapshot_id": "kfs_b3bcf77a5a4c3ce5296254bac3809451",
+  "expected_hash": "kfh_6340965c86716454c40c9a8062c15156",
+  "recomputed_hash": "kfh_6340965c86716454c40c9a8062c15156",
+  "match": true,
+  "row_counts": {
+    "kala_field": 2412882,
+    "kala_field_windows": 7650,
+    "kala_field_provenance": 390150,
+    "kala_field_null": 60,
+    "kala_field_salience": 7650,
+    "kala_insights": 415,
+    "kala_timeline_spec": 6
+  },
+  "total_rows": 2818813
+}

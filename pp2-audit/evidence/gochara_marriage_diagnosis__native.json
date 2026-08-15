@@ -1,0 +1,65 @@
+{
+  "auditor_summary": "Task 2 diagnosis evidence bundle. Two DISTINCT root causes found for the marriage-domain-zero-windows question; neither is real astrological physics.",
+  "calls": [
+    {
+      "call": "gochara_activation_get({chart_id: native, domain: 'marriage'})",
+      "result_summary": {"window_count": 0, "empty_reason": "no kala_gochara_windows row spans this date for this chart/event_class/domain filter — an honest zero-activation result, not a fabricated one", "coverage_quality_tier": "rich", "event_classes_covered_includes_marriage": true}
+    },
+    {
+      "call": "gochara_forecast_get({chart_id: native, domain: 'marriage', date_range: {start:'2026-08-15', end:'2027-08-15'}})",
+      "result_summary": {"window_count": 0, "same_empty_reason_pattern": true}
+    },
+    {
+      "call": "gochara_activation_get({chart_id: native, domain: 'relationship'})",
+      "result_summary": {
+        "window_count": 2,
+        "windows": [
+          {"event_class": "romantic_start", "window_start": "2024-02-05", "window_end": "2034-01-30", "signed_intensity": 0.39, "valence": "gain", "generation": "3.0", "calibration_state": "structural_prior"},
+          {"event_class": "marriage", "window_start": "2024-02-05", "window_end": "2034-01-30", "peak_date": "2024-04-19", "signed_intensity": 0.349999, "valence": "neutral", "generation": "3.0", "calibration_state": "structural_prior", "term_breakdown_present": true}
+        ],
+        "note": "domain='relationship' (the CORRECT domain value for the marriage event_class per brahma_event_ontology.domain) returns the marriage window that domain='marriage' silently missed."
+      }
+    },
+    {
+      "call": "gochara_activation_get({chart_id: native, event_class: 'marriage'})",
+      "result_summary": {"window_count": 1, "confirms_active_marriage_window_exists_today": true}
+    },
+    {
+      "call": "gochara_activation_get({chart_id: native}) [unfiltered, as_of today 2026-08-15]",
+      "result_summary": {"window_count": 5, "event_classes_returned": ["spiritual_turn", "bereavement", "major_gain", "psychological_arc", "exam_outcome"], "note": "5 of 22 possible today-active generation=3.0 rows surfaced (DB has exactly 1 authoritative generation=3.0 row per event_class overlapping today, across 22 classes) -- consistent with ORDER BY window_start ASC, signed_intensity DESC + implicit response-budget trim; marriage (signed_intensity 0.35) ranks near the bottom of the tied-window_start cohort and is trimmed out, same as several other legitimate low-intensity classes."}
+    },
+    {
+      "call": "kala_now_get({chart_id: native}) -- raw gochara_narrative block",
+      "result_summary": {"active_windows": [], "field_gochara_alignment": "insufficient_data", "narrative_tier": "thin"}
+    }
+  ],
+  "db_verification": {
+    "marriage_total_rows_all_generations": 4627,
+    "marriage_authoritative_v3_rows": 13,
+    "marriage_authoritative_v3_date_span": "1984-02-04 to 2084-01-30",
+    "row_covering_today_2026_08_15": {
+      "window_start": "2024-02-05", "window_end": "2034-01-30", "peak_date": "2024-04-19",
+      "signed_intensity": 0.349999, "valence": "neutral", "is_adverse": false, "calibration_state": "structural_prior", "generation": "3.0"
+    },
+    "chart_authoritative_generation": "3.0 (kala_gochara_authority table, flipped 2026-08-11 by parishkara-mr08-operator)",
+    "brahma_event_ontology_domain_for_marriage_event_class": "relationship",
+    "sql_used": "SELECT event_class_id, domain FROM brahma_event_ontology WHERE event_class_id='marriage' -> domain='relationship' (NOT 'marriage')"
+  },
+  "root_cause_A_domain_naming_trap": {
+    "claim": "'marriage' is only ever an EVENT_CLASS in brahma_event_ontology, never a domain value -- its domain column resolves to 'relationship'. Any caller (human or the tool's own description text, which uses 'marriage'/'health'/'career' interchangeably as illustrative domain examples) who passes domain='marriage' to gochara_activation_get/gochara_forecast_get gets a well-formed, honestly-labeled, but FALSE zero-window result, because no kala_gochara_windows row's resolved domain literally equals the string 'marriage'.",
+    "mechanism_file": "platform-mcp/src/tools/retrieval/register_gochara_windows.ts (domain filter WHERE clause joins/filters against brahma_event_ontology.domain, which is 'relationship' for event_class='marriage', not 'marriage')",
+    "verified_workaround": "domain='relationship' or event_class='marriage' both correctly surface the live, authoritative, currently-active marriage window."
+  },
+  "root_cause_B_dead_capability_uri": {
+    "claim": "kala_now_get's (and kala_explain_get's) gochara_narrative.field_gochara_alignment is 'insufficient_data' UNCONDITIONALLY for every chart and every domain -- not specific to marriage at all -- because fetchGocharaForecastWindows() calls callRegistryCapability('marsys://tool/L4/gochara_forecast_get', ...), and NO capability with 'gochara' anywhere in its URI is registered in platform/src/lib/retrieval/registry (grep across every registerCapability call and every layers/*/index.ts in the whole platform repo returns zero matches for a gochara-related uri). The call therefore 404s against /api/retrieval/capability/route.ts (getCapability(uri) returns null -> 404), callRegistryCapability's catch-all returns {content:null, ok:false}, and fetchGocharaForecastWindows unconditionally returns [] on !resp.ok (now.ts:1381). With activeWindows.length===0, the alignment logic (now.ts:1426-1428) always assigns 'insufficient_data'.",
+    "mechanism_file": "platform-mcp/src/tools/kala_views/now.ts:1359-1394 (fetchGocharaForecastWindows) + :1373 (dead URI 'marsys://tool/L4/gochara_forecast_get') + :1381 (silent [] fallback on !resp.ok) + :1426-1428 (insufficient_data assignment); identical dead-URI reference at platform-mcp/src/tools/kala_views/explain.ts:476; confirmed absent from registry via grep -rn \"uri: '[^']*gochara[^']*'\" platform/src (zero hits) and grep -rn 'marsys://tool/L4/gochara' platform/src (zero hits).",
+    "distinguishing_note": "This is a COMPLETELY DIFFERENT defect from root_cause_A. Root cause A is a live, working tool (gochara_activation_get/gochara_forecast_get, served from platform-mcp/src/tools/retrieval/register_gochara_windows.ts, a local MCP-tool-level implementation) being called with the wrong parameter value. Root cause B is a dead pointer inside kala_now_get/kala_explain_get's OWN internal narrative-composition code, which reaches for a registry capability that was apparently never actually registered under that URI -- the real gochara substrate is fully populated and correct; only this specific internal HTTP round-trip to the platform app's capability router is broken."
+  },
+  "verdict": {
+    "is_it_real_physics": false,
+    "is_it_a_data_gap": false,
+    "is_it_a_code_gap": true,
+    "summary": "Neither zero-windows result reflects real astrological physics or missing underlying data. The marriage event class is richly populated (4627 total rows, 13 authoritative generation=3.0 rows spanning 1984-2084, one row actively covering 2026-08-15 today with a full drishti_contact/kakshya_cell_crossing term_breakdown). The apparent zero results are two SEPARATE, genuinely different code-level defects: (A) a domain-vs-event_class vocabulary mismatch that produces a false honest-empty when callers naturally pass domain='marriage', and (B) a completely dead/unregistered registry-capability URI inside kala_now_get/kala_explain_get's narrative composer that makes field_gochara_alignment read 'insufficient_data' for every chart, every domain, unconditionally -- not a marriage-specific symptom at all.",
+    "relation_to_prior_finding_4": "Confirms prior finding #4's field_gochara_alignment:'insufficient_data' symptom is real and reproducible (root_cause_B). The prior diagnosis reportedly 'blamed the wrong subsystem' -- consistent with what we found: the underlying kala_gochara_windows/gochara sweep substrate (22 gochara windows covering today, as the prior finding described) is fully healthy; the actual defect is the dead capability URI in the kala_now_get/kala_explain_get narrative-assembly code, one layer above the substrate that a naive diagnosis would have blamed."
+  }
+}

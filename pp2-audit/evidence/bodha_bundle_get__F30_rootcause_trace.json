@@ -1,0 +1,33 @@
+{
+  "auditor_summary": "Task 3 (F-30) deep-dive evidence: code trace establishing the shared mechanism boundary that separates the 5 failing bundle sub-tools (MSR, CGM, LEL, PANCHANG, DASHA) from the 3 succeeding ones (UCN, RM, CDLM).",
+  "live_capability_scope_confirmed_via_source": [
+    {"sub_tool": "MSR", "primitive": "query_signals -> msr_sql", "capability_file": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:230", "scope": "per_chart"},
+    {"sub_tool": "CGM", "primitive": "get_cgm_subgraph -> cgm_graph_walk", "capability_file": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:140", "scope": "per_chart"},
+    {"sub_tool": "LEL", "primitive": "lel_query", "capability_file": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_life_events.ts:99", "scope": "per_chart"},
+    {"sub_tool": "PANCHANG", "primitive": "query_panchanga -> get_panchanga", "capability_file": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_panchanga.ts:52", "scope": "per_chart"},
+    {"sub_tool": "DASHA", "primitive": "query_dasha_periods -> get_dashas", "capability_file": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_dashas.ts:188", "scope": "per_chart"},
+    {"sub_tool": "UCN", "primitive": "vector_search -> query_classical_texts (source_filter=UCN_v4_1)", "capability_file": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_classical_texts.ts:124", "scope": "global"},
+    {"sub_tool": "RM", "primitive": "vector_search -> query_classical_texts (source_filter=RM_v2_2)", "capability_file": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_classical_texts.ts:124", "scope": "global"},
+    {"sub_tool": "CDLM", "primitive": "vector_search -> query_classical_texts (source_filter=CDLM_v1_3)", "capability_file": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_classical_texts.ts:124", "scope": "global"}
+  ],
+  "dispatch_code": {
+    "caller": "platform-mcp/src/tools/retrieval/holistic_bundle.ts:154-158 (bodha_bundle_get handler) calls callPlatformBundle('holistic_bundle', {chart_id, include_graph}, getPrincipal())",
+    "http_target": "platform/src/app/api/mcp/bundles/[name]/route.ts (SSE bundle endpoint, same platform Next.js app)",
+    "executor": "platform/src/lib/mcp/bundle_adapters.ts:320-384 executeHolisticBundle() -- fans out Promise.allSettled over all 8 HOLISTIC_SUB_TOOLS via buildHolisticParams() (lines 274-303) + runSubTool()",
+    "per_sub_tool_http_call": "bundle_adapters.ts:131-151 callPrimitive(toolName, params, principal) -- fetch(`${PLATFORM_URL}/api/mcp/primitives/${toolName}`, ...) -- a SELF-REFERENTIAL HTTP loopback call from the platform app back to its own /api/mcp/primitives/[tool] route, made identically for all 8 sub-tools including the 3 that succeed",
+    "gate_inside_primitives_route": "platform/src/app/api/mcp/primitives/[tool]/route.ts:200-218 -- `if (isPerChartPrimitive(mcpToolName)) { ... const role = await resolveMcpPrincipalRole(userUid); const perm = await authorizeChartAccess(...); if (perm === 'deny') return 401 ... }` -- this gate runs ONLY for primitives whose resolved capability has scope:'per_chart'; vector_search (scope:'global') skips it entirely via the same `isPerChartPrimitive()` guard.",
+    "gate_classifier": "platform/src/lib/retrieval/registry/tool_name_bridge.ts:613-620 isPerChartPrimitive(mcpToolName) -- resolves MCP_TO_RETRIEVAL_TOOL[mcpToolName] -> TOOL_NAME_TO_URI[retrievalName] -> getCapability(uri).scope === 'per_chart'"
+  },
+  "correlation_confirmed": "The set {MSR, CGM, LEL, PANCHANG, DASHA} maps 1:1 onto the set of per_chart-scope capabilities reachable through this dispatch path; the set {UCN, RM, CDLM} maps 1:1 onto the one global-scope capability (query_classical_texts/vector_search). This split is deterministic and 100% reproducible across both charts and repeated calls -- never a random subset.",
+  "error_swallowing_confirmed": {
+    "file_line": "platform/src/lib/mcp/bundle_adapters.ts:149",
+    "code": "if (!response.ok) throw new Error(`HTTP ${response.status}`)",
+    "consequence": "the real HTTP status code (400 CHART_REQUIRED? 401 entitlement denial? 500 uncaught exception?) IS captured in this Error message as a bare number, but runSubTool's catch block only reads err.name (for TimeoutError classification) and discards err.message entirely when building the served BundleEntryError -- the served envelope's `sub_errors: [{subsystem, error: 'sub-tool errored (tool_error)'}]` carries no trace of the actual status code."
+  },
+  "underlying_capabilities_independently_confirmed_healthy": {
+    "note": "Called MSR and CGM's underlying capabilities through their NORMAL external MCP-tool aliases (not through the bundle's internal loopback) with equivalent params -- both returned full, real, correct data for the native chart, proving the capabilities themselves are NOT broken; only this one internal call path is.",
+    "bodha_signals_get_chart_id_only": "returned 50 real signals (Saturn nakshatra/upagraha/midpoint/saham positions etc.), total_matching_filters=10003, DEFECT-001 status RESOLVED, signature_tier POPULATED -- fully healthy.",
+    "bodha_graph_subgraph_get_chart_id_only": "returned mode=convergence, 77 total_nodes, 170 total_edges, real hub_nodes/hub_edges with computed pagerank/eigenvector centrality and classical relationship_basis (occupancy, lordship, bhava_aspect, arudha_house, special_lagna_house) -- fully healthy."
+  },
+  "residual_not_pinned_in_this_pass": "The exact reason authorizeChartAccess (or resolveMcpPrincipalRole, or an uncaught exception somewhere in that unguarded code block at route.ts:207-208) rejects/fails for the internal bundle-calling principal specifically was NOT determined -- this audit's tool surface has no access to platform server logs or the raw pre-throw HTTP response body from the internal loopback call. This residual is recorded honestly as DIAGNOSIS-INCOMPLETE for that last step; everything upstream of it (the per_chart/global scope split as the deterministic fail/succeed boundary, and the error-swallowing that makes the last step unrecoverable from outside) is confirmed via direct source-code reading, not inference."
+}

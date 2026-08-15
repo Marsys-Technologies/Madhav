@@ -1,0 +1,41 @@
+{
+  "reproduce_cmd": "mcp__marsys-jis-direct__phala_predictive_anchors_get({chart_id:'482012f1-710e-4a25-994a-93821f5871aa', limit:10})",
+  "note": "Excerpt of raw response -- every anchor object below is copied verbatim from the live tool call.",
+  "anchors_excerpt": [
+    {
+      "anchor_id": "a811641d-9dd7-49ad-9914-0f65a63892f6",
+      "domain": "relationship", "event_type": "marriage",
+      "magnitude": "moderate",
+      "confidence_low": 0.75, "confidence_high": 0.8,
+      "confidence_basis": "structural_not_yet_empirical",
+      "posterior": 0.95,
+      "lift_vector_jsonb": {"base_rate":0.4412,"posterior":0.95,"promise_lift":1.675,"trigger_lift":1,"activation_lift":2,"ayanamsha_robustness_modifier":0.92},
+      "posterior_provenance": {
+        "model": "deterministic_product_lift",
+        "cardinality": null,
+        "cardinality_note": "Not a sample-fit statistic -- this posterior has no underlying N of observed outcomes to report (never fabricated). The empirically-calibrated analog with a genuine n_observations is L5 query_calibration (mimamsa_multipliers).",
+        "base_rate_value": 0.4412,
+        "promise_lift_value": 1.675
+      }
+    },
+    {
+      "anchor_id": "a4a13518-b245-4f2a-9799-c3dfa079e369",
+      "domain": "relationship", "event_type": "marriage",
+      "magnitude": "moderate",
+      "confidence_low": 0.01, "confidence_high": 0.07,
+      "confidence_basis": "structural_not_yet_empirical",
+      "posterior": 0.02,
+      "lift_vector_jsonb": {"base_rate":0,"posterior":0.02,"promise_lift":1.675,"trigger_lift":1,"activation_lift":2,"ayanamsha_robustness_modifier":0.92}
+    },
+    {
+      "anchor_id": "30fe8756-3341-40fc-94fd-a2e1cc1b395d",
+      "domain": "career", "event_type": "career_entry",
+      "magnitude": "minor",
+      "confidence_low": 0.198, "confidence_high": 0.297,
+      "confidence_basis": "structural_not_yet_empirical",
+      "posterior": 0.2475,
+      "lift_vector_jsonb": {"base_rate":0.0617,"posterior":0.2475,"promise_lift":2.179,"trigger_lift":1,"activation_lift":2,"ayanamsha_robustness_modifier":0.92}
+    }
+  ],
+  "observation": "ALL 12 anchors served in this call carry confidence_basis='structural_not_yet_empirical' (the tool's ONLY ever-emitted value per ph_nimitta/engine.py AnchorRecord dataclass default, line 418 -- no branch sets any other value), yet every anchor carries a full numeric point-estimate 'posterior' (4-decimal precision, e.g. 0.95, 0.02, 0.2475), numeric confidence_low/confidence_high bounds, and multiple numeric lift-decomposition factors (base_rate_value, promise_lift_value, activation_lift, trigger_lift, ayanamsha_robustness_modifier) -- none suppressed despite the tier being permanently non-calibrated by construction."
+}

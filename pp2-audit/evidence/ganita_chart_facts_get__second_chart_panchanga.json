@@ -1,0 +1,6 @@
+{"note":"A1 Wave1 PP2 -- ganita_chart_facts_get category=panchanga chart_id=1c826d5a-41cb-4450-b4dc-59d440e5f75a (second/comparison chart)","panchanga_rows":{
+"TITHI_BIRTH.name":"Shukla Dashami",
+"VARA_BIRTH.name":"Shanivara",
+"YOGA_BIRTH.name":"Ayushman",
+"KARANA_BIRTH.name":"Garaja"
+},"cross_contamination_check":"PASS -- Tithi/Vara/Yoga all differ from native chart (Shukla Tritiya/Ravivara/Shiva). Karana='Garaja' happens to match the native chart's Karana, but this is an expected coincidence, NOT contamination: the classical karana cycle has only 11 distinct values (7 movable karanas repeat ~8x/lunar month + 4 fixed karanas occur once each), so two unrelated charts sharing the same karana name is statistically unremarkable and every other panchanga field (tithi, vara, yoga, nakshatra, all fact_ids) is independently distinct and internally consistent with each chart's own birth data.","full_response_total_rows":37}

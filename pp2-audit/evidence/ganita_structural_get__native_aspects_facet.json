@@ -1,0 +1,20 @@
+{
+  "note": "A1 Wave1 PP2 -- ganita_structural_get facet=aspects, chart_id=482012f1-710e-4a25-994a-93821f5871aa. Independent classical re-derivation of Parashari graha aspects (non-nodal grahas only per A1/A2 division of labor) using formula target_house = ((source_house-1 + n-1) mod 12) + 1, cross-referenced against native positions confirmed in ganita_positions_get__native_forensic.json.",
+  "source_houses_from_positions_get": {"SUN":10,"MOON":11,"MAR":7,"MER":10,"JUP":9,"VEN":9,"SAT":7},
+  "verification_table": [
+    {"graha":"SUN","aspect":"7th (universal)","from_house":10,"expected_target":4,"served_target":4,"served_fact_id":"8b5b11bd02f50524","match":true},
+    {"graha":"MOON","aspect":"7th (universal)","from_house":11,"expected_target":5,"served_target":5,"served_fact_id":"52cbd7d95fe62978","match":true},
+    {"graha":"VEN","aspect":"7th (universal)","from_house":9,"expected_target":3,"served_target":3,"served_fact_id":"243f4f58f702b3bf","match":true},
+    {"graha":"MER","aspect":"7th (universal)","from_house":10,"expected_target":4,"served_target":4,"served_fact_id":"7ad329d26f5f641a","match":true},
+    {"graha":"MAR","aspect":"4th (special)","from_house":7,"expected_target":10,"served_target":10,"served_fact_id":"74f3c820d2902171","match":true},
+    {"graha":"MAR","aspect":"7th (universal)","from_house":7,"expected_target":1,"served_target":1,"served_fact_id":"d4f588e6db749598","match":true},
+    {"graha":"MAR","aspect":"8th (special)","from_house":7,"expected_target":2,"served_target":2,"served_fact_id":"f52bf94f4b10377e","match":true},
+    {"graha":"JUP","aspect":"5th (special)","from_house":9,"expected_target":1,"served_target":1,"served_fact_id":"e28d47ad0d655814","match":true},
+    {"graha":"JUP","aspect":"7th (universal)","from_house":9,"expected_target":3,"served_target":3,"served_fact_id":"c4f0596d9f495a8d","match":true},
+    {"graha":"JUP","aspect":"9th (special)","from_house":9,"expected_target":5,"served_target":5,"served_fact_id":"bd8d97b2e77f633d","match":true},
+    {"graha":"SAT","aspect":"3rd (special)","from_house":7,"expected_target":9,"served_target":9,"served_fact_id":"209036505b8a2eaa","match":true},
+    {"graha":"SAT","aspect":"7th (universal)","from_house":7,"expected_target":1,"served_target":1,"served_fact_id":"caf818e1d9d04e48","match":true},
+    {"graha":"SAT","aspect":"10th (special)","from_house":7,"expected_target":4,"served_target":4,"served_fact_id":"c65d43b01e77ffb8","match":true}
+  ],
+  "verdict": "PASS -- all 13 checked aspect rows (Sun/Moon/Mercury/Venus 7th-only; Mars 4/7/8; Jupiter 5/7/9; Saturn 3/7/10) match classical BPHS Graha Drishti rules exactly when independently recomputed from each graha's own confirmed house_d1 position. No extraneous or missing aspect rows found for these 7 non-nodal grahas in the aspect_parashari_given category. Nodal (Rahu/Ketu) aspects are out of scope for A1 per task division (A2 owns nodal aspect coverage)."
+}

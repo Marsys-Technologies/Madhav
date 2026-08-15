@@ -1,0 +1,79 @@
+{
+  "ok": true,
+  "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+  "ayanamsha_id": "lahiri_chitrapaksha",
+  "lagna_sign": "Aries",
+  "mechanisms": [
+    {"house": 10, "house_sign": "Capricorn", "house_lord": "Saturn", "domains_signified": ["career"], "fired_count": 2,
+      "fired_events": [
+        {"event_id": "fd04fecc-21f7-5dfd-b68b-f1a6f1cd6bfa", "event_date": "2007-06-10", "domain": "career/first_job_joined", "dasha_level": "MD", "dasha_lord": "Saturn", "dasha_row_id": "555899cd-3292-4e65-94ef-82ead69c52c7"},
+        {"event_id": "aed78f94-87ca-5347-a1d0-7f277a99b6c4", "event_date": "2008-06-09", "domain": "career/first_job_exited", "dasha_level": "MD", "dasha_lord": "Saturn", "dasha_row_id": "555899cd-3292-4e65-94ef-82ead69c52c7"}
+      ]},
+    {"house": 6, "house_sign": "Virgo", "house_lord": "Mercury", "domains_signified": ["health"], "fired_count": 1,
+      "fired_events": [{"event_id": "64c475da-5248-5332-9127-9331fae79f23", "event_date": "1995-07-01", "domain": "health/chronic_onset", "dasha_level": "AD", "dasha_lord": "Mercury", "dasha_row_id": "35cbcab2-6708-473a-9c60-72e24002ba9e"}]},
+    {"house": 4, "house_sign": "Cancer", "house_lord": "Moon", "domains_signified": ["education", "family"], "fired_count": 1,
+      "fired_events": [{"event_id": "4a1b1dc0-df38-56d8-a2c8-0383bb2acc7c", "event_date": "2003-06-15", "domain": "education/entrance_exam_preparation_ended", "dasha_level": "AD", "dasha_lord": "Moon", "dasha_row_id": "30b414ff-7ac0-4ee3-9525-6c9380fea519"}]},
+    {"house": 11, "house_sign": "Aquarius", "house_lord": "Saturn", "domains_signified": ["wealth", "finance"], "fired_count": 1,
+      "fired_events": [{"event_id": "bd7f5711-8668-5315-8e25-94dc94f2a101", "event_date": "2010-07-01", "domain": "finance/family_windfall", "dasha_level": "MD", "dasha_lord": "Saturn", "dasha_row_id": "555899cd-3292-4e65-94ef-82ead69c52c7"}]},
+    {"house": 9, "house_sign": "Sagittarius", "house_lord": "Jupiter", "domains_signified": ["spiritual", "spirituality", "travel"], "fired_count": 1,
+      "fired_events": [{"event_id": "132b61e0-3409-53fd-bb1a-80b4b6bdcc67", "event_date": "2010-07-01", "domain": "spiritual/devata_adoption", "dasha_level": "AD", "dasha_lord": "Jupiter", "dasha_row_id": "7a60629d-fa5b-481a-8a70-d259bdff5044"}]},
+    {"house": 12, "house_sign": "Pisces", "house_lord": "Jupiter", "domains_signified": ["spiritual", "spirituality", "travel"], "fired_count": 1,
+      "fired_events": [{"event_id": "132b61e0-3409-53fd-bb1a-80b4b6bdcc67", "event_date": "2010-07-01", "domain": "spiritual/devata_adoption", "dasha_level": "AD", "dasha_lord": "Jupiter", "dasha_row_id": "7a60629d-fa5b-481a-8a70-d259bdff5044"}]},
+    {"house": 3, "house_sign": "Gemini", "house_lord": "Mercury", "domains_signified": ["travel"], "fired_count": 1,
+      "fired_events": [{"event_id": "a1ef10c2-c52d-536e-9fd5-51342d58721e", "event_date": "2010-12-15", "domain": "travel/first_foreign_trip", "dasha_level": "MD", "dasha_lord": "Mercury", "dasha_row_id": "5c187669-99e3-412c-8088-79fabb16b342"}]}
+  ],
+  "unmapped_events": [
+    {"event_id": "3e96c6da-3ad6-5329-a40b-0b9240a1cbdb-corr-congenital", "event_date": "1984-02-05", "domain": "psychological/speech_pattern_arc", "reason": "no classical house mapping for domain prefix 'psychological'"},
+    {"event_id": "5d039007-0244-58c6-ad39-152c179c6ac8", "event_date": "1984-02-05", "domain": "other/birth", "reason": "no classical house mapping for domain prefix 'other'"},
+    {"event_id": "0d03e02a-e619-52b5-8a78-8f26e13ba125", "event_date": "1993-07-01", "domain": "creative/award", "reason": "no classical house mapping for domain prefix 'creative'"},
+    {"event_id": "3e96c6da-3ad6-5329-a40b-0b9240a1cbdb", "event_date": "1995-07-01", "domain": "psychological/speech_pattern_arc", "reason": "no classical house mapping for domain prefix 'psychological'"},
+    {"event_id": "123eee97-8885-5d50-b0f1-94281f8f2d49", "event_date": "2002-07-01", "domain": "psychological/chronic_episode", "reason": "no classical house mapping for domain prefix 'psychological'"},
+    {"event_id": "852d1420-e733-582b-a2ae-f7de33b8d38e", "event_date": "2012-09-15", "domain": "creative/modeling", "reason": "no classical house mapping for domain prefix 'creative'"},
+    {"event_id": "928a1f56-0940-5428-a35a-8591f84fd5b4", "event_date": "2019-05-15", "domain": "residential+travel/foreign_move_start", "reason": "no classical house mapping for domain prefix 'residential+travel'"},
+    {"event_id": "928a1f56-0940-5428-a35a-8591f84fd5b4-fs", "event_date": "2019-05-15", "domain": null, "reason": "no classical house mapping for domain prefix ''"}
+  ],
+  "not_confirmed_events": [
+    {"event_id": "3a37fa76-cfc1-599b-bbdf-97cff784f5ac", "event_date": "1998-02-16", "domain": "relationship/romantic_long_term_started", "mapped_houses": [7], "reason": "neither MD nor AD lord matched house 7's lord (Venus) on this date"},
+    {"event_id": "d5db1b9a-b8c5-5b90-9641-c9ae9b1c2035", "event_date": "1998-07-01", "domain": "spiritual/transmission", "mapped_houses": [9, 12], "reason": "neither MD nor AD lord matched house 9/12's lord (Jupiter/Jupiter) on this date"},
+    {"event_id": "39f8395f-dfa6-5deb-9d3d-e4881c905e29", "event_date": "2000-06-01", "domain": "education/advanced_course_partial", "mapped_houses": [4, 5], "reason": "neither MD nor AD lord matched house 4/5's lord (Moon/Sun) on this date"},
+    {"event_id": "d5db1b9a-b8c5-5b90-9641-c9ae9b1c2035-corr-2001-initiation", "event_date": "2001-01-01", "domain": "spiritual/transmission", "mapped_houses": [9, 12], "reason": "neither MD nor AD lord matched house 9/12's lord (Jupiter/Jupiter) on this date"},
+    {"event_id": "359944e3-908f-5eb0-ba38-6696bbbefbe6", "event_date": "2001-03-15", "domain": "education/entrance_exam_preparation", "mapped_houses": [4, 5], "reason": "neither MD nor AD lord matched house 4/5's lord (Moon/Sun) on this date"},
+    {"event_id": "62f0460d-0cf1-5eab-bedc-47ecfcb04657", "event_date": "2002-07-01", "domain": "spiritual/sadhana_initiation", "mapped_houses": [9, 12], "reason": "neither MD nor AD lord matched house 9/12's lord (Jupiter/Jupiter) on this date"},
+    {"event_id": "45ba996d-5923-5570-8055-8cbf4a470636", "event_date": "2004-01-15", "domain": "relationship/romantic_concurrent", "mapped_houses": [7], "reason": "neither MD nor AD lord matched house 7's lord (Venus) on this date"},
+    {"event_id": "cd68bc5c-c5fc-5914-bd95-e18ba639a5dc", "event_date": "2004-06-01", "domain": "education/opportunity_declined", "mapped_houses": [4, 5], "reason": "neither MD nor AD lord matched house 4/5's lord (Moon/Sun) on this date"},
+    {"event_id": "8573c0ca-9fc5-52a0-8309-f1b324a51d4a-corr-day-lock", "event_date": "2007-06-14", "domain": "health/chronic_onset", "mapped_houses": [6, 8], "reason": "neither MD nor AD lord matched house 6/8's lord (Mercury/Mars) on this date"},
+    {"event_id": "4e09e1e1-7925-5675-9af8-74e8eea6fe67", "event_date": "2007-06-15", "domain": "health/surgery_minor", "mapped_houses": [6, 8], "reason": "neither MD nor AD lord matched house 6/8's lord (Mercury/Mars) on this date"},
+    {"event_id": "71af4f61-3efc-557b-949a-d855845a5ca5", "event_date": "2007-06-15", "domain": "education/engineering_completed", "mapped_houses": [4, 5], "reason": "neither MD nor AD lord matched house 4/5's lord (Moon/Sun) on this date"},
+    {"event_id": "8573c0ca-9fc5-52a0-8309-f1b324a51d4a", "event_date": "2007-09-01", "domain": "health/chronic_onset", "mapped_houses": [6, 8], "reason": "neither MD nor AD lord matched house 6/8's lord (Mercury/Mars) on this date"},
+    {"event_id": "1dc207bc-a85e-5383-b39d-39be4629a582", "event_date": "2009-06-15", "domain": "loss/grandparent_passing", "mapped_houses": [8], "reason": "neither MD nor AD lord matched house 8's lord (Mars) on this date"},
+    {"event_id": "4e96f4b9-fe3b-5b40-bdb3-c60e3024abfa", "event_date": "2011-01-15", "domain": "education/mba_admission", "mapped_houses": [4, 5], "reason": "neither MD nor AD lord matched house 4/5's lord (Moon/Sun) on this date"},
+    {"event_id": "95138517-2d23-51a6-b13b-71801e806a11", "event_date": "2011-06-15", "domain": "education/mba_enrolled", "mapped_houses": [4, 5], "reason": "neither MD nor AD lord matched house 4/5's lord (Moon/Sun) on this date"},
+    {"event_id": "cf0c918d-da71-504f-9c62-4920c48cd69e", "event_date": "2012-09-01", "domain": "education/leadership_role", "mapped_houses": [4, 5], "reason": "neither MD nor AD lord matched house 4/5's lord (Moon/Sun) on this date"},
+    {"event_id": "aa591eb5-8e00-5600-b9c1-7177f7919ab8", "event_date": "2012-10-15", "domain": "relationship/romantic_concurrent", "mapped_houses": [7], "reason": "neither MD nor AD lord matched house 7's lord (Venus) on this date"},
+    {"event_id": "c143ce2a-f1e1-5092-9c04-f659fa0de5e1", "event_date": "2013-03-15", "domain": "education/mba_graduation", "mapped_houses": [4, 5], "reason": "neither MD nor AD lord matched house 4/5's lord (Moon/Sun) on this date"},
+    {"event_id": "6f5ee9cb-8b35-5da9-a601-30430e8ad7d9", "event_date": "2013-05-15", "domain": "career/corporate_job_joined", "mapped_houses": [10], "reason": "neither MD nor AD lord matched house 10's lord (Saturn) on this date"},
+    {"event_id": "72fad18c-ad30-5f46-9418-c2ed28c4d9ac", "event_date": "2013-07-01", "domain": "family/parent_illness_onset", "mapped_houses": [2, 4], "reason": "neither MD nor AD lord matched house 2/4's lord (Venus/Moon) on this date"},
+    {"event_id": "b72f40f7-687e-51dd-a21d-06b184fc24c1", "event_date": "2013-12-11", "domain": "family/marriage", "mapped_houses": [2, 4], "reason": "neither MD nor AD lord matched house 2/4's lord (Venus/Moon) on this date"},
+    {"event_id": "56a1222d-8c88-5445-b2a2-1fd89d470719", "event_date": "2015-07-01", "domain": "spiritual/devata_adoption", "mapped_houses": [9, 12], "reason": "neither MD nor AD lord matched house 9/12's lord (Jupiter/Jupiter) on this date"},
+    {"event_id": "b5ea6a4d-6e0a-5ed3-875c-e241d3cb50a5", "event_date": "2016-07-01", "domain": "career/employer_instability", "mapped_houses": [10], "reason": "neither MD nor AD lord matched house 10's lord (Saturn) on this date"},
+    {"event_id": "e3b2f1d5-5609-5dca-af84-d9fac54cd3cd", "event_date": "2017-03-15", "domain": "career/employer_switch", "mapped_houses": [10], "reason": "neither MD nor AD lord matched house 10's lord (Saturn) on this date"},
+    {"event_id": "b75c63f4-ead1-5d6d-9811-011277347d57", "event_date": "2018-11-28", "domain": "loss/parent_passing", "mapped_houses": [8], "reason": "neither MD nor AD lord matched house 8's lord (Mars) on this date"}
+  ],
+  "usage_note": "CONFIRMATION ONLY — historical retrodictive evidence from dasha-lord/house-activation overlap with observed LEL events. Never use as prediction input; feeds L5 retrodictive-evidence section only.",
+  "sealed_test_split_note": "Events on/after 2020-01-01 are excluded from this surface unconditionally (sealed test split, ESCALATION_POLICY §4) — gate-runner/anti-gaming territory only.",
+  "mechanism_scope_note": "Reports the classical dasha-lord/house-activation mechanism only (BPHS bhava-dasha doctrine) — independent of B-1's still-resolving peak-timing bakeoff. domains_signified lists ALL DOMAIN_TO_HOUSES prefixes mapped to that house, not just the domain(s) observed in this response.",
+  "provenance": {
+    "tables": ["life_events", "chart_dashas", "chart_facts"],
+    "lagna_fact_id": "e8e5300adea7bc58",
+    "grounding": "house_sign = whole-sign walk from chart_facts LAGNA sign (lagna_fact_id); house_lord = classical fixed sign rulership; dasha spans = chart_dashas (system_id=vimshottari), each firing cites dasha_row_id.",
+    "no_leakage_note": "life_events is a calibration corpus only — must not feed prediction generation. This tool is CONFIRMATION-ONLY."
+  },
+  "auditor_tally": {
+    "fired_events_total": 8,
+    "houses_with_firings": 7,
+    "unmapped_events_total": 8,
+    "not_confirmed_events_total": 25,
+    "sum_all_categories": 41,
+    "note": "limit param was set to 50 (tool max), sealed_test_split excludes events on/after 2020-01-01 unconditionally -- so the effective universe this call could ever see is pre-2020 LEL events only, not the full 64-event LEL."
+  }
+}

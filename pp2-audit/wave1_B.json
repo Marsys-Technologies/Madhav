@@ -1,0 +1,106 @@
+[
+  {
+    "id": "B-F-59",
+    "claim": "Kala field decade-seam contiguity, native chart: RE-VERIFIED PASS. Zero segment-to-segment gaps exist anywhere in kala_field for the native chart (482012f1-710e-4a25-994a-93821f5871aa, field_snapshot_id kfs_e23ba1abdf1c6fd3a1cc5c08c7538aeb) across all 25 event classes over the full [0, 36525]-day horizon, INCLUDING at every one of the 9 interior decade seams (3652.5, 7305, 10957.5, 14610, 18262.5, 21915, 25567.5, 29220, 32872.5 days). The previously-fixed decade-seam defect referenced in the desk brief does not reproduce on the current build.",
+    "reproduce_cmd": "WITH ordered AS (SELECT event_class, segment_index, t_start, t_end, LAG(t_end) OVER (PARTITION BY event_class ORDER BY segment_index) AS prev_t_end FROM kala_field WHERE chart_id='482012f1-710e-4a25-994a-93821f5871aa') SELECT * FROM ordered WHERE prev_t_end IS NOT NULL AND t_start <> prev_t_end;  -- 0 rows. Plus a decade-mark straddle check: WITH marks AS (SELECT generate_series(0,9)*3652.5 AS mark) SELECT m.mark, kf.event_class, kf.t_start, kf.t_end FROM marks m JOIN kala_field kf ON kf.chart_id='482012f1-710e-4a25-994a-93821f5871aa' AND kf.t_start<=m.mark AND kf.t_end>=m.mark WHERE m.mark NOT IN (0,36525);",
+    "evidence_file": "evidence/kala_field_contiguity_native_decade_seams.json",
+    "severity": "VERIFIED-PASS",
+    "mechanism": "kala_field stores log-linear hazard segments per (event_class, segment_index) with breakpoints placed at every stage-0/1/boundary root (stage4_field.py FieldEvaluator.breakpoints). A LAG-window gap scan over all 8,599,775 native-chart rows found zero cases where a segment's t_start differs from the prior segment's t_end. Every one of the 25 event classes independently spans exactly [0, 36525] with 343,991 segments each (25 x 343,991 = 8,599,775, matching the table's total row count for this chart exactly)."
+  },
+  {
+    "id": "B-F-60",
+    "claim": "kala_field_null 25x10 grid invariant: EXACT MATCH for the native chart. 250 rows = 25 event classes x 10 duration buckets (1,3,7,15,30,60,90,180,365,730 days), with no missing or extra cells. The native chart's kala_field_snapshots.event_classes array (25 entries) matches the 25 classes actually present with zero classes recorded in skipped_classes for this chart.",
+    "reproduce_cmd": "SELECT chart_id, count(*) as n, count(DISTINCT event_class) as n_classes, count(DISTINCT bucket_days) as n_buckets FROM kala_field_null WHERE chart_id='482012f1-710e-4a25-994a-93821f5871aa' GROUP BY chart_id;  -- n=250, n_classes=25, n_buckets=10",
+    "evidence_file": "evidence/kala_field_null_25x10_grid.json",
+    "severity": "VERIFIED-PASS",
+    "mechanism": "kala_field_null's natural key is (chart_id, event_class, bucket_days). For the native chart every one of the 25 x 10 = 250 cells is populated exactly once (no gaps, no duplicates)."
+  },
+  {
+    "id": "B-F-61",
+    "claim": "kala_field_snapshots.field_content_hash independently recomputed and CONFIRMED MATCHING for BOTH charts. Native chart (482012f1-710e-4a25-994a-93821f5871aa, field_snapshot_id kfs_e23ba1abdf1c6fd3a1cc5c08c7538aeb): recomputed kfh_3a8d00db6577713f58206afc329c613a == stored kfh_3a8d00db6577713f58206afc329c613a, over all 10,502,780 rows across the 7 HASHED_TABLES (kala_field=8,599,775, kala_field_windows=31,350, kala_field_provenance=1,839,618, kala_field_null=250, kala_field_salience=31,350, kala_insights=431, kala_timeline_spec=6). Second chart (1c826d5a-41cb-4450-b4dc-59d440e5f75a, field_snapshot_id kfs_b3bcf77a5a4c3ce5296254bac3809451): recomputed kfh_6340965c86716454c40c9a8062c15156 == stored kfh_6340965c86716454c40c9a8062c15156, over 2,818,813 rows. Both recomputations pulled raw rows directly from the live production DB via a fresh psycopg connection (not from the writer's in-process object graph) using the exact field_content_hash/_canonical/canonical_json algorithm read verbatim from platform/python-sidecar/services/ka_kshetra/stage4_field.py. The native recomputation took ~1204s wall-clock (1042.9s alone to stream 8.6M kala_field rows over the cloud-sql-proxy) but completed and matched exactly.",
+    "reproduce_cmd": "python3 recompute_kfs_hash.py <chart_id> <field_snapshot_id> <expected_hash>  -- re-implements field_content_hash()/_canonical()/canonical_json() verbatim from stage4_field.py, streams the same 7 tables via server-side cursor filtered on (chart_id, field_snapshot_id), and compares the recomputed 'kfh_' + sha256[:32] digest against kala_field_snapshots.field_content_hash",
+    "evidence_file": "evidence/kfs_hash_recompute_native_chart_result.json (native); evidence/kfs_hash_recompute_second_chart_result.json (second chart)",
+    "severity": "VERIFIED-PASS",
+    "mechanism": "field_content_hash(pin_identity, rows) sorts (table, canonical_json(key), canonical_json(payload)) tuples and folds them into one sha256 with 0x1e/0x1f field separators, seeded by the pin_identity (the field_snapshot_id string). Floats are canonicalized via Python repr() for round-trip-exact cross-platform stability. Recomputing this independently for both charts and getting byte-identical digests is strong evidence the stored hashes are not fabricated -- kala_field_snapshots.field_content_hash genuinely reconstructs from the raw rows it claims to summarize, for the full native-chart build (25 event classes, 100-year horizon, ~10.5M rows) as well as the second chart."
+  },
+  {
+    "id": "B-F-62",
+    "claim": "kala_field_snapshots.event_classes for the second chart (1c826d5a) declares 27 event classes, but only 6 (childbirth, foreign_settlement, marriage, relocation, separation, surgery) actually have rows in kala_field / kala_field_null. The remaining 21 are all present in the same row's skipped_classes array with reason 'no_class_prior_row' (honest-skip per require_baseline()/ClassSkipped in stage4_field.py) -- so this is NOT a silent data-loss bug, but event_classes conflates 'classes the writer attempted to build' with 'classes actually built', with no field-level comment distinguishing the two and no documented caller obligation to subtract skipped_classes before treating event_classes as the built set. No serving-layer TypeScript code currently reads kala_field_snapshots.event_classes (grep across platform/src and platform-mcp/src found zero consumers), so this is presently dormant rather than user-facing, but any future reader of this column risks misreporting build coverage.",
+    "reproduce_cmd": "SELECT unnest(event_classes) FROM kala_field_snapshots WHERE chart_id='1c826d5a-41cb-4450-b4dc-59d440e5f75a' EXCEPT SELECT DISTINCT event_class FROM kala_field WHERE chart_id='1c826d5a-41cb-4450-b4dc-59d440e5f75a';  -- returns 21 rows, all of which appear in the same snapshot row's skipped_classes JSON",
+    "evidence_file": "evidence/kala_field_null_25x10_grid.json",
+    "severity": "TIER3-CLARITY",
+    "mechanism": "writer.py's self._event_classes is populated by _discover_event_classes() (all candidate classes for the chart) and written unconditionally to kala_field_snapshots.event_classes at line ~1760; self._skipped (populated by ClassSkipped exceptions caught during the build) is written separately to skipped_classes. Both are legitimate per-design honest-skip bookkeeping, but nothing enforces event_classes minus skipped_classes' event_class values == the classes with real kala_field rows for any caller that doesn't independently know to compute that set difference."
+  },
+  {
+    "id": "B-F-63",
+    "claim": "Migration 456_lel_schema_v2_event_shapes.sql is recorded as applied in _migrations_applied (applied_at 2026-07-18T23:30:11.222Z, sha256 a6d30ee4...) but its SQL source file does not exist anywhere in the repository -- not in platform/migrations, not in platform/supabase/migrations, and not in platform/migrations/_archive/ (unlike 6 sibling filename/no-file mismatches -- 118/124/125/126/127_build_notifications/133_notification_views -- which are all legitimately archived under platform/migrations/_archive/). A different migration, 457_lel_schema_v2_event_shapes.sql, exists on disk and is separately recorded as applied one second later with a DIFFERENT sha256 (fdc1edb0...), so this is not a simple filename rename of identical content -- 456's actual SQL, once run against production, is now unrecoverable from the repository for audit or rollback-safety review.",
+    "reproduce_cmd": "SELECT filename, applied_at, sha256, sql_identity FROM _migrations_applied WHERE filename IN ('456_lel_schema_v2_event_shapes.sql','457_lel_schema_v2_event_shapes.sql'); -- then: find /Users/Dev/Vibe-Coding/Apps/Madhav -name '456_lel_schema_v2_event_shapes.sql' (not -path '*/node_modules/*' etc) -> no results anywhere in the repo, including archive dirs",
+    "evidence_file": "evidence/migrations_applied_vs_disk_diff.json",
+    "severity": "TIER2-AUDITABILITY",
+    "mechanism": "CLAUDE.md SS N.4 'Surgical migrations, verified' requires migrations be authored surgically and never edited after application; it does not explicitly require permanent retention of applied migration source, but the project's own practice for every OTHER superseded/renumbered migration in this window is retain-in-place under _archive/ (ONGOING_HYGIENE_POLICIES SS archival retain-in-place). 456_lel_schema_v2_event_shapes.sql is the one exception in the entire 430-row _migrations_applied set where an applied migration's source was deleted outright rather than archived, breaking the 'every applied migration's SQL is inspectable' invariant the archive convention otherwise upholds project-wide."
+  },
+  {
+    "id": "B-F-64",
+    "claim": "Identity adoption (R17) check: PASS. No legacy_id / old_chart_id / identity_map / id_crosswalk column or table exists anywhere in the live schema (115 tables/columns scanned via information_schema), and no source file under platform/src, platform-mcp/src, or platform/python-sidecar references such a construct. The CLAUDE.md-flagged dead phantom chart_id (362f9f17-...) is confirmed absent (0 rows) from charts, chart_facts, asset_throughput, and kala_field.",
+    "reproduce_cmd": "SELECT table_name, column_name FROM information_schema.columns WHERE column_name ILIKE '%legacy_id%' OR column_name ILIKE '%old_chart_id%' OR column_name ILIKE '%identity_map%' OR column_name ILIKE '%id_crosswalk%'; -- 0 rows. SELECT count(*) FROM charts WHERE id::text LIKE '362f9f17%' (and same for chart_facts/asset_throughput/kala_field) -- all 0.",
+    "evidence_file": "evidence/identity_adoption_r17_check.json",
+    "severity": "VERIFIED-PASS",
+    "mechanism": "chart_fact_identity (270,471 rows) was investigated as a candidate legacy map but is a fact-identity PARSING index (fact_id -> entity_kind/graha_code/house_num/varga_id/sign_num/parse_rule), unrelated to chart-id identity crosswalking; it is not in scope for R17 and does not constitute a surviving independent identity map."
+  },
+  {
+    "id": "B-F-65",
+    "claim": "Registry<->manifest reconciliation is structurally vacuous as literally specified: 00_ARCHITECTURE/CAPABILITY_MANIFEST.json's 115 catalog entries are ALL governance/documentation-artifact canonical_ids (e.g. LEL, MSR_v5_0, PROJECT_ARCHITECTURE, CGP_AUDIT_v1_0) -- a grep for any ga_*/bo_*/ka_*/ph_*/mi_*/bg_* id inside the manifest file returns zero matches. The live asset_registry DB table (data-layer writer catalog, >120 rows: ka_kshetra, bo_laksana, mi_pramana, ph_pramana, etc.) has no representation in CAPABILITY_MANIFEST.json at all, so a naive orphan comparison would flag 100% of asset_registry as 'orphaned' and vice versa. This is a namespace/scope mismatch, not evidence of registry drift within either catalog's own domain -- but it means CLAUDE.md SS C item 2's description of CAPABILITY_MANIFEST.json as 'the new single source of truth for the canonical-path + artifact catalog' cannot be read as covering the data-asset catalog, and no reconciliation mechanism between the two actually exists in the codebase today.",
+    "reproduce_cmd": "python3 -c \"import json; m=json.load(open('00_ARCHITECTURE/CAPABILITY_MANIFEST.json')); print(m['entry_count'])\"  -- 115.  grep -o '\"ga_[a-z_]*\"\\|\"bo_[a-z_]*\"\\|\"ka_[a-z_]*\"\\|\"ph_[a-z_]*\"\\|\"mi_[a-z_]*\"\\|\"bg_[a-z_]*\"' 00_ARCHITECTURE/CAPABILITY_MANIFEST.json | sort -u | wc -l  -- 0.  SELECT asset_id FROM asset_registry ORDER BY asset_id; -- returns the full data-layer catalog, disjoint from the manifest's canonical_ids.",
+    "evidence_file": "evidence/capability_manifest_vs_asset_registry.json",
+    "severity": "TIER3-DOCUMENTATION",
+    "mechanism": "CAPABILITY_MANIFEST.json's generator (referenced in CLAUDE.md SS C item 2 as the Phase 1B cutover replacing FILE_REGISTRY + CANONICAL_ARTIFACTS) only enumerates markdown/doc artifacts under 00_ARCHITECTURE and sibling folders; it was never wired to enumerate asset_registry rows, so 'registry<->ontology reconciliation' as a literal cross-check has no implementation to audit against -- there is nothing currently drifting because the two catalogs were never unified in the first place."
+  },
+  {
+    "id": "B-F-66",
+    "claim": "_migrations_applied (430 rows) vs on-disk migration files under platform/migrations + platform/supabase/migrations (423 files): 7 filenames present in the DB with no matching file in those two directories; 0 files on disk with no matching applied row. Of the 7, 6 are explained by legitimate retain-in-place archival (present under platform/migrations/_archive/); 1 (456_lel_schema_v2_event_shapes.sql) is unexplained and is a separate finding (B-F-63).",
+    "reproduce_cmd": "SELECT filename FROM _migrations_applied ORDER BY filename; -- 430 rows. find platform/migrations platform/supabase/migrations -maxdepth 1 \\( -name '*.sql' -o -name '*.py' \\) | xargs -n1 basename | sort -u -- 423 files. Python set-difference both ways.",
+    "evidence_file": "evidence/migrations_applied_vs_disk_diff.json",
+    "severity": "VERIFIED-PASS-WITH-ONE-EXCEPTION",
+    "mechanism": "See B-F-63 for the one real gap; the other 6 mismatches are the expected shape of the project's own documented archival convention (files moved to _archive/ rather than deleted after supersession), not integrity defects."
+  },
+  {
+    "id": "B-F-67",
+    "claim": "FK/orphan referential integrity: PASS across 5 sampled tables spanning L1 (chart_facts), L3 (kala_field), L2 (bodha_msr_signals), L4 (phala_anchors), L5 (mimamsa_calibration) -- zero distinct chart_id values in any of these tables lack a matching row in charts.",
+    "reproduce_cmd": "SELECT c.chart_id, count(*) FROM (SELECT DISTINCT chart_id FROM chart_facts UNION SELECT DISTINCT chart_id FROM kala_field UNION SELECT DISTINCT chart_id FROM bodha_msr_signals UNION SELECT DISTINCT chart_id FROM phala_anchors UNION SELECT DISTINCT chart_id FROM mimamsa_calibration) c LEFT JOIN charts ch ON ch.id = c.chart_id WHERE ch.id IS NULL GROUP BY c.chart_id;  -- 0 rows",
+    "evidence_file": "evidence/fk_orphan_and_duplicate_key_checks.json",
+    "severity": "VERIFIED-PASS",
+    "mechanism": "No orphaned chart_id references found; every chart-scoped row across the sampled layers resolves back to a live charts row."
+  },
+  {
+    "id": "B-F-68",
+    "claim": "No duplicate natural-key rows found in kala_field (event_class, segment_index) for the native chart, and no duplicate (chart_id, fact_id, build_id) rows in chart_facts for the native chart.",
+    "reproduce_cmd": "SELECT event_class, segment_index, count(*) FROM kala_field WHERE chart_id='482012f1-710e-4a25-994a-93821f5871aa' GROUP BY event_class, segment_index HAVING count(*)>1;  -- 0 rows.  SELECT chart_id, fact_id, build_id, count(*) FROM chart_facts WHERE chart_id='482012f1-710e-4a25-994a-93821f5871aa' GROUP BY chart_id, fact_id, build_id HAVING count(*)>1;  -- 0 rows",
+    "evidence_file": "evidence/fk_orphan_and_duplicate_key_checks.json",
+    "severity": "VERIFIED-PASS",
+    "mechanism": "Both checked natural keys are unique in production as expected under the L1+ delete-then-insert idempotency standard (CLAUDE.md SS N.3)."
+  },
+  {
+    "id": "B-F-69",
+    "claim": "chart_facts.verification_pass_status enum/vocabulary check: PASS. All 10 distinct live values (classical_match, computed_extension, divergent_flagged, documented_approximation, floored, not_defined_for_nodes, pending_w3_verification, single, single_pass, two_pass_verified) are declared members of the 13-member VERIFICATION_PASS_STATUS_VOCAB / ALL_STATUSES in brahmagyan/verification_vocab.py. No PROHIBITED_STATUSES ('pass'/'PASS') literal found in production data.",
+    "reproduce_cmd": "SELECT verification_pass_status, count(*) FROM chart_facts GROUP BY verification_pass_status;",
+    "evidence_file": "evidence/verification_pass_status_vocab_check.json",
+    "severity": "VERIFIED-PASS",
+    "mechanism": "Cross-referenced against platform/python-sidecar/brahmagyan/verification_vocab.py's settled vocabulary (ALL_STATUSES frozenset) and PROHIBITED_STATUSES; every live value maps to a named VocabEntry with none being the banned bare 'pass'/'PASS' spelling that the SS N.8/Ruling-13 sweep was built to eliminate."
+  },
+  {
+    "id": "B-F-70",
+    "claim": "_migrations_applied.applied_at is monotonically non-decreasing when the table is ordered by its own id column (0 out-of-order rows across all 430 applied migrations) -- migration application timestamps are internally consistent with application order.",
+    "reproduce_cmd": "SELECT count(*) FROM (SELECT id, applied_at, LAG(applied_at) OVER (ORDER BY id) AS prev_applied_at FROM _migrations_applied) t WHERE applied_at < prev_applied_at;  -- 0",
+    "evidence_file": "evidence/fk_orphan_and_duplicate_key_checks.json",
+    "severity": "VERIFIED-PASS",
+    "mechanism": "N/A -- straightforward timestamp-ordering check, no defect mechanism to report."
+  },
+  {
+    "id": "B-F-71",
+    "claim": "Coverage range [0, 36525] for day-offset-indexed kala_field, BOTH charts, no truncation: native chart's 25 event classes and second chart's 6 built event classes each independently span min(t_start)=0 to max(t_end)=36525 exactly.",
+    "reproduce_cmd": "SELECT chart_id, event_class, min(t_start), max(t_end) FROM kala_field GROUP BY chart_id, event_class;  -- every row: min=0, max=36525",
+    "evidence_file": "evidence/kala_field_contiguity_native_decade_seams.json",
+    "severity": "VERIFIED-PASS",
+    "mechanism": "The full-horizon boundary is one of the fixed breakpoints (pts = {0.0, horizon_days} in FieldEvaluator.breakpoints()), so every class's segment set is guaranteed to start and end exactly at the horizon edges by construction; the live data confirms no per-class truncation slipped through."
+  }
+]
