@@ -216,6 +216,58 @@ None yet.
 
 **SENTINEL REQUEST TO CONDUCTOR**: Confirm E will create live_probe_evidence JSON after deploy before updating A-01 to LIVE status.
 
+### HB-021 — 2026-08-17T01:10Z / ~06:40+0530 (Cycle 20 — session wrap-up)
+
+**WAVE 0 STATUS SNAPSHOT — SESSION CLOSE (FM-09 re-derived)**
+
+**Conductor:** STALE 4h (last commit 21:00Z) — RELAUNCH REQUESTED (>35min threshold)
+
+**W0 gate run (attempt): CRASH** — `TypeError: 'NoneType' object is not subscriptable` on A-04.merged_sha=null
+
+**W0 lane summary:**
+
+| Lane | Status | SHA (manifest) | SHA valid? | Evidence | Gate-ready? |
+|------|--------|---------------|-----------|----------|------------|
+| A-01 | LIVE | 55a476fbd28f | ✓ ancestor | ✓ exists | ✓ |
+| A-02 | MERGED | 33dfb2ba1 | ✓ ancestor | ✗ missing | Needs LIVE |
+| A-03 | LIVE | 12cbf5e14c15 | ✗ WRONG | ✓ exists | ✗ (DISPUTE-002) |
+| A-04 | LIVE | **NULL** | ✗ CRASH | ✗ missing | ✗ (DISPUTE-003) |
+| A-05 | LIVE | 3deb54180dee | ✓ ancestor | ✓ exists | ✓ |
+| A-06 | LIVE | cfc37fc38166 | ✓ ancestor | ✓ exists | ✓ |
+| C-01 | LIVE | 20266702ada9 | ✓ ancestor | ✗ missing | ✗ |
+| C-02 | LIVE | 20266702ada9 | ✓ ancestor | ✗ missing | ✗ |
+| C-03 | MERGE_QUEUE | null | — | ✗ missing | Needs HANDOFF |
+
+**deployed_main_sha:** `a2ce6dc37ef3` (stale by A-02 merge — needs `33dfb2ba1a2a`)
+**CL-00:** null (not run)
+
+**SENTINEL W0 INDEPENDENT EXIT TESTS COMPLETED:**
+- A-01: judgment_query(marriage, 12KB) → timing_hooks.current=3 rows, mahadasha_windows_by_graha=1 row → **PASS** (HB-016)
+- A-05: pre-verified in B-04 15% sample (HB-010)
+- A-03, A-06: MCP deploy confirmed; exit tests require E to run
+
+**Actions required before gate can pass (all E):**
+1. A-04: set merged_sha = `a2ce6dc37ef3f460cabefa7e76287750a565441c` (conductor provided in gate sequence)
+2. A-04: run exit test, create `a04_kala_field_probe.json`
+3. C-01: create `c01_migration_verified.json` (EKV-R-1 4/4 assertions passed per E's ledger — just needs file)
+4. C-02: create `c02_writer_fix.json`
+5. A-03: fix merged_sha = `12cbf5e14dd26b4a36ac44ffbe88efec67674f06` (DISPUTE-002)
+6. deployed_main_sha = `33dfb2ba1a2a900ef641d82755f8cc14426c2104`
+7. A-02: run exit test, create `a02_whitelist_probe.json`, promote to LIVE
+8. C-03: set HANDOFF + handoff_note (conductor provided text)
+9. Run CL-00, write result
+10. Run `ekv_gate.py verify --wave 0` → must exit 0
+
+**W1 sampling count (SENTINEL):**
+7 lanes sampled this session (A-09, A-11, A-15, B-01, B-02, B-03, B-04) — all ≥15% requirement met ✓
+
+**MCP deployment status:** All 3 platform-mcp lanes (A-01, A-03, A-04) confirmed deployed in `31907248672` ✓
+
+**EKV-DISPUTE status:**
+- DISPUTE-001: RESOLVED ✓
+- DISPUTE-002: OPEN (A-03 bad SHA)
+- DISPUTE-003: OPEN (A-04 null SHA + 3 missing evidence files)
+
 ### HB-020 — 2026-08-17T00:40Z / ~06:10+0530 (Cycle 19)
 
 **⚠️ CONDUCTOR STALE 3.5H + GATE SEQUENCE INCOMPLETE (FM-09)**
