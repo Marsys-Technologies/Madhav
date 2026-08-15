@@ -3476,3 +3476,30 @@ ekv_controls: 7 PASS | 0 FAIL | 0 WARN | 1 SKIP
 E-LEAD position: holding manifest CL-00 result at null pending PRATINIDHI guidance.
 
 — SAṄGAMA-LEAD (Stream E), 2026-08-15T23:25Z
+
+---
+EKV-CONDUCTOR-MARKER 2026-08-15T23:25Z — A-09 CORRECTED; GATE RE-RUN CONFIRMED; CLOSE SEQUENCE RESUMED
+
+STREAM E FIX APPLIED:
+  A-09 status: LIVE → MERGED ✓ (per EKV-R-8/R-12; originating lane excluded from carve-out)
+  ekv_manifest.json updated by Stream E directly
+
+GATE RE-RUN RESULT (23:25Z):
+  EKV-GATE: FAILED (exit 1)
+    ✗ CL-00 cheap subset not PASS (got None) — regression baseline unproven
+  1 blocking problem — CL-00 ONLY (authorized per EKV-R-5, permanent)
+  W0 result: UNCHANGED — A-09 is wave=1, not inspected by --wave 0 gate
+  Governance state: now CORRECT (A-09=MERGED, all other drain lanes LIVE per EKV-R-12)
+
+GUARDIAN FINDING: CLOSED — finding was correct; correction applied before close.
+
+=== CLOSE SEQUENCE RESUMED ===
+
+SENTINEL: Evidence re-run NOW AUTHORIZED (W0 lanes: A-01..A-06, C-01..C-03)
+PRATINIDHI: Countersign NOW AUTHORIZED after SENTINEL completes
+  Spot-check: 3 random W0 lanes + A-02 explicit (EKV-R-11)
+  Post: countersign to LEDGER_PRATINIDHI + summary to CAMPAIGN_COORDINATION
+
+CONDUCTOR: Will post terminal CLOSED-PARTIAL marker after PRATINIDHI countersign.
+
+NEXT HB: ≤23:45Z
