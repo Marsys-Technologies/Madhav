@@ -122,3 +122,36 @@ describe('query_prospective_ledger — domain layering (§N.6 / B.10)', () => {
     expect(res.content['empty_reason']).toBeNull()
   })
 })
+
+describe('query_prospective_ledger — empty-window guard (EKV C-03)', () => {
+  beforeEach(() => mockQuery.mockReset())
+
+  it('toServed does not throw for observation_window="empty" — returns null dates (covers C-03 second read path)', async () => {
+    // 6 brahma_prospective_ledger rows were filed with observation_window='empty' on 2026-08-11
+    // by w45_post_fit_rebuild. Before PR #1287, deriveWindowFields -> parseDaterange threw on
+    // 'empty', crashing the entire standing_predictions_read call. This test ensures the
+    // query_prospective_ledger handler's toServed path (which calls deriveWindowFields) is
+    // covered by the same null-passthrough guard.
+    const emptyWindowRow = row({
+      prediction_id: 'empty-win',
+      claim: 'Gochara forecast: window 2068-09-04–2068-09-04',
+      event_class: 'psychological_arc',
+      observation_window: 'empty',
+      filed_by: 'w45_post_fit_rebuild',
+      generator_class: 'engine',
+      lifecycle_status: 'open',
+    })
+    mockQuery.mockResolvedValueOnce({ rows: [emptyWindowRow] })
+    // Must not throw:
+    const res = await queryProspectiveLedgerCapability.handler(
+      { chart_id: NATIVE_CHART_ID }, undefined,
+    ) as { content: Record<string, unknown> }
+    const preds = res.content['predictions'] as Array<Record<string, unknown>>
+    const served = preds.find((p) => p['prediction_id'] === 'empty-win')
+    expect(served).toBeDefined()
+    // Empty window => null derived dates (same as missing window — not a crash)
+    expect(served!['window_start']).toBeNull()
+    expect(served!['window_end']).toBeNull()
+    expect(served!['point_date']).toBeNull()
+  })
+})
