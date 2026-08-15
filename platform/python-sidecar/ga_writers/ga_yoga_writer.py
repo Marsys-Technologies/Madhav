@@ -641,7 +641,19 @@ def _evaluate_yoga(yoga: dict, state: ChartState) -> dict | None:
         for s in starts_to_try:
             houses = [((s - 1 + i) % 12) + 1 for i in range(7)]
             ps_in_houses = state.planets_in_houses(houses)
-            if len(placed) >= 5 and all(p in ps_in_houses for p in placed):
+            # BPHS nabhasa yoga: ALL 7 classical planets must be present,
+            # ALL 7 must fall within the 7-house window, AND the 7 planets
+            # must occupy 7 distinct houses (no co-occupancy). B-03 fix:
+            # replaces the erroneous >= 5 relaxed condition.
+            houses_occupied_by_placed = {
+                h for h, ps in state.lagna_house_planets.items()
+                if any(p in placed for p in ps) and h in set(houses)
+            }
+            if (
+                len(placed) == 7
+                and all(p in ps_in_houses for p in placed)
+                and len(houses_occupied_by_placed) == 7
+            ):
                 fired = True
                 constituent_planets = placed
                 constituent_houses = houses
