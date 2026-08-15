@@ -562,6 +562,39 @@ Queue CI branch `b1ea4cdab3` running (TAP + Ganga). No new main merges since `c7
 
 **Next monitor:** A-15 retry result (run 31910678712) + any new main commits from drain queue.
 
+### HB-031 — 2026-08-17T04:05Z / ~09:35+0530 (Cycle 29 — EKV-R-10/R-11; A-15 retry PASS; 6 PRs queued)
+
+**PRATINIDHI EKV-R-10 (commit `5b275f90f`, 22:24Z) — FM-09 re-derived:**
+- A-15 smoke failure: SP-4 does NOT apply — A-15 diff touches zero auth code; canary probe fails while health UP; prior 3 deploys passed same smoke.
+- A-15 status = MERGED (LIVE not earned per §N.8 until smoke passes).
+- If retry PASSES → A-15 upgrades to LIVE candidate (pending countersign).
+- Morning session investigates canary key config if retry also fails.
+
+**A-15 RETRY RESULT (FM-09: `gh run view 31910678712`):**
+```json
+{"conclusion": "success", "status": "completed"}
+```
+→ **A-15 retry PASSED.** Per EKV-R-10: A-15 now qualifies as LIVE candidate. Bearer-auth 401 in original run was transient (canary key state during server transition). SP-4 concern RESOLVED.
+
+**PRATINIDHI EKV-R-11 (same commit, 22:24Z):**
+- Guardian A-02 evidence gap accepted: deploy proof ≠ function proof per §N.8/§N.7.5/SP-2.
+- A-02 added as **explicit countersign spot-check target** (not random lottery).
+- If Stream E runs 4-tool MCP probe before close: PASS stands.
+- If no probe: `exit_test_result = UNVERIFIED`, A-02 status = MERGED (not LIVE).
+- Conductor's evidence file creation was honest; no procedural violation.
+
+**W1 sample revised tally (updated for EKV-R-10/R-11):**
+| Lane | Code check | CI at merge | Ruling | Current status |
+|------|-----------|-------------|--------|---------------|
+| A-09 | PASS (buildAssessResponse + sara kernel) | TAP FAIL (force-merge) | EKV-R-8: MERGED; TAP HANDOFF | MERGED |
+| A-15 | PASS (13 resolveChartFactsAyanamsha wires) | Smoke FAIL → Retry PASS | EKV-R-10: LIVE candidate pending countersign | LIVE candidate |
+
+**Gate (FM-09, no re-run needed — main tip unchanged `c75400b231f9`):**
+- 2 blockers (same as HB-030): PROD-SYNC stale + CL-00 authorized NOT-RUN
+- A-15 retry PASS does not affect gate count (PROD-SYNC depends on final drain tip)
+
+**Drain:** 3/9 merged (B-05, A-15, A-11); 6 remaining in queue CI.
+
 ### HB-020 — 2026-08-17T00:40Z / ~06:10+0530 (Cycle 19)
 
 **⚠️ CONDUCTOR STALE 3.5H + GATE SEQUENCE INCOMPLETE (FM-09)**
