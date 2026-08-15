@@ -111,6 +111,115 @@ may cite them by tag (SP-n). They do not consume an EKV-R number.
 - **Reversibility:** Fully reversible. The fix changes gate tooling only (no production code, no DB, no migrations). Reverting to the old check would restore the always-failing state, which is strictly worse. Reversal would only be warranted if `deployed_main_sha` proved unreliable as a signal — in which case the fix is to improve the signal source, not to restore the broken check.
 - **Timestamp:** 2026-08-16T01:15+05:30
 
+### EKV-R-3: C-01 Retroactive Merge Legitimacy Audit — LEGITIMATE, NO REMEDIATION
+
+- **Asked by:** GUARDIAN DESK (via supervised relaunch prompt, 21:30Z)
+- **Question:** C-01 (migration 572 — DELETE 6 rows + CHECK constraint on `brahma_prospective_ledger`) has ALREADY been merged and marked LIVE. Was this legitimate given PRATINIDHI authority was never obtained? What remediation is required?
+- **Evidence reviewed:**
+  - EKV-R-1 (this ledger, above) was issued at 2026-08-16T01:15+05:30 (= 2026-08-15T19:45Z), explicitly authorizing Stream E to merge `origin/ekv/c-01-ledger-repair`.
+  - `ekv_manifest.json` records `pratinidhi_signoff: "EKV-R-1"` with note `"AUTHORIZED 2026-08-16T01:15+05:30; 4 post-deploy assertions required"`.
+  - Merge occurred at ~20:28Z per manifest merge_log — 43 minutes AFTER EKV-R-1 authorization.
+  - All 4 post-deploy assertions passed at 20:50Z per manifest: `ekv_r1_assertions_passed: true`, note: `"All 4 passed at 2026-08-15T20:50Z: migration=1, empty_rows=0, CHECK fires, open_count=29"`.
+  - EKV-R-1's 3 conditions verified met: (1) assertions run and recorded, (2) migration file not edited post-apply, (3) PR #1295 exists and cites EKV-R-1.
+- **Ruling:** LEGITIMATE. No remediation required.
+- **Rationale:** The guardian's concern ("your authority was never obtained") is factually incorrect — EKV-R-1 IS the authority, issued 43 minutes before the merge. The timeline is clean: authorization (19:45Z) → merge (20:28Z) → post-deploy verification (20:50Z). All 3 conditions from EKV-R-1 were satisfied. The lane's LIVE status is earned per §N.8. This is not a rubber-stamp — I independently verified the sequence from `ekv_manifest.json`'s own merge_log timestamps and the EKV-R-1 ruling timestamp in this ledger.
+- **Reversibility:** N/A — no action required. If a future finding shows the migration caused harm, a remediation migration (new number per §N.4) would be the path, but no evidence of harm exists: the 6 deleted rows were confirmed garbage, and the CHECK constraint only blocks future empty-range inserts.
+- **Timestamp:** 2026-08-16T02:55+05:30
+
+### EKV-R-4: C-04 Degraded Scope — ACCEPTED AS PARTIAL; LANE STATUS = HANDOFF
+
+- **Asked by:** GUARDIAN DESK (relaying Stream C / RTA-LEAD's request from LEDGER_C.md §C-04)
+- **Question:** C-04's full lifecycle proof (`open -> matched -> resolved -> dismissed`, DB clean after) is structurally impossible — `withdraw`, `resolve`, and `dismiss` have zero write paths in the codebase. Stream C proposed a degraded scope: read-path proof post-deploy + match-path dry_run. Does this satisfy the W1 gate, or must C-04 be parked as HANDOFF?
+- **Options considered:**
+  - (A) Accept degraded scope as LIVE — mark C-04 as if the exit test passed with the reduced scope.
+  - (B) Accept degraded scope as PARTIAL/HANDOFF — acknowledge the read+match proof but honestly record that the full lifecycle was never proven.
+  - (C) Reject entirely — mark C-04 as FAILED.
+- **Evidence reviewed:**
+  - LEDGER_C.md §C-04 documents the block: `fileProspectivePrediction` works (FILE step), `standing_predictions_read` works post-C-03 (READ step), `matchOpenPredictionsForLelEvent` works (MATCH step). But `resolve`, `dismiss`, `withdraw` — zero write paths anywhere in the codebase. `mimamsa_outcome_record` routes to a RETIRED no-op. No `withdraw` action in `ALLOWED_ACTIONS`.
+  - The manifest's exit_test for C-04 says: `"synthetic prediction driven open->resolved->dismissed; DB clean after"` — this is structurally impossible given the codebase tonight.
+  - C-03 (the parseDaterange null guard) is itself HANDOFF status — it was ejected from the merge queue and not re-queued. Without C-03 deployed, even the READ-path proof would fail on the comparison chart's 2 empty-window rows.
+- **Ruling:** Option B — ACCEPTED AS PARTIAL. C-04's status in the manifest MUST be `HANDOFF`, not `LIVE` or `VERIFIED`.
+  - The degraded scope (read-path + match-path dry_run post-deploy) is the maximum achievable proof tonight and is valuable evidence.
+  - However, the exit test as written (`open -> resolved -> dismissed; DB clean after`) was NEVER met — the write paths do not exist. Per SP-3 (no counting unachieved as done) and §N.8 (earned signal), the lane cannot be LIVE.
+  - The missing write paths (resolve/dismiss/withdraw) are a real product gap, not a campaign failure. They should be recorded as a HANDOFF note for the morning session.
+- **Rationale:** §N.8 (Earned-Signal Principle): "every status, grade, or PASS must be computed by a detector that measures the specific claim it asserts." The C-04 exit test claims a full lifecycle was driven; no code path exists to drive the resolve/dismiss steps. Recording LIVE for this lane would be an unearned signal. SP-3: "counting unmerged [or unachieved] as done: refuse."
+- **Gate impact:** C-04 will count as HANDOFF, not LIVE, in any wave-closure tally. The wave can still close PARTIAL if all other W1 criteria are met.
+- **Reversibility:** Fully reversible. When the resolve/dismiss/withdraw write paths are implemented (future session), C-04 can be re-run as a new lane that exercises the full lifecycle.
+- **Timestamp:** 2026-08-16T02:55+05:30
+
+### EKV-R-5: CL-00 Unrunnable — NOT-RUN; Wave Closes PARTIAL
+
+- **Asked by:** GUARDIAN DESK (verified independently: `ekv_controls.py` exists only on `origin/ekv/lead-dharma`)
+- **Question:** `platform/scripts/governance/ekv_controls.py` (the CL-00 cheap-subset gate) exists only on `origin/ekv/lead-dharma`, never merged to main. Stream D is dead. What is the acceptable path: (a) E merges `ekv/lead-dharma` to main first, (b) E runs `ekv_controls.py` directly from the dharma worktree, or (c) CL-00 is honestly recorded as NOT-RUN and the wave closes PARTIAL?
+- **Options considered:**
+  - (A) E merges `ekv/lead-dharma` to main. **Problem:** this merges ALL of Stream D's work (5 new governance lints + a CI workflow + the CL-00 harness) in one shot without review or CI verification. Stream D's own status is `BUILT`, not `VERIFIED` — no SENTINEL or PRATINIDHI review has occurred on D-01's content. This would violate SP-3 (counting unverified work as done) and the plan's own merge protocol (VERIFIED → MERGE_QUEUE → MERGED, not BUILT → skip-straight-to-MERGED).
+  - (B) E runs `ekv_controls.py` from the dharma worktree path. **Problem:** the control checks the codebase it runs against. Running from the dharma worktree checks dharma's files, not main's deployed code. The CL-00 gate claims "these invariants hold on the deployed codebase" — running it against a different branch measures a different claim. Per §N.8, a detector must measure the specific claim it asserts: a PASS from a non-main worktree is not evidence about main.
+  - (C) CL-00 is honestly recorded as NOT-RUN. The wave closes PARTIAL. **Cost:** the campaign cannot claim full gate coverage. **Benefit:** no false signal, no unreviewed merge, no measurement of the wrong target.
+- **Ruling:** Option C — CL-00 is NOT-RUN. The manifest's `cl00_cheap_subset_last_run.result` stays `null`.
+- **Rationale:** §N.8 (Earned-Signal Principle): a CL-00 PASS recorded without the control actually running against the correct target (main) is an unearned signal. Option A bypasses the VERIFIED gate. Option B measures the wrong codebase. Option C is the only path that does not produce a false signal. The wave closes PARTIAL — this is honest and the correct terminal state when a gate cannot be satisfied.
+- **Standing position applied:** SP-3 — refuse to count unverified or unachieved work as done.
+- **Reversibility:** Trivially reversible. When `ekv_controls.py` is properly merged to main via the normal VERIFIED → MERGE_QUEUE → MERGED flow, CL-00 can be run and the result recorded. The PARTIAL can be upgraded to a future campaign's clean gate if warranted.
+- **Timestamp:** 2026-08-16T02:55+05:30
+
+### EKV-R-6: Merge-Quiescence — DECLARE FREEZE; B-01 and A-09 PARKED
+
+- **Asked by:** GUARDIAN DESK (verified independently: deployed_main_sha `33dfb2ba1` trails origin/main `44d5ff5a7`)
+- **Question:** Should the conductor declare a merge freeze to let `deployed_main_sha` converge with `origin/main` so the W0 gate can run? What happens to in-flight W1 lanes (B-01 rebase, B-05 queue) during the freeze?
+- **Options considered:**
+  - (A) Declare freeze immediately, let no more PRs merge. E deploys current main tip, updates `deployed_main_sha`, runs gate.
+  - (B) Let all currently-queued, CI-green PRs drain through the merge queue first, THEN freeze. Deploy the resulting main tip.
+  - (C) No freeze — keep merging and hope the deploy catches up. **Problem:** this is a race condition that can never resolve; each merge moves the target.
+- **Evidence reviewed:**
+  - `deployed_main_sha` in manifest: `33dfb2ba1a2a900ef641d82755f8cc14426c2104` (A-02 deploy confirmed 21:03Z)
+  - `origin/main` tip: `44d5ff5a76094aac4deaa148f1f3f3b43bd7845e` (B-04 merged 21:20Z)
+  - Multiple PRs in auto-merge queue: A-07, A-08, A-09, A-11, A-12, A-13, A-15, A-16, A-17, B-05
+  - B-01: CI_FAILED, needs rebase — Stream B is dead; no one alive to rebase
+  - A-09: CI_FAILED — Stream A is dead; no one alive to fix
+  - B-05: CI-green, in merge queue
+- **Ruling:** Option B — DRAIN-THEN-FREEZE.
+  1. **Let the merge queue drain naturally.** All currently-queued PRs with passing CI (A-07, A-08, A-11, A-12, A-13, A-15, A-16, A-17, B-05) merge via the existing auto-merge mechanism. No new PRs are queued after this ruling.
+  2. **PARK B-01 and A-09.** Neither has a live agent to fix their CI failures. B-01 needs a rebase that requires resolving semantic merge conflicts in `ga_vargas_writer.py` and `test_dignity_oracle.py` — this is not mechanical work and cannot be safely assigned to Stream E (wrong domain expertise). A-09 has a CI failure with no one to investigate. Both are honestly PARKED as HANDOFF.
+  3. **After the last queued PR merges and CI passes on main:** Stream E triggers a deploy, waits for deploy success, records the new `deployed_main_sha` in the manifest, and IMMEDIATELY runs the gate. No new merges between deploy-complete and gate-run.
+  4. **Gate window:** The freeze holds from the moment the last queued PR merges until the gate has run and its output is recorded. After the gate run, the freeze lifts (the campaign is either closing or the conductor declares next steps).
+- **Rationale:** Option C is structurally impossible (race condition). Option A wastes the already-queued, already-CI-green W1 work that can merge unattended. Option B maximizes merged lanes while still guaranteeing a convergence window. B-01 and A-09 are PARKED per SP-3 (refuse to count unmerged as done) — their lanes' value is real but they cannot be LIVE tonight.
+- **Reversibility:** Fully reversible. The freeze can be lifted at any time by a new EKV-R ruling. Parked lanes can be unparked in a future session.
+- **Timestamp:** 2026-08-16T02:55+05:30
+
+### EKV-R-7: Close Criteria Pre-Statement — CONFIRMED WITH AMENDMENTS
+
+- **Asked by:** GUARDIAN DESK (pre-close discipline)
+- **Question:** State now — in writing, before the close — exactly what PRATINIDHI requires to countersign the night's close, and what the honest terminal marker should be if those requirements are not met.
+- **Pre-statement of close/countersign requirements:**
+
+  **To countersign CLOSED (full success), ALL of the following must be pasted into this ledger's COUNTERSIGN LOG section:**
+
+  1. **Gate output** — the full stdout/stderr of `ekv_gate.py verify` (or equivalent), showing exit code 0. Every check must PASS or be explicitly accounted for by a numbered EKV-R ruling that authorizes the deviation.
+  2. **SENTINEL's independent re-run** — SENTINEL's own verification of all LIVE lanes' evidence, run independently of the conductor and stream leads. Must cover: (a) every LIVE lane's evidence file exists and is non-empty, (b) a sample of exit-test claims are independently re-derivable from the evidence, (c) no LIVE lane has a failing CI on its merged SHA.
+  3. **PRATINIDHI's spot-check** — I will independently verify 3 randomly-selected LIVE lanes by: reading their evidence file, confirming the exit-test claim matches the evidence content, and confirming the merged SHA is reachable from `origin/main`.
+
+  **If any of the above cannot be satisfied, the terminal marker is CLOSED-PARTIAL with:**
+
+  - An honest tally: N lanes LIVE / M lanes MERGED / P lanes VERIFIED / Q lanes PARKED-HANDOFF
+  - A named disposition for every non-LIVE lane (HANDOFF reason, blocking condition, what is needed to complete)
+  - The gate output as-is (even if non-zero), with each failure annotated by its EKV-R ruling or honest gap
+
+  **Known items that will prevent CLOSED (full) tonight, per rulings above:**
+  - CL-00 NOT-RUN (EKV-R-5) — gate will report this as a failure
+  - C-04 HANDOFF (EKV-R-4) — lifecycle proof not achievable
+  - B-01 PARKED (EKV-R-6) — CI-failed, no alive agent to rebase
+  - A-09 PARKED (EKV-R-6) — CI-failed, no alive agent to fix
+  - C-03 HANDOFF (manifest: ejected from merge queue, not re-queued)
+  - Missing evidence: `a02_whitelist_probe.json` (guardian's finding #3)
+
+  **Therefore the expected terminal marker is CLOSED-PARTIAL.** This is not a failure — it is an honest close. The campaign achieved a substantial volume of merged, deployed, verified work (W0: 7+ lanes LIVE; W1: 3 B-lanes merged, multiple A-lanes in queue). The PARTIAL disposition honestly records what was not achieved and why.
+
+  **What I will NOT countersign:**
+  - A CLOSED marker with any LIVE lane whose evidence I cannot independently verify
+  - A gate PASS achieved by suppressing, skipping, or re-defining checks without a numbered EKV-R
+  - Any lane promoted from HANDOFF to LIVE without new evidence that the blocking condition was resolved
+
+- **Timestamp:** 2026-08-16T02:55+05:30
+
 ## COUNTERSIGN LOG
 
 <!-- Night-close countersign goes here ONLY after:
