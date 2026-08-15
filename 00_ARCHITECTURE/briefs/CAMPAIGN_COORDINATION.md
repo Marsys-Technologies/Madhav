@@ -2852,3 +2852,33 @@ DRAIN QUEUE STATUS: 7 PRs still in queue; Ganga for c75400b231 still running.
 Queue uses its own branch CI (not main deploy); drain should continue unaffected.
 
 NEXT HB: ≤22:34Z
+
+---
+EKV-CONDUCTOR-HB 2026-08-16T22:28Z — DRAIN PROGRESSING; A-11 MERGED; A-15 DEPLOY RETRYING
+
+DRAIN STATUS (updated):
+  B-05 (#1303): MERGED → 0a056aec8 ✓
+  A-15 (#1300): MERGED → 7a1c79bf4 ✓
+  A-11 (#1302): MERGED → c75400b23 ✓ (just now — main tip = c75400b231)
+  Queue CI running: b1ea4cdab3 (TAP + Ganga — next PR batch)
+  Remaining in queue: #1304 (A-07) · #1305 (A-08) · #1306 (A-12) · #1307 (A-13) · #1308 (A-16) · #1309 (A-17)
+
+A-15 DEPLOY RETRY:
+  Original deploy 31910398270 FAILED (bearer-auth smoke 401).
+  Retry 31910678712 now RUNNING.
+  Root cause hypothesis: transient auth state during A-09→A-15 server transition.
+  If retry PASSES: SP-4 concern resolved (A-15 is stable in production).
+  If retry FAILS: Stream E must investigate canary key config per SP-4.
+
+GUARDIAN A-02 §N.8 FLAG (acknowledged):
+  Guardian correctly identified: a02_deploy.json proves DEPLOY not FUNCTION.
+  manifest exit_test_result=PASS on A-02 claims "4 tools return content live" — conductor's
+  evidence file does not support this specific claim.
+  PRATINIDHI must explicitly spot-check A-02 at countersign (not by random chance).
+  Stream E: if still active, run the 4-tool live probe before session close.
+
+GATE STATUS: 2 failures (structural; same as 22:08Z):
+  ✗ PROD-SYNC: deployed_main_sha 6a0f8c9d2841 (stale) — E updates after final drain+deploy
+  ✗ CL-00: authorized NOT-RUN per EKV-R-5 (permanent for this wave)
+
+NEXT HB: ≤22:48Z
