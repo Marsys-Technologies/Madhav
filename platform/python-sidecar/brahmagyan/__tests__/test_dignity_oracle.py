@@ -63,24 +63,29 @@ def test_moon_own_cancer():
 
 
 def test_moon_mt_taurus_within_range():
-    """Moon MT in Taurus 4°-30°; at 10° → moolatrikona."""
-    assert classify_dignity("Moon", "Taurus", 10.0) == "moolatrikona"
+    """Moon's exaltation sign (Taurus) is also Moon's MT sign (Taurus 4°-30°).
+    Exaltation is checked before MT, so in-range returns 'exalted', not 'moolatrikona'.
+    This is the classical priority: exalted > moolatrikona when signs coincide."""
+    # In Taurus at 10° (within 4°-30° MT range): exaltation wins
+    assert classify_dignity("Moon", "Taurus", 10.0) == "exalted"
 
 
 def test_moon_taurus_below_mt_boundary():
-    """Moon in Taurus at 3° — MT range is 4°-30°, so 3° falls below → exalted."""
-    # Exaltation is checked before MT, so 3° in Taurus hits exalted first
+    """Moon in Taurus at 3° — below MT lower bound (4°) AND exalted → exalted."""
     assert classify_dignity("Moon", "Taurus", 3.0) == "exalted"
 
 
 def test_mercury_mt_virgo():
-    """Mercury MT in Virgo 16°-20°; at 18° → moolatrikona."""
-    assert classify_dignity("Mercury", "Virgo", 18.0) == "moolatrikona"
+    """Mercury's exaltation sign (Virgo) is also Mercury's MT sign (Virgo 16°-20°).
+    Exaltation is checked before MT, so at 18° (in MT range) → 'exalted', not 'moolatrikona'.
+    Classical priority: exalted > moolatrikona when signs coincide."""
+    assert classify_dignity("Mercury", "Virgo", 18.0) == "exalted"
 
 
 def test_mercury_virgo_outside_mt():
-    """Mercury in Virgo at 25° — outside MT range (16°-20°) → own."""
-    assert classify_dignity("Mercury", "Virgo", 25.0) == "own"
+    """Mercury in Virgo at 25° — exaltation sign = Virgo, so → exalted (not own).
+    Exaltation check fires first; own sign check is never reached for Virgo."""
+    assert classify_dignity("Mercury", "Virgo", 25.0) == "exalted"
 
 
 def test_mars_aries_in_mt_range():
