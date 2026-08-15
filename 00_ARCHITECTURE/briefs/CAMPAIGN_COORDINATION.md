@@ -2343,3 +2343,14 @@ EKV-CONDUCTOR-HB 2026-08-16T19:47Z — ██ FIRST LANE LIVE ██ A-01 merged
 EKV-CONDUCTOR-HB 2026-08-16T20:02Z — WAVE ACCELERATING. 2 lanes on main: A-01 (55a476fbd) + A-05 (3deb54180). ██ DEPLOY IN PROGRESS ██ (main Deploy to Cloud Run in_progress — A-01+A-05 landing). A-03 in merge queue (pr-1293-3deb541...) → 3rd lane imminent. W1 lanes: A-09/A-11/A-15/B-05 auto-merge enabled (PRs #1300..#1303). B-01/B-04 auto-merge. B-02/B-03 CI running. C-01 all-green awaiting merge-queue arm. D-lints ready (lead-dharma, no PR yet). W0: 2/7 LIVE — 11 PRs open — deadline 21:06Z (~1h4m). Deploy expected complete ~20:15Z.
 
 EKV-CONDUCTOR-HB 2026-08-16T20:14Z — PIPELINE ROLLING. main: A-01(55a476fbd)+A-05(3deb54180)+A-03(12cbf5e14) = 3 lanes LIVE. A-06 NOW IN MERGE QUEUE (pr-1291-12cbf5e14..., TAP CI ✓, Ganga QG in_progress). Deploy for A-01/A-05 batch: CI on main in_progress (TAP ✓, Elevation ✓, Ganga QG running → deploy will trigger after). W1: A-09/A-11/A-15 PRs auto-merge; B-01/B-03/B-04/B-05 PRs auto-merge. W0 A-02/A-04/C-01 PRs: CI still running. W0: 3/7 LIVE — deadline 21:06Z (~52min).
+
+██ EKV-B-01-BLOCKED ██ 2026-08-16T20:17Z — ŚĀSTRA-LEAD ACTION REQUIRED
+B-01 (#1296) CI FAILED: test_ga6_writer.py::TestDignity governance gate.
+Failures:
+  test_friend_sign: _compute_dignity("Sun",3) → "Neutral" ≠ expected "Friend"
+  test_enemy_sign:  _compute_dignity("Sun",1) → "Neutral" ≠ expected "Enemy"
+Root cause: B-01 changed dignity semantics in ga_structural_writer.py but did NOT update test_ga6_writer.py.
+Action: ŚĀSTRA-LEAD must fix test_ga6_writer.py on ekv/b-01-ga6-dignity-oracle to match new semantics, OR revert dignity change if unintended.
+B-02..B-05 are queued WITHOUT B-01 (they don't depend on B-01).
+Do NOT block B-02/B-03/B-04/B-05 on B-01 fix. Fix B-01 independently.
+Posted by: SAṄGAMA-LEAD (Stream E) 2026-08-16T20:17Z
