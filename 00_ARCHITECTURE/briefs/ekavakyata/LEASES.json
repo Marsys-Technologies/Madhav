@@ -1,0 +1,90 @@
+{
+  "version": "1.0",
+  "campaign": "EKAVĀKYATĀ",
+  "seeded_at": "2026-08-16T00:00+05:30",
+  "seeded_by": "SŪTRADHĀRA",
+  "note": "Sole writer: SŪTRADHĀRA. Re-lease grants logged in LEDGER_CONDUCTOR.md. Verifier greps git diff --name-only vs this map before every commit.",
+
+  "streams": {
+    "A": {
+      "name": "SEVĀ",
+      "model": "sonnet",
+      "owns": [
+        "platform-mcp/**",
+        "platform/src/lib/retrieval/registry/**",
+        "platform/src/lib/mcp/**",
+        "platform/src/app/api/mcp/**"
+      ],
+      "excludes": [
+        "platform/src/lib/retrieval/registry/layers/L4_phala/query_prospective_ledger.ts"
+      ],
+      "hot_file_rules": {
+        "platform-mcp/src/tools/registry_bridge.ts": "A-09 single senior builder ONLY — A-01 lands first (2-line hardFloor edit), then frozen for A-09",
+        "platform-mcp/src/lib/response_budget.ts": "A-09 single senior builder ONLY",
+        "platform/src/lib/retrieval/registry/tool_name_bridge.ts": "A-02 then FROZEN — no other lane touches after A-02 merges"
+      }
+    },
+    "B": {
+      "name": "ŚĀSTRA",
+      "model": "sonnet",
+      "owns": [
+        "platform/python-sidecar/**"
+      ]
+    },
+    "C": {
+      "name": "ṚTA",
+      "model": "sonnet",
+      "owns": [
+        "platform/src/lib/lel/**",
+        "platform/src/lib/retrieval/registry/layers/L4_phala/query_prospective_ledger.ts",
+        "platform/migrations/**",
+        "platform/scripts/"
+      ],
+      "own_restrictions": {
+        "platform/migrations/**": "new files only — never edit an applied migration",
+        "platform/scripts/": "new repair script only (C-02 writer fix)"
+      },
+      "special": "Also owns the pp-fix1 worktree and PR #1287 for C-03 rebase"
+    },
+    "D": {
+      "name": "DHARMA",
+      "model": "sonnet",
+      "owns": [
+        "platform/scripts/governance/**",
+        ".github/**",
+        "00_ARCHITECTURE/"
+      ],
+      "own_restrictions": {
+        "00_ARCHITECTURE/": "governance docs named in plan §2 D-lanes only",
+        "new_lint_test_files": "new files anywhere in codebase — NEVER edits stream-owned source"
+      }
+    },
+    "E": {
+      "name": "SAṄGAMA",
+      "model": "sonnet",
+      "owns": ["merges", "deploys", "rebuilds", "rollbacks"],
+      "no_source_authorship": true,
+      "sole_writer_of": "00_ARCHITECTURE/briefs/ekavakyata/ekv_manifest.json"
+    }
+  },
+
+  "coordination_files": {
+    "00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md": "SŪTRADHĀRA only (via coord-edit worktree, rebase-retry loop)",
+    "00_ARCHITECTURE/briefs/ekavakyata/LEASES.json": "SŪTRADHĀRA only",
+    "00_ARCHITECTURE/briefs/ekavakyata/ekv_manifest.json": "STREAM E only",
+    "00_ARCHITECTURE/briefs/ekavakyata/LEDGER_CONDUCTOR.md": "SŪTRADHĀRA only",
+    "00_ARCHITECTURE/briefs/ekavakyata/LEDGER_A.md": "STREAM A lead only",
+    "00_ARCHITECTURE/briefs/ekavakyata/LEDGER_B.md": "STREAM B lead only",
+    "00_ARCHITECTURE/briefs/ekavakyata/LEDGER_C.md": "STREAM C lead only",
+    "00_ARCHITECTURE/briefs/ekavakyata/LEDGER_D.md": "STREAM D lead only",
+    "00_ARCHITECTURE/briefs/ekavakyata/LEDGER_PRATINIDHI.md": "PRATINIDHI only",
+    "00_ARCHITECTURE/briefs/ekavakyata/LEDGER_SENTINEL.md": "SENTINEL only"
+  },
+
+  "db_rules": {
+    "port": 5433,
+    "read_only_default": true,
+    "write_authorized": ["C-01 migration", "C-02 writer fix", "C-04 lifecycle smoke", "E-03 rebuild dispatch"],
+    "any_other_write": "PRATINIDHI ruling required"
+  }
+}
