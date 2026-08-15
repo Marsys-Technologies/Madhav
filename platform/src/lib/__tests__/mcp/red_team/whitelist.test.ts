@@ -105,15 +105,19 @@ describe('RT-04 — Primitive whitelist enforcement', () => {
     }
   })
 
-  it('RT-04h: whitelist maps 56 entries (34 post-WP-1.7 + 13 WP-1.3a + 5 WP-1.3j + 1 D-4b B-5 + 1 SARVA-SIDDHI CR-24 + 2 ṢAḌ-DARŚANA W3 item-36 lattice readers)', () => {
-    // The +2 are query_muhurta_lattice and query_parihara_graph — the L0 read path
-    // over bg_muhurta_lattice / bg_parihara_rules that the contender-lattice engine
-    // (platform-mcp lib/kala_lattice_query.ts) consumes. Asserted by name below so a
+  it('RT-04h: whitelist maps 60 entries (34 post-WP-1.7 + 13 WP-1.3a + 5 WP-1.3j + 1 D-4b B-5 + 1 SARVA-SIDDHI CR-24 + 2 ṢAḌ-DARŚANA W3 item-36 lattice readers + 4 EKAVĀKYATĀ A-02 classical-text)', () => {
+    // The +2 lattice readers are query_muhurta_lattice and query_parihara_graph.
+    // The +4 EKAVĀKYATĀ A-02 tools: read_chapter, list_classical_texts,
+    // find_verses_about, search_classical_texts. Asserted by name below so a
     // future count bump cannot silently absorb an unrelated whitelist addition.
     const names = Object.keys(MCP_TO_RETRIEVAL_TOOL)
-    expect(names).toHaveLength(56)
+    expect(names).toHaveLength(60)
     expect(names).toContain('query_muhurta_lattice')
     expect(names).toContain('query_parihara_graph')
+    expect(names).toContain('read_chapter')
+    expect(names).toContain('list_classical_texts')
+    expect(names).toContain('find_verses_about')
+    expect(names).toContain('search_classical_texts')
   })
 
   it('RT-04i: all retrieval tool targets are in SURGICAL_TOOLS', () => {

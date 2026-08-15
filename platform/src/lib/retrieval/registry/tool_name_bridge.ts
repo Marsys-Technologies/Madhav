@@ -497,6 +497,10 @@ export const SURGICAL_TOOLS = [
   // ṢAḌ-DARŚANA W3 items 36/41: muhūrta election substrate readers (L0, global).
   'query_muhurta_lattice',
   'query_parihara_graph',
+  // F-02/F-07: four classical-text tools missing from MCP whitelist
+  'read_chapter',
+  'list_classical_texts',
+  'find_verses_about',
 ] as const
 
 export type SurgicalToolName = (typeof SURGICAL_TOOLS)[number]
@@ -523,6 +527,10 @@ export const MCP_TO_RETRIEVAL_TOOL: Record<string, SurgicalToolName> = {
   // Follow-up F-WP17-1: re-bridge by registering a registry capability wrapping
   // lib/tools/multi_school_signal_lookup.ts if the surgical primitive is wanted locally.
   read_classical_text: 'classical_text_search',
+  read_chapter: 'read_chapter',
+  list_classical_texts: 'list_classical_texts',
+  find_verses_about: 'find_verses_about',
+  search_classical_texts: 'classical_text_search',   // F-02/F-07: was missing from MCP whitelist
   // TR Wave additions (PR #159 — Class A: existing retrieval engines)
   query_varshphal: 'query_varshaphala',
   query_divisional_chart: 'divisional_query',
