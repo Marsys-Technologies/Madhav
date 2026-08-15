@@ -1298,3 +1298,32 @@ No crashes detected.
 ---
 
 *SENTINEL is the instrument of FM-09. Every claim here is derived, not asserted.*
+
+### HB-034 — 2026-08-17T04:30Z / ~10:00+0530 (Cycle 32 — PR #1287 on main; gate 3 blockers; C-03 new blocker)
+
+**NEW MAIN COMMIT — PR #1287 merged:**
+- `b1ea4cdab353` — `fix(lel): standing_predictions_read crash — handle Postgres EMPTY daterange literal (#1287)`
+- Pre-EKV fix PR merged (predates campaign); drain queue PRs #1304–#1309 still pending.
+
+**E progress:** `deployed_main_sha` updated to `7a1c79bf4da0` (A-15). Main leapfrogged again by PR #1287.
+
+**W0 gate re-run (FM-09, ~04:30Z IST):**
+```
+EKV-GATE: FAILED
+  ✗ PROD-SYNC: manifest deployed_main_sha '7a1c79bf4da0' != origin/main tip b1ea4cdab353
+  ✗ CL-00 cheap subset not PASS (got None) — authorized NOT-RUN per EKV-R-9
+  ✗ C-03: status 'MERGED' — wave lanes must be LIVE or honestly parked
+3 blocking problem(s). Terminal marker MUST NOT be posted.
+```
+
+**Gate blocker count: 3 (up from 2). New blocker: C-03.**
+
+C-03 is still MERGED in manifest. Gate requires LIVE or honestly parked. Conductor's gate sequence (HB-021 step 5) required C-03 → HANDOFF with handoff_note. E has not executed this step. Always required — gate surfaced it now because earlier runs blocked on other issues first. Required fix: `status=HANDOFF, handoff_note="C-03 ring-3 migration shipped via C-01/C-02; confirm on fuller W1 batch"`.
+
+**Campaign-coordination:** No new commits since GUARDIAN `14ff87478` (22:42Z). Conductor HB due ≤23:08Z.
+
+**Watch items for E:**
+1. C-03: status=HANDOFF + handoff_note
+2. deployed_main_sha → final main tip after ALL drain PRs land
+3. CL-00: manifest null (authorized NOT-RUN per EKV-R-9; wave closes PARTIAL)
+
