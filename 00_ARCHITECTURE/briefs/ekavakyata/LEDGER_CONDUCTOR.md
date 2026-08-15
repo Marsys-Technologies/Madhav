@@ -109,6 +109,13 @@ Sole writer: SŪTRADHĀRA. One file, one writer — PP2 write-race lesson.
 
 **W0 PROGRESS: 6/7 LIVE at 20:51Z — deadline 21:06Z (~15min remaining) — ON TRACK**
 
+**W0 DEADLINE SLIP (21:06Z):**
+- A-02 (PR#1294): queue branch `pr-1294-a2ce6dc37...` created 20:37Z; CI workflows queued for 29+ min without starting (no runner contention — only 1 other workflow in_progress). `autoMergeRequest: null` but queue branch exists (manually queued). Root unclear.
+- W0 SLIPS deadline by ~10-20min. Acceptable — W0 target was soft. Gate runs after all lanes merge.
+- Gate sequence: E must update manifest → run `ekv_gate.py verify --wave 0` → post result
+
+**W0 PROGRESS: 6/7 LIVE at 21:06Z — DEADLINE SLIPPED — A-02 in queue, awaiting merge**
+
 ### KERNEL API FREEZE MARKER (A posts, I broadcast)
 `EKV-KERNEL-API-FROZEN` — post when A-09 sāra kernel types are frozen.
 Consumers waiting: A-14, A-16, B-08.
