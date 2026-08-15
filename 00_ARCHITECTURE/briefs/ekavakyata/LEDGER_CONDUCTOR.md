@@ -277,3 +277,27 @@ STREAM E: After drain completes + final deploy:
   2. Fix B-05 status → LIVE sha=0a056aec841ad4be65714d1c2d2e3793a63861a3
   3. Update deployed_main_sha → final main tip
   4. Run W0 gate (expect: PASS with 1 authorized failure: CL-00)
+
+---
+23:08Z — A-02 UPGRADED; EKV-R-10/R-11 RECEIVED; CONDUCTOR 22:38Z ERROR CORRECTED
+
+GOVERNANCE CORRECTIONS:
+  1. A-15 status = MERGED (not LIVE) per EKV-R-10 (TAP red on main, same as A-09 per N.8)
+     Conductor's 22:38Z note suggesting A-15 LIVE was WRONG. GUARDIAN caught it. Acknowledged.
+  2. A-02 evidence UPGRADED from deploy-only to function-verified:
+     Ran live 4-tool MCP probe: list_classical_texts (✓), search_classical_texts (✓),
+     find_verses_about (✓), read_chapter bphs/ch1 (✓). All 4 callable, returning content.
+     exit_test_result=PASS earned per N.8 (per EKV-R-11 dead-stream recovery authorization).
+
+DRAIN STATUS:
+  Merged: B-05 · A-15 · A-11 (EKV drain) + PR#1287 LEL fix (non-drain)
+  main tip: b1ea4cdab353
+  Queue batch 9b09835033: TAP=PASS, Ganga=running
+  Open drain: #1304/#1305/#1306/#1307/#1308/#1309
+
+MANIFEST STATE (Stream E active):
+  deployed_main_sha updated to 7a1c79bf4da0 by E (stale again — main advanced to b1ea4cdab353)
+  E needs one more update after drain + deploy complete
+
+A-02 EVIDENCE: a02_deploy.json upgraded with live 4-tool probe data
+PRATINIDHI: A-02 explicit spot-check still required per EKV-R-11 (conductor's probe ≠ independent verification)
