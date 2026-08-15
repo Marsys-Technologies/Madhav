@@ -1,0 +1,76 @@
+=== PARIPURNA-2 Wave 3 Agent W3-4 -- Part A mutation-test RED proof ===
+Invocation (matches CI .github/workflows/ci.yml lines 573-585):
+  1) python platform/scripts/governance/check_fact_category_pinning.py --self-test
+  2) python platform/scripts/governance/check_fact_category_pinning.py
+
+Injected file: platform/python-sidecar/pp2_audit_throwaway_fact_pin_mutation.py
+Injected pattern: SELECT ... FROM chart_facts WHERE ... fact_category = 'ganita.dasha_lord' -- NO fact_key pin, NO ORDER BY/LIMIT 1, NO DISTINCT ON, then rows[0] reduction.
+
+--- Step 1: self-test (bundled fixtures, hermetic) ---
+check_fact_category_pinning: SELF-TEST PASS (4 pass fixture(s) silent, 3 fail fixture(s) caught).
+self-test EXIT_CODE=0
+
+--- Step 2: live repo scan (default mode, allowlist-aware) ---
+check_fact_category_pinning: 29 allowlisted violation(s) (reported, not failing — see fact_category_pin_allowlist.json):
+  [python][sql_select] platform/python-sidecar/_rebuild_ga_structural_v2.py:73 — SELECT against chart_facts filters by fact_category with NONE of: a fact_key pin, a deterministic ORDER BY ... LIMIT 1, or a DISTINCT ON reduction (brief §5 C.7 — the D1 defect class).
+      SELECT fact_category, COUNT(*) as cnt FROM chart_facts WHERE chart_id=%s AND build_id=%s AND ayanamsha_id='lahiri_chitrapaksha' AND fact_category=ANY(%s) GROUP 
+  [python][sql_select] platform/python-sidecar/bodha_writers/arudha_emitter.py:61 — SELECT against chart_facts filters by fact_category with NONE of: a fact_key pin, a deterministic ORDER BY ... LIMIT 1, or a DISTINCT ON reduction (brief §5 C.7 — the D1 defect class).
+      SELECT fact_id, fact_subject, fact_key, fact_value_text, fact_value_num FROM chart_facts WHERE chart_id = %s AND ayanamsha_id = %s AND fact_category = 'arudha_p
+  [python][sql_select] platform/python-sidecar/bodha_writers/nakshatra_semantic_emitter.py:113 — SELECT against chart_facts filters by fact_category with NONE of: a fact_key pin, a deterministic ORDER BY ... LIMIT 1, or a DISTINCT ON reduction (brief §5 C.7 — the D1 defect class).
+      SELECT fact_id, fact_category, fact_subject, fact_key, fact_value_text, fact_value_num, fact_value_jsonb FROM chart_facts WHERE chart_id = %s AND ayanamsha_id =
+  [python][sql_select] platform/python-sidecar/bodha_writers/special_lagna_emitter.py:55 — SELECT against chart_facts filters by fact_category with NONE of: a fact_key pin, a deterministic ORDER BY ... LIMIT 1, or a DISTINCT ON reduction (brief §5 C.7 — the D1 defect class).
+      SELECT fact_id, fact_subject, fact_key, fact_value_text, fact_value_num FROM chart_facts WHERE chart_id = %s AND ayanamsha_id = %s AND fact_category = 'special_
+  [python][sql_select] platform/python-sidecar/brahmagyan/bodha/l2_embeddings.py:142 — SELECT against chart_facts filters by fact_category with NONE of: a fact_key pin, a deterministic ORDER BY ... LIMIT 1, or a DISTINCT ON reduction (brief §5 C.7 — the D1 defect class).
+      SELECT fact_subject, fact_value FROM chart_facts WHERE chart_id = %s AND fact_category = 'bodha.signals' ORDER BY fact_subject
+  [python][sql_select] platform/python-sidecar/brahmagyan/bodha/l2_embeddings.py:269 — SELECT against chart_facts filters by fact_category with NONE of: a fact_key pin, a deterministic ORDER BY ... LIMIT 1, or a DISTINCT ON reduction (brief §5 C.7 — the D1 defect class).
+      SELECT 1 FROM chart_facts WHERE chart_id = %s AND fact_category = 'bodha.embeddings' AND fact_subject = %s
+  [python][sql_select] platform/python-sidecar/brahmagyan/bodha/l2_lenses_salience.py:504 — SELECT against chart_facts filters by fact_category with NONE of: a fact_key pin, a deterministic ORDER BY ... LIMIT 1, or a DISTINCT ON reduction (brief §5 C.7 — the D1 defect class).
+      SELECT fact_subject, fact_value->>'domain' AS domain, (fact_value->>'confidence')::float AS confidence FROM chart_facts WHERE chart_id = %s AND fact_category = 
+  [python][sql_select] platform/python-sidecar/brahmagyan/chart_reader_v4.py:409 — SELECT against chart_facts filters by fact_category with NONE of: a fact_key pin, a deterministic ORDER BY ... LIMIT 1, or a DISTINCT ON reduction (brief §5 C.7 — the D1 defect class).
+      SELECT fact_id, fact_subject, fact_key, fact_value_text, fact_value_num, computed_at FROM chart_facts WHERE chart_id=%s AND ayanamsha_id=%s AND fact_category=%s
+  [python][sql_select] platform/python-sidecar/brahmagyan/phala/muhurta.py:578 — SELECT against chart_facts filters by fact_category with NONE of: a fact_key pin, a deterministic ORDER BY ... LIMIT 1, or a DISTINCT ON reduction (brief §5 C.7 — the D1 defect class).
+      SELECT fact_subject, fact_value_text FROM chart_facts WHERE chart_id = %s AND ayanamsha_id = %s AND fact_category = 'tara_bala_natal_baseline'
+  [python][sql_select] platform/python-sidecar/ga_writers/ga_sade_sati_writer.py:1444 — SELECT against chart_facts filters by fact_category with NONE of: a fact_key pin, a deterministic ORDER BY ... LIMIT 1, or a DISTINCT ON reduction (brief §5 C.7 — the D1 defect class).
+      SELECT COUNT(*) FROM chart_facts WHERE chart_id = %s AND fact_category = 'graha_position' AND fact_subject = 'MOON'
+  [python][sql_select] platform/python-sidecar/ga_writers/ga_sade_sati_writer.py:1478 — SELECT against chart_facts filters by fact_category with NONE of: a fact_key pin, a deterministic ORDER BY ... LIMIT 1, or a DISTINCT ON reduction (brief §5 C.7 — the D1 defect class).
+      SELECT COUNT(*) FROM chart_facts WHERE chart_id = %s AND fact_category = 'argala_natal_matrix'
+  [python][sql_select] platform/python-sidecar/ga_writers/ga_sade_sati_writer.py:1630 — SELECT against chart_facts filters by fact_category with NONE of: a fact_key pin, a deterministic ORDER BY ... LIMIT 1, or a DISTINCT ON reduction (brief §5 C.7 — the D1 defect class).
+      SELECT fact_key, fact_value_num FROM chart_facts WHERE chart_id = %s AND ayanamsha_id = %s AND fact_category = 'argala_natal_matrix' AND fact_subject = %s AND f
+  [python][sql_select] platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py:800 — SELECT against chart_facts filters by fact_category with NONE of: a fact_key pin, a deterministic ORDER BY ... LIMIT 1, or a DISTINCT ON reduction (brief §5 C.7 — the D1 defect class).
+      SELECT fact_subject, fact_value_text, fact_id FROM chart_facts WHERE chart_id = %s AND ayanamsha_id = %s AND fact_category = 'lord_in_house_per_varga' AND fact_
+  [python][sql_select] platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:932 — SELECT against chart_facts filters by fact_category with NONE of: a fact_key pin, a deterministic ORDER BY ... LIMIT 1, or a DISTINCT ON reduction (brief §5 C.7 — the D1 defect class).
+      SELECT fact_subject, fact_value_text FROM chart_facts WHERE chart_id=%s AND ayanamsha_id=%s AND fact_category='graha_dignity_per_varga' AND fact_value_jsonb->>'
+  [python][sql_select] platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:963 — SELECT against chart_facts filters by fact_category with NONE of: a fact_key pin, a deterministic ORDER BY ... LIMIT 1, or a DISTINCT ON reduction (brief §5 C.7 — the D1 defect class).
+      SELECT fact_subject, fact_value_num FROM chart_facts WHERE chart_id=%s AND ayanamsha_id=%s AND fact_category='ashtakavarga_bindu' AND fact_subject LIKE 'SARVA-H
+  [python][sql_select] platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:2373 — SELECT against chart_facts filters by fact_category with NONE of: a fact_key pin, a deterministic ORDER BY ... LIMIT 1, or a DISTINCT ON reduction (brief §5 C.7 — the D1 defect class).
+      SELECT fact_id, fact_subject, fact_value_text FROM chart_facts WHERE chart_id=%s AND ayanamsha_id=%s AND fact_category='graha_dignity_per_varga' AND fact_value_
+  [python][sql_select] platform/python-sidecar/pipeline/orchestrator/writers/bo_upaya.py:395 — SELECT against chart_facts filters by fact_category with NONE of: a fact_key pin, a deterministic ORDER BY ... LIMIT 1, or a DISTINCT ON reduction (brief §5 C.7 — the D1 defect class).
+      SELECT fact_key FROM chart_facts WHERE chart_id = %s AND ayanamsha_id = %s AND fact_category = 'graha_yoga_karaka_flag' AND fact_value_text IN ('true', '1', 'ye
+  [python][sql_select] platform/python-sidecar/pipeline/orchestrator/writers/bo_upaya.py:413 — SELECT against chart_facts filters by fact_category with NONE of: a fact_key pin, a deterministic ORDER BY ... LIMIT 1, or a DISTINCT ON reduction (brief §5 C.7 — the D1 defect class).
+      SELECT fact_key, fact_value_text FROM chart_facts WHERE chart_id = %s AND ayanamsha_id = %s AND fact_category = 'karaka_chara_position'
+  [python][sql_select] platform/python-sidecar/pipeline/orchestrator/writers/bo_upaya.py:810 — SELECT against chart_facts filters by fact_category with NONE of: a fact_key pin, a deterministic ORDER BY ... LIMIT 1, or a DISTINCT ON reduction (brief §5 C.7 — the D1 defect class).check_fact_category_pinning: 1 NON-ALLOWLISTED violation(s) found. FAIL.
+
+      SELECT fact_subject, fact_value_text, fact_value_jsonb FROM chart_facts WHERE chart_id = %s AND ayanamsha_id = %s AND fact_category = 'dosha_label' AND fact_val
+  [python][sql_select] platform/python-sidecar/pipeline/orchestrator/writers/ka_yojaka.py:368 — SELECT against chart_facts filters by fact_category with NONE of: a fact_key pin, a deterministic ORDER BY ... LIMIT 1, or a DISTINCT ON reduction (brief §5 C.7 — the D1 defect class).
+      SELECT ayanamsha_id, fact_subject, fact_value_text FROM chart_facts WHERE chart_id = %s AND fact_category = 'lord_in_house_per_varga' AND fact_value_text IS NOT
+  [python][sql_select] platform/python-sidecar/pipeline/orchestrator/writers/ka_yojaka.py:546 — SELECT against chart_facts filters by fact_category with NONE of: a fact_key pin, a deterministic ORDER BY ... LIMIT 1, or a DISTINCT ON reduction (brief §5 C.7 — the D1 defect class).
+      SELECT fact_id, fact_category, fact_subject FROM chart_facts WHERE chart_id = %s AND fact_category IN ('yoga_label', 'dosha_label', 'graha_position')
+  [python][sql_select] platform/python-sidecar/scripts/rebuild_el18_manglik_ga_structural.py:1 — SELECT against chart_facts filters by fact_category with NONE of: a fact_key pin, a deterministic ORDER BY ... LIMIT 1, or a DISTINCT ON reduction (brief §5 C.7 — the D1 defect class).
+      rebuild_el18_manglik_ga_structural.py — EL-18 (Elevation Campaign v2.1, Lane β.D2). Re-runs `ga_structural` through the FROZEN orchestrator for BOTH canonical c
+  [python][sql_select] platform/python-sidecar/services/gochara_grammar/primitives.py:637 — SELECT against chart_facts filters by fact_category with NONE of: a fact_key pin, a deterministic ORDER BY ... LIMIT 1, or a DISTINCT ON reduction (brief §5 C.7 — the D1 defect class).
+      SELECT fact_subject, fact_key, fact_value_text, fact_value_num FROM chart_facts WHERE chart_id = %s AND fact_category = 'ashtakavarga_kakshya_boundary' AND fact
+  [python][sql_select] platform/python-sidecar/services/gochara_grammar/primitives.py:1130 — SELECT against chart_facts filters by fact_category with NONE of: a fact_key pin, a deterministic ORDER BY ... LIMIT 1, or a DISTINCT ON reduction (brief §5 C.7 — the D1 defect class).
+      SELECT fact_subject, fact_key, fact_value_text, fact_value_num, citation_human FROM chart_facts WHERE chart_id = %s AND fact_category IN ('sade_sati_cycle', 'sa
+  [python][sql_select] platform/python-sidecar/services/gochara_v3/context.py:383 — SELECT against chart_facts filters by fact_category with NONE of: a fact_key pin, a deterministic ORDER BY ... LIMIT 1, or a DISTINCT ON reduction (brief §5 C.7 — the D1 defect class).
+      SELECT fact_key, fact_value_text, fact_value_num, fact_subject, fact_category FROM chart_facts WHERE chart_id = %s AND fact_category IN ('sade_sati_cycle', 'sad
+  [python][sql_select] platform/python-sidecar/services/kala_permission/permission.py:291 — SELECT against chart_facts filters by fact_category with NONE of: a fact_key pin, a deterministic ORDER BY ... LIMIT 1, or a DISTINCT ON reduction (brief §5 C.7 — the D1 defect class).
+      Read-only SELECT of a single graha's D1 house (house_d1) and natal nakshatra name from chart_facts (fact_category='graha_position') — the L1-authority source pe
+  [typescript][find] platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_dosha.ts:227 — .find(...) reduces a fact array by fact_category alone, with NEITHER a fact_key check in the predicate NOR a .sort(...) deterministic tiebreak chained beforehand (brief §5 C.7 — the D1 defect class).
+      r => r['fact_category'] === 'dosha_label' && r['fact_subject'] === 'kala_sarpa',
+  [typescript][find] platform-mcp/src/tools/register_p1_ganita.ts:365 — .find(...) reduces a fact array by fact_category alone, with NEITHER a fact_key check in the predicate NOR a .sort(...) deterministic tiebreak chained beforehand (brief §5 C.7 — the D1 defect class).
+      r => r['fact_category'] === 'yoga_label' && String(r['fact_value_text'] ?? '').startsWith(entry.yoga),
+  [typescript][find] platform-mcp/src/tools/register_p1_ganita.ts:658 — .find(...) reduces a fact array by fact_category alone, with NEITHER a fact_key check in the predicate NOR a .sort(...) deterministic tiebreak chained beforehand (brief §5 C.7 — the D1 defect class).
+      r => r['fact_category'] === 'dosha_label' && r['fact_value_text'] === 'Kala Sarpa Dosha'
+  [python][sql_select] platform/python-sidecar/pp2_audit_throwaway_fact_pin_mutation.py:20 — SELECT against chart_facts filters by fact_category with NONE of: a fact_key pin, a deterministic ORDER BY ... LIMIT 1, or a DISTINCT ON reduction (brief §5 C.7 — the D1 defect class).
+      SELECT fact_id, fact_value, fact_subject FROM chart_facts WHERE chart_id = %s AND ayanamsha_id = %s AND fact_category = 'ganita.dasha_lord'
+repo-scan EXIT_CODE=1

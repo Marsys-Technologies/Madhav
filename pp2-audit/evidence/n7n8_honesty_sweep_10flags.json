@@ -1,0 +1,115 @@
+{
+  "audit": "PARIPURNA-2 Wave 3, Agent W3-4, Part B",
+  "principle": "CLAUDE.md §N.7 item 4 / §N.8 Earned-Signal Principle",
+  "test": "For each flag: what code path would have to run — and fail — for this signal to correctly read false? If none exists, or it checks a proxy instead of the claim, the signal is a VIOLATION.",
+  "chart_id_used": "482012f1-710e-4a25-994a-93821f5871aa",
+  "flags": [
+    {
+      "n": 1,
+      "flag_name": "bhanga_active / bhanga_rule_fired / grounds_jsonb",
+      "tool": "ganita_yoga_firings_get",
+      "subsystem": "L1 Ganita (yoga engine)",
+      "file_line": "platform/python-sidecar/pipeline/orchestrator/writers/ga_yoga_writer.py (neecha-bhanga rule evaluator; served via ga_yoga_firings table)",
+      "observed_value": "neecha_bhanga_raja_yoga fired with bhanga_active=true, bhanga_rule_fired listing 4 concrete per-varga rule ids (nbry_rule_1_dispositor_kendra, nbry_rule_2_exaltation_lord_kendra) with a full grounds_jsonb ledger showing checked=true/fired=true|false per rule per graha, and honest floor_reason for rule_5 (no verifiable classical citation — B.10 floor)",
+      "verdict": "COMPLIANT",
+      "reasoning": "grounds_jsonb carries a per-rule, per-planet ledger (checked/fired/detail) that can and does read false for individual rules (nbry_rule_3, nbry_rule_4, nbry_rule_5 all show fired:false with reasons). Non-neecha-bhanga yogas correctly show bhanga_active:null with an honest bhanga_na_reason (\"no classical bhanga rule exists\" or \"not evaluated ... to avoid fabrication\"). A real detector with a real false/null path."
+    },
+    {
+      "n": 2,
+      "flag_name": "trap1_authority_inversion_count / trap2_narration_leak_count",
+      "tool": "bodha_quality_get (synthesis_quality_scorecard)",
+      "subsystem": "L2 Bodha (quality scorecard)",
+      "file_line": "platform/python-sidecar/pipeline/orchestrator/writers/bo_pramana_mapa.py:682,688 (count_narration_leaks() / trap1 detector)",
+      "observed_value": "trap1_authority_inversion_count=0, trap2_narration_leak_count=0 (scorecard for chart 482012f1)",
+      "verdict": "COMPLIANT (previously the confirmed §N.8 violation instance #2 — now fixed)",
+      "reasoning": "Code comments explicitly document the fix: \"F-09 (was a literal 0 with no detector): real lexical scan for the documented C3/C4 contamination markers\" (line 683-688) via count_narration_leaks(), and trap1_count is now a real computed value (not the prior hardcoded literal). Per-term breakdown shipped in notes.n8_detectors so the claim is auditable. Confirmed via platform/python-sidecar/tests/test_n8_earned_signal_detectors.py which regression-tests that trap2 is NOT back to a literal 0. Three sibling gates (no_pre_answer_pass, ledger_independence_pass, discovery_not_fabricated_pass) are correctly served as NULL (honest \"not yet computed\", never True) — also compliant with the null-over-invented doctrine."
+    },
+    {
+      "n": 3,
+      "flag_name": "kala_sarpa_reconciliation.agrees",
+      "tool": "ganita_structural_get (facet=dosha_fires, response_format=v3)",
+      "subsystem": "L1 Ganita (structural facts serving layer)",
+      "file_line": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_dosha.ts:241-256",
+      "observed_value": "agrees=true; dosha_label_fires=false, per_varga_d1_fires=false (chart 482012f1, natal Kala Sarpa not formed, both sources concur)",
+      "verdict": "COMPLIANT",
+      "reasoning": "agrees is computed as a genuine equality check (perVargaFires === effectiveDoshaLabelFires) between two independently-sourced fields, with a documented CONTRADICTION message that fires when they diverge (\"per CLAUDE.md §N.5, the L1 computed fact is authoritative; this indicates a build regression\"), and returns null (not a fabricated true) when either side is unresolved this call. A real cross-check that can genuinely fail."
+    },
+    {
+      "n": 4,
+      "flag_name": "receipt.timing_anchored",
+      "tool": "judgment_query (response_format=v3)",
+      "subsystem": "Synthesis/judgment layer (built on L1 dasha + L3 kala facts)",
+      "file_line": "platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts:825-838,968",
+      "observed_value": "timing_anchored=false, with judgment_flags entry timing_anchored_forced_false / timing_anchored_false: \"dasha fetches succeeded but returned zero rows for the current period, every mahadasha window checked, and kala_activation\"",
+      "verdict": "COMPLIANT",
+      "reasoning": "timingAnchored = currentRows.length > 0 || hasWindowRows || hasActivationRows — a real content check, not a call-succeeded proxy. The doc comment explicitly names the fixed defect class: \"honesty fix only... a failure here must not fail the whole response... an all-empty result is an honest false\" (CR-1/63 class, the exact §N.7 item 6 pattern). Live-observed on chart 482012f1: it genuinely read false."
+    },
+    {
+      "n": 5,
+      "flag_name": "receipt.varga_confirmed",
+      "tool": "judgment_query (response_format=v3)",
+      "subsystem": "Synthesis/judgment layer",
+      "file_line": "platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts:549,568,957",
+      "observed_value": "varga_confirmed=\"D9✗ (no divisional row found)\", judgment_flags entry varga_confirmed_forced_false — \"the served checklist.varga_confirmation.rows are empty on the wire\"",
+      "verdict": "COMPLIANT",
+      "reasoning": "vargaConfirmed starts false and is only set true when a real divisional-chart row query returns rows.length > 0 (line 568). Live-observed reading false on this exact call, matching the empty varga_confirmation.rows array served in the same response — the flag and the underlying data agree, and the flag has a genuine code path to read false."
+    },
+    {
+      "n": 6,
+      "flag_name": "asset_throughput.state = 'lit'",
+      "tool": "orchestrator build-completion promotion (backs catalog_assets_list / cockpit stats indirectly)",
+      "subsystem": "Orchestrator (build system)",
+      "file_line": "platform/python-sidecar/pipeline/orchestrator/asset_runner.py:596-679",
+      "observed_value": "Not queried live this pass (static code verification); logic traced directly.",
+      "verdict": "COMPLIANT (the confirmed §N.8 instance #4 — already fixed, independently re-verified)",
+      "reasoning": "For writers with has_substeps=true, promotion to 'lit' after a 0-row run is gated on a genuine re-probe: writer.plan_substeps(ctx) is re-invoked and remaining_count == 0 is required (plan_complete) before final_state='lit' is set; otherwise the asset is left 'incomplete' and an asset.noop_completion_rejected event is emitted, blocking downstream deps. This is the exact SATYA-DIPA fix CLAUDE.md §N.8 instance #4 describes (\"the predicate now asks the substep-plan-completeness question directly\") — confirmed still present in the code, not reverted."
+    },
+    {
+      "n": 7,
+      "flag_name": "posterior_provenance.base_rate_matches_uniform_fallback_value",
+      "tool": "phala_predictive_anchors_get",
+      "subsystem": "L4 Phala",
+      "file_line": "platform/src/lib/retrieval/registry/layers/L4_phala/query_predictive_anchors.ts:206",
+      "observed_value": "false for all 12 sampled anchors on chart 482012f1 (base_rate_value observed 0.4412, 0.0617, 0.0123, 0.25, 0 — none equal to the 0.2 uniform-fallback constant)",
+      "verdict": "COMPLIANT",
+      "reasoning": "Computed as liftVector['base_rate'] === 0.2 (typeof-guarded, else null) — a real, if simple, equality check against the documented uniform-prior fallback constant. It genuinely distinguishes a real ontology-derived base rate from the fallback; would read true if and only if the base_rate literally equals the fallback value."
+    },
+    {
+      "n": 8,
+      "flag_name": "leakage_status",
+      "tool": "mimamsa_insight_get",
+      "subsystem": "L5 Mimamsa (mi_darshana insight-unit writer)",
+      "file_line": "platform/python-sidecar/pipeline/orchestrator/writers/mi_darshana.py: 6 call sites (lines ~136,183,214,246,365,508), all literal \"clean\"",
+      "observed_value": "leakage_status=\"clean\" on EVERY served insight_unit row for chart 482012f1 (15 of 30 rows inspected: retrodiction rows with T-90d cutoffs AND verdict_object rows AND load_bearing rows all read \"clean\" identically)",
+      "verdict": "VIOLATION",
+      "reasoning": "grep confirms the string \"clean\" is written as a bare Python literal at every INSERT call site in mi_darshana.py — no variable, no conditional, no leakage detector of any kind computes this value. This is exactly the §N.7 item 4 / §N.8 defect class (\"a flag that reads '0 leaks' or 'verified clean' with no code path that could ever produce a different value is not a clean result — it is an unimplemented check wearing a clean result's clothes\"). It is especially serious because leakage_status specifically claims to certify NO train/test contamination on blind-retrodiction rows (T-90d cutoff insight_units, whose entire epistemic value depends on the cutoff genuinely excluding future information) — the one place where a leakage claim matters most is exactly where nothing checks it. Contrast with the sibling writer mi_adhilepa.py:163, which correctly emits the honest 'not_assessed' tier for the identical concept with an explicit code comment: \"'clean' is reserved for when a real leakage detector exists and passes.\" mi_darshana violates the convention its own sibling module documents."
+    },
+    {
+      "n": 9,
+      "flag_name": "leakage (calibration-overlay leakage_status)",
+      "tool": "mimamsa_calibration_get / underlying mi_adhilepa overlay tables",
+      "subsystem": "L5 Mimamsa (mi_adhilepa calibration-overlay writer)",
+      "file_line": "platform/python-sidecar/pipeline/orchestrator/writers/mi_adhilepa.py:156-163",
+      "observed_value": "leakage = 'not_assessed' (hardcoded, but honestly so — not read live this pass, verified via static code + migration 549_adhilepa_leakage_not_assessed.sql)",
+      "verdict": "COMPLIANT",
+      "reasoning": "Included as the direct contrast case to finding #8. The code comment is explicit: \"leakage='not_assessed' until a real [detector exists]... migration 547 permits 'not_assessed'... 'clean' is reserved for when a real leakage detector exists and passes.\" This is the textbook correct application of §N.7 item 6 (\"an honest null beats an invented judgment\") — the same underlying concept as finding #8's leakage_status, handled correctly by the sibling writer that hasn't (yet) claimed a check that doesn't exist."
+    },
+    {
+      "n": 10,
+      "flag_name": "defect_001.status / defect_001_alert (MOSTLY_RESOLVED / RESOLVED / OPEN / UNKNOWN)",
+      "tool": "bodha_quality_get",
+      "subsystem": "L2 Bodha (quality scorecard freshness contract)",
+      "file_line": "platform/src/lib/retrieval/provenance/freshness_notes.ts:73-146 (deriveDefect001Note)",
+      "observed_value": "status=\"MOSTLY_RESOLVED\", metrics: {total_refs: 71967, orphan_refs: 49, orphan_pct: 0.1} (chart 482012f1, as_of live timestamp, expires_on +24h)",
+      "verdict": "COMPLIANT",
+      "reasoning": "deriveDefect001Note() runs a live SQL LEFT JOIN counting constituent_facts_array references against chart_facts.fact_id on every call (not a cached/stored value), with genuine thresholds (orphanPct===0 -> RESOLVED, <5 -> MOSTLY_RESOLVED, else -> OPEN) and a documented UNKNOWN fallback if the live query itself fails (\"cannot derive an orphan rate; not asserting one\"). The served scorecard.unresolved_constituent_facts_count field is explicitly overwritten with this same live-derived count so the two numbers cannot disagree (a GA.1-class fix noted in the response itself). A genuine, re-derived-per-call detector."
+    }
+  ],
+  "summary": {
+    "total_flags_examined": 10,
+    "compliant": 9,
+    "violation": 1,
+    "diagnosis_incomplete": 0,
+    "violation_flags": ["leakage_status (mi_darshana.py, served via mimamsa_insight_get)"]
+  }
+}

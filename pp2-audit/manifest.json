@@ -829,6 +829,136 @@
       "mechanism": "DIAGNOSIS-INCOMPLETE -- confirmed live exactly once this session via direct cross-check against the authoritative chart_dashas-backed ganita_dashas_get response captured in the same session. Did not trace prashna_ask's synthesis/narration code path (likely an LLM-composed answer over retrieved tool results in platform-mcp or platform/src) to pin the exact file:line where the cited dasha row's start_date/end_date is paraphrased rather than restated verbatim. Filed as a secondary/tertiary observation discovered incidentally while executing Task 2 (session/concurrency) rather than a primary determinism finding -- it was not re-tested for repeat-call stability of the WRONG date (i.e. whether the narrative is at least internally deterministic in its own wrongness), so it is reported strictly as a one-time-observed narration-accuracy defect, not a non-determinism instance.",
       "source_agent": "H",
       "source_id": "H-F-93"
+    },
+    {
+      "claim": "drift_detector.py exits non-zero (exit=3, 216 findings) on the current repo state Ran `python3 platform/scripts/governance/drift_detector.py --repo-root . --session-id PARIPURNA2-W3-2-FM25-audit` against the unmutated, post-revert repo state (agent worktree audit/paripurna2-evidence). Result: 216 findings, exit_code=3 (per the script's own compute_exit_code: 0=clean, 1=critical, 2=high, 3=medium/low-only, 4=script error). Breakdown by class: registry_disagreement=84, canonical_unreferenced=77, phantom_reference=52 (all 52 carry whitelist_ticket and are excluded from the exit-code computation), governance_stack_disagreement=1, schema_file_empty=1, a3_schema_db_unreachable=1 (LOW; this last one is an environment artifact — no local Postgres reachable in this worktree at 127.0.0.1:5433 — not a documentation-registry drift). That leaves 164 non-whitelisted MEDIUM/LOW findings driving the exit=3, e.g.: evidence=\"FILE_REGISTRY does not name 'CGP_AUDIT_v1_0.md'\" (registry_disagreement), evidence=\"GOVERNANCE_STACK does not name 'MSR_v5_0.md'\" (governance_stack_disagreement), evidence=\"Canonical CGP_AUDIT_v1_0 (CGP_AUDIT_v1_0.md) not referenced in any surface\" (canonical_unreferenced), evidence=\"CHART_FACTS_SCHEMA.json has no columns declared\" (schema_file_empty). Per the audit brief's framing this canonical-path/registry-disagreement check is meant to be always-green, and the observed result is not green. Calibration note: IMPORTANT CONTEXT before treating this as newly-discovered drift: ONGOING_HYGIENE_POLICIES_v1_0.md §F explicitly documents exit code 3 (MEDIUM/LOW findings only, no HIGH/CRITICAL) as 'the normal baseline when drift_detector.py reports pre-existing whitelisted MEDIUM/LOW drift', gated on each session's close checklist carrying a `known_residuals` block. SESSION_LOG.md's most recent matching entry (line ~31778) records `drift_detector_run: {exit_code: 3, divergences_found: 219, disposition: \"pre-existing baseline (ONGOING_HYGIENE §F exit-3 whitelist); 0 findings reference this session's files\"}` — i.e. 219 findings at that prior close vs 216 measured here, a small delta consistent with normal accrual/whitelist churn rather than a fresh regression. So this finding is best read as: the guard is functioning as designed (it detects and reports the drift correctly) and the project's own governance process has knowingly accepted a nonzero (exit=3) baseline rather than driving it to exit=0 — this is a documented, accepted policy exception, not evidence drift_detector.py is broken or miswired. Recorded as 'major' per this audit wave's literal finding taxonomy ('drift_detector.py reported real drift = major'), but the disposition is 'known accepted baseline', not 'undiscovered defect'.",
+      "reproduce_cmd": "Run drift_detector.py (platform/scripts/governance/drift_detector.py) against current repo state",
+      "evidence_file": "pp2-audit/evidence/ (drift_detector run captured inline in this finding; raw JSON/MD written to scratchpad, not committed, per task scope — repo-root run: exit=3, 216 findings, 164 non-whitelisted, matches SESSION_LOG's most recent exit-3/known-baseline precedent)",
+      "severity": "major",
+      "mechanism": "DIAGNOSIS-INCOMPLETE",
+      "id": "F-94",
+      "source_agent": "FM25",
+      "source_id": "FM25-F-94"
+    },
+    {
+      "claim": "schema_validator.py does not exit clean on the current repo state platform/scripts/governance/schema_validator.py (run with no args, its default manifest-mode invocation) reports 43 violations and exits with code 3 (per its own exit-code legend printed in the report: '0 clean; 1 critical; 2 high; 3 medium/low; 4 script error'). This is not a clean pass. Breakdown: 31x 'frontmatter_field_missing[architecture_governance/artifact]' (LOW/MEDIUM) across 00_ARCHITECTURE/*.md artifacts missing a required `artifact:` frontmatter key; 11x 'session_log_entry_missing_next_objective_heading' (LOW) on historical SESSION_LOG.md entries dated 2026-07-14 through 2026-07-22 missing a '### Next session objective' heading; and 1x 'current_state_last_session_id_disagreement' (MEDIUM), a genuine registry cross-reference mismatch: CURRENT_STATE.last_session_id=`F1-AMENDMENT-CONDUCTOR-2026-08-09` but the SESSION_LOG.md tail entry is `F1-ADOPTION-CONDUCTOR-2026-08-09` -- exactly the GA.1-class 'registries must not disagree' failure mode CLAUDE.md B.8 warns against. No CRITICAL or HIGH severity violations were found. Run performed AFTER the FM-26 mutation was reverted (git diff --quiet confirmed clean on the mutated file first), so this is unrelated to and uncontaminated by the FM-26 mutation test. Calibration note: This finding is scoped to the secondary Step 6 task (schema_validator.py green check), not to FM-26 itself. Whether the 31 frontmatter/11 session-log LOW items are an accepted, previously-whitelisted baseline (per ONGOING_HYGIENE_POLICIES_v1_0.md's exit-code-3 known_residuals concept) was not independently confirmed against a whitelist artifact in this session's scope; flagged here per the mission's explicit instruction to capture any reported violation. The current_state_last_session_id_disagreement item is the one item of this set that is unambiguously a fresh, concrete registry-drift defect rather than a plausibly-whitelisted historical residual.",
+      "reproduce_cmd": "python3 platform/scripts/governance/schema_validator.py --json-path /tmp/schema_validator.json --report-path /tmp/schema_validator_report.txt",
+      "evidence_file": null,
+      "severity": "major",
+      "mechanism": "00_ARCHITECTURE/CURRENT_STATE_v1_0.md: CURRENT_STATE.last_session_id=`F1-AMENDMENT-CONDUCTOR-2026-08-09` but SESSION_LOG tail entry is `F1-ADOPTION-CONDUCTOR-2026-08-09`",
+      "id": "F-95",
+      "source_agent": "FM26",
+      "source_id": "FM26-F-94"
+    },
+    {
+      "claim": "fact-category-pin-lint CI guard mutation-tested: catches the exact D1 defect class it claims to enforce Verdict: COMPLIANT — the guard is a real, working detector, not a null check. It genuinely distinguishes the injected violation from the 29 pre-existing allowlisted violations (correctly does not double-count or misclassify), and correctly separates hermetic self-test fixtures from the live-tree scan.. RED confirmed: repo-scan exit code 1, correctly flagged at the exact injected file:line (platform/python-sidecar/pp2_audit_throwaway_fact_pin_mutation.py:20) with the correct message. self-test remained exit 0 throughout (hermetic fixtures unaffected by the live-tree mutation, as designed). GREEN confirmed after revert: self-test exit 0, repo-scan exit 0 (\"0 new violations (29 pre-existing, allowlisted). PASS.\"), git status --porcelain matched the pre-mutation baseline (only node_modules untracked).",
+      "reproduce_cmd": "Injected a throwaway file (platform/python-sidecar/pp2_audit_throwaway_fact_pin_mutation.py) containing the exact D1 defect shape: `SELECT fact_id, fact_value, fact_subject FROM chart_facts WHERE chart_id = %s AND ayanamsha_id = %s AND fact_category = 'ganita.dasha_lord'` followed by client-side `rows[0]` reduction — no fact_key pin, no ORDER BY, no DISTINCT ON. Ran the exact CI invocation (.github/workflows/ci.yml lines 573-585: self-test then default repo scan) before and after the mutation, then fully reverted.",
+      "evidence_file": "pp2-audit/evidence/fact_category_pin_lint_mutation_RED.txt; pp2-audit/evidence/fact_category_pin_lint_mutation_GREEN.txt",
+      "severity": "informational",
+      "mechanism": "platform/scripts/governance/check_fact_category_pinning.py; .github/workflows/ci.yml:573-585",
+      "id": "F-96",
+      "source_agent": "W3-FactPin",
+      "source_id": "W3-F-94"
+    },
+    {
+      "claim": "ga_yoga_firings.bhanga_active has a real per-rule detector (neecha-bhanga grounds_jsonb ledger) (flag `bhanga_active / bhanga_rule_fired / grounds_jsonb` served by `ganita_yoga_firings_get`, subsystem: L1 Ganita) Verdict: COMPLIANT. grounds_jsonb carries a per-rule, per-planet ledger (checked/fired/detail per nbry_rule_1..5) that genuinely reads false for individual rules on this chart (nbry_rule_3/4/5 all fired:false, rule_5 correctly floored with an honest 'no confidently-verifiable classical citation' reason per B.10). Non-applicable yogas correctly show bhanga_active:null with bhanga_na_reason explaining why (no classical rule exists, or not evaluated to avoid fabrication).",
+      "reproduce_cmd": "Call mcp__marsys-jis-direct__ganita_yoga_firings_get on chart_id=482012f1-710e-4a25-994a-93821f5871aa and inspect field `bhanga_active / bhanga_rule_fired / grounds_jsonb`",
+      "evidence_file": "pp2-audit/evidence/n7n8_honesty_sweep_10flags.json (flag #1)",
+      "severity": "informational",
+      "mechanism": "platform/python-sidecar/pipeline/orchestrator/writers/ga_yoga_writer.py",
+      "id": "F-97",
+      "source_agent": "W3-FactPin",
+      "source_id": "W3-F-95"
+    },
+    {
+      "claim": "bo_pramana_mapa trap1/trap2 counters — confirmed §N.8 instance #2 already fixed with real detectors (flag `trap1_authority_inversion_count / trap2_narration_leak_count` served by `bodha_quality_get`, subsystem: L2 Bodha) Verdict: COMPLIANT. Code at bo_pramana_mapa.py:682-688 documents the fix explicitly: 'F-09 (was a literal 0 with no detector): real lexical scan for the documented C3/C4 contamination markers' via count_narration_leaks(); per-term breakdown shipped in notes.n8_detectors. A regression test (tests/test_n8_earned_signal_detectors.py) explicitly asserts trap2 has not reverted to a literal 0. Three sibling gates (no_pre_answer_pass, ledger_independence_pass, discovery_not_fabricated_pass) correctly serve NULL rather than a fabricated True, matching the honest-null doctrine.",
+      "reproduce_cmd": "Call mcp__marsys-jis-direct__bodha_quality_get on chart_id=482012f1-710e-4a25-994a-93821f5871aa and inspect field `trap1_authority_inversion_count / trap2_narration_leak_count`",
+      "evidence_file": "pp2-audit/evidence/n7n8_honesty_sweep_10flags.json (flag #2)",
+      "severity": "informational",
+      "mechanism": "platform/python-sidecar/pipeline/orchestrator/writers/bo_pramana_mapa.py:640-739; platform/python-sidecar/tests/l2/test_n8_earned_signal_detectors.py",
+      "id": "F-98",
+      "source_agent": "W3-FactPin",
+      "source_id": "W3-F-96"
+    },
+    {
+      "claim": "kala_sarpa_reconciliation.agrees is a genuine cross-source equality check, not a hardcoded true (flag `kala_sarpa_reconciliation.agrees` served by `ganita_structural_get (facet=dosha_fires, v3)`, subsystem: L1 Ganita) Verdict: COMPLIANT. Computed as a real equality check (perVargaFires === effectiveDoshaLabelFires) between the dosha_label catalog row and the authoritative kala_sarpa_per_varga D1 fact, with a documented CONTRADICTION path that would fire an explicit disagreement message citing CLAUDE.md §N.5 if the two sources diverged, and correctly returns null (not a fabricated agreement) when either side is unresolved this call.",
+      "reproduce_cmd": "Call mcp__marsys-jis-direct__ganita_structural_get (facet=dosha_fires, v3) on chart_id=482012f1-710e-4a25-994a-93821f5871aa and inspect field `kala_sarpa_reconciliation.agrees`",
+      "evidence_file": "pp2-audit/evidence/n7n8_honesty_sweep_10flags.json (flag #3)",
+      "severity": "informational",
+      "mechanism": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_dosha.ts:219-256",
+      "id": "F-99",
+      "source_agent": "W3-FactPin",
+      "source_id": "W3-F-97"
+    },
+    {
+      "claim": "judgment_query receipt.timing_anchored is content-checked, not call-succeeded-checked (flag `receipt.timing_anchored` served by `judgment_query (v3)`, subsystem: Synthesis/judgment layer (built on L1 dasha + L3 kala facts)) Verdict: COMPLIANT. timingAnchored = currentRows.length > 0 || hasWindowRows || hasActivationRows — checks actual returned content, not merely that the underlying fetch calls succeeded. Live-observed reading false on chart 482012f1's marriage judgment, with the accompanying judgment_flags entry naming exactly why ('dasha fetches succeeded but returned zero rows...'). The code comment explicitly names this as a fix for the CR-1/63 defect class (claiming success over an empty payload) — the same defect class as the prior §N.8 instances.",
+      "reproduce_cmd": "Call mcp__marsys-jis-direct__judgment_query (v3) on chart_id=482012f1-710e-4a25-994a-93821f5871aa and inspect field `receipt.timing_anchored`",
+      "evidence_file": "pp2-audit/evidence/n7n8_honesty_sweep_10flags.json (flag #4)",
+      "severity": "informational",
+      "mechanism": "platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts:819-841,968",
+      "id": "F-100",
+      "source_agent": "W3-FactPin",
+      "source_id": "W3-F-98"
+    },
+    {
+      "claim": "judgment_query receipt.varga_confirmed genuinely gates on divisional-row presence (flag `receipt.varga_confirmed` served by `judgment_query (v3)`, subsystem: Synthesis/judgment layer) Verdict: COMPLIANT. vargaConfirmed defaults false and is set true only when a real divisional-chart query returns rows.length > 0. Live-observed reading 'D9✗ (no divisional row found)' on chart 482012f1, consistent with the empty varga_confirmation.rows array served in the same response and the accompanying varga_confirmed_forced_false judgment flag.",
+      "reproduce_cmd": "Call mcp__marsys-jis-direct__judgment_query (v3) on chart_id=482012f1-710e-4a25-994a-93821f5871aa and inspect field `receipt.varga_confirmed`",
+      "evidence_file": "pp2-audit/evidence/n7n8_honesty_sweep_10flags.json (flag #5)",
+      "severity": "informational",
+      "mechanism": "platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts:549,568,957",
+      "id": "F-101",
+      "source_agent": "W3-FactPin",
+      "source_id": "W3-F-99"
+    },
+    {
+      "claim": "Orchestrator asset_throughput.state='lit' no-op-completion guard (confirmed §N.8 instance #4) verified still fixed (flag `asset_throughput.state = 'lit'` served by `orchestrator build-completion promotion`, subsystem: Orchestrator (build system)) Verdict: COMPLIANT. For writers with has_substeps=true, a 0-row-this-run promotion to 'lit' is gated on a genuine re-probe: writer.plan_substeps(ctx) is re-invoked inside a savepoint and remaining_count == 0 is required before final_state='lit'; otherwise an asset.noop_completion_rejected event is emitted and the asset is left 'incomplete', blocking downstream deps. This is the exact SATYA-DIPA fix CLAUDE.md §N.8 instance #4 describes and it is confirmed still present (not reverted) in asset_runner.py.",
+      "reproduce_cmd": "Call mcp__marsys-jis-direct__orchestrator build-completion promotion on chart_id=482012f1-710e-4a25-994a-93821f5871aa and inspect field `asset_throughput.state = 'lit'`",
+      "evidence_file": "pp2-audit/evidence/n7n8_honesty_sweep_10flags.json (flag #6)",
+      "severity": "informational",
+      "mechanism": "platform/python-sidecar/pipeline/orchestrator/asset_runner.py:590-680",
+      "id": "F-102",
+      "source_agent": "W3-FactPin",
+      "source_id": "W3-F-100"
+    },
+    {
+      "claim": "phala_predictive_anchors_get posterior_provenance.base_rate_matches_uniform_fallback_value is a real (if simple) equality check (flag `posterior_provenance.base_rate_matches_uniform_fallback_value` served by `phala_predictive_anchors_get`, subsystem: L4 Phala) Verdict: COMPLIANT. Computed as liftVector['base_rate'] === 0.2 (the documented uniform-prior fallback constant), type-guarded, null when base_rate is absent. Live-observed as false for all 12 sampled anchors on chart 482012f1, whose base_rate_value varied genuinely (0.4412, 0.0617, 0.0123, 0.25, 0) — none coincidentally equal to 0.2, so the check is exercising real data, not a tautology.",
+      "reproduce_cmd": "Call mcp__marsys-jis-direct__phala_predictive_anchors_get on chart_id=482012f1-710e-4a25-994a-93821f5871aa and inspect field `posterior_provenance.base_rate_matches_uniform_fallback_value`",
+      "evidence_file": "pp2-audit/evidence/n7n8_honesty_sweep_10flags.json (flag #7)",
+      "severity": "informational",
+      "mechanism": "platform/src/lib/retrieval/registry/layers/L4_phala/query_predictive_anchors.ts:206",
+      "id": "F-103",
+      "source_agent": "W3-FactPin",
+      "source_id": "W3-F-101"
+    },
+    {
+      "claim": "VIOLATION — mimamsa_insight_get's leakage_status is a hardcoded literal 'clean' with zero detector behind it (flag `leakage_status` served by `mimamsa_insight_get`, subsystem: L5 Mimamsa (mi_darshana insight-unit writer)) Verdict: VIOLATION. grep of mi_darshana.py confirms the bare Python string literal \"clean\" is written at every one of 6 INSERT call sites for the leakage_status column — no variable, no conditional, no detector of any kind computes this value; it cannot ever read anything else. Live-confirmed: every one of 15 inspected insight_unit rows served for chart 482012f1 (spanning insight_type=retrodiction, verdict_object, and load_bearing) reads leakage_status='clean' identically. This is the same defect class as the four confirmed §N.8 instances (a flag with no code path that could ever produce a different value). It is materially more serious than a routine finding because leakage_status specifically claims train/test-leakage cleanliness on BLIND RETRODICTION rows (T-90d cutoff insight_units) — the entire epistemic value of a retrodiction test rests on the cutoff genuinely excluding future information, and this is precisely the row type where an unearned 'clean' claim does the most damage to the calibration story. The correct pattern already exists in the codebase one file over: mi_adhilepa.py:156-163 uses the honest 'not_assessed' tier for the identical leakage_status concept, with a code comment stating in so many words that 'clean' is reserved for when a real detector exists and passes (migration 549_adhilepa_leakage_not_assessed.sql codifies the same honest-tier convention). mi_darshana.py does not follow its sibling writer's own documented convention.",
+      "reproduce_cmd": "Call mcp__marsys-jis-direct__mimamsa_insight_get on chart_id=482012f1-710e-4a25-994a-93821f5871aa and inspect field `leakage_status`",
+      "evidence_file": "pp2-audit/evidence/n7n8_honesty_sweep_10flags.json (flag #8)",
+      "severity": "high",
+      "mechanism": "platform/python-sidecar/pipeline/orchestrator/writers/mi_darshana.py:136,183,214,246,365,508; platform/python-sidecar/pipeline/orchestrator/writers/mi_adhilepa.py:156-163 (contrast — correct pattern); platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_insights.ts:105 (serves the field verbatim) | recommendation: Either (a) implement a real leakage detector for mi_darshana insight units analogous to mi_adhilepa's gated design, or (b) until one exists, emit the honest 'not_assessed' tier mi_adhilepa already established as this codebase's convention for exactly this situation — never a bare 'clean' literal with no check behind it.",
+      "id": "F-104",
+      "source_agent": "W3-FactPin",
+      "source_id": "W3-F-102"
+    },
+    {
+      "claim": "Contrast case — mi_adhilepa's leakage tier correctly uses the honest 'not_assessed' null value (flag `leakage (calibration-overlay leakage_status)` served by `mimamsa_calibration_get / mi_adhilepa overlay tables`, subsystem: L5 Mimamsa (mi_adhilepa calibration-overlay writer)) Verdict: COMPLIANT. Included as the direct positive contrast to W3-F-102. Code comment at mi_adhilepa.py:156-163 states explicitly: \"leakage='not_assessed' until a real [detector exists]... 'clean' is reserved for when a real leakage detector exists and passes.\" This is the textbook-correct application of CLAUDE.md §N.7 item 6 ('an honest null beats an invented judgment') for the identical concept that mi_darshana (W3-F-102) gets wrong.",
+      "reproduce_cmd": "Call mcp__marsys-jis-direct__mimamsa_calibration_get / mi_adhilepa overlay tables on chart_id=482012f1-710e-4a25-994a-93821f5871aa and inspect field `leakage (calibration-overlay leakage_status)`",
+      "evidence_file": "pp2-audit/evidence/n7n8_honesty_sweep_10flags.json (flag #9)",
+      "severity": "informational",
+      "mechanism": "platform/python-sidecar/pipeline/orchestrator/writers/mi_adhilepa.py:156-163; platform/supabase/migrations/549_adhilepa_leakage_not_assessed.sql",
+      "id": "F-105",
+      "source_agent": "W3-FactPin",
+      "source_id": "W3-F-103"
+    },
+    {
+      "claim": "bodha_quality_get defect_001 status is re-derived live via real SQL on every call, not a stored/stale value (flag `defect_001.status / defect_001_alert` served by `bodha_quality_get`, subsystem: L2 Bodha (quality scorecard freshness contract)) Verdict: COMPLIANT. deriveDefect001Note() runs a live SQL LEFT JOIN counting constituent_facts_array references against chart_facts.fact_id on every single call — never a cached/stored value — with genuine thresholds (0% orphan -> RESOLVED, <5% -> MOSTLY_RESOLVED, else -> OPEN) and an honest UNKNOWN fallback if the live query itself fails ('cannot derive an orphan rate; not asserting one'). Live-observed: status='MOSTLY_RESOLVED', metrics={total_refs:71967, orphan_refs:49, orphan_pct:0.1} for chart 482012f1, consistent with the thresholds. The served scorecard.unresolved_constituent_facts_count is explicitly overwritten with this same live-derived count specifically so the two numbers cannot disagree — a documented GA.1-class registry-disagreement fix.",
+      "reproduce_cmd": "Call mcp__marsys-jis-direct__bodha_quality_get on chart_id=482012f1-710e-4a25-994a-93821f5871aa and inspect field `defect_001.status / defect_001_alert`",
+      "evidence_file": "pp2-audit/evidence/n7n8_honesty_sweep_10flags.json (flag #10)",
+      "severity": "informational",
+      "mechanism": "platform/src/lib/retrieval/provenance/freshness_notes.ts:73-146; platform/src/lib/retrieval/registry/layers/L2_bodha/query_quality_scorecard.ts:95-137",
+      "id": "F-106",
+      "source_agent": "W3-FactPin",
+      "source_id": "W3-F-104"
     }
   ],
   "tool_count_declared": 125,

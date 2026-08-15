@@ -1,0 +1,27 @@
+[
+  {
+    "id": "FM26-F-94",
+    "severity": "major",
+    "title": "schema_validator.py does not exit clean on the current repo state",
+    "description": "platform/scripts/governance/schema_validator.py (run with no args, its default manifest-mode invocation) reports 43 violations and exits with code 3 (per its own exit-code legend printed in the report: '0 clean; 1 critical; 2 high; 3 medium/low; 4 script error'). This is not a clean pass. Breakdown: 31x 'frontmatter_field_missing[architecture_governance/artifact]' (LOW/MEDIUM) across 00_ARCHITECTURE/*.md artifacts missing a required `artifact:` frontmatter key; 11x 'session_log_entry_missing_next_objective_heading' (LOW) on historical SESSION_LOG.md entries dated 2026-07-14 through 2026-07-22 missing a '### Next session objective' heading; and 1x 'current_state_last_session_id_disagreement' (MEDIUM), a genuine registry cross-reference mismatch: CURRENT_STATE.last_session_id=`F1-AMENDMENT-CONDUCTOR-2026-08-09` but the SESSION_LOG.md tail entry is `F1-ADOPTION-CONDUCTOR-2026-08-09` -- exactly the GA.1-class 'registries must not disagree' failure mode CLAUDE.md B.8 warns against. No CRITICAL or HIGH severity violations were found. Run performed AFTER the FM-26 mutation was reverted (git diff --quiet confirmed clean on the mutated file first), so this is unrelated to and uncontaminated by the FM-26 mutation test.",
+    "evidence": {
+      "command": "python3 platform/scripts/governance/schema_validator.py --json-path /tmp/schema_validator.json --report-path /tmp/schema_validator_report.txt",
+      "exit_code": 3,
+      "stdout": "schema_validator: 43 violations; exit=3",
+      "verbatim_current_state_disagreement": {
+        "rule": "current_state_last_session_id_disagreement",
+        "severity": "MEDIUM",
+        "path": "00_ARCHITECTURE/CURRENT_STATE_v1_0.md",
+        "evidence": "CURRENT_STATE.last_session_id=`F1-AMENDMENT-CONDUCTOR-2026-08-09` but SESSION_LOG tail entry is `F1-ADOPTION-CONDUCTOR-2026-08-09`",
+        "suggested_remediation": "Update CURRENT_STATE §2 or append the missing SESSION_LOG entry (whichever is authoritative per §5)"
+      },
+      "violation_counts_by_rule": {
+        "frontmatter_field_missing[architecture_governance/artifact]": 31,
+        "session_log_entry_missing_next_objective_heading": 11,
+        "current_state_last_session_id_disagreement": 1
+      },
+      "severity_counts": {"LOW": 23, "MEDIUM": 20, "HIGH": 0, "CRITICAL": 0}
+    },
+    "note": "This finding is scoped to the secondary Step 6 task (schema_validator.py green check), not to FM-26 itself. Whether the 31 frontmatter/11 session-log LOW items are an accepted, previously-whitelisted baseline (per ONGOING_HYGIENE_POLICIES_v1_0.md's exit-code-3 known_residuals concept) was not independently confirmed against a whitelist artifact in this session's scope; flagged here per the mission's explicit instruction to capture any reported violation. The current_state_last_session_id_disagreement item is the one item of this set that is unambiguously a fresh, concrete registry-drift defect rather than a plausibly-whitelisted historical residual."
+  }
+]

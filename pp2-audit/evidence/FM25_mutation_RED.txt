@@ -1,0 +1,60 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.13.7, pytest-9.0.3, pluggy-1.6.0 -- /Users/Dev/Vibe-Coding/Apps/Madhav/.venv/bin/python3
+cachedir: .pytest_cache
+rootdir: /Users/Dev/Vibe-Coding/Apps/Madhav/.claude/worktrees/agent-a887768cd83df5560/platform/python-sidecar
+plugins: asyncio-1.4.0, langsmith-0.8.7, anyio-4.13.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 41 items / 40 deselected / 1 selected
+
+services/ka_kshetra/tests/test_dhara_null_vectorized.py::TestFM25PerfGate::test_r1024_wall_clock_under_120s FAILED [100%]
+
+=================================== FAILURES ===================================
+______________ TestFM25PerfGate.test_r1024_wall_clock_under_120s _______________
+
+self = <services.ka_kshetra.tests.test_dhara_null_vectorized.TestFM25PerfGate object at 0x10c106490>
+
+    def test_r1024_wall_clock_under_120s(self):
+        """R=1024 completes within 120s on current hardware."""
+        ev = _make_minimal_evaluator(
+            horizon_days=36525.0,  # 100 Julian years, same as production
+            n_md_periods=9,        # approximate real Vimshottari MD count
+        )
+    
+        # For the perf gate: we still need _null_build_segments to return real
+        # segments so the cumulative computation path is exercised. Patch only
+        # replicate_evaluator to return the same (unshifted) evaluator.
+        # _null_build_segments itself is NOT patched — it uses the mocked evaluator.
+        # The mock evaluator's ln_lambda (via MagicMock) will return a MagicMock;
+        # for perf testing we additionally patch ln_lambda to return a constant float.
+        from unittest.mock import patch as _patch
+    
+        seg = _make_segment(0.0, 36525.0, alpha=-4.0, gamma=0.0)
+    
+        with _patch(
+            'services.ka_kshetra.dhara_null_vec._null_build_segments',
+            return_value=[seg],
+        ), _patch(
+            'services.ka_kshetra.dhara_null_vec.replicate_evaluator',
+            return_value=ev,
+        ):
+            t0 = time.perf_counter()
+            result = dhara_compute_null_vec(ev, R=DEFAULT_REPLICATES)
+            elapsed = time.perf_counter() - t0
+    
+>       assert elapsed <= 120.0, (
+            f'FM-25 FAIL: dhara_compute_null_vec(R=1024) took {elapsed:.1f}s > 120s'
+        )
+E       AssertionError: FM-25 FAIL: dhara_compute_null_vec(R=1024) took 138.4s > 120s
+E       assert 138.38427583384328 <= 120.0
+
+services/ka_kshetra/tests/test_dhara_null_vectorized.py:483: AssertionError
+=============================== warnings summary ===============================
+services/ka_kshetra/tests/test_dhara_null_vectorized.py:442
+  /Users/Dev/Vibe-Coding/Apps/Madhav/.claude/worktrees/agent-a887768cd83df5560/platform/python-sidecar/services/ka_kshetra/tests/test_dhara_null_vectorized.py:442: PytestUnknownMarkWarning: Unknown pytest.mark.perf - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.perf
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED services/ka_kshetra/tests/test_dhara_null_vectorized.py::TestFM25PerfGate::test_r1024_wall_clock_under_120s
+=========== 1 failed, 40 deselected, 1 warning in 138.45s (0:02:18) ============
+EXIT_CODE=1

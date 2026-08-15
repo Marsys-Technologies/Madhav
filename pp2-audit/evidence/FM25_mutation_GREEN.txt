@@ -1,0 +1,18 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.13.7, pytest-9.0.3, pluggy-1.6.0 -- /Users/Dev/Vibe-Coding/Apps/Madhav/.venv/bin/python3
+cachedir: .pytest_cache
+rootdir: /Users/Dev/Vibe-Coding/Apps/Madhav/.claude/worktrees/agent-a887768cd83df5560/platform/python-sidecar
+plugins: asyncio-1.4.0, langsmith-0.8.7, anyio-4.13.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 41 items / 40 deselected / 1 selected
+
+services/ka_kshetra/tests/test_dhara_null_vectorized.py::TestFM25PerfGate::test_r1024_wall_clock_under_120s PASSED [100%]
+
+=============================== warnings summary ===============================
+services/ka_kshetra/tests/test_dhara_null_vectorized.py:442
+  /Users/Dev/Vibe-Coding/Apps/Madhav/.claude/worktrees/agent-a887768cd83df5560/platform/python-sidecar/services/ka_kshetra/tests/test_dhara_null_vectorized.py:442: PytestUnknownMarkWarning: Unknown pytest.mark.perf - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.perf
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================= 1 passed, 40 deselected, 1 warning in 13.62s =================
+EXIT_CODE=0

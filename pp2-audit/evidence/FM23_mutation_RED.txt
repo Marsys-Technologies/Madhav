@@ -1,0 +1,55 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.13.7, pytest-9.0.3, pluggy-1.6.0 -- /Users/Dev/Vibe-Coding/Apps/Madhav/.venv/bin/python3
+cachedir: .pytest_cache
+rootdir: /Users/Dev/Vibe-Coding/Apps/Madhav/.claude/worktrees/agent-a44a3e3fc69fd9cbe/platform/python-sidecar
+plugins: asyncio-1.4.0, langsmith-0.8.7, anyio-4.13.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 6 items
+
+tests/governance/test_fm23_dhara_modules_wired.py::test_dhara_module_is_imported_by_production_code[dhara_null] PASSED [ 16%]
+tests/governance/test_fm23_dhara_modules_wired.py::test_dhara_module_is_imported_by_production_code[dhara_null_vec] PASSED [ 33%]
+tests/governance/test_fm23_dhara_modules_wired.py::test_dhara_module_is_imported_by_production_code[dhara_pin_matrix] XFAIL [ 50%]
+tests/governance/test_fm23_dhara_modules_wired.py::test_dhara_module_is_imported_by_production_code[dhara_sweep] PASSED [ 66%]
+tests/governance/test_fm23_dhara_modules_wired.py::test_dhara_module_is_imported_by_production_code[dhara_term_matrix] PASSED [ 83%]
+tests/governance/test_fm23_dhara_modules_wired.py::test_dhara_module_is_imported_by_production_code[dhara_zz_audit_probe] FAILED [100%]
+
+=================================== FAILURES ===================================
+____ test_dhara_module_is_imported_by_production_code[dhara_zz_audit_probe] ____
+
+module_stem = 'dhara_zz_audit_probe'
+
+    @pytest.mark.parametrize(
+        "module_stem",
+        [
+            pytest.param(
+                s,
+                marks=pytest.mark.xfail(
+                    strict=False,
+                    reason=_KNOWN_UNWIRED[s],
+                ),
+            )
+            if s in _KNOWN_UNWIRED
+            else s
+            for s in find_dhara_modules()
+        ],
+    )
+    def test_dhara_module_is_imported_by_production_code(module_stem: str) -> None:
+        """FM-23: every dhara_*.py must be imported by at least one production file.
+    
+        A merged-but-uncalled module is a null signal wearing a green PR (§N.8).
+        This guard prevents the FM-23 defect class from recurring.
+        """
+        hits = find_production_imports(module_stem)
+>       assert hits, (
+            f"FM-23 VIOLATION: {module_stem}.py is not imported by any production "
+            f"file. It exists in services/ka_kshetra/ but is only imported by "
+            f"tests (if at all). Wire it into production code or this test will "
+            f"continue to fail."
+        )
+E       AssertionError: FM-23 VIOLATION: dhara_zz_audit_probe.py is not imported by any production file. It exists in services/ka_kshetra/ but is only imported by tests (if at all). Wire it into production code or this test will continue to fail.
+E       assert []
+
+tests/governance/test_fm23_dhara_modules_wired.py:134: AssertionError
+=========================== short test summary info ============================
+FAILED tests/governance/test_fm23_dhara_modules_wired.py::test_dhara_module_is_imported_by_production_code[dhara_zz_audit_probe]
+==================== 1 failed, 4 passed, 1 xfailed in 0.18s ====================

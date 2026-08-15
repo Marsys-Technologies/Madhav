@@ -1,0 +1,15 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.13.7, pytest-9.0.3, pluggy-1.6.0 -- /Users/Dev/Vibe-Coding/Apps/Madhav/.venv/bin/python3
+cachedir: .pytest_cache
+rootdir: /Users/Dev/Vibe-Coding/Apps/Madhav/.claude/worktrees/agent-a44a3e3fc69fd9cbe/platform/python-sidecar
+plugins: asyncio-1.4.0, langsmith-0.8.7, anyio-4.13.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 5 items
+
+tests/governance/test_fm23_dhara_modules_wired.py::test_dhara_module_is_imported_by_production_code[dhara_null] PASSED [ 20%]
+tests/governance/test_fm23_dhara_modules_wired.py::test_dhara_module_is_imported_by_production_code[dhara_null_vec] PASSED [ 40%]
+tests/governance/test_fm23_dhara_modules_wired.py::test_dhara_module_is_imported_by_production_code[dhara_pin_matrix] XFAIL [ 60%]
+tests/governance/test_fm23_dhara_modules_wired.py::test_dhara_module_is_imported_by_production_code[dhara_sweep] PASSED [ 80%]
+tests/governance/test_fm23_dhara_modules_wired.py::test_dhara_module_is_imported_by_production_code[dhara_term_matrix] PASSED [100%]
+
+========================= 4 passed, 1 xfailed in 0.13s =========================

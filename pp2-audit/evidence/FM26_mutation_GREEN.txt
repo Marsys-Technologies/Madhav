@@ -1,0 +1,46 @@
+=== FM-26 mutation GREEN proof (post-revert) ===
+Agent: W3-3 (PARIPURNA-2 Wave 3)
+Date: 2026-08-15
+
+The mutation described in FM26_mutation_RED.txt (dhara_sweep.py line 89,
+`for d in range(1, 9):` in place of `for d in range(1, 10):`) was reverted
+exactly. `git diff --quiet -- platform/python-sidecar/services/ka_kshetra/dhara_sweep.py`
+exits 0 (file byte-identical to HEAD) before this run.
+
+COMMAND RUN:
+  cd platform/python-sidecar && python3 -m pytest tests/l3/ka_kshetra/test_knot_set.py -v
+
+=== pytest output (REVERTED code — GREEN) ===
+============================= test session starts ==============================
+platform darwin -- Python 3.13.7, pytest-9.0.3, pluggy-1.6.0 -- /Users/Dev/Vibe-Coding/Apps/Madhav/.venv/bin/python3
+cachedir: .pytest_cache
+rootdir: /Users/Dev/Vibe-Coding/Apps/Madhav/.claude/worktrees/agent-a7aab9e11ba6401a1/platform/python-sidecar
+plugins: asyncio-1.4.0, langsmith-0.8.7, anyio-4.13.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 20 items
+
+tests/l3/ka_kshetra/test_knot_set.py::TestDecadeKnotPresence::test_nine_interior_decade_knots_present PASSED [  5%]
+tests/l3/ka_kshetra/test_knot_set.py::TestDecadeKnotPresence::test_individual_decade_knot[1] PASSED [ 10%]
+tests/l3/ka_kshetra/test_knot_set.py::TestDecadeKnotPresence::test_individual_decade_knot[2] PASSED [ 15%]
+tests/l3/ka_kshetra/test_knot_set.py::TestDecadeKnotPresence::test_individual_decade_knot[3] PASSED [ 20%]
+tests/l3/ka_kshetra/test_knot_set.py::TestDecadeKnotPresence::test_individual_decade_knot[4] PASSED [ 25%]
+tests/l3/ka_kshetra/test_knot_set.py::TestDecadeKnotPresence::test_individual_decade_knot[5] PASSED [ 30%]
+tests/l3/ka_kshetra/test_knot_set.py::TestDecadeKnotPresence::test_individual_decade_knot[6] PASSED [ 35%]
+tests/l3/ka_kshetra/test_knot_set.py::TestDecadeKnotPresence::test_individual_decade_knot[7] PASSED [ 40%]
+tests/l3/ka_kshetra/test_knot_set.py::TestDecadeKnotPresence::test_individual_decade_knot[8] PASSED [ 45%]
+tests/l3/ka_kshetra/test_knot_set.py::TestDecadeKnotPresence::test_individual_decade_knot[9] PASSED [ 50%]
+tests/l3/ka_kshetra/test_knot_set.py::TestDecadeKnotPresence::test_knot_set_starts_at_zero PASSED [ 55%]
+tests/l3/ka_kshetra/test_knot_set.py::TestDecadeKnotPresence::test_knot_set_ends_at_horizon PASSED [ 60%]
+tests/l3/ka_kshetra/test_knot_set.py::TestDecadeKnotPresence::test_knot_set_monotonically_increasing PASSED [ 65%]
+tests/l3/ka_kshetra/test_knot_set.py::TestDecadeKnotPresence::test_maximum_inter_knot_gap_below_decade_length PASSED [ 70%]
+tests/l3/ka_kshetra/test_knot_set.py::TestFullHorizonContiguity::test_segments_not_empty PASSED [ 75%]
+tests/l3/ka_kshetra/test_knot_set.py::TestFullHorizonContiguity::test_segments_start_at_zero PASSED [ 80%]
+tests/l3/ka_kshetra/test_knot_set.py::TestFullHorizonContiguity::test_segments_end_at_horizon PASSED [ 85%]
+tests/l3/ka_kshetra/test_knot_set.py::TestFullHorizonContiguity::test_no_gaps_between_consecutive_segments PASSED [ 90%]
+tests/l3/ka_kshetra/test_knot_set.py::TestFullHorizonContiguity::test_total_segment_length_equals_horizon PASSED [ 95%]
+tests/l3/ka_kshetra/test_knot_set.py::TestFullHorizonContiguity::test_segments_monotonically_increasing PASSED [100%]
+
+============================== 20 passed in 0.06s ==============================
+
+VERDICT: GREEN confirmed. All 20 tests pass once the algorithm matches its
+own documented spec again (nine decade boundaries d=1..9 restored).
