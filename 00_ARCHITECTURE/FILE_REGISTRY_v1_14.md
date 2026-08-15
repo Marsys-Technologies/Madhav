@@ -75,3 +75,9 @@ See `FILE_REGISTRY_v1_13.md §9.2–§9.15` — unchanged.
 | Path | Version | Status | Role |
 |---|---|---|---|
 | `verification_artifacts/RAG/router_eval_v1_0.json` | 1.0 | CURRENT | Golden router eval results. Session: Madhav_M2A_Exec_13. Model: claude-opus-4-6. Total: 20/20 PASS (100%). AC.7 gate (≥18/20): PASS. AC.8 WCR invariant: 15/15 interpretive plans have wcr_forced=True (100%). Distribution: interpretive_multidomain×11 (11/11), interpretive_single×4 (4/4), timing×5 (5/5). Note: 5 queries required prompt disambiguation refinements (rules A+B added to router_v1_0.md) to achieve 20/20. |
+
+## §9.18 — Codex onboarding governance registration
+
+| Path | Version | Status | Role |
+|---|---|---|---|
+| `00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md` | 1.0 | LIVING | Append-only, tool-neutral register for cross-cutting decisions; read immediately after CURRENT_STATE by Claude Code and Codex. CCD-001 establishes the shared-brain onboarding convention. |
