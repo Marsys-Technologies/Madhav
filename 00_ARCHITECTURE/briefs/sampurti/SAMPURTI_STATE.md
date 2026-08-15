@@ -4652,3 +4652,60 @@ the production writer; the hash is now populated honestly for this chart.
 RES-R42-1 severity downgraded from MEDIUM to CLOSED. The §N.8 disposition is no longer needed;
 honest non-NULL value is now stored. Production writer OOM fix (streaming/SQL-side hash) remains
 a recommended F-wave improvement but is no longer a honesty residual.
+
+---
+
+## SESSION-OPEN: 2026-08-15T06:51Z — R43 (FIELD-INTEGRATED DELIVERED; P-D PROOF SPINE)
+
+CONDUCTOR-HEARTBEAT: 2026-08-15T06:51Z [R43-OPEN] pid=18577 host=Montys-MacBook-Pro.local
+
+**STEP 0 COMPLETE (2026-08-15T06:51Z):**
+
+**LIVENESS (FM-10/11):**
+- current_conductor.pid=17355 (prior session) — confirmed DEAD (not in pgrep)
+- pgrep -f "CONDUCTOR of SAMPŪRTI-Δ1": no peers
+- Self verified: PID written=18577; MY_PID=18463 (shell PID at check)
+- Sole conductor: CONFIRMED
+
+**HYGIENE (FM-06 amended):**
+- Cloud Run: no RUNNING executions (last=88gh6 OOM-KILLED 05:42Z, Completed-failed)
+- Advisory locks: 0 (verified via DB)
+- Build strikes: NONE (/Users/Dev/shad_overnight/dh-d1-logs/build_strikes absent)
+- Proxy 5433: UP (DB reachable, ka_kshetra lit confirmed)
+
+**COORDINATION READ:**
+- Δ3 session-47 advisory: "88gh6 A8 OOM-KILLED 05:42Z; Δ1 attempt-3 LAUNCHED 12:14 IST"
+  - 88gh6 OOM-KILLED consistent with ledger (Cloud Run container OOM at snapshot substep)
+  - Local repair: asset_throughput.state='lit' (applied in R42)
+  - FIELD-INTEGRATED NOT YET on coordination (prior commit 2139b3015 went to local main only)
+- Δ3 supervisor: RUNNING (PID 15317, supervisor.alive beacon present, OPEN gate)
+- Δ3 conductor: RUNNING (active sanity session, closing cleanly per R1 PASS×27)
+
+**FM-09 RECONCILE (reality vs ledger):**
+- R42 COMPLETE (confirmed from ledger + DB):
+  - ka_kshetra: state='lit', rows=11,069,325 ✅
+  - field_snapshot_id=kfs_e23ba1abdf1c6fd3a1cc5c08c7538aeb ✅
+  - field_content_hash=kfh_3a8d00db6577713f58206afc329c613a (RES-R42-1 CLOSED ✅)
+  - kala_field_null=250 rows (25 classes × 10 buckets) ✅
+  - kala_field_windows=31,350 rows ✅
+  - F-wave F1+F2+F3+F4+F5 merged+deployed ✅
+  - PARĪKṢAKA #1284 FM-26 CONDITIONAL-PASS (C-1 follow-up: test_knot_set.py) ✅
+- LOCAL MAIN: 3 commits ahead of origin/main — push blocked by branch protection
+  - Commits: c64eee28c (Δ3 coord) + 2139b3015 (FIELD-INTEGRATED to main) + 47e3a6a54 (CURRENT_STATE v6.60)
+  - These contain SESSION_LOG + CURRENT_STATE updates; carrying as residual
+  - Will need to be submitted via PR or governance recovery process
+
+**FIELD-INTEGRATED SENTINEL DELIVERED (06:51Z):**
+- Commit 57b66e5dd pushed to origin/campaign-coordination
+- Sentinel line: "██ MARKER-POSTED: FIELD-INTEGRATED ██" at line start ✅
+- Δ3 supervisor will detect on next 5-min poll
+- Δ3 R2+R4 now UNBLOCKED
+
+**NEXT-ACTION:** P-D proof spine:
+1. Δ2 parity battery [fixture regeneration where EXPECTED-differences register authorizes]
+2. G-P1 via deployed MCP (marsys-jis) — §7.1c proof requirement
+3. M4' (DVIPRAMĀṆA 27-vs-27 field comparison) — PRATINIDHI
+4. M5 + ablation
+5. BRILLIANCE GATE #1 — PRATINIDHI opus-max
+6. Post ARC-COMPLETE marker after all above + Δ3 SESSION-DONE-Δ3
+
