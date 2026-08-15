@@ -188,7 +188,7 @@ export const queryTemporalActivationCapability: CapabilityDescriptor = {
                    AND ms.ayanamsha_id = kala_activation.ayanamsha_id) AS domains_affected_array
         FROM kala_activation
         WHERE ${actConds.join(' AND ')}
-        ORDER BY orb_strength DESC NULLS LAST, activation_start
+        ORDER BY orb_strength DESC NULLS LAST, activation_start, id
         LIMIT ${topKPh}
       `
 

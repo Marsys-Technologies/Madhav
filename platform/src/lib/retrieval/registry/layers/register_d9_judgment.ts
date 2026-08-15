@@ -843,7 +843,11 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
               if (!prev || curConv > prevConv) byWindow.set(key, compact)
             }
             const trimmedActivations = [...byWindow.values()]
-              .sort((x, y) => Number(y['convergence_score'] ?? 0) - Number(x['convergence_score'] ?? 0))
+              .sort((x, y) => {
+                const csDiff = Number(y['convergence_score'] ?? 0) - Number(x['convergence_score'] ?? 0)
+                if (csDiff !== 0) return csDiff
+                return String(x['id'] ?? '').localeCompare(String(y['id'] ?? ''))
+              })
               .slice(0, 6)
             timing['kala_activations'] = trimmedActivations
             if (rawActivations.length > trimmedActivations.length) {
