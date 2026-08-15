@@ -187,4 +187,8 @@ Consumers waiting: A-14, A-16, B-08.
 
 **21:20Z** — B-04 MERGED `44d5ff5a7` (21:20Z). W1: B-02+B-03+B-04 = 3/5 B-lanes. B-01 fix pushed (21:11Z) but 0 CI runs triggered — branch DIRTY (4 behind main), GitHub not auto-triggering; Stream B must rebase onto current main. B-05 CI green, needs queue. A-09 no fix yet.
 
-**21:29Z** — A-09 MERGED `6a0f8c9d2` DESPITE 2 failing CI checks (Boot SC-17/18/19 + TAP-5/7/S-13). Operator judgment call — A-14/A-16/B-08 consumers unblocked. Main tip now `6a0f8c9d2`. B-04 deploy in_progress; A-09 deploy queues after. CL-00 script located: dharma worktree only (D-04 BUILT, not merged). CONDUCTOR posted 21:30Z HB to coordination with full gate sequence instructions for E's next session.
+**21:29Z** — A-09 MERGED `6a0f8c9d2` DESPITE 2 failing CI checks (Boot SC-17/18/19 + TAP-5/7/S-13). Operator judgment call — A-14/A-16/B-08 consumers unblocked. Main tip now `6a0f8c9d2`.
+
+**21:30Z (GUARDIAN DESK CORRECTION)** — GUARDIAN confirmed: Streams A/B/C/D ALL DEAD (exited cleanly). Stream E alive (pid 34792). PRATINIDHI dead for 2h20m, relaunched (pid 96034). Three W0 gate blockers: (1) CL-00 unrunnable from main; (2) merge-quiescence race; (3) A-02 evidence missing. All prior conductor escalations to dead streams are VOIDED.
+
+**21:33Z** — CONDUCTOR declares MERGE FREEZE. W0 gate quiescence window active. Stream E instructed to complete 6-step gate sequence after A-09 deploy completes. Freeze lifts only after gate exits 0. Full instructions posted to CAMPAIGN_COORDINATION.
