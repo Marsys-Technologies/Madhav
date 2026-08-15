@@ -81,19 +81,43 @@ Monitoring: C-01 migration must bring this to 0; C-02 must identify + fix the wr
 
 ## LANE AUDIT LOG
 
-### W0 Lanes — 100% sampling required
+### W0 Lanes — 100% sampling required (SENTINEL Cycle 1 diff audit)
 
-| Lane | Branch | Status | Exit Test Re-Run | Verdict |
-|------|--------|--------|-----------------|---------|
-| A-01 | ekv/a-01-timing-hardfloor | PENDING | Not yet | — |
-| A-02 | ekv/a-02-whitelist-4keys | PENDING | Not yet | — |
-| A-03 | ekv/a-03-typed-unwrap | PENDING | Not yet | — |
-| A-04 | ekv/a-04-lel-calibration-facades | PENDING | Not yet | — |
-| A-05 | ekv/a-05-mimamsa-enum-fix | PENDING | Not yet | — |
-| A-06 | ekv/a-06-gochara-disclosure | PENDING | Not yet | — |
-| C-01 | ekv/c-01-ledger-repair | PENDING | Not yet | — |
-| C-02 | ekv/c-02-writer-hunt | PENDING | Not yet | — |
-| C-03 | ekv/c-03-pr1287-rebase | PENDING | Not yet | — |
+*Manifest status: all PENDING — E has not merged any yet. Diff audits are SENTINEL-independent reads.*
+
+| Lane | Branch | Pushed | Diff Verified | Lease | Sentinel Verdict |
+|------|--------|--------|--------------|-------|-----------------|
+| A-01 | ekv/a-01-timing-hooks-hardfloor | ✓ | `hardFloor:true` added at :3520 + :3551; minKeep already ≥3 at both ✓ | A ✓ | PRE-PASS; pending E deploy + live test |
+| A-02 | ekv/a-02-whitelist-4-keys | ✓ | 4 keys (read_chapter/list_classical_texts/find_verses_about/search_classical_texts) added to MCP_TO_RETRIEVAL_TOOL ✓ | A ✓ | PRE-PASS; pending E deploy + live test |
+| A-03 | ekv/a-03-typed-unwrap | ✓ | `unwrapCapabilityResult()` helper added and wired at call sites ✓ | A ✓ | PRE-PASS; pending E deploy + live test |
+| A-04 | ekv/a-04-lel-calibration | ✓ | `noLelCalibrationMaturity` removed at 5 call sites; real `kala_field_skill` SQL wired; correct fallback on no-row ✓ | A ✓ | PRE-PASS; pending E deploy + live test |
+| A-05 | ekv/a-05-enum-fix | ✓ | CONFIRMED/PARTIAL/REFUTED/UNRESOLVED uppercase; 4 output columns; 'denied'→'REFUTED' ✓ | A ✓ | PRE-PASS; pending E deploy + live test |
+| A-06 | ekv/a-06-gochara-disclosure | ✓ | `withSweepDisclosure()` adds `{is_timing_window, timing_window_blocked_reason}`; bare-point-no-date rows suppressed ✓. NOTE: `resolution` field not included — GocharaSweepWindow lacks source fields (documented in code); exit test still satisfiable | A ✓ | PRE-PASS; NOTE logged re: resolution field |
+| C-01+C-02 | ekv/c-01-ledger-repair | ✓ | Migration 572: deletes 6 isempty rows + CHECK (NOT isempty(observation_window)) ✓; writer guard: timedelta(days=1) min-window ✓. ⚠️ LEASE: touches `python-sidecar/` (B's territory) | ⚠️ B-touch — see BLOCK below | **MERGE HOLD: EKV-R-C01-001 not yet in PRATINIDHI ledger** |
+| C-03 | ekv/c-03-pr1287-rebase | ✗ Not yet | — | — | Not yet pushed |
+
+### W1+ Lanes Observed (≥15% sample, highest-tier first)
+
+| Lane | Branch | Pushed | Diff Summary | Sentinel Note |
+|------|--------|--------|-------------|---------------|
+| B-01 | ekv/b-01-dignity-oracle | ✓ | 534 line diff — dignity oracle module | Pending 15% sample |
+| B-02 | ekv/b-02-nodal-aspects | ✓ | NODE_PARASHARI_ASPECTS hoisted to brahmagyan/aspects.py; Rahu/Ketu SPECIAL_DRISHTI_DEG fixed; tests for 5/7/9 BPHS aspects ✓ | Pending live test |
+| B-03 | ekv/b-03-yoga-predicate | ✓ | `>= 5` → `len(placed)==7 and len(houses)==7` — exact 7-planet/7-distinct spec ✓ | Pending live test |
+| B-04 | ekv/b-04-mi-honesty | ✓ | 6× `'clean'`→`'not_assessed'` in mi_darshana.py ✓ | Pending live test |
+
+### MERGE BLOCK — C-01
+
+**EKV-SENTINEL-BLOCK-001 (2026-08-16 C1):**
+C-01 branch touches `platform/python-sidecar/scripts/kala_admission/w45_post_fit_rebuild.py`,
+which is Stream B's lease territory per LEASES.json. The commit self-declares this requires
+"PRATINIDHI sign-off EKV-R-C01-001 before merge." PRATINIDHI ledger (origin/ekv/pratinidhi-role)
+currently has ZERO numbered rulings — EKV-R-C01-001 does not exist.
+
+**E must not merge C-01 until EKV-R-C01-001 appears in origin/ekv/pratinidhi-role.**
+This is also a product-table write (deletes 6 rows from brahma_prospective_ledger) — double gate.
+
+The fix itself looks correct (root cause correctly identified; migration idempotent; writer guard minimal).
+Once PRATINIDHI files the ruling, SENTINEL will re-confirm and clear the block.
 
 ---
 
@@ -114,6 +138,16 @@ None yet.
 - DB: ALIVE
 - Branches: no ekv/* except conductor + sentinel
 - Next: watch for stream launches; re-check manifest in ~20min
+
+### HB-002 — 2026-08-16 ~00:30+0530 (Cycle 1)
+- Streams: A + B + C + E ACTIVE (branches pushed)
+- W0 lanes: 7/9 pushed (A-01..A-06 + C-01; C-03 not yet)
+- W1 lanes: B-01..B-04 pushed (ahead of W0 merge — concurrent build)
+- Manifest: still all PENDING (E has not merged yet)
+- DB: ALIVE
+- ISSUE: C-01 has lease cross into B's territory; EKV-R-C01-001 missing from PRATINIDHI ledger → MERGE HOLD posted
+- A-06 NOTE: resolution field omitted from disclosure (data type constraint) — not a dispute, noted
+- Next: watch for VERIFIED markers + E merge actions; run live exit tests when E deploys
 
 ---
 
