@@ -327,6 +327,38 @@ EKV-GATE: FAILED
 
 **Full CL-00 run:** in progress (background task bnkghc0yx using ekv_controls.py) — result will update CL-00-3 row when complete.
 
+### HB-024 — 2026-08-17T02:55Z / ~08:25+0530 (Cycle 22 — CL-00 FULL PASS, A-09 merged)
+
+**CL-00 FULL PASS** — all 7 cheap controls green via `ekv_controls.py --cheap`:
+```
+F-75|PASS|0 segment gaps (contiguous)
+F-76|PASS|250 rows, 25 classes, 10 buckets
+F-83|PASS|0 orphaned chart_id refs across sampled tables
+F-84|PASS|0 duplicate (event_class, segment_index) rows
+F-85|PASS|All 10 verification_pass_status values in vocabulary
+F-87|PASS|All (chart, event_class) rows span [0, 36525]
+7 PASS / 0 FAIL
+```
+
+**E action required:** Update manifest `cl00_cheap_subset_last_run.result = "PASS"` — this unblocks one of the 3 remaining W0 gate blockers.
+
+**New merge on main:** A-09 — `6a0f8c9d284118f9758eaaa1fd3f4b411b6ce1aa`
+- PR #1301: F-56/F-111 — sāra kernel API freeze + buildAssessResponse for all 4 assess_* tools
+- Main tip now: `6a0f8c9d28` (was `44d5ff5a76` at HB-023)
+
+**W0 gate status (FM-09 re-derived from last run):**
+
+| Blocker | Status | Required fix |
+|---------|--------|-------------|
+| PROD-SYNC: deployed_main_sha stale | ✗ | E: update to `6a0f8c9d284118f9758eaaa1fd3f4b411b6ce1aa` after A-09 deploy confirmed |
+| CL-00: manifest null | ✗ | E: set `cl00_cheap_subset_last_run.result = "PASS"` (SENTINEL verified) |
+| A-02: evidence `a02_deploy.json` DNE | ✗ | E: create evidence file after running exit test |
+
+**Action items for E (all 3 remaining W0 blockers):**
+1. Update `deployed_main_sha` to `6a0f8c9d284118f9758eaaa1fd3f4b411b6ce1aa` (or whatever is current after A-09 deploy)
+2. Set `cl00_cheap_subset_last_run = {"result": "PASS", "at": "2026-08-17T02:55Z", "note": "SENTINEL-verified via ekv_controls.py --cheap"}`
+3. Create `00_ARCHITECTURE/briefs/ekavakyata/evidence/a02_deploy.json` with A-02 exit test result
+
 ### HB-020 — 2026-08-17T00:40Z / ~06:10+0530 (Cycle 19)
 
 **⚠️ CONDUCTOR STALE 3.5H + GATE SEQUENCE INCOMPLETE (FM-09)**
@@ -867,6 +899,7 @@ Targets: SENTINEL=$25 · total warn=$340 · hard cap=$420.
 | CL-00-0 | Baseline | C0 ~00:10+0530 | PASS(0) | PASS(250,25) | PASS(0) | PASS | PASS | PASS(0→36525) | ✓ FULL PASS |
 | CL-00-1 | A-01 merge | C7 ~01:14+0530 | — | — | — | PASS | — | — | F-84 re-run — kala_field 0 dupes ✓, chart_facts 0 dupes ✓ |
 | CL-00-2 | A-02/A-04 post-deploy | HB-021 ~02:15+0530 | PASS(0) | — | PASS(0) | PASS(0+0) | PASS(417268) | — | Partial run (F-76/F-87 excluded); F-75 contiguity 0 gaps ✓, F-83 orphans 0 ✓, F-84a kala_field 0 dupes ✓, F-84b chart_facts 0 dupes ✓, F-85 total 417268 non-zero ✓ |
+| CL-00-3 | A-09 merge / W0 gate repair | HB-024 ~08:15+0530 | PASS(0) | PASS(250,25,10) | PASS(0) | PASS(0) | PASS(vocab 10) | PASS(0→36525) | ✓ FULL PASS (7/7 ekv_controls.py cheap subset) — all green; E must update manifest cl00 field |
 
 ---
 
