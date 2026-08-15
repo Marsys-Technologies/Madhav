@@ -4949,3 +4949,40 @@ R45 CLOSE: No work required. Terminal marker re-posted below.
 
 
 RUN-TERMINAL: ARC-COMPLETE
+
+---
+
+## R46 SESSION-OPEN+CLOSE — SUPERVISOR TERMINAL-MARKER RELAY
+
+CONDUCTOR-HEARTBEAT: 2026-08-15T08:05Z [R46-OPEN] pid=65479 host=Montys-MacBook-Pro.local session=Δ1
+
+### STEP 0 COMPLETE
+
+Liveness: pid=65479 (current_conductor.pid = run_dh_d1.sh parent=62229 is supervisor, not peer); PEERS=none — sole conductor confirmed.
+No build strikes. No running Cloud Run builds (last completed 2026-08-15T05:42Z, brahma-build-pipeline-job-88gh6).
+PR #1286 (C-1 knot-set tests): MERGED.
+
+### STATE ADOPTED (FM-09)
+
+ARC-COMPLETE state unchanged from R43/R44/R45. All SAMPŪRTI arc items done:
+- F1–F5 fixes: MERGED + DEPLOYED
+- A8 build (27-class): COMPLETE (kfs_e23ba1ab, 31,350 windows, 25 classes)
+- FIELD-INTEGRATED marker: POSTED
+- Δ2 parity battery: PASS (49/49)
+- G-P1 MCP gate: CONDITIONAL-PASS
+- M4' published: MEASUREMENT_4_PRIME_v1_0.md
+- DVIPRAMĀṆA 27-vs-27: STRUCTURAL-PASS
+- BRILLIANCE GATE #1: CONDITIONAL-PASS
+- Δ3 SESSION-DONE-Δ3: CONFIRMED (2c69554a1)
+- PR #1286 C-1 tests: MERGED
+
+### ROOT-CAUSE NOTE (for supervisor archive record)
+
+Attempts 4 and 5 exited AUTH-TRANSIENT. The supervisor's AUTH-TRANSIENT handler uses `continue`
+before the terminal-marker check (lines 149-153 precede line 156-160 in run_dh_d1.sh). This meant
+the already-present plain `RUN-TERMINAL: ARC-COMPLETE` marker was never evaluated in those attempts.
+This attempt (6) exits cleanly without auth errors — supervisor will detect the marker.
+
+### R46 CLOSE
+
+No additional work. Blob changed. Supervisor terminal-marker check will fire on exit.
