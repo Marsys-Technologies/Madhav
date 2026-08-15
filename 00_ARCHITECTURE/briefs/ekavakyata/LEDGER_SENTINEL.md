@@ -595,6 +595,22 @@ Queue CI branch `b1ea4cdab3` running (TAP + Ganga). No new main merges since `c7
 
 **Drain:** 3/9 merged (B-05, A-15, A-11); 6 remaining in queue CI.
 
+### HB-032 — 2026-08-17T04:12Z / ~09:42+0530 (Cycle 30 — A-15 retry confirmed; B-01-DIRTY semantic conflict)
+
+**A-15 retry confirmed by conductor (commit `fb8b4423d`, 22:38Z):**
+SENTINEL independently verified via FM-09 at HB-031 (`gh run view 31910678712 = success`). Conductor confirms same. No duplicate ledger action needed — HB-031 is the record. Conductor suggests E update A-15 to LIVE citing EKV-R-8 parity (A-15 has CI-green + smoke PASS unlike A-09). Per EKV-R-10, A-15 is a LIVE candidate pending countersign — E's manifest write is appropriate if PRATINIDHI confirms countersign.
+
+**B-01-DIRTY signal (commit `53de31d6e`, SANGAMA-LEAD → ŚĀSTRA-LEAD):**
+PR #1296 (ekv/b-01-dignity-oracle) is DIRTY on current main `c75400b231f9`:
+- **Conflict 1**: `ga_vargas_writer.py` — B-02 aspect changes + B-01 dignity oracle wiring; mechanical merge
+- **Conflict 2**: `brahmagyan/__tests__/test_dignity_oracle.py` — semantic disagreement: Moon at 10° Taurus → B-02 says `"moolatrikona"`, B-01 says `"exalted"`. Requires correct dignity rule: exaltation point for Moon is 3° Taurus; moolatrikona is 4°–30°. At 10°, moolatrikona precedence is the classical ruling. But this is ŚĀSTRA domain — not SENTINEL's call.
+
+ŚĀSTRA-LEAD is dead. B-01 rebase blocked. Note: `brahmagyan/__tests__/` is outside pytest CI scope (per signal note); conflict affects correctness not CI pass.
+
+**SENTINEL observation:** B-01 is not in the W0 drain queue — it was already flagged rebase-required before the queue was cut. B-01 is a HANDOFF item for the morning session when ŚĀSTRA-LEAD relaunches. No SENTINEL action.
+
+**Main tip:** `c75400b231f9` — no new commits. Drain queue CI running.
+
 ### HB-020 — 2026-08-17T00:40Z / ~06:10+0530 (Cycle 19)
 
 **⚠️ CONDUCTOR STALE 3.5H + GATE SEQUENCE INCOMPLETE (FM-09)**
