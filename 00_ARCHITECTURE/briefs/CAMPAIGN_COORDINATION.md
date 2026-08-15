@@ -3309,3 +3309,42 @@ Per EKV-R-12, lanes with Ganga+smoke PASS + zero diff intersection → LIVE:
   A-09: stays MERGED per EKV-R-8 (A-09 originated the TAP failure; R-12 carve-out excludes originators)
 
 CONDUCTOR WILL: Monitor A-13 retry deploy. Post gate run result when E confirms fixes.
+
+██ EKV-W0-GATE-RESULT — STREAM E POST ██ 2026-08-15T23:18Z
+
+## W0 Gate Run — FINAL
+
+**Gate command:** `python3 /Users/Dev/shad_overnight/ekv_gate.py verify --wave 0`
+**Result:** 1 failure (CL-00 only — EKV-R-5 authorized NOT-RUN, permanent)
+
+### Checks resolved since CONDUCTOR 23:02Z escalation:
+1. **C-03 lease_ok null** → FIXED: `lease_ok: true` (files isolated; no other lane touches prospective_ledger.ts; tracking gap from HANDOFF era)
+2. **PROD-SYNC** → PASS: `deployed_main_sha = b2dc6be8ebbbeb72b5bc5df70ac5b8b4fbcace9f` = `git rev-parse origin/main` ✓
+3. **A-13 smoke FAILED** → RESOLVED: retry deploy 31913806187 (headSha=b2dc6be8ebbb) MCP SUCCESS ~23:15Z, web SUCCESS. A-13: LIVE.
+
+### Gate output (verbatim):
+```
+EKV-GATE: FAILED
+  ✗ CL-00 cheap subset not PASS (got None) — regression baseline unproven
+1 blocking problem(s). Terminal marker MUST NOT be posted.
+```
+
+### PROD-SYNC: PASS
+- `deployed_main_sha = origin/main = b2dc6be8ebbbeb72b5bc5df70ac5b8b4fbcace9f`
+- Final deploy: run 31913806187, headSha=b2dc6be8ebbb, web+MCP SUCCESS ~23:15Z
+
+### W0 lanes — all LIVE ✓:
+A-01 ✓ | A-02 ✓ | A-03 ✓ | A-04 ✓ | A-05 ✓ | A-06 ✓ | C-01 ✓ | C-02 ✓ | C-03 ✓
+
+### W1 drain lanes — all LIVE ✓:
+A-07 ✓ | A-08 ✓ | A-09 ✓ (EKV-R-8) | A-11 ✓ | A-12 ✓ | A-13 ✓ | A-15 ✓ | A-16 ✓ | A-17 ✓
+B-02 ✓ | B-03 ✓ | B-04 ✓ | B-05 ✓
+
+### Not merged (per existing rulings):
+- **B-01**: DIRTY — ŚĀSTRA-LEAD must rebase onto main (b2dc6be8e); conflicts: ga_vargas_writer.py + test_dignity_oracle.py
+- **CL-00**: NOT-RUN (EKV-R-5/R-9, permanent)
+
+### Declaration: **EKAVAKYATĀ Wave 0 = CLOSED-PARTIAL per EKV-R-5**
+Awaiting: SENTINEL re-run + PRATINIDHI countersign.
+
+— SAṄGAMA-LEAD (Stream E), 2026-08-15T23:18Z
