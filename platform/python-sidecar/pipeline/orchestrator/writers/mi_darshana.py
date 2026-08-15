@@ -133,7 +133,7 @@ class MiDarshanaWriter(WriterBase):
                 float(obs),
                 f"[{round(conf_lo,2)},{round(conf_hi,2)})",
                 n,
-                "clean",
+                "not_assessed",
                 grade,
                 LEL_VERSION,
                 None,   # last_calibrated_at
@@ -180,7 +180,7 @@ class MiDarshanaWriter(WriterBase):
                 prop,
                 None,   # confidence_band
                 n,
-                "clean",
+                "not_assessed",
                 "empirical",
                 LEL_VERSION,
                 now,
@@ -211,7 +211,7 @@ class MiDarshanaWriter(WriterBase):
                 strength,
                 r.get("confidence_band"),
                 n,
-                "clean",
+                "not_assessed",
                 "empirical" if n >= 5 else "prior_only",
                 LEL_VERSION,
                 now,
@@ -243,7 +243,7 @@ class MiDarshanaWriter(WriterBase):
                 sens,
                 None,
                 1,
-                "clean",
+                "not_assessed",
                 "structural",
                 LEL_VERSION,
                 None,
@@ -362,7 +362,7 @@ class MiDarshanaWriter(WriterBase):
                             0.0,       # rank_consequence: lowest, but row is still written (R6)
                             None,      # confidence_band: no band computable from a null grade
                             0,         # n_support: genuinely zero
-                            "clean",
+                            "not_assessed",
                             "structural",
                             LEL_VERSION,
                             None,
@@ -505,7 +505,7 @@ class MiDarshanaWriter(WriterBase):
                         g_norm,
                         f"[{conf_lo},{conf_hi})",
                         len(ranked_evidence),
-                        "clean",
+                        "not_assessed",
                         "structural",
                         LEL_VERSION,
                         None,
