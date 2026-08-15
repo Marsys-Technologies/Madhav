@@ -91,26 +91,42 @@ Gate's `main_tip.startswith(sha12)` will ALWAYS fail.
 
 | Time (IST) | Lane | PR# | Merged SHA | Deploy SHA | Status |
 |------------|------|-----|-----------|-----------|--------|
-| -- | -- | -- | -- | -- | Awaiting VERIFIED markers |
+| ~01:00 IST | A-01 | #1289 | (merge queue — CLEAN 19:38Z) | — | IN MERGE QUEUE |
+| ~01:00 IST | A-05 | #1290 | (CI running) | — | CI RUNNING |
+| ~01:00 IST | A-06 | #1291 | (CI running) | — | CI RUNNING |
+| ~01:00 IST | A-04 | #1292 | (CI running) | — | CI RUNNING |
+| ~01:00 IST | A-03 | #1293 | (CI running) | — | CI RUNNING |
+| ~01:00 IST | A-02 | #1294 | (CI re-running after count gate fix) | — | CI RE-RUN |
+| ~01:15 IST | C-01/C-02 | #1295 | (CI running; EKV-R-1 auth) | — | CI RUNNING |
+
+### Integration notes
+- A-02 (#1294): count gate `56→60` fix pushed (47c7ec6e5). Two test files updated.
+- C-01 (#1295): EKV-R-1 AUTHORIZED. 4 post-deploy assertions required before LIVE.
 
 ---
 
-## SS4 PENDING RULINGS
+## SS4 RULINGS
 
-### EKV-R-01 (filed 2026-08-16 ~00:50 IST)
+### EKV-R-1 (PRATINIDHI, 2026-08-16T01:15+05:30) — C-01 AUTHORIZED
 
-**Issue:** Gate PROD-SYNC check extracts `sha12` from catalog_version `+r` suffix and checks
-`origin/main.startswith(sha12)`. The `+r` is SHA256(tool_names).slice(12), never a git sha.
+C-01 migration (delete 6 empty-daterange rows + CHECK guard) AUTHORIZED by PRATINIDHI.
+E must run 4 post-deploy assertions after C-01 deploys:
+1. `SELECT count(*) FROM _migrations_applied WHERE filename='572_ekv_c01_ledger_empty_daterange_repair.sql'` → 1
+2. `SELECT count(*) FROM brahma_prospective_ledger WHERE isempty(observation_window)` → 0
+3. INSERT empty range → CHECK violation (test in throwaway txn, rollback)
+4. `SELECT count(*) FROM brahma_prospective_ledger WHERE lifecycle_status='open'` → 29
 
-**Evidence:**
-- Live catalog_version: `catalog-1+t152+r653c2a1a98c8`
-- origin/main tip: `63049a6e327e46a552496d7fc3a66f87a67d5ee8`
-- Code: `mcp_catalog_version.ts:catalogContentHash()` = SHA256(JSON.stringify(tool_names)).slice(0,12)
-- Check always fails: `"63049a6e327e...".startswith("653c2a1a98c8")` = FALSE
+### EKV-R-2 / EKV-R-01 (PRATINIDHI, 2026-08-16T01:15+05:30) — GATE FIX APPROVED
 
-**Recommendation (Option A):** Change gate to check `deployed_main_sha` manifest field
-(E-owned) against `git rev-parse origin/main` instead of parsing catalog_version.
-One-line fix to ekv_gate.py; no source code changes needed.
+Gate PROD-SYNC fix: **Option A APPROVED**. CONDUCTOR fixes `ekv_gate.py` to compare
+`manifest["deployed_main_sha"]` against `git rev-parse origin/main`. E writes
+`deployed_main_sha` after each merge+deploy. Interim procedure (SS2) remains in force
+until Conductor applies the fix.
+
+### EKV-SENTINEL-BLOCK-001 — CLEARED
+
+C-01 merge block cleared: EKV-R-1 now in PRATINIDHI ledger (origin/ekv/pratinidhi-role).
+B-territory (python-sidecar) lease granted via EKV-R-1.
 
 ---
 
