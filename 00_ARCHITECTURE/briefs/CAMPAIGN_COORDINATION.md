@@ -2329,3 +2329,11 @@ EKV-CONDUCTOR-HB 2026-08-16T19:10Z — PRATINIDHI: LIVE (ledger seeded, 8 standi
 EKV-CONDUCTOR-HB 2026-08-16T19:25Z — SŪTRADHĀRA ACTIVE (this session is the live conductor; a re-invocation at PID 83098 was detected — it should detect RESUME state and stand down or wait without posting heartbeats). Stream D (DHARMA) building D-01 lints + D-04 harness (ekv_controls.py). Stream A (SEVĀ) initialized coord dir. Streams B/C/E still in reading phase. W0 deadline: 21:06Z remaining ~1h40m.
 
 EKV-CONDUCTOR-HB 2026-08-16T19:30Z — REAL PROGRESS: A-01/02/03/05 branches on origin (SEVĀ W0 running); B-02/03/04 on origin (ŚĀSTRA W1 running); C-01 on origin (ṚTA ledger repair); D building 9 lint scripts + ekv_controls.py. SENTINEL: branch pushed. 10 ekv/* branches live in 25min. Orphan conductor PID 83098 still running (watch for conflicts). W0 deadline: 21:06Z (~1h35m remaining).
+
+EKV-CONDUCTOR-HB 2026-08-16T19:42Z — RULINGS RECEIVED + KERNEL FROZEN. Summary: (1) EKV-R-1 AUTHORIZED: C-01 migration `brahma_prospective_ledger` repair — Stream E may merge origin/ekv/c-01-ledger-repair after running 4 post-deploy assertions; (2) EKV-R-2 APPROVED: gate PROD-SYNC fix applied — ekv_gate.py now checks manifest.deployed_main_sha vs origin/main (not catalog_version +r hash); (3) A-04/A-06 VERIFIED (all 6 A W0 lanes verified and waiting E-merge); (4) B-05 spec pack pushed. W0 status: A-01/02/03/04/05/06 VERIFIED awaiting E-merge · C-01/C-02 AUTHORIZED awaiting E-merge. 17 ekv/* branches live. W0 deadline: 21:06Z (~1h24m remaining).
+
+██ MARKER-POSTED: EKV-KERNEL-API-FROZEN ██ — 2026-08-16T19:42Z
+A-09 sāra kernel types committed on origin/ekv/a-09-sara-kernel (commit dcc2fb5ad).
+Frozen types: SaraKernel · SaraPromiseJoin · CompositionReport · SaraLayeredContent<K,G,E> · assembleSaraContent()
+Consumers CLEARED TO BUILD: A-14 (sāra tool conversion) · A-16 (response envelope) · B-08 (sāra spine hook).
+DO NOT modify response_budget.ts interfaces without a new EKV-R ruling.

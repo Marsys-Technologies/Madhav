@@ -70,9 +70,21 @@ Consumers waiting: A-14, A-16, B-08.
 
 ## RULINGS RECEIVED (EKV-R entries from PRATINIDHI)
 
-<!-- Format: EKV-R-N: [question] → [ruling] (PRATINIDHI LEDGER ref) -->
-<!-- EKV-R-1: C-01 migration DB write auth — PENDING (invoked 19:29Z) -->
-<!-- EKV-R-2: Gate PROD-SYNC fix (catalog_version ≠ git SHA) — PENDING (invoked 19:29Z) -->
+**EKV-R-1** (19:~40Z) — C-01 migration DB write auth → **AUTHORIZED**
+- Commit `216fb0024` on origin/ekv/c-01-ledger-repair reviewed by PRATINIDHI
+- 3 conditions: (1) E runs all 4 post-deploy assertions; (2) no migration edit after apply; (3) PR cites EKV-R-1
+- Ref: LEDGER_PRATINIDHI.md commit `4a43f1566`
+
+**EKV-R-2** (19:~40Z) — Gate PROD-SYNC fix → **APPROVED (Option A)**
+- `deployed_catalog_version` `+r` suffix is SHA256(tool_names), not git SHA — always-false check
+- Fix: use `manifest.deployed_main_sha` vs `git rev-parse origin/main` — CONDUCTOR applied
+- ekv_gate.py updated at 19:40Z; E owns writing `deployed_main_sha` to manifest after each deploy
+- Ref: LEDGER_PRATINIDHI.md commit `4a43f1566`
+
+**EKV-KERNEL-API-FROZEN** (19:~40Z) — A-09 sāra kernel types pushed on origin/ekv/a-09-sara-kernel
+- `response_budget.ts`: SaraKernel + SaraPromiseJoin + CompositionReport + SaraLayeredContent + assembleSaraContent()
+- Consumers A-14/A-16/B-08 may now build against these types
+- Broadcast to CAMPAIGN_COORDINATION.md at 19:40Z
 
 ## LEASE GRANTS / RE-LEASES
 
