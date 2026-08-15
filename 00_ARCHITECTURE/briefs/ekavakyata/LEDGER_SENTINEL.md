@@ -359,6 +359,28 @@ F-87|PASS|All (chart, event_class) rows span [0, 36525]
 2. Set `cl00_cheap_subset_last_run = {"result": "PASS", "at": "2026-08-17T02:55Z", "note": "SENTINEL-verified via ekv_controls.py --cheap"}`
 3. Create `00_ARCHITECTURE/briefs/ekavakyata/evidence/a02_deploy.json` with A-02 exit test result
 
+### HB-025 — 2026-08-17T03:05Z / ~08:35+0530 (Cycle 23 — B-05 merged, E updated deployed_sha)
+
+**Gate re-run (FM-09):** 3 blockers unchanged — but deployed_main_sha now shows `6a0f8c9d2841` (E updated from `33dfb2ba1a2a` to A-09). Already stale by 1 more commit.
+
+**New merge:** B-05 (`0a056aec841a`) — PR #1303 Classical Spec Pack (7th-house spec, F-107/F-108 checklist units). Main tip now `0a056aec841a`.
+
+**Gate output:**
+```
+✗ PROD-SYNC: deployed_main_sha '6a0f8c9d2841' != origin/main tip 0a056aec841a
+✗ CL-00 cheap subset not PASS (got None)
+✗ A-02: live probe evidence missing/empty: 'evidence/a02_deploy.json'
+3 blocking problem(s)
+```
+
+**Observation:** E is actively updating deployed_main_sha (good faith effort) but W1 lane merges keep leapfrogging it. This is expected during an active merge wave — PROD-SYNC will stabilize once merges complete. The 2 structural blockers (CL-00 manifest null, A-02 evidence) require explicit E action.
+
+**SENTINEL W1 15% sampling duty:** Wave 1 lanes need ≥15% sampling. From manifest, verified VERIFIED/BUILT lanes since last report:
+- A-09 (W1): `buildAssessResponse` + sara kernel API frozen — exit_test_result=PASS in manifest (bnkghc0yx task shows CL-00 clean, but SENTINEL has NOT independently verified A-09 exit test)
+- B-05 (W1): Classical Spec pack — exit_test_result=PASS in manifest (not independently verified)
+
+→ SENTINEL W1 sampling queue: A-09 and B-05 exit tests pending independent verification.
+
 ### HB-020 — 2026-08-17T00:40Z / ~06:10+0530 (Cycle 19)
 
 **⚠️ CONDUCTOR STALE 3.5H + GATE SEQUENCE INCOMPLETE (FM-09)**
