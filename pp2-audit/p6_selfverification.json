@@ -1,0 +1,242 @@
+{
+  "artifact": "P6 PARIKSHAKA self-verification",
+  "audit": "PARIPURNA-2",
+  "generated_at": "2026-08-15",
+  "method": {
+    "sampling": "python3: random.seed(42); sorted(random.sample(range(1,142),21)) - a fixed-seed 15% sample (21 of 141), drawn before any finding was inspected, with no hand-selection",
+    "execution": "Every reproduce_cmd was re-executed live this session against the production MCP server and the production database. Payloads too large for the MCP client's token ceiling (the assess_* family) were re-measured by direct HTTPS JSON-RPC tools/call to the same endpoint so the byte claims could be verified rather than assumed.",
+    "stance": "adversarial - the objective was to remove weak findings, not to confirm them"
+  },
+  "sample_seed": 42,
+  "sampled_finding_ids": [
+    "F-07",
+    "F-08",
+    "F-09",
+    "F-23",
+    "F-24",
+    "F-27",
+    "F-29",
+    "F-36",
+    "F-51",
+    "F-56",
+    "F-57",
+    "F-58",
+    "F-60",
+    "F-63",
+    "F-71",
+    "F-72",
+    "F-108",
+    "F-109",
+    "F-115",
+    "F-130",
+    "F-140"
+  ],
+  "sample_summary": {
+    "sampled": 21,
+    "REPRODUCES": 17,
+    "PARTIALLY-REPRODUCES": 4,
+    "DOES-NOT-REPRODUCE": 0,
+    "UNABLE-TO-TEST": 0,
+    "reproduction_rate": "21/21 findings reproduced in substance (17 fully, 4 with specifics differing); 0 contradicted, 0 untestable"
+  },
+  "sample_results": [
+    {
+      "finding_id": "F-07",
+      "verdict": "REPRODUCES",
+      "fresh_evidence": "mcp__marsys-jis-direct__search_classical_texts({query:'Saturn in the seventh house effects on marriage', top_k:5}) -> {\"error\":true,\"tool\":\"search_classical_texts\",\"message\":\"Tool not in surgical whitelist: search_classical_texts\"}",
+      "notes": "Verbatim rejection message, 100% failure rate, unchanged since P1. Fix commit still not on HEAD."
+    },
+    {
+      "finding_id": "F-08",
+      "verdict": "REPRODUCES",
+      "fresh_evidence": "phala_mitigation_get(chart_id=482012f1) and phala_mitigation_get(chart_id=482012f1, domain='career') both returned result_hash sha256:abbd452f1d8000a64259ea989f13fc56bd7e2feee92f139414f64890650a4d02 - byte-identical. invocation_params echoes domain:'career' while the payload is unchanged.",
+      "notes": "Exact hash match to the P1 claim (abbd452f...50a4d02)."
+    },
+    {
+      "finding_id": "F-09",
+      "verdict": "REPRODUCES",
+      "fresh_evidence": "phala_outlook_get(chart_id=482012f1) trim_report emits, for all 3 trimmed paths, recover_via.hint = 'call phala_outlook_get again with a narrower filter/date_range, or a smaller top_k/limit, to reach the rest of \"<path>\"'. The tool's live JSONSchema declares exactly two properties: chart_id and horizon_months. No date_range, top_k or limit exists.",
+      "notes": "AUDIT-INTEGRITY NOTE (non-removing): the mechanism cites 'platform/src/lib/response_budget.ts:527'. The file does not exist at that path; it is platform-mcp/src/lib/response_budget.ts. Line 527 of the correct file contains the hint template verbatim, so the line number and content are right and only the package prefix is wrong."
+    },
+    {
+      "finding_id": "F-23",
+      "verdict": "REPRODUCES",
+      "fresh_evidence": "SQL: SELECT count(*), count(mantra_text), count(mantra_sanskrit) FROM brahma_remedy_corpus WHERE remedy_type='mantra' -> 67 / 16 / 9 (23.9% / 13.4%). ref_mantras_get(planet='Saturn', limit=10) returned 10 rows of which 6 carry mantra_text=null and 8 carry mantra_sanskrit=null, all honestly nulled with prescription_text present.",
+      "notes": "Coverage figures identical to P1. Confirms this is a corpus gap, not a serving defect - the tool never fabricates."
+    },
+    {
+      "finding_id": "F-24",
+      "verdict": "REPRODUCES",
+      "fresh_evidence": "intent_classify('When will I get married?') -> domains:['general'], confidence 0.1, intent 'unknown'. intent_classify('Is this a good time to change jobs?') -> domains:['general'], confidence 0.0, intent 'unknown'. Both set fallback_recommended:true.",
+      "notes": "Both realistic questions still collapse to the generic bucket; the second is at literally zero confidence."
+    },
+    {
+      "finding_id": "F-27",
+      "verdict": "REPRODUCES",
+      "fresh_evidence": "mimamsa_calibration_get(chart_id=482012f1) and (..., domain='career') both returned result_hash sha256:8e64ba7d16a7a2aa6f1155a250acafcaa717397aa6927fe90b496f33e1e833b5. Underlying data confirmed real and partitionable: SQL over mimamsa_calibration gives CONFIRMED 2 / PARTIAL 23 / REFUTED 7 / UNRESOLVED 25 = 57 rows across 4 verdict classes.",
+      "notes": "The DIAGNOSIS-INCOMPLETE marker on file:line remains correct - P6 did not trace the source line either, but the behavioural claim and the 57-row/4-class DB substrate both verify exactly."
+    },
+    {
+      "finding_id": "F-29",
+      "verdict": "REPRODUCES",
+      "fresh_evidence": "mimamsa_insight_get(chart_id=482012f1) content.calibration_summary = {total_matches:57, confirmed:\"0\", partial:\"0\", denied:\"0\", mean_composite_score:0.495}. Direct SQL on the same chart's mimamsa_calibration: CONFIRMED=2, PARTIAL=23, REFUTED=7. total_matches:57 proves the aggregate reaches the same 57 rows the FILTER clauses then score at zero.",
+      "notes": "The 2/23/7 distribution asserted by P1 is confirmed digit-for-digit. Note the served zeros are STRINGS ('0'), consistent with a SQL FILTER count returning zero rows."
+    },
+    {
+      "finding_id": "F-36",
+      "verdict": "REPRODUCES",
+      "fresh_evidence": "ganita_chart_facts_get(chart_id=482012f1, offset=999999) -> {facts:[], returned_count:0, offset:100000, limit:100, total:5750, more_available:false}. The response echoes the clamped 100000 as if it were the caller's input; no offset_clamped/requested_offset field exists anywhere in the payload.",
+      "notes": "Exact reproduction including the 100000 clamp value. total is 5750, matching the claim's cited catalog size."
+    },
+    {
+      "finding_id": "F-51",
+      "verdict": "REPRODUCES",
+      "fresh_evidence": "judgment_query(chart_id=482012f1, domain='marriage', response_format='v3'): checklist.timing_hooks = {current:[], lord_mahadasha_windows:[], karaka_mahadasha_windows:[], kala_activations:[], mahadasha_windows_by_graha:{}} - ALL empty; verdict.receipt.timing_anchored=false; judgment_flags contains 'timing_anchored_forced_false' AND 'budget_exceeded_after_trim'. Contrast, same chart, same domain, same day: assess_marriage(reading_depth='deep_dive').content.activating_dasha.activations[0] carries active_dasha_periods_jsonb with Mercury mahadasha 2010-08-18..2027-08-18, match_kind='exact_lord'.",
+      "notes": "The cross-tool contradiction reproduces exactly. The co-presence of budget_exceeded_after_trim on the same response independently corroborates the post-serve-trim mechanism P1 diagnosed."
+    },
+    {
+      "finding_id": "F-56",
+      "verdict": "REPRODUCES",
+      "fresh_evidence": "Measured by direct HTTPS JSON-RPC against the live endpoint (bypassing the MCP-client token ceiling): assess_career 180,818 chars / budget 40KB / 4.42x; assess_health 153,885 / 40KB / 3.76x; assess_marriage 158,200 / 40KB / 3.86x; assess_wealth 169,559 / 40KB / 4.14x. All four carry judgment_flags entry {code:'budget_exceeded_after_trim'}. Evidence: evidence/P6_assess_budget_overshoot.json",
+      "notes": "4/4 still over budget and still self-reporting the overshoot. The absolute byte figures have DRIFTED UPWARD ~7-8% since P1 (168,575/142,742/147,023/157,566) and the overshoot band is now 3.8x-4.5x rather than the claimed 3.5x-4.2x - the finding's numbers should be restated or timestamped, but the defect is worse, not better."
+    },
+    {
+      "finding_id": "F-57",
+      "verdict": "REPRODUCES",
+      "fresh_evidence": "judgment_query(chart_id=482012f1, domain='education') -> content.checklist.gochara_sweep = {domain:'other', domain_covered:false}; judgment_flags contains 'gochara_domain_not_covered'; the bodha_signals_get drill_pointer hint reads 'domain=other, full yoga+dosha+karaka_alignment MSR signal set...'.",
+      "notes": "Both halves of the claim - the silent resolution to 'other' AND the honest disclosure flag - reproduce exactly. DIAGNOSIS-INCOMPLETE on the enum source line remains accurate."
+    },
+    {
+      "finding_id": "F-58",
+      "verdict": "PARTIALLY-REPRODUCES",
+      "fresh_evidence": "judgment_query(chart_id=482012f1, domain='moksha') works fully: about.bhava=12, operative_varga='D20', verdict_grade='convergent_strong', composite_score 8.33. CANONICAL_DOMAINS (platform/src/lib/domain_vocabulary.ts:18-32) is exactly 13 entries - career, character, education, family, general, health, progeny, relationship, residence, spirituality, transition, travel, wealth - and 'moksha' is NOT among them.",
+      "notes": "MATERIAL SOFTENING: the same file, at line 50, contains DOMAIN_SYNONYMS['moksha'] = 'spirituality'. So 'moksha' IS reconciled into the canonical vocabulary as a synonym; the mechanism's claim that 'the two domain vocabularies were never reconciled 1:1' overstates the gap. The narrow claim (absent from the CANONICAL_DOMAINS array) holds; the broader 'does not appear anywhere' framing does not. Recommend rewording rather than removal - this is TIER4 documentation-consistency."
+    },
+    {
+      "finding_id": "F-60",
+      "verdict": "REPRODUCES",
+      "fresh_evidence": "5-point offset escalation on ganita_strength_get(chart_id=482012f1, limit=25000): offset 0 -> total 223 / cf_dropped 297 / 55 rows / 0 shadbala_total; offset 80 -> 208/232/52/0; offset 125 -> 205/190/51/0; offset 250 -> 193/77/48/0; offset 400 -> 120/0/60/15 shadbala_total rows. The top-level categories array lists 'graha_shadbala_total' on all 5 calls. Evidence: evidence/P6_ganita_strength_offset_escalation.json",
+      "notes": "Every total/counterfactual pair matches P1 digit-for-digit (223/297, 208/232, 205/190, 193/77, 120/0). One of the most exactly-reproducing findings in the sample. DIAGNOSIS-INCOMPLETE on the serving-layer source line remains honest."
+    },
+    {
+      "finding_id": "F-63",
+      "verdict": "REPRODUCES",
+      "fresh_evidence": "ganita_chart_facts_get(chart_id=482012f1, category='panchanga') -> 38 rows including fact_subject 'YOGA_UNKNOWN', fact_category 'panchanga_special_yoga_combinations', active_at_birth_flag 'true', combination_name 'unknown', constituent_facts {vara:Ravivara, tithi:Shukla Tritiya, nakshatra:Purva Bhadrapada}. Same call on chart 1c826d5a -> 37 panchanga rows, NO panchanga_special_yoga_combinations row at all.",
+      "notes": "The conditional-firing pattern (present+unresolved on the native, wholly absent on the comparison chart) reproduces exactly, which is what rules out a static broadcast placeholder. Independently corroborated in-band: the same YOGA_UNKNOWN pair surfaced as MSR signals inside a judgment_query(domain='moksha') call this pass."
+    },
+    {
+      "finding_id": "F-71",
+      "verdict": "REPRODUCES",
+      "fresh_evidence": "SQL: asset_throughput WHERE asset_id='mi_bhara' AND chart_id=482012f1 -> state='error', last_error = \"TypeError: float() argument must be a string or a real number, not 'NoneType'\" with traceback through asset_runner.py:562 _run_data_writer -> _drive_substeps. SQL: brahma_prospective_ledger WHERE chart_id=482012f1 AND lifecycle_status='open' -> 22 open rows, 4 with observation_window::text='empty'.",
+      "notes": "Both halves reproduce. The empty-range count is still exactly 4; the open-row denominator is now 22 (P1 sampled 20), which does not affect the claim. Shares its root data condition with F-01 as stated."
+    },
+    {
+      "finding_id": "F-72",
+      "verdict": "REPRODUCES",
+      "fresh_evidence": "mechanism_retrodiction_get(chart_id=482012f1, limit=50): sum(mechanisms[].fired_count)=8 across 7 houses (10 career x2, 6 health, 4 education/family, 11 wealth/finance, 9 spiritual, 12 spiritual, 3 travel); not_confirmed_events=25; unmapped_events=8.",
+      "notes": "All three headline counts reproduce exactly. BONUS - P6 RESOLVES the finding's own DIAGNOSIS-INCOMPLETE off-by-one: the 8 firings span only 7 UNIQUE events (spiritual/devata_adoption 2010-07-01 is mapped to both house 9 and house 12 and therefore counted twice). 7 unique fired + 25 not_confirmed + 8 unmapped = 40, which matches SELECT count(*) FROM life_events WHERE event_date < '2020-01-01' = 40 exactly. There is no discrepancy; the '41' was the audit's own double-count. That marker can be closed."
+    },
+    {
+      "finding_id": "F-108",
+      "verdict": "PARTIALLY-REPRODUCES",
+      "fresh_evidence": "judgment_query(chart_id=482012f1, domain='wealth'): the string 'bhavat' appears zero times in the entire response, as does 'house-from-house'. ganita_chart_facts_get(chart_id=482012f1, keyword='bhavat') -> returned_count 0, total 0.",
+      "notes": "AUDIT-INTEGRITY DEFECT (non-removing): the reproduce_cmd quotes an empty_reason of 'No concept alias or live fact_category matched bhavat - checked 29 seed alias entries and 219 live fact_category values'. That string does NOT come from ganita_chart_facts_get, which actually returns 'No chart_facts rows matched keyword=\"bhavat\"... searched the whole chart_facts table'. The quoted string belongs to a DIFFERENT tool, ganita_concept_locate - P6 called ganita_concept_locate(query='bhavat') and got that exact wording back, resolved:false. So the quote is real but MISATTRIBUTED to the wrong tool. The substantive claim is independently confirmed on BOTH routes (0 rows / resolved:false), so the finding stands with a corrected reproduce_cmd."
+    },
+    {
+      "finding_id": "F-109",
+      "verdict": "PARTIALLY-REPRODUCES",
+      "fresh_evidence": "Every asserted figure verifies against the cited artifact: pp2-audit/evidence/E1_dark_corpus_21q_results.json has 21 results, summary {bright_count:19, dark_count:2, bright_pct:90.48, dark_ids:['DC-W-16','DC-W-21']}, by_band {naive 7/0, narrow 7/0, expert 5/2}. Both cited source files exist on disk (DARK_CORPUS_REPLAY_SET_v1_0.json, DARK_CORPUS_REPORT_v1_0.md).",
+      "notes": "AUDIT-INTEGRITY NOTE (non-removing): the reproduce_cmd is a set of FILE POINTERS, not an executable command, so a third party cannot independently re-derive the 90.48% without re-running a qualitative LLM grading pass. This is arguably inherent to a rubric-graded measurement record - and the finding itself says so, explicitly establishing this run as a new baseline with no prior comparator - but it should be labelled a measurement record rather than carrying a reproduce_cmd field that cannot be pasted and run."
+    },
+    {
+      "finding_id": "F-115",
+      "verdict": "REPRODUCES",
+      "fresh_evidence": "bodha_remedies_get(chart_id=482012f1, limit=8, fields='compact').content.narration.lead = 'Your Bodha remedy layer flags Venus as your #1 remedy-priority target - resonance_score 0.173, priority class critical - followed by Ketu, Rahu, Moon.' assess_career(chart_id=482012f1) reading[] family='remedies' sentences[0] = 'Your Bodha remedy layer flags Ketu as your #1 remedy-priority target - resonance_score 0.139, priority class high - followed by Rahu, Moon, Jupiter.'",
+      "notes": "Verbatim reproduction of both sentences, including the identical template, the rank-1 drop, the lower score and the downgraded priority class (critical -> high). One of the cleanest reproductions in the sample."
+    },
+    {
+      "finding_id": "F-130",
+      "verdict": "PARTIALLY-REPRODUCES",
+      "fresh_evidence": "assess_career reading[] family='timing_windows' sentences[0] = '10 activation window(s) in range; nearest: {\"id\":\"8106742\",\"signal_id\":\"1846a106-...\",\"activation_peak_date\":\".' - raw JSON, cut mid-key, dangling period, VERBATIM to the claim. assess_career family='contradictions_with_adjudication' = '...\"signal_b_id\":\"36a6e81b-9e8c-478b-a24e-3535f7ee0 - no automated adjudication hint...' - VERBATIM. assess_wealth family='timing_windows' shows the same defect with different content ('{\"id\":\"8177250\",...\"activation_peak_date\":\"2019-').",
+      "notes": "3 of the 4 named sites reproduce, 2 of them verbatim. The 4th - assess_wealth's contradictions_with_adjudication - today serves clean honest prose ('No contradictions tagged to this domain in bodha_contradictions - not_adjudicated...') because that chart-domain currently has zero contradictions, so the JSON-blob code path is simply not exercised there. That is an unexercised path, not a disproof. The headline claim ('same code path across two tools and two families') still holds: assess_career hits both families and assess_wealth hits timing_windows. Recommend narrowing the 4th instance to 'data-dependent, unexercised at re-test'."
+    },
+    {
+      "finding_id": "F-140",
+      "verdict": "REPRODUCES",
+      "fresh_evidence": "kala_now_get(chart_id=482012f1).calibration_maturity = {n_events:0, prospective_resolutions:0, event_class_coverage:0, weights_version:null, skill_score:null}. SQL over kala_field_skill for the same chart returns 7 rows released_at 2026-08-09T09:25:34.140Z: a chart-wide rollup (event_class=null, n_events=7, n_backfill=7, weights_version='v0_classical', skill_state='underpowered') plus six per-class rows (childbirth 1, foreign_settlement 1, marriage 1, relocation 2, separation 1, surgery 1). Code: all 8 kala_views facades pass noLelCalibrationMaturity() unconditionally, and grep over platform-mcp/src + platform/src returns ZERO non-test references to kala_field_skill.",
+      "notes": "Complete reproduction of all three legs - the served false zero, the real backing rows, and the total absence of any reader. The N.8 earned-signal inversion is confirmed as stated."
+    }
+  ],
+  "removed_findings": [],
+  "audit_integrity_defects": [
+    {
+      "finding_id": "F-09",
+      "defect": "wrong-package citation",
+      "detail": "mechanism cites platform/src/lib/response_budget.ts:527; the correct path is platform-mcp/src/lib/response_budget.ts:527. Line number and content verify at the corrected path.",
+      "disposition": "correct the path; finding stands"
+    },
+    {
+      "finding_id": "F-56",
+      "defect": "stale numeric figures",
+      "detail": "the four byte counts (168,575 / 142,742 / 147,023 / 157,566) have drifted upward ~7-8% and the overshoot band is now 3.8x-4.5x, not 3.5x-4.2x.",
+      "disposition": "timestamp or restate the figures; defect is worse, not better"
+    },
+    {
+      "finding_id": "F-58",
+      "defect": "overstated mechanism",
+      "detail": "DOMAIN_SYNONYMS['moksha']='spirituality' exists at domain_vocabulary.ts:50, so the two vocabularies ARE reconciled via a synonym. The 'never reconciled 1:1' framing overstates the gap.",
+      "disposition": "reword; TIER4 severity unchanged or lowered"
+    },
+    {
+      "finding_id": "F-72",
+      "defect": "self-inflicted off-by-one, now resolved",
+      "detail": "the '41 vs 40' discrepancy the finding marked DIAGNOSIS-INCOMPLETE is the audit's own double-count of one event mapped to two houses. 7 unique fired + 25 + 8 = 40 = the DB count.",
+      "disposition": "close the DIAGNOSIS-INCOMPLETE marker"
+    },
+    {
+      "finding_id": "F-108",
+      "defect": "misattributed verbatim quote",
+      "detail": "the reproduce_cmd attributes ganita_concept_locate's empty_reason ('29 seed alias entries and 219 live fact_category values') to ganita_chart_facts_get, which returns different wording. P1's E1 evidence file carries the same misattribution.",
+      "disposition": "correct the reproduce_cmd; substantive claim confirmed on both routes"
+    },
+    {
+      "finding_id": "F-109",
+      "defect": "non-executable reproduce_cmd",
+      "detail": "the reproduce_cmd is a set of file pointers rather than a runnable command; the 90.48% qualitative rate cannot be independently re-derived from it.",
+      "disposition": "relabel as a measurement record"
+    },
+    {
+      "finding_id": "F-130",
+      "defect": "data-dependent instance not exercised",
+      "detail": "assess_wealth's contradictions_with_adjudication family currently has zero contradictions and serves honest prose, so 1 of the 4 named sites could not be re-observed.",
+      "disposition": "narrow the 4th instance; 3 of 4 reproduce, 2 verbatim"
+    }
+  ],
+  "refutation_attempts": [
+    {
+      "finding_id": "F-110",
+      "severity": "critical (report \u00a73.1 CL-15; the manifest's own \"top-severity\" label)",
+      "counter_argument": "kala_upaya_get's pact_status='denied_at_promise' might be a broken constant or unimplemented default rather than a genuine verdict. If so, F-110 is not 'two tools reaching opposite conclusions from shared evidence' but merely 'one working forecaster compared against a stub' - which would collapse it into the far milder F-118 class (kala_upaya_get is degenerate) and remove the confidence-laundering charge entirely. A secondary counter: kala_ahead_get's own coverage array discloses promise_gated_forecasting as not_in_corpus and cites SHAD_DARSHANA_BRIEF_v2_0.md \u00a72.2 wave W2/W3, so the gap may be documented, planned work rather than a defect.",
+      "empirical_test": "Called kala_upaya_get on the same chart and same as_of_date=2026-08-15 across all 7 supported domains. A constant would return one value; a real verdict would discriminate. Result: relationship=denied_at_promise, health=denied_at_confirmation, wealth=chain_pending_activation, progeny=chain_pending_activation, spirituality=chain_pending_activation, career=chain_complete, education=chain_complete - FOUR distinct values across 7 domains, including two distinct denial LINKS. Separately re-ran kala_ahead_get(domain='relationship', horizon_years=10): projections[0] still probability_tier='tier_1_high', window 2027-10-20..2030-04-03, probability_statement 'High probability (>=70% convergence, clear activation). Effective convergence: 0.70. Confidence: moderate.' Evidence: evidence/P6_F110_refutation_pact_status_discriminates.json",
+      "outcome": "SURVIVES_REFUTATION",
+      "reasoning": "The primary counter-argument fails outright: pact_status is demonstrably domain-discriminating, not a default, so 'denied_at_promise' for relationship is a real verdict this server holds. The secondary counter-argument is factually true but does not exculpate - the disclosure lives in a coverage array while the reading/verdict/probability_statement layer, the fields a consumer is designed to read, still narrates an unqualified '>=70%' dated marriage projection over a domain the same server judges is not promised. Per CLAUDE.md \u00a7N.6 point 3 and \u00a7N.8 that is precisely the shape a disclosure is not allowed to license: an honest gap must downgrade or suppress the claim, not sit beside it. The finding holds at critical."
+    },
+    {
+      "finding_id": "F-119",
+      "severity": "critical (report \u00a73.1 CL-08; highest-harm shape)",
+      "counter_argument": "Three counters. (a) resolution_disclosure may in fact be present on the assess_health response and P1 simply inspected the wrong path. (b) The comparison baseline may be fictional - gochara_forecast_get may document a resolution_disclosure contract it does not actually attach, in which case there is no 'dropped' field. (c) Most substantively: the finding's harm framing depends on these five dates being uncalibrated field maxima the system itself does not treat as actionable. If the system's own earned predicate marks them as genuine timing windows, then the response is not misrepresenting them and the relaying risk is overstated.",
+      "empirical_test": "(a)+(b): re-called assess_health and gochara_forecast_get(domain='health', date_range 2027-01-01..2029-12-31). assess_health.gochara_sweep reproduces exactly - 17 windows, 11 loss / 6 neutral / 0 favourable, top five all illness_acute / temporal_shape='point' / is_adverse=true on 2027-08-21, 2028-11-21, 2028-12-13, 2029-04-13, 2029-07-18 - with no resolution_disclosure, no is_timing_window, no probability and no confidence anywhere in the response. gochara_forecast_get DOES attach the full contract to every window including these same five dates. (c): read the earning clause at platform-mcp/src/tools/retrieval/register_gochara_windows.ts:291-360. These five rows return is_timing_window=TRUE - but earned through the temporal_shape==='point' clause alone, with resolution=null and resolution_source='unavailable'. Evidence: evidence/P6_F119_refutation_resolution_disclosure.json",
+      "outcome": "SURVIVES_REFUTATION",
+      "reasoning": "Counters (a) and (b) fail on direct measurement: the field is absent from assess_health and demonstrably present on the sibling surface, so it is genuinely dropped in projection. Counter (c) lands partially and earns a REFINEMENT of the finding's wording, not its retraction: the rows are not marked non-actionable by the system - they are marked is_timing_window=true - but that true is earned by SHAPE alone, with resolution unavailable, which is itself a \u00a7N.8 proxy rather than a resolution measurement. Either way the primary defect is untouched: five single-day acute-illness dates two-to-three years out are served with zero disclosure, zero probability and zero confidence, over a calibration plane that reports n_events=0 / skill_score=null (F-140). Recommend the finding's mechanism paragraph be edited to say 'the disclosure is dropped, and at source it is a shape-earned true over resolution=null' rather than 'uncalibrated field maxima'."
+    },
+    {
+      "finding_id": "F-52",
+      "severity": "TIER1-CORRECTNESS (report \u00a73.1 CL-07; the live instance of the R24 nodal census failure)",
+      "counter_argument": "Three counters. (a) Methodology: if Rahu/Ketu are excluded from the gochara engine altogether, their absence from the marriage window proves nothing about 5th/9th TRUNCATION specifically and the finding's mechanism is misattributed. (b) The audit's own astrology may be wrong - Ketu@Leo may not actually aspect natal Venus and Rahu@Aquarius may not actually aspect the 7th, in which case the 'live distortion' is manufactured. (c) Strongest: the nodal 5/9 aspect is LATER-tradition doctrine, not BPHS. primitives.py's SPECIAL_DRISHTI_DEG comment cites BPHS Ch.26 as its authority, so serving nodes at the universal 7th only may be a defensible deliberate doctrinal position rather than a defect - making F-52 an auditor preference dressed as a correctness failure.",
+      "empirical_test": "(a) SQL over kala_gochara_windows.term_breakdown->'activity_terms' for chart 482012f1: Rahu contributes 85 drishti_contact terms and Ketu 87 (plus eclipse_degree, kakshya and ingress terms). The nodes participate fully - they are truncated, not excluded. (b) Verified the angular arithmetic against live data: natal Venus sign = Sagittarius (chart_facts VEN graha_position.sign), lagna Aries so 7th house = Libra; kala_now_get gochara_dual_reference for 2026-08-15 gives transit Rahu Aquarius 5.566 and Ketu Leo 5.566. Ketu's 5th from Leo = Sagittarius = natal Venus. Rahu's 9th from Aquarius = Libra = the natal 7th. Both land exactly as claimed. Re-ran gochara_activation_get(event_class='marriage', as_of_date='2026-08-15'): one window, 18 activity_terms, transit planets Moon 9 / Sun 4 / Mars 2 / Venus 2 / Jupiter 1 - zero Rahu, zero Ketu, and the strings 'Rahu'/'Ketu' appear nowhere in the response. (c) Read primitives.py:184-195 (no nodal entry, _DEFAULT_DRISHTI_DEG=[180.0]) and w30_nodal_drishti.py's docstring. Evidence: evidence/P6_F52_refutation_nodal_aspect.json",
+      "outcome": "SURVIVES_REFUTATION",
+      "reasoning": "Counters (a) and (b) fail on direct measurement - the nodes demonstrably participate in drishti_contact elsewhere, so the marriage window's silence is truncation; and both angular claims verify exactly against live natal and transit data. Counter (c) has genuine doctrinal force and exposes a real nuance the finding does not carry: w30_nodal_drishti.py's own docstring states plainly that nodal 5/7/9 is attested only in later tradition (Phaladeepika c.16th century, Saravali, later Parashari sub-commentaries) and is NOT in original BPHS, so primitives.py's BPHS Ch.26 citation is textually defensible on its own terms. It nonetheless does not overturn the finding, on three grounds: (1) this same codebase already grants nodal 5/9 on a live surface (ga_structural_writer.py's NODE_PARASHARI_ASPECTS={5,7,9}, served through ganita_structural_get), so the four aspect tables are mutually inconsistent under any doctrine - some surfaces tell this chart the nodes aspect the 5th and 9th and others do not; (2) R24 is a binding project ruling mandating nodal 5/7/9 full-strength, not an auditor preference; (3) w30_nodal_drishti exists in engine.py as the intended compensator and leaves no trace in served window data (F-21). Recommend adding the later-tradition provenance to the finding text so the classical claim is stated at its true strength."
+    }
+  ],
+  "p6_conclusion": "No finding in the 15% sample was contradicted by fresh execution and none is removed. Seven non-removing audit-integrity defects were found and are recorded above: one wrong-package citation (F-09), one set of stale numeric figures (F-56, drifted the wrong way), one overstated mechanism (F-58), one misattributed verbatim quote (F-108, propagated from the P1 evidence file), one non-executable reproduce_cmd (F-109), one data-dependent instance that could not be re-observed (F-130), and one self-inflicted off-by-one that P6 resolved outright (F-72, marker closable). All three top-severity findings survived deliberate refutation; two of the three earned a wording refinement, and in both cases the refinement makes the finding more precise without reducing its severity."
+}

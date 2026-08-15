@@ -1,0 +1,53 @@
+{
+  "evidence_id": "P6_assess_budget_overshoot",
+  "captured_at": "2026-08-15",
+  "method": "direct HTTPS JSON-RPC tools/call against the live MCP endpoint, byte-measured with wc/json.dumps (bypasses the MCP-client token ceiling that blocked P1)",
+  "finding": "F-56 / F-111 re-execution",
+  "results": {
+    "assess_career": {
+      "served_chars": 180788,
+      "budget_kb_applied": 40,
+      "overshoot_x": 4.41,
+      "judgment_flags": [
+        "PROSE_STRING",
+        "budget_exceeded_after_trim"
+      ],
+      "budget_exceeded_after_trim": true
+    },
+    "assess_health": {
+      "served_chars": 153885,
+      "budget_kb_applied": 40,
+      "overshoot_x": 3.76,
+      "judgment_flags": [
+        "budget_exceeded_after_trim"
+      ],
+      "budget_exceeded_after_trim": true
+    },
+    "assess_marriage": {
+      "served_chars": 158200,
+      "budget_kb_applied": 40,
+      "overshoot_x": 3.86,
+      "judgment_flags": [
+        "budget_exceeded_after_trim"
+      ],
+      "budget_exceeded_after_trim": true
+    },
+    "assess_wealth": {
+      "served_chars": 169559,
+      "budget_kb_applied": 40,
+      "overshoot_x": 4.14,
+      "judgment_flags": [
+        "PROSE_STRING",
+        "budget_exceeded_after_trim"
+      ],
+      "budget_exceeded_after_trim": true
+    }
+  },
+  "p1_recorded_bytes": {
+    "assess_career": 168575,
+    "assess_health": 142742,
+    "assess_marriage": 147023,
+    "assess_wealth": 157566
+  },
+  "note": "All four still exceed their own declared 40KB ceiling and still self-report budget_exceeded_after_trim. Absolute byte figures have DRIFTED UPWARD ~7-8% since P1; overshoot is now 3.8x-4.5x (P1 recorded 3.5x-4.2x)."
+}

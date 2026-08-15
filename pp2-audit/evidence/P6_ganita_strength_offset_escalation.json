@@ -1,0 +1,85 @@
+{
+  "evidence_id": "P6_ganita_strength_offset_escalation",
+  "finding": "F-60 re-execution",
+  "captured_at": "2026-08-15",
+  "escalation": [
+    {
+      "offset": 0,
+      "total": 223,
+      "counterfactual_rows_dropped": 297,
+      "rows_served": 55,
+      "graha_shadbala_total_rows": 0,
+      "categories_array_lists_shadbala_total": true,
+      "fact_categories_actually_served": {
+        "graha_composite_state_classification": 9,
+        "graha_in_house_composite_strength": 27,
+        "graha_ishta_phala": 7,
+        "graha_kashta_phala": 7,
+        "graha_saptavargaja_bala_component": 5
+      }
+    },
+    {
+      "offset": 80,
+      "total": 208,
+      "counterfactual_rows_dropped": 232,
+      "rows_served": 52,
+      "graha_shadbala_total_rows": 0,
+      "categories_array_lists_shadbala_total": true,
+      "fact_categories_actually_served": {
+        "graha_in_house_composite_strength": 21,
+        "graha_ishta_phala": 7,
+        "graha_kashta_phala": 7,
+        "graha_saptavargaja_bala_component": 7,
+        "graha_shadbala_cheshta": 9,
+        "graha_shadbala_dig": 1
+      }
+    },
+    {
+      "offset": 125,
+      "total": 205,
+      "counterfactual_rows_dropped": 190,
+      "rows_served": 51,
+      "graha_shadbala_total_rows": 0,
+      "categories_array_lists_shadbala_total": true,
+      "fact_categories_actually_served": {
+        "graha_in_house_composite_strength": 18,
+        "graha_ishta_phala": 7,
+        "graha_kashta_phala": 7,
+        "graha_saptavargaja_bala_component": 7,
+        "graha_shadbala_cheshta": 9,
+        "graha_shadbala_dig": 3
+      }
+    },
+    {
+      "offset": 250,
+      "total": 193,
+      "counterfactual_rows_dropped": 77,
+      "rows_served": 48,
+      "graha_shadbala_total_rows": 0,
+      "categories_array_lists_shadbala_total": true,
+      "fact_categories_actually_served": {
+        "graha_in_house_composite_strength": 6,
+        "graha_ishta_phala": 7,
+        "graha_kashta_phala": 7,
+        "graha_saptavargaja_bala_component": 7,
+        "graha_shadbala_cheshta": 9,
+        "graha_shadbala_dig": 9,
+        "graha_shadbala_drik": 3
+      }
+    },
+    {
+      "offset": 400,
+      "total": 120,
+      "counterfactual_rows_dropped": 0,
+      "rows_served": 60,
+      "graha_shadbala_total_rows": 15,
+      "categories_array_lists_shadbala_total": true,
+      "fact_categories_actually_served": {
+        "graha_shadbala_total": 15,
+        "graha_special_state_rollup": 45
+      }
+    }
+  ],
+  "p1_recorded_pairs": "223/297, 208/232, 205/190, 193/77, 120/0",
+  "verdict": "REPRODUCES EXACTLY - every total/counterfactual pair matches P1 digit-for-digit; graha_shadbala_total is advertised in the categories array on all 5 calls and absent from the rows on 4 of them, first reachable only at offset=400."
+}

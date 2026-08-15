@@ -1,0 +1,44 @@
+{
+  "evidence_id": "P6_F52_refutation_nodal_aspect",
+  "finding": "F-52 refutation attempt",
+  "counter_arguments_tested": [
+    "(a) Methodology flaw: Rahu/Ketu may be excluded from the gochara engine entirely, so their absence from the marriage window would not be evidence of 5th/9th aspect TRUNCATION specifically.",
+    "(b) The audit's own astrology may be wrong - Ketu@Leo may not actually aspect natal Venus, Rahu@Aquarius may not actually aspect the 7th.",
+    "(c) Doctrinal: nodal 5/9 aspects are later-tradition, not BPHS. primitives.py cites BPHS Ch.26 as its authority, so 7th-only may be a defensible deliberate doctrinal choice rather than a defect."
+  ],
+  "live_marriage_window": {
+    "window": "2024-02-05..2034-01-30",
+    "n_activity_terms": 18,
+    "transit_planets_present": {
+      "Mars": 2,
+      "Sun": 4,
+      "Jupiter": 1,
+      "Venus": 2,
+      "Moon": 9
+    },
+    "rahu_or_ketu_anywhere_in_response": false
+  },
+  "test_a_result": {
+    "rahu_drishti_contact_terms_this_chart": 85,
+    "ketu_drishti_contact_terms_this_chart": 87,
+    "source": "SQL over kala_gochara_windows.term_breakdown->'activity_terms' for chart 482012f1",
+    "conclusion": "Nodes DO participate in drishti_contact - 172 terms on this chart. They are truncated, not excluded. Counter-argument (a) FAILS and the truncation mechanism is confirmed."
+  },
+  "test_b_result": {
+    "natal_venus_sign": "Sagittarius (chart_facts VEN graha_position.sign)",
+    "lagna": "Aries",
+    "natal_venus_house": 9,
+    "seventh_house_sign": "Libra",
+    "transit_rahu": "Aquarius 5.566 (kala_now_get gochara_dual_reference, 2026-08-15)",
+    "transit_ketu": "Leo 5.566",
+    "ketu_5th_from_Leo": "Sagittarius == natal Venus sign  -> aspect lands on natal Venus CONFIRMED",
+    "rahu_9th_from_Aquarius": "Libra == 7th house sign -> aspect lands on the natal 7th CONFIRMED",
+    "conclusion": "Counter-argument (b) FAILS. Both angular claims verify exactly."
+  },
+  "test_c_result": {
+    "primitives_py_read": "SPECIAL_DRISHTI_DEG = {Mars:[90,180,210], Jupiter:[120,180,240], Saturn:[60,180,270]}; _DEFAULT_DRISHTI_DEG=[180.0]; comment cites BPHS Ch.26. No Rahu/Ketu entry.",
+    "w30_nodal_drishti_docstring": "Explicitly states the 5/7/9 nodal rule is attested only in LATER tradition (Phaladeepika c.16th c., Saravali, later Parashari sub-commentaries) and is NOT in original BPHS.",
+    "conclusion": "Counter-argument (c) HAS REAL DOCTRINAL FORCE and the finding does not carry the nuance - but it does NOT overturn the finding, on three grounds: (1) this same codebase already grants nodal 5/9 on another live surface (ga_structural_writer.py NODE_PARASHARI_ASPECTS={5,7,9}, served via ganita_structural_get), so the four aspect tables are internally inconsistent under ANY doctrine; (2) R24 is a binding project ruling mandating nodal 5/7/9 full-strength, not the auditor preference; (3) w30_nodal_drishti exists in engine.py as the intended compensator and leaves no trace in served window data (F-21)."
+  },
+  "outcome": "SURVIVES REFUTATION, with a doctrinal-provenance refinement recommended for the finding text."
+}

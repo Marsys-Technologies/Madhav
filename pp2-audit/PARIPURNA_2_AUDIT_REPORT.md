@@ -1,7 +1,7 @@
 ---
 artifact: PARIPURNA_2_AUDIT_REPORT
 version: 1.0
-status: CURRENT (P5 complete; §6.3 awaits P6)
+status: CURRENT (P6 complete; §6.3 populated)
 date: 2026-08-15
 branch: audit/paripurna2-evidence
 plan_of_record: /Users/Dev/shad_overnight/PARIPURNA_2_AUDIT_PLAN_v2_0.md
@@ -16,7 +16,7 @@ the native, 64 LEL events; `1c826d5a-41cb-4450-b4dc-59d440e5f75a`, the zero-hist
 
 **What this document is.** The P5 deliverable of the six-phase PARIPŪRṆA-2 audit
 (`PARIPURNA_2_AUDIT_PLAN_v2_0.md` §4). P0–P4 produced the evidence; this report consolidates it.
-P6 (PARĪKṢAKA self-verification) runs after this document is written and appends its results to §6.3.
+P6 (PARĪKṢAKA self-verification) has run and its results are appended in §6.3.
 
 **Sourcing rule observed throughout.** Every claim below traces to a finding id (`F-nn`) in
 `pp2-audit/manifest.json`, a defect class (`CL-nn`) in `pp2-audit/p4_defect_classes.json`, a
@@ -2779,8 +2779,96 @@ evidence base.
 
 ### §6.3 — This audit's own findings that failed verification
 
-*(P6 self-verification runs next; this subsection will be completed with P6's results — see
-`pp2-audit/p6_selfverification.json` once available.)*
+P6 (PARĪKṢAKA) drew a fixed-seed 15% sample — `random.seed(42); random.sample(range(1,142), 21)`,
+drawn before any finding was inspected — and re-executed all 21 `reproduce_cmd`s live against the
+production MCP server and production database. Payloads too large for the MCP client's token
+ceiling (the whole `assess_*` family) were re-measured by direct HTTPS JSON-RPC `tools/call` to the
+same endpoint, so the byte claims were verified rather than assumed. Full record:
+`pp2-audit/p6_selfverification.json`.
+
+**Sample: F-07, F-08, F-09, F-23, F-24, F-27, F-29, F-36, F-51, F-56, F-57, F-58, F-60, F-63,
+F-71, F-72, F-108, F-109, F-115, F-130, F-140.**
+
+| Verdict | Count |
+|---|---|
+| REPRODUCES | 17 |
+| PARTIALLY-REPRODUCES | 4 (F-58, F-108, F-109, F-130) |
+| DOES-NOT-REPRODUCE | **0** |
+| UNABLE-TO-TEST | **0** |
+
+**No finding was removed.** Nothing in the sample was contradicted by fresh execution, and no
+`reproduce_cmd` proved unrunnable as a command. Several reproduced to the digit: F-60's five-point
+offset escalation returned `223/297, 208/232, 205/190, 193/77, 120/0` — every pair identical to
+P1 — and F-115's two contradictory remedy sentences (Venus 0.173 `critical` vs. Ketu 0.139 `high`)
+came back verbatim.
+
+#### The seven audit-integrity defects P6 did find
+
+None rose to removal, but each is a real flaw in this audit's own workmanship and is recorded
+rather than smoothed over.
+
+| Finding | Defect | Disposition |
+|---|---|---|
+| **F-09** | Wrong-package citation: mechanism cites `platform/src/lib/response_budget.ts:527`; the file lives at `platform-mcp/src/lib/response_budget.ts`. Line number and content verify at the corrected path. | Correct the path; finding stands. |
+| **F-56** | Stale figures: the four byte counts have drifted **upward** ~7–8% (now 180,818 / 153,885 / 158,200 / 169,559) and the overshoot band is **3.8×–4.5×**, not the claimed 3.5×–4.2×. | Restate or timestamp; the defect is worse, not better. |
+| **F-58** | Overstated mechanism: `DOMAIN_SYNONYMS['moksha'] = 'spirituality'` exists at `domain_vocabulary.ts:50`, so the two vocabularies *are* reconciled via a synonym. The narrow claim (absent from the `CANONICAL_DOMAINS` array) holds; "never reconciled 1:1" does not. | Reword; TIER 4 severity unchanged or lower. |
+| **F-72** | Self-inflicted off-by-one — **now resolved by P6.** The "41 vs 40" the finding marked `DIAGNOSIS-INCOMPLETE` is the audit's own double-count: 8 firings span only **7 unique** events (spiritual/devata_adoption 2010-07-01 maps to houses 9 *and* 12). 7 + 25 + 8 = 40 = the DB count exactly. | Close the `DIAGNOSIS-INCOMPLETE` marker. |
+| **F-108** | Misattributed verbatim quote: the reproduce_cmd credits `ganita_chart_facts_get` with an `empty_reason` ("29 seed alias entries and 219 live fact_category values") that actually belongs to `ganita_concept_locate` — P6 called that tool and got the string back exactly. The misattribution is propagated from the P1 evidence file. | Correct the reproduce_cmd; the substantive claim (0 rows) is confirmed on **both** routes. |
+| **F-109** | Non-executable reproduce_cmd: it is a set of file pointers, not a runnable command, so the 90.48% qualitative rate cannot be independently re-derived from it. Every asserted figure does verify against the cited artifact. | Relabel as a measurement record. |
+| **F-130** | Data-dependent instance unexercised: `assess_wealth`'s `contradictions_with_adjudication` family currently has zero contradictions and serves honest prose, so 1 of the 4 named sites could not be re-observed. The other 3 reproduce, 2 of them verbatim. | Narrow the 4th instance. |
+
+#### Refutation of the three top-severity findings
+
+P6 attempted, in good faith, to prove each of the three wrong. **All three survived.** Two earned a
+wording refinement — in both cases one that makes the finding *more* precise without lowering its
+severity.
+
+**F-110 (`critical`, CL-15) — SURVIVES REFUTATION.** The strongest counter available was that
+`kala_upaya_get`'s `pact_status='denied_at_promise'` might be a broken constant, which would reduce
+F-110 to "a working forecaster compared against a stub." P6 called `kala_upaya_get` across all seven
+supported domains on the same chart and date: it returns **four distinct values** —
+`denied_at_promise` (relationship), `denied_at_confirmation` (health), `chain_pending_activation`
+(wealth/progeny/spirituality), `chain_complete` (career/education). It is a genuine
+domain-discriminating verdict. The secondary counter — that `kala_ahead_get` *does* disclose
+`promise_gated_forecasting: not_in_corpus`, citing `SHAD_DARSHANA_BRIEF_v2_0.md §2.2` — is factually
+true and does not exculpate: the disclosure sits in a coverage array while the reading/verdict layer
+still narrates *"High probability (≥70% convergence, clear activation)"* over
+2027-10-20…2030-04-03. Per §N.6 point 3 and §N.8, an honest gap must downgrade or suppress the
+claim, not sit beside it. *(Evidence: `evidence/P6_F110_refutation_pact_status_discriminates.json`)*
+
+**F-119 (`critical`, CL-08) — SURVIVES REFUTATION, with a refinement.** Two counters failed on
+direct measurement: `resolution_disclosure` is genuinely absent from `assess_health` (as are
+probability and confidence, on every row), and the baseline is real — `gochara_forecast_get`
+demonstrably attaches the full contract to every window, *including these same five dates*. The
+third counter landed partially and refines the finding: those five rows return
+`is_timing_window: **true**`, so they are not rows the system itself marks non-actionable. But that
+`true` is earned through the `temporal_shape === 'point'` clause **alone**, with `resolution: null`
+and `resolution_source: 'unavailable'` — a shape proxy, not a resolution measurement (§N.8 again).
+The primary defect is untouched: five single-day acute-illness dates two-to-three years out, served
+with zero disclosure, zero probability and zero confidence, over a calibration plane reporting
+`n_events=0 / skill_score=null` (F-140). The mechanism paragraph should say *"the disclosure is
+dropped, and at source it is a shape-earned `true` over `resolution=null`"* rather than
+*"uncalibrated field maxima."* *(Evidence: `evidence/P6_F119_refutation_resolution_disclosure.json`)*
+
+**F-52 (`TIER1-CORRECTNESS`, CL-07) — SURVIVES REFUTATION, with a refinement.** The methodological
+counter failed: Rahu and Ketu contribute **85 and 87** `drishti_contact` terms respectively on this
+chart, so they are truncated, not excluded. The arithmetic counter failed too — natal Venus is in
+**Sagittarius** (9th from Aries lagna), transit Ketu is at **Leo 5.566°** and Rahu at
+**Aquarius 5.566°**; Ketu's 5th from Leo is Sagittarius (= natal Venus) and Rahu's 9th from Aquarius
+is Libra (= the natal 7th). Both land exactly as claimed, and the live marriage window's 18
+activity terms still name only Moon/Sun/Mars/Venus/Jupiter, with the strings "Rahu" and "Ketu"
+appearing nowhere in the response. The **doctrinal** counter has genuine force and exposes a nuance
+the finding does not carry: `w30_nodal_drishti.py`'s own docstring states that nodal 5/7/9 is
+attested only in later tradition (Phaladeepika c. 16th c., Sāravalī, later Pārāśarī
+sub-commentaries) and is **not** in original BPHS — so `primitives.py`'s "BPHS Ch.26" citation is
+textually defensible on its own terms. It does not overturn the finding, on three grounds:
+(1) this same codebase already grants nodal 5/9 on a live surface (`ga_structural_writer.py`'s
+`NODE_PARASHARI_ASPECTS={5,7,9}`, served through `ganita_structural_get`), so the four aspect tables
+are mutually inconsistent under *any* doctrine; (2) R24 is a binding project ruling, not an auditor
+preference; (3) `w30_nodal_drishti` exists in `engine.py` as the intended compensator and leaves no
+trace in served data (F-21). The later-tradition provenance should be added to the finding text so
+the classical claim is stated at its true strength. *(Evidence:
+`evidence/P6_F52_refutation_nodal_aspect.json`)*
 
 ### §6.4 — Desk self-correction: the F-51 misread
 
@@ -2834,7 +2922,12 @@ Recorded so a reader can weight the findings correctly rather than uniformly:
 
 ---
 
-*End of PARIPŪRṆA-2 audit report v1.0 (P5). §6.3 awaits P6. Nothing in this document may be read as
-a terminal completion marker: per `PARIPURNA_2_AUDIT_PLAN_v2_0.md` §7, done means the gate exits 0,
-its signed line is in the ledger, and PARĪKṢAKA's independent re-run and 15% reproduction sample
-pass. As of this writing the gate reports 187 blocking problems and P6 has not run.*
+*End of PARIPŪRṆA-2 audit report v1.0 (P5+P6). §6.3 is populated with P6's results (17/21 sampled
+findings fully reproduced, 4 partially, 0 removed; all 3 highest-severity findings survived active
+refutation). Nothing in this document may be read as a terminal completion marker on its own: per
+`PARIPURNA_2_AUDIT_PLAN_v2_0.md` §7, done means the gate exits 0 and its signed line is in the
+ledger. As of this writing (post-P6) the gate still reports 187 blocking problems — independently
+re-confirmed by direct execution — nearly all of them a severity-vocabulary mismatch between this
+audit's actual finding severities and the gate's stricter 4-tier vocabulary, not a substance defect
+in the underlying findings. That reconciliation has not yet been done and is disclosed here rather
+than silently resolved either way.*

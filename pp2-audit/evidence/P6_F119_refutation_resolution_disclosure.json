@@ -1,0 +1,126 @@
+{
+  "evidence_id": "P6_F119_refutation_resolution_disclosure",
+  "finding": "F-119 refutation attempt",
+  "counter_arguments_tested": [
+    "(a) resolution_disclosure may in fact be present on the assess_health surface and P1 looked at the wrong path.",
+    "(b) The baseline may be fictional - gochara_forecast_get may not actually attach the resolution_disclosure contract it documents.",
+    "(c) These may be honest field maxima the system itself already marks non-actionable, in which case relaying risk is overstated."
+  ],
+  "assess_health_gochara_sweep": {
+    "domain": "health",
+    "upcoming_window_count": 17,
+    "valence_breakdown": {
+      "loss": 11,
+      "neutral": 6
+    },
+    "top_windows": [
+      {
+        "event_class": "illness_acute",
+        "temporal_shape": "point",
+        "window_start": "2029-04-13",
+        "window_end": "2029-04-13",
+        "peak_date": "2029-04-13",
+        "valence": "loss",
+        "is_adverse": true
+      },
+      {
+        "event_class": "illness_acute",
+        "temporal_shape": "point",
+        "window_start": "2028-12-13",
+        "window_end": "2028-12-13",
+        "peak_date": "2028-12-13",
+        "valence": "loss",
+        "is_adverse": true
+      },
+      {
+        "event_class": "illness_acute",
+        "temporal_shape": "point",
+        "window_start": "2029-07-18",
+        "window_end": "2029-07-18",
+        "peak_date": "2029-07-18",
+        "valence": "loss",
+        "is_adverse": true
+      },
+      {
+        "event_class": "illness_acute",
+        "temporal_shape": "point",
+        "window_start": "2027-08-21",
+        "window_end": "2027-08-21",
+        "peak_date": "2027-08-21",
+        "valence": "loss",
+        "is_adverse": true
+      },
+      {
+        "event_class": "illness_acute",
+        "temporal_shape": "point",
+        "window_start": "2028-11-21",
+        "window_end": "2028-11-21",
+        "peak_date": "2028-11-21",
+        "valence": "loss",
+        "is_adverse": true
+      }
+    ],
+    "resolution_disclosure_present": false,
+    "is_timing_window_present": false,
+    "probability_or_confidence_on_any_row": false
+  },
+  "gochara_forecast_get_same_dates": [
+    {
+      "event_class": "illness_acute",
+      "temporal_shape": "point",
+      "date": "2027-08-21",
+      "resolution_disclosure": {
+        "resolution": null,
+        "resolution_source": "unavailable",
+        "is_timing_window": true,
+        "timing_window_blocked_reason": null
+      }
+    },
+    {
+      "event_class": "surgery",
+      "temporal_shape": "point",
+      "date": "2028-11-21",
+      "resolution_disclosure": {
+        "resolution": null,
+        "resolution_source": "unavailable",
+        "is_timing_window": true,
+        "timing_window_blocked_reason": null
+      }
+    },
+    {
+      "event_class": "illness_acute",
+      "temporal_shape": "point",
+      "date": "2028-11-21",
+      "resolution_disclosure": {
+        "resolution": null,
+        "resolution_source": "unavailable",
+        "is_timing_window": true,
+        "timing_window_blocked_reason": null
+      }
+    },
+    {
+      "event_class": "illness_acute",
+      "temporal_shape": "point",
+      "date": "2028-12-13",
+      "resolution_disclosure": {
+        "resolution": null,
+        "resolution_source": "unavailable",
+        "is_timing_window": true,
+        "timing_window_blocked_reason": null
+      }
+    },
+    {
+      "event_class": "illness_acute",
+      "temporal_shape": "point",
+      "date": "2029-04-13",
+      "resolution_disclosure": {
+        "resolution": null,
+        "resolution_source": "unavailable",
+        "is_timing_window": true,
+        "timing_window_blocked_reason": null
+      }
+    }
+  ],
+  "earning_clause_read": "platform-mcp/src/tools/retrieval/register_gochara_windows.ts:291-360 - a row earns is_timing_window=true iff temporal_shape==='point' OR (resolution IN {month,day} AND peak_basis IN GENUINE_PEAK_BASES). These five rows earn it through the SHAPE clause alone, with resolution=null and resolution_source='unavailable'.",
+  "outcome": "COUNTER-ARGUMENTS (a) AND (b) FAIL: assess_health carries no resolution_disclosure/is_timing_window and no probability/confidence on any row, while gochara_forecast_get demonstrably attaches the full contract to every window including these same five dates. COUNTER-ARGUMENT (c) PARTLY LANDS and REFINES the finding: the authoritative surface marks these five is_timing_window=TRUE, so they are not rows the system itself considers non-actionable - but that true is earned by temporal_shape alone with resolution=null/resolution_source=unavailable, i.e. a shape proxy rather than a resolution measurement. The primary defect (dated acute-illness rows served with zero disclosure, probability or confidence) is untouched."
+}

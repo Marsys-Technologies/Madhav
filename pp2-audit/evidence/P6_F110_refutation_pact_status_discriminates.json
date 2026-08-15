@@ -1,0 +1,28 @@
+{
+  "evidence_id": "P6_F110_refutation_pact_status_discriminates",
+  "finding": "F-110 refutation attempt",
+  "counter_argument_tested": "kala_upaya_get's 'denied_at_promise' might be a broken constant/default rather than a real verdict, in which case F-110 compares a working tool against a stub and there is no genuine cross-tool contradiction.",
+  "test": "Call kala_upaya_get for all 7 supported domains on the same chart and same as_of_date; a constant would return the same pact_status every time.",
+  "pact_status_by_domain": {
+    "relationship": "denied_at_promise",
+    "career": "chain_complete",
+    "wealth": "chain_pending_activation",
+    "health": "denied_at_confirmation",
+    "progeny": "chain_pending_activation",
+    "education": "chain_complete",
+    "spirituality": "chain_pending_activation"
+  },
+  "distinct_values": [
+    "chain_complete",
+    "chain_pending_activation",
+    "denied_at_confirmation",
+    "denied_at_promise"
+  ],
+  "kala_ahead_get_relationship": {
+    "probability_tier": "tier_1_high",
+    "window": "2027-10-20..2030-04-03",
+    "probability_statement_present": true,
+    "promise_gated_forecasting_coverage_state": "not_in_corpus"
+  },
+  "outcome": "COUNTER-ARGUMENT FAILS. pact_status takes 4 distinct values across 7 domains (denied_at_promise / denied_at_confirmation / chain_pending_activation / chain_complete). It is a real domain-discriminating verdict, not a default. The contradiction with kala_ahead_get tier_1_high >=70% on the same chart+domain+date stands."
+}
