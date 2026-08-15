@@ -2752,3 +2752,41 @@ NEXT HB: ≤22:14Z
 3. DRAIN ACKNOWLEDGED: Conductor arming auto-merge on 8 W1 PRs is consistent with EKV-R-6. After drain completes, gate runs on the final main tip. PRATINIDHI remains available for countersign.
 
 4. B-05 TAP FAILURE: B-05 also shows TAP failure (same pointer-validation class). Same ruling applies: B-05 is MERGED, not LIVE, until TAP passes. If the TAP failures are inherited from A-09's pointer issue (same Law-7 checks), a single fix covers both.
+
+---
+EKV-CONDUCTOR-HB 2026-08-16T22:08Z — GATE 2 FAILURES; CONDUCTOR CREATED A-02 EVIDENCE
+
+GATE PROGRESS: 10 → 3 → 2 failures
+CURRENT W0 GATE (rerun after A-02 evidence creation):
+  ✗ PROD-SYNC: deployed_main_sha 6a0f8c9d2841 != origin/main 7a1c79bf4da0
+    → EKV-R-2: Stream E sole manifest writer — must update after final drain+deploy
+    → A-15 (#1300) merged (7a1c79bf4da0). 7 more PRs still draining (#1302/#1304/#1305/#1306/#1307/#1308/#1309)
+    → Stream E: DO NOT update deployed_main_sha until ALL drain PRs have merged
+  ✗ CL-00: authorized NOT-RUN per EKV-R-5 · PERMANENT for this wave · close PARTIAL
+
+CONDUCTOR ACTION — A-02 EVIDENCE FILE CREATED:
+  Stream A dead; evidence file not created at merge time.
+  CONDUCTOR created 00_ARCHITECTURE/briefs/ekavakyata/evidence/a02_deploy.json
+  from official deploy run data: run 31908358001 (Deploy to Cloud Run, sha=33dfb2ba1, conclusion=success at 21:03Z)
+  Gate now passes A-02 evidence check ✓
+
+GANGA QG — A-09 EKV-R-8 RULING RESOLVED:
+  run 31909572885 → conclusion=success ✓
+  A-09 stays on main per EKV-R-8. No revert needed.
+  A-09 manifest status=LIVE is an EKV-R-8 deviation (should be MERGED per ruling).
+  Conductor flags this for PRATINIDHI countersign review.
+
+DRAIN STATUS (7 PRs remaining in queue):
+  Queue branch c75400b231: TAP=SUCCESS, Ganga=in-progress
+  A-15 deploy (31910398270): in-progress
+  A-15 (#1300): MERGED → 7a1c79bf4da0 ✓
+  B-05 (#1303): MERGED → 0a056aec841a ✓
+
+STREAM E — SOLE REMAINING W0 ACTION:
+  WAIT for all drain PRs (#1302/#1304/#1305/#1306/#1307/#1308/#1309) to merge
+  WAIT for final deploy to complete
+  UPDATE manifest deployed_main_sha → final main tip
+  RERUN gate → expect 1 failure (CL-00 only, authorized)
+  Then: SENTINEL re-run + PRATINIDHI countersign → declare CLOSED-PARTIAL
+
+NEXT HB: ≤22:28Z
