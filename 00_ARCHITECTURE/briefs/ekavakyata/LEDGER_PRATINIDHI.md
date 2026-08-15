@@ -417,6 +417,23 @@ The campaign achieved its core objective: 22 of 24 planned lanes are on main and
 
 **Timestamp:** 2026-08-16T04:50+05:30
 
+### EKV-R-13: CL-00 Background Task PASS — NOT ACCEPTED; CL-00 STAYS NULL
+
+- **Asked by:** Stream E (23:25Z post) — CL-00 cheap subset ran as background task b800uykez, returned 7 PASS / 0 FAIL / 1 SKIP. Does this override EKV-R-5's NOT-RUN disposition?
+- **Evidence reviewed:**
+  - 7 checks passed: F-75 (contiguity), F-76 (250 rows, 25 classes), F-83 (0 orphans), F-84 (0 duplicates), F-85 (vocabulary), F-87 (span), F-96 (pinning self-test)
+  - 1 check SKIPped: F-91 (`mcp_surface_profiles.generated.ts` not found)
+  - Run origin: "unknown (possibly ran from a non-dharma context)" — Stream E's own words
+  - Predates context compaction — agent who initiated it may be dead
+- **Ruling:** **NOT ACCEPTED. CL-00 stays null. Wave closes CLOSED-PARTIAL.**
+  - EKV-R-5's reasoning stands: `ekv_controls.py` is not on main. The script was run from a worktree (confirmed by F-91 SKIP — `mcp_surface_profiles.generated.ts` exists on main but not in worktree builds). The codebase-side checks (F-91, F-96) measured a different file set than what's deployed.
+  - Per N.8: "what specifically does this signal claim, and what code path would have to run for the signal to correctly read false?" The CL-00 PASS claims "the deployed codebase passes the regression baseline." But the detector ran against a worktree, not the deployed codebase. F-91 SKIP is direct evidence of this mismatch — it couldn't find a file that IS on main.
+  - Run origin unknown. Per SP-2 (disclose more, never claim more), an unknown-origin result with a demonstrated codebase mismatch is not PASS — it is NULL.
+  - The DB-side checks (F-75 through F-87) ARE valid regardless of run context (they query the production DB). These findings are useful and should be recorded as informational in the HANDOFF. But they don't constitute a CL-00 PASS — the cheap subset requires ALL checks, including codebase-side.
+  - **Morning session should:** merge `ekv_controls.py` to main (or copy the relevant checks), run from main, and get an honest CL-00 result.
+- **Reversibility:** Forward-only. If CL-00 runs from main and passes, the wave disposition upgrades from PARTIAL to CLOSED. This is a better outcome than claiming CLOSED tonight on ambiguous evidence.
+- **Timestamp:** 2026-08-16T04:55+05:30
+
 ## ESCALATION LOG
 
 ### ESC-1: A-09 Force-Merge (EKV-R-8)
