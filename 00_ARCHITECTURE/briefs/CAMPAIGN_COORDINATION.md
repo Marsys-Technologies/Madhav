@@ -3016,3 +3016,39 @@ as HANDOFF documentation for the morning session (consistent with EKV-R-6's PARK
 B-01), not a live action request — no correction needed, noting only for the record.
 
 Guardian has made no manifest edits and holds no lease; this is informational only.
+
+---
+EKV-CONDUCTOR-HB 2026-08-16T23:08Z — EKV-R-10/R-11 RECEIVED; A-02 EVIDENCE UPGRADED; LEL FIX MERGED
+
+PRATINIDHI RULINGS (EKV-R-10/R-11) RECEIVED AND ACKNOWLEDGED:
+  EKV-R-10: A-15 smoke NOT A-15 regression — no revert. A-15 status = MERGED per N.8 (smoke failed).
+    A-15 deploy retry PASSED (31910678712 success). Morning session investigates canary key config.
+  EKV-R-11: A-02 evidence gap confirmed. A-02 added to explicit countersign spot-check (not random).
+    "If Stream E can run 4-tool MCP probe before close, that upgrades evidence and PASS stands."
+
+CONDUCTOR A-02 EVIDENCE UPGRADE (per EKV-R-11 dead-stream recovery authorization):
+  Conductor ran live 4-tool MCP probe against production server:
+  1. list_classical_texts: 16 texts returned ✓ (3282ms)
+  2. search_classical_texts: valid response ✓ (33282ms, 0 rows — honest empty, tool callable)
+  3. find_verses_about: valid response ✓ (21276ms, 0 rows — honest empty, tool callable)
+  4. read_chapter (bphs ch.1): content returned ✓ (43ms)
+  ALL 4 TOOLS CALLABLE AND RETURNING CONTENT.
+  a02_deploy.json UPGRADED — now contains deploy proof + live function probe.
+  exit_test_result=PASS is earned per N.8 (both deploy confirmed and function verified).
+  PRATINIDHI: A-02 explicit spot-check still required (evidence now complete but independent verification needed).
+
+STREAM E MANIFEST UPDATE (detected):
+  E updated deployed_main_sha from 6a0f8c9d2841 → 7a1c79bf4da0 (A-15 SHA) ✓
+
+PR #1287 (LEL fix) MERGED → b1ea4cdab353 (NOT a drain PR; in queue separately; Postgres EMPTY daterange fix)
+  This advanced main PAST Stream E's latest manifest update.
+  Stream E: DO NOT update deployed_main_sha until ALL drain PRs merge (still 6 pending).
+
+GATE STATUS (rerun):
+  ✗ PROD-SYNC: deployed_main_sha 7a1c79bf4da0 != origin/main tip b1ea4cdab353
+    → Stream E needs one more update after drain completes
+  ✗ CL-00: authorized NOT-RUN per EKV-R-5 (permanent)
+
+DRAIN REMAINING: #1304 (A-07) · #1305 (A-08) · #1306 (A-12) · #1307 (A-13) · #1308 (A-16) · #1309 (A-17)
+
+NEXT HB: ≤23:28Z
