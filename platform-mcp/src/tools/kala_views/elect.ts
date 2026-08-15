@@ -69,7 +69,7 @@ import {
   honestEmptyCoverage,
   notInCorpusCoverage,
   buildKalaFreshness,
-  noLelCalibrationMaturity,
+  fetchCalibrationMaturity,
   kalaEvidenceTrimmableSection,
   type ArgumentReading,
   type ArgumentEvidence,
@@ -758,7 +758,7 @@ export async function handleKalaElectGet(
       sweepBuildDate: null,
       fieldHash: fieldSnapshot.field_content_hash,
     }),
-    calibrationMaturity: noLelCalibrationMaturity(),
+    calibrationMaturity: await fetchCalibrationMaturity(input.chart_id, principal),
   })
 
   const candidates: KalaElectCandidate[] = windows.map((w, i) => {

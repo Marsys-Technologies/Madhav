@@ -96,6 +96,7 @@ import type { Principal } from '../../types.js'
 import { autofileAheadWindows, type AheadAutofileResult } from '../../lib/ahead_autofile.js'
 import {
   makeKalaEnvelope,
+  fetchCalibrationMaturity,
   noLelCalibrationMaturity,
   buildKalaFreshness,
   resolveFieldSnapshot,
@@ -1981,7 +1982,7 @@ export async function computeKalaAhead(
     triPlane,
     coverage,
     freshness: buildKalaFreshness({ ephemerisVersion: null, sweepBuildDate: null, fieldHash: fieldSnapshot.field_content_hash }),
-    calibrationMaturity: noLelCalibrationMaturity(),
+    calibrationMaturity: await fetchCalibrationMaturity(chartId, principal),
   })
 
   // ── G14b AHEAD auto-file (MASTER_PLAN_v1_0.md G14b) ────────────────────────────────
