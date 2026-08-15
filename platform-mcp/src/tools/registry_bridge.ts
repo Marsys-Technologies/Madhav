@@ -60,7 +60,7 @@ import {
 // three instruments whose full-detail payload (up to ~86KB) is unusable over a real MCP
 // channel — judgment_query, graha_portrait, pact_query. See response_budget.ts's header
 // for why this is structure-aware (shrinks named arrays) rather than a byte-truncation.
-import { finalizeMcpBudget, autoDetectTrimmableSections, type TrimmableSection } from '../lib/response_budget.js'
+import { finalizeMcpBudget, autoDetectTrimmableSections, type TrimmableSection, assembleSaraContent, type SaraKernel, type DrillPointerLike } from '../lib/response_budget.js'
 // Elevation Campaign v2.1 · Stream α (SATYA) — flagship completeness wiring.
 // γ built `dossier` (the Ω5 gather-then-compose engine) but a naive uninstructed agent asking
 // "how is my wealth?" reaches for the obviously-named `assess_wealth`, gets the shallow default
@@ -2877,6 +2877,79 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
     }
   )
 
+  /**
+   * A-09 (F-56/F-111): Sāra composition for assess_* tools. Replaces the object-blind
+   * applyMcpBudgetAuto path. verdict_skeleton (~43KB) and activating_dasha (~62KB) are
+   * OBJECTS invisible to autoDetectTrimmableSections — they now land in the evidence layer
+   * and are cleanly excluded when budget is tight rather than silently surviving trim passes.
+   */
+  function buildAssessResponse(
+    response: Record<string, unknown>,
+    toolName: keyof typeof MCP_RESPONSE_BUDGET_KB,
+    budget_kb: number | undefined,
+    effectiveVerbosity: Verbosity | undefined,
+  ) {
+    const effectiveBudgetKb = resolveMaxKb(toolName, budget_kb, effectiveVerbosity)
+
+    const kernel: SaraKernel = {
+      verdict: (response['verdict'] as string) ?? '',
+      flags: (response['judgment_flags'] as JudgmentFlagEntry[]) ?? [],
+      promise: null,
+      pointers: [
+        { instrument: 'get_domain_reading', hint: 'marsys://tool/L2/get_domain_reading' } as DrillPointerLike,
+        { instrument: 'query_temporal_activation', hint: 'marsys://tool/L3/query_temporal_activation' } as DrillPointerLike,
+        { instrument: 'query_contradictions', hint: 'marsys://tool/L2/query_contradictions' } as DrillPointerLike,
+      ],
+    }
+
+    // Grounding: essential structured context with bounded arrays.
+    // Excludes verdict_skeleton and activating_dasha — the two large objects (F-56/F-111)
+    // that were invisible to the auto-trimmer.
+    const grounding: Record<string, unknown> = {
+      orientation_context: response['orientation_context'],
+      orientation_ok: response['orientation_ok'],
+      domain: response['domain'],
+      chart_id: response['chart_id'],
+      ayanamsha_id: response['ayanamsha_id'],
+      reading_checklist: response['reading_checklist'],
+      step_results: response['step_results'],
+      gochara_sweep: response['gochara_sweep'],
+      contradictions: response['contradictions'],
+      house_analysis: response['house_analysis'],
+      citations: response['citations'],
+      provenance: response['provenance'],
+      yoga_fact_ids: response['yoga_fact_ids'],
+    }
+    // assess_career/wealth: reading + completeness injected by attachDomainReading/Completeness
+    if (response['reading'] !== undefined) grounding['reading'] = response['reading']
+    if (response['completeness'] !== undefined) grounding['completeness'] = response['completeness']
+    // assess_wealth: leverage_index injected by attachLeverageIndex
+    if (response['leverage_index'] !== undefined) grounding['leverage_index'] = response['leverage_index']
+
+    // Evidence: the two large objects (F-56/F-111) + remaining heavy data.
+    // Excluded at the 40KB configured budget; available for deep_dive/exhaustive.
+    const evidence = {
+      verdict_skeleton: response['verdict_skeleton'],
+      activating_dasha: response['activating_dasha'],
+      karaka_analysis: response['karaka_analysis'],
+      varga_analysis: response['varga_analysis'],
+      sensitive_degree_firings: response['sensitive_degree_firings'],
+      kp_cusp_chain: response['kp_cusp_chain'],
+      ranking_basis: response['ranking_basis'],
+    }
+
+    const counts: Record<string, number> = {
+      contradictions: Array.isArray(response['contradictions'])
+        ? (response['contradictions'] as unknown[]).length : 0,
+      yoga_fact_ids: Array.isArray(response['yoga_fact_ids'])
+        ? (response['yoga_fact_ids'] as unknown[]).length : 0,
+      reading_families: Array.isArray(response['reading'])
+        ? (response['reading'] as unknown[]).length : 0,
+    }
+
+    return assembleSaraContent({ kernel, grounding, evidence, budget_kb: effectiveBudgetKb, counts })
+  }
+
   // ── D8 APEX TOOLS ─────────────────────────────────────────────────────────
   // assess_marriage / assess_career / assess_health / assess_wealth
   // yoga_activation_by_dasha
@@ -2914,7 +2987,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           ),
         ])
         const response = { orientation_context, orientation_ok, ...data as Record<string, unknown> }
-        return dualOutputBudgeted(applyMcpBudgetAuto(response, resolveMaxKb('assess_marriage', budget_kb, effectiveVerbosity), 'assess_marriage', budget_kb))
+        return dualOutputBudgeted(buildAssessResponse(response, 'assess_marriage', budget_kb, effectiveVerbosity))
       } catch (err) {
         return errorOutput('assess_marriage', String(err), { chart_id })
       }
@@ -2957,7 +3030,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
         attachDomainCompleteness(response, 'career', chart_id)
         // SATYA-ŚEṢA W7: serve the reading itself, inline, not just a pointer to one.
         await attachDomainReading(response, 'career', chart_id, normalizeAyanamsha(ayanamsha_id), principal)
-        return dualOutputBudgeted(applyMcpBudgetAuto(response, resolveMaxKb('assess_career', budget_kb, effectiveVerbosity), 'assess_career', budget_kb))
+        return dualOutputBudgeted(buildAssessResponse(response, 'assess_career', budget_kb, effectiveVerbosity))
       } catch (err) {
         return errorOutput('assess_career', String(err), { chart_id })
       }
@@ -2996,7 +3069,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           ),
         ])
         const response = { orientation_context, orientation_ok, ...data as Record<string, unknown> }
-        return dualOutputBudgeted(applyMcpBudgetAuto(response, resolveMaxKb('assess_health', budget_kb, effectiveVerbosity), 'assess_health', budget_kb))
+        return dualOutputBudgeted(buildAssessResponse(response, 'assess_health', budget_kb, effectiveVerbosity))
       } catch (err) {
         return errorOutput('assess_health', String(err), { chart_id })
       }
@@ -3042,7 +3115,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
         // PARIŚODHANA R-10: join the already-computed L1 ga_vichara leverage_index family in —
         // it was fully computed (7 rows/chart) but completely absent from this response shape.
         await attachLeverageIndex(response, 'wealth', chart_id, normalizeAyanamsha(ayanamsha_id), principal)
-        return dualOutputBudgeted(applyMcpBudgetAuto(response, resolveMaxKb('assess_wealth', budget_kb, effectiveVerbosity), 'assess_wealth', budget_kb))
+        return dualOutputBudgeted(buildAssessResponse(response, 'assess_wealth', budget_kb, effectiveVerbosity))
       } catch (err) {
         return errorOutput('assess_wealth', String(err), { chart_id })
       }

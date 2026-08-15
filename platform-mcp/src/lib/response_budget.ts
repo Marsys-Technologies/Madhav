@@ -638,6 +638,181 @@ export const KALA_TEMPORAL_FAMILY_BUDGET_KB = {
   kala_bundle_get: 40,
 } as const
 
+// ── EKAVĀKYATĀ A-09 — SĀRA COMPOSITION KERNEL API (FROZEN) ────────────────────
+//
+// EKV-KERNEL-API-FROZEN: these interfaces are stable from this commit.
+// Consumers: A-14 (register/gloss in kernel+grounding), A-16 (natal D1 7th-house
+// join), B-08 (ranker integration). Changes after freeze require LEAD ruling.
+//
+// ROOT CAUSE (F-56/F-111): autoDetectTrimmableSections sees only top-level arrays.
+// assess_*'s dominant sections (activating_dasha ~62KB, verdict_skeleton ~43KB) are
+// OBJECTS — invisible to PASS 1/2. The ships-anyway path (:280-300) silently ships
+// over-budget responses. SOLUTION: composition replaces subtraction. Always assemble
+// a ≤2KB kernel; add grounding/evidence as budget allows. The load-bearing layers
+// never pass through an object-blind trimmer.
+
+/**
+ * The sāra (essence) kernel — always ≤2 KB, always present in a composed response.
+ *
+ * - `verdict`:  single deterministic sentence (deterministic aggregation of L1/L2
+ *               data, never LLM-generated; max ~200 chars; immune per C8 §4).
+ * - `flags`:    sparse JudgmentFlagEntry list — honesty gaps, data-plane caveats,
+ *               empty-reason codes. Zero-length when nothing to flag.
+ * - `promise`:  PACT spine join (A-08 one-voice spine). null when chart has no
+ *               standing filed prediction in brahma_prospective_ledger for the
+ *               queried domain, or when pact_query is unavailable for this tool.
+ * - `pointers`: drill-down instrument hints. Same DrillPointerLike shape as the
+ *               existing drill_pointers field — merged at serve time.
+ */
+export interface SaraKernel {
+  verdict: string
+  flags: JudgmentFlagEntry[]
+  promise: SaraPromiseJoin | null
+  pointers: DrillPointerLike[]
+}
+
+/**
+ * Promise join from the PACT spine (A-08 one-voice spine).
+ * Produced by reading pact_query for (chart_id, domain) at serve time.
+ *
+ * - `projection`:      how the current domain-forecast aligns with the standing promise.
+ * - `promise_verdict`: pact chain status (mirrors register_d10_pact.ts vocabulary:
+ *                      'chain_complete' | 'chain_pending_activation' |
+ *                      'chain_incomplete_infra' | 'denied_at_promise' |
+ *                      'denied_at_confirmation' | 'denied_at_activation').
+ * - `shared_fact_ids`: fact_ids appearing in both forecast and promise register.
+ * - `stance`:          summary alignment token.
+ */
+export interface SaraPromiseJoin {
+  projection: 'supported' | 'contradicted' | 'neutral' | 'absent'
+  promise_verdict: string
+  shared_fact_ids: string[]
+  stance: 'consistent' | 'contradicts' | 'pending'
+}
+
+/**
+ * Assembly metadata — always included in a SaraLayeredContent response.
+ * Replaces the opaque ships-anyway path and silent flag_emit.
+ *
+ * - `budget_kb`:        ceiling applied to this composition pass.
+ * - `kernel_bytes`:     actual serialized kernel size (invariant: ≤2048).
+ * - `included_layers`:  which layers are present in this response object.
+ * - `counts`:           item counts AT ASSEMBLY — honest even when a layer is
+ *                       absent due to budget (closes the "trim zeroes count but
+ *                       count field still shows original" defect class, F-112).
+ * - `omitted_sections`: layer names omitted due to budget pressure.
+ */
+export interface CompositionReport {
+  budget_kb: number
+  kernel_bytes: number
+  included_layers: ReadonlyArray<'kernel' | 'grounding' | 'evidence'>
+  counts: Record<string, number>
+  omitted_sections: string[]
+}
+
+/**
+ * The sāra layered response shape — the stable assembly contract for A-09 tools.
+ *
+ * - `kernel`:             always present (≤2KB). verdict + flags + promise + pointers.
+ * - `grounding`:          tool-specific supporting sections (bhava conditions,
+ *                         timing_hooks, gochara_sweep, etc.) — present when budget
+ *                         allows beyond kernel.
+ * - `evidence`:           full-density data (yoga firings, signal arrays, full
+ *                         checklist) — present when budget is generous (≥40KB).
+ * - `composition_report`: always present. Honest metadata: sizes, counts, omitted.
+ *
+ * Type parameters allow each tool to type its own grounding/evidence shapes:
+ *   K — kernel shape (extends SaraKernel; tool-specific kernels may add fields)
+ *   G — grounding shape (tool-specific)
+ *   E — evidence shape (tool-specific)
+ */
+export interface SaraLayeredContent<
+  K extends SaraKernel = SaraKernel,
+  G extends Record<string, unknown> = Record<string, unknown>,
+  E extends Record<string, unknown> = Record<string, unknown>,
+> {
+  kernel: K
+  grounding?: G
+  evidence?: E
+  composition_report: CompositionReport
+}
+
+/**
+ * Assemble a SaraLayeredContent from kernel + optional grounding/evidence.
+ *
+ * This is the SINGLE construction point — callers never manually set
+ * `included_layers`, `omitted_sections`, or `kernel_bytes`. The ≤2KB kernel
+ * invariant is enforced here by trimming pointers/flags (never verdict or promise).
+ * Counts are accepted from the caller at assembly time (computed BEFORE any layer
+ * is omitted, so the composition_report is honest even when evidence is absent).
+ */
+export function assembleSaraContent<
+  K extends SaraKernel,
+  G extends Record<string, unknown>,
+  E extends Record<string, unknown>,
+>(opts: {
+  kernel: K
+  grounding?: G
+  evidence?: E
+  budget_kb: number
+  counts: Record<string, number>
+}): SaraLayeredContent<K, G, E> {
+  const { kernel, grounding, evidence, budget_kb, counts } = opts
+  const maxBytes = budget_kb * 1024
+  const KERNEL_MAX_BYTES = 2048
+
+  // Enforce ≤2KB kernel invariant.
+  // verdict + promise are immune (irreducible honesty core). Trim pointers then
+  // flags until under ceiling, alternating by whichever is larger.
+  const mutableKernel = kernel as unknown as Record<string, unknown>
+  while (estimateBytes(kernel) > KERNEL_MAX_BYTES) {
+    const pointers = mutableKernel['pointers'] as unknown[]
+    const flags = mutableKernel['flags'] as unknown[]
+    if (pointers.length === 0 && flags.length === 0) break // can't trim further
+    if (pointers.length >= flags.length && pointers.length > 0) {
+      mutableKernel['pointers'] = pointers.slice(0, -1)
+    } else if (flags.length > 0) {
+      mutableKernel['flags'] = flags.slice(0, -1)
+    } else {
+      break
+    }
+  }
+
+  // Greedily include grounding if it fits within budget.
+  const includedLayers: Array<'kernel' | 'grounding' | 'evidence'> = ['kernel']
+  const omittedSections: string[] = []
+
+  if (grounding) {
+    if (estimateBytes({ kernel, grounding }) <= maxBytes) {
+      includedLayers.push('grounding')
+    } else {
+      omittedSections.push('grounding')
+    }
+  }
+
+  // Include evidence only if grounding was included AND evidence still fits.
+  if (evidence) {
+    if (includedLayers.includes('grounding') && estimateBytes({ kernel, grounding, evidence }) <= maxBytes) {
+      includedLayers.push('evidence')
+    } else {
+      omittedSections.push('evidence')
+    }
+  }
+
+  const composition_report: CompositionReport = {
+    budget_kb,
+    kernel_bytes: estimateBytes(kernel),
+    included_layers: includedLayers,
+    counts,
+    omitted_sections: omittedSections,
+  }
+
+  const assembled: SaraLayeredContent<K, G, E> = { kernel, composition_report }
+  if (includedLayers.includes('grounding') && grounding) assembled.grounding = grounding
+  if (includedLayers.includes('evidence') && evidence) assembled.evidence = evidence
+  return assembled
+}
+
 function mergeTrimPointersIntoPointers(
   pointers: DrillPointerLike[],
   trimReport: TrimReportEntry[] | null,
